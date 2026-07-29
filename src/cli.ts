@@ -14,6 +14,8 @@ import { fetchAssets, pushTags } from "./pipeline/fetch.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
 import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
+import { loadClaims, findOrphans } from "./pipeline/salvage.ts"
+import { runSalvage } from "./pick/salvage-server.ts"
 
 const log = (msg = "") => console.log(msg)
 
@@ -35,11 +37,12 @@ interface Args {
   exclude: string[]
   name?: string
   writePrompts: boolean
+  claims: string[]
 }
 
 const VALUE_FLAGS = [
   "--manifest", "--lock", "--style", "--only", "--budget", "--port",
-  "--from", "--out", "--generator", "--exclude", "--name",
+  "--from", "--out", "--generator", "--exclude", "--name", "--claims",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--no-open", "--tag", "--write-prompts",
@@ -47,7 +50,7 @@ const BOOL_FLAGS = [
 
 export const COMMANDS = [
   "init", "plan", "gen", "submit", "poll", "pick", "fetch", "adopt", "accept",
-  "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+  "salvage", "purge", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 /**
@@ -122,6 +125,7 @@ export function parseArgs(argv: string[]): Args {
     exclude: list("--exclude"),
     name: get("--name"),
     writePrompts: rest.includes("--write-prompts"),
+    claims: list("--claims"),
   }
 }
 
@@ -139,6 +143,8 @@ Commands
   fetch     Download selected objects to their manifest paths.
   adopt     Match existing account objects to files already in the repo.
   accept    Keep existing art after a style reword — re-baseline, do not regenerate.
+  salvage   Triage account objects no lockfile claims. Recovers usable art.
+  purge     Delete objects previously tagged discard. Irreversible; asks first.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show remaining generations.
   status    Summarise the lockfile.
@@ -323,7 +329,8 @@ async function main() {
       log(
         `\n  One account is shared across projects, so this list mixes discarded\n` +
           `  candidates with assets belonging to other manifests. Do not bulk-delete\n` +
-          `  it — run adopt from each project first, then review what is left over.`,
+          `  it — run adopt from each project first, then \`pixelkiln salvage\` to\n` +
+          `  triage what is left over.`,
       )
     }
     if (args.tag) {
@@ -357,6 +364,111 @@ async function main() {
       }
     }
     log(`\n  lockfile written: ${args.lock}`)
+    return
+  }
+
+  if (args.command === "salvage") {
+    // Correctness depends on a complete claim set. Missing a lockfile makes
+    // another project's shipped art look unclaimed, so this is stated loudly.
+    // This project's own lockfile is optional — salvage is a reasonable first
+    // command in a fresh project, which has none yet. Paths given via --claims
+    // are required, because a typo there silently widens the orphan set.
+    const ownLock = path.resolve(args.lock)
+    const lockPaths = [
+      ...(existsSync(ownLock) ? [ownLock] : []),
+      ...args.claims.map((c) => path.resolve(c)),
+    ]
+    log(`  claim set (${lockPaths.length} lockfile(s)):`)
+    for (const p of lockPaths) log(`    ${path.relative(process.cwd(), p)}`)
+    if (!args.claims.length) {
+      log(
+        `\n  Only this project's lockfile was consulted. If the account is shared,\n` +
+          `  pass every other project's lockfile via --claims a.json,b.json or you\n` +
+          `  will see their assets listed as unclaimed.`,
+      )
+    }
+
+    const claimed = await loadClaims(lockPaths)
+    const { orphans, total } = await findOrphans(client, claimed, { onProgress: log })
+    log(`  ${claimed.size} claimed · ${orphans.length} unclaimed of ${total}`)
+    if (!orphans.length) {
+      log(`\n  nothing to triage`)
+      return
+    }
+    if (args.dryRun) {
+      for (const o of orphans.slice(0, 30)) {
+        log(`    ${o.id}  ${o.width}x${o.height}  ${o.createdAt.slice(0, 10)}  ${o.prompt.slice(0, 50)}`)
+      }
+      if (orphans.length > 30) log(`    … and ${orphans.length - 30} more`)
+      log(`\n  --dry-run: nothing changed.`)
+      return
+    }
+
+    const styleId = args.styles[0] ?? Object.keys(loaded.manifest.styles)[0]!
+    const style = loaded.manifest.styles[styleId]!
+    const res = await runSalvage(
+      client,
+      orphans,
+      {
+        manifestPath: loaded.path,
+        manifest: loaded.manifest,
+        styleId,
+        importDir: path.resolve(loaded.root, style.outDir),
+        lock,
+        lockPath: args.lock,
+      },
+      { open: !args.noOpen, onProgress: log },
+    )
+    log(
+      `\n  imported ${res.imported} · kept ${res.kept} · tagged-discard ${res.discarded}` +
+        (res.failed ? ` · failed ${res.failed}` : ""),
+    )
+    if (res.discarded) {
+      log(`\n  Nothing was deleted. To actually remove the discarded objects:`)
+      log(`    pixelkiln purge\n`)
+    }
+    return
+  }
+
+  if (args.command === "purge") {
+    const doomed: { id: string; prompt: string }[] = []
+    for await (const obj of client.iterateObjects(100)) {
+      if (obj.tags?.includes("pixelkiln:discard")) {
+        doomed.push({ id: obj.id, prompt: obj.prompt || "" })
+      }
+    }
+    if (!doomed.length) {
+      log(`  nothing tagged pixelkiln:discard — run \`pixelkiln salvage\` first`)
+      return
+    }
+    log(`\n  ${doomed.length} object(s) tagged for discard:`)
+    for (const d of doomed.slice(0, 20)) log(`    ${d.id}  ${d.prompt.slice(0, 60)}`)
+    if (doomed.length > 20) log(`    … and ${doomed.length - 20} more`)
+
+    if (args.dryRun) {
+      log(`\n  --dry-run: nothing deleted.`)
+      return
+    }
+    log(`\n  This permanently deletes them from your PixelLab account.`)
+    log(`  Any local files already downloaded are untouched, but the objects`)
+    log(`  and their URLs are gone and cannot be re-downloaded.`)
+    if (!(await confirm(`  Delete ${doomed.length} object(s)?`, args.yes))) {
+      log(`  aborted`)
+      return
+    }
+
+    let deleted = 0
+    let failed = 0
+    for (const d of doomed) {
+      try {
+        await client.deleteObject(d.id)
+        deleted++
+      } catch (err) {
+        failed++
+        log(`  delete failed ${d.id}: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+    log(`\n  deleted ${deleted}${failed ? `, failed ${failed}` : ""}`)
     return
   }
 

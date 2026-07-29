@@ -93,6 +93,46 @@ appear in a later commit, against 5 of 40 sampled matches), so their bytes no
 longer match anything upstream. Those report as `untracked` — the art is fine,
 only its provenance is unknown — and are **not** billed for regeneration.
 
+## Salvaging unclaimed work
+
+An account accumulates objects that were generated, paid for, and never landed
+in a repo. On the account this was built against: **190 of 361 objects were
+unclaimed**, and a visual sample showed character portraits, ~30 tree variants,
+fence styles, terrain tiles, and UI icons — usable art, not rejects.
+
+`salvage` is a recovery tool, not a cleanup tool:
+
+```bash
+pixelkiln salvage --claims ../other-project/pixelkiln.lock.json --dry-run
+pixelkiln salvage --claims ../other-project/pixelkiln.lock.json
+```
+
+It opens a contact sheet of everything no lockfile claims. Each card gets one of
+three verdicts (hover + `i` / `k` / `d`):
+
+| Verdict | Effect |
+|---|---|
+| **import** | Downloads it, adds a manifest asset and a lock entry with the recovered prompt. It becomes a fully tracked asset. |
+| **keep** | Tags it `pixelkiln:keep` upstream. Nothing local changes. |
+| **discard** | Tags it `pixelkiln:discard`. **Does not delete.** |
+
+Deleting is a separate command that has to be asked for by name, lists what it
+will remove, and refuses to run non-interactively without `--yes`:
+
+```bash
+pixelkiln purge --dry-run
+pixelkiln purge
+```
+
+> **Pass every lockfile via `--claims`.** One account is shared across projects,
+> so an incomplete claim set makes another project's shipped art look
+> unclaimed. `salvage` prints the claim set it used and warns when only one
+> lockfile was consulted. Missing `--claims` paths are a hard error, not a
+> silent skip.
+
+Imported assets land under `_salvaged/` with ids derived from their prompts.
+Those ids are a starting point — rename them.
+
 ## Commands
 
 ```bash
@@ -103,6 +143,7 @@ pixelkiln gen --only first_review --force   # regenerate exactly one asset
 pixelkiln gen --style neon --budget 800     # a whole variant set, capped
 pixelkiln adopt --write-prompts   # map account objects to files, recover prompts
 pixelkiln accept                  # keep existing art after rewording a style
+pixelkiln salvage --claims a.json # triage objects no lockfile claims
 pixelkiln balance                 # generations remaining
 ```
 

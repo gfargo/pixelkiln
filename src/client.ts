@@ -223,6 +223,11 @@ export class PixelLabClient {
     })
   }
 
+  /** Irreversible. Only reached via `purge`, behind an explicit confirmation. */
+  deleteObject(objectId: string): Promise<unknown> {
+    return this.request(`/objects/${objectId}`, { method: "DELETE" })
+  }
+
   dismissReview(objectId: string): Promise<unknown> {
     return this.request(`/objects/${objectId}/dismiss-review`, { method: "POST" })
   }
