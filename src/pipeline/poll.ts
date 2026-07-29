@@ -1,10 +1,13 @@
-import type { PixelLabClient } from "../client.ts"
+import { PixelLabError, type PixelLabClient } from "../client.ts"
 import { saveLock, upsert } from "../lock.ts"
 import type { Lock } from "../types.ts"
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/** Map objects are deleted upstream 8 hours after creation. */
+/**
+ * Documented retention for the map-object *record*. Treated as advisory: the
+ * resulting image has been observed to outlive it in the objects collection.
+ */
 export const MAP_OBJECT_TTL_MS = 8 * 60 * 60 * 1000
 
 export interface PollOptions {
@@ -56,7 +59,38 @@ export async function poll(
       try {
         if (entry.generator === "map") {
           const age = entry.submittedAt ? Date.now() - Date.parse(entry.submittedAt) : 0
-          const obj = await client.getMapObject(entry.jobId!)
+
+          // The map-object record is documented to auto-delete after 8 hours,
+          // but observation says the resulting IMAGE outlives it: a 32x36
+          // sprite generated in March 2026 still resolves from /v2/objects
+          // four months on, while /v2/map-objects/{id} 404s for the same id.
+          // So a missing map-object record is not proof the work is lost —
+          // check the objects collection before writing anything off.
+          let obj: Awaited<ReturnType<typeof client.getMapObject>>
+          try {
+            obj = await client.getMapObject(entry.jobId!)
+          } catch (err) {
+            const gone = err instanceof PixelLabError && err.status === 404
+            if (!gone) throw err
+            const survivor = await client.getObject(entry.jobId!).catch(() => null)
+            const url = survivor?.rotation_urls
+              ? Object.values(survivor.rotation_urls).find((u): u is string => typeof u === "string")
+              : (survivor?.preview_url ?? null)
+            if (survivor?.status === "completed" && url) {
+              upsert(lock, key, { status: "selected", objectId: survivor.id, sourceUrl: url })
+              result.completed++
+              log(`  ready   ${key} (map record gone; image recovered from /objects)`)
+            } else {
+              upsert(lock, key, {
+                status: "failed",
+                error: "map object record deleted upstream and no surviving image found",
+              })
+              result.expired++
+              log(`  EXPIRED ${key}`)
+            }
+            continue
+          }
+
           if (obj.status === "completed" && obj.download_url) {
             upsert(lock, key, {
               status: "selected",
@@ -70,14 +104,10 @@ export async function poll(
             result.failed++
             log(`  FAILED  ${key}`)
           } else if (age > MAP_OBJECT_TTL_MS) {
-            // Past the upstream retention window the object is gone for good;
-            // marking it failed makes the next `plan` show it as re-runnable.
-            upsert(lock, key, {
-              status: "failed",
-              error: "map object expired (8h upstream retention) before download",
-            })
-            result.expired++
-            log(`  EXPIRED ${key} — map objects must be fetched within 8h of submit`)
+            // Only warn. The record still exists and is not reporting failure,
+            // so age alone is not evidence the work is lost — and marking it
+            // failed here would offer to re-pay for a recoverable object.
+            log(`  waiting ${key} — past the documented 8h window but still listed`)
           }
           continue
         }

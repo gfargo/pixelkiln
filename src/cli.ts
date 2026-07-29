@@ -160,6 +160,9 @@ Options
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser during pick
   --tag               Also push tags upstream after fetch
+  --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
+  --from <dir>        Source tree for init
+  --write-prompts     adopt: recover prompts into the manifest
 
 Examples
   pixelkiln plan
