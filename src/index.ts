@@ -1,5 +1,8 @@
 export * from "./types.ts"
 export * from "./client.ts"
+export * from "./provider.ts"
+export { PixelLabProvider } from "./providers/pixellab.ts"
+export { FakeProvider, FAKE_PNG, type FakeOptions } from "./providers/fake.ts"
 export * from "./manifest.ts"
 export * from "./lock.ts"
 export * from "./hash.ts"

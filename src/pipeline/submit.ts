@@ -1,7 +1,7 @@
-import type { PixelLabClient } from "../client.ts"
+import type { Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { styleImagesBase64, type LoadedManifest } from "../manifest.ts"
-import type { Lock } from "../types.ts"
+import type { Lock, ResolvedSpec } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
 
 /**
@@ -23,7 +23,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 export interface SubmitOptions {
   maxInFlight?: number
   spacingMs?: number
-  /** Refuse to submit if the run would exceed this many generations. */
+  /** Refuse to submit if the run would exceed this much, in the provider's unit. */
   budget?: number
   onProgress?: (msg: string) => void
 }
@@ -35,7 +35,7 @@ export interface SubmitResult {
 }
 
 export async function submit(
-  client: PixelLabClient,
+  provider: Provider,
   loaded: LoadedManifest,
   items: PlanItem[],
   lock: Lock,
@@ -66,16 +66,14 @@ export async function submit(
   let spent = 0
   let lastSubmitAt = 0
 
-  /** Job ids submitted this run that have not yet been observed as settled. */
-  const inFlight = new Set<string>()
+  /** Jobs submitted this run not yet observed as settled, with their generator. */
+  const inFlight = new Map<string, ResolvedSpec["generator"]>()
 
   async function pruneInFlight(): Promise<void> {
-    for (const id of [...inFlight]) {
+    for (const [id, generator] of [...inFlight]) {
       try {
-        const obj = await client.getObject(id)
-        if (obj.status && obj.status !== "pending" && obj.status !== "processing") {
-          inFlight.delete(id)
-        }
+        const state = await provider.poll(id, generator)
+        if (state.status !== "processing") inFlight.delete(id)
       } catch {
         // Treat an unreadable job as settled rather than blocking the queue
         // forever; `poll` will resolve its true state later.
@@ -112,8 +110,7 @@ export async function submit(
       reviewObjectId: null,
       candidateIndex: null,
       error: null,
-      file: null,
-      fileSha256: null,
+      outputs: [],
       sourceUrl: null,
       submittedAt: new Date().toISOString(),
       cost: spec.cost,
@@ -123,34 +120,24 @@ export async function submit(
 
     lastSubmitAt = Date.now()
     try {
-      if (spec.generator === "1dir") {
-        const refs = styleImages.get(spec.styleId) ?? []
-        const res = await client.create1Direction({
-          description: spec.prompt,
-          size: spec.size,
-          view: spec.view === "sidescroller" ? "sidescroller" : "top-down",
-          styleImagesBase64: refs,
-        })
-        upsert(lock, key, { jobId: res.object_id, reviewObjectId: res.object_id, status: "processing" })
-        inFlight.add(res.object_id)
-        log(`  ${key} → ${res.object_id}  (${spec.candidates} candidates, ${spec.cost} gen)`)
-      } else {
-        const res = await client.createMapObject({
-          description: spec.prompt,
-          width: spec.width,
-          height: spec.height,
-          view: spec.view,
-          outline: spec.outline,
-          shading: spec.shading,
-          detail: spec.detail,
-          seed: spec.seed,
-        })
-        upsert(lock, key, { jobId: res.object_id, status: "processing" })
-        inFlight.add(res.object_id)
-        log(`  ${key} → ${res.object_id}  (${spec.width}x${spec.height}, ${spec.cost} gen)`)
-      }
+      const refs = spec.generator === "1dir" ? (styleImages.get(spec.styleId) ?? []) : []
+      const { jobId } = await provider.submit(spec, refs)
+      upsert(lock, key, {
+        jobId,
+        // A multi-candidate generator routes through review; record the parent
+        // so `pick` knows where to look.
+        reviewObjectId: spec.candidates > 1 ? jobId : null,
+        status: "processing",
+        provider: provider.id,
+      })
+      inFlight.set(jobId, spec.generator)
       submitted++
       spent += spec.cost
+      log(
+        `  ${key} → ${jobId}  (${spec.width}x${spec.height}` +
+          (spec.candidates > 1 ? `, ${spec.candidates} candidates` : "") +
+          `, ${spec.cost})`,
+      )
     } catch (err) {
       failed++
       const message = err instanceof Error ? err.message : String(err)

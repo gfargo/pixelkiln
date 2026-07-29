@@ -1,6 +1,6 @@
 import { createServer } from "node:http"
 import { spawn } from "node:child_process"
-import type { PixelLabClient } from "../client.ts"
+import type { Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
 import type { Lock } from "../types.ts"
 import { renderSheet, type SheetGroup } from "./sheet.ts"
@@ -19,7 +19,7 @@ export interface PickResult {
  * before the browser gets its response, so a closed tab never loses a choice.
  */
 export async function runPicker(
-  client: PixelLabClient,
+  provider: Provider,
   lock: Lock,
   lockPath: string,
   opts: { port?: number; open?: boolean; onProgress?: (msg: string) => void } = {},
@@ -30,15 +30,15 @@ export async function runPicker(
   for (const [key, entry] of Object.entries(lock.entries)) {
     if (entry.status !== "review" || !entry.reviewObjectId) continue
     try {
-      const obj = await client.getObject(entry.reviewObjectId)
-      if (!obj.frame_urls?.length) continue
+      const state = await provider.poll(entry.reviewObjectId, entry.generator)
+      if (state.status !== "review" || !state.candidateUrls.length) continue
       groups.push({
         key,
         assetId: entry.assetId,
         styleId: entry.styleId,
         prompt: entry.prompt,
         reviewObjectId: entry.reviewObjectId,
-        frameUrls: obj.frame_urls,
+        frameUrls: state.candidateUrls,
         size: Math.max(entry.width, entry.height),
       })
     } catch (err) {
@@ -77,32 +77,18 @@ export async function runPicker(
 
             // Promote the chosen candidate; the review parent is removed upstream
             // once nothing is left in it.
-            const promoted = await client.selectFrames(entry.reviewObjectId, [index], `asset:${entry.assetId}`)
-            const objectId = promoted.created_object_ids?.[0] ?? null
-            if (!objectId) {
-              // Without a promoted id the mapping would silently point at the
-              // review parent, which is transient. Better to fail loudly.
-              throw new Error(
-                `select-frames returned no created_object_ids for ${key}; refusing to record a transient id`,
-              )
-            }
-
-            let sourceUrl = group.frameUrls[index] ?? null
-            try {
-              const obj = await client.getObject(objectId)
-              const rotation = obj.rotation_urls
-                ? Object.values(obj.rotation_urls).find((u): u is string => typeof u === "string")
-                : null
-              sourceUrl = rotation ?? obj.preview_url ?? sourceUrl
-            } catch {
-              // Fall back to the candidate frame URL, which is already valid.
-            }
+            const { objectId, sourceUrl } = await provider.selectCandidate(
+              entry.reviewObjectId,
+              index,
+              `asset:${entry.assetId}`,
+            )
 
             upsert(lock, key, {
               status: "selected",
               objectId,
               candidateIndex: index,
-              sourceUrl,
+              sourceUrl: sourceUrl ?? group.frameUrls[index] ?? null,
+              provider: provider.id,
             })
             selected++
             log(`  picked  ${key} → candidate ${index + 1}`)

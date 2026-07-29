@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
-import type { PixelLabClient } from "../client.ts"
+import type { Provider } from "../provider.ts"
 import { sha256 } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
@@ -20,7 +20,7 @@ export interface FetchResult {
  * hand" on later runs, so a manual retouch is never silently clobbered.
  */
 export async function fetchAssets(
-  client: PixelLabClient,
+  provider: Provider,
   specs: ResolvedSpec[],
   lock: Lock,
   lockPath: string,
@@ -47,7 +47,7 @@ export async function fetchAssets(
     }
 
     try {
-      const buf = await client.download(entry.sourceUrl)
+      const buf = await provider.download(entry.sourceUrl)
       if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
         throw new Error(`response was not a PNG (${buf.length} bytes)`)
       }
@@ -55,8 +55,8 @@ export async function fetchAssets(
       await writeFile(spec.outFile, buf)
       upsert(lock, key, {
         status: "downloaded",
-        file: spec.outFile,
-        fileSha256: sha256(buf),
+        provider: provider.id,
+        outputs: [{ path: spec.outFile, sha256: sha256(buf) }],
         downloadedAt: new Date().toISOString(),
       })
       result.downloaded++
@@ -81,7 +81,7 @@ export async function fetchAssets(
  * were the keepers.
  */
 export async function pushTags(
-  client: PixelLabClient,
+  provider: Provider,
   specs: ResolvedSpec[],
   lock: Lock,
   opts: { onProgress?: (msg: string) => void } = {},
@@ -92,9 +92,10 @@ export async function pushTags(
 
   for (const [key, entry] of Object.entries(lock.entries)) {
     const spec = specByKey.get(key)
-    if (!spec || !entry.objectId || entry.generator !== "1dir") continue
+    if (!spec || !entry.objectId) continue
+    if (!provider.setTags) return tagged // capability absent; nothing to do
     try {
-      await client.setTags(entry.objectId, spec.tags.slice(0, 20))
+      await provider.setTags(entry.objectId, spec.tags)
       tagged++
     } catch (err) {
       log(`  tag failed ${key}: ${err instanceof Error ? err.message : String(err)}`)

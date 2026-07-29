@@ -51,7 +51,7 @@ describe("loadClaims", () => {
     styleId: "s", assetId: "a", specHash: "h", generator: "1dir", prompt: "p",
     width: 64, height: 64, jobId: null, reviewObjectId: null, objectId: null,
     candidateIndex: null, status: "downloaded", error: null, sourceUrl: null,
-    file: null, fileSha256: null, submittedAt: null, downloadedAt: null, cost: 0,
+    outputs: [], submittedAt: null, downloadedAt: null, cost: 0,
     ...over,
   })
 

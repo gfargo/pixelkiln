@@ -120,7 +120,7 @@ describe("untracked vs missing", () => {
     const present = specs.find((s) => s.assetId === "present")!
     await writeFile(present.outFile, png(64, 64))
 
-    const plan = await buildPlan(specs, { version: 1, entries: {} })
+    const plan = await buildPlan(specs, { version: 2, entries: {} })
     expect(plan.items.find((i) => i.spec.assetId === "present")!.state).toBe("untracked")
     expect(plan.items.find((i) => i.spec.assetId === "absent")!.state).toBe("missing")
 
@@ -140,7 +140,7 @@ describe("untracked vs missing", () => {
     const specs = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
     await writeFile(specs[0]!.outFile, png(64, 64))
 
-    const plan = await buildPlan(specs, { version: 1, entries: {} }, { force: true })
+    const plan = await buildPlan(specs, { version: 2, entries: {} }, { force: true })
     expect(plan.actionable).toHaveLength(1)
   })
 })

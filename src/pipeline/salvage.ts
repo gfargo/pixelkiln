@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
-import type { PixelLabClient, PixelLabObject } from "../client.ts"
-import { LockSchema, type Lock } from "../types.ts"
+import { requireList, type Provider, type RemoteAsset } from "../provider.ts"
+import { parseLock, type Lock } from "../types.ts"
 
 /**
  * Objects on the account that no known lockfile claims.
@@ -21,9 +21,13 @@ export async function loadClaims(lockPaths: string[]): Promise<Set<string>> {
   const claimed = new Set<string>()
   for (const p of lockPaths) {
     if (!existsSync(p)) throw new Error(`Claim lockfile not found: ${p}`)
-    const parsed = LockSchema.safeParse(JSON.parse(await readFile(p, "utf8")))
-    if (!parsed.success) throw new Error(`Claim lockfile is malformed: ${p}`)
-    for (const entry of Object.values(parsed.data.entries)) {
+    let parsed: Lock
+    try {
+      parsed = parseLock(JSON.parse(await readFile(p, "utf8")))
+    } catch {
+      throw new Error(`Claim lockfile is malformed: ${p}`)
+    }
+    for (const entry of Object.values(parsed.entries)) {
       if (entry.objectId) claimed.add(entry.objectId)
       if (entry.reviewObjectId) claimed.add(entry.reviewObjectId)
       if (entry.jobId) claimed.add(entry.jobId)
@@ -43,24 +47,24 @@ export interface Orphan {
 }
 
 export async function findOrphans(
-  client: PixelLabClient,
+  provider: Provider,
   claimed: Set<string>,
   opts: { onProgress?: (msg: string) => void } = {},
 ): Promise<{ orphans: Orphan[]; total: number }> {
   const log = opts.onProgress ?? (() => {})
-  const all: PixelLabObject[] = []
-  for await (const obj of client.iterateObjects(100)) all.push(obj)
+  const all: RemoteAsset[] = []
+  for await (const obj of requireList(provider)()) all.push(obj)
   log(`  scanned ${all.length} object(s) on the account`)
 
   const orphans = all
-    .filter((o) => !claimed.has(o.id) && o.status === "completed" && o.preview_url)
+    .filter((o) => !claimed.has(o.id) && o.status === "completed" && o.previewUrl)
     .map((o) => ({
       id: o.id,
       prompt: o.prompt || "(no prompt recorded)",
-      width: o.size.width,
-      height: o.size.height,
-      createdAt: o.created_at,
-      previewUrl: o.preview_url!,
+      width: o.width,
+      height: o.height,
+      createdAt: o.createdAt,
+      previewUrl: o.previewUrl!,
       tags: o.tags ?? [],
     }))
     // Newest first: recent work is likeliest to be worth recovering.
@@ -126,7 +130,7 @@ export interface SalvageDecision {
  * `discard` deliberately only tags. Deleting is a separate, explicit command.
  */
 export async function applyTags(
-  client: PixelLabClient,
+  provider: Provider,
   decisions: SalvageDecision[],
   existing: Map<string, string[]>,
   opts: { onProgress?: (msg: string) => void } = {},
@@ -140,8 +144,9 @@ export async function applyTags(
       (t) => t !== "pixelkiln:keep" && t !== "pixelkiln:discard" && t !== "pixelkiln:imported",
     )
     const next = [...current, `pixelkiln:${action === "import" ? "imported" : action}`].slice(0, 20)
+    if (!provider.setTags) return { tagged, failed }
     try {
-      await client.setTags(id, next)
+      await provider.setTags(id, next)
       tagged++
     } catch (err) {
       failed++

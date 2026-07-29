@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { sha256File } from "../hash.ts"
-import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
+import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 
 export type PlanState =
   | "ok" // spec unchanged, file present and matching — nothing to do
@@ -10,6 +10,19 @@ export type PlanState =
   | "orphaned" // lock says downloaded, but the file is gone or altered
   | "in-flight" // submitted, not yet downloaded
   | "failed"
+
+/**
+ * True if any recorded output no longer hashes to what was written.
+ *
+ * Checked across every output, not just the primary: a character's engine
+ * resource being hand-edited matters as much as its spritesheets changing.
+ */
+async function anyOutputModified(entry: LockEntry): Promise<boolean> {
+  for (const output of entry.outputs) {
+    if ((await sha256File(output.path)) !== output.sha256) return true
+  }
+  return false
+}
 
 export interface PlanItem {
   spec: ResolvedSpec
@@ -69,14 +82,20 @@ export async function buildPlan(
     } else if (entry.status !== "downloaded") {
       state = "in-flight"
       reason = `awaiting ${entry.status}`
-    } else if (!entry.file || !existsSync(entry.file)) {
+    } else if (entry.outputs.length === 0 || entry.outputs.some((o) => !existsSync(o.path))) {
       state = "orphaned"
-      reason = "file missing on disk"
-    } else if (entry.fileSha256 && (await sha256File(entry.file)) !== entry.fileSha256) {
+      reason =
+        entry.outputs.length === 0
+          ? "no recorded output files"
+          : `missing on disk: ${entry.outputs
+              .filter((o) => !existsSync(o.path))
+              .map((o) => o.role ?? "asset")
+              .join(", ")}`
+    } else if (await anyOutputModified(entry)) {
       // The file was edited by hand. That is a legitimate thing to do, so this
       // is reported rather than silently overwritten.
       state = "orphaned"
-      reason = "file modified since download"
+      reason = "output modified since download"
     } else {
       state = "ok"
       reason = "up to date"

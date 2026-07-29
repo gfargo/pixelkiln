@@ -146,22 +146,92 @@ export const LockEntrySchema = z.object({
   error: z.string().nullable().default(null),
 
   sourceUrl: z.string().nullable().default(null),
-  file: z.string().nullable().default(null),
-  fileSha256: z.string().nullable().default(null),
+
+  /**
+   * Files this entry produced. A plain object generates one; asset kinds that
+   * expand into many — an animated character is ~35 spritesheets plus an engine
+   * resource — need the list, which is why v1's single `file` became this.
+   *
+   * `role` labels non-primary artifacts (e.g. "portrait", "spriteframes") so a
+   * consumer can find the one it wants without pattern-matching on paths.
+   */
+  outputs: z
+    .array(
+      z.object({
+        path: z.string(),
+        sha256: z.string(),
+        role: z.string().optional(),
+      }),
+    )
+    .default([]),
 
   submittedAt: z.string().nullable().default(null),
   downloadedAt: z.string().nullable().default(null),
-  /** Cost in generations, recorded so spend can be reported without guessing. */
+  /** Cost in the provider's unit, recorded so spend is reported not guessed. */
   cost: z.number().int().default(0),
+  /** Which provider produced this. Absent on entries written before providers. */
+  provider: z.string().default("pixellab"),
+})
+
+/** Shape of a v1 entry, for migration only. v1 had exactly one output file. */
+const LockEntryV1Schema = LockEntrySchema.omit({ outputs: true }).extend({
+  file: z.string().nullable().default(null),
+  fileSha256: z.string().nullable().default(null),
 })
 
 export const LockSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   entries: z.record(LockEntrySchema),
+})
+
+const LockV1Schema = z.object({
+  version: z.literal(1),
+  entries: z.record(LockEntryV1Schema),
 })
 
 export type LockEntry = z.infer<typeof LockEntrySchema>
 export type Lock = z.infer<typeof LockSchema>
+export type LockOutput = LockEntry["outputs"][number]
+
+/**
+ * Reads either schema version and returns v2.
+ *
+ * Committed lockfiles are the record of what has been paid for, so a version
+ * bump must never make one unreadable — failing to parse would present every
+ * tracked asset as missing and offer to regenerate the lot.
+ */
+export function parseLock(raw: unknown): Lock {
+  const v2 = LockSchema.safeParse(raw)
+  if (v2.success) return v2.data
+
+  const v1 = LockV1Schema.safeParse(raw)
+  if (v1.success) {
+    const entries: Lock["entries"] = {}
+    for (const [key, entry] of Object.entries(v1.data.entries)) {
+      const { file, fileSha256, ...rest } = entry
+      entries[key] = {
+        ...rest,
+        // A file with no recorded hash cannot be integrity-checked, so it is
+        // not carried across as an output; plan will report it as untracked
+        // rather than silently trusting it.
+        outputs: file && fileSha256 ? [{ path: file, sha256: fileSha256 }] : [],
+      }
+    }
+    return { version: 2, entries }
+  }
+
+  throw new Error(
+    `Lockfile matches neither v2 nor v1:\n${v2.error.issues
+      .slice(0, 5)
+      .map((i) => `  ${i.path.join(".")}: ${i.message}`)
+      .join("\n")}`,
+  )
+}
+
+/** The file a consumer means when it says "the asset" — the first output. */
+export function primaryOutput(entry: LockEntry): LockOutput | null {
+  return entry.outputs.find((o) => !o.role) ?? entry.outputs[0] ?? null
+}
 
 /** Lock entries are keyed `<styleId>/<assetId>`, which makes styles a namespace. */
 export function lockKey(styleId: string, assetId: string): string {

@@ -5,7 +5,7 @@ import path from "node:path"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { loadLock, saveLock, upsert } from "../src/lock.ts"
-import { candidateCount, generationCost, lockKey, type Lock } from "../src/types.ts"
+import { candidateCount, generationCost, lockKey, parseLock, primaryOutput, type Lock } from "../src/types.ts"
 import { sha256 } from "../src/hash.ts"
 
 // A 1x1 transparent PNG — enough to exist on disk and be hashed.
@@ -79,7 +79,7 @@ describe("plan cost by generator", () => {
     }
     await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
     const specs = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
-    const plan = await buildPlan(specs, { version: 1, entries: {} })
+    const plan = await buildPlan(specs, { version: 2, entries: {} })
     expect(plan.cost).toBe(2)
     expect(plan.candidates).toBe(2) // map returns exactly one each
   })
@@ -89,7 +89,7 @@ describe("plan", () => {
   it("reports everything missing against an empty lock, and prices it", async () => {
     const loaded = await writeManifest()
     const specs = await resolveSpecs(loaded)
-    const plan = await buildPlan(specs, { version: 1, entries: {} })
+    const plan = await buildPlan(specs, { version: 2, entries: {} })
 
     expect(plan.items).toHaveLength(2)
     expect(plan.items.every((i) => i.state === "missing")).toBe(true)
@@ -105,12 +105,11 @@ describe("plan", () => {
     await mkdir(path.dirname(spec.outFile), { recursive: true })
     await writeFile(spec.outFile, PNG)
 
-    const lock: Lock = { version: 1, entries: {} }
+    const lock: Lock = { version: 2, entries: {} }
     upsert(lock, lockKey(spec.styleId, spec.assetId), {
       specHash: spec.specHash,
       status: "downloaded",
-      file: spec.outFile,
-      fileSha256: sha256(PNG),
+      outputs: [{ path: spec.outFile, sha256: sha256(PNG) }],
     } as never)
 
     const plan = await buildPlan(specs, lock)
@@ -127,12 +126,11 @@ describe("plan", () => {
     await mkdir(path.dirname(spec.outFile), { recursive: true })
     await writeFile(spec.outFile, PNG)
 
-    const lock: Lock = { version: 1, entries: {} }
+    const lock: Lock = { version: 2, entries: {} }
     upsert(lock, lockKey(spec.styleId, spec.assetId), {
       specHash: spec.specHash,
       status: "downloaded",
-      file: spec.outFile,
-      fileSha256: sha256(Buffer.from("something else")),
+      outputs: [{ path: spec.outFile, sha256: sha256(Buffer.from("something else")) }],
     } as never)
 
     const plan = await buildPlan(specs, lock)
@@ -145,13 +143,12 @@ describe("plan", () => {
   it("marks entries stale when the prompt changes, and prices only those", async () => {
     const loaded = await writeManifest()
     const specs = await resolveSpecs(loaded)
-    const lock: Lock = { version: 1, entries: {} }
+    const lock: Lock = { version: 2, entries: {} }
     for (const spec of specs) {
       upsert(lock, lockKey(spec.styleId, spec.assetId), {
         specHash: "stale-hash",
         status: "downloaded",
-        file: spec.outFile,
-        fileSha256: null,
+        outputs: [],
       } as never)
     }
     const plan = await buildPlan(specs, lock)
@@ -221,7 +218,7 @@ describe("styles as namespaces", () => {
 describe("lockfile", () => {
   it("round-trips and sorts keys for a stable diff", async () => {
     const p = path.join(dir, "lock.json")
-    const lock: Lock = { version: 1, entries: {} }
+    const lock: Lock = { version: 2, entries: {} }
     for (const key of ["z/a", "a/z", "m/m"]) {
       const [styleId, assetId] = key.split("/") as [string, string]
       upsert(lock, key, {
@@ -239,11 +236,11 @@ describe("lockfile", () => {
         status: "pending",
         error: null,
         sourceUrl: null,
-        file: null,
-        fileSha256: null,
+        outputs: [],
         submittedAt: null,
         downloadedAt: null,
         cost: 1,
+        provider: "pixellab",
       })
     }
     await saveLock(p, lock)
@@ -279,5 +276,82 @@ describe("manifest validation", () => {
       }),
     )
     await expect(loadManifest(path.join(dir, "m.json"))).rejects.toThrow(/invalid/i)
+  })
+})
+
+describe("lock v1 → v2 migration", () => {
+  const v1Entry = {
+    styleId: "base", assetId: "anvil", specHash: "h", generator: "1dir", prompt: "p",
+    width: 64, height: 64, jobId: "j", reviewObjectId: null, objectId: "o",
+    candidateIndex: null, status: "downloaded", error: null, sourceUrl: "u",
+    submittedAt: null, downloadedAt: null, cost: 40,
+  }
+
+  // A committed lockfile is the record of what has been paid for. If a version
+  // bump made one unreadable, every tracked asset would present as missing and
+  // plan would offer to regenerate the lot.
+  it("folds v1's single file into outputs[]", () => {
+    const lock = parseLock({
+      version: 1,
+      entries: { "base/anvil": { ...v1Entry, file: "/out/anvil.png", fileSha256: "abc" } },
+    })
+    expect(lock.version).toBe(2)
+    expect(lock.entries["base/anvil"]!.outputs).toEqual([{ path: "/out/anvil.png", sha256: "abc" }])
+  })
+
+  it("preserves everything else about the entry", () => {
+    const lock = parseLock({
+      version: 1,
+      entries: { "base/anvil": { ...v1Entry, file: "/out/anvil.png", fileSha256: "abc" } },
+    })
+    const e = lock.entries["base/anvil"]!
+    expect(e.objectId).toBe("o")
+    expect(e.cost).toBe(40)
+    expect(e.status).toBe("downloaded")
+    expect(e.provider).toBe("pixellab") // defaulted for pre-provider entries
+  })
+
+  // Without a hash the file cannot be integrity-checked, so carrying it over
+  // would mean silently trusting bytes we never verified.
+  it("drops a v1 file that has no recorded hash", () => {
+    const lock = parseLock({
+      version: 1,
+      entries: { "base/anvil": { ...v1Entry, file: "/out/anvil.png", fileSha256: null } },
+    })
+    expect(lock.entries["base/anvil"]!.outputs).toEqual([])
+  })
+
+  it("passes a v2 lockfile through untouched", () => {
+    const outputs = [
+      { path: "/a.png", sha256: "1" },
+      { path: "/b.tres", sha256: "2", role: "spriteframes" },
+    ]
+    const lock = parseLock({ version: 2, entries: { "base/hero": { ...v1Entry, outputs } } })
+    expect(lock.entries["base/hero"]!.outputs).toEqual(outputs)
+  })
+
+  it("rejects something that is neither version", () => {
+    expect(() => parseLock({ version: 7, entries: {} })).toThrow(/neither v2 nor v1/)
+  })
+
+  it("supports multi-output entries, which is the point of v2", () => {
+    const lock = parseLock({
+      version: 2,
+      entries: {
+        "base/hero": {
+          ...v1Entry,
+          outputs: [
+            { path: "/idle_s.png", sha256: "1" },
+            { path: "/walk_s.png", sha256: "2" },
+            { path: "/hero.frames.tres", sha256: "3", role: "spriteframes" },
+            { path: "/portrait.png", sha256: "4", role: "portrait" },
+          ],
+        },
+      },
+    })
+    const e = lock.entries["base/hero"]!
+    expect(e.outputs).toHaveLength(4)
+    expect(primaryOutput(e)!.path).toBe("/idle_s.png")
+    expect(e.outputs.filter((o) => o.role)).toHaveLength(2)
   })
 })

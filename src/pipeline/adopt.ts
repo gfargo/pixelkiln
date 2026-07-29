@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import type { PixelLabClient, PixelLabObject } from "../client.ts"
+import { requireList, type Provider, type RemoteAsset } from "../provider.ts"
 import { sha256 } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
@@ -11,7 +11,7 @@ export interface AdoptResult {
   matched: number
   unmatchedLocal: string[]
   /** Objects on the account that correspond to no local file — safe to delete. */
-  unmatchedRemote: PixelLabObject[]
+  unmatchedRemote: RemoteAsset[]
   ambiguous: string[]
 }
 
@@ -25,7 +25,7 @@ export interface AdoptResult {
  * fuzzy prompt matching is involved and nothing is regenerated.
  */
 export async function adopt(
-  client: PixelLabClient,
+  provider: Provider,
   specs: ResolvedSpec[],
   lock: Lock,
   lockPath: string,
@@ -50,8 +50,8 @@ export async function adopt(
   log(`  hashed ${localByHash.size} distinct local image(s)`)
 
   // 2. Walk the account and hash every remote object's image.
-  const remote: PixelLabObject[] = []
-  for await (const obj of client.iterateObjects(100)) remote.push(obj)
+  const remote: RemoteAsset[] = []
+  for await (const obj of requireList(provider)()) remote.push(obj)
   log(`  found ${remote.length} object(s) on the account`)
 
   const matchedRemote = new Set<string>()
@@ -63,12 +63,12 @@ export async function adopt(
     for (;;) {
       const obj = remote[cursor++]
       if (!obj) return
-      const url = obj.preview_url ?? null
+      const url = obj.previewUrl
       if (!url || obj.status !== "completed") continue
 
       let hash: string
       try {
-        hash = sha256(await client.download(url))
+        hash = sha256(await provider.download(url))
       } catch {
         continue
       }
@@ -94,8 +94,8 @@ export async function adopt(
           specHash: spec.specHash,
           generator: spec.generator,
           prompt: obj.prompt || spec.prompt,
-          width: obj.size.width,
-          height: obj.size.height,
+          width: obj.width,
+          height: obj.height,
           jobId: obj.id,
           objectId: obj.id,
           reviewObjectId: null,
@@ -103,11 +103,11 @@ export async function adopt(
           status: "downloaded",
           error: null,
           sourceUrl: url,
-          file: spec.outFile,
-          fileSha256: hash,
-          submittedAt: obj.created_at,
+          outputs: [{ path: spec.outFile, sha256: hash }],
+          submittedAt: obj.createdAt,
           downloadedAt: new Date().toISOString(),
           cost: 0, // already paid for, in a previous billing period
+          provider: provider.id,
         })
         matched++
         log(`  adopted ${key} ← ${obj.id}`)
@@ -129,7 +129,7 @@ export async function adopt(
 
 /** Applies manifest tags to every adopted object so the account becomes filterable. */
 export async function tagAdopted(
-  client: PixelLabClient,
+  provider: Provider,
   specs: ResolvedSpec[],
   lock: Lock,
   opts: { onProgress?: (msg: string) => void } = {},
@@ -140,8 +140,9 @@ export async function tagAdopted(
   for (const [key, entry] of Object.entries(lock.entries)) {
     const spec = specByKey.get(key)
     if (!spec || !entry.objectId) continue
+    if (!provider.setTags) return count // capability absent
     try {
-      await client.setTags(entry.objectId, spec.tags.slice(0, 20))
+      await provider.setTags(entry.objectId, spec.tags)
       count++
     } catch (err) {
       log(`  tag failed ${key}: ${err instanceof Error ? err.message : String(err)}`)
@@ -195,10 +196,10 @@ export async function writePromptsBack(
   return { filled, stillEmpty }
 }
 
-export function formatUnmatchedRemote(objects: PixelLabObject[], limit = 15): string {
+export function formatUnmatchedRemote(objects: RemoteAsset[], limit = 15): string {
   const lines = objects
     .slice(0, limit)
-    .map((o) => `    ${o.id}  ${o.created_at.slice(0, 10)}  ${(o.prompt || "").slice(0, 60)}`)
+    .map((o) => `    ${o.id}  ${o.createdAt.slice(0, 10)}  ${(o.prompt || "").slice(0, 60)}`)
   if (objects.length > limit) lines.push(`    … and ${objects.length - limit} more`)
   return lines.join("\n")
 }

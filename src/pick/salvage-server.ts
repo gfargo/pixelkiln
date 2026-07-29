@@ -2,7 +2,7 @@ import { createServer } from "node:http"
 import { spawn } from "node:child_process"
 import { mkdir, writeFile, readFile } from "node:fs/promises"
 import path from "node:path"
-import type { PixelLabClient } from "../client.ts"
+import type { Provider } from "../provider.ts"
 import { sha256 } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { lockKey, type Lock, type Manifest } from "../types.ts"
@@ -33,7 +33,7 @@ export interface SalvageResult {
  * write tags upstream — no object is ever deleted here.
  */
 export async function runSalvage(
-  client: PixelLabClient,
+  provider: Provider,
   orphans: Orphan[],
   ctx: {
     manifestPath: string
@@ -75,7 +75,7 @@ export async function runSalvage(
 
             if (decision.action === "import") {
               try {
-                const buf = await client.download(orphan.previewUrl)
+                const buf = await provider.download(orphan.previewUrl)
                 if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error("not a PNG")
 
                 const assetId = idFromPrompt(orphan.prompt, taken)
@@ -110,11 +110,11 @@ export async function runSalvage(
                   status: "downloaded",
                   error: null,
                   sourceUrl: orphan.previewUrl,
-                  file: outFile,
-                  fileSha256: sha256(buf),
+                  outputs: [{ path: outFile, sha256: sha256(buf) }],
                   submittedAt: orphan.createdAt,
                   downloadedAt: new Date().toISOString(),
                   cost: 0, // already paid for, in an earlier period
+                  provider: provider.id,
                 })
                 result.imported++
                 log(`  imported ${assetId} ← ${orphan.id}`)
@@ -129,7 +129,7 @@ export async function runSalvage(
             }
           }
 
-          await applyTags(client, decisions, existingTags, { onProgress: log })
+          await applyTags(provider, decisions, existingTags, { onProgress: log })
 
           // Persist the manifest additions and the lock together.
           const raw = JSON.parse(await readFile(ctx.manifestPath, "utf8")) as Manifest

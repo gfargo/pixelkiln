@@ -2,7 +2,8 @@
 import path from "node:path"
 import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
-import { clientFromEnv } from "./client.ts"
+import { PixelLabProvider } from "./providers/pixellab.ts"
+import { formatCost, requireDelete, requireList } from "./provider.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { loadLock, saveLock, totalSpend, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
@@ -16,6 +17,7 @@ import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import { loadClaims, findOrphans, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
+import type { Provider } from "./provider.ts"
 
 const log = (msg = "") => console.log(msg)
 
@@ -229,10 +231,11 @@ async function main() {
   }
 
   if (args.command === "balance") {
-    const b = await clientFromEnv().balance()
-    log(`  plan:        ${b.plan}`)
-    log(`  generations: ${b.generations} of ${b.total} remaining`)
-    log(`  credits:     $${b.usd.toFixed(2)}`)
+    const p = PixelLabProvider.fromEnv()
+    const b = await p.balance()
+    log(`  provider:  ${p.id}`)
+    log(`  plan:      ${b.plan ?? "n/a"}`)
+    log(`  remaining: ${formatCost(b.unit, b.remaining)}${b.total ? ` of ${b.total}` : ""}`)
     return
   }
 
@@ -301,8 +304,15 @@ async function main() {
     for (const item of plan.items) {
       if (item.state !== "stale") continue
       const entry = lock.entries[item.key]
-      if (!entry?.file || !existsSync(entry.file)) continue
-      if (entry.fileSha256 && (await sha256File(entry.file)) !== entry.fileSha256) continue
+      if (!entry || entry.outputs.length === 0) continue
+      let intact = true
+      for (const output of entry.outputs) {
+        if (!existsSync(output.path) || (await sha256File(output.path)) !== output.sha256) {
+          intact = false
+          break
+        }
+      }
+      if (!intact) continue
       upsertLock(lock, item.key, { specHash: item.spec.specHash })
       accepted++
     }
@@ -312,11 +322,11 @@ async function main() {
     return
   }
 
-  const client = clientFromEnv()
+  const provider: Provider = PixelLabProvider.fromEnv()
 
   if (args.command === "adopt") {
     log(`\n  Reconciling account objects against files already on disk…`)
-    const res = await adopt(client, specs, lock, args.lock, { onProgress: log })
+    const res = await adopt(provider, specs, lock, args.lock, { onProgress: log })
     log(`\n  scanned ${res.scanned} remote object(s), adopted ${res.matched}`)
     if (res.ambiguous.length) {
       log(`\n  ambiguous (${res.ambiguous.length}):`)
@@ -337,7 +347,7 @@ async function main() {
       )
     }
     if (args.tag) {
-      const n = await tagAdopted(client, specs, lock, { onProgress: log })
+      const n = await tagAdopted(provider, specs, lock, { onProgress: log })
       log(`\n  tagged ${n} object(s) upstream`)
     }
     if (args.writePrompts) {
@@ -392,7 +402,7 @@ async function main() {
     }
 
     const claimed = await loadClaims(lockPaths)
-    const { orphans, total } = await findOrphans(client, claimed, { onProgress: log })
+    const { orphans, total } = await findOrphans(provider, claimed, { onProgress: log })
     log(`  ${claimed.size} claimed · ${orphans.length} unclaimed of ${total}`)
     if (!orphans.length) {
       log(`\n  nothing to triage`)
@@ -410,7 +420,7 @@ async function main() {
     const styleId = args.styles[0] ?? Object.keys(loaded.manifest.styles)[0]!
     const style = loaded.manifest.styles[styleId]!
     const res = await runSalvage(
-      client,
+      provider,
       orphans,
       {
         manifestPath: loaded.path,
@@ -454,9 +464,9 @@ async function main() {
 
   if (args.command === "purge") {
     const doomed: { id: string; prompt: string }[] = []
-    for await (const obj of client.iterateObjects(100)) {
-      if (obj.tags?.includes("pixelkiln:discard")) {
-        doomed.push({ id: obj.id, prompt: obj.prompt || "" })
+    for await (const obj of requireList(provider)()) {
+      if (obj.tags.includes("pixelkiln:discard")) {
+        doomed.push({ id: obj.id, prompt: obj.prompt })
       }
     }
     if (!doomed.length) {
@@ -483,7 +493,7 @@ async function main() {
     let failed = 0
     for (const d of doomed) {
       try {
-        await client.deleteObject(d.id)
+        await requireDelete(provider)(d.id)
         deleted++
       } catch (err) {
         failed++
@@ -495,7 +505,7 @@ async function main() {
   }
 
   if (args.command === "tag") {
-    const n = await pushTags(client, specs, lock, { onProgress: log })
+    const n = await pushTags(provider, specs, lock, { onProgress: log })
     log(`  tagged ${n} object(s)`)
     return
   }
@@ -507,20 +517,24 @@ async function main() {
       return
     }
     if (plan.actionable.length) {
-      const balance = await client.balance()
-      log(`\n  balance: ${balance.generations} generations remaining`)
-      if (plan.cost > balance.generations) {
+      const balance = await provider.balance()
+      log(`\n  balance: ${formatCost(balance.unit, balance.remaining)} remaining (${provider.id})`)
+      if (balance.unit !== "free" && plan.cost > balance.remaining) {
         throw new Error(
-          `This run needs ${plan.cost} generations but only ${balance.generations} remain.`,
+          `This run needs ${formatCost(balance.unit, plan.cost)} but only ` +
+            `${formatCost(balance.unit, balance.remaining)} remain.`,
         )
       }
-      const ok = await confirm(`  Spend ${plan.cost} generations on ${plan.actionable.length} asset(s)?`, args.yes)
+      const ok = await confirm(
+        `  Spend ${formatCost(balance.unit, plan.cost)} on ${plan.actionable.length} asset(s)?`,
+        args.yes,
+      )
       if (!ok) {
         log(`  aborted`)
         return
       }
       log(`\n  submitting…`)
-      const res = await submit(client, loaded, plan.actionable, lock, args.lock, {
+      const res = await submit(provider, loaded, plan.actionable, lock, args.lock, {
         budget: args.budget,
         onProgress: log,
       })
@@ -531,16 +545,13 @@ async function main() {
 
   if (args.command === "poll" || args.command === "gen") {
     log(`\n  polling…`)
-    const res = await poll(client, lock, args.lock, { onProgress: log })
-    log(
-      `\n  ${res.completed} ready · ${res.review} awaiting selection · ${res.failed} failed` +
-        (res.expired ? ` · ${res.expired} expired` : ""),
-    )
+    const res = await poll(provider, lock, args.lock, { onProgress: log })
+    log(`\n  ${res.completed} ready · ${res.review} awaiting selection · ${res.failed} failed`)
     if (args.command === "poll") return
   }
 
   if (args.command === "pick" || args.command === "gen") {
-    const res = await runPicker(client, lock, args.lock, { open: !args.noOpen, onProgress: log })
+    const res = await runPicker(provider, lock, args.lock, { open: !args.noOpen, onProgress: log })
     if (res.selected === 0 && res.skipped === 0) {
       log(`  nothing awaiting selection`)
     } else {
@@ -551,10 +562,10 @@ async function main() {
 
   if (args.command === "fetch" || args.command === "gen") {
     log(`\n  downloading…`)
-    const res = await fetchAssets(client, specs, lock, args.lock, { onProgress: log })
+    const res = await fetchAssets(provider, specs, lock, args.lock, { onProgress: log })
     log(`\n  downloaded ${res.downloaded}, skipped ${res.skipped}, failed ${res.failed}`)
     if (args.tag) {
-      const n = await pushTags(client, specs, lock, { onProgress: log })
+      const n = await pushTags(provider, specs, lock, { onProgress: log })
       log(`  tagged ${n} object(s) upstream`)
     }
     await saveLock(args.lock, lock)
