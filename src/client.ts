@@ -10,6 +10,19 @@
 
 const BASE = process.env.PIXELLAB_API_BASE ?? "https://api.pixellab.ai/v2"
 
+export const MAX_RETRIES = 4
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export function shouldRetry(status: number): boolean {
+  return status === 429 || status === 408 || status >= 500
+}
+
+/** Exponential backoff with jitter, so parallel workers don't retry in lockstep. */
+export function backoffMs(attempt: number): number {
+  const base = Math.min(1000 * 2 ** attempt, 16_000)
+  return base + Math.floor(Math.random() * 400)
+}
+
 export interface Balance {
   usd: number
   generations: number
@@ -60,16 +73,43 @@ export class PixelLabClient {
     if (!apiKey) throw new Error("PIXELLAB_API_KEY is required")
   }
 
-  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+  /**
+   * Retries only what is safe to retry: transport failures, 429, and 5xx.
+   * A 4xx other than 429 is a bad request and retrying it just wastes time.
+   *
+   * POSTs that create objects are included, which is a deliberate trade: the
+   * failure mode of not retrying (a dropped asset in a 65-item run) is more
+   * common than the failure mode of retrying (a duplicate object), and a
+   * duplicate is visible and free to delete whereas a silent gap is neither.
+   */
+  private async request<T>(path: string, init?: RequestInit, attempt = 0): Promise<T> {
     const auth = this.apiKey.startsWith("Bearer ") ? this.apiKey : `Bearer ${this.apiKey}`
-    const res = await fetch(`${BASE}${path}`, {
-      ...init,
-      headers: {
-        Authorization: auth,
-        "Content-Type": "application/json",
-        ...(init?.headers ?? {}),
-      },
-    })
+    let res: Response
+    try {
+      res = await fetch(`${BASE}${path}`, {
+        ...init,
+        headers: {
+          Authorization: auth,
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
+      })
+    } catch (err) {
+      if (attempt < MAX_RETRIES) {
+        await sleep(backoffMs(attempt))
+        return this.request<T>(path, init, attempt + 1)
+      }
+      throw err
+    }
+
+    if (!res.ok && shouldRetry(res.status) && attempt < MAX_RETRIES) {
+      // Honour Retry-After when the server sends one; it knows better than we do.
+      const retryAfter = Number(res.headers.get("retry-after"))
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : backoffMs(attempt)
+      await sleep(waitMs)
+      return this.request<T>(path, init, attempt + 1)
+    }
+
     const text = await res.text()
     if (!res.ok) {
       throw new PixelLabError(`${init?.method ?? "GET"} ${path} → ${res.status}`, res.status, text)

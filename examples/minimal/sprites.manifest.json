@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schema/manifest.schema.json",
+  "name": "minimal-example",
+  "styles": {
+    "base": {
+      "generator": "1dir",
+      "size": 64,
+      "view": "top-down",
+      "promptPrefix": "Game achievement icon: one centered",
+      "promptSuffix": "bold dark outline, crisp chunky pixel clusters, readable silhouette at 32px, isolated single subject, no ground plane, transparent background, no letters, no numbers",
+      "styleImages": [],
+      "outDir": "out/base",
+      "tags": ["minimal-example"]
+    }
+  },
+  "assets": {
+    "anvil": { "prompt": "a blacksmith anvil with a single bright spark", "category": "tools" },
+    "potion": { "prompt": "a round glass potion bottle with a glowing liquid", "category": "items" },
+    "compass": { "prompt": "a brass compass with a red needle", "category": "items" }
+  }
+}

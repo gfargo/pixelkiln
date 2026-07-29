@@ -11,7 +11,10 @@
   },
   "scripts": {
     "spritesmith": "tsx src/cli.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "schema": "tsx scripts/gen-schema.ts"
   },
   "engines": {
     "node": ">=20"
@@ -22,6 +25,27 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
-  }
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "private": true,
+  "license": "MIT",
+  "keywords": [
+    "pixel-art",
+    "sprites",
+    "game-assets",
+    "pixellab",
+    "asset-pipeline",
+    "generative",
+    "lockfile",
+    "cli"
+  ],
+  "files": [
+    "src",
+    "bin",
+    "schema",
+    "README.md",
+    "LICENSE"
+  ]
 }

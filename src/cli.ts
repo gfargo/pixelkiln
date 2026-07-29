@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path"
 import { existsSync } from "node:fs"
+import { readFile } from "node:fs/promises"
 import { clientFromEnv } from "./client.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { loadLock, saveLock, totalSpend, upsert as upsertLock } from "./lock.ts"
@@ -28,17 +29,66 @@ interface Args {
   tag: boolean
 }
 
-function parseArgs(argv: string[]): Args {
+const VALUE_FLAGS = ["--manifest", "--lock", "--style", "--only", "--budget", "--port"] as const
+const BOOL_FLAGS = ["--force", "--yes", "-y", "--dry-run", "--no-open", "--tag"] as const
+
+export const COMMANDS = [
+  "plan", "gen", "submit", "poll", "pick", "fetch", "adopt", "accept",
+  "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+] as const
+
+/**
+ * Strict parsing. Unknown flags are a hard error rather than being ignored,
+ * because a silently-dropped filter is expensive here: `--styles neon` (plural,
+ * a typo) would otherwise fall through to "no filter" and generate the entire
+ * manifest instead of one style.
+ */
+export function parseArgs(argv: string[]): Args {
   const [command = "help"] = argv
+  if (!(COMMANDS as readonly string[]).includes(command)) {
+    throw new Error(`Unknown command "${command}". Run \`spritesmith help\` for the list.`)
+  }
+
+  const rest = argv.slice(1)
+  for (let i = 0; i < rest.length; i++) {
+    const token = rest[i]!
+    if (!token.startsWith("-")) continue
+    if ((BOOL_FLAGS as readonly string[]).includes(token)) continue
+    if ((VALUE_FLAGS as readonly string[]).includes(token)) {
+      const value = rest[i + 1]
+      // A numeric token is a value even though it starts with "-", so
+      // `--budget -5` reaches the range check and reports the real problem.
+      const looksLikeFlag = value !== undefined && value.startsWith("-") && !Number.isFinite(Number(value))
+      if (value === undefined || looksLikeFlag) {
+        throw new Error(`${token} needs a value.`)
+      }
+      i++
+      continue
+    }
+    throw new Error(
+      `Unknown flag "${token}". Known flags: ${[...VALUE_FLAGS, ...BOOL_FLAGS].join(", ")}`,
+    )
+  }
+
   const get = (flag: string) => {
-    const i = argv.indexOf(flag)
-    return i >= 0 ? argv[i + 1] : undefined
+    const i = rest.indexOf(flag)
+    return i >= 0 ? rest[i + 1] : undefined
   }
   const list = (flag: string) =>
     (get(flag) ?? "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean)
+
+  let budget: number | undefined
+  const rawBudget = get("--budget")
+  if (rawBudget !== undefined) {
+    budget = Number(rawBudget)
+    // NaN would compare false against every cost and silently disable the cap.
+    if (!Number.isFinite(budget) || budget < 0) {
+      throw new Error(`--budget must be a non-negative number, got "${rawBudget}".`)
+    }
+  }
 
   const manifest = get("--manifest") ?? "sprites.manifest.json"
   return {
@@ -47,12 +97,12 @@ function parseArgs(argv: string[]): Args {
     lock: get("--lock") ?? path.join(path.dirname(path.resolve(manifest)), "sprites.lock.json"),
     styles: list("--style"),
     assets: list("--only"),
-    force: argv.includes("--force"),
-    yes: argv.includes("--yes") || argv.includes("-y"),
-    budget: get("--budget") ? Number(get("--budget")) : undefined,
-    dryRun: argv.includes("--dry-run"),
-    noOpen: argv.includes("--no-open"),
-    tag: argv.includes("--tag"),
+    force: rest.includes("--force"),
+    yes: rest.includes("--yes") || rest.includes("-y"),
+    budget,
+    dryRun: rest.includes("--dry-run"),
+    noOpen: rest.includes("--no-open"),
+    tag: rest.includes("--tag"),
   }
 }
 
@@ -137,6 +187,14 @@ async function main() {
   const args = parseArgs(process.argv.slice(2))
   if (args.command === "help" || args.command === "--help" || args.command === "-h") {
     log(HELP)
+    return
+  }
+
+  if (args.command === "--version" || args.command === "-v") {
+    const pkg = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { name: string; version: string }
+    log(`${pkg.name} ${pkg.version}`)
     return
   }
 

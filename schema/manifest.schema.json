@@ -1,0 +1,147 @@
+{
+  "$ref": "#/definitions/SpritesmithManifest",
+  "definitions": {
+    "SpritesmithManifest": {
+      "type": "object",
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "styles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "generator": {
+                "type": "string",
+                "enum": [
+                  "1dir",
+                  "map"
+                ],
+                "default": "1dir"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 32,
+                "maximum": 256
+              },
+              "view": {
+                "type": "string"
+              },
+              "promptSuffix": {
+                "type": "string",
+                "default": ""
+              },
+              "promptPrefix": {
+                "type": "string",
+                "default": ""
+              },
+              "styleImages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "additionalProperties": false
+                },
+                "default": []
+              },
+              "outDir": {
+                "type": "string"
+              },
+              "outline": {
+                "type": "string"
+              },
+              "shading": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "seed": {
+                "type": "integer"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "outDir"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "assets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "prompt": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 16,
+                "maximum": 400
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 16,
+                "maximum": 400
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 32,
+                "maximum": 256
+              },
+              "file": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
+              "styles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "prompt"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "name",
+        "styles",
+        "assets"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,5 +1,9 @@
 # spritesmith
 
+> **`spritesmith` is a working title.** The name is taken on npm by an unrelated,
+> established package. See [NAMING.md](./NAMING.md) for the shortlist and the
+> prior-art survey. `package.json` is `private: true` until it is settled.
+
 Manifest-driven bulk pixel art generation against the PixelLab API.
 
 The point of this tool is that **no LLM is in the loop**. PixelLab exposes a
@@ -27,9 +31,11 @@ the failure this tool is built around:
 ```bash
 npm install
 node bin/spritesmith.js --help
+npm test
 ```
 
-Requires Node 20+ and `PIXELLAB_API_KEY` in the environment.
+Requires Node 20+ and `PIXELLAB_API_KEY` in the environment. See
+[`examples/minimal`](./examples/minimal) for a three-asset starter manifest.
 
 ## The two files
 
@@ -101,6 +107,21 @@ Add a style; keep the assets. Every asset re-derives under the new style.
 ```bash
 spritesmith gen --style heybud-neon
 ```
+
+**Seed the style with reference images, not just prose.** Measured on a real
+8-asset restyle: prose alone carried the new style cleanly on subjects with no
+strong inherent colour (a speech bubble, a compass, flames, an eye) but was
+largely ignored on subjects that do have one — a chocolate bar stayed brown, a
+camera stayed grey. The reliable recipe is two passes:
+
+1. Generate two or three assets with prose only.
+2. Pick the best results, save them under `art/style-refs/<style>/`, and list
+   them in the style's `styleImages`.
+3. Generate the rest.
+
+Keep reference images in their own directory rather than pointing at live asset
+files — a style reference is part of the spec hash, so editing a badge that
+doubles as a reference invalidates every asset in that style.
 
 ## Economics
 
