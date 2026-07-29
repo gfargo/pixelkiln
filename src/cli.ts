@@ -14,7 +14,7 @@ import { fetchAssets, pushTags } from "./pipeline/fetch.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
 import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
-import { loadClaims, findOrphans } from "./pipeline/salvage.ts"
+import { loadClaims, findOrphans, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 
 const log = (msg = "") => console.log(msg)
@@ -426,6 +426,25 @@ async function main() {
       `\n  imported ${res.imported} · kept ${res.kept} · tagged-discard ${res.discarded}` +
         (res.failed ? ` · failed ${res.failed}` : ""),
     )
+
+    if (res.imported > 0) {
+      // Imports append to the manifest, so their spec hashes only exist after
+      // it is rewritten. Without this every salvaged asset reports `stale` on
+      // the next plan and offers to regenerate art that was just recovered —
+      // which would re-pay for all of it.
+      const reloaded = await loadManifest(args.manifest)
+      const rebased = await resolveSpecs(reloaded)
+      let n = 0
+      for (const spec of rebased) {
+        const key = lockKey(spec.styleId, spec.assetId)
+        const entry = lock.entries[key]
+        if (entry?.status !== "downloaded" || entry.specHash !== SALVAGED_SPEC_HASH) continue
+        upsertLock(lock, key, { specHash: spec.specHash })
+        n++
+      }
+      await saveLock(args.lock, lock)
+      log(`  baselined ${n} imported asset(s) against the manifest`)
+    }
     if (res.discarded) {
       log(`\n  Nothing was deleted. To actually remove the discarded objects:`)
       log(`    pixelkiln purge\n`)

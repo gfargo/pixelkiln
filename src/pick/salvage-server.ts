@@ -6,7 +6,13 @@ import type { PixelLabClient } from "../client.ts"
 import { sha256 } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { lockKey, type Lock, type Manifest } from "../types.ts"
-import { applyTags, idFromPrompt, type Orphan, type SalvageDecision } from "../pipeline/salvage.ts"
+import {
+  applyTags,
+  idFromPrompt,
+  SALVAGED_SPEC_HASH,
+  type Orphan,
+  type SalvageDecision,
+} from "../pipeline/salvage.ts"
 import { renderSalvageSheet } from "./salvage-sheet.ts"
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
@@ -92,7 +98,7 @@ export async function runSalvage(
                 upsert(ctx.lock, lockKey(ctx.styleId, assetId), {
                   styleId: ctx.styleId,
                   assetId,
-                  specHash: "salvaged",
+                  specHash: SALVAGED_SPEC_HASH,
                   generator: orphan.width === orphan.height ? "1dir" : "map",
                   prompt: orphan.prompt,
                   width: orphan.width,

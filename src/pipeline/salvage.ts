@@ -103,6 +103,14 @@ export function idFromPrompt(prompt: string, taken: Set<string>): string {
   return id
 }
 
+/**
+ * Placeholder spec hash written by a salvage import. The real hash cannot be
+ * computed until the manifest has been rewritten with the new asset, so the CLI
+ * re-baselines these immediately afterwards. Exported so the writer and the
+ * re-baseliner reference one constant rather than two copies of a string.
+ */
+export const SALVAGED_SPEC_HASH = "salvaged"
+
 export type SalvageAction = "import" | "keep" | "discard"
 
 export interface SalvageDecision {

@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest"
 import { mkdtemp, writeFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { idFromPrompt, loadClaims } from "../src/pipeline/salvage.ts"
+import { idFromPrompt, loadClaims, SALVAGED_SPEC_HASH } from "../src/pipeline/salvage.ts"
 import { renderSalvageSheet } from "../src/pick/salvage-sheet.ts"
 
 let dir: string
@@ -102,5 +102,19 @@ describe("salvage sheet", () => {
 
   it("states that discard does not delete", () => {
     expect(renderSalvageSheet([orphan])).toMatch(/nothing is deleted/i)
+  })
+})
+
+describe("salvaged spec hash", () => {
+  // Regression: salvage writes a placeholder hash because the real one cannot
+  // exist until the manifest has been rewritten. If the CLI fails to
+  // re-baseline afterwards, every recovered asset reports `stale` and offers to
+  // regenerate art that was just imported — re-paying for all of it.
+  it("is a sentinel the re-baseliner can recognise", () => {
+    expect(SALVAGED_SPEC_HASH).toBe("salvaged")
+  })
+
+  it("never collides with a real sha256", () => {
+    expect(SALVAGED_SPEC_HASH).not.toMatch(/^[0-9a-f]{64}$/)
   })
 })
