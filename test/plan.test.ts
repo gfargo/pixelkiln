@@ -39,10 +39,22 @@ afterEach(async () => {
 })
 
 describe("cost model", () => {
-  it("charges by canvas tier, not by candidate count", () => {
-    expect(generationCost(32, 32)).toBe(20) // 1024px
-    expect(generationCost(45, 45)).toBe(25) // 2025px
-    expect(generationCost(64, 64)).toBe(40) // 4096px
+  it("charges 1dir by canvas tier, not by candidate count", () => {
+    expect(generationCost(32, 32, "1dir")).toBe(20) // 1024px
+    expect(generationCost(45, 45, "1dir")).toBe(25) // 2025px
+    expect(generationCost(64, 64, "1dir")).toBe(40) // 4096px
+  })
+
+  // Measured live: a 32x36 and a 64x96 map object each cost exactly 1
+  // generation. Applying the 1dir tiers here overstated map cost by 20-40x.
+  it("charges map objects a flat 1 regardless of size", () => {
+    expect(generationCost(32, 36, "map")).toBe(1)
+    expect(generationCost(64, 96, "map")).toBe(1)
+    expect(generationCost(400, 400, "map")).toBe(1)
+  })
+
+  it("defaults to 1dir pricing when no generator is given", () => {
+    expect(generationCost(64, 64)).toBe(40)
   })
 
   it("returns more candidates the smaller the canvas", () => {
@@ -52,6 +64,24 @@ describe("cost model", () => {
     expect(candidateCount(85)).toBe(16)
     expect(candidateCount(128)).toBe(4)
     expect(candidateCount(256)).toBe(1)
+  })
+})
+
+describe("plan cost by generator", () => {
+  it("prices a map-generator manifest at 1 per asset", async () => {
+    const manifest = {
+      name: "t",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: {
+        tall: { prompt: "a pine", width: 32, height: 96 },
+        wide: { prompt: "a bridge", width: 64, height: 48 },
+      },
+    }
+    await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
+    const specs = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+    const plan = await buildPlan(specs, { version: 1, entries: {} })
+    expect(plan.cost).toBe(2)
+    expect(plan.candidates).toBe(2) // map returns exactly one each
   })
 })
 

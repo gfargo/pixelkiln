@@ -116,7 +116,7 @@ export async function resolveSpecs(
         shading: style.shading,
         detail: style.detail,
         seed: style.seed,
-        cost: generationCost(width, height),
+        cost: generationCost(width, height, generator),
         candidates: generator === "1dir" ? candidateCount(size) : 1,
       }
 

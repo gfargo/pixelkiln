@@ -188,7 +188,10 @@ doubles as a reference invalidates every asset in that style.
 
 ## Economics
 
-Cost is **fixed per call** and does not scale with candidates returned:
+The two generators are priced completely differently, and the gap decides which
+one to reach for. All figures measured against a live account.
+
+**`1dir`** — fixed per call, does not scale with candidates returned:
 
 | Canvas | Generations | Candidates returned |
 |---|---|---|
@@ -196,8 +199,20 @@ Cost is **fixed per call** and does not scale with candidates returned:
 | ≤2048 px | 25 | 16 (size ≤85) |
 | larger (e.g. 64×64 = 4096 px) | 40 | 4 (size ≤170), 1 above |
 
-A 64×64 icon costs 40 generations and returns 16 candidates. Generating small
-and picking from many is strictly better value than one-shot-per-asset.
+**`map`** — a flat **1 generation at any size**, returning a single result.
+Verified: a 32×36 and a 64×96 map object each cost exactly 1.
+
+So the choice is not "square vs non-square" but **variety vs volume**:
+
+- `1dir` buys 4–64 candidates for one price. Worth it when you want to *pick* —
+  a badge set, a hero prop, anything where the look matters more than the count.
+- `map` is ~20–40× cheaper and takes arbitrary dimensions. Worth it for volume,
+  and for anything non-square. **Forty re-rolls of a map object cost the same as
+  one `1dir` call**, so iterating one-at-a-time is the cheap strategy here, not
+  the expensive one.
+
+A 111-asset non-square set costs ~111 generations via `map`. The same set via
+`1dir` would be ~3,500 and could not express the dimensions at all.
 
 Limits: submissions must be **>2s apart**, and concurrent background jobs are
 capped by tier (1: 8, 2: 10, 3: 20). `submit` enforces both — a global spacing

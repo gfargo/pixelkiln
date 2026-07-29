@@ -26,11 +26,27 @@ export function candidateCount(size: number): number {
 }
 
 /**
- * Generation cost per call, by canvas tier. Fixed per call — it does NOT scale
- * with how many candidates come back, which is the whole economic argument for
- * generating small and picking from many.
+ * Generation cost per call. Measured against a live account, not inferred.
+ *
+ * The two generators are priced completely differently, and the gap is wide
+ * enough to change which one you should reach for:
+ *
+ *   map   FLAT 1 generation, any size. Verified: a 32x36 and a 64x96 map object
+ *         each cost exactly 1 (balance 4751 → 4750 → 4749). Single result.
+ *
+ *   1dir  20-40 by canvas tier (1K=20, 2K=25, 4K=40), returning 4-64
+ *         candidates for that one price.
+ *
+ * So `1dir` buys candidate variety at 20-40x the price, and `map` buys
+ * arbitrary (non-square) dimensions nearly free. For a single-result asset,
+ * forty re-rolls of a map object cost the same as one 1dir call.
  */
-export function generationCost(width: number, height: number): number {
+export function generationCost(
+  width: number,
+  height: number,
+  generator: Generator = "1dir",
+): number {
+  if (generator === "map") return 1
   const px = width * height
   if (px <= 1024) return 20
   if (px <= 2048) return 25
