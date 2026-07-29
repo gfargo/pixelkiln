@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Thin launcher so `spritesmith` works without a build step.
+// Thin launcher so `pixelkiln` works without a build step.
 import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import path from "node:path"

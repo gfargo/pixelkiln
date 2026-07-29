@@ -35,7 +35,7 @@ export function renderSheet(groups: SheetGroup[]): string {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>spritesmith — pick candidates</title>
+<title>pixelkiln — pick candidates</title>
 <style>
   :root {
     --bg: #0f1115; --panel: #171a21; --line: #262b36;
@@ -83,7 +83,7 @@ export function renderSheet(groups: SheetGroup[]): string {
 </head>
 <body>
 <header>
-  <h1>spritesmith</h1>
+  <h1>pixelkiln</h1>
   <span class="count"><span id="picked">0</span> of <span id="total">0</span> chosen</span>
   <span id="status"></span>
   <span style="flex:1"></span>

@@ -1,6 +1,6 @@
-# spritesmith
+# pixelkiln
 
-> **`spritesmith` is a working title.** The name is taken on npm by an unrelated,
+> **`pixelkiln` is a working title.** The name is taken on npm by an unrelated,
 > established package. See [NAMING.md](./NAMING.md) for the shortlist and the
 > prior-art survey. `package.json` is `private: true` until it is settled.
 
@@ -30,7 +30,7 @@ the failure this tool is built around:
 
 ```bash
 npm install
-node bin/spritesmith.js --help
+node bin/pixelkiln.js --help
 npm test
 ```
 
@@ -39,7 +39,7 @@ Requires Node 20+ and `PIXELLAB_API_KEY` in the environment. See
 
 ## The two files
 
-**`sprites.manifest.json`** — hand-authored, committed. Your asset dictionary.
+**`pixelkiln.manifest.json`** — hand-authored, committed. Your asset dictionary.
 
 ```jsonc
 {
@@ -64,7 +64,7 @@ Requires Node 20+ and `PIXELLAB_API_KEY` in the environment. See
 }
 ```
 
-**`sprites.lock.json`** — machine-written, committed. Maps every
+**`pixelkiln.lock.json`** — machine-written, committed. Maps every
 `<style>/<asset>` to the PixelLab object that satisfies it and the file it
 produced, with hashes on both sides.
 
@@ -72,16 +72,38 @@ Because entries are keyed `<style>/<asset>`, **a style is a namespace**. Adding
 a second style re-derives the whole asset set into a separate output directory
 under separate lock keys, so restyling a collection cannot clobber the original.
 
+## Onboarding a project that already has art
+
+You do not have to author a manifest by hand. Point `init` at the existing tree,
+then let `adopt` recover the prompts that actually produced the art:
+
+```bash
+pixelkiln init --from assets/sprites --exclude characters,gifs --generator map
+pixelkiln adopt --write-prompts
+```
+
+`init` writes a manifest with **empty prompts on purpose** — for art that already
+exists the accurate prompt is the one used upstream, not a plausible-looking
+reconstruction. `adopt` matches local files to account objects by exact SHA-256
+and backfills the real ones.
+
+Measured on a 111-asset Godot project: **98 adopted with prompts recovered, 13
+not matched.** All 13 had been retouched locally after download (11 of the 13
+appear in a later commit, against 5 of 40 sampled matches), so their bytes no
+longer match anything upstream. Those report as `untracked` — the art is fine,
+only its provenance is unknown — and are **not** billed for regeneration.
+
 ## Commands
 
 ```bash
-spritesmith plan                    # diff manifest vs lock vs disk. Costs nothing.
-spritesmith gen                     # submit → poll → pick → fetch
-spritesmith gen --only first_review --force   # regenerate exactly one asset
-spritesmith gen --style neon --budget 800     # a whole variant set, capped
-spritesmith adopt                   # map pre-existing account objects to files on disk
-spritesmith accept                  # keep existing art after rewording a style
-spritesmith balance                 # generations remaining
+pixelkiln init --from <dir>       # scaffold a manifest from existing PNGs
+pixelkiln plan                    # diff manifest vs lock vs disk. Costs nothing.
+pixelkiln gen                     # submit → poll → pick → fetch
+pixelkiln gen --only first_review --force   # regenerate exactly one asset
+pixelkiln gen --style neon --budget 800     # a whole variant set, capped
+pixelkiln adopt --write-prompts   # map account objects to files, recover prompts
+pixelkiln accept                  # keep existing art after rewording a style
+pixelkiln balance                 # generations remaining
 ```
 
 `plan` is the habit worth forming — it is free, and it prints exactly what a run
@@ -105,7 +127,7 @@ Add a style; keep the assets. Every asset re-derives under the new style.
 ```
 
 ```bash
-spritesmith gen --style heybud-neon
+pixelkiln gen --style heybud-neon
 ```
 
 **Seed the style with reference images, not just prose.** Measured on a real
@@ -170,11 +192,11 @@ entries past the window as failed rather than letting them look pending forever.
 ## Library use
 
 ```ts
-import { loadManifest, resolveSpecs, buildPlan, loadLock } from "spritesmith"
+import { loadManifest, resolveSpecs, buildPlan, loadLock } from "pixelkiln"
 
-const loaded = await loadManifest("sprites.manifest.json")
+const loaded = await loadManifest("pixelkiln.manifest.json")
 const specs = await resolveSpecs(loaded)
-const plan = await buildPlan(specs, await loadLock("sprites.lock.json"))
+const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
 console.log(plan.cost, "generations")
 ```
 

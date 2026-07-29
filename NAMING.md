@@ -1,7 +1,7 @@
 # Naming — unresolved
 
-`spritesmith` is a **working title only**. It cannot ship under that name:
-[`spritesmith`](https://www.npmjs.com/package/spritesmith) is an established npm
+`pixelkiln` is a **working title only**. It cannot ship under that name:
+[`pixelkiln`](https://www.npmjs.com/package/pixelkiln) is an established npm
 package (v3.5.1, the CSS spritesheet builder) and `pixelsmith` is its engine.
 `package.json` is marked `private: true` until this is settled.
 
@@ -56,6 +56,6 @@ real project), `pixelsmith`, `spritemill`, `pixelloom`, `bitforge`, `spritelab`.
 
 ## To rename
 
-The name appears in `package.json` (`name`, `bin`), `bin/spritesmith.js`, the
+The name appears in `package.json` (`name`, `bin`), `bin/pixelkiln.js`, the
 README, `scripts/gen-schema.ts` (schema title), and heybud-admin's `package.json`
 badge scripts. Then drop `private: true`.

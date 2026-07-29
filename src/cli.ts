@@ -6,12 +6,14 @@ import { clientFromEnv } from "./client.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { loadLock, saveLock, totalSpend, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
+import { lockKey } from "./types.ts"
 import { buildPlan, summarize, type Plan } from "./pipeline/plan.ts"
 import { submit } from "./pipeline/submit.ts"
 import { poll } from "./pipeline/poll.ts"
 import { fetchAssets, pushTags } from "./pipeline/fetch.ts"
-import { adopt, formatUnmatchedRemote, tagAdopted } from "./pipeline/adopt.ts"
+import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
 import { runPicker } from "./pick/server.ts"
+import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 
 const log = (msg = "") => console.log(msg)
 
@@ -27,13 +29,24 @@ interface Args {
   dryRun: boolean
   noOpen: boolean
   tag: boolean
+  from?: string
+  out?: string
+  generator?: string
+  exclude: string[]
+  name?: string
+  writePrompts: boolean
 }
 
-const VALUE_FLAGS = ["--manifest", "--lock", "--style", "--only", "--budget", "--port"] as const
-const BOOL_FLAGS = ["--force", "--yes", "-y", "--dry-run", "--no-open", "--tag"] as const
+const VALUE_FLAGS = [
+  "--manifest", "--lock", "--style", "--only", "--budget", "--port",
+  "--from", "--out", "--generator", "--exclude", "--name",
+] as const
+const BOOL_FLAGS = [
+  "--force", "--yes", "-y", "--dry-run", "--no-open", "--tag", "--write-prompts",
+] as const
 
 export const COMMANDS = [
-  "plan", "gen", "submit", "poll", "pick", "fetch", "adopt", "accept",
+  "init", "plan", "gen", "submit", "poll", "pick", "fetch", "adopt", "accept",
   "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
@@ -46,7 +59,7 @@ export const COMMANDS = [
 export function parseArgs(argv: string[]): Args {
   const [command = "help"] = argv
   if (!(COMMANDS as readonly string[]).includes(command)) {
-    throw new Error(`Unknown command "${command}". Run \`spritesmith help\` for the list.`)
+    throw new Error(`Unknown command "${command}". Run \`pixelkiln help\` for the list.`)
   }
 
   const rest = argv.slice(1)
@@ -90,11 +103,11 @@ export function parseArgs(argv: string[]): Args {
     }
   }
 
-  const manifest = get("--manifest") ?? "sprites.manifest.json"
+  const manifest = get("--manifest") ?? "pixelkiln.manifest.json"
   return {
     command,
     manifest,
-    lock: get("--lock") ?? path.join(path.dirname(path.resolve(manifest)), "sprites.lock.json"),
+    lock: get("--lock") ?? path.join(path.dirname(path.resolve(manifest)), "pixelkiln.lock.json"),
     styles: list("--style"),
     assets: list("--only"),
     force: rest.includes("--force"),
@@ -103,14 +116,21 @@ export function parseArgs(argv: string[]): Args {
     dryRun: rest.includes("--dry-run"),
     noOpen: rest.includes("--no-open"),
     tag: rest.includes("--tag"),
+    from: get("--from"),
+    out: get("--out"),
+    generator: get("--generator"),
+    exclude: list("--exclude"),
+    name: get("--name"),
+    writePrompts: rest.includes("--write-prompts"),
   }
 }
 
-const HELP = `spritesmith — manifest-driven pixel art generation (PixelLab)
+const HELP = `pixelkiln — manifest-driven pixel art generation (PixelLab)
 
-  spritesmith <command> [options]
+  pixelkiln <command> [options]
 
 Commands
+  init      Scaffold a manifest from an existing tree of PNGs.
   plan      Diff manifest against lockfile and disk. Costs nothing. Start here.
   gen       Full run: submit → poll → pick → fetch. The everyday command.
   submit    Queue generation jobs only.
@@ -124,8 +144,8 @@ Commands
   status    Summarise the lockfile.
 
 Options
-  --manifest <path>   Default: sprites.manifest.json
-  --lock <path>       Default: sprites.lock.json beside the manifest
+  --manifest <path>   Default: pixelkiln.manifest.json
+  --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
   --only id1,id2      Restrict to these asset ids
   --budget <n>        Refuse to spend more than n generations
@@ -136,15 +156,15 @@ Options
   --tag               Also push tags upstream after fetch
 
 Examples
-  spritesmith plan
-  spritesmith gen --style heybud-premium --budget 400
-  spritesmith gen --only first_review --force
-  spritesmith adopt --tag
+  pixelkiln plan
+  pixelkiln gen --style heybud-premium --budget 400
+  pixelkiln gen --only first_review --force
+  pixelkiln adopt --tag
 `
 
 function printPlan(plan: Plan): void {
   const counts = summarize(plan)
-  const order = ["missing", "stale", "failed", "in-flight", "orphaned", "ok"] as const
+  const order = ["missing", "untracked", "stale", "failed", "in-flight", "orphaned", "ok"] as const
   for (const state of order) {
     const items = plan.items.filter((i) => i.state === state)
     if (!items.length) continue
@@ -155,8 +175,9 @@ function printPlan(plan: Plan): void {
     if (items.length > 40) log(`    … and ${items.length - 40} more`)
   }
   log(
-    `\n  totals: ${counts.ok} ok · ${counts.missing} missing · ${counts.stale} stale · ` +
-      `${counts["in-flight"]} in-flight · ${counts.orphaned} orphaned · ${counts.failed} failed`,
+    `\n  totals: ${counts.ok} ok · ${counts.missing} missing · ${counts.untracked} untracked · ` +
+      `${counts.stale} stale · ${counts["in-flight"]} in-flight · ${counts.orphaned} orphaned · ` +
+      `${counts.failed} failed`,
   )
   if (plan.actionable.length) {
     log(
@@ -206,9 +227,41 @@ async function main() {
     return
   }
 
+  if (args.command === "init") {
+    if (!args.from) throw new Error("init needs --from <dir> pointing at your existing PNGs.")
+    const root = path.resolve(args.from)
+    if (!existsSync(root)) throw new Error(`No directory at ${root}`)
+
+    const generator = (args.generator ?? "map") as "1dir" | "map"
+    if (generator !== "1dir" && generator !== "map") {
+      throw new Error(`--generator must be "1dir" or "map", got "${args.generator}".`)
+    }
+
+    const target = path.resolve(args.out ?? "pixelkiln.manifest.json")
+    const { assets, skipped } = await scanAssets(root, { exclude: args.exclude })
+    if (!assets.length) throw new Error(`No PNGs found under ${root}`)
+
+    const manifest = buildManifest(
+      args.name ?? path.basename(path.dirname(target)),
+      args.styles[0] ?? "base",
+      generator,
+      path.relative(path.dirname(target), root) || ".",
+      assets,
+    )
+    await writeManifestFile(target, manifest)
+
+    log(`  scanned ${assets.length} PNG(s) under ${path.relative(process.cwd(), root)}`)
+    if (skipped.length) log(`  skipped ${skipped.length} unreadable file(s)`)
+    log(`  wrote ${path.relative(process.cwd(), target)}`)
+    log(`\n  Prompts are intentionally empty. To recover the real ones from your`)
+    log(`  PixelLab account instead of inventing them:`)
+    log(`\n    pixelkiln adopt --manifest ${path.relative(process.cwd(), target)} --write-prompts\n`)
+    return
+  }
+
   if (!existsSync(path.resolve(args.manifest))) {
     throw new Error(
-      `No manifest at ${path.resolve(args.manifest)}. Pass --manifest, or create one (see README).`,
+      `No manifest at ${path.resolve(args.manifest)}. Pass --manifest, or run \`pixelkiln init --from <dir>\`.`,
     )
   }
 
@@ -276,6 +329,32 @@ async function main() {
     if (args.tag) {
       const n = await tagAdopted(client, specs, lock, { onProgress: log })
       log(`\n  tagged ${n} object(s) upstream`)
+    }
+    if (args.writePrompts) {
+      const { filled, stillEmpty } = await writePromptsBack(path.resolve(args.manifest), lock, {
+        onProgress: log,
+      })
+      log(`  recovered ${filled} prompt(s) into ${path.relative(process.cwd(), args.manifest)}`)
+
+      // Writing prompts rewrites the manifest, which changes every spec hash.
+      // Without re-baselining, an adopt that recovered the true prompts would
+      // report all of its own work as stale and offer to regenerate it.
+      const reloaded = await loadManifest(args.manifest)
+      const rebased = await resolveSpecs(reloaded, { styles: args.styles, assets: args.assets })
+      let n = 0
+      for (const spec of rebased) {
+        const key = lockKey(spec.styleId, spec.assetId)
+        if (lock.entries[key]?.status !== "downloaded") continue
+        upsertLock(lock, key, { specHash: spec.specHash })
+        n++
+      }
+      await saveLock(args.lock, lock)
+      log(`  re-baselined ${n} entr(ies) against the recovered prompts`)
+      if (stillEmpty.length) {
+        log(`  ${stillEmpty.length} asset(s) still have no prompt (not matched upstream):`)
+        for (const id of stillEmpty.slice(0, 10)) log(`    ${id}`)
+        if (stillEmpty.length > 10) log(`    … and ${stillEmpty.length - 10} more`)
+      }
     }
     log(`\n  lockfile written: ${args.lock}`)
     return

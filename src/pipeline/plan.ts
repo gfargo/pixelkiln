@@ -4,7 +4,8 @@ import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
 
 export type PlanState =
   | "ok" // spec unchanged, file present and matching — nothing to do
-  | "missing" // never generated
+  | "missing" // no lock entry and no file — genuinely needs generating
+  | "untracked" // file exists but has no lock entry; the art is fine, provenance is not known
   | "stale" // prompt/style/size changed since the file was made
   | "orphaned" // lock says downloaded, but the file is gone or altered
   | "in-flight" // submitted, not yet downloaded
@@ -48,8 +49,17 @@ export async function buildPlan(
       state = "missing"
       reason = "--force"
     } else if (!entry) {
-      state = "missing"
-      reason = "not in lockfile"
+      // Distinguish "no art" from "art exists but unmatched upstream". Calling
+      // the latter `missing` invites regenerating perfectly good files — which
+      // is exactly what happens to assets that were retouched by hand after
+      // download, since their bytes no longer match any remote object.
+      if (existsSync(spec.outFile)) {
+        state = "untracked"
+        reason = "file on disk, no provenance recorded"
+      } else {
+        state = "missing"
+        reason = "not in lockfile"
+      }
     } else if (entry.status === "failed") {
       state = "failed"
       reason = entry.error ?? "previous attempt failed"
@@ -88,10 +98,9 @@ export async function buildPlan(
 }
 
 export function summarize(plan: Plan): Record<PlanState, number> {
-  const counts = { ok: 0, missing: 0, stale: 0, orphaned: 0, "in-flight": 0, failed: 0 } as Record<
-    PlanState,
-    number
-  >
+  const counts = {
+    ok: 0, missing: 0, untracked: 0, stale: 0, orphaned: 0, "in-flight": 0, failed: 0,
+  } as Record<PlanState, number>
   for (const item of plan.items) counts[item.state]++
   return counts
 }

@@ -38,8 +38,8 @@ describe("parseArgs", () => {
   })
 
   it("defaults the lockfile to sit beside the manifest", () => {
-    const args = parseArgs(["plan", "--manifest", "/tmp/proj/sprites.manifest.json"])
-    expect(args.lock).toBe("/tmp/proj/sprites.lock.json")
+    const args = parseArgs(["plan", "--manifest", "/tmp/proj/pixelkiln.manifest.json"])
+    expect(args.lock).toBe("/tmp/proj/pixelkiln.lock.json")
   })
 
   it("does not treat a command named like a flag value as a flag", () => {

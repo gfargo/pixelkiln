@@ -123,7 +123,7 @@ export async function resolveSpecs(
       specs.push({
         ...base,
         outFile,
-        tags: [...style.tags, ...asset.tags, `spritesmith:${manifest.name}`, `asset:${assetId}`, `style:${styleId}`],
+        tags: [...style.tags, ...asset.tags, `pixelkiln:${manifest.name}`, `asset:${assetId}`, `style:${styleId}`],
         specHash: specHash(base, styleImageHashes),
       })
     }

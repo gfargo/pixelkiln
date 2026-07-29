@@ -1,7 +1,7 @@
 {
-  "$ref": "#/definitions/SpritesmithManifest",
+  "$ref": "#/definitions/PixelkilnManifest",
   "definitions": {
-    "SpritesmithManifest": {
+    "PixelkilnManifest": {
       "type": "object",
       "properties": {
         "$schema": {

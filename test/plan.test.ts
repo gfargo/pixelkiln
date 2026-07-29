@@ -32,7 +32,7 @@ async function writeManifest(extra: Record<string, unknown> = {}) {
 }
 
 beforeEach(async () => {
-  dir = await mkdtemp(path.join(tmpdir(), "spritesmith-"))
+  dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-"))
 })
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true })

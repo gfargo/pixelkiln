@@ -1,16 +1,16 @@
 {
-  "name": "spritesmith",
+  "name": "pixelkiln",
   "version": "0.1.0",
   "description": "Manifest-driven bulk pixel art generation against the PixelLab API. No LLM in the loop.",
   "type": "module",
   "bin": {
-    "spritesmith": "./bin/spritesmith.js"
+    "pixelkiln": "./bin/pixelkiln.js"
   },
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "spritesmith": "tsx src/cli.ts",
+    "pixelkiln": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

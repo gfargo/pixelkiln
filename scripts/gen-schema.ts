@@ -4,7 +4,7 @@ import { zodToJsonSchema } from "zod-to-json-schema"
 import { ManifestSchema } from "../src/types.ts"
 
 const schema = zodToJsonSchema(ManifestSchema, {
-  name: "SpritesmithManifest",
+  name: "PixelkilnManifest",
   $refStrategy: "none",
 })
 writeFileSync("schema/manifest.schema.json", JSON.stringify(schema, null, 2) + "\n")

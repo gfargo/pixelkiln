@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs"
-import { readFile } from "node:fs/promises"
+import { readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import type { PixelLabClient, PixelLabObject } from "../client.ts"
 import { sha256 } from "../hash.ts"
@@ -148,6 +148,51 @@ export async function tagAdopted(
     }
   }
   return count
+}
+
+/**
+ * Backfills empty manifest prompts from the prompts recorded on adopted objects.
+ *
+ * For a project onboarded with `init`, this is how the manifest becomes real:
+ * the prompts that actually produced the shipped art are recovered from the
+ * account rather than reconstructed by guesswork. Only empty prompts are
+ * touched, so hand-authored text is never overwritten.
+ */
+export async function writePromptsBack(
+  manifestPath: string,
+  lock: Lock,
+  opts: { onProgress?: (msg: string) => void } = {},
+): Promise<{ filled: number; stillEmpty: string[] }> {
+  const log = opts.onProgress ?? (() => {})
+  const raw = JSON.parse(await readFile(manifestPath, "utf8")) as {
+    assets: Record<string, { prompt?: string }>
+  }
+
+  // An asset can be adopted under several styles; prefer the longest recovered
+  // prompt, which is the most complete description of what was generated.
+  const best = new Map<string, string>()
+  for (const entry of Object.values(lock.entries)) {
+    if (!entry.objectId || !entry.prompt) continue
+    const current = best.get(entry.assetId)
+    if (!current || entry.prompt.length > current.length) best.set(entry.assetId, entry.prompt)
+  }
+
+  let filled = 0
+  const stillEmpty: string[] = []
+  for (const [id, asset] of Object.entries(raw.assets)) {
+    if (asset.prompt && asset.prompt.trim()) continue
+    const recovered = best.get(id)
+    if (recovered) {
+      asset.prompt = recovered
+      filled++
+    } else {
+      stillEmpty.push(id)
+    }
+  }
+
+  await writeFile(manifestPath, JSON.stringify(raw, null, 2) + "\n")
+  log(`  filled ${filled} prompt(s) from adopted objects`)
+  return { filled, stillEmpty }
 }
 
 export function formatUnmatchedRemote(objects: PixelLabObject[], limit = 15): string {
