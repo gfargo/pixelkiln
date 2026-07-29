@@ -1,8 +1,20 @@
-# Multi-provider — design notes
+# Multi-provider — status and notes
 
-Today `pixelkiln` talks only to PixelLab, through `src/client.ts`. Supporting a
-second backend is the next structural change. This file records what that costs
-and which provider to reach for first.
+**The seam is built.** `src/provider.ts` defines the interface;
+`src/providers/pixellab.ts` is the reference implementation and
+`src/providers/fake.ts` is the in-memory test double. Nothing above the
+interface knows about PixelLab.
+
+Both concerns this file previously flagged as blockers are resolved:
+
+- **Cost is no longer assumed to be "generations."** `CostEstimate` carries a
+  `unit` of `generations | usd | free`, `plan` prints it, and `--budget` is
+  interpreted in it.
+- **Free multi-candidate returns are no longer assumed universal.**
+  `estimate().candidates` is a provider property; `candidateCount()` moved
+  behind the interface.
+
+What remains is writing a second adapter. This file records which one and why.
 
 ## Midjourney is the wrong first target
 
@@ -39,44 +51,35 @@ Other candidates, in rough order of fit:
 | Local ComfyUI + pixel LoRA | n/a | yes | No per-call cost, but a GPU dependency |
 | Midjourney | **no** | no | See above |
 
-## What has to change
+## Resolved: the two economic assumptions
 
-The current design assumes PixelLab's economics in two places, and both need to
-become provider-owned rather than global:
+Both were global assumptions baked into `plan`; both are now provider-owned.
+Kept here as the rationale, since a second adapter has to honour them.
 
-1. **Cost is not universally "generations".** `Plan.cost` is a bare number that
-   means PixelLab subscription generations. It needs a unit — USD for OpenAI,
-   generations for PixelLab, zero for local — so `plan` can keep printing an
-   honest number and `--budget` can keep meaning something.
+1. **Cost is not universally "generations".** `Plan.cost` used to be a bare
+   number meaning PixelLab subscription generations. It now carries a unit —
+   USD for OpenAI, generations for PixelLab, free for local — so `plan` prints
+   an honest figure and `--budget` means something in every backend.
 
-2. **Free candidates are a PixelLab quirk.** The core loop here — generate
-   small, get 16 candidates for one fixed price, pick the best — exists because
-   PixelLab charges per call and scales candidates inversely with canvas size.
-   OpenAI charges per image, so "16 candidates" costs 16×. The picker still
-   works, but the strategy advice in the README does not generalise, and
-   `candidateCount()` has to move behind the provider interface.
+2. **Free candidates were a PixelLab quirk.** The core loop — generate small,
+   get 16 candidates for one fixed price, pick the best — works because
+   PixelLab charges per *call* and scales candidates inversely with canvas
+   size. OpenAI charges per *image*, so 16 candidates costs 16×. The picker
+   still works either way, but the strategy advice in the README does not
+   generalise, which is why `candidateCount()` moved behind the interface.
 
-Sketch:
+See `src/provider.ts` for the shipped interface. Lock entries carry a
+`provider` field, defaulted to `pixellab` so pre-provider lockfiles stay
+readable.
 
-```ts
-interface Provider {
-  id: string
-  supports(generator: Generator): boolean
-  estimate(spec: ResolvedSpec): { unit: "generations" | "usd" | "free"; amount: number; candidates: number }
-  submit(spec: ResolvedSpec): Promise<{ jobId: string }>
-  poll(jobId: string): Promise<{ status: JobStatus; candidateUrls?: string[]; resultUrl?: string }>
-  select(jobId: string, index: number): Promise<{ objectId: string; url: string }>
-  balance(): Promise<{ unit: string; remaining: number }>
-}
-```
+## Done: the integration tests it unblocked
 
-The lockfile already has room for this — it records `generator` and `cost` per
-entry, so adding a `provider` field is additive and old lockfiles stay readable.
+`FakeProvider` turned out to be exactly the better test double predicted here.
+17 integration tests now cover `submit → poll → fetch`, `pushTags` and `adopt`
+— the stages that spend money and previously had zero coverage, where four of
+the five real bugs in this project lived. Verified non-vacuous by mutation:
+breaking the output hashes, the budget check, or the v1 lock migration each
+fails tests.
 
-## This also unblocks the integration tests
-
-A `FakeProvider` implementing the interface above is a far better test double
-than an HTTP mock: it exercises the real `submit → poll → pick → fetch` state
-machine, including the review/candidate path and the 8-hour map-object
-expiry, without a network or an API key. Doing the provider seam first and the
-integration tests second is the cheaper order.
+Still uncovered: the two contact-sheet HTTP servers (`pick`, `salvage`). Their
+HTML generation is unit-tested; the request handling is not.

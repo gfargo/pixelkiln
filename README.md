@@ -93,6 +93,49 @@ appear in a later commit, against 5 of 40 sampled matches), so their bytes no
 longer match anything upstream. Those report as `untracked` — the art is fine,
 only its provenance is unknown — and are **not** billed for regeneration.
 
+## Architecture
+
+Two seams, and it matters which is which:
+
+```
+manifest + lockfile + plan + salvage + contact sheets   ← backend-agnostic
+─────────────────── Provider interface ───────────────────
+PixelLabProvider          (future: RetroDiffusionProvider, …)
+```
+
+Everything that knows a URL shape or an auth header lives below the line;
+everything above is provider-agnostic. `FakeProvider` implements the same
+interface in memory, which is how the money-spending stages are tested without
+a network or an API key.
+
+**Cost carries a unit.** `generations` (PixelLab subscription), `usd`
+(per-image providers), or `free` (local models). `plan` prints the unit, and
+`--budget` is interpreted in it — so a per-image price can never be silently
+read as a subscription quota.
+
+**Candidate count is a provider property**, not a universal truth. PixelLab's
+`1dir` returns up to 64 for one fixed price; a per-image provider returns one
+and charges N times for N. The "generate small, pick from many" strategy only
+pays off where `estimate().candidates > 1` at no extra cost.
+
+**Optional members are real capability gaps.** A provider with no queryable
+asset list has no `adopt` and no `salvage`, and the CLI says so rather than
+failing obscurely.
+
+### Lockfile
+
+Version 2. Each entry records `outputs[]` — a path, a hash, and an optional
+`role` — rather than v1's single file. That is what lets one manifest entry
+expand into many artifacts, which an animated character needs (~35 spritesheets
+plus an engine resource plus a portrait).
+
+`parseLock` reads either version and migrates v1 transparently. A committed
+lockfile is the record of what you have paid for, so a version bump must never
+make one unreadable — that would present every tracked asset as missing and
+offer to regenerate the lot. A v1 entry whose file had no recorded hash is
+dropped rather than carried over, so `plan` reports it `untracked` instead of
+vouching for bytes that were never verified.
+
 ## Salvaging unclaimed work
 
 An account accumulates objects that were generated, paid for, and never landed
