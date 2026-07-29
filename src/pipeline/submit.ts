@@ -1,0 +1,165 @@
+import type { PixelLabClient } from "../client.ts"
+import { saveLock, upsert } from "../lock.ts"
+import { styleImagesBase64, type LoadedManifest } from "../manifest.ts"
+import type { Lock } from "../types.ts"
+import type { PlanItem } from "./plan.ts"
+
+/**
+ * Two distinct limits, easy to conflate:
+ *   - submissions must be >2s apart  (a rate, global across the account)
+ *   - background jobs in flight      (a count: Tier 1=8, Tier 2=10, Tier 3=20)
+ *
+ * Submission is fast and job execution is slow, so the correct shape is a
+ * serial submit loop with a global spacing gate, which pauses when too many
+ * jobs are still running. Parallel workers each sleeping `spacing` would give a
+ * global rate of workers/spacing and quietly breach the first limit.
+ */
+export const DEFAULT_MAX_IN_FLIGHT = 8
+export const SUBMIT_SPACING_MS = 2500
+const IN_FLIGHT_POLL_MS = 5000
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export interface SubmitOptions {
+  maxInFlight?: number
+  spacingMs?: number
+  /** Refuse to submit if the run would exceed this many generations. */
+  budget?: number
+  onProgress?: (msg: string) => void
+}
+
+export interface SubmitResult {
+  submitted: number
+  failed: number
+  spent: number
+}
+
+export async function submit(
+  client: PixelLabClient,
+  loaded: LoadedManifest,
+  items: PlanItem[],
+  lock: Lock,
+  lockPath: string,
+  opts: SubmitOptions = {},
+): Promise<SubmitResult> {
+  const maxInFlight = opts.maxInFlight ?? DEFAULT_MAX_IN_FLIGHT
+  const spacing = opts.spacingMs ?? SUBMIT_SPACING_MS
+  const log = opts.onProgress ?? (() => {})
+
+  if (opts.budget != null) {
+    const cost = items.reduce((s, i) => s + i.spec.cost, 0)
+    if (cost > opts.budget) {
+      throw new Error(
+        `This run would spend ${cost} generations but the budget is ${opts.budget}. ` +
+          `Narrow it with --only/--style, or raise --budget.`,
+      )
+    }
+  }
+
+  const styleImages = new Map<string, string[]>()
+  for (const styleId of new Set(items.map((i) => i.spec.styleId))) {
+    styleImages.set(styleId, await styleImagesBase64(loaded, styleId))
+  }
+
+  let submitted = 0
+  let failed = 0
+  let spent = 0
+  let lastSubmitAt = 0
+
+  /** Job ids submitted this run that have not yet been observed as settled. */
+  const inFlight = new Set<string>()
+
+  async function pruneInFlight(): Promise<void> {
+    for (const id of [...inFlight]) {
+      try {
+        const obj = await client.getObject(id)
+        if (obj.status && obj.status !== "pending" && obj.status !== "processing") {
+          inFlight.delete(id)
+        }
+      } catch {
+        // Treat an unreadable job as settled rather than blocking the queue
+        // forever; `poll` will resolve its true state later.
+        inFlight.delete(id)
+      }
+    }
+  }
+
+  async function waitForSlot(): Promise<void> {
+    while (inFlight.size >= maxInFlight) {
+      await sleep(IN_FLIGHT_POLL_MS)
+      await pruneInFlight()
+    }
+  }
+
+  for (const { spec, key } of items) {
+    await waitForSlot()
+
+    const since = Date.now() - lastSubmitAt
+    if (since < spacing) await sleep(spacing - since)
+
+    // Record intent before spending, so an interrupted run stays diagnosable.
+    upsert(lock, key, {
+      styleId: spec.styleId,
+      assetId: spec.assetId,
+      specHash: spec.specHash,
+      generator: spec.generator,
+      prompt: spec.prompt,
+      width: spec.width,
+      height: spec.height,
+      status: "pending",
+      jobId: null,
+      objectId: null,
+      reviewObjectId: null,
+      candidateIndex: null,
+      error: null,
+      file: null,
+      fileSha256: null,
+      sourceUrl: null,
+      submittedAt: new Date().toISOString(),
+      cost: spec.cost,
+      downloadedAt: null,
+    })
+    await saveLock(lockPath, lock)
+
+    lastSubmitAt = Date.now()
+    try {
+      if (spec.generator === "1dir") {
+        const refs = styleImages.get(spec.styleId) ?? []
+        const res = await client.create1Direction({
+          description: spec.prompt,
+          size: spec.size,
+          view: spec.view === "sidescroller" ? "sidescroller" : "top-down",
+          styleImagesBase64: refs,
+        })
+        upsert(lock, key, { jobId: res.object_id, reviewObjectId: res.object_id, status: "processing" })
+        inFlight.add(res.object_id)
+        log(`  ${key} → ${res.object_id}  (${spec.candidates} candidates, ${spec.cost} gen)`)
+      } else {
+        const res = await client.createMapObject({
+          description: spec.prompt,
+          width: spec.width,
+          height: spec.height,
+          view: spec.view,
+          outline: spec.outline,
+          shading: spec.shading,
+          detail: spec.detail,
+          seed: spec.seed,
+        })
+        upsert(lock, key, { jobId: res.object_id, status: "processing" })
+        inFlight.add(res.object_id)
+        log(`  ${key} → ${res.object_id}  (${spec.width}x${spec.height}, ${spec.cost} gen)`)
+      }
+      submitted++
+      spent += spec.cost
+    } catch (err) {
+      failed++
+      const message = err instanceof Error ? err.message : String(err)
+      // A rejected request is not billed, so cost is cleared rather than kept.
+      upsert(lock, key, { status: "failed", error: message, cost: 0 })
+      log(`  FAILED ${key}: ${message}`)
+    }
+    await saveLock(lockPath, lock)
+  }
+
+  return { submitted, failed, spent }
+}

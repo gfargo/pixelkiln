@@ -1,0 +1,27 @@
+{
+  "name": "spritesmith",
+  "version": "0.1.0",
+  "description": "Manifest-driven bulk pixel art generation against the PixelLab API. No LLM in the loop.",
+  "type": "module",
+  "bin": {
+    "spritesmith": "./bin/spritesmith.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "spritesmith": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
