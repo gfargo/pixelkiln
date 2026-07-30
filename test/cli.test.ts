@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
+import { mkdtemp, writeFile, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
 import { parseArgs } from "../src/cli.ts"
+import { loadEnvFiles } from "../src/env.ts"
 import { shouldRetry, backoffMs, MAX_RETRIES } from "../src/client.ts"
 import { renderSheet } from "../src/pick/sheet.ts"
 
@@ -98,5 +102,58 @@ describe("contact sheet", () => {
     const scriptOpens = html.match(/<script>/g) ?? []
     // Only the page's own single script block survives.
     expect(scriptOpens).toHaveLength(1)
+  })
+})
+
+describe("env file loading", () => {
+  // Regression: the missing-key error told people to put PIXELLAB_API_KEY in a
+  // .env file next to the manifest, but nothing ever read one — so following
+  // the instruction correctly still failed.
+  it("reads .env.local and .env from a directory", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-env-"))
+    await writeFile(path.join(dir, ".env"), "PK_TEST_A=from_env\nPK_TEST_B=b\n")
+    await writeFile(path.join(dir, ".env.local"), "PK_TEST_A=from_env_local\n")
+    delete process.env.PK_TEST_A
+    delete process.env.PK_TEST_B
+
+    const loaded = loadEnvFiles(dir)
+    expect(loaded).toHaveLength(2)
+    // .env.local is read first and .env cannot clobber it.
+    expect(process.env.PK_TEST_A).toBe("from_env_local")
+    expect(process.env.PK_TEST_B).toBe("b")
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  // A CI secret must never be overridden by a checked-out file.
+  it("never overrides an existing environment variable", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-env-"))
+    await writeFile(path.join(dir, ".env"), "PK_TEST_C=from_file\n")
+    process.env.PK_TEST_C = "from_shell"
+    loadEnvFiles(dir)
+    expect(process.env.PK_TEST_C).toBe("from_shell")
+    delete process.env.PK_TEST_C
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it("handles quotes, exports, comments and blank lines", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-env-"))
+    await writeFile(
+      path.join(dir, ".env"),
+      '# a comment\n\nexport PK_TEST_D="quoted value"\nPK_TEST_E=\'single\'\nnot a pair\n',
+    )
+    delete process.env.PK_TEST_D
+    delete process.env.PK_TEST_E
+    loadEnvFiles(dir)
+    expect(process.env.PK_TEST_D).toBe("quoted value")
+    expect(process.env.PK_TEST_E).toBe("single")
+    delete process.env.PK_TEST_D
+    delete process.env.PK_TEST_E
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it("returns nothing when no env file exists", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-env-"))
+    expect(loadEnvFiles(dir)).toEqual([])
+    await rm(dir, { recursive: true, force: true })
   })
 })

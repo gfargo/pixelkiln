@@ -2,6 +2,7 @@
 import path from "node:path"
 import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
+import { loadEnvFiles } from "./env.ts"
 import { PixelLabProvider } from "./providers/pixellab.ts"
 import { formatCost, requireDelete, requireList } from "./provider.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
@@ -233,6 +234,8 @@ async function main() {
   }
 
   if (args.command === "balance") {
+    loadEnvFiles(path.dirname(path.resolve(args.manifest)))
+    loadEnvFiles(process.cwd())
     const p = PixelLabProvider.fromEnv()
     const b = await p.balance()
     log(`  provider:  ${p.id}`)
@@ -278,6 +281,12 @@ async function main() {
       `No manifest at ${path.resolve(args.manifest)}. Pass --manifest, or run \`pixelkiln init --from <dir>\`.`,
     )
   }
+
+  // Load env before any provider is constructed, from the manifest's directory
+  // and the cwd — the key belongs with the project, not the tool.
+  const manifestDir = path.dirname(path.resolve(args.manifest))
+  const envFiles = [...loadEnvFiles(manifestDir)]
+  if (path.resolve(process.cwd()) !== manifestDir) envFiles.push(...loadEnvFiles(process.cwd()))
 
   const loaded = await loadManifest(args.manifest)
   const specs = await resolveSpecs(loaded, { styles: args.styles, assets: args.assets })

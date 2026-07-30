@@ -249,7 +249,8 @@ export function clientFromEnv(): PixelLabClient {
   const key = process.env.PIXELLAB_API_KEY
   if (!key) {
     throw new Error(
-      "PIXELLAB_API_KEY is not set. Add it to your environment or a .env file next to the manifest.",
+      "PIXELLAB_API_KEY is not set.\n" +
+        "Looked in the environment, and in .env.local / .env beside the manifest and in the current directory.",
     )
   }
   return new PixelLabClient(key)
