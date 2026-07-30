@@ -411,3 +411,16 @@ console.log(plan.cost, "generations")
 Animated 8-direction **characters** are out of scope. PixelLab models those as a
 separate entity with a ZIP bundle export, and the `super-disc-golf` repo already
 has a mature importer for them (`tools/sync_pixellab_characters.py`).
+
+## Documentation
+
+| | |
+|---|---|
+| [docs/ENDPOINTS.md](./docs/ENDPOINTS.md) | Measured reference for the whole PixelLab API — costs, payload shapes, which parameters are actually wired up, and recipes. Every figure came from a live account, not from docs. |
+| [PROVIDERS.md](./PROVIDERS.md) | The provider seam: what a backend must implement, which capabilities are optional and why. |
+| [NAMING.md](./NAMING.md) | Why this is called pixelkiln, and what the shortlist was. |
+
+Consumers of this library keep their own project-side notes: heybud-admin's
+`.kiro/steering/common-tasks.md` covers generating a badge variant end to end,
+and super-disc-golf's `.kiro/steering/pixellab-recipes.md` covers the game's
+sprite tiers.
