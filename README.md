@@ -274,6 +274,28 @@ quietly breach the rate limit.
 For `map`, `fetch` must run in the same session as `submit`. `poll` marks
 entries past the window as failed rather than letting them look pending forever.
 
+## Performance
+
+Measured on a 111-asset project against a 363-object account:
+
+| Operation | Time | Notes |
+|---|---|---|
+| `plan` | 0.26 s | hashes every local file; no network |
+| `salvage --dry-run` | 2.6 s | dominated by the paginated listing |
+| `adopt` (cold) | 4.4 s | downloads and hashes all 363 objects |
+| `adopt` (warm) | **2.1 s** | reuses 354 cached hashes, downloads 9 |
+
+`adopt` and `salvage` identify assets by hashing image bytes, which otherwise
+means re-downloading the whole account on every run — cost that grows with the
+account rather than with the work. Generated objects are immutable, so
+`pixelkiln.cache.json` stores `objectId → sha256` and each hash is computed
+once. It is pure derived state: **add it to `.gitignore`**; deleting it costs
+one slow run.
+
+`fetch` downloads concurrently (8 at a time). Lock writes are serialized per
+path, because parallel workers sharing one `<path>.tmp` raced — one worker's
+rename moved the file out from under another's.
+
 ## Gotchas encoded in the tool
 
 - **`size` and `styleImages` are mutually exclusive.** When style images are

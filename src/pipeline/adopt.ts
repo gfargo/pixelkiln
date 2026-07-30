@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { requireList, type Provider, type RemoteAsset } from "../provider.ts"
 import { sha256 } from "../hash.ts"
+import { loadCache, saveCache, pruneCache, cachePathFor, type HashCache } from "../cache.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
 
@@ -29,10 +30,14 @@ export async function adopt(
   specs: ResolvedSpec[],
   lock: Lock,
   lockPath: string,
-  opts: { onProgress?: (msg: string) => void; concurrency?: number } = {},
+  opts: { onProgress?: (msg: string) => void; concurrency?: number; noCache?: boolean } = {},
 ): Promise<AdoptResult> {
   const log = opts.onProgress ?? (() => {})
   const concurrency = opts.concurrency ?? 8
+  // Generated objects are immutable, so a hash computed once stays valid.
+  const cachePath = cachePathFor(lockPath)
+  const cache: HashCache = opts.noCache ? { version: 1, hashes: {} } : await loadCache(cachePath)
+  let cacheHits = 0
 
   // 1. Hash every local file the manifest expects to exist.
   const localByHash = new Map<string, ResolvedSpec[]>()
@@ -66,11 +71,16 @@ export async function adopt(
       const url = obj.previewUrl
       if (!url || obj.status !== "completed") continue
 
-      let hash: string
-      try {
-        hash = sha256(await provider.download(url))
-      } catch {
-        continue
+      let hash: string | undefined = cache.hashes[obj.id]
+      if (hash) {
+        cacheHits++
+      } else {
+        try {
+          hash = sha256(await provider.download(url))
+        } catch {
+          continue
+        }
+        cache.hashes[obj.id] = hash
       }
 
       const hits = localByHash.get(hash)
@@ -117,6 +127,12 @@ export async function adopt(
 
   await Promise.all(Array.from({ length: Math.min(concurrency, remote.length || 1) }, worker))
   await saveLock(lockPath, lock)
+
+  if (!opts.noCache) {
+    pruneCache(cache, new Set(remote.map((o) => o.id)))
+    await saveCache(cachePath, cache)
+    if (cacheHits) log(`  reused ${cacheHits} cached hash(es); downloaded ${remote.length - cacheHits}`)
+  }
 
   return {
     scanned: remote.length,

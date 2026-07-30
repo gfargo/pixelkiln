@@ -10,7 +10,7 @@ import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { fetchAssets, pushTags } from "../src/pipeline/fetch.ts"
 import { adopt } from "../src/pipeline/adopt.ts"
-import { loadLock } from "../src/lock.ts"
+import { loadLock, saveLock } from "../src/lock.ts"
 import { sha256 } from "../src/hash.ts"
 import { lockKey, primaryOutput, type Lock } from "../src/types.ts"
 
@@ -334,5 +334,27 @@ describe("adopt", () => {
     await expect(adopt(provider, specs, emptyLock(), lockPath)).rejects.toThrow(
       /does not support listing/i,
     )
+  })
+})
+
+describe("concurrent lock writes", () => {
+  // Regression: parallel fetch workers each save after their own upsert. With
+  // a shared `<path>.tmp` they raced — one worker's rename moved the file out
+  // from under another's, failing with ENOENT and losing that write.
+  it("survives many concurrent saves without losing one", async () => {
+    const lock = emptyLock()
+    const saves: Promise<void>[] = []
+    for (let i = 0; i < 40; i++) {
+      lock.entries[`base/a${i}`] = {
+        styleId: "base", assetId: `a${i}`, specHash: "h", generator: "map", prompt: "p",
+        width: 32, height: 32, jobId: null, reviewObjectId: null, objectId: null,
+        candidateIndex: null, status: "downloaded", error: null, sourceUrl: null,
+        outputs: [], submittedAt: null, downloadedAt: null, cost: 1, provider: "fake",
+      }
+      saves.push(saveLock(lockPath, lock))
+    }
+    await Promise.all(saves)
+    const reloaded = await loadLock(lockPath)
+    expect(Object.keys(reloaded.entries)).toHaveLength(40)
   })
 })

@@ -279,59 +279,24 @@ describe("manifest validation", () => {
   })
 })
 
-describe("lock v1 → v2 migration", () => {
-  const v1Entry = {
+describe("lockfile schema", () => {
+  const entry = {
     styleId: "base", assetId: "anvil", specHash: "h", generator: "1dir", prompt: "p",
     width: 64, height: 64, jobId: "j", reviewObjectId: null, objectId: "o",
     candidateIndex: null, status: "downloaded", error: null, sourceUrl: "u",
     submittedAt: null, downloadedAt: null, cost: 40,
   }
 
-  // A committed lockfile is the record of what has been paid for. If a version
-  // bump made one unreadable, every tracked asset would present as missing and
-  // plan would offer to regenerate the lot.
-  it("folds v1's single file into outputs[]", () => {
-    const lock = parseLock({
-      version: 1,
-      entries: { "base/anvil": { ...v1Entry, file: "/out/anvil.png", fileSha256: "abc" } },
-    })
-    expect(lock.version).toBe(2)
-    expect(lock.entries["base/anvil"]!.outputs).toEqual([{ path: "/out/anvil.png", sha256: "abc" }])
+  // v2 is the only schema. A v1 file would mean corruption or a hand-edit,
+  // not a legacy artifact, so it should fail rather than be reinterpreted.
+  it("rejects a v1 lockfile instead of silently migrating it", () => {
+    expect(() =>
+      parseLock({ version: 1, entries: { "base/anvil": { ...entry, file: "/a.png", fileSha256: "x" } } }),
+    ).toThrow(/not valid v2/)
   })
 
-  it("preserves everything else about the entry", () => {
-    const lock = parseLock({
-      version: 1,
-      entries: { "base/anvil": { ...v1Entry, file: "/out/anvil.png", fileSha256: "abc" } },
-    })
-    const e = lock.entries["base/anvil"]!
-    expect(e.objectId).toBe("o")
-    expect(e.cost).toBe(40)
-    expect(e.status).toBe("downloaded")
-    expect(e.provider).toBe("pixellab") // defaulted for pre-provider entries
-  })
-
-  // Without a hash the file cannot be integrity-checked, so carrying it over
-  // would mean silently trusting bytes we never verified.
-  it("drops a v1 file that has no recorded hash", () => {
-    const lock = parseLock({
-      version: 1,
-      entries: { "base/anvil": { ...v1Entry, file: "/out/anvil.png", fileSha256: null } },
-    })
-    expect(lock.entries["base/anvil"]!.outputs).toEqual([])
-  })
-
-  it("passes a v2 lockfile through untouched", () => {
-    const outputs = [
-      { path: "/a.png", sha256: "1" },
-      { path: "/b.tres", sha256: "2", role: "spriteframes" },
-    ]
-    const lock = parseLock({ version: 2, entries: { "base/hero": { ...v1Entry, outputs } } })
-    expect(lock.entries["base/hero"]!.outputs).toEqual(outputs)
-  })
-
-  it("rejects something that is neither version", () => {
-    expect(() => parseLock({ version: 7, entries: {} })).toThrow(/neither v2 nor v1/)
+  it("rejects an unknown version", () => {
+    expect(() => parseLock({ version: 7, entries: {} })).toThrow(/not valid v2/)
   })
 
   it("supports multi-output entries, which is the point of v2", () => {
@@ -339,7 +304,7 @@ describe("lock v1 → v2 migration", () => {
       version: 2,
       entries: {
         "base/hero": {
-          ...v1Entry,
+          ...entry,
           outputs: [
             { path: "/idle_s.png", sha256: "1" },
             { path: "/walk_s.png", sha256: "2" },
@@ -353,5 +318,10 @@ describe("lock v1 → v2 migration", () => {
     expect(e.outputs).toHaveLength(4)
     expect(primaryOutput(e)!.path).toBe("/idle_s.png")
     expect(e.outputs.filter((o) => o.role)).toHaveLength(2)
+  })
+
+  it("defaults provider so an entry written before providers still loads", () => {
+    const lock = parseLock({ version: 2, entries: { "base/anvil": { ...entry, outputs: [] } } })
+    expect(lock.entries["base/anvil"]!.provider).toBe("pixellab")
   })
 })

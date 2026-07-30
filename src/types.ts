@@ -173,20 +173,9 @@ export const LockEntrySchema = z.object({
   provider: z.string().default("pixellab"),
 })
 
-/** Shape of a v1 entry, for migration only. v1 had exactly one output file. */
-const LockEntryV1Schema = LockEntrySchema.omit({ outputs: true }).extend({
-  file: z.string().nullable().default(null),
-  fileSha256: z.string().nullable().default(null),
-})
-
 export const LockSchema = z.object({
   version: z.literal(2),
   entries: z.record(LockEntrySchema),
-})
-
-const LockV1Schema = z.object({
-  version: z.literal(1),
-  entries: z.record(LockEntryV1Schema),
 })
 
 export type LockEntry = z.infer<typeof LockEntrySchema>
@@ -194,34 +183,18 @@ export type Lock = z.infer<typeof LockSchema>
 export type LockOutput = LockEntry["outputs"][number]
 
 /**
- * Reads either schema version and returns v2.
+ * Parses a lockfile, rejecting anything that is not v2.
  *
- * Committed lockfiles are the record of what has been paid for, so a version
- * bump must never make one unreadable — failing to parse would present every
- * tracked asset as missing and offer to regenerate the lot.
+ * There is deliberately no migration path. Both consuming projects were
+ * onboarded after v2 landed, so a v1 file would be a corruption or a
+ * hand-edit rather than a legacy artifact — better to fail loudly than to
+ * quietly reinterpret it.
  */
 export function parseLock(raw: unknown): Lock {
-  const v2 = LockSchema.safeParse(raw)
-  if (v2.success) return v2.data
-
-  const v1 = LockV1Schema.safeParse(raw)
-  if (v1.success) {
-    const entries: Lock["entries"] = {}
-    for (const [key, entry] of Object.entries(v1.data.entries)) {
-      const { file, fileSha256, ...rest } = entry
-      entries[key] = {
-        ...rest,
-        // A file with no recorded hash cannot be integrity-checked, so it is
-        // not carried across as an output; plan will report it as untracked
-        // rather than silently trusting it.
-        outputs: file && fileSha256 ? [{ path: file, sha256: fileSha256 }] : [],
-      }
-    }
-    return { version: 2, entries }
-  }
-
+  const parsed = LockSchema.safeParse(raw)
+  if (parsed.success) return parsed.data
   throw new Error(
-    `Lockfile matches neither v2 nor v1:\n${v2.error.issues
+    `Lockfile is not valid v2:\n${parsed.error.issues
       .slice(0, 5)
       .map((i) => `  ${i.path.join(".")}: ${i.message}`)
       .join("\n")}`,

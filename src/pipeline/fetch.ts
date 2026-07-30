@@ -24,52 +24,64 @@ export async function fetchAssets(
   specs: ResolvedSpec[],
   lock: Lock,
   lockPath: string,
-  opts: { onProgress?: (msg: string) => void } = {},
+  opts: { onProgress?: (msg: string) => void; concurrency?: number } = {},
 ): Promise<FetchResult> {
   const log = opts.onProgress ?? (() => {})
   const result: FetchResult = { downloaded: 0, skipped: 0, failed: 0 }
   const specByKey = new Map(specs.map((s) => [lockKey(s.styleId, s.assetId), s]))
 
-  for (const [key, entry] of Object.entries(lock.entries)) {
-    if (entry.status !== "selected") continue
+  // Downloads are independent and IO-bound, so they run concurrently. The
+  // lockfile is still written after each one, keeping an interrupted run
+  // recoverable.
+  const pending = Object.entries(lock.entries).filter(([, e]) => e.status === "selected")
+  const concurrency = Math.min(opts.concurrency ?? 8, Math.max(1, pending.length))
+  let cursor = 0
 
-    const spec = specByKey.get(key)
-    if (!spec) {
-      // In the lockfile but no longer in the manifest — the asset was removed.
-      log(`  skip    ${key} (not in current manifest)`)
-      result.skipped++
-      continue
-    }
-    if (!entry.sourceUrl) {
-      upsert(lock, key, { status: "failed", error: "no source URL to download" })
-      result.failed++
-      continue
-    }
+  async function worker(): Promise<void> {
+    for (;;) {
+      const next = pending[cursor++]
+      if (!next) return
+      const [key, entry] = next
 
-    try {
-      const buf = await provider.download(entry.sourceUrl)
-      if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
-        throw new Error(`response was not a PNG (${buf.length} bytes)`)
+      const spec = specByKey.get(key)
+      if (!spec) {
+        // In the lockfile but no longer in the manifest — the asset was removed.
+        log(`  skip    ${key} (not in current manifest)`)
+        result.skipped++
+        continue
       }
-      await mkdir(path.dirname(spec.outFile), { recursive: true })
-      await writeFile(spec.outFile, buf)
-      upsert(lock, key, {
-        status: "downloaded",
-        provider: provider.id,
-        outputs: [{ path: spec.outFile, sha256: sha256(buf) }],
-        downloadedAt: new Date().toISOString(),
-      })
-      result.downloaded++
-      log(`  wrote   ${path.relative(process.cwd(), spec.outFile)}`)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      upsert(lock, key, { status: "failed", error: `download failed: ${message}` })
-      result.failed++
-      log(`  FAILED  ${key}: ${message}`)
+      if (!entry.sourceUrl) {
+        upsert(lock, key, { status: "failed", error: "no source URL to download" })
+        result.failed++
+        continue
+      }
+
+      try {
+        const buf = await provider.download(entry.sourceUrl)
+        if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
+          throw new Error(`response was not a PNG (${buf.length} bytes)`)
+        }
+        await mkdir(path.dirname(spec.outFile), { recursive: true })
+        await writeFile(spec.outFile, buf)
+        upsert(lock, key, {
+          status: "downloaded",
+          provider: provider.id,
+          outputs: [{ path: spec.outFile, sha256: sha256(buf) }],
+          downloadedAt: new Date().toISOString(),
+        })
+        result.downloaded++
+        log(`  wrote   ${path.relative(process.cwd(), spec.outFile)}`)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        upsert(lock, key, { status: "failed", error: `download failed: ${message}` })
+        result.failed++
+        log(`  FAILED  ${key}: ${message}`)
+      }
+      await saveLock(lockPath, lock)
     }
-    await saveLock(lockPath, lock)
   }
 
+  await Promise.all(Array.from({ length: concurrency }, worker))
   await saveLock(lockPath, lock)
   return result
 }

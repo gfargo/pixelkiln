@@ -19,8 +19,32 @@ export async function loadLock(path: string): Promise<Lock> {
   }
 }
 
+/**
+ * Serializes saves per path.
+ *
+ * Concurrent stages (parallel downloads in `fetch`) each save after their own
+ * upsert. Without this they race on the shared `<path>.tmp`: one worker's
+ * rename moves the file out from under another's, which fails with ENOENT and
+ * loses that write. Queuing keeps the atomic write-then-rename intact and
+ * guarantees the last save reflects the latest in-memory state.
+ */
+const saveQueues = new Map<string, Promise<void>>()
+
 /** Atomic write — a crash mid-save must not leave a truncated lockfile. */
-export async function saveLock(path: string, lock: Lock): Promise<void> {
+export function saveLock(path: string, lock: Lock): Promise<void> {
+  const previous = saveQueues.get(path) ?? Promise.resolve()
+  const next = previous
+    .catch(() => {}) // one failed save must not poison every later one
+    .then(() => writeLockNow(path, lock))
+  saveQueues.set(path, next)
+  // Drop the queue entry once drained so long-lived processes don't retain it.
+  next.finally(() => {
+    if (saveQueues.get(path) === next) saveQueues.delete(path)
+  })
+  return next
+}
+
+async function writeLockNow(path: string, lock: Lock): Promise<void> {
   const sorted: Lock["entries"] = {}
   for (const key of Object.keys(lock.entries).sort()) {
     sorted[key] = lock.entries[key]!

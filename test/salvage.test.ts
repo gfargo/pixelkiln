@@ -43,7 +43,7 @@ describe("idFromPrompt", () => {
 describe("loadClaims", () => {
   async function lockWith(name: string, entries: Record<string, unknown>) {
     const p = path.join(dir, name)
-    await writeFile(p, JSON.stringify({ version: 1, entries }))
+    await writeFile(p, JSON.stringify({ version: 2, entries }))
     return p
   }
 
@@ -68,9 +68,9 @@ describe("loadClaims", () => {
     await expect(loadClaims([path.join(dir, "nope.json")])).rejects.toThrow(/not found/)
   })
 
-  it("throws on a malformed claim file", async () => {
+  it("throws on a claim file that is not v2", async () => {
     const p = path.join(dir, "bad.json")
-    await writeFile(p, JSON.stringify({ nope: true }))
+    await writeFile(p, JSON.stringify({ version: 1, entries: {} }))
     await expect(loadClaims([p])).rejects.toThrow(/malformed/)
   })
 })
