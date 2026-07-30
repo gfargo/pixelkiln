@@ -1,18 +1,35 @@
 import { z } from "zod"
 
 /**
- * A "generator" is which PixelLab endpoint produces the asset. They differ in
- * ways that matter to the pipeline, not just cosmetically:
+ * Which PixelLab endpoint produces the asset. The choice is mostly about cost,
+ * and the gap is enormous — all figures measured against a live account.
  *
- *   1dir  POST /create-1-direction-object
- *         Square only (one `size`). Objects PERSIST indefinitely and keep a
- *         stable public URL. At size <= 170 the call returns multiple candidate
- *         frames for the same fixed cost, which then need a selection step.
+ *   map   POST /map-objects — THE DEFAULT.
+ *         A flat 1 generation at any size. Purpose-built for standalone props
+ *         with transparent backgrounds, which is what an icon or a prop is.
+ *         Arbitrary width x height. Returns exactly one result, so there is no
+ *         selection step: if you dislike it, re-roll for 1 more.
  *
- *   map   POST /map-objects
- *         Arbitrary width x height. Returns exactly one result, no selection
- *         step. Objects AUTO-DELETE AFTER 8 HOURS, so the download is not
- *         resumable later — `fetch` must run the same day as `submit`.
+ *   1dir  POST /create-1-direction-object — 20-40 generations.
+ *         The single-facing sibling of create-8-direction-object, meant for
+ *         objects you may later want rotations or animations of. Square only.
+ *         Returns 4-64 candidates for its one fixed price, which is genuinely
+ *         useful when you want to compare options side by side — but at 40x the
+ *         cost of a map object, re-rolling a map object forty times is the same
+ *         money. Reach for this when you need rotations, or when the extra
+ *         rendering detail is worth 40x.
+ *
+ * Rule of thumb: if the asset is a standalone image and you are not going to
+ * animate or rotate it, `map` is the right call. Generating 65 icons costs 65
+ * generations that way and 2,600 the other.
+ *
+ * Not yet implemented, but measured and worth knowing (see README):
+ *   POST /create-image-pixflux also costs 1 generation, returns the image
+ *   INLINE with no polling, and accepts `color_image` — a forced palette that
+ *   constrains output to exact hex values. Verified: a four-colour Game Boy
+ *   swatch produced output containing precisely those four colours. The same
+ *   parameter on /map-objects returns a 500, so the palette lock is
+ *   pixflux-only. Its rendering is flatter than 1dir's.
  */
 export const GeneratorSchema = z.enum(["1dir", "map"])
 export type Generator = z.infer<typeof GeneratorSchema>
@@ -44,7 +61,7 @@ export function candidateCount(size: number): number {
 export function generationCost(
   width: number,
   height: number,
-  generator: Generator = "1dir",
+  generator: Generator = "map",
 ): number {
   if (generator === "map") return 1
   const px = width * height
@@ -60,7 +77,9 @@ const StyleImageSchema = z.object({
 
 export const StyleSchema = z
   .object({
-    generator: GeneratorSchema.default("1dir"),
+    // `map` is the default because it is 20-40x cheaper and correct for any
+    // asset that is not going to be rotated or animated.
+    generator: GeneratorSchema.default("map"),
     /** Square edge length for `1dir`. 32-256. */
     size: z.number().int().min(32).max(256).optional(),
     view: z.string().optional(),

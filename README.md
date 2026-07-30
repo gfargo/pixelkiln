@@ -230,150 +230,80 @@ Keep reference images in their own directory rather than pointing at live asset
 files — a style reference is part of the spec hash, so editing a badge that
 doubles as a reference invalidates every asset in that style.
 
-## Economics
+## Economics — pick the right generator first
 
-The two generators are priced completely differently, and the gap decides which
-one to reach for. All figures measured against a live account.
+This is the single biggest cost decision, and the gap is 40x. All figures
+measured against a live account, not inferred from docs.
 
-**`1dir`** — fixed per call, does not scale with candidates returned:
+| Generator | Cost | Candidates | Shape | Async? |
+|---|---|---|---|---|
+| **`map`** (default) | **1**, any size | 1 | arbitrary W×H | job + poll |
+| `1dir` | 20–40 by canvas tier | 4–64 | square only | job + poll |
 
-| Canvas | Generations | Candidates returned |
-|---|---|---|
-| ≤1024 px (e.g. 32×32) | 20 | 64 (size ≤42) |
-| ≤2048 px | 25 | 16 (size ≤85) |
-| larger (e.g. 64×64 = 4096 px) | 40 | 4 (size ≤170), 1 above |
+**`map` is the default and usually correct.** `POST /map-objects` exists for
+standalone props with transparent backgrounds — which is what an icon, a badge
+or a prop is. A flat 1 generation regardless of size.
 
-**`map`** — a flat **1 generation at any size**, returning a single result.
-Verified: a 32×36 and a 64×96 map object each cost exactly 1.
+**`1dir` is the single-facing sibling of `create-8-direction-object`**, meant
+for objects you may later want rotations or animations of. Its price is by
+canvas area: ≤1024 px = 20, ≤2048 px = 25, larger = 40. A 64×64 icon therefore
+costs 40.
 
-So the choice is not "square vs non-square" but **variety vs volume**:
+### The candidates are free, and that is the trap
 
-- `1dir` buys 4–64 candidates for one price. Worth it when you want to *pick* —
-  a badge set, a hero prop, anything where the look matters more than the count.
-- `map` is ~20–40× cheaper and takes arbitrary dimensions. Worth it for volume,
-  and for anything non-square. **Forty re-rolls of a map object cost the same as
-  one `1dir` call**, so iterating one-at-a-time is the cheap strategy here, not
-  the expensive one.
+`1dir` returns multiple candidates for its one fixed price, derived from size —
+you cannot ask for fewer to pay less:
 
-A 111-asset non-square set costs ~111 generations via `map`. The same set via
-`1dir` would be ~3,500 and could not express the dimensions at all.
+| size | candidates |
+|---|---|
+| ≤42 | 64 |
+| ≤85 | 16 |
+| ≤170 | 4 |
+| >170 | 1 |
 
-Limits: submissions must be **>2s apart**, and concurrent background jobs are
-capped by tier (1: 8, 2: 10, 3: 20). `submit` enforces both — a global spacing
-gate plus real in-flight tracking, rather than parallel workers that would
-quietly breach the rate limit.
+So the candidates are not the expense; the generator is. Generating *smaller*
+gives you *more* candidates for *less* money, which is counterintuitive but true.
 
-## Generator differences that matter
-
-| | `1dir` | `map` |
-|---|---|---|
-| Shape | square only | arbitrary width × height |
-| Retention | **permanent** | **deleted after 8 hours** |
-| Candidates | many (free) | exactly one |
-| Selection step | yes | no |
-
-For `map`, `fetch` must run in the same session as `submit`. `poll` marks
-entries past the window as failed rather than letting them look pending forever.
-
-## Per-style prompt overrides
-
-A style can need different *wording*, not just different styling. `promptByStyle`
-replaces an asset's subject text for one style, leaving every other style's
-already-generated art untouched:
-
-```jsonc
-"variety_3": {
-  "prompt": "three different colored cannabis leaves side by side, green purple gold",
-  "promptByStyle": {
-    "gameboy": "three cannabis leaves side by side, each a distinctly different shape"
-  }
-}
-```
-
-The monochrome case is the clear one. Measured across two themes on the same 65
-badges, the two failure modes are opposite:
-
-| Theme | Fails on | Fix |
-|---|---|---|
-| accent-over-dark (neon) | **material identity** — a metal camera renders as metal, a chocolate bar stays brown | style reference images |
-| monochrome (Game Boy) | **prompts that name colours** — "colorful rainbow", "green purple gold" survive into the output | `promptByStyle` |
-
-A monochrome palette defeats material identity outright: the same chocolate bar
-that was neon's worst outlier came out clean green with no reference images at
-all. What it cannot defeat is a prompt that explicitly asks for several colours.
-
-Overriding changes the spec hash for that style only, so the other styles stay
-`ok` rather than going stale.
-
-## Deciding whether a variant is working
-
-The expensive mistake is generating a full variant set before knowing the style
-carries. `audit` turns that from an eyeball judgement into a number.
-
-```bash
-pixelkiln audit --style heybud-neon      # offline, costs nothing
-```
-
-It extracts each asset's palette, compares it to the style's reference, and
-ranks the most divergent first:
+And the value of "pick from 16" collapses once you notice that **forty re-rolls
+of a map object cost the same as one `1dir` call**. Unless you specifically want
+to compare options side by side, re-rolling is the cheaper loop.
 
 ```
-  heybud-premium — 65 asset(s) measured
-  reference palette: style images  #fcf6e5 #131229 #d7d6d6 #e9e9e9 #1d1a22
-
-  most off-style first:
-    activity_nature    dist  115.1  colours  58  transparent 80%  #315119 ← outlier
-    munchies_healthy   dist   97.1  colours  84  transparent 68%  #f68124 ← outlier
-    variety_3          dist   93.0  colours  44  transparent 67%  #829958 ← outlier
+65 icons via map    →     65 generations
+65 icons via 1dir   →  2,600 generations
 ```
 
-Those three are the green tree, the orange carrot and the green leaves — the
-naturalistic subjects, against a cream-and-charcoal reference. That is the
-signal: **the style is not failing at random, it is failing on subjects with a
-strong inherent colour.** Measured on a real neon trial, prose alone carried
-flames, a compass and an eye but left a chocolate bar brown and a camera grey.
+Reach for `1dir` when you need rotations or animation, or when the extra
+rendering detail is genuinely worth 40x. Otherwise use `map`.
 
-The workflow this supports:
+### Nothing here is chosen by an LLM
 
-1. Generate a **representative spread** — a flat symbol, a detailed object, an
-   isometric one, a character. Eight is plenty.
-2. `audit` the trial. Read the outliers by *category*, not by count.
-3. If the failures share a trait (strong inherent colour, high detail), prose
-   is not enough — pick the best results, save them under `art/style-refs/`,
-   and list them as `styleImages`.
-4. Re-audit. When the outlier list stops being explainable, generate the rest.
+Candidate selection is a palette-distance calculation — RGB arithmetic against
+the style's reference images. Deterministic, no model, no inference cost. The
+contact sheet exists so a human can override it, not so a model can decide.
 
-Reference palette comes from `styleImages` when set, since those are the
-declared intent. Without them the set is scored against its own average, each
-asset leave-one-out — an asset included in its own reference matches perfectly,
-which would hide exactly the one worth finding. That mode surfaces outliers but
-cannot tell you the whole set has drifted together.
+### Limits
 
-Other columns are cheap smells: **transparent** near 0% means a background got
-baked in; a high **colours** count on a small canvas means photo-like rendering
-rather than pixel art.
+Submissions must be **>2s apart**, and concurrent background jobs are capped by
+tier (1: 8, 2: 10, 3: 20). `submit` enforces both — a global spacing gate plus
+real in-flight tracking, rather than parallel workers that would quietly breach
+the rate limit.
 
-## Performance
+### Measured but not implemented: forced palettes
 
-Measured on a 111-asset project against a 363-object account:
+`POST /create-image-pixflux` also costs **1 generation**, returns the image
+**inline with no polling**, and accepts `color_image` — a forced palette that
+constrains output to exact hex values.
 
-| Operation | Time | Notes |
-|---|---|---|
-| `plan` | 0.26 s | hashes every local file; no network |
-| `salvage --dry-run` | 2.6 s | dominated by the paginated listing |
-| `adopt` (cold) | 4.4 s | downloads and hashes all 363 objects |
-| `adopt` (warm) | **2.1 s** | reuses 354 cached hashes, downloads 9 |
+Verified: a four-colour Game Boy swatch produced output containing precisely
+`#0f380f #306230 #8bac0f #9bbc0f` and nothing else. That is a hard guarantee
+where a prompt is only a request, which makes it the obvious tool for a
+monochrome style. The same parameter on `/map-objects` returns a 500, so the
+palette lock is pixflux-only.
 
-`adopt` and `salvage` identify assets by hashing image bytes, which otherwise
-means re-downloading the whole account on every run — cost that grows with the
-account rather than with the work. Generated objects are immutable, so
-`pixelkiln.cache.json` stores `objectId → sha256` and each hash is computed
-once. It is pure derived state: **add it to `.gitignore`**; deleting it costs
-one slow run.
-
-`fetch` downloads concurrently (8 at a time). Lock writes are serialized per
-path, because parallel workers sharing one `<path>.tmp` raced — one worker's
-rename moved the file out from under another's.
+Two reasons it is not wired in yet: its rendering is flatter than `1dir`'s, and
+being synchronous it does not fit the `submit → poll → fetch` state machine
+without changes.
 
 ## Gotchas encoded in the tool
 
@@ -383,6 +313,13 @@ rename moved the file out from under another's.
   and a different candidate count.
 - **`select-frames` returns `created_object_ids`.** The review parent survives
   until emptied, so recording the parent id gives you a transient pointer.
+- **`1dir` and `map` are priced 20-40x apart.** The default is `map`; only
+  reach for `1dir` when you need rotations or animation.
+- **`color_image` (forced palette) works on `create-image-pixflux`, not on
+  `map-objects`.** The latter returns a 500 "cannot identify image file"
+  regardless of payload shape.
+- **A failed generation is not billed.** Two failed forced-palette attempts
+  moved the balance by zero, so probing an unfamiliar parameter is free.
 - **One account is shared across projects.** `adopt` reports unmatched remote
   objects but deliberately does not offer to bulk-delete them; run `adopt` from
   every project before deciding anything is junk.

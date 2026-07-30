@@ -21,7 +21,7 @@
                   "1dir",
                   "map"
                 ],
-                "default": "1dir"
+                "default": "map"
               },
               "size": {
                 "type": "integer",

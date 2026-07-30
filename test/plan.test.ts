@@ -53,8 +53,10 @@ describe("cost model", () => {
     expect(generationCost(400, 400, "map")).toBe(1)
   })
 
-  it("defaults to 1dir pricing when no generator is given", () => {
-    expect(generationCost(64, 64)).toBe(40)
+  // The default is `map` because it is the right choice for any asset that is
+  // not going to be rotated or animated, and 20-40x cheaper.
+  it("defaults to map pricing when no generator is given", () => {
+    expect(generationCost(64, 64)).toBe(1)
   })
 
   it("returns more candidates the smaller the canvas", () => {
@@ -68,6 +70,18 @@ describe("cost model", () => {
 })
 
 describe("plan cost by generator", () => {
+  it("uses map when a style does not name a generator", async () => {
+    const manifest = {
+      name: "t",
+      styles: { base: { outDir: "out" } },
+      assets: { a: { prompt: "an anvil" } },
+    }
+    await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
+    const specs = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+    expect(specs[0]!.generator).toBe("map")
+    expect(specs[0]!.cost).toBe(1)
+  })
+
   it("prices a map-generator manifest at 1 per asset", async () => {
     const manifest = {
       name: "t",
