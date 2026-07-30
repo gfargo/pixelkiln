@@ -275,5 +275,17 @@ curl -s -H "Authorization: Bearer $PIXELLAB_API_KEY" \
   https://api.pixellab.ai/v2/balance
 ```
 
+The count lives at **`subscription.generations`**, not at the top level — a
+probe reading `.generations` gets `undefined` and silently reports every cost as
+`NaN` rather than failing:
+
+```jsonc
+{ "credits":      { "type": "usd", "usd": 0.0 },
+  "subscription": { "type": "generations", "status": "active",
+                    "plan": "Tier 2: Pixel Artisan",
+                    "generations": 1281.0, "total": 5000.0 } }
+```
+
 Take a balance reading, make one call, wait a few seconds, read again. Prefer
-the response's `usage` field where present.
+the response's `usage` field where present — it is inline, exact, and immune to
+the billing lag.
