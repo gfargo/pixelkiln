@@ -86,6 +86,7 @@ export async function runSalvage(
 
                 ctx.manifest.assets[assetId] = {
                   prompt: orphan.prompt,
+                  promptByStyle: {},
                   category: "_salvaged",
                   file: rel,
                   tags: ["salvaged"],

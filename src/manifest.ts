@@ -94,7 +94,10 @@ export async function resolveSpecs(
         size = Math.max(width, height)
       }
 
-      const prompt = [style.promptPrefix, asset.prompt, style.promptSuffix]
+      // A per-style override replaces the subject wording, not the style
+      // wrapping — prefix and suffix still apply.
+      const subject = asset.promptByStyle[styleId] ?? asset.prompt
+      const prompt = [style.promptPrefix, subject, style.promptSuffix]
         .map((p) => p.trim())
         .filter(Boolean)
         .join(", ")

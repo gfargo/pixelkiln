@@ -275,6 +275,36 @@ quietly breach the rate limit.
 For `map`, `fetch` must run in the same session as `submit`. `poll` marks
 entries past the window as failed rather than letting them look pending forever.
 
+## Per-style prompt overrides
+
+A style can need different *wording*, not just different styling. `promptByStyle`
+replaces an asset's subject text for one style, leaving every other style's
+already-generated art untouched:
+
+```jsonc
+"variety_3": {
+  "prompt": "three different colored cannabis leaves side by side, green purple gold",
+  "promptByStyle": {
+    "gameboy": "three cannabis leaves side by side, each a distinctly different shape"
+  }
+}
+```
+
+The monochrome case is the clear one. Measured across two themes on the same 65
+badges, the two failure modes are opposite:
+
+| Theme | Fails on | Fix |
+|---|---|---|
+| accent-over-dark (neon) | **material identity** — a metal camera renders as metal, a chocolate bar stays brown | style reference images |
+| monochrome (Game Boy) | **prompts that name colours** — "colorful rainbow", "green purple gold" survive into the output | `promptByStyle` |
+
+A monochrome palette defeats material identity outright: the same chocolate bar
+that was neon's worst outlier came out clean green with no reference images at
+all. What it cannot defeat is a prompt that explicitly asks for several colours.
+
+Overriding changes the spec hash for that style only, so the other styles stay
+`ok` rather than going stale.
+
 ## Deciding whether a variant is working
 
 The expensive mistake is generating a full variant set before knowing the style

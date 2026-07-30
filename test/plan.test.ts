@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest"
-import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises"
+import { mkdtemp, writeFile, mkdir, rm, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
@@ -323,5 +323,65 @@ describe("lockfile schema", () => {
   it("defaults provider so an entry written before providers still loads", () => {
     const lock = parseLock({ version: 2, entries: { "base/anvil": { ...entry, outputs: [] } } })
     expect(lock.entries["base/anvil"]!.provider).toBe("pixellab")
+  })
+})
+
+describe("per-style prompt overrides", () => {
+  async function withOverride() {
+    const manifest = {
+      name: "t",
+      styles: {
+        colour: { generator: "1dir", size: 64, outDir: "out/colour", promptSuffix: "vivid" },
+        mono: { generator: "1dir", size: 64, outDir: "out/mono", promptSuffix: "monochrome" },
+      },
+      assets: {
+        leaves: {
+          prompt: "three leaves, green purple gold",
+          promptByStyle: { mono: "three leaves, varied shapes" },
+        },
+        plain: { prompt: "an anvil" },
+      },
+    }
+    await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
+    return resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+  }
+
+  // The whole point: a monochrome style needs the colour words gone, while the
+  // colour style needs them kept.
+  it("substitutes the subject for the matching style only", async () => {
+    const specs = await withOverride()
+    const mono = specs.find((s) => s.styleId === "mono" && s.assetId === "leaves")!
+    const colour = specs.find((s) => s.styleId === "colour" && s.assetId === "leaves")!
+    expect(mono.prompt).toContain("varied shapes")
+    expect(mono.prompt).not.toContain("green purple gold")
+    expect(colour.prompt).toContain("green purple gold")
+  })
+
+  it("still applies the style's own prefix and suffix", async () => {
+    const specs = await withOverride()
+    const mono = specs.find((s) => s.styleId === "mono" && s.assetId === "leaves")!
+    expect(mono.prompt).toContain("monochrome")
+  })
+
+  it("leaves assets without an override untouched", async () => {
+    const specs = await withOverride()
+    for (const s of specs.filter((x) => x.assetId === "plain")) {
+      expect(s.prompt).toContain("an anvil")
+    }
+  })
+
+  // Overriding must invalidate only the style it applies to, so the other
+  // style's already-paid-for art is not marked stale.
+  it("changes the spec hash for the overridden style alone", async () => {
+    const before = await withOverride()
+    const manifest = JSON.parse(await readFile(path.join(dir, "m.json"), "utf8"))
+    manifest.assets.leaves.promptByStyle.mono = "three leaves, different silhouettes"
+    await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
+    const after = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+
+    const hash = (specs: typeof before, style: string) =>
+      specs.find((s) => s.styleId === style && s.assetId === "leaves")!.specHash
+    expect(hash(after, "mono")).not.toBe(hash(before, "mono"))
+    expect(hash(after, "colour")).toBe(hash(before, "colour"))
   })
 })

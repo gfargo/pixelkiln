@@ -97,6 +97,7 @@ export function buildManifest(
   for (const asset of scanned) {
     assets[asset.id] = {
       prompt: "",
+      promptByStyle: {},
       category: asset.category || undefined,
       file: asset.file,
       tags: [],

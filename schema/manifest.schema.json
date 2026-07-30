@@ -126,6 +126,13 @@
                   "type": "string"
                 },
                 "default": []
+              },
+              "promptByStyle": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "default": {}
               }
             },
             "required": [

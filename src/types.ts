@@ -99,6 +99,17 @@ export const AssetSchema = z
     tags: z.array(z.string()).default([]),
     /** Restrict this asset to specific styles. Empty means all styles. */
     styles: z.array(z.string()).default([]),
+    /**
+     * Per-style replacement for `prompt`, keyed by style id.
+     *
+     * A style can need different wording rather than different styling. A
+     * monochrome style is the clear case: prompts that name colours
+     * ("green purple gold", "colorful rainbow") override the palette
+     * instruction and survive into the output, while the same prompt is
+     * exactly right for a colour style. Editing the shared prompt to suit one
+     * style would invalidate every other style's already-generated art.
+     */
+    promptByStyle: z.record(z.string()).default({}),
   })
   .strict()
 
