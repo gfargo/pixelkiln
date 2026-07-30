@@ -184,6 +184,38 @@ export class PixelLabClient {
     return this.request("/map-objects", { method: "POST", body: JSON.stringify(body) })
   }
 
+  /**
+   * Synchronous single-image generation. Returns the PNG inline rather than a
+   * job id, and is the only endpoint that honours a forced palette —
+   * `color_image` on /map-objects returns a 500 whatever the payload shape.
+   */
+  async createImagePixflux(args: {
+    description: string
+    width: number
+    height: number
+    noBackground?: boolean
+    paletteSwatchBase64?: string
+    seed?: number
+  }): Promise<{ png: Buffer; usage: unknown }> {
+    const body: Record<string, unknown> = {
+      description: args.description,
+      image_size: { width: args.width, height: args.height },
+      no_background: args.noBackground ?? true,
+    }
+    if (args.paletteSwatchBase64) {
+      body.color_image = { type: "base64", base64: args.paletteSwatchBase64, format: "png" }
+    }
+    if (args.seed != null) body.seed = args.seed
+
+    const res = await this.request<{ image?: { base64?: string }; usage?: unknown }>(
+      "/create-image-pixflux",
+      { method: "POST", body: JSON.stringify(body) },
+    )
+    const b64 = res.image?.base64
+    if (!b64) throw new Error("pixflux returned no image")
+    return { png: Buffer.from(b64, "base64"), usage: res.usage }
+  }
+
   getObject(objectId: string): Promise<PixelLabObject> {
     return this.request(`/objects/${objectId}`)
   }

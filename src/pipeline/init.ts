@@ -119,6 +119,7 @@ export function buildManifest(
         promptPrefix: "",
         promptSuffix: "",
         styleImages: [],
+        palette: [],
         outDir,
         tags: [name],
       },

@@ -3,7 +3,7 @@ import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { deflateSync } from "node:zlib"
-import { decodePng, extractPalette, transparencyRatio } from "../src/png.ts"
+import { decodePng, extractPalette, transparencyRatio, paletteSwatch, parseHex } from "../src/png.ts"
 import {
   auditStyle,
   colorDistance,
@@ -234,5 +234,46 @@ describe("auditStyle", () => {
 describe("hex", () => {
   it("pads single-digit channels", () => {
     expect(hex({ r: 1, g: 2, b: 3 })).toBe("#010203")
+  })
+})
+
+describe("palette swatch", () => {
+  // The decoder here only reads RGBA; the swatch is RGB (which is the form the
+  // API accepted), so this asserts on the header rather than round-tripping.
+  function readIhdr(png: Buffer) {
+    expect(png.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    expect(png.toString("ascii", 12, 16)).toBe("IHDR")
+    return {
+      width: png.readUInt32BE(16),
+      height: png.readUInt32BE(20),
+      bitDepth: png[24],
+      colorType: png[25],
+    }
+  }
+
+  it("encodes a valid 8-bit RGB PNG at the requested size", () => {
+    const ihdr = readIhdr(paletteSwatch(["#0f380f", "#306230", "#8bac0f", "#9bbc0f"]))
+    expect(ihdr).toEqual({ width: 64, height: 64, bitDepth: 8, colorType: 2 })
+  })
+
+  // A 4x1 swatch was rejected by the API with "cannot identify image file";
+  // a chunky block swatch was accepted. Encode what actually works.
+  it("produces a chunky swatch rather than one pixel per colour", () => {
+    const ihdr = readIhdr(paletteSwatch(["#000000", "#ffffff"]))
+    expect(ihdr.width).toBeGreaterThan(8)
+    expect(ihdr.height).toBeGreaterThan(8)
+  })
+
+  it("rejects a malformed hex value rather than emitting a wrong colour", () => {
+    expect(() => paletteSwatch(["#0f380f", "nope"])).toThrow(/invalid hex/)
+  })
+
+  it("rejects an empty palette", () => {
+    expect(() => paletteSwatch([])).toThrow(/empty/)
+  })
+
+  it("parses hex with and without the leading hash", () => {
+    expect(parseHex("#0f380f")).toEqual({ r: 15, g: 56, b: 15 })
+    expect(parseHex("0f380f")).toEqual({ r: 15, g: 56, b: 15 })
   })
 })

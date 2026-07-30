@@ -1,4 +1,4 @@
-import { inflateSync } from "node:zlib"
+import { deflateSync, inflateSync } from "node:zlib"
 
 export interface DecodedPng {
   width: number
@@ -151,4 +151,82 @@ export function transparencyRatio(png: DecodedPng, alphaThreshold = 128): number
     if (png.pixels[i + 3]! < alphaThreshold) clear++
   }
   return total === 0 ? 0 : clear / total
+}
+
+/** CRC-32 as PNG specifies it. Small enough not to warrant a dependency. */
+function crc32(buf: Buffer): number {
+  let c = ~0
+  for (const byte of buf) {
+    c ^= byte
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1))
+  }
+  return ~c
+}
+
+function chunk(type: string, data: Buffer): Buffer {
+  const len = Buffer.alloc(4)
+  len.writeUInt32BE(data.length)
+  const body = Buffer.concat([Buffer.from(type, "ascii"), data])
+  const crc = Buffer.alloc(4)
+  crc.writeUInt32BE(crc32(body) >>> 0)
+  return Buffer.concat([len, body, crc])
+}
+
+/**
+ * Writes an 8-bit RGB PNG. Used to build the small swatch image that carries a
+ * forced palette to the API — not a general encoder.
+ */
+export function encodeRgbPng(width: number, height: number, rgb: Buffer): Buffer {
+  if (rgb.length !== width * height * 3) {
+    throw new Error(`expected ${width * height * 3} bytes of RGB, got ${rgb.length}`)
+  }
+  const stride = width * 3
+  // Filter byte 0 (none) per scanline.
+  const raw = Buffer.alloc((stride + 1) * height)
+  for (let y = 0; y < height; y++) {
+    raw[y * (stride + 1)] = 0
+    rgb.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride)
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(width, 0)
+  ihdr.writeUInt32BE(height, 4)
+  ihdr[8] = 8 // bit depth
+  ihdr[9] = 2 // colour type: RGB
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0)),
+  ])
+}
+
+/**
+ * Builds the palette swatch the API expects: a block of solid colour per entry.
+ *
+ * Deliberately chunky rather than one pixel per colour — a 4x1 image was
+ * rejected outright with "cannot identify image file", while a 64x64 block
+ * swatch was accepted.
+ */
+export function paletteSwatch(hexes: string[], size = 64): Buffer {
+  const colours = hexes.map(parseHex)
+  if (!colours.length) throw new Error("palette is empty")
+  const rgb = Buffer.alloc(size * size * 3)
+  const band = Math.max(1, Math.floor(size / colours.length))
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const c = colours[Math.min(colours.length - 1, Math.floor(x / band))]!
+      const o = (y * size + x) * 3
+      rgb[o] = c.r
+      rgb[o + 1] = c.g
+      rgb[o + 2] = c.b
+    }
+  }
+  return encodeRgbPng(size, size, rgb)
+}
+
+export function parseHex(hex: string): { r: number; g: number; b: number } {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) throw new Error(`invalid hex colour "${hex}" — expected #rrggbb`)
+  const n = parseInt(m[1]!, 16)
+  return { r: (n >> 16) & 0xff, g: (n >> 8) & 0xff, b: n & 0xff }
 }

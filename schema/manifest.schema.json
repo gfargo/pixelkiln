@@ -19,7 +19,8 @@
                 "type": "string",
                 "enum": [
                   "1dir",
-                  "map"
+                  "map",
+                  "pixflux"
                 ],
                 "default": "map"
               },
@@ -69,6 +70,13 @@
               },
               "seed": {
                 "type": "integer"
+              },
+              "palette": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
               },
               "tags": {
                 "type": "array",

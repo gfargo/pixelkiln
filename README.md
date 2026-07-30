@@ -289,21 +289,55 @@ tier (1: 8, 2: 10, 3: 20). `submit` enforces both — a global spacing gate plus
 real in-flight tracking, rather than parallel workers that would quietly breach
 the rate limit.
 
-### Measured but not implemented: forced palettes
+### `pixflux` — forced palettes
 
-`POST /create-image-pixflux` also costs **1 generation**, returns the image
-**inline with no polling**, and accepts `color_image` — a forced palette that
-constrains output to exact hex values.
+A third generator, and the right one for any style built on a fixed palette.
 
-Verified: a four-colour Game Boy swatch produced output containing precisely
-`#0f380f #306230 #8bac0f #9bbc0f` and nothing else. That is a hard guarantee
-where a prompt is only a request, which makes it the obvious tool for a
-monochrome style. The same parameter on `/map-objects` returns a 500, so the
-palette lock is pixflux-only.
+```jsonc
+"styles": {
+  "gameboy": {
+    "generator": "pixflux",
+    "palette": ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"],
+    "outDir": "public/badges/variants/gameboy"
+  }
+}
+```
 
-Two reasons it is not wired in yet: its rendering is flatter than `1dir`'s, and
-being synchronous it does not fit the `submit → poll → fetch` state machine
-without changes.
+`POST /create-image-pixflux` costs **1 generation**, returns the PNG **inline
+with no polling**, and accepts `color_image` — a palette swatch that constrains
+output to exactly those colours.
+
+The difference from prose is categorical. A prompt asking for "strict black and
+white, no colour" produced a yellow star and a brown chocolate bar. The same
+subjects with a two-colour forced palette came back containing exactly
+`#000000` and `#ffffff` and nothing else. A prompt is a request; this is a
+constraint.
+
+Trade-offs:
+
+- Rendering is **flatter** than `1dir`'s. For a tightly-constrained palette that
+  hardly matters; for a rich style it does.
+- No `style_images`, so the reference-image technique is unavailable. The
+  palette does that job instead.
+- The forced palette is **pixflux-only** — the same `color_image` parameter on
+  `/map-objects` returns a 500 whatever the payload shape.
+- Being synchronous, results are cached under the system temp directory between
+  `submit` and `fetch`. If the temp directory is cleared in between, `poll`
+  reports it plainly and the asset needs re-submitting. Within one `gen` run
+  this never arises.
+
+### Choosing a generator
+
+| You want | Use |
+|---|---|
+| A fixed palette held exactly across a whole set | **`pixflux`** + `palette` |
+| Standalone props, style carried by the prompt | **`map`** |
+| Rotations, animation, or maximum rendering detail | `1dir` |
+
+A caution learned the expensive way: `map` is cheap but has **no** style
+anchoring. Switching a tightly-styled set from `1dir` to `map` to save money
+dropped 1-bit's palette conformance from a median distance of 6.6 to 41.9, with
+35 of 65 badges off-palette. Cheap is only cheap if the output is usable.
 
 ## Gotchas encoded in the tool
 

@@ -30,6 +30,7 @@ export function specHash(
       shading: spec.shading ?? null,
       detail: spec.detail ?? null,
       seed: spec.seed ?? null,
+      palette: spec.palette,
       styleImages: styleImageHashes,
     }),
   )

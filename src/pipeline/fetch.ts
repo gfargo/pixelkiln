@@ -105,6 +105,9 @@ export async function pushTags(
   for (const [key, entry] of Object.entries(lock.entries)) {
     const spec = specByKey.get(key)
     if (!spec || !entry.objectId) continue
+    // pixflux results are local files with a synthetic id, not account
+    // objects — tagging one would 404.
+    if (entry.generator === "pixflux") continue
     if (!provider.setTags) return tagged // capability absent; nothing to do
     try {
       await provider.setTags(entry.objectId, spec.tags)

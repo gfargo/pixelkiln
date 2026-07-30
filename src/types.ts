@@ -31,7 +31,7 @@ import { z } from "zod"
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 /** Candidate frames returned per call, derived from size. Extra candidates are free. */
@@ -63,7 +63,7 @@ export function generationCost(
   height: number,
   generator: Generator = "map",
 ): number {
-  if (generator === "map") return 1
+  if (generator === "map" || generator === "pixflux") return 1
   const px = width * height
   if (px <= 1024) return 20
   if (px <= 2048) return 25
@@ -97,6 +97,17 @@ export const StyleSchema = z
     detail: z.string().optional(),
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
+    /**
+     * Forced palette, as `#rrggbb` values. `pixflux` only.
+     *
+     * Unlike prose, this is a hard constraint — the API is handed a swatch
+     * image and the output is limited to those colours. Verified: a four-colour
+     * Game Boy palette produced output containing exactly those four values.
+     * Prose asking for the same thing does not reliably hold, which is why the
+     * map-generated monochrome sets came back with a yellow star and a brown
+     * chocolate bar.
+     */
+    palette: z.array(z.string()).default([]),
     /** Tags applied to every object generated in this style, for server-side filtering. */
     tags: z.array(z.string()).default([]),
   })
@@ -261,4 +272,6 @@ export interface ResolvedSpec {
   shading?: string
   detail?: string
   seed?: number
+  /** Forced palette hex values; empty unless the style sets one. */
+  palette: string[]
 }

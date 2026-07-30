@@ -1,13 +1,19 @@
+import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs"
+import { randomUUID } from "node:crypto"
+import os from "node:os"
+import path from "node:path"
 import { PixelLabClient, PixelLabError, clientFromEnv } from "../client.ts"
+import { paletteSwatch } from "../png.ts"
 import { candidateCount, generationCost, type Generator, type ResolvedSpec } from "../types.ts"
 import type { BalanceInfo, CostEstimate, JobState, Provider, RemoteAsset } from "../provider.ts"
 
 /**
  * PixelLab, the reference implementation.
  *
- * All PixelLab-specific knowledge lives here: the two generators and their
- * different pricing, the review/candidate flow, and the fact that a map
- * object's job record expires while its image does not.
+ * All PixelLab-specific knowledge lives here: the three generators and their
+ * very different pricing, the review/candidate flow, the fact that a map
+ * object's job record expires while its image does not, and that pixflux
+ * returns bytes inline instead of a job id.
  */
 export class PixelLabProvider implements Provider {
   readonly id = "pixellab"
@@ -19,7 +25,21 @@ export class PixelLabProvider implements Provider {
   }
 
   supports(generator: Generator): boolean {
-    return generator === "1dir" || generator === "map"
+    return generator === "1dir" || generator === "map" || generator === "pixflux"
+  }
+
+  /**
+   * Where synchronous pixflux results are parked between `submit` and `fetch`.
+   *
+   * pixflux returns the PNG inline rather than a job id, but the pipeline is
+   * built around submit → poll → fetch running as separate commands. Writing
+   * the bytes to a known path keeps that model intact: the "job id" is the
+   * filename, polling is an existence check, and downloading is a file read.
+   */
+  private static cacheDir(): string {
+    const dir = path.join(os.tmpdir(), "pixelkiln-pixflux")
+    mkdirSync(dir, { recursive: true })
+    return dir
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {
@@ -31,6 +51,23 @@ export class PixelLabProvider implements Provider {
   }
 
   async submit(spec: ResolvedSpec, styleImagesBase64: string[]): Promise<{ jobId: string }> {
+    if (spec.generator === "pixflux") {
+      const swatch = spec.palette.length
+        ? paletteSwatch(spec.palette).toString("base64")
+        : undefined
+      const { png } = await this.client.createImagePixflux({
+        description: spec.prompt,
+        width: spec.width,
+        height: spec.height,
+        noBackground: true,
+        paletteSwatchBase64: swatch,
+        seed: spec.seed,
+      })
+      const jobId = randomUUID()
+      writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}.png`), png)
+      return { jobId }
+    }
+
     if (spec.generator === "1dir") {
       const res = await this.client.create1Direction({
         description: spec.prompt,
@@ -54,6 +91,16 @@ export class PixelLabProvider implements Provider {
   }
 
   async poll(jobId: string, generator: Generator): Promise<JobState> {
+    if (generator === "pixflux") {
+      const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
+      if (existsSync(file)) return { status: "ready", objectId: jobId, sourceUrl: `file://${file}` }
+      // The bytes only ever lived here, so a missing file means the temp dir
+      // was cleared. Nothing to recover from upstream — say so plainly.
+      return {
+        status: "failed",
+        error: "pixflux result is no longer cached locally; re-run submit for this asset",
+      }
+    }
     if (generator === "map") return this.pollMap(jobId)
 
     const obj = await this.client.getObject(jobId)
@@ -116,7 +163,8 @@ export class PixelLabProvider implements Provider {
     return { objectId, sourceUrl: firstUrl(obj?.rotation_urls) ?? obj?.preview_url ?? null }
   }
 
-  download(url: string): Promise<Buffer> {
+  async download(url: string): Promise<Buffer> {
+    if (url.startsWith("file://")) return readFileSync(url.slice("file://".length))
     return this.client.download(url)
   }
 
