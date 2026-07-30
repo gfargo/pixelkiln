@@ -186,6 +186,7 @@ pixelkiln gen --only first_review --force   # regenerate exactly one asset
 pixelkiln gen --style neon --budget 800     # a whole variant set, capped
 pixelkiln adopt --write-prompts   # map account objects to files, recover prompts
 pixelkiln accept                  # keep existing art after rewording a style
+pixelkiln audit --style neon      # measure style consistency, offline
 pixelkiln salvage --claims a.json # triage objects no lockfile claims
 pixelkiln balance                 # generations remaining
 ```
@@ -273,6 +274,54 @@ quietly breach the rate limit.
 
 For `map`, `fetch` must run in the same session as `submit`. `poll` marks
 entries past the window as failed rather than letting them look pending forever.
+
+## Deciding whether a variant is working
+
+The expensive mistake is generating a full variant set before knowing the style
+carries. `audit` turns that from an eyeball judgement into a number.
+
+```bash
+pixelkiln audit --style heybud-neon      # offline, costs nothing
+```
+
+It extracts each asset's palette, compares it to the style's reference, and
+ranks the most divergent first:
+
+```
+  heybud-premium — 65 asset(s) measured
+  reference palette: style images  #fcf6e5 #131229 #d7d6d6 #e9e9e9 #1d1a22
+
+  most off-style first:
+    activity_nature    dist  115.1  colours  58  transparent 80%  #315119 ← outlier
+    munchies_healthy   dist   97.1  colours  84  transparent 68%  #f68124 ← outlier
+    variety_3          dist   93.0  colours  44  transparent 67%  #829958 ← outlier
+```
+
+Those three are the green tree, the orange carrot and the green leaves — the
+naturalistic subjects, against a cream-and-charcoal reference. That is the
+signal: **the style is not failing at random, it is failing on subjects with a
+strong inherent colour.** Measured on a real neon trial, prose alone carried
+flames, a compass and an eye but left a chocolate bar brown and a camera grey.
+
+The workflow this supports:
+
+1. Generate a **representative spread** — a flat symbol, a detailed object, an
+   isometric one, a character. Eight is plenty.
+2. `audit` the trial. Read the outliers by *category*, not by count.
+3. If the failures share a trait (strong inherent colour, high detail), prose
+   is not enough — pick the best results, save them under `art/style-refs/`,
+   and list them as `styleImages`.
+4. Re-audit. When the outlier list stops being explainable, generate the rest.
+
+Reference palette comes from `styleImages` when set, since those are the
+declared intent. Without them the set is scored against its own average, each
+asset leave-one-out — an asset included in its own reference matches perfectly,
+which would hide exactly the one worth finding. That mode surfaces outliers but
+cannot tell you the whole set has drifted together.
+
+Other columns are cheap smells: **transparent** near 0% means a background got
+baked in; a high **colours** count on a small canvas means photo-like rendering
+rather than pixel art.
 
 ## Performance
 

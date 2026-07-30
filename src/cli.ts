@@ -16,6 +16,7 @@ import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pi
 import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import { loadClaims, findOrphans, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
+import { auditStyle, outliers, hex } from "./pipeline/audit.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
 
@@ -52,7 +53,7 @@ const BOOL_FLAGS = [
 
 export const COMMANDS = [
   "init", "plan", "gen", "submit", "poll", "pick", "fetch", "adopt", "accept",
-  "salvage", "purge", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+  "salvage", "purge", "audit", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 /**
@@ -146,6 +147,7 @@ Commands
   adopt     Match existing account objects to files already in the repo.
   accept    Keep existing art after a style reword — re-baseline, do not regenerate.
   salvage   Triage account objects no lockfile claims. Recovers usable art.
+  audit     Measure how consistently a style's assets hold together. Offline.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show remaining generations.
@@ -319,6 +321,39 @@ async function main() {
     await saveLock(args.lock, lock)
     log(`  accepted ${accepted} existing file(s) as satisfying the current spec`)
     log(`  (their artwork is unchanged; only the recorded spec hash moved)`)
+    return
+  }
+
+  if (args.command === "audit") {
+    const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
+    for (const styleId of styleIds) {
+      const audit = await auditStyle(loaded, specs, styleId)
+      log(`\n  ${styleId} — ${audit.assets.length} asset(s) measured`)
+      log(
+        `  reference palette: ${audit.referenceFromStyleImages ? "style images" : "the set's own average"}` +
+          `  ${audit.reference.slice(0, 6).map(hex).join(" ")}`,
+      )
+      if (!audit.referenceFromStyleImages) {
+        log(`  (no styleImages set — this finds outliers but cannot tell you the whole set drifted)`)
+      }
+
+      const off = outliers(audit)
+      const offIds = new Set(off.map((a) => a.assetId))
+      log(`\n  most off-style first:`)
+      for (const asset of audit.assets.slice(0, 12)) {
+        const flag = offIds.has(asset.assetId) ? " ← outlier" : ""
+        log(
+          `    ${asset.assetId.padEnd(28)} dist ${asset.paletteDistance.toFixed(1).padStart(6)}` +
+            `  colours ${String(asset.colorCount).padStart(4)}` +
+            `  transparent ${(asset.transparency * 100).toFixed(0).padStart(3)}%` +
+            `  ${asset.palette.slice(0, 3).map(hex).join(" ")}${flag}`,
+        )
+      }
+      if (audit.assets.length > 12) log(`    … and ${audit.assets.length - 12} more`)
+      log(`\n  ${off.length} outlier(s) beyond 1.5 sd`)
+      if (audit.missing.length) log(`  ${audit.missing.length} asset(s) not on disk`)
+      for (const u of audit.unreadable) log(`  unreadable ${u}`)
+    }
     return
   }
 
