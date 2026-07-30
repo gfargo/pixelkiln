@@ -355,6 +355,25 @@ but has no palette parameter, and the Pro endpoints (`generate-with-style-v2` at
 20, `generate-image-v2` at 40) do genuine style transfer from labelled reference
 images when that is worth the price.
 
+### Don't post-process palette-locked art
+
+The image-in/image-out utilities all cost **1 generation** — the same as a fresh
+generation — and all but one *re-render* rather than manipulate:
+
+| Endpoint | Palette survives? |
+|---|---|
+| `remove-background` | **yes** — a genuine de-fringe pass |
+| `rotate` | no |
+| `resize` | no — it is generative, and takes a required `description` |
+| `image-to-pixelart` | no, and it flattens the alpha channel too |
+
+Resizing a 4-colour badge from 64 px to 32 px returned 38 colours, with the
+cream and rust replaced by gold. Passing the exact `color_image` swatch that
+`pixflux` honours changed nothing — **the forced palette is wired up on
+`pixflux` and `bitforge` only**, and appearing in another endpoint's schema is
+not evidence it does anything. Regenerate at the target size instead; it costs
+the same and the palette holds.
+
 ## Gotchas encoded in the tool
 
 - **`size` and `styleImages` are mutually exclusive.** When style images are

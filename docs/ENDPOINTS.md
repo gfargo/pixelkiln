@@ -96,6 +96,117 @@ A palette swatch must also be **chunky**: a 4×1 image was rejected outright wit
 
 ---
 
+## Post-processing utilities — measured
+
+Five endpoints take an image in and give one back. All are **synchronous**, all
+return `{usage, image}` inline, and all cost **1 generation** — including the
+ones that sound like pure image manipulation.
+
+| Endpoint | Cost | Palette survives? | What it actually does |
+|---|---|---|---|
+| `remove-background` | 1 | **yes** | Genuine cleanup — the only safe one |
+| `rotate` | 1 | no | Re-renders from a new angle |
+| `resize` | 1 | no | **Re-generates**, does not resample |
+| `image-to-pixelart` | 1 | no | Destroys alpha too |
+| `inpaint` / `edit-image` | 1 | untested | Targeted edits |
+
+Measured on one 64×64 riso badge with an exact 4-colour palette
+(`#f4ecd8 #1c1a17 #c1553a #6b7f5e`, 57% transparent):
+
+| | colours out | transparency | result |
+|---|---|---|---|
+| source | 4 | 0.57 | — |
+| `remove-background` | **3** | 0.60 | dropped a stray fringe, kept the rest |
+| `rotate` | 30 | 0.58 | anti-aliased new angle |
+| `resize` → 32px | 38 | 0.57 | cream+rust came back **gold** |
+| `image-to-pixelart` → 32px | **455** | **0.00** | opaque grey background |
+
+**`remove-background` is a de-fringe pass, not just a matte.** It removed the
+scattered sage-green speckles around the badge outline and left the three real
+inks untouched — colour count went *down*, transparency went *up*. It is the one
+utility safe to run on palette-locked art.
+
+**`resize` is generative, not a resampler.** The name is misleading: it takes a
+`description` as a *required* field, and it re-renders. A 4-colour cream-and-rust
+badge came back as 38 colours of gold.
+
+**`color_image` does not rescue it.** `resize` accepts the parameter in its
+schema; passing the exact same swatch that `pixflux` honours changed nothing —
+56 colours, still gold. The forced palette works on **`pixflux` and `bitforge`
+only**, and being in another endpoint's schema is not evidence it is wired up.
+
+> **Never round-trip palette-locked art through `resize` or `rotate`.**
+> Regenerating at the target size with `pixflux` costs the same 1 generation and
+> the palette holds exactly.
+
+**`image-to-pixelart` is for photographs and 3-D renders**, not for reprocessing
+pixel art. It returned 455 colours on a 4-colour input and flattened the alpha
+channel to an opaque grey field. There is no `no_background` parameter to
+prevent that.
+
+---
+
+## Tilesets — schema only, not yet measured
+
+Called out separately because these are the most capable endpoints for level art
+and they are relevant to the disc-golf game. **Costs below are unmeasured.**
+
+`POST /tilesets` (top-down) and `/tilesets-sidescroller` are the current
+versions; `/create-tileset*` are the older aliases with identical schemas.
+
+They take `lower_description` + `upper_description` (+ optional
+`transition_description`) — you describe two terrains and the transition between
+them, and get a tileset that blends them. Distinctively, they accept **both**
+`color_image` *and* per-layer reference images (`lower_reference_image`,
+`upper_reference_image`, `transition_reference_image`) — the only family that
+combines palette forcing with style anchoring.
+
+Useful knobs: `tile_size`, `tileset_adherence` / `tileset_adherence_freedom`
+(how strictly tiles must fit together), `raggedness` and `slope_size` for edge
+character, plus the usual `outline` / `shading` / `detail`.
+
+`create-tiles-pro` is a different shape — a single `description` plus
+`style_images`, `tile_view`, `building_*` fields for structures.
+
+Given that `color_image` is honoured on `pixflux` but silently ignored on
+`resize`, **verify the palette actually holds on a single tileset before
+committing to a set**.
+
+---
+
+## Recipes
+
+**Lock a palette.** Use `pixflux` with a `color_image` swatch. Build the swatch
+with `paletteSwatch()` — 64×64 blocks, one band per colour. It is a real
+constraint, not a hint: 130 badges across two sets came back containing *only*
+the requested colours.
+
+**Re-roll one bad asset.** 1 generation. `gen --only <id> --force`. Cheaper than
+asking for more candidates — a `1dir` call that yields 16 candidates costs 20–40.
+
+**Clean up fringing.** `remove-background` at 1 generation, and it will not
+disturb the palette.
+
+**Change the size of an existing asset.** Regenerate with `pixflux` at the new
+size. Do not use `resize`.
+
+**Anchor to an existing look rather than a palette.** `generate-with-style-v2`
+(20) or `generate-image-v2` (40). `bitforge` claims to do this for 1, but see
+above. `map` has no style anchoring at all — a 1-bit set generated through it
+came back with a yellow star and a brown chocolate bar.
+
+**Write prompts for a monochrome style.** Strip colour words from the prompt
+itself. "a golden trophy" fights a two-tone palette; the neutral noun does not.
+pixelkiln's `promptByStyle` exists for exactly this.
+
+**Never let a device or medium name lead a prompt.** `"Original Game Boy DMG
+handheld sprite:"` as a prefix produced drawings of handheld consoles across a
+whole set. Put the medium in the *suffix*, after the subject.
+
+**Probe an unfamiliar parameter freely.** Failed generations are not billed.
+
+---
+
 ## Candidates
 
 Only `create-1-direction-object` returns multiple candidates, and the count is
@@ -145,13 +256,15 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
 
 Listed so the gaps are known rather than assumed away:
 
-- `image-to-pixelart` / `-pro` — convert an existing image to pixel art
-- `inpaint`, `inpaint-v3`, `edit-image`, `edit-images-v2` — targeted edits
-- `remove-background`, `resize`, `rotate` — utilities, all synchronous
-- `create-tileset`, `create-tileset-sidescroller`, `create-isometric-tile`,
-  `create-tiles-pro` — tiles; all accept palette and style references
-- `create-ui-asset`, `generate-font-pro` — UI panels and fonts
-- the character family — out of pixelkiln's scope by design
+- `inpaint`, `inpaint-v3`, `edit-image`, `edit-images-v2` — targeted edits.
+  Both `inpaint` and `edit-image` accept `color_image`, but given that `resize`
+  accepts and ignores it, assume nothing until measured.
+- `image-to-pixelart-pro` — takes only `image` + `description`, no size fields.
+  The non-Pro version is characterised above.
+- the tileset family — schema documented above, costs unmeasured
+- `create-isometric-tile`, `create-ui-asset`, `generate-font-pro` — job-based,
+  response shapes not in the simple `{usage, image}` form
+- the character family (23 paths) — out of pixelkiln's scope by design
 
 ---
 
