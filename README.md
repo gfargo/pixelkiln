@@ -328,16 +328,32 @@ Trade-offs:
 
 ### Choosing a generator
 
-| You want | Use |
-|---|---|
-| A fixed palette held exactly across a whole set | **`pixflux`** + `palette` |
-| Standalone props, style carried by the prompt | **`map`** |
-| Rotations, animation, or maximum rendering detail | `1dir` |
+Measured costs, not documented ones. Full detail in
+[docs/ENDPOINTS.md](./docs/ENDPOINTS.md).
 
-A caution learned the expensive way: `map` is cheap but has **no** style
-anchoring. Switching a tightly-styled set from `1dir` to `map` to save money
-dropped 1-bit's palette conformance from a median distance of 6.6 to 41.9, with
-35 of 65 badges off-palette. Cheap is only cheap if the output is usable.
+| You want | Use | Cost |
+|---|---|---|
+| A fixed palette held exactly across a set | **`pixflux`** + `palette` | 1 |
+| Standalone props, style carried by the prompt | **`map`** | 1 |
+| Rotations, animation, or candidate variety | `1dir` | 20–40 |
+
+Two cautions learned the expensive way:
+
+**`map` has no style anchoring at all** — no `style_images`, and it treats
+palette prose as a suggestion. Switching a tightly-styled set from `1dir` to
+`map` to save generations dropped 1-bit's palette conformance from a median
+distance of 6.6 to 41.9, with 35 of 65 badges off-palette. Cheap is only cheap
+if the output is usable.
+
+**`bitforge` looks ideal and is not.** It is the only single-image endpoint with
+palette *and* style reference *and* synchronous delivery for 1 generation, but
+it returned unrecognisable blobs for a plain "blacksmith anvil" at every
+`style_strength` from 0 to 50. Measured, not assumed.
+
+Also worth knowing: `pixen` gives the best unconstrained detail at 1 generation
+but has no palette parameter, and the Pro endpoints (`generate-with-style-v2` at
+20, `generate-image-v2` at 40) do genuine style transfer from labelled reference
+images when that is worth the price.
 
 ## Gotchas encoded in the tool
 
