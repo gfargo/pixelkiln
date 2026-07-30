@@ -94,11 +94,25 @@ export function parseArgs(argv: string[]): Args {
     const i = rest.indexOf(flag)
     return i >= 0 ? rest[i + 1] : undefined
   }
-  const list = (flag: string) =>
-    (get(flag) ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
+  /**
+   * Collects every occurrence of a list flag, not just the first.
+   *
+   * `--style a --style b` is the natural way to write this and previously kept
+   * only `a`, silently discarding `b` — so a run that looked like it covered
+   * two styles covered one, and `plan` quoted a cost for work it would not do.
+   * Repeated flags now accumulate; commas still work within each occurrence.
+   */
+  const list = (flag: string) => {
+    const out: string[] = []
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i] !== flag) continue
+      for (const part of (rest[i + 1] ?? "").split(",")) {
+        const v = part.trim()
+        if (v) out.push(v)
+      }
+    }
+    return [...new Set(out)]
+  }
 
   let budget: number | undefined
   const rawBudget = get("--budget")

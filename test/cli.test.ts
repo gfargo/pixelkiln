@@ -22,6 +22,19 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["gen", "--styles", "neon"])).toThrow(/Unknown flag/)
   })
 
+  // The other half of that failure: a flag that IS known, repeated, with all
+  // but one occurrence dropped. `gen --style a --style b` covered only `a`
+  // while `plan` quoted the cost of both.
+  it("accumulates a repeated list flag instead of keeping one", () => {
+    const args = parseArgs(["gen", "--style", "a", "--style", "b", "--only", "x", "--only", "y,z"])
+    expect(args.styles).toEqual(["a", "b"])
+    expect(args.assets).toEqual(["x", "y", "z"])
+  })
+
+  it("dedupes a repeated list value", () => {
+    expect(parseArgs(["gen", "--style", "a,b", "--style", "b"]).styles).toEqual(["a", "b"])
+  })
+
   it("rejects an unknown command", () => {
     expect(() => parseArgs(["genn"])).toThrow(/Unknown command/)
   })
