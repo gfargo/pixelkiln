@@ -201,6 +201,39 @@ export function encodeRgbPng(width: number, height: number, rgb: Buffer): Buffer
 }
 
 /**
+ * Writes an 8-bit RGBA PNG.
+ *
+ * Separate from `encodeRgbPng` rather than replacing it: the palette swatch
+ * the API accepts is RGB, and sprite sheets must keep their alpha channel —
+ * flattening it would fill every sprite's transparent background with black
+ * and the sheet would be unusable over anything but that colour.
+ */
+export function encodeRgbaPng(width: number, height: number, rgba: Buffer): Buffer {
+  if (rgba.length !== width * height * 4) {
+    throw new Error(`expected ${width * height * 4} bytes of RGBA, got ${rgba.length}`)
+  }
+  const stride = width * 4
+  // Filter byte 0 (none) per scanline. Pixel art compresses well enough that
+  // the adaptive filters are not worth the complexity here.
+  const raw = Buffer.alloc((stride + 1) * height)
+  for (let y = 0; y < height; y++) {
+    raw[y * (stride + 1)] = 0
+    rgba.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride)
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(width, 0)
+  ihdr.writeUInt32BE(height, 4)
+  ihdr[8] = 8 // bit depth
+  ihdr[9] = 6 // colour type: RGBA
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0)),
+  ])
+}
+
+/**
  * Builds the palette swatch the API expects: a block of solid colour per entry.
  *
  * Deliberately chunky rather than one pixel per colour — a 4x1 image was

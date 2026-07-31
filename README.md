@@ -412,6 +412,56 @@ Animated 8-direction **characters** are out of scope. PixelLab models those as a
 separate entity with a ZIP bundle export, and the `super-disc-golf` repo already
 has a mature importer for them (`tools/sync_pixellab_characters.py`).
 
+## Sprite sheets
+
+`pack` composites a style's sprites into one PNG plus a JSON atlas. Offline,
+free, and reads the lockfile — so it packs exactly what was generated, not
+whatever happens to be sitting in the output directory.
+
+```bash
+pixelkiln pack --style heybud-riso
+#   heybud-riso — 74 sprite(s), 432x432 in 9 column(s)
+#     public/vibe/variants/riso/heybud-riso-sheet.png + .json
+```
+
+```jsonc
+{
+  "style": "heybud-riso",
+  "sheet":  { "width": 432, "height": 432 },
+  "cell":   { "width": 48,  "height": 48 },   // grid step
+  "columns": 9,
+  "frames": [
+    { "id": "activity_cooking_eating", "x": 0, "y": 0, "width": 48, "height": 48 }
+  ]
+}
+```
+
+Frames are keyed by **asset id**, so a consumer looks a sprite up by name
+rather than by a fragile index.
+
+Four decisions worth knowing:
+
+- **A grid, not a bin-packer.** Every sprite in a style shares a generator and
+  a size, so rectangles are near-uniform and tight packing would save a few
+  percent of area in exchange for an unpredictable layout. A grid also means a
+  frame's position is derivable from its index, which matters when you are
+  reading the sheet by eye to work out which sprite is wrong.
+- **Sorted by asset id.** The sheet is byte-identical across runs, so
+  committing it produces a diff only when the art actually changed.
+- **The cell is the largest sprite**, not an assumed uniform size. Assets can
+  override `width`/`height` individually, and assuming uniformity would
+  silently clip the odd one out. Smaller sprites sit at the cell's top-left
+  with their real size recorded, so a consumer that ignores the atlas and
+  slices on the grid still gets a correct, if padded, sprite.
+- **RGBA, always.** `encodeRgbPng` (used for the palette swatch) drops alpha;
+  flattening a sheet would fill every transparent background with black and
+  make it unusable over anything but that colour.
+
+A missing or unreadable file is reported and skipped rather than aborting the
+sheet — one bad asset should not cost you the other seventy-three.
+
+`--columns <n>` overrides the near-square default.
+
 ## Documentation
 
 | | |

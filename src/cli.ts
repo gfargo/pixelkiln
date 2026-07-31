@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import path from "node:path"
-import { existsSync } from "node:fs"
+import { existsSync, writeFileSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { loadEnvFiles } from "./env.ts"
 import { PixelLabProvider } from "./providers/pixellab.ts"
 import { formatCost, requireDelete, requireList } from "./provider.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
+import { packStyle } from "./pipeline/pack.ts"
 import { loadLock, saveLock, totalSpend, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
 import { lockKey } from "./types.ts"
@@ -41,12 +42,13 @@ interface Args {
   exclude: string[]
   name?: string
   writePrompts: boolean
+  columns?: number
   claims: string[]
 }
 
 const VALUE_FLAGS = [
   "--manifest", "--lock", "--style", "--only", "--budget", "--port",
-  "--from", "--out", "--generator", "--exclude", "--name", "--claims",
+  "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--no-open", "--tag", "--write-prompts",
@@ -54,7 +56,7 @@ const BOOL_FLAGS = [
 
 export const COMMANDS = [
   "init", "plan", "gen", "submit", "poll", "pick", "fetch", "adopt", "accept",
-  "salvage", "purge", "audit", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+  "salvage", "purge", "audit", "pack", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 /**
@@ -114,6 +116,17 @@ export function parseArgs(argv: string[]): Args {
     return [...new Set(out)]
   }
 
+  const rawColumns = get("--columns")
+  let columns: number | undefined
+  if (rawColumns !== undefined) {
+    columns = Number(rawColumns)
+    // Same guard as --budget: NaN would silently fall through to the default
+    // and quietly produce a differently-shaped sheet than asked for.
+    if (!Number.isInteger(columns) || columns < 1 || columns > 1024) {
+      throw new Error(`--columns must be a whole number between 1 and 1024, got "${rawColumns}"`)
+    }
+  }
+
   let budget: number | undefined
   const rawBudget = get("--budget")
   if (rawBudget !== undefined) {
@@ -143,6 +156,7 @@ export function parseArgs(argv: string[]): Args {
     exclude: list("--exclude"),
     name: get("--name"),
     writePrompts: rest.includes("--write-prompts"),
+    columns,
     claims: list("--claims"),
   }
 }
@@ -163,12 +177,14 @@ Commands
   accept    Keep existing art after a style reword — re-baseline, do not regenerate.
   salvage   Triage account objects no lockfile claims. Recovers usable art.
   audit     Measure how consistently a style's assets hold together. Offline.
+  pack      Composite a style's sprites into one sheet + JSON atlas. Offline.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show remaining generations.
   status    Summarise the lockfile.
 
 Options
+  --columns <n>       pack: sprites per row (default: near-square)
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
@@ -344,6 +360,35 @@ async function main() {
     await saveLock(args.lock, lock)
     log(`  accepted ${accepted} existing file(s) as satisfying the current spec`)
     log(`  (their artwork is unchanged; only the recorded spec hash moved)`)
+    return
+  }
+
+  if (args.command === "pack") {
+    const manifestDir = path.dirname(path.resolve(args.manifest))
+    const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
+
+    for (const styleId of styleIds) {
+      const { png, atlas, skipped } = packStyle(lock, styleId, manifestDir, {
+        columns: args.columns,
+      })
+
+      // Default beside the style's own output tree, so sheets for different
+      // styles cannot overwrite each other when --out is omitted.
+      const style = loaded.manifest.styles[styleId]
+      const base = args.out
+        ? path.resolve(args.out.replace(/\.png$/, ""))
+        : path.resolve(manifestDir, style!.outDir, `${styleId}-sheet`)
+
+      writeFileSync(`${base}.png`, png)
+      writeFileSync(`${base}.json`, JSON.stringify(atlas, null, 2) + "\n")
+
+      log(
+        `  ${styleId} — ${atlas.frames.length} sprite(s), ` +
+          `${atlas.sheet.width}x${atlas.sheet.height} in ${atlas.columns} column(s)`,
+      )
+      log(`    ${path.relative(process.cwd(), base)}.png + .json`)
+      for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
+    }
     return
   }
 
