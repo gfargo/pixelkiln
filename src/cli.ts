@@ -6,7 +6,7 @@ import { loadEnvFiles } from "./env.ts"
 import { PixelLabProvider } from "./providers/pixellab.ts"
 import { formatCost, requireDelete, requireList } from "./provider.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
-import { packStyle } from "./pipeline/pack.ts"
+import { packSprites, packStyle } from "./pipeline/pack.ts"
 import { loadLock, saveLock, totalSpend, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
 import { lockKey } from "./types.ts"
@@ -43,12 +43,13 @@ interface Args {
   name?: string
   writePrompts: boolean
   columns?: number
+  inputs?: string
   claims: string[]
 }
 
 const VALUE_FLAGS = [
   "--manifest", "--lock", "--style", "--only", "--budget", "--port",
-  "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns",
+  "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--no-open", "--tag", "--write-prompts",
@@ -157,6 +158,7 @@ export function parseArgs(argv: string[]): Args {
     name: get("--name"),
     writePrompts: rest.includes("--write-prompts"),
     columns,
+    inputs: get("--inputs"),
     claims: list("--claims"),
   }
 }
@@ -185,6 +187,7 @@ Commands
 
 Options
   --columns <n>       pack: sprites per row (default: near-square)
+  --inputs <path>     pack: JSON [{id,path}] instead of the lockfile; needs --out
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
@@ -365,6 +368,40 @@ async function main() {
 
   if (args.command === "pack") {
     const manifestDir = path.dirname(path.resolve(args.manifest))
+
+    // Explicit input list: `[{ "id": "...", "path": "..." }]`.
+    //
+    // Exists so a consumer whose sprites span several manifests, or which
+    // names frames in its own vocabulary rather than by pixelkiln asset id,
+    // can still use the packer without importing this repo's source. Keeps
+    // the two sides talking over a file contract rather than a build config.
+    if (args.inputs) {
+      const raw = JSON.parse(await readFile(path.resolve(args.inputs), "utf8")) as unknown
+      if (!Array.isArray(raw) || !raw.length) {
+        throw new Error(`--inputs must be a non-empty JSON array of { id, path }`)
+      }
+      const inputs = raw.map((entry, i) => {
+        const e = entry as { id?: unknown; path?: unknown }
+        if (typeof e.id !== "string" || typeof e.path !== "string") {
+          throw new Error(`--inputs[${i}] needs string "id" and "path"`)
+        }
+        return { id: e.id, path: path.resolve(path.dirname(path.resolve(args.inputs!)), e.path) }
+      })
+
+      const { png, atlas, skipped } = packSprites(inputs, { columns: args.columns })
+      if (!args.out) throw new Error("--inputs requires --out")
+      const base = path.resolve(args.out.replace(/\.png$/, ""))
+      writeFileSync(`${base}.png`, png)
+      writeFileSync(`${base}.json`, JSON.stringify(atlas, null, 2) + "\n")
+      log(
+        `  ${atlas.frames.length} sprite(s), ${atlas.sheet.width}x${atlas.sheet.height} ` +
+          `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB`,
+      )
+      log(`    ${path.relative(process.cwd(), base)}.png + .json`)
+      for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
+      return
+    }
+
     const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
 
     for (const styleId of styleIds) {

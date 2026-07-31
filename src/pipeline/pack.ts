@@ -42,54 +42,50 @@ export interface PackedSheet {
  * into odd-sized differences, and a consumer that ignores the atlas and slices
  * on the cell grid still gets a correct — if padded — sprite.
  */
-export function packStyle(
-  lock: Lock,
-  styleId: string,
-  manifestDir: string,
+export interface SpriteInput {
+  /** The name this sprite is looked up by in the atlas. */
+  id: string
+  /** Absolute path to the PNG. */
+  path: string
+}
+
+/**
+ * The packing primitive: an explicit list of sprites in, one sheet out.
+ *
+ * Separate from `packStyle` because the lockfile is not the only way to decide
+ * what belongs on a sheet. A consumer may draw from several manifests, or key
+ * frames by its own vocabulary rather than by pixelkiln asset ids — heybud's
+ * review-form icons do both. Keeping the pixel work here and the "which files,
+ * called what" decision at the call site avoids teaching this module about
+ * anyone else's naming.
+ */
+export function packSprites(
+  inputs: SpriteInput[],
   options: { columns?: number } = {},
 ): PackedSheet {
-  // Lock keys are `<styleId>/<assetId>`. Sorting by asset id keeps the sheet
-  // byte-identical across runs, so committing it produces a clean diff only
-  // when the art actually changed.
-  const prefix = `${styleId}/`
-  const entries = Object.entries(lock.entries)
-    .filter(([key]) => key.startsWith(prefix))
-    .map(([key, entry]) => ({ id: key.slice(prefix.length), entry }))
-    .sort((a, b) => a.id.localeCompare(b.id))
+  if (!inputs.length) throw new Error("packSprites: no sprites given")
 
-  if (!entries.length) {
-    throw new Error(
-      `No locked assets for style "${styleId}". Run \`pixelkiln gen --style ${styleId}\` first.`,
-    )
-  }
+  // Sorted by id so the sheet is byte-identical across runs.
+  const ordered = [...inputs].sort((a, b) => a.id.localeCompare(b.id))
 
   const sprites: { id: string; width: number; height: number; pixels: Buffer }[] = []
   const skipped: { id: string; reason: string }[] = []
 
-  for (const { id, entry } of entries) {
-    // `outputs` is v2's array; the first is the sprite itself. A role-tagged
-    // entry (previews, sheets) would be additional.
-    const output = entry.outputs?.[0]
-    if (!output) {
-      skipped.push({ id, reason: "no output recorded in the lockfile" })
-      continue
-    }
+  for (const input of ordered) {
     try {
-      const png = decodePng(readFileSync(path.resolve(manifestDir, output.path)))
-      sprites.push({ id, width: png.width, height: png.height, pixels: png.pixels })
+      const png = decodePng(readFileSync(input.path))
+      sprites.push({ id: input.id, width: png.width, height: png.height, pixels: png.pixels })
     } catch (err) {
-      skipped.push({ id, reason: err instanceof Error ? err.message : String(err) })
+      skipped.push({ id: input.id, reason: err instanceof Error ? err.message : String(err) })
     }
   }
 
   if (!sprites.length) {
-    throw new Error(`No readable sprites for style "${styleId}" — ${skipped.length} skipped.`)
+    throw new Error(`packSprites: nothing readable — ${skipped.length} skipped.`)
   }
 
   const cellW = Math.max(...sprites.map((s) => s.width))
   const cellH = Math.max(...sprites.map((s) => s.height))
-  // Default to a near-square sheet: GPUs and humans both cope better with that
-  // than with a 1×N strip.
   const columns = options.columns ?? Math.ceil(Math.sqrt(sprites.length))
   const rows = Math.ceil(sprites.length / columns)
 
@@ -113,12 +109,54 @@ export function packStyle(
   return {
     png: encodeRgbaPng(sheetW, sheetH, rgba),
     atlas: {
-      style: styleId,
+      style: "",
       sheet: { width: sheetW, height: sheetH },
       cell: { width: cellW, height: cellH },
       columns,
       frames,
     },
     skipped,
+  }
+}
+
+export function packStyle(
+  lock: Lock,
+  styleId: string,
+  manifestDir: string,
+  options: { columns?: number } = {},
+): PackedSheet {
+  // Lock keys are `<styleId>/<assetId>`.
+  const prefix = `${styleId}/`
+  const entries = Object.entries(lock.entries).filter(([key]) => key.startsWith(prefix))
+
+  if (!entries.length) {
+    throw new Error(
+      `No locked assets for style "${styleId}". Run \`pixelkiln gen --style ${styleId}\` first.`,
+    )
+  }
+
+  const inputs: SpriteInput[] = []
+  const noOutput: { id: string; reason: string }[] = []
+
+  for (const [key, entry] of entries) {
+    const id = key.slice(prefix.length)
+    // `outputs` is v2's array; the first is the sprite itself.
+    const output = entry.outputs?.[0]
+    if (!output) {
+      noOutput.push({ id, reason: "no output recorded in the lockfile" })
+      continue
+    }
+    inputs.push({ id, path: path.resolve(manifestDir, output.path) })
+  }
+
+  if (!inputs.length) {
+    throw new Error(`No readable sprites for style "${styleId}" — ${noOutput.length} skipped.`)
+  }
+
+  const packed = packSprites(inputs, options)
+  return {
+    ...packed,
+    atlas: { ...packed.atlas, style: styleId },
+    skipped: [...noOutput, ...packed.skipped],
   }
 }
