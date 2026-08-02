@@ -207,6 +207,8 @@ Examples
   pixelkiln gen --style heybud-premium --budget 400
   pixelkiln gen --only first_review --force
   pixelkiln adopt --tag
+  pixelkiln pack --style heybud-premium
+  pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
 `
 
 function printPlan(plan: Plan): void {

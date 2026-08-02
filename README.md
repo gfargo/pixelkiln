@@ -187,6 +187,7 @@ pixelkiln gen --style neon --budget 800     # a whole variant set, capped
 pixelkiln adopt --write-prompts   # map account objects to files, recover prompts
 pixelkiln accept                  # keep existing art after rewording a style
 pixelkiln audit --style neon      # measure style consistency, offline
+pixelkiln pack --style neon       # composite a style's sprites into one sheet, offline
 pixelkiln salvage --claims a.json # triage objects no lockfile claims
 pixelkiln balance                 # generations remaining
 ```
