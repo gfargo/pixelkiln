@@ -50,6 +50,35 @@ export interface SpriteInput {
 }
 
 /**
+ * Validates and resolves the JSON contract behind `pack --inputs`.
+ *
+ * A plain function rather than inline in the CLI so it is testable without
+ * spawning the binary: `main()` in cli.ts runs at module load and is not
+ * exported, so anything left inline there has no seam a test can reach. This
+ * is also the only place that needs to know the file is JSON at all — once it
+ * returns, everything downstream just deals in `SpriteInput[]`.
+ *
+ * `entry.path` resolves relative to `inputsFilePath`'s directory, not the
+ * process's cwd, so a caller can write the JSON into a scratch directory
+ * without rewriting every entry to be absolute. An already-absolute
+ * `entry.path` passes through unchanged, since `path.resolve` discards
+ * earlier segments once it hits one.
+ */
+export function resolvePackInputs(raw: unknown, inputsFilePath: string): SpriteInput[] {
+  if (!Array.isArray(raw) || !raw.length) {
+    throw new Error("--inputs must be a non-empty JSON array of { id, path }")
+  }
+  const baseDir = path.dirname(path.resolve(inputsFilePath))
+  return raw.map((entry, i) => {
+    const e = entry as { id?: unknown; path?: unknown }
+    if (typeof e.id !== "string" || typeof e.path !== "string") {
+      throw new Error(`--inputs[${i}] needs string "id" and "path"`)
+    }
+    return { id: e.id, path: path.resolve(baseDir, e.path) }
+  })
+}
+
+/**
  * The packing primitive: an explicit list of sprites in, one sheet out.
  *
  * Separate from `packStyle` because the lockfile is not the only way to decide
@@ -64,6 +93,22 @@ export function packSprites(
   options: { columns?: number } = {},
 ): PackedSheet {
   if (!inputs.length) throw new Error("packSprites: no sprites given")
+
+  // Two inputs sharing an id would silently produce two frames under the same
+  // key, and a consumer doing `frames.find(f => f.id === x)` gets whichever
+  // came first with no signal that the other was dropped. Caught here, before
+  // any file I/O, rather than left for the next caller to discover the hard
+  // way — heybud's own sync script has to dedupe upstream today for exactly
+  // this reason (its archetype sources deliberately overlap).
+  const seen = new Set<string>()
+  const dupes = new Set<string>()
+  for (const input of inputs) {
+    if (seen.has(input.id)) dupes.add(input.id)
+    seen.add(input.id)
+  }
+  if (dupes.size) {
+    throw new Error(`packSprites: duplicate sprite id(s): ${[...dupes].join(", ")}`)
+  }
 
   // Sorted by id so the sheet is byte-identical across runs.
   const ordered = [...inputs].sort((a, b) => a.id.localeCompare(b.id))

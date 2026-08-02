@@ -462,6 +462,38 @@ sheet — one bad asset should not cost you the other seventy-three.
 
 `--columns <n>` overrides the near-square default.
 
+### Packing sprites that aren't in a manifest
+
+`--inputs <path.json> --out <base>` packs an explicit list instead of a
+lockfile — for a consumer whose sprites are drawn from several manifests, or
+named in its own vocabulary rather than pixelkiln asset ids. This is how
+heybud-admin packs its review-form icon sheets: those sprites come from two
+different manifests and are keyed by option ids a website defines, not by
+anything pixelkiln knows about.
+
+```bash
+pixelkiln pack --inputs sprites.json --out dist/sheet
+#   86 sprite(s), 704x704 in 10 column(s) — 42.5 KB
+#     dist/sheet.png + .json
+```
+
+```jsonc
+// sprites.json
+[
+  { "id": "effect_euphoric", "path": "art/effect_euphoric.png" },
+  { "id": "aura_golden_glow", "path": "../shared/aura_golden_glow.png" }
+]
+```
+
+No manifest is required in this mode — not even an unrelated one sitting in
+the working directory. `path` resolves relative to **the JSON file's own
+directory**, not the process's cwd, so a caller can write the file into a
+scratch directory without rewriting every entry to be absolute; an
+already-absolute `path` passes through unchanged. `--out`'s parent directories
+are created if they do not exist. Two inputs sharing an `id` is a hard error —
+naming the duplicate — since a consumer looking a frame up by id would
+otherwise get whichever came first with no signal the other was dropped.
+
 ## Documentation
 
 | | |

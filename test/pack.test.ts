@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { packStyle } from "../src/pipeline/pack.ts"
+import { packSprites, packStyle, resolvePackInputs } from "../src/pipeline/pack.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 import type { Lock } from "../src/types.ts"
 
@@ -124,5 +124,55 @@ describe("packStyle", () => {
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
+  })
+})
+
+describe("packSprites", () => {
+  it("rejects duplicate ids before touching any file", () => {
+    // Nonexistent paths on purpose: a duplicate-id error must fire before any
+    // decode is attempted, so this never reaches the filesystem at all.
+    const inputs = [
+      { id: "a", path: "/nonexistent/one.png" },
+      { id: "a", path: "/nonexistent/two.png" },
+    ]
+    expect(() => packSprites(inputs)).toThrow(/duplicate sprite id.*a/i)
+  })
+
+  it("names every duplicated id, not just the first", () => {
+    const inputs = [
+      { id: "a", path: "/x/1.png" },
+      { id: "a", path: "/x/2.png" },
+      { id: "b", path: "/x/3.png" },
+      { id: "b", path: "/x/4.png" },
+      { id: "c", path: "/x/5.png" },
+    ]
+    expect(() => packSprites(inputs)).toThrow(/a, b|b, a/)
+  })
+})
+
+describe("resolvePackInputs", () => {
+  const inputsFile = "/project/tmp/inputs.json"
+
+  it("resolves a relative path against the inputs file's directory, not cwd", () => {
+    const result = resolvePackInputs([{ id: "a", path: "sprites/a.png" }], inputsFile)
+    expect(result).toEqual([{ id: "a", path: "/project/tmp/sprites/a.png" }])
+  })
+
+  it("passes an already-absolute path through unchanged", () => {
+    const result = resolvePackInputs([{ id: "a", path: "/elsewhere/a.png" }], inputsFile)
+    expect(result).toEqual([{ id: "a", path: "/elsewhere/a.png" }])
+  })
+
+  it("rejects a non-array payload", () => {
+    expect(() => resolvePackInputs({ id: "a", path: "a.png" }, inputsFile)).toThrow(/non-empty JSON array/)
+  })
+
+  it("rejects an empty array", () => {
+    expect(() => resolvePackInputs([], inputsFile)).toThrow(/non-empty JSON array/)
+  })
+
+  it("reports which entry is malformed, by index", () => {
+    const bad = [{ id: "a", path: "a.png" }, { id: "b" }]
+    expect(() => resolvePackInputs(bad, inputsFile)).toThrow(/--inputs\[1\]/)
   })
 })

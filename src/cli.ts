@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import path from "node:path"
-import { existsSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { loadEnvFiles } from "./env.ts"
 import { PixelLabProvider } from "./providers/pixellab.ts"
 import { formatCost, requireDelete, requireList } from "./provider.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
-import { packSprites, packStyle } from "./pipeline/pack.ts"
+import { packSprites, packStyle, resolvePackInputs } from "./pipeline/pack.ts"
 import { loadLock, saveLock, totalSpend, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
 import { lockKey } from "./types.ts"
@@ -309,6 +309,36 @@ async function main() {
     return
   }
 
+  if (args.command === "pack" && args.inputs) {
+    // Handled before the manifest-required check below, deliberately: the
+    // whole point of `--inputs` is packing sprites that were never part of a
+    // pixelkiln manifest at all. Requiring one anyway — as this did until a
+    // manual smoke test caught it — defeated the feature for exactly the
+    // no-manifest consumer it was built for; heybud-admin's sync script never
+    // noticed because it happens to run from a directory that has its own
+    // manifest for an unrelated reason.
+    if (!args.out) throw new Error("--inputs requires --out")
+
+    const raw = JSON.parse(await readFile(path.resolve(args.inputs), "utf8")) as unknown
+    const inputs = resolvePackInputs(raw, args.inputs)
+
+    const { png, atlas, skipped } = packSprites(inputs, { columns: args.columns })
+    const base = path.resolve(args.out.replace(/\.png$/, ""))
+    // --out is free-form, and a caller building a path under a scratch
+    // directory (as heybud-admin's sync script does) should not also have to
+    // pre-create it.
+    mkdirSync(path.dirname(base), { recursive: true })
+    writeFileSync(`${base}.png`, png)
+    writeFileSync(`${base}.json`, JSON.stringify(atlas, null, 2) + "\n")
+    log(
+      `  ${atlas.frames.length} sprite(s), ${atlas.sheet.width}x${atlas.sheet.height} ` +
+        `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB`,
+    )
+    log(`    ${path.relative(process.cwd(), base)}.png + .json`)
+    for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
+    return
+  }
+
   if (!existsSync(path.resolve(args.manifest))) {
     throw new Error(
       `No manifest at ${path.resolve(args.manifest)}. Pass --manifest, or run \`pixelkiln init --from <dir>\`.`,
@@ -367,41 +397,9 @@ async function main() {
   }
 
   if (args.command === "pack") {
+    // The --inputs form is handled earlier, before the manifest is required
+    // at all — reaching here means the manifest-driven (lockfile) form.
     const manifestDir = path.dirname(path.resolve(args.manifest))
-
-    // Explicit input list: `[{ "id": "...", "path": "..." }]`.
-    //
-    // Exists so a consumer whose sprites span several manifests, or which
-    // names frames in its own vocabulary rather than by pixelkiln asset id,
-    // can still use the packer without importing this repo's source. Keeps
-    // the two sides talking over a file contract rather than a build config.
-    if (args.inputs) {
-      const raw = JSON.parse(await readFile(path.resolve(args.inputs), "utf8")) as unknown
-      if (!Array.isArray(raw) || !raw.length) {
-        throw new Error(`--inputs must be a non-empty JSON array of { id, path }`)
-      }
-      const inputs = raw.map((entry, i) => {
-        const e = entry as { id?: unknown; path?: unknown }
-        if (typeof e.id !== "string" || typeof e.path !== "string") {
-          throw new Error(`--inputs[${i}] needs string "id" and "path"`)
-        }
-        return { id: e.id, path: path.resolve(path.dirname(path.resolve(args.inputs!)), e.path) }
-      })
-
-      const { png, atlas, skipped } = packSprites(inputs, { columns: args.columns })
-      if (!args.out) throw new Error("--inputs requires --out")
-      const base = path.resolve(args.out.replace(/\.png$/, ""))
-      writeFileSync(`${base}.png`, png)
-      writeFileSync(`${base}.json`, JSON.stringify(atlas, null, 2) + "\n")
-      log(
-        `  ${atlas.frames.length} sprite(s), ${atlas.sheet.width}x${atlas.sheet.height} ` +
-          `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB`,
-      )
-      log(`    ${path.relative(process.cwd(), base)}.png + .json`)
-      for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
-      return
-    }
-
     const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
 
     for (const styleId of styleIds) {
@@ -416,6 +414,7 @@ async function main() {
         ? path.resolve(args.out.replace(/\.png$/, ""))
         : path.resolve(manifestDir, style!.outDir, `${styleId}-sheet`)
 
+      mkdirSync(path.dirname(base), { recursive: true })
       writeFileSync(`${base}.png`, png)
       writeFileSync(`${base}.json`, JSON.stringify(atlas, null, 2) + "\n")
 

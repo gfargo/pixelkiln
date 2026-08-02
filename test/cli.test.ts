@@ -8,6 +8,14 @@ import { shouldRetry, backoffMs, MAX_RETRIES } from "../src/client.ts"
 import { renderSheet } from "../src/pick/sheet.ts"
 
 describe("parseArgs", () => {
+  it("parses pack's --inputs/--out/--columns", () => {
+    const args = parseArgs(["pack", "--inputs", "sprites.json", "--out", "dist/sheet", "--columns", "8"])
+    expect(args.command).toBe("pack")
+    expect(args.inputs).toBe("sprites.json")
+    expect(args.out).toBe("dist/sheet")
+    expect(args.columns).toBe(8)
+  })
+
   it("parses filters and flags", () => {
     const args = parseArgs(["gen", "--style", "neon", "--only", "a,b", "--budget", "500", "--yes"])
     expect(args.command).toBe("gen")
