@@ -157,9 +157,15 @@ ever offers the one destination its items actually look like they belong to.
 Objects that match no style in this manifest (likely a different project's
 art, on a shared account) are listed separately and left out of every
 session; `--style <id>` bypasses grouping and forces one session across
-everything, same as before grouping existed. A single-style manifest is
-unaffected — everything goes in the one session it always did, since there is
-no second style to disambiguate against.
+everything, same as before grouping existed.
+
+A single-style manifest has no pattern of its own to check against, so by
+default it still claims everything, same as always — but every `--claims`
+lockfile's sibling manifest (same directory, by convention) is loaded
+too, purely to recognise ITS styles: an orphan matching a sibling's pattern
+is excluded here even though this project would otherwise have swallowed it
+by default. This is what lets a single-style project on a shared account
+still say "these aren't mine" instead of showing everything.
 
 Each card gets one of three verdicts (hover + `i` / `k` / `d`):
 

@@ -23,6 +23,7 @@ export {
   applyTags,
   type Orphan,
   type OrphanGroups,
+  type SiblingManifest,
   type SalvageAction,
 } from "./pipeline/salvage.ts"
 export { runSalvage, type SalvageResult } from "./pick/salvage-server.ts"

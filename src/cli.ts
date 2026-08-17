@@ -566,23 +566,46 @@ async function main() {
       return
     }
 
+    // Each --claims lockfile's sibling manifest (same directory, by the same
+    // convention --lock defaults from --manifest), loaded purely so a
+    // single-style manifest — which has no pattern of its own to check
+    // against — can still recognise "this looks like project X's art"
+    // instead of silently claiming everything by default. Best-effort: a
+    // missing or malformed sibling just means no extra signal, not an error.
+    const siblings: { label: string; manifest: typeof loaded.manifest }[] = []
+    for (const claimPath of args.claims.map((c) => path.resolve(c))) {
+      const siblingManifestPath = path.join(path.dirname(claimPath), "pixelkiln.manifest.json")
+      if (!existsSync(siblingManifestPath)) continue
+      try {
+        const siblingLoaded = await loadManifest(siblingManifestPath)
+        siblings.push({ label: path.basename(path.dirname(siblingManifestPath)), manifest: siblingLoaded.manifest })
+      } catch {
+        // Not this run's problem to solve — the orphan just gets no extra signal.
+      }
+    }
+
     // Which style each orphan's prompt was most likely generated from, so a
     // shared account's orphan pool doesn't get triaged as one undifferentiated
     // blob under whichever style happens to be first in the manifest.
-    const { matched, unmatched } = groupOrphansByStyle(orphans, loaded.manifest)
+    const { matched, unmatched, elsewhere } = groupOrphansByStyle(orphans, loaded.manifest, siblings)
     const multiStyle = Object.keys(loaded.manifest.styles).length > 1
     if (multiStyle) {
       diag(`\n  by style (matched against each style's prompt prefix/suffix):`)
       for (const [id, list] of matched) diag(`    ${id.padEnd(24)} ${list.length}`)
-      if (unmatched.length) {
-        diag(`    ${"(no style match)".padEnd(24)} ${unmatched.length}`)
-        diag(
-          `\n  ${unmatched.length} object(s) don't match any style's prompt pattern here.\n` +
-            `  If the account is shared, they may belong to a different project — check\n` +
-            `  you've passed every sibling project's lockfile via --claims. They're left\n` +
-            `  out of the sessions below; force them into one style with --style <id>.`,
-        )
-      }
+      if (unmatched.length) diag(`    ${"(no style match)".padEnd(24)} ${unmatched.length}`)
+    }
+    if (elsewhere.size) {
+      diag(`\n  matched a sibling project's own style instead of this one:`)
+      for (const [label, list] of elsewhere) diag(`    ${label.padEnd(28)} ${list.length}`)
+      diag(`  excluded from every session below — not this project's art.`)
+    }
+    if (unmatched.length) {
+      diag(
+        `\n  ${unmatched.length} object(s) don't match any known style pattern.\n` +
+          `  If the account is shared, they may belong to a different project — check\n` +
+          `  you've passed every sibling project's lockfile via --claims. They're left\n` +
+          `  out of the sessions below; force them into one style with --style <id>.`,
+      )
     }
 
     if (args.dryRun) {

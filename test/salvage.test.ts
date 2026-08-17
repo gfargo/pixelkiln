@@ -120,6 +120,55 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
     expect(matched.has("premium")).toBe(false)
     expect(matched.has("neon")).toBe(true)
   })
+
+  // The real gap this closes: disc-golf-game's own manifest has one style
+  // with an empty prompt template, so it has nothing to pattern-match
+  // against and used to claim its whole shared account's orphan pool by
+  // default — including heybud-admin's badge art.
+  describe("with sibling manifests", () => {
+    const single: Manifest = {
+      name: "disc-golf-game",
+      styles: { base: style() }, // empty prefix/suffix, same as the real project
+      assets: {},
+    }
+    const sibling = { label: "heybud-admin", manifest }
+
+    it("still claims everything by default with no siblings passed", () => {
+      const { matched, elsewhere } = groupOrphansByStyle(
+        [orphan({ prompt: "hot magenta and electric cyan rim lighting" })],
+        single,
+      )
+      expect(matched.get("base")).toHaveLength(1)
+      expect(elsewhere.size).toBe(0)
+    })
+
+    it("excludes an orphan that matches a sibling's own style pattern", () => {
+      const badge = orphan({ id: "badge", prompt: "hot magenta and electric cyan rim lighting" })
+      const { matched, elsewhere } = groupOrphansByStyle([badge], single, [sibling])
+      expect(matched.has("base")).toBe(false)
+      expect([...elsewhere.keys()]).toEqual(["heybud-admin: neon"])
+      expect(elsewhere.get("heybud-admin: neon")!.map((o) => o.id)).toEqual(["badge"])
+    })
+
+    it("still falls back to the one style when a sibling doesn't recognise it either", () => {
+      const tree = orphan({ id: "tree", prompt: "isometric pine tree, disc golf course" })
+      const { matched, elsewhere } = groupOrphansByStyle([tree], single, [sibling])
+      expect(matched.get("base")!.map((o) => o.id)).toEqual(["tree"])
+      expect(elsewhere.size).toBe(0)
+    })
+
+    it("prefers this manifest's own match over a sibling's, when both would match", () => {
+      const multi: Manifest = {
+        name: "m",
+        styles: { neon: style({ promptSuffix: "hot magenta and electric cyan rim lighting" }) },
+        assets: {},
+      }
+      const badge = orphan({ prompt: "hot magenta and electric cyan rim lighting" })
+      const { matched, elsewhere } = groupOrphansByStyle([badge], multi, [sibling])
+      expect(matched.get("neon")).toHaveLength(1)
+      expect(elsewhere.size).toBe(0)
+    })
+  })
 })
 
 describe("idFromPrompt", () => {
