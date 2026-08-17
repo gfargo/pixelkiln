@@ -14,6 +14,16 @@ export { adopt, tagAdopted, type AdoptResult } from "./pipeline/adopt.ts"
 export { runPicker, type PickResult } from "./pick/server.ts"
 export { renderSheet, type SheetGroup } from "./pick/sheet.ts"
 export { scanAssets, buildManifest, pngSize, slugify, type ScannedAsset } from "./pipeline/init.ts"
-export { loadClaims, findOrphans, idFromPrompt, applyTags, type Orphan, type SalvageAction } from "./pipeline/salvage.ts"
+export {
+  loadClaims,
+  findOrphans,
+  matchOrphanStyle,
+  groupOrphansByStyle,
+  idFromPrompt,
+  applyTags,
+  type Orphan,
+  type OrphanGroups,
+  type SalvageAction,
+} from "./pipeline/salvage.ts"
 export { runSalvage, type SalvageResult } from "./pick/salvage-server.ts"
 export { renderSalvageSheet } from "./pick/salvage-sheet.ts"

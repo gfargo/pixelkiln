@@ -53,6 +53,16 @@ export function pruneCache(cache: HashCache, liveIds: Set<string>): number {
   return removed
 }
 
+/**
+ * A lockfile named exactly `*.lock.json` gets the conventional
+ * `*.cache.json` sibling. Anything else — a custom `--lock` name, which
+ * projects in this monorepo already use for variant lockfiles — falls back
+ * to appending `.cache.json` to the whole path instead of returning it
+ * unchanged. Returning the input unchanged here used to mean the cache,
+ * which is a completely different schema, got written straight over the
+ * real lockfile on the very first `adopt`.
+ */
 export function cachePathFor(lockPath: string): string {
-  return lockPath.replace(/\.lock\.json$/, ".cache.json")
+  if (lockPath.endsWith(".lock.json")) return lockPath.replace(/\.lock\.json$/, ".cache.json")
+  return `${lockPath}.cache.json`
 }
