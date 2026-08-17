@@ -128,6 +128,42 @@ describe("submit", () => {
     expect(entry.status).toBe("failed")
     expect(entry.cost).toBe(0) // a rejected request is not charged
   })
+
+  // Regression: the spacing/in-flight limits used to be hardcoded constants
+  // in this module regardless of which provider was submitting to, which
+  // would have silently applied PixelLab's own limits to any other backend.
+  it("uses the provider's own rateLimit() instead of the pipeline default", async () => {
+    const provider = new FakeProvider()
+    expect(provider.rateLimit).toBeUndefined() // FakeProvider declares none
+    const fast = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      rateLimit: () => ({ spacingMs: 0, maxInFlight: 8 }),
+    })
+    const { loaded, specs } = await project()
+    const lock = emptyLock()
+    const plan = await buildPlan(specs, lock)
+
+    const start = Date.now()
+    // No spacingMs override here — this run relies entirely on the
+    // provider's declared 0ms, not the module's own default spacing.
+    await submit(fast, loaded, plan.actionable, lock, lockPath, {})
+    // DEFAULT_RATE_LIMIT's 2500ms spacing would make 2 submissions take over
+    // 2.5s; a provider declaring 0ms should finish orders of magnitude faster.
+    expect(Date.now() - start).toBeLessThan(1000)
+  })
+
+  it("still lets an explicit spacingMs override the provider's own rateLimit()", async () => {
+    const provider = new FakeProvider()
+    const slow = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      rateLimit: () => ({ spacingMs: 5000, maxInFlight: 8 }),
+    })
+    const { loaded, specs } = await project()
+    const lock = emptyLock()
+    const plan = await buildPlan(specs, lock)
+
+    const start = Date.now()
+    await submit(slow, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    expect(Date.now() - start).toBeLessThan(1000)
+  })
 })
 
 describe("poll", () => {

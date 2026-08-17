@@ -48,6 +48,24 @@ export interface BalanceInfo {
 }
 
 /**
+ * Submission constraints a backend enforces upstream, in its own units —
+ * `submit` has no business knowing these numbers itself.
+ */
+export interface RateLimit {
+  /** Minimum time between successive submissions, global across the account. */
+  spacingMs: number
+  /** Background jobs allowed in flight at once. */
+  maxInFlight: number
+}
+
+/**
+ * Used when a provider doesn't declare `rateLimit()` — conservative enough
+ * not to be a real constraint for a provider that has none of its own, and
+ * overridable per run via `submit`'s own options regardless.
+ */
+export const DEFAULT_RATE_LIMIT: RateLimit = { spacingMs: 2500, maxInFlight: 8 }
+
+/**
  * A backend that turns a resolved spec into image bytes.
  *
  * Everything above this interface — the manifest, the lockfile, plan diffing,
@@ -66,6 +84,10 @@ export interface Provider {
 
   /** Never performs I/O — `plan` must stay free and offline. */
   estimate(spec: ResolvedSpec): CostEstimate
+
+  /** This backend's own submission constraints. Falls back to
+   *  `DEFAULT_RATE_LIMIT` when absent — see that constant's doc. */
+  rateLimit?(): RateLimit
 
   submit(spec: ResolvedSpec, styleImagesBase64: string[]): Promise<{ jobId: string }>
 

@@ -1,4 +1,4 @@
-import type { Provider } from "../provider.ts"
+import { DEFAULT_RATE_LIMIT, type Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { styleImagesBase64, type LoadedManifest } from "../manifest.ts"
 import type { Lock, ResolvedSpec } from "../types.ts"
@@ -6,16 +6,19 @@ import type { PlanItem } from "./plan.ts"
 
 /**
  * Two distinct limits, easy to conflate:
- *   - submissions must be >2s apart  (a rate, global across the account)
- *   - background jobs in flight      (a count: Tier 1=8, Tier 2=10, Tier 3=20)
+ *   - submissions must be spaced apart (a rate, global across the account)
+ *   - background jobs in flight        (a count)
+ *
+ * Both are the provider's own constraint (PixelLab: >2s apart; Tier 1=8,
+ * Tier 2=10, Tier 3=20 in flight) surfaced through `provider.rateLimit()`,
+ * not a number this pipeline layer should know on its own — a second
+ * provider with different limits must not silently inherit PixelLab's.
  *
  * Submission is fast and job execution is slow, so the correct shape is a
  * serial submit loop with a global spacing gate, which pauses when too many
  * jobs are still running. Parallel workers each sleeping `spacing` would give a
  * global rate of workers/spacing and quietly breach the first limit.
  */
-export const DEFAULT_MAX_IN_FLIGHT = 8
-export const SUBMIT_SPACING_MS = 2500
 const IN_FLIGHT_POLL_MS = 5000
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -42,8 +45,9 @@ export async function submit(
   lockPath: string,
   opts: SubmitOptions = {},
 ): Promise<SubmitResult> {
-  const maxInFlight = opts.maxInFlight ?? DEFAULT_MAX_IN_FLIGHT
-  const spacing = opts.spacingMs ?? SUBMIT_SPACING_MS
+  const limits = provider.rateLimit?.() ?? DEFAULT_RATE_LIMIT
+  const maxInFlight = opts.maxInFlight ?? limits.maxInFlight
+  const spacing = opts.spacingMs ?? limits.spacingMs
   const log = opts.onProgress ?? (() => {})
 
   if (opts.budget != null) {

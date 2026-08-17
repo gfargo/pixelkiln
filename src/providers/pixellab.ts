@@ -5,7 +5,7 @@ import path from "node:path"
 import { PixelLabClient, PixelLabError, clientFromEnv } from "../client.ts"
 import { paletteSwatch } from "../png.ts"
 import { candidateCount, generationCost, type Generator, type ResolvedSpec } from "../types.ts"
-import type { BalanceInfo, CostEstimate, JobState, Provider, RemoteAsset } from "../provider.ts"
+import type { BalanceInfo, CostEstimate, JobState, Provider, RateLimit, RemoteAsset } from "../provider.ts"
 
 /**
  * PixelLab, the reference implementation.
@@ -26,6 +26,13 @@ export class PixelLabProvider implements Provider {
 
   supports(generator: Generator): boolean {
     return generator === "1dir" || generator === "map" || generator === "pixflux"
+  }
+
+  /** PixelLab's own constraints: submissions must be >2s apart, and
+   *  background jobs in flight are capped by subscription tier (Tier 1=8,
+   *  Tier 2=10, Tier 3=20) — 8 is the safe floor across every tier. */
+  rateLimit(): RateLimit {
+    return { spacingMs: 2500, maxInFlight: 8 }
   }
 
   /**
