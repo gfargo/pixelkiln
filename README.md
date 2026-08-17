@@ -150,14 +150,32 @@ pixelkiln salvage --claims ../other-project/pixelkiln.lock.json --dry-run
 pixelkiln salvage --claims ../other-project/pixelkiln.lock.json
 ```
 
-It opens a contact sheet of everything no lockfile claims. Each card gets one of
-three verdicts (hover + `i` / `k` / `d`):
+A manifest with more than one style opens **one contact sheet per style**,
+one at a time, rather than a single mixed session — each orphan is matched
+against every style's `promptPrefix`/`promptSuffix` first, so a session only
+ever offers the one destination its items actually look like they belong to.
+Objects that match no style in this manifest (likely a different project's
+art, on a shared account) are listed separately and left out of every
+session; `--style <id>` bypasses grouping and forces one session across
+everything, same as before grouping existed. A single-style manifest is
+unaffected — everything goes in the one session it always did, since there is
+no second style to disambiguate against.
+
+Each card gets one of three verdicts (hover + `i` / `k` / `d`):
 
 | Verdict | Effect |
 |---|---|
 | **import** | Downloads it, adds a manifest asset and a lock entry with the recovered prompt. It becomes a fully tracked asset. |
 | **keep** | Tags it `pixelkiln:keep` upstream. Nothing local changes. |
 | **discard** | Tags it `pixelkiln:discard`. **Does not delete.** |
+
+`--dry-run` prints the same per-style breakdown plus the first 30 unclaimed
+objects; add `--all` to list every one, or `--json` to print the full list as
+JSON on stdout with everything else on stderr, for scripting:
+
+```bash
+pixelkiln salvage --claims a.json --dry-run --json | jq '. | length'
+```
 
 Deleting is a separate command that has to be asked for by name, lists what it
 will remove, and refuses to run non-interactively without `--yes`:

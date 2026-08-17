@@ -25,6 +25,19 @@ describe("parseArgs", () => {
     expect(args.yes).toBe(true)
   })
 
+  it("parses salvage's --all and --json", () => {
+    const args = parseArgs(["salvage", "--dry-run", "--all", "--json"])
+    expect(args.dryRun).toBe(true)
+    expect(args.all).toBe(true)
+    expect(args.json).toBe(true)
+  })
+
+  it("defaults --all and --json to false", () => {
+    const args = parseArgs(["salvage", "--dry-run"])
+    expect(args.all).toBe(false)
+    expect(args.json).toBe(false)
+  })
+
   // The expensive typo: a silently-ignored filter generates the whole manifest.
   it("rejects an unknown flag rather than ignoring it", () => {
     expect(() => parseArgs(["gen", "--styles", "neon"])).toThrow(/Unknown flag/)

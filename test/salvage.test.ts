@@ -1,9 +1,20 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest"
-import { mkdtemp, writeFile, rm } from "node:fs/promises"
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest"
+import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { idFromPrompt, loadClaims, SALVAGED_SPEC_HASH } from "../src/pipeline/salvage.ts"
+import {
+  idFromPrompt,
+  loadClaims,
+  matchOrphanStyle,
+  groupOrphansByStyle,
+  SALVAGED_SPEC_HASH,
+  type Orphan,
+} from "../src/pipeline/salvage.ts"
 import { renderSalvageSheet } from "../src/pick/salvage-sheet.ts"
+import { runSalvage } from "../src/pick/salvage-server.ts"
+import { loadManifest } from "../src/manifest.ts"
+import { FakeProvider } from "../src/providers/fake.ts"
+import type { Lock, Manifest, Style } from "../src/types.ts"
 
 let dir: string
 beforeEach(async () => {
@@ -11,6 +22,104 @@ beforeEach(async () => {
 })
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true })
+})
+
+function style(over: Partial<Style> = {}): Style {
+  return {
+    generator: "1dir",
+    styleImages: [],
+    promptPrefix: "",
+    promptSuffix: "",
+    outDir: "out",
+    palette: [],
+    tags: [],
+    ...over,
+  }
+}
+
+function orphan(over: Partial<Orphan> = {}): Orphan {
+  return {
+    id: "obj-1",
+    prompt: "a wooden fence",
+    width: 32,
+    height: 96,
+    createdAt: "2026-01-01T00:00:00Z",
+    previewUrl: "fake://obj-1.png",
+    tags: [],
+    ...over,
+  }
+}
+
+describe("matchOrphanStyle / groupOrphansByStyle", () => {
+  // Sharing an account across projects is the whole reason salvage's orphan
+  // pool can span styles that were never meant to mix (heybud-neuromancer
+  // badges next to an unrelated project's terrain tiles). Classification has
+  // to separate them correctly, and has to resist two failure modes: a short
+  // or empty promptPrefix/promptSuffix matching everything, and a single-style
+  // manifest (which has no pattern to check against at all) matching nothing.
+  const manifest: Manifest = {
+    name: "m",
+    styles: {
+      premium: style({ promptSuffix: "restrained black, charcoal, pearl-white and silver palette" }),
+      neon: style({ promptSuffix: "hot magenta and electric cyan rim lighting" }),
+    },
+    assets: {},
+  }
+
+  it("matches an orphan to the style whose suffix appears in its prompt", () => {
+    expect(matchOrphanStyle("a badge, restrained black, charcoal, pearl-white and silver palette", manifest)).toBe(
+      "premium",
+    )
+    expect(matchOrphanStyle("a badge, hot magenta and electric cyan rim lighting", manifest)).toBe("neon")
+  })
+
+  it("returns null when nothing matches, rather than guessing", () => {
+    expect(matchOrphanStyle("isometric pine tree, GBA style", manifest)).toBeNull()
+  })
+
+  it("does not let a short or empty prefix/suffix match everything", () => {
+    const loose: Manifest = {
+      name: "m",
+      styles: { base: style({ promptSuffix: "clean" }) },
+      assets: {},
+    }
+    // Two styles, so classification runs — but "clean" is under the length
+    // floor, so it must not swallow every prompt that happens to contain it.
+    const twoStyle: Manifest = { ...loose, styles: { ...loose.styles, other: style() } }
+    expect(matchOrphanStyle("a very clean sword", twoStyle)).toBeNull()
+  })
+
+  it("skips classification for a single-style manifest, matching everything to it", () => {
+    const single: Manifest = {
+      name: "m",
+      styles: { base: style() }, // empty prefix/suffix — nothing to pattern-match against
+      assets: {},
+    }
+    expect(matchOrphanStyle("literally anything", single)).toBe("base")
+  })
+
+  it("groups matched orphans by style and collects the rest as unmatched", () => {
+    const orphans = [
+      orphan({ id: "a", prompt: "restrained black, charcoal, pearl-white and silver palette" }),
+      orphan({ id: "b", prompt: "hot magenta and electric cyan rim lighting" }),
+      orphan({ id: "c", prompt: "hot magenta and electric cyan rim lighting" }),
+      orphan({ id: "d", prompt: "isometric pine tree, GBA style" }),
+    ]
+    const { matched, unmatched } = groupOrphansByStyle(orphans, manifest)
+    expect([...matched.keys()]).toEqual(["premium", "neon"])
+    expect(matched.get("premium")!.map((o) => o.id)).toEqual(["a"])
+    expect(matched.get("neon")!.map((o) => o.id)).toEqual(["b", "c"])
+    expect(unmatched.map((o) => o.id)).toEqual(["d"])
+  })
+
+  it("omits styles with zero matches from the group map", () => {
+    const { matched } = groupOrphansByStyle(
+      [orphan({ prompt: "hot magenta and electric cyan rim lighting" })],
+      manifest,
+    )
+    expect(matched.has("premium")).toBe(false)
+    expect(matched.has("neon")).toBe(true)
+  })
 })
 
 describe("idFromPrompt", () => {
@@ -102,6 +211,66 @@ describe("salvage sheet", () => {
 
   it("states that discard does not delete", () => {
     expect(renderSalvageSheet([orphan])).toMatch(/nothing is deleted/i)
+  })
+})
+
+describe("runSalvage", () => {
+  // Regression: applying an import used to re-merge the entire in-memory
+  // manifest into the on-disk file, so every pre-existing asset got
+  // overwritten with its loadManifest()-normalized copy (e.g. a defaulted
+  // `promptByStyle: {}` appearing on assets that never had the field on
+  // disk). One imported asset should touch only that one entry.
+  it("writes only the newly imported asset, leaving existing entries byte-for-byte", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    const rawManifest = {
+      name: "itest",
+      styles: { base: { generator: "1dir", size: 64, outDir: "out", promptSuffix: "clean" } },
+      assets: { anvil: { prompt: "an anvil", category: "tools" } },
+    }
+    await writeFile(manifestPath, JSON.stringify(rawManifest, null, 2) + "\n")
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const lock: Lock = { version: 2, entries: {} }
+
+    const loaded = await loadManifest(manifestPath)
+    const provider = new FakeProvider()
+    provider.seed({ id: "obj-1", prompt: "a wooden fence", width: 32, height: 96 })
+    const orphan = {
+      id: "obj-1",
+      prompt: "a wooden fence",
+      width: 32,
+      height: 96,
+      createdAt: "2026-01-01T00:00:00Z",
+      previewUrl: "fake://obj-1.png",
+      tags: [],
+    }
+
+    let url = ""
+    const salvaged = runSalvage(
+      provider,
+      [orphan],
+      {
+        manifestPath: loaded.path,
+        manifest: loaded.manifest,
+        styleId: "base",
+        importDir: path.resolve(loaded.root, "out"),
+        lock,
+        lockPath,
+      },
+      { open: false, onProgress: (m) => (url ||= m.match(/http:\/\/127\.0\.0\.1:\d+\//)?.[0] ?? "") },
+    )
+
+    await vi.waitFor(() => expect(url).not.toBe(""))
+    const res = await fetch(url + "apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decisions: [{ id: "obj-1", action: "import" }] }),
+    })
+    expect(res.ok).toBe(true)
+    expect((await salvaged).imported).toBe(1)
+
+    const onDisk = JSON.parse(await readFile(manifestPath, "utf8"))
+    expect(onDisk.assets.anvil).toEqual({ prompt: "an anvil", category: "tools" })
+    expect(Object.keys(onDisk.assets)).toEqual(["anvil", "wooden_fence"])
   })
 })
 

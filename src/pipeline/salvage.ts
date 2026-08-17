@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { requireList, type Provider, type RemoteAsset } from "../provider.ts"
-import { parseLock, type Lock } from "../types.ts"
+import { parseLock, type Lock, type Manifest } from "../types.ts"
 
 /**
  * Objects on the account that no known lockfile claims.
@@ -71,6 +71,68 @@ export async function findOrphans(
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
   return { orphans, total: all.length }
+}
+
+/**
+ * Fragments shorter than this match too much by accident (an empty
+ * `promptPrefix`/`promptSuffix`, or a short one like "clean", would otherwise
+ * "match" nearly every prompt via `.includes`).
+ */
+const MIN_STYLE_FRAGMENT_LENGTH = 12
+
+/**
+ * Which manifest style, if any, an orphan's prompt was generated from.
+ *
+ * A style's `promptPrefix`/`promptSuffix` are boilerplate baked into every
+ * generation of that style, so they double as a fingerprint: an orphan whose
+ * prompt contains one is very likely that style's rejected candidate, not
+ * another project's art that happens to share the account. A manifest with
+ * only one style skips the check entirely — there is nothing to disambiguate,
+ * and a style with an empty prefix/suffix (common for single-style projects
+ * that don't template their prompts) would otherwise match nothing at all.
+ */
+export function matchOrphanStyle(prompt: string, manifest: Manifest): string | null {
+  const styleIds = Object.keys(manifest.styles)
+  if (styleIds.length <= 1) return styleIds[0] ?? null
+
+  const p = prompt.toLowerCase()
+  for (const styleId of styleIds) {
+    const style = manifest.styles[styleId]!
+    for (const raw of [style.promptPrefix, style.promptSuffix]) {
+      const frag = raw?.trim().toLowerCase()
+      if (frag && frag.length >= MIN_STYLE_FRAGMENT_LENGTH && p.includes(frag)) return styleId
+    }
+  }
+  return null
+}
+
+export interface OrphanGroups {
+  /** styleId → its matched orphans, in manifest style order. */
+  matched: Map<string, Orphan[]>
+  /** Orphans that matched no style in this manifest — likely a different project's art. */
+  unmatched: Orphan[]
+}
+
+/**
+ * Splits orphans by the style that most likely produced them.
+ *
+ * `salvage` used to hand a single `--style` to a whole session regardless of
+ * how many the orphan pool actually spanned, so importing anything wrong
+ * silently mislabeled it under the first style in the manifest. Grouping
+ * first lets the caller run one correctly-scoped session per style instead.
+ */
+export function groupOrphansByStyle(orphans: Orphan[], manifest: Manifest): OrphanGroups {
+  const matched = new Map<string, Orphan[]>()
+  const unmatched: Orphan[] = []
+  for (const styleId of Object.keys(manifest.styles)) matched.set(styleId, [])
+
+  for (const o of orphans) {
+    const styleId = matchOrphanStyle(o.prompt, manifest)
+    if (styleId) matched.get(styleId)!.push(o)
+    else unmatched.push(o)
+  }
+  for (const [styleId, list] of [...matched]) if (!list.length) matched.delete(styleId)
+  return { matched, unmatched }
 }
 
 /**

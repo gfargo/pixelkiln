@@ -17,7 +17,7 @@ import { fetchAssets, pushTags } from "./pipeline/fetch.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
 import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
-import { loadClaims, findOrphans, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
+import { loadClaims, findOrphans, groupOrphansByStyle, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
 import { auditStyle, outliers, hex } from "./pipeline/audit.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
@@ -34,6 +34,8 @@ interface Args {
   yes: boolean
   budget?: number
   dryRun: boolean
+  all: boolean
+  json: boolean
   noOpen: boolean
   tag: boolean
   from?: string
@@ -52,7 +54,7 @@ const VALUE_FLAGS = [
   "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--dry-run", "--no-open", "--tag", "--write-prompts",
+  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--no-open", "--tag", "--write-prompts",
 ] as const
 
 export const COMMANDS = [
@@ -149,6 +151,8 @@ export function parseArgs(argv: string[]): Args {
     yes: rest.includes("--yes") || rest.includes("-y"),
     budget,
     dryRun: rest.includes("--dry-run"),
+    all: rest.includes("--all"),
+    json: rest.includes("--json"),
     noOpen: rest.includes("--no-open"),
     tag: rest.includes("--tag"),
     from: get("--from"),
@@ -178,6 +182,7 @@ Commands
   adopt     Match existing account objects to files already in the repo.
   accept    Keep existing art after a style reword — re-baseline, do not regenerate.
   salvage   Triage account objects no lockfile claims. Recovers usable art.
+            One session per matching style unless --style forces a single one.
   audit     Measure how consistently a style's assets hold together. Offline.
   pack      Composite a style's sprites into one sheet + JSON atlas. Offline.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
@@ -195,6 +200,8 @@ Options
   --budget <n>        Refuse to spend more than n generations
   --force             Regenerate even if up to date
   --dry-run           Plan only; never spend
+  --all               salvage --dry-run: list every unclaimed object, not just the first 30
+  --json              salvage --dry-run: print the full unclaimed list as JSON
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser during pick
   --tag               Also push tags upstream after fetch
@@ -522,6 +529,14 @@ async function main() {
   }
 
   if (args.command === "salvage") {
+    // --json is a machine-readable contract: stdout must be the JSON array
+    // and nothing else, so `pixelkiln salvage --dry-run --json | jq` works.
+    // Every human-oriented line below goes through `diag` instead of `log` so
+    // it lands on stderr — visible in a terminal, invisible to a pipe — and
+    // only the final JSON.stringify call ever reaches console.log.
+    const jsonMode = args.dryRun && args.json
+    const diag = jsonMode ? (msg = "") => console.error(msg) : log
+
     // Correctness depends on a complete claim set. Missing a lockfile makes
     // another project's shipped art look unclaimed, so this is stated loudly.
     // This project's own lockfile is optional — salvage is a reasonable first
@@ -532,10 +547,10 @@ async function main() {
       ...(existsSync(ownLock) ? [ownLock] : []),
       ...args.claims.map((c) => path.resolve(c)),
     ]
-    log(`  claim set (${lockPaths.length} lockfile(s)):`)
-    for (const p of lockPaths) log(`    ${path.relative(process.cwd(), p)}`)
+    diag(`  claim set (${lockPaths.length} lockfile(s)):`)
+    for (const p of lockPaths) diag(`    ${path.relative(process.cwd(), p)}`)
     if (!args.claims.length) {
-      log(
+      diag(
         `\n  Only this project's lockfile was consulted. If the account is shared,\n` +
           `  pass every other project's lockfile via --claims a.json,b.json or you\n` +
           `  will see their assets listed as unclaimed.`,
@@ -543,42 +558,50 @@ async function main() {
     }
 
     const claimed = await loadClaims(lockPaths)
-    const { orphans, total } = await findOrphans(provider, claimed, { onProgress: log })
-    log(`  ${claimed.size} claimed · ${orphans.length} unclaimed of ${total}`)
+    const { orphans, total } = await findOrphans(provider, claimed, { onProgress: diag })
+    diag(`  ${claimed.size} claimed · ${orphans.length} unclaimed of ${total}`)
     if (!orphans.length) {
-      log(`\n  nothing to triage`)
+      if (jsonMode) log("[]")
+      else log(`\n  nothing to triage`)
       return
     }
-    if (args.dryRun) {
-      for (const o of orphans.slice(0, 30)) {
-        log(`    ${o.id}  ${o.width}x${o.height}  ${o.createdAt.slice(0, 10)}  ${o.prompt.slice(0, 50)}`)
+
+    // Which style each orphan's prompt was most likely generated from, so a
+    // shared account's orphan pool doesn't get triaged as one undifferentiated
+    // blob under whichever style happens to be first in the manifest.
+    const { matched, unmatched } = groupOrphansByStyle(orphans, loaded.manifest)
+    const multiStyle = Object.keys(loaded.manifest.styles).length > 1
+    if (multiStyle) {
+      diag(`\n  by style (matched against each style's prompt prefix/suffix):`)
+      for (const [id, list] of matched) diag(`    ${id.padEnd(24)} ${list.length}`)
+      if (unmatched.length) {
+        diag(`    ${"(no style match)".padEnd(24)} ${unmatched.length}`)
+        diag(
+          `\n  ${unmatched.length} object(s) don't match any style's prompt pattern here.\n` +
+            `  If the account is shared, they may belong to a different project — check\n` +
+            `  you've passed every sibling project's lockfile via --claims. They're left\n` +
+            `  out of the sessions below; force them into one style with --style <id>.`,
+        )
       }
-      if (orphans.length > 30) log(`    … and ${orphans.length - 30} more`)
-      log(`\n  --dry-run: nothing changed.`)
+    }
+
+    if (args.dryRun) {
+      if (args.json) {
+        log(JSON.stringify(orphans, null, 2))
+      } else {
+        const shown = args.all ? orphans : orphans.slice(0, 30)
+        for (const o of shown) {
+          log(`    ${o.id}  ${o.width}x${o.height}  ${o.createdAt.slice(0, 10)}  ${o.prompt.slice(0, 50)}`)
+        }
+        if (!args.all && orphans.length > 30) {
+          log(`    … and ${orphans.length - 30} more (--all for the full list, --json for machine-readable)`)
+        }
+      }
+      diag(`\n  --dry-run: nothing changed.`)
       return
     }
 
-    const styleId = args.styles[0] ?? Object.keys(loaded.manifest.styles)[0]!
-    const style = loaded.manifest.styles[styleId]!
-    const res = await runSalvage(
-      provider,
-      orphans,
-      {
-        manifestPath: loaded.path,
-        manifest: loaded.manifest,
-        styleId,
-        importDir: path.resolve(loaded.root, style.outDir),
-        lock,
-        lockPath: args.lock,
-      },
-      { open: !args.noOpen, onProgress: log },
-    )
-    log(
-      `\n  imported ${res.imported} · kept ${res.kept} · tagged-discard ${res.discarded}` +
-        (res.failed ? ` · failed ${res.failed}` : ""),
-    )
-
-    if (res.imported > 0) {
+    const rebaseline = async () => {
       // Imports append to the manifest, so their spec hashes only exist after
       // it is rewritten. Without this every salvaged asset reports `stale` on
       // the next plan and offers to regenerate art that was just recovered —
@@ -594,9 +617,58 @@ async function main() {
         n++
       }
       await saveLock(args.lock, lock)
-      log(`  baselined ${n} imported asset(s) against the manifest`)
+      if (n) log(`  baselined ${n} imported asset(s) against the manifest`)
     }
-    if (res.discarded) {
+
+    const runOne = async (styleId: string, list: typeof orphans) => {
+      const style = loaded.manifest.styles[styleId]!
+      const res = await runSalvage(
+        provider,
+        list,
+        {
+          manifestPath: loaded.path,
+          manifest: loaded.manifest,
+          styleId,
+          importDir: path.resolve(loaded.root, style.outDir),
+          lock,
+          lockPath: args.lock,
+        },
+        { open: !args.noOpen, onProgress: log },
+      )
+      log(
+        `  imported ${res.imported} · kept ${res.kept} · tagged-discard ${res.discarded}` +
+          (res.failed ? ` · failed ${res.failed}` : ""),
+      )
+      if (res.imported > 0) await rebaseline()
+      return res
+    }
+
+    // An explicit --style bypasses grouping entirely and runs one session
+    // across every unclaimed object, same as before grouping existed — for
+    // when the auto-match misses a real candidate and a human already knows
+    // where it belongs.
+    if (args.styles.length) {
+      const res = await runOne(args.styles[0]!, orphans)
+      if (res.discarded) {
+        log(`\n  Nothing was deleted. To actually remove the discarded objects:`)
+        log(`    pixelkiln purge\n`)
+      }
+      return
+    }
+
+    if (!matched.size) {
+      log(`\n  nothing matched a known style — nothing to triage`)
+      return
+    }
+
+    log(`\n  ${matched.size} session(s), one style at a time:`)
+    let totalDiscarded = 0
+    for (const [styleId, list] of matched) {
+      log(`\n  — ${styleId} (${list.length}) —`)
+      const res = await runOne(styleId, list)
+      totalDiscarded += res.discarded
+    }
+    if (totalDiscarded) {
       log(`\n  Nothing was deleted. To actually remove the discarded objects:`)
       log(`    pixelkiln purge\n`)
     }

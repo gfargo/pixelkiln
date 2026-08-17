@@ -68,6 +68,7 @@ export async function runSalvage(
 
           const result: SalvageResult = { imported: 0, kept: 0, discarded: 0, failed: 0 }
           const taken = new Set(Object.keys(ctx.manifest.assets))
+          const importedAssetIds: string[] = []
 
           for (const decision of decisions) {
             const orphan = byId.get(decision.id)
@@ -117,6 +118,7 @@ export async function runSalvage(
                   cost: 0, // already paid for, in an earlier period
                   provider: provider.id,
                 })
+                importedAssetIds.push(assetId)
                 result.imported++
                 log(`  imported ${assetId} ← ${orphan.id}`)
               } catch (err) {
@@ -132,9 +134,13 @@ export async function runSalvage(
 
           await applyTags(provider, decisions, existingTags, { onProgress: log })
 
-          // Persist the manifest additions and the lock together.
+          // Persist the manifest additions and the lock together. Only the
+          // newly imported entries are written back — re-merging the whole
+          // in-memory manifest would overwrite every pre-existing asset with
+          // its loadManifest()-normalized copy, turning a one-asset import
+          // into a diff touching the entire file.
           const raw = JSON.parse(await readFile(ctx.manifestPath, "utf8")) as Manifest
-          raw.assets = { ...raw.assets, ...ctx.manifest.assets }
+          for (const id of importedAssetIds) raw.assets[id] = ctx.manifest.assets[id]!
           await writeFile(ctx.manifestPath, JSON.stringify(raw, null, 2) + "\n")
           await saveLock(ctx.lockPath, ctx.lock)
 
