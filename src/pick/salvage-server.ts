@@ -1,5 +1,3 @@
-import { createServer } from "node:http"
-import { spawn } from "node:child_process"
 import { mkdir, writeFile, readFile } from "node:fs/promises"
 import path from "node:path"
 import type { Provider } from "../provider.ts"
@@ -14,6 +12,7 @@ import {
   type SalvageDecision,
 } from "../pipeline/salvage.ts"
 import { renderSalvageSheet } from "./salvage-sheet.ts"
+import { serveReviewPage } from "./review-server.ts"
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
@@ -50,126 +49,97 @@ export async function runSalvage(
   const byId = new Map(orphans.map((o) => [o.id, o]))
   const existingTags = new Map(orphans.map((o) => [o.id, o.tags]))
 
-  return new Promise<SalvageResult>((resolve, reject) => {
-    const server = createServer(async (req, res) => {
-      if (req.method === "GET" && (req.url === "/" || req.url?.startsWith("/?"))) {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" })
-        res.end(html)
-        return
-      }
-
-      if (req.method === "POST" && req.url === "/apply") {
-        try {
-          const chunks: Buffer[] = []
-          for await (const c of req) chunks.push(c as Buffer)
-          const { decisions } = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
-            decisions: SalvageDecision[]
-          }
-
-          const result: SalvageResult = { imported: 0, kept: 0, discarded: 0, failed: 0 }
-          const taken = new Set(Object.keys(ctx.manifest.assets))
-          const importedAssetIds: string[] = []
-
-          for (const decision of decisions) {
-            const orphan = byId.get(decision.id)
-            if (!orphan) continue
-
-            if (decision.action === "import") {
-              try {
-                const buf = await provider.download(orphan.previewUrl)
-                if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error("not a PNG")
-
-                const assetId = idFromPrompt(orphan.prompt, taken)
-                const rel = path.join("_salvaged", `${assetId}.png`)
-                const outFile = path.resolve(ctx.importDir, rel)
-                await mkdir(path.dirname(outFile), { recursive: true })
-                await writeFile(outFile, buf)
-
-                ctx.manifest.assets[assetId] = {
-                  prompt: orphan.prompt,
-                  promptByStyle: {},
-                  category: "_salvaged",
-                  file: rel,
-                  tags: ["salvaged"],
-                  styles: [ctx.styleId],
-                  ...(orphan.width === orphan.height
-                    ? { size: orphan.width }
-                    : { width: orphan.width, height: orphan.height }),
-                }
-
-                upsert(ctx.lock, lockKey(ctx.styleId, assetId), {
-                  styleId: ctx.styleId,
-                  assetId,
-                  specHash: SALVAGED_SPEC_HASH,
-                  generator: orphan.width === orphan.height ? "1dir" : "map",
-                  prompt: orphan.prompt,
-                  width: orphan.width,
-                  height: orphan.height,
-                  jobId: orphan.id,
-                  reviewObjectId: null,
-                  objectId: orphan.id,
-                  candidateIndex: null,
-                  status: "downloaded",
-                  error: null,
-                  sourceUrl: orphan.previewUrl,
-                  outputs: [{ path: outFile, sha256: sha256(buf) }],
-                  submittedAt: orphan.createdAt,
-                  downloadedAt: new Date().toISOString(),
-                  cost: 0, // already paid for, in an earlier period
-                  provider: provider.id,
-                })
-                importedAssetIds.push(assetId)
-                result.imported++
-                log(`  imported ${assetId} ← ${orphan.id}`)
-              } catch (err) {
-                result.failed++
-                log(`  import failed ${orphan.id}: ${err instanceof Error ? err.message : String(err)}`)
-              }
-            } else if (decision.action === "keep") {
-              result.kept++
-            } else {
-              result.discarded++
-            }
-          }
-
-          await applyTags(provider, decisions, existingTags, { onProgress: log })
-
-          // Persist the manifest additions and the lock together. Only the
-          // newly imported entries are written back — re-merging the whole
-          // in-memory manifest would overwrite every pre-existing asset with
-          // its loadManifest()-normalized copy, turning a one-asset import
-          // into a diff touching the entire file.
-          const raw = JSON.parse(await readFile(ctx.manifestPath, "utf8")) as Manifest
-          for (const id of importedAssetIds) raw.assets[id] = ctx.manifest.assets[id]!
-          await writeFile(ctx.manifestPath, JSON.stringify(raw, null, 2) + "\n")
-          await saveLock(ctx.lockPath, ctx.lock)
-
-          res.writeHead(200, { "Content-Type": "application/json" })
-          res.end(JSON.stringify(result))
-          server.close(() => resolve(result))
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
-          log(`  apply failed: ${message}`)
-          res.writeHead(500, { "Content-Type": "text/plain" })
-          res.end(message)
-        }
-        return
-      }
-
-      res.writeHead(404)
-      res.end()
-    })
-
-    server.on("error", reject)
-    server.listen(opts.port ?? 0, "127.0.0.1", () => {
-      const address = server.address()
-      const port = typeof address === "object" && address ? address.port : opts.port
-      const url = `http://127.0.0.1:${port}/`
+  return serveReviewPage<SalvageResult>({
+    html,
+    port: opts.port,
+    open: opts.open,
+    onProgress: log,
+    onReady: (url) => {
       log(`\n  ${orphans.length} unclaimed object(s) to triage: ${url}`)
       log(`  (nothing is deleted here — discard only tags)\n`)
-      if (opts.open !== false && process.platform === "darwin") {
-        spawn("open", [url], { stdio: "ignore", detached: true }).unref()
+    },
+    handleApply: async (body) => {
+      const { decisions } = body as { decisions: SalvageDecision[] }
+
+      const result: SalvageResult = { imported: 0, kept: 0, discarded: 0, failed: 0 }
+      const taken = new Set(Object.keys(ctx.manifest.assets))
+      const importedAssetIds: string[] = []
+
+      for (const decision of decisions) {
+        const orphan = byId.get(decision.id)
+        if (!orphan) continue
+
+        if (decision.action === "import") {
+          try {
+            const buf = await provider.download(orphan.previewUrl)
+            if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error("not a PNG")
+
+            const assetId = idFromPrompt(orphan.prompt, taken)
+            const rel = path.join("_salvaged", `${assetId}.png`)
+            const outFile = path.resolve(ctx.importDir, rel)
+            await mkdir(path.dirname(outFile), { recursive: true })
+            await writeFile(outFile, buf)
+
+            ctx.manifest.assets[assetId] = {
+              prompt: orphan.prompt,
+              promptByStyle: {},
+              category: "_salvaged",
+              file: rel,
+              tags: ["salvaged"],
+              styles: [ctx.styleId],
+              ...(orphan.width === orphan.height
+                ? { size: orphan.width }
+                : { width: orphan.width, height: orphan.height }),
+            }
+
+            upsert(ctx.lock, lockKey(ctx.styleId, assetId), {
+              styleId: ctx.styleId,
+              assetId,
+              specHash: SALVAGED_SPEC_HASH,
+              generator: orphan.width === orphan.height ? "1dir" : "map",
+              prompt: orphan.prompt,
+              width: orphan.width,
+              height: orphan.height,
+              jobId: orphan.id,
+              reviewObjectId: null,
+              objectId: orphan.id,
+              candidateIndex: null,
+              status: "downloaded",
+              error: null,
+              sourceUrl: orphan.previewUrl,
+              outputs: [{ path: outFile, sha256: sha256(buf) }],
+              submittedAt: orphan.createdAt,
+              downloadedAt: new Date().toISOString(),
+              cost: 0, // already paid for, in an earlier period
+              provider: provider.id,
+            })
+            importedAssetIds.push(assetId)
+            result.imported++
+            log(`  imported ${assetId} ← ${orphan.id}`)
+          } catch (err) {
+            result.failed++
+            log(`  import failed ${orphan.id}: ${err instanceof Error ? err.message : String(err)}`)
+          }
+        } else if (decision.action === "keep") {
+          result.kept++
+        } else {
+          result.discarded++
+        }
       }
-    })
+
+      await applyTags(provider, decisions, existingTags, { onProgress: log })
+
+      // Persist the manifest additions and the lock together. Only the
+      // newly imported entries are written back — re-merging the whole
+      // in-memory manifest would overwrite every pre-existing asset with
+      // its loadManifest()-normalized copy, turning a one-asset import
+      // into a diff touching the entire file.
+      const raw = JSON.parse(await readFile(ctx.manifestPath, "utf8")) as Manifest
+      for (const id of importedAssetIds) raw.assets[id] = ctx.manifest.assets[id]!
+      await writeFile(ctx.manifestPath, JSON.stringify(raw, null, 2) + "\n")
+      await saveLock(ctx.lockPath, ctx.lock)
+
+      return result
+    },
   })
 }
