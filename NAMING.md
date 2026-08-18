@@ -1,9 +1,39 @@
-# Naming — unresolved
+# Naming — resolved: `pixelkiln`
 
-`pixelkiln` is a **working title only**. It cannot ship under that name:
-[`pixelkiln`](https://www.npmjs.com/package/pixelkiln) is an established npm
-package (v3.5.1, the CSS spritesheet builder) and `pixelsmith` is its engine.
-`package.json` is marked `private: true` until this is settled.
+**The name is settled.** The project ships as `pixelkiln`. `package.json` is
+no longer `private`.
+
+## The original blocker was a factual error
+
+The prior version of this file claimed `pixelkiln` "is an established npm
+package (v3.5.1, the CSS spritesheet builder) and `pixelsmith` is its
+engine," and blocked the name on that basis. Re-verified directly against
+the npm registry (2026-08-18):
+
+```
+GET https://registry.npmjs.org/pixelkiln    → 404 "Not found"
+GET https://registry.npmjs.org/spritesmith  → 200, latest 3.5.1, "Utility that
+                                                takes images and creates a
+                                                spritesheet with JSON sprite data"
+GET https://registry.npmjs.org/pixelsmith   → 200, latest 2.6.0, "Node based
+                                                engine for spritesmith"
+```
+
+`pixelkiln` was never published. The "v3.5.1 CSS spritesheet builder" is
+**`spritesmith`**, a real and long-established package — `pixelsmith` really
+is its engine, exactly as claimed, but neither of them is `pixelkiln`. The
+original research conflated the two real packages into a collision that
+didn't exist. (`pixelsmith` also appears, separately and correctly, in the
+rejected-candidates list below — a real name in a different, adjacent
+project — which should have been the tell.)
+
+A GitHub search for `pixelkiln` returns nothing but this repository, and a
+general web search turns up no product, tool, or project by that name
+anywhere. Nothing else needs to change: `bin/pixelkiln.js`, `package.json`'s
+`name`/`bin`, the README, `scripts/gen-schema.ts`'s schema title, and
+heybud-admin's `package.json` badge scripts already all say `pixelkiln` —
+there is no rename to do, only the `private: true` flag to drop, which is
+done.
 
 ## What the space already looks like
 
@@ -24,7 +54,7 @@ The "manifest-driven AI asset generation CLI" idea is not novel. Prior art found
 
 ## What is actually differentiated here
 
-Worth knowing before picking a name, because the name should point at it:
+Worth knowing, because the name should point at it:
 
 1. **PixelLab-native.** Everything above wraps a general image model and
    downscales. PixelLab generates on a real pixel grid. Nothing found targets it.
@@ -37,25 +67,21 @@ Worth knowing before picking a name, because the name should point at it:
    table plus a log. A committed, sorted, hash-on-both-sides lockfile in the npm
    sense was not found.
 
-## Shortlist
+## Shortlist (historical — kept for context, decision is above)
 
 All verified free on npm, zero GitHub repos by that name, no web presence
-(checked 2026-07-29).
+(checked 2026-07-29 for the alternates; `pixelkiln` itself re-verified
+2026-08-18 per the resolution above).
 
 | Candidate | Note |
 |---|---|
-| **pixelkiln** | Recommended. Firing/baking metaphor fits pixel art, avoids the crowded `sprite-*` space, no collisions anywhere. |
-| pixelquarry | Extraction metaphor — you quarry many candidates and keep the good ones. |
-| pixelcrate | Packaging/inventory feel; leans toward the lockfile idea. |
-| dithermill | Most pixel-art-native word available; "mill" carries batch production. |
-| spriteledger | Points hardest at provenance, but inherits the crowded `sprite-` prefix. |
+| **pixelkiln** ✅ **chosen** | Firing/baking metaphor fits pixel art, avoids the crowded `sprite-*` space. The npm collision this was shelved for turned out not to exist — see Resolution. |
+| pixelquarry | Extraction metaphor — you quarry many candidates and keep the good ones. Still free, not needed. |
+| pixelcrate | Packaging/inventory feel; leans toward the lockfile idea. Still free, not needed. |
+| dithermill | Most pixel-art-native word available; "mill" carries batch production. Still free, not needed. |
+| spriteledger | Points hardest at provenance, but inherits the crowded `sprite-` prefix. Still free, not needed. |
 
 Rejected after checking: `pixelwright` (three live businesses use it — an AI app
 builder, an iOS audit firm, a UI developer's brand), `spritefoundry` (taken by a
-real project), `pixelsmith`, `spritemill`, `pixelloom`, `bitforge`, `spritelab`.
-
-## To rename
-
-The name appears in `package.json` (`name`, `bin`), `bin/pixelkiln.js`, the
-README, `scripts/gen-schema.ts` (schema title), and heybud-admin's `package.json`
-badge scripts. Then drop `private: true`.
+real project), `pixelsmith` (real package, `spritesmith`'s engine — see
+Resolution), `spritemill`, `pixelloom`, `bitforge`, `spritelab`.

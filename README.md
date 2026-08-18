@@ -1,9 +1,5 @@
 # pixelkiln
 
-> **`pixelkiln` is a working title.** The name is taken on npm by an unrelated,
-> established package. See [NAMING.md](./NAMING.md) for the shortlist and the
-> prior-art survey. `package.json` is `private: true` until it is settled.
-
 Manifest-driven bulk pixel art generation against the PixelLab API.
 
 The point of this tool is that **no LLM is in the loop**. PixelLab exposes a
