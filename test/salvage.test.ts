@@ -261,6 +261,12 @@ describe("salvage sheet", () => {
   it("states that discard does not delete", () => {
     expect(renderSalvageSheet([orphan])).toMatch(/nothing is deleted/i)
   })
+
+  it("offers bulk actions for both keep and discard, not just keep", () => {
+    const html = renderSalvageSheet([orphan])
+    expect(html).toContain('id="allKeep"')
+    expect(html).toContain('id="allDiscard"')
+  })
 })
 
 describe("runSalvage", () => {

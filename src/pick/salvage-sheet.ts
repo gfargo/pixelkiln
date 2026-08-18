@@ -72,6 +72,7 @@ export function renderSalvageSheet(orphans: Orphan[]): string {
   <span class="tally"><b id="ti">0</b> import · <b id="tk">0</b> keep · <b id="td">0</b> discard ·
     <b id="tu">0</b> undecided</span>
   <span style="flex:1"></span>
+  <button id="allDiscard">Discard all undecided</button>
   <button id="allKeep">Keep all undecided</button>
   <button id="submit" class="primary" disabled>Apply</button>
 </header>
@@ -134,6 +135,9 @@ document.addEventListener('keydown', e => {
 
 document.getElementById('allKeep').onclick = () => {
   ITEMS.forEach((_, i) => { if (!picks.has(i)) choose(i, 'keep'); });
+};
+document.getElementById('allDiscard').onclick = () => {
+  ITEMS.forEach((_, i) => { if (!picks.has(i)) choose(i, 'discard'); });
 };
 
 document.getElementById('submit').onclick = async () => {
