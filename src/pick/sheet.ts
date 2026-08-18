@@ -27,6 +27,7 @@ export function renderSheet(groups: SheetGroup[]): string {
   // prompt containing "</script>" cannot break out.
   const safe = groups.map((g) => ({
     ...g,
+    styleId: escapeHtml(g.styleId),
     assetId: escapeHtml(g.assetId),
     prompt: escapeHtml(g.prompt),
   }))
@@ -59,6 +60,8 @@ export function renderSheet(groups: SheetGroup[]): string {
   .group { border-bottom:1px solid var(--line); padding:18px 20px; }
   .group.done { opacity:.5; }
   .ghead { display:flex; align-items:baseline; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .style { font-size:10.5px; font-weight:650; text-transform:uppercase; letter-spacing:.03em;
+    color:var(--accent); border:1px solid var(--accent); border-radius:4px; padding:2px 6px; }
   .aid { font-weight:650; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
   .prompt { color:var(--dim); font-size:12.5px; max-width:80ch; }
   .frames { display:flex; flex-wrap:wrap; gap:10px; }
@@ -108,7 +111,8 @@ GROUPS.forEach((g, gi) => {
   el.dataset.gi = String(gi);
   const scale = g.size <= 48 ? 4 : g.size <= 96 ? 3 : 2;
   el.innerHTML =
-    '<div class="ghead"><span class="aid">' + g.assetId + '</span>' +
+    '<div class="ghead"><span class="style">' + g.styleId + '</span>' +
+    '<span class="aid">' + g.assetId + '</span>' +
     '<span class="prompt">' + g.prompt + '</span></div>' +
     '<div class="frames"></div>';
   const frames = el.querySelector('.frames');

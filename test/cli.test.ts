@@ -137,6 +137,24 @@ describe("contact sheet", () => {
     // Only the page's own single script block survives.
     expect(scriptOpens).toHaveLength(1)
   })
+
+  // A session commonly spans multiple styles at once (unlike salvage, which
+  // now opens one tab per style) — nothing distinguished which style a row's
+  // candidates belonged to beyond recognising the art itself.
+  it("labels each row with its style, not just the asset id", () => {
+    const html = renderSheet([
+      { ...group, styleId: "heybud-neon" },
+      { ...group, key: "s2/a", styleId: "heybud-1bit" },
+    ])
+    expect(html).toContain("heybud-neon")
+    expect(html).toContain("heybud-1bit")
+  })
+
+  it("escapes a style id, same as it does for the prompt", () => {
+    const html = renderSheet([{ ...group, styleId: '</script><script>alert(1)</script>' }])
+    expect(html).not.toContain("<script>alert(1)</script>")
+    expect((html.match(/<script>/g) ?? []).length).toBe(1)
+  })
 })
 
 describe("env file loading", () => {

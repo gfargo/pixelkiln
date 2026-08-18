@@ -267,6 +267,26 @@ describe("salvage sheet", () => {
     expect(html).toContain('id="allKeep"')
     expect(html).toContain('id="allDiscard"')
   })
+
+  // With one tab open per matched style (grouping), every tab title used to
+  // read the same generic "pixelkiln — salvage" — no way to tell them apart
+  // without checking which images had loaded.
+  it("names the style and import destination in the title and header when given a context", () => {
+    const html = renderSalvageSheet([orphan], { styleId: "heybud-neon", importDir: "public/badges/variants/neon" })
+    expect(html).toMatch(/<title>pixelkiln salvage — heybud-neon<\/title>/)
+    expect(html).toContain("heybud-neon")
+    expect(html).toContain("public/badges/variants/neon/_salvaged/")
+  })
+
+  it("falls back to a generic title when no context is given", () => {
+    const html = renderSalvageSheet([orphan])
+    expect(html).toMatch(/<title>pixelkiln salvage<\/title>/)
+  })
+
+  it("escapes a style id in the title/header context, not just prompts", () => {
+    const html = renderSalvageSheet([orphan], { styleId: '</title><script>alert(1)</script>', importDir: "out" })
+    expect(html).not.toContain("<script>alert(1)</script>")
+  })
 })
 
 describe("runSalvage", () => {
@@ -326,6 +346,46 @@ describe("runSalvage", () => {
     const onDisk = JSON.parse(await readFile(manifestPath, "utf8"))
     expect(onDisk.assets.anvil).toEqual({ prompt: "an anvil", category: "tools" })
     expect(Object.keys(onDisk.assets)).toEqual(["anvil", "wooden_fence"])
+  })
+
+  it("serves the page naming its own style, so open tabs are distinguishable", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        name: "itest",
+        styles: { neon: { generator: "1dir", size: 64, outDir: "out/neon" } },
+        assets: {},
+      }),
+    )
+    const loaded = await loadManifest(manifestPath)
+    const provider = new FakeProvider()
+
+    let url = ""
+    const salvaged = runSalvage(
+      provider,
+      [],
+      {
+        manifestPath: loaded.path,
+        manifest: loaded.manifest,
+        styleId: "neon",
+        importDir: path.resolve(loaded.root, "out/neon"),
+        lock: { version: 2, entries: {} },
+        lockPath: path.join(dir, "pixelkiln.lock.json"),
+      },
+      { open: false, onProgress: (m) => (url ||= m.match(/http:\/\/127\.0\.0\.1:\d+\//)?.[0] ?? "") },
+    )
+    await vi.waitFor(() => expect(url).not.toBe(""))
+
+    const page = await (await fetch(url)).text()
+    expect(page).toContain("<title>pixelkiln salvage — neon</title>")
+
+    await fetch(url + "apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decisions: [] }),
+    })
+    await salvaged
   })
 })
 

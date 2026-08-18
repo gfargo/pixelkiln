@@ -45,7 +45,10 @@ export async function runSalvage(
   opts: { port?: number; open?: boolean; onProgress?: (msg: string) => void } = {},
 ): Promise<SalvageResult> {
   const log = opts.onProgress ?? (() => {})
-  const html = renderSalvageSheet(orphans)
+  const html = renderSalvageSheet(orphans, {
+    styleId: ctx.styleId,
+    importDir: path.relative(process.cwd(), ctx.importDir) || ".",
+  })
   const byId = new Map(orphans.map((o) => [o.id, o]))
   const existingTags = new Map(orphans.map((o) => [o.id, o.tags]))
 

@@ -3,6 +3,14 @@ import type { Orphan } from "../pipeline/salvage.ts"
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!)
 
+export interface SalvageSheetContext {
+  /** The style every "import" on this page will be tagged and routed under. */
+  styleId: string
+  /** Where an import lands, shown so the page answers "where does this go"
+   *  without anyone needing to go check the manifest. */
+  importDir: string
+}
+
 /**
  * Triage sheet for unclaimed account objects.
  *
@@ -10,16 +18,24 @@ const escapeHtml = (s: string) =>
  * one-keystroke verdict. Everything defaults to no decision, so closing the tab
  * changes nothing, and `discard` only ever writes a tag — deletion is a
  * separate command that has to be asked for by name.
+ *
+ * `salvage` opens one tab per matched style in sequence (grouping — see
+ * pipeline/salvage.ts), and every one of them used to render the exact same
+ * generic title. With several left open across styles there was no way to
+ * tell them apart short of squinting at which images loaded. The tab title
+ * and header now name the style the page is actually scoped to.
  */
-export function renderSalvageSheet(orphans: Orphan[]): string {
+export function renderSalvageSheet(orphans: Orphan[], ctx?: SalvageSheetContext): string {
   const safe = orphans.map((o) => ({ ...o, prompt: escapeHtml(o.prompt) }))
   const data = JSON.stringify(safe).replace(/<\//g, "<\\/")
+  const styleId = ctx ? escapeHtml(ctx.styleId) : null
+  const importDir = ctx ? escapeHtml(ctx.importDir) : null
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>pixelkiln — salvage</title>
+<title>pixelkiln salvage${styleId ? ` — ${styleId}` : ""}</title>
 <style>
   :root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e6e8ee; --dim:#8b93a7;
           --import:#6ee7a8; --keep:#7cc4ff; --discard:#f87171; }
@@ -34,6 +50,8 @@ export function renderSalvageSheet(orphans: Orphan[]): string {
     border-bottom:1px solid var(--line); padding:12px 20px; display:flex; gap:14px;
     align-items:center; flex-wrap:wrap; }
   h1 { font-size:15px; margin:0; font-weight:600; }
+  h1 .ctx { font-weight:500; color:var(--dim); }
+  h1 .dest { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; }
   .tally { color:var(--dim); font-variant-numeric:tabular-nums; }
   .tally b { color:var(--text); font-weight:600; }
   button { font:inherit; font-weight:550; border-radius:7px; padding:7px 14px;
@@ -68,7 +86,11 @@ export function renderSalvageSheet(orphans: Orphan[]): string {
 </head>
 <body>
 <header>
-  <h1>pixelkiln salvage</h1>
+  <h1>pixelkiln salvage${
+    styleId
+      ? ` <span class="ctx">— ${styleId}<span class="dest"> → ${importDir}/_salvaged/</span></span>`
+      : ""
+  }</h1>
   <span class="tally"><b id="ti">0</b> import · <b id="tk">0</b> keep · <b id="td">0</b> discard ·
     <b id="tu">0</b> undecided</span>
   <span style="flex:1"></span>

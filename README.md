@@ -157,7 +157,9 @@ ever offers the one destination its items actually look like they belong to.
 Objects that match no style in this manifest (likely a different project's
 art, on a shared account) are listed separately and left out of every
 session; `--style <id>` bypasses grouping and forces one session across
-everything, same as before grouping existed.
+everything, same as before grouping existed. Each tab's title and header
+name the style it's scoped to and where an import will land, so several
+left open at once are still tellable apart.
 
 A single-style manifest has no pattern of its own to check against, so by
 default it still claims everything, same as always — but every `--claims`
