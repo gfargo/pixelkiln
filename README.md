@@ -1,5 +1,7 @@
 # pixelkiln
 
+![Pixelkiln](https://wp.griffen.codes/wp-content/uploads/2026/08/download.png)
+
 Manifest-driven bulk pixel art generation against the PixelLab API.
 
 The point of this tool is that **no LLM is in the loop**. PixelLab exposes a
