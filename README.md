@@ -542,6 +542,54 @@ sheet — one bad asset should not cost you the other seventy-three.
 
 `--columns <n>` overrides the near-square default.
 
+### Mounting into an existing sheet
+
+`pack` derives position from index and sorts by asset id, so the sheet is
+byte-stable — excellent when pixelkiln owns the whole sheet, and fatal when it
+does not. If your atlas coordinates are already load-bearing somewhere else — a
+tile engine naming tiles by cell, saved data storing cell indices — a layout
+that moves when an asset is added would silently repoint every existing
+reference.
+
+`mount` honours a cell you declare instead.
+
+```jsonc
+"styles": {
+  "ground": {
+    "generator": "tiles",
+    "mount": {
+      "base": "assets/tiles/spritesheet.png",  // omit to start from transparent
+      "cellWidth": 32,
+      "cellHeight": 32,
+      "out": "assets/tiles/spritesheet.png"
+    },
+    "outDir": "assets/tiles/src"
+  }
+},
+"assets": {
+  "rough_grass": { "prompt": "unmown dark grass", "cell": [6, 2] }
+}
+```
+
+```bash
+pixelkiln mount --style ground
+#   ground — 1 cell(s) into 352x352 over assets/tiles/spritesheet.png
+```
+
+Two properties it guarantees:
+
+- **Only declared cells are touched.** With a `base`, every other pixel
+  survives byte-for-byte, so a hand-authored sheet can be part generated and
+  part drawn without the generated half claiming the file.
+- **A cell is replaced, not blended.** The sprite owns its cell, so the cell is
+  cleared first. Compositing would let a regenerated tile show through to
+  whatever it replaced, and that residue stays invisible until it ships.
+
+An asset with no `cell` is simply left off the sheet. A sprite larger than the
+cell is skipped and reported rather than cropped — cropping produces a sheet
+that looks right in isolation and is wrong at every seam. Two assets claiming
+one cell is a hard error.
+
 ### Packing sprites that aren't in a manifest
 
 `--inputs <path.json> --out <base>` packs an explicit list instead of a

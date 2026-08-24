@@ -202,6 +202,32 @@ export const StyleSchema = z
      * chocolate bar.
      */
     palette: z.array(z.string()).default([]),
+    /**
+     * Composites this style's assets into declared cells of a sheet, rather
+     * than letting `pack` derive a layout. Use it when the atlas coordinates
+     * are already load-bearing somewhere else — a tile engine naming tiles by
+     * cell, or saved data storing cell indices — since `pack`'s id-sorted grid
+     * moves every position when an asset is added or renamed.
+     *
+     * Assets in a mounted style declare their own `cell`; ones that do not are
+     * left out of the sheet.
+     */
+    mount: z
+      .object({
+        /**
+         * Existing sheet to composite into, relative to the manifest. Every
+         * pixel outside a declared cell survives byte-for-byte, so a
+         * hand-authored sheet can be part generated and part drawn. Omit to
+         * start from transparent.
+         */
+        base: z.string().optional(),
+        cellWidth: z.number().int().positive(),
+        cellHeight: z.number().int().positive(),
+        /** Where the composited sheet is written, relative to the manifest. */
+        out: z.string(),
+      })
+      .strict()
+      .optional(),
     /** Tags applied to every object generated in this style, for server-side filtering. */
     tags: z.array(z.string()).default([]),
   })
@@ -220,6 +246,15 @@ export const AssetSchema = z
     size: z.number().int().min(32).max(256).optional(),
     /** Explicit output path relative to outDir. Defaults to `<category>/<id>.png`. */
     file: z.string().optional(),
+    /**
+     * Grid cell this asset owns in a mounted style, as [column, row].
+     *
+     * Declared rather than derived, which is the point of `mount`: the
+     * coordinate is a contract with whatever already reads the sheet, so it
+     * must not move when the asset set changes. Assets without one are left
+     * out of the mounted sheet.
+     */
+    cell: z.tuple([z.number().int().min(0), z.number().int().min(0)]).optional(),
     tags: z.array(z.string()).default([]),
     /** Restrict this asset to specific styles. Empty means all styles. */
     styles: z.array(z.string()).default([]),

@@ -112,6 +112,31 @@
                 },
                 "default": []
               },
+              "mount": {
+                "type": "object",
+                "properties": {
+                  "base": {
+                    "type": "string"
+                  },
+                  "cellWidth": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "cellHeight": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "out": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cellWidth",
+                  "cellHeight",
+                  "out"
+                ],
+                "additionalProperties": false
+              },
               "tags": {
                 "type": "array",
                 "items": {
@@ -154,6 +179,21 @@
               },
               "file": {
                 "type": "string"
+              },
+              "cell": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                ]
               },
               "tags": {
                 "type": "array",

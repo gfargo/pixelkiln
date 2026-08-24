@@ -6,7 +6,7 @@ import { loadEnvFiles } from "./env.ts"
 import { PixelLabProvider } from "./providers/pixellab.ts"
 import { formatCost, requireDelete, requireList } from "./provider.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
-import { packSprites, packStyle, resolvePackInputs } from "./pipeline/pack.ts"
+import { mountStyle, packSprites, packStyle, resolvePackInputs } from "./pipeline/pack.ts"
 import { loadLock, saveLock, totalSpend, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
 import { lockKey } from "./types.ts"
@@ -59,7 +59,7 @@ const BOOL_FLAGS = [
 
 export const COMMANDS = [
   "init", "plan", "gen", "submit", "poll", "pick", "fetch", "adopt", "accept",
-  "salvage", "purge", "audit", "pack", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+  "salvage", "purge", "audit", "pack", "mount", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 /**
@@ -185,6 +185,8 @@ Commands
             One session per matching style unless --style forces a single one.
   audit     Measure how consistently a style's assets hold together. Offline.
   pack      Composite a style's sprites into one sheet + JSON atlas. Offline.
+  mount     Write a style's sprites into their declared cells of an existing
+            sheet, leaving every other pixel untouched. Offline.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show remaining generations.
@@ -216,6 +218,7 @@ Examples
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
+  pixelkiln mount --style ground
 `
 
 function printPlan(plan: Plan): void {
@@ -432,6 +435,53 @@ async function main() {
           `${atlas.sheet.width}x${atlas.sheet.height} in ${atlas.columns} column(s)`,
       )
       log(`    ${path.relative(process.cwd(), base)}.png + .json`)
+      for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
+    }
+    return
+  }
+
+  if (args.command === "mount") {
+    const manifestDir = path.dirname(path.resolve(args.manifest))
+    const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
+
+    for (const styleId of styleIds) {
+      const style = loaded.manifest.styles[styleId]
+      if (!style?.mount) {
+        // Not an error when the caller did not name a style — `mount` with no
+        // --style should do the mounted ones and stay quiet about the rest.
+        if (args.styles.length) {
+          throw new Error(
+            `Style "${styleId}" has no \`mount\` block. Add one, or use \`pack\` ` +
+              `to let pixelkiln choose the layout.`,
+          )
+        }
+        continue
+      }
+
+      const cells: Record<string, [number, number]> = {}
+      for (const [assetId, asset] of Object.entries(loaded.manifest.assets)) {
+        if (asset.cell) cells[assetId] = asset.cell
+      }
+
+      const { png, atlas, skipped, overBase } = mountStyle(
+        lock,
+        styleId,
+        manifestDir,
+        style.mount,
+        cells,
+      )
+
+      const out = path.resolve(manifestDir, style.mount.out)
+      mkdirSync(path.dirname(out), { recursive: true })
+      writeFileSync(out, png)
+      writeFileSync(out.replace(/\.png$/, "") + ".json", JSON.stringify(atlas, null, 2) + "\n")
+
+      log(
+        `  ${styleId} — ${atlas.frames.length} cell(s) into ` +
+          `${atlas.sheet.width}x${atlas.sheet.height}` +
+          (overBase ? ` over ${style.mount.base}` : " (new sheet)"),
+      )
+      log(`    ${path.relative(process.cwd(), out)}`)
       for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
     }
     return

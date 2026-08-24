@@ -205,3 +205,193 @@ export function packStyle(
     skipped: [...noOutput, ...packed.skipped],
   }
 }
+
+export interface MountPlacement extends SpriteInput {
+  /** Grid cell this sprite owns, as [column, row]. */
+  cell: [number, number]
+}
+
+export interface MountedSheet {
+  png: Buffer
+  atlas: {
+    style: string
+    sheet: { width: number; height: number }
+    cell: { width: number; height: number }
+    frames: PackedFrame[]
+  }
+  skipped: { id: string; reason: string }[]
+  /** True when an existing sheet was composited into rather than replaced. */
+  overBase: boolean
+}
+
+/**
+ * Places sprites at *declared* grid cells, optionally into an existing sheet.
+ *
+ * The sibling of `packSprites`, for the case its layout rules cannot serve.
+ * `packSprites` derives position from index and sorts by asset id so the sheet
+ * is byte-stable — excellent when pixelkiln owns the whole sheet, and fatal
+ * when it does not. A consumer whose atlas coordinates are already load-bearing
+ * (a tile engine naming tiles by cell, a scene file storing cell indices in
+ * saved data) cannot accept a layout that moves when an asset is added or
+ * renamed: every existing reference would silently point at different art.
+ *
+ * So here the caller declares the cell and pixelkiln honours it. Two
+ * consequences worth stating:
+ *
+ *   - **Only declared cells are touched.** With a `base` sheet, every other
+ *     pixel survives byte-for-byte, so a hand-authored sheet can be part
+ *     generated and part drawn without the generated half claiming the file.
+ *   - **A cell is replaced, not blended.** The sprite owns its cell, so the
+ *     cell is cleared first. Compositing instead would make a regenerated
+ *     tile show through to whatever it replaced, and the residue would be
+ *     invisible until it shipped.
+ *
+ * Sprites larger than the cell are a declaration error, not something to crop
+ * silently — cropping would produce a sheet that looks right in isolation and
+ * is wrong at every seam.
+ */
+export function mountSprites(
+  placements: MountPlacement[],
+  options: { cellWidth: number; cellHeight: number; basePng?: Buffer },
+): MountedSheet {
+  if (!placements.length) throw new Error("mountSprites: no sprites given")
+  const { cellWidth, cellHeight } = options
+  if (cellWidth <= 0 || cellHeight <= 0) {
+    throw new Error("mountSprites: cell dimensions must be positive")
+  }
+
+  const byCell = new Map<string, string>()
+  for (const p of placements) {
+    const key = `${p.cell[0]},${p.cell[1]}`
+    const owner = byCell.get(key)
+    if (owner) {
+      throw new Error(
+        `mountSprites: "${p.id}" and "${owner}" both claim cell ${key} — ` +
+          `a cell has exactly one owner`,
+      )
+    }
+    byCell.set(key, p.id)
+  }
+
+  const loaded: { p: MountPlacement; width: number; height: number; pixels: Buffer }[] = []
+  const skipped: { id: string; reason: string }[] = []
+  for (const p of placements) {
+    try {
+      const png = decodePng(readFileSync(p.path))
+      if (png.width > cellWidth || png.height > cellHeight) {
+        throw new Error(
+          `is ${png.width}x${png.height}, larger than the ${cellWidth}x${cellHeight} cell`,
+        )
+      }
+      loaded.push({ p, width: png.width, height: png.height, pixels: png.pixels })
+    } catch (err) {
+      skipped.push({ id: p.id, reason: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  if (!loaded.length) {
+    throw new Error(`mountSprites: nothing readable — ${skipped.length} skipped.`)
+  }
+
+  // The sheet must cover the base if there is one, and every declared cell
+  // either way — a cell past the base's edge grows it rather than failing,
+  // so adding a row of tiles does not need the base redrawn first.
+  const maxCol = Math.max(...loaded.map((l) => l.p.cell[0]))
+  const maxRow = Math.max(...loaded.map((l) => l.p.cell[1]))
+  const base = options.basePng ? decodePng(options.basePng) : null
+  const sheetW = Math.max((maxCol + 1) * cellWidth, base?.width ?? 0)
+  const sheetH = Math.max((maxRow + 1) * cellHeight, base?.height ?? 0)
+
+  const rgba = Buffer.alloc(sheetW * sheetH * 4)
+  if (base) {
+    for (let y = 0; y < base.height; y++) {
+      const src = y * base.width * 4
+      base.pixels.copy(rgba, y * sheetW * 4, src, src + base.width * 4)
+    }
+  }
+
+  const frames: PackedFrame[] = []
+  for (const { p, width, height, pixels } of loaded) {
+    const ox = p.cell[0] * cellWidth
+    const oy = p.cell[1] * cellHeight
+    // Clear the whole cell before writing: the sprite owns it, and leaving the
+    // base showing around a smaller sprite is the "invisible until it ships"
+    // failure this function exists to avoid.
+    for (let y = 0; y < cellHeight; y++) {
+      rgba.fill(0, ((oy + y) * sheetW + ox) * 4, ((oy + y) * sheetW + ox + cellWidth) * 4)
+    }
+    for (let y = 0; y < height; y++) {
+      const src = y * width * 4
+      pixels.copy(rgba, ((oy + y) * sheetW + ox) * 4, src, src + width * 4)
+    }
+    frames.push({ id: p.id, x: ox, y: oy, width, height })
+  }
+
+  frames.sort((a, b) => a.y - b.y || a.x - b.x)
+  return {
+    png: encodeRgbaPng(sheetW, sheetH, rgba),
+    atlas: {
+      style: "",
+      sheet: { width: sheetW, height: sheetH },
+      cell: { width: cellWidth, height: cellHeight },
+      frames,
+    },
+    skipped,
+    overBase: base !== null,
+  }
+}
+
+/**
+ * `mountSprites` driven by the lockfile and the manifest's `mount` block.
+ *
+ * The manifest is the source of cells rather than the lockfile: a cell is a
+ * declaration about where art belongs, not a record of what was generated, and
+ * it has to be readable and editable before anything has been generated at all.
+ */
+export function mountStyle(
+  lock: Lock,
+  styleId: string,
+  manifestDir: string,
+  mount: { base?: string; cellWidth: number; cellHeight: number },
+  cells: Record<string, [number, number]>,
+): MountedSheet {
+  const prefix = `${styleId}/`
+  const entries = Object.entries(lock.entries).filter(([key]) => key.startsWith(prefix))
+  if (!entries.length) {
+    throw new Error(
+      `No locked assets for style "${styleId}". Run \`pixelkiln gen --style ${styleId}\` first.`,
+    )
+  }
+
+  const placements: MountPlacement[] = []
+  const skipped: { id: string; reason: string }[] = []
+  for (const [key, entry] of entries) {
+    const id = key.slice(prefix.length)
+    const cell = cells[id]
+    if (!cell) continue // no cell declared — deliberately not on this sheet
+    const output = entry.outputs?.[0]
+    if (!output) {
+      skipped.push({ id, reason: "no output recorded in the lockfile" })
+      continue
+    }
+    placements.push({ id, path: path.resolve(manifestDir, output.path), cell })
+  }
+
+  if (!placements.length) {
+    throw new Error(
+      `No assets in style "${styleId}" declare a \`cell\`. Add one to each asset ` +
+        `that belongs on the sheet.`,
+    )
+  }
+
+  const basePng = mount.base ? readFileSync(path.resolve(manifestDir, mount.base)) : undefined
+  const mounted = mountSprites(placements, {
+    cellWidth: mount.cellWidth,
+    cellHeight: mount.cellHeight,
+    basePng,
+  })
+  return {
+    ...mounted,
+    atlas: { ...mounted.atlas, style: styleId },
+    skipped: [...skipped, ...mounted.skipped],
+  }
+}
