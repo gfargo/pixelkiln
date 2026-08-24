@@ -20,7 +20,8 @@
                 "enum": [
                   "1dir",
                   "map",
-                  "pixflux"
+                  "pixflux",
+                  "tiles"
                 ],
                 "default": "map"
               },
@@ -67,6 +68,39 @@
               },
               "detail": {
                 "type": "string"
+              },
+              "tileSize": {
+                "type": "integer",
+                "minimum": 16,
+                "maximum": 256
+              },
+              "tileType": {
+                "type": "string",
+                "enum": [
+                  "hex",
+                  "hex_pointy",
+                  "isometric",
+                  "oblique",
+                  "octagon",
+                  "square_topdown"
+                ]
+              },
+              "tileView": {
+                "type": "string",
+                "enum": [
+                  "top-down",
+                  "high top-down",
+                  "low top-down",
+                  "side"
+                ]
+              },
+              "tileFeature": {
+                "type": "string",
+                "enum": [
+                  "roads",
+                  "tileset",
+                  "building"
+                ]
               },
               "seed": {
                 "type": "integer"

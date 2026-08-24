@@ -1,7 +1,16 @@
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { ManifestSchema, candidateCount, generationCost, type Manifest, type ResolvedSpec } from "./types.ts"
+import {
+  ManifestSchema,
+  candidateCount,
+  countNumberedDescriptions,
+  generationCost,
+  tileVariationCount,
+  tilesCost,
+  type Manifest,
+  type ResolvedSpec,
+} from "./types.ts"
 import { sha256, specHash } from "./hash.ts"
 
 export interface LoadedManifest {
@@ -105,6 +114,11 @@ export async function resolveSpecs(
       const relFile = asset.file ?? path.join(asset.category ?? "", `${assetId}.png`)
       const outFile = path.resolve(root, style.outDir, relFile)
 
+      // One `tiles` call draws a whole set, so its price and its candidate
+      // count both come off the set rather than off a single sprite.
+      const tileSize = style.tileSize ?? 32
+      const tileVariations = tileVariationCount(countNumberedDescriptions(prompt))
+
       const base = {
         styleId,
         assetId,
@@ -120,8 +134,20 @@ export async function resolveSpecs(
         detail: style.detail,
         seed: style.seed,
         palette: style.palette,
-        cost: generationCost(width, height, generator),
-        candidates: generator === "1dir" ? candidateCount(size) : 1,
+        tileSize: generator === "tiles" ? tileSize : undefined,
+        tileType: generator === "tiles" ? style.tileType : undefined,
+        tileView: generator === "tiles" ? style.tileView : undefined,
+        tileFeature: generator === "tiles" ? style.tileFeature : undefined,
+        cost:
+          generator === "tiles"
+            ? tilesCost(tileSize, tileVariations)
+            : generationCost(width, height, generator),
+        candidates:
+          generator === "tiles"
+            ? tileVariations
+            : generator === "1dir"
+              ? candidateCount(size)
+              : 1,
       }
 
       specs.push({

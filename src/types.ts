@@ -31,8 +31,49 @@ import { z } from "zod"
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles"])
 export type Generator = z.infer<typeof GeneratorSchema>
+
+/**
+ * `tiles` is the odd one out: the unit of work is a *set*, not a sprite.
+ *
+ * POST /create-tiles-pro draws tile shape outlines and fills them, returning
+ * many variations from one call — so it lands in the same review-then-pick
+ * flow as `1dir`, but the variations arrive as finished storage URLs rather
+ * than frames needing promotion. There is no select-frames step to run.
+ *
+ * Two properties make it worth a generator of its own rather than a flag on
+ * `1dir`:
+ *
+ *   - **Style mode overrides geometry.** Passing `styleImages` makes the API
+ *     copy tile shape and dimensions from the reference and ignore
+ *     `tileType`/`tileView` entirely. For an existing tileset that is the
+ *     point: it is the only way to land new art on the same ground plane as
+ *     the tiles already in the sheet.
+ *   - **`tileFeature` generates connectable sets.** `"tileset"` returns a
+ *     16-tile Wang corner set for a terrain transition, `"roads"` an
+ *     18-configuration path set. Those are structural outputs; a consumer
+ *     slices them by index, not by eye.
+ */
+
+/**
+ * Variations a `tiles` call returns. The API derives this from the tile size
+ * and how many numbered descriptions the prompt contains; observed at 4 per
+ * numbered description for 32px isometric tiles. Clamped so a prompt with no
+ * numbering still reports at least one.
+ */
+export function tileVariationCount(descriptions: number): number {
+  return Math.max(1, descriptions) * 4
+}
+
+/**
+ * Numbered items in a `tiles` prompt. The endpoint documents `"1). grass
+ * 2). dirt"` as the way to control what comes back, and returns a group of
+ * variations per number.
+ */
+export function countNumberedDescriptions(prompt: string): number {
+  return (prompt.match(/\d+\s*\)\s*\./g) ?? []).length
+}
 
 /** Candidate frames returned per call, derived from size. Extra candidates are free. */
 export function candidateCount(size: number): number {
@@ -54,6 +95,13 @@ export function candidateCount(size: number): number {
  *   1dir  20-40 by canvas tier (1K=20, 2K=25, 4K=40), returning 4-64
  *         candidates for that one price.
  *
+ *   tiles 20-40 on the same canvas tiers as `1dir`, but the canvas is picked
+ *         from tile size x variation count rather than a single sprite, so a
+ *         small tile in a large set can still reach the top tier. Reported by
+ *         the API at submit time; estimated here from the widest canvas the
+ *         request can produce, which is the honest direction to be wrong in
+ *         for a `--budget` check.
+ *
  * So `1dir` buys candidate variety at 20-40x the price, and `map` buys
  * arbitrary (non-square) dimensions nearly free. For a single-result asset,
  * forty re-rolls of a map object cost the same as one 1dir call.
@@ -65,6 +113,24 @@ export function generationCost(
 ): number {
   if (generator === "map" || generator === "pixflux") return 1
   const px = width * height
+  if (px <= 1024) return 20
+  if (px <= 2048) return 25
+  return 40
+}
+
+/**
+ * Cost of one `tiles` call. Same canvas tiers as `1dir`, but the canvas is the
+ * sheet the API lays the variations out on, not one tile — so tile size alone
+ * under-reads it badly (a 32px tile is 1024px on its own and would always
+ * price at the floor).
+ *
+ * Estimated from tileSize^2 x variations, which is the area actually drawn.
+ * `plan` prints this before anything is spent and `--budget` refuses on it, so
+ * over-reading is the safe direction: a call that comes in cheaper than
+ * budgeted is a pleasant surprise, one that comes in dearer is an overspend.
+ */
+export function tilesCost(tileSize: number, variations: number): number {
+  const px = tileSize * tileSize * Math.max(1, variations)
   if (px <= 1024) return 20
   if (px <= 2048) return 25
   return 40
@@ -95,6 +161,34 @@ export const StyleSchema = z
     outline: z.string().optional(),
     shading: z.string().optional(),
     detail: z.string().optional(),
+    /**
+     * `tiles` generator only. Edge length of one tile, 16-256.
+     *
+     * Ignored when `styleImages` is set — style mode takes the tile's shape
+     * and dimensions from the reference image, which is the whole reason to
+     * use it against an existing sheet.
+     */
+    tileSize: z.number().int().min(16).max(256).optional(),
+    /** `tiles` generator only. Defaults to the API's `isometric`. */
+    tileType: z
+      .enum(["hex", "hex_pointy", "isometric", "oblique", "octagon", "square_topdown"])
+      .optional(),
+    /** `tiles` generator only. Defaults to the API's `low top-down`. */
+    tileView: z.enum(["top-down", "high top-down", "low top-down", "side"]).optional(),
+    /**
+     * `tiles` generator only. Asks for a connectable set instead of
+     * independent variations:
+     *
+     *   roads    18-configuration path set
+     *   tileset  16-tile Wang corner set for a terrain transition — describe
+     *            the asset as the transition itself ("fairway grass to rough
+     *            meadow"), not as one terrain
+     *   building floor/wall/doorway construction kit
+     *
+     * A consumer slices these by index, so the order the API returns them in
+     * is load-bearing; do not sort a connectable set by anything else.
+     */
+    tileFeature: z.enum(["roads", "tileset", "building"]).optional(),
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**
@@ -274,4 +368,9 @@ export interface ResolvedSpec {
   seed?: number
   /** Forced palette hex values; empty unless the style sets one. */
   palette: string[]
+  /** `tiles` generator only — see StyleSchema for what each one means. */
+  tileSize?: number
+  tileType?: string
+  tileView?: string
+  tileFeature?: string
 }

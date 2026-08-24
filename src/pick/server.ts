@@ -75,6 +75,7 @@ export async function runPicker(
           entry.reviewObjectId,
           index,
           `asset:${entry.assetId}`,
+          entry.generator,
         )
 
         upsert(lock, key, {

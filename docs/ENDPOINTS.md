@@ -168,6 +168,31 @@ character, plus the usual `outline` / `shading` / `detail`.
 `create-tiles-pro` is a different shape — a single `description` plus
 `style_images`, `tile_view`, `building_*` fields for structures.
 
+Its `style_images` is a **fourth** convention, and not the one two lines up:
+`TilesProStyleImage` is flat, with all three fields required.
+
+```jsonc
+// create-tiles-pro
+{ "style_images": [ { "base64": "...", "width": 32, "height": 32 } ] }
+```
+
+Sending `generate-with-style-v2`'s nested `{image: {...}}` here is rejected as
+an extra field. Passing style images at all makes the endpoint ignore
+`tile_type` and `tile_view` and copy the reference's tile geometry instead —
+which is the only way to land new art on an existing sheet's ground plane.
+
+`GET /tiles-pro/{id}` carries no `status` field. It answers **423 while the set
+is still drawing** and 200 with `storage_urls` when it is done, so the HTTP code
+is the status. Cost is reported at submit time and lands on the same 20/25/40
+canvas tiers as `1dir`, but the canvas is tile size x variation count, not one
+sprite — a small tile in a large set still reaches the top tier.
+
+`tile_feature` turns it from independent variations into a connectable set:
+`roads` (18-configuration path set), `tileset` (16-tile Wang corner set for a
+terrain transition — describe it as the transition, not one terrain), and
+`building` (floor/wall/doorway kit). These are sliced by index, so the returned
+order is load-bearing.
+
 Given that `color_image` is honoured on `pixflux` but silently ignored on
 `resize`, **verify the palette actually holds on a single tileset before
 committing to a set**.
