@@ -361,6 +361,7 @@ Measured costs, not documented ones. Full detail in
 | A fixed palette held exactly across a set | **`pixflux`** + `palette` | 1 |
 | Standalone props, style carried by the prompt | **`map`** | 1 |
 | Rotations, animation, or candidate variety | `1dir` | 20–40 |
+| Ground tiles, or a connectable tile set | `tiles` | 20–40 |
 
 Two cautions learned the expensive way:
 
@@ -379,6 +380,62 @@ Also worth knowing: `pixen` gives the best unconstrained detail at 1 generation
 but has no palette parameter, and the Pro endpoints (`generate-with-style-v2` at
 20, `generate-image-v2` at 40) do genuine style transfer from labelled reference
 images when that is worth the price.
+
+### `tiles` — ground tiles and connectable sets
+
+`POST /create-tiles-pro` draws tile shape outlines and fills them. One call
+returns many variations, so it lands in the same review-then-pick flow as
+`1dir` — but the variations arrive as finished storage URLs, and there is no
+select-frames step to promote one.
+
+```jsonc
+"styles": {
+  "ground": {
+    "generator": "tiles",
+    "tileSize": 32,
+    "tileType": "isometric",     // hex | hex_pointy | isometric | oblique
+    "tileView": "low top-down",  // octagon | square_topdown
+    "outDir": "assets/tiles/src"
+  }
+}
+```
+
+Two things make it worth reaching for over `1dir` with a tile-shaped prompt:
+
+**Style mode overrides geometry.** Give the style a `styleImages` reference and
+the API copies the tile's shape and dimensions from it, ignoring `tileType` and
+`tileView` entirely. For new art that has to sit in an *existing* sheet this is
+the only lever that works — prompting will not move where the tile's ground
+plane falls, and being a few pixels out puts every new tile on a different
+plane from the ones already there.
+
+**`tileFeature` returns a connectable set** rather than independent variations:
+
+| `tileFeature` | Returns |
+|---|---|
+| `roads` | 18-configuration path/road autotile set |
+| `tileset` | 16-tile Wang corner set for a terrain *transition* |
+| `building` | floor / wall / doorway / pillar / staircase kit |
+
+`tileset` is the one to know about: describe the asset as the transition
+("fairway grass to rough meadow"), not as one terrain. A terrain-transition set
+is what an engine's autotiling needs — without transition tiles, a terrain
+solver that cannot find a matching tile for a boundary cell erases it, and the
+result is a gap tracing every terrain edge.
+
+A connectable set is sliced **by index**, so the order matters: candidates are
+sorted `tile_0, tile_1, …` numerically rather than by JSON key order, and that
+order is what the lockfile and the contact sheet both show.
+
+Two API details worth knowing, both confirmed against the OpenAPI schema:
+
+- **The style-image shape is not the one `1dir` uses.** `TilesProStyleImage` is
+  flat — `{base64, width, height}`, all three required — where
+  `create-1-direction-object` wants `{type, base64, format}`. Sending 1dir's
+  shape is rejected as an extra field.
+- **The HTTP status *is* the job status.** `GET /tiles-pro/{id}` has no
+  `status` field: 423 means still drawing, 200 carries `storage_urls`. Treating
+  423 as an error aborts a run that was merely early.
 
 ### Don't post-process palette-locked art
 
@@ -486,6 +543,54 @@ A missing or unreadable file is reported and skipped rather than aborting the
 sheet — one bad asset should not cost you the other seventy-three.
 
 `--columns <n>` overrides the near-square default.
+
+### Mounting into an existing sheet
+
+`pack` derives position from index and sorts by asset id, so the sheet is
+byte-stable — excellent when pixelkiln owns the whole sheet, and fatal when it
+does not. If your atlas coordinates are already load-bearing somewhere else — a
+tile engine naming tiles by cell, saved data storing cell indices — a layout
+that moves when an asset is added would silently repoint every existing
+reference.
+
+`mount` honours a cell you declare instead.
+
+```jsonc
+"styles": {
+  "ground": {
+    "generator": "tiles",
+    "mount": {
+      "base": "assets/tiles/spritesheet.png",  // omit to start from transparent
+      "cellWidth": 32,
+      "cellHeight": 32,
+      "out": "assets/tiles/spritesheet.png"
+    },
+    "outDir": "assets/tiles/src"
+  }
+},
+"assets": {
+  "rough_grass": { "prompt": "unmown dark grass", "cell": [6, 2] }
+}
+```
+
+```bash
+pixelkiln mount --style ground
+#   ground — 1 cell(s) into 352x352 over assets/tiles/spritesheet.png
+```
+
+Two properties it guarantees:
+
+- **Only declared cells are touched.** With a `base`, every other pixel
+  survives byte-for-byte, so a hand-authored sheet can be part generated and
+  part drawn without the generated half claiming the file.
+- **A cell is replaced, not blended.** The sprite owns its cell, so the cell is
+  cleared first. Compositing would let a regenerated tile show through to
+  whatever it replaced, and that residue stays invisible until it ships.
+
+An asset with no `cell` is simply left off the sheet. A sprite larger than the
+cell is skipped and reported rather than cropped — cropping produces a sheet
+that looks right in isolation and is wrong at every seam. Two assets claiming
+one cell is a hard error.
 
 ### Packing sprites that aren't in a manifest
 

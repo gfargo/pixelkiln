@@ -48,6 +48,19 @@ export interface PixelLabObject {
   eta_seconds?: number | null
 }
 
+/**
+ * A tiles-pro job. Unlike an object or a map object there is no `status`
+ * field: GET /tiles-pro/{id} answers 423 while the set is still drawing and
+ * 200 with `storage_urls` once it is done, so the HTTP code IS the status.
+ */
+export interface TilesPro {
+  /** Keyed `tile_0`, `tile_1`, ... Index order is load-bearing for a
+   *  connectable set (`tile_feature`), where a consumer slices by index. */
+  storage_urls: Record<string, string>
+  kind: string | null
+  tile_rules?: Record<string, unknown> | null
+}
+
 export interface MapObject {
   object_id: string
   status: string
@@ -189,6 +202,42 @@ export class PixelLabClient {
    * job id, and is the only endpoint that honours a forced palette —
    * `color_image` on /map-objects returns a 500 whatever the payload shape.
    */
+  /**
+   * Draws a whole tile set in one call — many variations, or a connectable
+   * set when `tileFeature` is given.
+   *
+   * `styleImages` here is NOT the shape `create-1-direction-object` uses.
+   * TilesProStyleImage is flat — `{base64, width, height}`, all three
+   * required — where 1dir wants `{type, base64, format}`. Confirmed against
+   * the OpenAPI schema; sending 1dir's shape is rejected as an extra field.
+   *
+   * Passing style images also makes the API ignore `tileType` and `tileView`
+   * and copy the reference's tile geometry instead.
+   */
+  async createTilesPro(args: {
+    description: string
+    tileSize?: number
+    tileType?: string
+    tileView?: string
+    tileFeature?: string
+    seed?: number
+    styleImages?: { base64: string; width: number; height: number }[]
+  }): Promise<{ tile_id: string; background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { description: args.description }
+    if (args.tileSize != null) body.tile_size = args.tileSize
+    if (args.tileType) body.tile_type = args.tileType
+    if (args.tileView) body.tile_view = args.tileView
+    if (args.tileFeature) body.tile_feature = args.tileFeature
+    if (args.seed != null) body.seed = args.seed
+    if (args.styleImages?.length) body.style_images = args.styleImages
+    return this.request("/create-tiles-pro", { method: "POST", body: JSON.stringify(body) })
+  }
+
+  /** Throws PixelLabError(423) while the set is still drawing — see TilesPro. */
+  getTilesPro(tileId: string): Promise<TilesPro> {
+    return this.request(`/tiles-pro/${tileId}`)
+  }
+
   async createImagePixflux(args: {
     description: string
     width: number

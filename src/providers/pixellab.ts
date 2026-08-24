@@ -25,7 +25,12 @@ export class PixelLabProvider implements Provider {
   }
 
   supports(generator: Generator): boolean {
-    return generator === "1dir" || generator === "map" || generator === "pixflux"
+    return (
+      generator === "1dir" ||
+      generator === "map" ||
+      generator === "pixflux" ||
+      generator === "tiles"
+    )
   }
 
   /** PixelLab's own constraints: submissions must be >2s apart, and
@@ -50,6 +55,11 @@ export class PixelLabProvider implements Provider {
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {
+    // `tiles` prices and counts off the whole set, both of which the manifest
+    // layer already worked out — see tilesCost / tileVariationCount.
+    if (spec.generator === "tiles") {
+      return { unit: "generations", amount: spec.cost, candidates: spec.candidates }
+    }
     return {
       unit: "generations",
       amount: generationCost(spec.width, spec.height, spec.generator),
@@ -73,6 +83,26 @@ export class PixelLabProvider implements Provider {
       const jobId = randomUUID()
       writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}.png`), png)
       return { jobId }
+    }
+
+    if (spec.generator === "tiles") {
+      const res = await this.client.createTilesPro({
+        description: spec.prompt,
+        tileSize: spec.tileSize,
+        tileType: spec.tileType,
+        tileView: spec.tileView,
+        tileFeature: spec.tileFeature,
+        seed: spec.seed,
+        // TilesProStyleImage is flat and wants explicit dimensions, unlike
+        // 1dir's {type, base64, format}. The style image is square by the
+        // manifest's own 256px cap, so spec.size is both edges.
+        styleImages: styleImagesBase64.map((b) => ({
+          base64: b,
+          width: spec.tileSize ?? spec.size,
+          height: spec.tileSize ?? spec.size,
+        })),
+      })
+      return { jobId: res.tile_id }
     }
 
     if (spec.generator === "1dir") {
@@ -109,6 +139,7 @@ export class PixelLabProvider implements Provider {
       }
     }
     if (generator === "map") return this.pollMap(jobId)
+    if (generator === "tiles") return this.pollTiles(jobId)
 
     const obj = await this.client.getObject(jobId)
     if (obj.status === "review") {
@@ -154,11 +185,39 @@ export class PixelLabProvider implements Provider {
     }
   }
 
+  /**
+   * Tiles report progress through the HTTP status: 423 while drawing, 200 with
+   * `storage_urls` once finished. There is no `status` field to read and no
+   * progress percentage on offer, so "processing" here carries no ETA.
+   */
+  private async pollTiles(tileId: string): Promise<JobState> {
+    try {
+      const set = await this.client.getTilesPro(tileId)
+      const urls = tileUrlsInIndexOrder(set.storage_urls)
+      if (!urls.length) return { status: "failed", error: "tiles job returned no storage urls" }
+      return { status: "review", candidateUrls: urls }
+    } catch (err) {
+      if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }
+      throw err
+    }
+  }
+
   async selectCandidate(
     jobId: string,
     index: number,
     commonTag?: string,
+    generator?: Generator,
   ): Promise<{ objectId: string; sourceUrl: string | null }> {
+    // A tiles variation is already a finished image at a stable URL — there is
+    // no frame to promote and no new account object to create. The identity we
+    // record is the job plus the index, which is what actually reproduces it.
+    if (generator === "tiles") {
+      const set = await this.client.getTilesPro(jobId)
+      const urls = tileUrlsInIndexOrder(set.storage_urls)
+      const url = urls[index]
+      if (!url) throw new Error(`tiles job ${jobId} has no variation at index ${index}`)
+      return { objectId: `${jobId}#${index}`, sourceUrl: url }
+    }
     const promoted = await this.client.selectFrames(jobId, [index], commonTag)
     const objectId = promoted.created_object_ids?.[0]
     if (!objectId) {
@@ -202,6 +261,19 @@ export class PixelLabProvider implements Provider {
   async delete(assetId: string): Promise<void> {
     await this.client.deleteObject(assetId)
   }
+}
+
+/**
+ * `storage_urls` is an object keyed `tile_0`, `tile_1`, ... — JSON object order
+ * is not something to rely on, and a connectable set is sliced by index, so
+ * sort numerically rather than taking Object.values() as it comes.
+ */
+function tileUrlsInIndexOrder(urls: Record<string, string>): string[] {
+  return Object.entries(urls)
+    .map(([k, v]) => [Number(k.replace(/^tile_/, "")), v] as const)
+    .filter(([i]) => Number.isFinite(i))
+    .sort((a, b) => a[0] - b[0])
+    .map(([, v]) => v)
 }
 
 function firstUrl(urls: Record<string, string | null> | null | undefined): string | null {

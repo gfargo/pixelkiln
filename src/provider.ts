@@ -96,11 +96,17 @@ export interface Provider {
   /**
    * Promote one candidate from a review-status job to a standalone asset.
    * Only meaningful where `estimate().candidates > 1`.
+   *
+   * `generator` is passed because "promote" is not universal: PixelLab's
+   * frame-based generators create a new account object, while a tiles
+   * variation is already a finished image and there is nothing to promote.
+   * A provider that treats every candidate alike can ignore it.
    */
   selectCandidate(
     jobId: string,
     index: number,
     commonTag?: string,
+    generator?: Generator,
   ): Promise<{ objectId: string; sourceUrl: string | null }>
 
   /** Storage URLs are usually public; implementations should not send auth. */

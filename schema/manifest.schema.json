@@ -20,7 +20,8 @@
                 "enum": [
                   "1dir",
                   "map",
-                  "pixflux"
+                  "pixflux",
+                  "tiles"
                 ],
                 "default": "map"
               },
@@ -68,6 +69,39 @@
               "detail": {
                 "type": "string"
               },
+              "tileSize": {
+                "type": "integer",
+                "minimum": 16,
+                "maximum": 256
+              },
+              "tileType": {
+                "type": "string",
+                "enum": [
+                  "hex",
+                  "hex_pointy",
+                  "isometric",
+                  "oblique",
+                  "octagon",
+                  "square_topdown"
+                ]
+              },
+              "tileView": {
+                "type": "string",
+                "enum": [
+                  "top-down",
+                  "high top-down",
+                  "low top-down",
+                  "side"
+                ]
+              },
+              "tileFeature": {
+                "type": "string",
+                "enum": [
+                  "roads",
+                  "tileset",
+                  "building"
+                ]
+              },
               "seed": {
                 "type": "integer"
               },
@@ -77,6 +111,31 @@
                   "type": "string"
                 },
                 "default": []
+              },
+              "mount": {
+                "type": "object",
+                "properties": {
+                  "base": {
+                    "type": "string"
+                  },
+                  "cellWidth": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "cellHeight": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "out": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cellWidth",
+                  "cellHeight",
+                  "out"
+                ],
+                "additionalProperties": false
               },
               "tags": {
                 "type": "array",
@@ -120,6 +179,21 @@
               },
               "file": {
                 "type": "string"
+              },
+              "cell": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                ]
               },
               "tags": {
                 "type": "array",
