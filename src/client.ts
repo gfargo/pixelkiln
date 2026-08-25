@@ -220,6 +220,7 @@ export class PixelLabClient {
     tileType?: string
     tileView?: string
     tileFeature?: string
+    outlineMode?: string
     seed?: number
     styleImages?: { base64: string; width: number; height: number }[]
   }): Promise<{ tile_id: string; background_job_id: string; status: string }> {
@@ -228,6 +229,7 @@ export class PixelLabClient {
     if (args.tileType) body.tile_type = args.tileType
     if (args.tileView) body.tile_view = args.tileView
     if (args.tileFeature) body.tile_feature = args.tileFeature
+    if (args.outlineMode) body.outline_mode = args.outlineMode
     if (args.seed != null) body.seed = args.seed
     if (args.styleImages?.length) body.style_images = args.styleImages
     return this.request("/create-tiles-pro", { method: "POST", body: JSON.stringify(body) })

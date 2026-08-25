@@ -208,3 +208,38 @@ describe("polling a tiles job", () => {
     })
   })
 })
+
+
+describe("outline mode and connectable sets", () => {
+  it("carries outlineMode onto a tiles spec", async () => {
+    const loaded = await writeManifest({
+      generator: "tiles",
+      tileSize: 32,
+      outlineMode: "segmentation",
+    })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec.outlineMode).toBe("segmentation")
+  })
+
+  // The API rejects the pair outright. Catching it in the manifest means
+  // `plan` reports it for free, rather than a run discovering it at submit.
+  it("rejects tileFeature combined with styleImages", async () => {
+    await expect(
+      writeManifest({
+        generator: "tiles",
+        tileSize: 32,
+        tileFeature: "tileset",
+        styleImages: [{ path: "ref.png" }],
+      }),
+    ).rejects.toThrow(/cannot be combined/)
+  })
+
+  it("allows either one on its own", async () => {
+    await expect(
+      writeManifest({ generator: "tiles", tileFeature: "tileset" }),
+    ).resolves.toBeDefined()
+    await expect(
+      writeManifest({ generator: "tiles", styleImages: [{ path: "ref.png" }] }),
+    ).resolves.toBeDefined()
+  })
+})
