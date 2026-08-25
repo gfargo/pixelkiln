@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import {
   idFromPrompt,
+  applyTags,
   loadClaims,
   matchOrphanStyle,
   groupOrphansByStyle,
@@ -230,6 +231,18 @@ describe("loadClaims", () => {
     const p = path.join(dir, "bad.json")
     await writeFile(p, JSON.stringify({ version: 1, entries: {} }))
     await expect(loadClaims([p])).rejects.toThrow(/malformed/)
+  })
+})
+
+describe("salvage decision tags", () => {
+  it("keeps the decision tag when the provider's 20-tag limit is already full", async () => {
+    const provider = new FakeProvider()
+    const existing = new Map([["obj-1", Array.from({ length: 20 }, (_, i) => `tag-${i}`)]])
+
+    await applyTags(provider, [{ id: "obj-1", action: "keep" }], existing)
+
+    expect(provider.tags.get("obj-1")).toHaveLength(20)
+    expect(provider.tags.get("obj-1")).toContain("pixelkiln:keep")
   })
 })
 

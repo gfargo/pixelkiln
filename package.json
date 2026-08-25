@@ -3,14 +3,28 @@
   "version": "0.1.0",
   "description": "Manifest-driven bulk pixel art generation against the PixelLab API. No LLM in the loop.",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
     "pixelkiln": "./bin/pixelkiln.js"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
   },
   "scripts": {
     "pixelkiln": "tsx src/cli.ts",
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && tsup src/cli.ts --format esm --dts --sourcemap",
+    "prepack": "npm run build",
+    "release": "semantic-release",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,11 +33,30 @@
   "engines": {
     "node": ">=20"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gfargo/pixelkiln.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gfargo/pixelkiln/issues"
+  },
+  "homepage": "https://github.com/gfargo/pixelkiln#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^11.0.1",
+    "@semantic-release/github": "^12.0.9",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/node": "^22.10.0",
+    "semantic-release": "^25.0.9",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^4.1.10",
@@ -41,7 +74,7 @@
     "cli"
   ],
   "files": [
-    "src",
+    "dist",
     "bin",
     "schema",
     "README.md",

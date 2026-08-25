@@ -2,13 +2,17 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest"
 import { mkdtemp, writeFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { loadManifest, resolveSpecs } from "../src/manifest.ts"
+import { imageMetadata, loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { PixelLabError } from "../src/client.ts"
 import { PixelLabProvider } from "../src/providers/pixellab.ts"
+import { buildPlan } from "../src/pipeline/plan.ts"
+import { submit } from "../src/pipeline/submit.ts"
+import { encodeRgbaPng } from "../src/png.ts"
 import {
   countNumberedDescriptions,
   tileVariationCount,
   tilesCost,
+  type Lock,
   type ResolvedSpec,
 } from "../src/types.ts"
 
@@ -123,6 +127,64 @@ describe("provider", () => {
       amount: 40,
       candidates: 16,
     })
+  })
+})
+
+describe("style images", () => {
+  it("submits the reference bytes with their actual dimensions", async () => {
+    const pixels = Buffer.alloc(32 * 24 * 4, 255)
+    await writeFile(path.join(dir, "reference.png"), encodeRgbaPng(32, 24, pixels))
+    const loaded = await writeManifest({
+      generator: "tiles",
+      styleImages: [{ path: "reference.png" }],
+    })
+    const specs = await resolveSpecs(loaded)
+    expect(specs[0]).toMatchObject({ width: 32, height: 24, size: 32, tileSize: 32 })
+    let sent: { styleImages?: { base64: string; width: number; height: number }[] } | undefined
+    const provider = new PixelLabProvider({
+      createTilesPro: async (args: typeof sent) => {
+        sent = args
+        return { tile_id: "tiles-1", background_job_id: "bg-1", status: "processing" }
+      },
+    } as never)
+    const lock: Lock = { version: 2, entries: {} }
+
+    await submit(
+      provider,
+      loaded,
+      (await buildPlan(specs, lock)).actionable,
+      lock,
+      path.join(dir, "pixelkiln.lock.json"),
+      { spacingMs: 0 },
+    )
+
+    expect(sent?.styleImages).toHaveLength(1)
+    expect(sent?.styleImages?.[0]).toMatchObject({ width: 32, height: 24 })
+    expect(sent?.styleImages?.[0]?.base64).toBeTruthy()
+  })
+
+  it("reads JPEG dimensions and preserves its request format", () => {
+    const jpeg = Buffer.from([
+      0xff, 0xd8,
+      0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0x18, 0x00, 0x20, 0x03,
+      0x01, 0x11, 0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00,
+      0xff, 0xd9,
+    ])
+    expect(imageMetadata(jpeg)).toEqual({ width: 32, height: 24, format: "jpeg" })
+  })
+
+  it("uses reference dimensions for a 1dir spec when the API will ignore size", async () => {
+    const pixels = Buffer.alloc(32 * 24 * 4, 255)
+    await writeFile(path.join(dir, "reference.png"), encodeRgbaPng(32, 24, pixels))
+    const loaded = await writeManifest({
+      generator: "1dir",
+      size: 64,
+      styleImages: [{ path: "reference.png" }],
+    })
+
+    const [spec] = await resolveSpecs(loaded)
+
+    expect(spec).toMatchObject({ width: 32, height: 32, size: 32, candidates: 64, cost: 20 })
   })
 })
 

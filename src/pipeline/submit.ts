@@ -1,7 +1,7 @@
 import { DEFAULT_RATE_LIMIT, type Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
-import { styleImagesBase64, type LoadedManifest } from "../manifest.ts"
-import type { Lock, ResolvedSpec } from "../types.ts"
+import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
+import type { Lock, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
 
 /**
@@ -60,9 +60,9 @@ export async function submit(
     }
   }
 
-  const styleImages = new Map<string, string[]>()
+  const styleImages = new Map<string, ResolvedStyleImage[]>()
   for (const styleId of new Set(items.map((i) => i.spec.styleId))) {
-    styleImages.set(styleId, await styleImagesBase64(loaded, styleId))
+    styleImages.set(styleId, await resolveStyleImages(loaded, styleId))
   }
 
   let submitted = 0
@@ -124,7 +124,10 @@ export async function submit(
 
     lastSubmitAt = Date.now()
     try {
-      const refs = spec.generator === "1dir" ? (styleImages.get(spec.styleId) ?? []) : []
+      const refs =
+        spec.generator === "1dir" || spec.generator === "tiles"
+          ? (styleImages.get(spec.styleId) ?? [])
+          : []
       const { jobId } = await provider.submit(spec, refs)
       upsert(lock, key, {
         jobId,

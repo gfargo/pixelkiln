@@ -1,4 +1,4 @@
-import type { Generator, ResolvedSpec } from "./types.ts"
+import type { Generator, ResolvedSpec, ResolvedStyleImage } from "./types.ts"
 
 /**
  * What a provider charges in. Cost is not universally "generations": PixelLab
@@ -89,7 +89,7 @@ export interface Provider {
    *  `DEFAULT_RATE_LIMIT` when absent — see that constant's doc. */
   rateLimit?(): RateLimit
 
-  submit(spec: ResolvedSpec, styleImagesBase64: string[]): Promise<{ jobId: string }>
+  submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<{ jobId: string }>
 
   poll(jobId: string, generator: Generator): Promise<JobState>
 

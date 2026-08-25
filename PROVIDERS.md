@@ -78,8 +78,8 @@ readable.
 17 integration tests now cover `submit → poll → fetch`, `pushTags` and `adopt`
 — the stages that spend money and previously had zero coverage, where four of
 the five real bugs in this project lived. Verified non-vacuous by mutation:
-breaking the output hashes, the budget check, or the v1 lock migration each
+breaking the output hashes, the budget check, or the v1 lock rejection each
 fails tests.
 
-Still uncovered: the two contact-sheet HTTP servers (`pick`, `salvage`). Their
-HTML generation is unit-tested; the request handling is not.
+The contact-sheet request paths are covered through the picker and salvage
+integration tests as well as their HTML unit tests.

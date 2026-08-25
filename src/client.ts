@@ -1,3 +1,5 @@
+import type { ResolvedStyleImage } from "./types.ts"
+
 /**
  * PixelLab REST client.
  *
@@ -155,12 +157,16 @@ export class PixelLabClient {
     description: string
     size?: number
     view?: string
-    styleImagesBase64?: string[]
+    styleImages?: ResolvedStyleImage[]
     itemDescriptions?: string[]
   }): Promise<{ object_id: string; status: string; n_frames: number }> {
     const body: Record<string, unknown> = { description: args.description }
-    if (args.styleImagesBase64?.length) {
-      body.style_images = args.styleImagesBase64.map((b) => ({ type: "base64", base64: b, format: "png" }))
+    if (args.styleImages?.length) {
+      body.style_images = args.styleImages.map(({ base64, format }) => ({
+        type: "base64",
+        base64,
+        format,
+      }))
     } else if (args.size != null) {
       body.size = args.size
     }
@@ -197,11 +203,6 @@ export class PixelLabClient {
     return this.request("/map-objects", { method: "POST", body: JSON.stringify(body) })
   }
 
-  /**
-   * Synchronous single-image generation. Returns the PNG inline rather than a
-   * job id, and is the only endpoint that honours a forced palette —
-   * `color_image` on /map-objects returns a 500 whatever the payload shape.
-   */
   /**
    * Draws a whole tile set in one call — many variations, or a connectable
    * set when `tileFeature` is given.
@@ -240,6 +241,11 @@ export class PixelLabClient {
     return this.request(`/tiles-pro/${tileId}`)
   }
 
+  /**
+   * Synchronous single-image generation. Returns the PNG inline rather than a
+   * job id, and is the only endpoint that honours a forced palette —
+   * `color_image` on /map-objects returns a 500 whatever the payload shape.
+   */
   async createImagePixflux(args: {
     description: string
     width: number

@@ -43,9 +43,30 @@ export function serveReviewPage<TResult>(opts: ReviewServerOptions<TResult>): Pr
       }
 
       if (req.method === "POST" && req.url === "/apply") {
+        const expectedOrigin = req.headers.host ? `http://${req.headers.host}` : null
+        if (req.headers.origin && req.headers.origin !== expectedOrigin) {
+          res.writeHead(403, { "Content-Type": "text/plain" })
+          res.end("cross-origin review submissions are not allowed")
+          return
+        }
+        if (!req.headers["content-type"]?.toLowerCase().startsWith("application/json")) {
+          res.writeHead(415, { "Content-Type": "text/plain" })
+          res.end("application/json is required")
+          return
+        }
         try {
           const chunks: Buffer[] = []
-          for await (const c of req) chunks.push(c as Buffer)
+          let bytes = 0
+          for await (const c of req) {
+            const chunk = c as Buffer
+            bytes += chunk.length
+            if (bytes > 64 * 1024) {
+              res.writeHead(413, { "Content-Type": "text/plain" })
+              res.end("review submission is too large")
+              return
+            }
+            chunks.push(chunk)
+          }
           const body: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"))
           const result = await opts.handleApply(body)
           res.writeHead(200, { "Content-Type": "application/json" })
