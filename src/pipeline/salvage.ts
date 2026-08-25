@@ -263,7 +263,10 @@ export async function applyTags(
     const current = (existing.get(id) ?? []).filter(
       (t) => t !== "pixelkiln:keep" && t !== "pixelkiln:discard" && t !== "pixelkiln:imported",
     )
-    const next = [...current, `pixelkiln:${action === "import" ? "imported" : action}`].slice(0, 20)
+    const decisionTag = `pixelkiln:${action === "import" ? "imported" : action}`
+    // PixelLab caps tags at 20. Preserve the decision tag even when the object
+    // already has 20 unrelated tags; it is the durable record of this action.
+    const next = [...current.slice(0, 19), decisionTag]
     if (!provider.setTags) return { tagged, failed }
     try {
       await provider.setTags(id, next)

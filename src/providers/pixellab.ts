@@ -4,7 +4,13 @@ import os from "node:os"
 import path from "node:path"
 import { PixelLabClient, PixelLabError, clientFromEnv } from "../client.ts"
 import { paletteSwatch } from "../png.ts"
-import { candidateCount, generationCost, type Generator, type ResolvedSpec } from "../types.ts"
+import {
+  candidateCount,
+  generationCost,
+  type Generator,
+  type ResolvedSpec,
+  type ResolvedStyleImage,
+} from "../types.ts"
 import type { BalanceInfo, CostEstimate, JobState, Provider, RateLimit, RemoteAsset } from "../provider.ts"
 
 /**
@@ -67,7 +73,7 @@ export class PixelLabProvider implements Provider {
     }
   }
 
-  async submit(spec: ResolvedSpec, styleImagesBase64: string[]): Promise<{ jobId: string }> {
+  async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<{ jobId: string }> {
     if (spec.generator === "pixflux") {
       const swatch = spec.palette.length
         ? paletteSwatch(spec.palette).toString("base64")
@@ -94,14 +100,9 @@ export class PixelLabProvider implements Provider {
         tileFeature: spec.tileFeature,
         outlineMode: spec.outlineMode,
         seed: spec.seed,
-        // TilesProStyleImage is flat and wants explicit dimensions, unlike
-        // 1dir's {type, base64, format}. The style image is square by the
-        // manifest's own 256px cap, so spec.size is both edges.
-        styleImages: styleImagesBase64.map((b) => ({
-          base64: b,
-          width: spec.tileSize ?? spec.size,
-          height: spec.tileSize ?? spec.size,
-        })),
+        // TilesProStyleImage is flat and wants the reference's real dimensions,
+        // unlike 1dir's {type, base64, format} payload.
+        styleImages: styleImages.map(({ base64, width, height }) => ({ base64, width, height })),
       })
       return { jobId: res.tile_id }
     }
@@ -111,7 +112,7 @@ export class PixelLabProvider implements Provider {
         description: spec.prompt,
         size: spec.size,
         view: spec.view === "sidescroller" ? "sidescroller" : "top-down",
-        styleImagesBase64,
+        styleImages,
       })
       return { jobId: res.object_id }
     }

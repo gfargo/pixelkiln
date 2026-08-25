@@ -127,12 +127,10 @@ Version 2. Each entry records `outputs[]` — a path, a hash, and an optional
 expand into many artifacts, which an animated character needs (~35 spritesheets
 plus an engine resource plus a portrait).
 
-`parseLock` reads either version and migrates v1 transparently. A committed
-lockfile is the record of what you have paid for, so a version bump must never
-make one unreadable — that would present every tracked asset as missing and
-offer to regenerate the lot. A v1 entry whose file had no recorded hash is
-dropped rather than carried over, so `plan` reports it `untracked` instead of
-vouching for bytes that were never verified.
+`parseLock` accepts v2 only. The projects using pixelkiln were onboarded after
+v2 landed, so a v1 file indicates a hand edit or the wrong file rather than a
+legacy project to migrate. It fails loudly instead of reinterpreting a paid-work
+record and risking an incorrect regeneration plan.
 
 ## Salvaging unclaimed work
 

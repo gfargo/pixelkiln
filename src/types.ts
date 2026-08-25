@@ -34,6 +34,14 @@ import { z } from "zod"
 export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
+/** A decoded style reference ready for a provider-specific request body. */
+export interface ResolvedStyleImage {
+  base64: string
+  width: number
+  height: number
+  format: "png" | "jpeg"
+}
+
 /**
  * `tiles` is the odd one out: the unit of work is a *set*, not a sprite.
  *
@@ -153,7 +161,7 @@ export const StyleSchema = z
     promptSuffix: z.string().default(""),
     /** Prepended to every asset prompt in this style. */
     promptPrefix: z.string().default(""),
-    /** Style reference images. Capacity by size: <=85px -> 8, <=170px -> 4, >170px -> 1. */
+    /** Style reference images. */
     styleImages: z.array(StyleImageSchema).default([]),
     /** Output root for this style, relative to the manifest. */
     outDir: z.string(),
@@ -215,7 +223,9 @@ export const StyleSchema = z
      * map-generated monochrome sets came back with a yellow star and a brown
      * chocolate bar.
      */
-    palette: z.array(z.string()).default([]),
+    palette: z
+      .array(z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour"))
+      .default([]),
     /**
      * Composites this style's assets into declared cells of a sheet, rather
      * than letting `pack` derive a layout. Use it when the atlas coordinates

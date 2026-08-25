@@ -45,6 +45,7 @@ interface Args {
   name?: string
   writePrompts: boolean
   columns?: number
+  port?: number
   inputs?: string
   claims: string[]
 }
@@ -77,7 +78,9 @@ export function parseArgs(argv: string[]): Args {
   const rest = argv.slice(1)
   for (let i = 0; i < rest.length; i++) {
     const token = rest[i]!
-    if (!token.startsWith("-")) continue
+    if (!token.startsWith("-")) {
+      throw new Error(`Unexpected argument "${token}". Options must be passed with a named flag.`)
+    }
     if ((BOOL_FLAGS as readonly string[]).includes(token)) continue
     if ((VALUE_FLAGS as readonly string[]).includes(token)) {
       const value = rest[i + 1]
@@ -130,6 +133,15 @@ export function parseArgs(argv: string[]): Args {
     }
   }
 
+  const rawPort = get("--port")
+  let port: number | undefined
+  if (rawPort !== undefined) {
+    port = Number(rawPort)
+    if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+      throw new Error(`--port must be a whole number between 1 and 65535, got "${rawPort}"`)
+    }
+  }
+
   let budget: number | undefined
   const rawBudget = get("--budget")
   if (rawBudget !== undefined) {
@@ -162,6 +174,7 @@ export function parseArgs(argv: string[]): Args {
     name: get("--name"),
     writePrompts: rest.includes("--write-prompts"),
     columns,
+    port,
     inputs: get("--inputs"),
     claims: list("--claims"),
   }
@@ -194,6 +207,7 @@ Commands
 
 Options
   --columns <n>       pack: sprites per row (default: near-square)
+  --port <n>          Local review-server port (default: choose a free port)
   --inputs <path>     pack: JSON [{id,path}] instead of the lockfile; needs --out
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
@@ -706,7 +720,7 @@ async function main() {
           lock,
           lockPath: args.lock,
         },
-        { open: !args.noOpen, onProgress: log },
+        { port: args.port, open: !args.noOpen, onProgress: log },
       )
       log(
         `  imported ${res.imported} · kept ${res.kept} · tagged-discard ${res.discarded}` +
@@ -837,7 +851,11 @@ async function main() {
   }
 
   if (args.command === "pick" || args.command === "gen") {
-    const res = await runPicker(provider, lock, args.lock, { open: !args.noOpen, onProgress: log })
+    const res = await runPicker(provider, lock, args.lock, {
+      port: args.port,
+      open: !args.noOpen,
+      onProgress: log,
+    })
     if (res.selected === 0 && res.skipped === 0) {
       log(`  nothing awaiting selection`)
     } else {

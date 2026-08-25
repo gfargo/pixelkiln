@@ -60,6 +60,15 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["genn"])).toThrow(/Unknown command/)
   })
 
+  it("rejects an unexpected positional argument instead of silently ignoring it", () => {
+    expect(() => parseArgs(["gen", "neon"])).toThrow(/Unexpected argument/)
+  })
+
+  it("parses and validates the local review-server port", () => {
+    expect(parseArgs(["pick", "--port", "43123"]).port).toBe(43123)
+    expect(() => parseArgs(["pick", "--port", "70000"])).toThrow(/65535/)
+  })
+
   it("rejects a value flag with no value", () => {
     expect(() => parseArgs(["gen", "--style"])).toThrow(/needs a value/)
     expect(() => parseArgs(["gen", "--style", "--force"])).toThrow(/needs a value/)

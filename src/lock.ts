@@ -38,9 +38,13 @@ export function saveLock(path: string, lock: Lock): Promise<void> {
     .then(() => writeLockNow(path, lock))
   saveQueues.set(path, next)
   // Drop the queue entry once drained so long-lived processes don't retain it.
-  next.finally(() => {
+  const cleanup = () => {
     if (saveQueues.get(path) === next) saveQueues.delete(path)
-  })
+  }
+  // Using `finally()` here would create a second rejected promise when a save
+  // fails. If nobody observes that derived promise Node reports an unhandled
+  // rejection even when the caller correctly handles `next`.
+  void next.then(cleanup, cleanup)
   return next
 }
 

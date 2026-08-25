@@ -94,4 +94,31 @@ describe("runPicker", () => {
     expect(await picked).toEqual({ selected: 0, skipped: 1 })
     expect(lock.entries[key]!.status).toBe("review")
   })
+
+  it("rejects cross-origin or non-JSON review submissions", async () => {
+    const { provider, lock } = await projectInReview(4)
+    const key = lockKey("base", "anvil")
+    let url = ""
+    const picked = runPicker(provider, lock, lockPath, {
+      open: false,
+      onProgress: (m) => (url ||= m.match(/http:\/\/127\.0\.0\.1:\d+\//)?.[0] ?? ""),
+    })
+    await vi.waitFor(() => expect(url).not.toBe(""))
+
+    const nonJson = await fetch(url + "apply", { method: "POST", body: "{}" })
+    expect(nonJson.status).toBe(415)
+    const crossOrigin = await fetch(url + "apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://example.test" },
+      body: "{}",
+    })
+    expect(crossOrigin.status).toBe(403)
+
+    await fetch(url + "apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selections: [{ key, index: 0 }] }),
+    })
+    await picked
+  })
 })

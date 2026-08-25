@@ -291,6 +291,30 @@ describe("manifest validation", () => {
     )
     await expect(loadManifest(path.join(dir, "m.json"))).rejects.toThrow(/invalid/i)
   })
+
+  it("rejects asset references to an unknown style", async () => {
+    const p = path.join(dir, "m.json")
+    await writeFile(
+      p,
+      JSON.stringify({
+        name: "t",
+        styles: { base: { outDir: "out" } },
+        assets: { anvil: { prompt: "an anvil", styles: ["typo"] } },
+      }),
+    )
+    await expect(loadManifest(p)).rejects.toThrow(/unknown style "typo"/)
+  })
+
+  it("validates palette colours while planning is still offline", async () => {
+    await expect(writeManifest({ generator: "pixflux", palette: ["not-a-colour"] })).rejects.toThrow(
+      /hex colour/,
+    )
+  })
+
+  it("rejects a combined tag set over the provider limit", async () => {
+    const loaded = await writeManifest({ tags: Array.from({ length: 18 }, (_, i) => `tag-${i}`) })
+    await expect(resolveSpecs(loaded)).rejects.toThrow(/at most 20/)
+  })
 })
 
 describe("lockfile schema", () => {
