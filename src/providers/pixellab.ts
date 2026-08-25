@@ -82,7 +82,7 @@ export class PixelLabProvider implements Provider {
         description: spec.prompt,
         width: spec.width,
         height: spec.height,
-        noBackground: true,
+        noBackground: spec.noBackground,
         paletteSwatchBase64: swatch,
         seed: spec.seed,
       })

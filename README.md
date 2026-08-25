@@ -379,6 +379,32 @@ but has no palette parameter, and the Pro endpoints (`generate-with-style-v2` at
 20, `generate-image-v2` at 40) do genuine style transfer from labelled reference
 images when that is worth the price.
 
+### `pixflux` and backgrounds
+
+`no_background` defaults to **false** on the API. pixelkiln sends `true`,
+because the sprites it was built for want their background stripped — a prop
+or an icon should sit on whatever is behind it.
+
+That is wrong for anything that *is* a scene: a cover banner, a splash, a
+backdrop. Set `noBackground: false` on the style and the image comes back
+full-bleed.
+
+```jsonc
+"styles": {
+  "covers": {
+    "generator": "pixflux",
+    "noBackground": false,
+    "outDir": "assets/sprites/courses"
+  }
+}
+```
+
+Worth knowing because prose does not override it: a prompt asking for an
+"opaque background" still comes back as a subject floating in a mostly-empty
+frame, since the background is removed after generation rather than never
+drawn. Measured on a set of six 192x96 cover banners, five of which filled
+25-56% of their canvas.
+
 ### `tiles` — ground tiles and connectable sets
 
 `POST /create-tiles-pro` draws tile shape outlines and fills them. One call

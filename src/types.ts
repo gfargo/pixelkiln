@@ -211,6 +211,18 @@ export const StyleSchema = z
      * rather than inheriting.
      */
     outlineMode: z.enum(["outline", "segmentation"]).optional(),
+    /**
+     * `pixflux` only. Whether to strip the generated background.
+     *
+     * Defaults to true, which is right for the sprites this tool was built
+     * for — a prop or an icon wants to sit on whatever is behind it. It is
+     * wrong for anything that IS a scene: a cover banner, a splash, a
+     * backdrop. The API's own default is false; forcing it true unconditionally
+     * meant a full-bleed image came back as a small subject floating in a
+     * mostly-empty frame, and prose asking for an "opaque background" does not
+     * override it.
+     */
+    noBackground: z.boolean().default(true),
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**
@@ -441,6 +453,8 @@ export interface ResolvedSpec {
   seed?: number
   /** Forced palette hex values; empty unless the style sets one. */
   palette: string[]
+  /** `pixflux` only — strip the generated background. Defaults to true. */
+  noBackground: boolean
   /** `tiles` generator only — see StyleSchema for what each one means. */
   tileSize?: number
   tileType?: string

@@ -109,6 +109,10 @@
                   "segmentation"
                 ]
               },
+              "noBackground": {
+                "type": "boolean",
+                "default": true
+              },
               "seed": {
                 "type": "integer"
               },
