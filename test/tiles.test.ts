@@ -209,7 +209,6 @@ describe("polling a tiles job", () => {
   })
 })
 
-
 describe("outline mode and connectable sets", () => {
   it("carries outlineMode onto a tiles spec", async () => {
     const loaded = await writeManifest({

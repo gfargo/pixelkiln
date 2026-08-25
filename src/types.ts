@@ -203,12 +203,6 @@ export const StyleSchema = z
      * rather than inheriting.
      */
     outlineMode: z.enum(["outline", "segmentation"]).optional(),
-    /**
-     * `tiles` generator only. Copies the reference's tile geometry and palette
-     * instead of deriving them from `tileType`/`tileView`.
-     *
-     * Mutually exclusive with `tileFeature` — see the refinement below.
-     */
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**
