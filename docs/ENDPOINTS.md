@@ -187,6 +187,18 @@ is the status. Cost is reported at submit time and lands on the same 20/25/40
 canvas tiers as `1dir`, but the canvas is tile size x variation count, not one
 sprite — a small tile in a large set still reaches the top tier.
 
+`outline_mode` defaults to `outline`, which draws a dark border around every
+tile. For ground tiles that is wrong: laid on a grid the borders read as
+quilting, with a seam at every cell edge. `segmentation` omits them and the
+same set tiles seamlessly — measured on a fairway-to-rough terrain set, where
+it was the difference between usable and unusable.
+
+`tile_feature` and `style_images` are **mutually exclusive** — "Connectable
+features (roads/tileset/building) cannot be combined with style tiles". So the
+geometry-anchoring trick above is unavailable for a connectable set, and its
+tiles land on whatever ground plane the view angle implies (measured: 32x24
+with the diamond midline at y=7, against a 32x32 sheet wanting y=15).
+
 `tile_feature` turns it from independent variations into a connectable set:
 `roads` (18-configuration path set), `tileset` (16-tile Wang corner set for a
 terrain transition — describe it as the transition, not one terrain), and

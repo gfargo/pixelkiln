@@ -102,6 +102,13 @@
                   "building"
                 ]
               },
+              "outlineMode": {
+                "type": "string",
+                "enum": [
+                  "outline",
+                  "segmentation"
+                ]
+              },
               "seed": {
                 "type": "integer"
               },

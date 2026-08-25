@@ -189,6 +189,20 @@ export const StyleSchema = z
      * is load-bearing; do not sort a connectable set by anything else.
      */
     tileFeature: z.enum(["roads", "tileset", "building"]).optional(),
+    /**
+     * `tiles` generator only. How tile edges are drawn.
+     *
+     * The API default is `outline`, which draws a dark border around every
+     * tile. That is right for tiles meant to read as discrete objects and
+     * wrong for ground: laid on a grid, the per-tile borders turn a continuous
+     * surface into visible quilting, with a dark seam at every cell edge.
+     * `segmentation` omits them and the same set tiles seamlessly.
+     *
+     * Measured on a fairway-to-rough terrain set — the difference decided
+     * whether the art was usable at all, so it is worth setting deliberately
+     * rather than inheriting.
+     */
+    outlineMode: z.enum(["outline", "segmentation"]).optional(),
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**
@@ -232,6 +246,20 @@ export const StyleSchema = z
     tags: z.array(z.string()).default([]),
   })
   .strict()
+  /**
+   * The API rejects a connectable set combined with style tiles:
+   * "Connectable features (roads/tileset/building) cannot be combined with
+   * style tiles". Catching it here means `plan` reports it for free rather
+   * than a `submit` discovering it after the run has started — and the two
+   * are individually the best reasons to use this generator, so reaching for
+   * both at once is an easy mistake to make.
+   */
+  .refine((s) => !(s.tileFeature && s.styleImages.length), {
+    message:
+      "tileFeature and styleImages cannot be combined — a connectable set " +
+      "derives its own tile geometry, so remove one or the other",
+    path: ["tileFeature"],
+  })
 
 export const AssetSchema = z
   .object({
@@ -408,4 +436,5 @@ export interface ResolvedSpec {
   tileType?: string
   tileView?: string
   tileFeature?: string
+  outlineMode?: string
 }

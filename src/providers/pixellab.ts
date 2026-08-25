@@ -92,6 +92,7 @@ export class PixelLabProvider implements Provider {
         tileType: spec.tileType,
         tileView: spec.tileView,
         tileFeature: spec.tileFeature,
+        outlineMode: spec.outlineMode,
         seed: spec.seed,
         // TilesProStyleImage is flat and wants explicit dimensions, unlike
         // 1dir's {type, base64, format}. The style image is square by the

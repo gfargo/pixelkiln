@@ -423,6 +423,21 @@ is what an engine's autotiling needs — without transition tiles, a terrain
 solver that cannot find a matching tile for a boundary cell erases it, and the
 result is a gap tracing every terrain edge.
 
+**Set `outlineMode: "segmentation"` for ground tiles.** The API default is
+`outline`, which draws a dark border around every tile — right for tiles that
+read as discrete objects, wrong for ground. Laid on a grid, those borders turn
+a continuous surface into visible quilting with a seam at every cell edge.
+Measured on a fairway-to-rough set, this one flag decided whether the art was
+usable at all.
+
+**`tileFeature` and `styleImages` cannot be combined.** The API rejects the
+pair ("Connectable features cannot be combined with style tiles"), so a
+connectable set derives its own tile geometry and cannot be anchored to an
+existing sheet. pixelkiln refuses this in the manifest, so `plan` reports it
+for free rather than a run finding out at submit. In practice that means a
+connectable set needs its alignment corrected on the way into an existing
+atlas, where independent variations can be anchored up front.
+
 A connectable set is sliced **by index**, so the order matters: candidates are
 sorted `tile_0, tile_1, …` numerically rather than by JSON key order, and that
 order is what the lockfile and the contact sheet both show.

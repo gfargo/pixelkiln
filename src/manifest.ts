@@ -138,6 +138,7 @@ export async function resolveSpecs(
         tileType: generator === "tiles" ? style.tileType : undefined,
         tileView: generator === "tiles" ? style.tileView : undefined,
         tileFeature: generator === "tiles" ? style.tileFeature : undefined,
+        outlineMode: generator === "tiles" ? style.outlineMode : undefined,
         cost:
           generator === "tiles"
             ? tilesCost(tileSize, tileVariations)
