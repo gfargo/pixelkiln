@@ -304,3 +304,21 @@ describe("outline mode and connectable sets", () => {
     ).resolves.toBeDefined()
   })
 })
+
+describe("pixflux background", () => {
+  // The API's own default is no_background: false. pixelkiln forced it true
+  // for every pixflux asset, which is right for a sprite and wrong for
+  // anything that IS a scene — a cover banner came back as a small subject
+  // floating in a mostly-empty frame.
+  it("strips the background by default, as a sprite wants", async () => {
+    const loaded = await writeManifest({ generator: "pixflux" })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec.noBackground).toBe(true)
+  })
+
+  it("keeps the background when a style asks for a full-bleed image", async () => {
+    const loaded = await writeManifest({ generator: "pixflux", noBackground: false })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec.noBackground).toBe(false)
+  })
+})

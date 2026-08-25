@@ -176,6 +176,7 @@ export async function resolveSpecs(
         detail: style.detail,
         seed: style.seed,
         palette: style.palette,
+        noBackground: style.noBackground,
         tileSize: generator === "tiles" ? tileSize : undefined,
         tileType: generator === "tiles" ? style.tileType : undefined,
         tileView: generator === "tiles" ? style.tileView : undefined,

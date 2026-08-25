@@ -116,6 +116,9 @@ export function buildManifest(
       [styleId]: {
         generator,
         size: commonSize,
+        // Matches the schema default: a scaffolded style is for sprites, and
+        // a sprite wants its background stripped.
+        noBackground: true,
         promptPrefix: "",
         promptSuffix: "",
         styleImages: [],
