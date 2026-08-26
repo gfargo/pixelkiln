@@ -227,6 +227,21 @@ describe("styles as namespaces", () => {
     expect(specs.filter((s) => s.assetId === "baseOnly").map((s) => s.styleId)).toEqual(["base"])
     expect(specs.filter((s) => s.assetId === "everywhere")).toHaveLength(2)
   })
+
+  it("rejects two manifest entries that would overwrite the same output", async () => {
+    const manifest = {
+      name: "test",
+      styles: { base: { outDir: "out" } },
+      assets: {
+        alpha: { prompt: "a", file: "same.png" },
+        beta: { prompt: "b", file: "same.png" },
+      },
+    }
+    await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(path.join(dir, "m.json")))).rejects.toThrow(
+      /Output collision/,
+    )
+  })
 })
 
 describe("lockfile", () => {

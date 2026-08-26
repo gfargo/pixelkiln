@@ -203,7 +203,9 @@ Those ids are a starting point — rename them.
 ```bash
 pixelkiln init --from <dir>       # scaffold a manifest from existing PNGs
 pixelkiln plan                    # diff manifest vs lock vs disk. Costs nothing.
+pixelkiln plan --check --json     # CI contract: machine output + nonzero when not current
 pixelkiln gen                     # submit → poll → pick → fetch
+pixelkiln restore                 # restore missing outputs without generating again
 pixelkiln gen --only first_review --force   # regenerate exactly one asset
 pixelkiln gen --style neon --budget 800     # a whole variant set, capped
 pixelkiln adopt --write-prompts   # map account objects to files, recover prompts
@@ -216,6 +218,15 @@ pixelkiln balance                 # generations remaining
 
 `plan` is the habit worth forming — it is free, and it prints exactly what a run
 would cost before anything is spent.
+
+Generation and download failures are separate lock states. A CDN/network error
+after successful generation is `download-failed`, costs zero in the next plan,
+and is retried by `fetch`. `restore` additionally repairs generated outputs that
+have gone missing from disk. It never overwrites an output whose bytes differ
+from the recorded hash. `submit`, `poll`, `fetch`, and `gen` exit nonzero on
+partial failure or timeout, so build automation cannot mistake an incomplete
+run for success. `plan` and `status` support `--json`; `plan --check` exits
+nonzero unless every selected asset is current.
 
 ### Making a variant set
 
@@ -462,9 +473,13 @@ for free rather than a run finding out at submit. In practice that means a
 connectable set needs its alignment corrected on the way into an existing
 atlas, where independent variations can be anchored up front.
 
-A connectable set is sliced **by index**, so the order matters: candidates are
-sorted `tile_0, tile_1, …` numerically rather than by JSON key order, and that
-order is what the lockfile and the contact sheet both show.
+A connectable set is sliced **by index**, so the order matters. It is not a list
+of candidates: every returned image is required. PixelKiln sorts
+`tile_0, tile_1, …` numerically, downloads the complete set, and records roles
+`tile-00`, `tile-01`, … in `outputs[]`. If the manifest target is
+`terrain.png`, the files are `terrain-tile-00.png`,
+`terrain-tile-01.png`, and so on. Independent tile variations still use the
+contact sheet and produce one selected image.
 
 Two API details worth knowing, both confirmed against the OpenAPI schema:
 

@@ -11,7 +11,7 @@ import {
   type ResolvedSpec,
   type ResolvedStyleImage,
 } from "../types.ts"
-import type { BalanceInfo, CostEstimate, JobState, Provider, RateLimit, RemoteAsset } from "../provider.ts"
+import type { BalanceInfo, CostEstimate, JobState, PollContext, Provider, RateLimit, RemoteAsset } from "../provider.ts"
 
 /**
  * PixelLab, the reference implementation.
@@ -129,10 +129,13 @@ export class PixelLabProvider implements Provider {
     return { jobId: res.object_id }
   }
 
-  async poll(jobId: string, generator: Generator): Promise<JobState> {
+  async poll(jobId: string, generator: Generator, context?: PollContext): Promise<JobState> {
     if (generator === "pixflux") {
       const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
-      if (existsSync(file)) return { status: "ready", objectId: jobId, sourceUrl: `file://${file}` }
+      if (existsSync(file)) {
+        const sourceUrl = `file://${file}`
+        return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }] }
+      }
       // The bytes only ever lived here, so a missing file means the temp dir
       // was cleared. Nothing to recover from upstream — say so plainly.
       return {
@@ -141,14 +144,15 @@ export class PixelLabProvider implements Provider {
       }
     }
     if (generator === "map") return this.pollMap(jobId)
-    if (generator === "tiles") return this.pollTiles(jobId)
+    if (generator === "tiles") return this.pollTiles(jobId, Boolean(context?.tileFeature))
 
     const obj = await this.client.getObject(jobId)
     if (obj.status === "review") {
       return { status: "review", candidateUrls: obj.frame_urls ?? [] }
     }
     if (obj.status === "completed") {
-      return { status: "ready", objectId: obj.id, sourceUrl: firstUrl(obj.rotation_urls) ?? obj.preview_url ?? null }
+      const url = firstUrl(obj.rotation_urls) ?? obj.preview_url ?? null
+      return { status: "ready", objectId: obj.id, sourceUrl: url, sources: url ? [{ url }] : [] }
     }
     if (obj.status === "failed") return { status: "failed", error: "generation failed upstream" }
     return {
@@ -169,7 +173,12 @@ export class PixelLabProvider implements Provider {
     try {
       const obj = await this.client.getMapObject(jobId)
       if (obj.status === "completed" && obj.download_url) {
-        return { status: "ready", objectId: jobId, sourceUrl: obj.download_url }
+        return {
+          status: "ready",
+          objectId: jobId,
+          sourceUrl: obj.download_url,
+          sources: [{ url: obj.download_url }],
+        }
       }
       if (obj.status === "failed") return { status: "failed", error: "generation failed upstream" }
       return { status: "processing" }
@@ -178,7 +187,7 @@ export class PixelLabProvider implements Provider {
       const survivor = await this.client.getObject(jobId).catch(() => null)
       const url = firstUrl(survivor?.rotation_urls) ?? survivor?.preview_url ?? null
       if (survivor?.status === "completed" && url) {
-        return { status: "ready", objectId: survivor.id, sourceUrl: url }
+        return { status: "ready", objectId: survivor.id, sourceUrl: url, sources: [{ url }] }
       }
       return {
         status: "failed",
@@ -192,12 +201,18 @@ export class PixelLabProvider implements Provider {
    * `storage_urls` once finished. There is no `status` field to read and no
    * progress percentage on offer, so "processing" here carries no ETA.
    */
-  private async pollTiles(tileId: string): Promise<JobState> {
+  private async pollTiles(tileId: string, connectable: boolean): Promise<JobState> {
     try {
       const set = await this.client.getTilesPro(tileId)
       const urls = tileUrlsInIndexOrder(set.storage_urls)
       if (!urls.length) return { status: "failed", error: "tiles job returned no storage urls" }
-      return { status: "review", candidateUrls: urls }
+      if (!connectable) return { status: "review", candidateUrls: urls }
+      return {
+        status: "ready",
+        objectId: tileId,
+        sourceUrl: urls[0] ?? null,
+        sources: urls.map((url, index) => ({ url, role: `tile-${String(index).padStart(2, "0")}` })),
+      }
     } catch (err) {
       if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }
       throw err

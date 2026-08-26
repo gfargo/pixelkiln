@@ -110,7 +110,8 @@ export class FakeProvider implements Provider {
     const objectId = job.objectId ?? `obj-${jobId}`
     job.objectId = objectId
     this.register(objectId, job.spec)
-    return { status: "ready", objectId, sourceUrl: `fake://${objectId}.png` }
+    const sourceUrl = `fake://${objectId}.png`
+    return { status: "ready", objectId, sourceUrl, sources: [{ url: sourceUrl }] }
   }
 
   async selectCandidate(

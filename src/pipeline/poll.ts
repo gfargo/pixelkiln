@@ -1,6 +1,7 @@
 import { saveLock, upsert } from "../lock.ts"
 import type { Provider } from "../provider.ts"
 import type { Lock } from "../types.ts"
+import { lockKey, type ResolvedSpec } from "../types.ts"
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -8,6 +9,7 @@ export interface PollOptions {
   intervalMs?: number
   timeoutMs?: number
   onProgress?: (msg: string) => void
+  specs?: ResolvedSpec[]
 }
 
 export interface PollResult {
@@ -35,6 +37,7 @@ export async function poll(
   const timeout = opts.timeoutMs ?? 15 * 60 * 1000
   const log = opts.onProgress ?? (() => {})
   const started = Date.now()
+  const specByKey = new Map((opts.specs ?? []).map((s) => [lockKey(s.styleId, s.assetId), s]))
 
   const result: PollResult = { review: 0, completed: 0, failed: 0, stillRunning: 0 }
 
@@ -52,16 +55,26 @@ export async function poll(
 
     for (const [key, entry] of pending()) {
       try {
-        const state = await provider.poll(entry.jobId!, entry.generator)
+        const currentSpec = specByKey.get(key)
+        const state = await provider.poll(entry.jobId!, entry.generator, {
+          tileFeature: entry.tileFeature ?? currentSpec?.tileFeature,
+        })
         if (state.status === "review") {
           upsert(lock, key, { status: "review", reviewObjectId: entry.jobId })
           result.review++
           log(`  review  ${key} (${state.candidateUrls.length} candidates)`)
         } else if (state.status === "ready") {
+          const sourceUrls = state.sources?.length
+            ? state.sources
+            : state.sourceUrl
+              ? [{ url: state.sourceUrl }]
+              : []
           upsert(lock, key, {
             status: "selected",
             objectId: state.objectId,
-            sourceUrl: state.sourceUrl,
+            sourceUrl: sourceUrls[0]?.url ?? null,
+            sourceUrls,
+            error: null,
           })
           result.completed++
           log(`  ready   ${key}`)

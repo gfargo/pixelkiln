@@ -25,6 +25,16 @@ export function backoffMs(attempt: number): number {
   return base + Math.floor(Math.random() * 400)
 }
 
+/** Supports both Retry-After forms: seconds and an HTTP date. */
+export function retryAfterMs(value: string | null, now = Date.now()): number | null {
+  if (!value) return null
+  const seconds = Number(value)
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000
+  const date = Date.parse(value)
+  if (!Number.isFinite(date)) return null
+  return Math.max(0, date - now)
+}
+
 export interface Balance {
   usd: number
   generations: number
@@ -84,7 +94,10 @@ export class PixelLabError extends Error {
 }
 
 export class PixelLabClient {
-  constructor(private readonly apiKey: string) {
+  constructor(
+    private readonly apiKey: string,
+    private readonly timeoutMs = 120_000,
+  ) {
     if (!apiKey) throw new Error("PIXELLAB_API_KEY is required")
   }
 
@@ -103,6 +116,7 @@ export class PixelLabClient {
     try {
       res = await fetch(`${BASE}${path}`, {
         ...init,
+        signal: init?.signal ?? AbortSignal.timeout(this.timeoutMs),
         headers: {
           Authorization: auth,
           "Content-Type": "application/json",
@@ -119,8 +133,7 @@ export class PixelLabClient {
 
     if (!res.ok && shouldRetry(res.status) && attempt < MAX_RETRIES) {
       // Honour Retry-After when the server sends one; it knows better than we do.
-      const retryAfter = Number(res.headers.get("retry-after"))
-      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : backoffMs(attempt)
+      const waitMs = retryAfterMs(res.headers.get("retry-after")) ?? backoffMs(attempt)
       await sleep(waitMs)
       return this.request<T>(path, init, attempt + 1)
     }
@@ -328,7 +341,7 @@ export class PixelLabClient {
 
   /** Storage URLs are public; no auth header, and sending one can break the CDN request. */
   async download(url: string): Promise<Buffer> {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: AbortSignal.timeout(this.timeoutMs) })
     if (!res.ok) throw new PixelLabError(`download ${url} → ${res.status}`, res.status, "")
     return Buffer.from(await res.arrayBuffer())
   }

@@ -7,6 +7,7 @@ import {
   countNumberedDescriptions,
   generationCost,
   tileVariationCount,
+  tileFeatureOutputCount,
   tilesCost,
   type Manifest,
   type ResolvedSpec,
@@ -159,7 +160,9 @@ export async function resolveSpecs(
       // One `tiles` call draws a whole set, so its price and its candidate
       // count both come off the set rather than off a single sprite.
       const tileSize = generator === "tiles" ? size : (style.tileSize ?? 32)
-      const tileVariations = tileVariationCount(countNumberedDescriptions(prompt))
+      const tileVariations =
+        tileFeatureOutputCount(generator === "tiles" ? style.tileFeature : undefined) ??
+        tileVariationCount(countNumberedDescriptions(prompt))
 
       const base = {
         styleId,
@@ -216,6 +219,16 @@ export async function resolveSpecs(
         specHash: specHash(base, styleImageHashes),
       })
     }
+  }
+
+  const byOutput = new Map<string, string>()
+  for (const spec of specs) {
+    const key = `${spec.styleId}/${spec.assetId}`
+    const owner = byOutput.get(spec.outFile)
+    if (owner) {
+      throw new Error(`Output collision: ${owner} and ${key} both resolve to ${spec.outFile}`)
+    }
+    byOutput.set(spec.outFile, key)
   }
 
   return specs

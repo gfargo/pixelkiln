@@ -203,7 +203,9 @@ with the diamond midline at y=7, against a 32x32 sheet wanting y=15).
 `roads` (18-configuration path set), `tileset` (16-tile Wang corner set for a
 terrain transition — describe it as the transition, not one terrain), and
 `building` (floor/wall/doorway kit). These are sliced by index, so the returned
-order is load-bearing.
+order is load-bearing. They are structural multi-output results, not candidates
+to choose between: PixelKiln persists every URL in numeric order and labels the
+downloaded outputs `tile-00`, `tile-01`, … .
 
 Given that `color_image` is honoured on `pixflux` but silently ignored on
 `resize`, **verify the palette actually holds on a single tileset before

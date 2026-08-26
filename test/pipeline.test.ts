@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest"
-import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises"
+import { mkdtemp, writeFile, rm, readFile, unlink } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -12,7 +12,7 @@ import { fetchAssets, pushTags } from "../src/pipeline/fetch.ts"
 import { adopt } from "../src/pipeline/adopt.ts"
 import { loadLock, saveLock } from "../src/lock.ts"
 import { sha256 } from "../src/hash.ts"
-import { lockKey, primaryOutput, type Lock } from "../src/types.ts"
+import { lockKey, primaryOutput, type Generator, type Lock } from "../src/types.ts"
 
 /**
  * Integration coverage for the stages that spend money.
@@ -164,6 +164,33 @@ describe("submit", () => {
     await submit(slow, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
     expect(Date.now() - start).toBeLessThan(1000)
   })
+
+  it("keeps a slot occupied when its status poll fails transiently", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    let firstPoll = true
+    let submissionsWhenPollFailed = -1
+    const cautious = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      rateLimit: () => ({ spacingMs: 0, maxInFlight: 1 }),
+      poll: async (jobId: string, generator: Generator) => {
+        if (firstPoll) {
+          firstPoll = false
+          submissionsWhenPollFailed = provider.submissions.length
+          throw new Error("temporary status outage")
+        }
+        return provider.poll(jobId, generator)
+      },
+    })
+    const { loaded, specs } = await project({ generator: "map" })
+    const lock = emptyLock()
+
+    const res = await submit(cautious, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      slotPollMs: 0,
+      slotTimeoutMs: 1000,
+    })
+
+    expect(res.submitted).toBe(2)
+    expect(submissionsWhenPollFailed).toBe(1)
+  })
 })
 
 describe("poll", () => {
@@ -276,6 +303,55 @@ describe("fetch", () => {
     expect(res.failed).toBe(1)
     expect(existsSync(specs[0]!.outFile)).toBe(false)
     expect(lock.entries[lockKey("base", "anvil")]!.error).toMatch(/not a PNG/i)
+  })
+
+  it("retries a failed download without submitting and spending again", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    let fail = true
+    const flaky = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      download: async (url: string) => {
+        if (fail) {
+          fail = false
+          throw new Error("temporary CDN failure")
+        }
+        return provider.download(url)
+      },
+    })
+    const { loaded, specs } = await project({ generator: "map", assets: { anvil: { prompt: "a" } } })
+    const lock = emptyLock()
+    await submit(flaky, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(flaky, lock, lockPath, { intervalMs: 0, specs })
+
+    expect((await fetchAssets(flaky, specs, lock, lockPath)).failed).toBe(1)
+    expect(lock.entries[lockKey("base", "anvil")]!.status).toBe("download-failed")
+    const retryPlan = await buildPlan(specs, lock)
+    expect(retryPlan.items[0]!.state).toBe("recoverable")
+    expect(retryPlan.actionable).toHaveLength(0)
+    expect(retryPlan.cost).toBe(0)
+
+    expect((await fetchAssets(flaky, specs, lock, lockPath)).downloaded).toBe(1)
+    expect(provider.submissions).toHaveLength(1)
+    expect(lock.entries[lockKey("base", "anvil")]!.status).toBe("downloaded")
+  })
+
+  it("restores a missing downloaded file from its persisted source URL", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const { loaded, specs } = await project({ generator: "map", assets: { anvil: { prompt: "a" } } })
+    const lock = emptyLock()
+    await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs })
+    await fetchAssets(provider, specs, lock, lockPath)
+    await unlink(specs[0]!.outFile)
+
+    const orphaned = await buildPlan(specs, lock)
+    expect(orphaned.items[0]!.state).toBe("orphaned")
+    expect((await fetchAssets(provider, specs, lock, lockPath, { repair: true })).downloaded).toBe(1)
+    expect(existsSync(specs[0]!.outFile)).toBe(true)
+    expect(provider.submissions).toHaveLength(1)
   })
 
   it("closes the loop: a full run ends with plan reporting ok", async () => {

@@ -83,6 +83,7 @@ export async function runPicker(
           objectId,
           candidateIndex: index,
           sourceUrl: sourceUrl ?? group.frameUrls[index] ?? null,
+          sourceUrls: [],
           provider: provider.id,
         })
         selected++

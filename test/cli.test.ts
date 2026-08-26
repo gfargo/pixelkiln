@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { parseArgs } from "../src/cli.ts"
 import { loadEnvFiles } from "../src/env.ts"
-import { shouldRetry, backoffMs, MAX_RETRIES } from "../src/client.ts"
+import { shouldRetry, backoffMs, retryAfterMs, MAX_RETRIES } from "../src/client.ts"
 import { renderSheet } from "../src/pick/sheet.ts"
 
 describe("parseArgs", () => {
@@ -30,6 +30,11 @@ describe("parseArgs", () => {
     expect(args.dryRun).toBe(true)
     expect(args.all).toBe(true)
     expect(args.json).toBe(true)
+  })
+
+  it("parses restore and plan check mode", () => {
+    expect(parseArgs(["restore"]).command).toBe("restore")
+    expect(parseArgs(["plan", "--check", "--json"])).toMatchObject({ check: true, json: true })
   })
 
   it("defaults --all and --json to false", () => {
@@ -112,6 +117,12 @@ describe("retry policy", () => {
   it("backs off exponentially and caps", () => {
     expect(backoffMs(0)).toBeLessThan(backoffMs(3))
     expect(backoffMs(MAX_RETRIES + 5)).toBeLessThanOrEqual(16_400)
+  })
+
+  it("understands both Retry-After seconds and HTTP dates", () => {
+    expect(retryAfterMs("2", 0)).toBe(2000)
+    expect(retryAfterMs("Thu, 01 Jan 1970 00:00:03 GMT", 1000)).toBe(2000)
+    expect(retryAfterMs("not a date", 0)).toBeNull()
   })
 })
 
