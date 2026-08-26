@@ -7,6 +7,7 @@ import { decodePng, extractPalette, transparencyRatio, paletteSwatch, parseHex }
 import {
   auditStyle,
   colorDistance,
+  evaluateAudit,
   mergePalettes,
   outliers,
   paletteDistance,
@@ -249,6 +250,29 @@ describe("auditStyle", () => {
 
     expect(new Set(audit.assets.filter((asset) => asset.assetId === "a").map((asset) => asset.id)))
       .toEqual(new Set(["a/tile-00", "a/tile-01"]))
+  })
+
+  it("turns relative and absolute quality limits into a stable CI decision", async () => {
+    const { loaded, specs } = await styleProject(true)
+    const audit = await auditStyle(loaded, specs, "base")
+    const evaluation = evaluateAudit(audit, {
+      sigma: 999,
+      maxDistance: 20,
+      minTransparency: 0.1,
+      maxColors: 1,
+    })
+
+    expect(evaluation.safe).toBe(false)
+    expect(evaluation.violations.find((item) => item.id === "green")?.reasons)
+      .toEqual(expect.arrayContaining([expect.stringMatching(/palette distance/), expect.stringMatching(/transparency/)]))
+  })
+
+  it("treats missing outputs as an unsafe check even when measured assets pass", async () => {
+    const { loaded, specs } = await styleProject(true)
+    await rm(path.join(dir, "out", "a.png"))
+    const evaluation = evaluateAudit(await auditStyle(loaded, specs, "base"), { sigma: 999 })
+    expect(evaluation.safe).toBe(false)
+    expect(evaluation.missing).toContain("a")
   })
 })
 

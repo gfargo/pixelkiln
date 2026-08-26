@@ -22,6 +22,24 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["export", "--format", "unity"])).toThrow(/generic, tiled, or godot/)
   })
 
+  it("parses audit CI thresholds and pack output selectors", () => {
+    expect(parseArgs([
+      "audit", "--json", "--check", "--max-distance", "25.5",
+      "--min-transparency", "0.2", "--max-colors", "64", "--sigma", "2",
+    ])).toMatchObject({
+      json: true,
+      check: true,
+      maxDistance: 25.5,
+      minTransparency: 0.2,
+      maxColors: 64,
+      sigma: 2,
+    })
+    expect(parseArgs(["pack", "--output-role", "tile-00,tile-03"]).outputRoles)
+      .toEqual(["tile-00", "tile-03"])
+    expect(() => parseArgs(["audit", "--min-transparency", "2"])).toThrow(/0 to 1/)
+    expect(() => parseArgs(["audit", "--max-colors", "2.5"])).toThrow(/whole number/)
+  })
+
   it("parses filters and flags", () => {
     const args = parseArgs(["gen", "--style", "neon", "--only", "a,b", "--budget", "500", "--yes"])
     expect(args.command).toBe("gen")

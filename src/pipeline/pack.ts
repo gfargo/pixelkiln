@@ -173,7 +173,7 @@ export function packStyle(
   lock: Lock,
   styleId: string,
   manifestDir: string,
-  options: { columns?: number } = {},
+  options: { columns?: number; outputRoles?: string[]; primaryOnly?: boolean } = {},
 ): PackedSheet {
   // Lock keys are `<styleId>/<assetId>`.
   const prefix = `${styleId}/`
@@ -191,11 +191,27 @@ export function packStyle(
   for (const [key, entry] of entries) {
     const id = key.slice(prefix.length)
     const outputs = resolveEntryOutputs(entry, id, manifestDir)
-    if (!outputs.length) {
-      noOutput.push({ id, reason: "no output recorded in the lockfile" })
+    let selected = outputs
+    if (options.outputRoles?.length) {
+      selected = outputs.filter(
+        (output) => output.role && options.outputRoles!.includes(output.role),
+      )
+    } else if (options.primaryOnly) {
+      const selection = selectEntryOutput(entry)
+      selected = selection.ok
+        ? outputs.filter((output) => output.path === selection.output.path)
+        : []
+    }
+    if (!selected.length) {
+      const reason = options.outputRoles?.length
+        ? `no output matches role(s): ${options.outputRoles.join(", ")}`
+        : options.primaryOnly && outputs.length > 1
+          ? "no unambiguous primary output; use --output-role"
+          : "no output recorded in the lockfile"
+      noOutput.push({ id, reason })
       continue
     }
-    for (const output of outputs) inputs.push({ id: output.id, path: output.absolutePath })
+    for (const output of selected) inputs.push({ id: output.id, path: output.absolutePath })
   }
 
   if (!inputs.length) {
