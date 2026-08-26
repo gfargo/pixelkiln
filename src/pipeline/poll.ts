@@ -74,6 +74,9 @@ export async function poll(
             objectId: state.objectId,
             sourceUrl: sourceUrls[0]?.url ?? null,
             sourceUrls,
+            providerMetadata: state.metadata
+              ? { ...entry.providerMetadata, [provider.id]: state.metadata }
+              : entry.providerMetadata,
             error: null,
           })
           result.completed++

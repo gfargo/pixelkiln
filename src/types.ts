@@ -437,6 +437,13 @@ export const LockEntrySchema = z.object({
     )
     .default([]),
 
+  /**
+   * Provider-owned data retained for downstream consumers, namespaced by
+   * provider id. PixelLab connectable sets keep their exact `tileRules` here
+   * so exporters can map images to adjacency rules.
+   */
+  providerMetadata: z.record(z.record(z.unknown())).default({}),
+
   submittedAt: z.string().nullable().default(null),
   downloadedAt: z.string().nullable().default(null),
   /** Cost in the provider's unit, recorded so spend is reported not guessed. */

@@ -217,6 +217,10 @@ export class PixelLabProvider implements Provider {
         objectId: tileId,
         sourceUrl: urls[0] ?? null,
         sources: urls.map((url, index) => ({ url, role: `tile-${String(index).padStart(2, "0")}` })),
+        metadata: {
+          tileKind: set.kind,
+          ...(set.tile_rules ? { tileRules: set.tile_rules } : {}),
+        },
       }
     } catch (err) {
       if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }
