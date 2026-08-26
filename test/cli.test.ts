@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { mkdtemp, writeFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { parseArgs } from "../src/cli.ts"
 import { loadEnvFiles } from "../src/env.ts"
-import { shouldRetry, backoffMs, retryAfterMs, MAX_RETRIES } from "../src/client.ts"
+import { PixelLabClient, shouldRetry, backoffMs, retryAfterMs, MAX_RETRIES } from "../src/client.ts"
 import { renderSheet } from "../src/pick/sheet.ts"
 
 describe("parseArgs", () => {
@@ -100,6 +100,7 @@ describe("parseArgs", () => {
 })
 
 describe("retry policy", () => {
+  afterEach(() => vi.unstubAllGlobals())
   it("retries throttling and server faults only", () => {
     expect(shouldRetry(429)).toBe(true)
     expect(shouldRetry(500)).toBe(true)
@@ -123,6 +124,26 @@ describe("retry policy", () => {
     expect(retryAfterMs("2", 0)).toBe(2000)
     expect(retryAfterMs("Thu, 01 Jan 1970 00:00:03 GMT", 1000)).toBe(2000)
     expect(retryAfterMs("not a date", 0)).toBeNull()
+  })
+
+  it("rejects a successful HTTP response whose API shape is invalid", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ subscription: { generations: "many" } }))),
+    )
+    await expect(new PixelLabClient("test").balance()).rejects.toThrow(/Invalid PixelLab response/)
+  })
+
+  it("applies response defaults declared by the official API schema", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ background_job_id: "bg-1", object_id: "obj-1" })),
+      ),
+    )
+    await expect(
+      new PixelLabClient("test").createMapObject({ description: "anvil", width: 32, height: 32 }),
+    ).resolves.toMatchObject({ object_id: "obj-1", status: "processing" })
   })
 })
 

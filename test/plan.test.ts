@@ -2,6 +2,9 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest"
 import { mkdtemp, writeFile, mkdir, rm, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { pathToFileURL } from "node:url"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { loadLock, saveLock, upsert } from "../src/lock.ts"
@@ -13,6 +16,7 @@ const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
   "base64",
 )
+const execFileAsync = promisify(execFile)
 
 let dir: string
 
@@ -286,6 +290,69 @@ describe("lockfile", () => {
     const p = path.join(dir, "bad.json")
     await writeFile(p, JSON.stringify({ version: 99, entries: "not an object" }))
     await expect(loadLock(p)).rejects.toThrow(/malformed/i)
+  })
+
+  it("merges changes from two processes that loaded the same lock", async () => {
+    const p = path.join(dir, "shared-lock.json")
+    const initial: Lock = { version: 2, entries: {} }
+    await saveLock(p, initial)
+    const left = await loadLock(p)
+    const right = await loadLock(p)
+    const entry = (assetId: string) => ({
+      styleId: "base", assetId, specHash: "h", generator: "map" as const,
+      prompt: assetId, width: 32, height: 32, status: "pending" as const,
+    })
+    upsert(left, "base/alpha", entry("alpha") as never)
+    upsert(right, "base/beta", entry("beta") as never)
+
+    await Promise.all([saveLock(p, left), saveLock(p, right)])
+
+    expect(Object.keys((await loadLock(p)).entries).sort()).toEqual(["base/alpha", "base/beta"])
+  })
+
+  it("field-merges concurrent updates to the same entry", async () => {
+    const p = path.join(dir, "shared-fields.json")
+    const initial: Lock = { version: 2, entries: {} }
+    upsert(initial, "base/alpha", {
+      styleId: "base", assetId: "alpha", specHash: "h", generator: "map", prompt: "p",
+      width: 32, height: 32, status: "processing", jobId: "job", sourceUrl: null,
+      outputs: [],
+    } as never)
+    await saveLock(p, initial)
+    const left = await loadLock(p)
+    const right = await loadLock(p)
+    upsert(left, "base/alpha", { status: "selected" })
+    upsert(right, "base/alpha", { sourceUrl: "https://x/result.png" })
+
+    await Promise.all([saveLock(p, left), saveLock(p, right)])
+
+    const entry = (await loadLock(p)).entries["base/alpha"]!
+    expect(entry.status).toBe("selected")
+    expect(entry.sourceUrl).toBe("https://x/result.png")
+  })
+
+  it("preserves independent writes from genuinely separate Node processes", async () => {
+    const p = path.join(dir, "cross-process.json")
+    await saveLock(p, { version: 2, entries: {} })
+    const worker = path.join(dir, "lock-worker.mjs")
+    const lockModule = pathToFileURL(path.resolve("src/lock.ts")).href
+    await writeFile(
+      worker,
+      `import { loadLock, saveLock, upsert } from ${JSON.stringify(lockModule)};\n` +
+        `const [file, asset] = process.argv.slice(2);\n` +
+        `const lock = await loadLock(file);\n` +
+        `upsert(lock, 'base/' + asset, { styleId: 'base', assetId: asset, specHash: 'h', ` +
+        `generator: 'map', prompt: asset, width: 32, height: 32, status: 'pending' });\n` +
+        `await new Promise(r => setTimeout(r, 75));\n` +
+        `await saveLock(file, lock);\n`,
+    )
+
+    await Promise.all([
+      execFileAsync(process.execPath, ["--import", "tsx", worker, p, "alpha"]),
+      execFileAsync(process.execPath, ["--import", "tsx", worker, p, "beta"]),
+    ])
+
+    expect(Object.keys((await loadLock(p)).entries).sort()).toEqual(["base/alpha", "base/beta"])
   })
 })
 

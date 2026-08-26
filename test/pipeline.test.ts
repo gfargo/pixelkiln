@@ -354,6 +354,30 @@ describe("fetch", () => {
     expect(provider.submissions).toHaveLength(1)
   })
 
+  it("restores from the content cache after the provider URL is gone", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const { loaded, specs } = await project({ generator: "map", assets: { anvil: { prompt: "a" } } })
+    const lock = emptyLock()
+    await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs })
+    await fetchAssets(provider, specs, lock, lockPath)
+
+    const entry = lock.entries[lockKey("base", "anvil")]!
+    await unlink(specs[0]!.outFile)
+    entry.sourceUrl = null
+    entry.sourceUrls = []
+    const offline = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      download: async () => {
+        throw new Error("provider should not be called when the cache has the bytes")
+      },
+    })
+
+    expect((await fetchAssets(offline, specs, lock, lockPath, { repair: true })).downloaded).toBe(1)
+    expect(existsSync(specs[0]!.outFile)).toBe(true)
+  })
+
   it("closes the loop: a full run ends with plan reporting ok", async () => {
     const provider = new FakeProvider({ candidates: 1 })
     const { loaded, specs } = await project({ generator: "map" })

@@ -106,6 +106,11 @@ everything above is provider-agnostic. `FakeProvider` implements the same
 interface in memory, which is how the money-spending stages are tested without
 a network or an API key.
 
+Provider HTTP responses are validated at runtime before they reach the state
+machine. A successful HTTP status with a missing object id, malformed storage
+URL map, or changed field type fails as an explicit schema error instead of
+being cast into the lockfile and discovered later as corrupted state.
+
 **Cost carries a unit.** `generations` (PixelLab subscription), `usd`
 (per-image providers), or `free` (local models). `plan` prints the unit, and
 `--budget` is interpreted in it — so a per-image price can never be silently
@@ -131,6 +136,13 @@ plus an engine resource plus a portrait).
 v2 landed, so a v1 file indicates a hand edit or the wrong file rather than a
 legacy project to migrate. It fails loudly instead of reinterpreting a paid-work
 record and risking an incorrect regeneration plan.
+
+Writes are atomic and coordinated across processes. A short-lived advisory
+writer lock prevents two CLI invocations from renaming over one another, while
+field-level dirty patches merge changes made from separate snapshots. Two
+commands updating different assets—or different fields of the same asset—no
+longer lose whichever write happened first. A stale writer lock is recoverable
+after its safety window rather than blocking the project permanently.
 
 ## Salvaging unclaimed work
 
@@ -204,6 +216,8 @@ Those ids are a starting point — rename them.
 pixelkiln init --from <dir>       # scaffold a manifest from existing PNGs
 pixelkiln plan                    # diff manifest vs lock vs disk. Costs nothing.
 pixelkiln plan --check --json     # CI contract: machine output + nonzero when not current
+pixelkiln doctor                  # check config, recovery paths, outputs, and provider access
+pixelkiln doctor --dry-run        # run every local check without provider access
 pixelkiln gen                     # submit → poll → pick → fetch
 pixelkiln restore                 # restore missing outputs without generating again
 pixelkiln gen --only first_review --force   # regenerate exactly one asset
@@ -223,10 +237,19 @@ Generation and download failures are separate lock states. A CDN/network error
 after successful generation is `download-failed`, costs zero in the next plan,
 and is retried by `fetch`. `restore` additionally repairs generated outputs that
 have gone missing from disk. It never overwrites an output whose bytes differ
-from the recorded hash. `submit`, `poll`, `fetch`, and `gen` exit nonzero on
+from the recorded hash. Successful downloads are cached by SHA-256 under
+`.pixelkiln/cache/`, so `restore` still works after a temporary provider URL has
+expired or while API credentials are unavailable; the cache is local and
+ignored by Git. `submit`, `poll`, `fetch`, and `gen` exit nonzero on
 partial failure or timeout, so build automation cannot mistake an incomplete
 run for success. `plan` and `status` support `--json`; `plan --check` exits
 nonzero unless every selected asset is current.
+
+`doctor` checks the parsed manifest and style references, lockfile recovery
+sources, output ownership and writability, stale map jobs, current plan state,
+API-key configuration, and live provider connectivity. It changes nothing,
+supports `--json`, and exits nonzero for unsafe state. Use `--dry-run` when an
+offline environment should skip only the live provider check.
 
 ### Making a variant set
 

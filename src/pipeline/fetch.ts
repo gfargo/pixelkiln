@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs"
-import { mkdir, rename, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import type { Provider } from "../provider.ts"
 import { sha256, sha256File } from "../hash.ts"
@@ -18,18 +18,30 @@ export interface FetchResult {
 /**
  * Downloads every selected object to its manifest-defined path and records the
  * file hash. The hash is what lets `plan` tell "untouched" from "edited by
- * hand" on later runs, so a manual retouch is never silently clobbered.
+ * hand" on later runs, so a manual retouch is never silently clobbered. The
+ * same hash keys a local content cache, allowing `restore` to outlive a
+ * provider's temporary storage URL.
  */
 export async function fetchAssets(
   provider: Provider,
   specs: ResolvedSpec[],
   lock: Lock,
   lockPath: string,
-  opts: { onProgress?: (msg: string) => void; concurrency?: number; repair?: boolean } = {},
+  opts: {
+    onProgress?: (msg: string) => void
+    concurrency?: number
+    repair?: boolean
+    /** Content-addressed PNG cache. Defaults beside the lockfile; false disables it. */
+    cacheDir?: string | false
+  } = {},
 ): Promise<FetchResult> {
   const log = opts.onProgress ?? (() => {})
   const result: FetchResult = { downloaded: 0, skipped: 0, failed: 0 }
   const specByKey = new Map(specs.map((s) => [lockKey(s.styleId, s.assetId), s]))
+  const cacheDir =
+    opts.cacheDir === false
+      ? null
+      : path.resolve(opts.cacheDir ?? path.join(path.dirname(lockPath), ".pixelkiln", "cache"))
 
   // Downloads are independent and IO-bound, so they run concurrently. The
   // lockfile is still written after each one, keeping an interrupted run
@@ -64,6 +76,8 @@ export async function fetchAssets(
         ? entry.sourceUrls
         : entry.sourceUrl
           ? [{ url: entry.sourceUrl }]
+          : opts.repair && entry.outputs.length
+            ? entry.outputs.map((o) => ({ url: "", role: o.role }))
           : []
       if (!sources.length) {
         upsert(lock, key, {
@@ -78,10 +92,10 @@ export async function fetchAssets(
       try {
         for (let index = 0; index < sources.length; index++) {
           const source = sources[index]!
-          const target = outputPath(spec, source.role, index, sources.length)
           const recorded = entry.outputs.find((o) =>
-            source.role ? o.role === source.role : o.path === target || (!o.role && sources.length === 1),
+            source.role ? o.role === source.role : !o.role && sources.length === 1,
           )
+          const target = recorded?.path ?? outputPath(spec, source.role, index, sources.length)
 
           if (existsSync(target)) {
             if (!recorded) {
@@ -90,14 +104,24 @@ export async function fetchAssets(
             if ((await sha256File(target)) !== recorded.sha256) {
               throw new Error(`refusing to overwrite modified output ${target}`)
             }
+            if (cacheDir) await cachePng(cacheDir, await readFile(target), recorded.sha256)
             outputs.push(recorded)
             continue
           }
 
-          const buf = await provider.download(source.url)
+          let buf = recorded && cacheDir ? await readCachedPng(cacheDir, recorded.sha256) : null
+          if (buf) {
+            log(`  cached  ${path.relative(process.cwd(), target)}`)
+          } else {
+            if (!source.url) {
+              throw new Error(`no source URL or cached bytes remain for ${source.role ?? "asset"}`)
+            }
+            buf = await provider.download(source.url)
+          }
           if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
             throw new Error(`response for ${source.role ?? "asset"} was not a PNG (${buf.length} bytes)`)
           }
+          if (cacheDir) await cachePng(cacheDir, buf)
           await mkdir(path.dirname(target), { recursive: true })
           const tmp = `${target}.pixelkiln.tmp`
           await writeFile(tmp, buf)
@@ -136,6 +160,36 @@ export async function fetchAssets(
   await Promise.all(Array.from({ length: concurrency }, worker))
   await saveLock(lockPath, lock)
   return result
+}
+
+async function readCachedPng(cacheDir: string, hash: string): Promise<Buffer | null> {
+  const file = path.join(cacheDir, `${hash}.png`)
+  if (!existsSync(file)) return null
+  try {
+    const buf = await readFile(file)
+    if (!buf.subarray(0, 8).equals(PNG_SIGNATURE) || sha256(buf) !== hash) return null
+    return buf
+  } catch {
+    return null
+  }
+}
+
+async function cachePng(cacheDir: string, buf: Buffer, knownHash?: string): Promise<void> {
+  const hash = knownHash ?? sha256(buf)
+  const file = path.join(cacheDir, `${hash}.png`)
+  if (await readCachedPng(cacheDir, hash)) return
+  await mkdir(cacheDir, { recursive: true })
+  const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
+  await writeFile(tmp, buf)
+  try {
+    await rename(tmp, file)
+  } catch (err) {
+    // Two workers can discover the same content concurrently. If the other
+    // one won the rename race, the cache is already complete.
+    if (!existsSync(file)) throw err
+  } finally {
+    await rm(tmp, { force: true })
+  }
 }
 
 /** A set declared as `terrain.png` becomes `terrain-tile-00.png`, etc. */
