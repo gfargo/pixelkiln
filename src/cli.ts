@@ -514,8 +514,11 @@ async function main() {
       }
 
       const cells: Record<string, [number, number]> = {}
+      const sources: Record<string, string> = {}
       for (const [assetId, asset] of Object.entries(loaded.manifest.assets)) {
-        if (asset.cell) cells[assetId] = asset.cell
+        if (!asset.cell) continue
+        cells[assetId] = asset.cell
+        if (asset.source) sources[assetId] = asset.source
       }
 
       const { png, atlas, skipped, overBase } = mountStyle(
@@ -524,6 +527,7 @@ async function main() {
         manifestDir,
         style.mount,
         cells,
+        sources,
       )
 
       const out = path.resolve(manifestDir, style.mount.out)

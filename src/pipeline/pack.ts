@@ -353,21 +353,36 @@ export function mountStyle(
   manifestDir: string,
   mount: { base?: string; cellWidth: number; cellHeight: number },
   cells: Record<string, [number, number]>,
+  sources: Record<string, string> = {},
 ): MountedSheet {
-  const prefix = `${styleId}/`
-  const entries = Object.entries(lock.entries).filter(([key]) => key.startsWith(prefix))
-  if (!entries.length) {
+  // Driven by the declared cells, not by the lockfile. The cell is what says
+  // "this belongs on the sheet"; whether pixelkiln generated the pixels is a
+  // separate question, and `source` assets answer it with a file on disk.
+  const ids = Object.keys(cells)
+  if (!ids.length) {
     throw new Error(
-      `No locked assets for style "${styleId}". Run \`pixelkiln gen --style ${styleId}\` first.`,
+      `No assets in style "${styleId}" declare a \`cell\`. Add one to each asset ` +
+        `that belongs on the sheet.`,
     )
   }
 
   const placements: MountPlacement[] = []
   const skipped: { id: string; reason: string }[] = []
-  for (const [key, entry] of entries) {
-    const id = key.slice(prefix.length)
-    const cell = cells[id]
-    if (!cell) continue // no cell declared — deliberately not on this sheet
+  for (const id of ids) {
+    const cell = cells[id]!
+    const source = sources[id]
+    if (source) {
+      placements.push({ id, path: path.resolve(manifestDir, source), cell })
+      continue
+    }
+    const entry = lock.entries[`${styleId}/${id}`]
+    if (!entry) {
+      skipped.push({
+        id,
+        reason: `not generated in style "${styleId}", and no \`source\` declared`,
+      })
+      continue
+    }
     const output = entry.outputs?.[0]
     if (!output) {
       skipped.push({ id, reason: "no output recorded in the lockfile" })
@@ -378,8 +393,9 @@ export function mountStyle(
 
   if (!placements.length) {
     throw new Error(
-      `No assets in style "${styleId}" declare a \`cell\`. Add one to each asset ` +
-        `that belongs on the sheet.`,
+      `Nothing to mount for style "${styleId}": ${ids.length} asset(s) declare a ` +
+        `cell, but none has generated output or a \`source\`. Run ` +
+        `\`pixelkiln gen --style ${styleId}\`, or point each at a file.`,
     )
   }
 

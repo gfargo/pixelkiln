@@ -2,7 +2,8 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest"
 import { mkdtemp, writeFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { mountSprites, type MountPlacement } from "../src/pipeline/pack.ts"
+import { mountSprites, mountStyle, type MountPlacement } from "../src/pipeline/pack.ts"
+import type { Lock } from "../src/types.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 
 let dir: string
@@ -148,5 +149,96 @@ describe("mountSprites", () => {
   it("rejects a non-positive cell", async () => {
     const p = [{ id: "a", path: await solid("a", 4, 4, RED), cell: [0, 0] }] as MountPlacement[]
     expect(() => mountSprites(p, { cellWidth: 0, cellHeight: 4 })).toThrow(/must be positive/)
+  })
+})
+
+
+// ── mountStyle: where the pixels come from ──────────────────────────────────
+// `mount` reads the lockfile, which records what the API returned. That is
+// the wrong file whenever the art needs a step pixelkiln does not perform —
+// the terrain atlas reduces every generated tile onto a closed palette before
+// it goes on the sheet. `source` is how an asset says so.
+
+/** A lockfile with one recorded output per id. */
+function lockWith(styleId: string, outputs: Record<string, string>): Lock {
+  const entries: Lock["entries"] = {}
+  for (const [id, p] of Object.entries(outputs)) {
+    entries[`${styleId}/${id}`] = { outputs: [{ path: p }] } as Lock["entries"][string]
+  }
+  return { version: 2, entries }
+}
+
+const MOUNT = { cellWidth: 4, cellHeight: 4, out: "sheet.png" }
+
+describe("mountStyle sources", () => {
+  it("mounts art pixelkiln never generated", async () => {
+    await solid("remapped", 4, 4, GREEN)
+    const { png, skipped } = mountStyle(
+      { version: 2, entries: {} },      // nothing generated at all
+      "terrain",
+      dir,
+      MOUNT,
+      { grass: [0, 0] },
+      { grass: "remapped.png" },
+    )
+    expect(skipped).toEqual([])
+    expect(pixelAt(png, 1, 1)).toEqual(GREEN)
+  })
+
+  it("prefers the source over the raw generated output", async () => {
+    await solid("raw", 4, 4, RED)
+    await solid("remapped", 4, 4, GREEN)
+    const { png } = mountStyle(
+      lockWith("terrain", { grass: "raw.png" }),
+      "terrain",
+      dir,
+      MOUNT,
+      { grass: [0, 0] },
+      { grass: "remapped.png" },
+    )
+    // RED is the untouched download; mounting it is the bug this field exists
+    // to prevent, and it would look plausible right up until it shipped.
+    expect(pixelAt(png, 1, 1)).toEqual(GREEN)
+  })
+
+  it("still mounts a generated asset when no source is declared", async () => {
+    await solid("raw", 4, 4, RED)
+    const { png } = mountStyle(
+      lockWith("terrain", { grass: "raw.png" }),
+      "terrain",
+      dir,
+      MOUNT,
+      { grass: [0, 0] },
+      {},
+    )
+    expect(pixelAt(png, 1, 1)).toEqual(RED)
+  })
+
+  it("says which assets it could not place, and places the rest", async () => {
+    await solid("remapped", 4, 4, GREEN)
+    const { png, skipped } = mountStyle(
+      { version: 2, entries: {} },
+      "terrain",
+      dir,
+      MOUNT,
+      { grass: [0, 0], dirt: [1, 0] },
+      { grass: "remapped.png" },
+    )
+    expect(skipped).toEqual([
+      { id: "dirt", reason: 'not generated in style "terrain", and no `source` declared' },
+    ])
+    expect(pixelAt(png, 1, 1)).toEqual(GREEN)
+  })
+
+  it("fails loudly when nothing is placeable rather than writing an empty sheet", () => {
+    expect(() =>
+      mountStyle({ version: 2, entries: {} }, "terrain", dir, MOUNT, { grass: [0, 0] }, {}),
+    ).toThrow(/Nothing to mount/)
+  })
+
+  it("still asks for a cell when no asset declares one", () => {
+    expect(() =>
+      mountStyle(lockWith("terrain", { grass: "raw.png" }), "terrain", dir, MOUNT, {}, {}),
+    ).toThrow(/declare a `cell`/)
   })
 })
