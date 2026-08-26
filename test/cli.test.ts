@@ -16,6 +16,12 @@ describe("parseArgs", () => {
     expect(args.columns).toBe(8)
   })
 
+  it("parses and validates engine export formats", () => {
+    expect(parseArgs(["export", "--format", "tiled", "--out", "dist/terrain"]))
+      .toMatchObject({ command: "export", format: "tiled", out: "dist/terrain" })
+    expect(() => parseArgs(["export", "--format", "unity"])).toThrow(/generic, tiled, or godot/)
+  })
+
   it("parses filters and flags", () => {
     const args = parseArgs(["gen", "--style", "neon", "--only", "a,b", "--budget", "500", "--yes"])
     expect(args.command).toBe("gen")

@@ -77,7 +77,11 @@
     "dist",
     "bin",
     "schema",
+    "docs",
+    "examples",
     "README.md",
+    "PROVIDERS.md",
+    "NAMING.md",
     "LICENSE"
   ]
 }

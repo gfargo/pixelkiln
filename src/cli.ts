@@ -20,6 +20,7 @@ import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import { loadClaims, findOrphans, groupOrphansByStyle, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
 import { auditStyle, outliers, hex } from "./pipeline/audit.ts"
+import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
 
@@ -50,11 +51,12 @@ interface Args {
   port?: number
   inputs?: string
   claims: string[]
+  format?: TilesetFormat
 }
 
 const VALUE_FLAGS = [
   "--manifest", "--lock", "--style", "--only", "--budget", "--port",
-  "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs",
+  "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs", "--format",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts",
@@ -62,7 +64,7 @@ const BOOL_FLAGS = [
 
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
-  "salvage", "purge", "audit", "pack", "mount", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+  "salvage", "purge", "audit", "pack", "mount", "export", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 /**
@@ -155,6 +157,10 @@ export function parseArgs(argv: string[]): Args {
   }
 
   const manifest = get("--manifest") ?? "pixelkiln.manifest.json"
+  const rawFormat = get("--format")
+  if (rawFormat && rawFormat !== "generic" && rawFormat !== "tiled" && rawFormat !== "godot") {
+    throw new Error(`--format must be generic, tiled, or godot, got "${rawFormat}"`)
+  }
   return {
     command,
     manifest,
@@ -180,6 +186,7 @@ export function parseArgs(argv: string[]): Args {
     port,
     inputs: get("--inputs"),
     claims: list("--claims"),
+    format: rawFormat as TilesetFormat | undefined,
   }
 }
 
@@ -205,6 +212,7 @@ Commands
   pack      Composite a style's sprites into one sheet + JSON atlas. Offline.
   mount     Write a style's sprites into their declared cells of an existing
             sheet, leaving every other pixel untouched. Offline.
+  export    Build an engine-ready tile atlas and generic, Tiled, or Godot metadata.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show remaining generations.
@@ -214,6 +222,7 @@ Options
   --columns <n>       pack: sprites per row (default: near-square)
   --port <n>          Local review-server port (default: choose a free port)
   --inputs <path>     pack: JSON [{id,path}] instead of the lockfile; needs --out
+  --format <format>   export: generic (default), tiled, or godot
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
@@ -239,6 +248,7 @@ Examples
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
   pixelkiln mount --style ground
+  pixelkiln export --style ground --only terrain --format tiled
 `
 
 function printPlan(plan: Plan): void {
@@ -578,6 +588,47 @@ async function main() {
       log(`\n  ${off.length} outlier(s) beyond 1.5 sd`)
       if (audit.missing.length) log(`  ${audit.missing.length} asset(s) not on disk`)
       for (const u of audit.unreadable) log(`  unreadable ${u}`)
+    }
+    return
+  }
+
+  if (args.command === "export") {
+    const format = args.format ?? "generic"
+    const manifestDir = path.dirname(path.resolve(args.manifest))
+    const selected = specs.filter((spec) => {
+      if (spec.generator !== "tiles") return false
+      if (args.styles.length && !args.styles.includes(spec.styleId)) return false
+      if (args.assets.length && !args.assets.includes(spec.assetId)) return false
+      return Boolean(lock.entries[lockKey(spec.styleId, spec.assetId)])
+    })
+    if (!selected.length) {
+      throw new Error("No downloaded tiles entries match the requested --style/--only filters.")
+    }
+    if (args.out && selected.length > 1) {
+      throw new Error("--out can name one tileset only; add --style/--only to select one asset.")
+    }
+
+    for (const spec of selected) {
+      const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]!
+      const style = loaded.manifest.styles[spec.styleId]!
+      const defaultBase = path.resolve(manifestDir, style.outDir, `${spec.assetId}-tileset`)
+      const base = args.out
+        ? path.resolve(args.out.replace(/\.(?:png|json|tsj|tres)$/i, ""))
+        : defaultBase
+      const result = exportTileset(entry, spec, {
+        format,
+        manifestDir,
+        imageName: path.basename(`${base}.png`),
+        columns: args.columns,
+      })
+      mkdirSync(path.dirname(base), { recursive: true })
+      writeFileSync(`${base}.png`, result.png)
+      writeFileSync(`${base}${result.extension}`, result.document)
+      log(
+        `  ${spec.styleId}/${spec.assetId} — ${result.generic.tiles.length} tile(s), ` +
+          `${result.generic.sheet.width}x${result.generic.sheet.height} (${format})`,
+      )
+      log(`    ${path.relative(process.cwd(), base)}.png + ${path.basename(base)}${result.extension}`)
     }
     return
   }

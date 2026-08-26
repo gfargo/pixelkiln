@@ -212,6 +212,15 @@ order is load-bearing. They are structural multi-output results, not candidates
 to choose between: PixelKiln persists every URL in numeric order and labels the
 downloaded outputs `tile-00`, `tile-01`, … .
 
+The completed response also carries `tile_rules` for connectable sets. Its
+placement contract is `rule_type` (`edge`, `corner`, or `outline`), `arity` (4
+for square/isometric edges or corners, 6 for hex edges), `connectivity`
+(`same`/`other`), two terrain labels, and a `tiles` map of provider tile key to
+bitmask. Four-edge masks use N/E/S/W as bits 0/1/2/3. Four-corner masks use
+NW/NE/SW/SE as bits 3/2/1/0. Tiles absent from that map are stamp-only. PixelKiln
+stores the complete object in `providerMetadata.pixellab.tileRules`; exporters
+normalize the documented subset but retain the raw object in the generic file.
+
 Given that `color_image` is honoured on `pixflux` but silently ignored on
 `resize`, **verify the palette actually holds on a single tileset before
 committing to a set**.
