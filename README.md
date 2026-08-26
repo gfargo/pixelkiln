@@ -267,6 +267,25 @@ API-key configuration, and live provider connectivity. It changes nothing,
 supports `--json`, and exits nonzero for unsafe state. Use `--dry-run` when an
 offline environment should skip only the live provider check.
 
+### Auditing art in CI
+
+`audit` measures palette distance, transparency, and opaque colour count for
+every generated output. Human-readable output is useful during art review;
+`--json --check` turns the same measurements into a stable automation gate:
+
+```bash
+pixelkiln audit --style neon --json
+pixelkiln audit --style neon --check \
+  --max-distance 35 --min-transparency 0.10 --max-colors 128
+```
+
+By default, an asset more than 1.5 standard deviations from its style is a
+violation; change that relative cutoff with `--sigma`. The absolute flags add
+project-specific limits. Missing or unreadable outputs are always unsafe, and
+`--check` exits nonzero when any selected style is unsafe. Structural output
+sets are measured member-by-member with stable ids such as
+`terrain/tile-03`, so a bad tile cannot hide behind the set's average.
+
 ### Making a variant set
 
 Add a style; keep the assets. Every asset re-derives under the new style.
@@ -664,6 +683,18 @@ A missing or unreadable file is reported and skipped rather than aborting the
 sheet — one bad asset should not cost you the other seventy-three.
 
 `--columns <n>` overrides the near-square default.
+
+For structural multi-output assets, narrow a sheet to one or more output roles,
+or request only assets with an unambiguous single/primary output:
+
+```bash
+pixelkiln pack --style ground --output-role tile-00 --output-role tile-01
+pixelkiln pack --style mixed --primary-only
+```
+
+`--output-role` is repeatable (and accepts comma-separated values).
+`--primary-only` deliberately skips ambiguous structural sets; the two modes
+are mutually exclusive so a filter is never silently ignored.
 
 ### Mounting into an existing sheet
 

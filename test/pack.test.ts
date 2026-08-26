@@ -147,6 +147,47 @@ describe("packStyle", () => {
       await rm(dir, { recursive: true, force: true })
     }
   })
+
+  it("can pack only explicitly selected output roles", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pk-pack-"))
+    try {
+      await writeFile(path.join(dir, "terrain-tile-00.png"), sprite(8, 1, 2, 3))
+      await writeFile(path.join(dir, "terrain-tile-01.png"), sprite(8, 4, 5, 6))
+      const lock = lockWith(["terrain"])
+      lock.entries["s/terrain"]!.outputs = [
+        { path: "terrain-tile-00.png", sha256: "a", role: "tile-00" },
+        { path: "terrain-tile-01.png", sha256: "b", role: "tile-01" },
+      ]
+
+      const { atlas } = packStyle(lock, "s", dir, { outputRoles: ["tile-01"] })
+      expect(atlas.frames.map((frame) => frame.id)).toEqual(["terrain/tile-01"])
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("primary-only mode skips an ambiguous structural set", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pk-pack-"))
+    try {
+      await writeFile(path.join(dir, "single.png"), sprite(8, 1, 2, 3))
+      await writeFile(path.join(dir, "tile-00.png"), sprite(8, 4, 5, 6))
+      await writeFile(path.join(dir, "tile-01.png"), sprite(8, 7, 8, 9))
+      const lock = lockWith(["single", "terrain"])
+      lock.entries["s/terrain"]!.outputs = [
+        { path: "tile-00.png", sha256: "a", role: "tile-00" },
+        { path: "tile-01.png", sha256: "b", role: "tile-01" },
+      ]
+
+      const { atlas, skipped } = packStyle(lock, "s", dir, { primaryOnly: true })
+      expect(atlas.frames.map((frame) => frame.id)).toEqual(["single"])
+      expect(skipped).toContainEqual({
+        id: "terrain",
+        reason: "no unambiguous primary output; use --output-role",
+      })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 describe("packSprites", () => {

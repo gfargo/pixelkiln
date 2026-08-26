@@ -19,7 +19,7 @@ import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pi
 import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import { loadClaims, findOrphans, groupOrphansByStyle, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
-import { auditStyle, outliers, hex } from "./pipeline/audit.ts"
+import { auditStyle, evaluateAudit, hex } from "./pipeline/audit.ts"
 import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
@@ -52,14 +52,21 @@ interface Args {
   inputs?: string
   claims: string[]
   format?: TilesetFormat
+  outputRoles: string[]
+  primaryOnly: boolean
+  maxDistance?: number
+  minTransparency?: number
+  maxColors?: number
+  sigma?: number
 }
 
 const VALUE_FLAGS = [
   "--manifest", "--lock", "--style", "--only", "--budget", "--port",
   "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs", "--format",
+  "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts",
+  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only",
 ] as const
 
 export const COMMANDS = [
@@ -161,6 +168,24 @@ export function parseArgs(argv: string[]): Args {
   if (rawFormat && rawFormat !== "generic" && rawFormat !== "tiled" && rawFormat !== "godot") {
     throw new Error(`--format must be generic, tiled, or godot, got "${rawFormat}"`)
   }
+  const numberOption = (
+    flag: string,
+    opts: { min: number; max?: number; integer?: boolean },
+  ): number | undefined => {
+    const raw = get(flag)
+    if (raw === undefined) return undefined
+    const value = Number(raw)
+    if (
+      !Number.isFinite(value) ||
+      value < opts.min ||
+      (opts.max !== undefined && value > opts.max) ||
+      (opts.integer && !Number.isInteger(value))
+    ) {
+      const range = opts.max === undefined ? `at least ${opts.min}` : `${opts.min} to ${opts.max}`
+      throw new Error(`${flag} must be ${opts.integer ? "a whole number " : "a number "}${range}, got "${raw}"`)
+    }
+    return value
+  }
   return {
     command,
     manifest,
@@ -187,6 +212,12 @@ export function parseArgs(argv: string[]): Args {
     inputs: get("--inputs"),
     claims: list("--claims"),
     format: rawFormat as TilesetFormat | undefined,
+    outputRoles: list("--output-role"),
+    primaryOnly: rest.includes("--primary-only"),
+    maxDistance: numberOption("--max-distance", { min: 0 }),
+    minTransparency: numberOption("--min-transparency", { min: 0, max: 1 }),
+    maxColors: numberOption("--max-colors", { min: 1, integer: true }),
+    sigma: numberOption("--sigma", { min: Number.EPSILON }),
   }
 }
 
@@ -219,10 +250,16 @@ Commands
   status    Summarise the lockfile.
 
 Options
-  --columns <n>       pack: sprites per row (default: near-square)
+  --columns <n>       pack/export: sprites or tiles per row (default: near-square)
   --port <n>          Local review-server port (default: choose a free port)
   --inputs <path>     pack: JSON [{id,path}] instead of the lockfile; needs --out
   --format <format>   export: generic (default), tiled, or godot
+  --output-role <r>   pack: include only this output role (repeatable)
+  --primary-only      pack: include only unambiguous primary/single outputs
+  --max-distance <n>  audit: maximum palette distance
+  --min-transparency <0..1>  audit: minimum transparent canvas share
+  --max-colors <n>    audit: maximum distinct opaque colors
+  --sigma <n>         audit: relative outlier cutoff (default: 1.5)
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
@@ -231,8 +268,8 @@ Options
   --force             Regenerate even if up to date
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
-  --json              Machine-readable output for plan/status and salvage dry-runs
-  --check             plan: exit nonzero unless every selected asset is up to date
+  --json              Machine-readable output where supported, including plan/audit/doctor
+  --check             plan/audit: exit nonzero when the selected state is unsafe
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser during pick
   --tag               Also push tags upstream after fetch
@@ -360,6 +397,9 @@ async function main() {
     // noticed because it happens to run from a directory that has its own
     // manifest for an unrelated reason.
     if (!args.out) throw new Error("--inputs requires --out")
+    if (args.primaryOnly || args.outputRoles.length) {
+      throw new Error("--primary-only and --output-role require manifest-driven pack")
+    }
 
     const raw = JSON.parse(await readFile(path.resolve(args.inputs), "utf8")) as unknown
     const inputs = resolvePackInputs(raw, args.inputs)
@@ -476,12 +516,17 @@ async function main() {
   if (args.command === "pack") {
     // The --inputs form is handled earlier, before the manifest is required
     // at all — reaching here means the manifest-driven (lockfile) form.
+    if (args.primaryOnly && args.outputRoles.length) {
+      throw new Error("pack accepts either --primary-only or --output-role, not both")
+    }
     const manifestDir = path.dirname(path.resolve(args.manifest))
     const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
 
     for (const styleId of styleIds) {
       const { png, atlas, skipped } = packStyle(lock, styleId, manifestDir, {
         columns: args.columns,
+        outputRoles: args.outputRoles,
+        primaryOnly: args.primaryOnly,
       })
 
       // Default beside the style's own output tree, so sheets for different
@@ -561,8 +606,20 @@ async function main() {
 
   if (args.command === "audit") {
     const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
+    const reports: Array<{
+      audit: Awaited<ReturnType<typeof auditStyle>>
+      evaluation: ReturnType<typeof evaluateAudit>
+    }> = []
     for (const styleId of styleIds) {
       const audit = await auditStyle(loaded, specs, styleId, lock)
+      const evaluation = evaluateAudit(audit, {
+        maxDistance: args.maxDistance,
+        minTransparency: args.minTransparency,
+        maxColors: args.maxColors,
+        sigma: args.sigma,
+      })
+      reports.push({ audit, evaluation })
+      if (args.json) continue
       log(`\n  ${styleId} — ${audit.assets.length} asset(s) measured`)
       log(
         `  reference palette: ${audit.referenceFromStyleImages ? "style images" : "the set's own average"}` +
@@ -572,8 +629,7 @@ async function main() {
         log(`  (no styleImages set — this finds outliers but cannot tell you the whole set drifted)`)
       }
 
-      const off = outliers(audit)
-      const offIds = new Set(off.map((a) => a.id))
+      const offIds = new Set(evaluation.outliers)
       log(`\n  most off-style first:`)
       for (const asset of audit.assets.slice(0, 12)) {
         const flag = offIds.has(asset.id) ? " ← outlier" : ""
@@ -585,10 +641,21 @@ async function main() {
         )
       }
       if (audit.assets.length > 12) log(`    … and ${audit.assets.length - 12} more`)
-      log(`\n  ${off.length} outlier(s) beyond 1.5 sd`)
+      log(`\n  ${evaluation.outliers.length} outlier(s) beyond ${evaluation.thresholds.sigma} sd`)
       if (audit.missing.length) log(`  ${audit.missing.length} asset(s) not on disk`)
       for (const u of audit.unreadable) log(`  unreadable ${u}`)
+      for (const violation of evaluation.violations) {
+        log(`  check ${violation.id}: ${violation.reasons.join("; ")}`)
+      }
     }
+    if (args.json) {
+      log(JSON.stringify({
+        version: 1,
+        safe: reports.every((report) => report.evaluation.safe),
+        styles: reports.map(({ audit, evaluation }) => ({ ...audit, evaluation })),
+      }, null, 2))
+    }
+    if (args.check && reports.some((report) => !report.evaluation.safe)) process.exitCode = 1
     return
   }
 

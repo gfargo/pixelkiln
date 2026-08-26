@@ -91,6 +91,31 @@ export interface StyleAudit {
   unreadable: string[]
 }
 
+export interface AuditThresholds {
+  /** Absolute palette-distance ceiling. Omit to rely on relative outliers. */
+  maxDistance?: number
+  /** Minimum transparent share of the canvas, from 0 to 1. */
+  minTransparency?: number
+  /** Maximum number of distinct opaque colors. */
+  maxColors?: number
+  /** Relative outlier cutoff. Defaults to 1.5 standard deviations. */
+  sigma?: number
+}
+
+export interface AuditViolation {
+  id: string
+  reasons: string[]
+}
+
+export interface AuditEvaluation {
+  safe: boolean
+  thresholds: Required<Pick<AuditThresholds, "sigma">> & Omit<AuditThresholds, "sigma">
+  outliers: string[]
+  violations: AuditViolation[]
+  missing: string[]
+  unreadable: string[]
+}
+
 /**
  * Measures how consistently a style's assets actually hold together.
  *
@@ -201,6 +226,51 @@ export function outliers(audit: StyleAudit, sigma = 1.5): AssetAudit[] {
   const sd = Math.sqrt(variance)
   if (sd === 0) return []
   return audit.assets.filter((a) => a.paletteDistance > mean + sigma * sd)
+}
+
+/** Turn an audit into a stable CI decision without hiding the underlying measurements. */
+export function evaluateAudit(
+  audit: StyleAudit,
+  thresholds: AuditThresholds = {},
+): AuditEvaluation {
+  const resolved = { ...thresholds, sigma: thresholds.sigma ?? 1.5 }
+  const relative = outliers(audit, resolved.sigma)
+  const relativeIds = new Set(relative.map((asset) => asset.id))
+  const violations: AuditViolation[] = []
+
+  for (const asset of audit.assets) {
+    const reasons: string[] = []
+    if (relativeIds.has(asset.id)) {
+      reasons.push(`palette outlier beyond ${resolved.sigma} standard deviations`)
+    }
+    if (resolved.maxDistance !== undefined && asset.paletteDistance > resolved.maxDistance) {
+      reasons.push(
+        `palette distance ${asset.paletteDistance.toFixed(1)} exceeds ${resolved.maxDistance}`,
+      )
+    }
+    if (
+      resolved.minTransparency !== undefined &&
+      asset.transparency < resolved.minTransparency
+    ) {
+      reasons.push(
+        `transparency ${(asset.transparency * 100).toFixed(1)}% is below ` +
+          `${(resolved.minTransparency * 100).toFixed(1)}%`,
+      )
+    }
+    if (resolved.maxColors !== undefined && asset.colorCount > resolved.maxColors) {
+      reasons.push(`color count ${asset.colorCount} exceeds ${resolved.maxColors}`)
+    }
+    if (reasons.length) violations.push({ id: asset.id, reasons })
+  }
+
+  return {
+    safe: violations.length === 0 && audit.missing.length === 0 && audit.unreadable.length === 0,
+    thresholds: resolved,
+    outliers: [...relativeIds],
+    violations,
+    missing: [...audit.missing],
+    unreadable: [...audit.unreadable],
+  }
 }
 
 export function hex(c: { r: number; g: number; b: number }): string {
