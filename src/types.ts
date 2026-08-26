@@ -315,6 +315,23 @@ export const AssetSchema = z
      * out of the mounted sheet.
      */
     cell: z.tuple([z.number().int().min(0), z.number().int().min(0)]).optional(),
+    /**
+     * Path, relative to the manifest, of the art that goes on a mounted
+     * sheet — when that is not the raw generated output.
+     *
+     * `mount` otherwise takes its pixels from the lockfile, which records
+     * what the API returned. That is the wrong file whenever the art needs a
+     * step pixelkiln does not perform: a palette reduction onto a sheet's
+     * closed palette, a hand touch-up, an alignment shift. Without somewhere
+     * to say so, the choice is to mount the unprocessed art or to abandon
+     * `mount` and composite by hand — and the hand-composited sheet is
+     * exactly the unreproducible artifact `mount` exists to replace.
+     *
+     * An asset with a `source` needs no lockfile entry at all, so art
+     * generated outside pixelkiln can still be placed by cell alongside art
+     * that wasn't. `prompt` still records what was asked for.
+     */
+    source: z.string().optional(),
     tags: z.array(z.string()).default([]),
     /** Restrict this asset to specific styles. Empty means all styles. */
     styles: z.array(z.string()).default([]),

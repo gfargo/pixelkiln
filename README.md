@@ -669,6 +669,36 @@ cell is skipped and reported rather than cropped — cropping produces a sheet
 that looks right in isolation and is wrong at every seam. Two assets claiming
 one cell is a hard error.
 
+#### When the art needs a step pixelkiln doesn't do
+
+`mount` takes its pixels from the lockfile, which records what the API
+returned. That is the wrong file whenever the art has to be processed first —
+reduced onto a sheet's closed palette, shifted to line up with an existing
+ground plane, touched up by hand. Without somewhere to say so, the choice is
+to mount the unprocessed art or to composite by hand, and the hand-composited
+sheet is exactly the unreproducible artifact `mount` exists to replace.
+
+`source` points at the file that should actually go on the sheet:
+
+```jsonc
+"assets": {
+  "rough_grass": {
+    "prompt": "unmown dark grass",
+    "cell": [6, 2],
+    "source": "assets/tiles/src/rough/tile_0.png"   // post-remap, committed
+  }
+}
+```
+
+The path is relative to the manifest. An asset with a `source` needs no
+lockfile entry at all, so art generated outside pixelkiln — or drawn by hand —
+can be placed by cell alongside art that pixelkiln made. `prompt` still records
+what was asked for.
+
+An asset that declares a `cell` but has neither generated output nor a
+`source` is skipped and named in the report, so a half-wired sheet says so
+rather than quietly coming out short.
+
 ### Packing sprites that aren't in a manifest
 
 `--inputs <path.json> --out <base>` packs an explicit list instead of a
