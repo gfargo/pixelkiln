@@ -14,6 +14,7 @@ import { buildPlan, summarize, type Plan } from "./pipeline/plan.ts"
 import { submit } from "./pipeline/submit.ts"
 import { poll } from "./pipeline/poll.ts"
 import { fetchAssets, pushTags } from "./pipeline/fetch.ts"
+import { doctor } from "./pipeline/doctor.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
 import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
@@ -60,7 +61,7 @@ const BOOL_FLAGS = [
 ] as const
 
 export const COMMANDS = [
-  "init", "plan", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
+  "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "audit", "pack", "mount", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
@@ -189,6 +190,7 @@ const HELP = `pixelkiln — manifest-driven pixel art generation (PixelLab)
 Commands
   init      Scaffold a manifest from an existing tree of PNGs.
   plan      Diff manifest against lockfile and disk. Costs nothing. Start here.
+  doctor    Validate project state, recovery paths, and provider connectivity.
   gen       Full run: submit → poll → pick → fetch. The everyday command.
   submit    Queue generation jobs only.
   poll      Advance in-flight jobs to their settled state.
@@ -218,7 +220,7 @@ Options
   --only id1,id2      Restrict to these asset ids
   --budget <n>        Refuse to spend more than n generations
   --force             Regenerate even if up to date
-  --dry-run           Plan only; never spend
+  --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
   --json              Machine-readable output for plan/status and salvage dry-runs
   --check             plan: exit nonzero unless every selected asset is up to date
@@ -400,6 +402,26 @@ async function main() {
 
   const plan = await buildPlan(specs, lock, { force: args.force })
 
+  if (args.command === "doctor") {
+    const apiKeyPresent = Boolean(process.env.PIXELLAB_API_KEY)
+    const provider = !args.dryRun && apiKeyPresent ? PixelLabProvider.fromEnv() : undefined
+    const report = await doctor(loaded, specs, lock, args.lock, {
+      provider,
+      offline: args.dryRun,
+      apiKeyPresent,
+    })
+    if (args.json) {
+      log(JSON.stringify(report, null, 2))
+    } else {
+      for (const check of report.checks) {
+        const icon = check.level === "ok" ? "ok" : check.level === "warning" ? "WARN" : "ERROR"
+        log(`  ${icon.padEnd(5)} ${check.id.padEnd(14)} ${check.message}`)
+      }
+    }
+    if (!report.ok) process.exitCode = 1
+    return
+  }
+
   if (args.command === "plan") {
     if (args.json) {
       log(JSON.stringify({
@@ -553,7 +575,10 @@ async function main() {
     return
   }
 
-  const provider: Provider = PixelLabProvider.fromEnv()
+  const provider: Provider =
+    args.command === "restore" || (args.command === "fetch" && !args.tag)
+      ? PixelLabProvider.forDownloads()
+      : PixelLabProvider.fromEnv()
 
   if (args.command === "adopt") {
     log(`\n  Reconciling account objects against files already on disk…`)

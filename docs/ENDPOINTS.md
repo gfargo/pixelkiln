@@ -187,6 +187,11 @@ is the status. Cost is reported at submit time and lands on the same 20/25/40
 canvas tiers as `1dir`, but the canvas is tile size x variation count, not one
 sprite — a small tile in a large set still reaches the top tier.
 
+All response shapes used by the client are validated at runtime. The TypeScript
+interfaces alone are not trusted at the HTTP boundary: missing ids, invalid
+object geometry, malformed tile URL maps, or balance fields with changed types
+produce an `Invalid PixelLab response` error before pipeline state is updated.
+
 `outline_mode` defaults to `outline`, which draws a dark border around every
 tile. For ground tiles that is wrong: laid on a grid the borders read as
 quilting, with a seam at every cell edge. `segmentation` omits them and the

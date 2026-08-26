@@ -1,4 +1,5 @@
 import type { ResolvedStyleImage } from "./types.ts"
+import { z } from "zod"
 
 /**
  * PixelLab REST client.
@@ -13,6 +14,7 @@ import type { ResolvedStyleImage } from "./types.ts"
 const BASE = process.env.PIXELLAB_API_BASE ?? "https://api.pixellab.ai/v2"
 
 export const MAX_RETRIES = 4
+export const MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export function shouldRetry(status: number): boolean {
@@ -82,6 +84,98 @@ export interface MapObject {
   download_url: string | null
 }
 
+const BalanceResponseSchema = z
+  .object({
+    credits: z.object({ usd: z.number() }).passthrough(),
+    subscription: z
+      .object({
+        generations: z.number(),
+        total: z.number(),
+        plan: z.string().nullable().optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough()
+
+const ObjectSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    object_id: z.string().min(1),
+    status: z.string().default("queued"),
+    n_frames: z.number().int().min(0),
+  })
+  .passthrough()
+const MapSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    object_id: z.string().min(1),
+    status: z.string().default("processing"),
+  })
+  .passthrough()
+const TilesSubmitSchema = z
+  .object({
+    tile_id: z.string().min(1),
+    background_job_id: z.string().min(1),
+    status: z.literal("processing").default("processing"),
+  })
+  .passthrough()
+const TilesProSchema = z
+  .object({
+    storage_urls: z.record(z.string()),
+    kind: z.string().nullable().default(null),
+    tile_rules: z.record(z.unknown()).nullable().optional(),
+  })
+  .passthrough()
+const PixelLabObjectSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().nullable().default(null),
+    prompt: z.string().default(""),
+    size: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }),
+    directions: z.number().default(0),
+    created_at: z.string(),
+    view: z.string().nullable().default(null),
+    preview_url: z.string().nullable().optional(),
+    rotation_urls: z.record(z.string().nullable()).nullable().optional(),
+    frame_urls: z.array(z.string()).nullable().optional(),
+    tags: z.array(z.string()).default([]),
+    status: z.string().nullable().default(null),
+    progress_percent: z.number().nullable().optional(),
+    eta_seconds: z.number().nullable().optional(),
+  })
+  .passthrough()
+const MapObjectSchema = z
+  .object({
+    object_id: z.string().min(1),
+    status: z.string(),
+    description: z.string().nullable().default(null),
+    width: z.number().nullable().default(null),
+    height: z.number().nullable().default(null),
+    download_url: z.string().nullable().default(null),
+  })
+  .passthrough()
+const ObjectListSchema = z
+  .object({ objects: z.array(PixelLabObjectSchema), total: z.number().int().min(0) })
+  .passthrough()
+const PixfluxResponseSchema = z
+  .object({ image: z.object({ base64: z.string().min(1) }).passthrough(), usage: z.unknown().optional() })
+  .passthrough()
+const SelectFramesSchema = z.object({ created_object_ids: z.array(z.string()) }).passthrough()
+
+function validateResponse<S extends z.ZodTypeAny>(
+  schema: S,
+  raw: unknown,
+  operation: string,
+): z.output<S> {
+  const parsed = schema.safeParse(raw)
+  if (parsed.success) return parsed.data
+  const issues = parsed.error.issues
+    .slice(0, 4)
+    .map((i) => `${i.path.join(".") || "response"}: ${i.message}`)
+    .join("; ")
+  throw new Error(`Invalid PixelLab response for ${operation}: ${issues}`)
+}
+
 export class PixelLabError extends Error {
   constructor(
     message: string,
@@ -142,14 +236,16 @@ export class PixelLabClient {
     if (!res.ok) {
       throw new PixelLabError(`${init?.method ?? "GET"} ${path} → ${res.status}`, res.status, text)
     }
-    return (text ? JSON.parse(text) : {}) as T
+    if (!text) return {} as T
+    try {
+      return JSON.parse(text) as T
+    } catch {
+      throw new Error(`${init?.method ?? "GET"} ${path} returned invalid JSON`)
+    }
   }
 
   async balance(): Promise<Balance> {
-    const raw = await this.request<{
-      credits?: { usd?: number }
-      subscription?: { generations?: number; total?: number; plan?: string }
-    }>("/balance")
+    const raw = validateResponse(BalanceResponseSchema, await this.request<unknown>("/balance"), "balance")
     return {
       usd: raw.credits?.usd ?? 0,
       generations: raw.subscription?.generations ?? 0,
@@ -185,7 +281,12 @@ export class PixelLabClient {
     }
     if (args.view) body.view = args.view
     if (args.itemDescriptions?.length) body.item_descriptions = args.itemDescriptions
-    return this.request("/create-1-direction-object", { method: "POST", body: JSON.stringify(body) })
+    const raw = await this.request<unknown>("/create-1-direction-object", {
+      method: "POST",
+      body: JSON.stringify(body),
+    })
+    const parsed = validateResponse(ObjectSubmitSchema, raw, "create-1-direction-object")
+    return parsed
   }
 
   /**
@@ -213,7 +314,11 @@ export class PixelLabClient {
     if (args.shading) body.shading = args.shading
     if (args.detail) body.detail = args.detail
     if (args.seed != null) body.seed = args.seed
-    return this.request("/map-objects", { method: "POST", body: JSON.stringify(body) })
+    return validateResponse(
+      MapSubmitSchema,
+      await this.request<unknown>("/map-objects", { method: "POST", body: JSON.stringify(body) }),
+      "create map object",
+    )
   }
 
   /**
@@ -246,12 +351,20 @@ export class PixelLabClient {
     if (args.outlineMode) body.outline_mode = args.outlineMode
     if (args.seed != null) body.seed = args.seed
     if (args.styleImages?.length) body.style_images = args.styleImages
-    return this.request("/create-tiles-pro", { method: "POST", body: JSON.stringify(body) })
+    return validateResponse(
+      TilesSubmitSchema,
+      await this.request<unknown>("/create-tiles-pro", { method: "POST", body: JSON.stringify(body) }),
+      "create tiles",
+    )
   }
 
   /** Throws PixelLabError(423) while the set is still drawing — see TilesPro. */
-  getTilesPro(tileId: string): Promise<TilesPro> {
-    return this.request(`/tiles-pro/${tileId}`)
+  async getTilesPro(tileId: string): Promise<TilesPro> {
+    return validateResponse(
+      TilesProSchema,
+      await this.request<unknown>(`/tiles-pro/${tileId}`),
+      "get tiles",
+    )
   }
 
   /**
@@ -277,25 +390,40 @@ export class PixelLabClient {
     }
     if (args.seed != null) body.seed = args.seed
 
-    const res = await this.request<{ image?: { base64?: string }; usage?: unknown }>(
-      "/create-image-pixflux",
-      { method: "POST", body: JSON.stringify(body) },
+    const res = validateResponse(
+      PixfluxResponseSchema,
+      await this.request<unknown>("/create-image-pixflux", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+      "create pixflux image",
     )
-    const b64 = res.image?.base64
-    if (!b64) throw new Error("pixflux returned no image")
+    const b64 = res.image.base64
     return { png: Buffer.from(b64, "base64"), usage: res.usage }
   }
 
-  getObject(objectId: string): Promise<PixelLabObject> {
-    return this.request(`/objects/${objectId}`)
+  async getObject(objectId: string): Promise<PixelLabObject> {
+    return validateResponse(
+      PixelLabObjectSchema,
+      await this.request<unknown>(`/objects/${objectId}`),
+      "get object",
+    )
   }
 
-  getMapObject(objectId: string): Promise<MapObject> {
-    return this.request(`/map-objects/${objectId}`)
+  async getMapObject(objectId: string): Promise<MapObject> {
+    return validateResponse(
+      MapObjectSchema,
+      await this.request<unknown>(`/map-objects/${objectId}`),
+      "get map object",
+    )
   }
 
   async listObjects(limit = 50, offset = 0): Promise<{ objects: PixelLabObject[]; total: number }> {
-    return this.request(`/objects?limit=${limit}&offset=${offset}`)
+    return validateResponse(
+      ObjectListSchema,
+      await this.request<unknown>(`/objects?limit=${limit}&offset=${offset}`),
+      "list objects",
+    )
   }
 
   /** Walks the whole account. Used by `adopt` to reconcile orphaned objects. */
@@ -314,15 +442,16 @@ export class PixelLabClient {
    * The review parent survives until nothing is left in it, so the returned
    * `created_object_ids` — not the parent id — is what should be recorded.
    */
-  selectFrames(
+  async selectFrames(
     objectId: string,
     indices: number[],
     commonTag?: string,
   ): Promise<{ created_object_ids?: string[] }> {
-    return this.request(`/objects/${objectId}/select-frames`, {
+    const raw = await this.request<unknown>(`/objects/${objectId}/select-frames`, {
       method: "POST",
       body: JSON.stringify(commonTag ? { indices, common_tag: commonTag } : { indices }),
     })
+    return validateResponse(SelectFramesSchema, raw, "select frames")
   }
 
   /** Irreversible. Only reached via `purge`, behind an explicit confirmation. */
@@ -343,7 +472,15 @@ export class PixelLabClient {
   async download(url: string): Promise<Buffer> {
     const res = await fetch(url, { signal: AbortSignal.timeout(this.timeoutMs) })
     if (!res.ok) throw new PixelLabError(`download ${url} → ${res.status}`, res.status, "")
-    return Buffer.from(await res.arrayBuffer())
+    const declared = Number(res.headers.get("content-length"))
+    if (Number.isFinite(declared) && declared > MAX_DOWNLOAD_BYTES) {
+      throw new Error(`download ${url} exceeds the ${MAX_DOWNLOAD_BYTES}-byte safety limit`)
+    }
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length > MAX_DOWNLOAD_BYTES) {
+      throw new Error(`download ${url} exceeds the ${MAX_DOWNLOAD_BYTES}-byte safety limit`)
+    }
+    return buf
   }
 }
 

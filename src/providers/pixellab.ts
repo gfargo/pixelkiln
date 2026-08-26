@@ -30,6 +30,11 @@ export class PixelLabProvider implements Provider {
     return new PixelLabProvider(clientFromEnv())
   }
 
+  /** Public storage URLs and the local content cache do not require API auth. */
+  static forDownloads(): PixelLabProvider {
+    return new PixelLabProvider(new PixelLabClient("download-only"))
+  }
+
   supports(generator: Generator): boolean {
     return (
       generator === "1dir" ||
