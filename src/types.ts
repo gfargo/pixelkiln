@@ -332,6 +332,12 @@ export const AssetSchema = z
      * that wasn't. `prompt` still records what was asked for.
      */
     source: z.string().optional(),
+    /**
+     * Generated output role to place in `cell` when this asset expands to
+     * several files. Omit for ordinary single-output assets. A structural set
+     * is otherwise ambiguous and `mount` refuses to guess by taking index zero.
+     */
+    outputRole: z.string().min(1).optional(),
     tags: z.array(z.string()).default([]),
     /** Restrict this asset to specific styles. Empty means all styles. */
     styles: z.array(z.string()).default([]),

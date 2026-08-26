@@ -515,10 +515,12 @@ async function main() {
 
       const cells: Record<string, [number, number]> = {}
       const sources: Record<string, string> = {}
+      const outputRoles: Record<string, string> = {}
       for (const [assetId, asset] of Object.entries(loaded.manifest.assets)) {
         if (!asset.cell) continue
         cells[assetId] = asset.cell
         if (asset.source) sources[assetId] = asset.source
+        if (asset.outputRole) outputRoles[assetId] = asset.outputRole
       }
 
       const { png, atlas, skipped, overBase } = mountStyle(
@@ -528,6 +530,7 @@ async function main() {
         style.mount,
         cells,
         sources,
+        outputRoles,
       )
 
       const out = path.resolve(manifestDir, style.mount.out)
@@ -549,7 +552,7 @@ async function main() {
   if (args.command === "audit") {
     const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
     for (const styleId of styleIds) {
-      const audit = await auditStyle(loaded, specs, styleId)
+      const audit = await auditStyle(loaded, specs, styleId, lock)
       log(`\n  ${styleId} — ${audit.assets.length} asset(s) measured`)
       log(
         `  reference palette: ${audit.referenceFromStyleImages ? "style images" : "the set's own average"}` +
@@ -560,12 +563,12 @@ async function main() {
       }
 
       const off = outliers(audit)
-      const offIds = new Set(off.map((a) => a.assetId))
+      const offIds = new Set(off.map((a) => a.id))
       log(`\n  most off-style first:`)
       for (const asset of audit.assets.slice(0, 12)) {
-        const flag = offIds.has(asset.assetId) ? " ← outlier" : ""
+        const flag = offIds.has(asset.id) ? " ← outlier" : ""
         log(
-          `    ${asset.assetId.padEnd(28)} dist ${asset.paletteDistance.toFixed(1).padStart(6)}` +
+          `    ${asset.id.padEnd(28)} dist ${asset.paletteDistance.toFixed(1).padStart(6)}` +
             `  colours ${String(asset.colorCount).padStart(4)}` +
             `  transparent ${(asset.transparency * 100).toFixed(0).padStart(3)}%` +
             `  ${asset.palette.slice(0, 3).map(hex).join(" ")}${flag}`,
