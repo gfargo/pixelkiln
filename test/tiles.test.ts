@@ -219,6 +219,24 @@ describe("tile url ordering", () => {
     ])
   })
 
+  it("keeps provider indexes in structural roles when stamp-only keys leave gaps", async () => {
+    const provider = new PixelLabProvider({
+      getTilesPro: async () => ({
+        storage_urls: { tile_7: "https://x/7.png", tile_2: "https://x/2.png" },
+        kind: "building",
+      }),
+    } as never)
+
+    const state = await provider.poll("job", "tiles", { tileFeature: "building" })
+
+    expect(state.status).toBe("ready")
+    if (state.status !== "ready") return
+    expect(state.sources).toEqual([
+      { url: "https://x/2.png", role: "tile-02" },
+      { url: "https://x/7.png", role: "tile-07" },
+    ])
+  })
+
   it("treats a connectable feature as one ready multi-output set", async () => {
     const urls = {
       tile_2: "https://x/2.png",

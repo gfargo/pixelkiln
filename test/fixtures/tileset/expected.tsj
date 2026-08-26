@@ -1,0 +1,97 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "ground-terrain",
+  "tilewidth": 4,
+  "tileheight": 4,
+  "tilecount": 4,
+  "columns": 2,
+  "image": "terrain.png",
+  "imagewidth": 8,
+  "imageheight": 8,
+  "margin": 0,
+  "spacing": 0,
+  "wangsets": [
+    {
+      "name": "ground/terrain",
+      "type": "corner",
+      "tile": 3,
+      "colors": [
+        {
+          "name": "grass",
+          "color": "#5ab552",
+          "tile": 3,
+          "probability": 1
+        },
+        {
+          "name": "water",
+          "color": "#4c78a8",
+          "tile": 0,
+          "probability": 1
+        }
+      ],
+      "properties": [
+        {
+          "name": "pixelkiln:connectivity",
+          "type": "string",
+          "value": "other"
+        }
+      ],
+      "wangtiles": [
+        {
+          "tileid": 0,
+          "wangid": [
+            0,
+            2,
+            0,
+            2,
+            0,
+            2,
+            0,
+            2
+          ]
+        },
+        {
+          "tileid": 1,
+          "wangid": [
+            0,
+            2,
+            0,
+            1,
+            0,
+            2,
+            0,
+            2
+          ]
+        },
+        {
+          "tileid": 2,
+          "wangid": [
+            0,
+            2,
+            0,
+            2,
+            0,
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "tileid": 3,
+          "wangid": [
+            0,
+            1,
+            0,
+            1,
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}

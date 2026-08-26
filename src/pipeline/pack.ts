@@ -91,7 +91,7 @@ export function resolvePackInputs(raw: unknown, inputsFilePath: string): SpriteI
  */
 export function packSprites(
   inputs: SpriteInput[],
-  options: { columns?: number } = {},
+  options: { columns?: number; order?: "id" | "input" } = {},
 ): PackedSheet {
   if (!inputs.length) throw new Error("packSprites: no sprites given")
 
@@ -111,8 +111,12 @@ export function packSprites(
     throw new Error(`packSprites: duplicate sprite id(s): ${[...dupes].join(", ")}`)
   }
 
-  // Sorted by id so the sheet is byte-identical across runs.
-  const ordered = [...inputs].sort((a, b) => a.id.localeCompare(b.id))
+  // Ordinary sprite atlases sort by id so they are byte-identical across
+  // runs. Structural sets opt into provider order because their index is part
+  // of the format, not presentation.
+  const ordered = options.order === "input"
+    ? [...inputs]
+    : [...inputs].sort((a, b) => a.id.localeCompare(b.id))
 
   const sprites: { id: string; width: number; height: number; pixels: Buffer }[] = []
   const skipped: { id: string; reason: string }[] = []

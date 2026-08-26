@@ -209,14 +209,17 @@ export class PixelLabProvider implements Provider {
   private async pollTiles(tileId: string, connectable: boolean): Promise<JobState> {
     try {
       const set = await this.client.getTilesPro(tileId)
-      const urls = tileUrlsInIndexOrder(set.storage_urls)
-      if (!urls.length) return { status: "failed", error: "tiles job returned no storage urls" }
-      if (!connectable) return { status: "review", candidateUrls: urls }
+      const tiles = tilesInIndexOrder(set.storage_urls)
+      if (!tiles.length) return { status: "failed", error: "tiles job returned no storage urls" }
+      if (!connectable) return { status: "review", candidateUrls: tiles.map((tile) => tile.url) }
       return {
         status: "ready",
         objectId: tileId,
-        sourceUrl: urls[0] ?? null,
-        sources: urls.map((url, index) => ({ url, role: `tile-${String(index).padStart(2, "0")}` })),
+        sourceUrl: tiles[0]?.url ?? null,
+        sources: tiles.map((tile) => ({
+          url: tile.url,
+          role: `tile-${String(tile.index).padStart(2, "0")}`,
+        })),
         metadata: {
           tileKind: set.kind,
           ...(set.tile_rules ? { tileRules: set.tile_rules } : {}),
@@ -239,8 +242,7 @@ export class PixelLabProvider implements Provider {
     // record is the job plus the index, which is what actually reproduces it.
     if (generator === "tiles") {
       const set = await this.client.getTilesPro(jobId)
-      const urls = tileUrlsInIndexOrder(set.storage_urls)
-      const url = urls[index]
+      const url = tilesInIndexOrder(set.storage_urls)[index]?.url
       if (!url) throw new Error(`tiles job ${jobId} has no variation at index ${index}`)
       return { objectId: `${jobId}#${index}`, sourceUrl: url }
     }
@@ -294,12 +296,11 @@ export class PixelLabProvider implements Provider {
  * is not something to rely on, and a connectable set is sliced by index, so
  * sort numerically rather than taking Object.values() as it comes.
  */
-function tileUrlsInIndexOrder(urls: Record<string, string>): string[] {
+function tilesInIndexOrder(urls: Record<string, string>): Array<{ index: number; url: string }> {
   return Object.entries(urls)
-    .map(([k, v]) => [Number(k.replace(/^tile_/, "")), v] as const)
-    .filter(([i]) => Number.isFinite(i))
-    .sort((a, b) => a[0] - b[0])
-    .map(([, v]) => v)
+    .map(([key, url]) => ({ index: Number(key.replace(/^tile_/, "")), url }))
+    .filter((tile) => Number.isFinite(tile.index))
+    .sort((a, b) => a.index - b.index)
 }
 
 function firstUrl(urls: Record<string, string | null> | null | undefined): string | null {

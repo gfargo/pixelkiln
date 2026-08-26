@@ -1,0 +1,12 @@
+{
+  "rule_type": "corner",
+  "arity": 4,
+  "connectivity": "other",
+  "terrains": ["grass", "water"],
+  "tiles": {
+    "tile_0": 0,
+    "tile_1": 1,
+    "tile_2": { "bitmask": 8 },
+    "tile_3": 15
+  }
+}

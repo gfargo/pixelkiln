@@ -241,6 +241,7 @@ pixelkiln adopt --write-prompts   # map account objects to files, recover prompt
 pixelkiln accept                  # keep existing art after rewording a style
 pixelkiln audit --style neon      # measure style consistency, offline
 pixelkiln pack --style neon       # composite a style's sprites into one sheet, offline
+pixelkiln export --style ground --only terrain --format tiled  # engine-ready tileset
 pixelkiln salvage --claims a.json # triage objects no lockfile claims
 pixelkiln balance                 # generations remaining
 ```
@@ -519,6 +520,30 @@ of candidates: every returned image is required. PixelKiln sorts
 `terrain-tile-01.png`, and so on. Independent tile variations still use the
 contact sheet and produce one selected image.
 
+#### Exporting an engine-ready tileset
+
+After fetching a tiles asset, `export` writes a deterministic PNG atlas and a
+metadata file beside it:
+
+```bash
+pixelkiln export --style ground --only fairway_transition
+pixelkiln export --style ground --only fairway_transition --format tiled
+pixelkiln export --style ground --only fairway_transition --format godot
+```
+
+- `generic` (the default) writes PixelKiln's versioned `.json` contract with
+  every frame, raw provider rules, normalized masks, and stamp-only markers.
+- `tiled` writes a `.tsj` tileset with a Wang set for four-corner or four-edge
+  masks.
+- `godot` writes a Godot 4 `.tres` `TileSet` with atlas coordinates and terrain
+  peering bits.
+
+The engine formats require uniform tile dimensions. Six-edge hex masks and
+outline/stamp-only kits remain available in the lossless generic format but are
+rejected by Tiled/Godot export until their engine-specific semantics can be
+mapped without guessing. See [Tiles and engine exports](./docs/TILES.md) for the
+format contract and mask mapping.
+
 Two API details worth knowing, both confirmed against the OpenAPI schema:
 
 - **The style-image shape is not the one `1dir` uses.** `TilesProStyleImage` is
@@ -770,6 +795,7 @@ otherwise get whichever came first with no signal the other was dropped.
 | | |
 |---|---|
 | [docs/ENDPOINTS.md](./docs/ENDPOINTS.md) | Measured reference for the whole PixelLab API — costs, payload shapes, which parameters are actually wired up, and recipes. Every figure came from a live account, not from docs. |
+| [docs/TILES.md](./docs/TILES.md) | Structural tile outputs, preserved adjacency rules, and the generic, Tiled, and Godot export contracts. |
 | [PROVIDERS.md](./PROVIDERS.md) | The provider seam: what a backend must implement, which capabilities are optional and why. |
 | [NAMING.md](./NAMING.md) | Why this is called pixelkiln, and what the shortlist was. |
 
