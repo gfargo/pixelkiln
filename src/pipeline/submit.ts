@@ -26,6 +26,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 export interface SubmitOptions {
   maxInFlight?: number
   spacingMs?: number
+  /** How often to re-check occupied background-job slots. */
+  slotPollMs?: number
+  /** Stop waiting for an unreadable/stuck slot instead of hanging forever. */
+  slotTimeoutMs?: number
   /** Refuse to submit if the run would exceed this much, in the provider's unit. */
   budget?: number
   onProgress?: (msg: string) => void
@@ -48,6 +52,8 @@ export async function submit(
   const limits = provider.rateLimit?.() ?? DEFAULT_RATE_LIMIT
   const maxInFlight = opts.maxInFlight ?? limits.maxInFlight
   const spacing = opts.spacingMs ?? limits.spacingMs
+  const slotPollMs = opts.slotPollMs ?? IN_FLIGHT_POLL_MS
+  const slotTimeoutMs = opts.slotTimeoutMs ?? 15 * 60 * 1000
   const log = opts.onProgress ?? (() => {})
 
   if (opts.budget != null) {
@@ -71,24 +77,33 @@ export async function submit(
   let lastSubmitAt = 0
 
   /** Jobs submitted this run not yet observed as settled, with their generator. */
-  const inFlight = new Map<string, ResolvedSpec["generator"]>()
+  const inFlight = new Map<string, ResolvedSpec>()
+  let lastSlotError: string | null = null
 
   async function pruneInFlight(): Promise<void> {
-    for (const [id, generator] of [...inFlight]) {
+    for (const [id, spec] of [...inFlight]) {
       try {
-        const state = await provider.poll(id, generator)
+        const state = await provider.poll(id, spec.generator, spec)
         if (state.status !== "processing") inFlight.delete(id)
-      } catch {
-        // Treat an unreadable job as settled rather than blocking the queue
-        // forever; `poll` will resolve its true state later.
-        inFlight.delete(id)
+        lastSlotError = null
+      } catch (err) {
+        // A transient provider/network error is not evidence that a paid job
+        // settled. Keep the slot occupied so we never exceed the upstream cap.
+        lastSlotError = err instanceof Error ? err.message : String(err)
       }
     }
   }
 
   async function waitForSlot(): Promise<void> {
+    const started = Date.now()
     while (inFlight.size >= maxInFlight) {
-      await sleep(IN_FLIGHT_POLL_MS)
+      if (Date.now() - started >= slotTimeoutMs) {
+        throw new Error(
+          `Timed out waiting for a generation slot` +
+            (lastSlotError ? `; last poll error: ${lastSlotError}` : ""),
+        )
+      }
+      await sleep(slotPollMs)
       await pruneInFlight()
     }
   }
@@ -105,6 +120,7 @@ export async function submit(
       assetId: spec.assetId,
       specHash: spec.specHash,
       generator: spec.generator,
+      tileFeature: spec.tileFeature ?? null,
       prompt: spec.prompt,
       width: spec.width,
       height: spec.height,
@@ -116,6 +132,7 @@ export async function submit(
       error: null,
       outputs: [],
       sourceUrl: null,
+      sourceUrls: [],
       submittedAt: new Date().toISOString(),
       cost: spec.cost,
       downloadedAt: null,
@@ -133,16 +150,18 @@ export async function submit(
         jobId,
         // A multi-candidate generator routes through review; record the parent
         // so `pick` knows where to look.
-        reviewObjectId: spec.candidates > 1 ? jobId : null,
+        reviewObjectId: spec.candidates > 1 && !spec.tileFeature ? jobId : null,
         status: "processing",
         provider: provider.id,
       })
-      inFlight.set(jobId, spec.generator)
+      inFlight.set(jobId, spec)
       submitted++
       spent += spec.cost
       log(
         `  ${key} → ${jobId}  (${spec.width}x${spec.height}` +
-          (spec.candidates > 1 ? `, ${spec.candidates} candidates` : "") +
+          (spec.candidates > 1
+            ? `, ${spec.candidates} ${spec.tileFeature ? "outputs" : "candidates"}`
+            : "") +
           `, ${spec.cost})`,
       )
     } catch (err) {

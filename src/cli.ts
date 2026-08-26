@@ -36,6 +36,7 @@ interface Args {
   dryRun: boolean
   all: boolean
   json: boolean
+  check: boolean
   noOpen: boolean
   tag: boolean
   from?: string
@@ -55,11 +56,11 @@ const VALUE_FLAGS = [
   "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--no-open", "--tag", "--write-prompts",
+  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts",
 ] as const
 
 export const COMMANDS = [
-  "init", "plan", "gen", "submit", "poll", "pick", "fetch", "adopt", "accept",
+  "init", "plan", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "audit", "pack", "mount", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
@@ -165,6 +166,7 @@ export function parseArgs(argv: string[]): Args {
     dryRun: rest.includes("--dry-run"),
     all: rest.includes("--all"),
     json: rest.includes("--json"),
+    check: rest.includes("--check"),
     noOpen: rest.includes("--no-open"),
     tag: rest.includes("--tag"),
     from: get("--from"),
@@ -192,6 +194,7 @@ Commands
   poll      Advance in-flight jobs to their settled state.
   pick      Open the contact sheet to choose among candidates.
   fetch     Download selected objects to their manifest paths.
+  restore   Re-download missing generated files without generating new art.
   adopt     Match existing account objects to files already in the repo.
   accept    Keep existing art after a style reword — re-baseline, do not regenerate.
   salvage   Triage account objects no lockfile claims. Recovers usable art.
@@ -217,7 +220,8 @@ Options
   --force             Regenerate even if up to date
   --dry-run           Plan only; never spend
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
-  --json              salvage --dry-run: print the full unclaimed list as JSON
+  --json              Machine-readable output for plan/status and salvage dry-runs
+  --check             plan: exit nonzero unless every selected asset is up to date
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser during pick
   --tag               Also push tags upstream after fetch
@@ -237,7 +241,7 @@ Examples
 
 function printPlan(plan: Plan): void {
   const counts = summarize(plan)
-  const order = ["missing", "untracked", "stale", "failed", "in-flight", "orphaned", "ok"] as const
+  const order = ["missing", "untracked", "stale", "failed", "recoverable", "in-flight", "orphaned", "ok"] as const
   for (const state of order) {
     const items = plan.items.filter((i) => i.state === state)
     if (!items.length) continue
@@ -250,12 +254,12 @@ function printPlan(plan: Plan): void {
   log(
     `\n  totals: ${counts.ok} ok · ${counts.missing} missing · ${counts.untracked} untracked · ` +
       `${counts.stale} stale · ${counts["in-flight"]} in-flight · ${counts.orphaned} orphaned · ` +
-      `${counts.failed} failed`,
+      `${counts.recoverable} recoverable · ${counts.failed} failed`,
   )
   if (plan.actionable.length) {
     log(
       `  would generate ${plan.actionable.length} asset(s) — ${plan.cost} generations, ` +
-        `yielding ${plan.candidates} candidate image(s)`,
+        `yielding ${plan.candidates} candidate/output image(s)`,
     )
   } else {
     log(`  nothing to generate`)
@@ -384,6 +388,10 @@ async function main() {
   if (args.command === "status") {
     const byStatus: Record<string, number> = {}
     for (const e of Object.values(lock.entries)) byStatus[e.status] = (byStatus[e.status] ?? 0) + 1
+    if (args.json) {
+      log(JSON.stringify({ entries: Object.keys(lock.entries).length, byStatus, spent: totalSpend(lock) }, null, 2))
+      return
+    }
     log(`  ${Object.keys(lock.entries).length} lock entries`)
     for (const [s, n] of Object.entries(byStatus).sort()) log(`    ${s.padEnd(12)} ${n}`)
     log(`  generations recorded as spent: ${totalSpend(lock)}`)
@@ -393,7 +401,18 @@ async function main() {
   const plan = await buildPlan(specs, lock, { force: args.force })
 
   if (args.command === "plan") {
-    printPlan(plan)
+    if (args.json) {
+      log(JSON.stringify({
+        totals: summarize(plan),
+        cost: plan.cost,
+        candidates: plan.candidates,
+        actionable: plan.actionable.map((i) => i.key),
+        items: plan.items.map(({ key, state, reason }) => ({ key, state, reason })),
+      }, null, 2))
+    } else {
+      printPlan(plan)
+    }
+    if (args.check && plan.items.some((i) => i.state !== "ok")) process.exitCode = 1
     return
   }
 
@@ -839,14 +858,16 @@ async function main() {
         onProgress: log,
       })
       log(`\n  submitted ${res.submitted}, failed ${res.failed}, spent ${res.spent} generations`)
+      if (res.failed) process.exitCode = 1
     }
     if (args.command === "submit") return
   }
 
   if (args.command === "poll" || args.command === "gen") {
     log(`\n  polling…`)
-    const res = await poll(provider, lock, args.lock, { onProgress: log })
+    const res = await poll(provider, lock, args.lock, { onProgress: log, specs })
     log(`\n  ${res.completed} ready · ${res.review} awaiting selection · ${res.failed} failed`)
+    if (res.failed || res.stillRunning) process.exitCode = 1
     if (args.command === "poll") return
   }
 
@@ -861,13 +882,18 @@ async function main() {
     } else {
       log(`\n  selected ${res.selected}, left in review ${res.skipped}`)
     }
+    if (args.command === "gen" && res.skipped) process.exitCode = 1
     if (args.command === "pick") return
   }
 
-  if (args.command === "fetch" || args.command === "gen") {
+  if (args.command === "fetch" || args.command === "restore" || args.command === "gen") {
     log(`\n  downloading…`)
-    const res = await fetchAssets(provider, specs, lock, args.lock, { onProgress: log })
+    const res = await fetchAssets(provider, specs, lock, args.lock, {
+      onProgress: log,
+      repair: args.command === "restore",
+    })
     log(`\n  downloaded ${res.downloaded}, skipped ${res.skipped}, failed ${res.failed}`)
+    if (res.failed) process.exitCode = 1
     if (args.tag) {
       const n = await pushTags(provider, specs, lock, { onProgress: log })
       log(`  tagged ${n} object(s) upstream`)

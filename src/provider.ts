@@ -21,11 +21,29 @@ export interface CostEstimate {
   candidates: number
 }
 
+export interface OutputSource {
+  url: string
+  /** Stable semantic/index role used in filenames and lockfile outputs. */
+  role?: string
+}
+
+export interface PollContext {
+  /** Distinguishes structural tile sets from independent tile candidates. */
+  tileFeature?: string
+}
+
 /** Terminal and non-terminal states a queued job can be observed in. */
 export type JobState =
   | { status: "processing"; progressPercent?: number | null; etaSeconds?: number | null }
   | { status: "review"; candidateUrls: string[] }
-  | { status: "ready"; objectId: string; sourceUrl: string | null }
+  | {
+      status: "ready"
+      objectId: string
+      /** Kept for compatibility with single-output provider implementations. */
+      sourceUrl: string | null
+      /** Present for structural multi-output results. */
+      sources?: OutputSource[]
+    }
   | { status: "failed"; error: string }
 
 /** A previously generated asset as the provider reports it. */
@@ -91,7 +109,7 @@ export interface Provider {
 
   submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<{ jobId: string }>
 
-  poll(jobId: string, generator: Generator): Promise<JobState>
+  poll(jobId: string, generator: Generator, context?: PollContext): Promise<JobState>
 
   /**
    * Promote one candidate from a review-status job to a standalone asset.

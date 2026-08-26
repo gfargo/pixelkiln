@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest"
 import { mkdtemp, writeFile, rm } from "node:fs/promises"
+import { existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { imageMetadata, loadManifest, resolveSpecs } from "../src/manifest.ts"
@@ -7,13 +8,17 @@ import { PixelLabError } from "../src/client.ts"
 import { PixelLabProvider } from "../src/providers/pixellab.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
+import { poll } from "../src/pipeline/poll.ts"
+import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { encodeRgbaPng } from "../src/png.ts"
+import { FAKE_PNG } from "../src/providers/fake.ts"
 import {
   countNumberedDescriptions,
   tileVariationCount,
   tilesCost,
   type Lock,
   type ResolvedSpec,
+  lockKey,
 } from "../src/types.ts"
 
 let dir: string
@@ -97,6 +102,7 @@ describe("resolving a tiles spec", () => {
     })
     const [spec] = await resolveSpecs(loaded)
     expect(spec.tileFeature).toBe("tileset")
+    expect(spec.candidates).toBe(16)
   })
 
   it("rejects a tileFeature the API does not define", async () => {
@@ -210,6 +216,64 @@ describe("tile url ordering", () => {
       "https://x/10.png",
       "https://x/11.png",
     ])
+  })
+
+  it("treats a connectable feature as one ready multi-output set", async () => {
+    const urls = {
+      tile_2: "https://x/2.png",
+      tile_0: "https://x/0.png",
+      tile_1: "https://x/1.png",
+    }
+    const downloads: string[] = []
+    let failMiddle = true
+    const provider = new PixelLabProvider({
+      getTilesPro: async () => ({ storage_urls: urls, kind: "tiles" }),
+      download: async (url: string) => {
+        downloads.push(url)
+        if (url.endsWith("/1.png") && failMiddle) {
+          failMiddle = false
+          throw new Error("temporary CDN failure")
+        }
+        return FAKE_PNG
+      },
+    } as never)
+    const loaded = await writeManifest({ generator: "tiles", tileSize: 32, tileFeature: "tileset" })
+    const [spec] = await resolveSpecs(loaded)
+    const key = lockKey(spec!.styleId, spec!.assetId)
+    const lock: Lock = {
+      version: 2,
+      entries: {
+        [key]: {
+          styleId: spec!.styleId, assetId: spec!.assetId, specHash: spec!.specHash,
+          generator: "tiles", tileFeature: "tileset", prompt: spec!.prompt, width: 32, height: 32,
+          jobId: "job", reviewObjectId: "job", objectId: null, candidateIndex: null,
+          status: "processing", error: null, sourceUrl: null, sourceUrls: [], outputs: [],
+          submittedAt: null, downloadedAt: null, cost: 40, provider: "pixellab",
+        },
+      },
+    }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+
+    const polled = await poll(provider, lock, lockPath, { intervalMs: 0, specs: [spec!] })
+    expect(polled.completed).toBe(1)
+    expect(lock.entries[key]!.status).toBe("selected")
+    expect(lock.entries[key]!.sourceUrls.map((s) => s.role)).toEqual([
+      "tile-00", "tile-01", "tile-02",
+    ])
+
+    const interrupted = await fetchAssets(provider, [spec!], lock, lockPath)
+    expect(interrupted.failed).toBe(1)
+    expect(lock.entries[key]!.status).toBe("download-failed")
+    expect(lock.entries[key]!.outputs.map((o) => o.role)).toEqual(["tile-00"])
+
+    const fetched = await fetchAssets(provider, [spec!], lock, lockPath)
+    expect(fetched.downloaded).toBe(1)
+    expect(lock.entries[key]!.outputs.map((o) => o.role)).toEqual([
+      "tile-00", "tile-01", "tile-02",
+    ])
+    expect(downloads.filter((url) => url.endsWith("/0.png"))).toHaveLength(1)
+    for (const output of lock.entries[key]!.outputs) expect(existsSync(output.path)).toBe(true)
+    expect(existsSync(spec!.outFile)).toBe(false)
   })
 })
 

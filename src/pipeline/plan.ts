@@ -9,6 +9,7 @@ export type PlanState =
   | "stale" // prompt/style/size changed since the file was made
   | "orphaned" // lock says downloaded, but the file is gone or altered
   | "in-flight" // submitted, not yet downloaded
+  | "recoverable" // generation succeeded; download can be retried without spending
   | "failed"
 
 /**
@@ -73,12 +74,15 @@ export async function buildPlan(
         state = "missing"
         reason = "not in lockfile"
       }
-    } else if (entry.status === "failed") {
-      state = "failed"
-      reason = entry.error ?? "previous attempt failed"
     } else if (entry.specHash !== spec.specHash) {
       state = "stale"
       reason = "prompt, size, or style changed"
+    } else if (entry.status === "download-failed") {
+      state = "recoverable"
+      reason = `${entry.error ?? "download failed"}; run fetch or restore (no generation cost)`
+    } else if (entry.status === "failed") {
+      state = "failed"
+      reason = entry.error ?? "previous attempt failed"
     } else if (entry.status !== "downloaded") {
       state = "in-flight"
       reason = `awaiting ${entry.status}`
@@ -118,7 +122,8 @@ export async function buildPlan(
 
 export function summarize(plan: Plan): Record<PlanState, number> {
   const counts = {
-    ok: 0, missing: 0, untracked: 0, stale: 0, orphaned: 0, "in-flight": 0, failed: 0,
+    ok: 0, missing: 0, untracked: 0, stale: 0, orphaned: 0, "in-flight": 0,
+    recoverable: 0, failed: 0,
   } as Record<PlanState, number>
   for (const item of plan.items) counts[item.state]++
   return counts

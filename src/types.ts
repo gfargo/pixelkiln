@@ -46,9 +46,10 @@ export interface ResolvedStyleImage {
  * `tiles` is the odd one out: the unit of work is a *set*, not a sprite.
  *
  * POST /create-tiles-pro draws tile shape outlines and fills them, returning
- * many variations from one call — so it lands in the same review-then-pick
- * flow as `1dir`, but the variations arrive as finished storage URLs rather
- * than frames needing promotion. There is no select-frames step to run.
+ * many variations from one call. Independent variations land in the same
+ * review-then-pick flow as `1dir`; connectable features are structural sets
+ * and every returned storage URL is retained. There is no select-frames step
+ * to run for either form.
  *
  * Two properties make it worth a generator of its own rather than a flag on
  * `1dir`:
@@ -72,6 +73,15 @@ export interface ResolvedStyleImage {
  */
 export function tileVariationCount(descriptions: number): number {
   return Math.max(1, descriptions) * 4
+}
+
+/** Known structural output counts for connectable tile features. */
+export function tileFeatureOutputCount(feature: string | undefined): number | null {
+  if (feature === "roads") return 18
+  if (feature === "tileset") return 16
+  // PixelLab does not document a stable count for the building kit. Its
+  // returned storage URLs remain authoritative at download time.
+  return null
 }
 
 /**
@@ -347,6 +357,8 @@ export const LockEntrySchema = z.object({
   /** sha256 of the resolved spec. Changing a prompt/size/style invalidates it. */
   specHash: z.string(),
   generator: GeneratorSchema,
+  /** Connectable tiles must remain multi-output even when polling is resumed later. */
+  tileFeature: z.string().nullable().default(null),
   /** The resolved prompt actually sent, kept for auditing and for adopt matching. */
   prompt: z.string(),
   width: z.number().int(),
@@ -361,11 +373,28 @@ export const LockEntrySchema = z.object({
   candidateIndex: z.number().int().nullable().default(null),
 
   status: z
-    .enum(["pending", "processing", "review", "selected", "downloaded", "failed"])
+    .enum([
+      "pending",
+      "processing",
+      "review",
+      "selected",
+      "downloaded",
+      "download-failed",
+      "failed",
+    ])
     .default("pending"),
   error: z.string().nullable().default(null),
 
   sourceUrl: z.string().nullable().default(null),
+  /** Every source in a structural multi-output result, in provider order. */
+  sourceUrls: z
+    .array(
+      z.object({
+        url: z.string(),
+        role: z.string().optional(),
+      }),
+    )
+    .default([]),
 
   /**
    * Files this entry produced. A plain object generates one; asset kinds that
