@@ -443,6 +443,7 @@ describe("lockfile schema", () => {
   it("defaults provider so an entry written before providers still loads", () => {
     const lock = parseLock({ version: 2, entries: { "base/anvil": { ...entry, outputs: [] } } })
     expect(lock.entries["base/anvil"]!.provider).toBe("pixellab")
+    expect(lock.entries["base/anvil"]!.providerMetadata).toEqual({})
   })
 })
 

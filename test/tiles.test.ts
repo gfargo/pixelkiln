@@ -10,6 +10,7 @@ import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
+import { loadLock } from "../src/lock.ts"
 import { encodeRgbaPng } from "../src/png.ts"
 import { FAKE_PNG } from "../src/providers/fake.ts"
 import {
@@ -226,8 +227,16 @@ describe("tile url ordering", () => {
     }
     const downloads: string[] = []
     let failMiddle = true
+    const tileRules = {
+      rule_type: "corner",
+      arity: 4,
+      tiles: {
+        tile_0: { top_left: 0, top_right: 0, bottom_right: 0, bottom_left: 0 },
+        tile_1: { top_left: 1, top_right: 0, bottom_right: 0, bottom_left: 0 },
+      },
+    }
     const provider = new PixelLabProvider({
-      getTilesPro: async () => ({ storage_urls: urls, kind: "tiles" }),
+      getTilesPro: async () => ({ storage_urls: urls, kind: "tiles", tile_rules: tileRules }),
       download: async (url: string) => {
         downloads.push(url)
         if (url.endsWith("/1.png") && failMiddle) {
@@ -248,6 +257,7 @@ describe("tile url ordering", () => {
           generator: "tiles", tileFeature: "tileset", prompt: spec!.prompt, width: 32, height: 32,
           jobId: "job", reviewObjectId: "job", objectId: null, candidateIndex: null,
           status: "processing", error: null, sourceUrl: null, sourceUrls: [], outputs: [],
+          providerMetadata: {},
           submittedAt: null, downloadedAt: null, cost: 40, provider: "pixellab",
         },
       },
@@ -260,6 +270,12 @@ describe("tile url ordering", () => {
     expect(lock.entries[key]!.sourceUrls.map((s) => s.role)).toEqual([
       "tile-00", "tile-01", "tile-02",
     ])
+    expect(lock.entries[key]!.providerMetadata).toEqual({
+      pixellab: { tileKind: "tiles", tileRules },
+    })
+    expect((await loadLock(lockPath)).entries[key]!.providerMetadata).toEqual(
+      lock.entries[key]!.providerMetadata,
+    )
 
     const interrupted = await fetchAssets(provider, [spec!], lock, lockPath)
     expect(interrupted.failed).toBe(1)

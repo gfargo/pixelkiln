@@ -32,6 +32,9 @@ export interface PollContext {
   tileFeature?: string
 }
 
+/** Provider-owned, JSON-serializable details needed by downstream exporters. */
+export type ProviderMetadata = Record<string, unknown>
+
 /** Terminal and non-terminal states a queued job can be observed in. */
 export type JobState =
   | { status: "processing"; progressPercent?: number | null; etaSeconds?: number | null }
@@ -43,6 +46,8 @@ export type JobState =
       sourceUrl: string | null
       /** Present for structural multi-output results. */
       sources?: OutputSource[]
+      /** Preserved under the provider's namespace in the lockfile. */
+      metadata?: ProviderMetadata
     }
   | { status: "failed"; error: string }
 

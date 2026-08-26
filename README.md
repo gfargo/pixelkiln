@@ -141,6 +141,12 @@ Version 2. Each entry records `outputs[]` — a path, a hash, and an optional
 expand into many artifacts, which an animated character needs (~35 spritesheets
 plus an engine resource plus a portrait).
 
+Provider-specific structural metadata is retained under `providerMetadata`,
+namespaced by provider id. PixelLab connectable sets preserve the response's
+tile kind and complete `tile_rules` object there; those rules are what let an
+exporter turn ordered PNGs into an adjacency-aware engine tileset instead of
+guessing what each index means.
+
 `parseLock` accepts v2 only. The projects using pixelkiln were onboarded after
 v2 landed, so a v1 file indicates a hand edit or the wrong file rather than a
 legacy project to migrate. It fails loudly instead of reinterpreting a paid-work

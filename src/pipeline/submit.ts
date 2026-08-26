@@ -131,6 +131,7 @@ export async function submit(
       candidateIndex: null,
       error: null,
       outputs: [],
+      providerMetadata: {},
       sourceUrl: null,
       sourceUrls: [],
       submittedAt: new Date().toISOString(),
