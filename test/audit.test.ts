@@ -13,6 +13,7 @@ import {
   hex,
 } from "../src/pipeline/audit.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
+import type { Lock } from "../src/types.ts"
 
 /**
  * Builds a real 8-bit RGBA PNG from pixel data, so the decoder is exercised
@@ -228,6 +229,26 @@ describe("auditStyle", () => {
   it("rejects an unknown style", async () => {
     const { loaded, specs } = await styleProject(true)
     await expect(auditStyle(loaded, specs, "nope")).rejects.toThrow(/Unknown style/)
+  })
+
+  it("audits every recorded output in a structural set", async () => {
+    const { loaded, specs } = await styleProject(true)
+    const lock = {
+      version: 2,
+      entries: {
+        "base/a": {
+          outputs: [
+            { path: path.join(dir, "out", "a.png"), sha256: "a", role: "tile-00" },
+            { path: path.join(dir, "out", "b.png"), sha256: "b", role: "tile-01" },
+          ],
+        },
+      },
+    } as Lock
+
+    const audit = await auditStyle(loaded, specs, "base", lock)
+
+    expect(new Set(audit.assets.filter((asset) => asset.assetId === "a").map((asset) => asset.id)))
+      .toEqual(new Set(["a/tile-00", "a/tile-01"]))
   })
 })
 

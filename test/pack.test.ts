@@ -125,6 +125,28 @@ describe("packStyle", () => {
       await rm(dir, { recursive: true, force: true })
     }
   })
+
+  it("packs every output in a structural set with stable role-qualified ids", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pk-pack-"))
+    try {
+      await writeFile(path.join(dir, "terrain-tile-00.png"), sprite(8, 1, 2, 3))
+      await writeFile(path.join(dir, "terrain-tile-01.png"), sprite(8, 4, 5, 6))
+      const lock = lockWith(["terrain"])
+      lock.entries["s/terrain"]!.outputs = [
+        { path: "terrain-tile-00.png", sha256: "a", role: "tile-00" },
+        { path: "terrain-tile-01.png", sha256: "b", role: "tile-01" },
+      ]
+
+      const { atlas } = packStyle(lock, "s", dir)
+
+      expect(atlas.frames.map((frame) => frame.id)).toEqual([
+        "terrain/tile-00",
+        "terrain/tile-01",
+      ])
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 describe("packSprites", () => {

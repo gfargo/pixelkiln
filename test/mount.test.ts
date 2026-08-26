@@ -214,6 +214,40 @@ describe("mountStyle sources", () => {
     expect(pixelAt(png, 1, 1)).toEqual(RED)
   })
 
+  it("refuses to guess which member of a multi-output set owns one cell", async () => {
+    await solid("tile-00", 4, 4, RED)
+    await solid("tile-01", 4, 4, BLUE)
+    const lock = lockWith("terrain", { grass: "tile-00.png" })
+    lock.entries["terrain/grass"]!.outputs = [
+      { path: "tile-00.png", sha256: "a", role: "tile-00" },
+      { path: "tile-01.png", sha256: "b", role: "tile-01" },
+    ]
+
+    expect(() => mountStyle(lock, "terrain", dir, MOUNT, { grass: [0, 0] }, {}))
+      .toThrow(/2 outputs are recorded; set `outputRole`/)
+  })
+
+  it("mounts a named output role from a structural set", async () => {
+    await solid("tile-00", 4, 4, RED)
+    await solid("tile-01", 4, 4, BLUE)
+    const lock = lockWith("terrain", { grass: "tile-00.png" })
+    lock.entries["terrain/grass"]!.outputs = [
+      { path: "tile-00.png", sha256: "a", role: "tile-00" },
+      { path: "tile-01.png", sha256: "b", role: "tile-01" },
+    ]
+
+    const { png } = mountStyle(
+      lock,
+      "terrain",
+      dir,
+      MOUNT,
+      { grass: [0, 0] },
+      {},
+      { grass: "tile-01" },
+    )
+    expect(pixelAt(png, 1, 1)).toEqual(BLUE)
+  })
+
   it("says which assets it could not place, and places the rest", async () => {
     await solid("remapped", 4, 4, GREEN)
     const { png, skipped } = mountStyle(

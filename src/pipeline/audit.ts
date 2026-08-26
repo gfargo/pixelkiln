@@ -3,7 +3,8 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { decodePng, extractPalette, transparencyRatio, type PaletteEntry } from "../png.ts"
 import type { LoadedManifest } from "../manifest.ts"
-import type { ResolvedSpec } from "../types.ts"
+import type { Lock, ResolvedSpec } from "../types.ts"
+import { resolveSpecOutputs } from "../outputs.ts"
 
 /**
  * Perceptual-ish distance between two colours, 0-255ish.
@@ -64,6 +65,10 @@ export function mergePalettes(palettes: PaletteEntry[][], topN = 24): PaletteEnt
 
 export interface AssetAudit {
   assetId: string
+  /** Present when this is one member of a structural multi-output asset. */
+  outputRole?: string
+  /** Stable report/atlas identity: assetId for one output, assetId/role for many. */
+  id: string
   file: string
   width: number
   height: number
@@ -104,6 +109,7 @@ export async function auditStyle(
   loaded: LoadedManifest,
   specs: ResolvedSpec[],
   styleId: string,
+  lock?: Lock,
 ): Promise<StyleAudit> {
   const style = loaded.manifest.styles[styleId]
   if (!style) throw new Error(`Unknown style "${styleId}"`)
@@ -114,25 +120,29 @@ export async function auditStyle(
   const unreadable: string[] = []
 
   for (const spec of mine) {
-    if (!existsSync(spec.outFile)) {
-      missing.push(spec.assetId)
-      continue
-    }
-    try {
-      const png = decodePng(await readFile(spec.outFile))
-      const palette = extractPalette(png, 12)
-      assets.push({
-        assetId: spec.assetId,
-        file: spec.outFile,
-        width: png.width,
-        height: png.height,
-        paletteDistance: 0, // filled once the reference is known
-        transparency: transparencyRatio(png),
-        colorCount: countColors(png),
-        palette,
-      })
-    } catch (err) {
-      unreadable.push(`${spec.assetId}: ${err instanceof Error ? err.message : String(err)}`)
+    for (const output of resolveSpecOutputs(spec, lock, loaded.root)) {
+      if (!existsSync(output.absolutePath)) {
+        missing.push(output.id)
+        continue
+      }
+      try {
+        const png = decodePng(await readFile(output.absolutePath))
+        const palette = extractPalette(png, 12)
+        assets.push({
+          assetId: spec.assetId,
+          ...(output.role ? { outputRole: output.role } : {}),
+          id: output.id,
+          file: output.absolutePath,
+          width: png.width,
+          height: png.height,
+          paletteDistance: 0, // filled once the reference is known
+          transparency: transparencyRatio(png),
+          colorCount: countColors(png),
+          palette,
+        })
+      } catch (err) {
+        unreadable.push(`${output.id}: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
   }
 

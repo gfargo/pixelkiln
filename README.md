@@ -35,7 +35,7 @@ npm test
 Requires Node 20+ and `PIXELLAB_API_KEY` in the environment. See
 [`examples/minimal`](./examples/minimal) for a three-asset starter manifest.
 
-## The two files
+## Project state
 
 **`pixelkiln.manifest.json`** — hand-authored, committed. Your asset dictionary.
 
@@ -65,6 +65,15 @@ Requires Node 20+ and `PIXELLAB_API_KEY` in the environment. See
 **`pixelkiln.lock.json`** — machine-written, committed. Maps every
 `<style>/<asset>` to the PixelLab object that satisfies it and the file it
 produced, with hashes on both sides.
+
+Two ignored caches make recovery and account reconciliation faster without
+becoming project history:
+
+- **`.pixelkiln/cache/`** stores generated PNG bytes by SHA-256. `restore` can
+  recover a deleted output from here even after a provider URL expires.
+- **`pixelkiln.cache.json`** stores remote object ids mapped to their image
+  hashes. `adopt` and `salvage` use it to avoid downloading the entire account
+  again. Deleting either cache is safe; the next relevant command rebuilds it.
 
 Because entries are keyed `<style>/<asset>`, **a style is a namespace**. Adding
 a second style re-derives the whole asset set into a separate output directory
@@ -598,6 +607,10 @@ pixelkiln pack --style heybud-riso
 Frames are keyed by **asset id**, so a consumer looks a sprite up by name
 rather than by a fragile index.
 
+When an asset has multiple structural outputs, `pack` includes every one and
+qualifies its frame id by role: `terrain/tile-00`, `terrain/tile-01`, and so on.
+Single-output ids remain unchanged.
+
 Four decisions worth knowing:
 
 - **A grid, not a bin-packer.** Every sprite in a style shares a generator and
@@ -668,6 +681,21 @@ An asset with no `cell` is simply left off the sheet. A sprite larger than the
 cell is skipped and reported rather than cropped — cropping produces a sheet
 that looks right in isolation and is wrong at every seam. Two assets claiming
 one cell is a hard error.
+
+One cell can contain only one file. If a generated asset has several outputs,
+name the one to mount with `outputRole`; `mount` refuses to silently use the
+first member of a structural set:
+
+```jsonc
+"rough_grass": {
+  "prompt": "unmown dark grass",
+  "cell": [6, 2],
+  "outputRole": "tile-03"
+}
+```
+
+`audit` follows the same output model and measures every member of a structural
+set, reporting them with the same role-qualified ids used by the atlas.
 
 #### When the art needs a step pixelkiln doesn't do
 

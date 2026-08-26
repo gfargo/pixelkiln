@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { Lock } from "../types.ts"
+import { resolveEntryOutputs, selectEntryOutput } from "../outputs.ts"
 
 export interface PackedFrame {
   /** Asset id, so a consumer can look a sprite up by name rather than index. */
@@ -185,13 +186,12 @@ export function packStyle(
 
   for (const [key, entry] of entries) {
     const id = key.slice(prefix.length)
-    // `outputs` is v2's array; the first is the sprite itself.
-    const output = entry.outputs?.[0]
-    if (!output) {
+    const outputs = resolveEntryOutputs(entry, id, manifestDir)
+    if (!outputs.length) {
       noOutput.push({ id, reason: "no output recorded in the lockfile" })
       continue
     }
-    inputs.push({ id, path: path.resolve(manifestDir, output.path) })
+    for (const output of outputs) inputs.push({ id: output.id, path: output.absolutePath })
   }
 
   if (!inputs.length) {
@@ -354,6 +354,7 @@ export function mountStyle(
   mount: { base?: string; cellWidth: number; cellHeight: number },
   cells: Record<string, [number, number]>,
   sources: Record<string, string> = {},
+  outputRoles: Record<string, string> = {},
 ): MountedSheet {
   // Driven by the declared cells, not by the lockfile. The cell is what says
   // "this belongs on the sheet"; whether pixelkiln generated the pixels is a
@@ -383,19 +384,22 @@ export function mountStyle(
       })
       continue
     }
-    const output = entry.outputs?.[0]
-    if (!output) {
-      skipped.push({ id, reason: "no output recorded in the lockfile" })
+    const selection = selectEntryOutput(entry, outputRoles[id])
+    if (!selection.ok) {
+      skipped.push({ id, reason: selection.reason })
       continue
     }
-    placements.push({ id, path: path.resolve(manifestDir, output.path), cell })
+    placements.push({ id, path: path.resolve(manifestDir, selection.output.path), cell })
   }
 
   if (!placements.length) {
+    const detail = skipped.length
+      ? ` (${skipped.map((item) => `${item.id}: ${item.reason}`).join("; ")})`
+      : ""
     throw new Error(
       `Nothing to mount for style "${styleId}": ${ids.length} asset(s) declare a ` +
         `cell, but none has generated output or a \`source\`. Run ` +
-        `\`pixelkiln gen --style ${styleId}\`, or point each at a file.`,
+        `\`pixelkiln gen --style ${styleId}\`, or point each at a file.${detail}`,
     )
   }
 
