@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs"
 import { sha256File } from "../hash.ts"
+import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
 
@@ -19,9 +20,12 @@ export type PlanState =
  * Checked across every output, not just the primary: a character's engine
  * resource being hand-edited matters as much as its spritesheets changing.
  */
-async function anyOutputModified(entry: LockEntry): Promise<boolean> {
-  for (const output of entry.outputs) {
-    if ((await sha256File(output.path)) !== output.sha256) return true
+async function anyOutputModified(entry: LockEntry, spec: ResolvedSpec): Promise<boolean> {
+  for (let index = 0; index < entry.outputs.length; index++) {
+    const output = entry.outputs[index]!
+    if (
+      (await sha256File(currentEntryOutputPath(entry, spec, index))) !== output.sha256
+    ) return true
   }
   return false
 }
@@ -88,16 +92,21 @@ export async function buildPlan(
     } else if (entry.status !== "downloaded") {
       state = "in-flight"
       reason = `awaiting ${entry.status}`
-    } else if (entry.outputs.length === 0 || entry.outputs.some((o) => !existsSync(o.path))) {
+    } else if (
+      entry.outputs.length === 0 ||
+      entry.outputs.some((_output, index) =>
+        !existsSync(currentEntryOutputPath(entry, spec, index)))
+    ) {
       state = "orphaned"
       reason =
         entry.outputs.length === 0
           ? "no recorded output files"
           : `missing on disk: ${entry.outputs
-              .filter((o) => !existsSync(o.path))
+              .filter((_output, index) =>
+                !existsSync(currentEntryOutputPath(entry, spec, index)))
               .map((o) => o.role ?? "asset")
               .join(", ")}`
-    } else if (await anyOutputModified(entry)) {
+    } else if (await anyOutputModified(entry, spec)) {
       // The file was edited by hand. That is a legitimate thing to do, so this
       // is reported rather than silently overwritten.
       state = "orphaned"

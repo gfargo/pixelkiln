@@ -359,6 +359,8 @@ describe("runSalvage", () => {
     const onDisk = JSON.parse(await readFile(manifestPath, "utf8"))
     expect(onDisk.assets.anvil).toEqual({ prompt: "an anvil", category: "tools" })
     expect(Object.keys(onDisk.assets)).toEqual(["anvil", "wooden_fence"])
+    expect(lock.entries["base/wooden_fence"]!.outputs[0]!.path)
+      .toBe("out/_salvaged/wooden_fence.png")
   })
 
   it("serves the page naming its own style, so open tabs are distinguishable", async () => {

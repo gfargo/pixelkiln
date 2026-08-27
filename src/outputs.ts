@@ -1,4 +1,5 @@
 import path from "node:path"
+import { upsert } from "./lock.ts"
 import { lockKey, type Lock, type LockEntry, type LockOutput, type ResolvedSpec } from "./types.ts"
 
 /** One lockfile output with the identity consumers should expose publicly. */
@@ -8,6 +9,95 @@ export interface ResolvedOutput extends LockOutput {
   id: string
   index: number
   absolutePath: string
+}
+
+/** Store generated paths relative to the manifest so committed locks survive a clone/move. */
+export function portableOutputPath(file: string, manifestDir: string): string {
+  const root = path.resolve(manifestDir)
+  const absolute = path.isAbsolute(file) ? path.normalize(file) : path.resolve(root, file)
+  const relative = path.relative(root, absolute)
+  // Different Windows drives cannot be expressed as a relative path. This is
+  // the one case where retaining an absolute path is more honest than writing
+  // a value that resolves somewhere else.
+  const value = path.isAbsolute(relative) ? absolute : relative
+  return value.split(path.sep).join("/")
+}
+
+/** Resolve a portable lock path against the manifest, never the process cwd. */
+export function resolveOutputPath(recordedPath: string, manifestDir: string): string {
+  if (path.isAbsolute(recordedPath)) return path.normalize(recordedPath)
+  // A lock committed by Windows before paths became portable cannot be opened
+  // directly on POSIX. `normalizeLockOutputPaths` rebases it from the spec.
+  if (path.win32.isAbsolute(recordedPath)) return recordedPath
+  return path.resolve(manifestDir, recordedPath.split(/[\\/]/).join(path.sep))
+}
+
+/** Deterministic current destination for one provider output. */
+export function expectedOutputPath(
+  spec: ResolvedSpec,
+  role: string | undefined,
+  index: number,
+  total: number,
+): string {
+  if (total === 1) return spec.outFile
+  const originalExt = path.extname(spec.outFile)
+  const ext = originalExt || ".png"
+  const stem = originalExt ? spec.outFile.slice(0, -originalExt.length) : spec.outFile
+  const safeRole = (role ?? fallbackOutputRole(index)).replace(/[^a-zA-Z0-9_-]+/g, "-")
+  return `${stem}-${safeRole}${ext}`
+}
+
+/** Resolve one recorded output from the current manifest-owned destination. */
+export function currentOutputPath(
+  output: Pick<LockOutput, "path" | "role">,
+  spec: ResolvedSpec,
+  index: number,
+  total: number,
+): string {
+  // The lock records where bytes were written; the manifest owns where they
+  // belong now. Always deriving from the current spec both rebases a clone and
+  // prevents a hand-edited lock path from redirecting restore into an unrelated
+  // project file. Output roles preserve structural-set identity.
+  return expectedOutputPath(spec, output.role, index, total)
+}
+
+/** Resolve an entry member using the complete source-set order when available. */
+export function currentEntryOutputPath(
+  entry: LockEntry,
+  spec: ResolvedSpec,
+  index: number,
+): string {
+  const output = entry.outputs[index]!
+  const sourceIndex = output.role
+    ? (entry.sourceUrls ?? []).findIndex((source) => source.role === output.role)
+    : -1
+  const position = sourceIndex >= 0 ? sourceIndex : index
+  const total = Math.max(entry.outputs.length, entry.sourceUrls?.length ?? 0)
+  return currentOutputPath(output, spec, position, total)
+}
+
+/**
+ * Rebase legacy absolute output paths onto this checkout and canonicalize all
+ * selected entries in memory. Persistence remains the caller's decision.
+ */
+export function normalizeLockOutputPaths(lock: Lock, specs: ResolvedSpec[]): number {
+  const byKey = new Map(specs.map((spec) => [lockKey(spec.styleId, spec.assetId), spec]))
+  let changed = 0
+  for (const [key, entry] of Object.entries(lock.entries)) {
+    const spec = byKey.get(key)
+    if (!spec) continue
+    let entryChanged = false
+    const outputs = entry.outputs.map((output, index) => {
+      const absolute = currentEntryOutputPath(entry, spec, index)
+      const portable = portableOutputPath(absolute, spec.root)
+      if (portable === output.path) return output
+      changed++
+      entryChanged = true
+      return { ...output, path: portable }
+    })
+    if (entryChanged) upsert(lock, key, { outputs })
+  }
+  return changed
 }
 
 /** The fallback role used when a provider returns several unnamed outputs. */
@@ -43,7 +133,21 @@ export function resolveEntryOutputs(
     assetId,
     id: outputId(assetId, output, index, entry.outputs.length),
     index,
-    absolutePath: path.resolve(manifestDir, output.path),
+    absolutePath: resolveOutputPath(output.path, manifestDir),
+  }))
+}
+
+/** Resolve an entry using its current spec, including cross-checkout v2 migration. */
+export function resolveSpecEntryOutputs(
+  entry: LockEntry,
+  spec: ResolvedSpec,
+): ResolvedOutput[] {
+  return entry.outputs.map((output, index) => ({
+    ...output,
+    assetId: spec.assetId,
+    id: outputId(spec.assetId, output, index, entry.outputs.length),
+    index,
+    absolutePath: currentEntryOutputPath(entry, spec, index),
   }))
 }
 
@@ -96,7 +200,7 @@ export function resolveSpecOutputs(
   manifestDir: string,
 ): ResolvedOutput[] {
   const entry = lock?.entries[lockKey(spec.styleId, spec.assetId)]
-  if (entry?.outputs.length) return resolveEntryOutputs(entry, spec.assetId, manifestDir)
+  if (entry?.outputs.length) return resolveSpecEntryOutputs(entry, spec)
   return [{
     assetId: spec.assetId,
     id: spec.assetId,

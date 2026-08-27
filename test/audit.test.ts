@@ -334,13 +334,15 @@ describe("auditStyle", () => {
 
   it("audits every recorded output in a structural set", async () => {
     const { loaded, specs } = await styleProject(true)
+    await writeFile(path.join(dir, "out", "a-tile-00.png"), makePng(32, 32, solid(30, 30, 34)))
+    await writeFile(path.join(dir, "out", "a-tile-01.png"), makePng(32, 32, solid(34, 34, 38)))
     const lock = {
       version: 2,
       entries: {
         "base/a": {
           outputs: [
-            { path: path.join(dir, "out", "a.png"), sha256: "a", role: "tile-00" },
-            { path: path.join(dir, "out", "b.png"), sha256: "b", role: "tile-01" },
+            { path: path.join(dir, "out", "a-tile-00.png"), sha256: "a", role: "tile-00" },
+            { path: path.join(dir, "out", "a-tile-01.png"), sha256: "b", role: "tile-01" },
           ],
         },
       },

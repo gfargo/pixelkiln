@@ -10,6 +10,7 @@ import { mountStyle, packSprites, packStyle, resolvePackInputs } from "./pipelin
 import { loadLock, saveLock, spendByUnit, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
 import { lockKey } from "./types.ts"
+import { normalizeLockOutputPaths, resolveOutputPath } from "./outputs.ts"
 import { buildPlan, summarize, type Plan } from "./pipeline/plan.ts"
 import { submit } from "./pipeline/submit.ts"
 import { poll } from "./pipeline/poll.ts"
@@ -495,6 +496,7 @@ async function main() {
     provider: estimator,
   })
   const lock = await loadLock(args.lock)
+  normalizeLockOutputPaths(lock, specs)
 
   if (args.command === "status") {
     const byStatus: Record<string, number> = {}
@@ -566,7 +568,8 @@ async function main() {
       if (!entry || entry.outputs.length === 0) continue
       let intact = true
       for (const output of entry.outputs) {
-        if (!existsSync(output.path) || (await sha256File(output.path)) !== output.sha256) {
+        const file = resolveOutputPath(output.path, item.spec.root)
+        if (!existsSync(file) || (await sha256File(file)) !== output.sha256) {
           intact = false
           break
         }

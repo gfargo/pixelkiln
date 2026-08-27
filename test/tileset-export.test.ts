@@ -22,7 +22,7 @@ async function setup() {
   for (let index = 0; index < 4; index++) {
     const pixels = Buffer.alloc(4 * 4 * 4, index * 40)
     for (let i = 3; i < pixels.length; i += 4) pixels[i] = 255
-    const file = path.join(dir, `tile-${index}.png`)
+    const file = path.join(dir, `terrain-tile-0${index}.png`)
     await writeFile(file, encodeRgbaPng(4, 4, pixels))
     outputs.push({ path: file, sha256: String(index), role: `tile-0${index}` })
   }
@@ -32,9 +32,11 @@ async function setup() {
     providerMetadata: { pixellab: { tileKind: "tileset", tileRules: rules } },
   } as LockEntry
   const spec = {
+    root: dir,
     styleId: "ground",
     assetId: "terrain",
     generator: "tiles",
+    outFile: path.join(dir, "terrain.png"),
     tileType: "square_topdown",
   } as ResolvedSpec
   return { entry, spec, rules }
@@ -76,6 +78,10 @@ describe("exportTileset", () => {
 
   it("maps rules by original provider index when output roles contain gaps", async () => {
     const { entry, spec } = await setup()
+    await writeFile(
+      path.join(dir, "terrain-tile-07.png"),
+      await readFile(entry.outputs[1]!.path),
+    )
     entry.outputs = [
       { ...entry.outputs[0]!, role: "tile-02" },
       { ...entry.outputs[1]!, role: "tile-07" },

@@ -320,7 +320,7 @@ describe("fetch", () => {
       expect(entry.status).toBe("downloaded")
       expect(existsSync(spec.outFile)).toBe(true)
       const output = primaryOutput(entry)!
-      expect(output.path).toBe(spec.outFile)
+      expect(output.path).toBe(path.relative(spec.root, spec.outFile))
       expect(output.sha256).toBe(sha256(await readFile(spec.outFile)))
     }
   })
@@ -489,6 +489,7 @@ describe("adopt", () => {
     expect(entry.prompt).toBe("the real prompt used upstream")
     // Adopted work was already paid for.
     expect(entry.cost).toBe(0)
+    expect(entry.outputs[0]!.path).toBe("out/tools/anvil.png")
     // Baselined against today's spec, so plan reports ok rather than stale.
     expect((await buildPlan(specs, lock)).items[0]!.state).toBe("ok")
   })

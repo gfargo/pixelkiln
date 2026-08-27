@@ -13,6 +13,7 @@ import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { loadLock } from "../src/lock.ts"
 import { encodeRgbaPng } from "../src/png.ts"
 import { FAKE_PNG } from "../src/providers/fake.ts"
+import { resolveOutputPath } from "../src/outputs.ts"
 import {
   countNumberedDescriptions,
   tileVariationCount,
@@ -306,7 +307,9 @@ describe("tile url ordering", () => {
       "tile-00", "tile-01", "tile-02",
     ])
     expect(downloads.filter((url) => url.endsWith("/0.png"))).toHaveLength(1)
-    for (const output of lock.entries[key]!.outputs) expect(existsSync(output.path)).toBe(true)
+    for (const output of lock.entries[key]!.outputs) {
+      expect(existsSync(resolveOutputPath(output.path, spec!.root))).toBe(true)
+    }
     expect(existsSync(spec!.outFile)).toBe(false)
   })
 })

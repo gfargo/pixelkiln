@@ -140,4 +140,6 @@ Do not commit:
 - `pixelkiln.cache.json`
 
 The caches are disposable performance and recovery aids. The manifest,
-lockfile, and output files are the durable project record.
+lockfile, and output files are the durable project record. Lock output paths
+are manifest-relative, so that committed record survives moving or cloning the
+project instead of pointing back to an old machine's checkout.

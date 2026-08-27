@@ -12,11 +12,11 @@ export async function sha256File(path: string): Promise<string> {
 
 /**
  * Identity of a spec: everything that would change the generated image.
- * `outFile` and `tags` are deliberately excluded — renaming the destination or
- * retagging should not force a costly regeneration.
+ * Project root, `outFile`, and `tags` are deliberately excluded — moving a
+ * checkout, renaming the destination, or retagging should not regenerate art.
  */
 export function specHash(
-  spec: Omit<ResolvedSpec, "specHash" | "outFile" | "tags">,
+  spec: Omit<ResolvedSpec, "specHash" | "root" | "outFile" | "tags">,
   styleImageHashes: string[],
 ): string {
   return sha256(

@@ -10,6 +10,7 @@ import { buildPlan } from "../src/pipeline/plan.ts"
 import { loadLock, saveLock, upsert } from "../src/lock.ts"
 import { candidateCount, generationCost, lockKey, parseLock, primaryOutput, type Lock } from "../src/types.ts"
 import { sha256 } from "../src/hash.ts"
+import { normalizeLockOutputPaths } from "../src/outputs.ts"
 
 // A 1x1 transparent PNG — enough to exist on disk and be hashed.
 const PNG = Buffer.from(
@@ -136,6 +137,53 @@ describe("plan", () => {
     expect(plan.items.find((i) => i.spec.assetId === "beta")!.state).toBe("missing")
   })
 
+  it("resolves a committed relative output from the manifest directory", async () => {
+    const loaded = await writeManifest()
+    const specs = await resolveSpecs(loaded)
+    const spec = specs.find((candidate) => candidate.assetId === "alpha")!
+    await mkdir(path.dirname(spec.outFile), { recursive: true })
+    await writeFile(spec.outFile, PNG)
+
+    const lock: Lock = { version: 2, entries: {} }
+    upsert(lock, lockKey(spec.styleId, spec.assetId), {
+      specHash: spec.specHash,
+      status: "downloaded",
+      outputs: [{ path: path.relative(spec.root, spec.outFile), sha256: sha256(PNG) }],
+    } as never)
+
+    const plan = await buildPlan(specs, lock)
+    expect(plan.items.find((item) => item.spec.assetId === "alpha")!.state).toBe("ok")
+  })
+
+  it("rebases an absolute v2 path when the project moves and the old checkout still exists", async () => {
+    const manifest = {
+      name: "t",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: { alpha: { prompt: "an anvil" } },
+    }
+    const oldRoot = path.join(dir, "old")
+    const newRoot = path.join(dir, "new")
+    await mkdir(oldRoot, { recursive: true })
+    await mkdir(newRoot, { recursive: true })
+    await writeFile(path.join(oldRoot, "m.json"), JSON.stringify(manifest))
+    await writeFile(path.join(newRoot, "m.json"), JSON.stringify(manifest))
+    const oldSpec = (await resolveSpecs(await loadManifest(path.join(oldRoot, "m.json"))))[0]!
+    const newSpec = (await resolveSpecs(await loadManifest(path.join(newRoot, "m.json"))))[0]!
+    await mkdir(path.dirname(oldSpec.outFile), { recursive: true })
+    await mkdir(path.dirname(newSpec.outFile), { recursive: true })
+    await writeFile(oldSpec.outFile, Buffer.from("old checkout changed independently"))
+    await writeFile(newSpec.outFile, PNG)
+
+    const lock: Lock = { version: 2, entries: {} }
+    upsert(lock, lockKey(newSpec.styleId, newSpec.assetId), {
+      specHash: newSpec.specHash,
+      status: "downloaded",
+      outputs: [{ path: oldSpec.outFile, sha256: sha256(PNG) }],
+    } as never)
+
+    expect((await buildPlan([newSpec], lock)).items[0]!.state).toBe("ok")
+  })
+
   it("detects a hand-edited file rather than silently overwriting it", async () => {
     const loaded = await writeManifest()
     const specs = await resolveSpecs(loaded)
@@ -185,6 +233,25 @@ describe("specHash", () => {
   it("is stable across runs for identical input", async () => {
     const a = await resolveSpecs(await writeManifest())
     const b = await resolveSpecs(await writeManifest())
+    expect(a[0]!.specHash).toBe(b[0]!.specHash)
+  })
+
+  it("is stable when the same project moves to another checkout", async () => {
+    const manifest = {
+      name: "t",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: { alpha: { prompt: "an anvil" } },
+    }
+    const first = path.join(dir, "first")
+    const second = path.join(dir, "second")
+    await mkdir(first, { recursive: true })
+    await mkdir(second, { recursive: true })
+    await writeFile(path.join(first, "m.json"), JSON.stringify(manifest))
+    await writeFile(path.join(second, "m.json"), JSON.stringify(manifest))
+
+    const a = await resolveSpecs(await loadManifest(path.join(first, "m.json")))
+    const b = await resolveSpecs(await loadManifest(path.join(second, "m.json")))
+    expect(a[0]!.root).not.toBe(b[0]!.root)
     expect(a[0]!.specHash).toBe(b[0]!.specHash)
   })
 
@@ -284,6 +351,42 @@ describe("lockfile", () => {
   it("returns an empty lock when the file does not exist", async () => {
     const lock = await loadLock(path.join(dir, "nope.json"))
     expect(lock.entries).toEqual({})
+  })
+
+  it("persists legacy absolute-path migration on the next save", async () => {
+    const loaded = await writeManifest()
+    const spec = (await resolveSpecs(loaded))[0]!
+    const p = path.join(dir, "portable-lock.json")
+    const initial: Lock = { version: 2, entries: {} }
+    upsert(initial, lockKey(spec.styleId, spec.assetId), {
+      styleId: spec.styleId,
+      assetId: spec.assetId,
+      specHash: spec.specHash,
+      generator: spec.generator,
+      prompt: spec.prompt,
+      width: spec.width,
+      height: spec.height,
+      jobId: "job",
+      reviewObjectId: null,
+      objectId: "object",
+      candidateIndex: null,
+      status: "downloaded",
+      error: null,
+      sourceUrl: null,
+      outputs: [{ path: "/old-checkout/out/tools/alpha.png", sha256: "a" }],
+      submittedAt: null,
+      downloadedAt: null,
+      cost: 1,
+      provider: "pixellab",
+    } as never)
+    await saveLock(p, initial)
+
+    const migrated = await loadLock(p)
+    expect(normalizeLockOutputPaths(migrated, [spec])).toBe(1)
+    await saveLock(p, migrated)
+
+    expect((await loadLock(p)).entries[lockKey(spec.styleId, spec.assetId)]!.outputs[0]!.path)
+      .toBe("out/tools/alpha.png")
   })
 
   it("rejects a malformed lockfile instead of silently starting over", async () => {

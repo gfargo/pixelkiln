@@ -177,6 +177,14 @@ Version 2. Each entry records `outputs[]` — a path, a hash, and an optional
 expand into many artifacts, which an animated character needs (~35 spritesheets
 plus an engine resource plus a portrait).
 
+Output paths are stored relative to the manifest, with `/` separators, so the
+committed manifest, lockfile, and art remain valid when a checkout moves or is
+cloned on another machine. Existing v2 locks containing absolute paths remain
+readable; selected entries are rebased in memory and rewritten portably the next
+time a command saves the lock. The current manifest remains the destination
+authority, so an edited or stale lock path cannot redirect restore into an
+unrelated project file.
+
 Provider-specific structural metadata is retained under `providerMetadata`,
 namespaced by provider id. PixelLab connectable sets preserve the response's
 tile kind and complete `tile_rules` object there; those rules are what let an

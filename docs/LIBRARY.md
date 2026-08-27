@@ -129,6 +129,11 @@ balance readings and keep that observed delta distinct from the estimate.
   the package contract.
 - Manifest-relative outputs resolve from `loaded.root`, not the process's
   current working directory.
+- New lock outputs are portable manifest-relative paths. `resolveOutputPath`
+  resolves one for file I/O; `normalizeLockOutputPaths` rebases absolute paths
+  from earlier v2 locks and marks them for persistence on the next `saveLock`.
+  Spec-aware operations derive the current destination from the manifest, so a
+  stale lock path cannot redirect a restore.
 - Lock keys use `styleId/assetId`. Structural members use stable output roles
   such as `assetId/tile-03` in audits and atlases.
 - The lockfile is a paid-work record. Use its exported load/save/upsert helpers
