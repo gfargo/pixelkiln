@@ -20,6 +20,7 @@ import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import { loadClaims, findOrphans, groupOrphansByStyle, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
 import { auditStyle, evaluateAudit, hex } from "./pipeline/audit.ts"
+import { inspectCaches } from "./pipeline/cache-health.ts"
 import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
@@ -54,6 +55,7 @@ interface Args {
   format?: TilesetFormat
   outputRoles: string[]
   primaryOnly: boolean
+  prune: boolean
   maxDistance?: number
   minTransparency?: number
   maxColors?: number
@@ -66,12 +68,12 @@ const VALUE_FLAGS = [
   "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only",
+  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
 ] as const
 
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
-  "salvage", "purge", "audit", "pack", "mount", "export", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+  "salvage", "purge", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 /**
@@ -214,6 +216,7 @@ export function parseArgs(argv: string[]): Args {
     format: rawFormat as TilesetFormat | undefined,
     outputRoles: list("--output-role"),
     primaryOnly: rest.includes("--primary-only"),
+    prune: rest.includes("--prune"),
     maxDistance: numberOption("--max-distance", { min: 0 }),
     minTransparency: numberOption("--min-transparency", { min: 0, max: 1 }),
     maxColors: numberOption("--max-colors", { min: 1, integer: true }),
@@ -240,6 +243,7 @@ Commands
   salvage   Triage account objects no lockfile claims. Recovers usable art.
             One session per matching style unless --style forces a single one.
   audit     Measure how consistently a style's assets hold together. Offline.
+  cache     Inspect local recovery/object-hash caches; optionally verify or prune.
   pack      Composite a style's sprites into one sheet + JSON atlas. Offline.
   mount     Write a style's sprites into their declared cells of an existing
             sheet, leaving every other pixel untouched. Offline.
@@ -260,6 +264,7 @@ Options
   --min-transparency <0..1>  audit: minimum transparent canvas share
   --max-colors <n>    audit: maximum distinct opaque colors
   --sigma <n>         audit: relative outlier cutoff (default: 1.5)
+  --prune             cache: remove invalid/unreferenced local cache data
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
@@ -268,8 +273,8 @@ Options
   --force             Regenerate even if up to date
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
-  --json              Machine-readable output where supported, including plan/audit/doctor
-  --check             plan/audit: exit nonzero when the selected state is unsafe
+  --json              Machine-readable output where supported, including plan/audit/doctor/cache
+  --check             plan/audit/cache: exit nonzero when the selected state is unsafe
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser during pick
   --tag               Also push tags upstream after fetch
@@ -385,6 +390,55 @@ async function main() {
     log(`\n  Prompts are intentionally empty. To recover the real ones from your`)
     log(`  PixelLab account instead of inventing them:`)
     log(`\n    pixelkiln adopt --manifest ${path.relative(process.cwd(), target)} --write-prompts\n`)
+    return
+  }
+
+  if (args.command === "cache") {
+    const lock = await loadLock(args.lock)
+    const report = await inspectCaches(lock, args.lock, { prune: args.prune })
+    if (args.json) {
+      log(JSON.stringify(report, null, 2))
+    } else {
+      const size = report.content.bytes < 1024
+        ? `${report.content.bytes} B`
+        : `${(report.content.bytes / 1024).toFixed(1)} KB`
+      log(`  content cache: ${report.content.path}`)
+      log(
+        report.content.exists
+          ? `    ${report.content.valid} valid PNG(s), ${report.content.referenced} referenced, ` +
+            `${report.content.unreferenced.length} unreferenced — ${size}`
+          : "    not created yet",
+      )
+      if (report.content.missingReferenced.length) {
+        log(`    ${report.content.missingReferenced.length} lockfile hash(es) are not locally cached`)
+      }
+      for (const issue of report.content.invalid.slice(0, 10)) {
+        log(`    invalid ${issue.name}: ${issue.reason}`)
+      }
+      if (report.content.invalid.length > 10) {
+        log(`    … and ${report.content.invalid.length - 10} more invalid entr(ies)`)
+      }
+
+      log(`  remote object-hash cache: ${report.remoteHashes.path}`)
+      if (!report.remoteHashes.exists) log("    not created yet")
+      else if (report.remoteHashes.error) {
+        log(`    invalid cache: ${report.remoteHashes.error.split("\n")[0]}`)
+      } else {
+        log(
+          `    ${report.remoteHashes.valid} valid entr(ies), ` +
+            `${report.remoteHashes.invalidIds.length} invalid`,
+        )
+      }
+      if (args.prune) {
+        log(
+          `  pruned ${report.removed.contentFiles} content file(s), ` +
+            `${report.removed.remoteHashEntries} invalid remote hash entr(ies)` +
+            (report.removed.resetRemoteHashCache ? "; rebuilt malformed remote cache" : ""),
+        )
+      }
+      log(`  ${report.safe ? "cache integrity is healthy" : "cache integrity needs attention"}`)
+    }
+    if (args.check && !report.safe) process.exitCode = 1
     return
   }
 

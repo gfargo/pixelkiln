@@ -1,14 +1,25 @@
-import { readFile, writeFile, rename } from "node:fs/promises"
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
+import pathModule from "node:path"
 import { z } from "zod"
 
-const CacheSchema = z.object({
+export const HashCacheSchema = z.object({
   version: z.literal(1),
   /** objectId → sha256 of that object's image bytes. */
   hashes: z.record(z.string()),
 })
 
-export type HashCache = z.infer<typeof CacheSchema>
+export type HashCache = z.infer<typeof HashCacheSchema>
+const SHA256_HEX = /^[a-f0-9]{64}$/
+
+export function isSha256Hash(value: string): boolean {
+  return SHA256_HEX.test(value)
+}
+
+/** Strict parser for diagnostics; ordinary cache loading remains self-healing. */
+export function parseCache(value: unknown): HashCache {
+  return HashCacheSchema.parse(value)
+}
 
 /**
  * Remembers the hash of every remote object already downloaded.
@@ -25,8 +36,16 @@ export type HashCache = z.infer<typeof CacheSchema>
 export async function loadCache(path: string): Promise<HashCache> {
   if (!existsSync(path)) return { version: 1, hashes: {} }
   try {
-    const parsed = CacheSchema.safeParse(JSON.parse(await readFile(path, "utf8")))
-    return parsed.success ? parsed.data : { version: 1, hashes: {} }
+    const parsed = HashCacheSchema.safeParse(JSON.parse(await readFile(path, "utf8")))
+    if (!parsed.success) return { version: 1, hashes: {} }
+    // Never trust malformed derived data during adoption. Dropping one cache
+    // entry costs one download; trusting it can hide a real provenance match.
+    return {
+      version: 1,
+      hashes: Object.fromEntries(
+        Object.entries(parsed.data.hashes).filter(([, hash]) => isSha256Hash(hash)),
+      ),
+    }
   } catch {
     // A corrupt cache is not worth failing a run over — rebuild it.
     return { version: 1, hashes: {} }
@@ -35,10 +54,19 @@ export async function loadCache(path: string): Promise<HashCache> {
 
 export async function saveCache(path: string, cache: HashCache): Promise<void> {
   const sorted: Record<string, string> = {}
-  for (const key of Object.keys(cache.hashes).sort()) sorted[key] = cache.hashes[key]!
-  const tmp = `${path}.tmp`
-  await writeFile(tmp, JSON.stringify({ version: 1, hashes: sorted }, null, 2) + "\n")
-  await rename(tmp, path)
+  for (const key of Object.keys(cache.hashes).sort()) {
+    const hash = cache.hashes[key]!
+    if (!isSha256Hash(hash)) throw new Error(`Refusing to cache invalid SHA-256 for ${key}`)
+    sorted[key] = hash
+  }
+  await mkdir(pathModule.dirname(pathModule.resolve(path)), { recursive: true })
+  const tmp = `${path}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
+  try {
+    await writeFile(tmp, JSON.stringify({ version: 1, hashes: sorted }, null, 2) + "\n")
+    await rename(tmp, path)
+  } finally {
+    await rm(tmp, { force: true })
+  }
 }
 
 /** Drop entries for objects that no longer exist, so the file cannot grow forever. */
