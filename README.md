@@ -26,14 +26,42 @@ the failure this tool is built around:
 
 ## Install
 
+The first npm publication is tracked in [issue #1](https://github.com/gfargo/pixelkiln/issues/1).
+Until that release is live, run pixelkiln from a repository checkout:
+
 ```bash
-npm install
-node bin/pixelkiln.js --help
+npm ci
+npm run pixelkiln -- help
 npm test
 ```
 
-Requires Node 20+ and `PIXELLAB_API_KEY` in the environment. See
-[`examples/minimal`](./examples/minimal) for a three-asset starter manifest.
+The checkout command uses the TypeScript source directly. `npm run build`
+creates the distributable `dist/` files used by `node bin/pixelkiln.js` and the
+published package. Requires Node 20+.
+
+## Five-minute start
+
+1. Copy [`examples/minimal/pixelkiln.manifest.json`](./examples/minimal/pixelkiln.manifest.json)
+   into a project as `pixelkiln.manifest.json` and adjust its prompts/output
+   directory.
+2. Put `PIXELLAB_API_KEY=...` in `.env.local` beside the manifest and add that
+   file to the project's `.gitignore`.
+3. Preview the exact work and cost, then generate with the same budget as a
+   hard ceiling:
+
+```bash
+npm run pixelkiln -- plan
+npm run pixelkiln -- doctor
+npm run pixelkiln -- gen --budget 120
+```
+
+`gen` submits work, waits, opens the local candidate-review sheet, downloads
+your choices, and updates `pixelkiln.lock.json`. Commit the manifest, lockfile,
+and generated art; do not commit `.env.local` or `.pixelkiln/`.
+
+For an existing art tree, start with `pixelkiln init --from <dir>` instead.
+The complete first-project and recovery flows are in
+[`docs/GETTING_STARTED.md`](./docs/GETTING_STARTED.md).
 
 ## Project state
 
@@ -624,6 +652,10 @@ const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
 console.log(plan.cost, "generations")
 ```
 
+The package also exports provider contracts, audit gates, sprite packing,
+mounting, and tileset exporters. See [`docs/LIBRARY.md`](./docs/LIBRARY.md) for
+the public entry points and composable workflow examples.
+
 ## Not covered
 
 Animated 8-direction **characters** are out of scope. PixelLab models those as a
@@ -825,6 +857,8 @@ otherwise get whichever came first with no signal the other was dropped.
 
 | | |
 |---|---|
+| [docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, the everyday workflow, CI checks, recovery, and what to commit. |
+| [docs/LIBRARY.md](./docs/LIBRARY.md) | Public TypeScript API, provider-independent planning, quality checks, packing, and tileset export. |
 | [docs/ENDPOINTS.md](./docs/ENDPOINTS.md) | Measured reference for the whole PixelLab API — costs, payload shapes, which parameters are actually wired up, and recipes. Every figure came from a live account, not from docs. |
 | [docs/TILES.md](./docs/TILES.md) | Structural tile outputs, preserved adjacency rules, and the generic, Tiled, and Godot export contracts. |
 | [PROVIDERS.md](./PROVIDERS.md) | The provider seam: what a backend must implement, which capabilities are optional and why. |

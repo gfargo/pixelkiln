@@ -189,6 +189,20 @@ describe("contact sheet", () => {
     expect(html).toContain("https://example.test/0.png")
   })
 
+  it("supports keyboard review beyond the first nine candidates", () => {
+    const html = renderSheet([{ ...group, frameUrls: Array.from({ length: 16 }, (_, i) => `u${i}`) }])
+    expect(html).toContain("e.key === 'ArrowRight'")
+    expect(html).toContain("e.key === 'Enter'")
+    expect(html).toContain("activate(active + 1, frames)")
+    expect(html).toContain("Choose candidate ' + (i + 1)")
+  })
+
+  it("builds candidate image URLs through DOM properties instead of HTML interpolation", () => {
+    const html = renderSheet([group])
+    expect(html).toContain("preview.src = url")
+    expect(html).not.toContain("'<img src=\"' + url")
+  })
+
   // The prompt is arbitrary author text and reaches both innerHTML and a <script>.
   it("escapes HTML in prompts", () => {
     const html = renderSheet([{ ...group, prompt: '<img src=x onerror="alert(1)">' }])
