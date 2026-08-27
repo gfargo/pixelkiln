@@ -3,7 +3,7 @@ import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { packSprites, packStyle, resolvePackInputs } from "../src/pipeline/pack.ts"
-import { decodePng, encodeRgbaPng } from "../src/png.ts"
+import { decodePng, encodeRgbPng, encodeRgbaPng } from "../src/png.ts"
 import type { Lock } from "../src/types.ts"
 
 /** A solid square of one colour, fully opaque, with a transparent right half. */
@@ -71,6 +71,25 @@ describe("packStyle", () => {
       }
       expect(at(0, 0)).toEqual([200, 100, 50, 255])
       expect(at(7, 0)![3]).toBe(0)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("normalizes a valid RGB source into the RGBA sheet", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pk-pack-"))
+    try {
+      await writeFile(
+        path.join(dir, "rgb.png"),
+        encodeRgbPng(2, 1, Buffer.from([10, 20, 30, 40, 50, 60])),
+      )
+
+      const { png, skipped } = packStyle(lockWith(["rgb"]), "s", dir)
+      expect(skipped).toEqual([])
+      expect([...decodePng(png).pixels]).toEqual([
+        10, 20, 30, 255,
+        40, 50, 60, 255,
+      ])
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

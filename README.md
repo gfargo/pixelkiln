@@ -329,6 +329,8 @@ project-specific limits. Missing or unreadable outputs are always unsafe, and
 `--check` exits nonzero when any selected style is unsafe. Structural output
 sets are measured member-by-member with stable ids such as
 `terrain/tile-03`, so a bad tile cannot hide behind the set's average.
+Audits accept non-interlaced greyscale, indexed, RGB, greyscale-alpha, and RGBA
+PNGs at their standard bit depths; each is normalized to RGBA before measuring.
 
 ### Making a variant set
 
@@ -724,9 +726,11 @@ Four decisions worth knowing:
   silently clip the odd one out. Smaller sprites sit at the cell's top-left
   with their real size recorded, so a consumer that ignores the atlas and
   slices on the grid still gets a correct, if padded, sprite.
-- **RGBA, always.** `encodeRgbPng` (used for the palette swatch) drops alpha;
-  flattening a sheet would fill every transparent background with black and
-  make it unusable over anything but that colour.
+- **Common PNG inputs, RGBA output.** Greyscale, indexed, RGB,
+  greyscale-alpha, and RGBA inputs are normalized without flattening. The sheet
+  is always RGBA because dropping alpha would fill every transparent background
+  with black and make it unusable over anything but that colour. Interlaced or
+  corrupt inputs are reported in the skipped list.
 
 A missing or unreadable file is reported and skipped rather than aborting the
 sheet — one bad asset should not cost you the other seventy-three.
