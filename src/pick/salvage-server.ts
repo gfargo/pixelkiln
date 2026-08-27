@@ -3,6 +3,7 @@ import path from "node:path"
 import type { Provider } from "../provider.ts"
 import { sha256 } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
+import { portableOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type Manifest } from "../types.ts"
 import {
   applyTags,
@@ -110,7 +111,10 @@ export async function runSalvage(
               status: "downloaded",
               error: null,
               sourceUrl: orphan.previewUrl,
-              outputs: [{ path: outFile, sha256: sha256(buf) }],
+              outputs: [{
+                path: portableOutputPath(outFile, path.dirname(ctx.manifestPath)),
+                sha256: sha256(buf),
+              }],
               submittedAt: orphan.createdAt,
               downloadedAt: new Date().toISOString(),
               cost: 0, // already paid for, in an earlier period

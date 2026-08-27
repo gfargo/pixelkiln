@@ -5,6 +5,7 @@ import type { LoadedManifest } from "../manifest.ts"
 import type { Provider } from "../provider.ts"
 import type { Lock, ResolvedSpec } from "../types.ts"
 import { sha256File } from "../hash.ts"
+import { currentEntryOutputPath, resolveOutputPath } from "../outputs.ts"
 import { buildPlan, summarize } from "./plan.ts"
 
 export type DoctorLevel = "ok" | "warning" | "error"
@@ -70,11 +71,17 @@ export async function doctor(
 
   const outputOwners = new Map<string, string>()
   const duplicateOutputs: string[] = []
+  const specByKey = new Map(specs.map((spec) => [`${spec.styleId}/${spec.assetId}`, spec]))
   for (const [key, entry] of Object.entries(lock.entries)) {
-    for (const output of entry.outputs) {
-      const owner = outputOwners.get(output.path)
+    for (let index = 0; index < entry.outputs.length; index++) {
+      const output = entry.outputs[index]!
+      const spec = specByKey.get(key)
+      const absolute = spec
+        ? currentEntryOutputPath(entry, spec, index)
+        : resolveOutputPath(output.path, path.dirname(lockPath))
+      const owner = outputOwners.get(absolute)
       if (owner && owner !== key) duplicateOutputs.push(`${output.path} (${owner}, ${key})`)
-      outputOwners.set(output.path, key)
+      outputOwners.set(absolute, key)
     }
   }
   if (duplicateOutputs.length) {

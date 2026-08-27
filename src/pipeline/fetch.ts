@@ -4,6 +4,12 @@ import path from "node:path"
 import type { Provider } from "../provider.ts"
 import { sha256, sha256File } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
+import {
+  expectedOutputPath,
+  normalizeLockOutputPaths,
+  portableOutputPath,
+  resolveOutputPath,
+} from "../outputs.ts"
 import { lockKey, type Lock, type LockOutput, type ResolvedSpec } from "../types.ts"
 
 /** PNG magic number — guards against writing an error page as a .png. */
@@ -38,6 +44,7 @@ export async function fetchAssets(
   const log = opts.onProgress ?? (() => {})
   const result: FetchResult = { downloaded: 0, skipped: 0, failed: 0 }
   const specByKey = new Map(specs.map((s) => [lockKey(s.styleId, s.assetId), s]))
+  normalizeLockOutputPaths(lock, specs)
   const cacheDir =
     opts.cacheDir === false
       ? null
@@ -46,10 +53,12 @@ export async function fetchAssets(
   // Downloads are independent and IO-bound, so they run concurrently. The
   // lockfile is still written after each one, keeping an interrupted run
   // recoverable.
-  const pending = Object.entries(lock.entries).filter(([, e]) => {
+  const pending = Object.entries(lock.entries).filter(([key, e]) => {
     if (e.status === "selected" || e.status === "download-failed") return true
     if (!opts.repair || e.status !== "downloaded") return false
-    return e.outputs.length === 0 || e.outputs.some((o) => !existsSync(o.path))
+    const spec = specByKey.get(key)
+    return e.outputs.length === 0 || !spec ||
+      e.outputs.some((output) => !existsSync(resolveOutputPath(output.path, spec.root)))
   })
   const concurrency = Math.min(Math.max(1, opts.concurrency ?? 8), Math.max(1, pending.length))
   let cursor = 0
@@ -95,7 +104,9 @@ export async function fetchAssets(
           const recorded = entry.outputs.find((o) =>
             source.role ? o.role === source.role : !o.role && sources.length === 1,
           )
-          const target = recorded?.path ?? outputPath(spec, source.role, index, sources.length)
+          const target = recorded
+            ? resolveOutputPath(recorded.path, spec.root)
+            : expectedOutputPath(spec, source.role, index, sources.length)
 
           if (existsSync(target)) {
             if (!recorded) {
@@ -105,7 +116,7 @@ export async function fetchAssets(
               throw new Error(`refusing to overwrite modified output ${target}`)
             }
             if (cacheDir) await cachePng(cacheDir, await readFile(target), recorded.sha256)
-            outputs.push(recorded)
+            outputs.push({ ...recorded, path: portableOutputPath(target, spec.root) })
             continue
           }
 
@@ -125,7 +136,11 @@ export async function fetchAssets(
           await mkdir(path.dirname(target), { recursive: true })
           const tmp = `${target}.pixelkiln.tmp`
           await writeFile(tmp, buf)
-          outputs.push({ path: target, sha256: sha256(buf), ...(source.role ? { role: source.role } : {}) })
+          outputs.push({
+            path: portableOutputPath(target, spec.root),
+            sha256: sha256(buf),
+            ...(source.role ? { role: source.role } : {}),
+          })
           // Record the intended rename before performing it. If the process
           // dies in either half of this two-step commit, the next repair sees
           // a missing recorded output and safely downloads it again; it never
@@ -190,17 +205,6 @@ async function cachePng(cacheDir: string, buf: Buffer, knownHash?: string): Prom
   } finally {
     await rm(tmp, { force: true })
   }
-}
-
-/** A set declared as `terrain.png` becomes `terrain-tile-00.png`, etc. */
-function outputPath(spec: ResolvedSpec, role: string | undefined, index: number, total: number): string {
-  if (total === 1) return spec.outFile
-  const originalExt = path.extname(spec.outFile)
-  const ext = originalExt || ".png"
-  const stem = originalExt ? spec.outFile.slice(0, -originalExt.length) : spec.outFile
-  const safeRole = (role ?? `output-${String(index).padStart(2, "0")}`)
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
-  return `${stem}-${safeRole}${ext}`
 }
 
 function mergeOutputs(previous: LockOutput[], current: LockOutput[]): LockOutput[] {

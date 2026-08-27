@@ -224,6 +224,7 @@ export async function resolveSpecs(
 
       const resolved: ResolvedSpec = {
         ...base,
+        root,
         outFile,
         tags,
         specHash: specHash(base, styleImageHashes),

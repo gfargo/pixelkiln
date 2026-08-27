@@ -5,6 +5,7 @@ import { requireList, validateCostEstimate, type Provider, type RemoteAsset } fr
 import { sha256 } from "../hash.ts"
 import { loadCache, saveCache, pruneCache, cachePathFor, type HashCache } from "../cache.ts"
 import { saveLock, upsert } from "../lock.ts"
+import { portableOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
 
 export interface AdoptResult {
@@ -113,7 +114,7 @@ export async function adopt(
           status: "downloaded",
           error: null,
           sourceUrl: url,
-          outputs: [{ path: spec.outFile, sha256: hash }],
+          outputs: [{ path: portableOutputPath(spec.outFile, spec.root), sha256: hash }],
           submittedAt: obj.createdAt,
           downloadedAt: new Date().toISOString(),
           cost: 0, // already paid for, in a previous billing period

@@ -1,5 +1,5 @@
 import type { LockEntry, ResolvedSpec } from "../types.ts"
-import { fallbackOutputRole, resolveEntryOutputs } from "../outputs.ts"
+import { fallbackOutputRole, resolveSpecEntryOutputs } from "../outputs.ts"
 import { packSprites, type PackedFrame } from "./pack.ts"
 
 export type TilesetFormat = "generic" | "tiled" | "godot"
@@ -99,7 +99,7 @@ export function exportTileset(
   spec: ResolvedSpec,
   options: TilesetExportOptions,
 ): TilesetExport {
-  const outputs = resolveEntryOutputs(entry, spec.assetId, options.manifestDir)
+  const outputs = resolveSpecEntryOutputs(entry, spec)
   if (!outputs.length) throw new Error(`${spec.styleId}/${spec.assetId} has no downloaded outputs`)
 
   const packed = packSprites(

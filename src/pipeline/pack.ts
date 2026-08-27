@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { Lock } from "../types.ts"
-import { resolveEntryOutputs, selectEntryOutput } from "../outputs.ts"
+import { resolveEntryOutputs, resolveOutputPath, selectEntryOutput } from "../outputs.ts"
 
 export interface PackedFrame {
   /** Asset id, so a consumer can look a sprite up by name rather than index. */
@@ -409,7 +409,7 @@ export function mountStyle(
       skipped.push({ id, reason: selection.reason })
       continue
     }
-    placements.push({ id, path: path.resolve(manifestDir, selection.output.path), cell })
+    placements.push({ id, path: resolveOutputPath(selection.output.path, manifestDir), cell })
   }
 
   if (!placements.length) {

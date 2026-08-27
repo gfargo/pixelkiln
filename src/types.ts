@@ -494,6 +494,8 @@ export function lockKey(styleId: string, assetId: string): string {
 
 /** A manifest entry resolved against its style — everything needed to generate. */
 export interface ResolvedSpec {
+  /** Absolute directory containing the manifest; excluded from the spec hash. */
+  root: string
   styleId: string
   assetId: string
   generator: Generator
