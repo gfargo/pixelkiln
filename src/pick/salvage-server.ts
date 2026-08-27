@@ -114,6 +114,7 @@ export async function runSalvage(
               submittedAt: orphan.createdAt,
               downloadedAt: new Date().toISOString(),
               cost: 0, // already paid for, in an earlier period
+              costUnit: "generations",
               provider: provider.id,
             })
             importedAssetIds.push(assetId)

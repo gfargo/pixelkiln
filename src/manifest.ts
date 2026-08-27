@@ -14,6 +14,7 @@ import {
   type ResolvedStyleImage,
 } from "./types.ts"
 import { sha256, specHash } from "./hash.ts"
+import { validateCostEstimate, type Provider } from "./provider.ts"
 
 export interface LoadedManifest {
   manifest: Manifest
@@ -56,7 +57,12 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
  */
 export async function resolveSpecs(
   loaded: LoadedManifest,
-  filter?: { styles?: string[]; assets?: string[] },
+  filter?: {
+    styles?: string[]
+    assets?: string[]
+    /** Optional provider makes offline plan cost/candidate estimates adapter-owned. */
+    provider?: Pick<Provider, "supports" | "estimate" | "id">
+  },
 ): Promise<ResolvedSpec[]> {
   const { manifest, root } = loaded
   const specs: ResolvedSpec[] = []
@@ -118,6 +124,9 @@ export async function resolveSpecs(
       if (asset.styles.length && !asset.styles.includes(styleId)) continue
 
       const generator = style.generator
+      if (filter?.provider && !filter.provider.supports(generator)) {
+        throw new Error(`Provider "${filter.provider.id}" does not support generator "${generator}"`)
+      }
       let width: number
       let height: number
       let size: number
@@ -189,6 +198,7 @@ export async function resolveSpecs(
           generator === "tiles"
             ? tilesCost(tileSize, tileVariations)
             : generationCost(width, height, generator),
+        costUnit: "generations" as const,
         candidates:
           generator === "tiles"
             ? tileVariations
@@ -212,12 +222,19 @@ export async function resolveSpecs(
         )
       }
 
-      specs.push({
+      const resolved: ResolvedSpec = {
         ...base,
         outFile,
         tags,
         specHash: specHash(base, styleImageHashes),
-      })
+      }
+      if (filter?.provider) {
+        const estimate = validateCostEstimate(filter.provider.id, filter.provider.estimate(resolved))
+        resolved.cost = estimate.amount
+        resolved.costUnit = estimate.unit
+        resolved.candidates = estimate.candidates
+      }
+      specs.push(resolved)
     }
   }
 

@@ -10,7 +10,8 @@ import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { fetchAssets, pushTags } from "../src/pipeline/fetch.ts"
 import { adopt } from "../src/pipeline/adopt.ts"
-import { loadLock, saveLock } from "../src/lock.ts"
+import { loadLock, saveLock, spendByUnit } from "../src/lock.ts"
+import { measureBalanceChange } from "../src/provider.ts"
 import { sha256 } from "../src/hash.ts"
 import { lockKey, primaryOutput, type Generator, type Lock } from "../src/types.ts"
 
@@ -107,6 +108,44 @@ describe("submit", () => {
       submit(provider, loaded, plan.actionable, lock, lockPath, { budget: 50, spacingMs: 0 }),
     ).rejects.toThrow(/budget/i)
     expect(provider.submissions).toHaveLength(0)
+  })
+
+  it("uses the provider estimate and preserves fractional USD without mixing units", async () => {
+    const provider = new FakeProvider({ costUnit: "usd", startingBalance: 10 })
+    provider.estimate = (spec) => ({ unit: "usd", amount: 0.25, candidates: spec.candidates })
+    const { loaded } = await project()
+    const specs = await resolveSpecs(loaded, { provider })
+    const lock = emptyLock()
+    const before = await provider.balance()
+    const plan = await buildPlan(specs, lock)
+    expect(plan).toMatchObject({ cost: 0.5, costUnit: "usd" })
+    const res = await submit(
+      provider,
+      loaded,
+      plan.actionable,
+      lock,
+      lockPath,
+      { budget: 0.5, spacingMs: 0 },
+    )
+    const after = await provider.balance()
+
+    expect(res).toMatchObject({ submitted: 2, failed: 0, spent: 0.5, unit: "usd" })
+    expect(Object.values(lock.entries).map((entry) => [entry.cost, entry.costUnit]))
+      .toEqual([[0.25, "usd"], [0.25, "usd"]])
+    expect(spendByUnit(lock)).toEqual({ generations: 0, usd: 0.5, free: 0 })
+    expect(measureBalanceChange(before, after)).toMatchObject({
+      unit: "usd",
+      spent: 0.5,
+      credited: 0,
+    })
+    expect(measureBalanceChange(before, { ...after, unit: "generations" })).toBeNull()
+  })
+
+  it("rejects malformed provider estimates before they can weaken a budget", async () => {
+    const provider = new FakeProvider()
+    provider.estimate = () => ({ unit: "generations", amount: Number.NaN, candidates: 4 })
+    const { loaded } = await project()
+    await expect(resolveSpecs(loaded, { provider })).rejects.toThrow(/invalid cost amount/)
   })
 
   it("marks an entry failed without billing it when the request is rejected", async () => {

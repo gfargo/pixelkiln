@@ -1,4 +1,10 @@
-import { DEFAULT_RATE_LIMIT, type Provider } from "../provider.ts"
+import {
+  DEFAULT_RATE_LIMIT,
+  formatCost,
+  validateCostEstimate,
+  type CostUnit,
+  type Provider,
+} from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
 import type { Lock, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
@@ -38,7 +44,9 @@ export interface SubmitOptions {
 export interface SubmitResult {
   submitted: number
   failed: number
+  /** Successful-submission estimates in `unit`. */
   spent: number
+  unit: CostUnit
 }
 
 export async function submit(
@@ -56,11 +64,22 @@ export async function submit(
   const slotTimeoutMs = opts.slotTimeoutMs ?? 15 * 60 * 1000
   const log = opts.onProgress ?? (() => {})
 
+  const estimates = new Map(items.map((item) => [
+    item.key,
+    validateCostEstimate(provider.id, provider.estimate(item.spec)),
+  ]))
+  const units = new Set([...estimates.values()].map((estimate) => estimate.unit))
+  if (units.size > 1) {
+    throw new Error(`Provider "${provider.id}" returned mixed cost units for one submission batch`)
+  }
+  const unit = units.values().next().value ?? "free"
+
   if (opts.budget != null) {
-    const cost = items.reduce((s, i) => s + i.spec.cost, 0)
+    const cost = [...estimates.values()].reduce((sum, estimate) => sum + estimate.amount, 0)
     if (cost > opts.budget) {
       throw new Error(
-        `This run would spend ${cost} generations but the budget is ${opts.budget}. ` +
+        `This run would spend ${formatCost(unit, cost)} but the budget is ` +
+          `${formatCost(unit, opts.budget)}. ` +
           `Narrow it with --only/--style, or raise --budget.`,
       )
     }
@@ -109,6 +128,7 @@ export async function submit(
   }
 
   for (const { spec, key } of items) {
+    const estimate = estimates.get(key)!
     await waitForSlot()
 
     const since = Date.now() - lastSubmitAt
@@ -135,7 +155,8 @@ export async function submit(
       sourceUrl: null,
       sourceUrls: [],
       submittedAt: new Date().toISOString(),
-      cost: spec.cost,
+      cost: estimate.amount,
+      costUnit: estimate.unit,
       downloadedAt: null,
     })
     await saveLock(lockPath, lock)
@@ -151,19 +172,19 @@ export async function submit(
         jobId,
         // A multi-candidate generator routes through review; record the parent
         // so `pick` knows where to look.
-        reviewObjectId: spec.candidates > 1 && !spec.tileFeature ? jobId : null,
+        reviewObjectId: estimate.candidates > 1 && !spec.tileFeature ? jobId : null,
         status: "processing",
         provider: provider.id,
       })
       inFlight.set(jobId, spec)
       submitted++
-      spent += spec.cost
+      spent += estimate.amount
       log(
         `  ${key} → ${jobId}  (${spec.width}x${spec.height}` +
-          (spec.candidates > 1
-            ? `, ${spec.candidates} ${spec.tileFeature ? "outputs" : "candidates"}`
+          (estimate.candidates > 1
+            ? `, ${estimate.candidates} ${spec.tileFeature ? "outputs" : "candidates"}`
             : "") +
-          `, ${spec.cost})`,
+          `, ${estimate.amount})`,
       )
     } catch (err) {
       failed++
@@ -175,5 +196,5 @@ export async function submit(
     await saveLock(lockPath, lock)
   }
 
-  return { submitted, failed, spent }
+  return { submitted, failed, spent, unit }
 }

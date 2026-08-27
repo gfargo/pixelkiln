@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import { sha256File } from "../hash.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
+import type { CostUnit } from "../provider.ts"
 
 export type PlanState =
   | "ok" // spec unchanged, file present and matching — nothing to do
@@ -34,9 +35,10 @@ export interface PlanItem {
 
 export interface Plan {
   items: PlanItem[]
-  /** Items that would cost generations if the plan were executed. */
+  /** Items that would incur provider cost if the plan were executed. */
   actionable: PlanItem[]
   cost: number
+  costUnit: CostUnit
   candidates: number
 }
 
@@ -111,11 +113,14 @@ export async function buildPlan(
   // "orphaned" entries may be re-downloadable from a persisted object without
   // paying again; only genuinely new work is counted toward cost.
   const actionable = items.filter((i) => i.state === "missing" || i.state === "stale" || i.state === "failed")
+  const units = new Set(actionable.map((item) => item.spec.costUnit ?? "generations"))
+  if (units.size > 1) throw new Error("A single plan cannot combine incompatible provider cost units")
 
   return {
     items,
     actionable,
     cost: actionable.reduce((sum, i) => sum + i.spec.cost, 0),
+    costUnit: actionable[0]?.spec.costUnit ?? specs[0]?.costUnit ?? (specs.length ? "generations" : "free"),
     candidates: actionable.reduce((sum, i) => sum + i.spec.candidates, 0),
   }
 }

@@ -444,6 +444,17 @@ describe("lockfile schema", () => {
     const lock = parseLock({ version: 2, entries: { "base/anvil": { ...entry, outputs: [] } } })
     expect(lock.entries["base/anvil"]!.provider).toBe("pixellab")
     expect(lock.entries["base/anvil"]!.providerMetadata).toEqual({})
+    expect(lock.entries["base/anvil"]!.costUnit).toBe("generations")
+  })
+
+  it("preserves fractional provider costs and their unit", () => {
+    const lock = parseLock({
+      version: 2,
+      entries: {
+        "base/anvil": { ...entry, outputs: [], cost: 0.125, costUnit: "usd" },
+      },
+    })
+    expect(lock.entries["base/anvil"]).toMatchObject({ cost: 0.125, costUnit: "usd" })
   })
 })
 
