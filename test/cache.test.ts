@@ -6,6 +6,7 @@ import { loadCache, saveCache, pruneCache, cachePathFor } from "../src/cache.ts"
 import { sha256 } from "../src/hash.ts"
 import { inspectCaches } from "../src/pipeline/cache-health.ts"
 import type { Lock } from "../src/types.ts"
+import { encodeRgbaPng } from "../src/png.ts"
 
 let dir: string
 beforeEach(async () => {
@@ -95,7 +96,7 @@ describe("pruneCache", () => {
 
 describe("inspectCaches", () => {
   const png = (suffix: string) => Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    encodeRgbaPng(1, 1, Buffer.from([1, 2, 3, 255])),
     Buffer.from(suffix),
   ])
   const lockWithHash = (hash: string): Lock => ({
@@ -118,6 +119,22 @@ describe("inspectCaches", () => {
     expect(report.safe).toBe(true)
     expect(report.content).toMatchObject({ valid: 2, referenced: 1 })
     expect(report.content.unreferenced).toEqual([`${sha256(orphan)}.png`])
+  })
+
+  it("rejects a hash-consistent file whose PNG structure is corrupt", async () => {
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const cacheDir = path.join(dir, ".pixelkiln", "cache")
+    await mkdir(cacheDir, { recursive: true })
+    const corrupt = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from("truncated"),
+    ])
+    const hash = sha256(corrupt)
+    await writeFile(path.join(cacheDir, `${hash}.png`), corrupt)
+
+    const report = await inspectCaches(lockWithHash(hash), lockPath)
+    expect(report.safe).toBe(false)
+    expect(report.content.invalid[0]).toMatchObject({ reason: expect.stringMatching(/invalid PNG/) })
   })
 
   it("verifies and prunes invalid content and remote hash entries", async () => {

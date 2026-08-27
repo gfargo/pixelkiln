@@ -4,6 +4,7 @@ import type { Provider } from "../provider.ts"
 import { sha256 } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { portableOutputPath } from "../outputs.ts"
+import { decodePng } from "../png.ts"
 import { lockKey, type Lock, type Manifest } from "../types.ts"
 import {
   applyTags,
@@ -77,6 +78,7 @@ export async function runSalvage(
           try {
             const buf = await provider.download(orphan.previewUrl)
             if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error("not a PNG")
+            decodePng(buf)
 
             const assetId = idFromPrompt(orphan.prompt, taken)
             const rel = path.join("_salvaged", `${assetId}.png`)

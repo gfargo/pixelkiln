@@ -108,6 +108,8 @@ integrity gate and `cache --prune` to remove corrupt/partial content files,
 content no lock entry references, and malformed object-hash entries. The
 account-wide cache is only pruned for deleted remote object ids during
 `adopt`, after pixelkiln has seen the provider's complete live object list.
+Content validation checks the full PNG chunk structure, checksums, palettes,
+scanlines, and decompressed size—not only the filename hash or magic bytes.
 
 Because entries are keyed `<style>/<asset>`, **a style is a namespace**. Adding
 a second style re-derives the whole asset set into a separate output directory
@@ -307,7 +309,9 @@ have gone missing from disk. It never overwrites an output whose bytes differ
 from the recorded hash. Successful downloads are cached by SHA-256 under
 `.pixelkiln/cache/`, so `restore` still works after a temporary provider URL has
 expired or while API credentials are unavailable; the cache is local and
-ignored by Git. `submit`, `poll`, `fetch`, and `gen` exit nonzero on
+ignored by Git. Downloads are structurally decoded before either the output or
+cache is committed, so a truncated CDN response cannot become the durable
+recovery copy. `submit`, `poll`, `fetch`, and `gen` exit nonzero on
 partial failure or timeout, so build automation cannot mistake an incomplete
 run for success. `plan` and `status` support `--json`; plan JSON includes
 `costUnit`, and status JSON reports `spendByUnit`. `plan --check` exits nonzero

@@ -10,6 +10,7 @@ import {
 } from "../cache.ts"
 import { sha256 } from "../hash.ts"
 import type { Lock } from "../types.ts"
+import { decodePng } from "../png.ts"
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
@@ -171,6 +172,15 @@ async function inspectContentCache(
     }
     if (sha256(bytes) !== expected) {
       report.invalid.push({ name: entry.name, reason: "bytes do not match filename hash" })
+      continue
+    }
+    try {
+      decodePng(bytes)
+    } catch (err) {
+      report.invalid.push({
+        name: entry.name,
+        reason: `invalid PNG: ${err instanceof Error ? err.message : String(err)}`,
+      })
       continue
     }
     present.add(expected)
