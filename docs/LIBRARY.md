@@ -51,7 +51,9 @@ if (!result.safe) console.error(result.violations)
 ```
 
 Audits evaluate every structural output separately. Missing and unreadable
-files make the result unsafe even when all measured assets pass.
+files make the result unsafe even when all measured assets pass. Standard
+non-interlaced greyscale, indexed, RGB, greyscale-alpha, and RGBA PNGs are
+normalized to RGBA before palette and transparency measurements.
 
 ## Build sprite sheets
 
@@ -71,8 +73,10 @@ const shared = packSprites([
 ```
 
 Both return PNG bytes, a deterministic JSON-compatible atlas, and details for
-skipped files. `mountStyle` and `mountSprites` provide declared-cell placement
-when existing atlas coordinates must remain stable.
+skipped files. Common non-interlaced PNG color modes and bit depths are accepted
+as inputs; packed output is always RGBA. Corrupt and interlaced inputs are
+skipped with a specific reason. `mountStyle` and `mountSprites` provide
+declared-cell placement when existing atlas coordinates must remain stable.
 
 ## Export generated tiles
 

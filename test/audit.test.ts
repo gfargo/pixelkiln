@@ -3,7 +3,14 @@ import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { deflateSync } from "node:zlib"
-import { decodePng, extractPalette, transparencyRatio, paletteSwatch, parseHex } from "../src/png.ts"
+import {
+  decodePng,
+  encodeRgbPng,
+  extractPalette,
+  transparencyRatio,
+  paletteSwatch,
+  parseHex,
+} from "../src/png.ts"
 import {
   auditStyle,
   colorDistance,
@@ -31,21 +38,35 @@ function makePng(width: number, height: number, px: (x: number, y: number) => [n
       raw[o] = r; raw[o + 1] = g; raw[o + 2] = b; raw[o + 3] = a
     }
   }
-  const chunk = (type: string, data: Buffer) => {
-    const len = Buffer.alloc(4); len.writeUInt32BE(data.length)
-    const body = Buffer.concat([Buffer.from(type, "ascii"), data])
-    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body) >>> 0)
-    return Buffer.concat([len, body, crc])
-  }
+  return makeRawPng(width, height, 8, 6, raw)
+}
+
+function makeRawPng(
+  width: number,
+  height: number,
+  bitDepth: number,
+  colorType: number,
+  raw: Buffer,
+  beforeData: { type: string; data: Buffer }[] = [],
+  interlace = 0,
+): Buffer {
   const ihdr = Buffer.alloc(13)
   ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4)
-  ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0
+  ihdr[8] = bitDepth; ihdr[9] = colorType; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = interlace
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw)),
-    chunk("IEND", Buffer.alloc(0)),
+    pngChunk("IHDR", ihdr),
+    ...beforeData.map(({ type, data }) => pngChunk(type, data)),
+    pngChunk("IDAT", deflateSync(raw)),
+    pngChunk("IEND", Buffer.alloc(0)),
   ])
+}
+
+function pngChunk(type: string, data: Buffer): Buffer {
+  const len = Buffer.alloc(4); len.writeUInt32BE(data.length)
+  const body = Buffer.concat([Buffer.from(type, "ascii"), data])
+  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body) >>> 0)
+  return Buffer.concat([len, body, crc])
 }
 
 function crc32(buf: Buffer): number {
@@ -75,7 +96,7 @@ describe("decodePng", () => {
     expect([...png.pixels.subarray(0, 4)]).toEqual([10, 20, 30, 255])
   })
 
-  it("decodes a gradient, exercising the filter path", () => {
+  it("decodes a gradient without changing samples", () => {
     const png = decodePng(makePng(8, 8, (x, y) => [x * 30, y * 30, 0, 255]))
     const at = (x: number, y: number) => [...png.pixels.subarray((y * 8 + x) * 4, (y * 8 + x) * 4 + 3)]
     expect(at(0, 0)).toEqual([0, 0, 0])
@@ -86,11 +107,90 @@ describe("decodePng", () => {
     expect(() => decodePng(Buffer.from("not a png"))).toThrow(/not a PNG/)
   })
 
+  it("normalizes RGB input to opaque RGBA", () => {
+    const png = decodePng(encodeRgbPng(2, 1, Buffer.from([10, 20, 30, 40, 50, 60])))
+    expect([...png.pixels]).toEqual([10, 20, 30, 255, 40, 50, 60, 255])
+  })
+
+  it("uses the source color mode when reversing scanline filters", () => {
+    // Sub filtering stores the second RGB pixel as a delta from the first.
+    const filtered = makeRawPng(2, 1, 8, 2, Buffer.from([
+      1,
+      10, 20, 30,
+      30, 30, 30,
+    ]))
+    expect([...decodePng(filtered).pixels]).toEqual([
+      10, 20, 30, 255,
+      40, 50, 60, 255,
+    ])
+  })
+
+  it("decodes packed indexed colour and palette transparency", () => {
+    const palette = Buffer.from([
+      255, 0, 0,
+      0, 255, 0,
+      0, 0, 255,
+      255, 255, 255,
+    ])
+    const encoded = makeRawPng(4, 1, 2, 3, Buffer.from([0, 0b00011011]), [
+      { type: "PLTE", data: palette },
+      { type: "tRNS", data: Buffer.from([255, 128, 0]) },
+    ])
+    expect([...decodePng(encoded).pixels]).toEqual([
+      255, 0, 0, 255,
+      0, 255, 0, 128,
+      0, 0, 255, 0,
+      255, 255, 255, 255,
+    ])
+  })
+
+  it("decodes greyscale-alpha and 16-bit RGBA", () => {
+    const greyAlpha = makeRawPng(2, 1, 8, 4, Buffer.from([0, 50, 0, 200, 128]))
+    expect([...decodePng(greyAlpha).pixels]).toEqual([
+      50, 50, 50, 0,
+      200, 200, 200, 128,
+    ])
+
+    const rgba16 = makeRawPng(1, 1, 16, 6, Buffer.from([
+      0,
+      0xff, 0xff,
+      0x80, 0x80,
+      0x00, 0x00,
+      0x40, 0x40,
+    ]))
+    expect([...decodePng(rgba16).pixels]).toEqual([255, 128, 0, 64])
+  })
+
+  it("decodes low-bit greyscale transparency", () => {
+    const encoded = makeRawPng(4, 1, 2, 0, Buffer.from([0, 0b00011011]), [
+      { type: "tRNS", data: Buffer.from([0, 2]) },
+    ])
+    expect([...decodePng(encoded).pixels]).toEqual([
+      0, 0, 0, 255,
+      85, 85, 85, 255,
+      170, 170, 170, 0,
+      255, 255, 255, 255,
+    ])
+  })
+
   // Better to refuse than to decode a format subtly wrong.
-  it("rejects a colour type it does not handle", () => {
-    const png = makePng(2, 2, solid(0, 0, 0))
-    png[25] = 2 // IHDR colorType RGB
+  it("rejects an illegal colour type and interlaced data", () => {
+    const png = makeRawPng(2, 2, 8, 1, Buffer.alloc(10))
     expect(() => decodePng(png)).toThrow(/unsupported PNG/)
+    expect(() => decodePng(makeRawPng(1, 1, 8, 6, Buffer.alloc(5), [], 1)))
+      .toThrow(/interlaced/)
+  })
+
+  it("rejects corrupt, truncated, and incomplete image data", () => {
+    const corrupt = makePng(2, 2, solid(0, 0, 0))
+    corrupt[corrupt.length - 1] ^= 0xff
+    expect(() => decodePng(corrupt)).toThrow(/checksum/)
+
+    const truncated = makePng(2, 2, solid(0, 0, 0)).subarray(0, -2)
+    expect(() => decodePng(truncated)).toThrow(/truncated/)
+
+    const incomplete = makeRawPng(2, 2, 8, 6, Buffer.alloc(2 * 4 + 1))
+    expect(() => decodePng(incomplete)).toThrow(/data length/)
   })
 })
 
