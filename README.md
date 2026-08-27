@@ -157,7 +157,9 @@ being cast into the lockfile and discovered later as corrupted state.
 **Cost carries a unit.** `generations` (PixelLab subscription), `usd`
 (per-image providers), or `free` (local models). `plan` prints the unit, and
 `--budget` is interpreted in it — so a per-image price can never be silently
-read as a subscription quota.
+read as a subscription quota. Provider estimates are runtime-validated before
+they can influence a budget. After submission, the CLI rechecks the provider
+balance and reports its observed change separately from the estimate.
 
 **Candidate count is a provider property**, not a universal truth. PixelLab's
 `1dir` returns up to 64 for one fixed price; a per-image provider returns one
@@ -180,6 +182,11 @@ namespaced by provider id. PixelLab connectable sets preserve the response's
 tile kind and complete `tile_rules` object there; those rules are what let an
 exporter turn ordered PNGs into an adjacency-aware engine tileset instead of
 guessing what each index means.
+
+Each successful submission also records `cost` and `costUnit`. `status` keeps
+generation quota, fractional USD, and free-provider accounting separate; it
+never adds unlike units into a plausible-looking total. Pre-unit v2 lockfiles
+default to PixelLab's `generations` and remain readable.
 
 `parseLock` accepts v2 only. The projects using pixelkiln were onboarded after
 v2 landed, so a v1 file indicates a hand edit or the wrong file rather than a
@@ -279,7 +286,7 @@ pixelkiln cache --prune           # remove invalid and unreferenced cache data
 pixelkiln pack --style neon       # composite a style's sprites into one sheet, offline
 pixelkiln export --style ground --only terrain --format tiled  # engine-ready tileset
 pixelkiln salvage --claims a.json # triage objects no lockfile claims
-pixelkiln balance                 # generations remaining
+pixelkiln balance                 # provider balance and cost unit
 ```
 
 `plan` is the habit worth forming — it is free, and it prints exactly what a run
@@ -294,8 +301,9 @@ from the recorded hash. Successful downloads are cached by SHA-256 under
 expired or while API credentials are unavailable; the cache is local and
 ignored by Git. `submit`, `poll`, `fetch`, and `gen` exit nonzero on
 partial failure or timeout, so build automation cannot mistake an incomplete
-run for success. `plan` and `status` support `--json`; `plan --check` exits
-nonzero unless every selected asset is current.
+run for success. `plan` and `status` support `--json`; plan JSON includes
+`costUnit`, and status JSON reports `spendByUnit`. `plan --check` exits nonzero
+unless every selected asset is current.
 
 `doctor` checks the parsed manifest and style references, lockfile recovery
 sources, output ownership and writability, stale map jobs, current plan state,
@@ -652,12 +660,13 @@ the same and the palette holds.
 ## Library use
 
 ```ts
-import { loadManifest, resolveSpecs, buildPlan, loadLock } from "pixelkiln"
+import { PixelLabProvider, loadManifest, resolveSpecs, buildPlan, loadLock } from "pixelkiln"
 
 const loaded = await loadManifest("pixelkiln.manifest.json")
-const specs = await resolveSpecs(loaded)
+const provider = PixelLabProvider.forOffline()
+const specs = await resolveSpecs(loaded, { provider })
 const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
-console.log(plan.cost, "generations")
+console.log(plan.cost, plan.costUnit)
 ```
 
 The package also exports provider contracts, audit gates, sprite packing,

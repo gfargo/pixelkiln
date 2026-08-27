@@ -446,8 +446,10 @@ export const LockEntrySchema = z.object({
 
   submittedAt: z.string().nullable().default(null),
   downloadedAt: z.string().nullable().default(null),
-  /** Cost in the provider's unit, recorded so spend is reported not guessed. */
-  cost: z.number().int().default(0),
+  /** Successful-submission estimate in `costUnit`; may be fractional USD. */
+  cost: z.number().finite().nonnegative().default(0),
+  /** Unit for `cost`. Defaults preserve pre-unit PixelLab lockfiles. */
+  costUnit: z.enum(["generations", "usd", "free"]).default("generations"),
   /** Which provider produced this. Absent on entries written before providers. */
   provider: z.string().default("pixellab"),
 })
@@ -505,6 +507,7 @@ export interface ResolvedSpec {
   tags: string[]
   specHash: string
   cost: number
+  costUnit: "generations" | "usd" | "free"
   candidates: number
   outline?: string
   shading?: string

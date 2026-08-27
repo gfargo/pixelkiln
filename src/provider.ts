@@ -21,6 +21,27 @@ export interface CostEstimate {
   candidates: number
 }
 
+/** Runtime guard for third-party adapters before estimates influence a budget. */
+export function validateCostEstimate(providerId: string, value: unknown): CostEstimate {
+  if (!value || typeof value !== "object") {
+    throw new Error(`Provider "${providerId}" returned an invalid cost estimate`)
+  }
+  const estimate = value as Partial<CostEstimate>
+  if (!(["generations", "usd", "free"] as readonly unknown[]).includes(estimate.unit)) {
+    throw new Error(`Provider "${providerId}" returned an invalid cost unit`)
+  }
+  if (!Number.isFinite(estimate.amount) || estimate.amount! < 0) {
+    throw new Error(`Provider "${providerId}" returned an invalid cost amount`)
+  }
+  if (estimate.unit === "free" && estimate.amount !== 0) {
+    throw new Error(`Provider "${providerId}" returned a nonzero amount with the free cost unit`)
+  }
+  if (!Number.isInteger(estimate.candidates) || estimate.candidates! < 1) {
+    throw new Error(`Provider "${providerId}" returned an invalid candidate count`)
+  }
+  return estimate as CostEstimate
+}
+
 export interface OutputSource {
   url: string
   /** Stable semantic/index role used in filenames and lockfile outputs. */
@@ -68,6 +89,36 @@ export interface BalanceInfo {
   remaining: number
   total?: number
   plan?: string
+}
+
+export interface BalanceChange {
+  unit: CostUnit
+  before: number
+  after: number
+  /** Provider-reported quota/currency consumed between the two readings. */
+  spent: number
+  /** Quota/currency added between readings, e.g. a refill during the run. */
+  credited: number
+}
+
+/** Compare two provider readings without ever combining incompatible units. */
+export function measureBalanceChange(
+  before: BalanceInfo,
+  after: BalanceInfo,
+): BalanceChange | null {
+  if (
+    before.unit !== after.unit ||
+    !Number.isFinite(before.remaining) ||
+    !Number.isFinite(after.remaining)
+  ) return null
+  const delta = before.remaining - after.remaining
+  return {
+    unit: before.unit,
+    before: before.remaining,
+    after: after.remaining,
+    spent: Math.max(0, delta),
+    credited: Math.max(0, -delta),
+  }
 }
 
 /**

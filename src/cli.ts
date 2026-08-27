@@ -4,10 +4,10 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { loadEnvFiles } from "./env.ts"
 import { PixelLabProvider } from "./providers/pixellab.ts"
-import { formatCost, requireDelete, requireList } from "./provider.ts"
+import { formatCost, measureBalanceChange, requireDelete, requireList } from "./provider.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { mountStyle, packSprites, packStyle, resolvePackInputs } from "./pipeline/pack.ts"
-import { loadLock, saveLock, totalSpend, upsert as upsertLock } from "./lock.ts"
+import { loadLock, saveLock, spendByUnit, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
 import { lockKey } from "./types.ts"
 import { buildPlan, summarize, type Plan } from "./pipeline/plan.ts"
@@ -250,7 +250,7 @@ Commands
   export    Build an engine-ready tile atlas and generic, Tiled, or Godot metadata.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   tag       Push manifest tags to the objects upstream (free).
-  balance   Show remaining generations.
+  balance   Show the provider's remaining balance.
   status    Summarise the lockfile.
 
 Options
@@ -269,7 +269,7 @@ Options
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
   --only id1,id2      Restrict to these asset ids
-  --budget <n>        Refuse to spend more than n generations
+  --budget <n>        Refuse to spend more than n provider cost units
   --force             Regenerate even if up to date
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
@@ -312,7 +312,7 @@ function printPlan(plan: Plan): void {
   )
   if (plan.actionable.length) {
     log(
-      `  would generate ${plan.actionable.length} asset(s) — ${plan.cost} generations, ` +
+      `  would generate ${plan.actionable.length} asset(s) — ${formatCost(plan.costUnit, plan.cost)}, ` +
         `yielding ${plan.candidates} candidate/output image(s)`,
     )
   } else {
@@ -488,19 +488,32 @@ async function main() {
   if (path.resolve(process.cwd()) !== manifestDir) envFiles.push(...loadEnvFiles(process.cwd()))
 
   const loaded = await loadManifest(args.manifest)
-  const specs = await resolveSpecs(loaded, { styles: args.styles, assets: args.assets })
+  const estimator = PixelLabProvider.forOffline()
+  const specs = await resolveSpecs(loaded, {
+    styles: args.styles,
+    assets: args.assets,
+    provider: estimator,
+  })
   const lock = await loadLock(args.lock)
 
   if (args.command === "status") {
     const byStatus: Record<string, number> = {}
     for (const e of Object.values(lock.entries)) byStatus[e.status] = (byStatus[e.status] ?? 0) + 1
     if (args.json) {
-      log(JSON.stringify({ entries: Object.keys(lock.entries).length, byStatus, spent: totalSpend(lock) }, null, 2))
+      log(JSON.stringify({ entries: Object.keys(lock.entries).length, byStatus, spendByUnit: spendByUnit(lock) }, null, 2))
       return
     }
     log(`  ${Object.keys(lock.entries).length} lock entries`)
     for (const [s, n] of Object.entries(byStatus).sort()) log(`    ${s.padEnd(12)} ${n}`)
-    log(`  generations recorded as spent: ${totalSpend(lock)}`)
+    const spend = spendByUnit(lock)
+    let reported = false
+    for (const unit of ["generations", "usd", "free"] as const) {
+      if (spend[unit]) {
+        log(`  recorded successful submissions: ${formatCost(unit, spend[unit])}`)
+        reported = true
+      }
+    }
+    if (!reported) log(`  no successful submission cost recorded`)
     return
   }
 
@@ -531,6 +544,7 @@ async function main() {
       log(JSON.stringify({
         totals: summarize(plan),
         cost: plan.cost,
+        costUnit: plan.costUnit,
         candidates: plan.candidates,
         actionable: plan.actionable.map((i) => i.key),
         items: plan.items.map(({ key, state, reason }) => ({ key, state, reason })),
@@ -795,7 +809,11 @@ async function main() {
       // Without re-baselining, an adopt that recovered the true prompts would
       // report all of its own work as stale and offer to regenerate it.
       const reloaded = await loadManifest(args.manifest)
-      const rebased = await resolveSpecs(reloaded, { styles: args.styles, assets: args.assets })
+      const rebased = await resolveSpecs(reloaded, {
+        styles: args.styles,
+        assets: args.assets,
+        provider,
+      })
       let n = 0
       for (const spec of rebased) {
         const key = lockKey(spec.styleId, spec.assetId)
@@ -917,7 +935,7 @@ async function main() {
       // the next plan and offers to regenerate art that was just recovered —
       // which would re-pay for all of it.
       const reloaded = await loadManifest(args.manifest)
-      const rebased = await resolveSpecs(reloaded)
+      const rebased = await resolveSpecs(reloaded, { provider })
       let n = 0
       for (const spec of rebased) {
         const key = lockKey(spec.styleId, spec.assetId)
@@ -1042,6 +1060,11 @@ async function main() {
     if (plan.actionable.length) {
       const balance = await provider.balance()
       log(`\n  balance: ${formatCost(balance.unit, balance.remaining)} remaining (${provider.id})`)
+      if (balance.unit !== plan.costUnit) {
+        throw new Error(
+          `Provider estimate unit ${plan.costUnit} does not match balance unit ${balance.unit}.`,
+        )
+      }
       if (balance.unit !== "free" && plan.cost > balance.remaining) {
         throw new Error(
           `This run needs ${formatCost(balance.unit, plan.cost)} but only ` +
@@ -1061,7 +1084,24 @@ async function main() {
         budget: args.budget,
         onProgress: log,
       })
-      log(`\n  submitted ${res.submitted}, failed ${res.failed}, spent ${res.spent} generations`)
+      log(
+        `\n  submitted ${res.submitted}, failed ${res.failed}, ` +
+          `estimated ${formatCost(res.unit, res.spent)}`,
+      )
+      try {
+        const after = await provider.balance()
+        const measured = measureBalanceChange(balance, after)
+        if (measured) {
+          const movement = measured.credited
+            ? `${formatCost(measured.unit, measured.credited)} credited`
+            : `${formatCost(measured.unit, measured.spent)} consumed`
+          log(`  provider-reported balance change: ${movement}`)
+        } else {
+          log(`  provider changed balance units during the run; no delta reported`)
+        }
+      } catch (err) {
+        log(`  provider balance recheck unavailable: ${err instanceof Error ? err.message : String(err)}`)
+      }
       if (res.failed) process.exitCode = 1
     }
     if (args.command === "submit") return

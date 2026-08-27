@@ -32,6 +32,11 @@ export class PixelLabProvider implements Provider {
 
   /** Public storage URLs and the local content cache do not require API auth. */
   static forDownloads(): PixelLabProvider {
+    return PixelLabProvider.forOffline()
+  }
+
+  /** Capability and cost estimation only; makes no network request itself. */
+  static forOffline(): PixelLabProvider {
     return new PixelLabProvider(new PixelLabClient("download-only"))
   }
 

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { requireList, type Provider, type RemoteAsset } from "../provider.ts"
+import { requireList, validateCostEstimate, type Provider, type RemoteAsset } from "../provider.ts"
 import { sha256 } from "../hash.ts"
 import { loadCache, saveCache, pruneCache, cachePathFor, type HashCache } from "../cache.ts"
 import { saveLock, upsert } from "../lock.ts"
@@ -117,6 +117,7 @@ export async function adopt(
           submittedAt: obj.createdAt,
           downloadedAt: new Date().toISOString(),
           cost: 0, // already paid for, in a previous billing period
+          costUnit: validateCostEstimate(provider.id, provider.estimate(spec)).unit,
           provider: provider.id,
         })
         matched++

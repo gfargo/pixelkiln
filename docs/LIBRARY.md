@@ -7,21 +7,32 @@ game pipeline needs structured results instead of terminal output.
 ## Load, resolve, and plan
 
 ```ts
-import { buildPlan, loadLock, loadManifest, resolveSpecs, summarize } from "pixelkiln"
+import {
+  buildPlan,
+  loadLock,
+  loadManifest,
+  PixelLabProvider,
+  resolveSpecs,
+  summarize,
+} from "pixelkiln"
 
 const loaded = await loadManifest("pixelkiln.manifest.json")
-const specs = await resolveSpecs(loaded)
+const provider = PixelLabProvider.forOffline()
+const specs = await resolveSpecs(loaded, { provider })
 const lock = await loadLock("pixelkiln.lock.json")
 const plan = await buildPlan(specs, lock)
 
 console.log(summarize(plan))
 if (plan.actionable.length) {
-  console.log(`${plan.cost} generation units for ${plan.actionable.length} assets`)
+  console.log(`${plan.cost} ${plan.costUnit} for ${plan.actionable.length} assets`)
 }
 ```
 
-Planning performs no provider calls and spends nothing. A resolved spec has the
-fully inherited style and asset settings plus its deterministic spec hash.
+Planning performs no provider calls and spends nothing. Passing a provider lets
+its synchronous `supports()` and `estimate()` methods determine cost unit and
+candidate count; no credentials are required for those methods. A resolved
+spec has the fully inherited style and asset settings plus its deterministic
+spec hash.
 
 ## Audit and gate generated art
 
@@ -101,6 +112,12 @@ Provider-backed operations mutate the supplied lock object; persist at the
 workflow boundary with `saveLock`. See [PROVIDERS.md](../PROVIDERS.md) before
 implementing another backend, especially its optional capabilities and cost
 units.
+
+`submit` validates adapter estimates again at the spending boundary and returns
+`{ spent, unit }` for successful submissions. Lock entries retain fractional
+costs with their unit; use `spendByUnit(lock)` for history. Use
+`measureBalanceChange(before, after)` when the provider exposes authoritative
+balance readings and keep that observed delta distinct from the estimate.
 
 ## Stability and file paths
 

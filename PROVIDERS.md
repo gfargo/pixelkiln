@@ -9,7 +9,9 @@ Both concerns this file previously flagged as blockers are resolved:
 
 - **Cost is no longer assumed to be "generations."** `CostEstimate` carries a
   `unit` of `generations | usd | free`, `plan` prints it, and `--budget` is
-  interpreted in it.
+  interpreted in it. `resolveSpecs(..., { provider })` asks the adapter for its
+  offline estimate, submission validates it again, and lock/status accounting
+  keeps fractional values separated by unit.
 - **Free multi-candidate returns are no longer assumed universal.**
   `estimate().candidates` is a provider property; `candidateCount()` moved
   behind the interface.
@@ -69,8 +71,11 @@ Kept here as the rationale, since a second adapter has to honour them.
    generalise, which is why `candidateCount()` moved behind the interface.
 
 See `src/provider.ts` for the shipped interface. Lock entries carry a
-`provider` field, defaulted to `pixellab` so pre-provider lockfiles stay
-readable.
+`provider` field plus `costUnit`, defaulted to `pixellab` and `generations` so
+pre-provider/pre-unit v2 lockfiles stay readable. The CLI reports both the
+successful-submission estimate and the provider balance delta observed across
+the run; those are deliberately separate because provider balances may settle
+asynchronously.
 
 ## Done: the integration tests it unblocked
 

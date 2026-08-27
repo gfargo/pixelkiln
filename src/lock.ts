@@ -2,6 +2,7 @@ import { readFile, writeFile, rename, mkdir, rmdir, rm, stat } from "node:fs/pro
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { parseLock, type Lock, type LockEntry } from "./types.ts"
+import type { CostUnit } from "./provider.ts"
 
 /**
  * The lockfile is the record that maps a spec to the PixelLab object that
@@ -171,7 +172,16 @@ async function acquireFileLock(file: string): Promise<() => Promise<void>> {
   }
 }
 
-/** Total generations recorded as spent, so spend is reported rather than guessed. */
-export function totalSpend(lock: Lock): number {
-  return Object.values(lock.entries).reduce((sum, e) => sum + (e.cost ?? 0), 0)
+/** Recorded successful-submission estimates, kept separate by provider unit. */
+export function spendByUnit(lock: Lock): Record<CostUnit, number> {
+  const totals: Record<CostUnit, number> = { generations: 0, usd: 0, free: 0 }
+  for (const entry of Object.values(lock.entries)) {
+    totals[entry.costUnit ?? "generations"] += entry.cost ?? 0
+  }
+  return totals
+}
+
+/** @deprecated Prefer spendByUnit; summing unlike provider units is unsafe. */
+export function totalSpend(lock: Lock, unit: CostUnit = "generations"): number {
+  return spendByUnit(lock)[unit]
 }
