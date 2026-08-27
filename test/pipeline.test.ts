@@ -1,9 +1,9 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest"
-import { mkdtemp, writeFile, rm, readFile, unlink } from "node:fs/promises"
+import { mkdir, mkdtemp, writeFile, rm, readFile, unlink } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { FakeProvider } from "../src/providers/fake.ts"
+import { FakeProvider, FAKE_PNG } from "../src/providers/fake.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
@@ -344,6 +344,32 @@ describe("fetch", () => {
     expect(lock.entries[lockKey("base", "anvil")]!.error).toMatch(/not a PNG/i)
   })
 
+  it("rejects a signature-correct but structurally corrupt PNG", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const corruptPng = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      download: async () => FAKE_PNG.subarray(0, -2),
+    })
+    const { loaded, specs } = await project({
+      generator: "map",
+      assets: { anvil: { prompt: "a" } },
+    })
+    const lock = emptyLock()
+    await submit(
+      corruptPng,
+      loaded,
+      (await buildPlan(specs, lock)).actionable,
+      lock,
+      lockPath,
+      { spacingMs: 0 },
+    )
+    await poll(corruptPng, lock, lockPath, { intervalMs: 0 })
+
+    const res = await fetchAssets(corruptPng, specs, lock, lockPath)
+    expect(res).toMatchObject({ downloaded: 0, failed: 1 })
+    expect(existsSync(specs[0]!.outFile)).toBe(false)
+    expect(lock.entries[lockKey("base", "anvil")]!.error).toMatch(/not a valid PNG/i)
+  })
+
   it("retries a failed download without submitting and spending again", async () => {
     const provider = new FakeProvider({ candidates: 1 })
     let fail = true
@@ -502,6 +528,18 @@ describe("adopt", () => {
     expect(res.matched).toBe(0)
     expect(res.unmatchedRemote.map((o) => o.id)).toEqual(["unrelated"])
     expect(res.unmatchedLocal).toHaveLength(1)
+  })
+
+  it("does not adopt a corrupt local PNG by hash", async () => {
+    const provider = new FakeProvider()
+    const { specs } = await project({ assets: { anvil: { prompt: "a" } } })
+    const spec = specs[0]!
+    await mkdir(path.dirname(spec.outFile), { recursive: true })
+    await writeFile(spec.outFile, FAKE_PNG.subarray(0, -2))
+
+    const res = await adopt(provider, specs, emptyLock(), lockPath)
+    expect(res.matched).toBe(0)
+    expect(res.unmatchedLocal[0]).toMatch(/invalid PNG/)
   })
 
   it("fails clearly against a provider that cannot list", async () => {

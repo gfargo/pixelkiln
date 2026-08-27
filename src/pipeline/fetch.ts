@@ -11,6 +11,7 @@ import {
   resolveOutputPath,
 } from "../outputs.ts"
 import { lockKey, type Lock, type LockOutput, type ResolvedSpec } from "../types.ts"
+import { decodePng } from "../png.ts"
 
 /** PNG magic number — guards against writing an error page as a .png. */
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
@@ -132,6 +133,14 @@ export async function fetchAssets(
           if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
             throw new Error(`response for ${source.role ?? "asset"} was not a PNG (${buf.length} bytes)`)
           }
+          try {
+            decodePng(buf)
+          } catch (err) {
+            throw new Error(
+              `response for ${source.role ?? "asset"} was not a valid PNG: ` +
+                `${err instanceof Error ? err.message : String(err)}`,
+            )
+          }
           if (cacheDir) await cachePng(cacheDir, buf)
           await mkdir(path.dirname(target), { recursive: true })
           const tmp = `${target}.pixelkiln.tmp`
@@ -183,6 +192,7 @@ async function readCachedPng(cacheDir: string, hash: string): Promise<Buffer | n
   try {
     const buf = await readFile(file)
     if (!buf.subarray(0, 8).equals(PNG_SIGNATURE) || sha256(buf) !== hash) return null
+    decodePng(buf)
     return buf
   } catch {
     return null

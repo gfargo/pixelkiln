@@ -6,6 +6,7 @@ import { sha256 } from "../hash.ts"
 import { loadCache, saveCache, pruneCache, cachePathFor, type HashCache } from "../cache.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { portableOutputPath } from "../outputs.ts"
+import { decodePng } from "../png.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
 
 export interface AdoptResult {
@@ -48,7 +49,17 @@ export async function adopt(
       unmatchedLocal.push(`${spec.styleId}/${spec.assetId} (no file at ${spec.outFile})`)
       continue
     }
-    const hash = sha256(await readFile(spec.outFile))
+    const bytes = await readFile(spec.outFile)
+    try {
+      decodePng(bytes)
+    } catch (err) {
+      unmatchedLocal.push(
+        `${spec.styleId}/${spec.assetId} (invalid PNG: ` +
+          `${err instanceof Error ? err.message : String(err)})`,
+      )
+      continue
+    }
+    const hash = sha256(bytes)
     const bucket = localByHash.get(hash) ?? []
     bucket.push(spec)
     localByHash.set(hash, bucket)
@@ -77,7 +88,9 @@ export async function adopt(
         cacheHits++
       } else {
         try {
-          hash = sha256(await provider.download(url))
+          const bytes = await provider.download(url)
+          decodePng(bytes)
+          hash = sha256(bytes)
         } catch {
           continue
         }

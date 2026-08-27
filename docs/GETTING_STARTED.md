@@ -114,9 +114,10 @@ pipeline stages also exit nonzero after partial failures or timeouts.
 - `restore` repairs missing generated outputs without buying new generations.
 - `.pixelkiln/cache/` stores downloaded PNG bytes by SHA-256, so restoration can
   still work after a temporary provider URL expires.
-- `cache --check` verifies content bytes against their filenames and validates
-  the account object-hash cache. `cache --prune` removes corrupt, partial, and
-  unreferenced project content plus invalid hash entries. It does not mistake
+- `cache --check` verifies hashes and fully decodes cached PNG structure before
+  trusting recovery bytes, then validates the account object-hash cache.
+  `cache --prune` removes corrupt, partial, and unreferenced project content
+  plus invalid hash entries. It does not mistake
   objects belonging to another project for disposable account data.
 - `adopt` maps existing local files to exact remote objects.
 - `salvage --claims <every-other-lockfile>` reviews remote objects no project
