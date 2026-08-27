@@ -879,6 +879,8 @@ otherwise get whichever came first with no signal the other was dropped.
 | [docs/ENDPOINTS.md](./docs/ENDPOINTS.md) | Measured reference for the whole PixelLab API — costs, payload shapes, which parameters are actually wired up, and recipes. Every figure came from a live account, not from docs. |
 | [docs/TILES.md](./docs/TILES.md) | Structural tile outputs, preserved adjacency rules, and the generic, Tiled, and Godot export contracts. |
 | [PROVIDERS.md](./PROVIDERS.md) | The provider seam: what a backend must implement, which capabilities are optional and why. |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Local setup, change safety rules, architecture boundaries, and pull-request checks. |
+| [SECURITY.md](./SECURITY.md) | Supported versions, private reporting guidance, and sensitive surfaces. |
 | [NAMING.md](./NAMING.md) | Why this is called pixelkiln, and what the shortlist was. |
 
 Consumers of this library keep their own project-side notes: heybud-admin's

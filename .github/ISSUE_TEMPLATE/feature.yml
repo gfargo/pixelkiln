@@ -1,0 +1,24 @@
+name: Feature request
+description: Propose a workflow, provider, format, or library improvement
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the current workflow and where it breaks down.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Focus on user value; an implementation sketch is optional.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Cost, compatibility, or safety considerations
+      description: Note paid actions, lockfile/API changes, engine formats, or destructive behavior.

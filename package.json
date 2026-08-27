@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Manifest-driven bulk pixel art generation against the PixelLab API. No LLM in the loop.",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
@@ -27,6 +28,7 @@
     "release": "semantic-release",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:package": "node scripts/smoke-package.mjs",
     "test:watch": "vitest",
     "schema": "tsx scripts/gen-schema.ts"
   },
@@ -62,6 +64,9 @@
     "vitest": "^4.1.10",
     "zod-to-json-schema": "^3.25.2"
   },
+  "overrides": {
+    "esbuild": "^0.28.2"
+  },
   "license": "MIT",
   "keywords": [
     "pixel-art",
@@ -80,6 +85,8 @@
     "docs",
     "examples",
     "README.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "PROVIDERS.md",
     "NAMING.md",
     "LICENSE"
