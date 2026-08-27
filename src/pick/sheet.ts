@@ -68,6 +68,7 @@ export function renderSheet(groups: SheetGroup[]): string {
   .cand { border:2px solid var(--line); border-radius:9px; padding:6px; background:var(--panel);
     cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px; position:relative; }
   .cand:hover { border-color:var(--dim); }
+  .cand.active { border-color:var(--dim); box-shadow:0 0 0 2px color-mix(in srgb, var(--dim) 20%, transparent); }
   .cand.sel { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
   .cand img { image-rendering:pixelated; display:block;
     background-image:
@@ -94,9 +95,11 @@ export function renderSheet(groups: SheetGroup[]): string {
 </header>
 <main id="root"></main>
 <footer>
-  Click a candidate to choose it; click again to unchoose. <kbd>1</kbd>–<kbd>9</kbd> picks within the
-  focused row, <kbd>0</kbd> skips it. Unchosen rows are left in review and can be picked later —
-  nothing is discarded by closing this page.
+  Click a candidate to choose it; click again to unchoose. In the focused row,
+  <kbd>←</kbd>/<kbd>→</kbd> browses every candidate and <kbd>Enter</kbd> chooses;
+  <kbd>1</kbd>–<kbd>9</kbd> picks directly, <kbd>0</kbd> skips, and
+  <kbd>↑</kbd>/<kbd>↓</kbd> changes rows. Unchosen rows stay in review — nothing is
+  discarded by closing this page.
 </footer>
 <script>
 const GROUPS = ${data};
@@ -117,17 +120,54 @@ GROUPS.forEach((g, gi) => {
     '<div class="frames"></div>';
   const frames = el.querySelector('.frames');
   g.frameUrls.forEach((url, i) => {
-    const c = document.createElement('div');
+    const c = document.createElement('button');
+    c.type = 'button';
     c.className = 'cand';
-    c.innerHTML =
-      '<img src="' + url + '" width="' + g.size * scale + '" height="' + g.size * scale + '" loading="lazy">' +
-      '<span class="idx">' + (i + 1) + '</span>' +
-      '<img class="actual" src="' + url + '" width="' + g.size + '" height="' + g.size + '" loading="lazy">';
-    c.onclick = () => choose(gi, i, c, frames, el);
+    c.tabIndex = -1;
+    c.setAttribute('aria-label', 'Choose candidate ' + (i + 1) + ' of ' + g.frameUrls.length);
+
+    const preview = document.createElement('img');
+    preview.src = url;
+    preview.width = g.size * scale;
+    preview.height = g.size * scale;
+    preview.loading = 'lazy';
+    const index = document.createElement('span');
+    index.className = 'idx';
+    index.textContent = String(i + 1);
+    const actual = document.createElement('img');
+    actual.className = 'actual';
+    actual.src = url;
+    actual.width = g.size;
+    actual.height = g.size;
+    actual.loading = 'lazy';
+    c.append(preview, index, actual);
+
+    c.onclick = () => {
+      activate(i, frames);
+      choose(gi, i, c, frames, el);
+      // Keep the row as the keyboard target. Otherwise a clicked <button>
+      // receives focus and Enter would invoke both its native click and the
+      // row shortcut, toggling the same choice twice.
+      el.focus();
+    };
+    c.onmouseenter = () => activate(i, frames);
     frames.appendChild(c);
   });
+  frames.dataset.active = '0';
+  frames.querySelector('.cand')?.classList.add('active');
   root.appendChild(el);
 });
+
+function activate(i, frames) {
+  const candidates = [...frames.querySelectorAll('.cand')];
+  if (!candidates.length) return null;
+  const next = ((i % candidates.length) + candidates.length) % candidates.length;
+  candidates.forEach(n => n.classList.remove('active'));
+  candidates[next].classList.add('active');
+  frames.dataset.active = String(next);
+  candidates[next].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  return candidates[next];
+}
 
 function choose(gi, i, node, frames, groupEl) {
   const current = picks.get(gi);
@@ -142,20 +182,44 @@ function refresh() {
 }
 document.addEventListener('keydown', e => {
   const g = document.activeElement?.closest?.('.group');
-  if (!g || !/^[0-9]$/.test(e.key)) return;
+  if (!g) return;
   const gi = Number(g.dataset.gi);
   const frames = g.querySelector('.frames');
-  if (e.key === '0') {
+  const candidates = [...frames.querySelectorAll('.cand')];
+  const active = Number(frames.dataset.active || 0);
+  let advance = false;
+
+  if (e.key === 'ArrowLeft') activate(active - 1, frames);
+  else if (e.key === 'ArrowRight') activate(active + 1, frames);
+  else if (e.key === 'Home') activate(0, frames);
+  else if (e.key === 'End') activate(candidates.length - 1, frames);
+  else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    const sibling = e.key === 'ArrowUp' ? g.previousElementSibling : g.nextElementSibling;
+    if (sibling) { sibling.focus(); sibling.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    const node = candidates[active];
+    if (!node) return;
+    choose(gi, active, node, frames, g);
+    advance = true;
+  } else if (e.key === '0') {
     picks.delete(gi); g.classList.remove('done');
     frames.querySelectorAll('.cand').forEach(n => n.classList.remove('sel'));
     refresh();
-  } else {
+    advance = true;
+  } else if (/^[1-9]$/.test(e.key)) {
     const i = Number(e.key) - 1;
-    const node = frames.querySelectorAll('.cand')[i];
-    if (node) choose(gi, i, node, frames, g);
+    const node = candidates[i];
+    if (!node) return;
+    activate(i, frames);
+    choose(gi, i, node, frames, g);
+    advance = true;
+  } else {
+    return;
   }
-  const next = g.nextElementSibling;
-  if (next) { next.focus(); next.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  if (advance) {
+    const next = g.nextElementSibling;
+    if (next) { next.focus(); next.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
   e.preventDefault();
 });
 
