@@ -103,6 +103,12 @@ becoming project history:
   hashes. `adopt` and `salvage` use it to avoid downloading the entire account
   again. Deleting either cache is safe; the next relevant command rebuilds it.
 
+Inspect both caches offline with `pixelkiln cache`; use `cache --check` as an
+integrity gate and `cache --prune` to remove corrupt/partial content files,
+content no lock entry references, and malformed object-hash entries. The
+account-wide cache is only pruned for deleted remote object ids during
+`adopt`, after pixelkiln has seen the provider's complete live object list.
+
 Because entries are keyed `<style>/<asset>`, **a style is a namespace**. Adding
 a second style re-derives the whole asset set into a separate output directory
 under separate lock keys, so restyling a collection cannot clobber the original.
@@ -268,6 +274,8 @@ pixelkiln gen --style neon --budget 800     # a whole variant set, capped
 pixelkiln adopt --write-prompts   # map account objects to files, recover prompts
 pixelkiln accept                  # keep existing art after rewording a style
 pixelkiln audit --style neon      # measure style consistency, offline
+pixelkiln cache --check           # verify both local caches, offline
+pixelkiln cache --prune           # remove invalid and unreferenced cache data
 pixelkiln pack --style neon       # composite a style's sprites into one sheet, offline
 pixelkiln export --style ground --only terrain --format tiled  # engine-ready tileset
 pixelkiln salvage --claims a.json # triage objects no lockfile claims

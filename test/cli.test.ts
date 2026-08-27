@@ -40,6 +40,15 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["audit", "--max-colors", "2.5"])).toThrow(/whole number/)
   })
 
+  it("parses cache integrity and pruning controls", () => {
+    expect(parseArgs(["cache", "--check", "--prune", "--json"])).toMatchObject({
+      command: "cache",
+      check: true,
+      prune: true,
+      json: true,
+    })
+  })
+
   it("parses filters and flags", () => {
     const args = parseArgs(["gen", "--style", "neon", "--only", "a,b", "--budget", "500", "--yes"])
     expect(args.command).toBe("gen")
