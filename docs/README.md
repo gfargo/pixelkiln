@@ -2,6 +2,8 @@
 
 PixelKiln is a manifest-driven pixel-art pipeline. Start with the workflow
 guide, then use the references for the part of the pipeline you are changing.
+This source also renders at
+[pixelkiln.vercel.app/docs](https://pixelkiln.vercel.app/docs).
 
 ## Start here
 

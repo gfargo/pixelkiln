@@ -2,6 +2,10 @@
 
 ![PixelKiln](https://wp.griffen.codes/wp-content/uploads/2026/08/download.png)
 
+[Website](https://pixelkiln.vercel.app) ·
+[Documentation](https://pixelkiln.vercel.app/docs) ·
+[GitHub](https://github.com/gfargo/pixelkiln)
+
 Manifest-driven pixel-art generation, review, recovery, quality control, and
 game-ready asset packaging.
 
@@ -276,10 +280,10 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |
 | [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
 
-The marketing and rendered-documentation application lives in
-[`website/`](./website/README.md). It reads these Markdown files directly at
-build time, so the website and published package share one documentation
-source.
+The [public documentation site](https://pixelkiln.vercel.app/docs) is built by
+the application in [`website/`](./website/README.md). It reads these Markdown
+files directly at build time, so the website and published package share one
+documentation source.
 
 Project policies: [Contributing](./CONTRIBUTING.md),
 [Security](./SECURITY.md), and [provider notes](./PROVIDERS.md).
