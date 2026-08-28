@@ -82,9 +82,12 @@ coordinates must remain stable.
 The CLI adds a `.pixelkiln.json` companion, stages the three members together,
 restores the previous bundle after ordinary write failures, and leaves
 byte-identical members untouched. Library consumers can apply the same behavior
-with `withArtifactManifest()` and `writeArtifactBundle()`, then use
-`verifyArtifactBundle()` to detect changed sources, outputs, or metadata without
-rendering again.
+with `writeManagedArtifactBundle()`, then use `verifyArtifactBundle()` to detect
+changed sources, outputs, or metadata without rendering again. The managed
+writer adopts pre-companion files only when byte-identical, refuses to replace
+unowned or manually modified output, and accepts `{ force: true }` as an
+explicit takeover. `writeArtifactBundle()` remains the lower-level transactional
+primitive for callers with their own ownership policy.
 
 ## Export generated tiles
 

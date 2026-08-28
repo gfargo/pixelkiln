@@ -57,6 +57,12 @@ atlas. The project manifest and lockfile are conservative inputs, ensuring that
 newly declared or recorded tiles also make an older export stale. The TSJ/TRES
 contracts therefore remain free of PixelKiln-only fields.
 
+An existing export without a companion is adopted only when its bytes already
+match. Once tracked, a changing output must still match its recorded hash;
+manual edits stop the whole export rather than being silently replaced. Use
+`--force` only after reviewing the difference to take ownership and re-baseline
+the complete bundle.
+
 ## Generic JSON
 
 The generic format is the lossless interchange contract:

@@ -26,8 +26,7 @@ import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
 import {
-  withArtifactManifest,
-  writeArtifactBundle,
+  writeManagedArtifactBundle,
   type ArtifactFile,
   type ArtifactSource,
 } from "./artifacts.ts"
@@ -287,7 +286,7 @@ Options
   --style a,b         Restrict to these styles
   --only id1,id2      Restrict to these asset ids
   --budget <n>        Refuse to spend more than n provider cost units
-  --force             Regenerate even if up to date
+  --force             Regenerate; derived commands also take over modified/unowned output
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
   --json              Machine-readable output where supported, including plan/audit/doctor/cache
@@ -481,11 +480,11 @@ async function main() {
       { path: `${base}.png`, data: png },
       { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
     ]
-    await writeArtifactBundle(withArtifactManifest(`${base}.pixelkiln.json`, outputs, {
+    await writeManagedArtifactBundle(`${base}.pixelkiln.json`, outputs, {
       kind: "pack",
       sources: [await provenanceFile("$inputs", args.inputs), ...sources],
       options: { columns: args.columns ?? null, order: "id", style: null },
-    }))
+    }, { force: args.force })
     log(
       `  ${atlas.frames.length} sprite(s), ${atlas.sheet.width}x${atlas.sheet.height} ` +
         `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB`,
@@ -630,7 +629,7 @@ async function main() {
         { path: `${base}.png`, data: png },
         { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
       ]
-      await writeArtifactBundle(withArtifactManifest(`${base}.pixelkiln.json`, outputs, {
+      await writeManagedArtifactBundle(`${base}.pixelkiln.json`, outputs, {
         kind: "pack",
         sources: [
           await provenanceFile("$manifest", args.manifest),
@@ -644,7 +643,7 @@ async function main() {
           primaryOnly: args.primaryOnly,
           style: styleId,
         },
-      }))
+      }, { force: args.force })
 
       log(
         `  ${styleId} — ${atlas.frames.length} sprite(s), ` +
@@ -701,7 +700,7 @@ async function main() {
         { path: out, data: png },
         { path: metadata, data: JSON.stringify(atlas, null, 2) + "\n" },
       ]
-      await writeArtifactBundle(withArtifactManifest(companion, outputs, {
+      await writeManagedArtifactBundle(companion, outputs, {
         kind: "mount",
         sources: [
           await provenanceFile("$manifest", args.manifest),
@@ -716,7 +715,7 @@ async function main() {
           cells: Object.entries(cells).sort(([a], [b]) => a.localeCompare(b)),
           style: styleId,
         },
-      }))
+      }, { force: args.force })
 
       log(
         `  ${styleId} — ${atlas.frames.length} cell(s) into ` +
@@ -817,7 +816,7 @@ async function main() {
         { path: `${base}.png`, data: result.png },
         { path: `${base}${result.extension}`, data: result.document },
       ]
-      await writeArtifactBundle(withArtifactManifest(`${base}.pixelkiln.json`, outputs, {
+      await writeManagedArtifactBundle(`${base}.pixelkiln.json`, outputs, {
         kind: "tileset",
         sources: [
           await provenanceFile("$manifest", args.manifest),
@@ -833,7 +832,7 @@ async function main() {
           style: spec.styleId,
           tileType: spec.tileType ?? null,
         },
-      }))
+      }, { force: args.force })
       log(
         `  ${spec.styleId}/${spec.assetId} — ${result.generic.tiles.length} tile(s), ` +
           `${result.generic.sheet.width}x${result.generic.sheet.height} (${format})`,

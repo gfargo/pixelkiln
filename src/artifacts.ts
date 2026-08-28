@@ -19,6 +19,11 @@ export interface ArtifactBundleOptions {
   beforePromote?: (destination: string, index: number) => void | Promise<void>
 }
 
+export interface ManagedArtifactBundleOptions extends ArtifactBundleOptions {
+  /** Explicitly replace unowned or manually modified destinations. */
+  force?: boolean
+}
+
 export interface ArtifactSource {
   id: string
   path: string
@@ -98,6 +103,52 @@ function fingerprint(provenance: Pick<ArtifactBundleManifest, "kind" | "sources"
   })))
 }
 
+function parseArtifactManifest(absolute: string, data: string): ArtifactBundleManifest {
+  let raw: Partial<ArtifactBundleManifest>
+  try {
+    raw = JSON.parse(data) as Partial<ArtifactBundleManifest>
+  } catch (error) {
+    throw new Error(`${absolute} is not valid JSON: ${message(error)}`, { cause: error })
+  }
+  if (
+    raw.format !== "pixelkiln-artifact-bundle" ||
+    raw.version !== 1 ||
+    (raw.kind !== "pack" && raw.kind !== "mount" && raw.kind !== "tileset") ||
+    typeof raw.fingerprint !== "string" ||
+    raw.options === undefined ||
+    !Array.isArray(raw.sources) ||
+    !Array.isArray(raw.outputs)
+  ) {
+    throw new Error(`${absolute} is not a PixelKiln artifact bundle manifest.`)
+  }
+  for (const source of raw.sources) {
+    if (
+      !source ||
+      typeof source.id !== "string" ||
+      typeof source.path !== "string" ||
+      (source.sha256 !== null && typeof source.sha256 !== "string") ||
+      typeof source.included !== "boolean"
+    ) {
+      throw new Error(`${absolute} contains an invalid artifact source.`)
+    }
+  }
+  for (const output of raw.outputs) {
+    if (!output || typeof output.path !== "string" || typeof output.sha256 !== "string") {
+      throw new Error(`${absolute} contains an invalid artifact output.`)
+    }
+  }
+  return raw as ArtifactBundleManifest
+}
+
+async function readOptional(file: string): Promise<Buffer | null> {
+  try {
+    return await readFile(file)
+  } catch (error) {
+    if (isCode(error, "ENOENT")) return null
+    throw error
+  }
+}
+
 /** Build the deterministic companion metadata written beside a derived bundle. */
 export function createArtifactBundleManifest(
   manifestPath: string,
@@ -140,35 +191,75 @@ export function withArtifactManifest(
   ]
 }
 
+/**
+ * Persist a generated bundle while protecting files not demonstrably owned by
+ * its existing companion manifest. Byte-identical legacy files are adopted
+ * without rewriting; `force` is required to take over anything else.
+ */
+export async function writeManagedArtifactBundle(
+  manifestPath: string,
+  outputs: ArtifactFile[],
+  provenance: ArtifactProvenance,
+  options: ManagedArtifactBundleOptions = {},
+): Promise<ArtifactBundleResult> {
+  const absoluteManifest = path.resolve(manifestPath)
+  const existingManifestBytes = await readOptional(absoluteManifest)
+  let previous: ArtifactBundleManifest | null = null
+
+  if (existingManifestBytes && !options.force) {
+    try {
+      previous = parseArtifactManifest(absoluteManifest, existingManifestBytes.toString("utf8"))
+      const valid = previous.fingerprint === fingerprint(previous)
+      if (!valid) throw new Error("its integrity fingerprint does not match")
+    } catch (error) {
+      throw new Error(
+        `Refusing to replace unrecognized or modified provenance at ${absoluteManifest}: ` +
+          `${message(error)}. Pass { force: true } (CLI: --force) to take ownership ` +
+          `of this artifact bundle.`,
+        { cause: error },
+      )
+    }
+  }
+
+  if (!options.force) {
+    const root = path.dirname(absoluteManifest)
+    const recorded = new Map(
+      previous?.outputs.map((output) => [path.resolve(root, output.path), output.sha256]) ?? [],
+    )
+    const conflicts: string[] = []
+    for (const output of outputs) {
+      const destination = path.resolve(output.path)
+      const current = await readOptional(destination)
+      if (!current || digest(current) === digest(output.data)) continue
+      const expected = recorded.get(destination)
+      if (!expected || digest(current) !== expected) conflicts.push(destination)
+    }
+    if (conflicts.length) {
+      throw new Error(
+        `Refusing to overwrite modified or unowned artifact file(s):\n` +
+          conflicts.map((file) => `  ${file}`).join("\n") +
+          `\nPass { force: true } (CLI: --force) to take ownership and replace ` +
+          `the complete bundle.`,
+      )
+    }
+  }
+
+  const { force: _force, ...bundleOptions } = options
+  return writeArtifactBundle(
+    withArtifactManifest(absoluteManifest, outputs, provenance),
+    bundleOptions,
+  )
+}
+
 /** Verify stored provenance and source/output hashes without rebuilding output. */
 export async function verifyArtifactBundle(manifestPath: string): Promise<ArtifactVerification> {
   const absolute = path.resolve(manifestPath)
-  const raw = JSON.parse(await readFile(absolute, "utf8")) as Partial<ArtifactBundleManifest>
-  if (
-    raw.format !== "pixelkiln-artifact-bundle" ||
-    raw.version !== 1 ||
-    (raw.kind !== "pack" && raw.kind !== "mount" && raw.kind !== "tileset") ||
-    typeof raw.fingerprint !== "string" ||
-    raw.options === undefined ||
-    !Array.isArray(raw.sources) ||
-    !Array.isArray(raw.outputs)
-  ) {
-    throw new Error(`${absolute} is not a PixelKiln artifact bundle manifest.`)
-  }
+  const raw = parseArtifactManifest(absolute, await readFile(absolute, "utf8"))
 
   const root = path.dirname(absolute)
   const changedSources: string[] = []
   const changedOutputs: string[] = []
   for (const source of raw.sources) {
-    if (
-      !source ||
-      typeof source.id !== "string" ||
-      typeof source.path !== "string" ||
-      (source.sha256 !== null && typeof source.sha256 !== "string") ||
-      typeof source.included !== "boolean"
-    ) {
-      throw new Error(`${absolute} contains an invalid artifact source.`)
-    }
     let actual: string | null = null
     try {
       actual = digest(await readFile(path.resolve(root, source.path)))
@@ -178,9 +269,6 @@ export async function verifyArtifactBundle(manifestPath: string): Promise<Artifa
     if (actual !== source.sha256) changedSources.push(source.id)
   }
   for (const output of raw.outputs) {
-    if (!output || typeof output.path !== "string" || typeof output.sha256 !== "string") {
-      throw new Error(`${absolute} contains an invalid artifact output.`)
-    }
     try {
       if (digest(await readFile(path.resolve(root, output.path))) !== output.sha256) {
         changedOutputs.push(output.path)
