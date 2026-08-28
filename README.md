@@ -734,6 +734,12 @@ Manifest-driven bundles include the project manifest and lockfile as
 conservative inputs, so any declaration or recorded-generation change is
 visible even when it adds a source that was not in the previous sheet.
 
+PixelKiln will not silently claim an existing derived file. Without a companion
+record, it adopts a destination only when the bytes it would write are already
+identical. With a companion, every changing destination must still match its
+recorded output hash; a manual edit stops the complete write. Review the file,
+then pass `--force` to explicitly replace and take ownership of the bundle.
+
 When an asset has multiple structural outputs, `pack` includes every one and
 qualifies its frame id by role: `terrain/tile-00`, `terrain/tile-01`, and so on.
 Single-output ids remain unchanged.

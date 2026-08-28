@@ -9,6 +9,7 @@ import {
   verifyArtifactBundle,
   withArtifactManifest,
   writeArtifactBundle,
+  writeManagedArtifactBundle,
 } from "../src/artifacts.ts"
 import { sha256 } from "../src/hash.ts"
 import { encodeRgbaPng } from "../src/png.ts"
@@ -198,6 +199,84 @@ describe("transactional artifact bundles", () => {
     expect((await verifyArtifactBundle(manifestPath)).fingerprintValid).toBe(false)
   })
 
+  it("adopts byte-identical legacy output without rewriting it", async () => {
+    const output = path.join(dir, "sheet.png")
+    const manifestPath = path.join(dir, "sheet.pixelkiln.json")
+    await writeFile(output, "already generated")
+    const before = await stat(output)
+
+    const result = await writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: output, data: "already generated" }],
+      { kind: "pack", sources: [], options: {} },
+    )
+
+    expect(result.unchanged).toContain(output)
+    expect((await stat(output)).mtimeMs).toBe(before.mtimeMs)
+    expect((await verifyArtifactBundle(manifestPath)).current).toBe(true)
+  })
+
+  it("refuses an unowned destination whose bytes would be replaced", async () => {
+    const output = path.join(dir, "sheet.png")
+    const manifestPath = path.join(dir, "sheet.pixelkiln.json")
+    await writeFile(output, "hand drawn")
+
+    await expect(writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: output, data: "generated" }],
+      { kind: "pack", sources: [], options: {} },
+    )).rejects.toThrow(/modified or unowned.*--force/s)
+    expect(await readFile(output, "utf8")).toBe("hand drawn")
+  })
+
+  it("updates owned output but protects a later manual edit", async () => {
+    const output = path.join(dir, "sheet.png")
+    const manifestPath = path.join(dir, "sheet.pixelkiln.json")
+    const provenance = { kind: "pack" as const, sources: [], options: { columns: 1 } }
+    await writeManagedArtifactBundle(manifestPath, [{ path: output, data: "version one" }], provenance)
+
+    await writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: output, data: "version two" }],
+      { ...provenance, options: { columns: 2 } },
+    )
+    expect(await readFile(output, "utf8")).toBe("version two")
+
+    await writeFile(output, "manual edit")
+    await expect(writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: output, data: "version three" }],
+      provenance,
+    )).rejects.toThrow("modified or unowned")
+    expect(await readFile(output, "utf8")).toBe("manual edit")
+
+    await writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: output, data: "version three" }],
+      provenance,
+      { force: true },
+    )
+    expect(await readFile(output, "utf8")).toBe("version three")
+    expect((await verifyArtifactBundle(manifestPath)).current).toBe(true)
+  })
+
+  it("requires force when existing provenance was modified", async () => {
+    const output = path.join(dir, "sheet.png")
+    const manifestPath = path.join(dir, "sheet.pixelkiln.json")
+    const provenance = { kind: "pack" as const, sources: [], options: {} }
+    await writeManagedArtifactBundle(manifestPath, [{ path: output, data: "one" }], provenance)
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"))
+    manifest.options.edited = true
+    await writeFile(manifestPath, JSON.stringify(manifest))
+
+    await expect(writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: output, data: "two" }],
+      provenance,
+    )).rejects.toThrow(/modified provenance.*--force/)
+    expect(await readFile(output, "utf8")).toBe("one")
+  })
+
   it("writes a verifiable companion through the no-manifest CLI", async () => {
     const source = path.join(dir, "sprite.png")
     const inputs = path.join(dir, "inputs.json")
@@ -214,5 +293,23 @@ describe("transactional artifact bundles", () => {
 
     expect(await verifyArtifactBundle(`${base}.pixelkiln.json`)).toMatchObject({ current: true })
     expect(JSON.parse(await readFile(`${base}.json`, "utf8")).frames[0].id).toBe("sprite")
+
+    await writeFile(`${base}.png`, "manual edit")
+    await expect(execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "pack",
+      "--inputs", inputs,
+      "--out", base,
+    ], { cwd: dir })).rejects.toThrow("modified or unowned")
+    expect(await readFile(`${base}.png`, "utf8")).toBe("manual edit")
+
+    await execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "pack",
+      "--inputs", inputs,
+      "--out", base,
+      "--force",
+    ], { cwd: dir })
+    expect((await verifyArtifactBundle(`${base}.pixelkiln.json`)).current).toBe(true)
   })
 })
