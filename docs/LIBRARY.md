@@ -77,6 +77,10 @@ skipped files. Common non-interlaced PNG color modes and bit depths are accepted
 as inputs; packed output is always RGBA. Corrupt and interlaced inputs are
 skipped with a specific reason. `mountStyle` and `mountSprites` provide
 declared-cell placement when existing atlas coordinates must remain stable.
+The CLI stages each PNG/metadata pair together, restores the previous pair as a
+bundle after ordinary write failures, and leaves byte-identical members
+untouched. The library functions only return bytes and metadata, so callers
+remain responsible for applying equivalent guarantees when persisting them.
 
 ## Export generated tiles
 
