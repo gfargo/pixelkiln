@@ -3,7 +3,7 @@
 PixelKiln is a manifest-driven pixel-art pipeline. Start with the workflow
 guide, then use the references for the part of the pipeline you are changing.
 This source also renders at
-[pixelkiln.vercel.app/docs](https://pixelkiln.vercel.app/docs).
+[pixelkiln.griffen.codes/docs](https://pixelkiln.griffen.codes/docs).
 
 ## Start here
 
@@ -12,6 +12,7 @@ This source also renders at
 | [Getting started](./GETTING_STARTED.md) | Install from a checkout, create or adopt a project, run the everyday workflow, and decide what belongs in Git. |
 | [CLI reference](./CLI.md) | Every command and flag, offline/provider requirements, JSON output, and exit behavior. |
 | [Manifest reference](./MANIFEST.md) | Every style and asset field, inheritance, generator-specific constraints, mounting, and schema validation. |
+| [Agent workflows](./AGENTS.md) | Install the official skill and pair agent guidance with the deterministic CLI. |
 
 ## Workflows
 

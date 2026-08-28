@@ -1,0 +1,125 @@
+{
+  "version": 2,
+  "entries": {
+    "brand/anvil": {
+      "styleId": "brand",
+      "assetId": "anvil",
+      "specHash": "27437b30ab291dc6af811220e9da7c36e94cccdd05c60f6b01e334b3b5f90c54",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "Minimal pixel-art interface emblem, one centered, blacksmith anvil with a tiny ember spark, crisp geometric silhouette, sparse highlights, no text, no frame, transparent background",
+      "width": 32,
+      "height": 32,
+      "jobId": "73df2a8a-1e8f-4738-921d-57cef6096e11",
+      "reviewObjectId": null,
+      "objectId": "73df2a8a-1e8f-4738-921d-57cef6096e11",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../public/sprites/anvil.png",
+          "sha256": "5c6298abd959497d60dde619f41b7ec16f5319385845c0d37f86e75cd59b708f"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-08-28T21:06:07.090Z",
+      "downloadedAt": "2026-08-28T21:07:31.253Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "brand/hammer": {
+      "styleId": "brand",
+      "assetId": "hammer",
+      "specHash": "f07f9c025318cf6a087ea1d565a3a3e32cf3a5a08019b691606f34dd9d4e37d0",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "Minimal pixel-art interface emblem, one centered, short forge hammer angled down-right, crisp geometric silhouette, sparse highlights, no text, no frame, transparent background",
+      "width": 32,
+      "height": 32,
+      "jobId": "ef446a6c-3962-4761-9587-87de81976377",
+      "reviewObjectId": null,
+      "objectId": "ef446a6c-3962-4761-9587-87de81976377",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../public/sprites/hammer.png",
+          "sha256": "708bd89092b8f0e980b7ea1990b761bcf11d4eeafb9367e760bb0a08371bc98c"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-08-28T21:06:20.544Z",
+      "downloadedAt": "2026-08-28T21:07:31.251Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "brand/kiln": {
+      "styleId": "brand",
+      "assetId": "kiln",
+      "specHash": "ce48397783473f3d4345029754203a8e205af29bcf68e50b677aec63f8f4490c",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "Minimal pixel-art interface emblem, one centered, compact brick kiln with a small glowing fire, crisp geometric silhouette, sparse highlights, no text, no frame, transparent background",
+      "width": 32,
+      "height": 32,
+      "jobId": "47714976-0668-478c-a9b8-f49a7a852173",
+      "reviewObjectId": null,
+      "objectId": "47714976-0668-478c-a9b8-f49a7a852173",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../public/sprites/kiln.png",
+          "sha256": "7cb19acf4ac44efe3156d37d62cc84b7b92c1664d24252ad080da9eca384c89f"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-08-28T21:06:42.848Z",
+      "downloadedAt": "2026-08-28T21:07:31.248Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "brand/spark": {
+      "styleId": "brand",
+      "assetId": "spark",
+      "specHash": "1607c74ce4813a1ef32989c0edcd06450b0dc71320390203638c3c08a334afb8",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "Minimal pixel-art interface emblem, one centered, small four-point forge spark with two tiny embers, crisp geometric silhouette, sparse highlights, no text, no frame, transparent background",
+      "width": 32,
+      "height": 32,
+      "jobId": "67545c58-471d-44cf-a5de-9eaf432ee430",
+      "reviewObjectId": null,
+      "objectId": "67545c58-471d-44cf-a5de-9eaf432ee430",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../public/sprites/spark.png",
+          "sha256": "73848c715f7a613c7df3589d66bdc19587ae9e3d5c1ddedbd9f96902bb39fab9"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-08-28T21:07:12.053Z",
+      "downloadedAt": "2026-08-28T21:07:31.250Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    }
+  }
+}

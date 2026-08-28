@@ -1,0 +1,37 @@
+{
+  "$schema": "../../schema/manifest.schema.json",
+  "name": "pixelkiln-website",
+  "styles": {
+    "brand": {
+      "generator": "pixflux",
+      "promptPrefix": "Minimal pixel-art interface emblem, one centered",
+      "promptSuffix": "crisp geometric silhouette, sparse highlights, no text, no frame, transparent background",
+      "palette": ["#17150f", "#f3ead6", "#ff6b35", "#ff9c5f", "#b9f27c"],
+      "noBackground": true,
+      "outDir": "../public/sprites",
+      "tags": ["pixelkiln", "website"]
+    }
+  },
+  "assets": {
+    "anvil": {
+      "prompt": "blacksmith anvil with a tiny ember spark",
+      "width": 32,
+      "height": 32
+    },
+    "hammer": {
+      "prompt": "short forge hammer angled down-right",
+      "width": 32,
+      "height": 32
+    },
+    "kiln": {
+      "prompt": "compact brick kiln with a small glowing fire",
+      "width": 32,
+      "height": 32
+    },
+    "spark": {
+      "prompt": "small four-point forge spark with two tiny embers",
+      "width": 32,
+      "height": 32
+    }
+  }
+}

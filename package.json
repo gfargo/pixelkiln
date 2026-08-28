@@ -1,7 +1,7 @@
 {
   "name": "pixelkiln",
   "version": "0.1.0",
-  "description": "Manifest-driven bulk pixel art generation against the PixelLab API. No LLM in the loop.",
+  "description": "Manifest-driven pixel-art generation, review, recovery, and packaging with deterministic provenance.",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -47,7 +47,7 @@
   "bugs": {
     "url": "https://github.com/gfargo/pixelkiln/issues"
   },
-  "homepage": "https://pixelkiln.vercel.app",
+  "homepage": "https://pixelkiln.griffen.codes",
   "publishConfig": {
     "access": "public"
   },
@@ -87,6 +87,7 @@
     "dist",
     "bin",
     "schema",
+    "skills",
     "docs",
     "examples",
     "README.md",

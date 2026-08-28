@@ -4,7 +4,7 @@ The public marketing and documentation site for PixelKiln. It is a standalone
 Next.js app within the library repository so product, documentation, and
 website changes can share one pull request without adding web dependencies to
 the published npm package. Production is available at
-[pixelkiln.vercel.app](https://pixelkiln.vercel.app).
+[pixelkiln.griffen.codes](https://pixelkiln.griffen.codes).
 
 ## Local development
 

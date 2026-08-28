@@ -443,6 +443,42 @@ describe("fetch", () => {
     expect(existsSync(specs[0]!.outFile)).toBe(true)
   })
 
+  it("drops machine-local source paths after caching their bytes", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const local = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      download: async (url: string) => url.startsWith("file://")
+        ? readFile(url.slice("file://".length))
+        : provider.download(url),
+    })
+    const { loaded, specs } = await project({
+      generator: "map",
+      assets: { anvil: { prompt: "a" } },
+    })
+    const lock = emptyLock()
+    await submit(local, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(local, lock, lockPath, { intervalMs: 0, specs })
+
+    const tempSource = path.join(dir, "inline-provider-result.png")
+    await writeFile(tempSource, FAKE_PNG)
+    const entry = lock.entries[lockKey("base", "anvil")]!
+    entry.sourceUrl = `file://${tempSource}`
+    entry.sourceUrls = [{ url: `file://${tempSource}` }]
+
+    expect((await fetchAssets(local, specs, lock, lockPath)).downloaded).toBe(1)
+    const downloaded = lock.entries[lockKey("base", "anvil")]!
+    expect(downloaded.sourceUrl).toBeNull()
+    expect(downloaded.sourceUrls).toEqual([])
+
+    await unlink(specs[0]!.outFile)
+    await unlink(tempSource)
+    const offline = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      download: async () => { throw new Error("cached bytes should make the local path unnecessary") },
+    })
+    expect((await fetchAssets(offline, specs, lock, lockPath, { repair: true })).downloaded).toBe(1)
+  })
+
   it("closes the loop: a full run ends with plan reporting ok", async () => {
     const provider = new FakeProvider({ candidates: 1 })
     const { loaded, specs } = await project({ generator: "map" })

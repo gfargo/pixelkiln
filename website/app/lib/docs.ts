@@ -36,6 +36,13 @@ export const docs: DocEntry[] = [
     group: "Start here",
   },
   {
+    slug: "agents",
+    title: "Agent workflows",
+    description: "Install the official skill and pair agent guidance with deterministic execution.",
+    file: "docs/AGENTS.md",
+    group: "Start here",
+  },
+  {
     slug: "generators",
     title: "Generator selection",
     description: "Choose the right capability and understand measured costs.",

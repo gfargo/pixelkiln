@@ -2,8 +2,8 @@
 
 ![PixelKiln](https://wp.griffen.codes/wp-content/uploads/2026/08/download.png)
 
-[Website](https://pixelkiln.vercel.app) ·
-[Documentation](https://pixelkiln.vercel.app/docs) ·
+[Website](https://pixelkiln.griffen.codes) ·
+[Documentation](https://pixelkiln.griffen.codes/docs) ·
 [GitHub](https://github.com/gfargo/pixelkiln)
 
 Manifest-driven pixel-art generation, review, recovery, quality control, and
@@ -14,6 +14,11 @@ preview cost and drift, generate only the missing work, review candidates in a
 local contact sheet, and commit exact provenance beside the files. No LLM is in
 the orchestration loop; provider calls, polling, hashing, downloads, and filing
 are deterministic software mechanics.
+
+The orchestration layer is provider-neutral by design. PixelLab is currently
+the only production adapter and the only live-tested generation backend;
+`FakeProvider` exercises the same contract deterministically in tests. A second
+production adapter is roadmap work, not current compatibility.
 
 > **Release status:** the package is pre-1.0 and the first npm publication is
 > tracked in [issue #1](https://github.com/gfargo/pixelkiln/issues/1). Until it
@@ -110,6 +115,21 @@ pixelkiln plan
 ```
 
 See [Getting started](./docs/GETTING_STARTED.md) for new and existing projects.
+
+## Agent skill
+
+Install the official PixelKiln skill so Codex, Claude Code, Cursor, and other
+compatible agents know the safe plan → budget → generate → review → recover
+workflow:
+
+```bash
+npx skills add gfargo/pixelkiln@pixelkiln
+```
+
+The skill guides an agent around PixelKiln; it does not replace a generation
+provider. PixelLab's MCP server is a complementary direct-generation surface,
+while PixelKiln remains the project state, budget, provenance, review, and
+packaging layer.
 
 ## Manifest
 
@@ -271,6 +291,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Getting started](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, everyday workflow, and what to commit. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
+| [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and PixelLab MCP pairing. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
@@ -280,7 +301,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |
 | [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
 
-The [public documentation site](https://pixelkiln.vercel.app/docs) is built by
+The [public documentation site](https://pixelkiln.griffen.codes/docs) is built by
 the application in [`website/`](./website/README.md). It reads these Markdown
 files directly at build time, so the website and published package share one
 documentation source.
