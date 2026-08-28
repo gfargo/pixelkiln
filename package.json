@@ -47,7 +47,7 @@
   "bugs": {
     "url": "https://github.com/gfargo/pixelkiln/issues"
   },
-  "homepage": "https://github.com/gfargo/pixelkiln#readme",
+  "homepage": "https://pixelkiln.vercel.app",
   "publishConfig": {
     "access": "public"
   },
