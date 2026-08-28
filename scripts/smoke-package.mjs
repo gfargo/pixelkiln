@@ -34,7 +34,11 @@ try {
     "dist/index.d.ts",
     "bin/pixelkiln.js",
     "schema/manifest.schema.json",
+    "docs/README.md",
+    "docs/CLI.md",
     "docs/GETTING_STARTED.md",
+    "docs/MANIFEST.md",
+    "docs/ARTIFACTS.md",
     "SECURITY.md",
   ]) {
     if (!existsSync(path.join(installed, required))) {
