@@ -276,6 +276,11 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |
 | [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
 
+The marketing and rendered-documentation application lives in
+[`website/`](./website/README.md). It reads these Markdown files directly at
+build time, so the website and published package share one documentation
+source.
+
 Project policies: [Contributing](./CONTRIBUTING.md),
 [Security](./SECURITY.md), and [provider notes](./PROVIDERS.md).
 

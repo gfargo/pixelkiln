@@ -18,6 +18,19 @@ npm run build
 npm run test:package
 ```
 
+The Next.js marketing/documentation site is isolated in `website/`:
+
+```bash
+npm ci --prefix website
+npm run website:check
+npm run website:lint
+npm run website:build
+npm run website:dev
+```
+
+The site reads canonical Markdown from `docs/` and the root policy files at
+build time. Do not create a second documentation copy under `website/`.
+
 Run the source CLI without a global install:
 
 ```bash
@@ -41,6 +54,8 @@ for pipeline behavior and mocked HTTP responses for PixelLab wire contracts.
   workflow detail in `docs/`, and link every guide from `docs/README.md`.
 - Run `npm run test:docs` after changing Markdown or the CLI command/flag
   surface. It checks local links, the docs index, README size, and CLI coverage.
+- Run the website lint and build checks when changing `website/` or the
+  canonical Markdown it renders.
 - Run the package smoke test when changing exports, build configuration, the
   executable, package metadata, or the `files` allowlist.
 
