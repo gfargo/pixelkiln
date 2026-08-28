@@ -720,6 +720,12 @@ pixelkiln pack --style heybud-riso
 Frames are keyed by **asset id**, so a consumer looks a sprite up by name
 rather than by a fragile index.
 
+Generated PNG/metadata pairs are staged together and rolled back as one bundle.
+A normal write failure restores the previous complete pair instead of leaving
+mixed old/new output, and byte-identical files are not rewritten. This guarantee
+also applies to `mount` and every tileset `export` format. Abrupt process or
+machine termination during promotion is not yet crash-recoverable.
+
 When an asset has multiple structural outputs, `pack` includes every one and
 qualifies its frame id by role: `terrain/tile-00`, `terrain/tile-01`, and so on.
 Single-output ids remain unchanged.

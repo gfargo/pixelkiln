@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path"
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { loadEnvFiles } from "./env.ts"
 import { PixelLabProvider } from "./providers/pixellab.ts"
@@ -25,6 +25,7 @@ import { inspectCaches } from "./pipeline/cache-health.ts"
 import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
+import { writeArtifactBundle } from "./artifacts.ts"
 
 const log = (msg = "") => console.log(msg)
 
@@ -461,12 +462,10 @@ async function main() {
 
     const { png, atlas, skipped } = packSprites(inputs, { columns: args.columns })
     const base = path.resolve(args.out.replace(/\.png$/, ""))
-    // --out is free-form, and a caller building a path under a scratch
-    // directory (as heybud-admin's sync script does) should not also have to
-    // pre-create it.
-    mkdirSync(path.dirname(base), { recursive: true })
-    writeFileSync(`${base}.png`, png)
-    writeFileSync(`${base}.json`, JSON.stringify(atlas, null, 2) + "\n")
+    await writeArtifactBundle([
+      { path: `${base}.png`, data: png },
+      { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
+    ])
     log(
       `  ${atlas.frames.length} sprite(s), ${atlas.sheet.width}x${atlas.sheet.height} ` +
         `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB`,
@@ -607,9 +606,10 @@ async function main() {
         ? path.resolve(args.out.replace(/\.png$/, ""))
         : path.resolve(manifestDir, style!.outDir, `${styleId}-sheet`)
 
-      mkdirSync(path.dirname(base), { recursive: true })
-      writeFileSync(`${base}.png`, png)
-      writeFileSync(`${base}.json`, JSON.stringify(atlas, null, 2) + "\n")
+      await writeArtifactBundle([
+        { path: `${base}.png`, data: png },
+        { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
+      ])
 
       log(
         `  ${styleId} — ${atlas.frames.length} sprite(s), ` +
@@ -660,9 +660,10 @@ async function main() {
       )
 
       const out = path.resolve(manifestDir, style.mount.out)
-      mkdirSync(path.dirname(out), { recursive: true })
-      writeFileSync(out, png)
-      writeFileSync(out.replace(/\.png$/, "") + ".json", JSON.stringify(atlas, null, 2) + "\n")
+      await writeArtifactBundle([
+        { path: out, data: png },
+        { path: out.replace(/\.png$/, "") + ".json", data: JSON.stringify(atlas, null, 2) + "\n" },
+      ])
 
       log(
         `  ${styleId} — ${atlas.frames.length} cell(s) into ` +
@@ -759,9 +760,10 @@ async function main() {
         imageName: path.basename(`${base}.png`),
         columns: args.columns,
       })
-      mkdirSync(path.dirname(base), { recursive: true })
-      writeFileSync(`${base}.png`, result.png)
-      writeFileSync(`${base}${result.extension}`, result.document)
+      await writeArtifactBundle([
+        { path: `${base}.png`, data: result.png },
+        { path: `${base}${result.extension}`, data: result.document },
+      ])
       log(
         `  ${spec.styleId}/${spec.assetId} — ${result.generic.tiles.length} tile(s), ` +
           `${result.generic.sheet.width}x${result.generic.sheet.height} (${format})`,
