@@ -37,5 +37,5 @@ guide, then use the references for the part of the pipeline you are changing.
 - [Naming decision](../NAMING.md)
 
 The Markdown in this directory is the canonical documentation and ships in the
-npm package. A future website should render or link to this source rather than
-maintaining a second copy.
+npm package. The Next.js app in `website/` renders this source directly into
+the public documentation routes rather than maintaining a second copy.

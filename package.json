@@ -31,7 +31,11 @@
     "test:docs": "node scripts/check-docs.mjs",
     "test:package": "node scripts/smoke-package.mjs",
     "test:watch": "vitest",
-    "schema": "tsx scripts/gen-schema.ts"
+    "schema": "tsx scripts/gen-schema.ts",
+    "website:dev": "npm run dev --prefix website",
+    "website:check": "npm run check:content --prefix website",
+    "website:lint": "npm run lint --prefix website",
+    "website:build": "npm run build --prefix website"
   },
   "engines": {
     "node": ">=20"
