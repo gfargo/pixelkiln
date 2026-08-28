@@ -723,8 +723,14 @@ rather than by a fragile index.
 Generated PNG, metadata, and provenance files are staged and rolled back as one
 bundle. A normal write failure restores the previous complete bundle instead of
 leaving mixed old/new output, and byte-identical files are not rewritten. This
-guarantee also applies to `mount` and every tileset `export` format. Abrupt
-process or machine termination during promotion is not yet crash-recoverable.
+guarantee also applies to `mount` and every tileset `export` format.
+
+Before staging, the managed writer records an immutable transaction journal
+beside the provenance file. After an abrupt process or machine termination, the
+next write restores an uncommitted prior bundle or finishes cleanup for a fully
+committed new one. Recovery validates every destination and temporary filename
+against the current bundle before touching disk, and refuses to interfere with
+a live writer.
 
 The companion `.pixelkiln.json` records portable source paths and SHA-256s,
 layout/export options, output hashes, and one canonical fingerprint. It can be

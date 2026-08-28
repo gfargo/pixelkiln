@@ -89,6 +89,12 @@ unowned or manually modified output, and accepts `{ force: true }` as an
 explicit takeover. `writeArtifactBundle()` remains the lower-level transactional
 primitive for callers with their own ownership policy.
 
+Managed writes also keep a short-lived transaction journal beside the companion.
+The next invocation rolls back an interrupted pre-commit promotion or completes
+post-commit cleanup before checking ownership. Journal recovery is restricted to
+the current bundle's exact destinations and same-directory PixelKiln temp names;
+an unsafe journal or live concurrent writer is refused.
+
 ## Export generated tiles
 
 ```ts
