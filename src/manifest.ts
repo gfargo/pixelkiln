@@ -227,6 +227,7 @@ export async function resolveSpecs(
         root,
         outFile,
         tags,
+        source: asset.source,
         specHash: specHash(base, styleImageHashes),
       }
       if (filter?.provider) {
