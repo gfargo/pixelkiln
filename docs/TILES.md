@@ -63,6 +63,12 @@ manual edits stop the whole export rather than being silently replaced. Use
 `--force` only after reviewing the difference to take ownership and re-baseline
 the complete bundle.
 
+An immutable transaction journal exists only while the three files are being
+replaced. Following abrupt termination, the next export restores the old set if
+commit was incomplete, or retains the fully committed new set and removes its
+backups. Recovery will not follow journal paths outside the current bundle or
+interrupt a live writer.
+
 ## Generic JSON
 
 The generic format is the lossless interchange contract:

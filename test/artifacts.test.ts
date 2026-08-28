@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/
 import { tmpdir } from "node:os"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
+import { existsSync } from "node:fs"
 import {
   createArtifactBundleManifest,
   verifyArtifactBundle,
@@ -275,6 +276,90 @@ describe("transactional artifact bundles", () => {
       provenance,
     )).rejects.toThrow(/modified provenance.*--force/)
     expect(await readFile(output, "utf8")).toBe("one")
+  })
+
+  it("recovers a prior bundle after abrupt termination during promotion", async () => {
+    const first = path.join(dir, "first.png")
+    const second = path.join(dir, "second.json")
+    const manifestPath = path.join(dir, "bundle.pixelkiln.json")
+    await writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: first, data: "old first" }, { path: second, data: "old second" }],
+      { kind: "pack", sources: [], options: { revision: 1 } },
+    )
+
+    await expect(execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("test/fixtures/crash-artifact-writer.ts"),
+      "during-promotion", manifestPath, first, second,
+    ])).rejects.toMatchObject({ code: 86 })
+    expect(await readFile(first, "utf8")).toBe("new first")
+    expect(existsSync(second)).toBe(false)
+    expect(existsSync(`${manifestPath}.transaction`)).toBe(true)
+
+    await writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: first, data: "new first" }, { path: second, data: "new second" }],
+      { kind: "pack", sources: [], options: { revision: 2 } },
+    )
+
+    expect(await readFile(first, "utf8")).toBe("new first")
+    expect(await readFile(second, "utf8")).toBe("new second")
+    expect((await verifyArtifactBundle(manifestPath)).current).toBe(true)
+    expect((await readdir(dir)).some((name) => name.includes("pixelkiln-stage") || name.includes("pixelkiln-backup") || name.endsWith(".transaction"))).toBe(false)
+  })
+
+  it("finishes cleanup after abrupt termination beyond the commit point", async () => {
+    const first = path.join(dir, "first.png")
+    const second = path.join(dir, "second.json")
+    const manifestPath = path.join(dir, "bundle.pixelkiln.json")
+    await writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: first, data: "old first" }, { path: second, data: "old second" }],
+      { kind: "pack", sources: [], options: { revision: 1 } },
+    )
+
+    await expect(execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("test/fixtures/crash-artifact-writer.ts"),
+      "after-commit", manifestPath, first, second,
+    ])).rejects.toMatchObject({ code: 87 })
+    expect(await readFile(first, "utf8")).toBe("new first")
+    expect(await readFile(second, "utf8")).toBe("new second")
+    expect(existsSync(`${manifestPath}.transaction.committed`)).toBe(true)
+
+    const result = await writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: first, data: "new first" }, { path: second, data: "new second" }],
+      { kind: "pack", sources: [], options: { revision: 2 } },
+    )
+
+    expect(result.changed).toEqual([])
+    expect((await verifyArtifactBundle(manifestPath)).current).toBe(true)
+    expect((await readdir(dir)).some((name) => name.includes("pixelkiln-stage") || name.includes("pixelkiln-backup") || name.includes(".transaction"))).toBe(false)
+  })
+
+  it("refuses a recovery journal that names a destination outside the bundle", async () => {
+    const output = path.join(dir, "sheet.png")
+    const victim = path.join(dir, "do-not-touch.txt")
+    const manifestPath = path.join(dir, "sheet.pixelkiln.json")
+    await writeFile(victim, "safe")
+    await writeFile(`${manifestPath}.transaction`, JSON.stringify({
+      format: "pixelkiln-artifact-transaction",
+      version: 1,
+      pid: process.pid,
+      createdAt: new Date().toISOString(),
+      entries: [{
+        destination: victim,
+        stage: path.join(dir, ".do-not-touch.txt.pixelkiln-stage-fake-0"),
+        sha256: sha256("malicious"),
+      }],
+    }))
+
+    await expect(writeManagedArtifactBundle(
+      manifestPath,
+      [{ path: output, data: "generated" }],
+      { kind: "pack", sources: [], options: {} },
+    )).rejects.toThrow("Refusing unsafe artifact recovery")
+    expect(await readFile(victim, "utf8")).toBe("safe")
   })
 
   it("writes a verifiable companion through the no-manifest CLI", async () => {
