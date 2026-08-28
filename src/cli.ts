@@ -25,9 +25,24 @@ import { inspectCaches } from "./pipeline/cache-health.ts"
 import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
-import { writeArtifactBundle } from "./artifacts.ts"
+import {
+  withArtifactManifest,
+  writeArtifactBundle,
+  type ArtifactFile,
+  type ArtifactSource,
+} from "./artifacts.ts"
 
 const log = (msg = "") => console.log(msg)
+
+async function provenanceFile(id: string, file: string): Promise<ArtifactSource> {
+  const absolute = path.resolve(file)
+  return {
+    id,
+    path: absolute,
+    sha256: existsSync(absolute) ? await sha256File(absolute) : null,
+    included: true,
+  }
+}
 
 interface Args {
   command: string
@@ -246,10 +261,10 @@ Commands
             One session per matching style unless --style forces a single one.
   audit     Measure how consistently a style's assets hold together. Offline.
   cache     Inspect local recovery/object-hash caches; optionally verify or prune.
-  pack      Composite a style's sprites into one sheet + JSON atlas. Offline.
+  pack      Composite sprites into a PNG/atlas/provenance bundle. Offline.
   mount     Write a style's sprites into their declared cells of an existing
             sheet, leaving every other pixel untouched. Offline.
-  export    Build an engine-ready tile atlas and generic, Tiled, or Godot metadata.
+  export    Build a tile atlas, engine metadata, and offline provenance record.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
@@ -460,17 +475,22 @@ async function main() {
     const raw = JSON.parse(await readFile(path.resolve(args.inputs), "utf8")) as unknown
     const inputs = resolvePackInputs(raw, args.inputs)
 
-    const { png, atlas, skipped } = packSprites(inputs, { columns: args.columns })
+    const { png, atlas, skipped, sources } = packSprites(inputs, { columns: args.columns })
     const base = path.resolve(args.out.replace(/\.png$/, ""))
-    await writeArtifactBundle([
+    const outputs: ArtifactFile[] = [
       { path: `${base}.png`, data: png },
       { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
-    ])
+    ]
+    await writeArtifactBundle(withArtifactManifest(`${base}.pixelkiln.json`, outputs, {
+      kind: "pack",
+      sources: [await provenanceFile("$inputs", args.inputs), ...sources],
+      options: { columns: args.columns ?? null, order: "id", style: null },
+    }))
     log(
       `  ${atlas.frames.length} sprite(s), ${atlas.sheet.width}x${atlas.sheet.height} ` +
         `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB`,
     )
-    log(`    ${path.relative(process.cwd(), base)}.png + .json`)
+    log(`    ${path.relative(process.cwd(), base)}.png + .json + .pixelkiln.json`)
     for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
     return
   }
@@ -593,7 +613,7 @@ async function main() {
     const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
 
     for (const styleId of styleIds) {
-      const { png, atlas, skipped } = packStyle(lock, styleId, manifestDir, {
+      const { png, atlas, skipped, sources } = packStyle(lock, styleId, manifestDir, {
         columns: args.columns,
         outputRoles: args.outputRoles,
         primaryOnly: args.primaryOnly,
@@ -606,16 +626,31 @@ async function main() {
         ? path.resolve(args.out.replace(/\.png$/, ""))
         : path.resolve(manifestDir, style!.outDir, `${styleId}-sheet`)
 
-      await writeArtifactBundle([
+      const outputs: ArtifactFile[] = [
         { path: `${base}.png`, data: png },
         { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
-      ])
+      ]
+      await writeArtifactBundle(withArtifactManifest(`${base}.pixelkiln.json`, outputs, {
+        kind: "pack",
+        sources: [
+          await provenanceFile("$manifest", args.manifest),
+          await provenanceFile("$lock", args.lock),
+          ...sources,
+        ],
+        options: {
+          columns: args.columns ?? null,
+          order: "id",
+          outputRoles: [...args.outputRoles].sort(),
+          primaryOnly: args.primaryOnly,
+          style: styleId,
+        },
+      }))
 
       log(
         `  ${styleId} — ${atlas.frames.length} sprite(s), ` +
           `${atlas.sheet.width}x${atlas.sheet.height} in ${atlas.columns} column(s)`,
       )
-      log(`    ${path.relative(process.cwd(), base)}.png + .json`)
+      log(`    ${path.relative(process.cwd(), base)}.png + .json + .pixelkiln.json`)
       for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
     }
     return
@@ -649,7 +684,7 @@ async function main() {
         if (asset.outputRole) outputRoles[assetId] = asset.outputRole
       }
 
-      const { png, atlas, skipped, overBase } = mountStyle(
+      const { png, atlas, skipped, overBase, sources: artifactSources } = mountStyle(
         lock,
         styleId,
         manifestDir,
@@ -660,17 +695,35 @@ async function main() {
       )
 
       const out = path.resolve(manifestDir, style.mount.out)
-      await writeArtifactBundle([
+      const metadata = out.replace(/\.png$/, "") + ".json"
+      const companion = out.replace(/\.png$/, "") + ".pixelkiln.json"
+      const outputs: ArtifactFile[] = [
         { path: out, data: png },
-        { path: out.replace(/\.png$/, "") + ".json", data: JSON.stringify(atlas, null, 2) + "\n" },
-      ])
+        { path: metadata, data: JSON.stringify(atlas, null, 2) + "\n" },
+      ]
+      await writeArtifactBundle(withArtifactManifest(companion, outputs, {
+        kind: "mount",
+        sources: [
+          await provenanceFile("$manifest", args.manifest),
+          await provenanceFile("$lock", args.lock),
+          ...artifactSources.filter(
+            (source) => source.id !== "$base" || path.resolve(source.path) !== out,
+          ),
+        ],
+        options: {
+          cellHeight: style.mount.cellHeight,
+          cellWidth: style.mount.cellWidth,
+          cells: Object.entries(cells).sort(([a], [b]) => a.localeCompare(b)),
+          style: styleId,
+        },
+      }))
 
       log(
         `  ${styleId} — ${atlas.frames.length} cell(s) into ` +
           `${atlas.sheet.width}x${atlas.sheet.height}` +
           (overBase ? ` over ${style.mount.base}` : " (new sheet)"),
       )
-      log(`    ${path.relative(process.cwd(), out)}`)
+      log(`    ${path.relative(process.cwd(), out)} + atlas/provenance JSON`)
       for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
     }
     return
@@ -760,15 +813,35 @@ async function main() {
         imageName: path.basename(`${base}.png`),
         columns: args.columns,
       })
-      await writeArtifactBundle([
+      const outputs: ArtifactFile[] = [
         { path: `${base}.png`, data: result.png },
         { path: `${base}${result.extension}`, data: result.document },
-      ])
+      ]
+      await writeArtifactBundle(withArtifactManifest(`${base}.pixelkiln.json`, outputs, {
+        kind: "tileset",
+        sources: [
+          await provenanceFile("$manifest", args.manifest),
+          await provenanceFile("$lock", args.lock),
+          ...result.sources,
+        ],
+        options: {
+          asset: spec.assetId,
+          columns: args.columns ?? null,
+          format,
+          image: path.basename(`${base}.png`),
+          providerRules: result.generic.providerRules,
+          style: spec.styleId,
+          tileType: spec.tileType ?? null,
+        },
+      }))
       log(
         `  ${spec.styleId}/${spec.assetId} — ${result.generic.tiles.length} tile(s), ` +
           `${result.generic.sheet.width}x${result.generic.sheet.height} (${format})`,
       )
-      log(`    ${path.relative(process.cwd(), base)}.png + ${path.basename(base)}${result.extension}`)
+      log(
+        `    ${path.relative(process.cwd(), base)}.png + ` +
+          `${path.basename(base)}${result.extension} + .pixelkiln.json`,
+      )
     }
     return
   }

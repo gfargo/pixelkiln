@@ -599,8 +599,8 @@ contact sheet and produce one selected image.
 
 #### Exporting an engine-ready tileset
 
-After fetching a tiles asset, `export` writes a deterministic PNG atlas and a
-metadata file beside it:
+After fetching a tiles asset, `export` writes a deterministic PNG atlas, engine
+metadata, and a `.pixelkiln.json` provenance record beside them:
 
 ```bash
 pixelkiln export --style ground --only fairway_transition
@@ -702,7 +702,7 @@ whatever happens to be sitting in the output directory.
 ```bash
 pixelkiln pack --style heybud-riso
 #   heybud-riso — 74 sprite(s), 432x432 in 9 column(s)
-#     public/vibe/variants/riso/heybud-riso-sheet.png + .json
+#     public/vibe/variants/riso/heybud-riso-sheet.png + .json + .pixelkiln.json
 ```
 
 ```jsonc
@@ -720,11 +720,19 @@ pixelkiln pack --style heybud-riso
 Frames are keyed by **asset id**, so a consumer looks a sprite up by name
 rather than by a fragile index.
 
-Generated PNG/metadata pairs are staged together and rolled back as one bundle.
-A normal write failure restores the previous complete pair instead of leaving
-mixed old/new output, and byte-identical files are not rewritten. This guarantee
-also applies to `mount` and every tileset `export` format. Abrupt process or
-machine termination during promotion is not yet crash-recoverable.
+Generated PNG, metadata, and provenance files are staged and rolled back as one
+bundle. A normal write failure restores the previous complete bundle instead of
+leaving mixed old/new output, and byte-identical files are not rewritten. This
+guarantee also applies to `mount` and every tileset `export` format. Abrupt
+process or machine termination during promotion is not yet crash-recoverable.
+
+The companion `.pixelkiln.json` records portable source paths and SHA-256s,
+layout/export options, output hashes, and one canonical fingerprint. It can be
+checked with the exported `verifyArtifactBundle()` API to detect changed inputs,
+edited or missing outputs, and altered provenance without rebuilding the sheet.
+Manifest-driven bundles include the project manifest and lockfile as
+conservative inputs, so any declaration or recorded-generation change is
+visible even when it adds a source that was not in the previous sheet.
 
 When an asset has multiple structural outputs, `pack` includes every one and
 qualifies its frame id by role: `terrain/tile-00`, `terrain/tile-01`, and so on.
@@ -872,7 +880,7 @@ anything pixelkiln knows about.
 ```bash
 pixelkiln pack --inputs sprites.json --out dist/sheet
 #   86 sprite(s), 704x704 in 10 column(s) — 42.5 KB
-#     dist/sheet.png + .json
+#     dist/sheet.png + .json + .pixelkiln.json
 ```
 
 ```jsonc

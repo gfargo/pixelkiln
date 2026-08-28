@@ -1,5 +1,5 @@
 import path from "node:path"
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 
 export interface ArtifactFile {
@@ -19,6 +19,37 @@ export interface ArtifactBundleOptions {
   beforePromote?: (destination: string, index: number) => void | Promise<void>
 }
 
+export interface ArtifactSource {
+  id: string
+  path: string
+  sha256: string | null
+  included: boolean
+}
+
+export interface ArtifactProvenance {
+  kind: "pack" | "mount" | "tileset"
+  sources: ArtifactSource[]
+  /** Every non-source input that can change the derived bytes. */
+  options: unknown
+}
+
+export interface ArtifactBundleManifest {
+  format: "pixelkiln-artifact-bundle"
+  version: 1
+  kind: ArtifactProvenance["kind"]
+  fingerprint: string
+  sources: ArtifactSource[]
+  options: unknown
+  outputs: Array<{ path: string; sha256: string }>
+}
+
+export interface ArtifactVerification {
+  current: boolean
+  fingerprintValid: boolean
+  changedSources: string[]
+  changedOutputs: string[]
+}
+
 interface PreparedArtifact {
   destination: string
   data: Buffer
@@ -30,6 +61,148 @@ interface PreparedArtifact {
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function digest(data: string | Uint8Array): string {
+  return createHash("sha256").update(data).digest("hex")
+}
+
+function portableRelative(from: string, to: string): string {
+  return path.relative(from, path.resolve(to)).split(path.sep).join("/") || "."
+}
+
+function canonical(value: unknown): unknown {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("Artifact provenance numbers must be finite.")
+    return value
+  }
+  if (Array.isArray(value)) return value.map(canonical)
+  if (typeof value === "object") {
+    const sorted: Record<string, unknown> = {}
+    for (const key of Object.keys(value).sort()) {
+      const item = (value as Record<string, unknown>)[key]
+      if (item !== undefined) sorted[key] = canonical(item)
+    }
+    return sorted
+  }
+  throw new Error(`Artifact provenance cannot contain ${typeof value} values.`)
+}
+
+function fingerprint(provenance: Pick<ArtifactBundleManifest, "kind" | "sources" | "options" | "outputs">): string {
+  return digest(JSON.stringify(canonical({
+    kind: provenance.kind,
+    sources: provenance.sources,
+    options: provenance.options,
+    outputs: provenance.outputs,
+  })))
+}
+
+/** Build the deterministic companion metadata written beside a derived bundle. */
+export function createArtifactBundleManifest(
+  manifestPath: string,
+  outputs: ArtifactFile[],
+  provenance: ArtifactProvenance,
+): ArtifactBundleManifest {
+  const root = path.dirname(path.resolve(manifestPath))
+  const sources = provenance.sources.map((source) => ({
+    ...source,
+    path: portableRelative(root, source.path),
+  }))
+  const normalized = {
+    kind: provenance.kind,
+    sources,
+    options: canonical(provenance.options),
+  }
+  const manifestOutputs = outputs.map((output) => ({
+    path: portableRelative(root, output.path),
+    sha256: digest(output.data),
+  }))
+  return {
+    format: "pixelkiln-artifact-bundle",
+    version: 1,
+    ...normalized,
+    fingerprint: fingerprint({ ...normalized, outputs: manifestOutputs }),
+    outputs: manifestOutputs,
+  }
+}
+
+/** Add deterministic provenance metadata to a related set of generated files. */
+export function withArtifactManifest(
+  manifestPath: string,
+  outputs: ArtifactFile[],
+  provenance: ArtifactProvenance,
+): ArtifactFile[] {
+  const manifest = createArtifactBundleManifest(manifestPath, outputs, provenance)
+  return [
+    ...outputs,
+    { path: manifestPath, data: JSON.stringify(manifest, null, 2) + "\n" },
+  ]
+}
+
+/** Verify stored provenance and source/output hashes without rebuilding output. */
+export async function verifyArtifactBundle(manifestPath: string): Promise<ArtifactVerification> {
+  const absolute = path.resolve(manifestPath)
+  const raw = JSON.parse(await readFile(absolute, "utf8")) as Partial<ArtifactBundleManifest>
+  if (
+    raw.format !== "pixelkiln-artifact-bundle" ||
+    raw.version !== 1 ||
+    (raw.kind !== "pack" && raw.kind !== "mount" && raw.kind !== "tileset") ||
+    typeof raw.fingerprint !== "string" ||
+    raw.options === undefined ||
+    !Array.isArray(raw.sources) ||
+    !Array.isArray(raw.outputs)
+  ) {
+    throw new Error(`${absolute} is not a PixelKiln artifact bundle manifest.`)
+  }
+
+  const root = path.dirname(absolute)
+  const changedSources: string[] = []
+  const changedOutputs: string[] = []
+  for (const source of raw.sources) {
+    if (
+      !source ||
+      typeof source.id !== "string" ||
+      typeof source.path !== "string" ||
+      (source.sha256 !== null && typeof source.sha256 !== "string") ||
+      typeof source.included !== "boolean"
+    ) {
+      throw new Error(`${absolute} contains an invalid artifact source.`)
+    }
+    let actual: string | null = null
+    try {
+      actual = digest(await readFile(path.resolve(root, source.path)))
+    } catch (error) {
+      if (!isCode(error, "ENOENT")) throw error
+    }
+    if (actual !== source.sha256) changedSources.push(source.id)
+  }
+  for (const output of raw.outputs) {
+    if (!output || typeof output.path !== "string" || typeof output.sha256 !== "string") {
+      throw new Error(`${absolute} contains an invalid artifact output.`)
+    }
+    try {
+      if (digest(await readFile(path.resolve(root, output.path))) !== output.sha256) {
+        changedOutputs.push(output.path)
+      }
+    } catch (error) {
+      if (!isCode(error, "ENOENT")) throw error
+      changedOutputs.push(output.path)
+    }
+  }
+
+  const fingerprintValid = raw.fingerprint === fingerprint({
+    kind: raw.kind,
+    sources: raw.sources,
+    options: raw.options,
+    outputs: raw.outputs,
+  })
+  return {
+    current: fingerprintValid && !changedSources.length && !changedOutputs.length,
+    fingerprintValid,
+    changedSources,
+    changedOutputs,
+  }
 }
 
 function isCode(error: unknown, code: string): boolean {
