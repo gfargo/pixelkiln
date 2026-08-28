@@ -201,7 +201,7 @@ export default function Home() {
                 <span>human review</span>
               </div>
               <Image
-                src="/review-ui.jpg"
+                src="/review-ui-showcase.jpg"
                 alt="PixelKiln's local candidate review interface showing generated forge emblems"
                 width={1280}
                 height={720}
