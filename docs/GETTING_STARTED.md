@@ -133,14 +133,18 @@ Commit:
 - `pixelkiln.manifest.json`
 - `pixelkiln.lock.json`
 - generated art and any derived sheets/export metadata your application uses
+- `.pixelkiln.json` provenance companions written beside managed sheets,
+  mounted trees, and tileset exports
 
 Do not commit:
 
 - `.env` or `.env.local`
-- `.pixelkiln/`
+- `.pixelkiln/` caches, transaction journals, staging trees, and backups
 - `pixelkiln.cache.json`
 
 The caches are disposable performance and recovery aids. The manifest,
-lockfile, and output files are the durable project record. Lock output paths
-are manifest-relative, so that committed record survives moving or cloning the
-project instead of pointing back to an old machine's checkout.
+lockfile, output files, and provenance companions are the durable project
+record. Lock output paths are manifest-relative, so that committed record
+survives moving or cloning the project instead of pointing back to an old
+machine's checkout. See [Artifacts and provenance](ARTIFACTS.md) for the
+ownership and transaction model.

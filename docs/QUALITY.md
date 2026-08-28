@@ -1,0 +1,107 @@
+# Quality and automation gates
+
+PixelKiln exposes local, deterministic checks separately from paid provider
+work. Run them before generation and in CI.
+
+## Plan gate
+
+```bash
+pixelkiln plan
+pixelkiln plan --json --check
+```
+
+Planning compares resolved specs with lock state and on-disk hashes. It calls no
+provider and reports estimated spend before work starts. `--check` succeeds only
+when every selected entry is current.
+
+Plan states include:
+
+| State | Meaning |
+|---|---|
+| `ok` | Current spec, lock, and output bytes agree. |
+| `missing` | No satisfying generation is recorded. |
+| `untracked` | Local art exists without known provider provenance. |
+| `stale` | Generation identity changed. |
+| `failed` | Provider generation failed. |
+| `recoverable` | Paid output can be fetched/restored without regeneration. |
+| `in-flight` | Submitted work has not settled. |
+| `orphaned` | Recorded output exists but current bytes differ. |
+
+## Doctor gate
+
+```bash
+pixelkiln doctor
+pixelkiln doctor --dry-run --json
+```
+
+Doctor validates schema and references, output authority/writability, lock
+recovery sources, stale jobs, plan state, API-key configuration, and live
+connectivity. `--dry-run` skips only provider connectivity. It changes nothing
+and exits nonzero for unsafe state.
+
+## Visual consistency audit
+
+```bash
+pixelkiln audit --style neon
+pixelkiln audit --style neon --json --check \
+  --max-distance 35 \
+  --min-transparency 0.10 \
+  --max-colors 128 \
+  --sigma 1.5
+```
+
+Audit measures:
+
+- palette distance from style reference images (or the set average when no
+  references exist);
+- transparent canvas share;
+- distinct opaque color count;
+- relative palette outliers by standard-deviation cutoff.
+
+Missing and unreadable files are always unsafe. Structural output sets are
+measured member-by-member with stable role-qualified ids. Standard
+non-interlaced greyscale, indexed, RGB, greyscale-alpha, and RGBA PNGs are
+normalized to RGBA before measurement.
+
+## Cache integrity gate
+
+```bash
+pixelkiln cache --check
+```
+
+This validates both local caches, including complete PNG decoding. Add
+`--prune` only in a maintenance workflow because it mutates disposable cache
+state, though it never deletes provider objects or generated destinations.
+
+## Recommended CI
+
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run test:docs
+npm run build
+npm run test:package
+npm audit
+
+pixelkiln doctor --dry-run
+pixelkiln plan --json --check
+pixelkiln audit --json --check --max-distance 35 --max-colors 128
+pixelkiln cache --check
+```
+
+Choose audit thresholds per project; do not copy a palette distance or color
+ceiling without checking representative art. The repository's core test suite
+uses `FakeProvider`, so money-spending stages are deterministic and offline.
+
+## JSON and exit behavior
+
+- JSON contracts are versioned/stable enough for automation where documented.
+- Partial provider pipeline failures and timeouts exit nonzero.
+- `salvage --dry-run --json` reserves stdout for JSON and sends diagnostics to
+  stderr.
+- A failed CI job should distinguish provider/output drift from repository test
+  failures rather than regenerating automatically.
+
+Generation should remain an explicit, budgeted human action; CI is for proving
+that committed declarations, state, and artifacts still agree.

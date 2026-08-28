@@ -12,6 +12,7 @@ Requires Node.js 20 or newer.
 ```bash
 npm ci
 npm run typecheck
+npm run test:docs
 npm test
 npm run build
 npm run test:package
@@ -36,6 +37,10 @@ for pipeline behavior and mocked HTTP responses for PixelLab wire contracts.
   options or exports.
 - Update README/help text and focused docs in the same change as user-facing
   behavior.
+- Keep README as the concise product landing page. Put durable reference and
+  workflow detail in `docs/`, and link every guide from `docs/README.md`.
+- Run `npm run test:docs` after changing Markdown or the CLI command/flag
+  surface. It checks local links, the docs index, README size, and CLI coverage.
 - Run the package smoke test when changing exports, build configuration, the
   executable, package metadata, or the `files` allowlist.
 
