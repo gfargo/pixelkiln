@@ -5,6 +5,12 @@
 `src/providers/fake.ts` is the in-memory test double. Nothing above the
 interface knows about PixelLab.
 
+That is an architectural guarantee, not a compatibility claim: PixelLab is the
+only production adapter and the only backend exercised against a live account
+today. `FakeProvider` verifies the contract without network access. Until a
+second production adapter ships, describe PixelKiln as **provider-neutral by
+design and proven with PixelLab**, not as already multi-provider.
+
 Both concerns this file previously flagged as blockers are resolved:
 
 - **Cost is no longer assumed to be "generations."** `CostEstimate` carries a

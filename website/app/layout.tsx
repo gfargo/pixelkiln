@@ -20,13 +20,13 @@ export const metadata: Metadata = {
     template: "%s · PixelKiln",
   },
   description:
-    "Plan, review, recover, and package generative pixel art through a deterministic, provenance-first pipeline.",
+    "A provider-neutral, PixelLab-proven pipeline to plan, review, recover, and package generative pixel art with exact provenance.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     title: "PixelKiln — Pixel-art generation with receipts",
     description:
-      "A deterministic pipeline for planned costs, human review, exact provenance, resilient recovery, and engine-ready pixel art.",
+      "A provider-neutral pipeline for planned costs, human review, exact provenance, resilient recovery, and engine-ready pixel art.",
     url: "/",
     siteName: "PixelKiln",
   },

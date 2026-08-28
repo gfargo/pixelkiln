@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { CopyCommand } from "@/app/ui/copy-command";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
 
@@ -139,32 +140,75 @@ export default function Home() {
           <div className="workflow-grid">
             <article>
               <span className="step-number">01</span>
-              <div className="step-glyph">⌁</div>
+              <div className="step-glyph"><Image src="/sprites/anvil.png" alt="" width={32} height={32} /></div>
               <h3>Declare</h3>
               <p>Describe assets, styles, dimensions, palettes, references, and output paths in one committed manifest.</p>
               <code>pixelkiln.manifest.json</code>
             </article>
             <article>
               <span className="step-number">02</span>
-              <div className="step-glyph">◇</div>
+              <div className="step-glyph"><Image src="/sprites/hammer.png" alt="" width={32} height={32} /></div>
               <h3>Plan</h3>
               <p>Diff intent against lock state and disk. See exactly what is missing, stale, recoverable, and billable.</p>
               <code>pixelkiln plan</code>
             </article>
             <article>
               <span className="step-number">03</span>
-              <div className="step-glyph">▦</div>
+              <div className="step-glyph"><Image src="/sprites/kiln.png" alt="" width={32} height={32} /></div>
               <h3>Review</h3>
               <p>Keep selection human with a fast local candidate sheet. Nothing is silently chosen by another model.</p>
               <code>pixelkiln pick</code>
             </article>
             <article>
               <span className="step-number">04</span>
-              <div className="step-glyph">▣</div>
+              <div className="step-glyph"><Image src="/sprites/spark.png" alt="" width={32} height={32} /></div>
               <h3>Ship</h3>
               <p>Fetch verified pixels, restore paid work, and build deterministic atlases or engine-native tilesets.</p>
               <code>pixelkiln pack</code>
             </article>
+          </div>
+        </section>
+
+        <section className="review-section">
+          <div className="shell review-grid">
+            <div className="section-heading review-copy">
+              <p className="eyebrow">Provider-neutral core · proven with PixelLab</p>
+              <h2>The pipeline is portable. The proof is real.</h2>
+              <p className="section-deck">
+                PixelKiln keeps provider mechanics behind an adapter boundary.
+                PixelLab is the production and live-tested adapter today;
+                deterministic tests use the same contract, and another production
+                backend can be added without rewriting project state.
+              </p>
+              <div className="provider-status" aria-label="Current provider support">
+                <span><i className="status-dot" /> PixelLab · production</span>
+                <span><i /> FakeProvider · tests</span>
+                <span><i /> Next adapter · roadmap</span>
+              </div>
+              <p className="provider-note">
+                PixelLab&apos;s official MCP is complementary: it gives agents direct
+                creation tools, while PixelKiln owns planning, budget limits,
+                provenance, human review, recovery, and packaging.
+              </p>
+              <div className="review-links">
+                <Link className="text-link" href="/docs/provider-notes">Read the provider boundary →</Link>
+                <a className="text-link" href="https://github.com/pixellab-code/pixellab-mcp">PixelLab MCP ↗</a>
+              </div>
+            </div>
+            <figure className="review-visual">
+              <div className="review-window-bar">
+                <span>localhost · pixelkiln pick</span>
+                <span>human review</span>
+              </div>
+              <Image
+                src="/review-ui.jpg"
+                alt="PixelKiln's local candidate review interface showing generated forge emblems"
+                width={1280}
+                height={720}
+                sizes="(max-width: 980px) 100vw, 56vw"
+              />
+              <figcaption>Actual local review UI · generated brand sprites · no model selects for you</figcaption>
+            </figure>
           </div>
         </section>
 
@@ -269,15 +313,15 @@ export default function Home() {
         <section className="install-section shell">
           <div className="install-panel">
             <div>
-              <p className="eyebrow">Pre-1.0 · available from source</p>
-              <h2>Put the kiln in your pipeline.</h2>
-              <p>Clone the repository, inspect the example manifest, and plan your first asset set without a provider call.</p>
+              <p className="eyebrow">Official agent skill · one command</p>
+              <h2>Give your agent the operating manual.</h2>
+              <p>Install the provider-neutral PixelKiln skill for safe planning, hard budgets, human review, recovery-first decisions, and correct artifacts.</p>
             </div>
             <div className="install-actions">
-              <CopyCommand command="git clone https://github.com/gfargo/pixelkiln.git" />
+              <CopyCommand command="npx skills add gfargo/pixelkiln@pixelkiln" />
               <div>
-                <Link className="button button-primary" href="/docs/getting-started">Open the quickstart →</Link>
-                <a className="button button-secondary" href="https://github.com/gfargo/pixelkiln">Browse source ↗</a>
+                <Link className="button button-primary" href="/docs/agents">Agent setup →</Link>
+                <Link className="button button-secondary" href="/docs/getting-started">Library quickstart →</Link>
               </div>
             </div>
           </div>

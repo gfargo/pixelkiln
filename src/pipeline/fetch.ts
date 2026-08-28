@@ -163,6 +163,13 @@ export async function fetchAssets(
           status: "downloaded",
           provider: provider.id,
           outputs,
+          // Inline providers can hand the pipeline a machine-local temp file.
+          // Once its bytes are in the durable content cache, retaining that
+          // path makes a committed lockfile non-portable and falsely suggests
+          // the source still exists on another checkout.
+          ...(cacheDir && sources.every((source) => source.url.startsWith("file://"))
+            ? { sourceUrl: null, sourceUrls: [] }
+            : {}),
           downloadedAt: new Date().toISOString(),
           error: null,
         })
