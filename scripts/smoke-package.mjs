@@ -48,12 +48,12 @@ try {
   run(process.execPath, [
     "--input-type=module",
     "--eval",
-    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function') process.exit(1)",
+    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function') process.exit(1)",
   ], consumer)
   run(process.execPath, [
     "--input-type=commonjs",
     "--eval",
-    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function') process.exit(1)",
+    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function') process.exit(1)",
   ], consumer)
 
   const cli = path.join(installed, "bin", "pixelkiln.js")

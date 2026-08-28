@@ -3,6 +3,17 @@ import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { Lock } from "../types.ts"
 import { resolveEntryOutputs, resolveOutputPath, selectEntryOutput } from "../outputs.ts"
+import { sha256 } from "../hash.ts"
+
+export interface PackedSource {
+  id: string
+  /** Absolute source path. Artifact manifests make it relative to themselves. */
+  path: string
+  /** Null when the source could not be read. */
+  sha256: string | null
+  /** False when the source was present but could not be decoded or selected. */
+  included: boolean
+}
 
 export interface PackedFrame {
   /** Asset id, so a consumer can look a sprite up by name rather than index. */
@@ -25,6 +36,8 @@ export interface PackedSheet {
   }
   /** Assets skipped because their file was missing or unreadable. */
   skipped: { id: string; reason: string }[]
+  /** Inputs and their exact bytes, for deterministic derived-artifact provenance. */
+  sources: PackedSource[]
 }
 
 /**
@@ -120,13 +133,19 @@ export function packSprites(
 
   const sprites: { id: string; width: number; height: number; pixels: Buffer }[] = []
   const skipped: { id: string; reason: string }[] = []
+  const sources: PackedSource[] = []
 
   for (const input of ordered) {
+    let sourceHash: string | null = null
     try {
-      const png = decodePng(readFileSync(input.path))
+      const bytes = readFileSync(input.path)
+      sourceHash = sha256(bytes)
+      const png = decodePng(bytes)
       sprites.push({ id: input.id, width: png.width, height: png.height, pixels: png.pixels })
+      sources.push({ ...input, sha256: sourceHash, included: true })
     } catch (err) {
       skipped.push({ id: input.id, reason: err instanceof Error ? err.message : String(err) })
+      sources.push({ ...input, sha256: sourceHash, included: false })
     }
   }
 
@@ -166,6 +185,7 @@ export function packSprites(
       frames,
     },
     skipped,
+    sources,
   }
 }
 
@@ -240,6 +260,8 @@ export interface MountedSheet {
     frames: PackedFrame[]
   }
   skipped: { id: string; reason: string }[]
+  /** Inputs and their exact bytes, for deterministic derived-artifact provenance. */
+  sources: PackedSource[]
   /** True when an existing sheet was composited into rather than replaced. */
   overBase: boolean
 }
@@ -295,17 +317,23 @@ export function mountSprites(
 
   const loaded: { p: MountPlacement; width: number; height: number; pixels: Buffer }[] = []
   const skipped: { id: string; reason: string }[] = []
+  const sources: PackedSource[] = []
   for (const p of placements) {
+    let sourceHash: string | null = null
     try {
-      const png = decodePng(readFileSync(p.path))
+      const bytes = readFileSync(p.path)
+      sourceHash = sha256(bytes)
+      const png = decodePng(bytes)
       if (png.width > cellWidth || png.height > cellHeight) {
         throw new Error(
           `is ${png.width}x${png.height}, larger than the ${cellWidth}x${cellHeight} cell`,
         )
       }
       loaded.push({ p, width: png.width, height: png.height, pixels: png.pixels })
+      sources.push({ id: p.id, path: p.path, sha256: sourceHash, included: true })
     } catch (err) {
       skipped.push({ id: p.id, reason: err instanceof Error ? err.message : String(err) })
+      sources.push({ id: p.id, path: p.path, sha256: sourceHash, included: false })
     }
   }
   if (!loaded.length) {
@@ -356,6 +384,7 @@ export function mountSprites(
       frames,
     },
     skipped,
+    sources,
     overBase: base !== null,
   }
 }
@@ -431,6 +460,14 @@ export function mountStyle(
   })
   return {
     ...mounted,
+    sources: mount.base
+      ? [{
+          id: "$base",
+          path: path.resolve(manifestDir, mount.base),
+          sha256: sha256(basePng!),
+          included: true,
+        }, ...mounted.sources]
+      : mounted.sources,
     atlas: { ...mounted.atlas, style: styleId },
     skipped: [...skipped, ...mounted.skipped],
   }

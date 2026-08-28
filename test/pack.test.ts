@@ -41,7 +41,7 @@ describe("packStyle", () => {
     try {
       for (const id of ["c", "a", "b", "d"]) await writeFile(path.join(dir, `${id}.png`), sprite(8, 10, 20, 30))
 
-      const { atlas } = packStyle(lockWith(["c", "a", "b", "d"]), "s", dir)
+      const { atlas, sources } = packStyle(lockWith(["c", "a", "b", "d"]), "s", dir)
 
       // 4 sprites -> ceil(sqrt(4)) = 2 columns, 2 rows of 8px cells.
       expect(atlas.columns).toBe(2)
@@ -52,6 +52,10 @@ describe("packStyle", () => {
       expect(atlas.frames.map((f) => [f.x, f.y])).toEqual([
         [0, 0], [8, 0], [0, 8], [8, 8],
       ])
+      expect(sources.map(({ id, included }) => [id, included])).toEqual([
+        ["a", true], ["b", true], ["c", true], ["d", true],
+      ])
+      expect(sources.every((source) => source.sha256?.length === 64)).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

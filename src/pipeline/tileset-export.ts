@@ -1,6 +1,6 @@
 import type { LockEntry, ResolvedSpec } from "../types.ts"
 import { fallbackOutputRole, resolveSpecEntryOutputs } from "../outputs.ts"
-import { packSprites, type PackedFrame } from "./pack.ts"
+import { packSprites, type PackedFrame, type PackedSource } from "./pack.ts"
 
 export type TilesetFormat = "generic" | "tiled" | "godot"
 
@@ -45,6 +45,7 @@ export interface TilesetExport {
   extension: ".json" | ".tsj" | ".tres"
   document: string
   generic: GenericTileset
+  sources: PackedSource[]
 }
 
 export interface TilesetExportOptions {
@@ -135,6 +136,7 @@ export function exportTileset(
       extension: ".json",
       document: JSON.stringify(generic, null, 2) + "\n",
       generic,
+      sources: packed.sources,
     }
   }
 
@@ -162,6 +164,7 @@ export function exportTileset(
       extension: ".tsj",
       document: JSON.stringify(buildTiled(generic), null, 2) + "\n",
       generic,
+      sources: packed.sources,
     }
   }
   return {
@@ -169,6 +172,7 @@ export function exportTileset(
     extension: ".tres",
     document: buildGodot(generic, spec),
     generic,
+    sources: packed.sources,
   }
 }
 
