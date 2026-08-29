@@ -1,7 +1,7 @@
-import Link from "next/link";
 import Image from "next/image";
 import { CopyCommand } from "@/app/ui/copy-command";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
+import { TrackedLink } from "@/app/ui/tracked-link";
 
 export default function Home() {
   return (
@@ -27,15 +27,23 @@ export default function Home() {
             recovery, and engine-ready output.
           </p>
           <div className="hero-actions">
-            <Link className="button button-primary" href="/docs/getting-started">
+            <TrackedLink
+              className="button button-primary"
+              id="hero_quickstart"
+              section="hero"
+              href="/docs/getting-started"
+            >
               Read the quickstart <span aria-hidden="true">→</span>
-            </Link>
-            <a
+            </TrackedLink>
+            <TrackedLink
               className="button button-secondary"
+              id="hero_github"
+              section="hero"
               href="https://github.com/gfargo/pixelkiln"
+              external
             >
               View on GitHub <span aria-hidden="true">↗</span>
-            </a>
+            </TrackedLink>
           </div>
           <div className="trust-line" aria-label="Core guarantees">
             <span>Offline planning</span>
@@ -191,8 +199,18 @@ export default function Home() {
                 provenance, human review, recovery, and packaging.
               </p>
               <div className="review-links">
-                <Link className="text-link" href="/docs/provider-notes">Read the provider boundary →</Link>
-                <a className="text-link" href="https://github.com/pixellab-code/pixellab-mcp">PixelLab MCP ↗</a>
+                <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
+                  Read the provider boundary →
+                </TrackedLink>
+                <TrackedLink
+                  className="text-link"
+                  id="review_pixellab_mcp"
+                  section="review"
+                  href="https://github.com/pixellab-code/pixellab-mcp"
+                  external
+                >
+                  PixelLab MCP ↗
+                </TrackedLink>
               </div>
             </div>
             <figure className="review-visual">
@@ -228,7 +246,9 @@ export default function Home() {
                 <li><span>✓</span> Manual-edit and overwrite protection</li>
                 <li><span>✓</span> Transactional atlas and export writes</li>
               </ul>
-              <Link className="text-link" href="/docs/recovery">Explore recovery guarantees →</Link>
+              <TrackedLink className="text-link" id="safety_recovery" section="safety" href="/docs/recovery">
+                Explore recovery guarantees →
+              </TrackedLink>
             </div>
             <div className="lock-visual" aria-label="Example provenance lock entry">
               <div className="lock-label">pixelkiln.lock.json</div>
@@ -306,7 +326,9 @@ export default function Home() {
               <div className="generator-row"><strong>1dir</strong><span>References and candidate variety</span><span><i style={{ width: "72%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 20–40 gen</span></div>
             </div>
-            <Link className="text-link" href="/docs/generators">Compare generator capabilities →</Link>
+            <TrackedLink className="text-link" id="generator_compare" section="generator" href="/docs/generators">
+              Compare generator capabilities →
+            </TrackedLink>
           </div>
         </section>
 
@@ -320,8 +342,22 @@ export default function Home() {
             <div className="install-actions">
               <CopyCommand command="npx skills add gfargo/pixelkiln@pixelkiln" />
               <div>
-                <Link className="button button-primary" href="/docs/agents">Agent setup →</Link>
-                <Link className="button button-secondary" href="/docs/getting-started">Library quickstart →</Link>
+                <TrackedLink
+                  className="button button-primary"
+                  id="install_agent_setup"
+                  section="install"
+                  href="/docs/agents"
+                >
+                  Agent setup →
+                </TrackedLink>
+                <TrackedLink
+                  className="button button-secondary"
+                  id="install_library_quickstart"
+                  section="install"
+                  href="/docs/getting-started"
+                >
+                  Library quickstart →
+                </TrackedLink>
               </div>
             </div>
           </div>

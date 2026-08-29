@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TrackedLink } from "@/app/ui/tracked-link";
 
 export function KilnMark() {
   return (
@@ -18,13 +19,25 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
         <span>pixelkiln</span>
       </Link>
       <nav aria-label="Primary navigation">
-        <Link href="/#workflow">Workflow</Link>
-        <Link href="/docs">Docs</Link>
-        <a href="https://github.com/gfargo/pixelkiln">GitHub</a>
+        <TrackedLink id="nav_workflow" section="header" href="/#workflow">Workflow</TrackedLink>
+        <TrackedLink id="nav_docs" section="header" href="/docs">Docs</TrackedLink>
+        <TrackedLink
+          id="nav_github"
+          section="header"
+          href="https://github.com/gfargo/pixelkiln"
+          external
+        >
+          GitHub
+        </TrackedLink>
       </nav>
-      <Link className="nav-cta" href="/docs/getting-started">
+      <TrackedLink
+        className="nav-cta"
+        id="nav_start_building"
+        section="header"
+        href="/docs/getting-started"
+      >
         Start building <span aria-hidden="true">↗</span>
-      </Link>
+      </TrackedLink>
     </header>
   );
 }
@@ -43,15 +56,31 @@ export function SiteFooter() {
         <div className="footer-links">
           <div>
             <span>Explore</span>
-            <Link href="/docs">Documentation</Link>
-            <Link href="/#workflow">Workflow</Link>
-            <Link href="/docs/generators">Generators</Link>
+            <TrackedLink id="footer_docs" section="footer" href="/docs">Documentation</TrackedLink>
+            <TrackedLink id="footer_workflow" section="footer" href="/#workflow">Workflow</TrackedLink>
+            <TrackedLink id="footer_generators" section="footer" href="/docs/generators">Generators</TrackedLink>
           </div>
           <div>
             <span>Project</span>
-            <a href="https://github.com/gfargo/pixelkiln">GitHub</a>
-            <a href="https://github.com/gfargo/pixelkiln/issues">Roadmap</a>
-            <Link href="/docs/contributing">Contributing</Link>
+            <TrackedLink
+              id="footer_github"
+              section="footer"
+              href="https://github.com/gfargo/pixelkiln"
+              external
+            >
+              GitHub
+            </TrackedLink>
+            <TrackedLink
+              id="footer_roadmap"
+              section="footer"
+              href="https://github.com/gfargo/pixelkiln/issues"
+              external
+            >
+              Roadmap
+            </TrackedLink>
+            <TrackedLink id="footer_contributing" section="footer" href="/docs/contributing">
+              Contributing
+            </TrackedLink>
           </div>
         </div>
       </div>
