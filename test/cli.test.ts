@@ -139,6 +139,65 @@ describe("parseArgs", () => {
   it("does not treat a command named like a flag value as a flag", () => {
     expect(parseArgs(["status"]).command).toBe("status")
   })
+
+  it("parses workspace subcommands and their positionals", () => {
+    expect(parseArgs(["workspace", "add", "../other/pixelkiln.manifest.json"])).toMatchObject({
+      command: "workspace",
+      subcommand: "add",
+      target: "../other/pixelkiln.manifest.json",
+    })
+    expect(parseArgs(["workspace", "remove", "other-project"])).toMatchObject({
+      command: "workspace",
+      subcommand: "remove",
+      target: "other-project",
+    })
+    expect(parseArgs(["workspace", "list", "--json"])).toMatchObject({
+      command: "workspace", subcommand: "list", json: true,
+    })
+    expect(parseArgs(["workspace", "status", "--check"])).toMatchObject({
+      command: "workspace", subcommand: "status", check: true,
+    })
+    expect(parseArgs(["workspace", "claims", "--workspace", "shared.workspace.json"])).toMatchObject({
+      command: "workspace", subcommand: "claims", workspace: "shared.workspace.json",
+    })
+  })
+
+  it("rejects an unknown workspace subcommand", () => {
+    expect(() => parseArgs(["workspace", "delete", "x"])).toThrow(/Unknown workspace subcommand/)
+  })
+
+  it("rejects workspace with no subcommand", () => {
+    expect(() => parseArgs(["workspace"])).toThrow(/needs a subcommand/)
+  })
+
+  it("rejects workspace add/remove with no target", () => {
+    expect(() => parseArgs(["workspace", "add"])).toThrow(/manifest path/)
+    expect(() => parseArgs(["workspace", "remove"])).toThrow(/project id or manifest path/)
+  })
+
+  it("still accepts flags after a workspace add/remove positional", () => {
+    const args = parseArgs(["workspace", "add", "../other/pixelkiln.manifest.json", "--name", "other", "--lock", "../other/variant.lock.json"])
+    expect(args.target).toBe("../other/pixelkiln.manifest.json")
+    expect(args.name).toBe("other")
+    expect(args.explicitLock).toBe("../other/variant.lock.json")
+  })
+
+  it("parses --workspace for salvage", () => {
+    expect(parseArgs(["salvage", "--workspace", "pixelkiln.workspace.json", "--dry-run"])).toMatchObject({
+      workspace: "pixelkiln.workspace.json",
+      dryRun: true,
+    })
+  })
+
+  // Same expensive-typo protection as every other command: --style neon after
+  // a workspace add would otherwise fall through the strict loop.
+  it("still rejects an unknown flag inside a workspace command", () => {
+    expect(() => parseArgs(["workspace", "list", "--styles", "neon"])).toThrow(/Unknown flag/)
+  })
+
+  it("does not regress positional strictness for ordinary commands", () => {
+    expect(() => parseArgs(["gen", "neon"])).toThrow(/Unexpected argument/)
+  })
 })
 
 describe("retry policy", () => {

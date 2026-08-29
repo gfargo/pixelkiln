@@ -20,6 +20,15 @@ import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pi
 import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import { loadClaims, findOrphans, groupOrphansByStyle, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
+import {
+  loadWorkspace,
+  saveWorkspace,
+  toPortablePath,
+  resolveProject,
+  validateWorkspace,
+  type WorkspaceProject,
+} from "./workspace.ts"
+import { workspaceClaims, workspaceStatus } from "./pipeline/workspace.ts"
 import { auditStyle, evaluateAudit, hex } from "./pipeline/audit.ts"
 import { inspectCaches } from "./pipeline/cache-health.ts"
 import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
@@ -76,12 +85,25 @@ interface Args {
   minTransparency?: number
   maxColors?: number
   sigma?: number
+  /** `workspace`: add/remove/list/status/claims. */
+  subcommand?: string
+  /** Path to a workspace catalog. Defaults to `pixelkiln.workspace.json` in cwd. */
+  workspace?: string
+  /** `workspace add`: manifest path. `workspace remove`: project id or manifest path. */
+  target?: string
+  /**
+   * Raw `--lock` value with no manifest-relative default applied. `workspace
+   * add` needs to know whether the user actually passed `--lock`, since the
+   * ambient default (beside `--manifest`, which usually names an unrelated
+   * project) is meaningless for the manifest being registered.
+   */
+  explicitLock?: string
 }
 
 const VALUE_FLAGS = [
   "--manifest", "--lock", "--style", "--only", "--budget", "--port",
   "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs", "--format",
-  "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma",
+  "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma", "--workspace",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -89,8 +111,11 @@ const BOOL_FLAGS = [
 
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
-  "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+  "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
+  "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
+
+const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -104,7 +129,33 @@ export function parseArgs(argv: string[]): Args {
     throw new Error(`Unknown command "${command}". Run \`pixelkiln help\` for the list.`)
   }
 
-  const rest = argv.slice(1)
+  let rest = argv.slice(1)
+  let subcommand: string | undefined
+  let target: string | undefined
+  if (command === "workspace") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new Error(`workspace needs a subcommand: ${WORKSPACE_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(WORKSPACE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new Error(
+        `Unknown workspace subcommand "${subcommand}". Known: ${WORKSPACE_SUBCOMMANDS.join(", ")}`,
+      )
+    }
+    rest = rest.slice(1)
+    if (subcommand === "add" || subcommand === "remove") {
+      target = rest[0]
+      if (target === undefined || target.startsWith("-")) {
+        throw new Error(
+          subcommand === "add"
+            ? "workspace add needs a manifest path."
+            : "workspace remove needs a project id or manifest path.",
+        )
+      }
+      rest = rest.slice(1)
+    }
+  }
+
   for (let i = 0; i < rest.length; i++) {
     const token = rest[i]!
     if (!token.startsWith("-")) {
@@ -208,6 +259,7 @@ export function parseArgs(argv: string[]): Args {
     command,
     manifest,
     lock: get("--lock") ?? path.join(path.dirname(path.resolve(manifest)), "pixelkiln.lock.json"),
+    explicitLock: get("--lock"),
     styles: list("--style"),
     assets: list("--only"),
     force: rest.includes("--force"),
@@ -237,6 +289,9 @@ export function parseArgs(argv: string[]): Args {
     minTransparency: numberOption("--min-transparency", { min: 0, max: 1 }),
     maxColors: numberOption("--max-colors", { min: 1, integer: true }),
     sigma: numberOption("--sigma", { min: Number.EPSILON }),
+    subcommand,
+    workspace: get("--workspace"),
+    target,
   }
 }
 
@@ -270,6 +325,8 @@ Commands
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
   status    Summarise the lockfile.
+  workspace Register sibling projects and derive account-wide claims/status.
+            add/remove/list/status/claims. Offline.
 
 Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
@@ -297,6 +354,8 @@ Options
   --no-open           Do not auto-open the browser during pick
   --tag               Also push tags upstream after fetch
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
+  --workspace <path>  Workspace catalog (default: pixelkiln.workspace.json). Also
+                       derives salvage's claim set instead of repeated --claims.
   --from <dir>        Source tree for init
   --write-prompts     adopt: recover prompts into the manifest
 
@@ -309,6 +368,9 @@ Examples
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
   pixelkiln mount --style ground
   pixelkiln export --style ground --only terrain --format tiled
+  pixelkiln workspace add ../other-game/pixelkiln.manifest.json
+  pixelkiln workspace status --json
+  pixelkiln salvage --workspace pixelkiln.workspace.json
 `
 
 function printPlan(plan: Plan): void {
@@ -351,6 +413,29 @@ async function confirm(question: string, auto: boolean): Promise<boolean> {
   })
   process.stdin.pause()
   return answer === "y" || answer === "yes"
+}
+
+/**
+ * Loads a workspace catalog and derives its complete claim set, refusing when
+ * the catalog itself is unsafe (duplicate ids/locks, or a registered manifest
+ * or lock that does not exist) rather than silently deriving a partial claim
+ * set — the exact hazard the catalog exists to prevent for account-wide
+ * orphan decisions. `workspaceClaims` separately guards against an unreadable
+ * lock that passed the existence check.
+ */
+async function requireCompleteWorkspaceClaims(workspacePath: string) {
+  const dir = path.dirname(path.resolve(workspacePath))
+  const ws = await loadWorkspace(workspacePath)
+  const diagnostics = validateWorkspace(ws, dir)
+  const errors = diagnostics.filter((d) => d.level === "error")
+  if (errors.length) {
+    throw new Error(
+      `Workspace catalog at ${workspacePath} is not safe to derive a claim set from:\n` +
+        errors.map((d) => `  ${d.id}: ${d.message}`).join("\n"),
+    )
+  }
+  const claims = await workspaceClaims(ws, dir)
+  return { ws, dir, diagnostics, claims }
 }
 
 async function main() {
@@ -494,6 +579,133 @@ async function main() {
     log(`    ${path.relative(process.cwd(), base)}.png + .json + .pixelkiln.json`)
     for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
     return
+  }
+
+  if (args.command === "workspace") {
+    // No manifest is required in cwd for any of these — a catalog is meant to
+    // be operated on from outside any one project.
+    const workspacePath = path.resolve(args.workspace ?? "pixelkiln.workspace.json")
+    const dir = path.dirname(workspacePath)
+
+    if (args.subcommand === "add") {
+      const manifestPath = path.resolve(args.target!)
+      const loadedTarget = await loadManifest(manifestPath)
+      const lockPath = args.explicitLock
+        ? path.resolve(args.explicitLock)
+        : path.join(path.dirname(manifestPath), "pixelkiln.lock.json")
+
+      const ws = await loadWorkspace(workspacePath)
+      const id = args.name ?? loadedTarget.manifest.name
+      if (ws.projects.some((p) => p.id === id)) {
+        throw new Error(
+          `Project id "${id}" is already registered in ${workspacePath}. Pass --name for a different id.`,
+        )
+      }
+      const lockOwner = ws.projects.find((p) => resolveProject(dir, p).lockPath === lockPath)
+      if (lockOwner) {
+        throw new Error(`Lockfile ${lockPath} is already registered under project id "${lockOwner.id}".`)
+      }
+
+      const project: WorkspaceProject = {
+        id,
+        manifest: toPortablePath(dir, manifestPath),
+        lock: toPortablePath(dir, lockPath),
+        provider: "pixellab",
+      }
+      await saveWorkspace(workspacePath, { version: 1, projects: [...ws.projects, project] })
+      log(`  registered "${id}" in ${path.relative(process.cwd(), workspacePath)}`)
+      log(`    manifest: ${project.manifest}`)
+      log(`    lock:     ${project.lock}`)
+      if (!existsSync(lockPath)) {
+        log(
+          `  warning: no lockfile there yet — this project contributes no claims until one is generated`,
+        )
+      }
+      return
+    }
+
+    if (args.subcommand === "remove") {
+      const ws = await loadWorkspace(workspacePath)
+      const resolvedTarget = path.resolve(args.target!)
+      const match = ws.projects.find(
+        (p) => p.id === args.target || resolveProject(dir, p).manifestPath === resolvedTarget,
+      )
+      if (!match) {
+        throw new Error(`No registered project matches "${args.target}" (checked id and manifest path).`)
+      }
+      await saveWorkspace(workspacePath, {
+        version: 1,
+        projects: ws.projects.filter((p) => p !== match),
+      })
+      log(`  removed "${match.id}" from ${path.relative(process.cwd(), workspacePath)}`)
+      return
+    }
+
+    if (args.subcommand === "list") {
+      const ws = await loadWorkspace(workspacePath)
+      const diagnostics = validateWorkspace(ws, dir)
+      if (args.json) {
+        log(JSON.stringify({ version: 1, workspace: workspacePath, projects: ws.projects, diagnostics }, null, 2))
+      } else if (!ws.projects.length) {
+        log(`  no projects registered in ${path.relative(process.cwd(), workspacePath)}`)
+      } else {
+        log(`  ${ws.projects.length} project(s) in ${path.relative(process.cwd(), workspacePath)}:`)
+        for (const p of ws.projects) {
+          log(`    ${p.id.padEnd(24)} ${p.manifest.padEnd(40)} (${p.provider}${p.account ? `, ${p.account}` : ""})`)
+        }
+        for (const d of diagnostics) log(`  ${d.level === "error" ? "ERROR" : "WARN "} ${d.id.padEnd(18)} ${d.message}`)
+      }
+      if (args.check && diagnostics.some((d) => d.level === "error")) process.exitCode = 1
+      return
+    }
+
+    if (args.subcommand === "status") {
+      const ws = await loadWorkspace(workspacePath)
+      const report = await workspaceStatus(ws, dir)
+      if (args.json) {
+        log(JSON.stringify(report, null, 2))
+      } else {
+        log(`  workspace: ${path.relative(process.cwd(), workspacePath)}`)
+        for (const p of report.projects) {
+          if (p.error) {
+            log(`\n  ${p.id} — ERROR: ${p.error}`)
+            continue
+          }
+          log(`\n  ${p.id}  (${p.provider}${p.account ? `, ${p.account}` : ""})`)
+          log(`    ${p.entries} lock entries`)
+          for (const [state, n] of Object.entries(p.byState)) if (n) log(`      ${state.padEnd(12)} ${n}`)
+          for (const unit of ["generations", "usd", "free"] as const) {
+            if (p.spendByUnit[unit]) log(`    spend: ${formatCost(unit, p.spendByUnit[unit])}`)
+          }
+        }
+        log(`\n  totals:`)
+        for (const [state, n] of Object.entries(report.totals.byState)) if (n) log(`    ${state.padEnd(12)} ${n}`)
+        for (const unit of ["generations", "usd", "free"] as const) {
+          if (report.totals.spendByUnit[unit]) log(`    spend: ${formatCost(unit, report.totals.spendByUnit[unit])}`)
+        }
+        log(`    claims: ${report.totals.claims}`)
+        for (const d of report.diagnostics) log(`  ${d.level === "error" ? "ERROR" : "WARN "} ${d.id.padEnd(18)} ${d.message}`)
+      }
+      if (args.check && !report.safe) process.exitCode = 1
+      return
+    }
+
+    if (args.subcommand === "claims") {
+      const { claims, diagnostics } = await requireCompleteWorkspaceClaims(workspacePath)
+      if (args.json) {
+        log(JSON.stringify({
+          version: 1,
+          claimed: [...claims.claimed].sort(),
+          byProject: claims.byProject,
+          lockPaths: claims.lockPaths,
+        }, null, 2))
+      } else {
+        log(`  ${claims.claimed.size} claimed id(s) across ${claims.lockPaths.length} lockfile(s):`)
+        for (const [id, n] of Object.entries(claims.byProject).sort()) log(`    ${id.padEnd(24)} ${n}`)
+        for (const d of diagnostics) log(`  WARN  ${d.id.padEnd(18)} ${d.message}`)
+      }
+      return
+    }
   }
 
   if (!existsSync(path.resolve(args.manifest))) {
@@ -981,17 +1193,39 @@ async function main() {
     // command in a fresh project, which has none yet. Paths given via --claims
     // are required, because a typo there silently widens the orphan set.
     const ownLock = path.resolve(args.lock)
+    let workspaceProjects: WorkspaceProject[] = []
+    let workspaceDir = ""
+    if (args.workspace) {
+      const workspacePath = path.resolve(args.workspace)
+      workspaceDir = path.dirname(workspacePath)
+      const complete = await requireCompleteWorkspaceClaims(workspacePath)
+      workspaceProjects = complete.ws.projects
+      for (const d of complete.diagnostics) diag(`  WARN  ${d.id}: ${d.message}`)
+    }
+    const workspaceLockPaths = workspaceProjects.map((p) => resolveProject(workspaceDir, p).lockPath)
     const lockPaths = [
-      ...(existsSync(ownLock) ? [ownLock] : []),
-      ...args.claims.map((c) => path.resolve(c)),
+      ...new Set([
+        ...workspaceLockPaths,
+        ...(existsSync(ownLock) ? [ownLock] : []),
+        ...args.claims.map((c) => path.resolve(c)),
+      ]),
     ]
     diag(`  claim set (${lockPaths.length} lockfile(s)):`)
     for (const p of lockPaths) diag(`    ${path.relative(process.cwd(), p)}`)
-    if (!args.claims.length) {
+    if (!args.claims.length && !args.workspace) {
       diag(
         `\n  Only this project's lockfile was consulted. If the account is shared,\n` +
-          `  pass every other project's lockfile via --claims a.json,b.json or you\n` +
-          `  will see their assets listed as unclaimed.`,
+          `  pass every other project's lockfile via --claims a.json,b.json, or\n` +
+          `  register every project in a workspace catalog and pass --workspace.`,
+      )
+    } else if (
+      args.workspace &&
+      !workspaceProjects.some((p) => resolveProject(workspaceDir, p).manifestPath === path.resolve(args.manifest))
+    ) {
+      diag(
+        `\n  This project's manifest is not registered in the workspace catalog. Its own\n` +
+          `  lockfile is still included above, so this run's claim set is complete — but\n` +
+          `  \`pixelkiln workspace add ${args.manifest}\` would keep it aggregated too.`,
       )
     }
 
@@ -1004,15 +1238,21 @@ async function main() {
       return
     }
 
-    // Each --claims lockfile's sibling manifest (same directory, by the same
-    // convention --lock defaults from --manifest), loaded purely so a
-    // single-style manifest — which has no pattern of its own to check
-    // against — can still recognise "this looks like project X's art"
-    // instead of silently claiming everything by default. Best-effort: a
-    // missing or malformed sibling just means no extra signal, not an error.
+    // Each sibling project's manifest — from the workspace catalog if one was
+    // given, otherwise the conventional sibling beside each --claims lockfile
+    // (same directory, by the same convention --lock defaults from
+    // --manifest) — loaded purely so a single-style manifest, which has no
+    // pattern of its own to check against, can still recognise "this looks
+    // like project X's art" instead of silently claiming everything by
+    // default. Best-effort: a missing or malformed sibling just means no
+    // extra signal, not an error.
     const siblings: { label: string; manifest: typeof loaded.manifest }[] = []
-    for (const claimPath of args.claims.map((c) => path.resolve(c))) {
-      const siblingManifestPath = path.join(path.dirname(claimPath), "pixelkiln.manifest.json")
+    const ownManifestPath = path.resolve(args.manifest)
+    const siblingManifestPaths = args.workspace
+      ? workspaceProjects.map((p) => resolveProject(workspaceDir, p).manifestPath)
+      : args.claims.map((c) => path.join(path.dirname(path.resolve(c)), "pixelkiln.manifest.json"))
+    for (const siblingManifestPath of siblingManifestPaths) {
+      if (path.resolve(siblingManifestPath) === ownManifestPath) continue
       if (!existsSync(siblingManifestPath)) continue
       try {
         const siblingLoaded = await loadManifest(siblingManifestPath)
