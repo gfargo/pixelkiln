@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { docGroups, docs } from "@/app/lib/docs";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
+import { TrackedLink } from "@/app/ui/tracked-link";
 
 export const metadata: Metadata = {
   title: "Documentation",
@@ -22,14 +22,19 @@ export default function DocsIndex() {
           </p>
         </div>
 
-        <Link className="docs-featured" href="/docs/getting-started">
+        <TrackedLink
+          className="docs-featured"
+          id="docs_index_featured"
+          section="docs_index"
+          href="/docs/getting-started"
+        >
           <div>
             <span>Recommended first read</span>
             <h2>Go from manifest to reviewed output.</h2>
             <p>Install from a checkout, plan without spending, and run a controlled generation.</p>
           </div>
           <strong aria-hidden="true">01 →</strong>
-        </Link>
+        </TrackedLink>
 
         <div className="docs-groups">
           {docGroups.map((group, groupIndex) => (
@@ -42,11 +47,17 @@ export default function DocsIndex() {
                 {docs
                   .filter((doc) => doc.group === group)
                   .map((doc) => (
-                    <Link className="docs-card" href={`/docs/${doc.slug}`} key={doc.slug}>
+                    <TrackedLink
+                      className="docs-card"
+                      id={`docs_card_${doc.slug}`}
+                      section="docs_index"
+                      href={`/docs/${doc.slug}`}
+                      key={doc.slug}
+                    >
                       <span className="docs-card-arrow" aria-hidden="true">↗</span>
                       <h3>{doc.title}</h3>
                       <p>{doc.description}</p>
-                    </Link>
+                    </TrackedLink>
                   ))}
               </div>
             </section>

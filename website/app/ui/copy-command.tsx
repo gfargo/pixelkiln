@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { trackInstallCommandCopied } from "@/app/lib/analytics";
 
 export function CopyCommand({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
     await navigator.clipboard.writeText(command);
+    trackInstallCommandCopied(command);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   }

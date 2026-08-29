@@ -14,6 +14,7 @@ import {
   tableOfContents,
 } from "@/app/lib/docs";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
+import { TrackedLink } from "@/app/ui/tracked-link";
 
 type DocPageProps = {
   params: Promise<{ slug: string }>;
@@ -103,9 +104,15 @@ export default async function DocPage({ params }: DocPageProps) {
               {heading.title}
             </a>
           ))}
-          <a className="edit-link" href={`https://github.com/gfargo/pixelkiln/edit/main/${doc.file}`}>
+          <TrackedLink
+            className="edit-link"
+            id="doc_edit_on_github"
+            section="docs_sidebar"
+            href={`https://github.com/gfargo/pixelkiln/edit/main/${doc.file}`}
+            external
+          >
             Edit on GitHub ↗
-          </a>
+          </TrackedLink>
         </aside>
       </main>
       <SiteFooter />
