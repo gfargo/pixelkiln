@@ -53,7 +53,7 @@ The companion record is engine-neutral: it stores portable source paths and
 SHA-256s, export options (including raw provider rules), output hashes, and a
 canonical fingerprint. `verifyArtifactBundle()` can detect changed inputs,
 edited/missing outputs, or altered provenance offline without rebuilding the
-atlas. The project manifest and lockfile are conservative inputs, ensuring that
+atlas. The project manifest and lockfile are conservative inputs, so
 newly declared or recorded tiles also make an older export stale. The TSJ/TRES
 contracts therefore remain free of PixelKiln-only fields.
 

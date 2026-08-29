@@ -38,7 +38,7 @@ PixelKiln supplies the missing project model:
   output hashes;
 - planning distinguishes missing, stale, recoverable, in-flight, untracked, and
   manually changed files before money is spent;
-- local review keeps human judgment where it matters—choosing artwork;
+- local review keeps human judgment where it matters, choosing artwork;
 - content-addressed recovery prevents a transient URL failure from buying the
   same image twice;
 - derived artifact bundles retain source provenance and recover across ordinary

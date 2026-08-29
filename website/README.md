@@ -10,9 +10,9 @@ the published npm package. Production is available at
 
 Scope website-only commits as **`chore(website):`**. This directory is outside
 the package `files` allowlist, so nothing here reaches the published npm
-tarball — but Semantic Release reads subjects, not paths, and `feat(website):`
+tarball. Semantic Release reads subjects, not paths, and `feat(website):`
 cuts a minor release of a package that did not change. `.releaserc.json`
-additionally refuses a release to any `website`-scoped commit, so a wrong
+also refuses a release to any `website`-scoped commit, so a wrong
 subject is caught rather than published.
 
 Use a normal `feat:`/`fix:` subject when a pull request touches both the

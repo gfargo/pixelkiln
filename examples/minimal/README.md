@@ -22,5 +22,5 @@ Add a second entry under `styles` with a different `outDir`, then:
 pixelkiln gen --style neon
 ```
 
-Every asset re-derives under the new style. The original files are untouched —
-styles are separate namespaces in both the output tree and the lockfile.
+Every asset re-derives under the new style. The original files are untouched.
+Styles are separate namespaces in both the output tree and the lockfile.

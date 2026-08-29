@@ -41,7 +41,8 @@ are rebased in memory and rewritten portably on the next save. The current
 manifest remains destination authority; a stale lock path cannot redirect
 restore into an unrelated project file.
 
-Unlike cost units—`generations`, `usd`, and `free`—are never summed. Candidate
+Cost units that differ are never summed. `generations`, `usd`, and `free`
+stay separate. Candidate
 count also belongs to the provider estimate rather than being assumed globally.
 
 ## State machine
@@ -79,7 +80,8 @@ output or recovery cache data.
 Lock writes use a same-directory temporary file and rename. An advisory writer
 lock serializes separate processes. In-process saves queue per path, and
 field-level dirty patches merge separate snapshots so updates to different
-assets—or different fields of one asset—do not silently lose the earlier write.
+assets, or to different fields of one asset, do not silently lose the earlier
+write.
 Stale advisory locks are recoverable after their safety window.
 
 ## Derived artifact transactions
