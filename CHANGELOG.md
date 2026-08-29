@@ -1,3 +1,11 @@
+# [0.2.0](https://github.com/gfargo/pixelkiln/compare/v0.1.0...v0.2.0) (2026-08-29)
+
+
+### Features
+
+* add custom PixelKiln favicon ([#36](https://github.com/gfargo/pixelkiln/issues/36)) ([2b75fae](https://github.com/gfargo/pixelkiln/commit/2b75faea9e7784ffbc359ccbb7a2837038871a31))
+* redesign Open Graph image ([#39](https://github.com/gfargo/pixelkiln/issues/39)) ([481caa1](https://github.com/gfargo/pixelkiln/commit/481caa1f9e5c4c87542444db33b76e45b9b26910))
+
 # 0.1.0 (2026-08-29)
 
 
@@ -58,4 +66,3 @@
 ### Performance Improvements
 
 * cache remote hashes, parallelise fetch, drop the v1 lock path ([eed5450](https://github.com/gfargo/pixelkiln/commit/eed5450f7083c9d51b676cb3aea799a9542f5d62))
-
