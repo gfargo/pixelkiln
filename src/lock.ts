@@ -32,6 +32,7 @@ export async function loadLock(lockPath: string): Promise<Lock> {
  */
 const saveQueues = new Map<string, Promise<void>>()
 const dirtyPatches = new WeakMap<Lock, Map<string, Partial<LockEntry>>>()
+const dirtyDeletes = new WeakMap<Lock, Set<string>>()
 
 /** Atomic write — a crash mid-save must not leave a truncated lockfile. */
 export function saveLock(lockPath: string, lock: Lock): Promise<void> {
@@ -91,6 +92,15 @@ async function writeLockWhileHeld(file: string, lock: Lock): Promise<void> {
     if (!merged[key]) merged[key] = entry
   }
 
+  // Removals are intents, recorded by `remove`, and are applied last. Merging
+  // starts from the disk view so a concurrent writer's entries survive, which
+  // means a key deleted only from `lock.entries` is read straight back off
+  // disk and silently resurrected. Applying deletions after both merge passes
+  // is what makes a removal actually stick.
+  const deletes = dirtyDeletes.get(lock)
+  const deleteSnapshot = deletes ? new Set(deletes) : new Set<string>()
+  for (const key of deleteSnapshot) delete merged[key]
+
   const sorted: Lock["entries"] = {}
   for (const key of Object.keys(merged).sort()) {
     sorted[key] = merged[key]!
@@ -119,6 +129,12 @@ async function writeLockWhileHeld(file: string, lock: Lock): Promise<void> {
     }
   }
 
+  const stillDirty = dirtyDeletes.get(lock)
+  if (stillDirty) {
+    for (const key of deleteSnapshot) stillDirty.delete(key)
+    if (stillDirty.size === 0) dirtyDeletes.delete(lock)
+  }
+
   const localAfterWrite = lock.entries
   lock.entries = { ...merged }
   for (const [key, patch] of currentDirty ?? []) {
@@ -128,6 +144,9 @@ async function writeLockWhileHeld(file: string, lock: Lock): Promise<void> {
 }
 
 export function upsert(lock: Lock, key: string, patch: Partial<LockEntry>): LockEntry {
+  // Re-adding a key cancels any pending removal, or the save would delete the
+  // entry that was just written.
+  dirtyDeletes.get(lock)?.delete(key)
   const existing = lock.entries[key]
   const next = { ...existing, ...patch } as LockEntry
   lock.entries[key] = next
@@ -138,6 +157,31 @@ export function upsert(lock: Lock, key: string, patch: Partial<LockEntry>): Lock
   }
   dirty.set(key, { ...(dirty.get(key) ?? {}), ...patch })
   return next
+}
+
+/**
+ * Drop a lock entry, and record the removal so the next save honours it.
+ *
+ * Deleting from `lock.entries` alone does nothing: `writeLockWhileHeld` merges
+ * onto whatever is on disk, so the entry is read back and restored. Callers
+ * that need an entry gone must come through here. Returns false when the key
+ * was not present, so a caller can tell a no-op from a removal.
+ */
+export function remove(lock: Lock, key: string): boolean {
+  if (!lock.entries[key]) return false
+  delete lock.entries[key]
+  const patches = dirtyPatches.get(lock)
+  if (patches) {
+    patches.delete(key)
+    if (patches.size === 0) dirtyPatches.delete(lock)
+  }
+  let deletes = dirtyDeletes.get(lock)
+  if (!deletes) {
+    deletes = new Set()
+    dirtyDeletes.set(lock, deletes)
+  }
+  deletes.add(key)
+  return true
 }
 
 const FILE_LOCK_TIMEOUT_MS = 10_000

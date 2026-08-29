@@ -16,6 +16,15 @@ describe("parseArgs", () => {
     expect(args.columns).toBe(8)
   })
 
+  it("accepts prune and rejects the filters that would make it overreach", () => {
+    expect(parseArgs(["prune", "--dry-run"])).toMatchObject({ command: "prune", dryRun: true })
+    expect(parseArgs(["prune", "--yes"])).toMatchObject({ command: "prune", yes: true })
+    // parseArgs still accepts the flags; prune itself refuses them at run time,
+    // because comparing a filtered manifest against the whole lockfile would
+    // make every excluded entry look undeclared and delete it.
+    expect(parseArgs(["prune", "--style", "base"]).styles).toEqual(["base"])
+  })
+
   it("parses and validates engine export formats", () => {
     expect(parseArgs(["export", "--format", "tiled", "--out", "dist/terrain"]))
       .toMatchObject({ command: "export", format: "tiled", out: "dist/terrain" })

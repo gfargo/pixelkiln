@@ -111,6 +111,22 @@ Delete provider objects previously tagged `pixelkiln:discard`. It is separate
 from salvage, lists targets, asks for confirmation, and refuses non-interactive
 deletion without `--yes`. Use `--dry-run` first.
 
+### `prune`
+
+Remove lock entries no style/asset pair in the manifest resolves to. These
+accumulate when an asset is renamed or moved between styles: the old entry keeps
+claiming the output path the new one now owns, which is what `doctor` reports as
+`lock-outputs`.
+
+Offline. It lists what it would remove, asks for confirmation, and refuses
+non-interactive removal without `--yes`. Use `--dry-run` first. The artwork on
+disk is untouched and nothing is deleted from the provider account, but the
+pruned entries' provenance is gone, so those objects read as unclaimed the next
+time you run `salvage`.
+
+`--style` and `--only` are rejected: prune compares the lockfile against the
+whole manifest, so a filter would make every entry it excluded look undeclared.
+
 ### `tag`
 
 Push current manifest tags to tracked provider objects. This does not generate

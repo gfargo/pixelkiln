@@ -7,7 +7,7 @@ import { PixelLabProvider } from "./providers/pixellab.ts"
 import { formatCost, measureBalanceChange, requireDelete, requireList } from "./provider.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { mountStyle, packSprites, packStyle, resolvePackInputs } from "./pipeline/pack.ts"
-import { loadLock, saveLock, spendByUnit, upsert as upsertLock } from "./lock.ts"
+import { loadLock, remove as removeLock, saveLock, spendByUnit, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
 import { lockKey } from "./types.ts"
 import { normalizeLockOutputPaths, resolveOutputPath } from "./outputs.ts"
@@ -89,7 +89,7 @@ const BOOL_FLAGS = [
 
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
-  "salvage", "purge", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
+  "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 /**
@@ -265,6 +265,8 @@ Commands
             sheet, leaving every other pixel untouched. Offline.
   export    Build a tile atlas, engine metadata, and offline provenance record.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
+  prune     Drop lock entries the manifest no longer declares. Offline; asks
+            first. Local art is untouched.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
   status    Summarise the lockfile.
@@ -599,6 +601,60 @@ async function main() {
     await saveLock(args.lock, lock)
     log(`  accepted ${accepted} existing file(s) as satisfying the current spec`)
     log(`  (their artwork is unchanged; only the recorded spec hash moved)`)
+    return
+  }
+
+  if (args.command === "prune") {
+    // Removes lock entries no style/asset pair in the manifest resolves to.
+    // These accumulate when an asset is renamed or moved between styles: the
+    // old entry keeps claiming the output path the new one now owns, which is
+    // `doctor`'s lock-outputs error. Until `remove` existed there was no way
+    // to clear one short of hand-editing the lockfile.
+    //
+    // Deliberately resolved from the whole manifest rather than the filtered
+    // `specs`: under `--style base` every other style's entries would look
+    // undeclared, and prune would delete the lot.
+    if (args.styles.length || args.assets.length) {
+      throw new Error(
+        "prune compares the lockfile against the entire manifest, so --style " +
+          "and --only would make it delete the entries they filter out. Run it unfiltered.",
+      )
+    }
+    const declared = new Set((await resolveSpecs(loaded)).map((s) => lockKey(s.styleId, s.assetId)))
+    const orphans = Object.keys(lock.entries).filter((key) => !declared.has(key)).sort()
+    if (!orphans.length) {
+      log(`  every lock entry is declared by the manifest — nothing to prune`)
+      return
+    }
+
+    log(`
+  ${orphans.length} lock entr(ies) the manifest no longer declares:`)
+    for (const key of orphans.slice(0, 20)) {
+      const outputs = lock.entries[key]?.outputs ?? []
+      const where = outputs[0]?.path ?? "no recorded output"
+      log(`    ${key.padEnd(44)} ${where}`)
+    }
+    if (orphans.length > 20) log(`    … and ${orphans.length - 20} more`)
+
+    if (args.dryRun) {
+      log(`
+  --dry-run: nothing removed.`)
+      return
+    }
+    log(`
+  This drops their provenance from the lockfile. The art on disk is`)
+    log(`  untouched, and nothing is deleted from your provider account — but`)
+    log(`  the link from those files back to the objects that made them is gone,`)
+    log(`  and the objects will read as unclaimed the next time you run salvage.`)
+    if (!(await confirm(`  Remove ${orphans.length} lock entr(ies)?`, args.yes))) {
+      log(`  aborted`)
+      return
+    }
+
+    let removed = 0
+    for (const key of orphans) if (removeLock(lock, key)) removed++
+    await saveLock(args.lock, lock)
+    log(`  removed ${removed} lock entr(ies); ${Object.keys(lock.entries).length} remain`)
     return
   }
 
