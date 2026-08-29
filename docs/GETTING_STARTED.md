@@ -23,6 +23,20 @@ npm run pixelkiln -- help
 The rest of this guide uses `pixelkiln` for readability. In the checkout,
 replace it with `npm run pixelkiln --`.
 
+## Using an agent
+
+Install the repository's PixelKiln skill when an agent will help operate the
+workflow:
+
+```bash
+npx skills add gfargo/pixelkiln@pixelkiln
+```
+
+The skill teaches compatible agents to plan first, preserve provenance, and
+use explicit budgets. It does not grant permission to spend provider credits;
+you still approve the generation command and its hard `--budget` ceiling. See
+[Agent workflows](AGENTS.md) for the full safety contract and example prompts.
+
 ## Start a new project
 
 Copy the minimal manifest into the project root:
@@ -58,6 +72,12 @@ generator returns alternatives, downloads the selected images, and updates the
 lockfile. In review, use Left/Right to browse every candidate, Enter to select,
 1–9 for direct choices, 0 to leave a row unresolved, and Up/Down to change
 rows. Closing the sheet without applying discards no provider objects.
+
+![PixelKiln local candidate review UI](../website/public/review-ui-showcase.jpg)
+
+The sheet is served only on localhost and selection remains human-controlled.
+Only rows submitted with **Apply selections** are recorded; unresolved rows can
+be reopened later with [`pixelkiln pick`](CLI.md#pick).
 
 ## Start from existing art
 

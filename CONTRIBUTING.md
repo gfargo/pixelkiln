@@ -31,6 +31,13 @@ npm run website:dev
 The site reads canonical Markdown from `docs/` and the root policy files at
 build time. Do not create a second documentation copy under `website/`.
 
+Website sprites are generated from `website/art/pixelkiln.manifest.json`.
+Treat those requests as paid work: run `plan` and `audit` first, use an explicit
+hard budget, and commit the manifest, lockfile, and reviewed outputs together.
+The Review UI showcase should be captured at 1280×720 only after every asset
+loads. Give a replacement capture a new public filename and update the page
+reference so deployed image caches cannot retain the old version.
+
 Run the source CLI without a global install:
 
 ```bash

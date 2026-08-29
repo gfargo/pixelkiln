@@ -66,6 +66,10 @@ be rerun safely after an interrupted session.
 
 Open the local candidate-review UI for jobs with alternatives. Arrow keys
 navigate, Enter selects, 1–9 choose directly, and 0 leaves a row unresolved.
+Only rows submitted with **Apply selections** are written to the lockfile;
+unchosen rows remain ready for later review, and closing the window applies
+nothing. See the [Getting started guide](GETTING_STARTED.md#start-a-new-project)
+for a screenshot of the actual interface.
 
 ### `fetch`
 

@@ -59,6 +59,18 @@ PixelKiln supplies the missing project model:
 | Artifact integrity | Portable source/output hashes, canonical fingerprints, manual-edit protection, transactional promotion, crash journal recovery. |
 | Library/extension | Public TypeScript primitives, provider capability interface, and deterministic `FakeProvider`. |
 
+### Human review, kept local
+
+`pixelkiln pick` opens an actual local candidate sheet; the orchestration layer
+never asks a model to choose artwork for you.
+
+![PixelKiln candidate review UI](./website/public/review-ui-showcase.jpg)
+
+Use Left/Right to inspect alternatives, Enter or 1–9 to select, and 0 to leave
+a row unresolved. Nothing is applied when the window is closed without using
+**Apply selections**. See the [CLI reference](docs/CLI.md#pick) for the complete
+review workflow.
+
 ## Install from a checkout
 
 Requires Node.js 20 or newer.
