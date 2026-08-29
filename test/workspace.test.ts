@@ -2,6 +2,8 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest"
 import { mkdtemp, writeFile, mkdir, cp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
 import {
   parseWorkspace,
   loadWorkspace,
@@ -19,6 +21,8 @@ import { buildPlan, summarize } from "../src/pipeline/plan.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { loadLock } from "../src/lock.ts"
 import type { LockEntry } from "../src/types.ts"
+
+const execFileAsync = promisify(execFile)
 
 let dir: string
 beforeEach(async () => {
@@ -356,5 +360,33 @@ describe("workspaceStatus", () => {
     const badProject = report.projects.find((p) => p.id === "bad")!
     expect(goodProject.error).toBeNull()
     expect(badProject.error).not.toBeNull()
+  })
+})
+
+// `loadWorkspace` treats a missing catalog file as an empty one — correct for
+// `workspace add`, which creates the file on first use. Every claim-consuming
+// entry point needs the opposite default: a typo'd --workspace path must be a
+// hard error, never a silently empty (and therefore vacuously "safe") claim
+// set. Regression coverage for that exact hazard, run through the real CLI.
+describe("a nonexistent --workspace catalog is a hard error for claim consumers", () => {
+  it("`workspace claims` refuses rather than reporting zero claims", async () => {
+    const missing = path.join(dir, "typo.workspace.json")
+    await expect(execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "claims", "--workspace", missing,
+    ], { cwd: dir })).rejects.toMatchObject({ stderr: expect.stringContaining("Workspace catalog not found") })
+  })
+
+  it("`salvage --workspace` refuses rather than salvaging with only its own lock", async () => {
+    const missing = path.join(dir, "typo.workspace.json")
+    await writeFile(
+      path.join(dir, "pixelkiln.manifest.json"),
+      JSON.stringify({ name: "solo", styles: { base: { generator: "map", outDir: "out" } }, assets: { anvil: { prompt: "an anvil" } } }),
+    )
+    await expect(execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "salvage", "--dry-run", "--workspace", missing,
+    ], { cwd: dir, env: { ...process.env, PIXELLAB_API_KEY: "test-key" } }))
+      .rejects.toMatchObject({ stderr: expect.stringContaining("Workspace catalog not found") })
   })
 })

@@ -417,13 +417,21 @@ async function confirm(question: string, auto: boolean): Promise<boolean> {
 
 /**
  * Loads a workspace catalog and derives its complete claim set, refusing when
- * the catalog itself is unsafe (duplicate ids/locks, or a registered manifest
- * or lock that does not exist) rather than silently deriving a partial claim
- * set — the exact hazard the catalog exists to prevent for account-wide
- * orphan decisions. `workspaceClaims` separately guards against an unreadable
- * lock that passed the existence check.
+ * the catalog itself is unsafe — missing entirely, or containing duplicate
+ * ids/locks, or a registered manifest or lock that does not exist — rather
+ * than silently deriving a partial (or empty) claim set. `loadWorkspace`
+ * treats a missing file as an empty catalog because that's the right
+ * behavior for `workspace add` (creating one for the first time); a claim
+ * consumer needs the opposite default, the same way `--claims` treats a
+ * missing lockfile path as a hard error (`loadClaims`,
+ * `src/pipeline/salvage.ts`) rather than skipping it. `workspaceClaims`
+ * separately guards against an unreadable lock that passed the existence
+ * check.
  */
 async function requireCompleteWorkspaceClaims(workspacePath: string) {
+  if (!existsSync(workspacePath)) {
+    throw new Error(`Workspace catalog not found: ${workspacePath}`)
+  }
   const dir = path.dirname(path.resolve(workspacePath))
   const ws = await loadWorkspace(workspacePath)
   const diagnostics = validateWorkspace(ws, dir)
