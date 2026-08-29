@@ -55,7 +55,7 @@ for pipeline behavior and mocked HTTP responses for PixelLab wire contracts.
   `test:`, `chore:`). Semantic Release derives versions from them.
 - **Scope website-only work as `chore(website):`.** `website/` is not in the
   package `files` allowlist, so nothing under it can reach the published
-  tarball — but Semantic Release cannot see that, and a `feat(website):`
+  tarball. Semantic Release cannot see that, and a `feat(website):`
   subject cuts a minor release whose contents are byte-identical to the one
   before it. That happened once already: 0.2.0 is a favicon and an Open Graph
   image. Any `website` scope is also refused a release by `releaseRules` in
@@ -98,3 +98,43 @@ full check results in the PR description.
 
 Security-sensitive findings should follow [SECURITY.md](./SECURITY.md), not a
 public issue with exploit details.
+
+## Releases
+
+Merging to `main` is the release. Semantic Release derives the version from the
+conventional commit subjects in the range, publishes to npm, tags the commit,
+writes the GitHub release, prepends to `CHANGELOG.md`, and commits the changelog
+and version back to `main` with `[skip ci]`. Contributors do not run anything.
+
+**There is no npm token.** Publishing authenticates over OIDC trusted
+publishing: the workflow grants `id-token: write`, npm exchanges that for a
+short-lived credential, and the npm CLI performs the exchange itself during
+`npm publish`. A side effect worth keeping is that every release carries a
+signed provenance attestation linking the tarball to its source commit and
+workflow run.
+
+Two conditions have to hold on the npm side, and neither lives in this
+repository:
+
+- the package must exist on the registry, and
+- it must have a Trusted Publisher entry naming this repository and the
+  `release.yml` workflow.
+
+When one is missing, the token exchange reports `404 OIDC token exchange error
+- package not found`, and Semantic Release then falls through to token auth and
+fails with `EINVALIDNPMTOKEN`. **That 404 does not necessarily mean the package
+is absent.** It reads identically when the package is published but has no
+Trusted Publisher entry, which is the more likely cause once a release has ever
+succeeded. Check the entry before doubting the publish.
+
+Because the exchange cannot authenticate against a package that does not exist
+yet, `0.1.0` was published by hand to bootstrap that trust, and its changelog
+section was written by hand for the same reason. Every release from `0.2.0`
+onward is automated.
+
+A failed release opens an issue labelled `semantic-release`, which the next
+successful run closes. That label must exist in the repository or the reporting
+step itself fails with a validation error and hides the original failure.
+
+See the website scoping rule under [change guidelines](#change-guidelines) for
+the one commit convention that changes whether a release happens at all.

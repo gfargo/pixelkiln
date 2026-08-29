@@ -28,7 +28,7 @@ With the skill loaded, an agent should:
 5. Pass an explicit `--budget` within the amount the user authorized.
 6. Leave artwork selection in the local `pick` page unless the user gives a
    specific selection rule.
-7. Commit the manifest, lockfile, generated output, and artifact companions—but
+7. Commit the manifest, lockfile, generated output, and artifact companions, but
    never credentials or `.pixelkiln/` caches.
 
 The skill guides the workflow; PixelKiln remains the deterministic execution

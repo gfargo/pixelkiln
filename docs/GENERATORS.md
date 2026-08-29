@@ -114,7 +114,7 @@ instead creates a structural set in provider order:
 | `tileset` | 16-tile Wang-corner terrain transition. |
 | `building` | Floor/wall/doorway/pillar/stair construction kit. |
 
-Describe a `tileset` asset as the transition—“fairway grass to rough meadow”—
+Describe a `tileset` asset as the transition, "fairway grass to rough meadow",
 rather than one terrain. Every returned member is required, so PixelKiln
 records numerical roles such as `tile-00` rather than treating them as choices.
 

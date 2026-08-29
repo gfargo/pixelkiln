@@ -1,4 +1,4 @@
-# Naming — resolved: `pixelkiln`
+# Naming resolved: `pixelkiln`
 
 **The name is settled.** The project ships as `pixelkiln`. `package.json` is
 no longer `private`.
@@ -20,19 +20,19 @@ GET https://registry.npmjs.org/pixelsmith   → 200, latest 2.6.0, "Node based
 ```
 
 `pixelkiln` was never published. The "v3.5.1 CSS spritesheet builder" is
-**`spritesmith`**, a real and long-established package — `pixelsmith` really
+**`spritesmith`**, a real and long-established package. `pixelsmith` really
 is its engine, exactly as claimed, but neither of them is `pixelkiln`. The
 original research conflated the two real packages into a collision that
 didn't exist. (`pixelsmith` also appears, separately and correctly, in the
-rejected-candidates list below — a real name in a different, adjacent
-project — which should have been the tell.)
+rejected-candidates list below. It is a real name in a different, adjacent
+project, which should have been the tell.)
 
 A GitHub search for `pixelkiln` returns nothing but this repository, and a
 general web search turns up no product, tool, or project by that name
 anywhere. Nothing else needs to change: `bin/pixelkiln.js`, `package.json`'s
 `name`/`bin`, the README, `scripts/gen-schema.ts`'s schema title, and
-heybud-admin's `package.json` badge scripts already all say `pixelkiln` —
-there is no rename to do, only the `private: true` flag to drop, which is
+heybud-admin's `package.json` badge scripts already all say `pixelkiln`.
+There is no rename to do, only the `private: true` flag to drop, which is
 done.
 
 ## What the space already looks like
@@ -44,13 +44,13 @@ The "manifest-driven AI asset generation CLI" idea is not novel. Prior art found
 | [pickbitsai/sprite-generator](https://github.com/pickbitsai/sprite-generator) | Closest. JSON manifest, `assets[]` with id/category/description, `defaultStyle`, `--dry-run`, `--category`, `--concurrency` | OpenAI `gpt-image-1` |
 | [mcp-tool-shop-org/sprite-foundry](https://github.com/mcp-tool-shop-org/sprite-foundry) | SQLite lifecycle tracking, review/accept/reject, provenance, deterministic export with manifest + checksums | ComfyUI (local GPU) |
 | [lx-0/restyle-sprites](https://github.com/lx-0/restyle-sprites) | Restyle a whole pack from source + style reference | Gemini / OpenAI |
-| [trebeljahr/sprite-tools](https://github.com/trebeljahr/sprite-tools) | Post-processing toolkit — atlas, collision, palette | n/a |
+| [trebeljahr/sprite-tools](https://github.com/trebeljahr/sprite-tools) | Post-processing toolkit for atlas, collision, and palette | n/a |
 | [dt-pirate/openrender](https://github.com/dt-pirate/openrender) | Installs generated assets into engines, manifests, rollback | n/a |
 | [freema/pixelforge-mcp](https://github.com/freema/pixelforge-mcp) | MCP server for pixel art | Gemini |
 | [ralphy](https://ralphy.mintlify.app/advanced/asset-manifest) | `asset-manifest.json` slot pointers + `generations.jsonl` audit log | multi |
 
-**Implication for naming:** the `sprite-*` namespace is crowded — `sprite-generator`,
-`sprite-foundry`, `sprite-tools`, `restyle-sprites` all exist. Avoid it.
+**Implication for naming:** the `sprite-*` namespace is crowded. `sprite-generator`,
+`sprite-foundry`, `sprite-tools`, and `restyle-sprites` all exist. Avoid it.
 
 ## What is actually differentiated here
 
@@ -67,7 +67,7 @@ Worth knowing, because the name should point at it:
    table plus a log. A committed, sorted, hash-on-both-sides lockfile in the npm
    sense was not found.
 
-## Shortlist (historical — kept for context, decision is above)
+## Shortlist (historical, kept for context)
 
 All verified free on npm, zero GitHub repos by that name, no web presence
 (checked 2026-07-29 for the alternates; `pixelkiln` itself re-verified
@@ -75,13 +75,13 @@ All verified free on npm, zero GitHub repos by that name, no web presence
 
 | Candidate | Note |
 |---|---|
-| **pixelkiln** ✅ **chosen** | Firing/baking metaphor fits pixel art, avoids the crowded `sprite-*` space. The npm collision this was shelved for turned out not to exist — see Resolution. |
-| pixelquarry | Extraction metaphor — you quarry many candidates and keep the good ones. Still free, not needed. |
+| **pixelkiln** ✅ **chosen** | Firing/baking metaphor fits pixel art, avoids the crowded `sprite-*` space. The npm collision this was shelved for turned out not to exist. See Resolution. |
+| pixelquarry | Extraction metaphor, since you quarry many candidates and keep the good ones. Still free, not needed. |
 | pixelcrate | Packaging/inventory feel; leans toward the lockfile idea. Still free, not needed. |
 | dithermill | Most pixel-art-native word available; "mill" carries batch production. Still free, not needed. |
 | spriteledger | Points hardest at provenance, but inherits the crowded `sprite-` prefix. Still free, not needed. |
 
-Rejected after checking: `pixelwright` (three live businesses use it — an AI app
-builder, an iOS audit firm, a UI developer's brand), `spritefoundry` (taken by a
-real project), `pixelsmith` (real package, `spritesmith`'s engine — see
+Rejected after checking: `pixelwright` (three live businesses use it: an AI app
+builder, an iOS audit firm, and a UI developer's brand), `spritefoundry` (taken by a
+real project), `pixelsmith` (real package, `spritesmith`'s engine, see
 Resolution), `spritemill`, `pixelloom`, `bitforge`, `spritelab`.
