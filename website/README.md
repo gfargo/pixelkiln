@@ -6,6 +6,18 @@ website changes can share one pull request without adding web dependencies to
 the published npm package. Production is available at
 [pixelkiln.griffen.codes](https://pixelkiln.griffen.codes).
 
+## Committing website changes
+
+Scope website-only commits as **`chore(website):`**. This directory is outside
+the package `files` allowlist, so nothing here reaches the published npm
+tarball — but Semantic Release reads subjects, not paths, and `feat(website):`
+cuts a minor release of a package that did not change. `.releaserc.json`
+additionally refuses a release to any `website`-scoped commit, so a wrong
+subject is caught rather than published.
+
+Use a normal `feat:`/`fix:` subject when a pull request touches both the
+website and the library; the library change is the one being released.
+
 ## Local development
 
 From the repository root:
