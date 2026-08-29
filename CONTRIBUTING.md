@@ -53,6 +53,14 @@ for pipeline behavior and mocked HTTP responses for PixelLab wire contracts.
 - Start from `main` and keep one coherent change per pull request.
 - Use conventional commit subjects (`feat:`, `fix:`, `docs:`, `refactor:`,
   `test:`, `chore:`). Semantic Release derives versions from them.
+- **Scope website-only work as `chore(website):`.** `website/` is not in the
+  package `files` allowlist, so nothing under it can reach the published
+  tarball — but Semantic Release cannot see that, and a `feat(website):`
+  subject cuts a minor release whose contents are byte-identical to the one
+  before it. That happened once already: 0.2.0 is a favicon and an Open Graph
+  image. Any `website` scope is also refused a release by `releaseRules` in
+  `.releaserc.json`, so a slip is caught rather than published, but the right
+  subject keeps the changelog honest.
 - Add regression coverage for bug fixes and behavior coverage for new public
   options or exports.
 - Update README/help text and focused docs in the same change as user-facing

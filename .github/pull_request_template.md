@@ -13,3 +13,5 @@
 - [ ] `npm run build`
 - [ ] `npm run test:package` when package/export/CLI metadata changed
 - [ ] README/help/focused docs updated when behavior changed
+- [ ] `chore(website):` used when the change is website-only, so it does not
+      cut a release of an unchanged package
