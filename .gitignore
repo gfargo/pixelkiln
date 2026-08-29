@@ -6,3 +6,6 @@ dist/
 .DS_Store
 pixelkiln.cache.json
 .pixelkiln/
+
+# Local agent notes — pointer documentation, deliberately not a project artifact
+CLAUDE.md
