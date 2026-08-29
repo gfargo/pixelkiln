@@ -85,7 +85,17 @@ export async function doctor(
     }
   }
   if (duplicateOutputs.length) {
-    add("lock-outputs", "error", `lock entries share output paths: ${duplicateOutputs.slice(0, 3).join(", ")}`)
+    // Name the remedy. This almost always means an asset was renamed or moved
+    // between styles and the old entry stayed behind still claiming the path,
+    // which `prune` clears — reporting the breakage without saying what fixes
+    // it left the only route as hand-editing the lockfile.
+    add(
+      "lock-outputs",
+      "error",
+      `lock entries share output paths: ${duplicateOutputs.slice(0, 3).join(", ")}` +
+        `${duplicateOutputs.length > 3 ? `, and ${duplicateOutputs.length - 3} more` : ""}` +
+        ` — run \`pixelkiln prune\` if the manifest no longer declares them`,
+    )
   } else {
     add("lock-outputs", "ok", `${outputOwners.size} recorded output path(s) are uniquely owned`)
   }

@@ -7,7 +7,7 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
-import { loadLock, saveLock, upsert } from "../src/lock.ts"
+import { loadLock, remove, saveLock, upsert } from "../src/lock.ts"
 import { candidateCount, generationCost, lockKey, parseLock, primaryOutput, type Lock } from "../src/types.ts"
 import { sha256 } from "../src/hash.ts"
 import { normalizeLockOutputPaths } from "../src/outputs.ts"
@@ -456,6 +456,81 @@ describe("lockfile", () => {
     ])
 
     expect(Object.keys((await loadLock(p)).entries).sort()).toEqual(["base/alpha", "base/beta"])
+  })
+})
+
+describe("lock removal", () => {
+  const entry = (assetId: string) =>
+    ({
+      styleId: "base", assetId, specHash: "h", generator: "map", prompt: "p",
+      width: 32, height: 32, status: "downloaded", jobId: null, sourceUrl: null,
+      outputs: [],
+    }) as never
+
+  // The reason `remove` has to exist. saveLock merges onto whatever is on disk
+  // so a concurrent writer's entries survive, which means deleting a key from
+  // lock.entries and saving is a silent no-op: the entry is read straight back
+  // off disk. Before this, clearing an entry meant hand-editing the lockfile.
+  it("persists a removal instead of reading the entry back off disk", async () => {
+    const file = path.join(dir, "lock.json")
+    const lock = await loadLock(file)
+    upsert(lock, "base/alpha", entry("alpha"))
+    upsert(lock, "base/beta", entry("beta"))
+    await saveLock(file, lock)
+    expect(Object.keys((await loadLock(file)).entries).sort()).toEqual(["base/alpha", "base/beta"])
+
+    expect(remove(lock, "base/alpha")).toBe(true)
+    await saveLock(file, lock)
+
+    expect(Object.keys((await loadLock(file)).entries)).toEqual(["base/beta"])
+    expect(Object.keys(lock.entries)).toEqual(["base/beta"])
+  })
+
+  it("reports whether the key was actually there", async () => {
+    const file = path.join(dir, "lock.json")
+    const lock = await loadLock(file)
+    upsert(lock, "base/alpha", entry("alpha"))
+    expect(remove(lock, "base/nope")).toBe(false)
+    expect(remove(lock, "base/alpha")).toBe(true)
+    await saveLock(file, lock)
+    expect(Object.keys((await loadLock(file)).entries)).toEqual([])
+  })
+
+  // A removal must not become a licence to clobber. The merge exists so a
+  // second process writing a different entry does not lose it.
+  it("removes only the named key and keeps an entry another writer added", async () => {
+    const file = path.join(dir, "lock.json")
+    const lock = await loadLock(file)
+    upsert(lock, "base/alpha", entry("alpha"))
+    await saveLock(file, lock)
+
+    // Another process appends while we hold a stale in-memory view.
+    const other = await loadLock(file)
+    upsert(other, "base/gamma", entry("gamma"))
+    await saveLock(file, other)
+
+    remove(lock, "base/alpha")
+    await saveLock(file, lock)
+
+    // alpha is gone because we asked; gamma survives because we did not.
+    expect(Object.keys((await loadLock(file)).entries)).toEqual(["base/gamma"])
+  })
+
+  it("cancels a pending removal when the same key is written again", async () => {
+    const file = path.join(dir, "lock.json")
+    const lock = await loadLock(file)
+    upsert(lock, "base/alpha", entry("alpha"))
+    await saveLock(file, lock)
+
+    remove(lock, "base/alpha")
+    upsert(lock, "base/alpha", { ...(entry("alpha") as object), status: "selected" } as never)
+    await saveLock(file, lock)
+
+    const reloaded = await loadLock(file)
+    expect(Object.keys(reloaded.entries)).toEqual(["base/alpha"])
+    // The re-add wins, and it is the re-added value that landed — not the
+    // pre-removal one surviving because the delete quietly did nothing.
+    expect(reloaded.entries["base/alpha"]!.status).toBe("selected")
   })
 })
 
