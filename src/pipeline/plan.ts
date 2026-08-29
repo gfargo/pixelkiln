@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs"
+import path from "node:path"
 import { sha256File } from "../hash.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
@@ -9,7 +10,7 @@ export type PlanState =
   | "missing" // no lock entry and no file — genuinely needs generating
   | "untracked" // file exists but has no lock entry; the art is fine, provenance is not known
   | "stale" // prompt/style/size changed since the file was made
-  | "orphaned" // lock says downloaded, but the file is gone or altered
+  | "orphaned" // the bytes that should be on disk are gone or altered
   | "in-flight" // submitted, not yet downloaded
   | "recoverable" // generation succeeded; download can be retried without spending
   | "failed"
@@ -68,6 +69,18 @@ export async function buildPlan(
     if (opts.force) {
       state = "missing"
       reason = "--force"
+    } else if (!entry && spec.source) {
+      // An asset with a `source` is placed from committed art by `mount`, and
+      // AssetSchema.source says it needs no lock entry at all. Treating it as
+      // `missing` puts art pixelkiln did not make and will never generate into
+      // the actionable list, and bills a generation cost for each one.
+      if (existsSync(path.resolve(spec.root, spec.source))) {
+        state = "ok"
+        reason = `placed from ${spec.source}; not generated`
+      } else {
+        state = "orphaned"
+        reason = `declared source is missing: ${spec.source}`
+      }
     } else if (!entry) {
       // Distinguish "no art" from "art exists but unmatched upstream". Calling
       // the latter `missing` invites regenerating perfectly good files — which

@@ -12,11 +12,19 @@ export async function sha256File(path: string): Promise<string> {
 
 /**
  * Identity of a spec: everything that would change the generated image.
- * Project root, `outFile`, and `tags` are deliberately excluded — moving a
- * checkout, renaming the destination, or retagging should not regenerate art.
+ * Project root, `outFile`, `source`, and `tags` are deliberately excluded —
+ * moving a checkout, renaming the destination, swapping the committed art a
+ * `mount` places, or retagging should not regenerate art.
+ *
+ * Generator-specific parameters are hashed only where they apply, and are
+ * left `undefined` otherwise so `JSON.stringify` drops the key entirely.
+ * That matters: adding a field unconditionally rewrites the hash of every
+ * spec in every existing lockfile, and each one then reports as `stale` and
+ * invites a full regeneration of art that never changed. Adding `palette`
+ * unconditionally did exactly that once already.
  */
 export function specHash(
-  spec: Omit<ResolvedSpec, "specHash" | "root" | "outFile" | "tags">,
+  spec: Omit<ResolvedSpec, "specHash" | "root" | "outFile" | "source" | "tags">,
   styleImageHashes: string[],
 ): string {
   return sha256(
@@ -31,6 +39,14 @@ export function specHash(
       detail: spec.detail ?? null,
       seed: spec.seed ?? null,
       palette: spec.palette,
+      // `noBackground` only reaches the wire for pixflux; the tile fields are
+      // undefined for every other generator. `tileSize` is intentionally
+      // absent — width/height are derived from it, so it is already covered.
+      noBackground: spec.generator === "pixflux" ? spec.noBackground : undefined,
+      tileType: spec.tileType,
+      tileView: spec.tileView,
+      tileFeature: spec.tileFeature,
+      outlineMode: spec.outlineMode,
       styleImages: styleImageHashes,
     }),
   )

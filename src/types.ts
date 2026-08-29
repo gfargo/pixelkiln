@@ -506,6 +506,12 @@ export interface ResolvedSpec {
   size: number
   styleImagePaths: string[]
   outFile: string
+  /**
+   * Manifest-relative path of committed art that stands in for generated
+   * output; excluded from the spec hash. Set only when the asset declares
+   * `source`, which also means it needs no lock entry.
+   */
+  source?: string
   tags: string[]
   specHash: string
   cost: number

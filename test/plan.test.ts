@@ -116,6 +116,46 @@ describe("plan", () => {
     expect(plan.candidates).toBe(32) // 2 x 16
   })
 
+  // AssetSchema.source documents that a source-backed asset needs no lock entry
+  // at all — it is committed art that `mount` places, not something pixelkiln
+  // generates. `plan` never read the field, so a whole terrain style landed in
+  // the actionable list and was quoted a generation cost it can never incur.
+  it("counts a source-backed asset as ok, not as work to generate", async () => {
+    await mkdir(path.join(dir, "cells"), { recursive: true })
+    await writeFile(path.join(dir, "cells", "tile_0.png"), PNG)
+    await writeFile(path.join(dir, "m.json"), JSON.stringify({
+      name: "t",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: {
+        alpha: { prompt: "grass", cell: [0, 0], source: "cells/tile_0.png" },
+      },
+    }))
+    const specs = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+    const plan = await buildPlan(specs, { version: 2, entries: {} })
+
+    expect(plan.items[0]!.state).toBe("ok")
+    expect(plan.items[0]!.reason).toContain("cells/tile_0.png")
+    expect(plan.actionable).toHaveLength(0)
+    expect(plan.cost).toBe(0)
+  })
+
+  it("reports a source-backed asset whose source is gone as orphaned, not missing", async () => {
+    await writeFile(path.join(dir, "m.json"), JSON.stringify({
+      name: "t",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: { alpha: { prompt: "grass", cell: [0, 0], source: "cells/gone.png" } },
+    }))
+    const specs = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+    const plan = await buildPlan(specs, { version: 2, entries: {} })
+
+    // Orphaned, not missing: regenerating cannot produce art pixelkiln never
+    // made, so this must not reach the actionable list or carry a cost.
+    expect(plan.items[0]!.state).toBe("orphaned")
+    expect(plan.items[0]!.reason).toContain("cells/gone.png")
+    expect(plan.actionable).toHaveLength(0)
+    expect(plan.cost).toBe(0)
+  })
+
   it("reports ok when the lock matches and the file is untouched", async () => {
     const loaded = await writeManifest()
     const specs = await resolveSpecs(loaded)
@@ -259,6 +299,76 @@ describe("specHash", () => {
     const a = await resolveSpecs(await writeManifest({ outDir: "out" }))
     const b = await resolveSpecs(await writeManifest({ outDir: "elsewhere" }))
     expect(a[0]!.specHash).toBe(b[0]!.specHash)
+  })
+
+  it("ignores `source`, so swapping the art a mount places does not force a regen", async () => {
+    const manifest = (source: string) => ({
+      name: "t",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: { alpha: { prompt: "an anvil", cell: [0, 0], source } },
+    })
+    await writeFile(path.join(dir, "a.json"), JSON.stringify(manifest("cells/one.png")))
+    await writeFile(path.join(dir, "b.json"), JSON.stringify(manifest("cells/two.png")))
+    const a = await resolveSpecs(await loadManifest(path.join(dir, "a.json")))
+    const b = await resolveSpecs(await loadManifest(path.join(dir, "b.json")))
+    expect(a[0]!.source).toBe("cells/one.png")
+    expect(a[0]!.specHash).toBe(b[0]!.specHash)
+  })
+
+  // Every tile parameter below changes the image the endpoint draws, and none
+  // of them was hashed — so flipping `outlineMode` on a generated set left it
+  // reporting `ok`. Measured on a real fairway set, outline vs segmentation was
+  // the difference between borders that read as quilting and a seamless tiling.
+  it.each([
+    ["outlineMode", { outlineMode: "outline" }, { outlineMode: "segmentation" }],
+    ["tileFeature", { tileFeature: "tileset" }, { tileFeature: "roads" }],
+    ["tileType", { tileType: "isometric" }, { tileType: "square_topdown" }],
+    ["tileView", { tileView: "low top-down" }, { tileView: "side" }],
+  ])("changes when a tiles style's %s changes", async (_name, one, two) => {
+    const tiles = (extra: Record<string, unknown>) => ({
+      generator: "tiles", tileSize: 32, outDir: "out", ...extra,
+    })
+    await writeFile(path.join(dir, "a.json"), JSON.stringify({
+      name: "t", styles: { base: tiles(one) }, assets: { alpha: { prompt: "grass" } },
+    }))
+    await writeFile(path.join(dir, "b.json"), JSON.stringify({
+      name: "t", styles: { base: tiles(two) }, assets: { alpha: { prompt: "grass" } },
+    }))
+    const a = await resolveSpecs(await loadManifest(path.join(dir, "a.json")))
+    const b = await resolveSpecs(await loadManifest(path.join(dir, "b.json")))
+    expect(a[0]!.specHash).not.toBe(b[0]!.specHash)
+  })
+
+  it("changes when pixflux is told to keep its background", async () => {
+    const style = (noBackground: boolean) => ({
+      name: "t",
+      styles: { base: { generator: "pixflux", size: 32, outDir: "out", noBackground } },
+      assets: { alpha: { prompt: "a banner" } },
+    })
+    await writeFile(path.join(dir, "a.json"), JSON.stringify(style(true)))
+    await writeFile(path.join(dir, "b.json"), JSON.stringify(style(false)))
+    const a = await resolveSpecs(await loadManifest(path.join(dir, "a.json")))
+    const b = await resolveSpecs(await loadManifest(path.join(dir, "b.json")))
+    expect(a[0]!.specHash).not.toBe(b[0]!.specHash)
+  })
+
+  // The guard for the whole scheme. `palette` was once added to the hash
+  // unconditionally; every lock entry written before that commit then reported
+  // `stale`, and one project was offered a 1612-generation regeneration of art
+  // that had not changed. A generator-specific field must stay `undefined` for
+  // the generators it does not reach, so JSON.stringify drops the key and the
+  // serialized form is untouched. If this pin moves, every existing lockfile
+  // in every consuming project goes stale on upgrade — that is the cost.
+  it("pins the hash of a plain map spec against accidental schema churn", async () => {
+    await writeFile(path.join(dir, "m.json"), JSON.stringify({
+      name: "t",
+      styles: { base: { generator: "map", size: 32, outDir: "out" } },
+      assets: { alpha: { prompt: "an anvil" } },
+    }))
+    const specs = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+    expect(specs[0]!.specHash).toBe(
+      "e5606b8167a58effd327a2ed2ef385008413fa48e4d4c2c0fe8cfd7d7a6d2a1a",
+    )
   })
 })
 
