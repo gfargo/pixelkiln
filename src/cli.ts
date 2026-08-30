@@ -19,7 +19,13 @@ import { doctor } from "./pipeline/doctor.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
 import { runPicker } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
-import { loadClaims, findOrphans, groupOrphansByStyle, SALVAGED_SPEC_HASH } from "./pipeline/salvage.ts"
+import {
+  loadClaims,
+  findOrphans,
+  groupOrphansByStyle,
+  loadSiblingManifests,
+  SALVAGED_SPEC_HASH,
+} from "./pipeline/salvage.ts"
 import {
   loadWorkspace,
   saveWorkspace,
@@ -91,6 +97,10 @@ interface Args {
   workspace?: string
   /** `workspace add`: manifest path. `workspace remove`: project id or manifest path. */
   target?: string
+  /** `workspace add`: provider id to register the project under. Defaults to "pixellab". */
+  provider?: string
+  /** `workspace add`: free-form account label, e.g. distinguishing sandboxes. */
+  account?: string
   /**
    * Raw `--lock` value with no manifest-relative default applied. `workspace
    * add` needs to know whether the user actually passed `--lock`, since the
@@ -104,6 +114,7 @@ const VALUE_FLAGS = [
   "--manifest", "--lock", "--style", "--only", "--budget", "--port",
   "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs", "--format",
   "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma", "--workspace",
+  "--provider", "--account",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -292,6 +303,8 @@ export function parseArgs(argv: string[]): Args {
     subcommand,
     workspace: get("--workspace"),
     target,
+    provider: get("--provider"),
+    account: get("--account"),
   }
 }
 
@@ -618,7 +631,8 @@ async function main() {
         id,
         manifest: toPortablePath(dir, manifestPath),
         lock: toPortablePath(dir, lockPath),
-        provider: "pixellab",
+        provider: args.provider ?? "pixellab",
+        ...(args.account ? { account: args.account } : {}),
       }
       await saveWorkspace(workspacePath, { version: 1, projects: [...ws.projects, project] })
       log(`  registered "${id}" in ${path.relative(process.cwd(), workspacePath)}`)
@@ -650,6 +664,9 @@ async function main() {
     }
 
     if (args.subcommand === "list") {
+      if (!existsSync(workspacePath)) {
+        throw new Error(`Workspace catalog not found: ${workspacePath}`)
+      }
       const ws = await loadWorkspace(workspacePath)
       const diagnostics = validateWorkspace(ws, dir)
       if (args.json) {
@@ -668,10 +685,13 @@ async function main() {
     }
 
     if (args.subcommand === "status") {
+      if (!existsSync(workspacePath)) {
+        throw new Error(`Workspace catalog not found: ${workspacePath}`)
+      }
       const ws = await loadWorkspace(workspacePath)
       const report = await workspaceStatus(ws, dir)
       if (args.json) {
-        log(JSON.stringify(report, null, 2))
+        log(JSON.stringify({ ...report, workspace: workspacePath }, null, 2))
       } else {
         log(`  workspace: ${path.relative(process.cwd(), workspacePath)}`)
         for (const p of report.projects) {
@@ -1246,29 +1266,15 @@ async function main() {
       return
     }
 
-    // Each sibling project's manifest — from the workspace catalog if one was
-    // given, otherwise the conventional sibling beside each --claims lockfile
-    // (same directory, by the same convention --lock defaults from
-    // --manifest) — loaded purely so a single-style manifest, which has no
-    // pattern of its own to check against, can still recognise "this looks
-    // like project X's art" instead of silently claiming everything by
-    // default. Best-effort: a missing or malformed sibling just means no
-    // extra signal, not an error.
-    const siblings: { label: string; manifest: typeof loaded.manifest }[] = []
-    const ownManifestPath = path.resolve(args.manifest)
-    const siblingManifestPaths = args.workspace
-      ? workspaceProjects.map((p) => resolveProject(workspaceDir, p).manifestPath)
-      : args.claims.map((c) => path.join(path.dirname(path.resolve(c)), "pixelkiln.manifest.json"))
-    for (const siblingManifestPath of siblingManifestPaths) {
-      if (path.resolve(siblingManifestPath) === ownManifestPath) continue
-      if (!existsSync(siblingManifestPath)) continue
-      try {
-        const siblingLoaded = await loadManifest(siblingManifestPath)
-        siblings.push({ label: path.basename(path.dirname(siblingManifestPath)), manifest: siblingLoaded.manifest })
-      } catch {
-        // Not this run's problem to solve — the orphan just gets no extra signal.
-      }
-    }
+    // Each sibling project's manifest, loaded purely so a single-style
+    // manifest — which has no pattern of its own to check against — can still
+    // recognise "this looks like project X's art" instead of silently
+    // claiming everything by default.
+    const siblings = await loadSiblingManifests(
+      args.manifest,
+      workspaceProjects.map((p) => resolveProject(workspaceDir, p).manifestPath),
+      args.claims,
+    )
 
     // Which style each orphan's prompt was most likely generated from, so a
     // shared account's orphan pool doesn't get triaged as one undifferentiated

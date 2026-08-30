@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest"
-import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises"
+import { mkdtemp, mkdir, writeFile, rm, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import {
@@ -8,6 +8,7 @@ import {
   loadClaims,
   matchOrphanStyle,
   groupOrphansByStyle,
+  loadSiblingManifests,
   SALVAGED_SPEC_HASH,
   type Orphan,
 } from "../src/pipeline/salvage.ts"
@@ -169,6 +170,53 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
       expect(matched.get("neon")).toHaveLength(1)
       expect(elsewhere.size).toBe(0)
     })
+  })
+})
+
+// docs/RECOVERY.md promises `--claims` "unions with a workspace's claim set",
+// which only holds if the sibling STYLE signal also unions — otherwise a
+// --claims project passed alongside --workspace loses the exclusion that
+// keeps its art out of the workspace project's orphan pool.
+describe("loadSiblingManifests", () => {
+  async function writeSiblingManifest(root: string, name: string): Promise<string> {
+    await mkdir(root, { recursive: true })
+    const manifestPath = path.join(root, "pixelkiln.manifest.json")
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        name,
+        styles: { base: { generator: "map", outDir: "out", promptSuffix: "hot magenta and electric cyan rim lighting" } },
+        assets: { anvil: { prompt: "an anvil" } },
+      }),
+    )
+    return manifestPath
+  }
+
+  it("unions the workspace-registered manifests with each --claims sibling, deduped and excluding its own", async () => {
+    const ownManifest = await writeSiblingManifest(path.join(dir, "own"), "own")
+    const catalogSibling = await writeSiblingManifest(path.join(dir, "catalog-sibling"), "catalog-sibling")
+    const claimsSiblingDir = path.join(dir, "claims-sibling")
+    const claimsSibling = await writeSiblingManifest(claimsSiblingDir, "claims-sibling")
+    const claimsSiblingLock = path.join(claimsSiblingDir, "pixelkiln.lock.json")
+    await writeFile(claimsSiblingLock, JSON.stringify({ version: 2, entries: {} }))
+
+    const siblings = await loadSiblingManifests(
+      ownManifest,
+      [catalogSibling, ownManifest], // a workspace catalog may also register the project running salvage
+      [claimsSiblingLock],
+    )
+
+    expect(siblings.map((s) => s.label).sort()).toEqual(["catalog-sibling", "claims-sibling"])
+  })
+
+  it("skips a sibling manifest that does not exist, without throwing", async () => {
+    const ownManifest = await writeSiblingManifest(path.join(dir, "own"), "own")
+    const siblings = await loadSiblingManifests(
+      ownManifest,
+      [path.join(dir, "ghost", "pixelkiln.manifest.json")],
+      [path.join(dir, "also-ghost", "pixelkiln.lock.json")],
+    )
+    expect(siblings).toEqual([])
   })
 })
 

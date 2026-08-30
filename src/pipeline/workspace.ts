@@ -75,7 +75,8 @@ export interface WorkspaceProjectStatus {
 export interface WorkspaceStatusReport {
   version: 1
   safe: boolean
-  workspace: string
+  /** The catalog's own directory — resolved paths in `projects` sit under it. */
+  dir: string
   projects: WorkspaceProjectStatus[]
   totals: {
     byState: Record<PlanState, number>
@@ -152,7 +153,7 @@ export async function workspaceStatus(ws: Workspace, dir: string): Promise<Works
   return {
     version: 1,
     safe: !diagnostics.some((d) => d.level === "error") && projects.every((p) => !p.error),
-    workspace: dir,
+    dir,
     projects,
     totals: { byState: totalsByState, spendByUnit: totalsSpend, claims },
     diagnostics,

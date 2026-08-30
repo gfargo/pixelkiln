@@ -182,6 +182,15 @@ describe("parseArgs", () => {
     expect(args.explicitLock).toBe("../other/variant.lock.json")
   })
 
+  it("parses --provider/--account for workspace add", () => {
+    const args = parseArgs([
+      "workspace", "add", "../other/pixelkiln.manifest.json",
+      "--provider", "fake", "--account", "sandbox",
+    ])
+    expect(args.provider).toBe("fake")
+    expect(args.account).toBe("sandbox")
+  })
+
   it("parses --workspace for salvage", () => {
     expect(parseArgs(["salvage", "--workspace", "pixelkiln.workspace.json", "--dry-run"])).toMatchObject({
       workspace: "pixelkiln.workspace.json",

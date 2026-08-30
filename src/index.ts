@@ -26,6 +26,7 @@ export {
   findOrphans,
   matchOrphanStyle,
   groupOrphansByStyle,
+  loadSiblingManifests,
   idFromPrompt,
   applyTags,
   type Orphan,

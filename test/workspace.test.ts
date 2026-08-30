@@ -389,4 +389,94 @@ describe("a nonexistent --workspace catalog is a hard error for claim consumers"
     ], { cwd: dir, env: { ...process.env, PIXELLAB_API_KEY: "test-key" } }))
       .rejects.toMatchObject({ stderr: expect.stringContaining("Workspace catalog not found") })
   })
+
+  // `status`/`list` are read-only gates a CI job could plausibly `--check`
+  // against — a nonexistent catalog reporting `safe: true` there is the same
+  // hazard class as the claim-consumer case above, just on a different pair
+  // of subcommands.
+  it("`workspace status` refuses rather than reporting an empty, safe report", async () => {
+    const missing = path.join(dir, "typo.workspace.json")
+    await expect(execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "status", "--check", "--workspace", missing,
+    ], { cwd: dir })).rejects.toMatchObject({ stderr: expect.stringContaining("Workspace catalog not found") })
+  })
+
+  it("`workspace list` refuses rather than reporting zero registered projects", async () => {
+    const missing = path.join(dir, "typo.workspace.json")
+    await expect(execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "list", "--workspace", missing,
+    ], { cwd: dir })).rejects.toMatchObject({ stderr: expect.stringContaining("Workspace catalog not found") })
+  })
+})
+
+describe("`workspace add` --provider/--account", () => {
+  it("stores the flags, and their absence still defaults provider to pixellab", async () => {
+    const a = await writeProject(path.join(dir, "a"), "a")
+    const b = await writeProject(path.join(dir, "b"), "b")
+    const catalogPath = path.join(dir, "pixelkiln.workspace.json")
+
+    await execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "add", a.manifestPath, "--provider", "fake", "--account", "sandbox",
+    ], { cwd: dir })
+    await execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "add", b.manifestPath,
+    ], { cwd: dir })
+
+    const ws = await loadWorkspace(catalogPath)
+    const projectA = ws.projects.find((p) => p.id === "a")!
+    const projectB = ws.projects.find((p) => p.id === "b")!
+    expect(projectA.provider).toBe("fake")
+    expect(projectA.account).toBe("sandbox")
+    expect(projectB.provider).toBe("pixellab")
+    expect(projectB.account).toBeUndefined()
+  })
+
+  it("surfaces as the mixed-provider warning end-to-end once two providers are registered", async () => {
+    const a = await writeProject(path.join(dir, "a"), "a")
+    const b = await writeProject(path.join(dir, "b"), "b")
+    const catalogPath = path.join(dir, "pixelkiln.workspace.json")
+
+    await execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "add", a.manifestPath, "--provider", "pixellab",
+    ], { cwd: dir })
+    await execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "add", b.manifestPath, "--provider", "fake",
+    ], { cwd: dir })
+
+    const ws = await loadWorkspace(catalogPath)
+    const diagnostics = validateWorkspace(ws, dir)
+    expect(diagnostics).toContainEqual(expect.objectContaining({ id: "mixed-provider", level: "warning" }))
+  })
+})
+
+describe("the `workspace` JSON key means the catalog file everywhere it appears", () => {
+  it("`list --json` and `status --json` agree on the same value for `workspace`", async () => {
+    const a = await writeProject(path.join(dir, "a"), "a")
+    const catalogPath = path.join(dir, "pixelkiln.workspace.json")
+    await execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "add", a.manifestPath,
+    ], { cwd: dir })
+
+    const { stdout: listOut } = await execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "list", "--json",
+    ], { cwd: dir })
+    const { stdout: statusOut } = await execFileAsync(path.resolve("node_modules/.bin/tsx"), [
+      path.resolve("src/cli.ts"),
+      "workspace", "status", "--json",
+    ], { cwd: dir })
+
+    const list = JSON.parse(listOut)
+    const status = JSON.parse(statusOut)
+    expect(list.workspace).toBe(catalogPath)
+    expect(status.workspace).toBe(catalogPath)
+    expect(status.dir).toBe(path.dirname(catalogPath))
+  })
 })
