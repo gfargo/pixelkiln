@@ -52,7 +52,7 @@ PixelKiln supplies the missing project model:
 | Generate and review | Resumable submit/poll/pick/fetch pipeline with a fast local candidate sheet. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Validated local content cache, provider URL restore, account object-hash cache, and resumable jobs. |
-| Shared-account safety | Cross-project claim files, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
+| Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
 | Quality control | Palette distance, transparency, color-count, relative outlier, cache-integrity, and doctor gates. |
 | Sprite packaging | Deterministic RGBA packing, stable-cell mounting, explicit external input lists, structural output roles. |
 | Engine export | Lossless generic tile contract, Tiled Wang sets, and Godot 4 terrain sets. |
@@ -253,9 +253,20 @@ pixelkiln purge
 ```
 
 Salvage imports, keeps, or tags discard; it never deletes. On shared accounts,
-pass every other project lockfile via `--claims` so shipped art cannot appear
-unowned. Purge only targets objects already tagged discard and requires an
-explicit confirmation. See [Recovery and account safety](./docs/RECOVERY.md).
+pass every other project lockfile via `--claims`, or register siblings once in
+a workspace catalog and pass `--workspace`, so shipped art cannot appear
+unowned:
+
+```bash
+pixelkiln workspace add ../other-game/pixelkiln.manifest.json
+pixelkiln workspace status
+pixelkiln salvage --workspace pixelkiln.workspace.json
+```
+
+A registered project's missing or unreadable lockfile is a hard error for
+`workspace claims` and `salvage --workspace` — never a silent skip. Purge only
+targets objects already tagged discard and requires an explicit confirmation.
+See [Recovery and account safety](./docs/RECOVERY.md).
 
 ## Automation
 
@@ -323,10 +334,12 @@ Project policies: [Contributing](./CONTRIBUTING.md),
 
 ## Scope
 
-Animated eight-direction characters and their ZIP/engine-resource export are not
-currently implemented. See the open
-[roadmap issues](https://github.com/gfargo/pixelkiln/issues) for provider and
-workspace-catalog work.
+Animated eight-direction characters and their ZIP/engine-resource export are
+not currently implemented. Cross-project content-cache reuse and
+`workspace find <hash|asset-id>` are deferred beyond the current read-only
+workspace catalog. See the open
+[roadmap issues](https://github.com/gfargo/pixelkiln/issues) for additional
+provider adapters and this remaining workspace work.
 
 ## License
 

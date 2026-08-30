@@ -26,6 +26,7 @@ export {
   findOrphans,
   matchOrphanStyle,
   groupOrphansByStyle,
+  loadSiblingManifests,
   idFromPrompt,
   applyTags,
   type Orphan,
@@ -35,3 +36,23 @@ export {
 } from "./pipeline/salvage.ts"
 export { runSalvage, type SalvageResult } from "./pick/salvage-server.ts"
 export { renderSalvageSheet } from "./pick/salvage-sheet.ts"
+export {
+  WorkspaceProjectSchema,
+  WorkspaceSchema,
+  parseWorkspace,
+  loadWorkspace,
+  saveWorkspace,
+  toPortablePath,
+  resolveProject,
+  validateWorkspace,
+  type Workspace,
+  type WorkspaceProject,
+  type WorkspaceDiagnostic,
+} from "./workspace.ts"
+export {
+  workspaceClaims,
+  workspaceStatus,
+  type WorkspaceClaims,
+  type WorkspaceProjectStatus,
+  type WorkspaceStatusReport,
+} from "./pipeline/workspace.ts"

@@ -86,6 +86,50 @@ array to stdout and human diagnostics to stderr for piping into `jq`.
 Imported ids are derived from prompts and land under `_salvaged/`; review and
 rename them before treating them as stable application ids.
 
+## Shared workspace catalog
+
+For a single project, its own lockfile is the whole claim set. On a shared
+account with several sibling projects, repeating `--claims` on every salvage
+run is easy to get wrong — a forgotten lockfile makes another project's paid
+art look unclaimed. `workspace` fixes that by registering every sibling once,
+outside any one manifest:
+
+```bash
+pixelkiln workspace add ../other-game/pixelkiln.manifest.json
+pixelkiln workspace add ../another-game/pixelkiln.manifest.json --name another
+pixelkiln workspace status
+pixelkiln workspace claims
+```
+
+`workspace status` reports aggregate provider, spend-by-unit, and plan state
+per project, offline. `workspace claims` validates the catalog and emits the
+exact union of `objectId`/`reviewObjectId`/`jobId` across every registered
+lock — the same union rule `--claims` uses, so the two paths cannot drift.
+
+A registered lockfile that is missing or unreadable is a hard error for
+`claims`, never a silent skip: an incomplete claim set is precisely what makes
+another project's shipped art look orphaned. `workspace add` still lets you
+register a brand-new project before its first `gen` — it warns rather than
+refusing, since the project genuinely has no lock yet — but `claims` and
+`salvage --workspace` both refuse until every registered project has one.
+
+Salvage accepts the catalog directly instead of a repeated `--claims` list:
+
+```bash
+pixelkiln salvage --workspace pixelkiln.workspace.json --dry-run
+pixelkiln salvage --workspace pixelkiln.workspace.json
+```
+
+`--claims` still works and unions with a workspace's claim set — useful for a
+one-off lockfile that isn't part of the catalog. Choose one workflow per
+account: `--claims` for an occasional cross-project check, `workspace` once
+sibling projects are a standing arrangement worth registering once.
+
+The catalog stores paths and project identity, never a credential — each
+project still loads its own provider key from its own `.env`. `workspace
+remove` only edits the catalog file; it never touches art, a lock, or the
+provider account.
+
 ## Confirmed purge
 
 Deletion is a separate command:

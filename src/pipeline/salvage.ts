@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
+import path from "node:path"
 import { requireList, type Provider, type RemoteAsset } from "../provider.ts"
+import { loadManifest } from "../manifest.ts"
 import { parseLock, type Lock, type Manifest } from "../types.ts"
 
 /**
@@ -124,6 +126,43 @@ export interface SiblingManifest {
   /** How to refer to this sibling in output — a project directory name, typically. */
   label: string
   manifest: Manifest
+}
+
+/**
+ * Loads every sibling project's manifest for `groupOrphansByStyle`'s
+ * sibling-exclusion signal, from the union of a workspace catalog's
+ * registered manifests and the conventional sibling beside each `--claims`
+ * lockfile (same directory, by the convention `--lock` defaults from
+ * `--manifest`). The two sources are meant to combine, not choose between
+ * (docs/RECOVERY.md: "`--claims` still works and unions with a workspace's
+ * claim set") — a `--claims` path passed alongside `--workspace` must still
+ * contribute its own style signal. Best-effort: a missing or malformed
+ * sibling just means no extra signal for that orphan, not an error.
+ */
+export async function loadSiblingManifests(
+  ownManifestPath: string,
+  workspaceManifestPaths: string[],
+  claimPaths: string[],
+): Promise<SiblingManifest[]> {
+  const own = path.resolve(ownManifestPath)
+  const siblingManifestPaths = [
+    ...new Set([
+      ...workspaceManifestPaths,
+      ...claimPaths.map((c) => path.join(path.dirname(path.resolve(c)), "pixelkiln.manifest.json")),
+    ]),
+  ]
+  const siblings: SiblingManifest[] = []
+  for (const siblingManifestPath of siblingManifestPaths) {
+    if (path.resolve(siblingManifestPath) === own) continue
+    if (!existsSync(siblingManifestPath)) continue
+    try {
+      const { manifest } = await loadManifest(siblingManifestPath)
+      siblings.push({ label: path.basename(path.dirname(siblingManifestPath)), manifest })
+    } catch {
+      // Not this run's problem to solve — the orphan just gets no extra signal.
+    }
+  }
+  return siblings
 }
 
 export interface OrphanGroups {
