@@ -1,3 +1,11 @@
+# [0.3.0](https://github.com/gfargo/pixelkiln/compare/v0.2.0...v0.3.0) (2026-08-30)
+
+
+### Features
+
+* add cross-project workspace catalog and safe account-wide claims ([#44](https://github.com/gfargo/pixelkiln/issues/44)) ([96fbd5a](https://github.com/gfargo/pixelkiln/commit/96fbd5a9de9a929bc32446d569b30a75c22b4839)), closes [gfargo/pixelkiln#21](https://github.com/gfargo/pixelkiln/issues/21)
+* **website:** add Vercel Analytics and custom event tracking ([#42](https://github.com/gfargo/pixelkiln/issues/42)) ([8ec824a](https://github.com/gfargo/pixelkiln/commit/8ec824a32276b839b40f247e085f4a62534baeb6))
+
 # [0.2.0](https://github.com/gfargo/pixelkiln/compare/v0.1.0...v0.2.0) (2026-08-29)
 
 
