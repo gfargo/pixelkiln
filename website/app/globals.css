@@ -264,9 +264,10 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   justify-content: center;
   gap: 9px;
-  padding: 24px 18px 22px 0;
+  padding: 24px 28px 22px;
   border-right: 1px solid var(--line);
 }
+.proof-grid > div:first-child { padding-left: 0; }
 .proof-grid strong {
   color: var(--ember-light);
   font-family: var(--font-geist-mono), monospace;
@@ -328,13 +329,13 @@ a { color: inherit; text-decoration: none; }
   border-top: 1px solid var(--line-strong);
 }
 .workflow-grid article {
-  min-height: 400px;
+  min-height: 420px;
   display: flex;
   flex-direction: column;
-  padding: 30px 30px 28px 0;
+  padding: 32px;
   border-right: 1px solid var(--line);
 }
-.workflow-grid article:not(:first-child) { padding-left: 30px; }
+.workflow-grid article:first-child { padding-left: 0; }
 .workflow-grid article:last-child { border-right: 0; padding-right: 0; }
 .step-number {
   color: #6f685d;
@@ -342,8 +343,8 @@ a { color: inherit; text-decoration: none; }
   font-size: 9px;
 }
 .step-glyph {
-  width: 68px;
-  height: 68px;
+  width: 84px;
+  height: 84px;
   display: grid;
   place-items: center;
   margin: 34px 0 30px;
@@ -353,11 +354,9 @@ a { color: inherit; text-decoration: none; }
   overflow: hidden;
 }
 .step-glyph img {
-  width: 50px;
-  height: 50px;
+  width: 64px;
+  height: 64px;
   image-rendering: pixelated;
-  transform: scale(1.35);
-  transform-origin: center;
 }
 .workflow-grid h3 { margin: 0 0 14px; font-size: 23px; letter-spacing: -0.035em; }
 .workflow-grid p { margin: 0 0 26px; color: #a39b8d; font-size: 14px; line-height: 1.68; }
@@ -709,7 +708,7 @@ a { color: inherit; text-decoration: none; }
   .split-heading { grid-template-columns: 1fr; gap: 30px; }
   .workflow-section, .capabilities-section, .install-section { padding-block: 95px; }
   .workflow-grid { grid-template-columns: 1fr; margin-top: 48px; }
-  .workflow-grid article, .workflow-grid article:not(:first-child) { min-height: 380px; padding: 27px 0; border-right: 0; border-top: 1px solid var(--line); }
+  .workflow-grid article { min-height: 400px; padding: 30px 0; border-right: 0; border-top: 1px solid var(--line); }
   .safety-section, .generator-section, .review-section { padding-block: 95px; }
   .safety-grid { gap: 60px; }
   .lock-visual { width: calc(100% - 18px); padding-inline: 18px; }
