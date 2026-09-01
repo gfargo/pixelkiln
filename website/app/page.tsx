@@ -148,28 +148,28 @@ export default function Home() {
           <div className="workflow-grid">
             <article>
               <span className="step-number">01</span>
-              <div className="step-glyph"><Image src="/sprites/anvil.png" alt="" width={32} height={32} /></div>
+              <div className="step-glyph"><Image src="/sprites/workflow/declare.png" alt="" width={64} height={64} /></div>
               <h3>Declare</h3>
               <p>Describe assets, styles, dimensions, palettes, references, and output paths in one committed manifest.</p>
               <code>pixelkiln.manifest.json</code>
             </article>
             <article>
               <span className="step-number">02</span>
-              <div className="step-glyph"><Image src="/sprites/hammer.png" alt="" width={32} height={32} /></div>
+              <div className="step-glyph"><Image src="/sprites/workflow/plan.png" alt="" width={64} height={64} /></div>
               <h3>Plan</h3>
               <p>Diff intent against lock state and disk. See exactly what is missing, stale, recoverable, and billable.</p>
               <code>pixelkiln plan</code>
             </article>
             <article>
               <span className="step-number">03</span>
-              <div className="step-glyph"><Image src="/sprites/kiln.png" alt="" width={32} height={32} /></div>
+              <div className="step-glyph"><Image src="/sprites/workflow/review.png" alt="" width={64} height={64} /></div>
               <h3>Review</h3>
               <p>Keep selection human with a fast local candidate sheet. Nothing is silently chosen by another model.</p>
               <code>pixelkiln pick</code>
             </article>
             <article>
               <span className="step-number">04</span>
-              <div className="step-glyph"><Image src="/sprites/spark.png" alt="" width={32} height={32} /></div>
+              <div className="step-glyph"><Image src="/sprites/workflow/ship.png" alt="" width={64} height={64} /></div>
               <h3>Ship</h3>
               <p>Fetch verified pixels, restore paid work, and build deterministic atlases or engine-native tilesets.</p>
               <code>pixelkiln pack</code>

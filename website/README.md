@@ -64,6 +64,13 @@ npm run pixelkiln -- gen --manifest website/art/pixelkiln.manifest.json --budget
 Commit the manifest, lockfile, and reviewed sprites together. Never commit
 `.env.local` or the `.pixelkiln/` cache.
 
+The homepage workflow illustrations live separately in
+`public/sprites/workflow/`. They are 64×64 transparent presentation assets,
+normalized to the site palette with hard pixel edges and equal optical
+padding. Keep them at that source size and let the workflow cards render them
+without scaling transforms; this preserves consistent weight across Declare,
+Plan, Review, and Ship.
+
 ## Review showcase capture
 
 `public/review-ui-showcase.jpg` is a capture of the real local review renderer,
