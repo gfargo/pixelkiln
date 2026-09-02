@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -49,6 +49,13 @@ try {
     throw new Error("published package unexpectedly contains raw src/")
   }
 
+  const installedManifest = JSON.parse(readFileSync(path.join(installed, "package.json"), "utf8"))
+  if (installedManifest.bin?.pixelkiln !== "bin/pixelkiln.js") {
+    throw new Error(
+      `published package has an invalid pixelkiln bin mapping: ${String(installedManifest.bin?.pixelkiln)}`,
+    )
+  }
+
   run(process.execPath, [
     "--input-type=module",
     "--eval",
@@ -60,8 +67,14 @@ try {
     "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function') process.exit(1)",
   ], consumer)
 
-  const cli = path.join(installed, "bin", "pixelkiln.js")
-  const version = run(process.execPath, [cli, "--version"], consumer).trim()
+  const cli = path.join(
+    consumer,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "pixelkiln.cmd" : "pixelkiln",
+  )
+  if (!existsSync(cli)) throw new Error("package install did not create the pixelkiln CLI shim")
+  const version = run(cli, ["--version"], consumer).trim()
   if (!/^pixelkiln \d+\.\d+\.\d+/.test(version)) {
     throw new Error(`installed CLI returned an unexpected version: ${version}`)
   }
