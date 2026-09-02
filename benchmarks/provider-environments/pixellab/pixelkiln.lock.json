@@ -1,0 +1,207 @@
+{
+  "version": 2,
+  "entries": {
+    "background-a/alpine-valley": {
+      "styleId": "background-a",
+      "assetId": "alpine-valley",
+      "specHash": "b79b68c65871e9db2fc51571f6649ac170e27701630a331faf2f161fe4099abd",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 256,
+      "height": 256,
+      "jobId": "b6634229-b768-4aa4-9f26-d69f2c869d23",
+      "reviewObjectId": null,
+      "objectId": "b6634229-b768-4aa4-9f26-d69f2c869d23",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/background/a/alpine-valley.png",
+          "sha256": "27e7d7db7657a2e5cf6c9d409654e74039c50df9ad05a5a487cff150e35676eb",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-02T14:56:18.606Z",
+      "downloadedAt": "2026-09-02T14:57:03.810Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "background-b/alpine-valley": {
+      "styleId": "background-b",
+      "assetId": "alpine-valley",
+      "specHash": "e7bce68d8b8544c21b8e9b2ec080add916f0f6b5bd714a18606de8d39dba9623",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 256,
+      "height": 256,
+      "jobId": "342df0c8-6a41-4585-8250-3b5df5093c41",
+      "reviewObjectId": null,
+      "objectId": "342df0c8-6a41-4585-8250-3b5df5093c41",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/background/b/alpine-valley.png",
+          "sha256": "c8c9c25038298a67393d272cb920574dc81651b47edb38f9b82cab581d91f267",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-02T14:56:37.770Z",
+      "downloadedAt": "2026-09-02T14:57:03.813Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "isolated-a/mountain-observatory": {
+      "styleId": "isolated-a",
+      "assetId": "mountain-observatory",
+      "specHash": "c187ae1aa3c11842053018a0aff5a5683008683ec1cc15838c93892435aef3b5",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone observatory built into a snowy mountain ridge, isometric three-quarter view, cedar roof, warm windows, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "0c160eb3-e857-4783-b89c-41f583079773",
+      "reviewObjectId": null,
+      "objectId": "0c160eb3-e857-4783-b89c-41f583079773",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://api.pixellab.ai/mcp/map-objects/0c160eb3-e857-4783-b89c-41f583079773/download",
+      "sourceUrls": [
+        {
+          "url": "https://api.pixellab.ai/mcp/map-objects/0c160eb3-e857-4783-b89c-41f583079773/download"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png",
+          "sha256": "1de72ff9cf812d1ff52b1a8e25ae6d5ed45a2ae85a2aa8e9219033e19516f8b2",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-02T14:57:37.981Z",
+      "downloadedAt": "2026-09-02T14:58:10.899Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "isolated-b/mountain-observatory": {
+      "styleId": "isolated-b",
+      "assetId": "mountain-observatory",
+      "specHash": "0779a34d25b83d7aea4a032bdc2dada36865c88b94c49cd815f070c583b73a55",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone observatory built into a snowy mountain ridge, isometric three-quarter view, cedar roof, warm windows, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "2a89e17e-1ade-4bec-9ef5-5e9e2b57d5b4",
+      "reviewObjectId": null,
+      "objectId": "2a89e17e-1ade-4bec-9ef5-5e9e2b57d5b4",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://api.pixellab.ai/mcp/map-objects/2a89e17e-1ade-4bec-9ef5-5e9e2b57d5b4/download",
+      "sourceUrls": [
+        {
+          "url": "https://api.pixellab.ai/mcp/map-objects/2a89e17e-1ade-4bec-9ef5-5e9e2b57d5b4/download"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/isolated/b/mountain-observatory.png",
+          "sha256": "4d0b2423472e70955ea80b7630c2a462114dffd3852f07b492799b8edd03dd66",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-02T14:57:40.487Z",
+      "downloadedAt": "2026-09-02T14:58:11.143Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "topdown-a/river-gate": {
+      "styleId": "topdown-a",
+      "assetId": "river-gate",
+      "specHash": "82e9351c508c055fd06ca29684e4f0fd2c1b978f9535d77ab2864bd9ea4bfcde",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a fortified village gate spanning a narrow river, three-quarter top-down view, stone towers, timber bridge, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "69cb1480-0c4c-4f47-b4a2-cd90494f3b77",
+      "reviewObjectId": null,
+      "objectId": "69cb1480-0c4c-4f47-b4a2-cd90494f3b77",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://api.pixellab.ai/mcp/map-objects/69cb1480-0c4c-4f47-b4a2-cd90494f3b77/download",
+      "sourceUrls": [
+        {
+          "url": "https://api.pixellab.ai/mcp/map-objects/69cb1480-0c4c-4f47-b4a2-cd90494f3b77/download"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/topdown/a/river-gate.png",
+          "sha256": "52e5de6b5e7143107ed10e7904fd0870a85f793bf116b2c1afd7eabdce2c0262",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-02T14:56:13.596Z",
+      "downloadedAt": "2026-09-02T14:57:04.293Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "topdown-b/river-gate": {
+      "styleId": "topdown-b",
+      "assetId": "river-gate",
+      "specHash": "d12ca1f2e568c0d3a519a448f651122582609f81c7010929582f295dd052c789",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a fortified village gate spanning a narrow river, three-quarter top-down view, stone towers, timber bridge, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "5849db45-e1ab-442e-948b-c0ca10b1a1fc",
+      "reviewObjectId": null,
+      "objectId": "5849db45-e1ab-442e-948b-c0ca10b1a1fc",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://api.pixellab.ai/mcp/map-objects/5849db45-e1ab-442e-948b-c0ca10b1a1fc/download",
+      "sourceUrls": [
+        {
+          "url": "https://api.pixellab.ai/mcp/map-objects/5849db45-e1ab-442e-948b-c0ca10b1a1fc/download"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/topdown/b/river-gate.png",
+          "sha256": "a4d94dff5bcdefa2802f089bea4dae74a0c1b78b0889f7e15b74b614718177bf",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-02T14:56:16.102Z",
+      "downloadedAt": "2026-09-02T14:57:04.158Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    }
+  }
+}

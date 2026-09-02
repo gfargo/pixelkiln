@@ -3,7 +3,7 @@
 import { track } from "@vercel/analytics";
 
 /**
- * Central event taxonomy for the marketing site. Keep names/props stable —
+ * Central event taxonomy for the marketing site. Keep names and props stable.
  * they become dimensions in the Vercel Analytics dashboard.
  */
 

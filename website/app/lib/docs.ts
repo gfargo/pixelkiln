@@ -50,6 +50,13 @@ export const docs: DocEntry[] = [
     group: "Workflows",
   },
   {
+    slug: "provider-benchmark",
+    title: "Environment provider benchmark",
+    description: "Twelve matched PixelLab and Retro Diffusion outputs, with measured costs and review notes.",
+    file: "docs/PROVIDER_BENCHMARK.md",
+    group: "Workflows",
+  },
+  {
     slug: "artifacts",
     title: "Derived artifacts",
     description: "Pack, mount, export, provenance, ownership, and recovery.",
@@ -149,6 +156,11 @@ export function docHref(sourceFile: string, href?: string) {
   const [filePart, anchor] = href.split("#", 2);
   const target = path.resolve(path.dirname(sourceFile), decodeURIComponent(filePart));
   const repoRoot = path.resolve(/* turbopackIgnore: true */ process.cwd(), "..");
+  const publicRoot = path.join(repoRoot, "website", "public");
+  const publicRelative = path.relative(publicRoot, target).split(path.sep).join("/");
+  if (!publicRelative.startsWith("../")) {
+    return `/${publicRelative}${anchor ? `#${anchor}` : ""}`;
+  }
   const match = docs.find(
     (doc) => path.resolve(repoRoot, doc.file) === target,
   );

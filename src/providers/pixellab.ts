@@ -84,6 +84,18 @@ export class PixelLabProvider implements Provider {
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
+    if (spec.generator === "map") {
+      requirePixelLabOption("view", spec.view, ["low top-down", "high top-down", "side"])
+      requirePixelLabOption("outline", spec.outline, [
+        "single color outline", "selective outline", "lineless",
+      ])
+      requirePixelLabOption("shading", spec.shading, [
+        "flat shading", "basic shading", "medium shading", "detailed shading",
+      ])
+      requirePixelLabOption("detail", spec.detail, [
+        "low detail", "medium detail", "high detail",
+      ])
+    }
     if ((spec.generator === "map" || spec.generator === "pixflux") && styleImages.length) {
       throw new Error(`PixelLab ${spec.generator} does not support style images`)
     }
@@ -313,6 +325,16 @@ export class PixelLabProvider implements Provider {
 
   async delete(assetId: string): Promise<void> {
     await this.client.deleteObject(assetId)
+  }
+}
+
+function requirePixelLabOption(
+  name: string,
+  value: string | undefined,
+  allowed: readonly string[],
+): void {
+  if (value != null && !allowed.includes(value)) {
+    throw new Error(`PixelLab map ${name} must be one of: ${allowed.join(", ")}`)
   }
 }
 

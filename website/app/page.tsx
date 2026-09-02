@@ -23,7 +23,7 @@ export default function Home() {
           </h1>
           <p className="hero-deck">
             PixelKiln turns generative pixel art into a deterministic build
-            pipeline—planned costs, human review, exact hashes, resilient
+            pipeline. It tracks planned costs, human review, exact hashes, resilient
             recovery, and engine-ready output.
           </p>
           <div className="hero-actions">
@@ -143,7 +143,7 @@ export default function Home() {
         <section className="workflow-section shell" id="workflow">
           <div className="section-heading">
             <p className="eyebrow">One source of truth, four deliberate moves</p>
-            <h2>From intent to engine—<br />without losing the thread.</h2>
+            <h2>From intent to engine.<br />Keep the thread.</h2>
           </div>
           <div className="workflow-grid">
             <article>
@@ -194,13 +194,16 @@ export default function Home() {
                 <span><i /> FakeProvider · tests</span>
               </div>
               <p className="provider-note">
-                Retro Diffusion&apos;s paid RD Fast still path now passes from quote
-                through validated PNG and recovery. Multi-candidate, tileset,
-                GIF, and spritesheet live smokes remain.
+                Paid RD Fast and RD Plus stills now pass from quote through
+                validated PNG and recovery. Multi-candidate, tileset, GIF, and
+                spritesheet live smokes remain.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
                   Compare PixelLab and Retro Diffusion →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="review_provider_benchmark" section="review" href="/docs/provider-benchmark">
+                  See the environment benchmark →
                 </TrackedLink>
                 <TrackedLink
                   className="text-link"
@@ -238,7 +241,7 @@ export default function Home() {
               <p className="section-deck">
                 Every provider object, prompt identity, output role, path, and
                 byte hash survives in project state. A failed download remains
-                recoverable work—not a reason to pay twice.
+                recoverable work, not a reason to pay twice.
               </p>
               <ul className="check-list">
                 <li><span>✓</span> Remote identity saved before polling</li>
@@ -304,7 +307,7 @@ export default function Home() {
             <article className="capability-card large">
               <span className="card-index">04 / PACKAGE</span>
               <h3>Turn source pixels into durable game assets.</h3>
-              <p>Pack sheets, mount stable cells, and export lossless generic, Tiled, or Godot terrain metadata—with provenance.</p>
+              <p>Pack sheets, mount stable cells, and export lossless generic, Tiled, or Godot terrain metadata with provenance.</p>
               <div className="format-list"><span>PNG</span><span>JSON</span><span>TILED</span><span>GODOT 4</span></div>
             </article>
           </div>

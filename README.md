@@ -18,9 +18,9 @@ are deterministic software mechanics.
 The orchestration layer is provider-neutral. PixelLab is the production,
 live-tested backend. An experimental Retro Diffusion adapter supports native
 pixel-art stills, candidate batches, tileset sheets, animated GIFs, and PNG
-spritesheets. Its authenticated single-candidate still path has passed from
-quote through validated output and recovery; multi-candidate, tileset, GIF, and
-spritesheet live runs remain. See
+spritesheets. Authenticated RD Fast and RD Plus single-candidate still paths
+have passed from quote through validated output and recovery. Multi-candidate,
+tileset, GIF, and spritesheet live runs remain. See
 [PixelLab vs. Retro Diffusion](./PROVIDERS.md) for the trade-offs, including
 large environment and building workflows.
 `FakeProvider` exercises the same contract deterministically in tests.
@@ -282,8 +282,9 @@ pixelkiln salvage --workspace pixelkiln.workspace.json
 ```
 
 A registered project's missing or unreadable lockfile is a hard error for
-`workspace claims` and `salvage --workspace` — never a silent skip. Purge only
-targets objects already tagged discard and requires an explicit confirmation.
+`workspace claims` and `salvage --workspace`. Missing claims are never skipped.
+Purge only targets objects already tagged discard and requires an explicit
+confirmation.
 See [Recovery and account safety](./docs/RECOVERY.md).
 
 ## Automation
@@ -334,6 +335,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
+| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Twelve matched outputs comparing buildings, landmarks, backgrounds, cost, and file readiness. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
 | [Quality gates](./docs/QUALITY.md) | Plan, doctor, audit, cache, JSON, and CI. |

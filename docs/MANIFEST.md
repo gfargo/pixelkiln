@@ -50,10 +50,10 @@ not merely a label edit.
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
 | `styleImages` | `[]` | `{ "path": "..." }` reference images. Paths are manifest-relative. |
 | `size` | integer 32–256 | Square size for `1dir`; a style reference's dimensions take precedence when present. |
-| `view` | string | Provider-facing view/direction description. |
-| `outline` | string | PixelLab `map` outline setting. |
-| `shading` | string | PixelLab shading setting. |
-| `detail` | string | PixelLab detail setting. |
+| `view` | string | PixelLab `map`: `low top-down`, `high top-down`, or `side`. Other generators interpret this separately. |
+| `outline` | string | PixelLab `map`: `single color outline`, `selective outline`, or `lineless`. |
+| `shading` | string | PixelLab `map`: `flat shading`, `basic shading`, `medium shading`, or `detailed shading`. |
+| `detail` | string | PixelLab `map`: `low detail`, `medium detail`, or `high detail`. |
 | `seed` | integer | Deterministic provider seed where supported. |
 | `palette` | hex array, `[]` | Forced palette for `pixflux`; `#` is optional. |
 | `noBackground` | boolean, `true` | `pixflux` background removal. Set false for scenes/backdrops. |
@@ -115,10 +115,10 @@ the correct extension and validates the correct structure.
 `noBackground`. Dimensions must be 12–512 pixels and up to nine reference
 images are accepted by RD Pro and user styles. Costs are planned in USD and
 checked again with Retro Diffusion's free authoritative quote endpoint before
-the paid request is sent. The authenticated single-candidate RD Fast path has
-passed from quote through validated output and recovery. Multi-candidate,
-tileset, GIF, and spritesheet paths remain mock-tested, so the adapter is still
-experimental.
+the paid request is sent. Authenticated single-candidate RD Fast and RD Plus
+paths have passed from quote through validated output and recovery.
+Multi-candidate, tileset, GIF, and spritesheet paths remain mock-tested, so the
+adapter is still experimental.
 
 Additional Retro Diffusion options are:
 

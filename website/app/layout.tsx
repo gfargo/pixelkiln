@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "PixelKiln — Pixel-art generation with receipts",
+    default: "PixelKiln: Pixel-art generation with receipts",
     template: "%s · PixelKiln",
   },
   description:
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    title: "PixelKiln — Pixel-art generation with receipts",
+    title: "PixelKiln: Pixel-art generation with receipts",
     description:
       "A provider-neutral pipeline for planned costs, human review, exact provenance, resilient recovery, and engine-ready pixel art.",
     url: "/",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "PixelKiln — Pixel-art generation with receipts",
+    title: "PixelKiln: Pixel-art generation with receipts",
     description:
       "A deterministic pipeline for generative pixel art, from planned cost to engine-ready output.",
   },

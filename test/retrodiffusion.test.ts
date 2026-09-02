@@ -65,8 +65,24 @@ describe("Retro Diffusion provider", () => {
       provider: "retrodiffusion",
       costUnit: "usd",
       candidates: 3,
-      cost: 0.081144,
+      cost: 0.082,
     })
+  })
+
+  it("rounds variable USD estimates up to the live quote precision", async () => {
+    process.env.RD_API_KEY = "rdpk-test"
+    vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
+      const body = JSON.parse(String(init?.body))
+      return body.check_cost
+        ? json({ balance_cost: 0.058 })
+        : json({ status: "accepted", task_id: "rounded-quote" })
+    }))
+
+    const { spec } = await project({ numImages: 1 })
+    const large = { ...spec, width: 256, height: 256 }
+    const provider = createProvider("retrodiffusion", "online")
+    expect(provider.estimate(large)).toMatchObject({ unit: "usd", amount: 0.058 })
+    await expect(provider.submit(large, [])).resolves.toEqual({ jobId: "rounded-quote" })
   })
 
   it("rejects a provider style that does not match its structural generator", async () => {

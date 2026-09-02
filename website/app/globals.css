@@ -668,6 +668,7 @@ a { color: inherit; text-decoration: none; }
 .markdown-body table { width: 100%; margin: 26px 0; border-collapse: collapse; font-size: 12px; }
 .markdown-body th { color: var(--cream); text-align: left; }
 .markdown-body th, .markdown-body td { padding: 11px 12px; border: 1px solid var(--line); vertical-align: top; }
+.markdown-body img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); background: #eef3f2; image-rendering: pixelated; }
 .markdown-body hr { margin: 48px 0; border: 0; border-top: 1px solid var(--line); }
 
 @media (max-width: 980px) {

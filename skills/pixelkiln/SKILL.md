@@ -45,9 +45,9 @@ Use `pack`, `mount`, or `export` only for the artifact format the project needs.
 
 PixelKiln's orchestration is provider-neutral. PixelLab is its production and
 paid-generation-tested adapter. Retro Diffusion stills, tileset sheets,
-animated GIFs, and PNG spritesheets are experimental: its authenticated
-single-candidate RD Fast still path has passed from quote through validated
-output and recovery, while advanced workflows remain mock-tested.
+animated GIFs, and PNG spritesheets are experimental. Authenticated RD Fast and
+RD Plus single-candidate stills have passed from quote through validated output
+and recovery. Advanced workflows remain mock-tested.
 `FakeProvider` is the deterministic test adapter. Do not describe Retro
 Diffusion as production-ready until representative multi-candidate, tileset,
 GIF, and spritesheet live smoke tests pass.

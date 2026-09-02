@@ -156,7 +156,7 @@ export class RetroDiffusionProvider implements Provider {
     } else {
       each = Math.max(0.025, (pixels + 50_000) / 2_000_000)
     }
-    return { unit: "usd", amount: roundUsd(each * count), candidates: count }
+    return { unit: "usd", amount: roundUsdEstimate(each * count), candidates: count }
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
@@ -403,8 +403,11 @@ function isLowResolutionStyle(style: string): boolean {
   return /(?:^|__)(?:mc_|low_res|classic|skill_icon|topdown_item)/.test(style)
 }
 
-function roundUsd(value: number): number {
-  return Math.round(value * 1_000_000) / 1_000_000
+function roundUsdEstimate(value: number): number {
+  // Live quotes may round a formula result up to the nearest $0.001. Planning
+  // must be conservative or submit() will correctly reject that rounded quote
+  // as higher than the offline estimate.
+  return Math.ceil((value - 1e-9) * 1_000) / 1_000
 }
 
 function retroError(value: unknown): string {

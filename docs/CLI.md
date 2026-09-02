@@ -171,25 +171,24 @@ Subcommands:
 | `remove <id-or-manifest>` | Drops a registration by project id or by manifest path. Touches no art, no lock, no provider account. |
 | `list` | Lists registered projects and catalog diagnostics. Refuses if the catalog file does not exist. |
 | `status` | Aggregate provider, spend-by-unit, plan state, and claim count, offline. Provider cost units are never summed across each other. Refuses if the catalog file does not exist. |
-| `claims` | Validates the catalog and emits the exact union of `objectId`/`reviewObjectId`/`jobId` across every registered lock. Refuses — rather than silently omitting a project — when any registered lock is missing, unreadable, or the catalog itself has a duplicate id or duplicate lock path. |
+| `claims` | Validates the catalog and emits the exact union of `objectId`/`reviewObjectId`/`jobId` across every registered lock. Refuses to omit a project when any registered lock is missing or unreadable, or when the catalog has a duplicate id or lock path. |
 
 `--workspace <path>` selects the catalog file; it defaults to
 `pixelkiln.workspace.json` in the current directory. Stored paths are relative
 to the catalog file's own directory, so a catalog survives a clone or move.
 `list`/`status` support `--json` and `--check` (nonzero exit on any error-level
 diagnostic); both treat a nonexistent catalog file as a hard error rather than
-an empty, vacuously-safe one — the same hazard class as an incomplete claim
-set. In `--json` output, the `workspace` key always names the catalog *file*;
-`status` additionally reports `dir`, the catalog's own directory that
+an empty, vacuously-safe one. This is the same hazard class as an incomplete
+claim set. In `--json` output, the `workspace` key always names the catalog *file*;
+`status` also reports `dir`, the catalog's own directory that
 registered paths resolve against.
 
-Passing `--workspace <path>` to `salvage` derives its claim set, and its
-sibling-manifest style signal, from every project the catalog registers;
-`--claims` still works and unions with both — the combined lockfile claim set
-and the combined sibling-manifest list. A missing or unreadable registered
-lock is a hard error there too — never silently skipped — because it is
-precisely the account-wide claim completeness this catalog exists to
-guarantee. See
+Passing `--workspace <path>` to `salvage` derives its claim set and its
+sibling-manifest style signal from every project the catalog registers.
+`--claims` still works and joins both the lockfile claim set and sibling
+manifest list. A missing or unreadable registered lock is a hard error there
+too. PixelKiln never skips one because the catalog exists to guarantee a
+complete account-wide claim set. See
 [Recovery and account safety](./RECOVERY.md#shared-workspace-catalog).
 
 ## Local quality and derived output

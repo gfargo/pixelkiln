@@ -62,10 +62,10 @@ RD_API_KEY=...
 ```
 
 Its still, tileset-sheet, animated-GIF, and PNG-spritesheet workflows are
-implemented. An authenticated single-candidate RD Fast still has passed from
-quote through validated download, provenance, and cache; multi-candidate,
-tileset, GIF, and spritesheet live runs remain, so PixelLab remains the
-production adapter. See
+implemented. Authenticated single-candidate RD Fast and RD Plus stills have
+passed from quote through validated download, provenance, and cache.
+Multi-candidate, tileset, GIF, and spritesheet live runs remain, so PixelLab
+remains the production adapter. See
 [Manifest reference](MANIFEST.md#experimental-retro-diffusion) for
 provider options and current limits, or
 [PixelLab vs. Retro Diffusion](../PROVIDERS.md) for selection guidance.

@@ -51,9 +51,9 @@ not a replacement:
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production
 and paid-generation-tested adapter. Retro Diffusion generation support is
-experimental: one paid RD Fast still has passed from quote through validated
-download and recovery, while multi-candidate, tileset, GIF, and spritesheet
-workflows still need representative live smoke tests. See
+experimental. Paid RD Fast and RD Plus single-candidate stills have passed from
+quote through validated download and recovery. Multi-candidate, tileset, GIF,
+and spritesheet workflows still need representative live smoke tests. See
 [PixelLab vs. Retro Diffusion](../PROVIDERS.md) before choosing a provider for a
 new project or a large environment asset.
 

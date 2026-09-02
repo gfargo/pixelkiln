@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+/* eslint-disable @next/next/no-img-element -- Markdown images have unknown source dimensions. */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -50,6 +51,9 @@ function markdownComponents(sourceFile: string): Components {
       if (resolved?.startsWith("/")) return <Link href={resolved}>{children}</Link>;
       return <a href={resolved}>{children}</a>;
     },
+    img: ({ src, alt }) => typeof src === "string"
+      ? <img src={docHref(sourceFile, src)} alt={alt ?? ""} loading="lazy" />
+      : null,
   };
 }
 

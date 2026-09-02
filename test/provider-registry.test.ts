@@ -72,6 +72,21 @@ describe("provider registry", () => {
     )
   })
 
+  it("rejects unsupported PixelLab map options before submission", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "invalid-map-view",
+      styles: {
+        base: { generator: "map", view: "isometric", outDir: "out" },
+      },
+      assets: { observatory: { prompt: "a mountain observatory" } },
+    }))
+
+    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
+      /PixelLab map view must be one of: low top-down, high top-down, side/,
+    )
+  })
+
   it("does not let registration order silently replace an adapter", () => {
     const id = `duplicate-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const factory = { id, create: () => new FakeProvider() }

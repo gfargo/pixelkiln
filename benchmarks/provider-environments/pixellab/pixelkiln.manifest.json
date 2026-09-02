@@ -1,0 +1,63 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-provider-benchmark-pixellab",
+  "provider": "pixellab",
+  "styles": {
+    "isolated-a": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/pixellab/isolated/a",
+      "seed": 31415,
+      "view": "high top-down"
+    },
+    "isolated-b": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/pixellab/isolated/b",
+      "seed": 27182,
+      "view": "high top-down"
+    },
+    "topdown-a": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/pixellab/topdown/a",
+      "seed": 31415,
+      "view": "low top-down"
+    },
+    "topdown-b": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/pixellab/topdown/b",
+      "seed": 27182,
+      "view": "low top-down"
+    },
+    "background-a": {
+      "generator": "pixflux",
+      "outDir": "../../../website/public/benchmarks/provider-environments/pixellab/background/a",
+      "seed": 31415,
+      "noBackground": false
+    },
+    "background-b": {
+      "generator": "pixflux",
+      "outDir": "../../../website/public/benchmarks/provider-environments/pixellab/background/b",
+      "seed": 27182,
+      "noBackground": false
+    }
+  },
+  "assets": {
+    "mountain-observatory": {
+      "prompt": "a compact stone observatory built into a snowy mountain ridge, isometric three-quarter view, cedar roof, warm windows, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "styles": ["isolated-a", "isolated-b"]
+    },
+    "river-gate": {
+      "prompt": "a fortified village gate spanning a narrow river, three-quarter top-down view, stone towers, timber bridge, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "styles": ["topdown-a", "topdown-b"]
+    },
+    "alpine-valley": {
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 256,
+      "height": 256,
+      "styles": ["background-a", "background-b"]
+    }
+  }
+}
