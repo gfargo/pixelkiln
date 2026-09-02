@@ -1,6 +1,6 @@
 # Library API
 
-Pixelkiln's public package entry point exposes the same provider-independent
+PixelKiln's public package entry point exposes the same provider-independent
 primitives used by the CLI. Use these when a build tool, editor integration, or
 game pipeline needs structured results instead of terminal output.
 

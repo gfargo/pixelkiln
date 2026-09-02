@@ -20,6 +20,7 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
       </Link>
       <nav aria-label="Primary navigation">
         <TrackedLink id="nav_workflow" section="header" href="/#workflow">Workflow</TrackedLink>
+        <TrackedLink id="nav_providers" section="header" href="/#providers">Providers</TrackedLink>
         <TrackedLink id="nav_docs" section="header" href="/docs">Docs</TrackedLink>
         <TrackedLink
           id="nav_github"
@@ -58,7 +59,9 @@ export function SiteFooter() {
             <span>Explore</span>
             <TrackedLink id="footer_docs" section="footer" href="/docs">Documentation</TrackedLink>
             <TrackedLink id="footer_workflow" section="footer" href="/#workflow">Workflow</TrackedLink>
-            <TrackedLink id="footer_providers" section="footer" href="/docs/provider-notes">Providers</TrackedLink>
+            <TrackedLink id="footer_providers" section="footer" href="/#providers">Provider showcase</TrackedLink>
+            <TrackedLink id="footer_pixellab" section="footer" href="/docs/pixellab">Set up PixelLab</TrackedLink>
+            <TrackedLink id="footer_retro" section="footer" href="/docs/retro-diffusion">Set up Retro Diffusion</TrackedLink>
             <TrackedLink id="footer_benchmark" section="footer" href="/docs/provider-benchmark">Benchmark</TrackedLink>
             <TrackedLink id="footer_generators" section="footer" href="/docs/generators">Generators</TrackedLink>
           </div>

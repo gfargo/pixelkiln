@@ -78,6 +78,8 @@
     "sprites",
     "game-assets",
     "pixellab",
+    "retro-diffusion",
+    "image-generation",
     "asset-pipeline",
     "generative",
     "lockfile",

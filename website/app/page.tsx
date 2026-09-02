@@ -180,13 +180,12 @@ export default function Home() {
         <section className="review-section">
           <div className="shell review-grid">
             <div className="section-heading review-copy">
-              <p className="eyebrow">One pipeline · two pixel-art providers</p>
-              <h2>Choose the forge.<br />Keep the receipts.</h2>
+              <p className="eyebrow">Human review stays local</p>
+              <h2>Choose the image.<br />Keep the receipts.</h2>
               <p className="section-deck">
-                PixelKiln keeps provider mechanics behind an adapter boundary.
-                PixelLab is the production, paid-generation-tested adapter.
-                Retro Diffusion adds native stills, tilesets, animated GIFs, and
-                PNG spritesheets with USD budgets and free cost preflight.
+                PixelLab and Retro Diffusion use the same review, lockfile, and
+                recovery flow. PixelKiln records every candidate, then leaves
+                the visual decision to you.
               </p>
               <div className="provider-status" aria-label="Current provider support">
                 <span><i className="status-dot" /> PixelLab · production</span>
@@ -194,9 +193,9 @@ export default function Home() {
                 <span><i /> FakeProvider · tests</span>
               </div>
               <p className="provider-note">
-                Paid RD Fast and RD Plus stills now pass from quote through
-                validated PNG and recovery. Multi-candidate, tileset, GIF, and
-                spritesheet live smokes remain.
+                PixelLab is production-ready. Retro Diffusion is experimental:
+                paid RD Fast and RD Plus stills pass end to end, while advanced
+                live smoke tests remain.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
@@ -230,6 +229,119 @@ export default function Home() {
               />
               <figcaption>Actual local review UI · generated brand sprites · no model selects for you</figcaption>
             </figure>
+          </div>
+        </section>
+
+        <section className="provider-showcase-section shell" id="providers">
+          <div className="section-heading split-heading provider-showcase-heading">
+            <div>
+              <p className="eyebrow">Provider showcase</p>
+              <h2>Same briefs.<br />Different pixels.</h2>
+            </div>
+            <p className="section-deck">
+              These are untouched 256×256 outputs from the committed A/B
+              benchmark. Two providers received the same briefs and seed
+              numbers. Each kept its native route and style.
+            </p>
+          </div>
+
+          <div className="provider-showcase-grid">
+            <article className="provider-card">
+              <div className="provider-card-header">
+                <div>
+                  <span className="provider-badge production">Production</span>
+                  <h3>PixelLab</h3>
+                </div>
+                <span className="provider-unit">Generations</span>
+              </div>
+              <div className="provider-image-grid">
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png"
+                    alt="PixelLab result for a stone observatory on a snowy mountain ridge"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Isolated building · map</figcaption>
+                </figure>
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/pixellab/background/a/alpine-valley.png"
+                    alt="PixelLab result for an alpine valley background at dusk"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Scenic background · Pixflux</figcaption>
+                </figure>
+              </div>
+              <p>
+                Stronger prompt coverage and the better scenic background in
+                this sample. The map object was opaque, so check alpha before a
+                larger run.
+              </p>
+              <dl>
+                <div><dt>Benchmark cost</dt><dd>1 generation each</dd></div>
+                <div><dt>Best fit</dt><dd>Prompt fidelity and account recovery</dd></div>
+              </dl>
+              <TrackedLink className="text-link" id="showcase_pixellab_setup" section="provider_showcase" href="/docs/pixellab">
+                Set up PixelLab →
+              </TrackedLink>
+            </article>
+
+            <article className="provider-card">
+              <div className="provider-card-header">
+                <div>
+                  <span className="provider-badge experimental">Experimental</span>
+                  <h3>Retro Diffusion</h3>
+                </div>
+                <span className="provider-unit">USD</span>
+              </div>
+              <div className="provider-image-grid">
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/retrodiffusion/isolated/a/mountain-observatory.png"
+                    alt="Retro Diffusion result for a stone observatory on a snowy mountain ridge"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Isolated building · RD Plus</figcaption>
+                </figure>
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/retrodiffusion/background/a/alpine-valley.png"
+                    alt="Retro Diffusion result for an alpine valley background at dusk"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Scenic background · RD Plus</figcaption>
+                </figure>
+              </div>
+              <p>
+                Cleaner transparent cutouts with fewer colors, plus more
+                cinematic scene framing. Complex building details were easier
+                for the model to lose.
+              </p>
+              <dl>
+                <div><dt>Benchmark cost</dt><dd>$0.058 each</dd></div>
+                <div><dt>Best fit</dt><dd>Ready-to-place cutouts and native animation</dd></div>
+              </dl>
+              <TrackedLink className="text-link" id="showcase_retro_setup" section="provider_showcase" href="/docs/retro-diffusion">
+                Set up Retro Diffusion →
+              </TrackedLink>
+            </article>
+          </div>
+
+          <div className="provider-showcase-links">
+            <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
+              Review all 12 benchmark images →
+            </TrackedLink>
+            <TrackedLink className="text-link" id="showcase_comparison" section="provider_showcase" href="/docs/provider-notes">
+              Compare provider capabilities →
+            </TrackedLink>
           </div>
         </section>
 

@@ -28,7 +28,7 @@ reporter.
 
 ## Sensitive areas
 
-Pixelkiln handles provider credentials, paid API actions, remote object deletion,
+PixelKiln handles provider credentials, paid API actions, remote object deletion,
 local output paths, a localhost review server, and generated HTML containing
 provider data. Reports involving authentication leakage, path traversal,
 cross-origin review actions, HTML/script injection, unsafe overwrite/delete

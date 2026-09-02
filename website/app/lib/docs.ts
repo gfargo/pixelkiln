@@ -22,6 +22,20 @@ export const docs: DocEntry[] = [
     group: "Start here",
   },
   {
+    slug: "pixellab",
+    title: "Set up PixelLab",
+    description: "Configure the production provider, choose a generator, and use its account workflows.",
+    file: "docs/PIXELLAB.md",
+    group: "Start here",
+  },
+  {
+    slug: "retro-diffusion",
+    title: "Set up Retro Diffusion",
+    description: "Configure the experimental provider, choose a style, and understand its tested boundary.",
+    file: "docs/RETRO_DIFFUSION.md",
+    group: "Start here",
+  },
+  {
     slug: "cli",
     title: "CLI reference",
     description: "Every command and flag, including automation and exit behavior.",

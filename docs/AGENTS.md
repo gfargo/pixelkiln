@@ -55,7 +55,9 @@ experimental. Paid RD Fast and RD Plus single-candidate stills have passed from
 quote through validated download and recovery. Multi-candidate, tileset, GIF,
 and spritesheet workflows still need representative live smoke tests. See
 [PixelLab vs. Retro Diffusion](../PROVIDERS.md) before choosing a provider for a
-new project or a large environment asset.
+new project or a large environment asset. Once chosen, follow
+[Set up PixelLab](./PIXELLAB.md) or
+[Set up Retro Diffusion](./RETRO_DIFFUSION.md).
 
 ## Recommended first prompt
 

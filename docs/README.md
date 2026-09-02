@@ -10,6 +10,8 @@ This source also renders at
 | Guide | Use it for |
 |---|---|
 | [Getting started](./GETTING_STARTED.md) | Install from a checkout, create or adopt a project, run the everyday workflow, and decide what belongs in Git. |
+| [Set up PixelLab](./PIXELLAB.md) | Configure the production provider, choose a generator, and use its account workflows. |
+| [Set up Retro Diffusion](./RETRO_DIFFUSION.md) | Configure the experimental provider, choose a style, and understand its live-tested boundary. |
 | [CLI reference](./CLI.md) | Every command and flag, offline/provider requirements, JSON output, and exit behavior. |
 | [Manifest reference](./MANIFEST.md) | Every style and asset field, inheritance, generator-specific constraints, mounting, and schema validation. |
 | [Agent workflows](./AGENTS.md) | Install the official skill and pair agent guidance with the deterministic CLI. |
@@ -32,7 +34,7 @@ This source also renders at
 | [Library API](./LIBRARY.md) | Public TypeScript imports for planning, auditing, providers, packing, exporting, and managed artifact writes. |
 | [Tiles and engine exports](./TILES.md) | Structural tile roles, provider rule preservation, generic JSON, Tiled Wang sets, and Godot terrain sets. |
 | [Measured PixelLab endpoints](./ENDPOINTS.md) | Live-account cost and payload research, endpoint recipes, limits, and unresolved API behavior. |
-| [PixelLab vs. Retro Diffusion](../PROVIDERS.md) | Provider selection, costs, adapter capabilities, confidence, and next work. |
+| [PixelLab vs. Retro Diffusion](../PROVIDERS.md) | Provider selection, costs, adapter capabilities, confidence, and next work. Start with the provider-specific setup guides above when you are ready to configure a project. |
 
 ## Project policies
 

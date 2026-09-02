@@ -1,6 +1,6 @@
 # Getting started
 
-Pixelkiln turns a committed asset manifest into generated files with a
+PixelKiln turns a committed asset manifest into generated files with a
 committed provenance lockfile. Planning, auditing, packing, mounting, and
 exporting are local operations. Only generation, provider polling, candidate
 selection, downloads, tagging, account adoption, salvage, purge, and balance
@@ -69,6 +69,8 @@ remains the production adapter. See
 [Manifest reference](MANIFEST.md#experimental-retro-diffusion) for
 provider options and current limits, or
 [PixelLab vs. Retro Diffusion](../PROVIDERS.md) for selection guidance.
+The provider setup guides give the shortest complete path for
+[PixelLab](PIXELLAB.md) and [Retro Diffusion](RETRO_DIFFUSION.md).
 
 Before spending anything, validate and price the selected work:
 
@@ -160,7 +162,7 @@ pipeline stages also exit nonzero after partial failures or timeouts.
 - `salvage --claims <every-other-lockfile>` reviews remote objects no project
   currently claims. `salvage` never deletes; `purge` is a separate confirmed
   operation.
-- Pixelkiln refuses to overwrite a file whose bytes differ from its recorded
+- PixelKiln refuses to overwrite a file whose bytes differ from its recorded
   hash. Resolve intentional hand edits explicitly.
 
 ## What belongs in Git

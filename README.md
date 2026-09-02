@@ -136,6 +136,9 @@ pixelkiln plan
 ```
 
 See [Getting started](./docs/GETTING_STARTED.md) for new and existing projects.
+Use [Set up PixelLab](./docs/PIXELLAB.md) or
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) for provider-specific
+credentials, manifest examples, and current limits.
 
 ## Agent skill
 
@@ -180,7 +183,9 @@ a separate output directory and separate lock keys without clobbering the first
 set. Generator choice, reference-image bytes, dimensions, palette, seed, and
 prompt settings participate in deterministic spec identity. A manifest may
 select `retrodiffusion` instead and pass namespaced `providerOptions`; see
-[PixelLab vs. Retro Diffusion](./PROVIDERS.md) for selection guidance, costs,
+[Set up PixelLab](./docs/PIXELLAB.md),
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), and
+[PixelLab vs. Retro Diffusion](./PROVIDERS.md) for configuration, costs,
 current confidence, and limitations.
 
 The schema rejects unknown fields and invalid generator combinations before
@@ -331,6 +336,8 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 |---|---|
 | [Documentation index](./docs/README.md) | All user, workflow, reference, and architecture guides. |
 | [Getting started](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, everyday workflow, and what to commit. |
+| [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
+| [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |

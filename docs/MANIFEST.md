@@ -112,11 +112,14 @@ the correct extension and validates the correct structure.
 
 `promptStyle` accepts a live Retro Diffusion still-style selector,
 `numImages` accepts 1–16 candidates, and `removeBg` overrides
-`noBackground`. Dimensions must be 12–512 pixels and up to nine reference
-images are accepted by RD Pro and user styles. Costs are planned in USD and
-checked again with Retro Diffusion's free authoritative quote endpoint before
-the paid request is sent. Authenticated single-candidate RD Fast and RD Plus
-paths have passed from quote through validated output and recovery.
+`noBackground`. The Retro Diffusion API accepts 12–512px output, while the
+shared PixelKiln manifest currently limits arbitrary width and height to
+16–400px and square `size` to 32–256px. Selected styles can impose smaller
+limits. RD Pro and user styles accept up to nine reference images. Costs are
+planned in USD and checked again with Retro Diffusion's free authoritative
+quote endpoint before the paid request is sent. Authenticated single-candidate
+RD Fast and RD Plus paths have passed from quote through validated output and
+recovery.
 Multi-candidate, tileset, GIF, and spritesheet paths remain mock-tested, so the
 adapter is still experimental.
 

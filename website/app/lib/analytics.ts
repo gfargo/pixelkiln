@@ -4,7 +4,7 @@ import { track } from "@vercel/analytics";
 
 /**
  * Central event taxonomy for the marketing site. Keep names and props stable.
- * they become dimensions in the Vercel Analytics dashboard.
+ * They become dimensions in the Vercel Analytics dashboard.
  */
 
 type CtaSection =
@@ -14,6 +14,7 @@ type CtaSection =
   | "review"
   | "safety"
   | "generator"
+  | "provider_showcase"
   | "docs_index"
   | "docs_sidebar"
   | "footer";

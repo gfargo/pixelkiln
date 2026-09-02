@@ -9,6 +9,11 @@ PixelLab remains the default so existing manifests and spec hashes remain
 compatible. Select Retro Diffusion with the manifest's top-level `provider`
 field and keep its settings under `providerOptions.retrodiffusion`.
 
+Ready to configure a project? Use [Set up PixelLab](./docs/PIXELLAB.md) for the
+production provider or
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) for the experimental
+adapter. This page focuses on choosing between them.
+
 ## Support status
 
 | Provider | PixelKiln status | Credential | Cost unit |
@@ -97,57 +102,6 @@ style, and candidate count affect the exact still-image quote. Treat
 `pixelkiln plan` as the offline ceiling and the provider's free preflight quote
 as the authoritative submit-time check. See Retro Diffusion's
 [official API examples and pricing formulas](https://github.com/Retro-Diffusion/api-examples#pricing).
-
-## Configure Retro Diffusion
-
-Put the key in `.env.local` beside the manifest and do not commit it:
-
-```dotenv
-RD_API_KEY=...
-```
-
-Then select the provider in the manifest:
-
-```jsonc
-{
-  "provider": "retrodiffusion",
-  "styles": {
-    "base": {
-      "generator": "map",
-      "outDir": "assets/generated/base",
-      "providerOptions": {
-        "retrodiffusion": {
-          "promptStyle": "rd_plus__default",
-          "numImages": 4,
-          "removeBg": true
-        }
-      }
-    }
-  }
-}
-```
-
-Use a selector that matches the manifest generator: ordinary styles for
-`map`/`pixflux`, `rd_tile__*` for `tiles`, and `rd_animation__*` or
-`rd_advanced_animation__*` for `animation`. Style availability can change at
-the service, so use its live style catalog rather than assuming a selector is
-permanent. Reference images require an RD Pro or user still style; advanced
-animations require one input image.
-
-The adapter currently supports:
-
-- asynchronous still, tileset, and animation submission and polling;
-- one to sixteen still candidates in PixelKiln's local human-review flow;
-- dimensions from 12 to 512 pixels, subject to style-specific limits;
-- up to nine reference images where the selected style permits them;
-- seed, transparent-background behavior, palette swatches, and tile controls;
-- hosted output URLs with inline base64 fallback;
-- validated animated GIF output or PNG spritesheets;
-- offline USD estimates, a free authoritative cost preflight before every paid
-  request, and balance reporting.
-
-See the [manifest reference](./docs/MANIFEST.md#experimental-retro-diffusion)
-for animation, tileset, and option examples.
 
 ## Capability boundary
 

@@ -53,5 +53,6 @@ Diffusion as production-ready until representative multi-candidate, tileset,
 GIF, and spritesheet live smoke tests pass.
 
 When working in the PixelKiln repository, consult `docs/GETTING_STARTED.md` for
-the full workflow, `docs/CLI.md` for flags, `docs/MANIFEST.md` for the schema,
-and `docs/RECOVERY.md` before account adoption, salvage, discard, or purge.
+the full workflow, `docs/PIXELLAB.md` or `docs/RETRO_DIFFUSION.md` for provider
+setup, `docs/CLI.md` for flags, `docs/MANIFEST.md` for the schema, and
+`docs/RECOVERY.md` before account adoption, salvage, discard, or purge.
