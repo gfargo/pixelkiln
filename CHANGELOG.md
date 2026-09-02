@@ -1,3 +1,11 @@
+# [0.4.0](https://github.com/gfargo/pixelkiln/compare/v0.3.0...v0.4.0) (2026-09-02)
+
+
+### Features
+
+* add multi-provider image generation ([#47](https://github.com/gfargo/pixelkiln/issues/47)) ([6f0ccc2](https://github.com/gfargo/pixelkiln/commit/6f0ccc22dc11d2d29c38ac91e7183a9119e501cb))
+* **website:** refresh workflow sprites and spacing ([#45](https://github.com/gfargo/pixelkiln/issues/45)) ([282578a](https://github.com/gfargo/pixelkiln/commit/282578a0ed4c7a151eef561a959ac01c44b6fceb))
+
 # [0.3.0](https://github.com/gfargo/pixelkiln/compare/v0.2.0...v0.3.0) (2026-08-30)
 
 
