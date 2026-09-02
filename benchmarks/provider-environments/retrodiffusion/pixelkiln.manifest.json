@@ -1,0 +1,99 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-provider-benchmark-retrodiffusion",
+  "provider": "retrodiffusion",
+  "styles": {
+    "isolated-a": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/retrodiffusion/isolated/a",
+      "seed": 31415,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__isometric_asset",
+          "numImages": 1,
+          "removeBg": true
+        }
+      }
+    },
+    "isolated-b": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/retrodiffusion/isolated/b",
+      "seed": 27182,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__isometric_asset",
+          "numImages": 1,
+          "removeBg": true
+        }
+      }
+    },
+    "topdown-a": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/retrodiffusion/topdown/a",
+      "seed": 31415,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__topdown_asset",
+          "numImages": 1,
+          "removeBg": true
+        }
+      }
+    },
+    "topdown-b": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/retrodiffusion/topdown/b",
+      "seed": 27182,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__topdown_asset",
+          "numImages": 1,
+          "removeBg": true
+        }
+      }
+    },
+    "background-a": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/retrodiffusion/background/a",
+      "seed": 31415,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__environment",
+          "numImages": 1,
+          "removeBg": false
+        }
+      }
+    },
+    "background-b": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-environments/retrodiffusion/background/b",
+      "seed": 27182,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__environment",
+          "numImages": 1,
+          "removeBg": false
+        }
+      }
+    }
+  },
+  "assets": {
+    "mountain-observatory": {
+      "prompt": "a compact stone observatory built into a snowy mountain ridge, isometric three-quarter view, cedar roof, warm windows, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "styles": ["isolated-a", "isolated-b"]
+    },
+    "river-gate": {
+      "prompt": "a fortified village gate spanning a narrow river, three-quarter top-down view, stone towers, timber bridge, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "styles": ["topdown-a", "topdown-b"]
+    },
+    "alpine-valley": {
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 256,
+      "height": 256,
+      "styles": ["background-a", "background-b"]
+    }
+  }
+}

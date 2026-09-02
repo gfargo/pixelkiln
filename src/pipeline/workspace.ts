@@ -1,7 +1,7 @@
 import { loadLock, spendByUnit } from "../lock.ts"
 import { loadManifest, resolveSpecs } from "../manifest.ts"
 import { normalizeLockOutputPaths } from "../outputs.ts"
-import { PixelLabProvider } from "../providers/pixellab.ts"
+import { createProvider } from "../providers/registry.ts"
 import type { CostUnit } from "../provider.ts"
 import {
   resolveProject,
@@ -95,8 +95,6 @@ export interface WorkspaceStatusReport {
  */
 export async function workspaceStatus(ws: Workspace, dir: string): Promise<WorkspaceStatusReport> {
   const diagnostics = validateWorkspace(ws, dir)
-  const provider = PixelLabProvider.forOffline()
-
   const projects: WorkspaceProjectStatus[] = []
   const totalsByState = emptyStateCounts()
   const totalsSpend: Record<CostUnit, number> = { generations: 0, usd: 0, free: 0 }
@@ -111,6 +109,7 @@ export async function workspaceStatus(ws: Workspace, dir: string): Promise<Works
       lock: lockPath,
     }
     try {
+      const provider = createProvider(project.provider, "offline")
       const loaded = await loadManifest(manifestPath)
       const specs = await resolveSpecs(loaded, { provider })
       const lock = await loadLock(lockPath)
@@ -122,7 +121,7 @@ export async function workspaceStatus(ws: Workspace, dir: string): Promise<Works
         totalsByState[state] += byState[state]
       }
       for (const unit of Object.keys(spend) as CostUnit[]) {
-        totalsSpend[unit] += spend[unit]
+        totalsSpend[unit] = (totalsSpend[unit] ?? 0) + (spend[unit] ?? 0)
       }
       projects.push({
         ...base,

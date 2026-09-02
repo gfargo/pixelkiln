@@ -112,6 +112,7 @@ export function buildManifest(
 
   return {
     name,
+    provider: "pixellab",
     styles: {
       [styleId]: {
         generator,
@@ -125,6 +126,7 @@ export function buildManifest(
         palette: [],
         outDir,
         tags: [name],
+        providerOptions: {},
       },
     },
     assets,

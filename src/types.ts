@@ -1,7 +1,9 @@
 import { z } from "zod"
 
+const MediaTypeSchema = z.enum(["image/png", "image/gif"])
+
 /**
- * Which PixelLab endpoint produces the asset. The choice is mostly about cost,
+ * Which provider capability produces the asset. The choice is mostly about cost,
  * and the gap is enormous — all figures measured against a live account.
  *
  *   map   POST /map-objects — THE DEFAULT.
@@ -31,7 +33,7 @@ import { z } from "zod"
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 /** A decoded style reference ready for a provider-specific request body. */
@@ -155,7 +157,7 @@ export function tilesCost(tileSize: number, variations: number): number {
 }
 
 const StyleImageSchema = z.object({
-  /** Path to a PNG/JPEG, relative to the manifest file. Max 256x256. */
+  /** Path to a PNG/JPEG, relative to the manifest; the active provider validates limits. */
   path: z.string(),
 })
 
@@ -276,6 +278,8 @@ export const StyleSchema = z
       .optional(),
     /** Tags applied to every object generated in this style, for server-side filtering. */
     tags: z.array(z.string()).default([]),
+    /** Adapter-owned settings, keyed by provider id. */
+    providerOptions: z.record(z.record(z.unknown())).default({}),
   })
   .strict()
   /**
@@ -304,7 +308,7 @@ export const AssetSchema = z
     height: z.number().int().min(16).max(400).optional(),
     /** Overrides the style default. `1dir` generator only. */
     size: z.number().int().min(32).max(256).optional(),
-    /** Explicit output path relative to outDir. Defaults to `<category>/<id>.png`. */
+    /** Explicit output path relative to outDir. Media-aware providers may replace its extension. */
     file: z.string().optional(),
     /**
      * Grid cell this asset owns in a mounted style, as [column, row].
@@ -359,6 +363,8 @@ export const ManifestSchema = z
   .object({
     $schema: z.string().optional(),
     name: z.string(),
+    /** Generation backend. Existing manifests remain PixelLab by default. */
+    provider: z.string().min(1).default("pixellab"),
     styles: z.record(StyleSchema),
     assets: z.record(AssetSchema),
   })
@@ -369,7 +375,7 @@ export type Style = z.infer<typeof StyleSchema>
 export type Asset = z.infer<typeof AssetSchema>
 
 /**
- * One line of the lockfile: the mapping from a spec to the PixelLab object that
+ * One line of the lockfile: the mapping from a spec to the provider work that
  * satisfies it and the file on disk that came from it. This is the record that
  * did not exist before — without it, generated objects and downloaded files are
  * two unrelated piles.
@@ -415,6 +421,7 @@ export const LockEntrySchema = z.object({
       z.object({
         url: z.string(),
         role: z.string().optional(),
+        mediaType: MediaTypeSchema.optional(),
       }),
     )
     .default([]),
@@ -433,6 +440,7 @@ export const LockEntrySchema = z.object({
         path: z.string(),
         sha256: z.string(),
         role: z.string().optional(),
+        mediaType: MediaTypeSchema.optional(),
       }),
     )
     .default([]),
@@ -449,7 +457,7 @@ export const LockEntrySchema = z.object({
   /** Successful-submission estimate in `costUnit`; may be fractional USD. */
   cost: z.number().finite().nonnegative().default(0),
   /** Unit for `cost`. Defaults preserve pre-unit PixelLab lockfiles. */
-  costUnit: z.enum(["generations", "usd", "free"]).default("generations"),
+  costUnit: z.string().min(1).default("generations"),
   /** Which provider produced this. Absent on entries written before providers. */
   provider: z.string().default("pixellab"),
 })
@@ -498,6 +506,10 @@ export interface ResolvedSpec {
   root: string
   styleId: string
   assetId: string
+  /** Backend whose request semantics and estimate produced this spec. */
+  provider: string
+  /** Adapter-owned settings selected from the active provider namespace. */
+  providerOptions: Record<string, unknown>
   generator: Generator
   prompt: string
   width: number
@@ -515,7 +527,7 @@ export interface ResolvedSpec {
   tags: string[]
   specHash: string
   cost: number
-  costUnit: "generations" | "usd" | "free"
+  costUnit: import("./provider.ts").CostUnit
   candidates: number
   outline?: string
   shading?: string

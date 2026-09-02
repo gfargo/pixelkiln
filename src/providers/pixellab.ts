@@ -83,7 +83,39 @@ export class PixelLabProvider implements Provider {
     }
   }
 
+  validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
+    if (spec.generator === "map") {
+      requirePixelLabOption("view", spec.view, ["low top-down", "high top-down", "side"])
+      requirePixelLabOption("outline", spec.outline, [
+        "single color outline", "selective outline", "lineless",
+      ])
+      requirePixelLabOption("shading", spec.shading, [
+        "flat shading", "basic shading", "medium shading", "detailed shading",
+      ])
+      requirePixelLabOption("detail", spec.detail, [
+        "low detail", "medium detail", "high detail",
+      ])
+    }
+    if ((spec.generator === "map" || spec.generator === "pixflux") && styleImages.length) {
+      throw new Error(`PixelLab ${spec.generator} does not support style images`)
+    }
+    for (const image of styleImages) {
+      if (image.width > 256 || image.height > 256) {
+        throw new Error(
+          `Style image exceeds PixelLab's 256x256 limit (${image.width}x${image.height})`,
+        )
+      }
+    }
+    if (spec.tags.length > 20) {
+      throw new Error(
+        `${spec.styleId}/${spec.assetId} resolves to ${spec.tags.length} tags, ` +
+          `but PixelLab allows at most 20`,
+      )
+    }
+  }
+
   async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<{ jobId: string }> {
+    this.validate(spec, styleImages)
     if (spec.generator === "pixflux") {
       const swatch = spec.palette.length
         ? paletteSwatch(spec.palette).toString("base64")
@@ -293,6 +325,16 @@ export class PixelLabProvider implements Provider {
 
   async delete(assetId: string): Promise<void> {
     await this.client.deleteObject(assetId)
+  }
+}
+
+function requirePixelLabOption(
+  name: string,
+  value: string | undefined,
+  allowed: readonly string[],
+): void {
+  if (value != null && !allowed.includes(value)) {
+    throw new Error(`PixelLab map ${name} must be one of: ${allowed.join(", ")}`)
   }
 }
 

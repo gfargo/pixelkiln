@@ -1,0 +1,281 @@
+{
+  "version": 2,
+  "entries": {
+    "background-a/alpine-valley": {
+      "styleId": "background-a",
+      "assetId": "alpine-valley",
+      "specHash": "e4ff0abe0e87479a24644f986362dbae874410773cdec11813e5cd623a4d8979",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 256,
+      "height": 256,
+      "jobId": "5ed14066-2c40-487e-b43a-b3f291d8f09e",
+      "reviewObjectId": null,
+      "objectId": "5ed14066-2c40-487e-b43a-b3f291d8f09e#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/5ed14066-2c40-487e-b43a-b3f291d8f09e/0-7a4378a1a3f64399a5d0b6dfbef8999f.png?AWSAccessKeyId=ASIA55GSYAHSI5FXVDKN&Signature=g9LTIh8yEDFnFl%2BLJAMONIBDcgA%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFwUeOYjwoztdEuEWYa6aEuqi8H413gcgAPtHyaZA1kjAiBVVrWgf2FvtX8k11gs5LCf3oCJh%2Fqalh%2B%2FJulGMW0PvyqZBAjH%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAEaDDk1NjA3MjE5ODYyOCIMJ83o0yVj3rZVIKeGKu0DSxTa%2BVhJlPz7eNQ5ypkYOhjxLZZeQYS79OrNtls2vzEg4Xr6xmGEBUY0DZsMd3cIY1z%2FRQlw6Y9Wet1OnKsBzvbPn4ZGuD8xJMZGhQokB6o8vFq3tHyD7qXZyhI3ABX3Y%2FjPSgNUjEzCU81YmHWRNaHVKGdFpbzLybjazBNpsQPLTS124AIbDHOspvLH7D9g8LF3FlHXJLNZVv11ysFPHGjCGaX5mxhDI25Nf9A2xu4V9fkhYtsLnqVac71xnrSoun42VBIQl6A7uHv5r9sAvhKYLkrsVTIQGb1BLogQxrxslULUDW6DuUOM3rAR%2Bb8fgz%2BDJ6l8do21dbSDdIAXwlmgWk9EBtLYlbT2xCpGQ8%2FiX6fv2zxCK54CNJRoWYbL54ryWuWXhpwAJ2WJW553x1H8m7zTAMtqG0yvZ3ROJ%2Bvz7k%2FlG9lJqtp90aQc%2BO3rgv1ukff%2FqvlF6RQl682iAGwmuYM%2BWYnYuT2mI9L0XUEfNZ9%2FNXYqqZfKDkbOmXA5A0GsWaIzOb8kaT6Rwucou7hLeKLc3MzHo1edgoQwOLNp0mUOlCe1B50qTPVCXyJMxdVIMm%2Bv4qM8rBpmRHHU%2FTQsPLAa6CzRN5lMbYbJovVvozsB7bPOUDYS81QtIvj8NalDQUAvS2%2FYNEvB9DCK4eDUBjqjAWxl%2FuA5XYtc8wIP4pk2hB6eY6Ztf9domNXaRVP%2Fhb2yymvF919LfqpvmHlUsHZwHFjnPNiGrGlXKJhKIhgOnHHZvr09PTYPiy0iz6TAUYsxBgnsnozNBfKpjimRXZngKC7nakmc84nxWbbZcqrxG33QR6alF1RPDPAOhOpIKV29%2FFjcjj1WXdeokSi%2FTSgkaUv0EqUYNPRYugANLOQFT6%2FC7p8%3D&Expires=1788362129",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/5ed14066-2c40-487e-b43a-b3f291d8f09e/0-7a4378a1a3f64399a5d0b6dfbef8999f.png?AWSAccessKeyId=ASIA55GSYAHSI5FXVDKN&Signature=g9LTIh8yEDFnFl%2BLJAMONIBDcgA%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFwUeOYjwoztdEuEWYa6aEuqi8H413gcgAPtHyaZA1kjAiBVVrWgf2FvtX8k11gs5LCf3oCJh%2Fqalh%2B%2FJulGMW0PvyqZBAjH%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAEaDDk1NjA3MjE5ODYyOCIMJ83o0yVj3rZVIKeGKu0DSxTa%2BVhJlPz7eNQ5ypkYOhjxLZZeQYS79OrNtls2vzEg4Xr6xmGEBUY0DZsMd3cIY1z%2FRQlw6Y9Wet1OnKsBzvbPn4ZGuD8xJMZGhQokB6o8vFq3tHyD7qXZyhI3ABX3Y%2FjPSgNUjEzCU81YmHWRNaHVKGdFpbzLybjazBNpsQPLTS124AIbDHOspvLH7D9g8LF3FlHXJLNZVv11ysFPHGjCGaX5mxhDI25Nf9A2xu4V9fkhYtsLnqVac71xnrSoun42VBIQl6A7uHv5r9sAvhKYLkrsVTIQGb1BLogQxrxslULUDW6DuUOM3rAR%2Bb8fgz%2BDJ6l8do21dbSDdIAXwlmgWk9EBtLYlbT2xCpGQ8%2FiX6fv2zxCK54CNJRoWYbL54ryWuWXhpwAJ2WJW553x1H8m7zTAMtqG0yvZ3ROJ%2Bvz7k%2FlG9lJqtp90aQc%2BO3rgv1ukff%2FqvlF6RQl682iAGwmuYM%2BWYnYuT2mI9L0XUEfNZ9%2FNXYqqZfKDkbOmXA5A0GsWaIzOb8kaT6Rwucou7hLeKLc3MzHo1edgoQwOLNp0mUOlCe1B50qTPVCXyJMxdVIMm%2Bv4qM8rBpmRHHU%2FTQsPLAa6CzRN5lMbYbJovVvozsB7bPOUDYS81QtIvj8NalDQUAvS2%2FYNEvB9DCK4eDUBjqjAWxl%2FuA5XYtc8wIP4pk2hB6eY6Ztf9domNXaRVP%2Fhb2yymvF919LfqpvmHlUsHZwHFjnPNiGrGlXKJhKIhgOnHHZvr09PTYPiy0iz6TAUYsxBgnsnozNBfKpjimRXZngKC7nakmc84nxWbbZcqrxG33QR6alF1RPDPAOhOpIKV29%2FFjcjj1WXdeokSi%2FTSgkaUv0EqUYNPRYugANLOQFT6%2FC7p8%3D&Expires=1788362129",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/background/a/alpine-valley.png",
+          "sha256": "ad0469cf45ca015cb5303433f38b8e4d37929b7650232ef3902c83d2a680ee8f",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.058,
+          "remainingBalance": 0.193,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__environment",
+          "width": 256,
+          "height": 256
+        }
+      },
+      "submittedAt": "2026-09-02T15:00:02.699Z",
+      "downloadedAt": "2026-09-02T15:00:37.674Z",
+      "cost": 0.058,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
+    "background-b/alpine-valley": {
+      "styleId": "background-b",
+      "assetId": "alpine-valley",
+      "specHash": "cab84712d0d197d27e8df09255bf9070bcfdfada98038fb159630b402e10e946",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 256,
+      "height": 256,
+      "jobId": "41413e2b-96a1-46d7-b089-67014170477d",
+      "reviewObjectId": null,
+      "objectId": "41413e2b-96a1-46d7-b089-67014170477d#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/41413e2b-96a1-46d7-b089-67014170477d/0-aa767aa50f8846f3b37fa8b60d631afe.png?AWSAccessKeyId=ASIA55GSYAHSKJUKITJG&Signature=QYhnUalwCy61yodE9LKK6IyOX0g%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJIMEYCIQCN2tXwbIHiHQMs0hVERchGDZQ8063s4lEfGFq%2FJO6PpQIhAIs%2BOie2N7HXm5gbB1Wdyd79ZAHh6XKg%2BvceJ8AgXp1BKpkECMj%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEQARoMOTU2MDcyMTk4NjI4IgwGY6SahRMLNiVo%2B8Aq7QMUMMeZNW8kyhLSs39dVHA1LkygjWNKF2%2FYQ%2B2bhvb%2Friv%2Fh1vjvuf3nMw%2FHeu2hIOFDR3ykX5g3XkfTmM7WOcdLSQ%2BPT%2FwsQzA5jUHUwL5cZJFN8jneKsnQcgDEfof08YHCcihU4wVkjibjTVWro7IneNgqSKrfQL7UueVsh%2BB%2BEQtvzxyNuhpUR18qly5mA0qa8SIBrfCw8UUBMjiZceQFDbAdkac2yJFnhiZf%2FtnV%2BFenc%2FFy9sEAyPrH7uVgu9%2BK2FtwFayactme5%2Bs699sBdwb0GSDNI7PwNrE%2Fi3sWH8tAHA40ceVUYakDWjPMBh00CjN%2BRuFk4j%2FmFb%2BteeVn0dL6DIv7QfYuGbwFypAio5LgorU4dPPKHVsSHzttAQ2x1sP7wPMDmZmVBlmcrwm9O7gCPBFIswREAdm1nMUMgwIp6HWQtsSDgIsRn5%2FZ9dZhlJhxmdwl9483MXwWeIhhYw11dKpgq050j9OI%2BquTa5UyQOSiPmBRsrLk2ojzechdcr1Zk0mNCY5a5IcKHZvhLtOc%2BCK46vl5m2YQFy9A3GJlnVpBjEJES1rVcOFUDk1QF1hDgkbHH3P8wf0I0IKcrmAsJIOJHT9O0QHc%2B5qtmKt4n7dW%2FgE3Xvd2d3f8AHZSzSKlkTdqBAxRmJyMJzk4NQGOqEBVtLOFqV8eQk59IB%2BlP1PJIjxGZuDzXD%2FONOG3FIlFCwHuKrqePGMfXRtzR4yJOoj1RVLmr%2BGAdrux01tkZYuURDNy3Na1kYHq8bpuKik06Dp4r5nM2I8yNGtAUDzL1B5WbdqWOlMkH67cIUjB5XUZPQQFyNh0%2FCvtpe7yj90XiwwdqIK9G8ZdMb%2FVgiCwVB5FVpM3a2gdhpWFV0SkvqrLw4%3D&Expires=1788362136",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/41413e2b-96a1-46d7-b089-67014170477d/0-aa767aa50f8846f3b37fa8b60d631afe.png?AWSAccessKeyId=ASIA55GSYAHSKJUKITJG&Signature=QYhnUalwCy61yodE9LKK6IyOX0g%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJIMEYCIQCN2tXwbIHiHQMs0hVERchGDZQ8063s4lEfGFq%2FJO6PpQIhAIs%2BOie2N7HXm5gbB1Wdyd79ZAHh6XKg%2BvceJ8AgXp1BKpkECMj%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEQARoMOTU2MDcyMTk4NjI4IgwGY6SahRMLNiVo%2B8Aq7QMUMMeZNW8kyhLSs39dVHA1LkygjWNKF2%2FYQ%2B2bhvb%2Friv%2Fh1vjvuf3nMw%2FHeu2hIOFDR3ykX5g3XkfTmM7WOcdLSQ%2BPT%2FwsQzA5jUHUwL5cZJFN8jneKsnQcgDEfof08YHCcihU4wVkjibjTVWro7IneNgqSKrfQL7UueVsh%2BB%2BEQtvzxyNuhpUR18qly5mA0qa8SIBrfCw8UUBMjiZceQFDbAdkac2yJFnhiZf%2FtnV%2BFenc%2FFy9sEAyPrH7uVgu9%2BK2FtwFayactme5%2Bs699sBdwb0GSDNI7PwNrE%2Fi3sWH8tAHA40ceVUYakDWjPMBh00CjN%2BRuFk4j%2FmFb%2BteeVn0dL6DIv7QfYuGbwFypAio5LgorU4dPPKHVsSHzttAQ2x1sP7wPMDmZmVBlmcrwm9O7gCPBFIswREAdm1nMUMgwIp6HWQtsSDgIsRn5%2FZ9dZhlJhxmdwl9483MXwWeIhhYw11dKpgq050j9OI%2BquTa5UyQOSiPmBRsrLk2ojzechdcr1Zk0mNCY5a5IcKHZvhLtOc%2BCK46vl5m2YQFy9A3GJlnVpBjEJES1rVcOFUDk1QF1hDgkbHH3P8wf0I0IKcrmAsJIOJHT9O0QHc%2B5qtmKt4n7dW%2FgE3Xvd2d3f8AHZSzSKlkTdqBAxRmJyMJzk4NQGOqEBVtLOFqV8eQk59IB%2BlP1PJIjxGZuDzXD%2FONOG3FIlFCwHuKrqePGMfXRtzR4yJOoj1RVLmr%2BGAdrux01tkZYuURDNy3Na1kYHq8bpuKik06Dp4r5nM2I8yNGtAUDzL1B5WbdqWOlMkH67cIUjB5XUZPQQFyNh0%2FCvtpe7yj90XiwwdqIK9G8ZdMb%2FVgiCwVB5FVpM3a2gdhpWFV0SkvqrLw4%3D&Expires=1788362136",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/background/b/alpine-valley.png",
+          "sha256": "9ab763879085607e6fb60eb853ba52b16ab1566af808101286d49a00e5b73e90",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.058,
+          "remainingBalance": 0.135,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__environment",
+          "width": 256,
+          "height": 256
+        }
+      },
+      "submittedAt": "2026-09-02T15:00:05.203Z",
+      "downloadedAt": "2026-09-02T15:00:37.665Z",
+      "cost": 0.058,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
+    "isolated-a/mountain-observatory": {
+      "styleId": "isolated-a",
+      "assetId": "mountain-observatory",
+      "specHash": "67489730d05d0d7f5358e5c2c6bb7238a34434bdda9ab7353f9c910acf93bd06",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone observatory built into a snowy mountain ridge, isometric three-quarter view, cedar roof, warm windows, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "05514662-5628-43ad-8d66-cda95e3237e9",
+      "reviewObjectId": null,
+      "objectId": "05514662-5628-43ad-8d66-cda95e3237e9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/05514662-5628-43ad-8d66-cda95e3237e9/0-b7dece43ce344e7a8733d8af480f619b.png?AWSAccessKeyId=ASIA55GSYAHSPLLFGHOP&Signature=v5r3GOiUPNbSoPABg2znI1qAykw%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIHfdIvDaW7uv1YCT36CNl9zwC9inp9J3LXlGk3%2B5KY%2BtAiEAtHR0duf9udVW%2B8gAAyQUqCTIbgxWZXvhNUEPQz9bsq0qmQQIx%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDMnrzXb%2FOsuLQ6yDOirtA2x81p0GrCA6m9nbA8CzgotSbXWCZ6D577qu4b4nZpDAycKkn63ZDXRyZn%2BUvYbzX6XceHOKs8PIR71frCR7%2FOljBwwK9BZoCtwHfT%2FuPbGYULb5Q0fWZDMJQ3G93tbSPWRhIwaIJVo%2FW4R3rdmDzJ6BaYB1hdbwB6jQUJIOtc7JMjE%2BdMWSsoUlDJmxXnOUZNYbu5GunbDkGI8kLNizqiUKjODSf%2BYMRUV8cInvEhSL4dKPVivLfsLYjlsxhs98CN1qlGJwrPDwIIgfsSuBiV9m0IgBwOmZBNTKgCpsij5sVOBtywS3H%2FAPwdK5giwBsDGZQszarFgzMx%2BWeu5z3%2BxyocrLnQP37C3Alv4bceELP7Frpp5VAQkyclwsvYrM2hWtlOUUw9yRJAeG9mI%2B4kSVFeoAb0Q3bhECWS%2BVPjGRR%2FM%2BeIHiNhnxdb41%2FgEYYade76RpWegsL%2FOu%2BcXpG8LBEVeP8%2FBvhQKWty1YvI1un4ytVD9PdEryNAXhG51IjML3lPAT2RoDftUI2nHC5S5r658rww5U20YIFHODGwM376UvZLGOaLyQHIVe2WTNilCh7ih944GbURhXVkWOG2GlMpUiK5uA6Dew4YnK1rdNdPs9dSHdO2Z9JTdrCmLOSe7mM83LNpRlmpO217wwy%2BHg1AY6ogGXh9TsOpO2dOUD9G96xq08NI7RC8iBSzcGgB%2B%2FWikl3JfviySc1sXE%2BwXK2sv0yzjrLaDPv%2FGLFDWJMe14FJKtiAwUa%2BtPrPa0s06PSMUOsZyu3SmkNbFqUqu4BvYBYqzNoWsm2o%2FgozS%2BonbNxlTSkdpjD0uu%2Fv9cjyZFaWT0vQyMV%2FuRcKAGU8Celon0NPFzbh4JyUc56Ri4uyFy%2BiOY6O8%3D&Expires=1788362116",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/05514662-5628-43ad-8d66-cda95e3237e9/0-b7dece43ce344e7a8733d8af480f619b.png?AWSAccessKeyId=ASIA55GSYAHSPLLFGHOP&Signature=v5r3GOiUPNbSoPABg2znI1qAykw%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIHfdIvDaW7uv1YCT36CNl9zwC9inp9J3LXlGk3%2B5KY%2BtAiEAtHR0duf9udVW%2B8gAAyQUqCTIbgxWZXvhNUEPQz9bsq0qmQQIx%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDMnrzXb%2FOsuLQ6yDOirtA2x81p0GrCA6m9nbA8CzgotSbXWCZ6D577qu4b4nZpDAycKkn63ZDXRyZn%2BUvYbzX6XceHOKs8PIR71frCR7%2FOljBwwK9BZoCtwHfT%2FuPbGYULb5Q0fWZDMJQ3G93tbSPWRhIwaIJVo%2FW4R3rdmDzJ6BaYB1hdbwB6jQUJIOtc7JMjE%2BdMWSsoUlDJmxXnOUZNYbu5GunbDkGI8kLNizqiUKjODSf%2BYMRUV8cInvEhSL4dKPVivLfsLYjlsxhs98CN1qlGJwrPDwIIgfsSuBiV9m0IgBwOmZBNTKgCpsij5sVOBtywS3H%2FAPwdK5giwBsDGZQszarFgzMx%2BWeu5z3%2BxyocrLnQP37C3Alv4bceELP7Frpp5VAQkyclwsvYrM2hWtlOUUw9yRJAeG9mI%2B4kSVFeoAb0Q3bhECWS%2BVPjGRR%2FM%2BeIHiNhnxdb41%2FgEYYade76RpWegsL%2FOu%2BcXpG8LBEVeP8%2FBvhQKWty1YvI1un4ytVD9PdEryNAXhG51IjML3lPAT2RoDftUI2nHC5S5r658rww5U20YIFHODGwM376UvZLGOaLyQHIVe2WTNilCh7ih944GbURhXVkWOG2GlMpUiK5uA6Dew4YnK1rdNdPs9dSHdO2Z9JTdrCmLOSe7mM83LNpRlmpO217wwy%2BHg1AY6ogGXh9TsOpO2dOUD9G96xq08NI7RC8iBSzcGgB%2B%2FWikl3JfviySc1sXE%2BwXK2sv0yzjrLaDPv%2FGLFDWJMe14FJKtiAwUa%2BtPrPa0s06PSMUOsZyu3SmkNbFqUqu4BvYBYqzNoWsm2o%2FgozS%2BonbNxlTSkdpjD0uu%2Fv9cjyZFaWT0vQyMV%2FuRcKAGU8Celon0NPFzbh4JyUc56Ri4uyFy%2BiOY6O8%3D&Expires=1788362116",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/isolated/a/mountain-observatory.png",
+          "sha256": "b8b320f87063b8031e3d89e10afc51505661aa3d30e1d2979936d96115d1947d",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.058,
+          "remainingBalance": 0.425,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__isometric_asset",
+          "width": 256,
+          "height": 256
+        }
+      },
+      "submittedAt": "2026-09-02T14:59:52.678Z",
+      "downloadedAt": "2026-09-02T15:00:37.662Z",
+      "cost": 0.058,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
+    "isolated-b/mountain-observatory": {
+      "styleId": "isolated-b",
+      "assetId": "mountain-observatory",
+      "specHash": "af6879952a516f5c1cbfcb85d6ae012761c0b042653def57d4cfb4979bb5687c",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone observatory built into a snowy mountain ridge, isometric three-quarter view, cedar roof, warm windows, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "1f1a08c8-7f79-4b27-bc63-8b11383387d6",
+      "reviewObjectId": null,
+      "objectId": "1f1a08c8-7f79-4b27-bc63-8b11383387d6#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/1f1a08c8-7f79-4b27-bc63-8b11383387d6/0-887a7d4e0c8a49a68e77be2212c0140e.png?AWSAccessKeyId=ASIA55GSYAHSNJAMNKNO&Signature=7hkHE%2Fj3htZLdb%2FQ6PFzmUMDEtc%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIC%2FJU%2BxdM5zY%2FRLApmJABChAUM9h%2FqNhkse%2B4SfM7AbdAiEA7d4cwb8bxLkwKe7nA46S5bfjVGR%2FXnahmCL4sJ%2BZqmYqmQQIyP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDFkndV%2FO378sNBS5oSrtA%2B9gXsrqE62iW4bSqQw3R5lt6N29fVbPuC9wJ8ZFPX0OKq4GFI9ULupXI%2FYJ43CT4rya2ZYo8ahDwSK9o%2FqnLl5cWLmFIVEdJYwLj%2FW1O2y6NYzOmsxBzaxZUUXHAEZVspqnjNSvneuJL%2Fzln4M7BJxZs006OEzQs3aUF7h1OjyE4gBaXLgY0XBzuf4wsZ5d8pe8hlL4DjbJfGW3xwFr3C%2BndYViERHL03q47oK8NTawjmrtPAT17X8xFSg4SeiYE6Erq17OUAtVL1vscp1s1WPyKkkL8gqEeJHAxWr90EHxYlXv9jcRGCBMUcJXW3JwWjUl4lM833eV5Si%2Bo1CPlOzcxOH%2Bnb3RCYUA5ag6kwTmkJMQT9DDipPhkOfWGy1eO2DzZ8dK6l16JP%2FLbSzeKI5uYsRsneTpG30aPgswCD1%2FokE2jiaMrnu09%2FcusHjN1b9EriKY32ioZymN0r8N%2FFG6UFJ9N3ria0WVRvEcfJ09qkFYkebVWbxJ%2BcS6STG6UnQoqb49Uk5dVXfcR8Nzm23DaWGiIhWL2z3nn4pPVuOH%2FHdIH20gkIRYxRPHIjYxZHxl8IDTRKWSr2Ka1D%2BbVs3tE3Cds5WWJOKfEUQvnoQCFs4a%2F8PFlZq9RSMF9wm%2BVk0QY2WUB7XCwwxiG8ww1uLg1AY6ogFWjwvirSJ2Ck7asBqBhsa6cDJOxAqzRgEWofr%2BngMMtAaFY6VxG5d8Z8GDKsk4PlzMiJduBM%2BlOtDO6Amxk7EmWYizva%2BGcVWFLch%2FMsNGguazwugrLKftCnDA%2FzRABx2MMjBPwVXK16ONCxq1EKWlJNSAmOCLwGMfuIPNzfx8d4PWxVTUJj0RmUhWH2e4OeT%2BTHU9HnikASZMO8Q%2FbBq3C20%3D&Expires=1788362117",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/1f1a08c8-7f79-4b27-bc63-8b11383387d6/0-887a7d4e0c8a49a68e77be2212c0140e.png?AWSAccessKeyId=ASIA55GSYAHSNJAMNKNO&Signature=7hkHE%2Fj3htZLdb%2FQ6PFzmUMDEtc%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIC%2FJU%2BxdM5zY%2FRLApmJABChAUM9h%2FqNhkse%2B4SfM7AbdAiEA7d4cwb8bxLkwKe7nA46S5bfjVGR%2FXnahmCL4sJ%2BZqmYqmQQIyP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDFkndV%2FO378sNBS5oSrtA%2B9gXsrqE62iW4bSqQw3R5lt6N29fVbPuC9wJ8ZFPX0OKq4GFI9ULupXI%2FYJ43CT4rya2ZYo8ahDwSK9o%2FqnLl5cWLmFIVEdJYwLj%2FW1O2y6NYzOmsxBzaxZUUXHAEZVspqnjNSvneuJL%2Fzln4M7BJxZs006OEzQs3aUF7h1OjyE4gBaXLgY0XBzuf4wsZ5d8pe8hlL4DjbJfGW3xwFr3C%2BndYViERHL03q47oK8NTawjmrtPAT17X8xFSg4SeiYE6Erq17OUAtVL1vscp1s1WPyKkkL8gqEeJHAxWr90EHxYlXv9jcRGCBMUcJXW3JwWjUl4lM833eV5Si%2Bo1CPlOzcxOH%2Bnb3RCYUA5ag6kwTmkJMQT9DDipPhkOfWGy1eO2DzZ8dK6l16JP%2FLbSzeKI5uYsRsneTpG30aPgswCD1%2FokE2jiaMrnu09%2FcusHjN1b9EriKY32ioZymN0r8N%2FFG6UFJ9N3ria0WVRvEcfJ09qkFYkebVWbxJ%2BcS6STG6UnQoqb49Uk5dVXfcR8Nzm23DaWGiIhWL2z3nn4pPVuOH%2FHdIH20gkIRYxRPHIjYxZHxl8IDTRKWSr2Ka1D%2BbVs3tE3Cds5WWJOKfEUQvnoQCFs4a%2F8PFlZq9RSMF9wm%2BVk0QY2WUB7XCwwxiG8ww1uLg1AY6ogFWjwvirSJ2Ck7asBqBhsa6cDJOxAqzRgEWofr%2BngMMtAaFY6VxG5d8Z8GDKsk4PlzMiJduBM%2BlOtDO6Amxk7EmWYizva%2BGcVWFLch%2FMsNGguazwugrLKftCnDA%2FzRABx2MMjBPwVXK16ONCxq1EKWlJNSAmOCLwGMfuIPNzfx8d4PWxVTUJj0RmUhWH2e4OeT%2BTHU9HnikASZMO8Q%2FbBq3C20%3D&Expires=1788362117",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/isolated/b/mountain-observatory.png",
+          "sha256": "8df0763ef199688f6de09f4d99b65727d41f19ba2c92d897c80e08f0b0f5f758",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.058,
+          "remainingBalance": 0.367,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__isometric_asset",
+          "width": 256,
+          "height": 256
+        }
+      },
+      "submittedAt": "2026-09-02T14:59:55.185Z",
+      "downloadedAt": "2026-09-02T15:00:37.835Z",
+      "cost": 0.058,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
+    "topdown-a/river-gate": {
+      "styleId": "topdown-a",
+      "assetId": "river-gate",
+      "specHash": "f2a1312d35866b7090901e3b2c9288cd3199dcbb760f85586564e249b7bd8db1",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a fortified village gate spanning a narrow river, three-quarter top-down view, stone towers, timber bridge, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "5add2dc2-cde8-4aef-95af-1a2ff9788410",
+      "reviewObjectId": null,
+      "objectId": "5add2dc2-cde8-4aef-95af-1a2ff9788410#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/5add2dc2-cde8-4aef-95af-1a2ff9788410/0-1eee6f1208194b67a1ecf7108210a8b0.png?AWSAccessKeyId=ASIA55GSYAHSI6S7MIZL&Signature=oDxA9sqAg53i1HbfKe7lXHNmivY%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP7%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIQDcnzINSJ4GRMIqPfv6lzbUJu7QieMeWSVHb7a5vRZpQwIgTLMpeuT%2FmKU%2Ff2lDb3%2Fydc7E4gzE56Z7DMVGHGvVUKgqmQQIxv%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDPGfB9HxSYNIWUmQuCrtA5k7voFRt6TEIaWBUK5PkXJD%2FrHNNRScP31BLzG97VkUSbKhQXLZkT19GY7FOzBPkre1WPRkdVovn4Er3DZbpm4aq4QANr9Eu65hCLoyFWVw62mAnAWgnEMFaQqOBep%2Fz8zmBfgSfDWO8KQfFUR%2B4NSwe9M8qxsdpIUEzoxzGe%2Brue0cLOCM70Bw9Dpeogl5ExFR6l4jKw2JulqFZ2sim3dnYOWGinlVyxMdF1tnrzuWX3Fi9L7Zf%2B7PtfRwEYnSwxX02sq772K5TjUzml0NcEwJDcFcEe6kjB7B4fEoai3kxaZ%2FgQC9pLJ0uJ8R5DTOCL1ub5oXCVLKL3zBdotj%2BmxFFzASaIwAYYu%2FT5scykKSIaUX%2F3EyN5Y3fJxIJ6zIDv1Gj5qDiyqPvX9lPO6ZMpdKs8ElGkaoARjPaCdrj%2BsXcoNcXwg9OyPrJYoclw9SkEh5J2LSm6bKeaAaa2e4qx0rymOC6BM1HK1FJeCPTgT5i%2FiSM3N7LW1H%2F7IaV5Cb97vxyKsweT0oke3vlejXGo%2FelHIZecENoFkuAkTmA7a4DcNlPgnYZ85XwAg8f7Hj6knl1CV7Iur7S6EnpGu5zlpuYV%2FApQL5G42eJxDD9WLco%2FmGZGvfbps2VcTuVKuRQrkmjlnxz7p85KxALIEwtb7g1AY6ogFxypXaxEqHefd60%2BZO4XX3mPTuB4nUr2nRRejv%2BQJoHs%2BwKvFEcoYTPtAlthv%2FFl5X4SBV1Whsf8qyKFUUToujB31PV2xiyUh%2Fb97azt7IKfXKoqNcZRNW9aKoRJJRq9b7CpKNUIbPlkGCaLhTlmiinViEWONUCPxgtgwx%2BLfch9A0k81zJUsH2eQVnP%2FOjzgItSZpENvqxzTHWm0lDm7GsnQ%3D&Expires=1788362123",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/5add2dc2-cde8-4aef-95af-1a2ff9788410/0-1eee6f1208194b67a1ecf7108210a8b0.png?AWSAccessKeyId=ASIA55GSYAHSI6S7MIZL&Signature=oDxA9sqAg53i1HbfKe7lXHNmivY%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP7%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIQDcnzINSJ4GRMIqPfv6lzbUJu7QieMeWSVHb7a5vRZpQwIgTLMpeuT%2FmKU%2Ff2lDb3%2Fydc7E4gzE56Z7DMVGHGvVUKgqmQQIxv%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDPGfB9HxSYNIWUmQuCrtA5k7voFRt6TEIaWBUK5PkXJD%2FrHNNRScP31BLzG97VkUSbKhQXLZkT19GY7FOzBPkre1WPRkdVovn4Er3DZbpm4aq4QANr9Eu65hCLoyFWVw62mAnAWgnEMFaQqOBep%2Fz8zmBfgSfDWO8KQfFUR%2B4NSwe9M8qxsdpIUEzoxzGe%2Brue0cLOCM70Bw9Dpeogl5ExFR6l4jKw2JulqFZ2sim3dnYOWGinlVyxMdF1tnrzuWX3Fi9L7Zf%2B7PtfRwEYnSwxX02sq772K5TjUzml0NcEwJDcFcEe6kjB7B4fEoai3kxaZ%2FgQC9pLJ0uJ8R5DTOCL1ub5oXCVLKL3zBdotj%2BmxFFzASaIwAYYu%2FT5scykKSIaUX%2F3EyN5Y3fJxIJ6zIDv1Gj5qDiyqPvX9lPO6ZMpdKs8ElGkaoARjPaCdrj%2BsXcoNcXwg9OyPrJYoclw9SkEh5J2LSm6bKeaAaa2e4qx0rymOC6BM1HK1FJeCPTgT5i%2FiSM3N7LW1H%2F7IaV5Cb97vxyKsweT0oke3vlejXGo%2FelHIZecENoFkuAkTmA7a4DcNlPgnYZ85XwAg8f7Hj6knl1CV7Iur7S6EnpGu5zlpuYV%2FApQL5G42eJxDD9WLco%2FmGZGvfbps2VcTuVKuRQrkmjlnxz7p85KxALIEwtb7g1AY6ogFxypXaxEqHefd60%2BZO4XX3mPTuB4nUr2nRRejv%2BQJoHs%2BwKvFEcoYTPtAlthv%2FFl5X4SBV1Whsf8qyKFUUToujB31PV2xiyUh%2Fb97azt7IKfXKoqNcZRNW9aKoRJJRq9b7CpKNUIbPlkGCaLhTlmiinViEWONUCPxgtgwx%2BLfch9A0k81zJUsH2eQVnP%2FOjzgItSZpENvqxzTHWm0lDm7GsnQ%3D&Expires=1788362123",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/topdown/a/river-gate.png",
+          "sha256": "c0c6de7bedf48798dc79b714b2c973566dbc1e5e0b8ea8699ba4bb29c9fea129",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.058,
+          "remainingBalance": 0.309,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__topdown_asset",
+          "width": 256,
+          "height": 256
+        }
+      },
+      "submittedAt": "2026-09-02T14:59:57.690Z",
+      "downloadedAt": "2026-09-02T15:00:37.668Z",
+      "cost": 0.058,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
+    "topdown-b/river-gate": {
+      "styleId": "topdown-b",
+      "assetId": "river-gate",
+      "specHash": "8471a14e629f848961ab6c14ee359319461da25b6152ee65525605bff38f98af",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a fortified village gate spanning a narrow river, three-quarter top-down view, stone towers, timber bridge, isolated with no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "38d47374-8f3f-4ecf-96d2-d3e72571b01c",
+      "reviewObjectId": null,
+      "objectId": "38d47374-8f3f-4ecf-96d2-d3e72571b01c#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/38d47374-8f3f-4ecf-96d2-d3e72571b01c/0-8c1aebf0b2c8421e908aa11d6e46e8dd.png?AWSAccessKeyId=ASIA55GSYAHSI5FXVDKN&Signature=BAVtAJfeFUAXa8QeZNwnbUFyKhY%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFwUeOYjwoztdEuEWYa6aEuqi8H413gcgAPtHyaZA1kjAiBVVrWgf2FvtX8k11gs5LCf3oCJh%2Fqalh%2B%2FJulGMW0PvyqZBAjH%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAEaDDk1NjA3MjE5ODYyOCIMJ83o0yVj3rZVIKeGKu0DSxTa%2BVhJlPz7eNQ5ypkYOhjxLZZeQYS79OrNtls2vzEg4Xr6xmGEBUY0DZsMd3cIY1z%2FRQlw6Y9Wet1OnKsBzvbPn4ZGuD8xJMZGhQokB6o8vFq3tHyD7qXZyhI3ABX3Y%2FjPSgNUjEzCU81YmHWRNaHVKGdFpbzLybjazBNpsQPLTS124AIbDHOspvLH7D9g8LF3FlHXJLNZVv11ysFPHGjCGaX5mxhDI25Nf9A2xu4V9fkhYtsLnqVac71xnrSoun42VBIQl6A7uHv5r9sAvhKYLkrsVTIQGb1BLogQxrxslULUDW6DuUOM3rAR%2Bb8fgz%2BDJ6l8do21dbSDdIAXwlmgWk9EBtLYlbT2xCpGQ8%2FiX6fv2zxCK54CNJRoWYbL54ryWuWXhpwAJ2WJW553x1H8m7zTAMtqG0yvZ3ROJ%2Bvz7k%2FlG9lJqtp90aQc%2BO3rgv1ukff%2FqvlF6RQl682iAGwmuYM%2BWYnYuT2mI9L0XUEfNZ9%2FNXYqqZfKDkbOmXA5A0GsWaIzOb8kaT6Rwucou7hLeKLc3MzHo1edgoQwOLNp0mUOlCe1B50qTPVCXyJMxdVIMm%2Bv4qM8rBpmRHHU%2FTQsPLAa6CzRN5lMbYbJovVvozsB7bPOUDYS81QtIvj8NalDQUAvS2%2FYNEvB9DCK4eDUBjqjAWxl%2FuA5XYtc8wIP4pk2hB6eY6Ztf9domNXaRVP%2Fhb2yymvF919LfqpvmHlUsHZwHFjnPNiGrGlXKJhKIhgOnHHZvr09PTYPiy0iz6TAUYsxBgnsnozNBfKpjimRXZngKC7nakmc84nxWbbZcqrxG33QR6alF1RPDPAOhOpIKV29%2FFjcjj1WXdeokSi%2FTSgkaUv0EqUYNPRYugANLOQFT6%2FC7p8%3D&Expires=1788362130",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/38d47374-8f3f-4ecf-96d2-d3e72571b01c/0-8c1aebf0b2c8421e908aa11d6e46e8dd.png?AWSAccessKeyId=ASIA55GSYAHSI5FXVDKN&Signature=BAVtAJfeFUAXa8QeZNwnbUFyKhY%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFwUeOYjwoztdEuEWYa6aEuqi8H413gcgAPtHyaZA1kjAiBVVrWgf2FvtX8k11gs5LCf3oCJh%2Fqalh%2B%2FJulGMW0PvyqZBAjH%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAEaDDk1NjA3MjE5ODYyOCIMJ83o0yVj3rZVIKeGKu0DSxTa%2BVhJlPz7eNQ5ypkYOhjxLZZeQYS79OrNtls2vzEg4Xr6xmGEBUY0DZsMd3cIY1z%2FRQlw6Y9Wet1OnKsBzvbPn4ZGuD8xJMZGhQokB6o8vFq3tHyD7qXZyhI3ABX3Y%2FjPSgNUjEzCU81YmHWRNaHVKGdFpbzLybjazBNpsQPLTS124AIbDHOspvLH7D9g8LF3FlHXJLNZVv11ysFPHGjCGaX5mxhDI25Nf9A2xu4V9fkhYtsLnqVac71xnrSoun42VBIQl6A7uHv5r9sAvhKYLkrsVTIQGb1BLogQxrxslULUDW6DuUOM3rAR%2Bb8fgz%2BDJ6l8do21dbSDdIAXwlmgWk9EBtLYlbT2xCpGQ8%2FiX6fv2zxCK54CNJRoWYbL54ryWuWXhpwAJ2WJW553x1H8m7zTAMtqG0yvZ3ROJ%2Bvz7k%2FlG9lJqtp90aQc%2BO3rgv1ukff%2FqvlF6RQl682iAGwmuYM%2BWYnYuT2mI9L0XUEfNZ9%2FNXYqqZfKDkbOmXA5A0GsWaIzOb8kaT6Rwucou7hLeKLc3MzHo1edgoQwOLNp0mUOlCe1B50qTPVCXyJMxdVIMm%2Bv4qM8rBpmRHHU%2FTQsPLAa6CzRN5lMbYbJovVvozsB7bPOUDYS81QtIvj8NalDQUAvS2%2FYNEvB9DCK4eDUBjqjAWxl%2FuA5XYtc8wIP4pk2hB6eY6Ztf9domNXaRVP%2Fhb2yymvF919LfqpvmHlUsHZwHFjnPNiGrGlXKJhKIhgOnHHZvr09PTYPiy0iz6TAUYsxBgnsnozNBfKpjimRXZngKC7nakmc84nxWbbZcqrxG33QR6alF1RPDPAOhOpIKV29%2FFjcjj1WXdeokSi%2FTSgkaUv0EqUYNPRYugANLOQFT6%2FC7p8%3D&Expires=1788362130",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/topdown/b/river-gate.png",
+          "sha256": "f7e01dfeec7417992bbe1d181fad50d0070a560a53f99ff0cace20142e880a36",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.058,
+          "remainingBalance": 0.251,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__topdown_asset",
+          "width": 256,
+          "height": 256
+        }
+      },
+      "submittedAt": "2026-09-02T15:00:00.194Z",
+      "downloadedAt": "2026-09-02T15:00:37.672Z",
+      "cost": 0.058,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    }
+  }
+}

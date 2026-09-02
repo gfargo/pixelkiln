@@ -32,6 +32,11 @@ It does not accept style images or a forced palette. On a measured 1-bit restyle
 switching from reference-anchored generation to `map` changed median palette
 distance from 6.6 to 41.9; cheap output is not cheap when unusable.
 
+The API describes map objects as transparent, but both 256px isolated-object
+attempts in the [environment provider benchmark](./PROVIDER_BENCHMARK.md) were
+opaque. `map` has no `noBackground` control in PixelKiln. Check alpha before
+assuming the file can be placed directly over a map.
+
 ## `1dir`
 
 `1dir` is the single-facing sibling of PixelLab's rotatable/animated object

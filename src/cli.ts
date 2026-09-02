@@ -3,8 +3,14 @@ import path from "node:path"
 import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { loadEnvFiles } from "./env.ts"
-import { PixelLabProvider } from "./providers/pixellab.ts"
-import { formatCost, measureBalanceChange, requireDelete, requireList } from "./provider.ts"
+import {
+  formatCost,
+  measureBalanceChange,
+  requireBalance,
+  requireDelete,
+  requireList,
+} from "./provider.ts"
+import { createProvider, providerFactory } from "./providers/registry.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { mountStyle, packSprites, packStyle, resolvePackInputs } from "./pipeline/pack.ts"
 import { loadLock, remove as removeLock, saveLock, spendByUnit, upsert as upsertLock } from "./lock.ts"
@@ -308,7 +314,7 @@ export function parseArgs(argv: string[]): Args {
   }
 }
 
-const HELP = `pixelkiln — manifest-driven pixel art generation (PixelLab)
+const HELP = `pixelkiln — manifest-driven pixel art generation
 
   pixelkiln <command> [options]
 
@@ -477,8 +483,9 @@ async function main() {
   if (args.command === "balance") {
     loadEnvFiles(path.dirname(path.resolve(args.manifest)))
     loadEnvFiles(process.cwd())
-    const p = PixelLabProvider.fromEnv()
-    const b = await p.balance()
+    const loaded = await loadManifest(args.manifest)
+    const p = createProvider(loaded.manifest.provider, "online")
+    const b = await requireBalance(p)()
     log(`  provider:  ${p.id}`)
     log(`  plan:      ${b.plan ?? "n/a"}`)
     log(`  remaining: ${formatCost(b.unit, b.remaining)}${b.total ? ` of ${b.total}` : ""}`)
@@ -631,7 +638,7 @@ async function main() {
         id,
         manifest: toPortablePath(dir, manifestPath),
         lock: toPortablePath(dir, lockPath),
-        provider: args.provider ?? "pixellab",
+        provider: args.provider ?? loadedTarget.manifest.provider,
         ...(args.account ? { account: args.account } : {}),
       }
       await saveWorkspace(workspacePath, { version: 1, projects: [...ws.projects, project] })
@@ -702,14 +709,14 @@ async function main() {
           log(`\n  ${p.id}  (${p.provider}${p.account ? `, ${p.account}` : ""})`)
           log(`    ${p.entries} lock entries`)
           for (const [state, n] of Object.entries(p.byState)) if (n) log(`      ${state.padEnd(12)} ${n}`)
-          for (const unit of ["generations", "usd", "free"] as const) {
-            if (p.spendByUnit[unit]) log(`    spend: ${formatCost(unit, p.spendByUnit[unit])}`)
+          for (const [unit, amount] of Object.entries(p.spendByUnit).sort()) {
+            if (amount) log(`    spend: ${formatCost(unit, amount)}`)
           }
         }
         log(`\n  totals:`)
         for (const [state, n] of Object.entries(report.totals.byState)) if (n) log(`    ${state.padEnd(12)} ${n}`)
-        for (const unit of ["generations", "usd", "free"] as const) {
-          if (report.totals.spendByUnit[unit]) log(`    spend: ${formatCost(unit, report.totals.spendByUnit[unit])}`)
+        for (const [unit, amount] of Object.entries(report.totals.spendByUnit).sort()) {
+          if (amount) log(`    spend: ${formatCost(unit, amount)}`)
         }
         log(`    claims: ${report.totals.claims}`)
         for (const d of report.diagnostics) log(`  ${d.level === "error" ? "ERROR" : "WARN "} ${d.id.padEnd(18)} ${d.message}`)
@@ -749,7 +756,7 @@ async function main() {
   if (path.resolve(process.cwd()) !== manifestDir) envFiles.push(...loadEnvFiles(process.cwd()))
 
   const loaded = await loadManifest(args.manifest)
-  const estimator = PixelLabProvider.forOffline()
+  const estimator = createProvider(loaded.manifest.provider, "offline")
   const specs = await resolveSpecs(loaded, {
     styles: args.styles,
     assets: args.assets,
@@ -769,9 +776,9 @@ async function main() {
     for (const [s, n] of Object.entries(byStatus).sort()) log(`    ${s.padEnd(12)} ${n}`)
     const spend = spendByUnit(lock)
     let reported = false
-    for (const unit of ["generations", "usd", "free"] as const) {
-      if (spend[unit]) {
-        log(`  recorded successful submissions: ${formatCost(unit, spend[unit])}`)
+    for (const [unit, amount] of Object.entries(spend).sort()) {
+      if (amount) {
+        log(`  recorded successful submissions: ${formatCost(unit, amount)}`)
         reported = true
       }
     }
@@ -782,12 +789,16 @@ async function main() {
   const plan = await buildPlan(specs, lock, { force: args.force })
 
   if (args.command === "doctor") {
-    const apiKeyPresent = Boolean(process.env.PIXELLAB_API_KEY)
-    const provider = !args.dryRun && apiKeyPresent ? PixelLabProvider.fromEnv() : undefined
+    const factory = providerFactory(loaded.manifest.provider)
+    const apiKeyPresent = !factory.credentialEnv || Boolean(process.env[factory.credentialEnv])
+    const provider = !args.dryRun && apiKeyPresent
+      ? createProvider(loaded.manifest.provider, "online")
+      : undefined
     const report = await doctor(loaded, specs, lock, args.lock, {
       provider,
       offline: args.dryRun,
       apiKeyPresent,
+      credentialEnv: factory.credentialEnv,
     })
     if (args.json) {
       log(JSON.stringify(report, null, 2))
@@ -1143,8 +1154,8 @@ async function main() {
 
   const provider: Provider =
     args.command === "restore" || (args.command === "fetch" && !args.tag)
-      ? PixelLabProvider.forDownloads()
-      : PixelLabProvider.fromEnv()
+      ? createProvider(loaded.manifest.provider, "downloads")
+      : createProvider(loaded.manifest.provider, "online")
 
   if (args.command === "adopt") {
     log(`\n  Reconciling account objects against files already on disk…`)
@@ -1409,7 +1420,7 @@ async function main() {
       log(`\n  --dry-run: nothing deleted.`)
       return
     }
-    log(`\n  This permanently deletes them from your PixelLab account.`)
+    log(`\n  This permanently deletes them from your ${provider.id} account.`)
     log(`  Any local files already downloaded are untouched, but the objects`)
     log(`  and their URLs are gone and cannot be re-downloaded.`)
     if (!(await confirm(`  Delete ${doomed.length} object(s)?`, args.yes))) {
@@ -1445,21 +1456,25 @@ async function main() {
       return
     }
     if (plan.actionable.length) {
-      const balance = await provider.balance()
-      log(`\n  balance: ${formatCost(balance.unit, balance.remaining)} remaining (${provider.id})`)
-      if (balance.unit !== plan.costUnit) {
-        throw new Error(
-          `Provider estimate unit ${plan.costUnit} does not match balance unit ${balance.unit}.`,
-        )
-      }
-      if (balance.unit !== "free" && plan.cost > balance.remaining) {
-        throw new Error(
-          `This run needs ${formatCost(balance.unit, plan.cost)} but only ` +
-            `${formatCost(balance.unit, balance.remaining)} remain.`,
-        )
+      const balance = provider.balance ? await provider.balance() : null
+      if (balance) {
+        log(`\n  balance: ${formatCost(balance.unit, balance.remaining)} remaining (${provider.id})`)
+        if (balance.unit !== plan.costUnit) {
+          throw new Error(
+            `Provider estimate unit ${plan.costUnit} does not match balance unit ${balance.unit}.`,
+          )
+        }
+        if (balance.unit !== "free" && plan.cost > balance.remaining) {
+          throw new Error(
+            `This run needs ${formatCost(balance.unit, plan.cost)} but only ` +
+              `${formatCost(balance.unit, balance.remaining)} remain.`,
+          )
+        }
+      } else {
+        log(`\n  ${provider.id} does not expose an account balance; enforcing the explicit run budget`)
       }
       const ok = await confirm(
-        `  Spend ${formatCost(balance.unit, plan.cost)} on ${plan.actionable.length} asset(s)?`,
+        `  Spend ${formatCost(plan.costUnit, plan.cost)} on ${plan.actionable.length} asset(s)?`,
         args.yes,
       )
       if (!ok) {
@@ -1476,7 +1491,8 @@ async function main() {
           `estimated ${formatCost(res.unit, res.spent)}`,
       )
       try {
-        const after = await provider.balance()
+        const after = balance && provider.balance ? await provider.balance() : null
+        if (!balance || !after) throw new Error("balance reporting is unsupported")
         const measured = measureBalanceChange(balance, after)
         if (measured) {
           const movement = measured.credited

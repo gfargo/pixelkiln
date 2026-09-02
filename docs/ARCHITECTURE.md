@@ -5,7 +5,7 @@ PixelKiln separates provider mechanics from the project state machine:
 ```text
 manifest + lock + planning + review + recovery + artifact pipelines
 ──────────────────── Provider interface ─────────────────────────
-PixelLabProvider             FakeProvider             future adapters
+PixelLabProvider      RetroDiffusionProvider      FakeProvider      future adapters
 ```
 
 Everything above the provider boundary is backend-neutral. URL shapes, auth
@@ -31,7 +31,8 @@ retain:
 - provider and remote object/job ids;
 - explicit lifecycle status and errors;
 - source URLs/candidates/selections;
-- `outputs[]` with portable path, SHA-256, and optional structural role;
+- `outputs[]` with portable path, SHA-256, optional structural role, and
+  optional PNG/GIF media type;
 - provider-specific metadata under a provider-id namespace;
 - successful submission cost and cost unit.
 
@@ -41,9 +42,10 @@ are rebased in memory and rewritten portably on the next save. The current
 manifest remains destination authority; a stale lock path cannot redirect
 restore into an unrelated project file.
 
-Cost units that differ are never summed. `generations`, `usd`, and `free`
-stay separate. Candidate
-count also belongs to the provider estimate rather than being assumed globally.
+Cost units that differ are never summed. Built-in adapters currently use
+`generations`, `usd`, and `free`; custom adapters may register another
+non-empty unit. Candidate count also belongs to the provider estimate rather
+than being assumed globally.
 
 ## State machine
 
@@ -72,8 +74,9 @@ and exporters all use the same role model. A consumer must request a role when
 there is no unambiguous primary output.
 
 PNG ingestion validates signature, chunks, CRCs, palettes, compressed data,
-scanlines, dimensions, and supported color modes before bytes become durable
-output or recovery cache data.
+scanlines, dimensions, and supported color modes. GIF ingestion walks the
+logical screen, color tables, extensions, image-data blocks, and trailer. Both
+formats are validated before bytes become durable output or recovery cache data.
 
 ## Concurrency and lock saves
 
@@ -112,11 +115,18 @@ byte is structurally validated before use.
 
 ## Provider capability boundary
 
-Required provider members cover support/estimate, submit, poll, selection where
-applicable, and download. Account-wide listing, tagging, deletion, and balance
-are optional. Commands such as adopt or salvage report a capability gap rather
-than failing through an undefined method.
+Providers are selected from a registry by the manifest's top-level `provider`
+id. Required members cover support/estimate, submit, poll, and download;
+candidate selection is required only when an adapter can return alternatives.
+Account-wide listing, tagging, deletion, and balance are optional. Commands
+such as adopt or salvage report a capability gap rather than failing through
+an undefined method.
 
-`FakeProvider` implements the same contract in memory, which keeps the paid
-pipeline testable without credentials or network access. See
-[library API](./LIBRARY.md) and [provider notes](../PROVIDERS.md).
+`PixelLabProvider` is production and live-tested. `RetroDiffusionProvider` is
+an experimental still, tileset, and animation adapter. Authenticated RD Fast
+and RD Plus single-candidate still lifecycles have passed end to end. Its
+multi-candidate, tileset, GIF, and spritesheet paths retain mocked coverage
+pending paid live smokes. `FakeProvider` implements the same contract in memory, which
+keeps the paid pipeline testable without credentials or network access. See
+[library API](./LIBRARY.md) and
+[PixelLab vs. Retro Diffusion](../PROVIDERS.md).

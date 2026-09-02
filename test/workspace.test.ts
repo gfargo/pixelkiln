@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest"
-import { mkdtemp, writeFile, mkdir, cp, rm } from "node:fs/promises"
+import { mkdtemp, writeFile, mkdir, cp, rm, realpath } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { execFile } from "node:child_process"
@@ -475,8 +475,11 @@ describe("the `workspace` JSON key means the catalog file everywhere it appears"
 
     const list = JSON.parse(listOut)
     const status = JSON.parse(statusOut)
-    expect(list.workspace).toBe(catalogPath)
-    expect(status.workspace).toBe(catalogPath)
-    expect(status.dir).toBe(path.dirname(catalogPath))
+    // macOS may expose the parent process temp path through /var while a child
+    // process resolves its cwd through the equivalent /private/var path.
+    const canonicalCatalogPath = await realpath(catalogPath)
+    expect(list.workspace).toBe(canonicalCatalogPath)
+    expect(status.workspace).toBe(canonicalCatalogPath)
+    expect(status.dir).toBe(path.dirname(canonicalCatalogPath))
   })
 })

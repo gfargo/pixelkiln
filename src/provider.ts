@@ -1,4 +1,5 @@
 import type { Generator, ResolvedSpec, ResolvedStyleImage } from "./types.ts"
+import type { MediaType } from "./media.ts"
 
 /**
  * What a provider charges in. Cost is not universally "generations": PixelLab
@@ -6,7 +7,12 @@ import type { Generator, ResolvedSpec, ResolvedStyleImage } from "./types.ts"
  * bills nothing. `plan` prints the unit alongside the number so the figure is
  * never silently misread, and `--budget` is interpreted in the active unit.
  */
-export type CostUnit = "generations" | "usd" | "free"
+/**
+ * Human-readable unit attached to every estimate and recorded charge.
+ * Built-ins use generations/USD/free; adapters may report non-convertible
+ * units such as "credits" without pretending they are dollars.
+ */
+export type CostUnit = "generations" | "usd" | "free" | (string & {})
 
 export interface CostEstimate {
   unit: CostUnit
@@ -27,7 +33,7 @@ export function validateCostEstimate(providerId: string, value: unknown): CostEs
     throw new Error(`Provider "${providerId}" returned an invalid cost estimate`)
   }
   const estimate = value as Partial<CostEstimate>
-  if (!(["generations", "usd", "free"] as readonly unknown[]).includes(estimate.unit)) {
+  if (typeof estimate.unit !== "string" || !estimate.unit.trim()) {
     throw new Error(`Provider "${providerId}" returned an invalid cost unit`)
   }
   if (!Number.isFinite(estimate.amount) || estimate.amount! < 0) {
@@ -46,11 +52,15 @@ export interface OutputSource {
   url: string
   /** Stable semantic/index role used in filenames and lockfile outputs. */
   role?: string
+  /** Durable byte format. Omission preserves legacy PNG behavior. */
+  mediaType?: MediaType
 }
 
 export interface PollContext {
   /** Distinguishes structural tile sets from independent tile candidates. */
   tileFeature?: string
+  /** Current resolved intent, needed when output media depends on provider options. */
+  spec?: ResolvedSpec
 }
 
 /** Provider-owned, JSON-serializable details needed by downstream exporters. */
@@ -140,7 +150,7 @@ export interface RateLimit {
 export const DEFAULT_RATE_LIMIT: RateLimit = { spacingMs: 2500, maxInFlight: 8 }
 
 /**
- * A backend that turns a resolved spec into image bytes.
+ * A backend that turns a resolved spec into durable image or animation bytes.
  *
  * Everything above this interface — the manifest, the lockfile, plan diffing,
  * salvage, the contact sheets — is provider-agnostic. Everything that knows a
@@ -159,6 +169,9 @@ export interface Provider {
   /** Never performs I/O — `plan` must stay free and offline. */
   estimate(spec: ResolvedSpec): CostEstimate
 
+  /** Provider-specific, offline validation after references resolve. */
+  validate?(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void
+
   /** This backend's own submission constraints. Falls back to
    *  `DEFAULT_RATE_LIMIT` when absent — see that constant's doc. */
   rateLimit?(): RateLimit
@@ -176,7 +189,7 @@ export interface Provider {
    * variation is already a finished image and there is nothing to promote.
    * A provider that treats every candidate alike can ignore it.
    */
-  selectCandidate(
+  selectCandidate?(
     jobId: string,
     index: number,
     commonTag?: string,
@@ -186,7 +199,8 @@ export interface Provider {
   /** Storage URLs are usually public; implementations should not send auth. */
   download(url: string): Promise<Buffer>
 
-  balance(): Promise<BalanceInfo>
+  /** Query an authoritative account balance when the service exposes one. */
+  balance?(): Promise<BalanceInfo>
 
   /** Free-form labels on the remote asset. Absent if unsupported. */
   setTags?(objectId: string, tags: string[]): Promise<void>
@@ -219,8 +233,23 @@ export function requireDelete(provider: Provider): NonNullable<Provider["delete"
   return provider.delete.bind(provider)
 }
 
+export function requireSelectCandidate(
+  provider: Provider,
+): NonNullable<Provider["selectCandidate"]> {
+  if (!provider.selectCandidate) {
+    throw new UnsupportedCapabilityError(provider.id, "candidate selection")
+  }
+  return provider.selectCandidate.bind(provider)
+}
+
+export function requireBalance(provider: Provider): NonNullable<Provider["balance"]> {
+  if (!provider.balance) throw new UnsupportedCapabilityError(provider.id, "account balance")
+  return provider.balance.bind(provider)
+}
+
 export function formatCost(unit: CostUnit, amount: number): string {
   if (unit === "free") return "free"
   if (unit === "usd") return `$${amount.toFixed(2)}`
-  return `${amount} generation${amount === 1 ? "" : "s"}`
+  if (unit === "generations") return `${amount} generation${amount === 1 ? "" : "s"}`
+  return `${amount} ${unit}`
 }

@@ -15,10 +15,15 @@ local contact sheet, and commit exact provenance beside the files. No LLM is in
 the orchestration loop; provider calls, polling, hashing, downloads, and filing
 are deterministic software mechanics.
 
-The orchestration layer is provider-neutral by design. PixelLab is currently
-the only production adapter and the only live-tested generation backend;
-`FakeProvider` exercises the same contract deterministically in tests. A second
-production adapter is roadmap work, not current compatibility.
+The orchestration layer is provider-neutral. PixelLab is the production,
+live-tested backend. An experimental Retro Diffusion adapter supports native
+pixel-art stills, candidate batches, tileset sheets, animated GIFs, and PNG
+spritesheets. Authenticated RD Fast and RD Plus single-candidate still paths
+have passed from quote through validated output and recovery. Multi-candidate,
+tileset, GIF, and spritesheet live runs remain. See
+[PixelLab vs. Retro Diffusion](./PROVIDERS.md) for the trade-offs, including
+large environment and building workflows.
+`FakeProvider` exercises the same contract deterministically in tests.
 
 > **Release status:** the package is pre-1.0 and the first npm publication is
 > tracked in [issue #1](https://github.com/gfargo/pixelkiln/issues/1). Until it
@@ -99,7 +104,11 @@ cd ../my-game
 Put the provider credential in `.env.local` beside the manifest:
 
 ```dotenv
+# PixelLab (the default provider)
 PIXELLAB_API_KEY=...
+
+# Or Retro Diffusion when `provider` is `retrodiffusion`
+RD_API_KEY=...
 ```
 
 Validate locally, inspect exact work/cost, then generate with a hard ceiling:
@@ -127,6 +136,9 @@ pixelkiln plan
 ```
 
 See [Getting started](./docs/GETTING_STARTED.md) for new and existing projects.
+Use [Set up PixelLab](./docs/PIXELLAB.md) or
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) for provider-specific
+credentials, manifest examples, and current limits.
 
 ## Agent skill
 
@@ -149,6 +161,7 @@ packaging layer.
 {
   "$schema": "./node_modules/pixelkiln/schema/manifest.schema.json",
   "name": "my-game",
+  "provider": "pixellab",
   "styles": {
     "base": {
       "generator": "map",
@@ -168,7 +181,12 @@ packaging layer.
 Styles are namespaces. Adding a second style re-derives the same asset ids into
 a separate output directory and separate lock keys without clobbering the first
 set. Generator choice, reference-image bytes, dimensions, palette, seed, and
-prompt settings participate in deterministic spec identity.
+prompt settings participate in deterministic spec identity. A manifest may
+select `retrodiffusion` instead and pass namespaced `providerOptions`; see
+[Set up PixelLab](./docs/PIXELLAB.md),
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), and
+[PixelLab vs. Retro Diffusion](./PROVIDERS.md) for configuration, costs,
+current confidence, and limitations.
 
 The schema rejects unknown fields and invalid generator combinations before
 planning. See the [Manifest reference](./docs/MANIFEST.md).
@@ -211,6 +229,11 @@ Start with the required capability, not the most expensive endpoint. Forty
 replace a hard palette or reference-image constraint. See
 [Generator selection](./docs/GENERATORS.md) and the
 [measured endpoint reference](./docs/ENDPOINTS.md).
+
+Generator names describe PixelKiln workflows; their exact capabilities and
+prices depend on the selected provider. Retro Diffusion also supports the
+provider-specific `animation` generator. Compare the adapters in
+[PixelLab vs. Retro Diffusion](./PROVIDERS.md).
 
 ## Derived artifacts
 
@@ -264,8 +287,9 @@ pixelkiln salvage --workspace pixelkiln.workspace.json
 ```
 
 A registered project's missing or unreadable lockfile is a hard error for
-`workspace claims` and `salvage --workspace` — never a silent skip. Purge only
-targets objects already tagged discard and requires an explicit confirmation.
+`workspace claims` and `salvage --workspace`. Missing claims are never skipped.
+Purge only targets objects already tagged discard and requires an explicit
+confirmation.
 See [Recovery and account safety](./docs/RECOVERY.md).
 
 ## Automation
@@ -312,10 +336,13 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 |---|---|
 | [Documentation index](./docs/README.md) | All user, workflow, reference, and architecture guides. |
 | [Getting started](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, everyday workflow, and what to commit. |
+| [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
+| [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
-| [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and PixelLab MCP pairing. |
+| [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
+| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Twelve matched outputs comparing buildings, landmarks, backgrounds, cost, and file readiness. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
 | [Quality gates](./docs/QUALITY.md) | Plan, doctor, audit, cache, JSON, and CI. |
@@ -323,6 +350,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Library API](./docs/LIBRARY.md) | Public TypeScript contracts and examples. |
 | [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |
 | [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
+| [PixelLab vs. Retro Diffusion](./PROVIDERS.md) | Provider selection, costs, supported workflows, confidence, and limitations. |
 
 The [public documentation site](https://pixelkiln.griffen.codes/docs) is built by
 the application in [`website/`](./website/README.md). It reads these Markdown
@@ -330,7 +358,7 @@ files directly at build time, so the website and published package share one
 documentation source.
 
 Project policies: [Contributing](./CONTRIBUTING.md),
-[Security](./SECURITY.md), and [provider notes](./PROVIDERS.md).
+[Security](./SECURITY.md), and [provider comparison](./PROVIDERS.md).
 
 ## Scope
 

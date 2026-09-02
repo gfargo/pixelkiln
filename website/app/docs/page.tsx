@@ -18,7 +18,9 @@ export default function DocsIndex() {
           <h1>Build with the kiln.</h1>
           <p>
             Start with the workflow, then go as deep as you need. These pages
-            render directly from the Markdown that ships with PixelKiln.
+            render directly from the Markdown that ships with PixelKiln,
+            including separate PixelLab and Retro Diffusion setup guides and a
+            practical provider comparison.
           </p>
         </div>
 

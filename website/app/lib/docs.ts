@@ -22,6 +22,20 @@ export const docs: DocEntry[] = [
     group: "Start here",
   },
   {
+    slug: "pixellab",
+    title: "Set up PixelLab",
+    description: "Configure the production provider, choose a generator, and use its account workflows.",
+    file: "docs/PIXELLAB.md",
+    group: "Start here",
+  },
+  {
+    slug: "retro-diffusion",
+    title: "Set up Retro Diffusion",
+    description: "Configure the experimental provider, choose a style, and understand its tested boundary.",
+    file: "docs/RETRO_DIFFUSION.md",
+    group: "Start here",
+  },
+  {
     slug: "cli",
     title: "CLI reference",
     description: "Every command and flag, including automation and exit behavior.",
@@ -47,6 +61,13 @@ export const docs: DocEntry[] = [
     title: "Generator selection",
     description: "Choose the right capability and understand measured costs.",
     file: "docs/GENERATORS.md",
+    group: "Workflows",
+  },
+  {
+    slug: "provider-benchmark",
+    title: "Environment provider benchmark",
+    description: "Twelve matched PixelLab and Retro Diffusion outputs, with measured costs and review notes.",
+    file: "docs/PROVIDER_BENCHMARK.md",
     group: "Workflows",
   },
   {
@@ -100,10 +121,10 @@ export const docs: DocEntry[] = [
   },
   {
     slug: "provider-notes",
-    title: "Provider notes",
-    description: "The current adapter seam and future backend work.",
+    title: "PixelLab vs. Retro Diffusion",
+    description: "Compare costs, workflows, confidence, limitations, and provider fit.",
     file: "PROVIDERS.md",
-    group: "Internals",
+    group: "Workflows",
   },
   {
     slug: "contributing",
@@ -149,6 +170,11 @@ export function docHref(sourceFile: string, href?: string) {
   const [filePart, anchor] = href.split("#", 2);
   const target = path.resolve(path.dirname(sourceFile), decodeURIComponent(filePart));
   const repoRoot = path.resolve(/* turbopackIgnore: true */ process.cwd(), "..");
+  const publicRoot = path.join(repoRoot, "website", "public");
+  const publicRelative = path.relative(publicRoot, target).split(path.sep).join("/");
+  if (!publicRelative.startsWith("../")) {
+    return `/${publicRelative}${anchor ? `#${anchor}` : ""}`;
+  }
   const match = docs.find(
     (doc) => path.resolve(repoRoot, doc.file) === target,
   );

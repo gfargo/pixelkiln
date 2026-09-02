@@ -23,7 +23,7 @@ export default function Home() {
           </h1>
           <p className="hero-deck">
             PixelKiln turns generative pixel art into a deterministic build
-            pipeline—planned costs, human review, exact hashes, resilient
+            pipeline. It tracks planned costs, human review, exact hashes, resilient
             recovery, and engine-ready output.
           </p>
           <div className="hero-actions">
@@ -121,7 +121,7 @@ export default function Home() {
         <section className="proof-strip" aria-label="PixelKiln at a glance">
         <div className="shell proof-grid">
           <div>
-            <strong>04</strong>
+            <strong>05</strong>
             <span>purpose-fit generators</span>
           </div>
           <div>
@@ -143,7 +143,7 @@ export default function Home() {
         <section className="workflow-section shell" id="workflow">
           <div className="section-heading">
             <p className="eyebrow">One source of truth, four deliberate moves</p>
-            <h2>From intent to engine—<br />without losing the thread.</h2>
+            <h2>From intent to engine.<br />Keep the thread.</h2>
           </div>
           <div className="workflow-grid">
             <article>
@@ -180,27 +180,29 @@ export default function Home() {
         <section className="review-section">
           <div className="shell review-grid">
             <div className="section-heading review-copy">
-              <p className="eyebrow">Provider-neutral core · proven with PixelLab</p>
-              <h2>The pipeline is portable. The proof is real.</h2>
+              <p className="eyebrow">Human review stays local</p>
+              <h2>Choose the image.<br />Keep the receipts.</h2>
               <p className="section-deck">
-                PixelKiln keeps provider mechanics behind an adapter boundary.
-                PixelLab is the production and live-tested adapter today;
-                deterministic tests use the same contract, and another production
-                backend can be added without rewriting project state.
+                PixelLab and Retro Diffusion use the same review, lockfile, and
+                recovery flow. PixelKiln records every candidate, then leaves
+                the visual decision to you.
               </p>
               <div className="provider-status" aria-label="Current provider support">
                 <span><i className="status-dot" /> PixelLab · production</span>
+                <span><i /> Retro Diffusion · experimental</span>
                 <span><i /> FakeProvider · tests</span>
-                <span><i /> Next adapter · roadmap</span>
               </div>
               <p className="provider-note">
-                PixelLab&apos;s official MCP is complementary: it gives agents direct
-                creation tools, while PixelKiln owns planning, budget limits,
-                provenance, human review, recovery, and packaging.
+                PixelLab is production-ready. Retro Diffusion is experimental:
+                paid RD Fast and RD Plus stills pass end to end, while advanced
+                live smoke tests remain.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
-                  Read the provider boundary →
+                  Compare PixelLab and Retro Diffusion →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="review_provider_benchmark" section="review" href="/docs/provider-benchmark">
+                  See the environment benchmark →
                 </TrackedLink>
                 <TrackedLink
                   className="text-link"
@@ -230,6 +232,129 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="provider-showcase-section shell" id="providers">
+          <div className="section-heading split-heading provider-showcase-heading">
+            <div>
+              <p className="eyebrow">Provider showcase</p>
+              <h2>Same briefs.<br />Different pixels.</h2>
+            </div>
+            <p className="section-deck">
+              These are untouched 256×256 outputs from the committed A/B
+              benchmark. Two providers received the same briefs and seed
+              numbers. Each kept its native route and style.
+            </p>
+          </div>
+
+          <div className="provider-showcase-grid">
+            <article className="provider-card">
+              <div className="provider-card-header">
+                <div>
+                  <span className="provider-badge production">Production</span>
+                  <h3>PixelLab</h3>
+                </div>
+                <span className="provider-unit">Generations</span>
+              </div>
+              <div className="provider-image-grid">
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png"
+                    alt="PixelLab result for a stone observatory on a snowy mountain ridge"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Isolated building · map</figcaption>
+                </figure>
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/pixellab/background/a/alpine-valley.png"
+                    alt="PixelLab result for an alpine valley background at dusk"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Scenic background · Pixflux</figcaption>
+                </figure>
+              </div>
+              <p>
+                Stronger prompt coverage and the better scenic background in
+                this sample. The map object was opaque, so check alpha before a
+                larger run.
+              </p>
+              <dl>
+                <div><dt>Benchmark cost</dt><dd>1 generation each</dd></div>
+                <div><dt>Best fit</dt><dd>Prompt fidelity and account recovery</dd></div>
+              </dl>
+              <div className="provider-card-links">
+                <TrackedLink className="text-link" id="showcase_pixellab_setup" section="provider_showcase" href="/docs/pixellab">
+                  Set up PixelLab →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_pixellab_site" section="provider_showcase" href="https://www.pixellab.ai/" external>
+                  Visit PixelLab ↗
+                </TrackedLink>
+              </div>
+            </article>
+
+            <article className="provider-card">
+              <div className="provider-card-header">
+                <div>
+                  <span className="provider-badge experimental">Experimental</span>
+                  <h3>Retro Diffusion</h3>
+                </div>
+                <span className="provider-unit">USD</span>
+              </div>
+              <div className="provider-image-grid">
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/retrodiffusion/isolated/a/mountain-observatory.png"
+                    alt="Retro Diffusion result for a stone observatory on a snowy mountain ridge"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Isolated building · RD Plus</figcaption>
+                </figure>
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/retrodiffusion/background/a/alpine-valley.png"
+                    alt="Retro Diffusion result for an alpine valley background at dusk"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Scenic background · RD Plus</figcaption>
+                </figure>
+              </div>
+              <p>
+                Cleaner transparent cutouts with fewer colors, plus more
+                cinematic scene framing. Complex building details were easier
+                for the model to lose.
+              </p>
+              <dl>
+                <div><dt>Benchmark cost</dt><dd>$0.058 each</dd></div>
+                <div><dt>Best fit</dt><dd>Ready-to-place cutouts and native animation</dd></div>
+              </dl>
+              <div className="provider-card-links">
+                <TrackedLink className="text-link" id="showcase_retro_setup" section="provider_showcase" href="/docs/retro-diffusion">
+                  Set up Retro Diffusion →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_retro_site" section="provider_showcase" href="https://www.retrodiffusion.ai/" external>
+                  Visit Retro Diffusion ↗
+                </TrackedLink>
+              </div>
+            </article>
+          </div>
+
+          <div className="provider-showcase-links">
+            <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
+              Review all 12 benchmark images →
+            </TrackedLink>
+            <TrackedLink className="text-link" id="showcase_comparison" section="provider_showcase" href="/docs/provider-notes">
+              Compare provider capabilities →
+            </TrackedLink>
+          </div>
+        </section>
+
         <section className="safety-section">
           <div className="shell safety-grid">
             <div className="section-heading safety-copy">
@@ -238,7 +363,7 @@ export default function Home() {
               <p className="section-deck">
                 Every provider object, prompt identity, output role, path, and
                 byte hash survives in project state. A failed download remains
-                recoverable work—not a reason to pay twice.
+                recoverable work, not a reason to pay twice.
               </p>
               <ul className="check-list">
                 <li><span>✓</span> Remote identity saved before polling</li>
@@ -304,7 +429,7 @@ export default function Home() {
             <article className="capability-card large">
               <span className="card-index">04 / PACKAGE</span>
               <h3>Turn source pixels into durable game assets.</h3>
-              <p>Pack sheets, mount stable cells, and export lossless generic, Tiled, or Godot terrain metadata—with provenance.</p>
+              <p>Pack sheets, mount stable cells, and export lossless generic, Tiled, or Godot terrain metadata with provenance.</p>
               <div className="format-list"><span>PNG</span><span>JSON</span><span>TILED</span><span>GODOT 4</span></div>
             </article>
           </div>
@@ -317,7 +442,7 @@ export default function Home() {
                 <p className="eyebrow">Purpose-fit routing</p>
                 <h2>Use the capability you need.<br />Pay only for that.</h2>
               </div>
-              <p className="section-deck">Measured PixelLab costs vary by up to 40×. PixelKiln makes generator choice explicit and keeps unlike cost units separate.</p>
+              <p className="section-deck">Measured PixelLab costs vary by up to 40×. Retro Diffusion uses USD pricing. PixelKiln makes generator choice explicit and never combines unlike cost units.</p>
             </div>
             <div className="generator-table">
               <div className="generator-row header"><span>Generator</span><span>Best for</span><span>Measured cost</span></div>
@@ -326,9 +451,14 @@ export default function Home() {
               <div className="generator-row"><strong>1dir</strong><span>References and candidate variety</span><span><i style={{ width: "72%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 20–40 gen</span></div>
             </div>
-            <TrackedLink className="text-link" id="generator_compare" section="generator" href="/docs/generators">
-              Compare generator capabilities →
-            </TrackedLink>
+            <div className="review-links">
+              <TrackedLink className="text-link" id="generator_compare" section="generator" href="/docs/generators">
+                Compare generator capabilities →
+              </TrackedLink>
+              <TrackedLink className="text-link" id="provider_compare" section="generator" href="/docs/provider-notes">
+                Compare providers →
+              </TrackedLink>
+            </div>
           </div>
         </section>
 

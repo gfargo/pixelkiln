@@ -5,7 +5,7 @@ import { parseLock, type Lock, type LockEntry } from "./types.ts"
 import type { CostUnit } from "./provider.ts"
 
 /**
- * The lockfile is the record that maps a spec to the PixelLab object that
+ * The lockfile is the record that maps a spec to the provider work that
  * satisfies it and the file on disk that came from it. It is written after
  * every state transition — including immediately after submitting, before the
  * job is awaited — so an interrupted run never loses track of paid-for work.
@@ -220,12 +220,13 @@ async function acquireFileLock(file: string): Promise<() => Promise<void>> {
 export function spendByUnit(lock: Lock): Record<CostUnit, number> {
   const totals: Record<CostUnit, number> = { generations: 0, usd: 0, free: 0 }
   for (const entry of Object.values(lock.entries)) {
-    totals[entry.costUnit ?? "generations"] += entry.cost ?? 0
+    const unit = entry.costUnit ?? "generations"
+    totals[unit] = (totals[unit] ?? 0) + (entry.cost ?? 0)
   }
   return totals
 }
 
 /** @deprecated Prefer spendByUnit; summing unlike provider units is unsafe. */
 export function totalSpend(lock: Lock, unit: CostUnit = "generations"): number {
-  return spendByUnit(lock)[unit]
+  return spendByUnit(lock)[unit] ?? 0
 }

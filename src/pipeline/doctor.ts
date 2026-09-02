@@ -6,6 +6,7 @@ import type { Provider } from "../provider.ts"
 import type { Lock, ResolvedSpec } from "../types.ts"
 import { sha256File } from "../hash.ts"
 import { currentEntryOutputPath, resolveOutputPath } from "../outputs.ts"
+import { cacheFileName, MediaType } from "../media.ts"
 import { buildPlan, summarize } from "./plan.ts"
 
 export type DoctorLevel = "ok" | "warning" | "error"
@@ -26,6 +27,7 @@ export interface DoctorOptions {
   /** Skip provider connectivity while retaining every local check. */
   offline?: boolean
   apiKeyPresent?: boolean
+  credentialEnv?: string
 }
 
 /**
@@ -116,7 +118,10 @@ export async function doctor(
     const hasSource = Boolean(entry.sourceUrl || entry.sourceUrls?.length)
     let hasCache = false
     for (const output of entry.outputs) {
-      const cached = path.join(cacheDir, `${output.sha256}.png`)
+      const cached = path.join(
+        cacheDir,
+        cacheFileName(output.sha256, output.mediaType ?? MediaType.PNG),
+      )
       if (existsSync(cached) && (await sha256File(cached)) === output.sha256) {
         hasCache = true
         break
@@ -164,11 +169,16 @@ export async function doctor(
     add(
       "provider",
       "error",
-      opts.apiKeyPresent === false ? "PIXELLAB_API_KEY is not configured" : "provider is not configured",
+      opts.apiKeyPresent === false
+        ? `${opts.credentialEnv ?? "PIXELLAB_API_KEY"} is not configured`
+        : "provider is not configured",
     )
+  } else if (!opts.provider.balance) {
+    add("provider", "ok", `${opts.provider.id} configured; balance reporting unavailable`)
   } else {
+    const balanceFn = opts.provider.balance.bind(opts.provider)
     try {
-      const balance = await opts.provider.balance()
+      const balance = await balanceFn()
       add("provider", "ok", `${opts.provider.id} reachable; ${balance.remaining} ${balance.unit} remaining`)
     } catch (err) {
       add("provider", "error", `provider connectivity failed: ${err instanceof Error ? err.message : String(err)}`)

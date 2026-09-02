@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const alt =
-  "PixelKiln — Plan, review, recover, and ship generated pixel art with exact provenance.";
+  "PixelKiln: Plan, review, recover, and ship generated pixel art with exact provenance.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

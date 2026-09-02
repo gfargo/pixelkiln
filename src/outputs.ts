@@ -1,5 +1,6 @@
 import path from "node:path"
 import { upsert } from "./lock.ts"
+import { mediaExtension, type MediaType } from "./media.ts"
 import { lockKey, type Lock, type LockEntry, type LockOutput, type ResolvedSpec } from "./types.ts"
 
 /** One lockfile output with the identity consumers should expose publicly. */
@@ -38,18 +39,19 @@ export function expectedOutputPath(
   role: string | undefined,
   index: number,
   total: number,
+  mediaType?: MediaType,
 ): string {
-  if (total === 1) return spec.outFile
   const originalExt = path.extname(spec.outFile)
-  const ext = originalExt || ".png"
+  const ext = mediaType ? mediaExtension(mediaType) : (originalExt || ".png")
   const stem = originalExt ? spec.outFile.slice(0, -originalExt.length) : spec.outFile
+  if (total === 1) return `${stem}${ext}`
   const safeRole = (role ?? fallbackOutputRole(index)).replace(/[^a-zA-Z0-9_-]+/g, "-")
   return `${stem}-${safeRole}${ext}`
 }
 
 /** Resolve one recorded output from the current manifest-owned destination. */
 export function currentOutputPath(
-  output: Pick<LockOutput, "path" | "role">,
+  output: Pick<LockOutput, "path" | "role" | "mediaType">,
   spec: ResolvedSpec,
   index: number,
   total: number,
@@ -58,7 +60,7 @@ export function currentOutputPath(
   // belong now. Always deriving from the current spec both rebases a clone and
   // prevents a hand-edited lock path from redirecting restore into an unrelated
   // project file. Output roles preserve structural-set identity.
-  return expectedOutputPath(spec, output.role, index, total)
+  return expectedOutputPath(spec, output.role, index, total, output.mediaType)
 }
 
 /** Resolve an entry member using the complete source-set order when available. */

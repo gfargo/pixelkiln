@@ -37,6 +37,41 @@ if (files.length !== slugs.length) {
   failures.push(`documentation registry has ${files.length} files but ${slugs.length} slugs`);
 }
 
+const routeSources = [
+  "app/page.tsx",
+  "app/ui/site-chrome.tsx",
+].map((file) => ({ file, source: readFileSync(path.join(websiteRoot, file), "utf8") }));
+const registeredSlugs = new Set(slugs);
+for (const { file, source } of routeSources) {
+  for (const match of source.matchAll(/href="\/docs\/([^"#?]+)[^\"]*"/g)) {
+    if (!registeredSlugs.has(match[1])) {
+      failures.push(`${file} links to unregistered documentation route: /docs/${match[1]}`);
+    }
+  }
+}
+
+const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
+for (const [provider, route, official] of [
+  ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],
+  ["Retro Diffusion", "/docs/retro-diffusion", "https://www.retrodiffusion.ai/"],
+]) {
+  if (!home.includes(`href="${route}"`)) {
+    failures.push(`provider showcase is missing the ${provider} setup link`);
+  }
+  if (!home.includes(`href="${official}"`)) {
+    failures.push(`provider showcase is missing the official ${provider} link`);
+  }
+}
+
+for (const [file, credential, official] of [
+  ["docs/PIXELLAB.md", "PIXELLAB_API_KEY", "https://www.pixellab.ai/"],
+  ["docs/RETRO_DIFFUSION.md", "RD_API_KEY", "https://www.retrodiffusion.ai/"],
+]) {
+  const guide = readFileSync(path.join(repoRoot, file), "utf8");
+  if (!guide.includes(credential)) failures.push(`${file} is missing ${credential}`);
+  if (!guide.includes(official)) failures.push(`${file} is missing its official provider link`);
+}
+
 if (failures.length) {
   console.error("Website content checks failed:\n");
   for (const failure of failures) console.error(`- ${failure}`);

@@ -29,6 +29,11 @@ export function specHash(
 ): string {
   return sha256(
     JSON.stringify({
+      // Preserve every existing PixelLab hash while making a provider switch
+      // invalidate the spec. Older manifests implicitly mean pixellab.
+      provider: spec.provider === "pixellab" ? undefined : spec.provider,
+      providerOptions:
+        Object.keys(spec.providerOptions).length > 0 ? spec.providerOptions : undefined,
       generator: spec.generator,
       prompt: spec.prompt,
       width: spec.width,
@@ -42,7 +47,10 @@ export function specHash(
       // `noBackground` only reaches the wire for pixflux; the tile fields are
       // undefined for every other generator. `tileSize` is intentionally
       // absent — width/height are derived from it, so it is already covered.
-      noBackground: spec.generator === "pixflux" ? spec.noBackground : undefined,
+      noBackground:
+        spec.generator === "pixflux" || spec.provider !== "pixellab"
+          ? spec.noBackground
+          : undefined,
       tileType: spec.tileType,
       tileView: spec.tileView,
       tileFeature: spec.tileFeature,
