@@ -85,6 +85,28 @@ describe("Retro Diffusion provider", () => {
     await expect(provider.submit(large, [])).resolves.toEqual({ jobId: "rounded-quote" })
   })
 
+  it("accepts the maximum still batch and rejects the first value above it", async () => {
+    const { spec } = await project({ numImages: 16 })
+    expect(spec).toMatchObject({ candidates: 16, costUnit: "usd" })
+
+    await expect(project({ numImages: 17 })).rejects.toThrow(
+      /numImages must be a whole number from 1 to 16/,
+    )
+  })
+
+  it("enforces the current API dimension boundary", async () => {
+    const { spec } = await project({ numImages: 1 })
+    const provider = createProvider("retrodiffusion", "offline")
+
+    expect(() => provider.validate?.({ ...spec, width: 15 }, [])).toThrow(
+      /between 16 and 512 pixels/,
+    )
+    expect(() => provider.validate?.({ ...spec, height: 513 }, [])).toThrow(
+      /between 16 and 512 pixels/,
+    )
+    expect(() => provider.validate?.({ ...spec, width: 16, height: 512 }, [])).not.toThrow()
+  })
+
   it("rejects a provider style that does not match its structural generator", async () => {
     const manifestPath = path.join(dir, "pixelkiln.manifest.json")
     await writeFile(manifestPath, JSON.stringify({
@@ -172,6 +194,17 @@ describe("Retro Diffusion provider", () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const body = JSON.parse(String(mockFetch.mock.calls[0]?.[1]?.body))
     expect(body.check_cost).toBe(true)
+  })
+
+  it("refuses a malformed quote before sending a paid request", async () => {
+    process.env.RD_API_KEY = "rdpk-test"
+    const mockFetch = vi.fn(async () => json({ balance_cost: "0.082" }))
+    vi.stubGlobal("fetch", mockFetch)
+
+    const { spec } = await project()
+    const provider = createProvider("retrodiffusion", "online")
+    await expect(provider.submit(spec, [])).rejects.toThrow(/invalid cost quote/)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
   it("passes references for RD Pro and rejects them for incompatible styles", async () => {
@@ -317,6 +350,25 @@ describe("Retro Diffusion provider", () => {
         width: 32,
         height: 32,
       },
+    })
+  })
+
+  it("falls back to inline output when hosted URLs are empty", async () => {
+    process.env.RD_API_KEY = "rdpk-test"
+    vi.stubGlobal("fetch", vi.fn(async () => json({
+      status: "succeeded",
+      result: {
+        output_urls: [""],
+        base64_images: [FAKE_PNG.toString("base64")],
+      },
+    })))
+
+    const provider = createProvider("retrodiffusion", "online")
+    await expect(provider.poll("task-inline", "map")).resolves.toMatchObject({
+      status: "ready",
+      objectId: "task-inline#0",
+      sourceUrl: `data:image/png;base64,${FAKE_PNG.toString("base64")}`,
+      sources: [{ mediaType: "image/png" }],
     })
   })
 })

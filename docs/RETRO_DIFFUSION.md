@@ -6,6 +6,9 @@ validated download, provenance, and recovery. Multi-candidate, tileset, GIF,
 and PNG spritesheet paths have integration tests but still need representative
 paid live runs.
 
+[Visit Retro Diffusion](https://www.retrodiffusion.ai/) or open the
+[official API guide](https://www.retrodiffusion.ai/app/guide/api).
+
 ## Add the credential
 
 Create `.env.local` beside `pixelkiln.manifest.json`:

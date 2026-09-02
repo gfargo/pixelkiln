@@ -4,6 +4,9 @@ PixelLab is PixelKiln's default provider and the production choice for current
 projects. Its generation and account-management paths have been exercised
 against a live account.
 
+[Visit PixelLab](https://www.pixellab.ai/) or open the
+[official API reference](https://api.pixellab.ai/v2/docs).
+
 ## Add the credential
 
 Create `.env.local` beside `pixelkiln.manifest.json`:
@@ -95,4 +98,3 @@ packaging.
 PixelLab offers more than PixelKiln currently exposes. Character generation,
 multi-direction rotation, and animation are not part of this adapter. Use the
 [manifest reference](./MANIFEST.md) for the fields PixelKiln supports today.
-

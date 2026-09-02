@@ -112,7 +112,7 @@ the correct extension and validates the correct structure.
 
 `promptStyle` accepts a live Retro Diffusion still-style selector,
 `numImages` accepts 1–16 candidates, and `removeBg` overrides
-`noBackground`. The Retro Diffusion API accepts 12–512px output, while the
+`noBackground`. The Retro Diffusion API accepts 16–512px output, while the
 shared PixelKiln manifest currently limits arbitrary width and height to
 16–400px and square `size` to 32–256px. Selected styles can impose smaller
 limits. RD Pro and user styles accept up to nine reference images. Costs are

@@ -178,8 +178,8 @@ export class RetroDiffusionProvider implements Provider {
     if (!Number.isInteger(count) || count < 1 || count > 16) {
       throw new Error("Retro Diffusion numImages must be a whole number from 1 to 16")
     }
-    if (spec.width < 12 || spec.height < 12 || spec.width > 512 || spec.height > 512) {
-      throw new Error("Retro Diffusion output dimensions must be between 12 and 512 pixels")
+    if (spec.width < 16 || spec.height < 16 || spec.width > 512 || spec.height > 512) {
+      throw new Error("Retro Diffusion output dimensions must be between 16 and 512 pixels")
     }
     if (styleImages.length > 9) {
       throw new Error("Retro Diffusion accepts at most 9 reference images")
@@ -310,11 +310,10 @@ function resultSources(
   result: InferenceResult | null | undefined,
   mediaType: MediaKind,
 ): Array<{ url: string; mediaType: MediaKind }> {
-  if (result?.output_urls?.length) {
-    return result.output_urls
-      .filter((url): url is string => typeof url === "string" && url.length > 0)
-      .map((url) => ({ url, mediaType }))
-  }
+  const hosted = (result?.output_urls ?? [])
+    .filter((url): url is string => typeof url === "string" && url.length > 0)
+    .map((url) => ({ url, mediaType }))
+  if (hosted.length) return hosted
   return (result?.base64_images ?? [])
     .filter((data): data is string => typeof data === "string" && data.length > 0)
     .map((data) => ({

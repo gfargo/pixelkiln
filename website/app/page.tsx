@@ -285,9 +285,14 @@ export default function Home() {
                 <div><dt>Benchmark cost</dt><dd>1 generation each</dd></div>
                 <div><dt>Best fit</dt><dd>Prompt fidelity and account recovery</dd></div>
               </dl>
-              <TrackedLink className="text-link" id="showcase_pixellab_setup" section="provider_showcase" href="/docs/pixellab">
-                Set up PixelLab →
-              </TrackedLink>
+              <div className="provider-card-links">
+                <TrackedLink className="text-link" id="showcase_pixellab_setup" section="provider_showcase" href="/docs/pixellab">
+                  Set up PixelLab →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_pixellab_site" section="provider_showcase" href="https://www.pixellab.ai/" external>
+                  Visit PixelLab ↗
+                </TrackedLink>
+              </div>
             </article>
 
             <article className="provider-card">
@@ -329,9 +334,14 @@ export default function Home() {
                 <div><dt>Benchmark cost</dt><dd>$0.058 each</dd></div>
                 <div><dt>Best fit</dt><dd>Ready-to-place cutouts and native animation</dd></div>
               </dl>
-              <TrackedLink className="text-link" id="showcase_retro_setup" section="provider_showcase" href="/docs/retro-diffusion">
-                Set up Retro Diffusion →
-              </TrackedLink>
+              <div className="provider-card-links">
+                <TrackedLink className="text-link" id="showcase_retro_setup" section="provider_showcase" href="/docs/retro-diffusion">
+                  Set up Retro Diffusion →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_retro_site" section="provider_showcase" href="https://www.retrodiffusion.ai/" external>
+                  Visit Retro Diffusion ↗
+                </TrackedLink>
+              </div>
             </article>
           </div>
 
