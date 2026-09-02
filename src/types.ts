@@ -3,7 +3,7 @@ import { z } from "zod"
 const MediaTypeSchema = z.enum(["image/png", "image/gif"])
 
 /**
- * Which PixelLab endpoint produces the asset. The choice is mostly about cost,
+ * Which provider capability produces the asset. The choice is mostly about cost,
  * and the gap is enormous — all figures measured against a live account.
  *
  *   map   POST /map-objects — THE DEFAULT.
@@ -375,7 +375,7 @@ export type Style = z.infer<typeof StyleSchema>
 export type Asset = z.infer<typeof AssetSchema>
 
 /**
- * One line of the lockfile: the mapping from a spec to the PixelLab object that
+ * One line of the lockfile: the mapping from a spec to the provider work that
  * satisfies it and the file on disk that came from it. This is the record that
  * did not exist before — without it, generated objects and downloaded files are
  * two unrelated piles.

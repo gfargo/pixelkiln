@@ -100,10 +100,10 @@ export const docs: DocEntry[] = [
   },
   {
     slug: "provider-notes",
-    title: "Provider notes",
-    description: "The current adapter seam and future backend work.",
+    title: "PixelLab vs. Retro Diffusion",
+    description: "Compare costs, workflows, confidence, limitations, and provider fit.",
     file: "PROVIDERS.md",
-    group: "Internals",
+    group: "Workflows",
   },
   {
     slug: "contributing",

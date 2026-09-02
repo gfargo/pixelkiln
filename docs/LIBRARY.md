@@ -130,9 +130,9 @@ await fetchAssets(provider, specs, lock, lockPath)
 ```
 
 Provider-backed operations mutate the supplied lock object; persist at the
-workflow boundary with `saveLock`. See [PROVIDERS.md](../PROVIDERS.md) before
-implementing another backend, especially its optional capabilities and cost
-units.
+workflow boundary with `saveLock`. See
+[PixelLab vs. Retro Diffusion](../PROVIDERS.md) before selecting or implementing
+another backend, especially its optional capabilities and cost units.
 
 `submit` validates adapter estimates again at the spending boundary and returns
 `{ spent, unit }` for successful submissions. Lock entries retain fractional

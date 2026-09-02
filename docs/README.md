@@ -31,7 +31,7 @@ This source also renders at
 | [Library API](./LIBRARY.md) | Public TypeScript imports for planning, auditing, providers, packing, exporting, and managed artifact writes. |
 | [Tiles and engine exports](./TILES.md) | Structural tile roles, provider rule preservation, generic JSON, Tiled Wang sets, and Godot terrain sets. |
 | [Measured PixelLab endpoints](./ENDPOINTS.md) | Live-account cost and payload research, endpoint recipes, limits, and unresolved API behavior. |
-| [Provider notes](../PROVIDERS.md) | Current provider seam and the next adapter work. |
+| [PixelLab vs. Retro Diffusion](../PROVIDERS.md) | Provider selection, costs, adapter capabilities, confidence, and next work. |
 
 ## Project policies
 

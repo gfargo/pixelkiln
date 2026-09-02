@@ -58,6 +58,7 @@ export function SiteFooter() {
             <span>Explore</span>
             <TrackedLink id="footer_docs" section="footer" href="/docs">Documentation</TrackedLink>
             <TrackedLink id="footer_workflow" section="footer" href="/#workflow">Workflow</TrackedLink>
+            <TrackedLink id="footer_providers" section="footer" href="/docs/provider-notes">Providers</TrackedLink>
             <TrackedLink id="footer_generators" section="footer" href="/docs/generators">Generators</TrackedLink>
           </div>
           <div>

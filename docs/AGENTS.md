@@ -35,7 +35,7 @@ The skill guides the workflow; PixelKiln remains the deterministic execution
 layer. This separation keeps agent reasoning out of polling, hashing, downloads,
 state transitions, and output placement.
 
-## PixelLab MCP and PixelKiln
+## Providers, PixelLab MCP, and PixelKiln
 
 The [official PixelLab MCP server](https://github.com/pixellab-code/pixellab-mcp)
 gives an agent direct PixelLab creation tools. It is complementary to PixelKiln,
@@ -47,12 +47,14 @@ not a replacement:
 | PixelKiln skill | Agent guidance for safe project-level operations. |
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
 | PixelLab adapter | The current production and live-tested generation backend. |
-| Retro Diffusion adapter | Experimental still, tileset, GIF, and spritesheet backend; mocked lifecycle tests only. |
+| Retro Diffusion adapter | Experimental still, tileset, GIF, and spritesheet backend; authenticated no-spend checks plus mocked lifecycle tests. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production
-and live-tested adapter. Retro Diffusion generation support is experimental;
-do not describe it as production-ready until authenticated integration tests
-ship.
+and paid-generation-tested adapter. Retro Diffusion generation support is
+experimental: health, balance, live styles, and free quotes are authenticated
+and live-tested, while paid output generation still needs representative live
+smoke tests. See [PixelLab vs. Retro Diffusion](../PROVIDERS.md) before choosing
+a provider for a new project.
 
 ## Recommended first prompt
 

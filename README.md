@@ -18,8 +18,9 @@ are deterministic software mechanics.
 The orchestration layer is provider-neutral. PixelLab is the production,
 live-tested backend. An experimental Retro Diffusion adapter supports native
 pixel-art stills, candidate batches, tileset sheets, animated GIFs, and PNG
-spritesheets; its lifecycle is covered by mocked integration tests but still
-needs an authenticated smoke test before it is considered production-ready.
+spritesheets. Its authenticated health, balance, style-catalog, and free-quote
+checks have passed; paid live generation is the remaining production-readiness
+gate. See [PixelLab vs. Retro Diffusion](./PROVIDERS.md) for the trade-offs.
 `FakeProvider` exercises the same contract deterministically in tests.
 
 > **Release status:** the package is pre-1.0 and the first npm publication is
@@ -101,7 +102,11 @@ cd ../my-game
 Put the provider credential in `.env.local` beside the manifest:
 
 ```dotenv
+# PixelLab (the default provider)
 PIXELLAB_API_KEY=...
+
+# Or Retro Diffusion when `provider` is `retrodiffusion`
+RD_API_KEY=...
 ```
 
 Validate locally, inspect exact work/cost, then generate with a hard ceiling:
@@ -172,8 +177,9 @@ Styles are namespaces. Adding a second style re-derives the same asset ids into
 a separate output directory and separate lock keys without clobbering the first
 set. Generator choice, reference-image bytes, dimensions, palette, seed, and
 prompt settings participate in deterministic spec identity. A manifest may
-select `retrodiffusion` instead and pass namespaced `providerOptions`; see the
-[provider notes](./PROVIDERS.md) for its current experimental scope.
+select `retrodiffusion` instead and pass namespaced `providerOptions`; see
+[PixelLab vs. Retro Diffusion](./PROVIDERS.md) for selection guidance, costs,
+current confidence, and limitations.
 
 The schema rejects unknown fields and invalid generator combinations before
 planning. See the [Manifest reference](./docs/MANIFEST.md).
@@ -216,6 +222,11 @@ Start with the required capability, not the most expensive endpoint. Forty
 replace a hard palette or reference-image constraint. See
 [Generator selection](./docs/GENERATORS.md) and the
 [measured endpoint reference](./docs/ENDPOINTS.md).
+
+Generator names describe PixelKiln workflows; their exact capabilities and
+prices depend on the selected provider. Retro Diffusion also supports the
+provider-specific `animation` generator. Compare the adapters in
+[PixelLab vs. Retro Diffusion](./PROVIDERS.md).
 
 ## Derived artifacts
 
@@ -319,7 +330,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Getting started](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, everyday workflow, and what to commit. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
-| [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and PixelLab MCP pairing. |
+| [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
@@ -328,6 +339,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Library API](./docs/LIBRARY.md) | Public TypeScript contracts and examples. |
 | [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |
 | [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
+| [PixelLab vs. Retro Diffusion](./PROVIDERS.md) | Provider selection, costs, supported workflows, confidence, and limitations. |
 
 The [public documentation site](https://pixelkiln.griffen.codes/docs) is built by
 the application in [`website/`](./website/README.md). It reads these Markdown
@@ -335,7 +347,7 @@ files directly at build time, so the website and published package share one
 documentation source.
 
 Project policies: [Contributing](./CONTRIBUTING.md),
-[Security](./SECURITY.md), and [provider notes](./PROVIDERS.md).
+[Security](./SECURITY.md), and [provider comparison](./PROVIDERS.md).
 
 ## Scope
 

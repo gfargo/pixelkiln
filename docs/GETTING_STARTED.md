@@ -62,10 +62,12 @@ RD_API_KEY=...
 ```
 
 Its still, tileset-sheet, animated-GIF, and PNG-spritesheet workflows are
-implemented and mock-tested, but PixelLab remains the only authenticated
-live-tested production adapter. See
+implemented. Authenticated health, balance, live-style, and free-quote checks
+have passed; paid live generation is still pending, so PixelLab remains the
+production adapter. See
 [Manifest reference](MANIFEST.md#experimental-retro-diffusion) for
-provider options and current limits.
+provider options and current limits, or
+[PixelLab vs. Retro Diffusion](../PROVIDERS.md) for selection guidance.
 
 Before spending anything, validate and price the selected work:
 

@@ -5,7 +5,7 @@ import { parseLock, type Lock, type LockEntry } from "./types.ts"
 import type { CostUnit } from "./provider.ts"
 
 /**
- * The lockfile is the record that maps a spec to the PixelLab object that
+ * The lockfile is the record that maps a spec to the provider work that
  * satisfies it and the file on disk that came from it. It is written after
  * every state transition — including immediately after submitting, before the
  * job is awaited — so an interrupted run never loses track of paid-for work.

@@ -44,11 +44,12 @@ already in the provider account, and `salvage` for reviewed unclaimed objects.
 Use `pack`, `mount`, or `export` only for the artifact format the project needs.
 
 PixelKiln's orchestration is provider-neutral. PixelLab is its production and
-live-tested adapter. Retro Diffusion stills, tileset sheets, animated GIFs, and
-PNG spritesheets are experimental and mock-tested; `FakeProvider` is the
-deterministic test adapter.
-Do not describe Retro Diffusion as production-ready until authenticated live
-tests ship.
+paid-generation-tested adapter. Retro Diffusion stills, tileset sheets,
+animated GIFs, and PNG spritesheets are experimental: authenticated health,
+balance, style-catalog, and free-quote checks have passed, while the paid media
+lifecycle remains mock-tested. `FakeProvider` is the deterministic test adapter.
+Do not describe Retro Diffusion as production-ready until representative paid
+live smoke tests pass.
 
 When working in the PixelKiln repository, consult `docs/GETTING_STARTED.md` for
 the full workflow, `docs/CLI.md` for flags, `docs/MANIFEST.md` for the schema,

@@ -121,7 +121,7 @@ export default function Home() {
         <section className="proof-strip" aria-label="PixelKiln at a glance">
         <div className="shell proof-grid">
           <div>
-            <strong>04</strong>
+            <strong>05</strong>
             <span>purpose-fit generators</span>
           </div>
           <div>
@@ -180,27 +180,27 @@ export default function Home() {
         <section className="review-section">
           <div className="shell review-grid">
             <div className="section-heading review-copy">
-              <p className="eyebrow">Provider-neutral core · proven with PixelLab</p>
-              <h2>The pipeline is portable. The proof is real.</h2>
+              <p className="eyebrow">One pipeline · two pixel-art providers</p>
+              <h2>Choose the forge.<br />Keep the receipts.</h2>
               <p className="section-deck">
                 PixelKiln keeps provider mechanics behind an adapter boundary.
-                PixelLab is the production and live-tested adapter today;
-                deterministic tests use the same contract, and another production
-                backend can be added without rewriting project state.
+                PixelLab is the production, paid-generation-tested adapter.
+                Retro Diffusion adds native stills, tilesets, animated GIFs, and
+                PNG spritesheets with USD budgets and free cost preflight.
               </p>
               <div className="provider-status" aria-label="Current provider support">
                 <span><i className="status-dot" /> PixelLab · production</span>
+                <span><i /> Retro Diffusion · experimental</span>
                 <span><i /> FakeProvider · tests</span>
-                <span><i /> Next adapter · roadmap</span>
               </div>
               <p className="provider-note">
-                PixelLab&apos;s official MCP is complementary: it gives agents direct
-                creation tools, while PixelKiln owns planning, budget limits,
-                provenance, human review, recovery, and packaging.
+                Retro Diffusion has passed authenticated health, balance, live-style,
+                and free-quote checks. Its paid generation lifecycle remains the
+                final production-readiness gate.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
-                  Read the provider boundary →
+                  Compare PixelLab and Retro Diffusion →
                 </TrackedLink>
                 <TrackedLink
                   className="text-link"
@@ -317,7 +317,7 @@ export default function Home() {
                 <p className="eyebrow">Purpose-fit routing</p>
                 <h2>Use the capability you need.<br />Pay only for that.</h2>
               </div>
-              <p className="section-deck">Measured PixelLab costs vary by up to 40×. PixelKiln makes generator choice explicit and keeps unlike cost units separate.</p>
+              <p className="section-deck">Measured PixelLab costs vary by up to 40×. Retro Diffusion uses USD pricing. PixelKiln makes generator choice explicit and never combines unlike cost units.</p>
             </div>
             <div className="generator-table">
               <div className="generator-row header"><span>Generator</span><span>Best for</span><span>Measured cost</span></div>
@@ -326,9 +326,14 @@ export default function Home() {
               <div className="generator-row"><strong>1dir</strong><span>References and candidate variety</span><span><i style={{ width: "72%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 20–40 gen</span></div>
             </div>
-            <TrackedLink className="text-link" id="generator_compare" section="generator" href="/docs/generators">
-              Compare generator capabilities →
-            </TrackedLink>
+            <div className="review-links">
+              <TrackedLink className="text-link" id="generator_compare" section="generator" href="/docs/generators">
+                Compare generator capabilities →
+              </TrackedLink>
+              <TrackedLink className="text-link" id="provider_compare" section="generator" href="/docs/provider-notes">
+                Compare providers →
+              </TrackedLink>
+            </div>
           </div>
         </section>
 

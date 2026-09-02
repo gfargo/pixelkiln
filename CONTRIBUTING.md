@@ -46,7 +46,8 @@ npm run pixelkiln -- plan --manifest examples/minimal/pixelkiln.manifest.json
 ```
 
 Tests must not require a live provider account or API key. Use `FakeProvider`
-for pipeline behavior and mocked HTTP responses for PixelLab wire contracts.
+for pipeline behavior and mocked HTTP responses for PixelLab or Retro Diffusion
+wire contracts.
 
 ## Change guidelines
 

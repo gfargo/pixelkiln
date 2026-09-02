@@ -78,9 +78,10 @@ for a screenshot of the actual interface.
 
 ### `fetch`
 
-Download completed or selected outputs, validate complete PNG structure, write
-the manifest-authoritative destinations, populate the content cache, and update
-output hashes. `--tag` also pushes manifest tags after successful downloads.
+Download completed or selected outputs, validate complete PNG or GIF structure,
+write the manifest-authoritative destinations, populate the content cache, and
+update output hashes. `--tag` also pushes manifest tags after successful
+downloads when the provider supports tagging.
 
 ### `restore`
 

@@ -34,5 +34,6 @@ provider data. Reports involving authentication leakage, path traversal,
 cross-origin review actions, HTML/script injection, unsafe overwrite/delete
 behavior, lockfile corruption, or budget bypass are security relevant.
 
-Never attach a real `PIXELLAB_API_KEY`, `.env` file, private provider URL, or
-unredacted lockfile from a confidential project to a public report.
+Never attach a real `PIXELLAB_API_KEY`, `RD_API_KEY`, `.env` file, private
+provider URL, or unredacted lockfile from a confidential project to a public
+report.

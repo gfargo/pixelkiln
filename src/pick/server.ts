@@ -13,7 +13,7 @@ export interface PickResult {
  * Serves the contact sheet on localhost, waits for the selections to be
  * applied, then shuts down.
  *
- * Selections are committed to PixelLab (`select-frames` promotes the chosen
+ * Selections are committed through the provider (`select-frames` promotes the chosen
  * candidate to its own object and drops the rest) and written to the lockfile
  * before the browser gets its response, so a closed tab never loses a choice.
  */

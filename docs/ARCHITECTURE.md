@@ -123,7 +123,9 @@ such as adopt or salvage report a capability gap rather than failing through
 an undefined method.
 
 `PixelLabProvider` is production and live-tested. `RetroDiffusionProvider` is
-an experimental still, tileset, and animation adapter whose lifecycle is
-currently verified with mocked HTTP tests. `FakeProvider` implements the same contract in memory, which
+an experimental still, tileset, and animation adapter with authenticated
+health, balance, style-catalog, and free-quote checks plus mocked paid-lifecycle
+coverage. `FakeProvider` implements the same contract in memory, which
 keeps the paid pipeline testable without credentials or network access. See
-[library API](./LIBRARY.md) and [provider notes](../PROVIDERS.md).
+[library API](./LIBRARY.md) and
+[PixelLab vs. Retro Diffusion](../PROVIDERS.md).
