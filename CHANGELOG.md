@@ -1,3 +1,10 @@
+## [0.4.1](https://github.com/gfargo/pixelkiln/compare/v0.4.0...v0.4.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* preserve published CLI mapping ([#48](https://github.com/gfargo/pixelkiln/issues/48)) ([31e9f64](https://github.com/gfargo/pixelkiln/commit/31e9f646bae0c1447c4b2d5e8d225e2ce6108cad))
+
 # [0.4.0](https://github.com/gfargo/pixelkiln/compare/v0.3.0...v0.4.0) (2026-09-02)
 
 
