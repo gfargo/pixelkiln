@@ -18,9 +18,11 @@ are deterministic software mechanics.
 The orchestration layer is provider-neutral. PixelLab is the production,
 live-tested backend. An experimental Retro Diffusion adapter supports native
 pixel-art stills, candidate batches, tileset sheets, animated GIFs, and PNG
-spritesheets. Its authenticated health, balance, style-catalog, and free-quote
-checks have passed; paid live generation is the remaining production-readiness
-gate. See [PixelLab vs. Retro Diffusion](./PROVIDERS.md) for the trade-offs.
+spritesheets. Its authenticated single-candidate still path has passed from
+quote through validated output and recovery; multi-candidate, tileset, GIF, and
+spritesheet live runs remain. See
+[PixelLab vs. Retro Diffusion](./PROVIDERS.md) for the trade-offs, including
+large environment and building workflows.
 `FakeProvider` exercises the same contract deterministically in tests.
 
 > **Release status:** the package is pre-1.0 and the first npm publication is

@@ -14,13 +14,13 @@ field and keep its settings under `providerOptions.retrodiffusion`.
 | Provider | PixelKiln status | Credential | Cost unit |
 |---|---|---|---|
 | PixelLab | Production; paid generation and account workflows live-tested | `PIXELLAB_API_KEY` | generations |
-| Retro Diffusion | Experimental; authenticated health, balance, style catalog, and free cost quote live-tested; paid generation lifecycle pending | `RD_API_KEY` | USD |
+| Retro Diffusion | Experimental; authenticated paid still generation, download, provenance, and recovery live-tested; advanced workflows pending | `RD_API_KEY` | USD |
 | FakeProvider | Test-only deterministic lifecycle | none | free |
 
-Retro Diffusion's submit, poll, candidate review, download, GIF/PNG validation,
-cache, and balance paths also have mocked integration coverage. Keep it labeled
-experimental until representative paid still, tileset, GIF, and spritesheet
-runs have completed against the live service.
+The live smoke covers a single-candidate RD Fast still from cost quote through
+submit, poll, PNG download, lockfile provenance, and cache validation. Retro
+Diffusion's multi-candidate review, tileset, GIF, and spritesheet paths have
+mocked integration coverage but still need representative paid live runs.
 
 ## PixelLab vs. Retro Diffusion
 
@@ -37,7 +37,7 @@ the providers offer directly.
 | Cost model | Subscription generations | Prepaid USD balance |
 | Cost safety | Offline estimate plus hard generation budget | Offline estimate, hard USD budget, then a free authoritative quote before submission |
 | Account lifecycle | Balance, list, adopt, salvage, tag, and confirmed purge | Balance only in the current adapter |
-| Live confidence | Full paid generation workflows exercised | No-spend authenticated checks exercised; paid media generation pending |
+| Live confidence | Full paid generation workflows exercised | Single-candidate paid still exercised end to end; multi-candidate, tileset, GIF, and spritesheet runs pending |
 
 Choose PixelLab when mature account-object recovery and reconciliation matter,
 or when the measured one-generation `map`/`pixflux` routes fit the work. Choose
@@ -45,6 +45,31 @@ Retro Diffusion when a native animation or spritesheet is required, an RD style
 is the desired look, or a USD quote is easier to budget. For a production batch,
 run one representative asset through the selected provider before expanding the
 scope.
+
+## Large environments, mountains, and buildings
+
+Start by deciding whether the result is an isolated map object or a complete
+background. That distinction matters more than raw canvas size.
+
+| Asset type | PixelLab through PixelKiln | Retro Diffusion through PixelKiln |
+|---|---|---|
+| Isolated house, building, mountain, or landmark | Start with `map`: arbitrary dimensions up to 400×400, transparent output, and a measured one-generation cost. Use `1dir` only when references or candidate variety justify 20–40 generations and a square canvas. | Start with `rd_plus__topdown_asset`, `rd_plus__isometric_asset`, or `rd_tile__scene_object`, depending on perspective. `rd_tile__scene_object` is specifically intended for 64–384px objects placed on tile maps. |
+| Full scenic background | Use `pixflux` with `noBackground: false` when an exact palette matters, or `map` for a simple scene. Current PixelKiln routes top out at 400×400. | `rd_plus__environment` targets one-point-perspective scenes; `rd_plus__topdown_map` targets 3/4 top-down maps. These styles support up to 384×384. |
+| Style consistency across a set | `1dir` accepts a style reference and returns size-dependent candidates, but it is more expensive and capped at the square-object range. | RD Pro accepts up to nine references and has stronger prompt following, but its common styles top out at 256×256 and cost $0.18 per image. Environment-specific RD Plus styles trade references for a larger 384px canvas. |
+| Very large final scene | Generate reusable objects, terrain, and background layers separately; assemble them deterministically and integer-upscale the result. | Use the same layered approach. The API has a 512px overall ceiling, but the useful environment and scene-object styles currently cap at 384px. |
+
+For production environments, prefer a kit over a monolith: seamless terrain,
+separate landmarks/buildings, foreground occluders, and a distant backdrop.
+This produces reusable assets, cleaner parallax, easier collision/lighting, and
+cheaper targeted re-rolls. Generate at the intended native pixel resolution,
+then scale by an integer with nearest-neighbor filtering.
+
+An honest visual benchmark should use the same three briefs—isolated building,
+top-down landmark, and full scenic background—with the same intended native
+size and review count. Score silhouette readability, perspective, palette,
+edge cleanliness, tiling/layerability, prompt adherence, and usable results per
+provider unit. Seeds are provider-specific, so equal seed numbers do not make
+the outputs directly reproducible across services.
 
 ## Cost comparison
 
@@ -137,8 +162,9 @@ estimate and hard budget remain enforced.
 
 ## Next validation and expansion
 
-1. Complete representative paid Retro Diffusion still, multi-candidate,
-   tileset, GIF, and spritesheet smoke tests without logging credentials.
+1. Complete representative paid Retro Diffusion multi-candidate, tileset, GIF,
+   and spritesheet smoke tests without logging credentials. The single-candidate
+   RD Fast still path has passed end to end.
 2. Promote only the workflows proven against the live service; keep unsupported
    account operations explicit capability errors.
 3. Evaluate Scenario as another hosted game-asset provider.

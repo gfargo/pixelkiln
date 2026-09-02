@@ -115,9 +115,10 @@ the correct extension and validates the correct structure.
 `noBackground`. Dimensions must be 12–512 pixels and up to nine reference
 images are accepted by RD Pro and user styles. Costs are planned in USD and
 checked again with Retro Diffusion's free authoritative quote endpoint before
-the paid request is sent. Authenticated health, balance, style-catalog, and
-quote checks have passed. The paid generation lifecycle remains mock-tested,
-so the adapter is still experimental.
+the paid request is sent. The authenticated single-candidate RD Fast path has
+passed from quote through validated output and recovery. Multi-candidate,
+tileset, GIF, and spritesheet paths remain mock-tested, so the adapter is still
+experimental.
 
 Additional Retro Diffusion options are:
 

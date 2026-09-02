@@ -47,14 +47,15 @@ not a replacement:
 | PixelKiln skill | Agent guidance for safe project-level operations. |
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
 | PixelLab adapter | The current production and live-tested generation backend. |
-| Retro Diffusion adapter | Experimental still, tileset, GIF, and spritesheet backend; authenticated no-spend checks plus mocked lifecycle tests. |
+| Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production
 and paid-generation-tested adapter. Retro Diffusion generation support is
-experimental: health, balance, live styles, and free quotes are authenticated
-and live-tested, while paid output generation still needs representative live
-smoke tests. See [PixelLab vs. Retro Diffusion](../PROVIDERS.md) before choosing
-a provider for a new project.
+experimental: one paid RD Fast still has passed from quote through validated
+download and recovery, while multi-candidate, tileset, GIF, and spritesheet
+workflows still need representative live smoke tests. See
+[PixelLab vs. Retro Diffusion](../PROVIDERS.md) before choosing a provider for a
+new project or a large environment asset.
 
 ## Recommended first prompt
 

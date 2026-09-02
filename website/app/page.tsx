@@ -194,9 +194,9 @@ export default function Home() {
                 <span><i /> FakeProvider · tests</span>
               </div>
               <p className="provider-note">
-                Retro Diffusion has passed authenticated health, balance, live-style,
-                and free-quote checks. Its paid generation lifecycle remains the
-                final production-readiness gate.
+                Retro Diffusion&apos;s paid RD Fast still path now passes from quote
+                through validated PNG and recovery. Multi-candidate, tileset,
+                GIF, and spritesheet live smokes remain.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">

@@ -62,8 +62,9 @@ RD_API_KEY=...
 ```
 
 Its still, tileset-sheet, animated-GIF, and PNG-spritesheet workflows are
-implemented. Authenticated health, balance, live-style, and free-quote checks
-have passed; paid live generation is still pending, so PixelLab remains the
+implemented. An authenticated single-candidate RD Fast still has passed from
+quote through validated download, provenance, and cache; multi-candidate,
+tileset, GIF, and spritesheet live runs remain, so PixelLab remains the
 production adapter. See
 [Manifest reference](MANIFEST.md#experimental-retro-diffusion) for
 provider options and current limits, or
