@@ -47,10 +47,12 @@ not a replacement:
 | PixelKiln skill | Agent guidance for safe project-level operations. |
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
 | PixelLab adapter | The current production and live-tested generation backend. |
+| Retro Diffusion adapter | Experimental still, tileset, GIF, and spritesheet backend; mocked lifecycle tests only. |
 
-PixelKiln's core is provider-neutral by design, but PixelLab is the only
-production adapter today. Do not claim compatibility with another backend until
-its adapter and live integration tests ship.
+PixelKiln's core is provider-neutral, but PixelLab remains the only production
+and live-tested adapter. Retro Diffusion generation support is experimental;
+do not describe it as production-ready until authenticated integration tests
+ship.
 
 ## Recommended first prompt
 

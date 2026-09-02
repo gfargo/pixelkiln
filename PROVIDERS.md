@@ -1,96 +1,100 @@
 # Multi-provider status and notes
 
-**The seam is built.** `src/provider.ts` defines the interface;
-`src/providers/pixellab.ts` is the reference implementation and
-`src/providers/fake.ts` is the in-memory test double. Nothing above the
-interface knows about PixelLab.
+PixelKiln now selects providers through a registry. The manifest's top-level
+`provider` id chooses the adapter for planning and execution, while
+`providerOptions` keeps adapter-specific settings in a namespaced style field.
+PixelLab remains the default, so existing manifests and spec hashes stay
+compatible.
 
-That is an architectural guarantee, not a compatibility claim: PixelLab is the
-only production adapter and the only backend exercised against a live account
-today. `FakeProvider` verifies the contract without network access. Until a
-second production adapter ships, describe PixelKiln as **provider-neutral by
-design and proven with PixelLab**, not as already multi-provider.
+## Support level
 
-Both concerns this file previously flagged as blockers are resolved:
+| Provider | Status | Current scope | Credential | Cost unit |
+|---|---|---|---|---|
+| PixelLab | Production, live-tested | `map`, `1dir`, `pixflux`, and `tiles` | `PIXELLAB_API_KEY` | generations |
+| Retro Diffusion | Experimental, mock-tested | Stills, candidate batches, tileset sheets, GIF animations, and PNG spritesheets | `RD_API_KEY` | USD |
+| FakeProvider | Test-only | Deterministic in-memory lifecycle | none | free |
 
-- **Cost is no longer assumed to be "generations."** `CostEstimate` carries a
-  `unit` of `generations | usd | free`, `plan` prints it, and `--budget` is
-  interpreted in it. `resolveSpecs(..., { provider })` asks the adapter for its
-  offline estimate, submission validates it again, and lock/status accounting
-  keeps fractional values separated by unit.
-- **Free multi-candidate returns are no longer assumed universal.**
-  `estimate().candidates` is a provider property; `candidateCount()` moved
-  behind the interface.
+The Retro Diffusion adapter is implemented, but it must pass an authenticated
+smoke test before being described as production-ready. Outputs carry explicit
+PNG/GIF media types through polling, lockfiles, destination naming, validation,
+and the content-addressed recovery cache.
 
-What remains is writing a second adapter. This file records which one and why.
+## Provider-owned behavior
 
-## Midjourney is the wrong first target
+The provider boundary owns the assumptions that differ between services:
 
-Verified 2026-07-29: **Midjourney has no public developer API.** API keys are
-restricted to the Enterprise dashboard and require applying for access. Every
-third-party "Midjourney API" works by automating the Discord or web interface,
-which violates Midjourney's terms of service and risks the underlying account
-being banned.
+- supported generators and provider-specific validation;
+- offline cost estimates, arbitrary non-empty cost units, and candidate count;
+- submit/poll response schemas and candidate selection when applicable;
+- downloads and optional account capabilities such as balance, listing,
+  tagging, and deletion.
 
-Building that adapter would mean shipping something fragile, unsupported, and
-capable of getting a user's account terminated. Not worth it.
+Planning groups costs by unit instead of adding incompatible values. A budget
+is interpreted in the active provider's unit. Providers without a balance
+endpoint can still generate safely because the offline estimate and hard budget
+remain enforced.
 
-## The right first target: Retro Diffusion
+## Retro Diffusion adapter
 
-[Retro Diffusion](https://retrodiffusion.ai/) is PixelLab's closest competitor
-and the natural second provider:
+[Retro Diffusion](https://retrodiffusion.ai/) is the first additional adapter
+because it exposes a documented API and is purpose-built for pixel art. The
+experimental implementation currently supports:
 
-- A real, documented developer API, with
-  [published examples](https://github.com/Retro-Diffusion/api-examples).
-- Purpose-built for pixel art, with grid-aligned output and no blur or
-  anti-aliasing, so it shares this tool's domain model rather than needing a
-  downscale and quantize pass bolted on.
-- Supports seamless tiles, sprite-sheet animation, and free cost estimates,
-  which map onto `plan` almost directly.
+- async still, tileset, and animation submission and polling;
+- one to sixteen candidates with PixelKiln's local human-review flow;
+- dimensions from 12 to 512 pixels;
+- up to nine reference images;
+- seed, transparent-background behavior, and palette swatches;
+- hosted output URLs with inline base64 fallback;
+- validated animated GIF output or PNG spritesheets;
+- offline USD estimates, a free authoritative cost preflight before every paid
+  request, and balance reporting.
 
-Other candidates, in rough order of fit:
+Configure it in the manifest rather than with a CLI-only switch:
 
-| Provider | API | Pixel-native | Notes |
-|---|---|---|---|
-| Retro Diffusion | yes | yes | Recommended first adapter |
-| [Scenario](https://www.scenario.com/) | yes | partly | Game-asset focused, hosts Retro Diffusion models |
-| OpenAI `gpt-image-1` | yes | no | Raster; needs downscale + palette quantization |
-| Google Gemini image | yes | no | Same caveat |
-| Local ComfyUI + pixel LoRA | n/a | yes | No per-call cost, but a GPU dependency |
-| Midjourney | **no** | no | See above |
+```jsonc
+{
+  "provider": "retrodiffusion",
+  "styles": {
+    "base": {
+      "generator": "map",
+      "outDir": "assets/generated/base",
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__default",
+          "numImages": 4,
+          "removeBg": true
+        }
+      }
+    }
+  }
+}
+```
 
-## Resolved: the two economic assumptions
+Use a selector that matches the manifest generator: ordinary styles for
+`map`/`pixflux`, `rd_tile__*` for `tiles`, and `rd_animation__*` or
+`rd_advanced_animation__*` for `animation`. Reference images require an RD Pro
+or user still style; advanced animations require one input image.
 
-Both were global assumptions baked into `plan`; both are now provider-owned.
-Kept here as the rationale, since a second adapter has to honour them.
+## Recommended expansion order
 
-1. **Cost is not universally "generations".** `Plan.cost` used to be a bare
-   number meaning PixelLab subscription generations. It now carries a unit: USD
-   for OpenAI, generations for PixelLab, free for local. `plan` prints an honest
-   figure and `--budget` means something in every backend.
+1. Run authenticated Retro Diffusion `doctor`, balance, still, tileset, GIF,
+   spritesheet, and multi-candidate smoke tests without logging credentials.
+2. Add Scenario as the next hosted game-asset provider, reusing the registry,
+   USD accounting, and optional capability model.
+3. Add a local ComfyUI adapter for users who prefer GPU-backed, no-per-call-cost
+   generation.
+4. Consider general raster providers only with an explicit pixel-art
+   post-processing pipeline (nearest-neighbor scaling, palette quantization,
+   transparency, and reproducibility checks).
 
-2. **Free candidates were a PixelLab quirk.** The core loop is to generate
-   small, get 16 candidates for one fixed price, and pick the best. It works
-   because PixelLab charges per *call* and scales candidates inversely with canvas
-   size. OpenAI charges per *image*, so 16 candidates costs 16×. The picker
-   still works either way, but the strategy advice in the README does not
-   generalise, which is why `candidateCount()` moved behind the interface.
+Midjourney is not an adapter target without an official public API. Automating
+its consumer UI would be fragile and could violate provider terms.
 
-See `src/provider.ts` for the shipped interface. Lock entries carry a
-`provider` field plus `costUnit`, defaulted to `pixellab` and `generations` so
-pre-provider/pre-unit v2 lockfiles stay readable. The CLI reports both the
-successful-submission estimate and the provider balance delta observed across
-the run; those are deliberately separate because provider balances may settle
-asynchronously.
+## Test coverage
 
-## Done: the integration tests it unblocked
-
-`FakeProvider` turned out to be exactly the better test double predicted here.
-17 integration tests now cover `submit → poll → fetch`, `pushTags` and `adopt`.
-Those are the stages that spend money and previously had zero coverage, where
-four of the five real bugs in this project lived. Verified non-vacuous by mutation:
-breaking the output hashes, the budget check, or the v1 lock rejection each
-fails tests.
-
-The contact-sheet request paths are covered through the picker and salvage
-integration tests as well as their HTML unit tests.
+`FakeProvider` covers the paid lifecycle without network access. The Retro
+Diffusion suite mocks HTTP responses for USD estimates, async submit/poll,
+candidate review and selection, GIF and PNG structural outputs, recovery
+caching, and balance parsing. PixelLab remains the only adapter exercised
+against a live account today.

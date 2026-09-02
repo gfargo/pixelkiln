@@ -9,6 +9,7 @@ directory. The canonical machine-readable contract is
 {
   "$schema": "./node_modules/pixelkiln/schema/manifest.schema.json",
   "name": "my-game",
+  "provider": "pixellab",
   "styles": {
     "base": {
       "generator": "map",
@@ -31,6 +32,7 @@ Unknown properties are rejected at every level.
 |---|---|---|
 | `$schema` | no | Editor schema URL/path. It does not affect generation identity. |
 | `name` | yes | Project/account tag namespace. |
+| `provider` | no | Provider registry id. Defaults to `pixellab`; `retrodiffusion` is experimental. |
 | `styles` | yes | Map of style id to inherited generation/output settings. |
 | `assets` | yes | Map of stable asset id to subject and per-asset overrides. |
 
@@ -42,7 +44,7 @@ not merely a label edit.
 
 | Field | Type/default | Meaning |
 |---|---|---|
-| `generator` | `map` | `map`, `1dir`, `pixflux`, or `tiles`. |
+| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, or provider-specific `animation`. |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
@@ -55,6 +57,7 @@ not merely a label edit.
 | `seed` | integer | Deterministic provider seed where supported. |
 | `palette` | hex array, `[]` | Forced palette for `pixflux`; `#` is optional. |
 | `noBackground` | boolean, `true` | `pixflux` background removal. Set false for scenes/backdrops. |
+| `providerOptions` | object, `{}` | Options grouped by provider id. Only the active provider's object is resolved and hashed. |
 | `tileSize` | integer 16–256 | Edge length for `tiles` when no style reference supplies geometry. |
 | `tileType` | enum | `hex`, `hex_pointy`, `isometric`, `oblique`, `octagon`, or `square_topdown`. |
 | `tileView` | enum | `top-down`, `high top-down`, `low top-down`, or `side`. |
@@ -76,6 +79,96 @@ Generator-specific fields are validated before planning. Important constraints:
   rejects connectable features in style-tile mode.
 
 See [generator selection](./GENERATORS.md) for costs and trade-offs.
+
+## Experimental Retro Diffusion
+
+Retro Diffusion maps `map` and `pixflux` to still generation, `tiles` to its
+tileset family, and `animation` to GIF or PNG-spritesheet generation. Durable
+sources and lock outputs record `image/png` or `image/gif`, so recovery retains
+the correct extension and validates the correct structure.
+
+```jsonc
+{
+  "name": "my-game",
+  "provider": "retrodiffusion",
+  "styles": {
+    "base": {
+      "generator": "map",
+      "outDir": "assets/generated/base",
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__default",
+          "numImages": 4,
+          "removeBg": true
+        }
+      }
+    }
+  },
+  "assets": {
+    "anvil": { "prompt": "a compact blacksmith anvil" }
+  }
+}
+```
+
+`promptStyle` accepts a live Retro Diffusion still-style selector,
+`numImages` accepts 1–16 candidates, and `removeBg` overrides
+`noBackground`. Dimensions must be 12–512 pixels and up to nine reference
+images are accepted by RD Pro and user styles. Costs are planned in USD and
+checked again with Retro Diffusion's free authoritative quote endpoint before
+the paid request is sent. This adapter has mocked lifecycle coverage but is not
+yet authenticated live-tested.
+
+Additional Retro Diffusion options are:
+
+| Option | Meaning |
+|---|---|
+| `framesDuration` | Animation duration: `4`, `6`, `8`, `10`, `12`, or `16`. |
+| `returnSpritesheet` | Return a PNG spritesheet instead of an animated GIF. |
+| `extraPrompt` | Outside texture description for `rd_tile__tileset_advanced`. |
+| `tileX` / `tileY` | Make supported still styles seamless on either axis. |
+
+An animation style is declared explicitly:
+
+```jsonc
+{
+  "generator": "animation",
+  "size": 64,
+  "outDir": "assets/generated/animations",
+  "providerOptions": {
+    "retrodiffusion": {
+      "promptStyle": "rd_animation__any_animation",
+      "numImages": 1,
+      "framesDuration": 8,
+      "returnSpritesheet": false
+    }
+  }
+}
+```
+
+The default output is `<assetId>.gif`; `returnSpritesheet: true` produces
+`<assetId>.png`. Advanced animation styles require exactly one `styleImages`
+input. PixelKiln currently limits animation batches to one so selection never
+loses the output media type.
+
+For a Wang-style tileset sheet:
+
+```jsonc
+{
+  "generator": "tiles",
+  "tileSize": 32,
+  "outDir": "assets/generated/tiles",
+  "providerOptions": {
+    "retrodiffusion": {
+      "promptStyle": "rd_tile__tileset",
+      "numImages": 1
+    }
+  }
+}
+```
+
+`rd_tile__tileset_advanced` accepts `extraPrompt` and up to two style images;
+`rd_tile__tile_variation` requires one style image. Provider-specific size and
+input constraints are checked during the free planning phase.
 
 ## Asset fields
 

@@ -15,6 +15,7 @@ import {
 } from "./types.ts"
 import { sha256, specHash } from "./hash.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
+import { createProvider } from "./providers/registry.ts"
 
 export interface LoadedManifest {
   manifest: Manifest
@@ -61,10 +62,11 @@ export async function resolveSpecs(
     styles?: string[]
     assets?: string[]
     /** Optional provider makes offline plan cost/candidate estimates adapter-owned. */
-    provider?: Pick<Provider, "supports" | "estimate" | "id">
+    provider?: Pick<Provider, "supports" | "estimate" | "validate" | "id">
   },
 ): Promise<ResolvedSpec[]> {
   const { manifest, root } = loaded
+  const activeProvider = filter?.provider ?? createProvider(manifest.provider, "offline")
   const specs: ResolvedSpec[] = []
 
   const styleIds = Object.keys(manifest.styles).filter(
@@ -97,11 +99,8 @@ export async function resolveSpecs(
       const buf = await readFile(abs)
       const metadata = imageMetadata(buf)
       if (!metadata) throw new Error(`Style image is not a readable PNG or JPEG: ${abs}`)
-      if (metadata.width < 1 || metadata.height < 1 || metadata.width > 256 || metadata.height > 256) {
-        throw new Error(
-          `Style image exceeds the API's 256x256 limit: ${abs} ` +
-            `(${metadata.width}x${metadata.height})`,
-        )
+      if (metadata.width < 1 || metadata.height < 1) {
+        throw new Error(`Style image has invalid dimensions: ${abs}`)
       }
       hit = { base64: buf.toString("base64"), hash: sha256(buf), ...metadata }
       styleImageCache.set(abs, hit)
@@ -124,8 +123,8 @@ export async function resolveSpecs(
       if (asset.styles.length && !asset.styles.includes(styleId)) continue
 
       const generator = style.generator
-      if (filter?.provider && !filter.provider.supports(generator)) {
-        throw new Error(`Provider "${filter.provider.id}" does not support generator "${generator}"`)
+      if (!activeProvider.supports(generator)) {
+        throw new Error(`Provider "${activeProvider.id}" does not support generator "${generator}"`)
       }
       let width: number
       let height: number
@@ -176,6 +175,8 @@ export async function resolveSpecs(
       const base = {
         styleId,
         assetId,
+        provider: activeProvider.id,
+        providerOptions: style.providerOptions[activeProvider.id] ?? {},
         generator,
         prompt,
         width,
@@ -216,12 +217,6 @@ export async function resolveSpecs(
           `style:${styleId}`,
         ]),
       ]
-      if (tags.length > 20) {
-        throw new Error(
-          `${styleId}/${assetId} resolves to ${tags.length} tags, but PixelLab allows at most 20`,
-        )
-      }
-
       const resolved: ResolvedSpec = {
         ...base,
         root,
@@ -230,12 +225,15 @@ export async function resolveSpecs(
         source: asset.source,
         specHash: specHash(base, styleImageHashes),
       }
-      if (filter?.provider) {
-        const estimate = validateCostEstimate(filter.provider.id, filter.provider.estimate(resolved))
-        resolved.cost = estimate.amount
-        resolved.costUnit = estimate.unit
-        resolved.candidates = estimate.candidates
-      }
+      const resolvedImages = style.styleImages.map((image) => {
+        const hit = styleImageCache.get(path.resolve(root, image.path))!
+        return { base64: hit.base64, width: hit.width, height: hit.height, format: hit.format }
+      })
+      activeProvider.validate?.(resolved, resolvedImages)
+      const estimate = validateCostEstimate(activeProvider.id, activeProvider.estimate(resolved))
+      resolved.cost = estimate.amount
+      resolved.costUnit = estimate.unit
+      resolved.candidates = estimate.candidates
       specs.push(resolved)
     }
   }
@@ -266,11 +264,8 @@ export async function resolveStyleImages(
     const buf = await readFile(file)
     const metadata = imageMetadata(buf)
     if (!metadata) throw new Error(`Style image is not a readable PNG or JPEG: ${file}`)
-    if (metadata.width < 1 || metadata.height < 1 || metadata.width > 256 || metadata.height > 256) {
-      throw new Error(
-        `Style image exceeds the API's 256x256 limit: ${file} ` +
-          `(${metadata.width}x${metadata.height})`,
-      )
+    if (metadata.width < 1 || metadata.height < 1) {
+      throw new Error(`Style image has invalid dimensions: ${file}`)
     }
     out.push({ base64: buf.toString("base64"), ...metadata })
   }

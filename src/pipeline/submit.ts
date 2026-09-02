@@ -102,7 +102,7 @@ export async function submit(
   async function pruneInFlight(): Promise<void> {
     for (const [id, spec] of [...inFlight]) {
       try {
-        const state = await provider.poll(id, spec.generator, spec)
+        const state = await provider.poll(id, spec.generator, { spec, tileFeature: spec.tileFeature })
         if (state.status !== "processing") inFlight.delete(id)
         lastSlotError = null
       } catch (err) {
@@ -163,10 +163,10 @@ export async function submit(
 
     lastSubmitAt = Date.now()
     try {
-      const refs =
-        spec.generator === "1dir" || spec.generator === "tiles"
-          ? (styleImages.get(spec.styleId) ?? [])
-          : []
+      // The adapter decides whether references are meaningful for this
+      // generator. Keeping that policy here used to silently discard valid
+      // references for non-PixelLab still providers.
+      const refs = styleImages.get(spec.styleId) ?? []
       const { jobId } = await provider.submit(spec, refs)
       upsert(lock, key, {
         jobId,

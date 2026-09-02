@@ -11,10 +11,13 @@ import {
   resolveOutputPath,
 } from "../outputs.ts"
 import { lockKey, type Lock, type LockOutput, type ResolvedSpec } from "../types.ts"
-import { decodePng } from "../png.ts"
-
-/** PNG magic number — guards against writing an error page as a .png. */
-const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+import {
+  cacheFileName,
+  detectMediaType,
+  MediaType,
+  validateMedia,
+  type MediaType as MediaKind,
+} from "../media.ts"
 
 export interface FetchResult {
   downloaded: number
@@ -38,7 +41,7 @@ export async function fetchAssets(
     onProgress?: (msg: string) => void
     concurrency?: number
     repair?: boolean
-    /** Content-addressed PNG cache. Defaults beside the lockfile; false disables it. */
+    /** Content-addressed media cache. Defaults beside the lockfile; false disables it. */
     cacheDir?: string | false
   } = {},
 ): Promise<FetchResult> {
@@ -87,7 +90,7 @@ export async function fetchAssets(
         : entry.sourceUrl
           ? [{ url: entry.sourceUrl }]
           : opts.repair && entry.outputs.length
-            ? entry.outputs.map((o) => ({ url: "", role: o.role }))
+            ? entry.outputs.map((o) => ({ url: "", role: o.role, mediaType: o.mediaType }))
           : []
       if (!sources.length) {
         upsert(lock, key, {
@@ -107,7 +110,7 @@ export async function fetchAssets(
           )
           const target = recorded
             ? resolveOutputPath(recorded.path, spec.root)
-            : expectedOutputPath(spec, source.role, index, sources.length)
+            : expectedOutputPath(spec, source.role, index, sources.length, source.mediaType)
 
           if (existsSync(target)) {
             if (!recorded) {
@@ -116,12 +119,22 @@ export async function fetchAssets(
             if ((await sha256File(target)) !== recorded.sha256) {
               throw new Error(`refusing to overwrite modified output ${target}`)
             }
-            if (cacheDir) await cachePng(cacheDir, await readFile(target), recorded.sha256)
+            if (cacheDir) {
+              await cacheMedia(
+                cacheDir,
+                await readFile(target),
+                recorded.mediaType ?? MediaType.PNG,
+                recorded.sha256,
+              )
+            }
             outputs.push({ ...recorded, path: portableOutputPath(target, spec.root) })
             continue
           }
 
-          let buf = recorded && cacheDir ? await readCachedPng(cacheDir, recorded.sha256) : null
+          const expectedMediaType = source.mediaType ?? recorded?.mediaType ?? MediaType.PNG
+          let buf = recorded && cacheDir
+            ? await readCachedMedia(cacheDir, recorded.sha256, expectedMediaType)
+            : null
           if (buf) {
             log(`  cached  ${path.relative(process.cwd(), target)}`)
           } else {
@@ -130,18 +143,18 @@ export async function fetchAssets(
             }
             buf = await provider.download(source.url)
           }
-          if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
-            throw new Error(`response for ${source.role ?? "asset"} was not a PNG (${buf.length} bytes)`)
-          }
+          let mediaType: MediaKind
           try {
-            decodePng(buf)
+            mediaType = validateMedia(buf, expectedMediaType)
           } catch (err) {
+            const label = expectedMediaType === MediaType.GIF ? "GIF" : "PNG"
+            const mismatch = detectMediaType(buf) !== expectedMediaType
             throw new Error(
-              `response for ${source.role ?? "asset"} was not a valid PNG: ` +
-                `${err instanceof Error ? err.message : String(err)}`,
+              `response for ${source.role ?? "asset"} was not ${mismatch ? "a" : "a valid"} ${label}` +
+                (mismatch ? ` (${buf.length} bytes)` : `: ${err instanceof Error ? err.message : String(err)}`),
             )
           }
-          if (cacheDir) await cachePng(cacheDir, buf)
+          if (cacheDir) await cacheMedia(cacheDir, buf, mediaType)
           await mkdir(path.dirname(target), { recursive: true })
           const tmp = `${target}.pixelkiln.tmp`
           await writeFile(tmp, buf)
@@ -149,6 +162,7 @@ export async function fetchAssets(
             path: portableOutputPath(target, spec.root),
             sha256: sha256(buf),
             ...(source.role ? { role: source.role } : {}),
+            mediaType,
           })
           // Record the intended rename before performing it. If the process
           // dies in either half of this two-step commit, the next repair sees
@@ -193,23 +207,33 @@ export async function fetchAssets(
   return result
 }
 
-async function readCachedPng(cacheDir: string, hash: string): Promise<Buffer | null> {
-  const file = path.join(cacheDir, `${hash}.png`)
+async function readCachedMedia(
+  cacheDir: string,
+  hash: string,
+  mediaType: MediaKind,
+): Promise<Buffer | null> {
+  const file = path.join(cacheDir, cacheFileName(hash, mediaType))
   if (!existsSync(file)) return null
   try {
     const buf = await readFile(file)
-    if (!buf.subarray(0, 8).equals(PNG_SIGNATURE) || sha256(buf) !== hash) return null
-    decodePng(buf)
+    if (sha256(buf) !== hash) return null
+    validateMedia(buf, mediaType)
     return buf
   } catch {
     return null
   }
 }
 
-async function cachePng(cacheDir: string, buf: Buffer, knownHash?: string): Promise<void> {
+async function cacheMedia(
+  cacheDir: string,
+  buf: Buffer,
+  mediaType: MediaKind,
+  knownHash?: string,
+): Promise<void> {
   const hash = knownHash ?? sha256(buf)
-  const file = path.join(cacheDir, `${hash}.png`)
-  if (await readCachedPng(cacheDir, hash)) return
+  validateMedia(buf, mediaType)
+  const file = path.join(cacheDir, cacheFileName(hash, mediaType))
+  if (await readCachedMedia(cacheDir, hash, mediaType)) return
   await mkdir(cacheDir, { recursive: true })
   const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
   await writeFile(tmp, buf)

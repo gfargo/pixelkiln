@@ -58,6 +58,7 @@ export async function poll(
         const currentSpec = specByKey.get(key)
         const state = await provider.poll(entry.jobId!, entry.generator, {
           tileFeature: entry.tileFeature ?? currentSpec?.tileFeature,
+          spec: currentSpec,
         })
         if (state.status === "review") {
           upsert(lock, key, { status: "review", reviewObjectId: entry.jobId })

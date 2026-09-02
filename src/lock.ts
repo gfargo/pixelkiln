@@ -220,12 +220,13 @@ async function acquireFileLock(file: string): Promise<() => Promise<void>> {
 export function spendByUnit(lock: Lock): Record<CostUnit, number> {
   const totals: Record<CostUnit, number> = { generations: 0, usd: 0, free: 0 }
   for (const entry of Object.values(lock.entries)) {
-    totals[entry.costUnit ?? "generations"] += entry.cost ?? 0
+    const unit = entry.costUnit ?? "generations"
+    totals[unit] = (totals[unit] ?? 0) + (entry.cost ?? 0)
   }
   return totals
 }
 
 /** @deprecated Prefer spendByUnit; summing unlike provider units is unsafe. */
 export function totalSpend(lock: Lock, unit: CostUnit = "generations"): number {
-  return spendByUnit(lock)[unit]
+  return spendByUnit(lock)[unit] ?? 0
 }

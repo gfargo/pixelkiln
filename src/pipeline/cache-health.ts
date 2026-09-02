@@ -10,9 +10,7 @@ import {
 } from "../cache.ts"
 import { sha256 } from "../hash.ts"
 import type { Lock } from "../types.ts"
-import { decodePng } from "../png.ts"
-
-const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+import { mediaTypeFromExtension, validateMedia } from "../media.ts"
 
 export interface ContentCacheIssue {
   name: string
@@ -150,7 +148,8 @@ async function inspectContentCache(
     }
     report.files++
     const file = path.join(contentDir, entry.name)
-    const expected = entry.name.endsWith(".png") ? entry.name.slice(0, -4) : ""
+    const mediaType = mediaTypeFromExtension(entry.name)
+    const expected = mediaType ? entry.name.slice(0, -4) : ""
     let bytes: Buffer
     try {
       bytes = await readFile(file)
@@ -163,11 +162,7 @@ async function inspectContentCache(
       continue
     }
     if (!isSha256Hash(expected)) {
-      report.invalid.push({ name: entry.name, reason: "filename is not <sha256>.png" })
-      continue
-    }
-    if (!bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
-      report.invalid.push({ name: entry.name, reason: "not a PNG" })
+      report.invalid.push({ name: entry.name, reason: "filename is not <sha256>.png or <sha256>.gif" })
       continue
     }
     if (sha256(bytes) !== expected) {
@@ -175,11 +170,12 @@ async function inspectContentCache(
       continue
     }
     try {
-      decodePng(bytes)
+      validateMedia(bytes, mediaType!)
     } catch (err) {
       report.invalid.push({
         name: entry.name,
-        reason: `invalid PNG: ${err instanceof Error ? err.message : String(err)}`,
+        reason: `invalid ${mediaType === "image/gif" ? "GIF" : "PNG"}: ` +
+          `${err instanceof Error ? err.message : String(err)}`,
       })
       continue
     }

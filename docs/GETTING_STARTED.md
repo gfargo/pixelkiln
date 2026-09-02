@@ -9,7 +9,8 @@ checks need provider access.
 ## Requirements
 
 - Node.js 20 or newer
-- A PixelLab API key for provider-backed commands
+- A credential for the manifest's selected provider: `PIXELLAB_API_KEY` for
+  PixelLab or `RD_API_KEY` for experimental Retro Diffusion support
 - A repository checkout until the first npm release in
   [issue #1](https://github.com/gfargo/pixelkiln/issues/1) is complete
 
@@ -52,6 +53,19 @@ in `.env.local` beside the manifest:
 ```dotenv
 PIXELLAB_API_KEY=...
 ```
+
+For experimental Retro Diffusion generation, set the manifest's
+top-level `provider` to `retrodiffusion` and use:
+
+```dotenv
+RD_API_KEY=...
+```
+
+Its still, tileset-sheet, animated-GIF, and PNG-spritesheet workflows are
+implemented and mock-tested, but PixelLab remains the only authenticated
+live-tested production adapter. See
+[Manifest reference](MANIFEST.md#experimental-retro-diffusion) for
+provider options and current limits.
 
 Before spending anything, validate and price the selected work:
 
@@ -134,8 +148,8 @@ pipeline stages also exit nonzero after partial failures or timeouts.
 - `restore` repairs missing generated outputs without buying new generations.
 - `.pixelkiln/cache/` stores downloaded PNG bytes by SHA-256, so restoration can
   still work after a temporary provider URL expires.
-- `cache --check` verifies hashes and fully decodes cached PNG structure before
-  trusting recovery bytes, then validates the account object-hash cache.
+- `cache --check` verifies hashes and structurally validates cached PNG/GIF
+  media before trusting recovery bytes, then validates the account object-hash cache.
   `cache --prune` removes corrupt, partial, and unreferenced project content
   plus invalid hash entries. It does not mistake
   objects belonging to another project for disposable account data.

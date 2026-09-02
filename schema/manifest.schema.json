@@ -10,6 +10,11 @@
         "name": {
           "type": "string"
         },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "default": "pixellab"
+        },
         "styles": {
           "type": "object",
           "additionalProperties": {
@@ -21,7 +26,8 @@
                   "1dir",
                   "map",
                   "pixflux",
-                  "tiles"
+                  "tiles",
+                  "animation"
                 ],
                 "default": "map"
               },
@@ -155,6 +161,14 @@
                   "type": "string"
                 },
                 "default": []
+              },
+              "providerOptions": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                "default": {}
               }
             },
             "required": [

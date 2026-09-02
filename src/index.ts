@@ -1,8 +1,18 @@
 export * from "./types.ts"
 export * from "./client.ts"
 export * from "./provider.ts"
+export * from "./media.ts"
 export { PixelLabProvider } from "./providers/pixellab.ts"
+export { RetroDiffusionProvider, type RetroDiffusionOptions } from "./providers/retrodiffusion.ts"
 export { FakeProvider, FAKE_PNG, type FakeOptions } from "./providers/fake.ts"
+export {
+  registerProvider,
+  providerFactory,
+  createProvider,
+  availableProviders,
+  type ProviderFactory,
+  type ProviderMode,
+} from "./providers/registry.ts"
 export * from "./manifest.ts"
 export * from "./lock.ts"
 export * from "./hash.ts"

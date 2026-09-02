@@ -15,10 +15,12 @@ local contact sheet, and commit exact provenance beside the files. No LLM is in
 the orchestration loop; provider calls, polling, hashing, downloads, and filing
 are deterministic software mechanics.
 
-The orchestration layer is provider-neutral by design. PixelLab is currently
-the only production adapter and the only live-tested generation backend;
-`FakeProvider` exercises the same contract deterministically in tests. A second
-production adapter is roadmap work, not current compatibility.
+The orchestration layer is provider-neutral. PixelLab is the production,
+live-tested backend. An experimental Retro Diffusion adapter supports native
+pixel-art stills, candidate batches, tileset sheets, animated GIFs, and PNG
+spritesheets; its lifecycle is covered by mocked integration tests but still
+needs an authenticated smoke test before it is considered production-ready.
+`FakeProvider` exercises the same contract deterministically in tests.
 
 > **Release status:** the package is pre-1.0 and the first npm publication is
 > tracked in [issue #1](https://github.com/gfargo/pixelkiln/issues/1). Until it
@@ -149,6 +151,7 @@ packaging layer.
 {
   "$schema": "./node_modules/pixelkiln/schema/manifest.schema.json",
   "name": "my-game",
+  "provider": "pixellab",
   "styles": {
     "base": {
       "generator": "map",
@@ -168,7 +171,9 @@ packaging layer.
 Styles are namespaces. Adding a second style re-derives the same asset ids into
 a separate output directory and separate lock keys without clobbering the first
 set. Generator choice, reference-image bytes, dimensions, palette, seed, and
-prompt settings participate in deterministic spec identity.
+prompt settings participate in deterministic spec identity. A manifest may
+select `retrodiffusion` instead and pass namespaced `providerOptions`; see the
+[provider notes](./PROVIDERS.md) for its current experimental scope.
 
 The schema rejects unknown fields and invalid generator combinations before
 planning. See the [Manifest reference](./docs/MANIFEST.md).

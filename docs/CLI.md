@@ -9,6 +9,11 @@ Unknown commands, positional arguments, and flags are errors. Repeated
 separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
+The manifest's top-level `provider` field selects the provider for `plan`,
+`doctor`, and pipeline commands. It defaults to `pixellab`; the built-in
+`retrodiffusion` adapter is experimental and supports still-image
+`map`/`pixflux`, `tiles` sheets, and `animation` GIF/spritesheet work.
+
 ## Everyday pipeline
 
 ### `init`
@@ -134,7 +139,8 @@ or download artwork.
 
 ### `balance`
 
-Show the provider's remaining balance and cost unit.
+Show the manifest-selected provider's remaining balance and cost unit. Reports
+a capability error when an installed provider has no balance endpoint.
 
 ### `status`
 
@@ -160,7 +166,7 @@ Subcommands:
 
 | Subcommand | Effect |
 |---|---|
-| `add <manifest>` | Registers a project. Id defaults to the manifest's `name`; `--name` overrides it. Lock defaults to `pixelkiln.lock.json` beside the manifest; `--lock` overrides it. `--provider` sets the provider id (default `pixellab`); `--account` sets a free-form account label. Refuses a duplicate id or a lockfile already registered under another id. Warns, but does not refuse, when the lock does not exist yet. |
+| `add <manifest>` | Registers a project. Id defaults to the manifest's `name`; `--name` overrides it. Lock defaults to `pixelkiln.lock.json` beside the manifest; `--lock` overrides it. `--provider` overrides the manifest's provider id; `--account` sets a free-form account label. Refuses a duplicate id or a lockfile already registered under another id. Warns, but does not refuse, when the lock does not exist yet. |
 | `remove <id-or-manifest>` | Drops a registration by project id or by manifest path. Touches no art, no lock, no provider account. |
 | `list` | Lists registered projects and catalog diagnostics. Refuses if the catalog file does not exist. |
 | `status` | Aggregate provider, spend-by-unit, plan state, and claim count, offline. Provider cost units are never summed across each other. Refuses if the catalog file does not exist. |
@@ -262,7 +268,7 @@ Print the package version. `-v` is an alias.
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |
 | `--workspace <path>` | workspace/salvage | Workspace catalog path; defaults to `pixelkiln.workspace.json`. On salvage, derives the claim set instead of repeated `--claims`. |
-| `--provider <id>` | workspace add | Provider id to register the project under; defaults to `pixellab`. |
+| `--provider <id>` | workspace add | Provider id to register the project under; defaults to the target manifest's provider. |
 | `--account <label>` | workspace add | Free-form account label, e.g. distinguishing sandboxes. |
 | `--all` | salvage dry run | List every unclaimed object rather than the first 30. |
 | `--from <dir>` | init | Existing source tree to scan. |

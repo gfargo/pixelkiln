@@ -23,7 +23,8 @@ retries at zero generation cost.
 
 Two ignored caches accelerate recovery:
 
-- `.pixelkiln/cache/<sha256>.png`: content-addressed generated PNG bytes;
+- `.pixelkiln/cache/<sha256>.png` or `<sha256>.gif`: content-addressed,
+  structurally validated generated media bytes;
 - `pixelkiln.cache.json`: provider object id → remote image hash.
 
 ```bash

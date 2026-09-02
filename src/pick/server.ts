@@ -1,4 +1,4 @@
-import type { Provider } from "../provider.ts"
+import { requireSelectCandidate, type Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
 import type { Lock } from "../types.ts"
 import { renderSheet, type SheetGroup } from "./sheet.ts"
@@ -71,7 +71,7 @@ export async function runPicker(
 
         // Promote the chosen candidate; the review parent is removed upstream
         // once nothing is left in it.
-        const { objectId, sourceUrl } = await provider.selectCandidate(
+        const { objectId, sourceUrl } = await requireSelectCandidate(provider)(
           entry.reviewObjectId,
           index,
           `asset:${entry.assetId}`,
