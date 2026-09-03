@@ -47,6 +47,52 @@
       "costUnit": "usd",
       "provider": "retrodiffusion"
     },
+    "background-a/volcanic-pass": {
+      "styleId": "background-a",
+      "assetId": "volcanic-pass",
+      "specHash": "10317d9218fc0fe4824f516f6e16069748277cb940908d98f606c50e05e0038a",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a wide volcanic mountain pass at dawn, layered black peaks, glowing lava river, basalt fortress in the middle distance, smoke plumes, full-bleed parallax background with open sky",
+      "width": 384,
+      "height": 384,
+      "jobId": "60413b66-e8a1-443b-8cbc-086e7180db0f",
+      "reviewObjectId": null,
+      "objectId": "60413b66-e8a1-443b-8cbc-086e7180db0f#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/60413b66-e8a1-443b-8cbc-086e7180db0f/0-403c527d5167428d9c07988e76c9e869.png?AWSAccessKeyId=ASIA55GSYAHSHGVUKD7D&Signature=%2BcCIkVw6jDOASbuZvGNIOa8BAo0%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEAwaCXVzLWVhc3QtMSJHMEUCIQC42mq3Oucwd8CDZ%2FZ4Gn8n3gr0gVpK3Pd5NUUlylTQsAIgR9795M5iTBLbWf9mgR6RteK2yfeHifKcs%2B44SRk7BD0qmQQI1P%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDFNcHwqIbBOUsTlLQyrtA5wYAEVVOgniDB3ZA7yYH5g%2FSDhGn9mLJpoktq9zAd9KGBJCo6bEFWMGtkq%2FAHKWRYYPbw66WvqbgIJiN6%2BhlyVporZgmKpcxU1M7myP%2BhWU5Tpj%2F9TzJrNoFcnarwzsQ3DZIt6YMJN%2BQSDYvSBis3rZqlTpleB0IoDP5ui5G6VFMFxTNxSTMMBjoP6JeHlrXs9SxsweGwwo26bDW%2FmOlvezbJU0CjYoJ2aXnaX9WbrtoWxjdQuZ3bb0YtcQUgvr%2FwrOpD5LEWmBlToDqSkMPIrHQyPMSvwnvuMKlx4DQrzhLCPHnvPJ30Qoe%2B1xKOtc7%2BMuKMn%2FWeQ1x5jr0LBPdOzWDqND2DJqmaZTTGI6Jee6EUSMw7PRjeuM%2BXlwyJWyPOOkiXdtoqDQ34zBzWROrhNJh9FfzbC58lcGevGVlTrS9wTmeEBpQIy%2B6cjyEXVcSwzXYuLNFzTs4KoZ2sYDUnr4jl%2BZ5TkMUHc9OXmLuJPk6F7T83%2F3xY4QlYM%2F3B28Jz3sVXSgkawmCZTZ0KuZxtnClFpnG08y4qnOGV3f3O6GK9CFE3%2Fd0%2BaMH78dFFmtaE%2B2t9lcw0tqVCJdeK270KqoBr7%2BZrdrXHcSwocjF3qcM9imMqe%2BWMm9gYm558FCUIi6KIH90rfQCBNDZVkwhc%2Fj1AY6ogHcta9O39gRpC7Go0%2BkT7TJ1%2FiPyJWDlJrsRxHDZlHx3zVwS6LfLwlCL51%2FaVsmPABtgEgahPlPyGvYjMDNqwrXUFB%2FL4NNSVhqVWuNgNQEXU6j4XUgWPzDgz5nu%2BlAgGweP6%2B4NaSjr9Hyb7sbLPd%2Bk%2FO1reeUNjaxVro%2BXyQMNDBbi0xONz8GlzSQVkVImPmjm3Xzo1Bh9vZl8grkX5iP%2F30%3D&Expires=1788406580",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/60413b66-e8a1-443b-8cbc-086e7180db0f/0-403c527d5167428d9c07988e76c9e869.png?AWSAccessKeyId=ASIA55GSYAHSHGVUKD7D&Signature=%2BcCIkVw6jDOASbuZvGNIOa8BAo0%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEAwaCXVzLWVhc3QtMSJHMEUCIQC42mq3Oucwd8CDZ%2FZ4Gn8n3gr0gVpK3Pd5NUUlylTQsAIgR9795M5iTBLbWf9mgR6RteK2yfeHifKcs%2B44SRk7BD0qmQQI1P%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDFNcHwqIbBOUsTlLQyrtA5wYAEVVOgniDB3ZA7yYH5g%2FSDhGn9mLJpoktq9zAd9KGBJCo6bEFWMGtkq%2FAHKWRYYPbw66WvqbgIJiN6%2BhlyVporZgmKpcxU1M7myP%2BhWU5Tpj%2F9TzJrNoFcnarwzsQ3DZIt6YMJN%2BQSDYvSBis3rZqlTpleB0IoDP5ui5G6VFMFxTNxSTMMBjoP6JeHlrXs9SxsweGwwo26bDW%2FmOlvezbJU0CjYoJ2aXnaX9WbrtoWxjdQuZ3bb0YtcQUgvr%2FwrOpD5LEWmBlToDqSkMPIrHQyPMSvwnvuMKlx4DQrzhLCPHnvPJ30Qoe%2B1xKOtc7%2BMuKMn%2FWeQ1x5jr0LBPdOzWDqND2DJqmaZTTGI6Jee6EUSMw7PRjeuM%2BXlwyJWyPOOkiXdtoqDQ34zBzWROrhNJh9FfzbC58lcGevGVlTrS9wTmeEBpQIy%2B6cjyEXVcSwzXYuLNFzTs4KoZ2sYDUnr4jl%2BZ5TkMUHc9OXmLuJPk6F7T83%2F3xY4QlYM%2F3B28Jz3sVXSgkawmCZTZ0KuZxtnClFpnG08y4qnOGV3f3O6GK9CFE3%2Fd0%2BaMH78dFFmtaE%2B2t9lcw0tqVCJdeK270KqoBr7%2BZrdrXHcSwocjF3qcM9imMqe%2BWMm9gYm558FCUIi6KIH90rfQCBNDZVkwhc%2Fj1AY6ogHcta9O39gRpC7Go0%2BkT7TJ1%2FiPyJWDlJrsRxHDZlHx3zVwS6LfLwlCL51%2FaVsmPABtgEgahPlPyGvYjMDNqwrXUFB%2FL4NNSVhqVWuNgNQEXU6j4XUgWPzDgz5nu%2BlAgGweP6%2B4NaSjr9Hyb7sbLPd%2Bk%2FO1reeUNjaxVro%2BXyQMNDBbi0xONz8GlzSQVkVImPmjm3Xzo1Bh9vZl8grkX5iP%2F30%3D&Expires=1788406580",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/background/a/volcanic-pass.png",
+          "sha256": "0a0bb05f146119349108a2f6061a49d7c320f311cf6c26469aa7afc883c0cc04",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.099,
+          "remainingBalance": 9.833,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__environment",
+          "width": 384,
+          "height": 384
+        }
+      },
+      "submittedAt": "2026-09-03T03:20:37.413Z",
+      "downloadedAt": "2026-09-03T03:21:28.464Z",
+      "cost": 0.099,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
     "background-b/alpine-valley": {
       "styleId": "background-b",
       "assetId": "alpine-valley",
@@ -93,6 +139,98 @@
       "costUnit": "usd",
       "provider": "retrodiffusion"
     },
+    "background-b/volcanic-pass": {
+      "styleId": "background-b",
+      "assetId": "volcanic-pass",
+      "specHash": "73f1406f0bebea5994f929e397d6be583de7b3cee6090ba5e4b54ee593974741",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a wide volcanic mountain pass at dawn, layered black peaks, glowing lava river, basalt fortress in the middle distance, smoke plumes, full-bleed parallax background with open sky",
+      "width": 384,
+      "height": 384,
+      "jobId": "5b36cd9e-c30f-4642-b81e-bf3383e31f15",
+      "reviewObjectId": null,
+      "objectId": "5b36cd9e-c30f-4642-b81e-bf3383e31f15#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/5b36cd9e-c30f-4642-b81e-bf3383e31f15/0-319fc4aaee214a3cada5c2b0c9edc51b.png?AWSAccessKeyId=ASIA55GSYAHSLJKNA3ZK&Signature=qBIywzLrWruqYoCRD9MSyHvfgFo%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEAwaCXVzLWVhc3QtMSJIMEYCIQDSTKCT1zGB98YBS93sObTMGyMManJ60MEF2JBumwlblAIhAKaHRN3dRMQc0isb9aQF7LFdB2p6nSbjyR2S5l10LJcgKpkECNT%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEQARoMOTU2MDcyMTk4NjI4IgyGyivv2flAxD5%2FPuUq7QMTywJnE9iqHMLyLurXQZPgqBm8JFn7D5ovlMSC8d25IebJp6h7iYexBegoI1LWFU%2B3P0G%2BnPCS3cqXpehJ0ssTSnPYIXdCl%2FTISW0qi6zWXfQT4ZjGww19KErrdDeEy%2F00pqf567PmWUTXJkgjr538nJPNvVW%2BuuxLcdtss%2B469wBcAd5s08s5%2Fqa6qbtbec4d%2BF7zxkW4Mg9Bso9dv9lzz84vTppYZAXfMkSx7eMulHrybUdBsFTRnQS%2FU9uwjeCOH3dwoRu%2FGF2w16L0jzfqrRWOEuQa7D0rb0OR8SkLD9%2BLbECDxXFb3E2WgPtuwaOKr0cVULqk3NEadaRf6PN7QsH%2BrXrNbqaIQKXoyvtAUdUnQpsRrqp1YxUFH3EdgiqumcJ%2BvaqxcupXCxJglRW4fE8%2BGXIKx83%2FT%2FUX%2F3ijeBDk8o4mBU%2Bm9LQXpIt6QJEZR232Qo%2BEDjtE%2BHEjhJe4Xd6Q9gv%2FTnfLYuUO%2FHewHoQ8E3flOsPu17ocqUooe8n9ZBV3J6be%2Bvb6FS%2FPYbzzN5eDQxgsnR5pAd5QKMkLVhBmPccVd5Ec%2BcwmEl9ZfkA6Wj9%2F74PkTmddQwTisn0oXOf4FrwJvA7oHvw3lV%2BlG7MCpIUFnlBd8wVJcRMVA6XnREkO6Tejg96MB0T5MIjP49QGOqEBqa7DJ6wt1qBBvAYJ6VVunSvsJAYm12KqcYXttWdcjqSXHZstTUQhEgTfTtNQqSI7T8yseRiGINxbSS6oUlxnIOJI%2BDo%2BnJTe5QEC0Fm%2BqEyLm30GY%2BWvgUEZuGy9BXFHixZscWz0rrCxhbH89xY7VQxUHCAJrP9X4Y0t2YwtrtVnQ%2FWAnHAOlhJcxgAXPIc96zME%2Bn62sQh7zHc2gM%2FW5%2FM%3D&Expires=1788406587",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/5b36cd9e-c30f-4642-b81e-bf3383e31f15/0-319fc4aaee214a3cada5c2b0c9edc51b.png?AWSAccessKeyId=ASIA55GSYAHSLJKNA3ZK&Signature=qBIywzLrWruqYoCRD9MSyHvfgFo%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEAwaCXVzLWVhc3QtMSJIMEYCIQDSTKCT1zGB98YBS93sObTMGyMManJ60MEF2JBumwlblAIhAKaHRN3dRMQc0isb9aQF7LFdB2p6nSbjyR2S5l10LJcgKpkECNT%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEQARoMOTU2MDcyMTk4NjI4IgyGyivv2flAxD5%2FPuUq7QMTywJnE9iqHMLyLurXQZPgqBm8JFn7D5ovlMSC8d25IebJp6h7iYexBegoI1LWFU%2B3P0G%2BnPCS3cqXpehJ0ssTSnPYIXdCl%2FTISW0qi6zWXfQT4ZjGww19KErrdDeEy%2F00pqf567PmWUTXJkgjr538nJPNvVW%2BuuxLcdtss%2B469wBcAd5s08s5%2Fqa6qbtbec4d%2BF7zxkW4Mg9Bso9dv9lzz84vTppYZAXfMkSx7eMulHrybUdBsFTRnQS%2FU9uwjeCOH3dwoRu%2FGF2w16L0jzfqrRWOEuQa7D0rb0OR8SkLD9%2BLbECDxXFb3E2WgPtuwaOKr0cVULqk3NEadaRf6PN7QsH%2BrXrNbqaIQKXoyvtAUdUnQpsRrqp1YxUFH3EdgiqumcJ%2BvaqxcupXCxJglRW4fE8%2BGXIKx83%2FT%2FUX%2F3ijeBDk8o4mBU%2Bm9LQXpIt6QJEZR232Qo%2BEDjtE%2BHEjhJe4Xd6Q9gv%2FTnfLYuUO%2FHewHoQ8E3flOsPu17ocqUooe8n9ZBV3J6be%2Bvb6FS%2FPYbzzN5eDQxgsnR5pAd5QKMkLVhBmPccVd5Ec%2BcwmEl9ZfkA6Wj9%2F74PkTmddQwTisn0oXOf4FrwJvA7oHvw3lV%2BlG7MCpIUFnlBd8wVJcRMVA6XnREkO6Tejg96MB0T5MIjP49QGOqEBqa7DJ6wt1qBBvAYJ6VVunSvsJAYm12KqcYXttWdcjqSXHZstTUQhEgTfTtNQqSI7T8yseRiGINxbSS6oUlxnIOJI%2BDo%2BnJTe5QEC0Fm%2BqEyLm30GY%2BWvgUEZuGy9BXFHixZscWz0rrCxhbH89xY7VQxUHCAJrP9X4Y0t2YwtrtVnQ%2FWAnHAOlhJcxgAXPIc96zME%2Bn62sQh7zHc2gM%2FW5%2FM%3D&Expires=1788406587",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/background/b/volcanic-pass.png",
+          "sha256": "88b2cb586b17cc34c66f5246092f0c8790f62cb2da8233bf3e902883a2e1dcab",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.099,
+          "remainingBalance": 9.734,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__environment",
+          "width": 384,
+          "height": 384
+        }
+      },
+      "submittedAt": "2026-09-03T03:20:39.916Z",
+      "downloadedAt": "2026-09-03T03:21:28.359Z",
+      "cost": 0.099,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
+    "isolated-a/cliffside-fortress": {
+      "styleId": "isolated-a",
+      "assetId": "cliffside-fortress",
+      "specHash": "f2194dc566c946bd05ad22eb16e1e83767f5e46272a2431fa5068ea0d1e11ae1",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a large fortified monastery built into a sheer mountain cliff, isometric three-quarter view, central stone keep, two side towers, terraced stairs, copper roofs, isolated with no scenery",
+      "width": 384,
+      "height": 384,
+      "jobId": "e4a6fc71-4b7e-43f9-ad70-89a2fcfd8fb8",
+      "reviewObjectId": null,
+      "objectId": "e4a6fc71-4b7e-43f9-ad70-89a2fcfd8fb8#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/e4a6fc71-4b7e-43f9-ad70-89a2fcfd8fb8/0-fcd149b9ff4d451981ac399b96b3700b.png?AWSAccessKeyId=ASIA55GSYAHSLHVKUGVP&Signature=xN8zP%2FnTePjFFaA6H1N86Qtdd6U%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEAwaCXVzLWVhc3QtMSJIMEYCIQCano9bCg7hK%2FenQo29gY4r%2F7ppmOHgT1MsmbKIjw13tAIhAPSgUKKuHPfzk2i3QAv%2BzPd%2BHTm1rKFvm4TUFe8r%2FQNcKpkECNT%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEQARoMOTU2MDcyMTk4NjI4Igwz49ZK846MqmLP4fQq7QPs%2Bph5W8CEt4I1CNqNRhQe7eZjb%2FdJvxkrowP9tSezQZm9P963S8XgBKDo8GlzqO%2F79V6cF7Qv%2Fo9vQ3Ea1CtvzhWWQu0z3HuGSMnw%2FcBX5o1KNKpSjvnCBqrzC%2BjXCdbfys%2FJ8zM9s%2BlHQtIO9xkc7E1sd9HnyDX8mSCx8n3DcHJ%2FJeWEo3RuYl2IQ7qJ5c1yBIw9YluuWR2zq6vXocaVlynm%2BvypZ61Yn2ER4NLfLT7uf2zC9rfqtEYYV7Jdwh8DsUy3mRF4XIsZ5LM7mROoVtahSTUuyxGMVuRF1fx4j%2FrCZgmo%2FeuNWEjg82uOIanTIZQxcXH3JjEeG%2BcZRMD9YCIytKqXe7JGNz3am%2Fn2JjISrN2jzQJEtTttqr4eS24i%2Fi47PgzdyUhTsXwA%2FgDiM4iCYQ1LNxgwMMdNIBdHRsxifj4wNH6Y4%2BwWLyZL2pAK9Vf%2BtL9eJLiTS2viGsSiwTvbBQIY703knBxdH8Iag1KLRz0HBoBQYEafeIgYbqDzaFNGr7uhx1EBBJFgwQ7lNvQSUewXNagpAaqInF6FwS5pr2w7ZhSn6oTRnIFhGPYsm4RrB362evQruqFtSQXnU2nYNFJcl%2FsPkNF14JNJxDlhB6ZlMIRhIRmBxr3AkAGslVnN0mOYwZXztgJcMMXN49QGOqEB8rNx3HwhLSWSld4kKXEzsmHdPO0ng1CEleT0B9aNl6iiG6c9ggulg5W3tTeYSgnAabH61BNq8%2FwIjXiM9UwdzZdeMtksqUD3u2vCvrBHDy%2FeNhj6PkleH1GTnSqz1tX3AFuMLPpnxmJCFYRyv6iDfgQLca%2FCNCLJ0s39jdd7yItiKVXRyIb27gp5hc0QbYf609S3H3zNFjXe4BtR81GRWig%3D&Expires=1788406563",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/e4a6fc71-4b7e-43f9-ad70-89a2fcfd8fb8/0-fcd149b9ff4d451981ac399b96b3700b.png?AWSAccessKeyId=ASIA55GSYAHSLHVKUGVP&Signature=xN8zP%2FnTePjFFaA6H1N86Qtdd6U%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEAwaCXVzLWVhc3QtMSJIMEYCIQCano9bCg7hK%2FenQo29gY4r%2F7ppmOHgT1MsmbKIjw13tAIhAPSgUKKuHPfzk2i3QAv%2BzPd%2BHTm1rKFvm4TUFe8r%2FQNcKpkECNT%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEQARoMOTU2MDcyMTk4NjI4Igwz49ZK846MqmLP4fQq7QPs%2Bph5W8CEt4I1CNqNRhQe7eZjb%2FdJvxkrowP9tSezQZm9P963S8XgBKDo8GlzqO%2F79V6cF7Qv%2Fo9vQ3Ea1CtvzhWWQu0z3HuGSMnw%2FcBX5o1KNKpSjvnCBqrzC%2BjXCdbfys%2FJ8zM9s%2BlHQtIO9xkc7E1sd9HnyDX8mSCx8n3DcHJ%2FJeWEo3RuYl2IQ7qJ5c1yBIw9YluuWR2zq6vXocaVlynm%2BvypZ61Yn2ER4NLfLT7uf2zC9rfqtEYYV7Jdwh8DsUy3mRF4XIsZ5LM7mROoVtahSTUuyxGMVuRF1fx4j%2FrCZgmo%2FeuNWEjg82uOIanTIZQxcXH3JjEeG%2BcZRMD9YCIytKqXe7JGNz3am%2Fn2JjISrN2jzQJEtTttqr4eS24i%2Fi47PgzdyUhTsXwA%2FgDiM4iCYQ1LNxgwMMdNIBdHRsxifj4wNH6Y4%2BwWLyZL2pAK9Vf%2BtL9eJLiTS2viGsSiwTvbBQIY703knBxdH8Iag1KLRz0HBoBQYEafeIgYbqDzaFNGr7uhx1EBBJFgwQ7lNvQSUewXNagpAaqInF6FwS5pr2w7ZhSn6oTRnIFhGPYsm4RrB362evQruqFtSQXnU2nYNFJcl%2FsPkNF14JNJxDlhB6ZlMIRhIRmBxr3AkAGslVnN0mOYwZXztgJcMMXN49QGOqEB8rNx3HwhLSWSld4kKXEzsmHdPO0ng1CEleT0B9aNl6iiG6c9ggulg5W3tTeYSgnAabH61BNq8%2FwIjXiM9UwdzZdeMtksqUD3u2vCvrBHDy%2FeNhj6PkleH1GTnSqz1tX3AFuMLPpnxmJCFYRyv6iDfgQLca%2FCNCLJ0s39jdd7yItiKVXRyIb27gp5hc0QbYf609S3H3zNFjXe4BtR81GRWig%3D&Expires=1788406563",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/isolated/a/cliffside-fortress.png",
+          "sha256": "e61abab2020bdb3fc332db0dedebff9f57b4a7d521da9d13fd9a476e443e645a",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.099,
+          "remainingBalance": 10.031,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__isometric_asset",
+          "width": 384,
+          "height": 384
+        }
+      },
+      "submittedAt": "2026-09-03T03:20:32.399Z",
+      "downloadedAt": "2026-09-03T03:21:28.361Z",
+      "cost": 0.099,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
     "isolated-a/mountain-observatory": {
       "styleId": "isolated-a",
       "assetId": "mountain-observatory",
@@ -136,6 +274,52 @@
       "submittedAt": "2026-09-02T14:59:52.678Z",
       "downloadedAt": "2026-09-02T15:00:37.662Z",
       "cost": 0.058,
+      "costUnit": "usd",
+      "provider": "retrodiffusion"
+    },
+    "isolated-b/cliffside-fortress": {
+      "styleId": "isolated-b",
+      "assetId": "cliffside-fortress",
+      "specHash": "293e839cabcc3ccc5ed642d73ec27d9acc75a05233451d0cd1db74cd748a39ff",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a large fortified monastery built into a sheer mountain cliff, isometric three-quarter view, central stone keep, two side towers, terraced stairs, copper roofs, isolated with no scenery",
+      "width": 384,
+      "height": 384,
+      "jobId": "d89513de-ffe6-4353-aeb0-92b4fef2cd75",
+      "reviewObjectId": null,
+      "objectId": "d89513de-ffe6-4353-aeb0-92b4fef2cd75#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/d89513de-ffe6-4353-aeb0-92b4fef2cd75/0-6837885fe9fc49c28a103f68c0c47b7d.png?AWSAccessKeyId=ASIA55GSYAHSHGVUKD7D&Signature=4vOUUExpI9n8BIwl%2BZGwshv3aZ8%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEAwaCXVzLWVhc3QtMSJHMEUCIQC42mq3Oucwd8CDZ%2FZ4Gn8n3gr0gVpK3Pd5NUUlylTQsAIgR9795M5iTBLbWf9mgR6RteK2yfeHifKcs%2B44SRk7BD0qmQQI1P%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDFNcHwqIbBOUsTlLQyrtA5wYAEVVOgniDB3ZA7yYH5g%2FSDhGn9mLJpoktq9zAd9KGBJCo6bEFWMGtkq%2FAHKWRYYPbw66WvqbgIJiN6%2BhlyVporZgmKpcxU1M7myP%2BhWU5Tpj%2F9TzJrNoFcnarwzsQ3DZIt6YMJN%2BQSDYvSBis3rZqlTpleB0IoDP5ui5G6VFMFxTNxSTMMBjoP6JeHlrXs9SxsweGwwo26bDW%2FmOlvezbJU0CjYoJ2aXnaX9WbrtoWxjdQuZ3bb0YtcQUgvr%2FwrOpD5LEWmBlToDqSkMPIrHQyPMSvwnvuMKlx4DQrzhLCPHnvPJ30Qoe%2B1xKOtc7%2BMuKMn%2FWeQ1x5jr0LBPdOzWDqND2DJqmaZTTGI6Jee6EUSMw7PRjeuM%2BXlwyJWyPOOkiXdtoqDQ34zBzWROrhNJh9FfzbC58lcGevGVlTrS9wTmeEBpQIy%2B6cjyEXVcSwzXYuLNFzTs4KoZ2sYDUnr4jl%2BZ5TkMUHc9OXmLuJPk6F7T83%2F3xY4QlYM%2F3B28Jz3sVXSgkawmCZTZ0KuZxtnClFpnG08y4qnOGV3f3O6GK9CFE3%2Fd0%2BaMH78dFFmtaE%2B2t9lcw0tqVCJdeK270KqoBr7%2BZrdrXHcSwocjF3qcM9imMqe%2BWMm9gYm558FCUIi6KIH90rfQCBNDZVkwhc%2Fj1AY6ogHcta9O39gRpC7Go0%2BkT7TJ1%2FiPyJWDlJrsRxHDZlHx3zVwS6LfLwlCL51%2FaVsmPABtgEgahPlPyGvYjMDNqwrXUFB%2FL4NNSVhqVWuNgNQEXU6j4XUgWPzDgz5nu%2BlAgGweP6%2B4NaSjr9Hyb7sbLPd%2Bk%2FO1reeUNjaxVro%2BXyQMNDBbi0xONz8GlzSQVkVImPmjm3Xzo1Bh9vZl8grkX5iP%2F30%3D&Expires=1788406581",
+      "sourceUrls": [
+        {
+          "url": "https://retrodiffusionstack-retrodiffusionapioutputstorere-rg4v98h7gwoa.s3.amazonaws.com/api-activity/d89513de-ffe6-4353-aeb0-92b4fef2cd75/0-6837885fe9fc49c28a103f68c0c47b7d.png?AWSAccessKeyId=ASIA55GSYAHSHGVUKD7D&Signature=4vOUUExpI9n8BIwl%2BZGwshv3aZ8%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEAwaCXVzLWVhc3QtMSJHMEUCIQC42mq3Oucwd8CDZ%2FZ4Gn8n3gr0gVpK3Pd5NUUlylTQsAIgR9795M5iTBLbWf9mgR6RteK2yfeHifKcs%2B44SRk7BD0qmQQI1P%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NTYwNzIxOTg2MjgiDFNcHwqIbBOUsTlLQyrtA5wYAEVVOgniDB3ZA7yYH5g%2FSDhGn9mLJpoktq9zAd9KGBJCo6bEFWMGtkq%2FAHKWRYYPbw66WvqbgIJiN6%2BhlyVporZgmKpcxU1M7myP%2BhWU5Tpj%2F9TzJrNoFcnarwzsQ3DZIt6YMJN%2BQSDYvSBis3rZqlTpleB0IoDP5ui5G6VFMFxTNxSTMMBjoP6JeHlrXs9SxsweGwwo26bDW%2FmOlvezbJU0CjYoJ2aXnaX9WbrtoWxjdQuZ3bb0YtcQUgvr%2FwrOpD5LEWmBlToDqSkMPIrHQyPMSvwnvuMKlx4DQrzhLCPHnvPJ30Qoe%2B1xKOtc7%2BMuKMn%2FWeQ1x5jr0LBPdOzWDqND2DJqmaZTTGI6Jee6EUSMw7PRjeuM%2BXlwyJWyPOOkiXdtoqDQ34zBzWROrhNJh9FfzbC58lcGevGVlTrS9wTmeEBpQIy%2B6cjyEXVcSwzXYuLNFzTs4KoZ2sYDUnr4jl%2BZ5TkMUHc9OXmLuJPk6F7T83%2F3xY4QlYM%2F3B28Jz3sVXSgkawmCZTZ0KuZxtnClFpnG08y4qnOGV3f3O6GK9CFE3%2Fd0%2BaMH78dFFmtaE%2B2t9lcw0tqVCJdeK270KqoBr7%2BZrdrXHcSwocjF3qcM9imMqe%2BWMm9gYm558FCUIi6KIH90rfQCBNDZVkwhc%2Fj1AY6ogHcta9O39gRpC7Go0%2BkT7TJ1%2FiPyJWDlJrsRxHDZlHx3zVwS6LfLwlCL51%2FaVsmPABtgEgahPlPyGvYjMDNqwrXUFB%2FL4NNSVhqVWuNgNQEXU6j4XUgWPzDgz5nu%2BlAgGweP6%2B4NaSjr9Hyb7sbLPd%2Bk%2FO1reeUNjaxVro%2BXyQMNDBbi0xONz8GlzSQVkVImPmjm3Xzo1Bh9vZl8grkX5iP%2F30%3D&Expires=1788406581",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/retrodiffusion/isolated/b/cliffside-fortress.png",
+          "sha256": "6bc1404c87a526fe0ffee9fa77856a3acc2fe1d0c12623d6ae01808569e3a08f",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.099,
+          "remainingBalance": 9.932,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__isometric_asset",
+          "width": 384,
+          "height": 384
+        }
+      },
+      "submittedAt": "2026-09-03T03:20:34.906Z",
+      "downloadedAt": "2026-09-03T03:21:28.363Z",
+      "cost": 0.099,
       "costUnit": "usd",
       "provider": "retrodiffusion"
     },

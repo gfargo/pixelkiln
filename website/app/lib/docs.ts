@@ -66,7 +66,7 @@ export const docs: DocEntry[] = [
   {
     slug: "provider-benchmark",
     title: "Environment provider benchmark",
-    description: "Twelve matched PixelLab and Retro Diffusion outputs, with measured costs and review notes.",
+    description: "Twenty matched PixelLab and Retro Diffusion outputs, including 384px buildings and backgrounds.",
     file: "docs/PROVIDER_BENCHMARK.md",
     group: "Workflows",
   },

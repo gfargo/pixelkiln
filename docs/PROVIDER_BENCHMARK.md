@@ -1,8 +1,10 @@
 # Environment provider benchmark
 
-This benchmark compares PixelLab and Retro Diffusion on three 256×256 game-art
-briefs. Each brief has two attempts. The test uses the same prompt text and seed
-numbers for both providers, but seeds are not portable between models.
+This benchmark compares PixelLab and Retro Diffusion on five game-art briefs.
+Three briefs use 256×256 output; two use 384×384 to test larger buildings and
+environment backgrounds. Each brief has two attempts. The test uses the same
+prompt text and seed numbers for both providers, but seeds are not portable
+between models.
 
 The benchmark tests the adapters that PixelKiln ships. It does not rank every
 model or endpoint sold by either provider.
@@ -14,10 +16,12 @@ model or endpoint sold by either provider.
 | Mountain observatory | `map`, high top-down view | `rd_plus__isometric_asset` | Isolated building on a snowy ridge |
 | River gate | `map`, low top-down view | `rd_plus__topdown_asset` | Isolated landmark spanning water |
 | Alpine valley | `pixflux`, background kept | `rd_plus__environment` | Full scenic background |
+| Cliffside fortress | `map`, high top-down view | `rd_plus__isometric_asset` | Large isolated building complex |
+| Volcanic pass | `pixflux`, background kept | `rd_plus__environment` | Full scenic background with reusable depth planes |
 
-Both manifests request 256×256 output with seeds `31415` and `27182`. The
-provider-specific route or style is allowed to do its job. No image was picked,
-edited, cropped, or post-processed.
+Both manifests use seeds `31415` and `27182`. The provider-specific route or
+style is allowed to do its job. No image was picked, edited, cropped, or
+post-processed.
 
 PixelLab rejected `view: "isometric"` on the `map` endpoint with HTTP 422. The
 successful observatory attempts use the supported `high top-down` view while
@@ -93,15 +97,67 @@ For this brief, PixelLab wins on prompt coverage, graphic clarity, consistency,
 and cost. Retro Diffusion wins if the desired result is a closer, more cinematic
 scene.
 
+## Cliffside fortress at 384×384
+
+Prompt: `a large fortified monastery built into a sheer mountain cliff,
+isometric three-quarter view, central stone keep, two side towers, terraced
+stairs, copper roofs, isolated with no scenery`
+
+| PixelLab A | PixelLab B | Retro Diffusion A | Retro Diffusion B |
+|---|---|---|---|
+| ![PixelLab cliffside fortress attempt A](../website/public/benchmarks/provider-environments/pixellab/isolated/a/cliffside-fortress.png) | ![PixelLab cliffside fortress attempt B](../website/public/benchmarks/provider-environments/pixellab/isolated/b/cliffside-fortress.png) | ![Retro Diffusion cliffside fortress attempt A](../website/public/benchmarks/provider-environments/retrodiffusion/isolated/a/cliffside-fortress.png) | ![Retro Diffusion cliffside fortress attempt B](../website/public/benchmarks/provider-environments/retrodiffusion/isolated/b/cliffside-fortress.png) |
+
+The larger canvas helped both providers. PixelLab used most of the frame and
+kept the cliff, stairs, central keep, and tower structure legible. Attempt B is
+the clearest match for a fortified monastery. Both outputs still include an
+opaque gray field, and their 246 and 249 colors would need deliberate cleanup
+for a tightly controlled palette.
+
+Retro Diffusion improved markedly over its 256×256 observatory attempts. Both
+results read as substantial cliffside compounds, and attempt B makes good use
+of the full canvas. They are ready-to-place transparent cutouts with 75% and
+52% transparent pixels and only 55 and 49 colors. PixelLab is more reliable on
+the exact architectural brief. Retro Diffusion is closer to a finished modular
+map asset.
+
+## Volcanic pass at 384×384
+
+Prompt: `a wide volcanic mountain pass at dawn, layered black peaks, glowing
+lava river, basalt fortress in the middle distance, smoke plumes, full-bleed
+parallax background with open sky`
+
+| PixelLab A | PixelLab B | Retro Diffusion A | Retro Diffusion B |
+|---|---|---|---|
+| ![PixelLab volcanic pass attempt A](../website/public/benchmarks/provider-environments/pixellab/background/a/volcanic-pass.png) | ![PixelLab volcanic pass attempt B](../website/public/benchmarks/provider-environments/pixellab/background/b/volcanic-pass.png) | ![Retro Diffusion volcanic pass attempt A](../website/public/benchmarks/provider-environments/retrodiffusion/background/a/volcanic-pass.png) | ![Retro Diffusion volcanic pass attempt B](../website/public/benchmarks/provider-environments/retrodiffusion/background/b/volcanic-pass.png) |
+
+PixelLab produced broader compositions with open sky and visibly separated
+mountain planes. Attempt A includes the smoke plume and a clear volcano; attempt
+B simplifies the scene into a graphic basin. Neither attempt includes a
+recognizable fortress. Attempt A also contains a generated signature-like mark
+in the lower-right corner, so it is not usable without cleanup. The files use
+44 and 26 colors.
+
+Retro Diffusion made the pass and lava river unmistakable in both attempts. Its
+narrow canyon framing is strong for a scene the player enters, but it leaves
+less open sky and fewer obvious planes for a distant backdrop. It also dropped
+the fortress and most of the smoke detail. The files use 26 and 25 colors.
+
+None of these four files is a finished parallax package. They are flattened,
+opaque scenes. PixelLab gives an artist clearer depth bands to cut apart; Retro
+Diffusion gives the stronger single-frame canyon. A production workflow should
+generate or extract the sky, distant peaks, middle ground, and foreground as
+separate assets.
+
 ## Cost and operational results
 
 | Provider | Successful images | Charged amount | Final balance |
 |---|---:|---:|---:|
-| PixelLab | 6 | 6 generations | 4,415 generations |
-| Retro Diffusion | 6 | $0.348 | $0.135 |
+| PixelLab | 10 | 10 generations | 4,411 generations |
+| Retro Diffusion | 10 | $0.744 | $9.73 |
 
 PixelLab charged one generation per image. Retro Diffusion quoted and charged
-$0.058 per RD Plus image.
+$0.058 for each 256px RD Plus image and $0.099 for each 384px RD Plus image;
+PixelKiln's hard ceiling rounds the latter to $0.10 per image.
 
 The run also caught two integration details:
 
@@ -111,15 +167,16 @@ The run also caught two integration details:
   $0.057768 to $0.058. PixelKiln now rounds offline estimates up to the live
   quote precision, so planning remains a safe ceiling.
 
-Both manifests now pass `doctor`, report a current plan, and have six healthy
+Both manifests now pass `doctor`, report a current plan, and have ten healthy
 PNG cache entries.
 
 ## Recommendation
 
 For large isolated buildings or landmarks, start with PixelLab when prompt
 coverage matters most. Budget for background cleanup. Start with Retro
-Diffusion when a transparent, compact, low-color asset matters more than
-capturing every noun in a complex prompt.
+Diffusion when a transparent, low-color asset matters more than capturing every
+noun in a complex prompt. At 384×384, Retro Diffusion can fill the frame with a
+substantial structure rather than the compact cutouts seen in the first brief.
 
 For full scenic backgrounds, start with PixelLab Pixflux. These two attempts
 were cheaper and more faithful to the brief. Try Retro Diffusion when you want
@@ -130,5 +187,7 @@ background, buildings, landmarks, and foreground pieces separately. Compose
 them in the engine, then use integer nearest-neighbor scaling for display.
 
 This sample is useful, not definitive. Two attempts expose obvious tendencies,
-but they do not measure every style, prompt family, or model update. Rerun the
-committed manifests when either provider changes its models.
+but they do not measure every style, prompt family, or model update. The new
+volcanic brief also shows why prompt coverage needs review at the object level:
+all four images lost the requested fortress. Rerun the committed manifests when
+either provider changes its models.

@@ -267,8 +267,8 @@ export default function Home() {
               <h2>Same briefs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
-              These are untouched 256×256 outputs from the committed A/B
-              benchmark. Two providers received the same briefs and seed
+              These are untouched outputs from the committed 256px and 384px
+              A/B benchmark. Two providers received the same briefs and seed
               numbers. Each kept its native route and style.
             </p>
           </div>
@@ -285,13 +285,13 @@ export default function Home() {
               <div className="provider-image-grid">
                 <figure>
                   <Image
-                    src="/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png"
-                    alt="PixelLab result for a stone observatory on a snowy mountain ridge"
-                    width={256}
-                    height={256}
+                    src="/benchmarks/provider-environments/pixellab/isolated/a/cliffside-fortress.png"
+                    alt="PixelLab result for a fortified monastery built into a mountain cliff"
+                    width={384}
+                    height={384}
                     sizes="(max-width: 680px) 50vw, 280px"
                   />
-                  <figcaption>Isolated building · map</figcaption>
+                  <figcaption>Large building · map</figcaption>
                 </figure>
                 <figure>
                   <Image
@@ -305,9 +305,9 @@ export default function Home() {
                 </figure>
               </div>
               <p>
-                Stronger prompt coverage and the better scenic background in
-                this sample. The map object was opaque, so check alpha before a
-                larger run.
+                Stronger prompt coverage and clearer depth bands in this
+                sample. Map objects were opaque, and one scenic attempt added a
+                signature-like mark. Review alpha and stray artifacts early.
               </p>
               <dl>
                 <div><dt>Benchmark cost</dt><dd>1 generation each</dd></div>
@@ -334,13 +334,13 @@ export default function Home() {
               <div className="provider-image-grid">
                 <figure>
                   <Image
-                    src="/benchmarks/provider-environments/retrodiffusion/isolated/a/mountain-observatory.png"
-                    alt="Retro Diffusion result for a stone observatory on a snowy mountain ridge"
-                    width={256}
-                    height={256}
+                    src="/benchmarks/provider-environments/retrodiffusion/isolated/a/cliffside-fortress.png"
+                    alt="Retro Diffusion result for a fortified monastery built into a mountain cliff"
+                    width={384}
+                    height={384}
                     sizes="(max-width: 680px) 50vw, 280px"
                   />
-                  <figcaption>Isolated building · RD Plus</figcaption>
+                  <figcaption>Large building · RD Plus</figcaption>
                 </figure>
                 <figure>
                   <Image
@@ -354,12 +354,12 @@ export default function Home() {
                 </figure>
               </div>
               <p>
-                Cleaner transparent cutouts with fewer colors, plus more
-                cinematic scene framing. Complex building details were easier
-                for the model to lose.
+                Cleaner transparent cutouts with fewer colors, plus stronger
+                close environment framing. The 384px canvas produced a much
+                more substantial building than the earlier 256px brief.
               </p>
               <dl>
-                <div><dt>Benchmark cost</dt><dd>$0.058 each</dd></div>
+                <div><dt>Benchmark cost</dt><dd>$0.058–$0.099 each</dd></div>
                 <div><dt>Best fit</dt><dd>Ready-to-place cutouts and native animation</dd></div>
               </dl>
               <div className="provider-card-links">
@@ -375,7 +375,7 @@ export default function Home() {
 
           <div className="provider-showcase-links">
             <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
-              Review all 12 benchmark images →
+              Review all 20 benchmark images →
             </TrackedLink>
             <TrackedLink className="text-link" id="showcase_comparison" section="provider_showcase" href="/docs/provider-notes">
               Compare provider capabilities →
