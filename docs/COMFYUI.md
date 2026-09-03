@@ -7,6 +7,8 @@ Diffusion 1.5 workflow has passed single-image generation and a four-candidate
 review queue on Apple MPS. A higher-quality SDXL workflow has also passed four
 building and environment renders. ComfyUI Cloud is not part of this release.
 
+[Visit ComfyUI](https://www.comfy.org/) or continue with the local setup below.
+
 ## Start ComfyUI
 
 Install and start ComfyUI using its

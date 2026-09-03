@@ -224,7 +224,8 @@ export default function Home() {
               <p className="provider-note">
                 PixelLab is production-ready. Retro Diffusion has live-tested
                 stills. ComfyUI has live-tested local generation, candidate
-                queueing, and cache recovery; its pixel-art benchmark is next.
+                queueing, cache recovery, SDXL pixel art, transparent cutouts,
+                and fixed-palette output.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
