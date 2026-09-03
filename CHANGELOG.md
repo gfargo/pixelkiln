@@ -1,3 +1,10 @@
+# [0.6.0](https://github.com/gfargo/pixelkiln/compare/v0.5.0...v0.6.0) (2026-09-03)
+
+
+### Features
+
+* expand provider benchmark and roadmap ([#51](https://github.com/gfargo/pixelkiln/issues/51)) ([6c6bab1](https://github.com/gfargo/pixelkiln/commit/6c6bab1a5474cd2b4ef928a0cc38ec6aef1f595b))
+
 # [0.5.0](https://github.com/gfargo/pixelkiln/compare/v0.4.1...v0.5.0) (2026-09-03)
 
 
