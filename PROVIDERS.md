@@ -78,7 +78,9 @@ provider unit. Seeds are provider-specific, so equal seed numbers do not make
 the outputs directly reproducible across services.
 
 See the [environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) for the
-twelve generated images, prompts, manifests, measured costs, and review.
+twenty generated images, prompts, manifests, measured costs, and review. The
+384×384 additions test a larger cliffside building and a full volcanic
+background.
 
 ## Use both providers in one project
 
@@ -167,19 +169,57 @@ is interpreted in the active provider's unit. Providers without a balance or
 account-management endpoint can still generate safely because the offline
 estimate and hard budget remain enforced.
 
-## Next validation and expansion
+## What to build next
 
-1. Complete representative paid Retro Diffusion multi-candidate, tileset, GIF,
-   and spritesheet smoke tests without logging credentials. Single-candidate RD
-   Fast and RD Plus still paths have passed end to end.
-2. Promote only the workflows proven against the live service; keep unsupported
-   account operations explicit capability errors.
-3. Evaluate Scenario as another hosted game-asset provider.
-4. Add a local ComfyUI adapter for GPU-backed, no-per-call-cost generation.
-5. Consider general raster providers only with explicit nearest-neighbor,
+The highest-value next feature is native per-style provider routing, not a third
+adapter. The benchmark now shows a useful split: PixelLab follows dense
+building briefs more reliably, while Retro Diffusion returns cleaner cutouts
+and strong close environment framing. Two manifests make that combination
+possible, but awkward. One manifest should be able to send a building style to
+PixelLab and a background or animation style to Retro Diffusion.
+
+This needs provider-keyed budgets and confirmations, not a provider field added
+in isolation. A safe plan must keep `4 generations` and `$0.40` separate,
+construct and rate-limit each adapter independently, and require an explicit
+provider for account-wide commands. The lockfile already records the provider
+on each entry, so its identity model is ready for the change.
+
+After that, Scenario is the best next hosted provider candidate.
+
+| Candidate | What it adds | Fit with PixelKiln | Main cost or risk | Priority |
+|---|---|---|---|---:|
+| Scenario | Custom-trained style models, references, image editing, background removal, upscaling, and managed assets | Async jobs, asset IDs, and free `dryRun` cost estimates map closely to PixelKiln's plan/submit/poll/download lifecycle | API access requires a paid plan; auth uses both an API key and secret, so the provider factory must describe more than one credential | 1 |
+| ComfyUI local/cloud | Reproducible workflow graphs, broad model choice, local GPU execution, and a cloud path using a compatible API | Workflow JSON could become a durable provenance input; jobs and output downloads already resemble the current provider boundary | Local cost has no universal provider unit; the cloud API is marked experimental and requires a subscription | 2 |
+| fal | A large hosted model catalog, including pixel-art style controls, LoRAs, editing, upscaling, and background removal | Queue-based requests and model schemas are accessible through one client | Model-specific schemas and prices move the adapter toward a marketplace abstraction rather than one stable art workflow | 3 |
+
+Scenario deserves the first spike because its [custom generation API](https://docs.scenario.com/get-started/generation/third-party-model-generation)
+returns an asynchronous job ID, its [generation surface](https://docs.scenario.com/get-started/documentation/key-capabilities-at-a-glance)
+supports custom models and image references, and its
+[Compute Unit guidance](https://help.scenario.com/articles/7934059476-api-usage-and-credits-compute-units)
+documents free cost preflights. That combination adds something the current
+providers do not: a project-specific visual model with a cost check that can be
+captured before submission.
+
+ComfyUI should follow. Its [local server API](https://docs.comfy.org/development/overview)
+would cover private or offline GPU workflows, while the
+[cloud API](https://docs.comfy.org/development/cloud/overview) accepts the same
+workflow-shaped requests and exposes asynchronous jobs. The adapter needs an
+explicit budget policy before implementation. A local run could report planned
+image count and measured execution time, but it must not pretend those values
+are a portable dollar estimate.
+
+Recommended order:
+
+1. Add per-style provider selection, provider-keyed budgets, and mixed-provider
+   integration tests.
+2. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
+   smoke tests.
+3. Build a narrow Scenario still-image spike with dry-run cost, submit, poll,
+   download, and one custom-model or reference-image benchmark.
+4. Define local and cloud budget semantics for ComfyUI, then prototype one
+   versioned workflow.
+5. Consider general raster marketplaces only with explicit nearest-neighbor,
    palette, transparency, and reproducibility checks.
-6. Evaluate per-style provider selection with provider-keyed budgets; do not
-   overload the current scalar `--budget` or silently sum incompatible units.
 
 Midjourney is not an adapter target without an official public API. Automating
 its consumer UI would be fragile and could violate provider terms.

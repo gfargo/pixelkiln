@@ -32,6 +32,37 @@
       "costUnit": "generations",
       "provider": "pixellab"
     },
+    "background-a/volcanic-pass": {
+      "styleId": "background-a",
+      "assetId": "volcanic-pass",
+      "specHash": "bec61cd9eee0b5e700e49d05311ec397fcd298a0c8b1a35a66c4e7dd24cd229d",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "a wide volcanic mountain pass at dawn, layered black peaks, glowing lava river, basalt fortress in the middle distance, smoke plumes, full-bleed parallax background with open sky",
+      "width": 384,
+      "height": 384,
+      "jobId": "6e704e6b-753b-43dc-9995-6ec50c87e40c",
+      "reviewObjectId": null,
+      "objectId": "6e704e6b-753b-43dc-9995-6ec50c87e40c",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/background/a/volcanic-pass.png",
+          "sha256": "3c60007b4970714ffd7a5034e64ec5426c4384fbd8de23a9bee82320832480bf",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-03T03:18:59.573Z",
+      "downloadedAt": "2026-09-03T03:20:30.334Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
     "background-b/alpine-valley": {
       "styleId": "background-b",
       "assetId": "alpine-valley",
@@ -59,6 +90,72 @@
       "providerMetadata": {},
       "submittedAt": "2026-09-02T14:56:37.770Z",
       "downloadedAt": "2026-09-02T14:57:03.813Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "background-b/volcanic-pass": {
+      "styleId": "background-b",
+      "assetId": "volcanic-pass",
+      "specHash": "f905e165de954e8ad544ab6b5ff66128bd2fb84b15c9bca06f8201b7077e5b91",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "a wide volcanic mountain pass at dawn, layered black peaks, glowing lava river, basalt fortress in the middle distance, smoke plumes, full-bleed parallax background with open sky",
+      "width": 384,
+      "height": 384,
+      "jobId": "fff2aa03-eb7e-4661-baba-d1a6603cd8b0",
+      "reviewObjectId": null,
+      "objectId": "fff2aa03-eb7e-4661-baba-d1a6603cd8b0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/background/b/volcanic-pass.png",
+          "sha256": "947ccf19256cde2b939126ebcdcdf9424c72920fb4d2e1494ddde9fce8ac129c",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-03T03:19:54.775Z",
+      "downloadedAt": "2026-09-03T03:20:30.331Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "isolated-a/cliffside-fortress": {
+      "styleId": "isolated-a",
+      "assetId": "cliffside-fortress",
+      "specHash": "e3b2bc86d6377e8f91c7b96989d6cfee4d06cdcf73392363fa35b6cc00d60114",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a large fortified monastery built into a sheer mountain cliff, isometric three-quarter view, central stone keep, two side towers, terraced stairs, copper roofs, isolated with no scenery",
+      "width": 384,
+      "height": 384,
+      "jobId": "68c46d72-a309-45b8-a5d3-2ccade081e77",
+      "reviewObjectId": null,
+      "objectId": "68c46d72-a309-45b8-a5d3-2ccade081e77",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://api.pixellab.ai/mcp/map-objects/68c46d72-a309-45b8-a5d3-2ccade081e77/download",
+      "sourceUrls": [
+        {
+          "url": "https://api.pixellab.ai/mcp/map-objects/68c46d72-a309-45b8-a5d3-2ccade081e77/download"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/isolated/a/cliffside-fortress.png",
+          "sha256": "4a2bb95c840767bf7ba08040fb6259853337016faf0d9192bb04d3f165d81c39",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-03T03:18:54.560Z",
+      "downloadedAt": "2026-09-03T03:20:31.147Z",
       "cost": 1,
       "costUnit": "generations",
       "provider": "pixellab"
@@ -94,6 +191,41 @@
       "providerMetadata": {},
       "submittedAt": "2026-09-02T14:57:37.981Z",
       "downloadedAt": "2026-09-02T14:58:10.899Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "provider": "pixellab"
+    },
+    "isolated-b/cliffside-fortress": {
+      "styleId": "isolated-b",
+      "assetId": "cliffside-fortress",
+      "specHash": "442fdc8350622d108449b2d727688c65e80514d298bf2c27095dab7358e7996a",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a large fortified monastery built into a sheer mountain cliff, isometric three-quarter view, central stone keep, two side towers, terraced stairs, copper roofs, isolated with no scenery",
+      "width": 384,
+      "height": 384,
+      "jobId": "9c15a9dd-73c0-4751-b71b-9cfd34f9e61e",
+      "reviewObjectId": null,
+      "objectId": "9c15a9dd-73c0-4751-b71b-9cfd34f9e61e",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://api.pixellab.ai/mcp/map-objects/9c15a9dd-73c0-4751-b71b-9cfd34f9e61e/download",
+      "sourceUrls": [
+        {
+          "url": "https://api.pixellab.ai/mcp/map-objects/9c15a9dd-73c0-4751-b71b-9cfd34f9e61e/download"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-environments/pixellab/isolated/b/cliffside-fortress.png",
+          "sha256": "6f5397ec816dcfb773a6b4f2c1d6fe553e9de0d6888284c64aec3b4350cd5465",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-09-03T03:18:57.065Z",
+      "downloadedAt": "2026-09-03T03:20:31.379Z",
       "cost": 1,
       "costUnit": "generations",
       "provider": "pixellab"

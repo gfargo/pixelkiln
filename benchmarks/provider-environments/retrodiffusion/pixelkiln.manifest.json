@@ -94,6 +94,18 @@
       "width": 256,
       "height": 256,
       "styles": ["background-a", "background-b"]
+    },
+    "cliffside-fortress": {
+      "prompt": "a large fortified monastery built into a sheer mountain cliff, isometric three-quarter view, central stone keep, two side towers, terraced stairs, copper roofs, isolated with no scenery",
+      "width": 384,
+      "height": 384,
+      "styles": ["isolated-a", "isolated-b"]
+    },
+    "volcanic-pass": {
+      "prompt": "a wide volcanic mountain pass at dawn, layered black peaks, glowing lava river, basalt fortress in the middle distance, smoke plumes, full-bleed parallax background with open sky",
+      "width": 384,
+      "height": 384,
+      "styles": ["background-a", "background-b"]
     }
   }
 }
