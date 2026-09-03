@@ -51,6 +51,9 @@ for (const { file, source } of routeSources) {
 }
 
 const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
+if (!home.includes("/benchmarks/provider-hires/comfyui/hires-conservative-64/alpine-valley.png")) {
+  failures.push("provider showcase is missing the tested ComfyUI high-resolution sample");
+}
 for (const [provider, route, official] of [
   ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],
   ["Retro Diffusion", "/docs/retro-diffusion", "https://www.retrodiffusion.ai/"],

@@ -22,7 +22,7 @@ This source also renders at
 | Guide | Use it for |
 |---|---|
 | [Generators](./GENERATORS.md) | Choose between `map`, `1dir`, `pixflux`, and `tiles`; understand measured costs and capability trade-offs. |
-| [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and a named ComfyUI model stack on buildings and backgrounds. |
+| [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and high-resolution refinement. |
 | [Derived artifacts](./ARTIFACTS.md) | Pack, mount, and export; provenance companions; ownership; force takeover; transactional and crash recovery. |
 | [Recovery and account safety](./RECOVERY.md) | Restore, caches, adopt, salvage, cross-project claims, tagging, and confirmed purge. |
 | [Quality gates](./QUALITY.md) | Plan, doctor, audit, cache checks, JSON contracts, and CI usage. |

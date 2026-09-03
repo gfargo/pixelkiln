@@ -115,6 +115,52 @@ but it adds noisy pixel patterns. Ordered Bayer dithering is easier to art-direc
 when a project needs deliberate texture. Whichever mode you choose becomes part
 of the committed workflow hash.
 
+## Render larger environment masters
+
+PixelKiln accepts outputs up to 4096px per edge, but a larger file is not the
+same thing as a more detailed generation. Scaling the decoded 1024px image only
+makes its existing pixels larger. For mountains, towns, and full environments,
+use a second latent sampling pass:
+
+1. Generate the composition at SDXL's 1024px working size.
+2. Upscale the latent to 1536px with core `LatentUpscale` and `bislerp`.
+3. Run a second `KSampler` at low denoise.
+4. Decode with `VAEDecodeTiled` using 512px tiles and 64px overlap.
+5. Quantize, then resize to the manifest's delivery dimensions.
+
+The committed [high-resolution benchmark](../benchmarks/provider-hires/comfyui/README.md)
+tests that graph on the same alpine brief and seed. At 0.16 denoise, the second
+pass kept the base composition while adding the strongest local edge detail in
+the four-way comparison. At 0.28, it redrew more mountain and lighting detail
+but softened the block structure. A 128-color version gave the smoothest
+showcase master; the 64-color versions are easier to keep consistent with game
+art.
+
+On the tested 64 GB M1 Max, the cached 1536px sampling pass took about 90
+seconds at 0.16 denoise and 129 seconds at 0.28. A cold run also needs the base
+1024px pass, which took about 88 seconds in the same session. Treat high-res as
+an opt-in quality mode, not the default for every small sprite.
+
+The practical presets are:
+
+| Goal | Working resolution | Second-pass denoise | Colors |
+|---|---:|---:|---:|
+| Small game asset | 1024px, then reduce | none | 64 |
+| Crisp 1024px environment | 1024px → 1536px | 0.16 | 64 |
+| Softer showcase background | 1024px → 1536px | 0.28 | 128 |
+
+A 2048×2048 latent and output test also completed on the 64 GB M1 Max. Its
+cached refinement took 183 seconds, stayed within memory, and produced a valid
+64-color PNG. It also softened the broad shapes and created a 1.2 MiB file.
+Treat 2048px as an available ceiling for selective masters, not an automatic
+quality upgrade.
+
+Keep delivery dimensions separate from working resolution. A 2048px or 4096px
+delivery file can use integer nearest-neighbor scaling after the detail pass,
+but it will not contain more generated scene information than the 1536px
+latent. Test larger latent sizes separately before relying on them; node limits
+do not guarantee acceptable memory use or composition.
+
 ## Configure the manifest
 
 Put dimensions on each asset. Put workflow configuration under

@@ -1,0 +1,61 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-comfyui-hires",
+  "provider": "comfyui",
+  "styles": {
+    "baseline-64": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/baseline-64",
+      "seed": 31415,
+      "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
+      "promptSuffix": "full-bleed scenic composition, no frame",
+      "providerOptions": {"comfyui": {"workflowFile": "workflow-baseline-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
+    },
+    "hires-balanced-64": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/hires-balanced-64",
+      "seed": 31415,
+      "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
+      "promptSuffix": "full-bleed scenic composition, no frame",
+      "providerOptions": {"comfyui": {"workflowFile": "workflow-latent-hires-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
+    },
+    "hires-balanced-128": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/hires-balanced-128",
+      "seed": 31415,
+      "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
+      "promptSuffix": "full-bleed scenic composition, no frame",
+      "providerOptions": {"comfyui": {"workflowFile": "workflow-latent-hires-128-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
+    },
+    "hires-conservative-64": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/hires-conservative-64",
+      "seed": 31415,
+      "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
+      "promptSuffix": "full-bleed scenic composition, no frame",
+      "providerOptions": {"comfyui": {"workflowFile": "workflow-latent-conservative-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
+    },
+    "ultra-64": {
+      "generator": "map",
+      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/ultra-64",
+      "seed": 31415,
+      "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
+      "promptSuffix": "full-bleed scenic composition, no frame",
+      "providerOptions": {"comfyui": {"workflowFile": "workflow-latent-ultra-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
+    }
+  },
+  "assets": {
+    "alpine-valley": {
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 1024,
+      "height": 1024,
+      "styles": ["baseline-64", "hires-balanced-64", "hires-balanced-128", "hires-conservative-64"]
+    },
+    "alpine-valley-ultra": {
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 2048,
+      "height": 2048,
+      "styles": ["ultra-64"]
+    }
+  }
+}

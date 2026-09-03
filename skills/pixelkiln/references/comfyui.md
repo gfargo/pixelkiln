@@ -40,6 +40,15 @@ feed a scenic background through the removal model. Use `pixelkiln audit` with
 both `--min-transparency` and `--max-colors` so the cleanup requirements fail in
 CI when a workflow or model changes.
 
+For 1024px environment masters, use the tested project in
+`benchmarks/provider-hires/comfyui/`. Its core-node workflow starts at 1024px,
+uses `LatentUpscale` with `bislerp` to reach 1536px, applies a low-denoise second
+sample, decodes in tiles, quantizes, and scales last. Prefer the 0.16-denoise,
+64-color preset when crisp clusters matter. Use the 0.28-denoise, 128-color
+preset when richer lighting matters more. Do not describe a large
+nearest-neighbor delivery file as added generated detail; name both the latent
+working size and the final output size.
+
 The plan reports `0 free` and generation uses `--budget 0`. Explain that this
 means no metered API charge. Hardware, electricity, hosting, and model licenses
 can still cost money.

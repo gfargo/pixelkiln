@@ -124,6 +124,46 @@ describe("ComfyUI provider", () => {
     expect(isolated[11].inputs).toMatchObject({ upscale_method: "nearest-exact" })
   })
 
+  it("keeps the committed high-resolution benchmark reproducible and current", async () => {
+    const root = path.resolve("benchmarks/provider-hires/comfyui")
+    const specs = await resolveSpecs(await loadManifest(path.join(root, "pixelkiln.manifest.json")))
+    const lock = await loadLock(path.join(root, "pixelkiln.lock.json"))
+    const plan = await buildPlan(specs, lock)
+
+    expect(plan.items).toHaveLength(5)
+    expect(plan.items.every((item) => item.state === "ok")).toBe(true)
+    expect(plan.actionable).toEqual([])
+
+    const conservative = JSON.parse(
+      await readFile(path.join(root, "workflow-latent-conservative-api.json"), "utf8"),
+    )
+    expect(conservative[17]).toMatchObject({
+      class_type: "LatentUpscale",
+      inputs: { upscale_method: "bislerp", width: 1536, height: 1536 },
+    })
+    expect(conservative[18]).toMatchObject({
+      class_type: "KSampler",
+      inputs: { denoise: 0.16, steps: 12 },
+    })
+    expect(conservative[8]).toMatchObject({
+      class_type: "VAEDecodeTiled",
+      inputs: { tile_size: 512, overlap: 64 },
+    })
+    expect(conservative[15].inputs).toMatchObject({ colors: 64, dither: "none" })
+    expect(conservative[11].inputs).toMatchObject({
+      upscale_method: "nearest-exact",
+      width: 1024,
+      height: 1024,
+    })
+
+    const ultra = JSON.parse(
+      await readFile(path.join(root, "workflow-latent-ultra-api.json"), "utf8"),
+    )
+    expect(ultra[17].inputs).toMatchObject({ width: 2048, height: 2048 })
+    expect(ultra[18].inputs).toMatchObject({ denoise: 0.14, steps: 10 })
+    expect(ultra[11].inputs).toMatchObject({ width: 2048, height: 2048 })
+  })
+
   it("hashes parsed workflow content and plans without a network request", async () => {
     const fetch = vi.fn()
     vi.stubGlobal("fetch", fetch)

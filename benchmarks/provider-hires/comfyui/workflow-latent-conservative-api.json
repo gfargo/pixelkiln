@@ -1,0 +1,14 @@
+{
+  "3": {"class_type":"KSampler","inputs":{"seed":31415,"steps":32,"cfg":6,"sampler_name":"dpmpp_2m","scheduler":"karras","denoise":1,"model":["10",0],"positive":["6",0],"negative":["7",0],"latent_image":["5",0]}},
+  "4": {"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":"sd_xl_base_1.0.safetensors"}},
+  "5": {"class_type":"EmptyLatentImage","inputs":{"width":1024,"height":1024,"batch_size":1}},
+  "6": {"class_type":"CLIPTextEncode","inputs":{"text":"pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame","clip":["10",1]}},
+  "7": {"class_type":"CLIPTextEncode","inputs":{"text":"photograph, photorealistic, 3d render, text, watermark, signature, blurry, soft focus, antialiasing, gradients, close-up, cropped, frame, border, character portrait","clip":["10",1]}},
+  "8": {"class_type":"VAEDecodeTiled","inputs":{"samples":["18",0],"vae":["4",2],"tile_size":512,"overlap":64,"temporal_size":64,"temporal_overlap":8}},
+  "9": {"class_type":"SaveImage","inputs":{"filename_prefix":"pixelkiln/comfyui-hires-conservative","images":["11",0]}},
+  "10": {"class_type":"LoraLoader","inputs":{"model":["4",0],"clip":["4",1],"lora_name":"pixel-art-xl.safetensors","strength_model":0.85,"strength_clip":0.85}},
+  "11": {"class_type":"ImageScale","inputs":{"image":["15",0],"upscale_method":"nearest-exact","width":1024,"height":1024,"crop":"disabled"}},
+  "15": {"class_type":"ImageQuantize","inputs":{"image":["8",0],"colors":64,"dither":"none"}},
+  "17": {"class_type":"LatentUpscale","inputs":{"samples":["3",0],"upscale_method":"bislerp","width":1536,"height":1536,"crop":"disabled"}},
+  "18": {"class_type":"KSampler","inputs":{"seed":31416,"steps":12,"cfg":5.5,"sampler_name":"dpmpp_2m","scheduler":"karras","denoise":0.16,"model":["10",0],"positive":["6",0],"negative":["7",0],"latent_image":["17",0]}}
+}

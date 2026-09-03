@@ -269,10 +269,10 @@ export default function Home() {
               <h2>Same briefs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
-              These are untouched outputs from committed 256px and 384px
-              benchmark projects. The ComfyUI card names its model stack and
-              workflow because a self-hosted provider alone says nothing about
-              image quality.
+              These are outputs from committed benchmark projects, ranging
+              from 256px assets to a 1024px ComfyUI environment. The ComfyUI
+              card names its model stack and workflow because a self-hosted
+              provider alone says nothing about image quality.
             </p>
           </div>
 
@@ -396,21 +396,21 @@ export default function Home() {
                 </figure>
                 <figure>
                   <Image
-                    src="/benchmarks/provider-postprocessing/comfyui/background/alpine-valley.png"
-                    alt="64-color ComfyUI SDXL and Pixel Art XL result for an alpine valley background at dusk"
-                    width={256}
-                    height={256}
+                    src="/benchmarks/provider-hires/comfyui/hires-conservative-64/alpine-valley.png"
+                    alt="1024-pixel, 64-color ComfyUI SDXL and Pixel Art XL result for an alpine valley background at dusk"
+                    width={1024}
+                    height={1024}
                     sizes="(max-width: 680px) 50vw, 280px"
                   />
-                  <figcaption>Scenic background · 64 colors</figcaption>
+                  <figcaption>1024px environment · 64 colors</figcaption>
                 </figure>
               </div>
               <p>
                 SDXL Base plus Pixel Art XL produced the clearest large
                 building and strongest layered landscape in this sample. The
-                workflow renders at 1024px. Core BiRefNet removal and 64-color
-                quantization now produce ready-to-place cutouts without custom
-                nodes.
+                workflow renders at 1024px. A tested 1536px latent detail pass
+                now delivers crisp 1024px environments, while core BiRefNet
+                removal and palette control handle game-ready cutouts.
               </p>
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>

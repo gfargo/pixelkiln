@@ -73,7 +73,7 @@ export const docs: DocEntry[] = [
   {
     slug: "provider-benchmark",
     title: "Environment provider benchmark",
-    description: "Twenty-eight provider outputs, including ComfyUI transparency and palette A/B tests.",
+    description: "Thirty-three provider outputs, including ComfyUI cleanup and high-resolution A/B tests.",
     file: "docs/PROVIDER_BENCHMARK.md",
     group: "Workflows",
   },
