@@ -4,7 +4,8 @@ PixelKiln can run a committed ComfyUI workflow on a self-hosted server. This
 adapter is experimental. It supports still-image `map` jobs, one or more review
 candidates, local provenance, and cache-backed recovery. A core-node Stable
 Diffusion 1.5 workflow has passed single-image generation and a four-candidate
-review queue on Apple MPS. ComfyUI Cloud is not part of this first release.
+review queue on Apple MPS. A higher-quality SDXL workflow has also passed four
+building and environment renders. ComfyUI Cloud is not part of this release.
 
 ## Start ComfyUI
 
@@ -51,6 +52,30 @@ The repository includes a working core-node
 [smoke project](../examples/comfyui/README.md). It uses the public checkpoint
 from ComfyUI's official first-generation guide to test plumbing, not to claim
 pixel-art quality.
+
+## Install the tested quality stack
+
+The committed quality benchmark uses two public model files:
+
+| File | ComfyUI folder | SHA-256 | License named by the model card |
+|---|---|---|---|
+| [`sd_xl_base_1.0.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/sd_xl_base_1.0.safetensors) | `models/checkpoints` | `31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b` | CreativeML Open RAIL++-M |
+| [`pixel-art-xl.safetensors`](https://huggingface.co/nerijs/pixel-art-xl/blob/main/pixel-art-xl.safetensors) | `models/loras` | `4234637cb80c998f41e348e6a6cb6bc20d8d038b2b0f256b6129b3b5e353eef7` | CreativeML OpenRAIL-M |
+
+Download each file into the named folder, verify its checksum, then confirm the
+checkpoint and LoRA appear in ComfyUI. The files are about 6.9 GB and 171 MB.
+They are not bundled with PixelKiln. Read both model cards before distributing
+the models or their outputs.
+
+The benchmark renders at 1024×1024, where SDXL has enough room to compose the
+scene, then uses ComfyUI's core `ImageScale` node with `nearest-exact` to write
+the requested 256px or 384px PNG. Asset width and height are therefore bound to
+the scale node, not the latent node. This is the useful trick: keep the model at
+its working resolution while PixelKiln still validates the exact game-ready
+output dimensions.
+
+You can reproduce the four samples with the committed
+[ComfyUI benchmark project](../benchmarks/provider-environments/comfyui/README.md).
 
 ## Configure the manifest
 
@@ -136,15 +161,16 @@ the portable reference against the current `COMFYUI_BASE_URL`.
 - Video, animation, masks, multiple output nodes, uploads, and ComfyUI Cloud
   authentication are not implemented.
 - PixelKiln does not install checkpoints or custom nodes. Every machine running
-  the project must provide the models and nodes named by the workflow.
+  the project must provide the models and nodes named by the workflow. The
+  benchmark workflows use only core ComfyUI nodes.
 
-For large mountains, buildings, and backgrounds, ComfyUI's main advantage is
-control over the workflow and model rather than a universal quality gain. Start
-at a native pixel-art size that fits the model and available VRAM. If the model
-works better at a larger canvas, add a deliberate pixel-downscale or
-nearest-neighbor step to the workflow and keep the final `SaveImage` node as
-PixelKiln's output. Benchmark the exact committed workflow before assigning it
-a production batch.
+For large mountains, buildings, and backgrounds, model choice and working
+resolution matter more than the provider label. The SDXL benchmark produced a
+coherent 384px cliff fortress and two layered environments where the starter
+SD1.5 workflow did not. It still returned opaque isolated assets and thousands
+of source colors, so transparency and palette reduction remain separate art
+pipeline steps. Benchmark the exact committed workflow before assigning it a
+production batch.
 
 ## Troubleshooting
 

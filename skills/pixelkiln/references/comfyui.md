@@ -22,6 +22,16 @@ the `map` generator, PNG output from one node, 1–16 candidates, and dimensions
 from 16–4096px. Manifest `styleImages` and `palette` are unsupported; those
 controls belong in the workflow.
 
+For the tested higher-quality pixel-art stack, use SDXL Base 1.0 as
+`sd_xl_base_1.0.safetensors` and Pixel Art XL as
+`pixel-art-xl.safetensors`. The repository's
+`benchmarks/provider-environments/comfyui/` project names both files and uses
+core nodes only. Its workflows sample at 1024×1024, then use `ImageScale` with
+`nearest-exact`; width and height bindings point to the scale node so the saved
+PNG still matches the manifest dimensions. The isolated workflow uses LoRA
+strength 1.0, while the environment workflow uses 0.85. Read
+`docs/COMFYUI.md` for download links, checksums, licenses, and measured limits.
+
 The plan reports `0 free` and generation uses `--budget 0`. Explain that this
 means no metered API charge. Hardware, electricity, hosting, and model licenses
 can still cost money.
@@ -31,5 +41,6 @@ The lockfile records a prompt ID, output node, workflow hash, and portable
 cache is missing, the current ComfyUI server must still retain the history
 output so PixelKiln can resolve the portable source.
 
-For a complete manifest and troubleshooting, use `docs/COMFYUI.md` or
+For the complete setup, quality stack, benchmark, and troubleshooting, use
+`docs/COMFYUI.md` or
 <https://pixelkiln.griffen.codes/docs/comfyui>.

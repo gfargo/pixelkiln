@@ -268,10 +268,10 @@ export default function Home() {
               <h2>Same briefs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
-              The hosted cards use untouched outputs from the committed 256px
-              and 384px A/B benchmark. ComfyUI joins the pipeline through a
-              committed workflow, so its visual benchmark needs a named model
-              and graph to mean anything.
+              These are untouched outputs from committed 256px and 384px
+              benchmark projects. The ComfyUI card names its model stack and
+              workflow because a self-hosted provider alone says nothing about
+              image quality.
             </p>
           </div>
 
@@ -382,22 +382,37 @@ export default function Home() {
                 </div>
                 <span className="provider-unit">Self-hosted</span>
               </div>
-              <div className="provider-workflow" aria-label="ComfyUI workflow binding example">
-                <span>workflow-api.json</span>
-                <code>prompt → node 6.text</code>
-                <code>size → node 5.width / height</code>
-                <code>batch → node 5.batch_size</code>
-                <code>output ← node 9.images</code>
+              <div className="provider-image-grid">
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/comfyui/isolated/a/cliffside-fortress.png"
+                    alt="ComfyUI SDXL and Pixel Art XL result for a fortified monastery built into a mountain cliff"
+                    width={384}
+                    height={384}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Large building · SDXL + LoRA</figcaption>
+                </figure>
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/comfyui/background/a/alpine-valley.png"
+                    alt="ComfyUI SDXL and Pixel Art XL result for an alpine valley background at dusk"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Scenic background · SDXL + LoRA</figcaption>
+                </figure>
               </div>
               <p>
-                Bring the model and graph you trust. PixelKiln hashes the
-                workflow, binds asset intent into a cloned request, queues it
-                locally, and keeps the selected output recoverable without
-                storing your workstation hostname.
+                SDXL Base plus Pixel Art XL produced the clearest large
+                building and strongest layered landscape in this sample. The
+                workflow renders at 1024px, then uses nearest-exact reduction.
+                Isolated assets still need background removal.
               </p>
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
-                <div><dt>Best fit</dt><dd>Private models and custom workflow control</dd></div>
+                <div><dt>Best fit</dt><dd>Local control and large scene composition</dd></div>
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">
@@ -412,7 +427,7 @@ export default function Home() {
 
           <div className="provider-showcase-links">
             <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
-              Review the hosted-provider benchmark →
+              Review the three-provider benchmark →
             </TrackedLink>
             <TrackedLink className="text-link" id="showcase_comparison" section="provider_showcase" href="/docs/provider-notes">
               Compare provider capabilities →

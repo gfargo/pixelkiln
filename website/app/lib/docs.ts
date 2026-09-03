@@ -38,7 +38,7 @@ export const docs: DocEntry[] = [
   {
     slug: "comfyui",
     title: "Set up ComfyUI",
-    description: "Connect a self-hosted server and bind a committed API-format workflow.",
+    description: "Connect a self-hosted server, install the tested SDXL stack, and bind a committed workflow.",
     file: "docs/COMFYUI.md",
     group: "Start here",
   },
@@ -73,7 +73,7 @@ export const docs: DocEntry[] = [
   {
     slug: "provider-benchmark",
     title: "Environment provider benchmark",
-    description: "Twenty matched PixelLab and Retro Diffusion outputs, including 384px buildings and backgrounds.",
+    description: "Twenty-four PixelLab, Retro Diffusion, and ComfyUI building and environment outputs.",
     file: "docs/PROVIDER_BENCHMARK.md",
     group: "Workflows",
   },
