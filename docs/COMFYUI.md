@@ -55,17 +55,19 @@ pixel-art quality.
 
 ## Install the tested quality stack
 
-The committed quality benchmark uses two public model files:
+The committed quality and post-processing benchmarks use three public model
+files:
 
 | File | ComfyUI folder | SHA-256 | License named by the model card |
 |---|---|---|---|
 | [`sd_xl_base_1.0.safetensors`](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/sd_xl_base_1.0.safetensors) | `models/checkpoints` | `31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b` | CreativeML Open RAIL++-M |
 | [`pixel-art-xl.safetensors`](https://huggingface.co/nerijs/pixel-art-xl/blob/main/pixel-art-xl.safetensors) | `models/loras` | `4234637cb80c998f41e348e6a6cb6bc20d8d038b2b0f256b6129b3b5e353eef7` | CreativeML OpenRAIL-M |
+| [`birefnet.safetensors`](https://huggingface.co/Comfy-Org/BiRefNet/blob/main/background_removal/birefnet.safetensors) | `models/background_removal` | `9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154` | MIT |
 
 Download each file into the named folder, verify its checksum, then confirm the
-checkpoint and LoRA appear in ComfyUI. The files are about 6.9 GB and 171 MB.
-They are not bundled with PixelKiln. Read both model cards before distributing
-the models or their outputs.
+checkpoint, LoRA, and background-removal model appear in ComfyUI. The files are
+about 6.9 GB, 171 MB, and 444 MB. They are not bundled with PixelKiln. Read the
+model cards before distributing the models or their outputs.
 
 The benchmark renders at 1024×1024, where SDXL has enough room to compose the
 scene, then uses ComfyUI's core `ImageScale` node with `nearest-exact` to write
@@ -76,6 +78,40 @@ output dimensions.
 
 You can reproduce the four samples with the committed
 [ComfyUI benchmark project](../benchmarks/provider-environments/comfyui/README.md).
+
+## Remove backgrounds and control the palette
+
+ComfyUI 0.34.3 has the required nodes in core. No custom-node package is needed.
+The tested isolated-asset graph runs these nodes in this order:
+
+1. Decode the 1024×1024 SDXL image.
+2. Run `RemoveBackground` with the loaded BiRefNet model.
+3. Invert the returned background mask for use as foreground alpha.
+4. Run `ImageQuantize` on the RGB image with 64 colors and no dithering.
+5. Join the quantized RGB image with the alpha mask.
+6. Reduce the RGBA result with `ImageScale` set to `nearest-exact`.
+
+The order is deliberate. BiRefNet sees the full-resolution, full-color image,
+while quantization cannot damage the mask. Scenic backgrounds skip BiRefNet
+and use only 64-color quantization before the final scale.
+
+The [post-processing benchmark](../benchmarks/provider-postprocessing/comfyui/README.md)
+reuses the same prompts, seeds, SDXL settings, and LoRA strengths as the first
+ComfyUI run. Its two isolated assets have 60% and 62% transparent pixels and 55
+and 58 RGB colors. The two backgrounds use 64 and 60 colors. The original
+files ranged from 16,811 to 50,985 colors.
+
+Use PixelKiln to keep those requirements enforceable:
+
+```bash
+pixelkiln audit --style isolated-refined --min-transparency 0.5 --max-colors 64 --check
+pixelkiln audit --style background-refined --max-colors 64 --check
+```
+
+Start without dithering for compact game art. Floyd-Steinberg can soften bands,
+but it adds noisy pixel patterns. Ordered Bayer dithering is easier to art-direct
+when a project needs deliberate texture. Whichever mode you choose becomes part
+of the committed workflow hash.
 
 ## Configure the manifest
 
@@ -167,10 +203,9 @@ the portable reference against the current `COMFYUI_BASE_URL`.
 For large mountains, buildings, and backgrounds, model choice and working
 resolution matter more than the provider label. The SDXL benchmark produced a
 coherent 384px cliff fortress and two layered environments where the starter
-SD1.5 workflow did not. It still returned opaque isolated assets and thousands
-of source colors, so transparency and palette reduction remain separate art
-pipeline steps. Benchmark the exact committed workflow before assigning it a
-production batch.
+SD1.5 workflow did not. Core post-processing then turned the isolated images
+into transparent 64-color assets without changing their composition. Benchmark
+the exact committed workflow before assigning it a production batch.
 
 ## Troubleshooting
 

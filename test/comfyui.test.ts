@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
+import { loadLock } from "../src/lock.ts"
 import { createProvider, providerFactory } from "../src/providers/registry.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
@@ -94,6 +95,33 @@ describe("ComfyUI provider", () => {
   it("registers as a credential-free self-hosted provider", () => {
     expect(providerFactory("comfyui").credentialEnv).toBeUndefined()
     expect(createProvider("comfyui", "offline").id).toBe("comfyui")
+  })
+
+  it("keeps the committed refined benchmark reproducible and current", async () => {
+    const root = path.resolve("benchmarks/provider-postprocessing/comfyui")
+    const manifestPath = path.join(root, "pixelkiln.manifest.json")
+    const specs = await resolveSpecs(await loadManifest(manifestPath))
+    const lock = await loadLock(path.join(root, "pixelkiln.lock.json"))
+    const plan = await buildPlan(specs, lock)
+
+    expect(plan.items).toHaveLength(4)
+    expect(plan.items.every((item) => item.state === "ok")).toBe(true)
+    expect(plan.actionable).toEqual([])
+
+    const isolated = JSON.parse(await readFile(path.join(root, "workflow-isolated-api.json"), "utf8"))
+    const isolatedClasses = Object.values(isolated as JsonObject)
+      .map((node) => (node as JsonObject).class_type)
+    expect(isolatedClasses).toEqual(expect.arrayContaining([
+      "LoadBackgroundRemovalModel",
+      "RemoveBackground",
+      "InvertMask",
+      "ImageQuantize",
+      "JoinImageWithAlpha",
+      "ImageScale",
+    ]))
+    expect(isolated[12].inputs.bg_removal_name).toBe("birefnet.safetensors")
+    expect(isolated[15].inputs).toMatchObject({ colors: 64, dither: "none" })
+    expect(isolated[11].inputs).toMatchObject({ upscale_method: "nearest-exact" })
   })
 
   it("hashes parsed workflow content and plans without a network request", async () => {

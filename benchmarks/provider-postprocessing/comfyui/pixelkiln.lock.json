@@ -1,0 +1,209 @@
+{
+  "version": 2,
+  "entries": {
+    "background-refined/alpine-valley": {
+      "styleId": "background-refined",
+      "assetId": "alpine-valley",
+      "specHash": "ec64a72905338007a74338557d6d0ce3acefdcd6baf97729eb32d10f3f4cf1d1",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame",
+      "width": 256,
+      "height": 256,
+      "jobId": "e4bb0bf4-8344-4629-a118-534f98519d08#9",
+      "reviewObjectId": null,
+      "objectId": "e4bb0bf4-8344-4629-a118-534f98519d08#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-refined-background_00001_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-refined-background_00001_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-postprocessing/comfyui/background/alpine-valley.png",
+          "sha256": "5f2c267e4c15987e8d053db4c890ffd56c818d5df9b0606f14393936dc2eb459",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "promptId": "e4bb0bf4-8344-4629-a118-534f98519d08",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "workflow-background-api.json",
+          "workflowSha256": "5cfbd4e6606fc53ce0f9128ced8d61ca651d9ea1cffbdf7ca888cd5a8ccbaeba",
+          "files": [
+            {
+              "filename": "comfyui-refined-background_00001_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-03T13:53:15.364Z",
+      "downloadedAt": "2026-09-03T13:55:50.684Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    },
+    "background-refined/volcanic-pass": {
+      "styleId": "background-refined",
+      "assetId": "volcanic-pass",
+      "specHash": "24c2ce831565181b190050a7032d9635243b46c4c192ae745b911ced9a8b4d15",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide volcanic mountain pass at dawn, layered black peaks, glowing lava river, basalt fortress in the middle distance, smoke plumes, full-bleed parallax background with open sky, full-bleed scenic composition, no frame",
+      "width": 384,
+      "height": 384,
+      "jobId": "ac0bb593-302c-43b5-a289-7b16a55d326b#9",
+      "reviewObjectId": null,
+      "objectId": "ac0bb593-302c-43b5-a289-7b16a55d326b#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-refined-background_00002_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-refined-background_00002_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-postprocessing/comfyui/background/volcanic-pass.png",
+          "sha256": "f1875521e532b6653b14167d3493b3492637742aac8ca3b77a571547e955ca52",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "promptId": "ac0bb593-302c-43b5-a289-7b16a55d326b",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "workflow-background-api.json",
+          "workflowSha256": "5cfbd4e6606fc53ce0f9128ced8d61ca651d9ea1cffbdf7ca888cd5a8ccbaeba",
+          "files": [
+            {
+              "filename": "comfyui-refined-background_00002_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-03T13:54:35.449Z",
+      "downloadedAt": "2026-09-03T13:55:50.682Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    },
+    "isolated-refined/cliffside-fortress": {
+      "styleId": "isolated-refined",
+      "assetId": "cliffside-fortress",
+      "specHash": "0de5780d05cf912d104bce876ebc3f56a70f874d3b7573f61fac80870b0dc39b",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game asset, crisp clusters, clean readable silhouette, a large fortified monastery built into a sheer mountain cliff, isometric three-quarter view, central stone keep, two side towers, terraced stairs, copper roofs, isolated with no scenery, centered composition, plain light neutral background, no scenery",
+      "width": 384,
+      "height": 384,
+      "jobId": "2b9907bf-47fc-4d2e-8130-a8f6399c30bd#9",
+      "reviewObjectId": null,
+      "objectId": "2b9907bf-47fc-4d2e-8130-a8f6399c30bd#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-refined-isolated_00002_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-refined-isolated_00002_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-postprocessing/comfyui/isolated/cliffside-fortress.png",
+          "sha256": "dd4d68d3ec362d4a35e4e8eb2c7929c1ebc86c316199a898ca64314072ef5d5f",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "promptId": "2b9907bf-47fc-4d2e-8130-a8f6399c30bd",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "workflow-isolated-api.json",
+          "workflowSha256": "709f7a27a14eb55a29599a4a1300e04c6a5770e1a87458e42e139b51610512de",
+          "files": [
+            {
+              "filename": "comfyui-refined-isolated_00002_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-03T13:51:50.266Z",
+      "downloadedAt": "2026-09-03T13:55:50.681Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    },
+    "isolated-refined/mountain-observatory": {
+      "styleId": "isolated-refined",
+      "assetId": "mountain-observatory",
+      "specHash": "ebb668599beaa6668aa7fa3984e1e1a76489cd62d33b55da928f5e02ec0e7c2b",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game asset, crisp clusters, clean readable silhouette, a compact stone observatory built into a snowy mountain ridge, isometric three-quarter view, cedar roof, warm windows, isolated with no scenery, centered composition, plain light neutral background, no scenery",
+      "width": 256,
+      "height": 256,
+      "jobId": "6f329b99-e5d7-47cc-a0d6-6ed758cbf12c#9",
+      "reviewObjectId": null,
+      "objectId": "6f329b99-e5d7-47cc-a0d6-6ed758cbf12c#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-refined-isolated_00001_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-refined-isolated_00001_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-postprocessing/comfyui/isolated/mountain-observatory.png",
+          "sha256": "b06dcab5ca661c261b3b77d61ac67185e8f449e1151601c3e8d3ac14b11ba128",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "promptId": "6f329b99-e5d7-47cc-a0d6-6ed758cbf12c",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "workflow-isolated-api.json",
+          "workflowSha256": "709f7a27a14eb55a29599a4a1300e04c6a5770e1a87458e42e139b51610512de",
+          "files": [
+            {
+              "filename": "comfyui-refined-isolated_00001_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-03T13:50:15.118Z",
+      "downloadedAt": "2026-09-03T13:55:50.680Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    }
+  }
+}

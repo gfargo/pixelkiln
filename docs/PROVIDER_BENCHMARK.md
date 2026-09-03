@@ -4,8 +4,8 @@ This benchmark compares PixelLab and Retro Diffusion on five game-art briefs,
 with a four-brief ComfyUI extension using a named SDXL stack. Three briefs use
 256×256 output; two use 384×384 to test larger buildings and environment
 backgrounds. The hosted providers have two attempts per brief. ComfyUI has one
-attempt on each supported brief. Prompt text and seed numbers match, but seeds
-are not portable between models.
+baseline and one post-processed attempt on each supported brief. Prompt text
+and seed numbers match, but seeds are not portable between models.
 
 The benchmark tests the adapters that PixelKiln ships. It does not rank every
 model or endpoint sold by either provider.
@@ -178,13 +178,33 @@ reduction, but they are not indexed, low-palette sprites. Add explicit
 background removal and palette quantization when the target art direction
 requires them.
 
+### ComfyUI post-processing result
+
+The follow-up graph keeps the generation settings fixed and changes only the
+cleanup nodes. BiRefNet removes the isolated backgrounds, and ComfyUI's core
+quantizer limits every image to 64 colors without dithering.
+
+| Original observatory | Refined observatory | Original fortress | Refined fortress |
+|---|---|---|---|
+| ![Original opaque ComfyUI mountain observatory](../website/public/benchmarks/provider-environments/comfyui/isolated/a/mountain-observatory.png) | ![Transparent 64-color ComfyUI mountain observatory](../website/public/benchmarks/provider-postprocessing/comfyui/isolated/mountain-observatory.png) | ![Original opaque ComfyUI cliffside fortress](../website/public/benchmarks/provider-environments/comfyui/isolated/a/cliffside-fortress.png) | ![Transparent 64-color ComfyUI cliffside fortress](../website/public/benchmarks/provider-postprocessing/comfyui/isolated/cliffside-fortress.png) |
+
+| Original alpine valley | 64-color alpine valley | Original volcanic pass | 64-color volcanic pass |
+|---|---|---|---|
+| ![Original ComfyUI alpine valley](../website/public/benchmarks/provider-environments/comfyui/background/a/alpine-valley.png) | ![64-color ComfyUI alpine valley](../website/public/benchmarks/provider-postprocessing/comfyui/background/alpine-valley.png) | ![Original ComfyUI volcanic pass](../website/public/benchmarks/provider-environments/comfyui/background/a/volcanic-pass.png) | ![64-color ComfyUI volcanic pass](../website/public/benchmarks/provider-postprocessing/comfyui/background/volcanic-pass.png) |
+
+The cutouts retained their silhouettes while reaching 60% and 62% transparent
+pixels. They use 55 and 58 RGB colors instead of 16,811 and 31,572. The scenic
+images fell to 64 and 60 colors without losing their main depth bands. The
+committed [post-processing project](../benchmarks/provider-postprocessing/comfyui/README.md)
+contains the workflows, manifest, audit commands, and provenance.
+
 ## Cost and operational results
 
 | Provider | Successful images | Charged amount | Final balance |
 |---|---:|---:|---:|
 | PixelLab | 10 | 10 generations | 4,411 generations |
 | Retro Diffusion | 10 | $0.744 | $9.73 |
-| ComfyUI | 4 | 0 `free` PixelKiln units | No account balance |
+| ComfyUI | 8 | 0 `free` PixelKiln units | No account balance |
 
 PixelLab charged one generation per image. Retro Diffusion quoted and charged
 $0.058 for each 256px RD Plus image and $0.099 for each 384px RD Plus image;
@@ -200,7 +220,7 @@ The run also caught two integration details:
 
 All three manifests now pass `doctor` and report a current plan. The hosted
 projects have ten healthy PNG cache entries each; the ComfyUI extension has
-four.
+four baseline and four refined entries.
 
 ## Recommendation
 
@@ -215,10 +235,10 @@ were cheaper and more faithful to the brief. Try Retro Diffusion when you want
 foreground framing and a closer illustrated scene.
 
 Try the tested ComfyUI SDXL stack when local control and larger compositions
-matter more than ready-to-place transparency. It produced the best large
-building in this run and a strong layered valley, with no provider charge. It
-also took roughly 90 seconds per 1024px render on the tested Apple MPS machine,
-and every output still needs palette review.
+matter most. It produced the best large building in this run and a strong
+layered valley, with no provider charge. The refined core-node graph also makes
+transparent, 64-color cutouts. A 1024px render took roughly 60 to 90 seconds on
+the tested Apple MPS machine.
 
 Do not ask any provider for one giant finished level. Generate terrain,
 background, buildings, landmarks, and foreground pieces separately. Compose
@@ -227,5 +247,5 @@ them in the engine, then use integer nearest-neighbor scaling for display.
 This sample is useful, not definitive. Two attempts expose obvious tendencies,
 but they do not measure every style, prompt family, or model update. The new
 volcanic brief also shows why prompt coverage needs review at the object level:
-all four images lost the requested fortress. Rerun the committed manifests when
-either provider changes its models.
+all providers lost the requested fortress. Rerun the committed manifests when
+a provider or local model changes.

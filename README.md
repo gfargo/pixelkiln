@@ -24,7 +24,7 @@ tileset, GIF, and spritesheet live runs remain. An experimental ComfyUI adapter
 runs committed API-format still-image workflows on a self-hosted server. Its
 core-node smoke project has passed live generation, candidate queueing, and
 cache-only recovery on Apple MPS. An SDXL plus Pixel Art XL workflow also has
-four committed building and environment samples. See
+four baseline samples and four refined transparency and palette samples. See
 [provider comparison](./PROVIDERS.md) for the trade-offs, including large
 environment and building workflows.
 `FakeProvider` exercises the same contract deterministically in tests.
@@ -347,7 +347,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
-| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Twenty-four outputs comparing buildings, landmarks, large backgrounds, cost, and file readiness. |
+| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Twenty-eight outputs comparing providers, large scenes, transparency, palette size, and file readiness. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
 | [Quality gates](./docs/QUALITY.md) | Plan, doctor, audit, cache, JSON, and CI. |
