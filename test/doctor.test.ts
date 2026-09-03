@@ -1,10 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { doctor } from "../src/pipeline/doctor.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { lockKey, type Lock, type LockEntry } from "../src/types.ts"
+import { FakeProvider } from "../src/providers/fake.ts"
+import type { Provider } from "../src/provider.ts"
 
 let dir: string
 
@@ -71,5 +73,39 @@ describe("doctor", () => {
 
     expect(report.ok).toBe(false)
     expect(report.checks.find((c) => c.id === "provider")?.message).toMatch(/API_KEY/)
+  })
+
+  it("uses a read-only connectivity probe when balance reporting is unavailable", async () => {
+    const { loaded, specs, lockPath } = await project()
+    const provider = new FakeProvider()
+    const checkConnection = vi.fn(async () => {})
+    Object.assign(provider, { balance: undefined, checkConnection })
+    const report = await doctor(loaded, specs, { version: 2, entries: {} }, lockPath, {
+      provider: provider as Provider,
+    })
+
+    expect(checkConnection).toHaveBeenCalledOnce()
+    expect(report.checks.find((c) => c.id === "provider")).toMatchObject({
+      level: "ok",
+      message: "fake reachable; balance reporting unavailable",
+    })
+  })
+
+  it("fails doctor when a provider connectivity probe fails", async () => {
+    const { loaded, specs, lockPath } = await project()
+    const provider = new FakeProvider()
+    const checkConnection = vi.fn(async () => {
+      throw new Error("server refused the connection")
+    })
+    Object.assign(provider, { balance: undefined, checkConnection })
+    const report = await doctor(loaded, specs, { version: 2, entries: {} }, lockPath, {
+      provider: provider as Provider,
+    })
+
+    expect(report.ok).toBe(false)
+    expect(report.checks.find((c) => c.id === "provider")).toMatchObject({
+      level: "error",
+      message: "provider connectivity failed: server refused the connection",
+    })
   })
 })

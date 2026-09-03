@@ -29,10 +29,11 @@ if (plan.actionable.length) {
 ```
 
 Planning performs no provider calls and spends nothing. Passing a provider lets
-its synchronous `supports()` and `estimate()` methods determine cost unit and
-candidate count; no credentials are required for those methods. A resolved
-spec has the fully inherited style and asset settings plus its deterministic
-spec hash.
+its `supports()` and `estimate()` methods determine cost unit and candidate
+count. A provider may also resolve local files before hashing. The ComfyUI
+adapter uses that hook to parse and hash a workflow JSON file without contacting
+the server. A resolved spec has the fully inherited style and asset settings
+plus its deterministic spec hash.
 
 ## Audit and gate generated art
 
@@ -116,8 +117,9 @@ See [TILES.md](./TILES.md) for file contracts and engine details.
 ## Provider integrations
 
 `Provider` is the capability boundary. Generation pipelines accept that
-interface rather than importing PixelLab directly; `FakeProvider` implements it
-in memory for deterministic tests.
+interface rather than importing PixelLab directly; `PixelLabProvider`,
+`RetroDiffusionProvider`, and `ComfyUIProvider` are built in, while
+`FakeProvider` implements it in memory for deterministic tests.
 
 ```ts
 import { FakeProvider, fetchAssets, poll, submit } from "pixelkiln"
@@ -131,7 +133,7 @@ await fetchAssets(provider, specs, lock, lockPath)
 
 Provider-backed operations mutate the supplied lock object; persist at the
 workflow boundary with `saveLock`. See
-[PixelLab vs. Retro Diffusion](../PROVIDERS.md) before selecting or implementing
+[provider comparison](../PROVIDERS.md) before selecting or implementing
 another backend, especially its optional capabilities and cost units.
 
 `submit` validates adapter estimates again at the spending boundary and returns

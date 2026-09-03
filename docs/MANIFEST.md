@@ -32,7 +32,7 @@ Unknown properties are rejected at every level.
 |---|---|---|
 | `$schema` | no | Editor schema URL/path. It does not affect generation identity. |
 | `name` | yes | Project/account tag namespace. |
-| `provider` | no | Provider registry id. Defaults to `pixellab`; `retrodiffusion` is experimental. |
+| `provider` | no | Provider registry id. Defaults to `pixellab`; `retrodiffusion` and `comfyui` are experimental. |
 | `styles` | yes | Map of style id to inherited generation/output settings. |
 | `assets` | yes | Map of stable asset id to subject and per-asset overrides. |
 
@@ -49,7 +49,7 @@ not merely a label edit.
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
 | `styleImages` | `[]` | `{ "path": "..." }` reference images. Paths are manifest-relative. |
-| `size` | integer 32–256 | Square size for `1dir`; a style reference's dimensions take precedence when present. |
+| `size` | integer 16–8192 | Square size. Each provider and generator applies its own narrower limits. For PixelLab `1dir`, a style reference's dimensions take precedence. |
 | `view` | string | PixelLab `map`: `low top-down`, `high top-down`, or `side`. Other generators interpret this separately. |
 | `outline` | string | PixelLab `map`: `single color outline`, `selective outline`, or `lineless`. |
 | `shading` | string | PixelLab `map`: `flat shading`, `basic shading`, `medium shading`, or `detailed shading`. |
@@ -112,10 +112,9 @@ the correct extension and validates the correct structure.
 
 `promptStyle` accepts a live Retro Diffusion still-style selector,
 `numImages` accepts 1–16 candidates, and `removeBg` overrides
-`noBackground`. The Retro Diffusion API accepts 16–512px output, while the
-shared PixelKiln manifest currently limits arbitrary width and height to
-16–400px and square `size` to 32–256px. Selected styles can impose smaller
-limits. RD Pro and user styles accept up to nine reference images. Costs are
+`noBackground`. The Retro Diffusion API accepts 16–512px output. Selected
+styles can impose smaller limits. RD Pro and user styles accept up to nine
+reference images. Costs are
 planned in USD and checked again with Retro Diffusion's free authoritative
 quote endpoint before the paid request is sent. Authenticated single-candidate
 RD Fast and RD Plus paths have passed from quote through validated output and
@@ -175,14 +174,61 @@ For a Wang-style tileset sheet:
 `rd_tile__tile_variation` requires one style image. Provider-specific size and
 input constraints are checked during the free planning phase.
 
+## Experimental ComfyUI
+
+ComfyUI runs a committed API-format workflow on a self-hosted server. The
+workflow file is resolved relative to the manifest and its parsed content is
+part of the spec hash.
+
+```jsonc
+{
+  "name": "my-game",
+  "provider": "comfyui",
+  "styles": {
+    "local": {
+      "generator": "map",
+      "outDir": "assets/generated/local",
+      "seed": 31415,
+      "providerOptions": {
+        "comfyui": {
+          "workflowFile": "workflows/pixel-api.json",
+          "outputNodeId": "9",
+          "numImages": 4,
+          "bindings": {
+            "prompt": { "nodeId": "6", "input": "text" },
+            "width": { "nodeId": "5", "input": "width" },
+            "height": { "nodeId": "5", "input": "height" },
+            "batchSize": { "nodeId": "5", "input": "batch_size" },
+            "seed": { "nodeId": "3", "input": "seed" }
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "mountain": {
+      "prompt": "a snowbound mountain pass",
+      "width": 768,
+      "height": 512
+    }
+  }
+}
+```
+
+Node IDs come from the exported workflow; they are not stable across unrelated
+workflows. The current adapter supports `map`, PNG output from one node, 1–16
+candidates, and dimensions from 16–4096px. It rejects manifest `styleImages`
+and `palette`; keep those controls inside the workflow. See
+[Set up ComfyUI](COMFYUI.md) for the complete procedure and limits.
+
 ## Asset fields
 
 | Field | Type/default | Meaning |
 |---|---|---|
 | `prompt` | string, required | Subject-specific prompt. It may be empty only during existing-art onboarding. |
 | `category` | string | Human grouping metadata. |
-| `width` | integer 16–400 | Per-asset width override for arbitrary-size generators. |
-| `height` | integer 16–400 | Per-asset height override. |
+| `width` | integer 16–8192 | Per-asset width override. Each provider applies its own ceiling. |
+| `height` | integer 16–8192 | Per-asset height override. Each provider applies its own ceiling. |
 | `size` | integer 32–256 | Per-asset square size override. |
 | `file` | string | Filename/path override beneath the style output root. |
 | `styles` | string array, `[]` | If non-empty, generate this asset only in the named styles. |

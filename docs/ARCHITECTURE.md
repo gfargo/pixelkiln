@@ -5,7 +5,7 @@ PixelKiln separates provider mechanics from the project state machine:
 ```text
 manifest + lock + planning + review + recovery + artifact pipelines
 ──────────────────── Provider interface ─────────────────────────
-PixelLabProvider      RetroDiffusionProvider      FakeProvider      future adapters
+PixelLabProvider      RetroDiffusionProvider      ComfyUIProvider      FakeProvider
 ```
 
 Everything above the provider boundary is backend-neutral. URL shapes, auth
@@ -18,7 +18,10 @@ The committed manifest is intent. Resolution combines one style and one asset,
 loads/reference-hashes style images, applies overrides, chooses a provider-
 supported generator, and computes a deterministic spec hash. The hash excludes
 project root, output location, and tags but includes every pixel-affecting
-setting.
+setting. A provider may resolve local files before hashing. ComfyUI uses this
+hook to parse and hash workflow JSON without making a network request. The
+runtime graph can then be submitted without putting a machine-specific path in
+the stable identity.
 
 See [manifest reference](./MANIFEST.md).
 
@@ -126,7 +129,11 @@ an undefined method.
 an experimental still, tileset, and animation adapter. Authenticated RD Fast
 and RD Plus single-candidate still lifecycles have passed end to end. Its
 multi-candidate, tileset, GIF, and spritesheet paths retain mocked coverage
-pending paid live smokes. `FakeProvider` implements the same contract in memory, which
-keeps the paid pipeline testable without credentials or network access. See
-[library API](./LIBRARY.md) and
-[PixelLab vs. Retro Diffusion](../PROVIDERS.md).
+pending paid live smokes. `ComfyUIProvider` is an experimental self-hosted
+adapter. It resolves and hashes an API-format workflow offline, submits an
+input-bound clone, polls local history, and stores portable `comfyui://` output
+references so a lockfile does not retain a workstation hostname. It supports
+one still-image output node today. `FakeProvider` implements the same contract
+in memory, which keeps the pipeline testable without credentials or network
+access. See [library API](./LIBRARY.md) and
+[provider comparison](../PROVIDERS.md).

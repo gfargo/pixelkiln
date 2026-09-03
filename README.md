@@ -20,9 +20,10 @@ live-tested backend. An experimental Retro Diffusion adapter supports native
 pixel-art stills, candidate batches, tileset sheets, animated GIFs, and PNG
 spritesheets. Authenticated RD Fast and RD Plus single-candidate still paths
 have passed from quote through validated output and recovery. Multi-candidate,
-tileset, GIF, and spritesheet live runs remain. See
-[PixelLab vs. Retro Diffusion](./PROVIDERS.md) for the trade-offs, including
-large environment and building workflows.
+tileset, GIF, and spritesheet live runs remain. An experimental ComfyUI adapter
+runs committed API-format still-image workflows on a self-hosted server. See
+[provider comparison](./PROVIDERS.md) for the trade-offs, including large
+environment and building workflows.
 `FakeProvider` exercises the same contract deterministically in tests.
 
 > **Release status:** PixelKiln is published on npm. Merges to `main` use
@@ -98,7 +99,7 @@ cp examples/minimal/pixelkiln.manifest.json ../my-game/pixelkiln.manifest.json
 cd ../my-game
 ```
 
-Put the provider credential in `.env.local` beside the manifest:
+Put a hosted provider's credential in `.env.local` beside the manifest:
 
 ```dotenv
 # PixelLab (the default provider)
@@ -106,6 +107,9 @@ PIXELLAB_API_KEY=...
 
 # Or Retro Diffusion when `provider` is `retrodiffusion`
 RD_API_KEY=...
+
+# Self-hosted ComfyUI needs no key; override its local URL only when needed
+COMFYUI_BASE_URL=http://127.0.0.1:8188
 ```
 
 Validate locally, inspect exact work/cost, then generate with a hard ceiling:
@@ -130,9 +134,10 @@ pixelkiln plan
 ```
 
 See [Getting started](./docs/GETTING_STARTED.md) for new and existing projects.
-Use [Set up PixelLab](./docs/PIXELLAB.md) or
-[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) for provider-specific
-credentials, manifest examples, and current limits.
+Use [Set up PixelLab](./docs/PIXELLAB.md),
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), or
+[Set up ComfyUI](./docs/COMFYUI.md) for provider-specific configuration,
+manifest examples, and current limits.
 
 ## Agent skill
 
@@ -176,10 +181,11 @@ Styles are namespaces. Adding a second style re-derives the same asset ids into
 a separate output directory and separate lock keys without clobbering the first
 set. Generator choice, reference-image bytes, dimensions, palette, seed, and
 prompt settings participate in deterministic spec identity. A manifest may
-select `retrodiffusion` instead and pass namespaced `providerOptions`; see
+select another provider and pass namespaced `providerOptions`; see
 [Set up PixelLab](./docs/PIXELLAB.md),
 [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), and
-[PixelLab vs. Retro Diffusion](./PROVIDERS.md) for configuration, costs,
+[Set up ComfyUI](./docs/COMFYUI.md). The
+[provider comparison](./PROVIDERS.md) covers costs,
 current confidence, and limitations.
 
 The schema rejects unknown fields and invalid generator combinations before
@@ -226,8 +232,9 @@ replace a hard palette or reference-image constraint. See
 
 Generator names describe PixelKiln workflows; their exact capabilities and
 prices depend on the selected provider. Retro Diffusion also supports the
-provider-specific `animation` generator. Compare the adapters in
-[PixelLab vs. Retro Diffusion](./PROVIDERS.md).
+provider-specific `animation` generator. ComfyUI currently supports `map`
+through an operator-supplied workflow. Compare the adapters in the
+[provider comparison](./PROVIDERS.md).
 
 ## Derived artifacts
 
@@ -332,6 +339,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Getting started](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, everyday workflow, and what to commit. |
 | [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
 | [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
+| [Set up ComfyUI](./docs/COMFYUI.md) | Experimental self-hosted server, workflow bindings, local cost semantics, and limits. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
@@ -344,7 +352,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Library API](./docs/LIBRARY.md) | Public TypeScript contracts and examples. |
 | [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |
 | [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
-| [PixelLab vs. Retro Diffusion](./PROVIDERS.md) | Provider selection, costs, supported workflows, confidence, and limitations. |
+| [Provider comparison](./PROVIDERS.md) | Provider selection, costs, supported workflows, confidence, and limitations. |
 
 The [public documentation site](https://pixelkiln.griffen.codes/docs) is built by
 the application in [`website/`](./website/README.md). It reads these Markdown

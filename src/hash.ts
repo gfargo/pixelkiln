@@ -26,6 +26,7 @@ export async function sha256File(path: string): Promise<string> {
 export function specHash(
   spec: Omit<ResolvedSpec, "specHash" | "root" | "outFile" | "source" | "tags">,
   styleImageHashes: string[],
+  providerOptionIdentity: unknown = spec.providerOptions,
 ): string {
   return sha256(
     JSON.stringify({
@@ -33,7 +34,10 @@ export function specHash(
       // invalidate the spec. Older manifests implicitly mean pixellab.
       provider: spec.provider === "pixellab" ? undefined : spec.provider,
       providerOptions:
-        Object.keys(spec.providerOptions).length > 0 ? spec.providerOptions : undefined,
+        providerOptionIdentity &&
+        (typeof providerOptionIdentity !== "object" || Object.keys(providerOptionIdentity).length > 0)
+          ? providerOptionIdentity
+          : undefined,
       generator: spec.generator,
       prompt: spec.prompt,
       width: spec.width,

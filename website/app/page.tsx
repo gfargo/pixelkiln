@@ -211,23 +211,24 @@ export default function Home() {
               <p className="eyebrow">Human review stays local</p>
               <h2>Choose the image.<br />Keep the receipts.</h2>
               <p className="section-deck">
-                PixelLab and Retro Diffusion use the same review, lockfile, and
-                recovery flow. PixelKiln records every candidate, then leaves
-                the visual decision to you.
+                PixelLab, Retro Diffusion, and ComfyUI use the same review,
+                lockfile, and recovery flow. PixelKiln records every candidate,
+                then leaves the visual decision to you.
               </p>
               <div className="provider-status" aria-label="Current provider support">
                 <span><i className="status-dot" /> PixelLab · production</span>
                 <span><i /> Retro Diffusion · experimental</span>
+                <span><i /> ComfyUI · experimental</span>
                 <span><i /> FakeProvider · tests</span>
               </div>
               <p className="provider-note">
-                PixelLab is production-ready. Retro Diffusion is experimental:
-                paid RD Fast and RD Plus stills pass end to end, while advanced
-                live smoke tests remain.
+                PixelLab is production-ready. Retro Diffusion has live-tested
+                stills. ComfyUI has full mocked lifecycle coverage and awaits
+                its first pinned-workflow live smoke.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
-                  Compare PixelLab and Retro Diffusion →
+                  Compare providers →
                 </TrackedLink>
                 <TrackedLink className="text-link" id="review_provider_benchmark" section="review" href="/docs/provider-benchmark">
                   See the environment benchmark →
@@ -267,9 +268,10 @@ export default function Home() {
               <h2>Same briefs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
-              These are untouched outputs from the committed 256px and 384px
-              A/B benchmark. Two providers received the same briefs and seed
-              numbers. Each kept its native route and style.
+              The hosted cards use untouched outputs from the committed 256px
+              and 384px A/B benchmark. ComfyUI joins the pipeline through a
+              committed workflow, so its visual benchmark needs a named model
+              and graph to mean anything.
             </p>
           </div>
 
@@ -371,11 +373,46 @@ export default function Home() {
                 </TrackedLink>
               </div>
             </article>
+
+            <article className="provider-card provider-card-comfy">
+              <div className="provider-card-header">
+                <div>
+                  <span className="provider-badge experimental">Experimental</span>
+                  <h3>ComfyUI</h3>
+                </div>
+                <span className="provider-unit">Self-hosted</span>
+              </div>
+              <div className="provider-workflow" aria-label="ComfyUI workflow binding example">
+                <span>workflow-api.json</span>
+                <code>prompt → node 6.text</code>
+                <code>size → node 5.width / height</code>
+                <code>batch → node 5.batch_size</code>
+                <code>output ← node 9.images</code>
+              </div>
+              <p>
+                Bring the model and graph you trust. PixelKiln hashes the
+                workflow, binds asset intent into a cloned request, queues it
+                locally, and keeps the selected output recoverable without
+                storing your workstation hostname.
+              </p>
+              <dl>
+                <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
+                <div><dt>Best fit</dt><dd>Private models and custom workflow control</dd></div>
+              </dl>
+              <div className="provider-card-links">
+                <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">
+                  Set up ComfyUI →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_comfyui_site" section="provider_showcase" href="https://www.comfy.org/" external>
+                  Visit ComfyUI ↗
+                </TrackedLink>
+              </div>
+            </article>
           </div>
 
           <div className="provider-showcase-links">
             <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
-              Review all 20 benchmark images →
+              Review the hosted-provider benchmark →
             </TrackedLink>
             <TrackedLink className="text-link" id="showcase_comparison" section="provider_showcase" href="/docs/provider-notes">
               Compare provider capabilities →

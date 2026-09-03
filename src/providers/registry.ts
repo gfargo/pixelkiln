@@ -1,4 +1,5 @@
 import type { Provider } from "../provider.ts"
+import { ComfyUIProvider } from "./comfyui.ts"
 import { PixelLabProvider } from "./pixellab.ts"
 import { RetroDiffusionProvider } from "./retrodiffusion.ts"
 
@@ -56,5 +57,14 @@ registerProvider({
     if (mode === "online") return RetroDiffusionProvider.fromEnv()
     if (mode === "downloads") return RetroDiffusionProvider.forDownloads()
     return RetroDiffusionProvider.forOffline()
+  },
+})
+
+registerProvider({
+  id: "comfyui",
+  create(mode) {
+    if (mode === "online") return ComfyUIProvider.fromEnv()
+    if (mode === "downloads") return ComfyUIProvider.forDownloads()
+    return ComfyUIProvider.forOffline()
   },
 })

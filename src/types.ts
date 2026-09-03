@@ -166,8 +166,8 @@ export const StyleSchema = z
     // `map` is the default because it is 20-40x cheaper and correct for any
     // asset that is not going to be rotated or animated.
     generator: GeneratorSchema.default("map"),
-    /** Square edge length for `1dir`. 32-256. */
-    size: z.number().int().min(32).max(256).optional(),
+    /** Square edge length. The active provider owns its exact limit. */
+    size: z.number().int().min(16).max(8192).optional(),
     view: z.string().optional(),
     /** Appended to every asset prompt in this style. Where the look is defined. */
     promptSuffix: z.string().default(""),
@@ -304,8 +304,8 @@ export const AssetSchema = z
     /** Subdirectory under the style's outDir. Optional. */
     category: z.string().optional(),
     /** Overrides the style default. `map` generator only. */
-    width: z.number().int().min(16).max(400).optional(),
-    height: z.number().int().min(16).max(400).optional(),
+    width: z.number().int().min(16).max(8192).optional(),
+    height: z.number().int().min(16).max(8192).optional(),
     /** Overrides the style default. `1dir` generator only. */
     size: z.number().int().min(32).max(256).optional(),
     /** Explicit output path relative to outDir. Media-aware providers may replace its extension. */

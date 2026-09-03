@@ -61,7 +61,13 @@ export async function poll(
           spec: currentSpec,
         })
         if (state.status === "review") {
-          upsert(lock, key, { status: "review", reviewObjectId: entry.jobId })
+          upsert(lock, key, {
+            status: "review",
+            reviewObjectId: entry.jobId,
+            providerMetadata: state.metadata
+              ? { ...entry.providerMetadata, [provider.id]: state.metadata }
+              : entry.providerMetadata,
+          })
           result.review++
           log(`  review  ${key} (${state.candidateUrls.length} candidates)`)
         } else if (state.status === "ready") {
