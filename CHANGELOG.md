@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/gfargo/pixelkiln/compare/v0.6.0...v0.7.0) (2026-09-03)
+
+
+### Features
+
+* add self-hosted ComfyUI provider ([2839a8f](https://github.com/gfargo/pixelkiln/commit/2839a8f234a8c970648070d422776071256b6cd6))
+
 # [0.6.0](https://github.com/gfargo/pixelkiln/compare/v0.5.0...v0.6.0) (2026-09-03)
 
 
