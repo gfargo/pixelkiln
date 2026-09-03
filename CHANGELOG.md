@@ -1,3 +1,10 @@
+# [0.5.0](https://github.com/gfargo/pixelkiln/compare/v0.4.1...v0.5.0) (2026-09-03)
+
+
+### Features
+
+* strengthen releases and provider guidance ([#50](https://github.com/gfargo/pixelkiln/issues/50)) ([c005d2d](https://github.com/gfargo/pixelkiln/commit/c005d2da5a439411da62e7be2dd102a60da03eb2))
+
 ## [0.4.1](https://github.com/gfargo/pixelkiln/compare/v0.4.0...v0.4.1) (2026-09-02)
 
 
