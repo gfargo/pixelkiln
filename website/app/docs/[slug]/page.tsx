@@ -14,6 +14,8 @@ import {
   readDoc,
   tableOfContents,
 } from "@/app/lib/docs";
+import { absoluteUrl, pageMetadata } from "@/app/lib/metadata";
+import { JsonLd } from "@/app/ui/json-ld";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
@@ -30,7 +32,12 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: DocPageProps): Promise<Metadata> {
   const doc = getDoc((await params).slug);
   if (!doc) return {};
-  return { title: doc.title, description: doc.description };
+  return pageMetadata({
+    title: doc.title,
+    description: doc.description,
+    path: `/docs/${doc.slug}`,
+    type: "article",
+  });
 }
 
 function nodeText(node: ReactNode): string {
@@ -63,9 +70,32 @@ export default async function DocPage({ params }: DocPageProps) {
 
   const { absolute, content } = await readDoc(doc);
   const toc = tableOfContents(content);
+  const pageUrl = absoluteUrl(`/docs/${doc.slug}`);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        headline: doc.title,
+        description: doc.description,
+        url: pageUrl,
+        mainEntityOfPage: pageUrl,
+        isPartOf: absoluteUrl("/docs"),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "PixelKiln", item: absoluteUrl("/") },
+          { "@type": "ListItem", position: 2, name: "Documentation", item: absoluteUrl("/docs") },
+          { "@type": "ListItem", position: 3, name: doc.title, item: pageUrl },
+        ],
+      },
+    ],
+  };
 
   return (
     <>
+      <JsonLd data={jsonLd} />
       <SiteHeader compact />
       <main className="docs-layout shell">
         <aside className="docs-sidebar" aria-label="Documentation navigation">

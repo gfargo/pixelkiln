@@ -8,7 +8,7 @@ export function CopyCommand({ command }: { command: string }) {
 
   async function copy() {
     await navigator.clipboard.writeText(command);
-    trackInstallCommandCopied(command);
+    trackInstallCommandCopied();
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   }

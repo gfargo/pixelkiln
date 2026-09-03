@@ -7,7 +7,7 @@ import { track } from "@vercel/analytics";
  * They become dimensions in the Vercel Analytics dashboard.
  */
 
-type CtaSection =
+export type CtaSection =
   | "header"
   | "hero"
   | "install"
@@ -24,13 +24,19 @@ export function trackCta(id: string, section: CtaSection, href: string) {
 }
 
 export function trackOutboundClick(id: string, section: CtaSection, destination: string) {
-  track("Outbound Click", { id, section, destination });
+  let destinationHost = destination;
+  try {
+    destinationHost = new URL(destination).hostname;
+  } catch {
+    // Keep the supplied value when it is not an absolute URL.
+  }
+  track("Outbound Click", { id, section, destination: destinationHost });
 }
 
-export function trackInstallCommandCopied(command: string) {
-  track("Install Command Copied", { command });
+export function trackInstallCommandCopied() {
+  track("Install Command Copied", { target: "agent_skill", source: "homepage" });
 }
 
-export function trackDocViewed(slug: string, source: CtaSection) {
-  track("Doc Link Click", { slug, source });
+export function trackDocumentationLink(id: string, slug: string, source: CtaSection) {
+  track("Documentation Link Clicked", { id, slug, source });
 }

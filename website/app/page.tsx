@@ -1,14 +1,42 @@
 import Image from "next/image";
+import { absoluteUrl } from "@/app/lib/metadata";
 import { CopyCommand } from "@/app/ui/copy-command";
+import { JsonLd } from "@/app/ui/json-ld";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
 export default function Home() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${absoluteUrl("/")}#website`,
+        name: "PixelKiln",
+        url: absoluteUrl("/"),
+        description:
+          "A provider-neutral pipeline for planned costs, human review, exact provenance, resilient recovery, and engine-ready pixel art.",
+      },
+      {
+        "@type": "SoftwareSourceCode",
+        "@id": `${absoluteUrl("/")}#software`,
+        name: "PixelKiln",
+        url: absoluteUrl("/"),
+        codeRepository: "https://github.com/gfargo/pixelkiln",
+        license: "https://opensource.org/license/mit",
+        programmingLanguage: "TypeScript",
+        runtimePlatform: "Node.js",
+        description:
+          "A deterministic build pipeline for generated pixel art with cost planning, human review, provenance, recovery, and engine-ready outputs.",
+      },
+    ],
+  };
+
   return (
     <>
+      <JsonLd data={jsonLd} />
+      <SiteHeader />
       <main>
-        <SiteHeader />
-
       <section className="hero shell">
         <div className="hero-copy">
           <p className="eyebrow">

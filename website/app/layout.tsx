@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { siteUrl } from "@/app/lib/site";
+import { SiteAnalytics } from "@/app/ui/site-analytics";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,6 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  applicationName: "PixelKiln",
   title: {
     default: "PixelKiln: Pixel-art generation with receipts",
     template: "%s · PixelKiln",
@@ -42,11 +42,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      data-scroll-behavior="smooth"
+    >
       <body>
         {children}
-        <Analytics />
-        <SpeedInsights />
+        <SiteAnalytics />
       </body>
     </html>
   );
