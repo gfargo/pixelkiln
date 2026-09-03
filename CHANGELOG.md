@@ -1,3 +1,10 @@
+# [0.8.0](https://github.com/gfargo/pixelkiln/compare/v0.7.0...v0.8.0) (2026-09-03)
+
+
+### Features
+
+* refine ComfyUI pixel art outputs ([#54](https://github.com/gfargo/pixelkiln/issues/54)) ([e2b9bee](https://github.com/gfargo/pixelkiln/commit/e2b9beeb3bd537eb24d98439199bd60e13ffc715))
+
 # [0.7.0](https://github.com/gfargo/pixelkiln/compare/v0.6.0...v0.7.0) (2026-09-03)
 
 
