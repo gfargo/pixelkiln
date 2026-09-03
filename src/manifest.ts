@@ -62,7 +62,7 @@ export async function resolveSpecs(
     styles?: string[]
     assets?: string[]
     /** Optional provider makes offline plan cost/candidate estimates adapter-owned. */
-    provider?: Pick<Provider, "supports" | "estimate" | "validate" | "id">
+    provider?: Pick<Provider, "supports" | "estimate" | "validate" | "resolveOptions" | "id">
   },
 ): Promise<ResolvedSpec[]> {
   const { manifest, root } = loaded
@@ -110,6 +110,12 @@ export async function resolveSpecs(
 
   for (const styleId of styleIds) {
     const style = manifest.styles[styleId]!
+    const rawProviderOptions = style.providerOptions[activeProvider.id] ?? {}
+    const optionResolution = activeProvider.resolveOptions
+      ? await activeProvider.resolveOptions(rawProviderOptions, { root, styleId })
+      : { options: rawProviderOptions }
+    const providerOptions = optionResolution.options
+    const providerOptionIdentity = optionResolution.identity ?? providerOptions
     const styleImageHashes: string[] = []
     const styleImageDimensions: { width: number; height: number }[] = []
     for (const img of style.styleImages) {
@@ -176,7 +182,7 @@ export async function resolveSpecs(
         styleId,
         assetId,
         provider: activeProvider.id,
-        providerOptions: style.providerOptions[activeProvider.id] ?? {},
+        providerOptions,
         generator,
         prompt,
         width,
@@ -223,7 +229,7 @@ export async function resolveSpecs(
         outFile,
         tags,
         source: asset.source,
-        specHash: specHash(base, styleImageHashes),
+        specHash: specHash(base, styleImageHashes, providerOptionIdentity),
       }
       const resolvedImages = style.styleImages.map((image) => {
         const hit = styleImageCache.get(path.resolve(root, image.path))!

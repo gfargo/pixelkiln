@@ -10,9 +10,10 @@ separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
 The manifest's top-level `provider` field selects the provider for `plan`,
-`doctor`, and pipeline commands. It defaults to `pixellab`; the built-in
-`retrodiffusion` adapter is experimental and supports still-image
-`map`/`pixflux`, `tiles` sheets, and `animation` GIF/spritesheet work.
+`doctor`, and pipeline commands. It defaults to `pixellab`. The experimental
+`retrodiffusion` adapter supports still-image `map`/`pixflux`, `tiles` sheets,
+and `animation` GIF/spritesheet work. The experimental `comfyui` adapter runs
+committed API-format `map` workflows on a self-hosted server.
 
 ## Everyday pipeline
 
@@ -141,7 +142,8 @@ or download artwork.
 ### `balance`
 
 Show the manifest-selected provider's remaining balance and cost unit. Reports
-a capability error when an installed provider has no balance endpoint.
+a capability error when an installed provider, such as local ComfyUI, has no
+balance endpoint.
 
 ### `status`
 

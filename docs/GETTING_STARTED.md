@@ -9,8 +9,9 @@ checks need provider access.
 ## Requirements
 
 - Node.js 20 or newer
-- A credential for the manifest's selected provider: `PIXELLAB_API_KEY` for
-  PixelLab or `RD_API_KEY` for experimental Retro Diffusion support
+- A credential for the selected hosted provider: `PIXELLAB_API_KEY` for
+  PixelLab or `RD_API_KEY` for Retro Diffusion. Self-hosted ComfyUI needs a
+  reachable server instead of an API key.
 
 Install the published package in the project that owns the art:
 
@@ -45,8 +46,8 @@ cp examples/minimal/pixelkiln.manifest.json pixelkiln.manifest.json
 ```
 
 Set each style's generator, dimensions, prompt prefix/suffix, reference images,
-and output directory. Then add one manifest entry per asset. Put the credential
-in `.env.local` beside the manifest:
+and output directory. Then add one manifest entry per asset. For PixelLab, put
+the credential in `.env.local` beside the manifest:
 
 ```dotenv
 PIXELLAB_API_KEY=...
@@ -66,12 +67,18 @@ Multi-candidate, tileset, GIF, and spritesheet live runs remain, so PixelLab
 remains the production adapter. See
 [Manifest reference](MANIFEST.md#experimental-retro-diffusion) for
 provider options and current limits, or
-[PixelLab vs. Retro Diffusion](../PROVIDERS.md) for selection guidance.
+[provider comparison](../PROVIDERS.md) for selection guidance.
+For self-hosted generation, set `provider` to `comfyui`, commit an API-format
+workflow, and bind the inputs PixelKiln may replace. Local ComfyUI jobs use a
+zero `free` budget, which describes the lack of a metered provider charge, not
+the cost of hardware or electricity. See [Set up ComfyUI](COMFYUI.md).
+
 The provider setup guides give the shortest complete path for
-[PixelLab](PIXELLAB.md) and [Retro Diffusion](RETRO_DIFFUSION.md).
+[PixelLab](PIXELLAB.md), [Retro Diffusion](RETRO_DIFFUSION.md), and
+[ComfyUI](COMFYUI.md).
 If one repository needs both, use separate provider-specific manifests and
 lockfiles. See
-[Use both providers in one project](../PROVIDERS.md#use-both-providers-in-one-project).
+[Use multiple providers in one project](../PROVIDERS.md#use-multiple-providers-in-one-project).
 
 Before spending anything, validate and price the selected work:
 

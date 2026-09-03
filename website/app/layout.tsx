@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · PixelKiln",
   },
   description:
-    "A provider-neutral PixelLab and Retro Diffusion pipeline to plan, review, recover, and package generative pixel art with exact provenance.",
+    "A provider-neutral PixelLab, Retro Diffusion, and ComfyUI pipeline to plan, review, recover, and package generative pixel art with exact provenance.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",

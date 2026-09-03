@@ -4,6 +4,12 @@ export * from "./provider.ts"
 export * from "./media.ts"
 export { PixelLabProvider } from "./providers/pixellab.ts"
 export { RetroDiffusionProvider, type RetroDiffusionOptions } from "./providers/retrodiffusion.ts"
+export {
+  ComfyUIProvider,
+  type ComfyUIBinding,
+  type ComfyUIBindings,
+  type ComfyUIOptions,
+} from "./providers/comfyui.ts"
 export { FakeProvider, FAKE_PNG, type FakeOptions } from "./providers/fake.ts"
 export {
   registerProvider,

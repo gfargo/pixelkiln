@@ -33,8 +33,8 @@
               },
               "size": {
                 "type": "integer",
-                "minimum": 32,
-                "maximum": 256
+                "minimum": 16,
+                "maximum": 8192
               },
               "view": {
                 "type": "string"
@@ -191,12 +191,12 @@
               "width": {
                 "type": "integer",
                 "minimum": 16,
-                "maximum": 400
+                "maximum": 8192
               },
               "height": {
                 "type": "integer",
                 "minimum": 16,
-                "maximum": 400
+                "maximum": 8192
               },
               "size": {
                 "type": "integer",

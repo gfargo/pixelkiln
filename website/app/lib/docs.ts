@@ -36,6 +36,13 @@ export const docs: DocEntry[] = [
     group: "Start here",
   },
   {
+    slug: "comfyui",
+    title: "Set up ComfyUI",
+    description: "Connect a self-hosted server, install the tested SDXL stack, and bind a committed workflow.",
+    file: "docs/COMFYUI.md",
+    group: "Start here",
+  },
+  {
     slug: "cli",
     title: "CLI reference",
     description: "Every command and flag, including automation and exit behavior.",
@@ -66,7 +73,7 @@ export const docs: DocEntry[] = [
   {
     slug: "provider-benchmark",
     title: "Environment provider benchmark",
-    description: "Twenty matched PixelLab and Retro Diffusion outputs, including 384px buildings and backgrounds.",
+    description: "Twenty-four PixelLab, Retro Diffusion, and ComfyUI building and environment outputs.",
     file: "docs/PROVIDER_BENCHMARK.md",
     group: "Workflows",
   },
@@ -121,8 +128,8 @@ export const docs: DocEntry[] = [
   },
   {
     slug: "provider-notes",
-    title: "PixelLab vs. Retro Diffusion",
-    description: "Compare costs, workflows, confidence, limitations, and provider fit.",
+    title: "Provider comparison",
+    description: "Compare PixelLab, Retro Diffusion, and self-hosted ComfyUI.",
     file: "PROVIDERS.md",
     group: "Workflows",
   },

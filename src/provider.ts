@@ -66,10 +66,23 @@ export interface PollContext {
 /** Provider-owned, JSON-serializable details needed by downstream exporters. */
 export type ProviderMetadata = Record<string, unknown>
 
+export interface ProviderOptionContext {
+  /** Absolute directory containing the manifest. */
+  root: string
+  styleId: string
+}
+
+export interface ResolvedProviderOptions {
+  /** Runtime options passed to estimate, validate, and submit. */
+  options: Record<string, unknown>
+  /** Stable JSON value hashed instead of runtime-only data when present. */
+  identity?: unknown
+}
+
 /** Terminal and non-terminal states a queued job can be observed in. */
 export type JobState =
   | { status: "processing"; progressPercent?: number | null; etaSeconds?: number | null }
-  | { status: "review"; candidateUrls: string[] }
+  | { status: "review"; candidateUrls: string[]; metadata?: ProviderMetadata }
   | {
       status: "ready"
       objectId: string
@@ -163,6 +176,16 @@ export const DEFAULT_RATE_LIMIT: RateLimit = { spacingMs: 2500, maxInFlight: 8 }
 export interface Provider {
   readonly id: string
 
+  /**
+   * Resolve provider-owned local files before spec hashing. This must remain
+   * offline and return JSON-serializable data. It lets adapters hash file
+   * content rather than a machine-specific path.
+   */
+  resolveOptions?(
+    options: Record<string, unknown>,
+    context: ProviderOptionContext,
+  ): Promise<ResolvedProviderOptions>
+
   /** False for a generator this backend cannot express (e.g. non-square). */
   supports(generator: Generator): boolean
 
@@ -201,6 +224,9 @@ export interface Provider {
 
   /** Query an authoritative account balance when the service exposes one. */
   balance?(): Promise<BalanceInfo>
+
+  /** Read-only connectivity probe for providers without a balance endpoint. */
+  checkConnection?(): Promise<void>
 
   /** Free-form labels on the remote asset. Absent if unsupported. */
   setTags?(objectId: string, tags: string[]): Promise<void>

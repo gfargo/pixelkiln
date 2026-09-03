@@ -211,23 +211,24 @@ export default function Home() {
               <p className="eyebrow">Human review stays local</p>
               <h2>Choose the image.<br />Keep the receipts.</h2>
               <p className="section-deck">
-                PixelLab and Retro Diffusion use the same review, lockfile, and
-                recovery flow. PixelKiln records every candidate, then leaves
-                the visual decision to you.
+                PixelLab, Retro Diffusion, and ComfyUI use the same review,
+                lockfile, and recovery flow. PixelKiln records every candidate,
+                then leaves the visual decision to you.
               </p>
               <div className="provider-status" aria-label="Current provider support">
                 <span><i className="status-dot" /> PixelLab · production</span>
                 <span><i /> Retro Diffusion · experimental</span>
+                <span><i /> ComfyUI · experimental</span>
                 <span><i /> FakeProvider · tests</span>
               </div>
               <p className="provider-note">
-                PixelLab is production-ready. Retro Diffusion is experimental:
-                paid RD Fast and RD Plus stills pass end to end, while advanced
-                live smoke tests remain.
+                PixelLab is production-ready. Retro Diffusion has live-tested
+                stills. ComfyUI has live-tested local generation, candidate
+                queueing, and cache recovery; its pixel-art benchmark is next.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
-                  Compare PixelLab and Retro Diffusion →
+                  Compare providers →
                 </TrackedLink>
                 <TrackedLink className="text-link" id="review_provider_benchmark" section="review" href="/docs/provider-benchmark">
                   See the environment benchmark →
@@ -267,9 +268,10 @@ export default function Home() {
               <h2>Same briefs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
-              These are untouched outputs from the committed 256px and 384px
-              A/B benchmark. Two providers received the same briefs and seed
-              numbers. Each kept its native route and style.
+              These are untouched outputs from committed 256px and 384px
+              benchmark projects. The ComfyUI card names its model stack and
+              workflow because a self-hosted provider alone says nothing about
+              image quality.
             </p>
           </div>
 
@@ -371,11 +373,61 @@ export default function Home() {
                 </TrackedLink>
               </div>
             </article>
+
+            <article className="provider-card provider-card-comfy">
+              <div className="provider-card-header">
+                <div>
+                  <span className="provider-badge experimental">Experimental</span>
+                  <h3>ComfyUI</h3>
+                </div>
+                <span className="provider-unit">Self-hosted</span>
+              </div>
+              <div className="provider-image-grid">
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/comfyui/isolated/a/cliffside-fortress.png"
+                    alt="ComfyUI SDXL and Pixel Art XL result for a fortified monastery built into a mountain cliff"
+                    width={384}
+                    height={384}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Large building · SDXL + LoRA</figcaption>
+                </figure>
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-environments/comfyui/background/a/alpine-valley.png"
+                    alt="ComfyUI SDXL and Pixel Art XL result for an alpine valley background at dusk"
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 680px) 50vw, 280px"
+                  />
+                  <figcaption>Scenic background · SDXL + LoRA</figcaption>
+                </figure>
+              </div>
+              <p>
+                SDXL Base plus Pixel Art XL produced the clearest large
+                building and strongest layered landscape in this sample. The
+                workflow renders at 1024px, then uses nearest-exact reduction.
+                Isolated assets still need background removal.
+              </p>
+              <dl>
+                <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
+                <div><dt>Best fit</dt><dd>Local control and large scene composition</dd></div>
+              </dl>
+              <div className="provider-card-links">
+                <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">
+                  Set up ComfyUI →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_comfyui_site" section="provider_showcase" href="https://www.comfy.org/" external>
+                  Visit ComfyUI ↗
+                </TrackedLink>
+              </div>
+            </article>
           </div>
 
           <div className="provider-showcase-links">
             <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
-              Review all 20 benchmark images →
+              Review the three-provider benchmark →
             </TrackedLink>
             <TrackedLink className="text-link" id="showcase_comparison" section="provider_showcase" href="/docs/provider-notes">
               Compare provider capabilities →

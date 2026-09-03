@@ -84,6 +84,15 @@ export class PixelLabProvider implements Provider {
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
+    if (spec.generator === "1dir" && (spec.width < 32 || spec.width > 256)) {
+      throw new Error("PixelLab 1dir dimensions must be between 32 and 256 pixels")
+    }
+    if (
+      (spec.generator === "map" || spec.generator === "pixflux") &&
+      (spec.width < 16 || spec.height < 16 || spec.width > 400 || spec.height > 400)
+    ) {
+      throw new Error(`PixelLab ${spec.generator} dimensions must be between 16 and 400 pixels`)
+    }
     if (spec.generator === "map") {
       requirePixelLabOption("view", spec.view, ["low top-down", "high top-down", "side"])
       requirePixelLabOption("outline", spec.outline, [

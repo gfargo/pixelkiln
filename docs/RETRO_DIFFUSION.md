@@ -103,7 +103,7 @@ building, landmark, and foreground layers.
 
 The [environment benchmark](./PROVIDER_BENCHMARK.md) found clean transparent,
 low-color Retro Diffusion cutouts, while PixelLab followed the more complex
-building prompts more closely. Read [PixelLab vs. Retro Diffusion](../PROVIDERS.md)
+building prompts more closely. Read the [provider comparison](../PROVIDERS.md)
 before committing to a large batch.
 
 Retro Diffusion publishes its API examples and pricing formulas in the

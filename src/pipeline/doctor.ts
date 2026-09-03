@@ -173,8 +173,15 @@ export async function doctor(
         ? `${opts.credentialEnv ?? "PIXELLAB_API_KEY"} is not configured`
         : "provider is not configured",
     )
+  } else if (!opts.provider.balance && !opts.provider.checkConnection) {
+    add("provider", "ok", `${opts.provider.id} configured; connectivity check unavailable`)
   } else if (!opts.provider.balance) {
-    add("provider", "ok", `${opts.provider.id} configured; balance reporting unavailable`)
+    try {
+      await opts.provider.checkConnection!()
+      add("provider", "ok", `${opts.provider.id} reachable; balance reporting unavailable`)
+    } catch (err) {
+      add("provider", "error", `provider connectivity failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
   } else {
     const balanceFn = opts.provider.balance.bind(opts.provider)
     try {

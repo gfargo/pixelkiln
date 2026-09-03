@@ -48,22 +48,24 @@ not a replacement:
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
 | PixelLab adapter | The current production and live-tested generation backend. |
 | Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
+| ComfyUI adapter | Experimental self-hosted still-image backend using a committed API-format workflow. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production
 and paid-generation-tested adapter. Retro Diffusion generation support is
 experimental. Paid RD Fast and RD Plus single-candidate stills have passed from
 quote through validated download and recovery. Multi-candidate, tileset, GIF,
 and spritesheet workflows still need representative live smoke tests. See
-[PixelLab vs. Retro Diffusion](../PROVIDERS.md) before choosing a provider for a
+[provider comparison](../PROVIDERS.md) before choosing a provider for a
 new project or a large environment asset. Once chosen, follow
 [Set up PixelLab](./PIXELLAB.md) or
-[Set up Retro Diffusion](./RETRO_DIFFUSION.md).
+[Set up Retro Diffusion](./RETRO_DIFFUSION.md), or
+[Set up ComfyUI](./COMFYUI.md).
 
 The installed skill keeps the shared safety workflow in `SKILL.md` and loads a
-focused reference only when needed: PixelLab, Retro Diffusion, or a project that
-uses both. Mixed-provider repositories should use separate manifests and
+focused reference only when needed: PixelLab, Retro Diffusion, ComfyUI, or a
+project that uses more than one. Mixed-provider repositories should use separate manifests and
 lockfiles so each plan and budget keeps its provider-specific unit. The
-[provider comparison](../PROVIDERS.md#use-both-providers-in-one-project) has a
+[provider comparison](../PROVIDERS.md#use-multiple-providers-in-one-project) has a
 complete layout and command example.
 
 ## Recommended first prompt

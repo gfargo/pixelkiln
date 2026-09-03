@@ -1,10 +1,11 @@
 # Environment provider benchmark
 
-This benchmark compares PixelLab and Retro Diffusion on five game-art briefs.
-Three briefs use 256×256 output; two use 384×384 to test larger buildings and
-environment backgrounds. Each brief has two attempts. The test uses the same
-prompt text and seed numbers for both providers, but seeds are not portable
-between models.
+This benchmark compares PixelLab and Retro Diffusion on five game-art briefs,
+with a four-brief ComfyUI extension using a named SDXL stack. Three briefs use
+256×256 output; two use 384×384 to test larger buildings and environment
+backgrounds. The hosted providers have two attempts per brief. ComfyUI has one
+attempt on each supported brief. Prompt text and seed numbers match, but seeds
+are not portable between models.
 
 The benchmark tests the adapters that PixelKiln ships. It does not rank every
 model or endpoint sold by either provider.
@@ -34,6 +35,9 @@ The committed manifests and lockfiles are here:
 - [PixelLab lockfile](../benchmarks/provider-environments/pixellab/pixelkiln.lock.json)
 - [Retro Diffusion manifest](../benchmarks/provider-environments/retrodiffusion/pixelkiln.manifest.json)
 - [Retro Diffusion lockfile](../benchmarks/provider-environments/retrodiffusion/pixelkiln.lock.json)
+- [ComfyUI benchmark project](../benchmarks/provider-environments/comfyui/README.md)
+- [ComfyUI manifest](../benchmarks/provider-environments/comfyui/pixelkiln.manifest.json)
+- [ComfyUI lockfile](../benchmarks/provider-environments/comfyui/pixelkiln.lock.json)
 
 ## Mountain observatory
 
@@ -148,12 +152,39 @@ Diffusion gives the stronger single-frame canyon. A production workflow should
 generate or extract the sky, distant peaks, middle ground, and foreground as
 separate assets.
 
+## ComfyUI SDXL extension
+
+The local extension uses
+[SDXL Base 1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0)
+with [Pixel Art XL](https://huggingface.co/nerijs/pixel-art-xl). Both committed
+workflows use core ComfyUI nodes, generate at 1024×1024, and finish with
+`nearest-exact` reduction. There was no manual image edit or candidate choice.
+
+| Mountain observatory, 256px | Cliffside fortress, 384px | Alpine valley, 256px | Volcanic pass, 384px |
+|---|---|---|---|
+| ![ComfyUI mountain observatory](../website/public/benchmarks/provider-environments/comfyui/isolated/a/mountain-observatory.png) | ![ComfyUI cliffside fortress](../website/public/benchmarks/provider-environments/comfyui/isolated/a/cliffside-fortress.png) | ![ComfyUI alpine valley](../website/public/benchmarks/provider-environments/comfyui/background/a/alpine-valley.png) | ![ComfyUI volcanic pass](../website/public/benchmarks/provider-environments/comfyui/background/a/volcanic-pass.png) |
+
+The observatory and fortress are the strongest architectural results in this
+small sample. The fortress has a clear entrance, tower hierarchy, stairs, and a
+single readable footprint. The alpine scene keeps the river, village, tree
+line, and distant ridges separate. The volcanic scene is dramatic and legible,
+but it drops the requested basalt fortress, the same prompt-coverage failure
+seen in both hosted providers.
+
+The trade-off is production cleanup. All four ComfyUI PNGs are opaque. The two
+isolated files use 16,811 and 31,572 RGB colors, while the backgrounds use
+36,248 and 50,985. They look pixelated because of the LoRA and nearest-exact
+reduction, but they are not indexed, low-palette sprites. Add explicit
+background removal and palette quantization when the target art direction
+requires them.
+
 ## Cost and operational results
 
 | Provider | Successful images | Charged amount | Final balance |
 |---|---:|---:|---:|
 | PixelLab | 10 | 10 generations | 4,411 generations |
 | Retro Diffusion | 10 | $0.744 | $9.73 |
+| ComfyUI | 4 | 0 `free` PixelKiln units | No account balance |
 
 PixelLab charged one generation per image. Retro Diffusion quoted and charged
 $0.058 for each 256px RD Plus image and $0.099 for each 384px RD Plus image;
@@ -167,8 +198,9 @@ The run also caught two integration details:
   $0.057768 to $0.058. PixelKiln now rounds offline estimates up to the live
   quote precision, so planning remains a safe ceiling.
 
-Both manifests now pass `doctor`, report a current plan, and have ten healthy
-PNG cache entries.
+All three manifests now pass `doctor` and report a current plan. The hosted
+projects have ten healthy PNG cache entries each; the ComfyUI extension has
+four.
 
 ## Recommendation
 
@@ -182,7 +214,13 @@ For full scenic backgrounds, start with PixelLab Pixflux. These two attempts
 were cheaper and more faithful to the brief. Try Retro Diffusion when you want
 foreground framing and a closer illustrated scene.
 
-Do not ask either provider for one giant finished level. Generate terrain,
+Try the tested ComfyUI SDXL stack when local control and larger compositions
+matter more than ready-to-place transparency. It produced the best large
+building in this run and a strong layered valley, with no provider charge. It
+also took roughly 90 seconds per 1024px render on the tested Apple MPS machine,
+and every output still needs palette review.
+
+Do not ask any provider for one giant finished level. Generate terrain,
 background, buildings, landmarks, and foreground pieces separately. Compose
 them in the engine, then use integer nearest-neighbor scaling for display.
 
