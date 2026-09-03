@@ -10,6 +10,7 @@ import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { submit } from "../src/pipeline/submit.ts"
+import { decodePng } from "../src/png.ts"
 import { FAKE_PNG } from "../src/providers/fake.ts"
 import { lockKey, type Lock } from "../src/types.ts"
 
@@ -124,44 +125,69 @@ describe("ComfyUI provider", () => {
     expect(isolated[11].inputs).toMatchObject({ upscale_method: "nearest-exact" })
   })
 
-  it("keeps the committed high-resolution benchmark reproducible and current", async () => {
+  it("keeps the committed large-output benchmark reproducible and current", async () => {
     const root = path.resolve("benchmarks/provider-hires/comfyui")
     const specs = await resolveSpecs(await loadManifest(path.join(root, "pixelkiln.manifest.json")))
     const lock = await loadLock(path.join(root, "pixelkiln.lock.json"))
     const plan = await buildPlan(specs, lock)
 
-    expect(plan.items).toHaveLength(5)
+    expect(plan.items).toHaveLength(3)
     expect(plan.items.every((item) => item.state === "ok")).toBe(true)
     expect(plan.actionable).toEqual([])
 
-    const conservative = JSON.parse(
-      await readFile(path.join(root, "workflow-latent-conservative-api.json"), "utf8"),
+    const pixelPerfect = JSON.parse(
+      await readFile(path.join(root, "workflow-pixel-perfect-2x-api.json"), "utf8"),
     )
-    expect(conservative[17]).toMatchObject({
-      class_type: "LatentUpscale",
-      inputs: { upscale_method: "bislerp", width: 1536, height: 1536 },
-    })
-    expect(conservative[18]).toMatchObject({
-      class_type: "KSampler",
-      inputs: { denoise: 0.16, steps: 12 },
-    })
-    expect(conservative[8]).toMatchObject({
+    expect(Object.values(pixelPerfect as JsonObject).map((node) => (
+      node as JsonObject
+    ).class_type)).not.toContain("LatentUpscale")
+    expect(pixelPerfect[8]).toMatchObject({
       class_type: "VAEDecodeTiled",
       inputs: { tile_size: 512, overlap: 64 },
     })
-    expect(conservative[15].inputs).toMatchObject({ colors: 64, dither: "none" })
-    expect(conservative[11].inputs).toMatchObject({
+    expect(pixelPerfect[15].inputs).toMatchObject({ colors: 64, dither: "none" })
+    expect(pixelPerfect[11].inputs).toMatchObject({
       upscale_method: "nearest-exact",
-      width: 1024,
-      height: 1024,
+      width: 2048,
+      height: 2048,
     })
 
-    const ultra = JSON.parse(
-      await readFile(path.join(root, "workflow-latent-ultra-api.json"), "utf8"),
+    const nativeWide = JSON.parse(
+      await readFile(path.join(root, "workflow-native-wide-api.json"), "utf8"),
     )
-    expect(ultra[17].inputs).toMatchObject({ width: 2048, height: 2048 })
-    expect(ultra[18].inputs).toMatchObject({ denoise: 0.14, steps: 10 })
-    expect(ultra[11].inputs).toMatchObject({ width: 2048, height: 2048 })
+    expect(nativeWide[5].inputs).toMatchObject({ width: 1344, height: 768 })
+    expect(nativeWide[11].inputs).toMatchObject({ width: 1344, height: 768 })
+    expect(Object.values(nativeWide as JsonObject).map((node) => (
+      node as JsonObject
+    ).class_type)).not.toContain("LatentUpscale")
+
+    const baselineImage = decodePng(await readFile(path.join(
+      root,
+      "../../../website/public/benchmarks/provider-hires/comfyui/baseline-64/alpine-valley.png",
+    )))
+    const scaledImage = decodePng(await readFile(path.join(
+      root,
+      "../../../website/public/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png",
+    )))
+    expect(scaledImage.width).toBe(baselineImage.width * 2)
+    expect(scaledImage.height).toBe(baselineImage.height * 2)
+    let exactTwoByTwo = true
+    for (let y = 0; y < baselineImage.height; y++) {
+      for (let x = 0; x < baselineImage.width; x++) {
+        const source = (y * baselineImage.width + x) * 4
+        for (let dy = 0; dy < 2; dy++) {
+          for (let dx = 0; dx < 2; dx++) {
+            const target = ((y * 2 + dy) * scaledImage.width + x * 2 + dx) * 4
+            for (let channel = 0; channel < 4; channel++) {
+              if (scaledImage.pixels[target + channel] !== baselineImage.pixels[source + channel]) {
+                exactTwoByTwo = false
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(exactTwoByTwo).toBe(true)
   })
 
   it("hashes parsed workflow content and plans without a network request", async () => {

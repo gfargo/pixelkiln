@@ -117,49 +117,33 @@ of the committed workflow hash.
 
 ## Render larger environment masters
 
-PixelKiln accepts outputs up to 4096px per edge, but a larger file is not the
-same thing as a more detailed generation. Scaling the decoded 1024px image only
-makes its existing pixels larger. For mountains, towns, and full environments,
-use a second latent sampling pass:
+PixelKiln accepts outputs up to 4096px per edge, but file dimensions and
+generated detail are separate concerns. The tested pixel-art stack has two
+reliable ways to make larger environments:
 
-1. Generate the composition at SDXL's 1024px working size.
-2. Upscale the latent to 1536px with core `LatentUpscale` and `bislerp`.
-3. Run a second `KSampler` at low denoise.
-4. Decode with `VAEDecodeTiled` using 512px tiles and 64px overlap.
-5. Quantize, then resize to the manifest's delivery dimensions.
+1. Generate once at a useful SDXL canvas. The benchmark validates 1024×1024
+   and a native 1344×768 wide composition.
+2. For a larger delivery file, quantize first and scale by an integer with
+   `ImageScale` set to `nearest-exact`. The tested 2× workflow turns each source
+   pixel into an exact 2×2 block and writes a crisp 2048×2048 PNG.
 
-The committed [high-resolution benchmark](../benchmarks/provider-hires/comfyui/README.md)
-tests that graph on the same alpine brief and seed. At 0.16 denoise, the second
-pass kept the base composition while adding the strongest local edge detail in
-the four-way comparison. At 0.28, it redrew more mountain and lighting detail
-but softened the block structure. A 128-color version gave the smoothest
-showcase master; the 64-color versions are easier to keep consistent with game
-art.
+Do not add a latent refinement pass by default. We tested `LatentUpscale` to
+1536px and 2048px, low-denoise resampling, and tiled VAE decode. Every version
+completed on the 64 GB M1 Max, but the extra interpolation, diffusion, and VAE
+round trip visibly blurred the shapes. Reducing the result to 64 colors did not
+restore the lost edges.
 
-On the tested 64 GB M1 Max, the cached 1536px sampling pass took about 90
-seconds at 0.16 denoise and 129 seconds at 0.28. A cold run also needs the base
-1024px pass, which took about 88 seconds in the same session. Treat high-res as
-an opt-in quality mode, not the default for every small sprite.
+The committed [large-output benchmark](../benchmarks/provider-hires/comfyui/README.md)
+keeps the crisp results and documents the rejected latent-upscale experiment.
+Use the native wide workflow when you need more horizontal composition. Use
+integer scaling when you need a larger file or display size without changing
+the art. Neither method pretends that duplicated pixels are new generated
+detail.
 
-The practical presets are:
-
-| Goal | Working resolution | Second-pass denoise | Colors |
-|---|---:|---:|---:|
-| Small game asset | 1024px, then reduce | none | 64 |
-| Crisp 1024px environment | 1024px → 1536px | 0.16 | 64 |
-| Softer showcase background | 1024px → 1536px | 0.28 | 128 |
-
-A 2048×2048 latent and output test also completed on the 64 GB M1 Max. Its
-cached refinement took 183 seconds, stayed within memory, and produced a valid
-64-color PNG. It also softened the broad shapes and created a 1.2 MiB file.
-Treat 2048px as an available ceiling for selective masters, not an automatic
-quality upgrade.
-
-Keep delivery dimensions separate from working resolution. A 2048px or 4096px
-delivery file can use integer nearest-neighbor scaling after the detail pass,
-but it will not contain more generated scene information than the 1536px
-latent. Test larger latent sizes separately before relying on them; node limits
-do not guarantee acceptable memory use or composition.
+For a scene that needs more distinct objects, generate the terrain, buildings,
+foreground, and sky as separate assets and compose them. That gives the model
+room to resolve each element and preserves a deliberate pixel grid better than
+asking one diffusion pass to invent an enormous finished level.
 
 ## Configure the manifest
 

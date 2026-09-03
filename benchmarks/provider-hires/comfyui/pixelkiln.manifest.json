@@ -11,37 +11,21 @@
       "promptSuffix": "full-bleed scenic composition, no frame",
       "providerOptions": {"comfyui": {"workflowFile": "workflow-baseline-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
     },
-    "hires-balanced-64": {
+    "pixel-perfect-2x": {
       "generator": "map",
-      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/hires-balanced-64",
+      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/pixel-perfect-2x",
       "seed": 31415,
       "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
       "promptSuffix": "full-bleed scenic composition, no frame",
-      "providerOptions": {"comfyui": {"workflowFile": "workflow-latent-hires-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
+      "providerOptions": {"comfyui": {"workflowFile": "workflow-pixel-perfect-2x-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
     },
-    "hires-balanced-128": {
+    "native-wide-64": {
       "generator": "map",
-      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/hires-balanced-128",
+      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/native-wide-64",
       "seed": 31415,
       "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
       "promptSuffix": "full-bleed scenic composition, no frame",
-      "providerOptions": {"comfyui": {"workflowFile": "workflow-latent-hires-128-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
-    },
-    "hires-conservative-64": {
-      "generator": "map",
-      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/hires-conservative-64",
-      "seed": 31415,
-      "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
-      "promptSuffix": "full-bleed scenic composition, no frame",
-      "providerOptions": {"comfyui": {"workflowFile": "workflow-latent-conservative-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
-    },
-    "ultra-64": {
-      "generator": "map",
-      "outDir": "../../../website/public/benchmarks/provider-hires/comfyui/ultra-64",
-      "seed": 31415,
-      "promptPrefix": "pixel art, polished 16-bit game environment, crisp clusters, layered depth",
-      "promptSuffix": "full-bleed scenic composition, no frame",
-      "providerOptions": {"comfyui": {"workflowFile": "workflow-latent-ultra-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
+      "providerOptions": {"comfyui": {"workflowFile": "workflow-native-wide-api.json", "outputNodeId": "9", "numImages": 1, "bindings": {"prompt": {"nodeId": "6", "input": "text"}, "width": {"nodeId": "11", "input": "width"}, "height": {"nodeId": "11", "input": "height"}, "batchSize": {"nodeId": "5", "input": "batch_size"}, "seed": {"nodeId": "3", "input": "seed"}}}}
     }
   },
   "assets": {
@@ -49,13 +33,19 @@
       "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
       "width": 1024,
       "height": 1024,
-      "styles": ["baseline-64", "hires-balanced-64", "hires-balanced-128", "hires-conservative-64"]
+      "styles": ["baseline-64"]
     },
-    "alpine-valley-ultra": {
+    "alpine-valley-2x": {
       "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
       "width": 2048,
       "height": 2048,
-      "styles": ["ultra-64"]
+      "styles": ["pixel-perfect-2x"]
+    },
+    "alpine-valley-wide": {
+      "prompt": "a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 1344,
+      "height": 768,
+      "styles": ["native-wide-64"]
     }
   }
 }

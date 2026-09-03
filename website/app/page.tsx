@@ -270,7 +270,7 @@ export default function Home() {
             </div>
             <p className="section-deck">
               These are outputs from committed benchmark projects, ranging
-              from 256px assets to a 1024px ComfyUI environment. The ComfyUI
+              from 256px assets to a 2048px ComfyUI delivery file. The ComfyUI
               card names its model stack and workflow because a self-hosted
               provider alone says nothing about image quality.
             </p>
@@ -396,21 +396,21 @@ export default function Home() {
                 </figure>
                 <figure>
                   <Image
-                    src="/benchmarks/provider-hires/comfyui/hires-conservative-64/alpine-valley.png"
-                    alt="1024-pixel, 64-color ComfyUI SDXL and Pixel Art XL result for an alpine valley background at dusk"
-                    width={1024}
-                    height={1024}
+                    src="/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png"
+                    alt="Pixel-perfect 2048-pixel, 64-color ComfyUI SDXL and Pixel Art XL result for an alpine valley background at dusk"
+                    width={2048}
+                    height={2048}
                     sizes="(max-width: 680px) 50vw, 280px"
                   />
-                  <figcaption>1024px environment · 64 colors</figcaption>
+                  <figcaption>2048px delivery · exact 2× pixels</figcaption>
                 </figure>
               </div>
               <p>
                 SDXL Base plus Pixel Art XL produced the clearest large
                 building and strongest layered landscape in this sample. The
-                workflow renders at 1024px. A tested 1536px latent detail pass
-                now delivers crisp 1024px environments, while core BiRefNet
-                removal and palette control handle game-ready cutouts.
+                workflow renders at 1024px. Integer nearest-neighbor scaling
+                delivers crisp 2048px files, while native wide canvases add
+                scene area without the blur caused by latent refinement.
               </p>
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>

@@ -52,206 +52,104 @@
       "costUnit": "free",
       "provider": "comfyui"
     },
-    "hires-balanced-128/alpine-valley": {
-      "styleId": "hires-balanced-128",
-      "assetId": "alpine-valley",
-      "specHash": "280f3af8b1062056c7077b21da6b803b8d1503f3ce6cb44d83ed5d56a25d6aa4",
+    "native-wide-64/alpine-valley-wide": {
+      "styleId": "native-wide-64",
+      "assetId": "alpine-valley-wide",
+      "specHash": "e938eb48480d93088911b9dad0551da70bc388b5ec09279839a359c62d50030b",
       "generator": "map",
       "tileFeature": null,
       "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame",
-      "width": 1024,
-      "height": 1024,
-      "jobId": "8ea94b8d-6f7a-4252-8d54-48c48ab68424#9",
+      "width": 1344,
+      "height": 768,
+      "jobId": "027ea9b3-c076-41d1-8265-02bda7ce48c9#9",
       "reviewObjectId": null,
-      "objectId": "8ea94b8d-6f7a-4252-8d54-48c48ab68424#9#0",
+      "objectId": "027ea9b3-c076-41d1-8265-02bda7ce48c9#9#0",
       "candidateIndex": null,
       "status": "downloaded",
       "error": null,
-      "sourceUrl": "comfyui://output?filename=comfyui-hires-latent-128_00002_.png&subfolder=pixelkiln&type=output",
+      "sourceUrl": "comfyui://output?filename=comfyui-native-wide_00002_.png&subfolder=pixelkiln&type=output",
       "sourceUrls": [
         {
-          "url": "comfyui://output?filename=comfyui-hires-latent-128_00002_.png&subfolder=pixelkiln&type=output",
+          "url": "comfyui://output?filename=comfyui-native-wide_00002_.png&subfolder=pixelkiln&type=output",
           "mediaType": "image/png"
         }
       ],
       "outputs": [
         {
-          "path": "../../../website/public/benchmarks/provider-hires/comfyui/hires-balanced-128/alpine-valley.png",
-          "sha256": "beaaf30278b98acd817cfe1491f3c2cfe9250c595ba0d0996f6fd4347aa7edf3",
+          "path": "../../../website/public/benchmarks/provider-hires/comfyui/native-wide-64/alpine-valley-wide.png",
+          "sha256": "3d54992573836197edfc6a2e2f44f1b0b25f790c891e9a4419a0ab5e2ddaad76",
           "mediaType": "image/png"
         }
       ],
       "providerMetadata": {
         "comfyui": {
-          "promptId": "8ea94b8d-6f7a-4252-8d54-48c48ab68424",
+          "promptId": "027ea9b3-c076-41d1-8265-02bda7ce48c9",
           "outputNodeId": "9",
           "outputCount": 1,
-          "workflowFile": "workflow-latent-hires-128-api.json",
-          "workflowSha256": "b5324b4d76ca01e44d2973fddfd4db7084da5804ffa59270ac828e55e8024615",
+          "workflowFile": "workflow-native-wide-api.json",
+          "workflowSha256": "e3dfa0470c50b2f26cbf706be14a72ae2bec8e17d7fdb9be4c26f702ee974e6f",
           "files": [
             {
-              "filename": "comfyui-hires-latent-128_00002_.png",
+              "filename": "comfyui-native-wide_00002_.png",
               "subfolder": "pixelkiln",
               "type": "output"
             }
           ]
         }
       },
-      "submittedAt": "2026-09-03T18:55:43.437Z",
-      "downloadedAt": "2026-09-03T18:57:19.444Z",
+      "submittedAt": "2026-09-03T20:12:08.386Z",
+      "downloadedAt": "2026-09-03T20:13:39.433Z",
       "cost": 0,
       "costUnit": "free",
       "provider": "comfyui"
     },
-    "hires-balanced-64/alpine-valley": {
-      "styleId": "hires-balanced-64",
-      "assetId": "alpine-valley",
-      "specHash": "b041bea51a2208634088e904517a219729fe17102a4a14044760931d4ee7e8f4",
-      "generator": "map",
-      "tileFeature": null,
-      "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame",
-      "width": 1024,
-      "height": 1024,
-      "jobId": "92df0ec4-f6ea-4f34-8687-7984c5705aae#9",
-      "reviewObjectId": null,
-      "objectId": "92df0ec4-f6ea-4f34-8687-7984c5705aae#9#0",
-      "candidateIndex": null,
-      "status": "downloaded",
-      "error": null,
-      "sourceUrl": "comfyui://output?filename=comfyui-hires-latent_00002_.png&subfolder=pixelkiln&type=output",
-      "sourceUrls": [
-        {
-          "url": "comfyui://output?filename=comfyui-hires-latent_00002_.png&subfolder=pixelkiln&type=output",
-          "mediaType": "image/png"
-        }
-      ],
-      "outputs": [
-        {
-          "path": "../../../website/public/benchmarks/provider-hires/comfyui/hires-balanced-64/alpine-valley.png",
-          "sha256": "97bf26c5b573c474a5cfe5a06efbc3f993a50a7e7b056c2cb5c67305cbba26cd",
-          "mediaType": "image/png"
-        }
-      ],
-      "providerMetadata": {
-        "comfyui": {
-          "promptId": "92df0ec4-f6ea-4f34-8687-7984c5705aae",
-          "outputNodeId": "9",
-          "outputCount": 1,
-          "workflowFile": "workflow-latent-hires-api.json",
-          "workflowSha256": "2b6ece5cac090062c5b3a370654340674f6d89f2659381c97c1e221446ebf7c3",
-          "files": [
-            {
-              "filename": "comfyui-hires-latent_00002_.png",
-              "subfolder": "pixelkiln",
-              "type": "output"
-            }
-          ]
-        }
-      },
-      "submittedAt": "2026-09-03T18:53:33.288Z",
-      "downloadedAt": "2026-09-03T18:57:19.443Z",
-      "cost": 0,
-      "costUnit": "free",
-      "provider": "comfyui"
-    },
-    "hires-conservative-64/alpine-valley": {
-      "styleId": "hires-conservative-64",
-      "assetId": "alpine-valley",
-      "specHash": "2c33e46e386cb7eaa1a9f1d524dbd5440321720318fe42df21834ddd1b023ee5",
-      "generator": "map",
-      "tileFeature": null,
-      "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame",
-      "width": 1024,
-      "height": 1024,
-      "jobId": "efe60dbc-f7d8-43bb-974b-00c535a13282#9",
-      "reviewObjectId": null,
-      "objectId": "efe60dbc-f7d8-43bb-974b-00c535a13282#9#0",
-      "candidateIndex": null,
-      "status": "downloaded",
-      "error": null,
-      "sourceUrl": "comfyui://output?filename=comfyui-hires-conservative_00002_.png&subfolder=pixelkiln&type=output",
-      "sourceUrls": [
-        {
-          "url": "comfyui://output?filename=comfyui-hires-conservative_00002_.png&subfolder=pixelkiln&type=output",
-          "mediaType": "image/png"
-        }
-      ],
-      "outputs": [
-        {
-          "path": "../../../website/public/benchmarks/provider-hires/comfyui/hires-conservative-64/alpine-valley.png",
-          "sha256": "2a0f12aaa3aca08c14e23ba3e22819bb9477cd2598004fa95a9ece9035b9c85d",
-          "mediaType": "image/png"
-        }
-      ],
-      "providerMetadata": {
-        "comfyui": {
-          "promptId": "efe60dbc-f7d8-43bb-974b-00c535a13282",
-          "outputNodeId": "9",
-          "outputCount": 1,
-          "workflowFile": "workflow-latent-conservative-api.json",
-          "workflowSha256": "9f5f696412cfd5b73023cd8b14fbdf907f42cf75a526ffb94fb38083b5255891",
-          "files": [
-            {
-              "filename": "comfyui-hires-conservative_00002_.png",
-              "subfolder": "pixelkiln",
-              "type": "output"
-            }
-          ]
-        }
-      },
-      "submittedAt": "2026-09-03T18:55:48.451Z",
-      "downloadedAt": "2026-09-03T18:57:19.442Z",
-      "cost": 0,
-      "costUnit": "free",
-      "provider": "comfyui"
-    },
-    "ultra-64/alpine-valley-ultra": {
-      "styleId": "ultra-64",
-      "assetId": "alpine-valley-ultra",
-      "specHash": "d3df7a2625874108693a3466091ae94da04fe9b759395a102eed68b721ebe609",
+    "pixel-perfect-2x/alpine-valley-2x": {
+      "styleId": "pixel-perfect-2x",
+      "assetId": "alpine-valley-2x",
+      "specHash": "af929a55ad4a972ff750bedb597207b5afe791987a80acb82b9e03f37bf76fe2",
       "generator": "map",
       "tileFeature": null,
       "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame",
       "width": 2048,
       "height": 2048,
-      "jobId": "6d477f06-07cc-4ebc-ace2-de3758b34241#9",
+      "jobId": "c6a595a3-1cd3-451b-a0de-1a1dee1678d7#9",
       "reviewObjectId": null,
-      "objectId": "6d477f06-07cc-4ebc-ace2-de3758b34241#9#0",
+      "objectId": "c6a595a3-1cd3-451b-a0de-1a1dee1678d7#9#0",
       "candidateIndex": null,
       "status": "downloaded",
       "error": null,
-      "sourceUrl": "comfyui://output?filename=comfyui-hires-ultra_00002_.png&subfolder=pixelkiln&type=output",
+      "sourceUrl": "comfyui://output?filename=comfyui-pixel-perfect-2x_00002_.png&subfolder=pixelkiln&type=output",
       "sourceUrls": [
         {
-          "url": "comfyui://output?filename=comfyui-hires-ultra_00002_.png&subfolder=pixelkiln&type=output",
+          "url": "comfyui://output?filename=comfyui-pixel-perfect-2x_00002_.png&subfolder=pixelkiln&type=output",
           "mediaType": "image/png"
         }
       ],
       "outputs": [
         {
-          "path": "../../../website/public/benchmarks/provider-hires/comfyui/ultra-64/alpine-valley-ultra.png",
-          "sha256": "46bf81a49af9c90ecd470c6f1bdadbfe898c75c3dc9e523860872e273fbcf1fd",
+          "path": "../../../website/public/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png",
+          "sha256": "bf1290c401b9662e0c1795803943522307a7c13d329eb8bf3e941c8877605142",
           "mediaType": "image/png"
         }
       ],
       "providerMetadata": {
         "comfyui": {
-          "promptId": "6d477f06-07cc-4ebc-ace2-de3758b34241",
+          "promptId": "c6a595a3-1cd3-451b-a0de-1a1dee1678d7",
           "outputNodeId": "9",
           "outputCount": 1,
-          "workflowFile": "workflow-latent-ultra-api.json",
-          "workflowSha256": "d7f6b7984550567479b2c7db955a7521f8a650fd8a27725af2b4596bd15303a7",
+          "workflowFile": "workflow-pixel-perfect-2x-api.json",
+          "workflowSha256": "598eddc48d0123c6fbd4d903f7ee651dcbba990f6001de17b9d96d71a0f7e1d4",
           "files": [
             {
-              "filename": "comfyui-hires-ultra_00002_.png",
+              "filename": "comfyui-pixel-perfect-2x_00002_.png",
               "subfolder": "pixelkiln",
               "type": "output"
             }
           ]
         }
       },
-      "submittedAt": "2026-09-03T19:05:19.105Z",
-      "downloadedAt": "2026-09-03T19:05:24.627Z",
+      "submittedAt": "2026-09-03T20:10:38.262Z",
+      "downloadedAt": "2026-09-03T20:13:39.435Z",
       "cost": 0,
       "costUnit": "free",
       "provider": "comfyui"

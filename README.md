@@ -190,8 +190,8 @@ select another provider and pass namespaced `providerOptions`; see
 [Set up ComfyUI](./docs/COMFYUI.md). The
 [provider comparison](./PROVIDERS.md) covers costs,
 current confidence, and limitations. The committed ComfyUI projects now include
-transparent cutouts, palette-controlled backgrounds, and a 1024px environment
-benchmark with a real 1536px latent detail pass.
+transparent cutouts, palette-controlled backgrounds, a native 1344×768
+environment, and pixel-perfect integer scaling for larger delivery files.
 
 The schema rejects unknown fields and invalid generator combinations before
 planning. See the [Manifest reference](./docs/MANIFEST.md).

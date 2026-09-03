@@ -198,33 +198,26 @@ images fell to 64 and 60 colors without losing their main depth bands. The
 committed [post-processing project](../benchmarks/provider-postprocessing/comfyui/README.md)
 contains the workflows, manifest, audit commands, and provenance.
 
-### ComfyUI high-resolution result
+### ComfyUI large-output result
 
-A second benchmark keeps the alpine prompt and base seed fixed, delivers every
-file at 1024×1024, and compares the existing one-pass workflow with three
-1536px latent refinements.
+A second benchmark keeps the alpine brief and seed fixed while testing larger
+outputs without a second diffusion pass.
 
-| 1024px baseline, 64 colors | 1536px balanced, 64 colors | 1536px balanced, 128 colors | 1536px conservative, 64 colors |
-|---|---|---|---|
-| ![ComfyUI one-pass 1024px alpine valley](../website/public/benchmarks/provider-hires/comfyui/baseline-64/alpine-valley.png) | ![ComfyUI balanced 1536px latent alpine valley with 64 colors](../website/public/benchmarks/provider-hires/comfyui/hires-balanced-64/alpine-valley.png) | ![ComfyUI balanced 1536px latent alpine valley with 128 colors](../website/public/benchmarks/provider-hires/comfyui/hires-balanced-128/alpine-valley.png) | ![ComfyUI conservative 1536px latent alpine valley with 64 colors](../website/public/benchmarks/provider-hires/comfyui/hires-conservative-64/alpine-valley.png) |
+| 1024px baseline | Pixel-perfect 2048px delivery | Native 1344×768 composition |
+|---|---|---|
+| ![ComfyUI one-pass 1024px alpine valley](../website/public/benchmarks/provider-hires/comfyui/baseline-64/alpine-valley.png) | ![ComfyUI pixel-perfect 2048px alpine valley](../website/public/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png) | ![ComfyUI native wide alpine valley](../website/public/benchmarks/provider-hires/comfyui/native-wide-64/alpine-valley-wide.png) |
 
-The conservative pass had the highest measured neighbor contrast and strongest
-edge share while staying at 64 colors. It is the best default here for a crisp
-large environment. The balanced pass redraws more detail but looks softer. Its
-128-color version is the richer master when palette size matters less than
-smooth lighting. These are separate presets because no single setting wins
-both pixel crispness and painterly detail.
+The 2048px file is an exact 2× nearest-neighbor delivery of the 1024px
+generation. It adds no invented detail, but it keeps every edge hard. The
+1344×768 workflow asks SDXL for a wide environment directly and avoids another
+VAE pass. Both outputs remain at 64 colors.
 
-The committed [high-resolution project](../benchmarks/provider-hires/comfyui/README.md)
-also includes a true 2048×2048 ceiling test:
-
-![ComfyUI 2048px latent and output ceiling test](../website/public/benchmarks/provider-hires/comfyui/ultra-64/alpine-valley-ultra.png)
-
-The 2048px pass completed without exhausting the 64 GB reference machine and
-passed the 64-color audit. It took 183 seconds with the base composition cached
-and looked softer at scene scale, so the 1536px conservative preset remains the
-better recommendation. The project contains all five workflows, outputs,
-audit instructions, and lock provenance.
+Earlier 1536px and 2048px latent refinements completed successfully but looked
+blurred. The extra interpolation and resampling softened the pixel clusters;
+color quantization could not repair them. Those outputs were rejected instead
+of being presented as quality improvements. The committed
+[large-output project](../benchmarks/provider-hires/comfyui/README.md) contains
+the three crisp workflows, outputs, audit instructions, and lock provenance.
 
 ## Cost and operational results
 
@@ -232,7 +225,7 @@ audit instructions, and lock provenance.
 |---|---:|---:|---:|
 | PixelLab | 10 | 10 generations | 4,411 generations |
 | Retro Diffusion | 10 | $0.744 | $9.73 |
-| ComfyUI | 13 | 0 `free` PixelKiln units | No account balance |
+| ComfyUI | 11 | 0 `free` PixelKiln units | No account balance |
 
 PixelLab charged one generation per image. Retro Diffusion quoted and charged
 $0.058 for each 256px RD Plus image and $0.099 for each 384px RD Plus image;
@@ -248,7 +241,7 @@ The run also caught two integration details:
 
 All three manifests now pass `doctor` and report a current plan. The hosted
 projects have ten healthy PNG cache entries each; the ComfyUI projects have
-four baseline, four cleanup, and five high-resolution entries.
+four baseline, four cleanup, and three large-output entries.
 
 ## Recommendation
 
@@ -266,8 +259,9 @@ Try the tested ComfyUI SDXL stack when local control and larger compositions
 matter most. It produced the best large building in this run and a strong
 layered valley, with no provider charge. The refined core-node graph also makes
 transparent, 64-color cutouts. A one-pass 1024px render took roughly 60 to 90
-seconds on the tested Apple MPS machine. The 1536px latent quality pass added
-about 90 to 129 seconds, depending on denoise and step count.
+seconds on the tested Apple MPS machine. For larger files, prefer native aspect
+ratios or integer nearest-neighbor delivery scaling; the tested latent-upscale
+passes blurred the art.
 
 Do not ask any provider for one giant finished level. Generate terrain,
 background, buildings, landmarks, and foreground pieces separately. Compose
