@@ -25,9 +25,9 @@ tileset, GIF, and spritesheet live runs remain. See
 large environment and building workflows.
 `FakeProvider` exercises the same contract deterministically in tests.
 
-> **Release status:** the package is pre-1.0 and the first npm publication is
-> tracked in [issue #1](https://github.com/gfargo/pixelkiln/issues/1). Until it
-> is live, use a repository checkout.
+> **Release status:** PixelKiln is published on npm. Merges to `main` use
+> Semantic Release and npm Trusted Publishing, with signed provenance and no
+> long-lived npm publishing token.
 
 ## Why PixelKiln
 
@@ -76,21 +76,18 @@ a row unresolved. Nothing is applied when the window is closed without using
 **Apply selections**. See the [CLI reference](docs/CLI.md#pick) for the complete
 review workflow.
 
-## Install from a checkout
+## Install
 
 Requires Node.js 20 or newer.
 
 ```bash
-git clone https://github.com/gfargo/pixelkiln.git
-cd pixelkiln
-npm ci
-npm run pixelkiln -- help
-npm test
+npm install --save-dev pixelkiln
+npx pixelkiln --help
 ```
 
-`npm run pixelkiln -- …` executes the TypeScript source. `npm run build`
-creates the ESM, CommonJS, declarations, and CLI distribution used by the
-published package.
+For library use, both `import("pixelkiln")` and `require("pixelkiln")` are
+supported. Contributors can still run `npm run pixelkiln -- …` from a checkout
+to execute the TypeScript source directly.
 
 ## Five-minute start
 
@@ -114,13 +111,10 @@ RD_API_KEY=...
 Validate locally, inspect exact work/cost, then generate with a hard ceiling:
 
 ```bash
-/path/to/pixelkiln/node_modules/.bin/tsx /path/to/pixelkiln/src/cli.ts doctor --dry-run
-/path/to/pixelkiln/node_modules/.bin/tsx /path/to/pixelkiln/src/cli.ts plan
-/path/to/pixelkiln/node_modules/.bin/tsx /path/to/pixelkiln/src/cli.ts gen --budget 120
+npx pixelkiln doctor --dry-run
+npx pixelkiln plan
+npx pixelkiln gen --budget 120
 ```
-
-Once installed from npm, those commands become `pixelkiln doctor`,
-`pixelkiln plan`, and `pixelkiln gen`.
 
 `gen` submits, polls, opens the candidate-review sheet when necessary,
 downloads validated output, populates the recovery cache, and updates

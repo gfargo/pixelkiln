@@ -11,18 +11,16 @@ checks need provider access.
 - Node.js 20 or newer
 - A credential for the manifest's selected provider: `PIXELLAB_API_KEY` for
   PixelLab or `RD_API_KEY` for experimental Retro Diffusion support
-- A repository checkout until the first npm release in
-  [issue #1](https://github.com/gfargo/pixelkiln/issues/1) is complete
 
-From a checkout:
+Install the published package in the project that owns the art:
 
 ```bash
-npm ci
-npm run pixelkiln -- help
+npm install --save-dev pixelkiln
+npx pixelkiln --help
 ```
 
-The rest of this guide uses `pixelkiln` for readability. In the checkout,
-replace it with `npm run pixelkiln --`.
+The rest of this guide uses `pixelkiln` for readability. With a project-local
+installation, prefix commands with `npx` or call them from an npm script.
 
 ## Using an agent
 
@@ -71,6 +69,9 @@ provider options and current limits, or
 [PixelLab vs. Retro Diffusion](../PROVIDERS.md) for selection guidance.
 The provider setup guides give the shortest complete path for
 [PixelLab](PIXELLAB.md) and [Retro Diffusion](RETRO_DIFFUSION.md).
+If one repository needs both, use separate provider-specific manifests and
+lockfiles. See
+[Use both providers in one project](../PROVIDERS.md#use-both-providers-in-one-project).
 
 Before spending anything, validate and price the selected work:
 

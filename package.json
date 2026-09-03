@@ -29,6 +29,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:docs": "node scripts/check-docs.mjs",
+    "test:release": "node scripts/check-release.mjs",
     "test:package": "node scripts/smoke-package.mjs",
     "test:watch": "vitest",
     "schema": "tsx scripts/gen-schema.ts",

@@ -11,6 +11,7 @@ Requires Node.js 20 or newer.
 
 ```bash
 npm ci
+npm run test:release
 npm run typecheck
 npm run test:docs
 npm test
@@ -113,6 +114,17 @@ short-lived credential, and the npm CLI performs the exchange itself during
 `npm publish`. A side effect worth keeping is that every release carries a
 signed provenance attestation linking the tarball to its source commit and
 workflow run.
+
+The release job is serialized so two quick merges cannot publish concurrently,
+and it times out after 20 minutes rather than holding publishing permission
+indefinitely. `npm run test:release` checks the repository-side trust contract:
+the OIDC permission, GitHub-hosted runner, registry configuration, full checkout
+history, absence of an npm publishing token, and the expected release plugins.
+
+The public `gfargo/skills` tap watches PixelKiln releases on an hourly schedule.
+When a new tag appears, it mirrors the tagged `skills/pixelkiln/` directory,
+bumps the games plugin, and publishes a games release. PixelKiln remains the
+source of truth; the source repository needs no cross-repository write token.
 
 Two conditions have to hold on the npm side, and neither lives in this
 repository:

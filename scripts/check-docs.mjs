@@ -20,6 +20,7 @@ const markdown = [
     .filter(existsSync),
   ...markdownFiles(path.join(root, "docs")),
   ...markdownFiles(path.join(root, "examples")),
+  ...markdownFiles(path.join(root, "skills")),
 ]
 
 for (const file of markdown) {
@@ -53,6 +54,15 @@ for (const file of markdownFiles(path.join(root, "docs"))) {
   const relative = path.relative(path.join(root, "docs"), file).split(path.sep).join("/")
   if (!docsIndex.includes(`(${relative})`) && !docsIndex.includes(`(./${relative})`)) {
     failures.push(`docs/README.md does not link to docs/${relative}`)
+  }
+}
+
+const skillRoot = path.join(root, "skills", "pixelkiln")
+const skillEntry = readFileSync(path.join(skillRoot, "SKILL.md"), "utf8")
+for (const reference of markdownFiles(path.join(skillRoot, "references"))) {
+  const relative = path.relative(skillRoot, reference).split(path.sep).join("/")
+  if (!skillEntry.includes(`(${relative})`)) {
+    failures.push(`skills/pixelkiln/SKILL.md does not route to ${relative}`)
   }
 }
 
