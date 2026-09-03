@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { trackCta, trackOutboundClick } from "@/app/lib/analytics";
+import {
+  trackCta,
+  trackDocumentationLink,
+  trackOutboundClick,
+} from "@/app/lib/analytics";
 
 type TrackedLinkProps = {
   href: string;
@@ -24,8 +28,18 @@ export function TrackedLink({
   ...rest
 }: TrackedLinkProps) {
   const onClick = () => {
-    if (external) trackOutboundClick(id, section, href);
-    else trackCta(id, section, href);
+    if (external) {
+      trackOutboundClick(id, section, href);
+      return;
+    }
+
+    const docsRoute = href.match(/^\/docs(?:\/([^#?]+))?/);
+    if (docsRoute) {
+      trackDocumentationLink(id, docsRoute[1] ?? "index", section);
+      return;
+    }
+
+    trackCta(id, section, href);
   };
 
   if (external) {

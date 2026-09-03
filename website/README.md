@@ -35,7 +35,9 @@ npm run website:build
 ```
 
 `npm run website:check` verifies that every canonical guide has exactly one
-public route.
+public route. The production build also checks analytics wiring, route-specific
+canonicals, social metadata, structured data, and crawl files against the
+generated HTML.
 
 ## Generated visual assets
 
@@ -95,3 +97,35 @@ the canonical repository Markdown.
 The canonical URL defaults to `https://pixelkiln.griffen.codes`. Set
 `NEXT_PUBLIC_SITE_URL` only when an alternate deployment needs its own explicit
 canonical origin.
+
+### Analytics and performance
+
+The root layout loads Vercel Web Analytics and Speed Insights. Vercel records
+pageviews and client-side route changes automatically. The site also sends four
+small, stable event families:
+
+| Event | When it fires | Properties |
+| --- | --- | --- |
+| `CTA Click` | A tracked internal link outside the docs | `id`, `section`, `href` |
+| `Documentation Link Clicked` | A tracked link into `/docs` | `id`, `slug`, `source` |
+| `Outbound Click` | A tracked link to another site | `id`, `section`, `destination` hostname |
+| `Install Command Copied` | The homepage skill command is copied successfully | `target`, `source` |
+
+Keep event names and properties stable so dashboard reports remain comparable.
+Use short, finite values and never send prompts, credentials, email addresses,
+or other user-entered text. The pageview hook keeps campaign parameters but
+replaces values for credential-like query keys before transmission.
+
+Keep **Web Analytics** and **Speed Insights** enabled in the Vercel project
+dashboard. After a production deployment, confirm pageviews under Analytics,
+each event in the Events panel, and field performance under Speed Insights.
+Custom-event availability and retained history depend on the Vercel plan.
+
+### Search metadata
+
+Every public route has its own canonical URL, title, description, Open Graph
+URL, and social title. The root Open Graph image is shared across the site.
+`robots.ts` and `sitemap.ts` publish the crawl policy, canonical route list, and
+the homepage's provider comparison images. The homepage identifies the site and
+source repository with JSON-LD; documentation pages add article and breadcrumb
+data.

@@ -1,16 +1,29 @@
 import type { Metadata } from "next";
 import { docGroups, docs } from "@/app/lib/docs";
+import { absoluteUrl, pageMetadata } from "@/app/lib/metadata";
+import { JsonLd } from "@/app/ui/json-ld";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Documentation",
   description: "Guides and reference material for every part of the PixelKiln pipeline.",
-};
+  path: "/docs",
+});
 
 export default function DocsIndex() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "PixelKiln", item: absoluteUrl("/") },
+      { "@type": "ListItem", position: 2, name: "Documentation", item: absoluteUrl("/docs") },
+    ],
+  };
+
   return (
     <>
+      <JsonLd data={jsonLd} />
       <SiteHeader compact />
       <main className="docs-index shell">
         <div className="docs-index-hero">
