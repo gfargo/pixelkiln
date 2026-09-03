@@ -1,0 +1,35 @@
+{
+  "$schema": "../../schema/manifest.schema.json",
+  "name": "pixelkiln-comfyui-smoke",
+  "provider": "comfyui",
+  "styles": {
+    "smoke": {
+      "generator": "map",
+      "outDir": "output/smoke",
+      "promptPrefix": "pixel art game asset",
+      "promptSuffix": "isolated on a plain background, crisp silhouette, limited color palette",
+      "seed": 31415,
+      "providerOptions": {
+        "comfyui": {
+          "workflowFile": "workflow-api.json",
+          "outputNodeId": "9",
+          "numImages": 1,
+          "bindings": {
+            "prompt": { "nodeId": "6", "input": "text" },
+            "width": { "nodeId": "5", "input": "width" },
+            "height": { "nodeId": "5", "input": "height" },
+            "batchSize": { "nodeId": "5", "input": "batch_size" },
+            "seed": { "nodeId": "3", "input": "seed" }
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "anvil": {
+      "prompt": "a compact blacksmith anvil",
+      "width": 256,
+      "height": 256
+    }
+  }
+}

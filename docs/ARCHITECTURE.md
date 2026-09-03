@@ -133,7 +133,9 @@ pending paid live smokes. `ComfyUIProvider` is an experimental self-hosted
 adapter. It resolves and hashes an API-format workflow offline, submits an
 input-bound clone, polls local history, and stores portable `comfyui://` output
 references so a lockfile does not retain a workstation hostname. It supports
-one still-image output node today. `FakeProvider` implements the same contract
+one still-image output node today. A core-node Stable Diffusion 1.5 graph has
+passed single-image generation, four-candidate queue detection, and cache-only
+recovery on Apple MPS. `FakeProvider` implements the same contract
 in memory, which keeps the pipeline testable without credentials or network
 access. See [library API](./LIBRARY.md) and
 [provider comparison](../PROVIDERS.md).

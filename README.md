@@ -21,7 +21,9 @@ pixel-art stills, candidate batches, tileset sheets, animated GIFs, and PNG
 spritesheets. Authenticated RD Fast and RD Plus single-candidate still paths
 have passed from quote through validated output and recovery. Multi-candidate,
 tileset, GIF, and spritesheet live runs remain. An experimental ComfyUI adapter
-runs committed API-format still-image workflows on a self-hosted server. See
+runs committed API-format still-image workflows on a self-hosted server. Its
+core-node smoke project has passed live generation, candidate queueing, and
+cache-only recovery on Apple MPS. See
 [provider comparison](./PROVIDERS.md) for the trade-offs, including large
 environment and building workflows.
 `FakeProvider` exercises the same contract deterministically in tests.

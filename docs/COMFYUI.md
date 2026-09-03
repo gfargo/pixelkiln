@@ -2,8 +2,9 @@
 
 PixelKiln can run a committed ComfyUI workflow on a self-hosted server. This
 adapter is experimental. It supports still-image `map` jobs, one or more review
-candidates, local provenance, and cache-backed recovery. ComfyUI Cloud is not
-part of this first release.
+candidates, local provenance, and cache-backed recovery. A core-node Stable
+Diffusion 1.5 workflow has passed single-image generation and a four-candidate
+review queue on Apple MPS. ComfyUI Cloud is not part of this first release.
 
 ## Start ComfyUI
 
@@ -45,6 +46,11 @@ exported JSON:
 
 Node IDs are workflow-specific. Do not copy IDs from an example without
 checking the exported file.
+
+The repository includes a working core-node
+[smoke project](../examples/comfyui/README.md). It uses the public checkpoint
+from ComfyUI's official first-generation guide to test plumbing, not to claim
+pixel-art quality.
 
 ## Configure the manifest
 

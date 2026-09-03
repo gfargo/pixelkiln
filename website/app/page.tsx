@@ -223,8 +223,8 @@ export default function Home() {
               </div>
               <p className="provider-note">
                 PixelLab is production-ready. Retro Diffusion has live-tested
-                stills. ComfyUI has full mocked lifecycle coverage and awaits
-                its first pinned-workflow live smoke.
+                stills. ComfyUI has live-tested local generation, candidate
+                queueing, and cache recovery; its pixel-art benchmark is next.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">

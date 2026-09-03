@@ -21,7 +21,7 @@ them.
 |---|---|---|---|
 | PixelLab | Production; paid generation and account workflows live-tested | `PIXELLAB_API_KEY` | generations |
 | Retro Diffusion | Experimental; authenticated paid still generation, download, provenance, and recovery live-tested; advanced workflows pending | `RD_API_KEY` | USD |
-| ComfyUI | Experimental; mocked submit, poll, review, download, provenance, and recovery; live workflow smoke pending | none; optional `COMFYUI_BASE_URL` | free |
+| ComfyUI | Experimental; local single-image generation, four-candidate queue, provenance, and cache-only recovery live-tested on Apple MPS | none; optional `COMFYUI_BASE_URL` | free |
 | FakeProvider | Test-only deterministic lifecycle | none | free |
 
 Live tests now cover single-candidate RD Fast and RD Plus stills from cost quote
@@ -72,7 +72,7 @@ prompt, size, batch, and optional seed inputs PixelKiln may replace.
 | Cost model | `0 free`; local compute and hosting are outside PixelKiln's estimate |
 | Reproducibility | Workflow content is hashed; model files, custom-node versions, and runtime settings must still be managed outside PixelKiln |
 | Account lifecycle | Read-only connectivity check; no balance, remote object listing, tagging, or purge |
-| Confidence | Full mocked lifecycle and recovery coverage; first representative live workflow remains pending |
+| Confidence | Full mocked coverage plus a live core-node single-image lifecycle, four-candidate queue, and cache-only restore on Apple MPS; pixel-art model benchmark pending |
 
 ComfyUI is the strongest option when workflow ownership matters more than a
 managed service. It is also the easiest provider to make irreproducible by
@@ -207,11 +207,11 @@ estimate and hard budget remain enforced.
 
 ## What to build next
 
-The first ComfyUI release needs one live, versioned reference workflow before
-it can move beyond mocked confidence. That run should record the checkpoint and
-custom-node versions, then exercise one single output and one candidate batch
-through restore. A second workflow can benchmark a large building and scenic
-background against the hosted-provider briefs.
+The first ComfyUI release now has a live, versioned core-node reference
+workflow. The remaining confidence gap is visual rather than transport: choose
+and pin a pixel-art model or LoRA, then benchmark a large building and scenic
+background against the hosted-provider briefs. A human still needs to complete
+the live four-candidate selection and fetch path.
 
 Native per-style provider routing remains the highest-value orchestration
 feature. One manifest should be able to send a building style to PixelLab, an
@@ -240,7 +240,7 @@ captured before submission.
 
 Recommended order:
 
-1. Live-test and benchmark one pinned ComfyUI workflow, including recovery.
+1. Select and benchmark a pinned pixel-art ComfyUI workflow, including a human-reviewed candidate fetch.
 2. Add per-style provider selection, provider-keyed budgets, and mixed-provider
    integration tests.
 3. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
