@@ -6,6 +6,14 @@
     "commit": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
     "engine": "python-api/full"
   },
+  "qualityPolicy": {
+    "purpose": "native-grid recovery benchmark",
+    "gridRecoveryIsQualityApproval": false,
+    "preferredNativeMin": 48,
+    "preferredNativeMax": 128,
+    "decision": "human-review-required",
+    "note": "A recovered grid proves one stored pixel per detected cell. It does not prove deliberate clusters, readable silhouettes, palette discipline, or production-ready pixel art."
+  },
   "runs": [
     {
       "source": "../../../website/public/benchmarks/provider-postprocessing/comfyui/isolated/cliffside-fortress.png",

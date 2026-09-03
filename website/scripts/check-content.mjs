@@ -61,6 +61,9 @@ if (!existsSync(path.join(websiteRoot, "public", nativeGridSample.slice(1)))) {
 if (!home.includes("https://www.retrodiffusion.ai/tools/pixel-art-fixer/")) {
   failures.push("provider showcase is missing the Pixel Art Fixer link");
 }
+if (!home.includes("48–128px native per part")) {
+  failures.push("provider showcase is missing the ComfyUI quality-first native range");
+}
 for (const [provider, route, official] of [
   ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],
   ["Retro Diffusion", "/docs/retro-diffusion", "https://www.retrodiffusion.ai/"],

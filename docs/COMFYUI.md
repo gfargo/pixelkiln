@@ -71,12 +71,13 @@ checkpoint, LoRA, and background-removal model appear in ComfyUI. The files are
 about 6.9 GB, 171 MB, and 444 MB. They are not bundled with PixelKiln. Read the
 model cards before distributing the models or their outputs.
 
-The benchmark renders at 1024×1024, where SDXL has enough room to compose the
-scene, then uses ComfyUI's core `ImageScale` node with `nearest-exact` to write
-the requested 256px or 384px PNG. Asset width and height are therefore bound to
-the scale node, not the latent node. This is the useful trick: keep the model at
-its working resolution while PixelKiln still validates the exact game-ready
-output dimensions.
+The environment benchmark renders at 1024×1024, where SDXL has enough room to
+compose the scene, then uses ComfyUI's core `ImageScale` node with
+`nearest-exact` to write the requested 256px or 384px PNG. Asset width and
+height are therefore bound to the scale node, not the latent node. Those files
+prove exact delivery dimensions; they do not prove a native pixel grid. The
+separate native-grid benchmark saves the model canvas and reconstructs its
+implied cells afterward.
 
 You can reproduce the four samples with the committed
 [ComfyUI benchmark project](../benchmarks/provider-environments/comfyui/README.md).
@@ -132,7 +133,7 @@ Retro Diffusion's MIT-licensed
 [Pixel Art Fixer](https://github.com/Retro-Diffusion/pixel-art-fixer) detects the
 implied grid and reconstructs one output pixel per cell. Both benchmark sources
 returned the high-confidence `fast:ac+rl(S)` decision. The checked-in
-[resolution benchmark](../benchmarks/provider-hires/comfyui/README.md) includes
+[native-grid boundary benchmark](../benchmarks/provider-hires/comfyui/README.md) includes
 the source PNGs, native reconstructions, dimensions, hashes, and pinned fixer
 revision.
 
@@ -146,10 +147,31 @@ The open fixer is deterministic image processing. Its maintainers also offer a
 damaged inputs where a reliable grid no longer exists. PixelKiln does not yet
 run either fixer automatically.
 
+### Quality-first resolution policy
+
+Use 48×48 through 128×128 as the default native range for an independently
+generated component with this tested stack. This is an operating range, not an
+adapter restriction: ComfyUI may work on a 1024px canvas internally, and a wide
+or tall asset may exceed one native axis when review supports it. Do not grow
+both native dimensions merely because the machine can render them. This matches
+the [Aseprite Diffusion author's published working range](https://www.reddit.com/r/PixelArt/comments/yv2q51/making_high_quality_game_tiles_in_less_than_a/)
+of 48–128px, centered on a 64px native target, and our current 128px recovery.
+
+Start with a deliberate 16–32 color project palette. Add colors only when they
+improve readable depth, material, or lighting. After grid recovery, review the
+asset at 1× and an integer zoom for silhouette, clusters, contours, single-pixel
+noise, palette separation, and seams. High-confidence grid detection only
+proves structure; it is not an aesthetic approval.
+
+Stop increasing resolution when clusters become soft, gradients replace
+intentional ramps, or important forms stop reading at 1×. Keep the smaller
+result when it is clearer. See the [quality gates](./QUALITY.md) for the human
+review checklist.
+
 ## Build larger environments
 
 Do not ask the model for one enormous finished level. Generate and review the
-scene as native-grid parts:
+scene as 48–128px native-grid parts:
 
 - sky and atmosphere;
 - distant mountains;
@@ -194,10 +216,11 @@ game-asset pipeline.
 | [Tiled diffusion](https://github.com/comfyorg/comfyui-tiled-diffusion) | Panoramas, regional prompts, and canvases larger than working memory | The linked implementation has non-commercial components and does not enforce pixel cells |
 | [MMPX](https://jcgt.org/published/0010/02/04/paper.pdf) | Magnifying true native pixel art while preserving its style | Assumes the input is already real pixel art; it cannot recover a fake grid |
 
-That makes the deterministic fixer the best current default after ComfyUI. Use
-outpainting, regional generation, or tiles to solve composition first. Recover
-the grid next, enforce palette and alpha rules after that, and reserve
-nearest-neighbor or MMPX for presentation of an already-valid native asset.
+That makes the deterministic fixer the best current structural fallback after
+ComfyUI, not a quality generator. Use outpainting, regional generation, or tiles
+to solve composition first. Recover the grid next, enforce palette and alpha
+rules after that, perform the human art review, and reserve nearest-neighbor or
+MMPX for presentation of an already-valid native asset.
 
 ## Configure the manifest
 

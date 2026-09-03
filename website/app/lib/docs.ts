@@ -38,7 +38,7 @@ export const docs: DocEntry[] = [
   {
     slug: "comfyui",
     title: "Set up ComfyUI",
-    description: "Connect a self-hosted server, install the tested SDXL stack, and bind a committed workflow.",
+    description: "Connect a self-hosted server, install the tested SDXL stack, and use its quality-first native-grid workflow.",
     file: "docs/COMFYUI.md",
     group: "Start here",
   },
@@ -73,7 +73,7 @@ export const docs: DocEntry[] = [
   {
     slug: "provider-benchmark",
     title: "Environment provider benchmark",
-    description: "Thirty provider outputs, including ComfyUI cleanup and native-grid recovery tests.",
+    description: "Thirty provider outputs, including ComfyUI cleanup, native-grid limits, and honest quality findings.",
     file: "docs/PROVIDER_BENCHMARK.md",
     group: "Workflows",
   },

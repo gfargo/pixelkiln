@@ -1,4 +1,4 @@
-# ComfyUI resolution benchmark
+# ComfyUI native-grid boundary benchmark
 
 This project separates three sizes that should not be confused:
 
@@ -13,6 +13,14 @@ same prompt, seed, model stack, and 64-color quantization.
 |---|---:|---|
 | `baseline-64` | 1024×1024 | Square SDXL baseline |
 | `native-wide-64` | 1344×768 | Wider composition without a second diffusion pass |
+
+These are diagnostic generation canvases, not recommended native asset sizes.
+For this stack, start each independently generated component between 48×48 and
+128×128 native pixels. A wide or tall component may exceed one axis only when
+its cluster review passes. Build larger scenes from reviewed components instead
+of increasing both native dimensions. That range agrees with the
+[Aseprite Diffusion author's public guidance](https://www.reddit.com/r/PixelArt/comments/yv2q51/making_high_quality_game_tiles_in_less_than_a/)
+and with the 128px native grid recovered in this benchmark.
 
 Run the provider portion against a local ComfyUI server:
 
@@ -51,16 +59,33 @@ canonical asset. Grid recovery can introduce new averaged colors, as the
 transparent building demonstrates, so apply the project's palette constraint
 after reconstruction when a hard color limit matters.
 
+Grid recovery is not quality approval. It proves that every detected cell has
+become one stored pixel; it cannot prove that those pixels form deliberate
+clusters, clean contours, readable landmarks, or a coherent palette. The
+recovered images remain review candidates. Reject one that still looks muddy at
+1× or at an integer zoom, even when the detector reports high confidence.
+
+Use this order for a quality-first decision:
+
+1. Review composition and silhouette on the generation canvas.
+2. Recover the native grid.
+3. Start with a deliberate 16–32 color project palette; expand it only when the
+   art direction needs the extra colors.
+4. Review clusters, contours, single-pixel noise, and focal-point readability at
+   1× and an integer zoom.
+5. Accept the smallest native result that communicates the scene clearly.
+
 ## Large-scene guidance
 
 A bigger SDXL canvas can improve composition, but it does not create a larger
 editable pixel grid. For a large environment:
 
-1. Generate a stable SDXL canvas or several overlapping regions.
-2. Reconstruct every accepted result onto a known native grid.
-3. Compose sky, distant mountains, terrain, buildings, and foreground at 1×.
-4. Keep one grid origin and one palette contract across every layer or tile.
-5. Integer-scale only the final preview or runtime presentation.
+1. Break the scene into 48–128px native components or overlapping regions.
+2. Generate a stable SDXL working canvas for each component.
+3. Reconstruct every accepted result onto a known native grid.
+4. Compose sky, distant mountains, terrain, buildings, and foreground at 1×.
+5. Keep one grid origin and one palette contract across every layer or tile.
+6. Integer-scale only the final preview or runtime presentation.
 
 Outpainting, tiled diffusion, and crop-and-stitch can add scene area or repair a
 region. They still produce regular raster images, so the native-grid recovery

@@ -191,7 +191,10 @@ select another provider and pass namespaced `providerOptions`; see
 [provider comparison](./PROVIDERS.md) covers costs,
 current confidence, and limitations. The committed ComfyUI projects now include
 transparent cutouts, palette-controlled backgrounds, wide environment canvases,
-and native-grid recovery for model output that only looks like pixel art.
+and native-grid recovery for model output that only looks like pixel art. The
+ComfyUI guidance is quality-first: start with 48–128px native components,
+require a human cluster-and-silhouette review, and compose larger scenes from
+accepted parts instead of chasing a larger raster.
 
 The schema rejects unknown fields and invalid generator combinations before
 planning. See the [Manifest reference](./docs/MANIFEST.md).
@@ -349,7 +352,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
-| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Twenty-eight outputs comparing providers, large scenes, transparency, palette size, and file readiness. |
+| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Thirty provider outputs plus three deterministic native-grid results comparing large scenes, transparency, palette size, and file readiness. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
 | [Quality gates](./docs/QUALITY.md) | Plan, doctor, audit, cache, JSON, and CI. |

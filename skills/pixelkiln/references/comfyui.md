@@ -22,7 +22,7 @@ the `map` generator, PNG output from one node, 1–16 candidates, and dimensions
 from 16–4096px. Manifest `styleImages` and `palette` are unsupported; those
 controls belong in the workflow.
 
-For the tested higher-quality pixel-art stack, use SDXL Base 1.0 as
+For the tested SDXL composition stack, use SDXL Base 1.0 as
 `sd_xl_base_1.0.safetensors` and Pixel Art XL as
 `pixel-art-xl.safetensors`. The repository's
 `benchmarks/provider-environments/comfyui/` project names both files and uses
@@ -48,6 +48,13 @@ preserves those fake cells; it does not repair them. Reconstruct accepted output
 at 1× with a grid-aware tool such as Retro Diffusion Pixel Art Fixer, then
 compose and edit the native PNG. Record the fixer revision, source and output
 hashes, detected grid, confidence, and dimensions.
+
+For the tested stack, begin with 48–128px native components and a deliberate
+16–32 color project palette. High-confidence grid recovery is structural
+evidence, not quality approval. Review silhouettes, clusters, contours,
+single-pixel noise, palette separation, and seams at 1× and an integer zoom.
+Keep the smaller result whenever increasing resolution makes those qualities
+worse.
 
 For a large scene, generate sky, distant terrain, midground, landmarks,
 foreground, and tiles separately. Keep one grid origin, native scale, and

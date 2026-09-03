@@ -213,6 +213,13 @@ Retro Diffusion Pixel Art Fixer reported high-confidence consensus for both.
 The reconstructed outputs contain 48 colors and one stored pixel per recovered
 cell.
 
+That is a structural result, not an aesthetic endorsement. Grid recovery cannot
+turn weak composition, painterly gradients, or muddy source clusters into good
+pixel art. These files remain review candidates, and the 1024px source should
+not be presented as a high-resolution pixel-art deliverable. For this tested
+stack, 48–128px native components are the default operating range; larger
+environments should be assembled from reviewed parts with one palette and grid.
+
 This invalidated our earlier 2048px nearest-neighbor result. That file perfectly
 duplicated the source raster, including its fake, softened cells. It was a larger
 delivery file, not better pixel art, and has been removed from the showcase.

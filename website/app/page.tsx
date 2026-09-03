@@ -403,18 +403,19 @@ export default function Home() {
                     sizes="(max-width: 680px) 50vw, 280px"
                     unoptimized
                   />
-                  <figcaption>Scenic background · native 128×128 · 48 colors</figcaption>
+                  <figcaption>Grid recovery test · native 128×128 · 48 colors</figcaption>
                 </figure>
               </div>
               <p>
-                SDXL Base plus Pixel Art XL produced the clearest large
-                building and strongest layered landscape in this sample, but
-                its outputs only imitated a pixel grid. Pixel Art Fixer recovered
-                editable 1× assets; the 1024px landscape resolved to 128×128.
+                SDXL Base plus Pixel Art XL produced promising compositions,
+                but its outputs only imitated a pixel grid. Pixel Art Fixer
+                recovered editable 1× assets; visual quality still needs human
+                review. Start small and compose accepted parts into larger scenes.
               </p>
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
-                <div><dt>Best fit</dt><dd>Local control, large scenes, and repeatable cleanup</dd></div>
+                <div><dt>Quality target</dt><dd>48–128px native per part</dd></div>
+                <div><dt>Best fit</dt><dd>Local control, component generation, and repeatable cleanup</dd></div>
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">

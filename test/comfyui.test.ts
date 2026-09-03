@@ -150,6 +150,13 @@ describe("ComfyUI provider", () => {
       "utf8",
     )) as {
       tool: { license: string; commit: string }
+      qualityPolicy: {
+        purpose: string
+        gridRecoveryIsQualityApproval: boolean
+        preferredNativeMin: number
+        preferredNativeMax: number
+        decision: string
+      }
       runs: Array<{
         source: string
         sourceSha256: string
@@ -169,6 +176,13 @@ describe("ComfyUI provider", () => {
       license: "MIT",
       commit: "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
     })
+    expect(report.qualityPolicy).toEqual(expect.objectContaining({
+      purpose: "native-grid recovery benchmark",
+      gridRecoveryIsQualityApproval: false,
+      preferredNativeMin: 48,
+      preferredNativeMax: 128,
+      decision: "human-review-required",
+    }))
     expect(report.runs).toHaveLength(3)
 
     for (const run of report.runs) {
