@@ -198,26 +198,31 @@ images fell to 64 and 60 colors without losing their main depth bands. The
 committed [post-processing project](../benchmarks/provider-postprocessing/comfyui/README.md)
 contains the workflows, manifest, audit commands, and provenance.
 
-### ComfyUI large-output result
+### ComfyUI resolution result
 
-A second benchmark keeps the alpine brief and seed fixed while testing larger
-outputs without a second diffusion pass.
+A second benchmark keeps the alpine brief and seed fixed while separating the
+model's generation canvas from the actual editable pixel grid.
 
-| 1024px baseline | Pixel-perfect 2048px delivery | Native 1344×768 composition |
-|---|---|---|
-| ![ComfyUI one-pass 1024px alpine valley](../website/public/benchmarks/provider-hires/comfyui/baseline-64/alpine-valley.png) | ![ComfyUI pixel-perfect 2048px alpine valley](../website/public/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png) | ![ComfyUI native wide alpine valley](../website/public/benchmarks/provider-hires/comfyui/native-wide-64/alpine-valley-wide.png) |
+| SDXL source | Recovered native art | Wide SDXL source | Recovered wide art |
+|---|---|---|---|
+| ![ComfyUI 1024px raster with pseudo-pixel texture](../website/public/benchmarks/provider-hires/comfyui/baseline-64/alpine-valley.png) | ![ComfyUI alpine valley reconstructed onto a 128 by 128 pixel grid](../website/public/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-128x128.png) | ![ComfyUI 1344 by 768 wide raster with pseudo-pixel texture](../website/public/benchmarks/provider-hires/comfyui/native-wide-64/alpine-valley-wide.png) | ![ComfyUI wide alpine valley reconstructed onto a 168 by 96 pixel grid](../website/public/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-wide-168x96.png) |
 
-The 2048px file is an exact 2× nearest-neighbor delivery of the 1024px
-generation. It adds no invented detail, but it keeps every edge hard. The
-1344×768 workflow asks SDXL for a wide environment directly and avoids another
-VAE pass. Both outputs remain at 64 colors.
+The 1024×1024 source carried an implied 8px cell and resolved to a 128×128
+native grid. The 1344×768 source used the same cell step and resolved to 168×96.
+Retro Diffusion Pixel Art Fixer reported high-confidence consensus for both.
+The reconstructed outputs contain 48 colors and one stored pixel per recovered
+cell.
 
-Earlier 1536px and 2048px latent refinements completed successfully but looked
-blurred. The extra interpolation and resampling softened the pixel clusters;
-color quantization could not repair them. Those outputs were rejected instead
-of being presented as quality improvements. The committed
-[large-output project](../benchmarks/provider-hires/comfyui/README.md) contains
-the three crisp workflows, outputs, audit instructions, and lock provenance.
+This invalidated our earlier 2048px nearest-neighbor result. That file perfectly
+duplicated the source raster, including its fake, softened cells. It was a larger
+delivery file, not better pixel art, and has been removed from the showcase.
+
+Earlier 1536px and 2048px latent refinements also looked blurred. The extra
+interpolation and resampling softened the structure; color quantization could
+not repair it. The committed
+[resolution project](../benchmarks/provider-hires/comfyui/README.md) contains
+the two provider workflows, source outputs, native reconstructions, fixer
+report, audit instructions, and lock provenance.
 
 ## Cost and operational results
 
@@ -225,7 +230,7 @@ the three crisp workflows, outputs, audit instructions, and lock provenance.
 |---|---:|---:|---:|
 | PixelLab | 10 | 10 generations | 4,411 generations |
 | Retro Diffusion | 10 | $0.744 | $9.73 |
-| ComfyUI | 11 | 0 `free` PixelKiln units | No account balance |
+| ComfyUI | 10 | 0 `free` PixelKiln units | No account balance |
 
 PixelLab charged one generation per image. Retro Diffusion quoted and charged
 $0.058 for each 256px RD Plus image and $0.099 for each 384px RD Plus image;
@@ -241,7 +246,8 @@ The run also caught two integration details:
 
 All three manifests now pass `doctor` and report a current plan. The hosted
 projects have ten healthy PNG cache entries each; the ComfyUI projects have
-four baseline, four cleanup, and three large-output entries.
+four baseline, four cleanup, and two resolution-test entries. Three additional
+native-grid PNGs are deterministic post-processing results, not provider jobs.
 
 ## Recommendation
 
@@ -259,13 +265,15 @@ Try the tested ComfyUI SDXL stack when local control and larger compositions
 matter most. It produced the best large building in this run and a strong
 layered valley, with no provider charge. The refined core-node graph also makes
 transparent, 64-color cutouts. A one-pass 1024px render took roughly 60 to 90
-seconds on the tested Apple MPS machine. For larger files, prefer native aspect
-ratios or integer nearest-neighbor delivery scaling; the tested latent-upscale
-passes blurred the art.
+seconds on the tested Apple MPS machine. Treat that output as a generation
+canvas, then reconstruct and edit the actual native grid. The tested
+latent-upscale passes blurred the art, while nearest-neighbor scaling merely
+duplicated its pseudo-pixels.
 
 Do not ask any provider for one giant finished level. Generate terrain,
-background, buildings, landmarks, and foreground pieces separately. Compose
-them in the engine, then use integer nearest-neighbor scaling for display.
+background, buildings, landmarks, and foreground pieces separately. Normalize
+them to one native grid, compose at 1×, then use integer nearest-neighbor scaling
+for display.
 
 This sample is useful, not definitive. Two attempts expose obvious tendencies,
 but they do not measure every style, prompt family, or model update. The new

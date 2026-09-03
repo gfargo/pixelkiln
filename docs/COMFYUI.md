@@ -115,35 +115,89 @@ but it adds noisy pixel patterns. Ordered Bayer dithering is easier to art-direc
 when a project needs deliberate texture. Whichever mode you choose becomes part
 of the committed workflow hash.
 
-## Render larger environment masters
+## Recover a native pixel grid
 
-PixelKiln accepts outputs up to 4096px per edge, but file dimensions and
-generated detail are separate concerns. The tested pixel-art stack has two
-reliable ways to make larger environments:
+File size is not pixel-art resolution. Keep these three measurements separate:
 
-1. Generate once at a useful SDXL canvas. The benchmark validates 1024×1024
-   and a native 1344×768 wide composition.
-2. For a larger delivery file, quantize first and scale by an integer with
-   `ImageScale` set to `nearest-exact`. The tested 2× workflow turns each source
-   pixel into an exact 2×2 block and writes a crisp 2048×2048 PNG.
+1. The **generation canvas** is the raster SDXL produces, such as 1024×1024.
+2. The **native art grid** has one stored pixel for each editable pixel-art cell.
+3. The **display size** is an integer-scaled view of the native art.
+
+Pixel Art XL can draw convincing pixel-shaped texture without producing a
+consistent one-pixel grid. Our 1024×1024 test image carried an implied 8px cell
+and resolved to 128×128 native art. Its 1344×768 wide version resolved to 168×96.
+Nearest-neighbor scaling preserved those fake cells but did not fix them.
+
+Retro Diffusion's MIT-licensed
+[Pixel Art Fixer](https://github.com/Retro-Diffusion/pixel-art-fixer) detects the
+implied grid and reconstructs one output pixel per cell. Both benchmark sources
+returned the high-confidence `fast:ac+rl(S)` decision. The checked-in
+[resolution benchmark](../benchmarks/provider-hires/comfyui/README.md) includes
+the source PNGs, native reconstructions, dimensions, hashes, and pinned fixer
+revision.
+
+Treat the native PNG as the canonical asset. Edit and compose it at 1×. Scale it
+only for display, using integer dimensions and nearest-neighbor rendering. A
+2048px file made from a 1024px pseudo-pixel source is not higher-quality pixel
+art, even when every source pixel becomes an exact 2×2 block.
+
+The open fixer is deterministic image processing. Its maintainers also offer a
+[hosted neural fixer](https://www.retrodiffusion.ai/tools/pixel-art-fixer/) for
+damaged inputs where a reliable grid no longer exists. PixelKiln does not yet
+run either fixer automatically.
+
+## Build larger environments
+
+Do not ask the model for one enormous finished level. Generate and review the
+scene as native-grid parts:
+
+- sky and atmosphere;
+- distant mountains;
+- midground terrain and forest;
+- buildings and landmarks;
+- foreground framing and gameplay tiles.
+
+Keep one grid origin, native scale, and palette contract across the parts, then
+compose them at 1×. This preserves editable clusters and lets you regenerate one
+weak region without touching the rest of the scene.
+
+ComfyUI's official [outpainting workflow](https://docs.comfy.org/tutorials/basic/outpaint)
+can extend a canvas. The official
+[crop-and-stitch nodes](https://github.com/comfyorg/comfyui-crop-and-stitch) can
+sample a region at the model's working size and blend it back.
+[Tiled diffusion](https://github.com/comfyorg/comfyui-tiled-diffusion) can cover
+a larger semantic canvas with overlapping windows. These techniques help
+composition and regional detail; none guarantees a native pixel grid. Run grid
+recovery after accepting each layer or the final composite. Check licenses
+before shipping: the linked tiled implementation marks its MultiDiffusion,
+Mixture of Diffusers, and tiled VAE code as non-commercial share-alike.
 
 Do not add a latent refinement pass by default. We tested `LatentUpscale` to
 1536px and 2048px, low-denoise resampling, and tiled VAE decode. Every version
 completed on the 64 GB M1 Max, but the extra interpolation, diffusion, and VAE
 round trip visibly blurred the shapes. Reducing the result to 64 colors did not
-restore the lost edges.
+restore the lost structure.
 
-The committed [large-output benchmark](../benchmarks/provider-hires/comfyui/README.md)
-keeps the crisp results and documents the rejected latent-upscale experiment.
-Use the native wide workflow when you need more horizontal composition. Use
-integer scaling when you need a larger file or display size without changing
-the art. Neither method pretends that duplicated pixels are new generated
-detail.
+The neural [ComfyUI Pixelization](https://github.com/DarioFT/ComfyUI-Pixelization)
+node is another possible raster-to-pixel-art step, but its underlying model is
+limited to non-commercial research use. It is not a safe default for a general
+game-asset pipeline.
 
-For a scene that needs more distinct objects, generate the terrain, buildings,
-foreground, and sky as separate assets and compose them. That gives the model
-room to resolve each element and preserves a deliberate pixel grid better than
-asking one diffusion pass to invent an enormous finished level.
+### What each technique can and cannot do
+
+| Technique | Useful for | Limitation |
+|---|---|---|
+| [Pixel Art Fixer](https://github.com/Retro-Diffusion/pixel-art-fixer) | Recovering a native grid from softened, non-integer, or oversized pseudo-pixel art | Classical detection can fail when the grid is badly damaged or cells are very small |
+| [ComfyUI Pixelization](https://github.com/DarioFT/ComfyUI-Pixelization) | Turning ordinary digital art into sharper, cell-controlled pixel art | Underlying model is non-commercial research only and may damage existing pixel art |
+| [Outpainting](https://docs.comfy.org/tutorials/basic/outpaint) | Extending the scene beyond its current borders | Produces more raster canvas, not a guaranteed pixel grid |
+| [Crop and Stitch](https://github.com/comfyorg/comfyui-crop-and-stitch) | Repairing one region at the model's preferred resolution | Blending and resampling still need native-grid normalization |
+| [Tiled diffusion](https://github.com/comfyorg/comfyui-tiled-diffusion) | Panoramas, regional prompts, and canvases larger than working memory | The linked implementation has non-commercial components and does not enforce pixel cells |
+| [MMPX](https://jcgt.org/published/0010/02/04/paper.pdf) | Magnifying true native pixel art while preserving its style | Assumes the input is already real pixel art; it cannot recover a fake grid |
+
+That makes the deterministic fixer the best current default after ComfyUI. Use
+outpainting, regional generation, or tiles to solve composition first. Recover
+the grid next, enforce palette and alpha rules after that, and reserve
+nearest-neighbor or MMPX for presentation of an already-valid native asset.
 
 ## Configure the manifest
 

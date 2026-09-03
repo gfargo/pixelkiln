@@ -269,10 +269,9 @@ export default function Home() {
               <h2>Same briefs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
-              These are outputs from committed benchmark projects, ranging
-              from 256px assets to a 2048px ComfyUI delivery file. The ComfyUI
-              card names its model stack and workflow because a self-hosted
-              provider alone says nothing about image quality.
+              These are outputs from committed benchmark projects. The
+              ComfyUI card separates its model canvas from the recovered native
+              pixel grid, because a large raster can still contain fake pixels.
             </p>
           </div>
 
@@ -386,31 +385,32 @@ export default function Home() {
               <div className="provider-image-grid">
                 <figure>
                   <Image
-                    src="/benchmarks/provider-postprocessing/comfyui/isolated/cliffside-fortress.png"
-                    alt="Transparent 58-color ComfyUI SDXL and Pixel Art XL result for a fortified monastery built into a mountain cliff"
-                    width={384}
-                    height={384}
+                    src="/benchmarks/provider-hires/comfyui/native-grid/cliffside-fortress-128x128.png"
+                    alt="Transparent ComfyUI cliffside fortress reconstructed onto a native 128 by 128 pixel grid"
+                    width={128}
+                    height={128}
                     sizes="(max-width: 680px) 50vw, 280px"
+                    unoptimized
                   />
-                  <figcaption>Large building · transparent · 58 colors</figcaption>
+                  <figcaption>Large building · native 128×128 · transparent</figcaption>
                 </figure>
                 <figure>
                   <Image
-                    src="/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png"
-                    alt="Pixel-perfect 2048-pixel, 64-color ComfyUI SDXL and Pixel Art XL result for an alpine valley background at dusk"
-                    width={2048}
-                    height={2048}
+                    src="/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-128x128.png"
+                    alt="ComfyUI alpine valley reconstructed onto a native 128 by 128 pixel grid"
+                    width={128}
+                    height={128}
                     sizes="(max-width: 680px) 50vw, 280px"
+                    unoptimized
                   />
-                  <figcaption>2048px delivery · exact 2× pixels</figcaption>
+                  <figcaption>Scenic background · native 128×128 · 48 colors</figcaption>
                 </figure>
               </div>
               <p>
                 SDXL Base plus Pixel Art XL produced the clearest large
-                building and strongest layered landscape in this sample. The
-                workflow renders at 1024px. Integer nearest-neighbor scaling
-                delivers crisp 2048px files, while native wide canvases add
-                scene area without the blur caused by latent refinement.
+                building and strongest layered landscape in this sample, but
+                its outputs only imitated a pixel grid. Pixel Art Fixer recovered
+                editable 1× assets; the 1024px landscape resolved to 128×128.
               </p>
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
@@ -422,6 +422,9 @@ export default function Home() {
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_comfyui_site" section="provider_showcase" href="https://www.comfy.org/" external>
                   Visit ComfyUI ↗
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_pixel_fixer" section="provider_showcase" href="https://www.retrodiffusion.ai/tools/pixel-art-fixer/" external>
+                  Try Pixel Art Fixer ↗
                 </TrackedLink>
               </div>
             </article>

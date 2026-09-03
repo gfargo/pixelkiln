@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { sha256 } from "../src/hash.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { loadLock } from "../src/lock.ts"
 import { createProvider, providerFactory } from "../src/providers/registry.ts"
@@ -125,32 +126,15 @@ describe("ComfyUI provider", () => {
     expect(isolated[11].inputs).toMatchObject({ upscale_method: "nearest-exact" })
   })
 
-  it("keeps the committed large-output benchmark reproducible and current", async () => {
+  it("keeps the committed resolution benchmark reproducible and current", async () => {
     const root = path.resolve("benchmarks/provider-hires/comfyui")
     const specs = await resolveSpecs(await loadManifest(path.join(root, "pixelkiln.manifest.json")))
     const lock = await loadLock(path.join(root, "pixelkiln.lock.json"))
     const plan = await buildPlan(specs, lock)
 
-    expect(plan.items).toHaveLength(3)
+    expect(plan.items).toHaveLength(2)
     expect(plan.items.every((item) => item.state === "ok")).toBe(true)
     expect(plan.actionable).toEqual([])
-
-    const pixelPerfect = JSON.parse(
-      await readFile(path.join(root, "workflow-pixel-perfect-2x-api.json"), "utf8"),
-    )
-    expect(Object.values(pixelPerfect as JsonObject).map((node) => (
-      node as JsonObject
-    ).class_type)).not.toContain("LatentUpscale")
-    expect(pixelPerfect[8]).toMatchObject({
-      class_type: "VAEDecodeTiled",
-      inputs: { tile_size: 512, overlap: 64 },
-    })
-    expect(pixelPerfect[15].inputs).toMatchObject({ colors: 64, dither: "none" })
-    expect(pixelPerfect[11].inputs).toMatchObject({
-      upscale_method: "nearest-exact",
-      width: 2048,
-      height: 2048,
-    })
 
     const nativeWide = JSON.parse(
       await readFile(path.join(root, "workflow-native-wide-api.json"), "utf8"),
@@ -161,33 +145,56 @@ describe("ComfyUI provider", () => {
       node as JsonObject
     ).class_type)).not.toContain("LatentUpscale")
 
-    const baselineImage = decodePng(await readFile(path.join(
-      root,
-      "../../../website/public/benchmarks/provider-hires/comfyui/baseline-64/alpine-valley.png",
-    )))
-    const scaledImage = decodePng(await readFile(path.join(
-      root,
-      "../../../website/public/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png",
-    )))
-    expect(scaledImage.width).toBe(baselineImage.width * 2)
-    expect(scaledImage.height).toBe(baselineImage.height * 2)
-    let exactTwoByTwo = true
-    for (let y = 0; y < baselineImage.height; y++) {
-      for (let x = 0; x < baselineImage.width; x++) {
-        const source = (y * baselineImage.width + x) * 4
-        for (let dy = 0; dy < 2; dy++) {
-          for (let dx = 0; dx < 2; dx++) {
-            const target = ((y * 2 + dy) * scaledImage.width + x * 2 + dx) * 4
-            for (let channel = 0; channel < 4; channel++) {
-              if (scaledImage.pixels[target + channel] !== baselineImage.pixels[source + channel]) {
-                exactTwoByTwo = false
-              }
-            }
-          }
-        }
-      }
+    const report = JSON.parse(await readFile(
+      path.join(root, "pixel-art-fixer-results.json"),
+      "utf8",
+    )) as {
+      tool: { license: string; commit: string }
+      runs: Array<{
+        source: string
+        sourceSha256: string
+        sourceWidth: number
+        sourceHeight: number
+        output: string
+        outputSha256: string
+        nativeWidth: number
+        nativeHeight: number
+        stepX: number
+        stepY: number
+        colors: number
+        confidence: string
+      }>
     }
-    expect(exactTwoByTwo).toBe(true)
+    expect(report.tool).toMatchObject({
+      license: "MIT",
+      commit: "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+    })
+    expect(report.runs).toHaveLength(3)
+
+    for (const run of report.runs) {
+      const sourceBytes = await readFile(path.resolve(root, run.source))
+      const outputBytes = await readFile(path.resolve(root, run.output))
+      const sourceImage = decodePng(sourceBytes)
+      const outputImage = decodePng(outputBytes)
+
+      expect(sha256(sourceBytes)).toBe(run.sourceSha256)
+      expect(sha256(outputBytes)).toBe(run.outputSha256)
+      expect(sourceImage).toMatchObject({ width: run.sourceWidth, height: run.sourceHeight })
+      expect(outputImage).toMatchObject({ width: run.nativeWidth, height: run.nativeHeight })
+      expect(run.sourceWidth / run.nativeWidth).toBe(run.stepX)
+      expect(run.sourceHeight / run.nativeHeight).toBe(run.stepY)
+      const visibleColors = new Set<string>()
+      for (let offset = 0; offset < outputImage.pixels.length; offset += 4) {
+        if (outputImage.pixels[offset + 3] === 0) continue
+        visibleColors.add([
+          outputImage.pixels[offset],
+          outputImage.pixels[offset + 1],
+          outputImage.pixels[offset + 2],
+        ].join(","))
+      }
+      expect(visibleColors.size).toBe(run.colors)
+      expect(run.confidence).toBe("high")
+    }
   })
 
   it("hashes parsed workflow content and plans without a network request", async () => {

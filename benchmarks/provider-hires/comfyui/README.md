@@ -1,16 +1,20 @@
-# ComfyUI large-output benchmark
+# ComfyUI resolution benchmark
 
-This project tests two ways to deliver larger ComfyUI environments without
-blurring the pixel grid. Every output uses SDXL Base 1.0, Pixel Art XL, the same
-brief, a fixed seed, and a 64-color palette.
+This project separates three sizes that should not be confused:
 
-| Style | Generation and delivery | Purpose |
-|---|---|---|
-| `baseline-64` | Generate and save at 1024×1024 | Square quality baseline |
-| `pixel-perfect-2x` | Generate at 1024×1024, then scale to 2048×2048 with `nearest-exact` | Larger delivery file with identical hard edges |
-| `native-wide-64` | Generate and save directly at 1344×768 | More horizontal scene area without a refinement pass |
+1. **Generation canvas:** the raster produced by SDXL and Pixel Art XL.
+2. **Native art grid:** one stored pixel per editable pixel-art cell.
+3. **Display size:** an integer-scaled preview of the native art.
 
-Run the benchmark against a local ComfyUI server:
+The committed ComfyUI workflows cover two generation canvases. Both use the
+same prompt, seed, model stack, and 64-color quantization.
+
+| Style | Generation canvas | Purpose |
+|---|---:|---|
+| `baseline-64` | 1024×1024 | Square SDXL baseline |
+| `native-wide-64` | 1344×768 | Wider composition without a second diffusion pass |
+
+Run the provider portion against a local ComfyUI server:
 
 ```bash
 npm run pixelkiln -- doctor --manifest benchmarks/provider-hires/comfyui/pixelkiln.manifest.json
@@ -19,28 +23,52 @@ npm run pixelkiln -- gen --manifest benchmarks/provider-hires/comfyui/pixelkiln.
 npm run pixelkiln -- audit --manifest benchmarks/provider-hires/comfyui/pixelkiln.manifest.json --max-colors 64 --check
 ```
 
-The workflows use ComfyUI core nodes only and require no extra model. The 2×
-workflow quantizes before integer scaling, so each source pixel becomes an
-exact 2×2 block. The wide workflow samples once at its final aspect ratio; it
-does not make a second trip through the VAE.
+## What the source files actually contain
 
-Measured on the committed PNGs:
+Large dimensions did not make these images native pixel art. The 1024×1024
+source used an implied 8×8 raster cell, while the wide source used the same 8px
+step. Scaling the 1024 image to 2048 with nearest-neighbor only duplicated the
+fake cells. It preserved the problem exactly, so that output was removed from
+the benchmark.
 
-| Style | RGB colors | File size | Mean neighbor delta | Strong edges |
-|---|---:|---:|---:|---:|
-| `baseline-64` | 64 | 373.8 KiB | 2.11 | 0.80% |
-| `pixel-perfect-2x` | 64 | 479.1 KiB | 1.06 | 0.40% |
-| `native-wide-64` | 64 | 467.3 KiB | 2.20 | 0.43% |
+We ran both environment sources and the existing transparent building through
+Retro Diffusion's MIT-licensed
+[Pixel Art Fixer](https://github.com/Retro-Diffusion/pixel-art-fixer) at commit
+`ef376e57e1c272633ca2dbf5f29ec3fcf6596465`. The deterministic Python engine
+found high-confidence grids and reconstructed one output pixel per cell.
 
-Neighbor delta is the mean RGB difference between adjacent pixels. Strong
-edges are adjacent pairs whose mean channel difference is at least 32. These
-measurements do not decide taste. The 2× values are exactly half the baseline
-because adjacent pixels are duplicated; that is expected and does not indicate
-blur. Every original boundary remains a hard boundary at twice the width and
-height.
+| Source canvas | Detected step | Native output | Visible colors | Consensus |
+|---:|---:|---:|---:|---|
+| 384×384 transparent building | 3×3 | 128×128 | 252 | `fast:ac+rl(S)` |
+| 1024×1024 | 8×8 | 128×128 | 48 | `fast:ac+rl(S)` |
+| 1344×768 | 8×8 | 168×96 | 48 | `fast:ac+rl(S)` |
+
+The source and reconstructed hashes, dimensions, tool revision, and decision
+path are recorded in [`pixel-art-fixer-results.json`](pixel-art-fixer-results.json).
+The native PNGs live under `website/public/benchmarks/provider-hires/comfyui/native-grid/`.
+Display them with nearest-neighbor rendering; do not resample them into a new
+canonical asset. Grid recovery can introduce new averaged colors, as the
+transparent building demonstrates, so apply the project's palette constraint
+after reconstruction when a hard color limit matters.
+
+## Large-scene guidance
+
+A bigger SDXL canvas can improve composition, but it does not create a larger
+editable pixel grid. For a large environment:
+
+1. Generate a stable SDXL canvas or several overlapping regions.
+2. Reconstruct every accepted result onto a known native grid.
+3. Compose sky, distant mountains, terrain, buildings, and foreground at 1×.
+4. Keep one grid origin and one palette contract across every layer or tile.
+5. Integer-scale only the final preview or runtime presentation.
+
+Outpainting, tiled diffusion, and crop-and-stitch can add scene area or repair a
+region. They still produce regular raster images, so the native-grid recovery
+step remains necessary. The project does not yet automate that post-processing
+step; the checked-in report keeps this experiment honest until PixelKiln has a
+provider-neutral postprocessor interface.
 
 We also tested 1536px and 2048px latent refinement. Those passes completed on a
-64 GB M1 Max, but `bislerp`, another diffusion pass, and another VAE decode
-softened the shapes. Palette quantization could not restore the lost edges.
-Those workflows and images were rejected rather than published as recommended
-quality presets.
+64 GB M1 Max, but interpolation, another diffusion pass, and another VAE decode
+softened the shapes. Palette quantization could not restore the lost structure,
+so those files remain rejected experiments rather than recommended presets.

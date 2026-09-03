@@ -41,12 +41,20 @@ both `--min-transparency` and `--max-colors` so the cleanup requirements fail in
 CI when a workflow or model changes.
 
 For larger environments, use the tested project in
-`benchmarks/provider-hires/comfyui/`. Prefer a single native SDXL pass at the
-needed aspect ratio, or quantize and apply integer `nearest-exact` scaling for a
-larger delivery file. Do not add `LatentUpscale` and a second sampling pass by
-default: the tested 1536px and 2048px variants visibly blurred the Pixel Art XL
-output. Never describe a nearest-neighbor delivery file as added generated
-detail; name both the generated canvas and final output size.
+`benchmarks/provider-hires/comfyui/`. Keep generation canvas, native art grid,
+and display size separate. Pixel Art XL can make a 1024px raster whose implied
+cells resolve to a much smaller editable grid. Nearest-neighbor scaling
+preserves those fake cells; it does not repair them. Reconstruct accepted output
+at 1× with a grid-aware tool such as Retro Diffusion Pixel Art Fixer, then
+compose and edit the native PNG. Record the fixer revision, source and output
+hashes, detected grid, confidence, and dimensions.
+
+For a large scene, generate sky, distant terrain, midground, landmarks,
+foreground, and tiles separately. Keep one grid origin, native scale, and
+palette across layers. Outpainting, tiled diffusion, or crop-and-stitch may add
+semantic area, but run grid recovery afterward. Do not add `LatentUpscale` and a
+second sampling pass by default: the tested 1536px and 2048px variants visibly
+blurred the Pixel Art XL output.
 
 The plan reports `0 free` and generation uses `--budget 0`. Explain that this
 means no metered API charge. Hardware, electricity, hosting, and model licenses

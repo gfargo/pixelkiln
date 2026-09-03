@@ -51,8 +51,15 @@ for (const { file, source } of routeSources) {
 }
 
 const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
-if (!home.includes("/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png")) {
-  failures.push("provider showcase is missing the tested pixel-perfect ComfyUI sample");
+const nativeGridSample = "/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-128x128.png";
+if (!home.includes(nativeGridSample)) {
+  failures.push("provider showcase is missing the recovered native-grid ComfyUI sample");
+}
+if (!existsSync(path.join(websiteRoot, "public", nativeGridSample.slice(1)))) {
+  failures.push("provider showcase native-grid ComfyUI sample does not exist");
+}
+if (!home.includes("https://www.retrodiffusion.ai/tools/pixel-art-fixer/")) {
+  failures.push("provider showcase is missing the Pixel Art Fixer link");
 }
 for (const [provider, route, official] of [
   ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],

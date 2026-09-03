@@ -102,57 +102,6 @@
       "cost": 0,
       "costUnit": "free",
       "provider": "comfyui"
-    },
-    "pixel-perfect-2x/alpine-valley-2x": {
-      "styleId": "pixel-perfect-2x",
-      "assetId": "alpine-valley-2x",
-      "specHash": "af929a55ad4a972ff750bedb597207b5afe791987a80acb82b9e03f37bf76fe2",
-      "generator": "map",
-      "tileFeature": null,
-      "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame",
-      "width": 2048,
-      "height": 2048,
-      "jobId": "c6a595a3-1cd3-451b-a0de-1a1dee1678d7#9",
-      "reviewObjectId": null,
-      "objectId": "c6a595a3-1cd3-451b-a0de-1a1dee1678d7#9#0",
-      "candidateIndex": null,
-      "status": "downloaded",
-      "error": null,
-      "sourceUrl": "comfyui://output?filename=comfyui-pixel-perfect-2x_00002_.png&subfolder=pixelkiln&type=output",
-      "sourceUrls": [
-        {
-          "url": "comfyui://output?filename=comfyui-pixel-perfect-2x_00002_.png&subfolder=pixelkiln&type=output",
-          "mediaType": "image/png"
-        }
-      ],
-      "outputs": [
-        {
-          "path": "../../../website/public/benchmarks/provider-hires/comfyui/pixel-perfect-2x/alpine-valley-2x.png",
-          "sha256": "bf1290c401b9662e0c1795803943522307a7c13d329eb8bf3e941c8877605142",
-          "mediaType": "image/png"
-        }
-      ],
-      "providerMetadata": {
-        "comfyui": {
-          "promptId": "c6a595a3-1cd3-451b-a0de-1a1dee1678d7",
-          "outputNodeId": "9",
-          "outputCount": 1,
-          "workflowFile": "workflow-pixel-perfect-2x-api.json",
-          "workflowSha256": "598eddc48d0123c6fbd4d903f7ee651dcbba990f6001de17b9d96d71a0f7e1d4",
-          "files": [
-            {
-              "filename": "comfyui-pixel-perfect-2x_00002_.png",
-              "subfolder": "pixelkiln",
-              "type": "output"
-            }
-          ]
-        }
-      },
-      "submittedAt": "2026-09-03T20:10:38.262Z",
-      "downloadedAt": "2026-09-03T20:13:39.435Z",
-      "cost": 0,
-      "costUnit": "free",
-      "provider": "comfyui"
     }
   }
 }
