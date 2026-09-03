@@ -54,6 +54,7 @@ const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
 for (const [provider, route, official] of [
   ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],
   ["Retro Diffusion", "/docs/retro-diffusion", "https://www.retrodiffusion.ai/"],
+  ["ComfyUI", "/docs/comfyui", "https://www.comfy.org/"],
 ]) {
   if (!home.includes(`href="${route}"`)) {
     failures.push(`provider showcase is missing the ${provider} setup link`);
@@ -66,6 +67,7 @@ for (const [provider, route, official] of [
 for (const [file, credential, official] of [
   ["docs/PIXELLAB.md", "PIXELLAB_API_KEY", "https://www.pixellab.ai/"],
   ["docs/RETRO_DIFFUSION.md", "RD_API_KEY", "https://www.retrodiffusion.ai/"],
+  ["docs/COMFYUI.md", "COMFYUI_BASE_URL", "https://www.comfy.org/"],
 ]) {
   const guide = readFileSync(path.join(repoRoot, file), "utf8");
   if (!guide.includes(credential)) failures.push(`${file} is missing ${credential}`);
