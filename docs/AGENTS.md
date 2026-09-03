@@ -59,6 +59,13 @@ new project or a large environment asset. Once chosen, follow
 [Set up PixelLab](./PIXELLAB.md) or
 [Set up Retro Diffusion](./RETRO_DIFFUSION.md).
 
+The installed skill keeps the shared safety workflow in `SKILL.md` and loads a
+focused reference only when needed: PixelLab, Retro Diffusion, or a project that
+uses both. Mixed-provider repositories should use separate manifests and
+lockfiles so each plan and budget keeps its provider-specific unit. The
+[provider comparison](../PROVIDERS.md#use-both-providers-in-one-project) has a
+complete layout and command example.
+
 ## Recommended first prompt
 
 ```text

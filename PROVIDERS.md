@@ -80,6 +80,55 @@ the outputs directly reproducible across services.
 See the [environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) for the
 twelve generated images, prompts, manifests, measured costs, and review.
 
+## Use both providers in one project
+
+One manifest selects one provider. PixelKiln does not currently support a
+provider override on an individual style or asset. The boundary is deliberate:
+one command constructs one account adapter, and one `--budget` must have one
+meaning. PixelLab generations and Retro Diffusion dollars cannot share a safe
+ceiling.
+
+A repository can still use both providers today. Give each provider its own
+manifest, lockfile, and output directory:
+
+```text
+art/
+  pixelkiln.pixellab.manifest.json
+  pixelkiln.pixellab.lock.json
+  pixelkiln.retrodiffusion.manifest.json
+  pixelkiln.retrodiffusion.lock.json
+pixelkiln.workspace.json
+```
+
+Plan and authorize each manifest separately:
+
+```bash
+pixelkiln plan --manifest art/pixelkiln.pixellab.manifest.json --lock art/pixelkiln.pixellab.lock.json
+pixelkiln gen --manifest art/pixelkiln.pixellab.manifest.json --lock art/pixelkiln.pixellab.lock.json --budget <generations>
+
+pixelkiln plan --manifest art/pixelkiln.retrodiffusion.manifest.json --lock art/pixelkiln.retrodiffusion.lock.json
+pixelkiln gen --manifest art/pixelkiln.retrodiffusion.manifest.json --lock art/pixelkiln.retrodiffusion.lock.json --budget <usd>
+```
+
+Register both manifests in the workspace catalog for aggregate status and
+complete claim checks. Keep the provider lockfiles separate. Package their
+reviewed outputs independently, or combine explicit files with `pixelkiln pack
+--inputs <file> --out <path>`.
+
+This is a useful split when PixelLab handles prompt-sensitive buildings and
+account recovery while Retro Diffusion handles environment-styled backdrops,
+clean cutouts, or native animation. Retro Diffusion is not a higher-resolution
+route through PixelKiln today: its useful environment styles cap at 384×384,
+while PixelLab `map` reaches 400×400. Its advantage is the model/style and
+output type, not raw dimensions.
+
+Native mixed-provider support inside one manifest would be a larger feature,
+not a schema-only change. It needs provider selection on each style, plans and
+confirmations grouped by provider and cost unit, separate budget ceilings,
+per-provider polling and downloads, and an explicit provider for account-wide
+commands. The lockfile already records a provider on every entry, so the state
+format can support that direction without merging provider identities.
+
 ## Cost comparison
 
 The services use different billing units, so PixelKiln never adds their costs
@@ -129,6 +178,8 @@ estimate and hard budget remain enforced.
 4. Add a local ComfyUI adapter for GPU-backed, no-per-call-cost generation.
 5. Consider general raster providers only with explicit nearest-neighbor,
    palette, transparency, and reproducibility checks.
+6. Evaluate per-style provider selection with provider-keyed budgets; do not
+   overload the current scalar `--budget` or silently sum incompatible units.
 
 Midjourney is not an adapter target without an official public API. Automating
 its consumer UI would be fragile and could violate provider terms.

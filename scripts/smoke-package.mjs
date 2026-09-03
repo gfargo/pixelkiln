@@ -39,6 +39,10 @@ try {
     "docs/GETTING_STARTED.md",
     "docs/MANIFEST.md",
     "docs/ARTIFACTS.md",
+    "skills/pixelkiln/SKILL.md",
+    "skills/pixelkiln/references/pixellab.md",
+    "skills/pixelkiln/references/retro-diffusion.md",
+    "skills/pixelkiln/references/mixed-providers.md",
     "SECURITY.md",
   ]) {
     if (!existsSync(path.join(installed, required))) {
