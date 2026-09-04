@@ -48,6 +48,9 @@ jobs:
       - name: Check documentation
         run: npm run test:docs
 
+      - name: Check source URL hygiene
+        run: npm run test:security
+
       - name: Test
         run: npm test
 

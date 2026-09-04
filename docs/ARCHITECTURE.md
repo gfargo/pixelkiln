@@ -33,7 +33,7 @@ retain:
 - style/asset identity and spec hash;
 - provider and remote object/job ids;
 - explicit lifecycle status and errors;
-- source URLs/candidates/selections;
+- durable provider source references, candidates, and selections;
 - `outputs[]` with portable path, SHA-256, optional structural role, and
   optional PNG/GIF media type;
 - provider-specific metadata under a provider-id namespace;
@@ -68,6 +68,12 @@ Provider responses are runtime-validated before entering lock state. A 2xx
 response with a missing object id, malformed URL set, invalid estimate, or
 changed field type becomes an explicit adapter error rather than corrupted
 durable state.
+
+Storage URLs whose query strings carry provider credentials are transient.
+Adapters should replace them with refreshable provider references before
+settled lock state; successful ingestion also strips sensitive, inline, and
+local-file sources. This preserves recovery without turning the committed
+lockfile into a credential store.
 
 ## Output identity
 
@@ -129,7 +135,9 @@ an undefined method.
 an experimental still, tileset, and animation adapter. Authenticated RD Fast
 and RD Plus single-candidate still lifecycles have passed end to end. Its
 multi-candidate, tileset, GIF, and spritesheet paths retain mocked coverage
-pending paid live smokes. `ComfyUIProvider` is an experimental self-hosted
+pending paid live smokes. Its durable `retrodiffusion://` references refresh
+temporary result URLs when recovery cannot use the local cache.
+`ComfyUIProvider` is an experimental self-hosted
 adapter. It resolves and hashes an API-format workflow offline, submits an
 input-bound clone, polls local history, and stores portable `comfyui://` output
 references so a lockfile does not retain a workstation hostname. It supports

@@ -22,6 +22,7 @@ export {
 export * from "./manifest.ts"
 export * from "./lock.ts"
 export * from "./hash.ts"
+export * from "./source-url.ts"
 export * from "./outputs.ts"
 export * from "./artifacts.ts"
 export * from "./recipes.ts"

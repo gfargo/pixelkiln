@@ -29,10 +29,19 @@ reporter.
 
 PixelKiln handles provider credentials, paid API actions, remote object deletion,
 local output paths, a localhost review server, and generated HTML containing
-provider data. Reports involving authentication leakage, path traversal,
+provider data. Temporary provider result URLs can also contain signing
+credentials in their query string. Reports involving authentication leakage, path traversal,
 cross-origin review actions, HTML/script injection, unsafe overwrite/delete
 behavior, lockfile corruption, or budget bypass are security relevant.
 
 Never attach a real `PIXELLAB_API_KEY`, `RD_API_KEY`, `.env` file, private
 provider URL, or unredacted lockfile from a confidential project to a public
 report.
+
+PixelKiln keeps durable provider references in lockfiles when an adapter can
+refresh an expiring result. After successful ingestion it removes signed URLs,
+inline data URLs, and local file URLs from settled lock entries. A failed
+download may retain its source locally so `fetch` can retry, but that in-flight
+lockfile should not be committed. `npm run test:security` checks every tracked
+JSON file for credential-bearing URLs and reports only the file and JSON path,
+never the sensitive value.

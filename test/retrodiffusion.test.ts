@@ -177,9 +177,9 @@ describe("Retro Diffusion provider", () => {
       status: "review",
       candidateUrls: ["https://cdn.test/0.png", "https://cdn.test/1.png", "https://cdn.test/2.png"],
     })
-    await expect(provider.selectCandidate?.("task-1", 1)).resolves.toEqual({
+    await expect(provider.selectCandidate?.("task-1", 1)).resolves.toMatchObject({
       objectId: "task-1#1",
-      sourceUrl: "https://cdn.test/1.png",
+      sourceUrl: expect.stringMatching(/^retrodiffusion:\/\/output\?/),
     })
   })
 
@@ -367,9 +367,35 @@ describe("Retro Diffusion provider", () => {
     await expect(provider.poll("task-inline", "map")).resolves.toMatchObject({
       status: "ready",
       objectId: "task-inline#0",
-      sourceUrl: `data:image/png;base64,${FAKE_PNG.toString("base64")}`,
+      sourceUrl: expect.stringMatching(/^retrodiffusion:\/\/output\?/),
       sources: [{ mediaType: "image/png" }],
     })
+  })
+
+  it("persists a durable reference and resolves a fresh signed download URL", async () => {
+    process.env.RD_API_KEY = "rdpk-test"
+    const signed = new URL("https://cdn.example.test/output.png")
+    signed.searchParams.set("X-Amz-Credential", "temporary")
+    signed.searchParams.set("X-Amz-Signature", "secret")
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const url = String(input)
+      if (url.startsWith("https://api.retrodiffusion.ai/")) {
+        return json({ status: "succeeded", result: { output_urls: [signed.href] } })
+      }
+      if (url === signed.href) return new Response(FAKE_PNG, { status: 200 })
+      return new Response("not found", { status: 404 })
+    }))
+
+    const provider = createProvider("retrodiffusion", "online")
+    const state = await provider.poll("task-durable", "map")
+    expect(state).toMatchObject({
+      status: "ready",
+      objectId: "task-durable#0",
+      sourceUrl: expect.stringMatching(/^retrodiffusion:\/\/output\?/),
+    })
+    if (state.status !== "ready" || !state.sourceUrl) throw new Error("expected ready source")
+    expect(state.sourceUrl).not.toContain("X-Amz")
+    await expect(provider.download(state.sourceUrl)).resolves.toEqual(FAKE_PNG)
   })
 })
 

@@ -18,6 +18,7 @@ import {
   validateMedia,
   type MediaType as MediaKind,
 } from "../media.ts"
+import { shouldPersistSourceUrl } from "../source-url.ts"
 
 export interface FetchResult {
   downloaded: number
@@ -173,17 +174,16 @@ export async function fetchAssets(
           await rename(tmp, target)
           log(`  wrote   ${path.relative(process.cwd(), target)}`)
         }
+        const persistentSources = sources.filter((source) => shouldPersistSourceUrl(source.url))
         upsert(lock, key, {
           status: "downloaded",
           provider: provider.id,
           outputs,
-          // Inline providers can hand the pipeline a machine-local temp file.
-          // Once its bytes are in the durable content cache, retaining that
-          // path makes a committed lockfile non-portable and falsely suggests
-          // the source still exists on another checkout.
-          ...(cacheDir && sources.every((source) => source.url.startsWith("file://"))
-            ? { sourceUrl: null, sourceUrls: [] }
-            : {}),
+          // A finished lock may be committed. Inline bytes, machine-local
+          // paths, and credential-bearing signed URLs are useful while a
+          // download is retryable but must not survive successful ingestion.
+          sourceUrl: persistentSources[0]?.url ?? null,
+          sourceUrls: persistentSources,
           downloadedAt: new Date().toISOString(),
           error: null,
         })

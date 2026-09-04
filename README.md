@@ -57,7 +57,7 @@ PixelKiln keeps the missing record:
 | Plan and budget | Offline manifest/lock/disk diff, provider-unit estimates, hard `--budget` ceiling, JSON/CI gate. |
 | Generate and review | Resumable submit/poll/pick/fetch pipeline with a fast local candidate sheet. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
-| Recovery | Validated local content cache, provider URL restore, account object-hash cache, and resumable jobs. |
+| Recovery | Validated local content cache, durable provider-reference restore, account object-hash cache, and resumable jobs. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
 | Quality control | Palette distance, transparency, color-count, relative outlier, cache-integrity, and doctor gates. |
 | Sprite packaging | Deterministic RGBA packing, stable-cell mounting, explicit external input lists, structural output roles. |

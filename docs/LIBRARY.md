@@ -203,6 +203,12 @@ workflow boundary with `saveLock`. See
 [provider comparison](../PROVIDERS.md) before selecting or implementing
 another backend, especially its optional capabilities and cost units.
 
+`isSensitiveSourceUrl` detects credential-bearing provider URLs, while
+`shouldPersistSourceUrl` applies the lockfile rule: keep durable public or
+provider-specific references, but drop signed URLs, inline data, and local file
+URLs after successful ingestion. Adapters should prefer refreshable references
+such as `retrodiffusion://` and `comfyui://` over temporary download URLs.
+
 `submit` validates adapter estimates again at the spending boundary and returns
 `{ spent, unit }` for successful submissions. Lock entries retain fractional
 costs with their unit; use `spendByUnit(lock)` for history. Use

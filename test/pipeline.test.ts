@@ -10,7 +10,7 @@ import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { fetchAssets, pushTags } from "../src/pipeline/fetch.ts"
 import { adopt } from "../src/pipeline/adopt.ts"
-import { loadLock, saveLock, spendByUnit } from "../src/lock.ts"
+import { loadLock, saveLock, spendByUnit, upsert } from "../src/lock.ts"
 import { measureBalanceChange } from "../src/provider.ts"
 import { sha256 } from "../src/hash.ts"
 import { lockKey, primaryOutput, type Generator, type Lock } from "../src/types.ts"
@@ -477,6 +477,52 @@ describe("fetch", () => {
       download: async () => { throw new Error("cached bytes should make the local path unnecessary") },
     })
     expect((await fetchAssets(offline, specs, lock, lockPath, { repair: true })).downloaded).toBe(1)
+  })
+
+  it("drops credential-bearing source URLs after successful ingestion", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const signed = new URL("https://cdn.example.test/result.png")
+    signed.searchParams.set("X-Amz-Credential", "temporary")
+    signed.searchParams.set("X-Amz-Signature", "secret")
+    const downloads = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      download: async () => FAKE_PNG,
+    })
+    const { loaded, specs } = await project({ generator: "map", assets: { anvil: { prompt: "a" } } })
+    const lock = emptyLock()
+    await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs })
+
+    const key = lockKey("base", "anvil")
+    upsert(lock, key, { sourceUrl: signed.href, sourceUrls: [{ url: signed.href }] })
+    expect((await fetchAssets(downloads, specs, lock, lockPath)).downloaded).toBe(1)
+    const downloaded = lock.entries[key]!
+    expect(downloaded.sourceUrl).toBeNull()
+    expect(downloaded.sourceUrls).toEqual([])
+    expect(await readFile(lockPath, "utf8")).not.toContain("X-Amz-Credential")
+  })
+
+  it("retains a signed source while its download is still retryable", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const signed = new URL("https://cdn.example.test/result.png")
+    signed.searchParams.set("token", "temporary")
+    const failing = Object.assign(Object.create(Object.getPrototypeOf(provider)), provider, {
+      download: async () => { throw new Error("temporary CDN failure") },
+    })
+    const { loaded, specs } = await project({ generator: "map", assets: { anvil: { prompt: "a" } } })
+    const lock = emptyLock()
+    await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs })
+
+    const key = lockKey("base", "anvil")
+    upsert(lock, key, { sourceUrl: signed.href, sourceUrls: [{ url: signed.href }] })
+    expect((await fetchAssets(failing, specs, lock, lockPath)).failed).toBe(1)
+    const retryable = lock.entries[key]!
+    expect(retryable.sourceUrl).toBe(signed.href)
+    expect(retryable.sourceUrls).toEqual([{ url: signed.href }])
   })
 
   it("closes the loop: a full run ends with plan reporting ok", async () => {

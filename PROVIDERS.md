@@ -26,6 +26,8 @@ them.
 Live tests now cover single-candidate RD Fast and RD Plus stills from cost quote
 through submit, poll, PNG download, lockfile provenance, and cache validation.
 The RD Plus run covered isometric-asset, top-down-asset, and environment styles.
+Lockfiles retain refreshable `retrodiffusion://` result references rather than
+temporary signed storage URLs.
 Retro Diffusion's multi-candidate review, tileset, GIF, and spritesheet paths
 have mocked integration coverage but still need representative paid live runs.
 
