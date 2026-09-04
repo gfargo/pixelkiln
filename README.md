@@ -83,7 +83,8 @@ review workflow.
 
 ## Install
 
-Requires Node.js 20 or newer.
+Requires Node.js 22 or newer. Use the latest Node.js 24 LTS release for local
+development.
 
 ```bash
 npm install --save-dev pixelkiln

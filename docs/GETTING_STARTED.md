@@ -8,7 +8,7 @@ checks need provider access.
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 22 or newer. Node.js 24 LTS is the recommended default.
 - A credential for the selected hosted provider: `PIXELLAB_API_KEY` for
   PixelLab or `RD_API_KEY` for Retro Diffusion. Self-hosted ComfyUI needs a
   reachable server instead of an API key.
