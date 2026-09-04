@@ -77,6 +77,30 @@ installation, applies the exact palette without dithering, audits the result,
 and writes a managed `refine` artifact bundle. Human approval is a separate
 `approveQualityRecord` call so automated generation cannot approve itself.
 
+For repository-wide image regression checks, snapshot and verify a portable
+baseline:
+
+```ts
+import {
+  checkQualityBaseline,
+  resolveQualityInputs,
+  snapshotQualityBaseline,
+} from "pixelkiln"
+
+const inputs = resolveQualityInputs([
+  { id: "mountain", path: "../art/mountain-native.png" },
+], "config/quality-inputs.json")
+
+await snapshotQualityBaseline(inputs, "quality/pixelkiln.quality.json")
+const regression = await checkQualityBaseline("quality/pixelkiln.quality.json")
+if (!regression.safe) console.error(regression.cases)
+```
+
+`measureImageQuality` exposes the underlying PNG metrics. Baselines can also
+bind a refinement record, which makes changed record bytes or stale source and
+output hashes a hard failure. These APIs measure structural drift; they do not
+replace the separate human review recorded by `approveQualityRecord`.
+
 ## Inspect and verify recipes
 
 Recipe functions use the same offline path as the CLI:

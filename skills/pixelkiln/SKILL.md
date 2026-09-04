@@ -26,6 +26,9 @@ hashes.
   Use `pixelkiln refine` for the mechanical checks and `refine check` for the
   recorded gate. A successful PNG or high-confidence grid result is not quality
   approval.
+- When the project commits a PixelKiln quality baseline, run `pixelkiln quality
+  check --from <baseline>` before packaging. Treat a pass as structural
+  continuity, never as human approval or proof that the prompt was satisfied.
 - Preserve manual edits and ownership errors. Inspect the difference before any
   `--force` operation.
 - Commit the manifest, lockfile, generated outputs, and derived artifact

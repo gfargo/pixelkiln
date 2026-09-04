@@ -229,6 +229,12 @@ native-dimension, palette ceiling, and transparency checks. Their checked-in
 quality companions remain `pending` because an automated benchmark cannot
 claim human approval.
 
+CI checks those three final PNGs against the committed ComfyUI quality
+baseline. It catches dimension, palette, alpha, edge, isolated-pixel, image,
+and refinement-record drift without contacting a provider. The gate protects
+the published evidence from accidental regression; it does not promote these
+pending examples to approved art.
+
 Those checks prove structure, not artistic quality. Grid recovery cannot repair
 a weak composition, painterly gradients, or muddy source clusters. The files
 remain review candidates, and the 1024px source is not a high-resolution

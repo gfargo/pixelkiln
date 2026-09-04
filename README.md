@@ -347,7 +347,7 @@ const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
 console.log(plan.cost, plan.costUnit, plan.actionable.length)
 ```
 
-The package also exports audit gates, provider-neutral refinement, lock/output
+The package also exports audit and image-regression gates, provider-neutral refinement, lock/output
 helpers, provider contracts, pipeline stages, sprite packing/mounting, tile
 exporters, managed artifact writes, and offline provenance verification. See
 [Library API](./docs/LIBRARY.md).
@@ -369,7 +369,7 @@ exporters, managed artifact writes, and offline provenance verification. See
 | [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Thirty provider outputs plus native-grid and final-palette results comparing large scenes, transparency, palette size, and file readiness. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Refine, pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
-| [Quality gates](./docs/QUALITY.md) | Plan, doctor, refine, audit, cache, human approval, JSON, and CI. |
+| [Quality gates](./docs/QUALITY.md) | Image baselines, plan, doctor, refine, audit, cache, human approval, JSON, and CI. |
 | [Architecture](./docs/ARCHITECTURE.md) | State model, lockfile, providers, concurrency, and output identity. |
 | [Library API](./docs/LIBRARY.md) | Public TypeScript contracts and examples. |
 | [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |

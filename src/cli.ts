@@ -63,6 +63,11 @@ import {
   resolveRecipe,
   verifyRecipe,
 } from "./recipes.ts"
+import {
+  checkQualityBaseline,
+  resolveQualityInputs,
+  snapshotQualityBaseline,
+} from "./pipeline/quality-regression.ts"
 
 const log = (msg = "") => console.log(msg)
 
@@ -117,11 +122,11 @@ interface Args {
   note?: string
   /** ComfyUI `models` directory used for offline recipe model verification. */
   modelRoot?: string
-  /** `workspace`: add/remove/list/status/claims. */
+  /** Subcommand for `quality`, `recipe`, `refine`, or `workspace`. */
   subcommand?: string
   /** Path to a workspace catalog. Defaults to `pixelkiln.workspace.json` in cwd. */
   workspace?: string
-  /** `workspace add`: manifest path. `workspace remove`: project id or manifest path. */
+  /** Positional target for recipe and workspace subcommands. */
   target?: string
   /** `workspace add`: provider id to register the project under. Defaults to "pixellab". */
   provider?: string
@@ -151,12 +156,13 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
+  "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
 const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
 const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
+const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -173,7 +179,18 @@ export function parseArgs(argv: string[]): Args {
   let rest = argv.slice(1)
   let subcommand: string | undefined
   let target: string | undefined
-  if (command === "recipe") {
+  if (command === "quality") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new Error(`quality needs a subcommand: ${QUALITY_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(QUALITY_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new Error(
+        `Unknown quality subcommand "${subcommand}". Known: ${QUALITY_SUBCOMMANDS.join(", ")}`,
+      )
+    }
+    rest = rest.slice(1)
+  } else if (command === "recipe") {
     subcommand = rest[0]
     if (subcommand === undefined || subcommand.startsWith("-")) {
       throw new Error(`recipe needs a subcommand: ${RECIPE_SUBCOMMANDS.join(", ")}`)
@@ -402,6 +419,7 @@ Commands
   refine    Recover a native pixel grid, enforce a final palette, audit it,
             and attach a verifiable human approval. run/approve/check. Offline.
   recipe    List, inspect, install, or verify versioned workflow packs. Offline.
+  quality   Snapshot or check measurable image regressions. Offline.
   cache     Inspect local recovery/object-hash caches; optionally verify or prune.
   pack      Composite sprites into a PNG/atlas/provenance bundle. Offline.
   mount     Write a style's sprites into their declared cells of an existing
@@ -419,7 +437,7 @@ Commands
 Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
   --port <n>          Local review-server port (default: choose a free port)
-  --inputs <path>     pack: JSON [{id,path}] instead of the lockfile; needs --out
+  --inputs <path>     pack/quality snapshot: JSON input list; needs --out
   --format <format>   export: generic (default), tiled, or godot
   --output-role <r>   pack: include only this output role (repeatable)
   --primary-only      pack: include only unambiguous primary/single outputs
@@ -440,10 +458,10 @@ Options
   --style a,b         Restrict to these styles
   --only id1,id2      Restrict to these asset ids
   --budget <n>        Refuse to spend more than n provider cost units
-  --force             Regenerate; derived commands also take over modified/unowned output
+  --force             Regenerate; also replace changed recipe files or quality baselines
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
-  --json              Machine-readable output where supported, including plan/audit/doctor/cache
+  --json              Machine-readable output where supported, including quality checks
   --check             plan/audit/cache: exit nonzero when the selected state is unsafe
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser during pick
@@ -451,7 +469,7 @@ Options
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
   --workspace <path>  Workspace catalog (default: pixelkiln.workspace.json). Also
                        derives salvage's claim set instead of repeated --claims.
-  --from <dir>        Source tree for init
+  --from <path>       Source for init/refine, or baseline for quality check
   --write-prompts     adopt: recover prompts into the manifest
 
 Examples
@@ -469,6 +487,8 @@ Examples
   pixelkiln recipe list
   pixelkiln recipe install comfyui/pixel-art-xl-environment
   pixelkiln recipe verify pixelkiln-recipes/comfyui/pixel-art-xl-environment/1.0.0 --model-root /path/to/ComfyUI/models
+  pixelkiln quality snapshot --inputs quality-inputs.json --out pixelkiln.quality.json
+  pixelkiln quality check --from pixelkiln.quality.json
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json
   pixelkiln salvage --workspace pixelkiln.workspace.json
@@ -559,6 +579,62 @@ async function main() {
       await readFile(new URL("../package.json", import.meta.url), "utf8"),
     ) as { name: string; version: string }
     log(`${pkg.name} ${pkg.version}`)
+    return
+  }
+
+  if (args.command === "quality") {
+    if (args.subcommand === "snapshot") {
+      if (!args.inputs) throw new Error("quality snapshot needs --inputs <quality-inputs.json>.")
+      if (!args.out) throw new Error("quality snapshot needs --out <pixelkiln.quality.json>.")
+      let raw: unknown
+      try {
+        raw = JSON.parse(await readFile(path.resolve(args.inputs), "utf8"))
+      } catch (error) {
+        throw new Error(
+          `Could not read quality inputs ${path.resolve(args.inputs)}: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        )
+      }
+      const inputs = resolveQualityInputs(raw, args.inputs)
+      if (path.resolve(args.inputs) === path.resolve(args.out)) {
+        throw new Error("quality snapshot --out must not overwrite its --inputs file.")
+      }
+      const result = await snapshotQualityBaseline(inputs, args.out, { force: args.force })
+      if (args.json) {
+        log(JSON.stringify({
+          version: 1,
+          path: result.path,
+          changed: result.changed,
+          baseline: result.baseline,
+        }, null, 2))
+      } else {
+        log(
+          `  ${result.changed ? "wrote" : "unchanged"} ` +
+            `${path.relative(process.cwd(), result.path)} (${result.baseline.cases.length} case(s))`,
+        )
+        log(`  Review the tolerances, commit the baseline, then run quality check in CI.`)
+      }
+      return
+    }
+
+    if (!args.from) throw new Error("quality check needs --from <pixelkiln.quality.json>.")
+    const report = await checkQualityBaseline(args.from)
+    if (args.json) {
+      log(JSON.stringify(report, null, 2))
+    } else {
+      for (const entry of report.cases) {
+        log(`  ${entry.status === "pass" ? "ok" : "ERROR"}  ${entry.id}`)
+        for (const violation of entry.violations) log(`         ${violation}`)
+        for (const warning of entry.warnings) log(`  WARN   ${warning}`)
+      }
+      log(
+        `\n  ${report.summary.passed}/${report.summary.total} passed` +
+          (report.summary.changed ? ` · ${report.summary.changed} image hash(es) changed` : ""),
+      )
+      log(`  Metrics catch structural regressions; they do not replace art review.`)
+    }
+    if (!report.safe) process.exitCode = 1
     return
   }
 

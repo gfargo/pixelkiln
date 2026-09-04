@@ -219,6 +219,28 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["recipe", "verify"])).toThrow(/needs a recipe id/)
   })
 
+  it("parses offline quality snapshot and regression checks", () => {
+    expect(parseArgs([
+      "quality", "snapshot", "--inputs", "quality-inputs.json",
+      "--out", "pixelkiln.quality.json", "--force",
+    ])).toMatchObject({
+      command: "quality",
+      subcommand: "snapshot",
+      inputs: "quality-inputs.json",
+      out: "pixelkiln.quality.json",
+      force: true,
+    })
+    expect(parseArgs(["quality", "check", "--from", "pixelkiln.quality.json", "--json"]))
+      .toMatchObject({
+        command: "quality",
+        subcommand: "check",
+        from: "pixelkiln.quality.json",
+        json: true,
+      })
+    expect(() => parseArgs(["quality"])).toThrow(/needs a subcommand/)
+    expect(() => parseArgs(["quality", "approve"])).toThrow(/Unknown quality subcommand/)
+  })
+
   it("rejects an unknown workspace subcommand", () => {
     expect(() => parseArgs(["workspace", "delete", "x"])).toThrow(/Unknown workspace subcommand/)
   })

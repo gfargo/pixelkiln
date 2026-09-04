@@ -4,6 +4,7 @@ import { zodToJsonSchema } from "zod-to-json-schema"
 import { ManifestSchema } from "../src/types.ts"
 import { WorkspaceSchema } from "../src/workspace.ts"
 import { RecipeSchema } from "../src/recipes.ts"
+import { QualityBaselineSchema } from "../src/pipeline/quality-regression.ts"
 
 const manifestSchema = zodToJsonSchema(ManifestSchema, {
   name: "PixelkilnManifest",
@@ -25,3 +26,13 @@ const recipeSchema = zodToJsonSchema(RecipeSchema, {
 })
 writeFileSync("schema/recipe.schema.json", JSON.stringify(recipeSchema, null, 2) + "\n")
 console.log("wrote schema/recipe.schema.json")
+
+const qualityBaselineSchema = zodToJsonSchema(QualityBaselineSchema, {
+  name: "PixelkilnQualityBaseline",
+  $refStrategy: "none",
+})
+writeFileSync(
+  "schema/quality-baseline.schema.json",
+  JSON.stringify(qualityBaselineSchema, null, 2) + "\n",
+)
+console.log("wrote schema/quality-baseline.schema.json")

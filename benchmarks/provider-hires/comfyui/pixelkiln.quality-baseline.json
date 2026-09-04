@@ -1,0 +1,161 @@
+{
+  "$schema": "https://unpkg.com/pixelkiln/schema/quality-baseline.schema.json",
+  "format": "pixelkiln-quality-baseline",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "comfyui/alpine-valley-square",
+      "file": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.png",
+      "record": {
+        "path": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.pixelkiln.json",
+        "sha256": "3fe4802f71ae40b6142efc423b5f0a6c96baa49ef8550cbb7c343eca96d4147a"
+      },
+      "expected": {
+        "sha256": "273596e9fa172208c773bccb39e95b39fb002e9ec22fef45f4720a69aa1f682c",
+        "width": 128,
+        "height": 128,
+        "colorCount": 24,
+        "colors": [
+          "#141b1e",
+          "#1c2924",
+          "#23312a",
+          "#2c3f40",
+          "#314133",
+          "#384d4f",
+          "#3b5439",
+          "#435c3f",
+          "#466273",
+          "#476440",
+          "#48697a",
+          "#4e3b34",
+          "#526a8d",
+          "#5f6887",
+          "#607096",
+          "#618172",
+          "#664841",
+          "#6d8f7e",
+          "#709fcf",
+          "#759693",
+          "#82956c",
+          "#a16e4a",
+          "#b37f54",
+          "#f1bb70"
+        ],
+        "transparency": 0,
+        "partialAlpha": 0,
+        "edgeDensity": 0.395577,
+        "meanEdgeContrast": 0.097741,
+        "isolatedPixelRatio": 0.097656
+      },
+      "tolerances": {
+        "requireExactHash": false,
+        "maxColorCountIncrease": 0,
+        "maxNewColors": 0,
+        "maxTransparencyDelta": 0.01,
+        "maxPartialAlphaIncrease": 0,
+        "maxEdgeDensityDelta": 0.03,
+        "maxEdgeContrastDrop": 0.03,
+        "maxIsolatedPixelIncrease": 0.005
+      }
+    },
+    {
+      "id": "comfyui/alpine-valley-wide",
+      "file": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-wide-168x96.png",
+      "record": {
+        "path": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-wide-168x96.pixelkiln.json",
+        "sha256": "293a7765253ae39b446ecee5495a65ec99e9fd1f93714952cfca81a351d35c33"
+      },
+      "expected": {
+        "sha256": "82bd59103bd9554b1123cd9fda9b37f6a924aa1b6b2c26ee4c0159875df1c60b",
+        "width": 168,
+        "height": 96,
+        "colorCount": 22,
+        "colors": [
+          "#1c2924",
+          "#23312a",
+          "#2c3f40",
+          "#314133",
+          "#352b26",
+          "#384d4f",
+          "#3b5439",
+          "#435c3f",
+          "#466273",
+          "#476440",
+          "#48697a",
+          "#4e3b34",
+          "#5f6887",
+          "#618172",
+          "#664841",
+          "#715247",
+          "#759693",
+          "#82956c",
+          "#865c45",
+          "#c6a766",
+          "#cebc7b",
+          "#d8be79"
+        ],
+        "transparency": 0,
+        "partialAlpha": 0,
+        "edgeDensity": 0.390941,
+        "meanEdgeContrast": 0.098015,
+        "isolatedPixelRatio": 0.112413
+      },
+      "tolerances": {
+        "requireExactHash": false,
+        "maxColorCountIncrease": 0,
+        "maxNewColors": 0,
+        "maxTransparencyDelta": 0.01,
+        "maxPartialAlphaIncrease": 0,
+        "maxEdgeDensityDelta": 0.03,
+        "maxEdgeContrastDrop": 0.03,
+        "maxIsolatedPixelIncrease": 0.005
+      }
+    },
+    {
+      "id": "comfyui/cliffside-fortress",
+      "file": "../../../website/public/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.png",
+      "record": {
+        "path": "../../../website/public/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.pixelkiln.json",
+        "sha256": "309bc565de615df16b26733e0e7eb31dfc164b00c160caf126a1df869f1af61b"
+      },
+      "expected": {
+        "sha256": "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200",
+        "width": 128,
+        "height": 128,
+        "colorCount": 15,
+        "colors": [
+          "#1c2924",
+          "#23312a",
+          "#2b1413",
+          "#352b26",
+          "#435c3f",
+          "#476440",
+          "#4e3b34",
+          "#664841",
+          "#715247",
+          "#759693",
+          "#82956c",
+          "#865c45",
+          "#9d5a38",
+          "#b37f54",
+          "#c6a766"
+        ],
+        "transparency": 0.615967,
+        "partialAlpha": 0,
+        "edgeDensity": 0.226224,
+        "meanEdgeContrast": 0.184129,
+        "isolatedPixelRatio": 0.191672
+      },
+      "tolerances": {
+        "requireExactHash": false,
+        "maxColorCountIncrease": 0,
+        "maxNewColors": 0,
+        "maxTransparencyDelta": 0.01,
+        "maxPartialAlphaIncrease": 0,
+        "maxEdgeDensityDelta": 0.03,
+        "maxEdgeContrastDrop": 0.03,
+        "maxIsolatedPixelIncrease": 0.005
+      }
+    }
+  ]
+}

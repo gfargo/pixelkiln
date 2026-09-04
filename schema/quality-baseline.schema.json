@@ -1,0 +1,189 @@
+{
+  "$ref": "#/definitions/PixelkilnQualityBaseline",
+  "definitions": {
+    "PixelkilnQualityBaseline": {
+      "type": "object",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "format": "uri"
+        },
+        "format": {
+          "type": "string",
+          "const": "pixelkiln-quality-baseline"
+        },
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9/_-]*$"
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "record": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              },
+              "expected": {
+                "type": "object",
+                "properties": {
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "colorCount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "colors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-f]{6}$"
+                    }
+                  },
+                  "transparency": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "partialAlpha": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "edgeDensity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "meanEdgeContrast": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "isolatedPixelRatio": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "sha256",
+                  "width",
+                  "height",
+                  "colorCount",
+                  "colors",
+                  "transparency",
+                  "partialAlpha",
+                  "edgeDensity",
+                  "meanEdgeContrast",
+                  "isolatedPixelRatio"
+                ],
+                "additionalProperties": false
+              },
+              "tolerances": {
+                "type": "object",
+                "properties": {
+                  "requireExactHash": {
+                    "type": "boolean"
+                  },
+                  "maxColorCountIncrease": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "maxNewColors": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "maxTransparencyDelta": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "maxPartialAlphaIncrease": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "maxEdgeDensityDelta": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "maxEdgeContrastDrop": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "maxIsolatedPixelIncrease": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "requireExactHash",
+                  "maxColorCountIncrease",
+                  "maxNewColors",
+                  "maxTransparencyDelta",
+                  "maxPartialAlphaIncrease",
+                  "maxEdgeDensityDelta",
+                  "maxEdgeContrastDrop",
+                  "maxIsolatedPixelIncrease"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "file",
+              "expected",
+              "tolerances"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "cases"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

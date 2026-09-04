@@ -30,7 +30,9 @@ worth the extra model testing and cleanup.
    contours, single-pixel noise, palette separation, alpha, and seams.
 6. Record the named review with `pixelkiln refine approve`, then require
    `pixelkiln refine check` before packaging.
-7. Accept the smallest clear result. For the tested stack, start with 48–128px
+7. If the project has a quality baseline, run `pixelkiln quality check --from
+   <baseline>` to catch structural drift from its reviewed references.
+8. Accept the smallest clear result. For the tested stack, start with 48–128px
    native components and compose larger scenes from reviewed parts.
 
 Background removal stays in the ComfyUI graph. PixelKiln handles grid recovery,
@@ -38,6 +40,11 @@ the final palette, measurable checks, and the approval record. It cannot decide
 whether the drawing is good. Do not present the generated
 working canvas, a nearest-neighbor resize, an unreviewed grid recovery, or a
 pending quality record as the finished asset.
+
+`quality check` is deterministic and safe for CI. It measures dimensions,
+palette, alpha, edges, and isolated pixels and can bind the refiner's record.
+It cannot judge composition, prompt coverage, clusters, or readability; keep
+the named 1× review separate.
 
 Test a workflow on at least two different scene families before recommending
 it. A prompt that reduced noise in the alpine benchmark increased noise in the

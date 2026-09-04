@@ -101,7 +101,7 @@ export const docs: DocEntry[] = [
   {
     slug: "quality",
     title: "Quality gates",
-    description: "Plan, doctor, audit, cache integrity, and CI contracts.",
+    description: "Image regression baselines, human review, audit, cache integrity, and CI contracts.",
     file: "docs/QUALITY.md",
     group: "Workflows",
   },

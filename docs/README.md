@@ -24,7 +24,7 @@ provider you are using. These Markdown files also render at
 | [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and native-grid recovery. |
 | [Derived artifacts](./ARTIFACTS.md) | Pack, mount, and export; provenance companions; ownership; force takeover; transactional and crash recovery. |
 | [Recovery and account safety](./RECOVERY.md) | Restore, caches, adopt, salvage, cross-project claims, tagging, and confirmed purge. |
-| [Quality gates](./QUALITY.md) | Plan, doctor, refine, audit, cache checks, human approval, JSON contracts, and CI usage. |
+| [Quality gates](./QUALITY.md) | Image regression baselines, human review, plan, doctor, audit, cache, and CI usage. |
 | [Versioned recipes](./RECIPES.md) | Install and verify pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 
 ## Internals and extension
@@ -32,7 +32,7 @@ provider you are using. These Markdown files also render at
 | Guide | Use it for |
 |---|---|
 | [Architecture](./ARCHITECTURE.md) | Manifest/lock state, provider boundary, output identity, concurrency, and durable writes. |
-| [Library API](./LIBRARY.md) | Public TypeScript imports for planning, auditing, providers, packing, exporting, and managed artifact writes. |
+| [Library API](./LIBRARY.md) | Public TypeScript imports for planning, quality checks, providers, packing, exporting, and managed artifact writes. |
 | [Tiles and engine exports](./TILES.md) | Structural tile roles, provider rule preservation, generic JSON, Tiled Wang sets, and Godot terrain sets. |
 | [Measured PixelLab endpoints](./ENDPOINTS.md) | Live-account cost and payload research, endpoint recipes, limits, and unresolved API behavior. |
 | [Provider comparison](../PROVIDERS.md) | Provider selection, costs, adapter capabilities, confidence, and next work. Start with the provider-specific setup guides above when you are ready to configure a project. |

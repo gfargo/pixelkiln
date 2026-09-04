@@ -289,6 +289,32 @@ only after inspecting a representative batch. `--fixer-revision` records a
 different pinned installation; it does not install or verify that revision for
 you.
 
+### `quality`
+
+Snapshot measurable PNG traits, then fail CI when committed assets drift beyond
+their reviewed envelope. This command is offline, provider-neutral, and does not
+approve art.
+
+```bash
+pixelkiln quality snapshot \
+  --inputs config/quality-inputs.json \
+  --out quality/pixelkiln.quality.json
+pixelkiln quality check --from quality/pixelkiln.quality.json
+```
+
+The input file is a JSON array of `{ id, path, record?, tolerances? }`. Paths
+are relative to that file. The baseline stores portable paths relative to
+itself and records dimensions, palette, transparency, partial alpha, edge
+density and contrast, isolated-pixel ratio, and the PNG hash. A linked
+refinement record must be current and own the image.
+
+`snapshot` leaves a different existing baseline untouched unless `--force` is
+explicit. `check` exits nonzero for missing files, dimension or metric drift,
+new colors, soft or partial-alpha edges, excessive isolated pixels, exact-hash
+violations, or changed refinement records. Hash-only changes are warnings unless
+`requireExactHash` is enabled or a linked record binds the bytes. Review changes
+visually before replacing a baseline.
+
 ### `cache`
 
 Inspect the local content cache and account object-hash cache. `--check` exits
@@ -345,9 +371,9 @@ Print the package version. `-v` is an alias.
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. |
 | `--budget <n>` | submit/gen | Refuse work above this provider-unit cost. |
-| `--force` | gen/derived commands/recipe install | Regenerate current work, take ownership of modified/unowned derived output, or replace changed files declared by an installed recipe. A refine rerun resets approval. |
+| `--force` | gen/derived commands/recipe install/quality snapshot | Regenerate current work, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refine rerun resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
-| `--json` | plan/doctor/audit/cache/status/salvage/refine/recipe | Machine-readable stdout where supported. |
+| `--json` | plan/doctor/audit/cache/status/salvage/refine/recipe/quality | Machine-readable stdout where supported. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage | Do not automatically open the browser. |
@@ -357,14 +383,14 @@ Print the package version. `-v` is an alias.
 | `--provider <id>` | workspace add | Provider id to register the project under; defaults to the target manifest's provider. |
 | `--account <label>` | workspace add | Free-form account label, e.g. distinguishing sandboxes. |
 | `--all` | salvage dry run | List every unclaimed object rather than the first 30. |
-| `--from <path>` | init/refine | Existing source tree for init; source PNG or quality record for refine. |
+| `--from <path>` | init/refine/quality check | Existing source tree for init; source PNG or quality record for refine; baseline for quality check. |
 | `--exclude <names>` | init | Directory/name fragments to exclude; repeatable. |
 | `--generator <name>` | init | Generator assigned to the scaffolded style. |
 | `--name <name>` | init | Project name for the scaffolded manifest. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--port <n>` | pick/salvage | Local review server port; otherwise chooses a free port. |
-| `--out <path>` | pack/export/refine/recipe install | Output base override, final native PNG for refine, or exact recipe destination. Export requires one selected tileset. |
-| `--inputs <path>` | pack | JSON array of `{ id, path }`; requires `--out`. |
+| `--out <path>` | pack/export/refine/recipe install/quality snapshot | Output base override, final native PNG for refine, exact recipe destination, or quality baseline path. Export requires one selected tileset. |
+| `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
 | `--format <name>` | export | `generic` (default), `tiled`, or `godot`. |
 | `--output-role <role>` | pack | Include named structural roles; repeatable. |
@@ -394,5 +420,8 @@ Print the package version. `-v` is an alias.
   metadata drift exits nonzero.
 - `recipe verify` exits nonzero for changed metadata/workflows and, when
   `--model-root` is supplied, missing or mismatched models.
+- `quality check` is fail-closed for missing or unreadable images, measurements
+  outside tolerance, exact-hash violations, and changed or invalid linked
+  refinement records.
 - Commands that can spend or delete expose their scope before doing so; budget
   and confirmation are separate protections.

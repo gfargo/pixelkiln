@@ -35,6 +35,7 @@ try {
     "bin/pixelkiln.js",
     "schema/manifest.schema.json",
     "schema/recipe.schema.json",
+    "schema/quality-baseline.schema.json",
     "docs/README.md",
     "docs/CLI.md",
     "docs/GETTING_STARTED.md",
@@ -67,12 +68,12 @@ try {
   run(process.execPath, [
     "--input-type=module",
     "--eval",
-    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function') process.exit(1)",
+    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function') process.exit(1)",
   ], consumer)
   run(process.execPath, [
     "--input-type=commonjs",
     "--eval",
-    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function') process.exit(1)",
+    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function') process.exit(1)",
   ], consumer)
 
   const cli = path.join(

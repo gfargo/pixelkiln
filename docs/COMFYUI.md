@@ -280,6 +280,13 @@ intentional ramps, or important forms stop reading at 1×. Keep the smaller
 result when it is clearer. See the [quality gates](./QUALITY.md) for the human
 review checklist.
 
+PixelKiln's committed ComfyUI examples also have an automated regression
+baseline. `npm run test:quality` checks that their dimensions, palettes, alpha,
+edge structure, isolated-pixel noise, and bound refinement records have not
+drifted. Use `pixelkiln quality snapshot` to establish the same guard for a
+project's reviewed assets. Passing it does not make an image good; it only
+proves that measured traits have not regressed from the accepted reference.
+
 ## Build larger environments
 
 Do not ask the model for one enormous finished level. Generate and review the
