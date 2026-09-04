@@ -63,6 +63,29 @@ measured member-by-member with stable role-qualified ids. Standard
 non-interlaced greyscale, indexed, RGB, greyscale-alpha, and RGBA PNGs are
 normalized to RGBA before measurement.
 
+## Human pixel-art gate
+
+The audit catches measurable drift; it does not decide whether an image is good
+pixel art. A grid-aligned file can still contain painterly gradients, noisy
+single-pixel marks, weak silhouettes, or clusters inherited from a blurred
+source. Review every candidate at its native 1× size and at an integer zoom.
+
+For each candidate, verify:
+
+- every required subject and landmark from the brief is present and readable;
+- the silhouette and focal point read at 1×;
+- clusters look deliberate instead of averaged or smeared;
+- contours do not contain accidental stair-steps or isolated noise;
+- the palette separates depth and gameplay-relevant shapes;
+- transparency and tile seams are clean when applicable;
+- the asset still fits the project's shared grid, palette, and perspective.
+
+Reject a candidate that fails those checks even when dimensions, hashes,
+transparency, palette count, and grid recovery all pass. For the tested ComfyUI
+pixel-art stack, begin with 48–128px native components and compose larger scenes
+from reviewed parts. Apply the final palette after grid recovery. Resolution is
+a ceiling imposed by quality, not a target.
+
 ## Cache integrity gate
 
 ```bash

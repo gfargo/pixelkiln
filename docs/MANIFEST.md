@@ -178,7 +178,9 @@ input constraints are checked during the free planning phase.
 
 ComfyUI runs a committed API-format workflow on a self-hosted server. The
 workflow file is resolved relative to the manifest and its parsed content is
-part of the spec hash.
+part of the spec hash. Adapter success proves transport and output structure,
+not pixel-art quality. The tested workflows still need manual native-grid,
+final-palette, prompt-coverage, and human 1× checks.
 
 ```jsonc
 {
@@ -219,7 +221,9 @@ Node IDs come from the exported workflow; they are not stable across unrelated
 workflows. The current adapter supports `map`, PNG output from one node, 1–16
 candidates, and dimensions from 16–4096px. It rejects manifest `styleImages`
 and `palette`; keep those controls inside the workflow. See
-[Set up ComfyUI](COMFYUI.md) for the complete procedure and limits.
+[Set up ComfyUI](COMFYUI.md) for the complete procedure, safe workflow, and
+quality limits. The 4096px adapter ceiling is not a recommended generation or
+native-art size.
 
 ## Asset fields
 

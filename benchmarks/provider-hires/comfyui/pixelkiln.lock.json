@@ -1,0 +1,107 @@
+{
+  "version": 2,
+  "entries": {
+    "baseline-64/alpine-valley": {
+      "styleId": "baseline-64",
+      "assetId": "alpine-valley",
+      "specHash": "671ac9f943687eb8b5ea4e251ad8112661c57e9077dd106f34b406b3b15b3894",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame",
+      "width": 1024,
+      "height": 1024,
+      "jobId": "21d5fc43-62e3-468a-a040-70bcf9991a1d#9",
+      "reviewObjectId": null,
+      "objectId": "21d5fc43-62e3-468a-a040-70bcf9991a1d#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-hires-baseline_00002_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-hires-baseline_00002_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-hires/comfyui/baseline-64/alpine-valley.png",
+          "sha256": "8098a2d9f140a07847c01d3a02b19a4ca2783644ba90c7e51af04e6d031f077d",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "promptId": "21d5fc43-62e3-468a-a040-70bcf9991a1d",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "workflow-baseline-api.json",
+          "workflowSha256": "93c4f57a32b4dcaa74badc3f3b979503a4fd823cbebfc9ad8fa750e03dd32c6e",
+          "files": [
+            {
+              "filename": "comfyui-hires-baseline_00002_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-03T18:53:23.249Z",
+      "downloadedAt": "2026-09-03T18:57:19.441Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    },
+    "native-wide-64/alpine-valley-wide": {
+      "styleId": "native-wide-64",
+      "assetId": "alpine-valley-wide",
+      "specHash": "e938eb48480d93088911b9dad0551da70bc388b5ec09279839a359c62d50030b",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game environment, crisp clusters, layered depth, a wide alpine valley at dusk, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background, full-bleed scenic composition, no frame",
+      "width": 1344,
+      "height": 768,
+      "jobId": "027ea9b3-c076-41d1-8265-02bda7ce48c9#9",
+      "reviewObjectId": null,
+      "objectId": "027ea9b3-c076-41d1-8265-02bda7ce48c9#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-native-wide_00002_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-native-wide_00002_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/benchmarks/provider-hires/comfyui/native-wide-64/alpine-valley-wide.png",
+          "sha256": "3d54992573836197edfc6a2e2f44f1b0b25f790c891e9a4419a0ab5e2ddaad76",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "promptId": "027ea9b3-c076-41d1-8265-02bda7ce48c9",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "workflow-native-wide-api.json",
+          "workflowSha256": "e3dfa0470c50b2f26cbf706be14a72ae2bec8e17d7fdb9be4c26f702ee974e6f",
+          "files": [
+            {
+              "filename": "comfyui-native-wide_00002_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-03T20:12:08.386Z",
+      "downloadedAt": "2026-09-03T20:13:39.433Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    }
+  }
+}

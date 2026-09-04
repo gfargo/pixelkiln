@@ -224,8 +224,8 @@ export default function Home() {
               <p className="provider-note">
                 PixelLab is production-ready. Retro Diffusion has live-tested
                 stills. ComfyUI has live-tested local generation, candidate
-                queueing, cache recovery, SDXL pixel art, transparent cutouts,
-                and fixed-palette output.
+                queueing, and cache recovery. Its SDXL, cleanup, and native-grid
+                results are source material, not a production-ready pixel-art preset.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
@@ -269,10 +269,10 @@ export default function Home() {
               <h2>Same briefs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
-              These are untouched outputs from committed 256px and 384px
-              benchmark projects. The ComfyUI card names its model stack and
-              workflow because a self-hosted provider alone says nothing about
-              image quality.
+              These are outputs from committed benchmark projects. The
+              ComfyUI card separates its model canvas from the recovered native
+              pixel grid, because a large raster can still contain fake pixels.
+              Its samples are diagnostics, not finished asset recommendations.
             </p>
           </div>
 
@@ -386,35 +386,38 @@ export default function Home() {
               <div className="provider-image-grid">
                 <figure>
                   <Image
-                    src="/benchmarks/provider-postprocessing/comfyui/isolated/cliffside-fortress.png"
-                    alt="Transparent 58-color ComfyUI SDXL and Pixel Art XL result for a fortified monastery built into a mountain cliff"
-                    width={384}
-                    height={384}
+                    src="/benchmarks/provider-hires/comfyui/native-grid/cliffside-fortress-128x128.png"
+                    alt="Transparent ComfyUI cliffside fortress reconstructed onto a native 128 by 128 pixel grid"
+                    width={128}
+                    height={128}
                     sizes="(max-width: 680px) 50vw, 280px"
+                    unoptimized
                   />
-                  <figcaption>Large building · transparent · 58 colors</figcaption>
+                  <figcaption>Recovery test · native 128×128 · transparent</figcaption>
                 </figure>
                 <figure>
                   <Image
-                    src="/benchmarks/provider-postprocessing/comfyui/background/alpine-valley.png"
-                    alt="64-color ComfyUI SDXL and Pixel Art XL result for an alpine valley background at dusk"
-                    width={256}
-                    height={256}
+                    src="/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-128x128.png"
+                    alt="ComfyUI alpine valley reconstructed onto a native 128 by 128 pixel grid"
+                    width={128}
+                    height={128}
                     sizes="(max-width: 680px) 50vw, 280px"
+                    unoptimized
                   />
-                  <figcaption>Scenic background · 64 colors</figcaption>
+                  <figcaption>Grid recovery test · native 128×128 · 48 colors</figcaption>
                 </figure>
               </div>
               <p>
-                SDXL Base plus Pixel Art XL produced the clearest large
-                building and strongest layered landscape in this sample. The
-                workflow renders at 1024px. Core BiRefNet removal and 64-color
-                quantization now produce ready-to-place cutouts without custom
-                nodes.
+                SDXL Base plus Pixel Art XL produced promising compositions,
+                but its outputs only imitated a pixel grid. Pixel Art Fixer
+                recovered editable 1× assets; visual quality still needs human
+                review. Start small and compose accepted parts into larger scenes.
               </p>
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
-                <div><dt>Best fit</dt><dd>Local control, large scenes, and repeatable cleanup</dd></div>
+                <div><dt>Quality target</dt><dd>48–128px native per part</dd></div>
+                <div><dt>Best fit</dt><dd>Local composition and custom graph experiments</dd></div>
+                <div><dt>Readiness</dt><dd>Manual recovery and art review required</dd></div>
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">
@@ -422,6 +425,9 @@ export default function Home() {
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_comfyui_site" section="provider_showcase" href="https://www.comfy.org/" external>
                   Visit ComfyUI ↗
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_pixel_fixer" section="provider_showcase" href="https://www.retrodiffusion.ai/tools/pixel-art-fixer/" external>
+                  Try Pixel Art Fixer ↗
                 </TrackedLink>
               </div>
             </article>

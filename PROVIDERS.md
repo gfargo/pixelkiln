@@ -66,19 +66,19 @@ prompt, size, batch, and optional seed inputs PixelKiln may replace.
 
 | Decision | ComfyUI through PixelKiln |
 |---|---|
-| Best fit today | Private assets, local models, custom graph control, and teams that already maintain ComfyUI workflows |
+| Best fit today | Local composition experiments, private inputs, and teams prepared to maintain and manually validate custom graphs |
 | PixelKiln generator | `map` stills |
 | Output | One PNG output node, with 1–16 review candidates |
 | Cost model | `0 free`; local compute and hosting are outside PixelKiln's estimate |
 | Reproducibility | Workflow content is hashed; model files, custom-node versions, and runtime settings must still be managed outside PixelKiln |
 | Account lifecycle | Read-only connectivity check; no balance, remote object listing, tagging, or purge |
-| Confidence | Full mocked coverage plus a live core-node single-image lifecycle, four-candidate queue, and cache-only restore on Apple MPS; pixel-art model benchmark pending |
+| Confidence | Full mocked coverage plus live generation, four-candidate review, and cache-only restore on Apple MPS; cleanup and native-grid experiments remain manual, and aesthetic approval remains human |
 
-ComfyUI is the strongest option when workflow ownership matters more than a
-managed service. It is also the easiest provider to make irreproducible by
-accident. Two machines can share the same graph but differ in checkpoint bytes,
-custom-node versions, or sampler behavior. Commit the workflow and document the
-external model stack used to validate it.
+Choose ComfyUI when workflow ownership is worth manual validation. If the goal
+is the least cleanup between a prompt and usable pixel art, start with a
+specialized hosted provider. Two ComfyUI machines can share the same graph but
+differ in checkpoint bytes, custom-node versions, or sampler behavior. Commit
+the workflow and document the external model stack used to validate it.
 
 ## Large environments, mountains, and buildings
 
@@ -87,8 +87,8 @@ background. That distinction matters more than raw canvas size.
 
 | Asset type | PixelLab | Retro Diffusion | ComfyUI |
 |---|---|---|---|
-| Isolated house, building, mountain, or landmark | Start with `map`: arbitrary dimensions up to 400×400 and a measured one-generation cost. Live benchmark outputs had opaque backgrounds, so plan for cleanup. Use `1dir` only when references or candidate variety justify 20–40 generations and a square canvas. | Start with `rd_plus__topdown_asset`, `rd_plus__isometric_asset`, or `rd_tile__scene_object`, depending on perspective. `rd_tile__scene_object` is intended for 64–384px objects placed on tile maps. | Choose a checkpoint or LoRA trained for the intended perspective, then keep background removal or segmentation in the workflow. The adapter accepts up to 4096px per edge, but useful size depends on the model and VRAM. |
-| Full scenic background | Use `pixflux` with `noBackground: false` when an exact palette matters, or `map` for a simple scene. Current PixelKiln routes top out at 400×400. | `rd_plus__environment` targets one-point-perspective scenes; `rd_plus__topdown_map` targets 3/4 top-down maps. These styles support up to 384×384. | A custom workflow can use composition controls, tiled diffusion, or a generate-then-downscale path. PixelKiln does not configure those nodes; it binds the final size and records the graph hash. |
+| Isolated house, building, mountain, or landmark | Start with `map`: arbitrary dimensions up to 400×400 and a measured one-generation cost. Live benchmark outputs had opaque backgrounds, so plan for cleanup. Use `1dir` only when references or candidate variety justify 20–40 generations and a square canvas. | Start with `rd_plus__topdown_asset`, `rd_plus__isometric_asset`, or `rd_tile__scene_object`, depending on perspective. `rd_tile__scene_object` is intended for 64–384px objects placed on tile maps. | Choose a checkpoint or LoRA trained for the intended perspective, then keep background removal or segmentation in the workflow. For the tested Pixel Art XL stack, target 48–128px native components even though the adapter accepts larger working canvases. |
+| Full scenic background | Use `pixflux` with `noBackground: false` when an exact palette matters, or `map` for a simple scene. Current PixelKiln routes top out at 400×400. | `rd_plus__environment` targets one-point-perspective scenes; `rd_plus__topdown_map` targets 3/4 top-down maps. These styles support up to 384×384. | Use composition controls only to establish the scene. Recover and review native components, then compose them at 1× with one grid and palette. A large model canvas is not a large native pixel-art canvas. |
 | Style consistency across a set | `1dir` accepts a style reference and returns size-dependent candidates, but it is more expensive and capped at the square-object range. | RD Pro accepts up to nine references and has stronger prompt following, but its common styles top out at 256×256 and cost $0.18 per image. Environment-specific RD Plus styles trade references for a larger 384px canvas. | LoRAs, reference adapters, ControlNet, and shared latent settings can live in the committed workflow. Reproducibility also depends on external model and custom-node versions. |
 | Very large final scene | Generate reusable objects, terrain, and background layers separately; assemble them deterministically and integer-upscale the result. | Use the same layered approach. The API has a 512px overall ceiling, but the useful environment and scene-object styles currently cap at 384px. | The graph can tile, upscale, or composite beyond hosted-provider limits, but memory and seam quality become workflow concerns. Prefer reusable layers unless the scene truly needs one render. |
 
@@ -155,7 +155,7 @@ reviewed outputs independently, or combine explicit files with `pixelkiln pack
 This is a useful split when PixelLab handles prompt-sensitive buildings and
 account recovery, Retro Diffusion handles environment-styled backdrops, clean
 cutouts, or native animation, and ComfyUI handles private or project-specific
-model workflows. Retro Diffusion is not a higher-resolution
+model experiments that can absorb manual cleanup. Retro Diffusion is not a higher-resolution
 route through PixelKiln today: its useful environment styles cap at 384×384,
 while PixelLab `map` reaches 400×400. Its advantage is the model/style and
 output type, not raw dimensions.
@@ -207,11 +207,11 @@ estimate and hard budget remain enforced.
 
 ## What to build next
 
-The first ComfyUI release now has a live, versioned core-node reference
-workflow. The remaining confidence gap is visual rather than transport: choose
-and pin a pixel-art model or LoRA, then benchmark a large building and scenic
-background against the hosted-provider briefs. A human still needs to complete
-the live four-candidate selection and fetch path.
+The first ComfyUI release has a live, versioned core-node reference workflow.
+Transport, candidate review, provenance, and cache recovery work. Art quality is
+still the gap. The tested SDXL plus Pixel Art XL graph is useful for composition,
+but it is not a production preset. Native-grid recovery, final palette
+enforcement, prompt coverage, and aesthetic approval remain manual.
 
 Native per-style provider routing remains the highest-value orchestration
 feature. One manifest should be able to send a building style to PixelLab, an
@@ -240,15 +240,18 @@ captured before submission.
 
 Recommended order:
 
-1. Select and benchmark a pinned pixel-art ComfyUI workflow, including a human-reviewed candidate fetch.
-2. Add per-style provider selection, provider-keyed budgets, and mixed-provider
+1. Build a provider-neutral post-processing record for background removal,
+   native-grid recovery, final palette enforcement, and human approval.
+2. Benchmark pinned ComfyUI models and prompt patterns across at least two scene
+   families. Reject any supposed improvement that helps only one subject.
+3. Add per-style provider selection, provider-keyed budgets, and mixed-provider
    integration tests.
-3. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
+4. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
    smoke tests.
-4. Build the Scenario still-image spike from issue #52 with dry-run cost, submit, poll,
+5. Build the Scenario still-image spike from issue #52 with dry-run cost, submit, poll,
    download, and one custom-model or reference-image benchmark.
-5. Design ComfyUI Cloud as a separate authenticated and billable adapter.
-6. Consider general raster marketplaces only with explicit nearest-neighbor,
+6. Design ComfyUI Cloud as a separate authenticated and billable adapter.
+7. Consider general raster marketplaces only with explicit nearest-neighbor,
    palette, transparency, and reproducibility checks.
 
 Midjourney is not an adapter target without an official public API. Automating

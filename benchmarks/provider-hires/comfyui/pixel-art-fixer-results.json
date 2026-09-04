@@ -1,0 +1,64 @@
+{
+  "tool": {
+    "name": "Retro Diffusion Pixel Art Fixer",
+    "url": "https://github.com/Retro-Diffusion/pixel-art-fixer",
+    "license": "MIT",
+    "commit": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+    "engine": "python-api/full"
+  },
+  "qualityPolicy": {
+    "purpose": "native-grid recovery benchmark",
+    "gridRecoveryIsQualityApproval": false,
+    "preferredNativeMin": 48,
+    "preferredNativeMax": 128,
+    "decision": "human-review-required",
+    "note": "A recovered grid proves one stored pixel per detected cell. It does not prove deliberate clusters, readable silhouettes, palette discipline, or production-ready pixel art."
+  },
+  "runs": [
+    {
+      "source": "../../../website/public/benchmarks/provider-postprocessing/comfyui/isolated/cliffside-fortress.png",
+      "sourceSha256": "dd4d68d3ec362d4a35e4e8eb2c7929c1ebc86c316199a898ca64314072ef5d5f",
+      "sourceWidth": 384,
+      "sourceHeight": 384,
+      "output": "../../../website/public/benchmarks/provider-hires/comfyui/native-grid/cliffside-fortress-128x128.png",
+      "outputSha256": "ad6b558695200aaa25a2add8fb6cee292ad0c617aa24220410b6ec683c304256",
+      "nativeWidth": 128,
+      "nativeHeight": 128,
+      "stepX": 3,
+      "stepY": 3,
+      "colors": 252,
+      "consensus": "fast:ac+rl(S)",
+      "confidence": "high"
+    },
+    {
+      "source": "../../../website/public/benchmarks/provider-hires/comfyui/baseline-64/alpine-valley.png",
+      "sourceSha256": "8098a2d9f140a07847c01d3a02b19a4ca2783644ba90c7e51af04e6d031f077d",
+      "sourceWidth": 1024,
+      "sourceHeight": 1024,
+      "output": "../../../website/public/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-128x128.png",
+      "outputSha256": "86231573a54d5bb48f62b86ca5176e96f90309e57cf0fdd2209c00b2129f3ed9",
+      "nativeWidth": 128,
+      "nativeHeight": 128,
+      "stepX": 8,
+      "stepY": 8,
+      "colors": 48,
+      "consensus": "fast:ac+rl(S)",
+      "confidence": "high"
+    },
+    {
+      "source": "../../../website/public/benchmarks/provider-hires/comfyui/native-wide-64/alpine-valley-wide.png",
+      "sourceSha256": "3d54992573836197edfc6a2e2f44f1b0b25f790c891e9a4419a0ab5e2ddaad76",
+      "sourceWidth": 1344,
+      "sourceHeight": 768,
+      "output": "../../../website/public/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-wide-168x96.png",
+      "outputSha256": "f0ff2cace29546335a4baf37cac50931fb524eaf19864fe3eadb1688431b86b7",
+      "nativeWidth": 168,
+      "nativeHeight": 96,
+      "stepX": 8,
+      "stepY": 8,
+      "colors": 48,
+      "consensus": "fast:ac+rl(S)",
+      "confidence": "high"
+    }
+  ]
+}

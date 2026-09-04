@@ -24,7 +24,8 @@ tileset, GIF, and spritesheet live runs remain. An experimental ComfyUI adapter
 runs committed API-format still-image workflows on a self-hosted server. Its
 core-node smoke project has passed live generation, candidate queueing, and
 cache-only recovery on Apple MPS. An SDXL plus Pixel Art XL workflow also has
-four baseline samples and four refined transparency and palette samples. See
+four baseline samples and four diagnostic cleanup samples. It is source
+material, not a production-ready pixel-art preset. See
 [provider comparison](./PROVIDERS.md) for the trade-offs, including large
 environment and building workflows.
 `FakeProvider` exercises the same contract deterministically in tests.
@@ -189,7 +190,14 @@ select another provider and pass namespaced `providerOptions`; see
 [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), and
 [Set up ComfyUI](./docs/COMFYUI.md). The
 [provider comparison](./PROVIDERS.md) covers costs,
-current confidence, and limitations.
+current confidence, and limitations. The committed ComfyUI projects now include
+transparent cutouts, palette-controlled backgrounds, wide environment canvases,
+and native-grid recovery for model output that only looks like pixel art. The
+ComfyUI guidance is quality-first: start with 48–128px native components,
+apply the final palette after grid recovery, require prompt-coverage and human
+cluster-and-silhouette review, and compose larger scenes from accepted parts
+instead of chasing a larger raster. Those cleanup and approval steps are manual
+today.
 
 The schema rejects unknown fields and invalid generator combinations before
 planning. See the [Manifest reference](./docs/MANIFEST.md).
@@ -347,7 +355,7 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
-| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Twenty-eight outputs comparing providers, large scenes, transparency, palette size, and file readiness. |
+| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Thirty provider outputs plus three deterministic native-grid results comparing large scenes, transparency, palette size, and file readiness. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
 | [Quality gates](./docs/QUALITY.md) | Plan, doctor, audit, cache, JSON, and CI. |

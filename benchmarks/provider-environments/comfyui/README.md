@@ -4,6 +4,10 @@ This project extends the hosted-provider environment benchmark with a named,
 reproducible ComfyUI stack. It uses SDXL Base 1.0, Pixel Art XL, and core
 ComfyUI nodes only.
 
+It benchmarks composition and adapter behavior. The PNGs are source material,
+not production-ready pixel art. They need native-grid recovery, final palette
+enforcement, prompt-coverage review, and pixel-cluster review before use.
+
 Install the two files listed in the [ComfyUI setup guide](../../../docs/COMFYUI.md),
 start the local server, then run:
 

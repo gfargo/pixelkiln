@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { sha256 } from "../src/hash.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { loadLock } from "../src/lock.ts"
 import { createProvider, providerFactory } from "../src/providers/registry.ts"
@@ -10,6 +11,7 @@ import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { submit } from "../src/pipeline/submit.ts"
+import { decodePng } from "../src/png.ts"
 import { FAKE_PNG } from "../src/providers/fake.ts"
 import { lockKey, type Lock } from "../src/types.ts"
 
@@ -122,6 +124,91 @@ describe("ComfyUI provider", () => {
     expect(isolated[12].inputs.bg_removal_name).toBe("birefnet.safetensors")
     expect(isolated[15].inputs).toMatchObject({ colors: 64, dither: "none" })
     expect(isolated[11].inputs).toMatchObject({ upscale_method: "nearest-exact" })
+  })
+
+  it("keeps the committed resolution benchmark reproducible and current", async () => {
+    const root = path.resolve("benchmarks/provider-hires/comfyui")
+    const specs = await resolveSpecs(await loadManifest(path.join(root, "pixelkiln.manifest.json")))
+    const lock = await loadLock(path.join(root, "pixelkiln.lock.json"))
+    const plan = await buildPlan(specs, lock)
+
+    expect(plan.items).toHaveLength(2)
+    expect(plan.items.every((item) => item.state === "ok")).toBe(true)
+    expect(plan.actionable).toEqual([])
+
+    const nativeWide = JSON.parse(
+      await readFile(path.join(root, "workflow-native-wide-api.json"), "utf8"),
+    )
+    expect(nativeWide[5].inputs).toMatchObject({ width: 1344, height: 768 })
+    expect(nativeWide[11].inputs).toMatchObject({ width: 1344, height: 768 })
+    expect(Object.values(nativeWide as JsonObject).map((node) => (
+      node as JsonObject
+    ).class_type)).not.toContain("LatentUpscale")
+
+    const report = JSON.parse(await readFile(
+      path.join(root, "pixel-art-fixer-results.json"),
+      "utf8",
+    )) as {
+      tool: { license: string; commit: string }
+      qualityPolicy: {
+        purpose: string
+        gridRecoveryIsQualityApproval: boolean
+        preferredNativeMin: number
+        preferredNativeMax: number
+        decision: string
+      }
+      runs: Array<{
+        source: string
+        sourceSha256: string
+        sourceWidth: number
+        sourceHeight: number
+        output: string
+        outputSha256: string
+        nativeWidth: number
+        nativeHeight: number
+        stepX: number
+        stepY: number
+        colors: number
+        confidence: string
+      }>
+    }
+    expect(report.tool).toMatchObject({
+      license: "MIT",
+      commit: "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+    })
+    expect(report.qualityPolicy).toEqual(expect.objectContaining({
+      purpose: "native-grid recovery benchmark",
+      gridRecoveryIsQualityApproval: false,
+      preferredNativeMin: 48,
+      preferredNativeMax: 128,
+      decision: "human-review-required",
+    }))
+    expect(report.runs).toHaveLength(3)
+
+    for (const run of report.runs) {
+      const sourceBytes = await readFile(path.resolve(root, run.source))
+      const outputBytes = await readFile(path.resolve(root, run.output))
+      const sourceImage = decodePng(sourceBytes)
+      const outputImage = decodePng(outputBytes)
+
+      expect(sha256(sourceBytes)).toBe(run.sourceSha256)
+      expect(sha256(outputBytes)).toBe(run.outputSha256)
+      expect(sourceImage).toMatchObject({ width: run.sourceWidth, height: run.sourceHeight })
+      expect(outputImage).toMatchObject({ width: run.nativeWidth, height: run.nativeHeight })
+      expect(run.sourceWidth / run.nativeWidth).toBe(run.stepX)
+      expect(run.sourceHeight / run.nativeHeight).toBe(run.stepY)
+      const visibleColors = new Set<string>()
+      for (let offset = 0; offset < outputImage.pixels.length; offset += 4) {
+        if (outputImage.pixels[offset + 3] === 0) continue
+        visibleColors.add([
+          outputImage.pixels[offset],
+          outputImage.pixels[offset + 1],
+          outputImage.pixels[offset + 2],
+        ].join(","))
+      }
+      expect(visibleColors.size).toBe(run.colors)
+      expect(run.confidence).toBe("high")
+    }
   })
 
   it("hashes parsed workflow content and plans without a network request", async () => {
