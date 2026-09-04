@@ -1,3 +1,10 @@
+# [0.10.0](https://github.com/gfargo/pixelkiln/compare/v0.9.0...v0.10.0) (2026-09-04)
+
+
+### Features
+
+* require supported Node.js LTS releases ([#57](https://github.com/gfargo/pixelkiln/issues/57)) ([7babb34](https://github.com/gfargo/pixelkiln/commit/7babb34585a65dbcb2851485cebdcf5d44635f7e))
+
 # [0.9.0](https://github.com/gfargo/pixelkiln/compare/v0.8.0...v0.9.0) (2026-09-04)
 
 
