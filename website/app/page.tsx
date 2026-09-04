@@ -422,6 +422,9 @@ export default function Home() {
                 <div><dt>Readiness</dt><dd>Refinement automated; art review required</dd></div>
               </dl>
               <div className="provider-card-links">
+                <TrackedLink className="text-link" id="showcase_comfyui_recipe" section="provider_showcase" href="/docs/recipes">
+                  Install tested recipe →
+                </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">
                   Set up ComfyUI →
                 </TrackedLink>

@@ -33,6 +33,8 @@ With the skill loaded, an agent should:
    `refine check` before packaging refined output.
 8. Commit the manifest, lockfile, generated output, and artifact companions, but
    never credentials or `.pixelkiln/` caches.
+9. Prefer a version-pinned recipe when one matches the provider and task. Verify
+   the installed workflow, and verify models when their local root is known.
 
 The skill guides the workflow; PixelKiln remains the deterministic execution
 layer. This separation keeps agent reasoning out of polling, hashing, downloads,

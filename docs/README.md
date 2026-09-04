@@ -25,6 +25,7 @@ provider you are using. These Markdown files also render at
 | [Derived artifacts](./ARTIFACTS.md) | Pack, mount, and export; provenance companions; ownership; force takeover; transactional and crash recovery. |
 | [Recovery and account safety](./RECOVERY.md) | Restore, caches, adopt, salvage, cross-project claims, tagging, and confirmed purge. |
 | [Quality gates](./QUALITY.md) | Plan, doctor, refine, audit, cache checks, human approval, JSON contracts, and CI usage. |
+| [Versioned recipes](./RECIPES.md) | Install and verify pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 
 ## Internals and extension
 

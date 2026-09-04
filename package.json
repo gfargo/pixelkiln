@@ -91,6 +91,7 @@
     "dist",
     "bin",
     "schema",
+    "recipes",
     "skills",
     "docs",
     "examples",

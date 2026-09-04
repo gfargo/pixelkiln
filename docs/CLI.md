@@ -193,6 +193,38 @@ too. PixelKiln never skips one because the catalog exists to guarantee a
 complete account-wide claim set. See
 [Recovery and account safety](./RECOVERY.md#shared-workspace-catalog).
 
+### `recipe`
+
+Manage versioned provider setup packs without contacting a provider. Recipe
+metadata includes a manifest style template, included workflow hashes, external
+model hashes and licenses, and an explicit quality stage.
+
+```bash
+pixelkiln recipe list
+pixelkiln recipe inspect comfyui/pixel-art-xl-environment
+pixelkiln recipe install comfyui/pixel-art-xl-environment@1.0.0
+pixelkiln recipe verify \
+  pixelkiln-recipes/comfyui/pixel-art-xl-environment/1.0.0 \
+  --model-root /path/to/ComfyUI/models
+```
+
+| Subcommand | Effect |
+|---|---|
+| `list` | Lists every recipe bundled with this PixelKiln version. |
+| `inspect <id-or-path>` | Shows identity, provider, quality stage, native/palette targets, workflow, and required models. |
+| `install <id-or-path>` | Verifies and copies a pack. The default versioned destination is `pixelkiln-recipes/<provider>/<name>/<version>`; `--out` names a different directory. Prints a manifest-ready style entry with the installed workflow path. |
+| `verify <id-or-path>` | Checks the metadata digest and included workflow bytes. `--model-root` also hashes every required model and exits nonzero for a missing or mismatched model. |
+
+An unversioned id selects the newest bundled version. Exact selectors use
+`provider/name@x.y.z`. Install refuses to replace a locally changed declared
+file unless `--force` is passed. It never downloads dependencies or removes
+extra files. `list`, `inspect`, `install`, and `verify` support `--json`.
+
+Without `--model-root`, external models are reported as `unchecked` and do not
+make the recipe itself invalid. This distinction lets CI verify the committed
+pack while workstation setup verifies multi-gigabyte model files. See
+[Versioned recipes](./RECIPES.md) for the file contract and update policy.
+
 ## Local quality and derived output
 
 ### `audit`
@@ -313,9 +345,9 @@ Print the package version. `-v` is an alias.
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. |
 | `--budget <n>` | submit/gen | Refuse work above this provider-unit cost. |
-| `--force` | gen/derived commands | Regenerate current work or explicitly take ownership of modified/unowned derived output. A refine rerun resets approval. |
+| `--force` | gen/derived commands/recipe install | Regenerate current work, take ownership of modified/unowned derived output, or replace changed files declared by an installed recipe. A refine rerun resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
-| `--json` | plan/doctor/audit/cache/status/salvage/refine | Machine-readable stdout where supported. |
+| `--json` | plan/doctor/audit/cache/status/salvage/refine/recipe | Machine-readable stdout where supported. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage | Do not automatically open the browser. |
@@ -331,7 +363,7 @@ Print the package version. `-v` is an alias.
 | `--name <name>` | init | Project name for the scaffolded manifest. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--port <n>` | pick/salvage | Local review server port; otherwise chooses a free port. |
-| `--out <path>` | pack/export/refine | Output base override, or the final native PNG for refine. Export requires one selected tileset. |
+| `--out <path>` | pack/export/refine/recipe install | Output base override, final native PNG for refine, or exact recipe destination. Export requires one selected tileset. |
 | `--inputs <path>` | pack | JSON array of `{ id, path }`; requires `--out`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
 | `--format <name>` | export | `generic` (default), `tiled`, or `godot`. |
@@ -348,6 +380,7 @@ Print the package version. `-v` is an alias.
 | `--min-grid-confidence <level>` | refine | Minimum accepted detector confidence: `high` (default), `medium`, or `low`. |
 | `--reviewer <name>` | refine approve | Human reviewer stored in the quality companion. |
 | `--note <text>` | refine approve | Optional review note stored in the quality companion. |
+| `--model-root <path>` | recipe verify | ComfyUI `models` directory. Enables streamed hash checks for every external model declared by the recipe. |
 
 ## Exit and output contract
 
@@ -359,5 +392,7 @@ Print the package version. `-v` is an alias.
 - `plan --check`, `audit --check`, and `cache --check` are intended as CI gates.
 - `refine check` is a fail-closed gate: pending review or any recorded-byte or
   metadata drift exits nonzero.
+- `recipe verify` exits nonzero for changed metadata/workflows and, when
+  `--model-root` is supplied, missing or mismatched models.
 - Commands that can spend or delete expose their scope before doing so; budget
   and confirmation are separate protections.

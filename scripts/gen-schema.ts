@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs"
 import { zodToJsonSchema } from "zod-to-json-schema"
 import { ManifestSchema } from "../src/types.ts"
 import { WorkspaceSchema } from "../src/workspace.ts"
+import { RecipeSchema } from "../src/recipes.ts"
 
 const manifestSchema = zodToJsonSchema(ManifestSchema, {
   name: "PixelkilnManifest",
@@ -17,3 +18,10 @@ const workspaceSchema = zodToJsonSchema(WorkspaceSchema, {
 })
 writeFileSync("schema/workspace.schema.json", JSON.stringify(workspaceSchema, null, 2) + "\n")
 console.log("wrote schema/workspace.schema.json")
+
+const recipeSchema = zodToJsonSchema(RecipeSchema, {
+  name: "PixelkilnRecipe",
+  $refStrategy: "none",
+})
+writeFileSync("schema/recipe.schema.json", JSON.stringify(recipeSchema, null, 2) + "\n")
+console.log("wrote schema/recipe.schema.json")

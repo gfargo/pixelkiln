@@ -198,6 +198,10 @@ still need the graph and a person. `pixelkiln refine` now handles grid recovery,
 final palette enforcement, measurable checks, and the hash-bound approval
 record.
 
+Versioned recipes capture tested workflows, model hashes, license links, and
+manifest-ready styles with quality boundaries. Start with `pixelkiln recipe install comfyui/pixel-art-xl-environment@1.0.0`.
+Recipes install no models and make no provider calls. See [Versioned recipes](./docs/RECIPES.md).
+
 The schema rejects unknown fields and invalid generator combinations before
 planning. See the [Manifest reference](./docs/MANIFEST.md).
 
@@ -357,6 +361,7 @@ exporters, managed artifact writes, and offline provenance verification. See
 | [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
 | [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
 | [Set up ComfyUI](./docs/COMFYUI.md) | Experimental self-hosted server, workflow bindings, local cost semantics, and limits. |
+| [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |

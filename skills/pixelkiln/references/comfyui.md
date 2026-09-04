@@ -3,6 +3,10 @@
 Read this reference before operating a PixelKiln manifest whose provider is
 `comfyui`.
 
+When the bundled environment recipe matches the task, install an exact version
+and verify it first. Read [Versioned recipes](recipes.md) for the trust boundary.
+A verified recipe pins the graph and models; it does not approve the art.
+
 ## Set expectations
 
 The ComfyUI adapter automates a committed graph, candidate review, provenance,

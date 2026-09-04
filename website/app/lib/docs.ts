@@ -78,6 +78,13 @@ export const docs: DocEntry[] = [
     group: "Workflows",
   },
   {
+    slug: "recipes",
+    title: "Versioned recipes",
+    description: "Install and verify pinned workflows, model hashes, and quality contracts.",
+    file: "docs/RECIPES.md",
+    group: "Workflows",
+  },
+  {
     slug: "artifacts",
     title: "Derived artifacts",
     description: "Pack, mount, export, provenance, ownership, and recovery.",

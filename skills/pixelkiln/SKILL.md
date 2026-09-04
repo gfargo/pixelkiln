@@ -60,6 +60,8 @@ Read only the reference needed for the current decision:
   [references/retro-diffusion.md](references/retro-diffusion.md).
 - For a self-hosted ComfyUI workflow, node bindings, local cost semantics, or
   portable output recovery, read [references/comfyui.md](references/comfyui.md).
+- When a bundled or installed recipe can supply the workflow, model hashes, or
+  quality contract, read [references/recipes.md](references/recipes.md).
 - When one game or repository needs more than one provider, read
   [references/mixed-providers.md](references/mixed-providers.md).
 

@@ -57,6 +57,12 @@ import {
   type ArtifactFile,
   type ArtifactSource,
 } from "./artifacts.ts"
+import {
+  installRecipe,
+  listBundledRecipes,
+  resolveRecipe,
+  verifyRecipe,
+} from "./recipes.ts"
 
 const log = (msg = "") => console.log(msg)
 
@@ -109,6 +115,8 @@ interface Args {
   minGridConfidence?: GridConfidence
   reviewer?: string
   note?: string
+  /** ComfyUI `models` directory used for offline recipe model verification. */
+  modelRoot?: string
   /** `workspace`: add/remove/list/status/claims. */
   subcommand?: string
   /** Path to a workspace catalog. Defaults to `pixelkiln.workspace.json` in cwd. */
@@ -134,6 +142,7 @@ const VALUE_FLAGS = [
   "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma", "--workspace",
   "--provider", "--account", "--palette", "--fixer-python", "--fixer-revision", "--min-grid-confidence",
   "--reviewer", "--note",
+  "--model-root",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -142,11 +151,12 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "refine", "workspace", "help", "--help", "-h", "--version", "-v",
+  "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
 const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
+const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -163,7 +173,25 @@ export function parseArgs(argv: string[]): Args {
   let rest = argv.slice(1)
   let subcommand: string | undefined
   let target: string | undefined
-  if (command === "workspace") {
+  if (command === "recipe") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new Error(`recipe needs a subcommand: ${RECIPE_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(RECIPE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new Error(
+        `Unknown recipe subcommand "${subcommand}". Known: ${RECIPE_SUBCOMMANDS.join(", ")}`,
+      )
+    }
+    rest = rest.slice(1)
+    if (subcommand !== "list") {
+      target = rest[0]
+      if (target === undefined || target.startsWith("-")) {
+        throw new Error(`recipe ${subcommand} needs a recipe id, selector, or path.`)
+      }
+      rest = rest.slice(1)
+    }
+  } else if (command === "workspace") {
     subcommand = rest[0]
     if (subcommand === undefined || subcommand.startsWith("-")) {
       throw new Error(`workspace needs a subcommand: ${WORKSPACE_SUBCOMMANDS.join(", ")}`)
@@ -343,6 +371,7 @@ export function parseArgs(argv: string[]): Args {
     minGridConfidence: rawGridConfidence as GridConfidence | undefined,
     reviewer: get("--reviewer"),
     note: get("--note"),
+    modelRoot: get("--model-root"),
     subcommand,
     workspace: get("--workspace"),
     target,
@@ -372,6 +401,7 @@ Commands
   audit     Measure how consistently a style's assets hold together. Offline.
   refine    Recover a native pixel grid, enforce a final palette, audit it,
             and attach a verifiable human approval. run/approve/check. Offline.
+  recipe    List, inspect, install, or verify versioned workflow packs. Offline.
   cache     Inspect local recovery/object-hash caches; optionally verify or prune.
   pack      Composite sprites into a PNG/atlas/provenance bundle. Offline.
   mount     Write a style's sprites into their declared cells of an existing
@@ -403,6 +433,7 @@ Options
   --min-grid-confidence <level>  refine: high (default), medium, or low
   --reviewer <name>   refine approve: human reviewer recorded in provenance
   --note <text>       refine approve: optional review note
+  --model-root <dir>  recipe verify: also hash required local model files
   --prune             cache: remove invalid/unreferenced local cache data
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
@@ -435,6 +466,9 @@ Examples
   pixelkiln refine --from source.png --out final.png --palette "#101820,#f2aa4c"
   pixelkiln refine approve --from final.pixelkiln.json --reviewer "Your Name"
   pixelkiln refine check --from final.pixelkiln.json
+  pixelkiln recipe list
+  pixelkiln recipe install comfyui/pixel-art-xl-environment
+  pixelkiln recipe verify pixelkiln-recipes/comfyui/pixel-art-xl-environment/1.0.0 --model-root /path/to/ComfyUI/models
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json
   pixelkiln salvage --workspace pixelkiln.workspace.json
@@ -526,6 +560,93 @@ async function main() {
     ) as { name: string; version: string }
     log(`${pkg.name} ${pkg.version}`)
     return
+  }
+
+  if (args.command === "recipe") {
+    if (args.subcommand === "list") {
+      const recipes = await listBundledRecipes()
+      if (args.json) {
+        log(JSON.stringify({
+          version: 1,
+          recipes: recipes.map(({ recipe }) => ({
+            id: recipe.id,
+            version: recipe.version,
+            provider: recipe.provider,
+            summary: recipe.summary,
+            selector: `${recipe.id}@${recipe.version}`,
+          })),
+        }, null, 2))
+      } else {
+        log(`  ${recipes.length} bundled recipe(s):`)
+        for (const { recipe } of recipes) {
+          log(`    ${(recipe.id + "@" + recipe.version).padEnd(52)} ${recipe.summary}`)
+        }
+      }
+      return
+    }
+
+    const target = args.target!
+    if (args.subcommand === "inspect") {
+      const { recipe, path: recipePath, bundled } = await resolveRecipe(target)
+      if (args.json) {
+        log(JSON.stringify({ ...recipe, path: recipePath, bundled }, null, 2))
+      } else {
+        log(`  ${recipe.id}@${recipe.version}`)
+        log(`  ${recipe.summary}`)
+        log(`  provider: ${recipe.provider} · style: ${recipe.styleId} · stage: ${recipe.quality.stage}`)
+        log(
+          `  native target: ${recipe.quality.recommendedNativeSize.min}–` +
+            `${recipe.quality.recommendedNativeSize.max}px · palette: ` +
+            `${recipe.quality.paletteColors.min}–${recipe.quality.paletteColors.max} colors`,
+        )
+        if (recipe.workflow) log(`  workflow: ${recipe.workflow.path} · ${recipe.workflow.numImages} candidate(s)`)
+        for (const model of recipe.models) log(`  model: ${model.path} · ${model.license}`)
+        log(`  source: ${recipePath}${bundled ? " (bundled)" : ""}`)
+      }
+      return
+    }
+
+    if (args.subcommand === "verify") {
+      const report = await verifyRecipe(target, { modelRoot: args.modelRoot })
+      if (args.json) {
+        log(JSON.stringify(report, null, 2))
+      } else {
+        log(`  ${report.ok ? "ok" : "ERROR"}  ${report.recipe.id}@${report.recipe.version}`)
+        log(`  ${report.integrity.status.padEnd(9)} recipe metadata`)
+        for (const file of report.files) log(`  ${file.status.padEnd(9)} ${file.path}`)
+        for (const model of report.models) log(`  ${model.status.padEnd(9)} ${model.path}`)
+        if (!report.modelRoot && report.models.length) {
+          log(`  models were not checked; pass --model-root <ComfyUI/models> to verify this workstation`)
+        }
+      }
+      if (!report.ok) process.exitCode = 1
+      return
+    }
+
+    if (args.subcommand === "install") {
+      const result = await installRecipe(target, { out: args.out, force: args.force })
+      if (args.json) {
+        log(JSON.stringify({
+          version: 1,
+          recipe: `${result.recipe.id}@${result.recipe.version}`,
+          destination: result.destination,
+          changed: result.changed,
+          unchanged: result.unchanged,
+          styleId: result.styleId,
+          style: result.style,
+        }, null, 2))
+      } else {
+        log(`  installed ${result.recipe.id}@${result.recipe.version}`)
+        log(`  ${path.relative(process.cwd(), result.destination) || "."}`)
+        log(`\n  Add this entry under your manifest's styles object:`)
+        log(JSON.stringify({ [result.styleId]: result.style }, null, 2))
+        if (result.recipe.models.length) {
+          log(`\n  Models are not downloaded automatically. Verify them with:`)
+          log(`  pixelkiln recipe verify ${path.relative(process.cwd(), result.destination)} --model-root <ComfyUI/models>`)
+        }
+      }
+      return
+    }
   }
 
   if (args.command === "refine") {

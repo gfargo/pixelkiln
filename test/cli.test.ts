@@ -195,6 +195,30 @@ describe("parseArgs", () => {
     })
   })
 
+  it("parses offline recipe operations and model verification", () => {
+    expect(parseArgs(["recipe", "list", "--json"])).toMatchObject({
+      command: "recipe", subcommand: "list", json: true,
+    })
+    expect(parseArgs([
+      "recipe", "install", "comfyui/pixel-art-xl-environment@1.0.0",
+      "--out", "recipes/environment",
+    ])).toMatchObject({
+      subcommand: "install",
+      target: "comfyui/pixel-art-xl-environment@1.0.0",
+      out: "recipes/environment",
+    })
+    expect(parseArgs([
+      "recipe", "verify", "recipes/environment", "--model-root", "/opt/ComfyUI/models",
+    ])).toMatchObject({
+      subcommand: "verify",
+      target: "recipes/environment",
+      modelRoot: "/opt/ComfyUI/models",
+    })
+    expect(() => parseArgs(["recipe"])).toThrow(/needs a subcommand/)
+    expect(() => parseArgs(["recipe", "remove", "x"])).toThrow(/Unknown recipe subcommand/)
+    expect(() => parseArgs(["recipe", "verify"])).toThrow(/needs a recipe id/)
+  })
+
   it("rejects an unknown workspace subcommand", () => {
     expect(() => parseArgs(["workspace", "delete", "x"])).toThrow(/Unknown workspace subcommand/)
   })
