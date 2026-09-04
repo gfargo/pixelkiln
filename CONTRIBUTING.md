@@ -15,6 +15,7 @@ npm ci
 npm run test:release
 npm run typecheck
 npm run test:docs
+npm run test:security
 npm test
 npm run build
 npm run test:package
@@ -72,6 +73,9 @@ wire contracts.
   workflow detail in `docs/`, and link every guide from `docs/README.md`.
 - Run `npm run test:docs` after changing Markdown or the CLI command/flag
   surface. It checks local links, the docs index, README size, and CLI coverage.
+- Run `npm run test:security` after changing provider source handling, lockfile
+  fixtures, or benchmark state. It scans tracked JSON without printing a
+  credential-bearing value.
 - Run the website lint and build checks when changing `website/` or the
   canonical Markdown it renders.
 - Run the package smoke test when changing exports, build configuration, the
@@ -85,6 +89,8 @@ wire contracts.
   I/O and estimates must carry their cost unit.
 - Provider responses are untrusted input and need runtime validation before
   entering the lockfile.
+- Temporary signed URLs must not settle in a committed lockfile. Persist a
+  refreshable provider reference and keep storage credentials transient.
 - Lockfile writes must remain atomic and resumable. Additive defaults should
   preserve valid v2 files when extending lock entries.
 - Unknown flags and ambiguous output selection are errors. Silent widening is

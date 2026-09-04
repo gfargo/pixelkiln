@@ -145,7 +145,7 @@ pixelkiln cache --check
 # Generate only the intended slice.
 pixelkiln gen --style neon --only anvil,hammer --budget 80
 
-# Rebuild missing files from provider URLs or the local content cache.
+# Rebuild missing files from durable provider references or the local content cache.
 pixelkiln restore
 ```
 
@@ -169,7 +169,8 @@ pipeline stages also exit nonzero after partial failures or timeouts.
 
 - `restore` repairs missing generated outputs without buying new generations.
 - `.pixelkiln/cache/` stores downloaded PNG bytes by SHA-256, so restoration can
-  still work after a temporary provider URL expires.
+  still work after a temporary provider URL expires. Hosted adapters keep
+  refreshable references in the lock instead of signed storage URLs.
 - `cache --check` verifies hashes and structurally validates cached PNG/GIF
   media before trusting recovery bytes, then validates the account object-hash cache.
   `cache --prune` removes corrupt, partial, and unreferenced project content

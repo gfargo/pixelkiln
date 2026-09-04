@@ -95,6 +95,13 @@ The adapter can report `balance`, but it does not yet expose Retro Diffusion
 account listing, adoption, salvage, tagging, or deletion. Paid output still has
 PixelKiln lockfile provenance and local cache recovery.
 
+The lockfile records a durable `retrodiffusion://` result reference instead of
+Retro Diffusion's temporary signed storage URL or an inline image. `fetch`
+resolves that reference to the current result URL and downloads it immediately.
+`restore` uses the validated local content cache first; if the cache is missing,
+it needs `RD_API_KEY` to refresh the task result. Candidate image URLs are used
+only by the local picker and are not written to the lockfile.
+
 The shared PixelKiln manifest currently allows arbitrary width and height from
 16 to 400 pixels, while Retro Diffusion styles can impose smaller limits. In
 the current service catalog, the useful environment and scene-object styles

@@ -10,6 +10,7 @@ import type { Generator, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
 import { MediaType, type MediaType as MediaKind } from "../media.ts"
 
 const DEFAULT_BASE_URL = "https://api.retrodiffusion.ai/v1"
+const SOURCE_PROTOCOL = "retrodiffusion:"
 
 export interface RetroDiffusionOptions {
   /** Live style id returned by GET /styles/selector. */
@@ -127,7 +128,10 @@ export class RetroDiffusionProvider implements Provider {
   }
 
   static forDownloads(): RetroDiffusionProvider {
-    return RetroDiffusionProvider.forOffline()
+    // Ordinary public URLs and cached bytes need no credential. A durable
+    // retrodiffusion:// reference resolves a fresh provider result and the
+    // client reports a clear RD_API_KEY error only if that fallback is used.
+    return new RetroDiffusionProvider(new RetroDiffusionClient(process.env.RD_API_KEY))
   }
 
   supports(generator: Generator): boolean {
@@ -257,11 +261,15 @@ export class RetroDiffusionProvider implements Provider {
     const urls = sources.map((source) => source.url)
     if (!urls.length) return { status: "failed", error: "Retro Diffusion task returned no images" }
     if (urls.length > 1) return { status: "review", candidateUrls: urls }
+    const durableSources = sources.map((source, index) => ({
+      ...source,
+      url: sourceRef(jobId, index, mediaType),
+    }))
     return {
       status: "ready",
       objectId: `${jobId}#0`,
-      sourceUrl: urls[0]!,
-      sources,
+      sourceUrl: durableSources[0]!.url,
+      sources: durableSources,
       metadata: {
         balanceCost: task.result?.balance_cost ?? null,
         remainingBalance: task.result?.remaining_balance ?? null,
@@ -286,10 +294,28 @@ export class RetroDiffusionProvider implements Provider {
     if (task.status !== "succeeded") throw new Error(`Retro Diffusion task ${jobId} is not ready`)
     const url = resultSources(task.result, MediaType.PNG)[index]?.url
     if (!url) throw new Error(`Retro Diffusion task ${jobId} has no candidate at index ${index}`)
-    return { objectId: `${jobId}#${index}`, sourceUrl: url }
+    return { objectId: `${jobId}#${index}`, sourceUrl: sourceRef(jobId, index, MediaType.PNG) }
   }
 
   async download(url: string): Promise<Buffer> {
+    if (url.startsWith(`${SOURCE_PROTOCOL}//`)) {
+      const reference = parseSourceRef(url)
+      const task = await this.client.task(reference.jobId)
+      if (task.status !== "succeeded") {
+        throw new Error(`Retro Diffusion task ${reference.jobId} is not ready`)
+      }
+      const source = resultSources(task.result, reference.mediaType)[reference.index]?.url
+      if (!source) {
+        throw new Error(
+          `Retro Diffusion task ${reference.jobId} has no output at index ${reference.index}`,
+        )
+      }
+      return this.downloadResolved(source)
+    }
+    return this.downloadResolved(url)
+  }
+
+  private async downloadResolved(url: string): Promise<Buffer> {
     const data = /^data:[^;]+;base64,(.+)$/.exec(url)?.[1]
     if (data) return Buffer.from(data, "base64")
     const response = await fetch(url)
@@ -300,6 +326,32 @@ export class RetroDiffusionProvider implements Provider {
   async balance(): Promise<BalanceInfo> {
     return { unit: "usd", remaining: await this.client.balance() }
   }
+}
+
+function sourceRef(jobId: string, index: number, mediaType: MediaKind): string {
+  const url = new URL("retrodiffusion://output")
+  url.searchParams.set("job", jobId)
+  url.searchParams.set("index", String(index))
+  url.searchParams.set("mediaType", mediaType)
+  return url.href
+}
+
+function parseSourceRef(value: string): { jobId: string; index: number; mediaType: MediaKind } {
+  const url = new URL(value)
+  const jobId = url.searchParams.get("job")
+  const index = Number(url.searchParams.get("index"))
+  const rawMediaType = url.searchParams.get("mediaType")
+  if (
+    url.protocol !== SOURCE_PROTOCOL ||
+    url.hostname !== "output" ||
+    !jobId ||
+    !Number.isInteger(index) ||
+    index < 0 ||
+    (rawMediaType !== MediaType.PNG && rawMediaType !== MediaType.GIF)
+  ) {
+    throw new Error("Invalid durable Retro Diffusion source reference")
+  }
+  return { jobId, index, mediaType: rawMediaType }
 }
 
 function retroOptions(spec: ResolvedSpec): RetroDiffusionOptions {

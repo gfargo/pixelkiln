@@ -68,12 +68,12 @@ try {
   run(process.execPath, [
     "--input-type=module",
     "--eval",
-    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function') process.exit(1)",
+    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function' || typeof m.shouldPersistSourceUrl !== 'function') process.exit(1)",
   ], consumer)
   run(process.execPath, [
     "--input-type=commonjs",
     "--eval",
-    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function') process.exit(1)",
+    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function' || typeof m.shouldPersistSourceUrl !== 'function') process.exit(1)",
   ], consumer)
 
   const cli = path.join(

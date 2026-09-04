@@ -11,13 +11,19 @@ pixelkiln restore
 pixelkiln restore --style neon --only anvil
 ```
 
-`restore` repairs a missing lock output from validated content-cache bytes or
-the provider URL. It does not submit generation and refuses to replace a file
-whose current bytes differ from the recorded hash.
+`restore` repairs a missing lock output from validated content-cache bytes or a
+durable provider reference. It does not submit generation and refuses to
+replace a file whose current bytes differ from the recorded hash.
 
 Generation and download failures are separate lock states. A CDN failure after
 successful generation becomes `download-failed`; the next `fetch` or `restore`
 retries at zero generation cost.
+
+Provider adapters should keep expiring signed result URLs transient and store a
+provider-neutral reference that can refresh them. Once ingestion succeeds,
+PixelKiln removes credential-bearing URLs, inline data URLs, and local file URLs
+from the lock entry. A failed download temporarily retains its source so a local
+retry remains possible; do not commit that in-flight lockfile.
 
 ## Local caches
 
@@ -166,4 +172,5 @@ system based on `.pixelkiln.json` companions and transaction journals. See
 Commit manifests, lockfiles, generated art, derived output used by the
 application, and its `.pixelkiln.json` companions. Do not commit credentials,
 `.pixelkiln/`, `pixelkiln.cache.json`, or short-lived transaction/stage/backup
-files.
+files. In the PixelKiln repository, `npm run test:security` rejects tracked JSON
+that contains a credential-bearing URL.

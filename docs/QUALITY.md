@@ -176,6 +176,7 @@ npm ci
 npm run typecheck
 npm test
 npm run test:docs
+npm run test:security
 npm run test:quality
 npm run build
 npm run test:package
@@ -204,6 +205,8 @@ uses `FakeProvider`, so money-spending stages are deterministic and offline.
   drift. CI must never add or renew human approval.
 - `quality check` exits nonzero when any baseline case is missing, unreadable,
   outside tolerance, or bound to a changed or invalid refinement record.
+- `test:security` exits nonzero when tracked JSON contains a credential-bearing
+  URL and reports only the file and JSON path.
 
 Generation should remain an explicit, budgeted human action; CI is for proving
 that committed declarations, state, and artifacts still agree.

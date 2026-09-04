@@ -25,6 +25,7 @@ jobs:
       - run: npm run test:release
       - run: npm run typecheck
       - run: npm run test:docs
+      - run: npm run test:security
       - run: npm test
       - run: npm run test:quality
       - run: npm run build
