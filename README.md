@@ -197,8 +197,10 @@ and native-grid recovery for model output that only looks like pixel art. The
 ComfyUI guidance is quality-first: start with 48–128px native components,
 apply the final palette after grid recovery, require prompt-coverage and human
 cluster-and-silhouette review, and compose larger scenes from accepted parts
-instead of chasing a larger raster. Those cleanup and approval steps are manual
-today.
+instead of chasing a larger raster. Background removal and the art decision
+still need the graph and a person. `pixelkiln refine` now handles grid recovery,
+final palette enforcement, measurable checks, and the hash-bound approval
+record.
 
 The schema rejects unknown fields and invalid generator combinations before
 planning. See the [Manifest reference](./docs/MANIFEST.md).
@@ -219,6 +221,12 @@ pixelkiln restore
 # Optional local gates.
 pixelkiln audit --check --max-distance 35 --min-transparency 0.1
 pixelkiln cache --check
+
+# Provider-neutral pixel cleanup after selecting a generated candidate.
+pixelkiln refine --from candidate.png --out art/native.png \
+  --palette "#141b1e,#23312a,#384d4f,#526a8d,#709fcf,#865c45,#c6a766,#f1bb70"
+pixelkiln refine approve --from art/native.pixelkiln.json --reviewer "Your Name"
+pixelkiln refine check --from art/native.pixelkiln.json
 ```
 
 Repeated `--style`, `--only`, `--claims`, and `--output-role` filters
@@ -339,9 +347,10 @@ const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
 console.log(plan.cost, plan.costUnit, plan.actionable.length)
 ```
 
-The package also exports audit gates, lock/output helpers, provider contracts,
-pipeline stages, sprite packing/mounting, tile exporters, managed artifact
-writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md).
+The package also exports audit gates, provider-neutral refinement, lock/output
+helpers, provider contracts, pipeline stages, sprite packing/mounting, tile
+exporters, managed artifact writes, and offline provenance verification. See
+[Library API](./docs/LIBRARY.md).
 
 ## Documentation
 
@@ -356,10 +365,10 @@ writes, and offline provenance verification. See [Library API](./docs/LIBRARY.md
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
-| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Thirty provider outputs plus three deterministic native-grid results comparing large scenes, transparency, palette size, and file readiness. |
-| [Derived artifacts](./docs/ARTIFACTS.md) | Pack, mount, export, provenance, ownership, transactions, and recovery. |
+| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Thirty provider outputs plus native-grid and final-palette results comparing large scenes, transparency, palette size, and file readiness. |
+| [Derived artifacts](./docs/ARTIFACTS.md) | Refine, pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
-| [Quality gates](./docs/QUALITY.md) | Plan, doctor, audit, cache, JSON, and CI. |
+| [Quality gates](./docs/QUALITY.md) | Plan, doctor, refine, audit, cache, human approval, JSON, and CI. |
 | [Architecture](./docs/ARCHITECTURE.md) | State model, lockfile, providers, concurrency, and output identity. |
 | [Library API](./docs/LIBRARY.md) | Public TypeScript contracts and examples. |
 | [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |

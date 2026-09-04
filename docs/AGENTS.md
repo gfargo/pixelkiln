@@ -29,7 +29,8 @@ With the skill loaded, an agent should:
 6. Leave artwork selection in the local `pick` page unless the user gives a
    specific selection rule.
 7. Treat ComfyUI output as source material until native-grid, final-palette,
-   prompt-coverage, and human 1× checks pass.
+   prompt-coverage, and human 1× checks pass. Use `pixelkiln refine` and require
+   `refine check` before packaging refined output.
 8. Commit the manifest, lockfile, generated output, and artifact companions, but
    never credentials or `.pixelkiln/` caches.
 
@@ -50,7 +51,7 @@ not a replacement:
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
 | PixelLab adapter | The current production and live-tested generation backend. |
 | Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
-| ComfyUI adapter | Experimental self-hosted still-image backend; generated PNGs need manual structural and visual approval. |
+| ComfyUI adapter | Experimental self-hosted still-image backend; PixelKiln automates native-grid and palette checks, while a person retains visual approval. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production
 and paid-generation-tested adapter. Retro Diffusion generation support is

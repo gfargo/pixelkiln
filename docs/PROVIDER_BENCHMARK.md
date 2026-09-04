@@ -216,6 +216,19 @@ Retro Diffusion Pixel Art Fixer reported high-confidence consensus for both.
 The reconstructed outputs contain 48 colors and one stored pixel per recovered
 cell.
 
+The provider-neutral refiner then ran the same pinned detector and applied one
+frozen 32-color environment palette without dithering:
+
+| Recovered fortress | Final-palette fortress | Recovered valley | Final-palette valley |
+|---|---|---|---|
+| ![ComfyUI fortress after native-grid recovery with 252 visible colors](../website/public/benchmarks/provider-hires/comfyui/native-grid/cliffside-fortress-128x128.png) | ![ComfyUI fortress after native-grid recovery and a fixed 32-color palette](../website/public/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.png) | ![ComfyUI valley after native-grid recovery with 48 visible colors](../website/public/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-128x128.png) | ![ComfyUI valley after native-grid recovery and a fixed 32-color palette](../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.png) |
+
+The final files use 15 colors for the transparent fortress, 24 for the square
+valley, and 22 for the 168×96 wide valley. Each passed high-confidence grid,
+native-dimension, palette ceiling, and transparency checks. Their checked-in
+quality companions remain `pending` because an automated benchmark cannot
+claim human approval.
+
 That is a structural result, not an aesthetic endorsement. Grid recovery cannot
 turn weak composition, painterly gradients, or muddy source clusters into good
 pixel art. These files remain review candidates, and the 1024px source should
@@ -231,8 +244,9 @@ Earlier 1536px and 2048px latent refinements also looked blurred. The extra
 interpolation and resampling softened the structure; color quantization could
 not repair it. The committed
 [resolution project](../benchmarks/provider-hires/comfyui/README.md) contains
-the two provider workflows, source outputs, native reconstructions, fixer
-report, audit instructions, and lock provenance.
+the two provider workflows, source outputs, native reconstructions,
+final-palette outputs, quality records, fixer report, audit instructions, and
+lock provenance.
 
 ## Cost and operational results
 
@@ -257,7 +271,8 @@ The run also caught two integration details:
 All three manifests now pass `doctor` and report a current plan. The hosted
 projects have ten healthy PNG cache entries each; the ComfyUI projects have
 four baseline, four cleanup, and two resolution-test entries. Three additional
-native-grid PNGs are deterministic post-processing results, not provider jobs.
+native-grid PNGs and three final-palette PNGs are deterministic post-processing
+results, not provider jobs.
 
 ## Recommendation
 
@@ -272,12 +287,13 @@ were cheaper and more faithful to the brief. Try Retro Diffusion when you want
 foreground framing and a closer illustrated scene.
 
 Try ComfyUI when local control and custom composition work matter enough to
-justify manual cleanup. The tested SDXL stack produced a strong building and
-layered valley, but its large files only imitated a pixel grid. Its cleanup
-graph and native-grid recovery are diagnostic steps, not a production preset.
+justify extra cleanup. The tested SDXL stack produced a strong building and
+layered valley, but its large files only imitated a pixel grid. PixelKiln now
+automates native-grid recovery, final palette enforcement, and the quality
+record; the graph is still not a production preset.
 A one-pass 1024px render took roughly 60 to 90 seconds on the tested Apple MPS
-machine. Recover the native grid, enforce the final palette afterward, and
-review prompt coverage and pixel clusters by hand. The tested latent-upscale
+machine. Run the provider-neutral refiner, then review prompt coverage and pixel
+clusters by hand. The tested latent-upscale
 passes blurred the art, while nearest-neighbor scaling only duplicated its
 pseudo-pixels.
 

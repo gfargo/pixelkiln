@@ -49,6 +49,39 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["audit", "--max-colors", "2.5"])).toThrow(/whole number/)
   })
 
+  it("parses refinement, approval, and fail-closed check commands", () => {
+    expect(parseArgs([
+      "refine", "--from", "source.png", "--out", "final.png",
+      "--palette", "#101820,#f2aa4c", "--palette", "#ffffff",
+      "--fixer-python", "/opt/pixelfixer/bin/python", "--fixer-revision", "abc123",
+      "--min-grid-confidence", "medium", "--min-transparency", "0.2",
+    ])).toMatchObject({
+      command: "refine",
+      subcommand: "run",
+      from: "source.png",
+      out: "final.png",
+      palette: ["#101820", "#f2aa4c", "#ffffff"],
+      fixerPython: "/opt/pixelfixer/bin/python",
+      fixerRevision: "abc123",
+      minGridConfidence: "medium",
+      minTransparency: 0.2,
+    })
+    expect(parseArgs([
+      "refine", "approve", "--from", "final.pixelkiln.json",
+      "--reviewer", "Ada", "--note", "Looks clean", "--yes",
+    ])).toMatchObject({
+      subcommand: "approve",
+      reviewer: "Ada",
+      note: "Looks clean",
+      yes: true,
+    })
+    expect(parseArgs(["refine", "check", "--from", "final.pixelkiln.json", "--json"]))
+      .toMatchObject({ subcommand: "check", json: true })
+    expect(() => parseArgs(["refine", "checkk"])).toThrow(/Unknown refine subcommand/)
+    expect(() => parseArgs(["refine", "--min-grid-confidence", "certain"]))
+      .toThrow(/low, medium, or high/)
+  })
+
   it("parses cache integrity and pruning controls", () => {
     expect(parseArgs(["cache", "--check", "--prune", "--json"])).toMatchObject({
       command: "cache",

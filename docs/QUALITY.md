@@ -86,6 +86,34 @@ pixel-art stack, begin with 48–128px native components and compose larger scen
 from reviewed parts. Apply the final palette after grid recovery. Resolution is
 a ceiling imposed by quality, not a target.
 
+### Refinement quality record
+
+`pixelkiln refine` makes the mechanical half of this gate repeatable for any
+provider. It runs the pinned open Pixel Art Fixer, requires high-confidence
+grid recovery, applies an explicit final palette without dithering, checks the
+native dimensions, color count, and optional transparency floor, then writes a
+hash-bound `.pixelkiln.json` record.
+
+```bash
+pixelkiln refine \
+  --from candidates/mountain.png \
+  --out art/mountain-native.png \
+  --palette "#141b1e,#23312a,#384d4f,#526a8d,#709fcf,#865c45,#c6a766,#f1bb70" \
+  --fixer-python .pixelkiln/pixelfixer/bin/python
+
+pixelkiln refine approve \
+  --from art/mountain-native.pixelkiln.json \
+  --reviewer "Mina"
+
+pixelkiln refine check --from art/mountain-native.pixelkiln.json
+```
+
+The first command deliberately leaves review pending. `approve` records the
+named person's 1× review. `check` fails closed until that happens and fails
+again if the source, final PNG, palette or tool metadata, audit, or review is
+edited. Rerun the refiner after an intentional change, inspect the new output,
+and approve that revision separately.
+
 ## Cache integrity gate
 
 ```bash
@@ -111,6 +139,7 @@ pixelkiln doctor --dry-run
 pixelkiln plan --json --check
 pixelkiln audit --json --check --max-distance 35 --max-colors 128
 pixelkiln cache --check
+pixelkiln refine check --from art/mountain-native.pixelkiln.json
 ```
 
 Choose audit thresholds per project; do not copy a palette distance or color
@@ -125,6 +154,8 @@ uses `FakeProvider`, so money-spending stages are deterministic and offline.
   stderr.
 - A failed CI job should distinguish provider/output drift from repository test
   failures rather than regenerating automatically.
+- `refine check` exits nonzero for pending approval and for any quality-record
+  drift. CI must never add or renew human approval.
 
 Generation should remain an explicit, budgeted human action; CI is for proving
 that committed declarations, state, and artifacts still agree.

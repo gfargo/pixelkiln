@@ -386,38 +386,39 @@ export default function Home() {
               <div className="provider-image-grid">
                 <figure>
                   <Image
-                    src="/benchmarks/provider-hires/comfyui/native-grid/cliffside-fortress-128x128.png"
-                    alt="Transparent ComfyUI cliffside fortress reconstructed onto a native 128 by 128 pixel grid"
+                    src="/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.png"
+                    alt="Transparent ComfyUI cliffside fortress refined onto a native 128 by 128 grid with a fixed palette"
                     width={128}
                     height={128}
                     sizes="(max-width: 680px) 50vw, 280px"
                     unoptimized
                   />
-                  <figcaption>Recovery test · native 128×128 · transparent</figcaption>
+                  <figcaption>Refined · native 128×128 · 15 colors · transparent</figcaption>
                 </figure>
                 <figure>
                   <Image
-                    src="/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-128x128.png"
-                    alt="ComfyUI alpine valley reconstructed onto a native 128 by 128 pixel grid"
+                    src="/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.png"
+                    alt="ComfyUI alpine valley refined onto a native 128 by 128 grid with a fixed palette"
                     width={128}
                     height={128}
                     sizes="(max-width: 680px) 50vw, 280px"
                     unoptimized
                   />
-                  <figcaption>Grid recovery test · native 128×128 · 48 colors</figcaption>
+                  <figcaption>Refined · native 128×128 · 24 colors</figcaption>
                 </figure>
               </div>
               <p>
                 SDXL Base plus Pixel Art XL produced promising compositions,
                 but its outputs only imitated a pixel grid. Pixel Art Fixer
-                recovered editable 1× assets; visual quality still needs human
-                review. Start small and compose accepted parts into larger scenes.
+                now recovers editable 1× assets, applies a fixed palette, and
+                verifies the quality record. A person still decides whether the
+                art is good. Start small and compose accepted parts into larger scenes.
               </p>
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
                 <div><dt>Quality target</dt><dd>48–128px native per part</dd></div>
                 <div><dt>Best fit</dt><dd>Local composition and custom graph experiments</dd></div>
-                <div><dt>Readiness</dt><dd>Manual recovery and art review required</dd></div>
+                <div><dt>Readiness</dt><dd>Refinement automated; art review required</dd></div>
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">

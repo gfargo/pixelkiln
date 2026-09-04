@@ -1,0 +1,93 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../../../provider-postprocessing/comfyui/isolated/cliffside-fortress.png",
+      "sha256": "dd4d68d3ec362d4a35e4e8eb2c7929c1ebc86c316199a898ca64314072ef5d5f",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 15,
+      "height": 128,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 32,
+        "minGridConfidence": "high",
+        "minTransparency": null
+      },
+      "transparency": 0.615966796875,
+      "width": 128
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 128,
+      "nativeWidth": 128,
+      "protocol": "python-api-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 384,
+      "sourceWidth": 384,
+      "stepX": 3,
+      "stepY": 3,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#141b1e",
+        "#1c2924",
+        "#23312a",
+        "#2b1413",
+        "#2c3f40",
+        "#314133",
+        "#352b26",
+        "#384d4f",
+        "#3b5439",
+        "#435c3f",
+        "#476440",
+        "#4e3b34",
+        "#526a8d",
+        "#5f6887",
+        "#607096",
+        "#618172",
+        "#6d8f7e",
+        "#709fcf",
+        "#759693",
+        "#82956c",
+        "#466273",
+        "#48697a",
+        "#664841",
+        "#715247",
+        "#865c45",
+        "#9d5a38",
+        "#a16e4a",
+        "#b37f54",
+        "#c6a766",
+        "#cebc7b",
+        "#d8be79",
+        "#f1bb70"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "1b7d8307c62abead57ac9a169537d533a7265a33aa5c3816686bb3e6e7f1e16a",
+  "outputs": [
+    {
+      "path": "cliffside-fortress-128x128.png",
+      "sha256": "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200"
+    }
+  ]
+}
