@@ -1,3 +1,10 @@
+## [0.12.1](https://github.com/gfargo/pixelkiln/compare/v0.12.0...v0.12.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* keep signed provider URLs out of lockfiles ([#61](https://github.com/gfargo/pixelkiln/issues/61)) ([c810eb6](https://github.com/gfargo/pixelkiln/commit/c810eb635561b31b13739947624c190a64722a3e))
+
 # [0.12.0](https://github.com/gfargo/pixelkiln/compare/v0.11.0...v0.12.0) (2026-09-04)
 
 
