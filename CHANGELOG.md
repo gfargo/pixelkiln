@@ -1,3 +1,10 @@
+# [0.9.0](https://github.com/gfargo/pixelkiln/compare/v0.8.0...v0.9.0) (2026-09-04)
+
+
+### Features
+
+* benchmark native-grid recovery for ComfyUI ([#55](https://github.com/gfargo/pixelkiln/issues/55)) ([84c3864](https://github.com/gfargo/pixelkiln/commit/84c3864ee0939a4c0051bfa404453155f494abe4)), closes [hi#resolution](https://github.com/hi/issues/resolution)
+
 # [0.8.0](https://github.com/gfargo/pixelkiln/compare/v0.7.0...v0.8.0) (2026-09-03)
 
 
