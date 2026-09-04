@@ -69,6 +69,38 @@ clusters, clean contours, readable landmarks, or a coherent palette. The
 recovered images remain review candidates. Reject one that still looks muddy at
 1× or at an integer zoom, even when the detector reports high confidence.
 
+## Provider-neutral refinement result
+
+The same three sources now pass through `pixelkiln refine`. The command uses
+the pinned fixer's Python API, then maps the recovered image to one frozen
+32-color environment palette with redmean nearest-color distance and no
+dithering.
+
+| Source | Native output | Colors used | Transparency | Grid confidence | Review |
+|---|---:|---:|---:|---|---|
+| transparent fortress | 128×128 | 15 | 61.6% | high | pending |
+| square alpine valley | 128×128 | 24 | 0% | high | pending |
+| wide alpine valley | 168×96 | 22 | 0% | high | pending |
+
+The final PNGs and their `.pixelkiln.json` quality records live under
+`website/public/benchmarks/provider-hires/comfyui/refined/`. Each record binds
+the source and output hashes, tool revision, grid result, palette, audit, and
+review state. They intentionally remain pending. The measured checks passed,
+but no automated run can perform the required human art review.
+
+Recreate the isolated local tool environment:
+
+```bash
+uv venv .pixelkiln/pixelfixer --python 3.12
+uv pip install \
+  --python .pixelkiln/pixelfixer/bin/python \
+  "git+https://github.com/Retro-Diffusion/pixel-art-fixer.git@ef376e57e1c272633ca2dbf5f29ec3fcf6596465#subdirectory=python"
+```
+
+Then run `pixelkiln refine` with the 32 colors stored in any checked-in quality
+record. Use `--force` only when intentionally replacing this owned benchmark
+bundle; it resets approval to pending.
+
 Use this order for a quality-first decision:
 
 1. Generate two to four candidates and reject missing subjects, weak
@@ -95,9 +127,9 @@ editable pixel grid. For a large environment:
 
 Outpainting, tiled diffusion, and crop-and-stitch can add scene area or repair a
 region. They still produce regular raster images, so the native-grid recovery
-step remains necessary. The project does not yet automate that post-processing
-step; the checked-in report keeps this experiment honest until PixelKiln has a
-provider-neutral postprocessor interface.
+step remains necessary. `pixelkiln refine` now handles that recovery, final
+palette, audit, and approval record for any provider. It does not repair weak
+composition or approve its own output.
 
 We also tested 1536px and 2048px latent refinement. Those passes completed on a
 64 GB M1 Max, but interpolation, another diffusion pass, and another VAE decode

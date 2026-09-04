@@ -5,7 +5,8 @@ provider call:
 
 - `pack`: deterministic grid sheet plus frame atlas;
 - `mount`: declared stable cells in a new or existing sheet;
-- `export`: structural tile atlas plus generic, Tiled, or Godot metadata.
+- `export`: structural tile atlas plus generic, Tiled, or Godot metadata;
+- `refine`: native-grid PNG plus palette, audit, and human-review record.
 
 Every CLI bundle includes generated output, metadata, and a
 `<base>.pixelkiln.json` provenance companion.
@@ -42,6 +43,32 @@ pixelkiln pack --inputs sprites.json --out dist/sheet
 
 Paths resolve from the inputs JSON directory. Duplicate ids fail before file
 decoding because consumers must have one unambiguous frame per id.
+
+## Refine
+
+`refine` needs no manifest and works on output from any provider. It calls a
+pinned local Pixel Art Fixer installation, reconstructs the detected native
+grid, applies the supplied palette without dithering, and writes the PNG beside
+a quality companion.
+
+```bash
+pixelkiln refine \
+  --from candidates/fortress.png \
+  --out art/fortress-native.png \
+  --palette "#141b1e,#23312a,#4e3b34,#865c45,#c6a766,#f1bb70" \
+  --fixer-python .pixelkiln/pixelfixer/bin/python
+```
+
+The companion uses artifact kind `refine`. Its options store the tool revision,
+detected step and native dimensions, confidence, exact palette, no-dither
+policy, audit thresholds and result, plus pending or approved review state.
+`pixelkiln refine check` verifies the fingerprint and current source/output
+hashes. `pixelkiln refine approve` rewrites only the companion after a named
+person completes the native-scale review.
+
+An intentional rerun resets approval to pending. A manual PNG edit, palette or
+tool metadata edit, changed source, or altered approval invalidates the record.
+Use the refined PNG as an asset `source` when later mounting or packaging it.
 
 ## Mount
 

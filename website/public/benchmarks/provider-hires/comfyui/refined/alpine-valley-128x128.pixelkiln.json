@@ -1,0 +1,93 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../baseline-64/alpine-valley.png",
+      "sha256": "8098a2d9f140a07847c01d3a02b19a4ca2783644ba90c7e51af04e6d031f077d",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 24,
+      "height": 128,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 32,
+        "minGridConfidence": "high",
+        "minTransparency": null
+      },
+      "transparency": 0,
+      "width": 128
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 128,
+      "nativeWidth": 128,
+      "protocol": "python-api-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 1024,
+      "sourceWidth": 1024,
+      "stepX": 8,
+      "stepY": 8,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#141b1e",
+        "#1c2924",
+        "#23312a",
+        "#2b1413",
+        "#2c3f40",
+        "#314133",
+        "#352b26",
+        "#384d4f",
+        "#3b5439",
+        "#435c3f",
+        "#476440",
+        "#4e3b34",
+        "#526a8d",
+        "#5f6887",
+        "#607096",
+        "#618172",
+        "#6d8f7e",
+        "#709fcf",
+        "#759693",
+        "#82956c",
+        "#466273",
+        "#48697a",
+        "#664841",
+        "#715247",
+        "#865c45",
+        "#9d5a38",
+        "#a16e4a",
+        "#b37f54",
+        "#c6a766",
+        "#cebc7b",
+        "#d8be79",
+        "#f1bb70"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "da6bb4cc44e68e0d6c69e24e7724502862028f9cf83d0e4b5035d00239f563b9",
+  "outputs": [
+    {
+      "path": "alpine-valley-128x128.png",
+      "sha256": "273596e9fa172208c773bccb39e95b39fb002e9ec22fef45f4720a69aa1f682c"
+    }
+  ]
+}

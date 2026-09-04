@@ -43,6 +43,12 @@ import {
 import { workspaceClaims, workspaceStatus } from "./pipeline/workspace.ts"
 import { auditStyle, evaluateAudit, hex } from "./pipeline/audit.ts"
 import { inspectCaches } from "./pipeline/cache-health.ts"
+import {
+  approveQualityRecord,
+  checkQualityRecord,
+  refineAsset,
+  type GridConfidence,
+} from "./pipeline/refine.ts"
 import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { Provider } from "./provider.ts"
@@ -97,6 +103,12 @@ interface Args {
   minTransparency?: number
   maxColors?: number
   sigma?: number
+  palette: string[]
+  fixerPython?: string
+  fixerRevision?: string
+  minGridConfidence?: GridConfidence
+  reviewer?: string
+  note?: string
   /** `workspace`: add/remove/list/status/claims. */
   subcommand?: string
   /** Path to a workspace catalog. Defaults to `pixelkiln.workspace.json` in cwd. */
@@ -120,7 +132,8 @@ const VALUE_FLAGS = [
   "--manifest", "--lock", "--style", "--only", "--budget", "--port",
   "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs", "--format",
   "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma", "--workspace",
-  "--provider", "--account",
+  "--provider", "--account", "--palette", "--fixer-python", "--fixer-revision", "--min-grid-confidence",
+  "--reviewer", "--note",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -129,10 +142,11 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "workspace", "help", "--help", "-h", "--version", "-v",
+  "refine", "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
+const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -171,6 +185,14 @@ export function parseArgs(argv: string[]): Args {
       }
       rest = rest.slice(1)
     }
+  } else if (command === "refine") {
+    subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "run" : rest[0]
+    if (!(REFINE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new Error(
+        `Unknown refine subcommand "${subcommand}". Known: ${REFINE_SUBCOMMANDS.join(", ")}`,
+      )
+    }
+    if (rest[0] === subcommand) rest = rest.slice(1)
   }
 
   for (let i = 0; i < rest.length; i++) {
@@ -272,6 +294,15 @@ export function parseArgs(argv: string[]): Args {
     }
     return value
   }
+  const rawGridConfidence = get("--min-grid-confidence")
+  if (
+    rawGridConfidence !== undefined &&
+    rawGridConfidence !== "low" && rawGridConfidence !== "medium" && rawGridConfidence !== "high"
+  ) {
+    throw new Error(
+      `--min-grid-confidence must be low, medium, or high, got "${rawGridConfidence}"`,
+    )
+  }
   return {
     command,
     manifest,
@@ -306,6 +337,12 @@ export function parseArgs(argv: string[]): Args {
     minTransparency: numberOption("--min-transparency", { min: 0, max: 1 }),
     maxColors: numberOption("--max-colors", { min: 1, integer: true }),
     sigma: numberOption("--sigma", { min: Number.EPSILON }),
+    palette: list("--palette"),
+    fixerPython: get("--fixer-python"),
+    fixerRevision: get("--fixer-revision"),
+    minGridConfidence: rawGridConfidence as GridConfidence | undefined,
+    reviewer: get("--reviewer"),
+    note: get("--note"),
     subcommand,
     workspace: get("--workspace"),
     target,
@@ -333,6 +370,8 @@ Commands
   salvage   Triage account objects no lockfile claims. Recovers usable art.
             One session per matching style unless --style forces a single one.
   audit     Measure how consistently a style's assets hold together. Offline.
+  refine    Recover a native pixel grid, enforce a final palette, audit it,
+            and attach a verifiable human approval. run/approve/check. Offline.
   cache     Inspect local recovery/object-hash caches; optionally verify or prune.
   pack      Composite sprites into a PNG/atlas/provenance bundle. Offline.
   mount     Write a style's sprites into their declared cells of an existing
@@ -358,6 +397,12 @@ Options
   --min-transparency <0..1>  audit: minimum transparent canvas share
   --max-colors <n>    audit: maximum distinct opaque colors
   --sigma <n>         audit: relative outlier cutoff (default: 1.5)
+  --palette <hexes>   refine: final comma-separated #rrggbb colors (repeatable)
+  --fixer-python <path>  refine: Python with Pixel Art Fixer installed
+  --fixer-revision <sha>  refine: Pixel Art Fixer revision to record
+  --min-grid-confidence <level>  refine: high (default), medium, or low
+  --reviewer <name>   refine approve: human reviewer recorded in provenance
+  --note <text>       refine approve: optional review note
   --prune             cache: remove invalid/unreferenced local cache data
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
@@ -387,6 +432,9 @@ Examples
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
   pixelkiln mount --style ground
   pixelkiln export --style ground --only terrain --format tiled
+  pixelkiln refine --from source.png --out final.png --palette "#101820,#f2aa4c"
+  pixelkiln refine approve --from final.pixelkiln.json --reviewer "Your Name"
+  pixelkiln refine check --from final.pixelkiln.json
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json
   pixelkiln salvage --workspace pixelkiln.workspace.json
@@ -477,6 +525,79 @@ async function main() {
       await readFile(new URL("../package.json", import.meta.url), "utf8"),
     ) as { name: string; version: string }
     log(`${pkg.name} ${pkg.version}`)
+    return
+  }
+
+  if (args.command === "refine") {
+    if (!args.from) {
+      throw new Error(
+        args.subcommand === "run"
+          ? "refine needs --from <source.png>."
+          : `refine ${args.subcommand} needs --from <output.pixelkiln.json>.`,
+      )
+    }
+
+    if (args.subcommand === "run") {
+      if (!args.out) throw new Error("refine needs --out <final.png>.")
+      if (!args.palette.length) {
+        throw new Error("refine needs an explicit final palette via --palette <#rrggbb,...>.")
+      }
+      const result = await refineAsset({
+        source: args.from,
+        output: args.out,
+        palette: args.palette,
+        fixerPython: args.fixerPython,
+        fixerRevision: args.fixerRevision,
+        minGridConfidence: args.minGridConfidence,
+        minTransparency: args.minTransparency,
+        force: args.force,
+      })
+      if (args.json) {
+        log(JSON.stringify(result, null, 2))
+      } else {
+        log(
+          `  recovered ${result.detection.columns}x${result.detection.rows} native grid ` +
+            `(${result.detection.confidence}: ${result.detection.consensus})`,
+        )
+        log(`  enforced ${result.palette.length}-color palette without dithering`)
+        log(`  wrote ${path.relative(process.cwd(), result.output)}`)
+        log(`  quality record: ${path.relative(process.cwd(), result.record)}`)
+        log(`\n  Automated checks passed. Human 1× review is still required:`)
+        log(
+          `    pixelkiln refine approve --from ${path.relative(process.cwd(), result.record)} ` +
+            `--reviewer "Your Name"`,
+        )
+      }
+      return
+    }
+
+    if (args.subcommand === "approve") {
+      if (!args.reviewer?.trim()) {
+        throw new Error("refine approve needs --reviewer <name>.")
+      }
+      log(`  Inspect the final PNG at 1× and integer zoom.`)
+      log(`  Confirm crisp edges, readable forms, palette separation, alpha, and seams.`)
+      if (!(await confirm("  Record this asset as human-approved?", args.yes))) {
+        log("  approval not recorded")
+        return
+      }
+      const result = await approveQualityRecord(args.from, {
+        reviewer: args.reviewer,
+        note: args.note,
+      })
+      if (args.json) log(JSON.stringify(result, null, 2))
+      else log(`  approved ${path.relative(process.cwd(), result.output)} by ${args.reviewer.trim()}`)
+      return
+    }
+
+    const result = await checkQualityRecord(args.from)
+    if (args.json) {
+      log(JSON.stringify(result, null, 2))
+    } else {
+      log(`  ${result.safe ? "release-ready" : "not release-ready"}: ${path.relative(process.cwd(), result.output || result.record)}`)
+      for (const reason of result.reasons) log(`    ${reason}`)
+    }
+    if (!result.safe) process.exitCode = 1
     return
   }
 

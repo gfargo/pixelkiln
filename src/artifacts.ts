@@ -36,7 +36,7 @@ export interface ArtifactSource {
 }
 
 export interface ArtifactProvenance {
-  kind: "pack" | "mount" | "tileset"
+  kind: "pack" | "mount" | "tileset" | "refine"
   sources: ArtifactSource[]
   /** Every non-source input that can change the derived bytes. */
   options: unknown
@@ -133,7 +133,7 @@ function parseArtifactManifest(absolute: string, data: string): ArtifactBundleMa
   if (
     raw.format !== "pixelkiln-artifact-bundle" ||
     raw.version !== 1 ||
-    (raw.kind !== "pack" && raw.kind !== "mount" && raw.kind !== "tileset") ||
+    (raw.kind !== "pack" && raw.kind !== "mount" && raw.kind !== "tileset" && raw.kind !== "refine") ||
     typeof raw.fingerprint !== "string" ||
     raw.options === undefined ||
     !Array.isArray(raw.sources) ||
@@ -158,6 +158,14 @@ function parseArtifactManifest(absolute: string, data: string): ArtifactBundleMa
     }
   }
   return raw as ArtifactBundleManifest
+}
+
+/** Read and validate a companion manifest without resolving its portable paths. */
+export async function readArtifactBundleManifest(
+  manifestPath: string,
+): Promise<ArtifactBundleManifest> {
+  const absolute = path.resolve(manifestPath)
+  return parseArtifactManifest(absolute, await readFile(absolute, "utf8"))
 }
 
 async function readOptional(file: string): Promise<Buffer | null> {
@@ -417,7 +425,7 @@ export async function writeManagedArtifactBundle(
 /** Verify stored provenance and source/output hashes without rebuilding output. */
 export async function verifyArtifactBundle(manifestPath: string): Promise<ArtifactVerification> {
   const absolute = path.resolve(manifestPath)
-  const raw = parseArtifactManifest(absolute, await readFile(absolute, "utf8"))
+  const raw = await readArtifactBundleManifest(absolute)
 
   const root = path.dirname(absolute)
   const changedSources: string[] = []

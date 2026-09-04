@@ -51,18 +51,33 @@ for (const { file, source } of routeSources) {
 }
 
 const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
-const nativeGridSample = "/benchmarks/provider-hires/comfyui/native-grid/alpine-valley-128x128.png";
-if (!home.includes(nativeGridSample)) {
-  failures.push("provider showcase is missing the recovered native-grid ComfyUI sample");
+const refinedSample = "/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.png";
+if (!home.includes(refinedSample)) {
+  failures.push("provider showcase is missing the final-palette ComfyUI sample");
 }
-if (!existsSync(path.join(websiteRoot, "public", nativeGridSample.slice(1)))) {
-  failures.push("provider showcase native-grid ComfyUI sample does not exist");
+if (!existsSync(path.join(websiteRoot, "public", refinedSample.slice(1)))) {
+  failures.push("provider showcase final-palette ComfyUI sample does not exist");
+}
+const refinedRecord = path.join(
+  websiteRoot,
+  "public/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.pixelkiln.json",
+);
+if (!existsSync(refinedRecord)) {
+  failures.push("provider showcase final-palette ComfyUI quality record does not exist");
+} else {
+  const quality = JSON.parse(readFileSync(refinedRecord, "utf8"));
+  if (quality.kind !== "refine" || quality.options?.review?.status !== "pending") {
+    failures.push("provider showcase quality record must be an honestly pending refinement");
+  }
 }
 if (!home.includes("https://www.retrodiffusion.ai/tools/pixel-art-fixer/")) {
   failures.push("provider showcase is missing the Pixel Art Fixer link");
 }
 if (!home.includes("48–128px native per part")) {
   failures.push("provider showcase is missing the ComfyUI quality-first native range");
+}
+if (!home.includes("Refinement automated; art review required")) {
+  failures.push("provider showcase is missing the ComfyUI refinement boundary");
 }
 if (!home.includes("not a production-ready pixel-art preset")) {
   failures.push("provider showcase is missing the ComfyUI production-readiness warning");

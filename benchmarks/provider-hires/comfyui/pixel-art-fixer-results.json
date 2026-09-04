@@ -60,5 +60,31 @@
       "consensus": "fast:ac+rl(S)",
       "confidence": "high"
     }
-  ]
+  ],
+  "refinement": {
+    "command": "pixelkiln refine",
+    "paletteSize": 32,
+    "dither": "none",
+    "distance": "redmean",
+    "outputs": [
+      {
+        "record": "../../../website/public/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.pixelkiln.json",
+        "colors": 15,
+        "transparency": 0.615966796875,
+        "review": "pending"
+      },
+      {
+        "record": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.pixelkiln.json",
+        "colors": 24,
+        "transparency": 0,
+        "review": "pending"
+      },
+      {
+        "record": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-wide-168x96.pixelkiln.json",
+        "colors": 22,
+        "transparency": 0,
+        "review": "pending"
+      }
+    ]
+  }
 }

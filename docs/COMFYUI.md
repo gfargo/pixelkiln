@@ -27,10 +27,11 @@ extra model testing and cleanup.
 2. Reject missing subjects, weak silhouettes, and bad composition before doing
    any cleanup.
 3. For isolated art, remove the background at full resolution.
-4. Recover one native pixel per detected cell.
-5. Quantize the recovered native image to the final project palette. Start with
-   16–32 colors and no dithering.
-6. Review the native file at 1× and an integer zoom.
+4. Run `pixelkiln refine` to recover one native pixel per detected cell and
+   apply the final project palette. Start with 16–32 colors and no dithering.
+5. Review the native file at 1× and an integer zoom, then record it with
+   `pixelkiln refine approve`.
+6. Run `pixelkiln refine check` before packaging or release.
 7. Keep the smallest clear result. Start with 48–128px native components and
    compose larger scenes from accepted parts.
 
@@ -38,9 +39,11 @@ Stop after step 2 when the image misses the brief. Background removal,
 pixel-grid recovery, and palette reduction cannot restore a missing building or
 repair a weak composition.
 
-PixelKiln currently automates generation, candidate review, provenance, and
-recovery from its local cache. It does not automate steps 3–6. Treat every
-ComfyUI output as source material until those checks pass.
+PixelKiln automates generation, candidate review, cache recovery, native-grid
+reconstruction, final palette enforcement, measurable audits, and the approval
+record. Background removal remains part of the ComfyUI graph, and the final art
+decision remains human. Treat every generated image as source material until
+`pixelkiln refine check` passes.
 
 ## Start ComfyUI
 
@@ -191,7 +194,52 @@ art, even when every source pixel becomes an exact 2×2 block.
 The open fixer is deterministic image processing. Its maintainers also offer a
 [hosted neural fixer](https://www.retrodiffusion.ai/tools/pixel-art-fixer/) for
 damaged inputs where a reliable grid no longer exists. PixelKiln does not yet
-run either fixer automatically.
+call the hosted service. The local `refine` command uses the open fixer's Python
+API and records its revision and detector result.
+
+### Install the refiner
+
+Keep the refiner separate from Comfy Desktop's Python environment. These are
+the commands used for the checked-in benchmark:
+
+```bash
+uv venv .pixelkiln/pixelfixer --python 3.12
+uv pip install \
+  --python .pixelkiln/pixelfixer/bin/python \
+  "git+https://github.com/Retro-Diffusion/pixel-art-fixer.git@ef376e57e1c272633ca2dbf5f29ec3fcf6596465#subdirectory=python"
+```
+
+`.pixelkiln/` is ignored by the repository. It is local tooling, not a project
+artifact. If `uv` is unavailable, create a Python 3.12 virtual environment and
+install the same pinned Git URL with that environment's pip. On Windows, pass
+the environment's `Scripts/python.exe` path to `--fixer-python`.
+
+Run refinement only after choosing a candidate and removing the background for
+an isolated asset:
+
+```bash
+PALETTE="#141b1e,#23312a,#384d4f,#526a8d,#709fcf,#865c45,#c6a766,#f1bb70"
+
+pixelkiln refine \
+  --from working-canvas.png \
+  --out art/mountain-native.png \
+  --palette "$PALETTE" \
+  --fixer-python .pixelkiln/pixelfixer/bin/python
+
+pixelkiln refine approve \
+  --from art/mountain-native.pixelkiln.json \
+  --reviewer "Your Name"
+
+pixelkiln refine check --from art/mountain-native.pixelkiln.json
+```
+
+The default requires the fixer's high-confidence result and writes nothing when
+the detected dimensions disagree with the reconstructed PNG. It preserves
+alpha, uses nearest-color redmean distance, and never dithers. The companion
+starts with review status `pending`. Approval becomes stale when the source,
+output, palette metadata, fixer revision, audit, or approval record changes.
+The pinned fixer's API accepts images with a minimum 16px side and at most four
+million source pixels. Crop or split a larger working canvas before refinement.
 
 ### Quality-first resolution policy
 
@@ -352,6 +400,8 @@ the portable reference against the current `COMFYUI_BASE_URL`.
 - Supported output: PNG images returned by one output node.
 - Supported dimensions: 16–4096px per edge, subject to the workflow, model,
   sampler, VRAM, and node constraints.
+- Provider generation may exceed the local refiner's four-million-pixel input
+  limit. Crop or split those canvases before running `refine`.
 - PixelKiln `styleImages` and `palette` are rejected. Put image references,
   ControlNet, LoRA, palette, and other controls inside the committed workflow.
 - Video, animation, masks, multiple output nodes, uploads, and ComfyUI Cloud
@@ -359,9 +409,10 @@ the portable reference against the current `COMFYUI_BASE_URL`.
 - PixelKiln does not install checkpoints or custom nodes. Every machine running
   the project must provide the models and nodes named by the workflow. The
   benchmark workflows use only core ComfyUI nodes.
-- PixelKiln does not yet run background removal, native-grid recovery, final
-  palette enforcement, or aesthetic review as one automated pipeline. Until
-  those external or manual steps pass, a generated PNG remains source material.
+- Background removal remains inside the committed ComfyUI graph. `refine`
+  automates native-grid recovery, final palette enforcement, and measurable
+  checks. A named human still approves the art at 1×; PixelKiln records and
+  verifies that decision rather than making it.
 
 For large mountains, buildings, and backgrounds, model choice and working
 resolution matter more than the provider label. The SDXL benchmark produced a

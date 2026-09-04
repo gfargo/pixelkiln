@@ -17,6 +17,10 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+      # Node 22 bundles npm 10, which can stall while reifying this npm-11
+      # lockfile. Use the same package-manager release on both test lanes.
+      - name: Align npm version
+        run: npm install --global npm@11.19.1
       - run: npm ci
       - run: npm run test:release
       - run: npm run typecheck

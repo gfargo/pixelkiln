@@ -72,7 +72,7 @@ prompt, size, batch, and optional seed inputs PixelKiln may replace.
 | Cost model | `0 free`; local compute and hosting are outside PixelKiln's estimate |
 | Reproducibility | Workflow content is hashed; model files, custom-node versions, and runtime settings must still be managed outside PixelKiln |
 | Account lifecycle | Read-only connectivity check; no balance, remote object listing, tagging, or purge |
-| Confidence | Full mocked coverage plus live generation, four-candidate review, and cache-only restore on Apple MPS; cleanup and native-grid experiments remain manual, and aesthetic approval remains human |
+| Confidence | Full mocked coverage plus live generation, four-candidate review, cache-only restore, and three provider-neutral refinement runs on Apple MPS; background removal stays in the graph and aesthetic approval remains human |
 
 Choose ComfyUI when workflow ownership is worth manual validation. If the goal
 is the least cleanup between a prompt and usable pixel art, start with a
@@ -208,10 +208,11 @@ estimate and hard budget remain enforced.
 ## What to build next
 
 The first ComfyUI release has a live, versioned core-node reference workflow.
-Transport, candidate review, provenance, and cache recovery work. Art quality is
-still the gap. The tested SDXL plus Pixel Art XL graph is useful for composition,
-but it is not a production preset. Native-grid recovery, final palette
-enforcement, prompt coverage, and aesthetic approval remain manual.
+Transport, candidate review, provenance, cache recovery, native-grid recovery,
+final palette enforcement, and a fail-closed approval record now work. The
+tested SDXL plus Pixel Art XL graph is useful for composition, but it is not a
+production preset. Background removal stays in the graph. Prompt coverage,
+pixel clusters, and aesthetic approval still require a person.
 
 Native per-style provider routing remains the highest-value orchestration
 feature. One manifest should be able to send a building style to PixelLab, an
@@ -238,20 +239,18 @@ documents free cost preflights. That combination adds something the current
 providers do not: a project-specific visual model with a cost check that can be
 captured before submission.
 
-Recommended order:
+Recommended order from here:
 
-1. Build a provider-neutral post-processing record for background removal,
-   native-grid recovery, final palette enforcement, and human approval.
-2. Benchmark pinned ComfyUI models and prompt patterns across at least two scene
+1. Benchmark pinned ComfyUI models and prompt patterns across at least two scene
    families. Reject any supposed improvement that helps only one subject.
-3. Add per-style provider selection, provider-keyed budgets, and mixed-provider
+2. Add per-style provider selection, provider-keyed budgets, and mixed-provider
    integration tests.
-4. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
+3. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
    smoke tests.
-5. Build the Scenario still-image spike from issue #52 with dry-run cost, submit, poll,
+4. Build the Scenario still-image spike from issue #52 with dry-run cost, submit, poll,
    download, and one custom-model or reference-image benchmark.
-6. Design ComfyUI Cloud as a separate authenticated and billable adapter.
-7. Consider general raster marketplaces only with explicit nearest-neighbor,
+5. Design ComfyUI Cloud as a separate authenticated and billable adapter.
+6. Consider general raster marketplaces only with explicit nearest-neighbor,
    palette, transparency, and reproducibility checks.
 
 Midjourney is not an adapter target without an official public API. Automating

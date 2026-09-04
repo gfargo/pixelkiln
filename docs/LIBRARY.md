@@ -56,6 +56,27 @@ files make the result unsafe even when all measured assets pass. Standard
 non-interlaced greyscale, indexed, RGB, greyscale-alpha, and RGBA PNGs are
 normalized to RGBA before palette and transparency measurements.
 
+Provider-neutral pixel refinement is also public:
+
+```ts
+import { refineAsset, checkQualityRecord } from "pixelkiln"
+
+await refineAsset({
+  source: "candidates/mountain.png",
+  output: "art/mountain-native.png",
+  palette: ["#141b1e", "#23312a", "#709fcf", "#f1bb70"],
+  fixerPython: ".pixelkiln/pixelfixer/bin/python",
+})
+
+const quality = await checkQualityRecord("art/mountain-native.pixelkiln.json")
+if (!quality.safe) console.error(quality.reasons)
+```
+
+`refineAsset` reconstructs the native grid through a pinned Pixel Art Fixer
+installation, applies the exact palette without dithering, audits the result,
+and writes a managed `refine` artifact bundle. Human approval is a separate
+`approveQualityRecord` call so automated generation cannot approve itself.
+
 ## Build sprite sheets
 
 Use `packStyle` for one lockfile style or `packSprites` for an explicit list:

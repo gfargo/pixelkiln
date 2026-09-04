@@ -205,6 +205,58 @@ pixelkiln audit --style neon --json --check \
   --max-distance 35 --min-transparency 0.1 --max-colors 128 --sigma 1.5
 ```
 
+### `refine`
+
+Turn an accepted raster candidate into a native-grid PNG with a fixed palette,
+then attach a review record. This command is provider-neutral and needs no
+manifest.
+
+Install the pinned Pixel Art Fixer package into an isolated Python environment
+before the first run. The [ComfyUI guide](./COMFYUI.md#install-the-refiner) has
+the exact command and revision.
+
+```bash
+PALETTE="#141b1e,#23312a,#384d4f,#526a8d,#709fcf,#865c45,#c6a766,#f1bb70"
+
+pixelkiln refine \
+  --from working-canvas.png \
+  --out art/mountain-native.png \
+  --palette "$PALETTE" \
+  --fixer-python .pixelkiln/pixelfixer/bin/python
+```
+
+`refine` runs Pixel Art Fixer at its recorded revision, requires high grid
+confidence by default, reconstructs one stored pixel per detected cell, and
+maps every visible pixel to the nearest supplied color without dithering. The
+palette size becomes the color-count ceiling. `--min-transparency` can add an
+alpha threshold for isolated assets. Failed checks write nothing.
+
+The output is accompanied by `<name>.pixelkiln.json`. The record hashes the
+source and output and stores the fixer revision, detected grid, palette, audit,
+and review state. It starts as `pending`; an automated pass is not art approval.
+
+```bash
+pixelkiln refine approve \
+  --from art/mountain-native.pixelkiln.json \
+  --reviewer "Mina" \
+  --note "Readable at 1x; alpha edge is clean"
+
+pixelkiln refine check \
+  --from art/mountain-native.pixelkiln.json \
+  --json
+```
+
+`approve` asks the reviewer to confirm the native 1× and integer-zoom checks.
+Use `--yes` only when that review already happened and the named person is
+recording it non-interactively. `check` exits nonzero when approval is pending
+or when the source, output, palette metadata, fixer revision, or audit record
+has changed. Rerunning `refine` always resets approval to pending.
+
+`--min-grid-confidence medium` or `low` weakens the structural gate. Do that
+only after inspecting a representative batch. `--fixer-revision` records a
+different pinned installation; it does not install or verify that revision for
+you.
+
 ### `cache`
 
 Inspect the local content cache and account object-hash cache. `--check` exits
@@ -261,11 +313,11 @@ Print the package version. `-v` is an alias.
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. |
 | `--budget <n>` | submit/gen | Refuse work above this provider-unit cost. |
-| `--force` | gen/derived commands | Regenerate current work or explicitly take ownership of modified/unowned derived output. |
+| `--force` | gen/derived commands | Regenerate current work or explicitly take ownership of modified/unowned derived output. A refine rerun resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
-| `--json` | plan/doctor/audit/cache/status/salvage | Machine-readable stdout where supported. |
+| `--json` | plan/doctor/audit/cache/status/salvage/refine | Machine-readable stdout where supported. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
-| `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. |
+| `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage | Do not automatically open the browser. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |
@@ -273,23 +325,29 @@ Print the package version. `-v` is an alias.
 | `--provider <id>` | workspace add | Provider id to register the project under; defaults to the target manifest's provider. |
 | `--account <label>` | workspace add | Free-form account label, e.g. distinguishing sandboxes. |
 | `--all` | salvage dry run | List every unclaimed object rather than the first 30. |
-| `--from <dir>` | init | Existing source tree to scan. |
+| `--from <path>` | init/refine | Existing source tree for init; source PNG or quality record for refine. |
 | `--exclude <names>` | init | Directory/name fragments to exclude; repeatable. |
 | `--generator <name>` | init | Generator assigned to the scaffolded style. |
 | `--name <name>` | init | Project name for the scaffolded manifest. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--port <n>` | pick/salvage | Local review server port; otherwise chooses a free port. |
-| `--out <path>` | pack/export | Output base override. Export requires one selected tileset. |
+| `--out <path>` | pack/export/refine | Output base override, or the final native PNG for refine. Export requires one selected tileset. |
 | `--inputs <path>` | pack | JSON array of `{ id, path }`; requires `--out`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
 | `--format <name>` | export | `generic` (default), `tiled`, or `godot`. |
 | `--output-role <role>` | pack | Include named structural roles; repeatable. |
 | `--primary-only` | pack | Include only unambiguous primary/single outputs. |
 | `--max-distance <n>` | audit | Absolute palette-distance ceiling. |
-| `--min-transparency <0..1>` | audit | Minimum transparent canvas share. |
+| `--min-transparency <0..1>` | audit/refine | Minimum transparent canvas share. |
 | `--max-colors <n>` | audit | Maximum distinct opaque colors. |
 | `--sigma <n>` | audit | Relative outlier cutoff; defaults to 1.5. |
 | `--prune` | cache | Remove invalid and unreferenced cache data. |
+| `--palette <hexes>` | refine | Final `#rrggbb` colors; repeatable and comma-separated. Requires 2–256 unique colors. |
+| `--fixer-python <path>` | refine | Python executable containing Pixel Art Fixer. Defaults to `PIXELKILN_PIXEL_FIXER_PYTHON`, then `python3`. |
+| `--fixer-revision <sha>` | refine | Revision recorded in the quality companion. Defaults to PixelKiln's tested pin. |
+| `--min-grid-confidence <level>` | refine | Minimum accepted detector confidence: `high` (default), `medium`, or `low`. |
+| `--reviewer <name>` | refine approve | Human reviewer stored in the quality companion. |
+| `--note <text>` | refine approve | Optional review note stored in the quality companion. |
 
 ## Exit and output contract
 
@@ -299,5 +357,7 @@ Print the package version. `-v` is an alias.
 - Human progress goes to stderr when `salvage --dry-run --json` reserves stdout
   for JSON.
 - `plan --check`, `audit --check`, and `cache --check` are intended as CI gates.
+- `refine check` is a fail-closed gate: pending review or any recorded-byte or
+  metadata drift exits nonzero.
 - Commands that can spend or delete expose their scope before doing so; budget
   and confirmation are separate protections.
