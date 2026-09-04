@@ -1,3 +1,10 @@
+# [0.12.0](https://github.com/gfargo/pixelkiln/compare/v0.11.0...v0.12.0) (2026-09-04)
+
+
+### Features
+
+* add versioned recipes and image quality regression gates ([#60](https://github.com/gfargo/pixelkiln/issues/60)) ([831f1ed](https://github.com/gfargo/pixelkiln/commit/831f1ed586878bdecd36c1ac2ab31056068998d6))
+
 # [0.11.0](https://github.com/gfargo/pixelkiln/compare/v0.10.0...v0.11.0) (2026-09-04)
 
 
