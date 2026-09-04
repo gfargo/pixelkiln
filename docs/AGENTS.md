@@ -28,7 +28,9 @@ With the skill loaded, an agent should:
 5. Pass an explicit `--budget` within the amount the user authorized.
 6. Leave artwork selection in the local `pick` page unless the user gives a
    specific selection rule.
-7. Commit the manifest, lockfile, generated output, and artifact companions, but
+7. Treat ComfyUI output as source material until native-grid, final-palette,
+   prompt-coverage, and human 1× checks pass.
+8. Commit the manifest, lockfile, generated output, and artifact companions, but
    never credentials or `.pixelkiln/` caches.
 
 The skill guides the workflow; PixelKiln remains the deterministic execution
@@ -48,7 +50,7 @@ not a replacement:
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
 | PixelLab adapter | The current production and live-tested generation backend. |
 | Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
-| ComfyUI adapter | Experimental self-hosted still-image backend using a committed API-format workflow. |
+| ComfyUI adapter | Experimental self-hosted still-image backend; generated PNGs need manual structural and visual approval. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production
 and paid-generation-tested adapter. Retro Diffusion generation support is

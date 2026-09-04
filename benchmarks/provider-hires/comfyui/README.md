@@ -9,6 +9,10 @@ This project separates three sizes that should not be confused:
 The committed ComfyUI workflows cover two generation canvases. Both use the
 same prompt, seed, model stack, and 64-color quantization.
 
+This is a boundary and failure-mode benchmark, not a production preset. It
+shows how to distinguish model canvas, recovered grid, and display size. It
+does not claim that structural recovery makes the art good.
+
 | Style | Generation canvas | Purpose |
 |---|---:|---|
 | `baseline-64` | 1024×1024 | Square SDXL baseline |
@@ -67,13 +71,15 @@ recovered images remain review candidates. Reject one that still looks muddy at
 
 Use this order for a quality-first decision:
 
-1. Review composition and silhouette on the generation canvas.
-2. Recover the native grid.
-3. Start with a deliberate 16–32 color project palette; expand it only when the
-   art direction needs the extra colors.
-4. Review clusters, contours, single-pixel noise, and focal-point readability at
+1. Generate two to four candidates and reject missing subjects, weak
+   composition, and unreadable silhouettes.
+2. Remove the background at full resolution when the asset is isolated.
+3. Recover the native grid.
+4. Start with a deliberate 16–32 color project palette after recovery; expand
+   it only when the art direction needs the extra colors.
+5. Review clusters, contours, single-pixel noise, and focal-point readability at
    1× and an integer zoom.
-5. Accept the smallest native result that communicates the scene clearly.
+6. Accept the smallest native result that communicates the scene clearly.
 
 ## Large-scene guidance
 

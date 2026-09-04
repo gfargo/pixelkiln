@@ -4,10 +4,43 @@ PixelKiln can run a committed ComfyUI workflow on a self-hosted server. This
 adapter is experimental. It supports still-image `map` jobs, one or more review
 candidates, local provenance, and cache-backed recovery. A core-node Stable
 Diffusion 1.5 workflow has passed single-image generation and a four-candidate
-review queue on Apple MPS. A higher-quality SDXL workflow has also passed four
+review queue on Apple MPS. An SDXL composition workflow has also passed four
 building and environment renders. ComfyUI Cloud is not part of this release.
 
 [Visit ComfyUI](https://www.comfy.org/) or continue with the local setup below.
+
+## Decide whether ComfyUI fits
+
+Use this adapter when local control, private inputs, or a custom graph justifies
+maintaining the workflow. It is not a turnkey route to game-ready pixel art.
+The tested SDXL plus Pixel Art XL graph can produce useful source compositions,
+but the result still needs native-grid recovery, a final palette pass, and human
+art review.
+
+If the main goal is the shortest path to usable pixel art, compare PixelLab and
+Retro Diffusion first. Choose ComfyUI when owning the workflow is worth the
+extra model testing and cleanup.
+
+### Minimal safe path
+
+1. Generate two to four candidates at the model's normal working size.
+2. Reject missing subjects, weak silhouettes, and bad composition before doing
+   any cleanup.
+3. For isolated art, remove the background at full resolution.
+4. Recover one native pixel per detected cell.
+5. Quantize the recovered native image to the final project palette. Start with
+   16–32 colors and no dithering.
+6. Review the native file at 1× and an integer zoom.
+7. Keep the smallest clear result. Start with 48–128px native components and
+   compose larger scenes from accepted parts.
+
+Stop after step 2 when the image misses the brief. Background removal,
+pixel-grid recovery, and palette reduction cannot restore a missing building or
+repair a weak composition.
+
+PixelKiln currently automates generation, candidate review, provenance, and
+recovery from its local cache. It does not automate steps 3–6. Treat every
+ComfyUI output as source material until those checks pass.
 
 ## Start ComfyUI
 
@@ -55,9 +88,9 @@ The repository includes a working core-node
 from ComfyUI's official first-generation guide to test plumbing, not to claim
 pixel-art quality.
 
-## Install the tested quality stack
+## Install the tested composition stack
 
-The committed quality and post-processing benchmarks use three public model
+The committed composition and post-processing benchmarks use three public model
 files:
 
 | File | ComfyUI folder | SHA-256 | License named by the model card |
@@ -82,7 +115,7 @@ implied cells afterward.
 You can reproduce the four samples with the committed
 [ComfyUI benchmark project](../benchmarks/provider-environments/comfyui/README.md).
 
-## Remove backgrounds and control the palette
+## Background removal and palette experiments
 
 ComfyUI 0.34.3 has the required nodes in core. No custom-node package is needed.
 The tested isolated-asset graph runs these nodes in this order:
@@ -94,9 +127,22 @@ The tested isolated-asset graph runs these nodes in this order:
 5. Join the quantized RGB image with the alpha mask.
 6. Reduce the RGBA result with `ImageScale` set to `nearest-exact`.
 
-The order is deliberate. BiRefNet sees the full-resolution, full-color image,
-while quantization cannot damage the mask. Scenic backgrounds skip BiRefNet
-and use only 64-color quantization before the final scale.
+This graph is a diagnostic experiment, not the recommended finished pipeline.
+It proves the cleanup nodes run and preserves the alpha mask by letting BiRefNet
+see the full-resolution, full-color image. Its pre-scale quantization does not
+guarantee the color count of a later native-grid reconstruction, because grid
+recovery can introduce averaged colors.
+
+For an isolated production candidate, use this order instead:
+
+1. decode the full-resolution model output;
+2. remove its background and preserve the alpha mask;
+3. recover the native pixel grid without resampling the alpha edge;
+4. quantize the recovered native RGB image to the final project palette;
+5. audit and review the final native RGBA file.
+
+Scenic backgrounds skip background removal. They still need grid recovery,
+final palette enforcement, and review.
 
 The [post-processing benchmark](../benchmarks/provider-postprocessing/comfyui/README.md)
 reuses the same prompts, seeds, SDXL settings, and LoRA strengths as the first
@@ -162,6 +208,11 @@ improve readable depth, material, or lighting. After grid recovery, review the
 asset at 1× and an integer zoom for silhouette, clusters, contours, single-pixel
 noise, palette separation, and seams. High-confidence grid detection only
 proves structure; it is not an aesthetic approval.
+
+Test a proposed graph and prompt pattern on at least two different scene
+families. One prompt can clean up one subject and damage another. Generate a
+small candidate set, reject any image that misses required objects, and keep the
+prompt and workflow only when the final native files improve consistently.
 
 Stop increasing resolution when clusters become soft, gradients replace
 intentional ramps, or important forms stop reading at 1×. Keep the smaller
@@ -308,13 +359,16 @@ the portable reference against the current `COMFYUI_BASE_URL`.
 - PixelKiln does not install checkpoints or custom nodes. Every machine running
   the project must provide the models and nodes named by the workflow. The
   benchmark workflows use only core ComfyUI nodes.
+- PixelKiln does not yet run background removal, native-grid recovery, final
+  palette enforcement, or aesthetic review as one automated pipeline. Until
+  those external or manual steps pass, a generated PNG remains source material.
 
 For large mountains, buildings, and backgrounds, model choice and working
 resolution matter more than the provider label. The SDXL benchmark produced a
 coherent 384px cliff fortress and two layered environments where the starter
-SD1.5 workflow did not. Core post-processing then turned the isolated images
-into transparent 64-color assets without changing their composition. Benchmark
-the exact committed workflow before assigning it a production batch.
+SD1.5 workflow did not. Those results still required manual structural and
+visual review. Benchmark the exact committed workflow on more than one subject
+before assigning it a production batch.
 
 ## Troubleshooting
 
@@ -329,6 +383,9 @@ the exact committed workflow before assigning it a production batch.
 - **Out of memory:** lower asset dimensions or batch size, or change the
   workflow. PixelKiln's 4096px ceiling is a schema limit, not a promise that a
   particular machine can render that canvas.
+- **The result looks pixelated but muddy:** reject it as source material. Do not
+  upscale it or accept it because grid detection succeeds. Compare a different
+  model, prompt pattern, or smaller native target on at least two scene types.
 
 ComfyUI's official server route reference documents the `/prompt`,
 `/history/{prompt_id}`, `/view`, and `/system_stats` endpoints used by this

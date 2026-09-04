@@ -224,8 +224,8 @@ export default function Home() {
               <p className="provider-note">
                 PixelLab is production-ready. Retro Diffusion has live-tested
                 stills. ComfyUI has live-tested local generation, candidate
-                queueing, cache recovery, SDXL pixel art, transparent cutouts,
-                and fixed-palette output.
+                queueing, and cache recovery. Its SDXL, cleanup, and native-grid
+                results are source material, not a production-ready pixel-art preset.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
@@ -272,6 +272,7 @@ export default function Home() {
               These are outputs from committed benchmark projects. The
               ComfyUI card separates its model canvas from the recovered native
               pixel grid, because a large raster can still contain fake pixels.
+              Its samples are diagnostics, not finished asset recommendations.
             </p>
           </div>
 
@@ -392,7 +393,7 @@ export default function Home() {
                     sizes="(max-width: 680px) 50vw, 280px"
                     unoptimized
                   />
-                  <figcaption>Large building · native 128×128 · transparent</figcaption>
+                  <figcaption>Recovery test · native 128×128 · transparent</figcaption>
                 </figure>
                 <figure>
                   <Image
@@ -415,7 +416,8 @@ export default function Home() {
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
                 <div><dt>Quality target</dt><dd>48–128px native per part</dd></div>
-                <div><dt>Best fit</dt><dd>Local control, component generation, and repeatable cleanup</dd></div>
+                <div><dt>Best fit</dt><dd>Local composition and custom graph experiments</dd></div>
+                <div><dt>Readiness</dt><dd>Manual recovery and art review required</dd></div>
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">

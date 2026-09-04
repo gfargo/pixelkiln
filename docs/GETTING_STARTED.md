@@ -71,7 +71,9 @@ provider options and current limits, or
 For self-hosted generation, set `provider` to `comfyui`, commit an API-format
 workflow, and bind the inputs PixelKiln may replace. Local ComfyUI jobs use a
 zero `free` budget, which describes the lack of a metered provider charge, not
-the cost of hardware or electricity. See [Set up ComfyUI](COMFYUI.md).
+the cost of hardware or electricity. ComfyUI is not the shortest path to
+game-ready pixel art: use it only when local control justifies manual grid
+recovery, palette enforcement, and art review. See [Set up ComfyUI](COMFYUI.md).
 
 The provider setup guides give the shortest complete path for
 [PixelLab](PIXELLAB.md), [Retro Diffusion](RETRO_DIFFUSION.md), and

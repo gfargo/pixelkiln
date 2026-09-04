@@ -164,19 +164,20 @@ workflows use core ComfyUI nodes, generate at 1024×1024, and finish with
 |---|---|---|---|
 | ![ComfyUI mountain observatory](../website/public/benchmarks/provider-environments/comfyui/isolated/a/mountain-observatory.png) | ![ComfyUI cliffside fortress](../website/public/benchmarks/provider-environments/comfyui/isolated/a/cliffside-fortress.png) | ![ComfyUI alpine valley](../website/public/benchmarks/provider-environments/comfyui/background/a/alpine-valley.png) | ![ComfyUI volcanic pass](../website/public/benchmarks/provider-environments/comfyui/background/a/volcanic-pass.png) |
 
-The observatory and fortress are the strongest architectural results in this
-small sample. The fortress has a clear entrance, tower hierarchy, stairs, and a
+The observatory and fortress have the clearest architecture in this small
+sample. The fortress has a clear entrance, tower hierarchy, stairs, and a
 single readable footprint. The alpine scene keeps the river, village, tree
 line, and distant ridges separate. The volcanic scene is dramatic and legible,
 but it drops the requested basalt fortress, the same prompt-coverage failure
-seen in both hosted providers.
+seen in both hosted providers. These composition strengths do not make the
+files finished pixel art.
 
 The trade-off is production cleanup. All four ComfyUI PNGs are opaque. The two
 isolated files use 16,811 and 31,572 RGB colors, while the backgrounds use
 36,248 and 50,985. They look pixelated because of the LoRA and nearest-exact
 reduction, but they are not indexed, low-palette sprites. Add explicit
-background removal and palette quantization when the target art direction
-requires them.
+background removal, native-grid recovery, final palette quantization, and human
+review before treating them as game assets.
 
 ### ComfyUI post-processing result
 
@@ -184,7 +185,7 @@ The follow-up graph keeps the generation settings fixed and changes only the
 cleanup nodes. BiRefNet removes the isolated backgrounds, and ComfyUI's core
 quantizer limits every image to 64 colors without dithering.
 
-| Original observatory | Refined observatory | Original fortress | Refined fortress |
+| Original observatory | Cleanup experiment | Original fortress | Cleanup experiment |
 |---|---|---|---|
 | ![Original opaque ComfyUI mountain observatory](../website/public/benchmarks/provider-environments/comfyui/isolated/a/mountain-observatory.png) | ![Transparent 64-color ComfyUI mountain observatory](../website/public/benchmarks/provider-postprocessing/comfyui/isolated/mountain-observatory.png) | ![Original opaque ComfyUI cliffside fortress](../website/public/benchmarks/provider-environments/comfyui/isolated/a/cliffside-fortress.png) | ![Transparent 64-color ComfyUI cliffside fortress](../website/public/benchmarks/provider-postprocessing/comfyui/isolated/cliffside-fortress.png) |
 
@@ -196,7 +197,9 @@ The cutouts retained their silhouettes while reaching 60% and 62% transparent
 pixels. They use 55 and 58 RGB colors instead of 16,811 and 31,572. The scenic
 images fell to 64 and 60 colors without losing their main depth bands. The
 committed [post-processing project](../benchmarks/provider-postprocessing/comfyui/README.md)
-contains the workflows, manifest, audit commands, and provenance.
+contains the workflows, manifest, audit commands, and provenance. These outputs
+still need native-grid recovery and final palette enforcement. They are not a
+finished production path.
 
 ### ComfyUI resolution result
 
@@ -268,14 +271,20 @@ For full scenic backgrounds, start with PixelLab Pixflux. These two attempts
 were cheaper and more faithful to the brief. Try Retro Diffusion when you want
 foreground framing and a closer illustrated scene.
 
-Try the tested ComfyUI SDXL stack when local control and larger compositions
-matter most. It produced the best large building in this run and a strong
-layered valley, with no provider charge. The refined core-node graph also makes
-transparent, 64-color cutouts. A one-pass 1024px render took roughly 60 to 90
-seconds on the tested Apple MPS machine. Treat that output as a generation
-canvas, then reconstruct and edit the actual native grid. The tested
-latent-upscale passes blurred the art, while nearest-neighbor scaling merely
-duplicated its pseudo-pixels.
+Try ComfyUI when local control and custom composition work matter enough to
+justify manual cleanup. The tested SDXL stack produced a strong building and
+layered valley, but its large files only imitated a pixel grid. Its cleanup
+graph and native-grid recovery are diagnostic steps, not a production preset.
+A one-pass 1024px render took roughly 60 to 90 seconds on the tested Apple MPS
+machine. Recover the native grid, enforce the final palette afterward, and
+review prompt coverage and pixel clusters by hand. The tested latent-upscale
+passes blurred the art, while nearest-neighbor scaling only duplicated its
+pseudo-pixels.
+
+Do not choose the current ComfyUI stack only because it has no provider charge.
+It carries the most local setup and manual validation in this comparison. Test
+any proposed prompt pattern on at least two scene families; a universal cleanup
+prompt can improve one subject while degrading another.
 
 Do not ask any provider for one giant finished level. Generate terrain,
 background, buildings, landmarks, and foreground pieces separately. Normalize

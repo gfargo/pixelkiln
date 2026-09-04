@@ -72,6 +72,7 @@ source. Review every candidate at its native 1× size and at an integer zoom.
 
 For each candidate, verify:
 
+- every required subject and landmark from the brief is present and readable;
 - the silhouette and focal point read at 1×;
 - clusters look deliberate instead of averaged or smeared;
 - contours do not contain accidental stair-steps or isolated noise;
@@ -82,7 +83,8 @@ For each candidate, verify:
 Reject a candidate that fails those checks even when dimensions, hashes,
 transparency, palette count, and grid recovery all pass. For the tested ComfyUI
 pixel-art stack, begin with 48–128px native components and compose larger scenes
-from reviewed parts. Resolution is a ceiling imposed by quality, not a target.
+from reviewed parts. Apply the final palette after grid recovery. Resolution is
+a ceiling imposed by quality, not a target.
 
 ## Cache integrity gate
 

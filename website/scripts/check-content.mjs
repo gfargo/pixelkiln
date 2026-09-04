@@ -64,6 +64,9 @@ if (!home.includes("https://www.retrodiffusion.ai/tools/pixel-art-fixer/")) {
 if (!home.includes("48–128px native per part")) {
   failures.push("provider showcase is missing the ComfyUI quality-first native range");
 }
+if (!home.includes("not a production-ready pixel-art preset")) {
+  failures.push("provider showcase is missing the ComfyUI production-readiness warning");
+}
 for (const [provider, route, official] of [
   ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],
   ["Retro Diffusion", "/docs/retro-diffusion", "https://www.retrodiffusion.ai/"],

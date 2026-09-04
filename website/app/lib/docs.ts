@@ -38,7 +38,7 @@ export const docs: DocEntry[] = [
   {
     slug: "comfyui",
     title: "Set up ComfyUI",
-    description: "Connect a self-hosted server, install the tested SDXL stack, and use its quality-first native-grid workflow.",
+    description: "Connect a self-hosted server, run the tested composition stack, and understand its manual quality boundary.",
     file: "docs/COMFYUI.md",
     group: "Start here",
   },
