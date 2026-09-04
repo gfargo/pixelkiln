@@ -7,7 +7,8 @@ that already cost money.
 
 ## Development setup
 
-Requires Node.js 20 or newer.
+Requires Node.js 22 or newer. The repository defaults to the latest Node.js 24
+release through `.nvmrc`.
 
 ```bash
 npm ci

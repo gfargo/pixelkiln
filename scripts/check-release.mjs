@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs"
 
 const workflow = readFileSync(".github/workflows/release.yml", "utf8")
+const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8")
 const config = JSON.parse(readFileSync(".releaserc.json", "utf8"))
 const pkg = JSON.parse(readFileSync("package.json", "utf8"))
+const websitePkg = JSON.parse(readFileSync("website/package.json", "utf8"))
+const defaultNode = readFileSync(".nvmrc", "utf8").trim()
 const failures = []
 
 function requireText(source, value, label) {
@@ -19,6 +22,8 @@ requireText(workflow, "npm run test:release", "release workflow")
 requireText(workflow, "npm run test:docs", "release workflow")
 requireText(workflow, "npm run test:package", "release workflow")
 requireText(workflow, "cancel-in-progress: false", "release workflow")
+requireText(ciWorkflow, "node: [22, 24]", "CI workflow")
+requireText(ciWorkflow, "node-version: 24", "website CI workflow")
 
 if (/\bNPM_TOKEN\b/.test(workflow)) failures.push("release workflow must not use NPM_TOKEN")
 if (!config.branches?.includes("main")) failures.push("Semantic Release must publish from main")
@@ -39,6 +44,9 @@ if (pkg.repository?.url !== "git+https://github.com/gfargo/pixelkiln.git") {
   failures.push("package repository URL must exactly match the trusted GitHub repository")
 }
 if (pkg.publishConfig?.access !== "public") failures.push("npm publish access must be public")
+if (pkg.engines?.node !== ">=22") failures.push("package Node.js support must start at Node 22")
+if (websitePkg.engines?.node !== ">=22") failures.push("website Node.js support must start at Node 22")
+if (defaultNode !== "24") failures.push(".nvmrc must track the Node 24 LTS release line")
 
 if (failures.length) {
   console.error("Release configuration checks failed:\n")
