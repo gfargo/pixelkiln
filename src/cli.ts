@@ -57,6 +57,17 @@ import {
   type ArtifactFile,
   type ArtifactSource,
 } from "./artifacts.ts"
+import {
+  installRecipe,
+  listBundledRecipes,
+  resolveRecipe,
+  verifyRecipe,
+} from "./recipes.ts"
+import {
+  checkQualityBaseline,
+  resolveQualityInputs,
+  snapshotQualityBaseline,
+} from "./pipeline/quality-regression.ts"
 
 const log = (msg = "") => console.log(msg)
 
@@ -109,11 +120,13 @@ interface Args {
   minGridConfidence?: GridConfidence
   reviewer?: string
   note?: string
-  /** `workspace`: add/remove/list/status/claims. */
+  /** ComfyUI `models` directory used for offline recipe model verification. */
+  modelRoot?: string
+  /** Subcommand for `quality`, `recipe`, `refine`, or `workspace`. */
   subcommand?: string
   /** Path to a workspace catalog. Defaults to `pixelkiln.workspace.json` in cwd. */
   workspace?: string
-  /** `workspace add`: manifest path. `workspace remove`: project id or manifest path. */
+  /** Positional target for recipe and workspace subcommands. */
   target?: string
   /** `workspace add`: provider id to register the project under. Defaults to "pixellab". */
   provider?: string
@@ -134,6 +147,7 @@ const VALUE_FLAGS = [
   "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma", "--workspace",
   "--provider", "--account", "--palette", "--fixer-python", "--fixer-revision", "--min-grid-confidence",
   "--reviewer", "--note",
+  "--model-root",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -142,11 +156,13 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "refine", "workspace", "help", "--help", "-h", "--version", "-v",
+  "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
 const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
+const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
+const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -163,7 +179,36 @@ export function parseArgs(argv: string[]): Args {
   let rest = argv.slice(1)
   let subcommand: string | undefined
   let target: string | undefined
-  if (command === "workspace") {
+  if (command === "quality") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new Error(`quality needs a subcommand: ${QUALITY_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(QUALITY_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new Error(
+        `Unknown quality subcommand "${subcommand}". Known: ${QUALITY_SUBCOMMANDS.join(", ")}`,
+      )
+    }
+    rest = rest.slice(1)
+  } else if (command === "recipe") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new Error(`recipe needs a subcommand: ${RECIPE_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(RECIPE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new Error(
+        `Unknown recipe subcommand "${subcommand}". Known: ${RECIPE_SUBCOMMANDS.join(", ")}`,
+      )
+    }
+    rest = rest.slice(1)
+    if (subcommand !== "list") {
+      target = rest[0]
+      if (target === undefined || target.startsWith("-")) {
+        throw new Error(`recipe ${subcommand} needs a recipe id, selector, or path.`)
+      }
+      rest = rest.slice(1)
+    }
+  } else if (command === "workspace") {
     subcommand = rest[0]
     if (subcommand === undefined || subcommand.startsWith("-")) {
       throw new Error(`workspace needs a subcommand: ${WORKSPACE_SUBCOMMANDS.join(", ")}`)
@@ -343,6 +388,7 @@ export function parseArgs(argv: string[]): Args {
     minGridConfidence: rawGridConfidence as GridConfidence | undefined,
     reviewer: get("--reviewer"),
     note: get("--note"),
+    modelRoot: get("--model-root"),
     subcommand,
     workspace: get("--workspace"),
     target,
@@ -372,6 +418,8 @@ Commands
   audit     Measure how consistently a style's assets hold together. Offline.
   refine    Recover a native pixel grid, enforce a final palette, audit it,
             and attach a verifiable human approval. run/approve/check. Offline.
+  recipe    List, inspect, install, or verify versioned workflow packs. Offline.
+  quality   Snapshot or check measurable image regressions. Offline.
   cache     Inspect local recovery/object-hash caches; optionally verify or prune.
   pack      Composite sprites into a PNG/atlas/provenance bundle. Offline.
   mount     Write a style's sprites into their declared cells of an existing
@@ -389,7 +437,7 @@ Commands
 Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
   --port <n>          Local review-server port (default: choose a free port)
-  --inputs <path>     pack: JSON [{id,path}] instead of the lockfile; needs --out
+  --inputs <path>     pack/quality snapshot: JSON input list; needs --out
   --format <format>   export: generic (default), tiled, or godot
   --output-role <r>   pack: include only this output role (repeatable)
   --primary-only      pack: include only unambiguous primary/single outputs
@@ -403,16 +451,17 @@ Options
   --min-grid-confidence <level>  refine: high (default), medium, or low
   --reviewer <name>   refine approve: human reviewer recorded in provenance
   --note <text>       refine approve: optional review note
+  --model-root <dir>  recipe verify: also hash required local model files
   --prune             cache: remove invalid/unreferenced local cache data
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
   --only id1,id2      Restrict to these asset ids
   --budget <n>        Refuse to spend more than n provider cost units
-  --force             Regenerate; derived commands also take over modified/unowned output
+  --force             Regenerate; also replace changed recipe files or quality baselines
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
-  --json              Machine-readable output where supported, including plan/audit/doctor/cache
+  --json              Machine-readable output where supported, including quality checks
   --check             plan/audit/cache: exit nonzero when the selected state is unsafe
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser during pick
@@ -420,7 +469,7 @@ Options
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
   --workspace <path>  Workspace catalog (default: pixelkiln.workspace.json). Also
                        derives salvage's claim set instead of repeated --claims.
-  --from <dir>        Source tree for init
+  --from <path>       Source for init/refine, or baseline for quality check
   --write-prompts     adopt: recover prompts into the manifest
 
 Examples
@@ -435,6 +484,11 @@ Examples
   pixelkiln refine --from source.png --out final.png --palette "#101820,#f2aa4c"
   pixelkiln refine approve --from final.pixelkiln.json --reviewer "Your Name"
   pixelkiln refine check --from final.pixelkiln.json
+  pixelkiln recipe list
+  pixelkiln recipe install comfyui/pixel-art-xl-environment
+  pixelkiln recipe verify pixelkiln-recipes/comfyui/pixel-art-xl-environment/1.0.0 --model-root /path/to/ComfyUI/models
+  pixelkiln quality snapshot --inputs quality-inputs.json --out pixelkiln.quality.json
+  pixelkiln quality check --from pixelkiln.quality.json
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json
   pixelkiln salvage --workspace pixelkiln.workspace.json
@@ -526,6 +580,149 @@ async function main() {
     ) as { name: string; version: string }
     log(`${pkg.name} ${pkg.version}`)
     return
+  }
+
+  if (args.command === "quality") {
+    if (args.subcommand === "snapshot") {
+      if (!args.inputs) throw new Error("quality snapshot needs --inputs <quality-inputs.json>.")
+      if (!args.out) throw new Error("quality snapshot needs --out <pixelkiln.quality.json>.")
+      let raw: unknown
+      try {
+        raw = JSON.parse(await readFile(path.resolve(args.inputs), "utf8"))
+      } catch (error) {
+        throw new Error(
+          `Could not read quality inputs ${path.resolve(args.inputs)}: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        )
+      }
+      const inputs = resolveQualityInputs(raw, args.inputs)
+      if (path.resolve(args.inputs) === path.resolve(args.out)) {
+        throw new Error("quality snapshot --out must not overwrite its --inputs file.")
+      }
+      const result = await snapshotQualityBaseline(inputs, args.out, { force: args.force })
+      if (args.json) {
+        log(JSON.stringify({
+          version: 1,
+          path: result.path,
+          changed: result.changed,
+          baseline: result.baseline,
+        }, null, 2))
+      } else {
+        log(
+          `  ${result.changed ? "wrote" : "unchanged"} ` +
+            `${path.relative(process.cwd(), result.path)} (${result.baseline.cases.length} case(s))`,
+        )
+        log(`  Review the tolerances, commit the baseline, then run quality check in CI.`)
+      }
+      return
+    }
+
+    if (!args.from) throw new Error("quality check needs --from <pixelkiln.quality.json>.")
+    const report = await checkQualityBaseline(args.from)
+    if (args.json) {
+      log(JSON.stringify(report, null, 2))
+    } else {
+      for (const entry of report.cases) {
+        log(`  ${entry.status === "pass" ? "ok" : "ERROR"}  ${entry.id}`)
+        for (const violation of entry.violations) log(`         ${violation}`)
+        for (const warning of entry.warnings) log(`  WARN   ${warning}`)
+      }
+      log(
+        `\n  ${report.summary.passed}/${report.summary.total} passed` +
+          (report.summary.changed ? ` · ${report.summary.changed} image hash(es) changed` : ""),
+      )
+      log(`  Metrics catch structural regressions; they do not replace art review.`)
+    }
+    if (!report.safe) process.exitCode = 1
+    return
+  }
+
+  if (args.command === "recipe") {
+    if (args.subcommand === "list") {
+      const recipes = await listBundledRecipes()
+      if (args.json) {
+        log(JSON.stringify({
+          version: 1,
+          recipes: recipes.map(({ recipe }) => ({
+            id: recipe.id,
+            version: recipe.version,
+            provider: recipe.provider,
+            summary: recipe.summary,
+            selector: `${recipe.id}@${recipe.version}`,
+          })),
+        }, null, 2))
+      } else {
+        log(`  ${recipes.length} bundled recipe(s):`)
+        for (const { recipe } of recipes) {
+          log(`    ${(recipe.id + "@" + recipe.version).padEnd(52)} ${recipe.summary}`)
+        }
+      }
+      return
+    }
+
+    const target = args.target!
+    if (args.subcommand === "inspect") {
+      const { recipe, path: recipePath, bundled } = await resolveRecipe(target)
+      if (args.json) {
+        log(JSON.stringify({ ...recipe, path: recipePath, bundled }, null, 2))
+      } else {
+        log(`  ${recipe.id}@${recipe.version}`)
+        log(`  ${recipe.summary}`)
+        log(`  provider: ${recipe.provider} · style: ${recipe.styleId} · stage: ${recipe.quality.stage}`)
+        log(
+          `  native target: ${recipe.quality.recommendedNativeSize.min}–` +
+            `${recipe.quality.recommendedNativeSize.max}px · palette: ` +
+            `${recipe.quality.paletteColors.min}–${recipe.quality.paletteColors.max} colors`,
+        )
+        if (recipe.workflow) log(`  workflow: ${recipe.workflow.path} · ${recipe.workflow.numImages} candidate(s)`)
+        for (const model of recipe.models) log(`  model: ${model.path} · ${model.license}`)
+        log(`  source: ${recipePath}${bundled ? " (bundled)" : ""}`)
+      }
+      return
+    }
+
+    if (args.subcommand === "verify") {
+      const report = await verifyRecipe(target, { modelRoot: args.modelRoot })
+      if (args.json) {
+        log(JSON.stringify(report, null, 2))
+      } else {
+        log(`  ${report.ok ? "ok" : "ERROR"}  ${report.recipe.id}@${report.recipe.version}`)
+        log(`  ${report.integrity.status.padEnd(9)} recipe metadata`)
+        for (const file of report.files) log(`  ${file.status.padEnd(9)} ${file.path}`)
+        for (const model of report.models) log(`  ${model.status.padEnd(9)} ${model.path}`)
+        if (!report.modelRoot && report.models.length) {
+          log(`  models were not checked; pass --model-root <ComfyUI/models> to verify this workstation`)
+        }
+      }
+      if (!report.ok) process.exitCode = 1
+      return
+    }
+
+    if (args.subcommand === "install") {
+      const result = await installRecipe(target, { out: args.out, force: args.force })
+      if (args.json) {
+        log(JSON.stringify({
+          version: 1,
+          recipe: `${result.recipe.id}@${result.recipe.version}`,
+          destination: result.destination,
+          changed: result.changed,
+          unchanged: result.unchanged,
+          styleId: result.styleId,
+          style: result.style,
+        }, null, 2))
+      } else {
+        log(`  installed ${result.recipe.id}@${result.recipe.version}`)
+        log(`  ${path.relative(process.cwd(), result.destination) || "."}`)
+        log(`\n  Add this entry under your manifest's styles object:`)
+        log(JSON.stringify({ [result.styleId]: result.style }, null, 2))
+        if (result.recipe.models.length) {
+          log(`\n  Models are not downloaded automatically. Verify them with:`)
+          log(`  pixelkiln recipe verify ${path.relative(process.cwd(), result.destination)} --model-root <ComfyUI/models>`)
+        }
+      }
+      return
+    }
   }
 
   if (args.command === "refine") {

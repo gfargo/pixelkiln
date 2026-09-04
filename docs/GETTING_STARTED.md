@@ -72,6 +72,15 @@ zero `free` budget, which describes the lack of a metered provider charge, not
 the cost of hardware or electricity. ComfyUI is not the shortest path to
 game-ready pixel art: use it only when local control justifies manual grid
 recovery, palette enforcement, and art review. See [Set up ComfyUI](COMFYUI.md).
+The bundled environment recipe can install the tested graph and print its
+manifest style entry without making a provider call:
+
+```bash
+pixelkiln recipe install comfyui/pixel-art-xl-environment@1.0.0
+```
+
+Verify its workflow and the workstation's model bytes before generation. See
+[Versioned recipes](RECIPES.md).
 
 The provider setup guides give the shortest path for
 [PixelLab](PIXELLAB.md), [Retro Diffusion](RETRO_DIFFUSION.md), and

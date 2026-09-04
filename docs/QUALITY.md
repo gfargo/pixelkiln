@@ -63,6 +63,51 @@ measured member-by-member with stable role-qualified ids. Standard
 non-interlaced greyscale, indexed, RGB, greyscale-alpha, and RGBA PNGs are
 normalized to RGBA before measurement.
 
+## Image regression gate
+
+Keep a versioned baseline for reviewed PNGs that must not quietly become softer,
+noisier, larger-palette images. The snapshot is offline and provider-neutral.
+
+```json
+[
+  {
+    "id": "environment/mountain",
+    "path": "../art/mountain-native.png",
+    "record": "../art/mountain-native.pixelkiln.json"
+  }
+]
+```
+
+Save that input list, snapshot it once, inspect the result, and commit both files:
+
+```bash
+pixelkiln quality snapshot \
+  --inputs config/quality-inputs.json \
+  --out quality/pixelkiln.quality.json
+
+pixelkiln quality check --from quality/pixelkiln.quality.json
+```
+
+`quality check` compares dimensions, colors, transparency, partial alpha, edge
+density, mean edge contrast, and isolated-pixel ratio. By default, it permits a
+different PNG hash only when every metric remains within the recorded
+tolerances. Set `requireExactHash` in a case when any byte change must fail. A
+linked refinement record is always hash-bound and must still own the PNG and
+verify as current.
+
+The default envelope allows no new colors, no color-count or partial-alpha
+increase, at most one percentage point of transparency drift, three points of
+edge-density drift or edge-contrast loss, and half a point of added isolated
+pixels. Edit per-case tolerances only after reviewing representative changes.
+Use `quality snapshot --force` to accept a deliberately changed baseline;
+ordinary snapshots refuse to overwrite different expectations.
+The public file contract is
+[`schema/quality-baseline.schema.json`](../schema/quality-baseline.schema.json).
+
+This gate catches structural regression, not bad art. An unchanged file can
+still have a weak composition, missing prompt elements, or poor clusters. Keep
+the human gate below.
+
 ## Human pixel-art gate
 
 The audit measures drift; it cannot judge the drawing. A grid-aligned file can
@@ -131,6 +176,7 @@ npm ci
 npm run typecheck
 npm test
 npm run test:docs
+npm run test:quality
 npm run build
 npm run test:package
 npm audit
@@ -156,6 +202,8 @@ uses `FakeProvider`, so money-spending stages are deterministic and offline.
   failures rather than regenerating automatically.
 - `refine check` exits nonzero for pending approval and for any quality-record
   drift. CI must never add or renew human approval.
+- `quality check` exits nonzero when any baseline case is missing, unreadable,
+  outside tolerance, or bound to a changed or invalid refinement record.
 
 Generation should remain an explicit, budgeted human action; CI is for proving
 that committed declarations, state, and artifacts still agree.

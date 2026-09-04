@@ -88,6 +88,19 @@ the source and output hashes, tool revision, grid result, palette, audit, and
 review state. They intentionally remain pending. The measured checks passed,
 but no automated run can perform the required human art review.
 
+The committed `pixelkiln.quality-baseline.json` also snapshots dimensions,
+palette, alpha, edge structure, and isolated-pixel ratios for all three final
+PNGs. Run the same offline gate used by CI:
+
+```bash
+npm run test:quality
+```
+
+Edit `quality-inputs.json` when adding a reviewed fixture, then run `quality
+snapshot` deliberately to create new expectations. Never refresh the baseline
+to make a surprising result pass; inspect the native PNG and its refinement
+record first.
+
 Recreate the isolated local tool environment:
 
 ```bash

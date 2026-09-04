@@ -34,6 +34,8 @@ try {
     "dist/index.d.ts",
     "bin/pixelkiln.js",
     "schema/manifest.schema.json",
+    "schema/recipe.schema.json",
+    "schema/quality-baseline.schema.json",
     "docs/README.md",
     "docs/CLI.md",
     "docs/GETTING_STARTED.md",
@@ -43,6 +45,9 @@ try {
     "skills/pixelkiln/references/pixellab.md",
     "skills/pixelkiln/references/retro-diffusion.md",
     "skills/pixelkiln/references/mixed-providers.md",
+    "skills/pixelkiln/references/recipes.md",
+    "recipes/comfyui/pixel-art-xl-environment/1.0.0/pixelkiln.recipe.json",
+    "recipes/comfyui/pixel-art-xl-environment/1.0.0/workflow-api.json",
     "SECURITY.md",
   ]) {
     if (!existsSync(path.join(installed, required))) {
@@ -63,12 +68,12 @@ try {
   run(process.execPath, [
     "--input-type=module",
     "--eval",
-    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function') process.exit(1)",
+    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function') process.exit(1)",
   ], consumer)
   run(process.execPath, [
     "--input-type=commonjs",
     "--eval",
-    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function') process.exit(1)",
+    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function') process.exit(1)",
   ], consumer)
 
   const cli = path.join(
@@ -81,6 +86,10 @@ try {
   const version = run(cli, ["--version"], consumer).trim()
   if (!/^pixelkiln \d+\.\d+\.\d+/.test(version)) {
     throw new Error(`installed CLI returned an unexpected version: ${version}`)
+  }
+  const recipes = run(cli, ["recipe", "list", "--json"], consumer)
+  if (!recipes.includes("comfyui/pixel-art-xl-environment@1.0.0")) {
+    throw new Error("installed CLI did not expose the bundled ComfyUI recipe")
   }
 
   console.log(`package smoke passed: ESM, CommonJS, CLI (${version})`)

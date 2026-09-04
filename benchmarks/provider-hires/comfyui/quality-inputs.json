@@ -1,0 +1,17 @@
+[
+  {
+    "id": "comfyui/alpine-valley-square",
+    "path": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.png",
+    "record": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.pixelkiln.json"
+  },
+  {
+    "id": "comfyui/alpine-valley-wide",
+    "path": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-wide-168x96.png",
+    "record": "../../../website/public/benchmarks/provider-hires/comfyui/refined/alpine-valley-wide-168x96.pixelkiln.json"
+  },
+  {
+    "id": "comfyui/cliffside-fortress",
+    "path": "../../../website/public/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.png",
+    "record": "../../../website/public/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.pixelkiln.json"
+  }
+]

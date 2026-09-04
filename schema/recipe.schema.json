@@ -1,0 +1,528 @@
+{
+  "$ref": "#/definitions/PixelkilnRecipe",
+  "definitions": {
+    "PixelkilnRecipe": {
+      "type": "object",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "format": "uri"
+        },
+        "format": {
+          "type": "string",
+          "const": "pixelkiln-recipe"
+        },
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "workflow",
+                  "reference"
+                ]
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "role",
+              "sha256"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "source": {
+                "type": "string",
+                "format": "uri"
+              },
+              "license": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "source",
+              "license"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "styleId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "generator": {
+              "type": "string",
+              "enum": [
+                "1dir",
+                "map",
+                "pixflux",
+                "tiles",
+                "animation"
+              ],
+              "default": "map"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 16,
+              "maximum": 8192
+            },
+            "view": {
+              "type": "string"
+            },
+            "promptSuffix": {
+              "type": "string",
+              "default": ""
+            },
+            "promptPrefix": {
+              "type": "string",
+              "default": ""
+            },
+            "styleImages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "path"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "outDir": {
+              "type": "string"
+            },
+            "outline": {
+              "type": "string"
+            },
+            "shading": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "tileSize": {
+              "type": "integer",
+              "minimum": 16,
+              "maximum": 256
+            },
+            "tileType": {
+              "type": "string",
+              "enum": [
+                "hex",
+                "hex_pointy",
+                "isometric",
+                "oblique",
+                "octagon",
+                "square_topdown"
+              ]
+            },
+            "tileView": {
+              "type": "string",
+              "enum": [
+                "top-down",
+                "high top-down",
+                "low top-down",
+                "side"
+              ]
+            },
+            "tileFeature": {
+              "type": "string",
+              "enum": [
+                "roads",
+                "tileset",
+                "building"
+              ]
+            },
+            "outlineMode": {
+              "type": "string",
+              "enum": [
+                "outline",
+                "segmentation"
+              ]
+            },
+            "noBackground": {
+              "type": "boolean",
+              "default": true
+            },
+            "seed": {
+              "type": "integer"
+            },
+            "palette": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^#?[0-9a-f]{6}$"
+              },
+              "default": []
+            },
+            "mount": {
+              "type": "object",
+              "properties": {
+                "base": {
+                  "type": "string"
+                },
+                "cellWidth": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "cellHeight": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "out": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "cellWidth",
+                "cellHeight",
+                "out"
+              ],
+              "additionalProperties": false
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "providerOptions": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "default": {}
+            }
+          },
+          "required": [
+            "outDir"
+          ],
+          "additionalProperties": false
+        },
+        "workflow": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outputNodeId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "numImages": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16
+            },
+            "bindings": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "input": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "input"
+                  ],
+                  "additionalProperties": false
+                },
+                "width": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "input": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "input"
+                  ],
+                  "additionalProperties": false
+                },
+                "height": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "input": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "input"
+                  ],
+                  "additionalProperties": false
+                },
+                "batchSize": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "input": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "input"
+                  ],
+                  "additionalProperties": false
+                },
+                "seed": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "input": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "input"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "prompt",
+                "width",
+                "height",
+                "batchSize"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "path",
+            "outputNodeId",
+            "numImages",
+            "bindings"
+          ],
+          "additionalProperties": false
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "stage": {
+              "type": "string",
+              "enum": [
+                "composition-source",
+                "production-candidate"
+              ]
+            },
+            "workingCanvas": {
+              "type": "object",
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "minimum": 16
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 16
+                }
+              },
+              "required": [
+                "width",
+                "height"
+              ],
+              "additionalProperties": false
+            },
+            "recommendedNativeSize": {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "min",
+                "max"
+              ],
+              "additionalProperties": false
+            },
+            "paletteColors": {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "max": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "min",
+                "max"
+              ],
+              "additionalProperties": false
+            },
+            "background": {
+              "type": "string",
+              "enum": [
+                "opaque",
+                "transparent",
+                "full-bleed"
+              ]
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "prompt-coverage",
+                  "native-grid",
+                  "final-palette",
+                  "alpha-edge",
+                  "human-1x"
+                ]
+              },
+              "minItems": 1
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "default": []
+            }
+          },
+          "required": [
+            "stage",
+            "workingCanvas",
+            "recommendedNativeSize",
+            "paletteColors",
+            "background",
+            "checks"
+          ],
+          "additionalProperties": false
+        },
+        "integrity": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "const": "sha256"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "algorithm",
+            "digest"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "id",
+        "version",
+        "provider",
+        "summary",
+        "styleId",
+        "style",
+        "quality",
+        "integrity"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

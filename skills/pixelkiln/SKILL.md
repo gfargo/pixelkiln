@@ -26,6 +26,9 @@ hashes.
   Use `pixelkiln refine` for the mechanical checks and `refine check` for the
   recorded gate. A successful PNG or high-confidence grid result is not quality
   approval.
+- When the project commits a PixelKiln quality baseline, run `pixelkiln quality
+  check --from <baseline>` before packaging. Treat a pass as structural
+  continuity, never as human approval or proof that the prompt was satisfied.
 - Preserve manual edits and ownership errors. Inspect the difference before any
   `--force` operation.
 - Commit the manifest, lockfile, generated outputs, and derived artifact
@@ -60,6 +63,8 @@ Read only the reference needed for the current decision:
   [references/retro-diffusion.md](references/retro-diffusion.md).
 - For a self-hosted ComfyUI workflow, node bindings, local cost semantics, or
   portable output recovery, read [references/comfyui.md](references/comfyui.md).
+- When a bundled or installed recipe can supply the workflow, model hashes, or
+  quality contract, read [references/recipes.md](references/recipes.md).
 - When one game or repository needs more than one provider, read
   [references/mixed-providers.md](references/mixed-providers.md).
 

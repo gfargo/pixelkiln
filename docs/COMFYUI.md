@@ -66,6 +66,22 @@ pixelkiln doctor
 
 ## Export an API-format workflow
 
+For the tested SDXL environment graph, start from the bundled versioned recipe
+instead of copying node IDs by hand:
+
+```bash
+pixelkiln recipe install comfyui/pixel-art-xl-environment@1.0.0
+pixelkiln recipe verify \
+  pixelkiln-recipes/comfyui/pixel-art-xl-environment/1.0.0 \
+  --model-root /path/to/ComfyUI/models
+```
+
+Installation prints the manifest style entry. The recipe pins the workflow and
+model hashes, records their licenses and source links, and labels the output as
+composition source. It does not download models or turn the result into
+finished pixel art. See [Versioned recipes](RECIPES.md) for its update and
+verification contract.
+
 Build and test the workflow in ComfyUI first. Enable developer mode in ComfyUI
 settings, then use **Save (API Format)**. Commit the exported JSON beside the
 manifest or in a project workflow directory. PixelKiln reads the file during
@@ -263,6 +279,13 @@ Stop increasing resolution when clusters become soft, gradients replace
 intentional ramps, or important forms stop reading at 1×. Keep the smaller
 result when it is clearer. See the [quality gates](./QUALITY.md) for the human
 review checklist.
+
+PixelKiln's committed ComfyUI examples also have an automated regression
+baseline. `npm run test:quality` checks that their dimensions, palettes, alpha,
+edge structure, isolated-pixel noise, and bound refinement records have not
+drifted. Use `pixelkiln quality snapshot` to establish the same guard for a
+project's reviewed assets. Passing it does not make an image good; it only
+proves that measured traits have not regressed from the accepted reference.
 
 ## Build larger environments
 

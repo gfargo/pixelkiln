@@ -78,6 +78,13 @@ export const docs: DocEntry[] = [
     group: "Workflows",
   },
   {
+    slug: "recipes",
+    title: "Versioned recipes",
+    description: "Install and verify pinned workflows, model hashes, and quality contracts.",
+    file: "docs/RECIPES.md",
+    group: "Workflows",
+  },
+  {
     slug: "artifacts",
     title: "Derived artifacts",
     description: "Pack, mount, export, provenance, ownership, and recovery.",
@@ -94,7 +101,7 @@ export const docs: DocEntry[] = [
   {
     slug: "quality",
     title: "Quality gates",
-    description: "Plan, doctor, audit, cache integrity, and CI contracts.",
+    description: "Image regression baselines, human review, audit, cache integrity, and CI contracts.",
     file: "docs/QUALITY.md",
     group: "Workflows",
   },
