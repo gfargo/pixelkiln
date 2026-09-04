@@ -7,7 +7,7 @@ import { TrackedLink } from "@/app/ui/tracked-link";
 
 export const metadata: Metadata = pageMetadata({
   title: "Documentation",
-  description: "Guides and reference material for every part of the PixelKiln pipeline.",
+  description: "Set up PixelKiln, choose a provider, and operate each command safely.",
   path: "/docs",
 });
 
@@ -27,13 +27,12 @@ export default function DocsIndex() {
       <SiteHeader compact />
       <main className="docs-index shell">
         <div className="docs-index-hero">
-          <p className="eyebrow">The complete operating manual</p>
-          <h1>Build with the kiln.</h1>
+          <p className="eyebrow">Documentation built from the repository</p>
+          <h1>Start with a manifest.</h1>
           <p>
-            Start with the workflow, then go as deep as you need. These pages
-            render directly from the Markdown that ships with PixelKiln,
-            including separate PixelLab, Retro Diffusion, and ComfyUI setup guides and a
-            practical provider comparison.
+            These pages render from the Markdown shipped with PixelKiln. Start
+            with the everyday workflow, or open the setup guide for PixelLab,
+            Retro Diffusion, or ComfyUI.
           </p>
         </div>
 
@@ -45,8 +44,8 @@ export default function DocsIndex() {
         >
           <div>
             <span>Recommended first read</span>
-            <h2>Go from manifest to reviewed output.</h2>
-            <p>Install from a checkout, plan without spending, and run a controlled generation.</p>
+            <h2>Go from a manifest to reviewed output.</h2>
+            <p>Install PixelKiln, plan without spending, and cap the first generation.</p>
           </div>
           <strong aria-hidden="true">01 →</strong>
         </TrackedLink>

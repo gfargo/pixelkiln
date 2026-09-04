@@ -3,7 +3,7 @@
 Read this reference before operating a PixelKiln manifest whose provider is
 `comfyui`.
 
-## Position it honestly
+## Set expectations
 
 The ComfyUI adapter automates a committed graph, candidate review, provenance,
 and recovery. It does not make a general image model produce good pixel art.
@@ -15,7 +15,7 @@ If the user mainly wants the shortest path to usable pixel art, compare the
 specialized hosted providers first. Choose ComfyUI when owning the workflow is
 worth the extra model testing and cleanup.
 
-## Minimal safe path
+## Quality-first workflow
 
 1. Generate two to four candidates on the model's normal working canvas.
 2. Reject weak composition and missing prompt elements before post-processing.
@@ -29,9 +29,9 @@ worth the extra model testing and cleanup.
 7. Accept the smallest clear result. For the tested stack, start with 48–128px
    native components and compose larger scenes from reviewed parts.
 
-Background removal stays in the ComfyUI graph. PixelKiln automates grid
-recovery, final palette enforcement, measurable audits, and the approval
-record. It does not decide whether the art is good. Do not present the generated
+Background removal stays in the ComfyUI graph. PixelKiln handles grid recovery,
+the final palette, measurable checks, and the approval record. It cannot decide
+whether the drawing is good. Do not present the generated
 working canvas, a nearest-neighbor resize, an unreviewed grid recovery, or a
 pending quality record as the finished asset.
 
@@ -105,6 +105,6 @@ The lockfile records a prompt ID, output node, workflow hash, and portable
 cache is missing, the current ComfyUI server must still retain the history
 output so PixelKiln can resolve the portable source.
 
-For the complete setup, composition stack, benchmark, and troubleshooting, use
+For setup, the tested model stack, benchmarks, and troubleshooting, use
 `docs/COMFYUI.md` or
 <https://pixelkiln.griffen.codes/docs/comfyui>.

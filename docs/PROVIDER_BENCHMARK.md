@@ -7,8 +7,8 @@ backgrounds. The hosted providers have two attempts per brief. ComfyUI has one
 baseline and one post-processed attempt on each supported brief. Prompt text
 and seed numbers match, but seeds are not portable between models.
 
-The benchmark tests the adapters that PixelKiln ships. It does not rank every
-model or endpoint sold by either provider.
+This tests the adapters PixelKiln ships, not every model or endpoint each
+provider sells.
 
 ## Setup
 
@@ -92,8 +92,8 @@ PixelLab's Pixflux route is the surprise here. Both results preserve the wide
 valley, layered mountains, dusk light, winding river, and tiny settlement. They
 also use only 22 and 38 colors. The shapes read cleanly at native size.
 
-Retro Diffusion produced attractive scenes with stronger foreground framing
-and more conventional depth. They feel like places the player could enter, but
+Retro Diffusion put more detail in the foreground and used more conventional
+depth. They feel like places the player could enter, but
 the framing narrows the valley and pushes the result toward illustration rather
 than a reusable background layer. They use 37 and 46 colors.
 
@@ -167,7 +167,7 @@ workflows use core ComfyUI nodes, generate at 1024×1024, and finish with
 The observatory and fortress have the clearest architecture in this small
 sample. The fortress has a clear entrance, tower hierarchy, stairs, and a
 single readable footprint. The alpine scene keeps the river, village, tree
-line, and distant ridges separate. The volcanic scene is dramatic and legible,
+line, and distant ridges separate. The volcanic scene has a readable lava path,
 but it drops the requested basalt fortress, the same prompt-coverage failure
 seen in both hosted providers. These composition strengths do not make the
 files finished pixel art.
@@ -229,16 +229,15 @@ native-dimension, palette ceiling, and transparency checks. Their checked-in
 quality companions remain `pending` because an automated benchmark cannot
 claim human approval.
 
-That is a structural result, not an aesthetic endorsement. Grid recovery cannot
-turn weak composition, painterly gradients, or muddy source clusters into good
-pixel art. These files remain review candidates, and the 1024px source should
-not be presented as a high-resolution pixel-art deliverable. For this tested
-stack, 48–128px native components are the default operating range; larger
-environments should be assembled from reviewed parts with one palette and grid.
+Those checks prove structure, not artistic quality. Grid recovery cannot repair
+a weak composition, painterly gradients, or muddy source clusters. The files
+remain review candidates, and the 1024px source is not a high-resolution
+pixel-art asset. With this model stack, use 48–128px native parts and assemble
+larger environments on one grid with one palette.
 
-This invalidated our earlier 2048px nearest-neighbor result. That file perfectly
+This invalidated our earlier 2048px nearest-neighbor result. That file
 duplicated the source raster, including its fake, softened cells. It was a larger
-delivery file, not better pixel art, and has been removed from the showcase.
+delivery file, not better pixel art, and has been removed from the results.
 
 Earlier 1536px and 2048px latent refinements also looked blurred. The extra
 interpolation and resampling softened the structure; color quantization could
@@ -307,8 +306,7 @@ background, buildings, landmarks, and foreground pieces separately. Normalize
 them to one native grid, compose at 1×, then use integer nearest-neighbor scaling
 for display.
 
-This sample is useful, not definitive. Two attempts expose obvious tendencies,
-but they do not measure every style, prompt family, or model update. The new
-volcanic brief also shows why prompt coverage needs review at the object level:
-all providers lost the requested fortress. Rerun the committed manifests when
-a provider or local model changes.
+Two attempts reveal patterns, not universal rankings. They do not cover every
+style, prompt family, or model update. The volcanic brief shows the limit
+plainly: every provider dropped the requested fortress. Rerun the committed
+manifests when a provider or local model changes.

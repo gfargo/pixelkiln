@@ -6,42 +6,38 @@
 [Documentation](https://pixelkiln.griffen.codes/docs) ·
 [GitHub](https://github.com/gfargo/pixelkiln)
 
-Manifest-driven pixel-art generation, review, recovery, quality control, and
-game-ready asset packaging.
+Generate pixel art from a manifest, review it locally, recover paid work, and
+package the accepted files for a game engine.
 
-PixelKiln treats generated art like a build pipeline: declare assets once,
-preview cost and drift, generate only the missing work, review candidates in a
-local contact sheet, and commit exact provenance beside the files. No LLM is in
-the orchestration loop; provider calls, polling, hashing, downloads, and filing
-are deterministic software mechanics.
+PixelKiln treats generated art as build output. Declare assets once, inspect the
+cost and changed work, generate only what is missing, choose candidates in a
+local contact sheet, and commit the source and output hashes. No LLM chooses
+what to run or which image wins. The CLI handles provider calls, polling,
+hashing, downloads, and file placement.
 
-The orchestration layer is provider-neutral. PixelLab is the production,
-live-tested backend. An experimental Retro Diffusion adapter supports native
-pixel-art stills, candidate batches, tileset sheets, animated GIFs, and PNG
-spritesheets. Authenticated RD Fast and RD Plus single-candidate still paths
-have passed from quote through validated output and recovery. Multi-candidate,
-tileset, GIF, and spritesheet live runs remain. An experimental ComfyUI adapter
-runs committed API-format still-image workflows on a self-hosted server. Its
-core-node smoke project has passed live generation, candidate queueing, and
-cache-only recovery on Apple MPS. An SDXL plus Pixel Art XL workflow also has
-four baseline samples and four diagnostic cleanup samples. It is source
-material, not a production-ready pixel-art preset. See
-[provider comparison](./PROVIDERS.md) for the trade-offs, including large
-environment and building workflows.
-`FakeProvider` exercises the same contract deterministically in tests.
+PixelLab is the production backend. Retro Diffusion and self-hosted ComfyUI are
+experimental. The Retro Diffusion adapter has live coverage for RD Fast and RD
+Plus stills; its multi-candidate, tileset, GIF, and spritesheet paths are tested
+with fixtures but still need paid live runs. ComfyUI has passed local generation,
+four-candidate review, cache recovery, and native-grid refinement on Apple MPS.
+Its tested SDXL workflow can find a composition, but it is not a finished
+pixel-art preset. The [provider comparison](./PROVIDERS.md) lists the tested
+limits and the best route for buildings and environments. `FakeProvider` covers
+the same contract in automated tests.
 
-> **Release status:** PixelKiln is published on npm. Merges to `main` use
-> Semantic Release and npm Trusted Publishing, with signed provenance and no
-> long-lived npm publishing token.
+## Release
+
+PixelKiln is published on npm. Merges to `main` use Semantic Release and npm
+Trusted Publishing, with signed provenance and no long-lived npm token.
 
 ## Why PixelKiln
 
-A typical image-generation account becomes two unrelated piles: remote objects
-that cost money and local files with no durable explanation of where they came
-from. Handwritten prompts drift, failed downloads look like failed generations,
-and regenerating a whole set is easier than determining what is actually stale.
+Image generators leave two piles behind: remote jobs that cost money and local
+files that no longer explain where they came from. Prompts drift. Failed
+downloads look like failed generations. Teams rerun whole sets because they
+cannot tell which asset changed.
 
-PixelKiln supplies the missing project model:
+PixelKiln keeps the missing record:
 
 - a committed manifest defines assets, styles, generators, budgets, and output;
 - a committed lockfile maps each style/asset to paid provider work and exact
@@ -69,7 +65,7 @@ PixelKiln supplies the missing project model:
 | Artifact integrity | Portable source/output hashes, canonical fingerprints, manual-edit protection, transactional promotion, crash journal recovery. |
 | Library/extension | Public TypeScript primitives, provider capability interface, and deterministic `FakeProvider`. |
 
-### Human review, kept local
+### Local human review
 
 `pixelkiln pick` opens an actual local candidate sheet; the orchestration layer
 never asks a model to choose artwork for you.
@@ -78,7 +74,7 @@ never asks a model to choose artwork for you.
 
 Use Left/Right to inspect alternatives, Enter or 1–9 to select, and 0 to leave
 a row unresolved. Nothing is applied when the window is closed without using
-**Apply selections**. See the [CLI reference](docs/CLI.md#pick) for the complete
+**Apply selections**. See the [CLI reference](docs/CLI.md#pick) for the full
 review workflow.
 
 ## Install

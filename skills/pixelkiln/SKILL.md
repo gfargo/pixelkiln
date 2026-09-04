@@ -5,8 +5,9 @@ description: Use PixelKiln to plan, generate, review, recover, audit, pack, and 
 
 # PixelKiln
 
-Treat generated pixel art as build state: declared in a manifest, costed before
-submission, reviewed by a human, and recorded with exact provenance.
+Treat generated pixel art as build output. Read the manifest, report the cost
+before submission, stop for human review, and record the source and output
+hashes.
 
 ## Working rules
 

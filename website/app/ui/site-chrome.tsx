@@ -52,14 +52,14 @@ export function SiteFooter() {
             <KilnMark />
             <span>pixelkiln</span>
           </Link>
-          <p>Deterministic mechanics. Human judgment. Durable pixels.</p>
+          <p>Keep the cost and source of every generated file.</p>
         </div>
         <div className="footer-links">
           <div>
             <span>Explore</span>
             <TrackedLink id="footer_docs" section="footer" href="/docs">Documentation</TrackedLink>
             <TrackedLink id="footer_workflow" section="footer" href="/#workflow">Workflow</TrackedLink>
-            <TrackedLink id="footer_providers" section="footer" href="/#providers">Provider showcase</TrackedLink>
+            <TrackedLink id="footer_providers" section="footer" href="/#providers">Provider results</TrackedLink>
             <TrackedLink id="footer_pixellab" section="footer" href="/docs/pixellab">Set up PixelLab</TrackedLink>
             <TrackedLink id="footer_retro" section="footer" href="/docs/retro-diffusion">Set up Retro Diffusion</TrackedLink>
             <TrackedLink id="footer_comfyui" section="footer" href="/docs/comfyui">Set up ComfyUI</TrackedLink>

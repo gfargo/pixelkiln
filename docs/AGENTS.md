@@ -1,9 +1,9 @@
 # Agent workflows
 
-PixelKiln includes an official agent skill for tools that support the open
-`SKILL.md` format. It teaches the operational decisions that matter: plan before
-spending, cap every paid run, restore before regenerating, keep selection human,
-and preserve provenance through packaging.
+PixelKiln includes an agent skill for tools that support the open `SKILL.md`
+format. It tells an agent to plan before spending, cap every paid run, restore
+before regenerating, stop for human selection, and keep provenance through
+packaging.
 
 ## Install the skill
 
@@ -17,7 +17,7 @@ Then ask your agent to use `$pixelkiln` while working with a PixelKiln manifest.
 The skill is provider-neutral and does not contain credentials or make provider
 calls by itself.
 
-## What the skill changes
+## What the skill tells an agent to do
 
 With the skill loaded, an agent should:
 

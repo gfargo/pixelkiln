@@ -1,10 +1,8 @@
 # Getting started
 
-PixelKiln turns a committed asset manifest into generated files with a
-committed provenance lockfile. Planning, auditing, packing, mounting, and
-exporting are local operations. Only generation, provider polling, candidate
-selection, downloads, tagging, account adoption, salvage, purge, and balance
-checks need provider access.
+PixelKiln reads a committed asset manifest and records generated files in a
+committed lockfile. Planning, auditing, packing, mounting, and exporting stay
+local. Generation and account commands connect to the selected provider.
 
 ## Requirements
 
@@ -75,7 +73,7 @@ the cost of hardware or electricity. ComfyUI is not the shortest path to
 game-ready pixel art: use it only when local control justifies manual grid
 recovery, palette enforcement, and art review. See [Set up ComfyUI](COMFYUI.md).
 
-The provider setup guides give the shortest complete path for
+The provider setup guides give the shortest path for
 [PixelLab](PIXELLAB.md), [Retro Diffusion](RETRO_DIFFUSION.md), and
 [ComfyUI](COMFYUI.md).
 If one repository needs both, use separate provider-specific manifests and

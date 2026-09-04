@@ -1,16 +1,15 @@
 # Provider comparison
 
-PixelKiln can route one manifest through PixelLab, Retro Diffusion, or a
-self-hosted ComfyUI server.
-The project model keeps planning, hard budgets, lockfile provenance, human
-review, recovery, and packaging. Each adapter owns its service's
-authentication, pricing, validation, request lifecycle, and output formats.
+PixelKiln can run one manifest through PixelLab, Retro Diffusion, or a
+self-hosted ComfyUI server. Planning, budgets, review, recovery, and packaging
+stay the same. Each adapter handles its service's authentication, prices,
+request lifecycle, and file formats.
 
 PixelLab remains the default so existing manifests and spec hashes remain
 compatible. Select another backend with the manifest's top-level `provider`
 field and keep its settings under the matching `providerOptions` key.
 
-Ready to configure a project? Use [Set up PixelLab](./docs/PIXELLAB.md),
+To configure a project, use [Set up PixelLab](./docs/PIXELLAB.md),
 [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), or
 [Set up ComfyUI](./docs/COMFYUI.md). This page focuses on choosing between
 them.
@@ -41,7 +40,7 @@ the providers offer directly.
 
 | Decision | PixelLab | Retro Diffusion |
 |---|---|---|
-| Best fit today | Established PixelKiln projects, account reconciliation, and fully live-tested generation | Native pixel-art styles, cash-denominated cost control, animation, and alternate tileset workflows |
+| Best fit today | Existing PixelKiln projects, account reconciliation, and live-tested generation | Native pixel-art styles, USD budgets, animation, and alternate tileset workflows |
 | PixelKiln generators | `map`, `pixflux`, `1dir`, `tiles` | `map` and `pixflux` stills, `tiles`, `animation` |
 | Output | PNG stills, candidates, and structural tile members | PNG stills/tiles/spritesheets or animated GIF |
 | Candidate review | Yes; count varies by generator and size | Yes for 1–16 still candidates; animations and tilesets currently use one result |
@@ -74,11 +73,11 @@ prompt, size, batch, and optional seed inputs PixelKiln may replace.
 | Account lifecycle | Read-only connectivity check; no balance, remote object listing, tagging, or purge |
 | Confidence | Full mocked coverage plus live generation, four-candidate review, cache-only restore, and three provider-neutral refinement runs on Apple MPS; background removal stays in the graph and aesthetic approval remains human |
 
-Choose ComfyUI when workflow ownership is worth manual validation. If the goal
-is the least cleanup between a prompt and usable pixel art, start with a
-specialized hosted provider. Two ComfyUI machines can share the same graph but
-differ in checkpoint bytes, custom-node versions, or sampler behavior. Commit
-the workflow and document the external model stack used to validate it.
+Choose ComfyUI when control over the graph is worth the extra validation. Start
+with a hosted provider when you want less cleanup. Two ComfyUI machines can run
+the same graph and still differ because their checkpoint bytes, custom nodes,
+or sampler settings differ. Commit the workflow and record the model stack used
+to test it.
 
 ## Large environments, mountains, and buildings
 
@@ -92,11 +91,11 @@ background. That distinction matters more than raw canvas size.
 | Style consistency across a set | `1dir` accepts a style reference and returns size-dependent candidates, but it is more expensive and capped at the square-object range. | RD Pro accepts up to nine references and has stronger prompt following, but its common styles top out at 256×256 and cost $0.18 per image. Environment-specific RD Plus styles trade references for a larger 384px canvas. | LoRAs, reference adapters, ControlNet, and shared latent settings can live in the committed workflow. Reproducibility also depends on external model and custom-node versions. |
 | Very large final scene | Generate reusable objects, terrain, and background layers separately; assemble them deterministically and integer-upscale the result. | Use the same layered approach. The API has a 512px overall ceiling, but the useful environment and scene-object styles currently cap at 384px. | The graph can tile, upscale, or composite beyond hosted-provider limits, but memory and seam quality become workflow concerns. Prefer reusable layers unless the scene truly needs one render. |
 
-For production environments, prefer a kit over a monolith: seamless terrain,
-separate landmarks/buildings, foreground occluders, and a distant backdrop.
-This produces reusable assets, cleaner parallax, easier collision/lighting, and
-cheaper targeted re-rolls. Generate at the intended native pixel resolution,
-then scale by an integer with nearest-neighbor filtering.
+For a production environment, build a kit: seamless terrain, separate
+landmarks and buildings, foreground occluders, and a distant backdrop. You can
+rerun one weak piece, set collision per object, and move layers independently
+for parallax. Generate each piece at its native pixel resolution, then use
+integer nearest-neighbor scaling.
 
 A visual benchmark should use the same briefs for an isolated building, a
 top-down landmark, and a full scenic background. Use the same intended native
@@ -152,7 +151,7 @@ complete claim checks. Keep the provider lockfiles separate. Package their
 reviewed outputs independently, or combine explicit files with `pixelkiln pack
 --inputs <file> --out <path>`.
 
-This is a useful split when PixelLab handles prompt-sensitive buildings and
+This split works when PixelLab handles prompt-sensitive buildings and
 account recovery, Retro Diffusion handles environment-styled backdrops, clean
 cutouts, or native animation, and ComfyUI handles private or project-specific
 model experiments that can absorb manual cleanup. Retro Diffusion is not a higher-resolution
@@ -207,12 +206,11 @@ estimate and hard budget remain enforced.
 
 ## What to build next
 
-The first ComfyUI release has a live, versioned core-node reference workflow.
-Transport, candidate review, provenance, cache recovery, native-grid recovery,
-final palette enforcement, and a fail-closed approval record now work. The
-tested SDXL plus Pixel Art XL graph is useful for composition, but it is not a
-production preset. Background removal stays in the graph. Prompt coverage,
-pixel clusters, and aesthetic approval still require a person.
+The ComfyUI adapter now has a live, versioned core-node workflow. Generation,
+candidate review, cache recovery, native-grid recovery, palette enforcement,
+and the approval record work. The tested SDXL plus Pixel Art XL graph can find
+a composition, but it is not a production preset. Background removal stays in
+the graph. A person must still check the brief, pixel clusters, and drawing.
 
 Native per-style provider routing remains the highest-value orchestration
 feature. One manifest should be able to send a building style to PixelLab, an

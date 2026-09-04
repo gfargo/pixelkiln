@@ -2,9 +2,8 @@
 
 ## Supported versions
 
-Until the first npm release, security fixes are applied to `main`. After
-publication, the latest released line and `main` are supported; older versions
-may be asked to upgrade before a fix is backported.
+Security fixes target `main` and the latest npm release. Older versions may
+need to upgrade before a fix is backported.
 
 ## Reporting a vulnerability
 
