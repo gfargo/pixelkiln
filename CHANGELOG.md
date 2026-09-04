@@ -1,3 +1,10 @@
+# [0.11.0](https://github.com/gfargo/pixelkiln/compare/v0.10.0...v0.11.0) (2026-09-04)
+
+
+### Features
+
+* add provider-neutral pixel refinement ([#58](https://github.com/gfargo/pixelkiln/issues/58)) ([9d25aac](https://github.com/gfargo/pixelkiln/commit/9d25aac113201e0e7fd7a0b244eef4e206e14fa8))
+
 # [0.10.0](https://github.com/gfargo/pixelkiln/compare/v0.9.0...v0.10.0) (2026-09-04)
 
 
