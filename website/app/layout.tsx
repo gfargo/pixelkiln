@@ -18,25 +18,25 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: "PixelKiln",
   title: {
-    default: "PixelKiln: Pixel-art generation with receipts",
+    default: "PixelKiln: A build pipeline for generated pixel art",
     template: "%s · PixelKiln",
   },
   description:
-    "A provider-neutral PixelLab, Retro Diffusion, and ComfyUI pipeline to plan, review, recover, and package generative pixel art with exact provenance.",
+    "Plan provider costs, review candidates, recover paid work, and package pixel art from PixelLab, Retro Diffusion, or ComfyUI.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    title: "PixelKiln: Pixel-art generation with receipts",
+    title: "PixelKiln: A build pipeline for generated pixel art",
     description:
-      "A provider-neutral pipeline for planned costs, human review, exact provenance, resilient recovery, and engine-ready pixel art.",
+      "Plan provider costs, review candidates, recover paid work, and package generated pixel art with recorded hashes.",
     url: "/",
     siteName: "PixelKiln",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PixelKiln: Pixel-art generation with receipts",
+    title: "PixelKiln: A build pipeline for generated pixel art",
     description:
-      "A deterministic pipeline for generative pixel art, from planned cost to engine-ready output.",
+      "Plan provider costs, review candidates, recover paid work, and package generated pixel art.",
   },
 };
 

@@ -1,9 +1,9 @@
 # PixelKiln website
 
-The public marketing and documentation site for PixelKiln. It is a standalone
-Next.js app within the library repository so product, documentation, and
-website changes can share one pull request without adding web dependencies to
-the published npm package. Production is available at
+This standalone Next.js app hosts PixelKiln's public site and renders the
+repository's Markdown documentation. Keeping it in the library repository lets
+one pull request update code, docs, and site copy. Its dependencies stay out of
+the npm package. Production is available at
 [pixelkiln.griffen.codes](https://pixelkiln.griffen.codes).
 
 ## Committing website changes
@@ -73,7 +73,7 @@ padding. Keep them at that source size and let the workflow cards render them
 without scaling transforms; this preserves consistent weight across Declare,
 Plan, Review, and Ship.
 
-## Review showcase capture
+## Review UI capture
 
 `public/review-ui-showcase.jpg` is a capture of the real local review renderer,
 populated with the generated brand assets. Capture it at 1280×720 after every

@@ -1,7 +1,7 @@
 # Quality and automation gates
 
-PixelKiln exposes local, deterministic checks separately from paid provider
-work. Run them before generation and in CI.
+PixelKiln keeps local checks separate from paid provider work. Run them before
+generation and in CI.
 
 ## Plan gate
 
@@ -65,10 +65,10 @@ normalized to RGBA before measurement.
 
 ## Human pixel-art gate
 
-The audit catches measurable drift; it does not decide whether an image is good
-pixel art. A grid-aligned file can still contain painterly gradients, noisy
-single-pixel marks, weak silhouettes, or clusters inherited from a blurred
-source. Review every candidate at its native 1× size and at an integer zoom.
+The audit measures drift; it cannot judge the drawing. A grid-aligned file can
+still contain painterly gradients, isolated noise, a weak silhouette, or soft
+clusters inherited from a blurred source. Review every candidate at native 1×
+and at an integer zoom.
 
 For each candidate, verify:
 
@@ -88,11 +88,11 @@ a ceiling imposed by quality, not a target.
 
 ### Refinement quality record
 
-`pixelkiln refine` makes the mechanical half of this gate repeatable for any
-provider. It runs the pinned open Pixel Art Fixer, requires high-confidence
-grid recovery, applies an explicit final palette without dithering, checks the
-native dimensions, color count, and optional transparency floor, then writes a
-hash-bound `.pixelkiln.json` record.
+`pixelkiln refine` repeats the mechanical half of this gate for any provider.
+It runs the pinned open Pixel Art Fixer, requires high-confidence grid recovery,
+applies the chosen palette without dithering, checks native dimensions, color
+count, and optional transparency, then writes a hash-bound `.pixelkiln.json`
+record.
 
 ```bash
 pixelkiln refine \

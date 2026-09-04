@@ -12,7 +12,7 @@ const socialImage = {
   url: "/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "PixelKiln: Plan, review, recover, and ship generated pixel art with exact provenance.",
+  alt: "PixelKiln plans generation costs, records review, and tracks the hash of every pixel-art file.",
 };
 
 export function absoluteUrl(path: string) {

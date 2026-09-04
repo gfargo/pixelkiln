@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const alt =
-  "PixelKiln: Plan, review, recover, and ship generated pixel art with exact provenance.";
+  "PixelKiln plans costs, records review, and tracks every generated pixel-art file.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -221,7 +221,7 @@ export default function OpenGraphImage() {
             }}
           >
             Plan cost, review candidates, recover paid work, and export
-            game-ready assets with exact provenance.
+            reviewed assets with recorded source and output hashes.
           </span>
         </div>
 

@@ -15,7 +15,7 @@ export default function Home() {
         name: "PixelKiln",
         url: absoluteUrl("/"),
         description:
-          "A provider-neutral pipeline for planned costs, human review, exact provenance, resilient recovery, and engine-ready pixel art.",
+          "Plan costs, review candidates, recover paid work, and package generated pixel art with recorded hashes.",
       },
       {
         "@type": "SoftwareSourceCode",
@@ -27,7 +27,7 @@ export default function Home() {
         programmingLanguage: "TypeScript",
         runtimePlatform: "Node.js",
         description:
-          "A deterministic build pipeline for generated pixel art with cost planning, human review, provenance, recovery, and engine-ready outputs.",
+          "A build pipeline that plans provider costs, records human choices, restores paid work, and packages generated pixel art.",
       },
     ],
   };
@@ -40,7 +40,7 @@ export default function Home() {
       <section className="hero shell">
         <div className="hero-copy">
           <p className="eyebrow">
-            <span className="status-dot" /> Pixel-art operations, under control
+            <span className="status-dot" /> Generated pixel art without guesswork
           </p>
           <h1>
             Fire once.
@@ -50,9 +50,8 @@ export default function Home() {
             <em>with receipts.</em>
           </h1>
           <p className="hero-deck">
-            PixelKiln turns generative pixel art into a deterministic build
-            pipeline. It tracks planned costs, human review, exact hashes, resilient
-            recovery, and engine-ready output.
+            Declare the art you need, see the price before generation, choose
+            candidates yourself, and keep a hash for every file you ship.
           </p>
           <div className="hero-actions">
             <TrackedLink
@@ -150,7 +149,7 @@ export default function Home() {
         <div className="shell proof-grid">
           <div>
             <strong>05</strong>
-            <span>purpose-fit generators</span>
+            <span>provider routes</span>
           </div>
           <div>
             <strong>22</strong>
@@ -170,36 +169,36 @@ export default function Home() {
 
         <section className="workflow-section shell" id="workflow">
           <div className="section-heading">
-            <p className="eyebrow">One source of truth, four deliberate moves</p>
-            <h2>From intent to engine.<br />Keep the thread.</h2>
+            <p className="eyebrow">Four steps, one committed manifest</p>
+            <h2>Declare it. Price it.<br />Review it. Ship it.</h2>
           </div>
           <div className="workflow-grid">
             <article>
               <span className="step-number">01</span>
               <div className="step-glyph"><Image src="/sprites/workflow/declare.png" alt="" width={64} height={64} /></div>
               <h3>Declare</h3>
-              <p>Describe assets, styles, dimensions, palettes, references, and output paths in one committed manifest.</p>
+              <p>Put asset names, prompts, sizes, palettes, references, and output paths in one file.</p>
               <code>pixelkiln.manifest.json</code>
             </article>
             <article>
               <span className="step-number">02</span>
               <div className="step-glyph"><Image src="/sprites/workflow/plan.png" alt="" width={64} height={64} /></div>
               <h3>Plan</h3>
-              <p>Diff intent against lock state and disk. See exactly what is missing, stale, recoverable, and billable.</p>
+              <p>Compare the manifest with the lockfile and disk. See what costs money and what can be restored for free.</p>
               <code>pixelkiln plan</code>
             </article>
             <article>
               <span className="step-number">03</span>
               <div className="step-glyph"><Image src="/sprites/workflow/review.png" alt="" width={64} height={64} /></div>
               <h3>Review</h3>
-              <p>Keep selection human with a fast local candidate sheet. Nothing is silently chosen by another model.</p>
+              <p>Choose from a local candidate sheet. PixelKiln never asks another model to pick the winner.</p>
               <code>pixelkiln pick</code>
             </article>
             <article>
               <span className="step-number">04</span>
               <div className="step-glyph"><Image src="/sprites/workflow/ship.png" alt="" width={64} height={64} /></div>
               <h3>Ship</h3>
-              <p>Fetch verified pixels, restore paid work, and build deterministic atlases or engine-native tilesets.</p>
+              <p>Verify downloaded pixels, restore missing files, and build repeatable atlases or engine metadata.</p>
               <code>pixelkiln pack</code>
             </article>
           </div>
@@ -222,10 +221,11 @@ export default function Home() {
                 <span><i /> FakeProvider · tests</span>
               </div>
               <p className="provider-note">
-                PixelLab is production-ready. Retro Diffusion has live-tested
-                stills. ComfyUI has live-tested local generation, candidate
-                queueing, and cache recovery. Its SDXL, cleanup, and native-grid
-                results are source material, not a production-ready pixel-art preset.
+                PixelLab has live coverage for generation and account recovery.
+                Retro Diffusion has live-tested single-candidate stills. ComfyUI
+                has passed local generation, candidate review, cache recovery,
+                and grid refinement. Its tested SDXL graph still needs manual
+                cleanup and art review.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
@@ -265,7 +265,7 @@ export default function Home() {
         <section className="provider-showcase-section shell" id="providers">
           <div className="section-heading split-heading provider-showcase-heading">
             <div>
-              <p className="eyebrow">Provider showcase</p>
+              <p className="eyebrow">Provider results</p>
               <h2>Same briefs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
@@ -308,9 +308,10 @@ export default function Home() {
                 </figure>
               </div>
               <p>
-                Stronger prompt coverage and clearer depth bands in this
-                sample. Map objects were opaque, and one scenic attempt added a
-                signature-like mark. Review alpha and stray artifacts early.
+                PixelLab kept more of each brief and made the scenic depth
+                planes easier to separate. Its map objects were opaque, and one
+                scenic attempt added a signature-like mark. Check alpha and
+                stray marks before a batch.
               </p>
               <dl>
                 <div><dt>Benchmark cost</dt><dd>1 generation each</dd></div>
@@ -357,9 +358,9 @@ export default function Home() {
                 </figure>
               </div>
               <p>
-                Cleaner transparent cutouts with fewer colors, plus stronger
-                close environment framing. The 384px canvas produced a much
-                more substantial building than the earlier 256px brief.
+                Both 384px building attempts had transparent backgrounds and
+                used 49 to 55 colors. They also filled more of the frame than
+                the earlier 256px attempt.
               </p>
               <dl>
                 <div><dt>Benchmark cost</dt><dd>$0.058–$0.099 each</dd></div>
@@ -408,11 +409,11 @@ export default function Home() {
                 </figure>
               </div>
               <p>
-                SDXL Base plus Pixel Art XL produced promising compositions,
-                but its outputs only imitated a pixel grid. Pixel Art Fixer
-                now recovers editable 1× assets, applies a fixed palette, and
-                verifies the quality record. A person still decides whether the
-                art is good. Start small and compose accepted parts into larger scenes.
+                SDXL Base plus Pixel Art XL found workable compositions, but
+                the raw files only imitated a pixel grid. Pixel Art Fixer
+                recovers editable 1× assets and applies a fixed palette.
+                PixelKiln verifies those mechanical checks. You still judge the
+                drawing. Build large scenes from small parts that pass review.
               </p>
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
@@ -447,8 +448,8 @@ export default function Home() {
         <section className="safety-section">
           <div className="shell safety-grid">
             <div className="section-heading safety-copy">
-              <p className="eyebrow">The provenance layer generation tools forget</p>
-              <h2>Paid work shouldn’t disappear into vibes.</h2>
+              <p className="eyebrow">Keep the record after generation</p>
+              <h2>Paid work needs a paper trail.</h2>
               <p className="section-deck">
                 Every provider object, prompt identity, output role, path, and
                 byte hash survives in project state. A failed download remains
@@ -488,10 +489,10 @@ export default function Home() {
         <section className="capabilities-section shell">
           <div className="section-heading split-heading">
             <div>
-              <p className="eyebrow">A complete asset operations layer</p>
-              <h2>More than generation.</h2>
+              <p className="eyebrow">What happens around generation</p>
+              <h2>The prompt is only the start.</h2>
             </div>
-            <p className="section-deck">PixelKiln handles the unglamorous mechanics between a good prompt and a game-ready asset library.</p>
+            <p className="section-deck">PixelKiln handles the work between a prompt and the files your game loads.</p>
           </div>
           <div className="capability-grid">
             <article className="capability-card large">
@@ -517,7 +518,7 @@ export default function Home() {
             </article>
             <article className="capability-card large">
               <span className="card-index">04 / PACKAGE</span>
-              <h3>Turn source pixels into durable game assets.</h3>
+              <h3>Build the files your engine expects.</h3>
               <p>Pack sheets, mount stable cells, and export lossless generic, Tiled, or Godot terrain metadata with provenance.</p>
               <div className="format-list"><span>PNG</span><span>JSON</span><span>TILED</span><span>GODOT 4</span></div>
             </article>
@@ -528,7 +529,7 @@ export default function Home() {
           <div className="shell">
             <div className="section-heading split-heading">
               <div>
-                <p className="eyebrow">Purpose-fit routing</p>
+                <p className="eyebrow">Different routes, different bills</p>
                 <h2>Use the capability you need.<br />Pay only for that.</h2>
               </div>
               <p className="section-deck">Measured PixelLab costs vary by up to 40×. Retro Diffusion uses USD pricing. PixelKiln makes generator choice explicit and never combines unlike cost units.</p>
@@ -555,8 +556,8 @@ export default function Home() {
           <div className="install-panel">
             <div>
               <p className="eyebrow">Official agent skill · one command</p>
-              <h2>Give your agent the operating manual.</h2>
-              <p>Install the provider-neutral PixelKiln skill for safe planning, hard budgets, human review, recovery-first decisions, and correct artifacts.</p>
+              <h2>Teach your agent the PixelKiln workflow.</h2>
+              <p>The skill tells compatible agents when to plan, ask for a budget, restore existing work, stop for human review, and verify output.</p>
             </div>
             <div className="install-actions">
               <CopyCommand command="npx skills add gfargo/pixelkiln@pixelkiln" />

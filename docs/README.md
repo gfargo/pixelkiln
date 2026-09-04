@@ -1,8 +1,7 @@
 # PixelKiln documentation
 
-PixelKiln is a manifest-driven pixel-art pipeline. Start with the workflow
-guide, then use the references for the part of the pipeline you are changing.
-This source also renders at
+Start with the workflow guide, then open the reference for the command or
+provider you are using. These Markdown files also render at
 [pixelkiln.griffen.codes/docs](https://pixelkiln.griffen.codes/docs).
 
 ## Start here

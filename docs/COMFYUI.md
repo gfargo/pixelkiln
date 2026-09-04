@@ -9,19 +9,18 @@ building and environment renders. ComfyUI Cloud is not part of this release.
 
 [Visit ComfyUI](https://www.comfy.org/) or continue with the local setup below.
 
-## Decide whether ComfyUI fits
+## When to use ComfyUI
 
-Use this adapter when local control, private inputs, or a custom graph justifies
-maintaining the workflow. It is not a turnkey route to game-ready pixel art.
-The tested SDXL plus Pixel Art XL graph can produce useful source compositions,
-but the result still needs native-grid recovery, a final palette pass, and human
-art review.
+Use this adapter when local control, private inputs, or a custom graph justify
+the maintenance work. It is not a shortcut to finished pixel art. The tested
+SDXL plus Pixel Art XL graph can establish a composition, but its output still
+needs native-grid recovery, a final palette, and human review.
 
 If the main goal is the shortest path to usable pixel art, compare PixelLab and
 Retro Diffusion first. Choose ComfyUI when owning the workflow is worth the
 extra model testing and cleanup.
 
-### Minimal safe path
+### Quality-first workflow
 
 1. Generate two to four candidates at the model's normal working size.
 2. Reject missing subjects, weak silhouettes, and bad composition before doing
@@ -39,11 +38,10 @@ Stop after step 2 when the image misses the brief. Background removal,
 pixel-grid recovery, and palette reduction cannot restore a missing building or
 repair a weak composition.
 
-PixelKiln automates generation, candidate review, cache recovery, native-grid
-reconstruction, final palette enforcement, measurable audits, and the approval
-record. Background removal remains part of the ComfyUI graph, and the final art
-decision remains human. Treat every generated image as source material until
-`pixelkiln refine check` passes.
+PixelKiln automates generation, candidate review, cache recovery, grid
+reconstruction, palette checks, and the approval record. Background removal
+stays in the ComfyUI graph. A person still decides whether the image is good.
+Do not package it until `pixelkiln refine check` passes.
 
 ## Start ComfyUI
 
@@ -130,11 +128,10 @@ The tested isolated-asset graph runs these nodes in this order:
 5. Join the quantized RGB image with the alpha mask.
 6. Reduce the RGBA result with `ImageScale` set to `nearest-exact`.
 
-This graph is a diagnostic experiment, not the recommended finished pipeline.
-It proves the cleanup nodes run and preserves the alpha mask by letting BiRefNet
-see the full-resolution, full-color image. Its pre-scale quantization does not
-guarantee the color count of a later native-grid reconstruction, because grid
-recovery can introduce averaged colors.
+This graph tests the cleanup nodes; it is not the recommended final pipeline.
+BiRefNet sees the full-resolution color image, so the graph preserves its alpha
+mask. Quantizing before reduction does not cap the later native-grid palette,
+because grid recovery can introduce averaged colors.
 
 For an isolated production candidate, use this order instead:
 
@@ -251,7 +248,7 @@ both native dimensions merely because the machine can render them. This matches
 the [Aseprite Diffusion author's published working range](https://www.reddit.com/r/PixelArt/comments/yv2q51/making_high_quality_game_tiles_in_less_than_a/)
 of 48–128px, centered on a 64px native target, and our current 128px recovery.
 
-Start with a deliberate 16–32 color project palette. Add colors only when they
+Start with a 16–32 color project palette. Add colors only when they
 improve readable depth, material, or lighting. After grid recovery, review the
 asset at 1× and an integer zoom for silhouette, clusters, contours, single-pixel
 noise, palette separation, and seams. High-confidence grid detection only

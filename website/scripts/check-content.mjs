@@ -53,34 +53,34 @@ for (const { file, source } of routeSources) {
 const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
 const refinedSample = "/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.png";
 if (!home.includes(refinedSample)) {
-  failures.push("provider showcase is missing the final-palette ComfyUI sample");
+  failures.push("provider results are missing the final-palette ComfyUI sample");
 }
 if (!existsSync(path.join(websiteRoot, "public", refinedSample.slice(1)))) {
-  failures.push("provider showcase final-palette ComfyUI sample does not exist");
+  failures.push("provider results final-palette ComfyUI sample does not exist");
 }
 const refinedRecord = path.join(
   websiteRoot,
   "public/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.pixelkiln.json",
 );
 if (!existsSync(refinedRecord)) {
-  failures.push("provider showcase final-palette ComfyUI quality record does not exist");
+  failures.push("provider results final-palette ComfyUI quality record does not exist");
 } else {
   const quality = JSON.parse(readFileSync(refinedRecord, "utf8"));
   if (quality.kind !== "refine" || quality.options?.review?.status !== "pending") {
-    failures.push("provider showcase quality record must be an honestly pending refinement");
+    failures.push("provider results quality record must remain pending until human review");
   }
 }
 if (!home.includes("https://www.retrodiffusion.ai/tools/pixel-art-fixer/")) {
-  failures.push("provider showcase is missing the Pixel Art Fixer link");
+  failures.push("provider results are missing the Pixel Art Fixer link");
 }
 if (!home.includes("48–128px native per part")) {
-  failures.push("provider showcase is missing the ComfyUI quality-first native range");
+  failures.push("provider results are missing the ComfyUI native range");
 }
 if (!home.includes("Refinement automated; art review required")) {
-  failures.push("provider showcase is missing the ComfyUI refinement boundary");
+  failures.push("provider results are missing the ComfyUI refinement boundary");
 }
-if (!home.includes("not a production-ready pixel-art preset")) {
-  failures.push("provider showcase is missing the ComfyUI production-readiness warning");
+if (!home.includes("still needs manual") || !home.includes("art review")) {
+  failures.push("provider results are missing the ComfyUI manual-review warning");
 }
 for (const [provider, route, official] of [
   ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],
@@ -88,10 +88,10 @@ for (const [provider, route, official] of [
   ["ComfyUI", "/docs/comfyui", "https://www.comfy.org/"],
 ]) {
   if (!home.includes(`href="${route}"`)) {
-    failures.push(`provider showcase is missing the ${provider} setup link`);
+    failures.push(`provider results are missing the ${provider} setup link`);
   }
   if (!home.includes(`href="${official}"`)) {
-    failures.push(`provider showcase is missing the official ${provider} link`);
+    failures.push(`provider results are missing the official ${provider} link`);
   }
 }
 

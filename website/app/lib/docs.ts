@@ -59,7 +59,7 @@ export const docs: DocEntry[] = [
   {
     slug: "agents",
     title: "Agent workflows",
-    description: "Install the official skill and pair agent guidance with deterministic execution.",
+    description: "Install the skill and see what it tells an agent to do.",
     file: "docs/AGENTS.md",
     group: "Start here",
   },
@@ -136,14 +136,14 @@ export const docs: DocEntry[] = [
   {
     slug: "contributing",
     title: "Contributing",
-    description: "Development setup, change guidelines, and architectural boundaries.",
+    description: "Set up the repository and follow its test, release, and safety rules.",
     file: "CONTRIBUTING.md",
     group: "Policies",
   },
   {
     slug: "security",
     title: "Security",
-    description: "Supported versions, reporting, and project security posture.",
+    description: "Supported versions and private vulnerability reporting.",
     file: "SECURITY.md",
     group: "Policies",
   },
