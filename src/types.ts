@@ -163,6 +163,8 @@ const StyleImageSchema = z.object({
 
 export const StyleSchema = z
   .object({
+    /** Generation backend for this style. Omit to inherit the manifest default. */
+    provider: z.string().min(1).optional(),
     // `map` is the default because it is 20-40x cheaper and correct for any
     // asset that is not going to be rotated or animated.
     generator: GeneratorSchema.default("map"),

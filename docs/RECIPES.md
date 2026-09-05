@@ -29,7 +29,7 @@ The default destination includes the exact recipe version:
 pixelkiln-recipes/comfyui/pixel-art-xl-environment/1.0.0/
 ```
 
-The command prints a complete manifest style entry whose `workflowFile` points
+The command prints a complete provider-qualified manifest style entry whose `workflowFile` points
 to that directory. Add the entry under `styles`, set the manifest's provider to
 `comfyui`, and add the assets you want to render. Use `--out <directory>` when
 the project keeps workflows elsewhere.

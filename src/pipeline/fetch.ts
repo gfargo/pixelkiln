@@ -59,6 +59,7 @@ export async function fetchAssets(
   // lockfile is still written after each one, keeping an interrupted run
   // recoverable.
   const pending = Object.entries(lock.entries).filter(([key, e]) => {
+    if (e.provider !== provider.id || !specByKey.has(key)) return false
     if (e.status === "selected" || e.status === "download-failed") return true
     if (!opts.repair || e.status !== "downloaded") return false
     const spec = specByKey.get(key)
@@ -274,7 +275,7 @@ export async function pushTags(
 
   for (const [key, entry] of Object.entries(lock.entries)) {
     const spec = specByKey.get(key)
-    if (!spec || !entry.objectId) continue
+    if (!spec || entry.provider !== provider.id || !entry.objectId) continue
     // pixflux results are local files with a synthetic id, not account
     // objects — tagging one would 404.
     if (entry.generator === "pixflux") continue

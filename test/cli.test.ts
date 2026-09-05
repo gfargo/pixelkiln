@@ -164,6 +164,32 @@ describe("parseArgs", () => {
     expect(parseArgs(["gen", "--budget", "0"]).budget).toBe(0)
   })
 
+  it("parses repeatable provider-keyed budgets for mixed runs", () => {
+    const args = parseArgs([
+      "gen",
+      "--budget", "pixellab=40",
+      "--budget", "retrodiffusion=1.25",
+      "--budget", "comfyui=0",
+    ])
+    expect(args.budget).toBeUndefined()
+    expect(args.providerBudgets).toEqual({
+      pixellab: 40,
+      retrodiffusion: 1.25,
+      comfyui: 0,
+    })
+  })
+
+  it("rejects ambiguous or malformed mixed-provider budgets", () => {
+    expect(() => parseArgs([
+      "gen", "--budget", "40", "--budget", "retrodiffusion=1",
+    ])).toThrow(/Do not mix/)
+    expect(() => parseArgs([
+      "gen", "--budget", "pixellab=40", "--budget", "pixellab=20",
+    ])).toThrow(/repeats provider/)
+    expect(() => parseArgs(["gen", "--budget", "retrodiffusion=lots"]))
+      .toThrow(/provider=number/)
+  })
+
   it("defaults the lockfile to sit beside the manifest", () => {
     const args = parseArgs(["plan", "--manifest", "/tmp/proj/pixelkiln.manifest.json"])
     expect(args.lock).toBe("/tmp/proj/pixelkiln.lock.json")

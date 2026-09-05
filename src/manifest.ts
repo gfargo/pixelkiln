@@ -66,7 +66,20 @@ export async function resolveSpecs(
   },
 ): Promise<ResolvedSpec[]> {
   const { manifest, root } = loaded
-  const activeProvider = filter?.provider ?? createProvider(manifest.provider, "offline")
+  // The explicit provider remains a whole-resolution override for existing
+  // library callers and diagnostics. Normal manifest resolution constructs
+  // one offline adapter per effective style provider.
+  const providerOverride = filter?.provider
+  const providers = new Map<string, Pick<Provider, "supports" | "estimate" | "validate" | "resolveOptions" | "id">>()
+  const providerFor = (id: string) => {
+    if (providerOverride) return providerOverride
+    let provider = providers.get(id)
+    if (!provider) {
+      provider = createProvider(id, "offline")
+      providers.set(id, provider)
+    }
+    return provider
+  }
   const specs: ResolvedSpec[] = []
 
   const styleIds = Object.keys(manifest.styles).filter(
@@ -110,6 +123,7 @@ export async function resolveSpecs(
 
   for (const styleId of styleIds) {
     const style = manifest.styles[styleId]!
+    const activeProvider = providerFor(style.provider ?? manifest.provider)
     const rawProviderOptions = style.providerOptions[activeProvider.id] ?? {}
     const optionResolution = activeProvider.resolveOptions
       ? await activeProvider.resolveOptions(rawProviderOptions, { root, styleId })

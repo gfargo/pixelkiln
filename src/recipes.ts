@@ -86,6 +86,13 @@ export const RecipeSchema = z.object({
     digest: z.string().regex(SHA256_RE),
   }).strict(),
 }).strict().superRefine((recipe, context) => {
+  if (recipe.style.provider && recipe.style.provider !== recipe.provider) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["style", "provider"],
+      message: "must match the recipe provider",
+    })
+  }
   const filePaths = recipe.files.map((file) => file.path)
   if (new Set(filePaths).size !== filePaths.length) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["files"], message: "duplicate file path" })
@@ -434,12 +441,15 @@ export async function installRecipe(
   }
 
   const written = await writeArtifactBundle(files)
+  const renderedStyle = renderStyle(loaded.recipe.style, destination, cwd)
   return {
     recipe: loaded.recipe,
     destination,
     changed: written.changed,
     unchanged: written.unchanged,
     styleId: loaded.recipe.styleId,
-    style: renderStyle(loaded.recipe.style, destination, cwd),
+    // A recipe snippet should remain correct when pasted into a manifest whose
+    // top-level default is another provider.
+    style: { ...renderedStyle, provider: renderedStyle.provider ?? loaded.recipe.provider },
   }
 }

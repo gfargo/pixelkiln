@@ -38,12 +38,17 @@ export async function poll(
   const log = opts.onProgress ?? (() => {})
   const started = Date.now()
   const specByKey = new Map((opts.specs ?? []).map((s) => [lockKey(s.styleId, s.assetId), s]))
+  const selectedKeys = opts.specs ? new Set(specByKey.keys()) : null
 
   const result: PollResult = { review: 0, completed: 0, failed: 0, stillRunning: 0 }
 
   const pending = () =>
     Object.entries(lock.entries).filter(
-      ([, e]) => e.jobId && (e.status === "pending" || e.status === "processing"),
+      ([key, e]) =>
+        e.provider === provider.id &&
+        (!selectedKeys || selectedKeys.has(key)) &&
+        e.jobId &&
+        (e.status === "pending" || e.status === "processing"),
     )
 
   while (pending().length > 0) {

@@ -10,12 +10,16 @@ import {
   requireDelete,
   requireList,
 } from "./provider.ts"
-import { createProvider, providerFactory } from "./providers/registry.ts"
+import {
+  createProvider,
+  providerFactory,
+  type ProviderMode,
+} from "./providers/registry.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { mountStyle, packSprites, packStyle, resolvePackInputs } from "./pipeline/pack.ts"
 import { loadLock, remove as removeLock, saveLock, spendByUnit, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
-import { lockKey } from "./types.ts"
+import { lockKey, type Lock, type Manifest, type ResolvedSpec } from "./types.ts"
 import { normalizeLockOutputPaths, resolveOutputPath } from "./outputs.ts"
 import { buildPlan, summarize, type Plan } from "./pipeline/plan.ts"
 import { submit } from "./pipeline/submit.ts"
@@ -51,7 +55,7 @@ import {
 } from "./pipeline/refine.ts"
 import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
-import type { Provider } from "./provider.ts"
+import type { BalanceInfo, Provider } from "./provider.ts"
 import {
   writeManagedArtifactBundle,
   type ArtifactFile,
@@ -90,6 +94,8 @@ interface Args {
   force: boolean
   yes: boolean
   budget?: number
+  /** Repeatable provider-keyed budgets used by a mixed-provider run. */
+  providerBudgets: Record<string, number>
   dryRun: boolean
   all: boolean
   json: boolean
@@ -128,7 +134,7 @@ interface Args {
   workspace?: string
   /** Positional target for recipe and workspace subcommands. */
   target?: string
-  /** `workspace add`: provider id to register the project under. Defaults to "pixellab". */
+  /** Account provider selector; also the `workspace add` catalog provider hint. */
   provider?: string
   /** `workspace add`: free-form account label, e.g. distinguishing sandboxes. */
   account?: string
@@ -307,13 +313,37 @@ export function parseArgs(argv: string[]): Args {
   }
 
   let budget: number | undefined
-  const rawBudget = get("--budget")
-  if (rawBudget !== undefined) {
-    budget = Number(rawBudget)
-    // NaN would compare false against every cost and silently disable the cap.
-    if (!Number.isFinite(budget) || budget < 0) {
+  // A registry id is intentionally only constrained to non-empty text. Use a
+  // null-prototype dictionary so ids such as "constructor" cannot interact
+  // with Object.prototype while budgets are parsed.
+  const providerBudgets: Record<string, number> = Object.create(null)
+  const rawBudgets = rest.flatMap((token, index) => token === "--budget" ? [rest[index + 1]!] : [])
+  for (const rawBudget of rawBudgets) {
+    const separator = rawBudget.indexOf("=")
+    if (separator >= 0) {
+      const providerId = rawBudget.slice(0, separator).trim()
+      const rawAmount = rawBudget.slice(separator + 1).trim()
+      const amount = Number(rawAmount)
+      if (!providerId || /[=\s]/.test(providerId) || !Number.isFinite(amount) || amount < 0) {
+        throw new Error(
+          `--budget must be a non-negative number or provider=number, got "${rawBudget}".`,
+        )
+      }
+      if (Object.hasOwn(providerBudgets, providerId)) {
+        throw new Error(`--budget repeats provider "${providerId}".`)
+      }
+      providerBudgets[providerId] = amount
+      continue
+    }
+    const amount = Number(rawBudget)
+    if (!Number.isFinite(amount) || amount < 0) {
       throw new Error(`--budget must be a non-negative number, got "${rawBudget}".`)
     }
+    if (budget !== undefined) throw new Error("Only one unkeyed --budget may be passed.")
+    budget = amount
+  }
+  if (budget !== undefined && Object.keys(providerBudgets).length) {
+    throw new Error("Do not mix an unkeyed --budget with provider-keyed budgets.")
   }
 
   const manifest = get("--manifest") ?? "pixelkiln.manifest.json"
@@ -358,6 +388,7 @@ export function parseArgs(argv: string[]): Args {
     force: rest.includes("--force"),
     yes: rest.includes("--yes") || rest.includes("-y"),
     budget,
+    providerBudgets,
     dryRun: rest.includes("--dry-run"),
     all: rest.includes("--all"),
     json: rest.includes("--json"),
@@ -457,7 +488,9 @@ Options
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
   --only id1,id2      Restrict to these asset ids
-  --budget <n>        Refuse to spend more than n provider cost units
+  --budget <n|provider=n>  Refuse to exceed one provider ceiling; repeat keyed budgets
+                           for a mixed-provider run
+  --provider <id>     Choose the account for balance/adopt/salvage/purge in a mixed manifest
   --force             Regenerate; also replace changed recipe files or quality baselines
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
@@ -512,13 +545,87 @@ function printPlan(plan: Plan): void {
       `${counts.recoverable} recoverable · ${counts.failed} failed`,
   )
   if (plan.actionable.length) {
-    log(
-      `  would generate ${plan.actionable.length} asset(s) — ${formatCost(plan.costUnit, plan.cost)}, ` +
-        `yielding ${plan.candidates} candidate/output image(s)`,
-    )
+    for (const group of plan.groups) {
+      log(
+        `  ${group.provider}: ${group.actionable.length} asset(s) — ` +
+          `${formatCost(group.costUnit, group.cost)}, ` +
+          `${group.candidates} candidate/output image(s)`,
+      )
+    }
   } else {
     log(`  nothing to generate`)
   }
+}
+
+function manifestProviderIds(manifest: Manifest): string[] {
+  return [...new Set(
+    Object.values(manifest.styles).map((style) => style.provider ?? manifest.provider),
+  )].sort()
+}
+
+function specsByRecordedProvider(specs: ResolvedSpec[], lock: Lock): Map<string, ResolvedSpec[]> {
+  const grouped = new Map<string, ResolvedSpec[]>()
+  for (const spec of specs) {
+    const key = lockKey(spec.styleId, spec.assetId)
+    const provider = lock.entries[key]?.provider ?? spec.provider
+    grouped.set(provider, [...(grouped.get(provider) ?? []), spec])
+  }
+  return grouped
+}
+
+function accountProviderId(manifest: Manifest, requested: string | undefined, command: string): string {
+  const providers = manifestProviderIds(manifest)
+  if (requested) {
+    if (!providers.includes(requested)) {
+      throw new Error(
+        `Provider "${requested}" is not used by this manifest. Used: ${providers.join(", ")}.`,
+      )
+    }
+    return requested
+  }
+  if (providers.length > 1) {
+    throw new Error(
+      `${command} is account-scoped and this manifest uses ${providers.join(", ")}. ` +
+        `Pass --provider <id>.`,
+    )
+  }
+  return providers[0] ?? manifest.provider
+}
+
+function budgetsForPlan(plan: Plan, args: Args): Map<string, number | undefined> {
+  const providerIds = new Set(plan.groups.map((group) => group.provider))
+  const keyed = Object.entries(args.providerBudgets)
+  for (const [provider] of keyed) {
+    if (!providerIds.has(provider)) {
+      throw new Error(
+        `Budget names provider "${provider}", but this run has work only for ` +
+          `${[...providerIds].join(", ") || "no providers"}.`,
+      )
+    }
+  }
+  if (plan.groups.length > 1 && args.budget !== undefined) {
+    throw new Error(
+      "A mixed-provider run needs provider-keyed budgets, for example " +
+        "--budget pixellab=40 --budget retrodiffusion=1.25.",
+    )
+  }
+  const out = new Map<string, number | undefined>()
+  for (const group of plan.groups) {
+    const ceiling = args.providerBudgets[group.provider]
+    if (
+      plan.groups.length > 1 &&
+      group.costUnit !== "free" &&
+      group.cost > 0 &&
+      ceiling === undefined
+    ) {
+      throw new Error(
+        `Mixed-provider run is missing --budget ${group.provider}=<amount> for ` +
+          `${formatCost(group.costUnit, group.cost)} of planned work.`,
+      )
+    }
+    out.set(group.provider, ceiling ?? (plan.groups.length === 1 ? args.budget : undefined))
+  }
+  return out
 }
 
 async function confirm(question: string, auto: boolean): Promise<boolean> {
@@ -802,7 +909,8 @@ async function main() {
     loadEnvFiles(path.dirname(path.resolve(args.manifest)))
     loadEnvFiles(process.cwd())
     const loaded = await loadManifest(args.manifest)
-    const p = createProvider(loaded.manifest.provider, "online")
+    const selectedProvider = accountProviderId(loaded.manifest, args.provider, "balance")
+    const p = createProvider(selectedProvider, "online")
     const b = await requireBalance(p)()
     log(`  provider:  ${p.id}`)
     log(`  plan:      ${b.plan ?? "n/a"}`)
@@ -1024,7 +1132,10 @@ async function main() {
             log(`\n  ${p.id} — ERROR: ${p.error}`)
             continue
           }
-          log(`\n  ${p.id}  (${p.provider}${p.account ? `, ${p.account}` : ""})`)
+          log(
+            `\n  ${p.id}  (${p.providers.join(" + ")}` +
+              `${p.account ? `, ${p.account}` : ""})`,
+          )
           log(`    ${p.entries} lock entries`)
           for (const [state, n] of Object.entries(p.byState)) if (n) log(`      ${state.padEnd(12)} ${n}`)
           for (const [unit, amount] of Object.entries(p.spendByUnit).sort()) {
@@ -1074,12 +1185,41 @@ async function main() {
   if (path.resolve(process.cwd()) !== manifestDir) envFiles.push(...loadEnvFiles(process.cwd()))
 
   const loaded = await loadManifest(args.manifest)
-  const estimator = createProvider(loaded.manifest.provider, "offline")
-  const specs = await resolveSpecs(loaded, {
+  let specs = await resolveSpecs(loaded, {
     styles: args.styles,
     assets: args.assets,
-    provider: estimator,
   })
+  const accountCommands = new Set(["adopt", "salvage", "purge"])
+  const selectedAccountProvider = accountCommands.has(args.command)
+    ? accountProviderId(loaded.manifest, args.provider, args.command)
+    : undefined
+  if (args.provider && !selectedAccountProvider) {
+    throw new Error(
+      "--provider is only used by balance, adopt, salvage, purge, or workspace add.",
+    )
+  }
+  if (selectedAccountProvider) {
+    specs = specs.filter((spec) => spec.provider === selectedAccountProvider)
+  }
+  const accountManifest: Manifest = selectedAccountProvider
+    ? {
+        ...loaded.manifest,
+        provider: selectedAccountProvider,
+        styles: Object.fromEntries(
+          Object.entries(loaded.manifest.styles).filter(
+            ([, style]) => (style.provider ?? loaded.manifest.provider) === selectedAccountProvider,
+          ),
+        ),
+      }
+    : loaded.manifest
+  if (
+    selectedAccountProvider &&
+    args.styles.some((styleId) => !accountManifest.styles[styleId])
+  ) {
+    throw new Error(
+      `Selected style is not assigned to provider "${selectedAccountProvider}".`,
+    )
+  }
   const lock = await loadLock(args.lock)
   normalizeLockOutputPaths(lock, specs)
 
@@ -1107,16 +1247,26 @@ async function main() {
   const plan = await buildPlan(specs, lock, { force: args.force })
 
   if (args.command === "doctor") {
-    const factory = providerFactory(loaded.manifest.provider)
-    const apiKeyPresent = !factory.credentialEnv || Boolean(process.env[factory.credentialEnv])
-    const provider = !args.dryRun && apiKeyPresent
-      ? createProvider(loaded.manifest.provider, "online")
-      : undefined
+    const selectedStyleIds = args.styles.length
+      ? args.styles
+      : Object.keys(loaded.manifest.styles)
+    const providerIds = [...new Set(
+      selectedStyleIds.map((styleId) =>
+        loaded.manifest.styles[styleId]?.provider ?? loaded.manifest.provider),
+    )].sort()
+    const providers = providerIds.map((id) => {
+      const factory = providerFactory(id)
+      const apiKeyPresent = !factory.credentialEnv || Boolean(process.env[factory.credentialEnv])
+      return {
+        id,
+        apiKeyPresent,
+        credentialEnv: factory.credentialEnv,
+        provider: !args.dryRun && apiKeyPresent ? createProvider(id, "online") : undefined,
+      }
+    })
     const report = await doctor(loaded, specs, lock, args.lock, {
-      provider,
+      providers,
       offline: args.dryRun,
-      apiKeyPresent,
-      credentialEnv: factory.credentialEnv,
     })
     if (args.json) {
       log(JSON.stringify(report, null, 2))
@@ -1137,6 +1287,13 @@ async function main() {
         cost: plan.cost,
         costUnit: plan.costUnit,
         candidates: plan.candidates,
+        groups: plan.groups.map((group) => ({
+          provider: group.provider,
+          cost: group.cost,
+          costUnit: group.costUnit,
+          candidates: group.candidates,
+          actionable: group.actionable.map((item) => item.key),
+        })),
         actionable: plan.actionable.map((i) => i.key),
         items: plan.items.map(({ key, state, reason }) => ({ key, state, reason })),
       }, null, 2))
@@ -1154,7 +1311,9 @@ async function main() {
     for (const item of plan.items) {
       if (item.state !== "stale") continue
       const entry = lock.entries[item.key]
-      if (!entry || entry.outputs.length === 0) continue
+      // Accepting new wording is safe; accepting a provider change would
+      // relabel old remote work as if the new backend produced it.
+      if (!entry || entry.provider !== item.spec.provider || entry.outputs.length === 0) continue
       let intact = true
       for (const output of entry.outputs) {
         const file = resolveOutputPath(output.path, item.spec.root)
@@ -1470,12 +1629,21 @@ async function main() {
     return
   }
 
-  const provider: Provider =
+  const providerMode: ProviderMode =
     args.command === "restore" || (args.command === "fetch" && !args.tag)
-      ? createProvider(loaded.manifest.provider, "downloads")
-      : createProvider(loaded.manifest.provider, "online")
-
+      ? "downloads"
+      : "online"
+  const providers = new Map<string, Provider>()
+  const providerFor = (id: string) => {
+    let resolved = providers.get(id)
+    if (!resolved) {
+      resolved = createProvider(id, providerMode)
+      providers.set(id, resolved)
+    }
+    return resolved
+  }
   if (args.command === "adopt") {
+    const provider = providerFor(selectedAccountProvider!)
     log(`\n  Reconciling account objects against files already on disk…`)
     const res = await adopt(provider, specs, lock, args.lock, { onProgress: log })
     log(`\n  scanned ${res.scanned} remote object(s), adopted ${res.matched}`)
@@ -1504,6 +1672,8 @@ async function main() {
     if (args.writePrompts) {
       const { filled, stillEmpty } = await writePromptsBack(path.resolve(args.manifest), lock, {
         onProgress: log,
+        provider: provider.id,
+        assetIds: specs.map((spec) => spec.assetId),
       })
       log(`  recovered ${filled} prompt(s) into ${path.relative(process.cwd(), args.manifest)}`)
 
@@ -1511,11 +1681,10 @@ async function main() {
       // Without re-baselining, an adopt that recovered the true prompts would
       // report all of its own work as stale and offer to regenerate it.
       const reloaded = await loadManifest(args.manifest)
-      const rebased = await resolveSpecs(reloaded, {
+      const rebased = (await resolveSpecs(reloaded, {
         styles: args.styles,
         assets: args.assets,
-        provider,
-      })
+      })).filter((spec) => spec.provider === provider.id)
       let n = 0
       for (const spec of rebased) {
         const key = lockKey(spec.styleId, spec.assetId)
@@ -1536,6 +1705,7 @@ async function main() {
   }
 
   if (args.command === "salvage") {
+    const provider = providerFor(selectedAccountProvider!)
     // --json is a machine-readable contract: stdout must be the JSON array
     // and nothing else, so `pixelkiln salvage --dry-run --json | jq` works.
     // Every human-oriented line below goes through `diag` instead of `log` so
@@ -1586,7 +1756,7 @@ async function main() {
       )
     }
 
-    const claimed = await loadClaims(lockPaths)
+    const claimed = await loadClaims(lockPaths, { provider: provider.id })
     const { orphans, total } = await findOrphans(provider, claimed, { onProgress: diag })
     diag(`  ${claimed.size} claimed · ${orphans.length} unclaimed of ${total}`)
     if (!orphans.length) {
@@ -1608,8 +1778,8 @@ async function main() {
     // Which style each orphan's prompt was most likely generated from, so a
     // shared account's orphan pool doesn't get triaged as one undifferentiated
     // blob under whichever style happens to be first in the manifest.
-    const { matched, unmatched, elsewhere } = groupOrphansByStyle(orphans, loaded.manifest, siblings)
-    const multiStyle = Object.keys(loaded.manifest.styles).length > 1
+    const { matched, unmatched, elsewhere } = groupOrphansByStyle(orphans, accountManifest, siblings)
+    const multiStyle = Object.keys(accountManifest.styles).length > 1
     if (multiStyle) {
       diag(`\n  by style (matched against each style's prompt prefix/suffix):`)
       for (const [id, list] of matched) diag(`    ${id.padEnd(24)} ${list.length}`)
@@ -1651,7 +1821,7 @@ async function main() {
       // the next plan and offers to regenerate art that was just recovered —
       // which would re-pay for all of it.
       const reloaded = await loadManifest(args.manifest)
-      const rebased = await resolveSpecs(reloaded, { provider })
+      const rebased = (await resolveSpecs(reloaded)).filter((spec) => spec.provider === provider.id)
       let n = 0
       for (const spec of rebased) {
         const key = lockKey(spec.styleId, spec.assetId)
@@ -1665,13 +1835,13 @@ async function main() {
     }
 
     const runOne = async (styleId: string, list: typeof orphans) => {
-      const style = loaded.manifest.styles[styleId]!
+      const style = accountManifest.styles[styleId]!
       const res = await runSalvage(
         provider,
         list,
         {
           manifestPath: loaded.path,
-          manifest: loaded.manifest,
+          manifest: accountManifest,
           styleId,
           importDir: path.resolve(loaded.root, style.outDir),
           lock,
@@ -1720,6 +1890,7 @@ async function main() {
   }
 
   if (args.command === "purge") {
+    const provider = providerFor(selectedAccountProvider!)
     const doomed: { id: string; prompt: string }[] = []
     for await (const obj of requireList(provider)()) {
       if (obj.tags.includes("pixelkiln:discard")) {
@@ -1762,8 +1933,13 @@ async function main() {
   }
 
   if (args.command === "tag") {
-    const n = await pushTags(provider, specs, lock, { onProgress: log })
-    log(`  tagged ${n} object(s)`)
+    let tagged = 0
+    for (const [providerId, providerSpecsForRun] of specsByRecordedProvider(specs, lock)) {
+      tagged += await pushTags(providerFor(providerId), providerSpecsForRun, lock, {
+        onProgress: log,
+      })
+    }
+    log(`  tagged ${tagged} object(s)`)
     return
   }
 
@@ -1774,25 +1950,51 @@ async function main() {
       return
     }
     if (plan.actionable.length) {
-      const balance = provider.balance ? await provider.balance() : null
-      if (balance) {
-        log(`\n  balance: ${formatCost(balance.unit, balance.remaining)} remaining (${provider.id})`)
-        if (balance.unit !== plan.costUnit) {
-          throw new Error(
-            `Provider estimate unit ${plan.costUnit} does not match balance unit ${balance.unit}.`,
+      const budgets = budgetsForPlan(plan, args)
+      const balances = new Map<string, BalanceInfo | null>()
+      // Validate every ceiling and available balance before the first provider
+      // can spend. A later group must never reveal that the whole run was
+      // unaffordable only after an earlier group already submitted work.
+      for (const group of plan.groups) {
+        const groupProvider = providerFor(group.provider)
+        const balance = groupProvider.balance ? await groupProvider.balance() : null
+        balances.set(group.provider, balance)
+        if (balance) {
+          log(
+            `\n  balance: ${formatCost(balance.unit, balance.remaining)} remaining ` +
+              `(${group.provider})`,
+          )
+          if (balance.unit !== group.costUnit) {
+            throw new Error(
+              `Provider ${group.provider} estimate unit ${group.costUnit} does not match ` +
+                `balance unit ${balance.unit}.`,
+            )
+          }
+          if (balance.unit !== "free" && group.cost > balance.remaining) {
+            throw new Error(
+              `${group.provider} needs ${formatCost(balance.unit, group.cost)} but only ` +
+                `${formatCost(balance.unit, balance.remaining)} remain.`,
+            )
+          }
+        } else {
+          log(
+            `\n  ${group.provider} does not expose an account balance; ` +
+              `enforcing its run budget`,
           )
         }
-        if (balance.unit !== "free" && plan.cost > balance.remaining) {
+        const ceiling = budgets.get(group.provider)
+        if (ceiling !== undefined && group.cost > ceiling) {
           throw new Error(
-            `This run needs ${formatCost(balance.unit, plan.cost)} but only ` +
-              `${formatCost(balance.unit, balance.remaining)} remain.`,
+            `${group.provider} would spend ${formatCost(group.costUnit, group.cost)} but its ` +
+              `budget is ${formatCost(group.costUnit, ceiling)}.`,
           )
         }
-      } else {
-        log(`\n  ${provider.id} does not expose an account balance; enforcing the explicit run budget`)
       }
+      const spendSummary = plan.groups
+        .map((group) => `${group.provider} ${formatCost(group.costUnit, group.cost)}`)
+        .join("; ")
       const ok = await confirm(
-        `  Spend ${formatCost(plan.costUnit, plan.cost)} on ${plan.actionable.length} asset(s)?`,
+        `  Spend ${spendSummary} on ${plan.actionable.length} asset(s)?`,
         args.yes,
       )
       if (!ok) {
@@ -1800,69 +2002,106 @@ async function main() {
         return
       }
       log(`\n  submitting…`)
-      const res = await submit(provider, loaded, plan.actionable, lock, args.lock, {
-        budget: args.budget,
-        onProgress: log,
-      })
-      log(
-        `\n  submitted ${res.submitted}, failed ${res.failed}, ` +
-          `estimated ${formatCost(res.unit, res.spent)}`,
-      )
-      try {
-        const after = balance && provider.balance ? await provider.balance() : null
-        if (!balance || !after) throw new Error("balance reporting is unsupported")
-        const measured = measureBalanceChange(balance, after)
-        if (measured) {
-          const movement = measured.credited
-            ? `${formatCost(measured.unit, measured.credited)} credited`
-            : `${formatCost(measured.unit, measured.spent)} consumed`
-          log(`  provider-reported balance change: ${movement}`)
-        } else {
-          log(`  provider changed balance units during the run; no delta reported`)
+      for (const group of plan.groups) {
+        const groupProvider = providerFor(group.provider)
+        const res = await submit(groupProvider, loaded, group.actionable, lock, args.lock, {
+          budget: budgets.get(group.provider),
+          onProgress: log,
+        })
+        log(
+          `\n  ${group.provider}: submitted ${res.submitted}, failed ${res.failed}, ` +
+            `estimated ${formatCost(res.unit, res.spent)}`,
+        )
+        try {
+          const before = balances.get(group.provider)
+          const after = before && groupProvider.balance ? await groupProvider.balance() : null
+          if (!before || !after) throw new Error("balance reporting is unsupported")
+          const measured = measureBalanceChange(before, after)
+          if (measured) {
+            const movement = measured.credited
+              ? `${formatCost(measured.unit, measured.credited)} credited`
+              : `${formatCost(measured.unit, measured.spent)} consumed`
+            log(`  ${group.provider} balance change: ${movement}`)
+          } else {
+            log(`  ${group.provider} changed balance units; no delta reported`)
+          }
+        } catch (err) {
+          log(
+            `  ${group.provider} balance recheck unavailable: ` +
+              `${err instanceof Error ? err.message : String(err)}`,
+          )
         }
-      } catch (err) {
-        log(`  provider balance recheck unavailable: ${err instanceof Error ? err.message : String(err)}`)
+        if (res.failed) process.exitCode = 1
       }
-      if (res.failed) process.exitCode = 1
     }
     if (args.command === "submit") return
   }
 
   if (args.command === "poll" || args.command === "gen") {
     log(`\n  polling…`)
-    const res = await poll(provider, lock, args.lock, { onProgress: log, specs })
-    log(`\n  ${res.completed} ready · ${res.review} awaiting selection · ${res.failed} failed`)
-    if (res.failed || res.stillRunning) process.exitCode = 1
+    const total = { completed: 0, review: 0, failed: 0, stillRunning: 0 }
+    for (const [providerId, providerSpecsForRun] of specsByRecordedProvider(specs, lock)) {
+      const res = await poll(providerFor(providerId), lock, args.lock, {
+        onProgress: log,
+        specs: providerSpecsForRun,
+      })
+      total.completed += res.completed
+      total.review += res.review
+      total.failed += res.failed
+      total.stillRunning += res.stillRunning
+    }
+    log(
+      `\n  ${total.completed} ready · ${total.review} awaiting selection · ` +
+        `${total.failed} failed`,
+    )
+    if (total.failed || total.stillRunning) process.exitCode = 1
     if (args.command === "poll") return
   }
 
   if (args.command === "pick" || args.command === "gen") {
-    const res = await runPicker(provider, lock, args.lock, {
-      port: args.port,
-      open: !args.noOpen,
-      onProgress: log,
-    })
-    if (res.selected === 0 && res.skipped === 0) {
+    const total = { selected: 0, skipped: 0 }
+    for (const [providerId, providerSpecsForRun] of specsByRecordedProvider(specs, lock)) {
+      const res = await runPicker(providerFor(providerId), lock, args.lock, {
+        port: args.port,
+        open: !args.noOpen,
+        onProgress: log,
+        keys: providerSpecsForRun.map((spec) => lockKey(spec.styleId, spec.assetId)),
+      })
+      total.selected += res.selected
+      total.skipped += res.skipped
+    }
+    if (total.selected === 0 && total.skipped === 0) {
       log(`  nothing awaiting selection`)
     } else {
-      log(`\n  selected ${res.selected}, left in review ${res.skipped}`)
+      log(`\n  selected ${total.selected}, left in review ${total.skipped}`)
     }
-    if (args.command === "gen" && res.skipped) process.exitCode = 1
+    if (args.command === "gen" && total.skipped) process.exitCode = 1
     if (args.command === "pick") return
   }
 
   if (args.command === "fetch" || args.command === "restore" || args.command === "gen") {
     log(`\n  downloading…`)
-    const res = await fetchAssets(provider, specs, lock, args.lock, {
-      onProgress: log,
-      repair: args.command === "restore",
-    })
-    log(`\n  downloaded ${res.downloaded}, skipped ${res.skipped}, failed ${res.failed}`)
-    if (res.failed) process.exitCode = 1
-    if (args.tag) {
-      const n = await pushTags(provider, specs, lock, { onProgress: log })
-      log(`  tagged ${n} object(s) upstream`)
+    const total = { downloaded: 0, skipped: 0, failed: 0, tagged: 0 }
+    for (const [providerId, providerSpecsForRun] of specsByRecordedProvider(specs, lock)) {
+      const groupProvider = providerFor(providerId)
+      const res = await fetchAssets(groupProvider, providerSpecsForRun, lock, args.lock, {
+        onProgress: log,
+        repair: args.command === "restore",
+      })
+      total.downloaded += res.downloaded
+      total.skipped += res.skipped
+      total.failed += res.failed
+      if (args.tag) {
+        total.tagged += await pushTags(groupProvider, providerSpecsForRun, lock, {
+          onProgress: log,
+        })
+      }
     }
+    log(
+      `\n  downloaded ${total.downloaded}, skipped ${total.skipped}, failed ${total.failed}`,
+    )
+    if (total.failed) process.exitCode = 1
+    if (args.tag) log(`  tagged ${total.tagged} object(s) upstream`)
     await saveLock(args.lock, lock)
     log(`  lockfile written: ${args.lock}`)
     return

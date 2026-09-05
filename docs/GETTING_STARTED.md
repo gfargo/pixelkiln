@@ -85,9 +85,9 @@ Verify its workflow and the workstation's model bytes before generation. See
 The provider setup guides give the shortest path for
 [PixelLab](PIXELLAB.md), [Retro Diffusion](RETRO_DIFFUSION.md), and
 [ComfyUI](COMFYUI.md).
-If one repository needs both, use separate provider-specific manifests and
-lockfiles. See
-[Use multiple providers in one project](../PROVIDERS.md#use-multiple-providers-in-one-project).
+If one project needs several, set `provider` on the styles that differ from the
+top-level default. One lockfile can retain all of their provenance. See
+[Mixed-provider projects](MIXED_PROVIDERS.md).
 
 Before spending anything, validate and price the selected work:
 
@@ -101,6 +101,12 @@ Generate with a hard cap copied from the plan:
 
 ```bash
 pixelkiln gen --style base --budget 120
+```
+
+For a run spanning several providers, pass one named ceiling per provider:
+
+```bash
+pixelkiln gen --budget pixellab=12 --budget retrodiffusion=0.20 --budget comfyui=0
 ```
 
 The command submits jobs, polls them, opens the local review sheet when a

@@ -102,6 +102,44 @@ describe("plan cost by generator", () => {
     expect(plan.cost).toBe(2)
     expect(plan.candidates).toBe(2) // map returns exactly one each
   })
+
+  it("resolves style providers and keeps their plan totals separate", async () => {
+    await writeFile(path.join(dir, "m.json"), JSON.stringify({
+      name: "mixed",
+      provider: "pixellab",
+      styles: {
+        world: { generator: "map", outDir: "out/world" },
+        portraits: {
+          provider: "retrodiffusion",
+          generator: "map",
+          outDir: "out/portraits",
+          providerOptions: {
+            retrodiffusion: { promptStyle: "rd_fast__default" },
+          },
+        },
+      },
+      assets: {
+        mountain: { prompt: "a mountain", styles: ["world"] },
+        hero: { prompt: "a hero", styles: ["portraits"] },
+      },
+    }))
+
+    const specs = await resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+    expect(specs.map((spec) => [spec.styleId, spec.provider])).toEqual([
+      ["world", "pixellab"],
+      ["portraits", "retrodiffusion"],
+    ])
+
+    const plan = await buildPlan(specs, { version: 2, entries: {} })
+    expect(plan.groups).toHaveLength(2)
+    expect(plan.groups.map((group) => [group.provider, group.costUnit])).toEqual([
+      ["pixellab", "generations"],
+      ["retrodiffusion", "usd"],
+    ])
+    expect(plan.cost).toBeNull()
+    expect(plan.costUnit).toBeNull()
+    expect(plan.actionable).toHaveLength(2)
+  })
 })
 
 describe("plan", () => {

@@ -411,6 +411,52 @@ describe("runSalvage", () => {
       .toBe("out/_salvaged/wooden_fence.png")
   })
 
+  it("drops a signed preview URL after importing its bytes", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "itest",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: {},
+    }))
+    const loaded = await loadManifest(manifestPath)
+    const provider = new FakeProvider()
+    const originalDownload = provider.download.bind(provider)
+    provider.download = () => originalDownload("fake://signed-import.png")
+    const lock: Lock = { version: 2, entries: {} }
+    const signed = "https://cdn.example.test/art.png?X-Amz-Credential=secret&X-Amz-Signature=secret"
+    let url = ""
+    const salvaged = runSalvage(provider, [{
+      id: "signed-object",
+      prompt: "a signed import",
+      width: 32,
+      height: 32,
+      createdAt: "2026-01-01T00:00:00Z",
+      previewUrl: signed,
+      tags: [],
+    }], {
+      manifestPath: loaded.path,
+      manifest: loaded.manifest,
+      styleId: "base",
+      importDir: path.resolve(loaded.root, "out"),
+      lock,
+      lockPath: path.join(dir, "pixelkiln.lock.json"),
+    }, { open: false, onProgress: (message) => {
+      url ||= message.match(/http:\/\/127\.0\.0\.1:\d+\//)?.[0] ?? ""
+    } })
+
+    await vi.waitFor(() => expect(url).not.toBe(""))
+    await fetch(url + "apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decisions: [{ id: "signed-object", action: "import" }] }),
+    })
+    expect((await salvaged).imported).toBe(1)
+    const entry = lock.entries["base/signed_import"]!
+    expect(entry.sourceUrl).toBeNull()
+    expect(entry.sourceUrls).toEqual([])
+    expect(await readFile(path.join(dir, "pixelkiln.lock.json"), "utf8")).not.toContain("secret")
+  })
+
   it("serves the page naming its own style, so open tabs are distinguishable", async () => {
     const manifestPath = path.join(dir, "pixelkiln.manifest.json")
     await writeFile(

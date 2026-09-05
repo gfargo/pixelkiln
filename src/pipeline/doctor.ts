@@ -23,10 +23,19 @@ export interface DoctorReport {
 }
 
 export interface DoctorOptions {
+  /** Provider checks for a mixed manifest. Supersedes the legacy single target. */
+  providers?: DoctorProviderTarget[]
   provider?: Provider
   /** Skip provider connectivity while retaining every local check. */
   offline?: boolean
   apiKeyPresent?: boolean
+  credentialEnv?: string
+}
+
+export interface DoctorProviderTarget {
+  id: string
+  provider?: Provider
+  apiKeyPresent: boolean
   credentialEnv?: string
 }
 
@@ -163,32 +172,55 @@ export async function doctor(
       : "every resolved spec is current",
   )
 
-  if (opts.offline) {
-    add("provider", "warning", "provider connectivity skipped (--dry-run)")
-  } else if (!opts.provider) {
-    add(
-      "provider",
-      "error",
-      opts.apiKeyPresent === false
-        ? `${opts.credentialEnv ?? "PIXELLAB_API_KEY"} is not configured`
-        : "provider is not configured",
-    )
-  } else if (!opts.provider.balance && !opts.provider.checkConnection) {
-    add("provider", "ok", `${opts.provider.id} configured; connectivity check unavailable`)
-  } else if (!opts.provider.balance) {
-    try {
-      await opts.provider.checkConnection!()
-      add("provider", "ok", `${opts.provider.id} reachable; balance reporting unavailable`)
-    } catch (err) {
-      add("provider", "error", `provider connectivity failed: ${err instanceof Error ? err.message : String(err)}`)
-    }
-  } else {
-    const balanceFn = opts.provider.balance.bind(opts.provider)
-    try {
-      const balance = await balanceFn()
-      add("provider", "ok", `${opts.provider.id} reachable; ${balance.remaining} ${balance.unit} remaining`)
-    } catch (err) {
-      add("provider", "error", `provider connectivity failed: ${err instanceof Error ? err.message : String(err)}`)
+  const legacyTarget = !opts.providers
+  const targets: DoctorProviderTarget[] = opts.providers ?? [{
+    id: opts.provider?.id ?? "provider",
+    provider: opts.provider,
+    apiKeyPresent: opts.apiKeyPresent ?? Boolean(opts.provider),
+    credentialEnv: opts.credentialEnv,
+  }]
+  for (const target of targets) {
+    const checkId = targets.length === 1 ? "provider" : `provider:${target.id}`
+    if (opts.offline) {
+      add(checkId, "warning", `${target.id} connectivity skipped (--dry-run)`)
+    } else if (!target.provider) {
+      add(
+        checkId,
+        "error",
+        !target.apiKeyPresent
+          ? `${target.credentialEnv ?? (legacyTarget ? "PIXELLAB_API_KEY" : `${target.id} credential`)} is not configured`
+          : `${target.id} is not configured`,
+      )
+    } else if (!target.provider.balance && !target.provider.checkConnection) {
+      add(checkId, "ok", `${target.id} configured; connectivity check unavailable`)
+    } else if (!target.provider.balance) {
+      try {
+        await target.provider.checkConnection!()
+        add(checkId, "ok", `${target.id} reachable; balance reporting unavailable`)
+      } catch (err) {
+        add(
+          checkId,
+          "error",
+          `${legacyTarget ? "provider" : target.id} connectivity failed: ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+    } else {
+      try {
+        const balance = await target.provider.balance()
+        add(
+          checkId,
+          "ok",
+          `${target.id} reachable; ${balance.remaining} ${balance.unit} remaining`,
+        )
+      } catch (err) {
+        add(
+          checkId,
+          "error",
+          `${legacyTarget ? "provider" : target.id} connectivity failed: ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
     }
   }
 

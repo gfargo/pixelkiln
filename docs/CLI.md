@@ -9,11 +9,12 @@ Unknown commands, positional arguments, and flags are errors. Repeated
 separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
-The manifest's top-level `provider` field selects the provider for `plan`,
-`doctor`, and pipeline commands. It defaults to `pixellab`. The experimental
-`retrodiffusion` adapter supports still-image `map`/`pixflux`, `tiles` sheets,
-and `animation` GIF/spritesheet work. The experimental `comfyui` adapter runs
-committed API-format `map` workflows on a self-hosted server.
+The manifest's top-level `provider` is the default; each style may select a
+different provider. `plan`, `doctor`, and pipeline commands route the resolved
+work accordingly. The experimental `retrodiffusion` adapter supports
+still-image `map`/`pixflux`, `tiles` sheets, and `animation` GIF/spritesheet
+work. The experimental `comfyui` adapter runs committed API-format `map`
+workflows on a self-hosted server.
 
 ## Everyday pipeline
 
@@ -32,7 +33,9 @@ Prompts are deliberately empty because plausible text is not provenance. Use
 
 Diff the resolved manifest against the lockfile and disk without calling a
 provider. It reports current, missing, untracked, stale, failed, recoverable,
-in-flight, and orphaned entries plus estimated cost in the provider's unit.
+in-flight, and orphaned entries plus estimated cost grouped by provider and
+unit. Single-provider JSON retains `cost` and `costUnit`; mixed plans set those
+legacy fields to `null` and expose the exact totals in `groups`.
 
 ```bash
 pixelkiln plan
@@ -56,6 +59,14 @@ Use `--budget` as a hard ceiling and filters to limit scope.
 ```bash
 pixelkiln gen --style neon --only anvil,hammer --budget 80
 ```
+
+A mixed run requires one named ceiling for every provider it can spend through:
+
+```bash
+pixelkiln gen --budget pixellab=12 --budget retrodiffusion=0.20 --budget comfyui=0
+```
+
+PixelKiln validates the complete budget set before submitting the first group.
 
 ### `submit`
 
@@ -88,7 +99,7 @@ downloads when the provider supports tagging.
 
 Repair missing generated files without buying new generations. It prefers
 validated local content-addressed cache bytes and otherwise reuses provider
-URLs. It never replaces a destination whose bytes disagree with the lock.
+references. It never replaces a destination whose bytes disagree with the lock.
 
 ## Reconciliation and lifecycle
 
@@ -96,7 +107,8 @@ URLs. It never replaces a destination whose bytes disagree with the lock.
 
 Match local files to existing provider objects by SHA-256. `--write-prompts`
 copies recovered prompts into the manifest; `--tag` pushes project tags. Local
-retouches remain untracked rather than being regenerated or overwritten.
+retouches remain untracked rather than being regenerated or overwritten. Pass
+`--provider` when the manifest uses more than one provider.
 
 ### `accept`
 
@@ -106,21 +118,23 @@ not accepted.
 
 ### `salvage`
 
-Review remote objects no supplied lockfile claims. On shared accounts, pass
+Review remote objects that no supplied lockfile claims. On shared accounts, pass
 every other project lock via repeatable `--claims`; sibling manifests are used
 to exclude objects matching another project's styles. `--dry-run --json`
 provides a scriptable inventory. Import, keep, and discard are review decisions;
-discard only tags an object.
+discard only tags an object. Pass `--provider` when the manifest uses more than
+one provider.
 
 ### `purge`
 
 Delete provider objects previously tagged `pixelkiln:discard`. It is separate
 from salvage, lists targets, asks for confirmation, and refuses non-interactive
-deletion without `--yes`. Use `--dry-run` first.
+deletion without `--yes`. Use `--dry-run` first. Pass `--provider` when the
+manifest uses more than one provider.
 
 ### `prune`
 
-Remove lock entries no style/asset pair in the manifest resolves to. These
+Remove lock entries that no style/asset pair in the manifest resolves to. These
 accumulate when an asset is renamed or moved between styles: the old entry keeps
 claiming the output path the new one now owns, which is what `doctor` reports as
 `lock-outputs`.
@@ -141,9 +155,9 @@ or download artwork.
 
 ### `balance`
 
-Show the manifest-selected provider's remaining balance and cost unit. Reports
-a capability error when an installed provider, such as local ComfyUI, has no
-balance endpoint.
+Show one provider's remaining balance and cost unit. A mixed manifest requires
+`--provider`; a single-provider manifest infers it. Reports a capability error
+when an installed provider, such as local ComfyUI, has no balance endpoint.
 
 ### `status`
 
@@ -173,7 +187,7 @@ Subcommands:
 | `remove <id-or-manifest>` | Drops a registration by project id or by manifest path. Touches no art, no lock, no provider account. |
 | `list` | Lists registered projects and catalog diagnostics. Refuses if the catalog file does not exist. |
 | `status` | Aggregate provider, spend-by-unit, plan state, and claim count, offline. Provider cost units are never summed across each other. Refuses if the catalog file does not exist. |
-| `claims` | Validates the catalog and emits the exact union of `objectId`/`reviewObjectId`/`jobId` across every registered lock. Refuses to omit a project when any registered lock is missing or unreadable, or when the catalog has a duplicate id or lock path. |
+| `claims` | Validates the catalog and emits the exact union of provider-qualified `objectId`/`reviewObjectId`/`jobId` claims across every registered lock. Refuses to omit a project when any registered lock is missing or unreadable, or when the catalog has a duplicate id or lock path. |
 
 `--workspace <path>` selects the catalog file; it defaults to
 `pixelkiln.workspace.json` in the current directory. Stored paths are relative
@@ -370,7 +384,7 @@ Print the package version. `-v` is an alias.
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. |
-| `--budget <n>` | submit/gen | Refuse work above this provider-unit cost. |
+| `--budget <n\|provider=n>` | submit/gen | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. |
 | `--force` | gen/derived commands/recipe install/quality snapshot | Regenerate current work, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refine rerun resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/salvage/refine/recipe/quality | Machine-readable stdout where supported. |
@@ -380,7 +394,7 @@ Print the package version. `-v` is an alias.
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |
 | `--workspace <path>` | workspace/salvage | Workspace catalog path; defaults to `pixelkiln.workspace.json`. On salvage, derives the claim set instead of repeated `--claims`. |
-| `--provider <id>` | workspace add | Provider id to register the project under; defaults to the target manifest's provider. |
+| `--provider <id>` | balance/adopt/salvage/purge/workspace add | Select the account provider for a mixed manifest, or set the workspace catalog's default provider hint. |
 | `--account <label>` | workspace add | Free-form account label, e.g. distinguishing sandboxes. |
 | `--all` | salvage dry run | List every unclaimed object rather than the first 30. |
 | `--from <path>` | init/refine/quality check | Existing source tree for init; source PNG or quality record for refine; baseline for quality check. |

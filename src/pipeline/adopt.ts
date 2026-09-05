@@ -7,6 +7,7 @@ import { loadCache, saveCache, pruneCache, cachePathFor, type HashCache } from "
 import { saveLock, upsert } from "../lock.ts"
 import { portableOutputPath } from "../outputs.ts"
 import { decodePng } from "../png.ts"
+import { shouldPersistSourceUrl } from "../source-url.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
 
 export interface AdoptResult {
@@ -110,6 +111,7 @@ export async function adopt(
           ambiguous.push(`${key}: already mapped to ${existing.objectId}, also matches ${obj.id}`)
           continue
         }
+        const durableSource = shouldPersistSourceUrl(url) ? url : null
         upsert(lock, key, {
           styleId: spec.styleId,
           assetId: spec.assetId,
@@ -126,7 +128,8 @@ export async function adopt(
           candidateIndex: null,
           status: "downloaded",
           error: null,
-          sourceUrl: url,
+          sourceUrl: durableSource,
+          sourceUrls: durableSource ? [{ url: durableSource }] : [],
           outputs: [{ path: portableOutputPath(spec.outFile, spec.root), sha256: hash }],
           submittedAt: obj.createdAt,
           downloadedAt: new Date().toISOString(),
@@ -193,9 +196,16 @@ export async function tagAdopted(
 export async function writePromptsBack(
   manifestPath: string,
   lock: Lock,
-  opts: { onProgress?: (msg: string) => void } = {},
+  opts: {
+    onProgress?: (msg: string) => void
+    /** Restrict recovered prompts to lock entries from one provider. */
+    provider?: string
+    /** Restrict manifest writes and missing reports to these asset ids. */
+    assetIds?: Iterable<string>
+  } = {},
 ): Promise<{ filled: number; stillEmpty: string[] }> {
   const log = opts.onProgress ?? (() => {})
+  const selectedAssets = opts.assetIds ? new Set(opts.assetIds) : null
   const raw = JSON.parse(await readFile(manifestPath, "utf8")) as {
     assets: Record<string, { prompt?: string }>
   }
@@ -204,6 +214,8 @@ export async function writePromptsBack(
   // prompt, which is the most complete description of what was generated.
   const best = new Map<string, string>()
   for (const entry of Object.values(lock.entries)) {
+    if (opts.provider && entry.provider !== opts.provider) continue
+    if (selectedAssets && !selectedAssets.has(entry.assetId)) continue
     if (!entry.objectId || !entry.prompt) continue
     const current = best.get(entry.assetId)
     if (!current || entry.prompt.length > current.length) best.set(entry.assetId, entry.prompt)
@@ -212,6 +224,7 @@ export async function writePromptsBack(
   let filled = 0
   const stillEmpty: string[] = []
   for (const [id, asset] of Object.entries(raw.assets)) {
+    if (selectedAssets && !selectedAssets.has(id)) continue
     if (asset.prompt && asset.prompt.trim()) continue
     const recovered = best.get(id)
     if (recovered) {

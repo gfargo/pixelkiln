@@ -157,6 +157,10 @@ export async function submit(
       submittedAt: new Date().toISOString(),
       cost: estimate.amount,
       costUnit: estimate.unit,
+      // Persist routing before the request starts. If the process stops while
+      // the provider is accepting work, a resumed run must not fall back to
+      // PixelLab (the legacy lock default) for another provider's entry.
+      provider: provider.id,
       downloadedAt: null,
     })
     await saveLock(lockPath, lock)
@@ -174,7 +178,6 @@ export async function submit(
         // so `pick` knows where to look.
         reviewObjectId: estimate.candidates > 1 && !spec.tileFeature ? jobId : null,
         status: "processing",
-        provider: provider.id,
       })
       inFlight.set(jobId, spec)
       submitted++

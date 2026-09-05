@@ -49,6 +49,7 @@ describe("versioned recipes", () => {
       }],
       styleId: "test-environment",
       style: {
+        provider: "comfyui",
         generator: "map",
         outDir: "art/generated",
         providerOptions: {
@@ -136,10 +137,25 @@ describe("versioned recipes", () => {
     expect(changed.integrity.status).toBe("mismatch")
   })
 
+  it("rejects a style provider that conflicts with its recipe", async () => {
+    const { recipePath } = await writeTestRecipe()
+    const raw = JSON.parse(await readFile(recipePath, "utf8"))
+    raw.style.provider = "pixellab"
+    const parsed = RecipeSchema.safeParse(raw)
+    expect(parsed.success).toBe(false)
+    if (!parsed.success) {
+      expect(parsed.error.issues).toContainEqual(expect.objectContaining({
+        path: ["style", "provider"],
+        message: "must match the recipe provider",
+      }))
+    }
+  })
+
   it("installs transactionally, renders the workflow path, and protects local changes", async () => {
     const { recipePath } = await writeTestRecipe()
     const destination = path.join(dir, "project", "recipes", "test")
     const first = await installRecipe(recipePath, { out: destination, cwd: dir })
+    expect(first.style.provider).toBe("comfyui")
     expect(first.style.providerOptions.comfyui).toMatchObject({
       workflowFile: "project/recipes/test/workflow.json",
     })

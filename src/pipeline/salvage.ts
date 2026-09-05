@@ -19,7 +19,23 @@ import { parseLock, type Lock, type Manifest } from "../types.ts"
  * is shared across projects, so an incomplete claim set makes another project's
  * shipped art look like an orphan.
  */
-export async function loadClaims(lockPaths: string[]): Promise<Set<string>> {
+export interface LoadClaimsOptions {
+  /** Include only entries owned by this provider. */
+  provider?: string
+  /** Prefix ids with their provider so unrelated accounts cannot collide. */
+  qualify?: boolean
+}
+
+export function providerClaimId(provider: string, objectId: string): string {
+  // Encode both halves so a provider/id pair such as ("a:b", "c") cannot
+  // collide with ("a", "b:c"). Built-in ids stay human-readable.
+  return `${encodeURIComponent(provider)}:${encodeURIComponent(objectId)}`
+}
+
+export async function loadClaims(
+  lockPaths: string[],
+  opts: LoadClaimsOptions = {},
+): Promise<Set<string>> {
   const claimed = new Set<string>()
   for (const p of lockPaths) {
     if (!existsSync(p)) throw new Error(`Claim lockfile not found: ${p}`)
@@ -30,9 +46,13 @@ export async function loadClaims(lockPaths: string[]): Promise<Set<string>> {
       throw new Error(`Claim lockfile is malformed: ${p}`)
     }
     for (const entry of Object.values(parsed.entries)) {
-      if (entry.objectId) claimed.add(entry.objectId)
-      if (entry.reviewObjectId) claimed.add(entry.reviewObjectId)
-      if (entry.jobId) claimed.add(entry.jobId)
+      if (opts.provider && entry.provider !== opts.provider) continue
+      const add = (id: string | null) => {
+        if (id) claimed.add(opts.qualify ? providerClaimId(entry.provider, id) : id)
+      }
+      add(entry.objectId)
+      add(entry.reviewObjectId)
+      add(entry.jobId)
     }
   }
   return claimed
@@ -59,7 +79,12 @@ export async function findOrphans(
   log(`  scanned ${all.length} object(s) on the account`)
 
   const orphans = all
-    .filter((o) => !claimed.has(o.id) && o.status === "completed" && o.previewUrl)
+    .filter((o) =>
+      !claimed.has(o.id) &&
+      !claimed.has(providerClaimId(provider.id, o.id)) &&
+      o.status === "completed" &&
+      o.previewUrl,
+    )
     .map((o) => ({
       id: o.id,
       prompt: o.prompt || "(no prompt recorded)",

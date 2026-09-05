@@ -239,10 +239,57 @@ describe("workspaceClaims", () => {
     }
 
     const result = await workspaceClaims(ws, dir)
-    const direct = await loadClaims([a.lockPath, b.lockPath])
+    const direct = await loadClaims([a.lockPath, b.lockPath], { qualify: true })
     expect(result.claimed).toEqual(direct)
-    expect(result.claimed).toEqual(new Set(["obj-1", "rev-1", "obj-2", "job-2"]))
+    expect(result.claimed).toEqual(new Set([
+      "pixellab:obj-1",
+      "pixellab:rev-1",
+      "pixellab:obj-2",
+      "pixellab:job-2",
+    ]))
     expect(result.byProject).toEqual({ a: 2, b: 2 })
+  })
+
+  it("does not collide when two providers use the same remote id", async () => {
+    const a = await writeProject(path.join(dir, "a"), "a", {
+      entries: { "base/one": entry({ objectId: "shared", provider: "pixellab" }) },
+    })
+    const b = await writeProject(path.join(dir, "b"), "b", {
+      entries: { "base/two": entry({ objectId: "shared", provider: "retrodiffusion" }) },
+    })
+    const ws: Workspace = {
+      version: 1,
+      projects: [
+        { id: "a", manifest: toPortablePath(dir, a.manifestPath), lock: toPortablePath(dir, a.lockPath), provider: "pixellab" },
+        { id: "b", manifest: toPortablePath(dir, b.manifestPath), lock: toPortablePath(dir, b.lockPath), provider: "retrodiffusion" },
+      ],
+    }
+
+    expect((await workspaceClaims(ws, dir)).claimed).toEqual(new Set([
+      "pixellab:shared",
+      "retrodiffusion:shared",
+    ]))
+  })
+
+  it("keeps provider-qualified claims unambiguous when ids contain separators", async () => {
+    const a = await writeProject(path.join(dir, "a"), "a", {
+      entries: { "base/one": entry({ objectId: "c", provider: "a:b" }) },
+    })
+    const b = await writeProject(path.join(dir, "b"), "b", {
+      entries: { "base/two": entry({ objectId: "b:c", provider: "a" }) },
+    })
+    const ws: Workspace = {
+      version: 1,
+      projects: [
+        { id: "a", manifest: toPortablePath(dir, a.manifestPath), lock: toPortablePath(dir, a.lockPath), provider: "a:b" },
+        { id: "b", manifest: toPortablePath(dir, b.manifestPath), lock: toPortablePath(dir, b.lockPath), provider: "a" },
+      ],
+    }
+
+    expect((await workspaceClaims(ws, dir)).claimed).toEqual(new Set([
+      "a%3Ab:c",
+      "a:b%3Ac",
+    ]))
   })
 
   it("rejects with the project id when a registered lock is missing, never silently skipping it", async () => {
@@ -306,6 +353,7 @@ describe("workspaceStatus", () => {
     expect(report.projects).toHaveLength(1)
     const project = report.projects[0]!
     expect(project.error).toBeNull()
+    expect(project.providers).toEqual(["pixellab"])
 
     const loaded = await loadManifest(a.manifestPath)
     const specs = await resolveSpecs(loaded)
@@ -335,6 +383,42 @@ describe("workspaceStatus", () => {
     expect(projectA.spendByUnit).toEqual({ generations: 5, usd: 0, free: 0 })
     expect(projectB.spendByUnit).toEqual({ generations: 0, usd: 2.5, free: 0 })
     expect(report.totals.spendByUnit).toEqual({ generations: 5, usd: 2.5, free: 0 })
+  })
+
+  it("reports every effective provider in a mixed manifest", async () => {
+    const project = await writeProject(path.join(dir, "mixed"), "mixed")
+    await writeFile(project.manifestPath, JSON.stringify({
+      name: "mixed",
+      provider: "pixellab",
+      styles: {
+        world: { generator: "map", outDir: "out/world" },
+        portraits: {
+          provider: "retrodiffusion",
+          generator: "map",
+          outDir: "out/portraits",
+          providerOptions: { retrodiffusion: { promptStyle: "rd_fast__default" } },
+        },
+      },
+      assets: {
+        mountain: { prompt: "a mountain", styles: ["world"] },
+        hero: { prompt: "a hero", styles: ["portraits"] },
+      },
+    }))
+    const ws: Workspace = {
+      version: 1,
+      projects: [{
+        id: "mixed",
+        manifest: toPortablePath(dir, project.manifestPath),
+        lock: toPortablePath(dir, project.lockPath),
+        provider: "pixellab",
+      }],
+    }
+
+    const report = await workspaceStatus(ws, dir)
+    expect(report.projects[0]).toMatchObject({
+      error: null,
+      providers: ["pixellab", "retrodiffusion"],
+    })
   })
 
   it("surfaces a project whose manifest fails to load as that project's own error, not a thrown report", async () => {

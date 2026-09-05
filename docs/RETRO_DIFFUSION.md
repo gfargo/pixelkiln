@@ -22,8 +22,9 @@ process environment.
 
 ## Select Retro Diffusion
 
-Set the top-level provider and keep service-specific choices under the provider
-namespace:
+Set the top-level provider when the whole manifest uses Retro Diffusion. In a
+mixed manifest, set `"provider": "retrodiffusion"` on the relevant styles.
+Keep service-specific choices under the provider namespace:
 
 ```jsonc
 {

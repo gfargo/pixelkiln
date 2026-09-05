@@ -1,13 +1,13 @@
 # Provider comparison
 
-PixelKiln can run one manifest through PixelLab, Retro Diffusion, or a
-self-hosted ComfyUI server. Planning, budgets, review, recovery, and packaging
-stay the same. Each adapter handles its service's authentication, prices,
-request lifecycle, and file formats.
+PixelKiln can route one manifest through PixelLab, Retro Diffusion, and a
+self-hosted ComfyUI server. Planning, review, recovery, and packaging stay the
+same. Each adapter handles its service's authentication, prices, request
+lifecycle, and file formats.
 
 PixelLab remains the default so existing manifests and spec hashes remain
-compatible. Select another backend with the manifest's top-level `provider`
-field and keep its settings under the matching `providerOptions` key.
+compatible. The manifest's top-level `provider` is the default; a style may
+override it. Keep service settings under the matching `providerOptions` key.
 
 To configure a project, use [Set up PixelLab](./docs/PIXELLAB.md),
 [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), or
@@ -115,58 +115,36 @@ repeatable.
 
 ## Use multiple providers in one project
 
-One manifest selects one provider. PixelKiln does not currently support a
-provider override on an individual style or asset. The boundary is deliberate:
-one command constructs one account adapter, and one `--budget` must have one
-meaning. PixelLab generations and Retro Diffusion dollars cannot share a safe
-ceiling.
-
-A repository can still use multiple providers today. Give each provider its own
-manifest, lockfile, and output directory:
-
-```text
-art/
-  pixelkiln.pixellab.manifest.json
-  pixelkiln.pixellab.lock.json
-  pixelkiln.retrodiffusion.manifest.json
-  pixelkiln.retrodiffusion.lock.json
-  pixelkiln.comfyui.manifest.json
-  pixelkiln.comfyui.lock.json
-pixelkiln.workspace.json
-```
-
-Plan and authorize each manifest separately:
+Set a provider on any style that differs from the manifest default. Planning
+and confirmations remain grouped by provider and unit, so PixelLab generations
+and Retro Diffusion dollars are never added together. A mixed run takes a
+separate named ceiling for each paid provider; the free group may be explicit:
 
 ```bash
-pixelkiln plan --manifest art/pixelkiln.pixellab.manifest.json --lock art/pixelkiln.pixellab.lock.json
-pixelkiln gen --manifest art/pixelkiln.pixellab.manifest.json --lock art/pixelkiln.pixellab.lock.json --budget <generations>
-
-pixelkiln plan --manifest art/pixelkiln.retrodiffusion.manifest.json --lock art/pixelkiln.retrodiffusion.lock.json
-pixelkiln gen --manifest art/pixelkiln.retrodiffusion.manifest.json --lock art/pixelkiln.retrodiffusion.lock.json --budget <usd>
-
-pixelkiln plan --manifest art/pixelkiln.comfyui.manifest.json --lock art/pixelkiln.comfyui.lock.json
-pixelkiln gen --manifest art/pixelkiln.comfyui.manifest.json --lock art/pixelkiln.comfyui.lock.json --budget 0
+pixelkiln plan
+pixelkiln gen \
+  --budget pixellab=12 \
+  --budget retrodiffusion=0.20 \
+  --budget comfyui=0
 ```
 
-Register the manifests in the workspace catalog for aggregate status and
-complete claim checks. Keep the provider lockfiles separate. Package their
-reviewed outputs independently, or combine explicit files with `pixelkiln pack
---inputs <file> --out <path>`.
+The same lockfile records which provider accepted each item. Resumed polling,
+review, download, restore, and tagging follow that recorded provider. Account
+operations such as `balance`, `adopt`, `salvage`, and `purge` require an
+explicit `--provider` in a mixed manifest.
 
-This split works when PixelLab handles prompt-sensitive buildings and
-account recovery, Retro Diffusion handles environment-styled backdrops, clean
-cutouts, or native animation, and ComfyUI handles private or project-specific
-model experiments that can absorb manual cleanup. Retro Diffusion is not a higher-resolution
-route through PixelKiln today: its useful environment styles cap at 384×384,
-while PixelLab `map` reaches 400×400. Its advantage is the model/style and
-output type, not raw dimensions.
+This works well when PixelLab handles prompt-sensitive buildings and account
+recovery, Retro Diffusion handles environment-styled backdrops, clean cutouts,
+or native animation, and ComfyUI handles private or project-specific model
+experiments that can absorb manual cleanup. Retro Diffusion is not a
+higher-resolution route through PixelKiln today: its useful environment styles
+cap at 384×384, while PixelLab `map` reaches 400×400. Its advantage is the
+model/style and output type, not raw dimensions.
 
-Native mixed-provider support inside one manifest would be a larger feature,
-not a schema-only change. It needs provider selection on each style, plans and
-confirmations grouped by provider and cost unit, separate budget ceilings,
-per-provider polling and downloads, and an explicit provider for account-wide
-commands. The lockfile already records a provider on every entry, so the state
-format can support that direction without merging provider identities.
+See [Mixed-provider projects](./docs/MIXED_PROVIDERS.md) for the manifest,
+budget, recovery, and account-command contract. Separate manifests remain a
+good boundary when different teams, credentials, or release schedules should
+not share one runtime.
 
 ## Cost comparison
 
@@ -201,8 +179,8 @@ The provider boundary owns behavior that differs between services:
 - downloads and optional account capabilities such as balance, listing,
   tagging, and deletion.
 
-Planning groups costs by unit instead of adding incompatible values. A budget
-is interpreted in the active provider's unit. Providers without a balance or
+Planning groups costs by provider and unit instead of adding incompatible
+values. Mixed runs use provider-keyed ceilings. Providers without a balance or
 account-management endpoint can still generate safely because the offline
 estimate and hard budget remain enforced.
 
@@ -214,12 +192,10 @@ and the approval record work. The tested SDXL plus Pixel Art XL graph can find
 a composition, but it is not a production preset. Background removal stays in
 the graph. A person must still check the brief, pixel clusters, and drawing.
 
-Native per-style provider routing remains the highest-value orchestration
-feature. One manifest should be able to send a building style to PixelLab, an
-animation style to Retro Diffusion, and a private model workflow to ComfyUI.
-That requires provider-keyed budgets and confirmations, independently
-rate-limited adapters, and an explicit provider for account-wide commands. The
-lockfile already records the provider on each entry.
+Per-style provider routing now lets one manifest send a building style to
+PixelLab, an animation style to Retro Diffusion, and a private model workflow
+to ComfyUI. Provider-keyed budgets, independent orchestration, lock-authoritative
+recovery, and explicit account-provider selection ship with it.
 
 Scenario remains the best next hosted provider candidate. The implementation
 scope and acceptance criteria are tracked in
@@ -241,16 +217,14 @@ captured before submission.
 
 Recommended order from here:
 
-1. Benchmark pinned ComfyUI models and prompt patterns across at least two scene
-   families. Reject any supposed improvement that helps only one subject.
-2. Add per-style provider selection, provider-keyed budgets, and mixed-provider
-   integration tests.
-3. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
+1. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
    smoke tests.
-4. Build the Scenario still-image spike from issue #52 with dry-run cost, submit, poll,
+2. Build the Scenario still-image spike from issue #52 with dry-run cost, submit, poll,
    download, and one custom-model or reference-image benchmark.
-5. Design ComfyUI Cloud as a separate authenticated and billable adapter.
-6. Consider general raster marketplaces only with explicit nearest-neighbor,
+3. Benchmark another pinned ComfyUI model and prompt pattern across at least two
+   scene families. Reject any improvement that helps only one subject.
+4. Design ComfyUI Cloud as a separate authenticated and billable adapter.
+5. Consider general raster marketplaces only with explicit nearest-neighbor,
    palette, transparency, and reproducibility checks.
 
 Midjourney is not an adapter target without an official public API. Automating
