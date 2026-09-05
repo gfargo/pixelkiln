@@ -5,7 +5,8 @@ export interface SheetGroup {
   prompt: string
   reviewObjectId: string
   frameUrls: string[]
-  size: number
+  width: number
+  height: number
 }
 
 const escapeHtml = (s: string) =>
@@ -15,10 +16,11 @@ const escapeHtml = (s: string) =>
  * A contact sheet for choosing among generated candidates.
  *
  * This is the only step that needs human judgement, so it is optimised for one
- * thing: deciding fast. Candidates render at 4x with a transparency
- * checkerboard and a true-size swatch beside them, because a pixel icon that
- * looks good enlarged can still be unreadable at its real size. Keyboard-first,
- * one row per asset, and the page posts back and closes itself.
+ * thing: deciding fast. Small candidates render at an exact integer zoom with
+ * a transparency checkerboard and a true-size swatch. Large candidates are
+ * fitted without changing their aspect ratio, so a wide browser cannot turn a
+ * review into an oversized or stretched image wall. Keyboard-first, one row
+ * per asset, and the page posts back and closes itself.
  */
 export function renderSheet(groups: SheetGroup[]): string {
   // Prompts are author-controlled but arbitrary text, and they reach the page
@@ -36,6 +38,7 @@ export function renderSheet(groups: SheetGroup[]): string {
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>pixelkiln — pick candidates</title>
 <style>
   :root {
@@ -43,12 +46,14 @@ export function renderSheet(groups: SheetGroup[]): string {
     --line: rgba(243,234,214,.16); --line-strong: rgba(243,234,214,.3);
     --text: #f3ead6; --dim: #9b9384; --accent: #ff6b35;
     --accent-soft: #ff9c5f; --ok: #b9f27c; --warn: #ff9c5f;
+    --content: 1440px; --preview: 560px;
   }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--text);
     font:14px/1.5 ui-sans-serif,-apple-system,"SF Pro Text",Inter,system-ui,sans-serif; }
   header { position:sticky; top:0; z-index:10; background:var(--panel);
-    border-bottom:1px solid var(--line-strong); padding:15px 22px;
+    border-bottom:1px solid var(--line-strong); }
+  .bar { width:min(100%,var(--content)); margin:0 auto; padding:15px 22px;
     display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
   h1 { font:700 14px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
     margin:0; letter-spacing:-.02em; }
@@ -58,16 +63,19 @@ export function renderSheet(groups: SheetGroup[]): string {
     border:1px solid var(--line); background:transparent; color:var(--text); cursor:pointer; }
   button.primary { background:var(--accent); border-color:var(--accent); color:var(--bg); }
   button:disabled { opacity:.45; cursor:not-allowed; }
-  .group { border-bottom:1px solid var(--line); padding:22px; }
+  main, footer { width:min(100%,var(--content)); margin-inline:auto; }
+  main { border-inline:1px solid var(--line); }
+  .group { border-bottom:1px solid var(--line); padding:22px; overflow:hidden; }
   .group.done { background:rgba(185,242,124,.035); }
   .ghead { display:flex; align-items:baseline; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
   .style { font-size:10.5px; font-weight:650; text-transform:uppercase; letter-spacing:.03em;
     color:var(--accent-soft); border:1px solid var(--accent); border-radius:0; padding:2px 6px; }
   .aid { font-weight:650; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
   .prompt { flex:1; min-width:280px; color:var(--dim); font-size:12.5px; max-width:80ch; }
-  .frames { display:flex; flex-wrap:wrap; gap:10px; }
+  .frames { display:flex; flex-wrap:wrap; gap:10px; max-width:100%; overflow-x:auto; }
   .cand { border:2px solid var(--line-strong); border-radius:0; padding:7px; background:var(--panel-deep);
-    cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px; position:relative; }
+    cursor:pointer; display:flex; flex:0 0 auto; flex-direction:column; align-items:center; gap:5px;
+    position:relative; max-width:100%; }
   .cand:hover { border-color:var(--dim); }
   .cand.active { border-color:var(--dim); box-shadow:0 0 0 2px color-mix(in srgb, var(--dim) 20%, transparent); }
   .cand.sel { border-color:var(--ok); box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
@@ -76,6 +84,7 @@ export function renderSheet(groups: SheetGroup[]): string {
       linear-gradient(45deg,#0000 25%,#7f7f7f22 25%,#7f7f7f22 75%,#0000 75%),
       linear-gradient(45deg,#0000 25%,#7f7f7f22 25%,#7f7f7f22 75%,#0000 75%);
     background-size:12px 12px; background-position:0 0,6px 6px; border-radius:0; }
+  .cand img.preview { max-width:min(var(--preview),calc(100vw - 62px)); height:auto; }
   .idx { font-size:10.5px; color:var(--dim); font-variant-numeric:tabular-nums; }
   .actual { position:absolute; right:-3px; bottom:-3px; image-rendering:pixelated;
     border:1px solid var(--line); border-radius:0; background:var(--panel); }
@@ -84,15 +93,22 @@ export function renderSheet(groups: SheetGroup[]): string {
   kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:0;
     padding:1px 5px; font-size:11px; font-family:ui-monospace,Menlo,monospace; }
   #status { color:var(--warn); }
+  @media (max-width:640px) {
+    .bar, .group { padding-inline:14px; }
+    .prompt { min-width:100%; }
+    .cand img.preview { max-width:calc(100vw - 50px); }
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>pixelkiln</h1>
-  <span class="count"><span id="picked">0</span> of <span id="total">0</span> chosen</span>
-  <span id="status"></span>
-  <span style="flex:1"></span>
-  <button id="submit" class="primary" disabled>Apply selections</button>
+  <div class="bar">
+    <h1>pixelkiln</h1>
+    <span class="count"><span id="picked">0</span> of <span id="total">0</span> chosen</span>
+    <span id="status"></span>
+    <span style="flex:1"></span>
+    <button id="submit" class="primary" disabled>Apply selections</button>
+  </div>
 </header>
 <main id="root"></main>
 <footer>
@@ -113,7 +129,13 @@ GROUPS.forEach((g, gi) => {
   el.className = 'group';
   el.tabIndex = 0;
   el.dataset.gi = String(gi);
-  const scale = g.size <= 48 ? 4 : g.size <= 96 ? 3 : 2;
+  const largestSide = Math.max(g.width, g.height);
+  const preferredScale = largestSide <= 48 ? 4 : largestSide <= 96 ? 3 : 2;
+  const scale = Math.min(preferredScale, 560 / largestSide);
+  const displayScale = scale >= 1 ? Math.floor(scale) : scale;
+  const displayWidth = Math.max(1, Math.round(g.width * displayScale));
+  const displayHeight = Math.max(1, Math.round(g.height * displayScale));
+  const scaleLabel = displayScale >= 1 ? displayScale + '×' : 'fit';
   el.innerHTML =
     '<div class="ghead"><span class="style">' + g.styleId + '</span>' +
     '<span class="aid">' + g.assetId + '</span>' +
@@ -128,20 +150,25 @@ GROUPS.forEach((g, gi) => {
     c.setAttribute('aria-label', 'Choose candidate ' + (i + 1) + ' of ' + g.frameUrls.length);
 
     const preview = document.createElement('img');
+    preview.className = 'preview';
     preview.src = url;
-    preview.width = g.size * scale;
-    preview.height = g.size * scale;
+    preview.width = displayWidth;
+    preview.height = displayHeight;
     preview.loading = 'lazy';
     const index = document.createElement('span');
     index.className = 'idx';
-    index.textContent = String(i + 1);
-    const actual = document.createElement('img');
-    actual.className = 'actual';
-    actual.src = url;
-    actual.width = g.size;
-    actual.height = g.size;
-    actual.loading = 'lazy';
-    c.append(preview, index, actual);
+    index.textContent = String(i + 1) + ' · ' + g.width + '×' + g.height + ' · ' + scaleLabel;
+    c.append(preview, index);
+    if (displayScale > 1 && largestSide <= 96) {
+      const actual = document.createElement('img');
+      actual.className = 'actual';
+      actual.src = url;
+      actual.width = g.width;
+      actual.height = g.height;
+      actual.loading = 'lazy';
+      actual.setAttribute('aria-label', 'Actual size');
+      c.append(actual);
+    }
 
     c.onclick = () => {
       activate(i, frames);

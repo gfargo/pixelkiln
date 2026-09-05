@@ -184,6 +184,9 @@ export async function resolveSpecs(
 
       const relFile = asset.file ?? path.join(asset.category ?? "", `${assetId}.png`)
       const outFile = path.resolve(root, style.outDir, relFile)
+      const qualityOutFile = style.quality
+        ? path.resolve(root, style.quality.outDir, pngPath(relFile))
+        : undefined
 
       // One `tiles` call draws a whole set, so its price and its candidate
       // count both come off the set rather than off a single sprite.
@@ -241,6 +244,21 @@ export async function resolveSpecs(
         ...base,
         root,
         outFile,
+        ...(style.quality && qualityOutFile
+          ? {
+              quality: {
+                outFile: qualityOutFile,
+                palette: style.quality.palette,
+                minGridConfidence: style.quality.minGridConfidence,
+                ...(style.quality.minTransparency == null
+                  ? {}
+                  : { minTransparency: style.quality.minTransparency }),
+                ...(style.quality.fixerRevision
+                  ? { fixerRevision: style.quality.fixerRevision }
+                  : {}),
+              },
+            }
+          : {}),
         tags,
         source: asset.source,
         specHash: specHash(base, styleImageHashes, providerOptionIdentity),
@@ -259,16 +277,25 @@ export async function resolveSpecs(
   }
 
   const byOutput = new Map<string, string>()
+  const claimOutput = (file: string, owner: string) => {
+    const existing = byOutput.get(file)
+    if (existing) {
+      throw new Error(`Output collision: ${existing} and ${owner} both resolve to ${file}`)
+    }
+    byOutput.set(file, owner)
+  }
   for (const spec of specs) {
     const key = `${spec.styleId}/${spec.assetId}`
-    const owner = byOutput.get(spec.outFile)
-    if (owner) {
-      throw new Error(`Output collision: ${owner} and ${key} both resolve to ${spec.outFile}`)
-    }
-    byOutput.set(spec.outFile, key)
+    claimOutput(spec.outFile, key)
+    if (spec.quality) claimOutput(spec.quality.outFile, `${key} quality output`)
   }
 
   return specs
+}
+
+function pngPath(file: string): string {
+  const extension = path.extname(file)
+  return extension ? `${file.slice(0, -extension.length)}.png` : `${file}.png`
 }
 
 /** Reference image bytes and measured dimensions, in manifest order. */

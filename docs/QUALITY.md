@@ -11,8 +11,10 @@ pixelkiln plan --json --check
 ```
 
 Planning compares resolved specs with lock state and on-disk hashes. It calls no
-provider and reports estimated spend before work starts. `--check` succeeds only
-when every selected entry is current.
+provider and reports estimated spend before work starts. When a style declares
+a quality profile, the plan also reports `blocked`, `needs-refinement`,
+`needs-approval`, or `approved`. `--check` requires current raw output and
+approved derived output.
 
 Plan states include:
 
@@ -34,10 +36,11 @@ pixelkiln doctor
 pixelkiln doctor --dry-run --json
 ```
 
-Doctor validates schema and references, output authority/writability, lock
-recovery sources, stale jobs, plan state, API-key configuration, and live
-connectivity. `--dry-run` skips only provider connectivity. It changes nothing
-and exits nonzero for unsafe state.
+Doctor validates schema and references, raw and quality output directories,
+lock recovery sources, stale jobs, plan state, credential configuration, and
+live connectivity. It warns when a configured quality result is not approved.
+`--dry-run` skips only provider connectivity. It changes nothing and exits
+nonzero for unsafe state.
 
 ## Visual consistency audit
 
@@ -131,13 +134,58 @@ pixel-art stack, begin with 48–128px native components and compose larger scen
 from reviewed parts. Apply the final palette after grid recovery. Resolution is
 a ceiling imposed by quality, not a target.
 
-### Refinement quality record
+### Manifest quality profile
 
-`pixelkiln refine` repeats the mechanical half of this gate for any provider.
-It runs the pinned open Pixel Art Fixer, requires high-confidence grid recovery,
-applies the chosen palette without dithering, checks native dimensions, color
-count, and optional transparency, then writes a hash-bound `.pixelkiln.json`
-record.
+Put the release rule beside the style when every asset in that style needs the
+same native-grid and palette treatment:
+
+```jsonc
+{
+  "generator": "map",
+  "outDir": "assets/generated/environment",
+  "quality": {
+    "outDir": "assets/final/environment",
+    "palette": ["#141b1e", "#23312a", "#526a8d", "#709fcf", "#f1bb70"],
+    "minGridConfidence": "high"
+  }
+}
+```
+
+Then run the selected batch:
+
+```bash
+pixelkiln refine --style environment
+pixelkiln refine approve \
+  --from assets/final/environment/mountain.pixelkiln.json \
+  --reviewer "Mina"
+pixelkiln refine check --style environment
+pixelkiln plan --style environment --check
+```
+
+The first command reads the profile's output path, palette, detector threshold,
+optional transparency floor, and fixer revision. Do not repeat those as flags;
+manifest mode rejects conflicting path-owned settings. `--style` and `--only`
+can narrow a batch. A normal rerun skips current pending or approved records,
+so it does not erase review work. `--force` rebuilds them and resets approval.
+
+Raw provider files and derived PNGs have separate identities. A profile change
+does not make the raw generation stale or add provider cost. It makes the
+quality state `needs-refinement`. A changed declared `asset.source` does the
+same. Provider output is `blocked` when its generation spec is stale or its
+locked PNG is missing, modified, non-PNG, or part of a multi-output set.
+
+`pack` and `mount` consume the approved PNGs automatically and include their
+quality records in the new bundle's provenance. They fail before writing when
+any required record is pending, stale, made from a different source, or edited.
+The first release supports only one-PNG `map`, `1dir`, and `pixflux` styles.
+
+### One-off refinement record
+
+`pixelkiln refine --from` applies the same mechanical gate to one PNG outside a
+manifest profile. It runs the pinned open Pixel Art Fixer, requires
+high-confidence grid recovery, applies the chosen palette without dithering,
+checks native dimensions, color count, and optional transparency, then writes a
+hash-bound `.pixelkiln.json` record.
 
 ```bash
 pixelkiln refine \
@@ -186,7 +234,7 @@ pixelkiln doctor --dry-run
 pixelkiln plan --json --check
 pixelkiln audit --json --check --max-distance 35 --max-colors 128
 pixelkiln cache --check
-pixelkiln refine check --from art/mountain-native.pixelkiln.json
+pixelkiln refine check --style environment
 ```
 
 Choose audit thresholds per project; do not copy a palette distance or color
@@ -201,8 +249,9 @@ uses `FakeProvider`, so money-spending stages are deterministic and offline.
   stderr.
 - A failed CI job should distinguish provider/output drift from repository test
   failures rather than regenerating automatically.
-- `refine check` exits nonzero for pending approval and for any quality-record
-  drift. CI must never add or renew human approval.
+- Manifest `refine check` exits nonzero unless every selected profile output is
+  current and approved. Path mode applies the same gate to one record. CI must
+  never add or renew human approval.
 - `quality check` exits nonzero when any baseline case is missing, unreadable,
   outside tolerance, or bound to a changed or invalid refinement record.
 - `test:security` exits nonzero when tracked JSON contains a credential-bearing

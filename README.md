@@ -14,16 +14,16 @@ what to run or which image wins. The CLI handles provider calls, polling,
 hashing, downloads, and file placement.
 
 PixelLab is the production backend. Retro Diffusion, self-hosted ComfyUI, and
-Scenario are experimental. The Retro Diffusion adapter has live coverage for
-RD Fast and RD Plus stills; its multi-candidate, tileset, GIF, and spritesheet
-paths are tested with fixtures but still need paid live runs. ComfyUI has passed
-local generation, four-candidate review, cache recovery, and native-grid
-refinement on Apple MPS. Its tested SDXL workflow can find a composition, but
-it is not a finished pixel-art preset. Scenario has live-tested authentication,
-CU preflight, single- and two-output generation, human review, and durable
-restore with BFL Flux 2 Dev. It remains experimental. Styles may use different providers with separate
-budget ceilings. The [provider comparison](./PROVIDERS.md) lists the tested limits
-and best routes. `FakeProvider` covers the same contract in automated tests.
+Scenario are experimental. Retro Diffusion has live coverage for RD Fast and
+RD Plus stills; its other paths still need paid live runs. ComfyUI has passed
+local generation, candidate review, recovery, and native-grid refinement on
+Apple MPS. Its tested SDXL workflow finds compositions, not finished pixel art.
+Scenario has passed CU preflight, generation, human review, and durable restore
+with BFL Flux 2 Dev.
+
+Styles may use different providers with separate budget ceilings. The
+[provider comparison](./PROVIDERS.md) lists the tested limits and best routes.
+`FakeProvider` covers the shared contract in automated tests.
 
 ## Release
 
@@ -59,7 +59,7 @@ PixelKiln keeps the missing record:
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Validated local content cache, durable provider-reference restore, account object-hash cache, and resumable jobs. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
-| Quality control | Palette distance, transparency, color-count, relative outlier, cache-integrity, and doctor gates. |
+| Quality control | Manifest-native grid recovery, closed palettes, named approval, regression baselines, and fail-closed packaging. |
 | Sprite packaging | Deterministic RGBA packing, stable-cell mounting, explicit external input lists, structural output roles. |
 | Engine export | Lossless generic tile contract, Tiled Wang sets, and Godot 4 terrain sets. |
 | Artifact integrity | Portable source/output hashes, canonical fingerprints, manual-edit protection, transactional promotion, crash journal recovery. |
@@ -67,8 +67,9 @@ PixelKiln keeps the missing record:
 
 ### Local human review
 
-`pixelkiln pick` opens an actual local candidate sheet; the orchestration layer
-never asks a model to choose artwork for you.
+`pixelkiln pick` opens a local candidate sheet. It preserves each image's aspect
+ratio, fits large work without blurring small sprites, and never asks a model to
+choose artwork for you.
 
 ![PixelKiln candidate review UI](./website/public/review-ui-showcase.jpg)
 
@@ -191,16 +192,12 @@ select another provider and pass namespaced `providerOptions`; see
 [Set up ComfyUI](./docs/COMFYUI.md), and
 [Set up Scenario](./docs/SCENARIO.md). The
 [provider comparison](./PROVIDERS.md) covers costs,
-current confidence, and limitations. The committed ComfyUI projects now include
-transparent cutouts, palette-controlled backgrounds, wide environment canvases,
-and native-grid recovery for model output that only looks like pixel art. The
-ComfyUI guidance is quality-first: start with 48–128px native components,
-apply the final palette after grid recovery, require prompt-coverage and human
-cluster-and-silhouette review, and compose larger scenes from accepted parts
-instead of chasing a larger raster. Background removal and the art decision
-still need the graph and a person. `pixelkiln refine` now handles grid recovery,
-final palette enforcement, measurable checks, and the hash-bound approval
-record.
+current confidence, and limitations. ComfyUI works best as a composition tool:
+start with 48–128px native components and build larger scenes from accepted
+parts. Any single-image style can declare a `quality` profile for grid recovery,
+a closed palette, measurable checks, and named human approval. `plan --check`,
+`pack`, and `mount` then fail closed when that derived output is missing or
+stale. Changing the profile never schedules another provider generation.
 
 Versioned recipes capture tested workflows, model hashes, license links, and
 manifest-ready styles with quality boundaries. Start with `pixelkiln recipe install comfyui/pixel-art-xl-environment@1.0.0`.
@@ -226,11 +223,10 @@ pixelkiln restore
 pixelkiln audit --check --max-distance 35 --min-transparency 0.1
 pixelkiln cache --check
 
-# Provider-neutral pixel cleanup after selecting a generated candidate.
-pixelkiln refine --from candidate.png --out art/native.png \
-  --palette "#141b1e,#23312a,#384d4f,#526a8d,#709fcf,#865c45,#c6a766,#f1bb70"
-pixelkiln refine approve --from art/native.pixelkiln.json --reviewer "Your Name"
-pixelkiln refine check --from art/native.pixelkiln.json
+# Build and verify the quality output declared by style.quality.
+pixelkiln refine --style base
+pixelkiln refine approve --from assets/final/anvil.pixelkiln.json --reviewer "Your Name"
+pixelkiln refine check --style base
 ```
 
 Repeated `--style`, `--only`, `--claims`, and `--output-role` filters
@@ -272,11 +268,10 @@ pixelkiln mount --style ground
 pixelkiln export --style ground --only terrain --format tiled
 ```
 
-Pack, mount, and export write managed bundles. A `.pixelkiln.json` companion
-records portable source paths/hashes, layout/export options, output hashes, and
-a canonical fingerprint. Existing unowned output is adopted only when already
-byte-identical; manual edits stop the whole write unless `--force` explicitly
-takes ownership.
+Pack, mount, and export write managed bundles. When a style has a quality
+profile, pack and mount consume only its current approved PNGs and include their
+records in provenance. Existing unowned output is adopted only when already
+byte-identical; manual edits stop the whole write unless `--force` takes ownership.
 
 All changing members stage before promotion. Ordinary failures roll back.
 Abrupt termination leaves a validated transaction journal: the next invocation
@@ -346,8 +341,8 @@ const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
 console.log(plan.groups, plan.actionable.length)
 ```
 
-The package also exports audit and image-regression gates, provider-neutral refinement, lock/output
-helpers, provider contracts, pipeline stages, sprite packing/mounting, tile
+The package also exports audit and image-regression gates, quality-profile
+inspection and refinement, lock/output helpers, provider contracts, sprite packing/mounting, tile
 exporters, managed artifact writes, and offline provenance verification. See
 [Library API](./docs/LIBRARY.md).
 
@@ -363,7 +358,7 @@ exporters, managed artifact writes, and offline provenance verification. See
 | [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, review, and durable downloads. |
 | [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
-| [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
+| [Manifest reference](./docs/MANIFEST.md) | Style/asset fields, quality profiles, and generator constraints. |
 | [Mixed-provider projects](./docs/MIXED_PROVIDERS.md) | Per-style routing, provider-keyed budgets, recovery, and account commands. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |

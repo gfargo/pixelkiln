@@ -117,15 +117,20 @@ IP-detection charge is additive when Scenario reports one.
 The command budget is still a hard ceiling over the whole selected run. The
 manifest ceiling protects each request from a changed live quote.
 
+Scenario's current BFL output is best treated as concept or refinement input.
+A still-image style can declare `quality` to recover a native grid, enforce a
+closed palette, and require named approval before pack or mount. This offline
+policy does not change the Scenario request or CU quote. See
+[Manifest quality profiles](./MANIFEST.md#quality-profiles).
+
 ### Current live validation
 
 On September 5, 2026, PixelKiln authenticated against the read-only model
 endpoint and preflighted `model_bfl-flux-2-dev` with a 512×512 canvas, guidance
-4, and 28 inference steps. Scenario quoted 16 CU for one output and 32 CU for
-two; both costs were reported as `custom-generation`. The requests used
-`dryRun=true`; no generation was submitted and no CU was spent.
+4, and 28 inference steps. The free preflights quoted 16 CU for one output and
+32 CU for two. Both costs were reported as `custom-generation`.
 
-The paid smoke used the same settings. The one-output job quoted and billed 16
+The paid smoke then used the same requests. The one-output job quoted and billed 16
 CU. The two-output job quoted and billed 32 CU, entered local review, and
 downloaded the second human-selected candidate without another generation.
 Both files were valid 512×512 RGB PNGs. A forced restore with the output and

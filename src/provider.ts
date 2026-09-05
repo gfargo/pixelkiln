@@ -2,15 +2,9 @@ import type { Generator, ResolvedSpec, ResolvedStyleImage } from "./types.ts"
 import type { MediaType } from "./media.ts"
 
 /**
- * What a provider charges in. Cost is not universally "generations": PixelLab
- * bills a subscription quota, OpenAI bills dollars per image, a local model
- * bills nothing. `plan` prints the unit alongside the number so the figure is
- * never silently misread, and `--budget` is interpreted in the active unit.
- */
-/**
  * Human-readable unit attached to every estimate and recorded charge.
- * Built-ins use generations/USD/free; adapters may report non-convertible
- * units such as "credits" without pretending they are dollars.
+ * Built-ins use generations, USD, free, and compute units. Adapters may report
+ * another non-convertible unit without pretending it is dollars.
  */
 export type CostUnit = "generations" | "usd" | "free" | (string & {})
 

@@ -77,6 +77,10 @@ describe("parseArgs", () => {
     })
     expect(parseArgs(["refine", "check", "--from", "final.pixelkiln.json", "--json"]))
       .toMatchObject({ subcommand: "check", json: true })
+    expect(parseArgs(["refine", "--style", "base", "--only", "anvil"]))
+      .toMatchObject({ subcommand: "run", styles: ["base"], assets: ["anvil"], from: undefined })
+    expect(parseArgs(["refine", "check", "--style", "base", "--json"]))
+      .toMatchObject({ subcommand: "check", styles: ["base"], json: true, from: undefined })
     expect(() => parseArgs(["refine", "checkk"])).toThrow(/Unknown refine subcommand/)
     expect(() => parseArgs(["refine", "--min-grid-confidence", "certain"]))
       .toThrow(/low, medium, or high/)
@@ -370,7 +374,8 @@ describe("contact sheet", () => {
     prompt: "an anvil",
     reviewObjectId: "obj-1",
     frameUrls: ["https://example.test/0.png", "https://example.test/1.png"],
-    size: 64,
+    width: 64,
+    height: 64,
   }
 
   it("renders one selectable candidate per frame", () => {
@@ -392,6 +397,21 @@ describe("contact sheet", () => {
     const html = renderSheet([group])
     expect(html).toContain("preview.src = url")
     expect(html).not.toContain("'<img src=\"' + url")
+  })
+
+  it("preserves non-square aspect ratios and caps oversized previews", () => {
+    const html = renderSheet([{ ...group, width: 2048, height: 1024 }])
+    expect(html).toContain("Math.round(g.width * displayScale)")
+    expect(html).toContain("Math.round(g.height * displayScale)")
+    expect(html).toContain("Math.min(preferredScale, 560 / largestSide)")
+    expect(html).not.toContain("preview.width = g.size")
+  })
+
+  it("constrains the review surface on ultrawide displays", () => {
+    const html = renderSheet([group])
+    expect(html).toContain("--content: 1440px")
+    expect(html).toContain('<div class="bar">')
+    expect(html).toContain("width:min(100%,var(--content))")
   })
 
   // The prompt is arbitrary author text and reaches both innerHTML and a <script>.

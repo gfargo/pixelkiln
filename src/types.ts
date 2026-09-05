@@ -36,6 +36,9 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
 export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
+export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
+export type GridConfidence = z.infer<typeof GridConfidenceSchema>
+
 /** A decoded style reference ready for a provider-specific request body. */
 export interface ResolvedStyleImage {
   base64: string
@@ -161,6 +164,40 @@ const StyleImageSchema = z.object({
   path: z.string(),
 })
 
+const HexColorSchema = z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour")
+
+/** Required derived-art policy for one style's single-image outputs. */
+export const QualityProfileSchema = z
+  .object({
+    /** Output root for approved refined art, relative to the manifest. */
+    outDir: z.string().min(1),
+    /** Closed final palette applied after native-grid recovery, without dithering. */
+    palette: z.array(HexColorSchema).min(2).max(256),
+    /** Minimum Pixel Art Fixer detector confidence accepted by the mechanical gate. */
+    minGridConfidence: GridConfidenceSchema.default("high"),
+    /** Optional alpha requirement for isolated assets. */
+    minTransparency: z.number().min(0).max(1).optional(),
+    /** Pixel Art Fixer revision written into the quality record. */
+    fixerRevision: z.string().min(1).optional(),
+  })
+  .strict()
+  .refine(
+    (profile) =>
+      new Set(profile.palette.map((color) => color.replace(/^#/, "").toLowerCase())).size ===
+      profile.palette.length,
+    { message: "quality palette colors must be unique", path: ["palette"] },
+  )
+
+export type QualityProfile = z.infer<typeof QualityProfileSchema>
+
+export interface ResolvedQualityProfile {
+  outFile: string
+  palette: string[]
+  minGridConfidence: GridConfidence
+  minTransparency?: number
+  fixerRevision?: string
+}
+
 export const StyleSchema = z
   .object({
     /** Generation backend for this style. Omit to inherit the manifest default. */
@@ -250,8 +287,10 @@ export const StyleSchema = z
      * chocolate bar.
      */
     palette: z
-      .array(z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour"))
+      .array(HexColorSchema)
       .default([]),
+    /** Fail-closed native-grid, palette, and human-approval policy for derived art. */
+    quality: QualityProfileSchema.optional(),
     /**
      * Composites this style's assets into declared cells of a sheet, rather
      * than letting `pack` derive a layout. Use it when the atlas coordinates
@@ -297,6 +336,15 @@ export const StyleSchema = z
       "tileFeature and styleImages cannot be combined — a connectable set " +
       "derives its own tile geometry, so remove one or the other",
     path: ["tileFeature"],
+  })
+  .superRefine((style, ctx) => {
+    if (style.quality && (style.generator === "tiles" || style.generator === "animation")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "quality profiles currently support single-image generators only",
+        path: ["quality"],
+      })
+    }
   })
 
 export const AssetSchema = z
@@ -520,6 +568,8 @@ export interface ResolvedSpec {
   size: number
   styleImagePaths: string[]
   outFile: string
+  /** Derived quality output. Excluded from provider request identity and spend. */
+  quality?: ResolvedQualityProfile
   /**
    * Manifest-relative path of committed art that stands in for generated
    * output; excluded from the spec hash. Set only when the asset declares

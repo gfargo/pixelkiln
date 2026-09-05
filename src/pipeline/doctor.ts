@@ -63,7 +63,10 @@ export async function doctor(
   )
   add("lock", "ok", `${Object.keys(lock.entries).length} valid v2 lock entr(ies)`)
 
-  const dirs = [...new Set(specs.map((s) => path.dirname(s.outFile)))]
+  const dirs = [...new Set(specs.flatMap((spec) => [
+    path.dirname(spec.outFile),
+    ...(spec.quality ? [path.dirname(spec.quality.outFile)] : []),
+  ]))]
   const unwritable: string[] = []
   for (const dir of dirs) {
     const ancestor = await nearestExistingDirectory(dir)
@@ -172,6 +175,19 @@ export async function doctor(
           .join(", ")
       : "every resolved spec is current",
   )
+
+  const quality = plan.items.flatMap((item) => item.quality ? [item.quality] : [])
+  const qualityPending = quality.filter((item) => item.state !== "approved")
+  if (quality.length) {
+    add(
+      "quality",
+      qualityPending.length ? "warning" : "ok",
+      qualityPending.length
+        ? `${qualityPending.length}/${quality.length} configured quality output(s) are not approved: ` +
+          qualityPending.slice(0, 3).map((item) => `${item.key} ${item.state}`).join(", ")
+        : `all ${quality.length} configured quality output(s) are current and approved`,
+    )
+  }
 
   const legacyTarget = !opts.providers
   const targets: DoctorProviderTarget[] = opts.providers ?? [{

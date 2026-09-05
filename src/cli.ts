@@ -20,7 +20,13 @@ import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { mountStyle, packSprites, packStyle, resolvePackInputs } from "./pipeline/pack.ts"
 import { loadLock, remove as removeLock, saveLock, spendByUnit, upsert as upsertLock } from "./lock.ts"
 import { sha256File } from "./hash.ts"
-import { lockKey, type Lock, type Manifest, type ResolvedSpec } from "./types.ts"
+import {
+  lockKey,
+  type GridConfidence,
+  type Lock,
+  type Manifest,
+  type ResolvedSpec,
+} from "./types.ts"
 import { normalizeLockOutputPaths, resolveOutputPath } from "./outputs.ts"
 import { buildPlan, summarize, type Plan } from "./pipeline/plan.ts"
 import { submit } from "./pipeline/submit.ts"
@@ -51,9 +57,14 @@ import { inspectCaches } from "./pipeline/cache-health.ts"
 import {
   approveQualityRecord,
   checkQualityRecord,
+  qualityRecordPath,
   refineAsset,
-  type GridConfidence,
 } from "./pipeline/refine.ts"
+import {
+  inspectQualityProfile,
+  refineQualityProfiles,
+  requireApprovedQualitySources,
+} from "./pipeline/quality-profile.ts"
 import { exportTileset, type TilesetFormat } from "./pipeline/tileset-export.ts"
 import { runSalvage } from "./pick/salvage-server.ts"
 import type { BalanceInfo, Provider } from "./provider.ts"
@@ -448,8 +459,8 @@ Commands
   salvage   Triage account objects no lockfile claims. Recovers usable art.
             One session per matching style unless --style forces a single one.
   audit     Measure how consistently a style's assets hold together. Offline.
-  refine    Recover a native pixel grid, enforce a final palette, audit it,
-            and attach a verifiable human approval. run/approve/check. Offline.
+  refine    Build/check manifest quality profiles, or refine one --from PNG.
+            Native grid, fixed palette, audit, and human approval. Offline.
   recipe    List, inspect, install, or verify versioned workflow packs. Offline.
   quality   Snapshot or check measurable image regressions. Offline.
   cache     Inspect local recovery/object-hash caches; optionally verify or prune.
@@ -492,7 +503,7 @@ Options
   --budget <n|provider=n>  Refuse to exceed one provider ceiling; repeat keyed budgets
                            for a mixed-provider run
   --provider <id>     Choose the account for balance/adopt/salvage/purge in a mixed manifest
-  --force             Regenerate; also replace changed recipe files or quality baselines
+  --force             Regenerate; also rerun refinement or replace changed derived state
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
   --json              Machine-readable output where supported, including quality checks
@@ -503,7 +514,7 @@ Options
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
   --workspace <path>  Workspace catalog (default: pixelkiln.workspace.json). Also
                        derives salvage's claim set instead of repeated --claims.
-  --from <path>       Source for init/refine, or baseline for quality check
+  --from <path>       Source for init/path-mode refine, or baseline for quality check
   --write-prompts     adopt: recover prompts into the manifest
 
 Examples
@@ -515,6 +526,8 @@ Examples
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
   pixelkiln mount --style ground
   pixelkiln export --style ground --only terrain --format tiled
+  pixelkiln refine --style environment
+  pixelkiln refine check --style environment
   pixelkiln refine --from source.png --out final.png --palette "#101820,#f2aa4c"
   pixelkiln refine approve --from final.pixelkiln.json --reviewer "Your Name"
   pixelkiln refine check --from final.pixelkiln.json
@@ -555,6 +568,14 @@ function printPlan(plan: Plan): void {
     }
   } else {
     log(`  nothing to generate`)
+  }
+  const qualityItems = plan.items.flatMap((item) => item.quality ? [item.quality] : [])
+  if (qualityItems.length) {
+    const approved = qualityItems.filter((item) => item.state === "approved").length
+    log(`\n  quality: ${approved}/${qualityItems.length} approved`)
+    for (const item of qualityItems.filter((item) => item.state !== "approved").slice(0, 40)) {
+      log(`    ${item.state.padEnd(16)} ${item.key}  ${item.reason}`)
+    }
   }
 }
 
@@ -833,7 +854,9 @@ async function main() {
     }
   }
 
-  if (args.command === "refine") {
+  // Path mode stays manifest-free. Without --from, `refine run/check` falls
+  // through to the manifest quality-profile workflow below.
+  if (args.command === "refine" && (args.from || args.subcommand === "approve")) {
     if (!args.from) {
       throw new Error(
         args.subcommand === "run"
@@ -1247,6 +1270,60 @@ async function main() {
 
   const plan = await buildPlan(specs, lock, { force: args.force })
 
+  if (args.command === "refine") {
+    const pathOwnedFlags = [
+      args.out ? "--out" : null,
+      args.palette.length ? "--palette" : null,
+      args.fixerRevision ? "--fixer-revision" : null,
+      args.minGridConfidence ? "--min-grid-confidence" : null,
+      args.minTransparency != null ? "--min-transparency" : null,
+    ].filter(Boolean)
+    if (pathOwnedFlags.length) {
+      throw new Error(
+        `${pathOwnedFlags.join(", ")} require --from. Manifest mode reads output, palette, ` +
+          "revision, and thresholds from style.quality.",
+      )
+    }
+
+    if (args.subcommand === "check") {
+      const inspections = (await Promise.all(
+        specs.filter((spec) => spec.quality).map((spec) => inspectQualityProfile(spec, lock)),
+      )).filter((item) => item !== null)
+      if (!inspections.length) throw new Error("No selected style has a quality profile.")
+      const safe = inspections.every((item) => item.state === "approved")
+      if (args.json) {
+        log(JSON.stringify({ version: 1, safe, items: inspections }, null, 2))
+      } else {
+        for (const item of inspections) {
+          log(`  ${item.state.padEnd(16)} ${item.key}  ${item.reason}`)
+        }
+      }
+      if (!safe) process.exitCode = 1
+      return
+    }
+
+    const result = await refineQualityProfiles(specs, lock, {
+      fixerPython: args.fixerPython,
+      force: args.force,
+    })
+    if (args.json) {
+      log(JSON.stringify({ version: 1, ...result }, null, 2))
+    } else {
+      for (const item of result.items) {
+        log(`  ${item.state.padEnd(16)} ${item.key}  ${item.reason}`)
+        if (item.state === "needs-approval") {
+          log(
+            `    pixelkiln refine approve --from ${path.relative(process.cwd(), item.record)} ` +
+              `--reviewer "Your Name"`,
+          )
+        }
+      }
+      log(`\n  ${result.processed} refined, ${result.skipped} unchanged, ${result.failed} failed`)
+    }
+    if (result.failed) process.exitCode = 1
+    return
+  }
+
   if (args.command === "doctor") {
     const selectedStyleIds = args.styles.length
       ? args.styles
@@ -1299,12 +1376,21 @@ async function main() {
           actionable: group.actionable.map((item) => item.key),
         })),
         actionable: plan.actionable.map((i) => i.key),
-        items: plan.items.map(({ key, state, reason }) => ({ key, state, reason })),
+        items: plan.items.map(({ key, state, reason, quality }) => ({
+          key,
+          state,
+          reason,
+          ...(quality ? { quality: { state: quality.state, reason: quality.reason } } : {}),
+        })),
       }, null, 2))
     } else {
       printPlan(plan)
     }
-    if (args.check && plan.items.some((i) => i.state !== "ok")) process.exitCode = 1
+    if (
+      args.check && plan.items.some(
+        (item) => item.state !== "ok" || (item.quality && item.quality.state !== "approved"),
+      )
+    ) process.exitCode = 1
     return
   }
 
@@ -1400,10 +1486,13 @@ async function main() {
     const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
 
     for (const styleId of styleIds) {
+      const packagingSpecs = await resolveSpecs(loaded, { styles: [styleId] })
+      const qualitySources = await requireApprovedQualitySources(packagingSpecs, lock)
       const { png, atlas, skipped, sources } = packStyle(lock, styleId, manifestDir, {
         columns: args.columns,
         outputRoles: args.outputRoles,
         primaryOnly: args.primaryOnly,
+        sourceOverrides: qualitySources,
       })
 
       // Default beside the style's own output tree, so sheets for different
@@ -1417,11 +1506,18 @@ async function main() {
         { path: `${base}.png`, data: png },
         { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
       ]
+      const qualityRecords = qualitySources
+        ? await Promise.all(
+            Object.entries(qualitySources).map(([assetId, source]) =>
+              provenanceFile(`$quality/${assetId}`, qualityRecordPath(source))),
+          )
+        : []
       await writeManagedArtifactBundle(`${base}.pixelkiln.json`, outputs, {
         kind: "pack",
         sources: [
           await provenanceFile("$manifest", args.manifest),
           await provenanceFile("$lock", args.lock),
+          ...qualityRecords,
           ...sources,
         ],
         options: {
@@ -1470,6 +1566,13 @@ async function main() {
         if (asset.source) sources[assetId] = asset.source
         if (asset.outputRole) outputRoles[assetId] = asset.outputRole
       }
+      const packagingSpecs = await resolveSpecs(loaded, { styles: [styleId] })
+      const qualitySources = await requireApprovedQualitySources(
+        packagingSpecs,
+        lock,
+        new Set(Object.keys(cells)),
+      )
+      if (qualitySources) Object.assign(sources, qualitySources)
 
       const { png, atlas, skipped, overBase, sources: artifactSources } = mountStyle(
         lock,
@@ -1488,11 +1591,18 @@ async function main() {
         { path: out, data: png },
         { path: metadata, data: JSON.stringify(atlas, null, 2) + "\n" },
       ]
+      const qualityRecords = qualitySources
+        ? await Promise.all(
+            Object.entries(qualitySources).map(([assetId, source]) =>
+              provenanceFile(`$quality/${assetId}`, qualityRecordPath(source))),
+          )
+        : []
       await writeManagedArtifactBundle(companion, outputs, {
         kind: "mount",
         sources: [
           await provenanceFile("$manifest", args.manifest),
           await provenanceFile("$lock", args.lock),
+          ...qualityRecords,
           ...artifactSources.filter(
             (source) => source.id !== "$base" || path.resolve(source.path) !== out,
           ),
@@ -2108,6 +2218,10 @@ async function main() {
     if (args.tag) log(`  tagged ${total.tagged} object(s) upstream`)
     await saveLock(args.lock, lock)
     log(`  lockfile written: ${args.lock}`)
+    if (args.command === "gen" && specs.some((spec) => spec.quality) && !total.failed) {
+      log(`\n  Raw provider output is ready. Run \`pixelkiln refine\` to build the configured quality output.`)
+      log(`  Packaging stays blocked until each refined PNG has a current human approval.`)
+    }
     return
   }
 

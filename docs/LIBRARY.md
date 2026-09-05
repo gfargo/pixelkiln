@@ -33,7 +33,8 @@ Passing `options.provider` deliberately overrides that routing for custom
 orchestration and tests. A provider may also resolve local files before hashing.
 The ComfyUI adapter uses that hook to parse and hash a workflow JSON file without
 contacting the server. A resolved spec has the fully inherited style and asset
-settings plus its effective provider and deterministic spec hash.
+settings plus its effective provider and deterministic spec hash. Optional
+quality settings resolve separately and do not affect provider identity or cost.
 
 `plan.groups` is the authoritative cost view. Each group contains `provider`,
 `costUnit`, `cost`, `candidates`, and its actionable items. For compatibility,
@@ -81,6 +82,27 @@ if (!quality.safe) console.error(quality.reasons)
 installation, applies the exact palette without dithering, audits the result,
 and writes a managed `refine` artifact bundle. Human approval is a separate
 `approveQualityRecord` call so automated generation cannot approve itself.
+
+Manifest orchestration is public too:
+
+```ts
+import {
+  inspectQualityProfile,
+  refineQualityProfiles,
+  requireApprovedQualitySources,
+} from "pixelkiln"
+
+await refineQualityProfiles(specs, lock, {
+  fixerPython: ".pixelkiln/pixelfixer/bin/python",
+})
+const state = await inspectQualityProfile(specs[0], lock)
+const approvedSources = await requireApprovedQualitySources(specs, lock)
+```
+
+Inspection is read-only. Batch refinement preserves current pending and approved
+records unless `force` is explicit. `requireApprovedQualitySources` throws when
+a selected profile is missing, stale, tied to another source, or not approved;
+pass its result to `packStyle` as `sourceOverrides`.
 
 For repository-wide image regression checks, snapshot and verify a portable
 baseline:
@@ -189,8 +211,8 @@ See [TILES.md](./TILES.md) for file contracts and engine details.
 ## Provider integrations
 
 `Provider` is the capability boundary. Generation pipelines accept that
-interface rather than importing PixelLab directly; `PixelLabProvider`,
-`RetroDiffusionProvider`, `ComfyUIProvider`, and `ScenarioProvider` are built in, while
+interface rather than importing PixelLab directly. `PixelLabProvider`,
+`RetroDiffusionProvider`, `ComfyUIProvider`, and `ScenarioProvider` are built in;
 `FakeProvider` implements it in memory for deterministic tests.
 
 ```ts

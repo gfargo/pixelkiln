@@ -59,7 +59,7 @@ export const docs: DocEntry[] = [
   {
     slug: "manifest",
     title: "Manifest reference",
-    description: "Styles, assets, inheritance, mounting, and validation.",
+    description: "Styles, assets, quality profiles, mounting, and validation.",
     file: "docs/MANIFEST.md",
     group: "Start here",
   },
@@ -101,7 +101,7 @@ export const docs: DocEntry[] = [
   {
     slug: "artifacts",
     title: "Derived artifacts",
-    description: "Pack, mount, export, provenance, ownership, and recovery.",
+    description: "Refine, pack, mount, export, approval provenance, and recovery.",
     file: "docs/ARTIFACTS.md",
     group: "Workflows",
   },
@@ -115,7 +115,7 @@ export const docs: DocEntry[] = [
   {
     slug: "quality",
     title: "Quality gates",
-    description: "Image regression baselines, human review, audit, cache integrity, and CI contracts.",
+    description: "Manifest quality profiles, image baselines, human review, and CI contracts.",
     file: "docs/QUALITY.md",
     group: "Workflows",
   },
@@ -150,7 +150,7 @@ export const docs: DocEntry[] = [
   {
     slug: "provider-notes",
     title: "Provider comparison",
-    description: "Compare PixelLab, Retro Diffusion, and self-hosted ComfyUI.",
+    description: "Compare PixelLab, Retro Diffusion, ComfyUI, and Scenario.",
     file: "PROVIDERS.md",
     group: "Workflows",
   },

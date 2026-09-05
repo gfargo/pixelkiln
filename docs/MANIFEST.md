@@ -65,6 +65,7 @@ not merely a label edit.
 | `tileFeature` | enum | Connectable `roads`, `tileset`, or `building` structural set. |
 | `outlineMode` | enum | `outline` or `segmentation`; segmentation avoids quilted ground seams. |
 | `mount` | object | Stable-cell sheet placement; documented below. |
+| `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
 
 Generator-specific fields are validated before planning. Important constraints:
@@ -82,6 +83,66 @@ Generator-specific fields are validated before planning. Important constraints:
 See [generator selection](./GENERATORS.md) for costs and trade-offs.
 See [mixed-provider projects](./MIXED_PROVIDERS.md) when styles in one manifest
 need different backends and budget units.
+
+## Quality profiles
+
+A style can declare the derived art it is willing to ship:
+
+```jsonc
+{
+  "styles": {
+    "environment": {
+      "generator": "map",
+      "outDir": "assets/generated/environment",
+      "quality": {
+        "outDir": "assets/final/environment",
+        "palette": ["#141b1e", "#23312a", "#526a8d", "#709fcf", "#f1bb70"],
+        "minGridConfidence": "high",
+        "minTransparency": 0.2
+      }
+    }
+  }
+}
+```
+
+| Field | Type/default | Meaning |
+|---|---|---|
+| `outDir` | string, required | Manifest-relative root for refined PNGs and their `.pixelkiln.json` quality records. |
+| `palette` | 2–256 unique hex colors | Closed final palette. PixelKiln applies it without dithering after native-grid recovery. |
+| `minGridConfidence` | `high` | Lowest accepted Pixel Art Fixer result: `high`, `medium`, or `low`. |
+| `minTransparency` | number 0–1 | Optional minimum transparent share for isolated assets. Omit it for opaque scenes. |
+| `fixerRevision` | tested pinned revision | Exact Pixel Art Fixer revision recorded in the quality companion. |
+
+The raw provider output remains under the style's normal `outDir`. The quality
+output keeps the asset's relative category and filename under `quality.outDir`
+and always uses PNG. PixelKiln reads `asset.source` when one is declared;
+otherwise it requires one intact downloaded PNG from the lockfile.
+
+Quality settings do not participate in the provider spec hash. Changing the
+palette, threshold, fixer revision, or final output directory marks only the
+derived art for refinement. It never schedules a paid generation.
+
+Run the profile as a batch, review its PNGs, and record approval per result:
+
+```bash
+pixelkiln refine --style environment
+pixelkiln refine approve \
+  --from assets/final/environment/mountain.pixelkiln.json \
+  --reviewer "Your Name"
+pixelkiln refine check --style environment
+```
+
+`plan` reports raw and quality state separately. `plan --check`, `pack`, and
+`mount` fail until each selected profile output is current and approved. Pack
+and mount use the approved derived PNG and retain its quality record in their
+provenance. A stale generation spec blocks the gate even when an approval for
+the old raw bytes still exists. Repeating `refine` preserves pending and approved records; use
+`--force` only when you intend to rebuild current output and reset approval.
+
+Quality profiles currently support single-image `map`, `1dir`, and `pixflux`
+styles. The schema rejects `tiles` and `animation`, which need role-aware or
+multi-frame refinement rather than a one-PNG contract. See
+[Quality gates](./QUALITY.md#manifest-quality-profile) for the release workflow.
 
 ## Experimental Retro Diffusion
 

@@ -216,6 +216,47 @@
               },
               "default": []
             },
+            "quality": {
+              "type": "object",
+              "properties": {
+                "outDir": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "palette": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^#?[0-9a-f]{6}$"
+                  },
+                  "minItems": 2,
+                  "maxItems": 256
+                },
+                "minGridConfidence": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ],
+                  "default": "high"
+                },
+                "minTransparency": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "fixerRevision": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "outDir",
+                "palette"
+              ],
+              "additionalProperties": false
+            },
             "mount": {
               "type": "object",
               "properties": {

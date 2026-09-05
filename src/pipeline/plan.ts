@@ -4,6 +4,7 @@ import { sha256File } from "../hash.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
+import { inspectQualityProfile, type QualityProfileInspection } from "./quality-profile.ts"
 
 export type PlanState =
   | "ok" // spec unchanged, file present and matching — nothing to do
@@ -36,6 +37,8 @@ export interface PlanItem {
   key: string
   state: PlanState
   reason: string
+  /** Derived-art state. It never changes provider cost or generation actionability. */
+  quality?: QualityProfileInspection
 }
 
 export interface Plan {
@@ -141,7 +144,8 @@ export async function buildPlan(
       reason = "up to date"
     }
 
-    items.push({ spec, key, state, reason })
+    const quality = await inspectQualityProfile(spec, lock)
+    items.push({ spec, key, state, reason, ...(quality ? { quality } : {}) })
   }
 
   // "orphaned" entries may be re-downloadable from a persisted object without

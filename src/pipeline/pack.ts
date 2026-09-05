@@ -193,8 +193,27 @@ export function packStyle(
   lock: Lock,
   styleId: string,
   manifestDir: string,
-  options: { columns?: number; outputRoles?: string[]; primaryOnly?: boolean } = {},
+  options: {
+    columns?: number
+    outputRoles?: string[]
+    primaryOnly?: boolean
+    /** Approved manifest quality outputs keyed by asset id. */
+    sourceOverrides?: Record<string, string>
+  } = {},
 ): PackedSheet {
+  if (options.sourceOverrides) {
+    if (options.outputRoles?.length) {
+      throw new Error("Quality-profile packing does not accept --output-role; profiles own one PNG per asset.")
+    }
+    const inputs = Object.entries(options.sourceOverrides).map(([id, source]) => ({
+      id,
+      path: path.resolve(source),
+    }))
+    if (!inputs.length) throw new Error(`No approved quality outputs for style "${styleId}".`)
+    const packed = packSprites(inputs, options)
+    return { ...packed, atlas: { ...packed.atlas, style: styleId } }
+  }
+
   // Lock keys are `<styleId>/<assetId>`.
   const prefix = `${styleId}/`
   const entries = Object.entries(lock.entries).filter(([key]) => key.startsWith(prefix))

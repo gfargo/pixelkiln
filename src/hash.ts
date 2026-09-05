@@ -30,7 +30,7 @@ export async function sha256File(path: string): Promise<string> {
  * unconditionally did exactly that once already.
  */
 export function specHash(
-  spec: Omit<ResolvedSpec, "specHash" | "root" | "outFile" | "source" | "tags">,
+  spec: Omit<ResolvedSpec, "specHash" | "root" | "outFile" | "quality" | "source" | "tags">,
   styleImageHashes: string[],
   providerOptionIdentity: unknown = spec.providerOptions,
 ): string {

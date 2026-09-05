@@ -9,6 +9,11 @@ PixelLab remains the default so existing manifests and spec hashes remain
 compatible. The manifest's top-level `provider` is the default; a style may
 override it. Keep service settings under the matching `providerOptions` key.
 
+Provider choice and release quality are separate. Any supported single-image
+style can declare one `quality` profile for native-grid recovery, a closed
+palette, measurable checks, and named approval. The profile does not change the
+provider request or its cost. Pack and mount use only approved derived PNGs.
+
 To configure a project, use [Set up PixelLab](./docs/PIXELLAB.md),
 [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md),
 [Set up ComfyUI](./docs/COMFYUI.md), or

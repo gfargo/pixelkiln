@@ -227,8 +227,9 @@ artifact. If `uv` is unavailable, create a Python 3.12 virtual environment and
 install the same pinned Git URL with that environment's pip. On Windows, pass
 the environment's `Scripts/python.exe` path to `--fixer-python`.
 
-Run refinement only after choosing a candidate and removing the background for
-an isolated asset:
+For a manifest project, declare the policy on the style as shown below and run
+`pixelkiln refine --style <id>`. Use path mode only for an isolated experiment
+or input outside a manifest:
 
 ```bash
 PALETTE="#141b1e,#23312a,#384d4f,#526a8d,#709fcf,#865c45,#c6a766,#f1bb70"
@@ -356,6 +357,14 @@ mixed manifest:
     "local-environment": {
       "generator": "map",
       "outDir": "assets/generated/environments",
+      "quality": {
+        "outDir": "assets/final/environments",
+        "palette": [
+          "#141b1e", "#23312a", "#384d4f", "#526a8d",
+          "#709fcf", "#865c45", "#c6a766", "#f1bb70"
+        ],
+        "minGridConfidence": "high"
+      },
       "seed": 31415,
       "providerOptions": {
         "comfyui": {
@@ -393,6 +402,12 @@ mixed manifest:
 | `bindings.batchSize` | Input replaced with `numImages`. |
 | `bindings.seed` | Optional sampler seed input. Required when the style declares `seed`. |
 
+The `quality` block is not a ComfyUI request option. It describes PixelKiln's
+offline final-art gate and works the same way with any supported single-image
+provider. Its output directory, palette, confidence threshold, optional
+transparency floor, and fixer revision do not affect generation identity or
+cost. See [Manifest quality profiles](MANIFEST.md#quality-profiles).
+
 PixelKiln refuses missing nodes and inputs during the offline plan. It also
 clones the workflow before applying bindings, so one asset cannot mutate the
 next asset's request.
@@ -403,6 +418,7 @@ next asset's request.
 pixelkiln doctor --dry-run
 pixelkiln plan
 pixelkiln gen --style local-environment --only cliffside_fortress --budget 0
+pixelkiln refine --style local-environment --only cliffside_fortress
 ```
 
 Local ComfyUI work uses the `free` PixelKiln cost unit and therefore requires a
@@ -415,6 +431,21 @@ prompt ID, output node, workflow hash, and selected output. Durable source
 references use `comfyui://` rather than embedding a workstation hostname.
 `pixelkiln restore` first uses the validated local content cache, then resolves
 the portable reference against the current `COMFYUI_BASE_URL`.
+
+The manifest refine command prints the quality-record path. Review its PNG at
+1× and integer zoom, then record that exact decision:
+
+```bash
+pixelkiln refine approve \
+  --from assets/final/environments/cliffside_fortress.pixelkiln.json \
+  --reviewer "Your Name"
+pixelkiln refine check --style local-environment
+pixelkiln pack --style local-environment
+```
+
+Pack remains blocked if the record is pending, its source or output changes, or
+the style's quality policy changes. It uses the approved final PNG, not the raw
+ComfyUI raster.
 
 ## Current boundary
 

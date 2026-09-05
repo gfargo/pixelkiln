@@ -79,6 +79,12 @@ if (!home.includes("48–128px native per part")) {
 if (!home.includes("Refinement automated; art review required")) {
   failures.push("provider results are missing the ComfyUI refinement boundary");
 }
+if (!home.includes("style.quality") || !home.includes("blocked until approval is current")) {
+  failures.push("home page is missing the manifest quality-profile release gate");
+}
+if (!home.includes("preserves native") || !home.includes("ultrawide")) {
+  failures.push("home page is missing the responsive local-review guarantee");
+}
 if (!home.includes('href="/docs/mixed-providers"')) {
   failures.push("provider results are missing the mixed-provider guide");
 }

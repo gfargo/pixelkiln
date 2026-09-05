@@ -32,6 +32,27 @@ async function project() {
   return { loaded, specs: await resolveSpecs(loaded), lockPath: path.join(dir, "pixelkiln.lock.json") }
 }
 
+async function qualityProject() {
+  const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+  await writeFile(path.join(dir, "source.png"), Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "base64",
+  ))
+  await writeFile(manifestPath, JSON.stringify({
+    name: "doctor-quality-test",
+    styles: {
+      base: {
+        generator: "map",
+        outDir: "raw",
+        quality: { outDir: "final", palette: ["#000000", "#ffffff"] },
+      },
+    },
+    assets: { anvil: { prompt: "an anvil", source: "source.png" } },
+  }))
+  const loaded = await loadManifest(manifestPath)
+  return { loaded, specs: await resolveSpecs(loaded), lockPath: path.join(dir, "pixelkiln.lock.json") }
+}
+
 function entry(overrides: Partial<LockEntry> = {}): LockEntry {
   return {
     styleId: "base", assetId: "anvil", specHash: "h", generator: "map",
@@ -53,6 +74,20 @@ describe("doctor", () => {
     expect(report.ok).toBe(true)
     expect(report.checks.find((c) => c.id === "provider")?.level).toBe("warning")
     expect(report.checks.find((c) => c.id === "outputs")?.level).toBe("ok")
+  })
+
+  it("checks the derived output directory and reports pending manifest quality work", async () => {
+    const { loaded, specs, lockPath } = await qualityProject()
+    const report = await doctor(loaded, specs, { version: 2, entries: {} }, lockPath, {
+      offline: true,
+    })
+
+    expect(report.checks.find((c) => c.id === "outputs")?.message).toBe(
+      "2 output directories are writable",
+    )
+    expect(report.checks.find((c) => c.id === "quality")).toMatchObject({
+      level: "warning",
+    })
   })
 
   it("fails when unfinished paid work has no recovery source", async () => {
