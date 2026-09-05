@@ -1,7 +1,6 @@
 import { loadLock, spendByUnit } from "../lock.ts"
 import { loadManifest, resolveSpecs } from "../manifest.ts"
 import { normalizeLockOutputPaths } from "../outputs.ts"
-import { createProvider } from "../providers/registry.ts"
 import type { CostUnit } from "../provider.ts"
 import {
   resolveProject,
@@ -13,6 +12,7 @@ import { loadClaims } from "./salvage.ts"
 import { buildPlan, summarize, type PlanState } from "./plan.ts"
 
 export interface WorkspaceClaims {
+  /** Provider-qualified remote ids (`provider:id`) across every lock. */
   claimed: Set<string>
   /** Claim count contributed by each registered project. */
   byProject: Record<string, number>
@@ -39,7 +39,7 @@ export async function workspaceClaims(ws: Workspace, dir: string): Promise<Works
     lockPaths.push(lockPath)
     let projectClaims: Set<string>
     try {
-      projectClaims = await loadClaims([lockPath])
+      projectClaims = await loadClaims([lockPath], { qualify: true })
     } catch (err) {
       throw new Error(
         `Project "${project.id}" lockfile is unreadable: ` +
@@ -62,7 +62,10 @@ function emptyStateCounts(): Record<PlanState, number> {
 
 export interface WorkspaceProjectStatus {
   id: string
+  /** Legacy/default catalog provider. */
   provider: string
+  /** Effective providers resolved from every manifest style. */
+  providers: string[]
   account: string | null
   manifest: string
   lock: string
@@ -109,9 +112,14 @@ export async function workspaceStatus(ws: Workspace, dir: string): Promise<Works
       lock: lockPath,
     }
     try {
-      const provider = createProvider(project.provider, "offline")
       const loaded = await loadManifest(manifestPath)
-      const specs = await resolveSpecs(loaded, { provider })
+      const specs = await resolveSpecs(loaded)
+      const providers = [...new Set(
+        Object.values(loaded.manifest.styles).map(
+          (style) => style.provider ?? loaded.manifest.provider,
+        ),
+      )].sort()
+      if (!providers.length) providers.push(loaded.manifest.provider)
       const lock = await loadLock(lockPath)
       normalizeLockOutputPaths(lock, specs)
       const plan = await buildPlan(specs, lock)
@@ -125,6 +133,8 @@ export async function workspaceStatus(ws: Workspace, dir: string): Promise<Works
       }
       projects.push({
         ...base,
+        provider: providers.length === 1 ? providers[0]! : project.provider,
+        providers,
         entries: Object.keys(lock.entries).length,
         byState,
         spendByUnit: spend,
@@ -133,6 +143,7 @@ export async function workspaceStatus(ws: Workspace, dir: string): Promise<Works
     } catch (err) {
       projects.push({
         ...base,
+        providers: [project.provider],
         entries: 0,
         byState: emptyStateCounts(),
         spendByUnit: { generations: 0, usd: 0, free: 0 },

@@ -11,29 +11,34 @@ import {
   buildPlan,
   loadLock,
   loadManifest,
-  PixelLabProvider,
   resolveSpecs,
   summarize,
 } from "pixelkiln"
 
 const loaded = await loadManifest("pixelkiln.manifest.json")
-const provider = PixelLabProvider.forOffline()
-const specs = await resolveSpecs(loaded, { provider })
+const specs = await resolveSpecs(loaded)
 const lock = await loadLock("pixelkiln.lock.json")
 const plan = await buildPlan(specs, lock)
 
 console.log(summarize(plan))
-if (plan.actionable.length) {
-  console.log(`${plan.cost} ${plan.costUnit} for ${plan.actionable.length} assets`)
+for (const group of plan.groups) {
+  console.log(`${group.provider}: ${group.cost} ${group.costUnit}`)
 }
 ```
 
-Planning performs no provider calls and spends nothing. Passing a provider lets
-its `supports()` and `estimate()` methods determine cost unit and candidate
-count. A provider may also resolve local files before hashing. The ComfyUI
-adapter uses that hook to parse and hash a workflow JSON file without contacting
-the server. A resolved spec has the fully inherited style and asset settings
-plus its deterministic spec hash.
+Planning performs no provider calls and spends nothing. `resolveSpecs` uses each
+style's provider or the manifest default, then lets that offline adapter's
+`supports()` and `estimate()` methods determine cost unit and candidate count.
+Passing `options.provider` deliberately overrides that routing for custom
+orchestration and tests. A provider may also resolve local files before hashing.
+The ComfyUI adapter uses that hook to parse and hash a workflow JSON file without
+contacting the server. A resolved spec has the fully inherited style and asset
+settings plus its effective provider and deterministic spec hash.
+
+`plan.groups` is the authoritative cost view. Each group contains `provider`,
+`costUnit`, `cost`, `candidates`, and its actionable items. For compatibility,
+`plan.cost` and `plan.costUnit` retain the single-provider projection; both are
+`null` when a plan spans providers or units.
 
 ## Audit and gate generated art
 
@@ -202,6 +207,12 @@ Provider-backed operations mutate the supplied lock object; persist at the
 workflow boundary with `saveLock`. See
 [provider comparison](../PROVIDERS.md) before selecting or implementing
 another backend, especially its optional capabilities and cost units.
+
+These low-level operations intentionally accept one provider. A mixed-provider
+caller should partition specs and plan items by `spec.provider`, instantiate
+each adapter independently, and preserve the provider recorded on a lock entry
+when resuming work. The CLI is the reference orchestration and validates every
+provider-keyed budget before the first submission.
 
 `isSensitiveSourceUrl` detects credential-bearing provider URLs, while
 `shouldPersistSourceUrl` applies the lockfile rule: keep durable public or

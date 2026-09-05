@@ -124,8 +124,11 @@ byte is structurally validated before use.
 
 ## Provider capability boundary
 
-Providers are selected from a registry by the manifest's top-level `provider`
-id. Required members cover support/estimate, submit, poll, and download;
+Providers are selected from a registry by each style's `provider`, falling back
+to the manifest default. Planning groups resolved work by provider and cost
+unit. After submission, the provider recorded on each lock entry is authoritative
+for polling, selection, download, restore, and tag routing. Required members
+cover support/estimate, submit, poll, and download;
 candidate selection is required only when an adapter can return alternatives.
 Account-wide listing, tagging, deletion, and balance are optional. Commands
 such as adopt or salvage report a capability gap rather than failing through

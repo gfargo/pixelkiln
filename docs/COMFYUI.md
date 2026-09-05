@@ -344,7 +344,9 @@ MMPX for presentation of an already-valid native asset.
 ## Configure the manifest
 
 Put dimensions on each asset. Put workflow configuration under
-`providerOptions.comfyui` on the style:
+`providerOptions.comfyui` on the style. Set the top-level provider when every
+style is local, or put `"provider": "comfyui"` on only the local styles in a
+mixed manifest:
 
 ```jsonc
 {

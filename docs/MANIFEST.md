@@ -32,7 +32,7 @@ Unknown properties are rejected at every level.
 |---|---|---|
 | `$schema` | no | Editor schema URL/path. It does not affect generation identity. |
 | `name` | yes | Project/account tag namespace. |
-| `provider` | no | Provider registry id. Defaults to `pixellab`; `retrodiffusion` and `comfyui` are experimental. |
+| `provider` | no | Default provider registry id. Defaults to `pixellab`; `retrodiffusion` and `comfyui` are experimental. |
 | `styles` | yes | Map of style id to inherited generation/output settings. |
 | `assets` | yes | Map of stable asset id to subject and per-asset overrides. |
 
@@ -44,6 +44,7 @@ not merely a label edit.
 
 | Field | Type/default | Meaning |
 |---|---|---|
+| `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
 | `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, or provider-specific `animation`. |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
@@ -79,6 +80,8 @@ Generator-specific fields are validated before planning. Important constraints:
   rejects connectable features in style-tile mode.
 
 See [generator selection](./GENERATORS.md) for costs and trade-offs.
+See [mixed-provider projects](./MIXED_PROVIDERS.md) when styles in one manifest
+need different backends and budget units.
 
 ## Experimental Retro Diffusion
 
@@ -247,16 +250,17 @@ native-art size.
 
 For each participating style/asset pair:
 
-1. Choose `promptByStyle[styleId]` when present, otherwise `prompt`.
-2. Apply the style prefix and suffix.
-3. Apply generator dimensions and generator-specific settings.
-4. Merge style and asset tags.
-5. Derive a deterministic spec hash from every setting that changes generated
+1. Resolve the style provider, falling back to the top-level default.
+2. Choose `promptByStyle[styleId]` when present, otherwise `prompt`.
+3. Apply the style prefix and suffix.
+4. Apply generator dimensions and the effective provider's settings.
+5. Merge style and asset tags.
+6. Derive a deterministic spec hash from every setting that changes generated
    pixels, including style-image hashes.
 
 Project root, output path, and tags are excluded from the pixel identity, so
 moving a checkout or retagging does not buy new art. Prompt, size, palette,
-seed, view, and reference-image bytes do change identity.
+seed, view, provider choice, and reference-image bytes do change identity.
 
 ## Stable-cell mounting
 

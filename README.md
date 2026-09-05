@@ -21,7 +21,8 @@ Plus stills; its multi-candidate, tileset, GIF, and spritesheet paths are tested
 with fixtures but still need paid live runs. ComfyUI has passed local generation,
 four-candidate review, cache recovery, and native-grid refinement on Apple MPS.
 Its tested SDXL workflow can find a composition, but it is not a finished
-pixel-art preset. The [provider comparison](./PROVIDERS.md) lists the tested
+pixel-art preset. Styles in one manifest may use different providers with
+separate budget ceilings. The [provider comparison](./PROVIDERS.md) lists the tested
 limits and the best route for buildings and environments. `FakeProvider` covers
 the same contract in automated tests.
 
@@ -54,7 +55,7 @@ PixelKiln keeps the missing record:
 
 | Workflow | What PixelKiln provides |
 |---|---|
-| Plan and budget | Offline manifest/lock/disk diff, provider-unit estimates, hard `--budget` ceiling, JSON/CI gate. |
+| Plan and budget | Offline manifest/lock/disk diff, provider-grouped estimates, keyed mixed-provider budget ceilings, JSON/CI gate. |
 | Generate and review | Resumable submit/poll/pick/fetch pipeline with a fast local candidate sheet. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Validated local content cache, durable provider-reference restore, account object-hash cache, and resumable jobs. |
@@ -138,7 +139,8 @@ See [Getting started](./docs/GETTING_STARTED.md) for new and existing projects.
 Use [Set up PixelLab](./docs/PIXELLAB.md),
 [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), or
 [Set up ComfyUI](./docs/COMFYUI.md) for provider-specific configuration,
-manifest examples, and current limits.
+manifest examples, and current limits. See [Mixed-provider projects](./docs/MIXED_PROVIDERS.md)
+when styles in one manifest need different backends.
 
 ## Agent skill
 
@@ -335,16 +337,14 @@ import {
   buildPlan,
   loadLock,
   loadManifest,
-  PixelLabProvider,
   resolveSpecs,
 } from "pixelkiln"
 
 const loaded = await loadManifest("pixelkiln.manifest.json")
-const provider = PixelLabProvider.forOffline()
-const specs = await resolveSpecs(loaded, { provider })
+const specs = await resolveSpecs(loaded)
 const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
 
-console.log(plan.cost, plan.costUnit, plan.actionable.length)
+console.log(plan.groups, plan.actionable.length)
 ```
 
 The package also exports audit and image-regression gates, provider-neutral refinement, lock/output
@@ -364,6 +364,7 @@ exporters, managed artifact writes, and offline provenance verification. See
 | [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |
+| [Mixed-provider projects](./docs/MIXED_PROVIDERS.md) | Per-style routing, provider-keyed budgets, recovery, and account commands. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
 | [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Thirty provider outputs plus native-grid and final-palette results comparing large scenes, transparency, palette size, and file readiness. |

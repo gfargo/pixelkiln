@@ -23,9 +23,10 @@ With the skill loaded, an agent should:
 
 1. Find and validate `pixelkiln.manifest.json`.
 2. Run `doctor --dry-run` and `plan` before paid work.
-3. Report actionable, recoverable, and cost totals in the provider's unit.
+3. Report actionable, recoverable, and cost totals for each provider and unit.
 4. Use `restore` instead of regenerating recoverable assets.
-5. Pass an explicit `--budget` within the amount the user authorized.
+5. Pass an explicit `--budget` within the amount the user authorized; use one
+   `provider=amount` ceiling for every paid provider in a mixed run.
 6. Leave artwork selection in the local `pick` page unless the user gives a
    specific selection rule.
 7. Treat ComfyUI output as source material until native-grid, final-palette,
@@ -68,16 +69,16 @@ new project or a large environment asset. Once chosen, follow
 
 The installed skill keeps the shared safety workflow in `SKILL.md` and loads a
 focused reference only when needed: PixelLab, Retro Diffusion, ComfyUI, or a
-project that uses more than one. Mixed-provider repositories should use separate manifests and
-lockfiles so each plan and budget keeps its provider-specific unit. The
-[provider comparison](../PROVIDERS.md#use-multiple-providers-in-one-project) has a
-complete layout and command example.
+project that uses more than one. In a mixed manifest, the top-level provider is
+the default and each style may override it. Plans, confirmations, and budgets
+stay separate by provider and unit. See
+[Mixed-provider projects](./MIXED_PROVIDERS.md) for the complete contract.
 
 ## Recommended first prompt
 
 ```text
 Use $pixelkiln to inspect this project's manifest, run the free checks and plan,
-then tell me the exact provider-unit budget required before generating anything.
+then tell me the exact budget required for each provider before generating anything.
 ```
 
 For command details, continue with the [CLI reference](./CLI.md). For recovery

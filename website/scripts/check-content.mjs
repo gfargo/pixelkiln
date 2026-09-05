@@ -79,6 +79,9 @@ if (!home.includes("48–128px native per part")) {
 if (!home.includes("Refinement automated; art review required")) {
   failures.push("provider results are missing the ComfyUI refinement boundary");
 }
+if (!home.includes('href="/docs/mixed-providers"')) {
+  failures.push("provider results are missing the mixed-provider guide");
+}
 if (!home.includes("still needs manual") || !home.includes("art review")) {
   failures.push("provider results are missing the ComfyUI manual-review warning");
 }

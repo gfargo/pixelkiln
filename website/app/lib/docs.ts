@@ -57,6 +57,13 @@ export const docs: DocEntry[] = [
     group: "Start here",
   },
   {
+    slug: "mixed-providers",
+    title: "Mixed-provider projects",
+    description: "Route styles across providers with separate budgets and safe recovery.",
+    file: "docs/MIXED_PROVIDERS.md",
+    group: "Start here",
+  },
+  {
     slug: "agents",
     title: "Agent workflows",
     description: "Install the skill and see what it tells an agent to do.",

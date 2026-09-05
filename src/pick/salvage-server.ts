@@ -5,6 +5,7 @@ import { sha256 } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { portableOutputPath } from "../outputs.ts"
 import { decodePng } from "../png.ts"
+import { shouldPersistSourceUrl } from "../source-url.ts"
 import { lockKey, type Lock, type Manifest } from "../types.ts"
 import {
   applyTags,
@@ -98,6 +99,10 @@ export async function runSalvage(
                 : { width: orphan.width, height: orphan.height }),
             }
 
+            const durableSource = shouldPersistSourceUrl(orphan.previewUrl)
+              ? orphan.previewUrl
+              : null
+
             upsert(ctx.lock, lockKey(ctx.styleId, assetId), {
               styleId: ctx.styleId,
               assetId,
@@ -112,7 +117,10 @@ export async function runSalvage(
               candidateIndex: null,
               status: "downloaded",
               error: null,
-              sourceUrl: orphan.previewUrl,
+              // The bytes are already local. Do not turn a temporary signed
+              // review URL into a credential-bearing committed lock entry.
+              sourceUrl: durableSource,
+              sourceUrls: durableSource ? [{ url: durableSource }] : [],
               outputs: [{
                 path: portableOutputPath(outFile, path.dirname(ctx.manifestPath)),
                 sha256: sha256(buf),

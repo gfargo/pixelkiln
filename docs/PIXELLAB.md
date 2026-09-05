@@ -44,6 +44,9 @@ makes the choice clear:
 }
 ```
 
+In a mixed manifest, put `"provider": "pixellab"` on a style only when the
+top-level default is another backend.
+
 Run the free checks before a paid request:
 
 ```bash

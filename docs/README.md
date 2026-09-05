@@ -14,6 +14,7 @@ provider you are using. These Markdown files also render at
 | [Set up ComfyUI](./COMFYUI.md) | Bind a local composition workflow and understand the manual quality boundary. |
 | [CLI reference](./CLI.md) | Every command and flag, offline/provider requirements, JSON output, and exit behavior. |
 | [Manifest reference](./MANIFEST.md) | Every style and asset field, inheritance, generator-specific constraints, mounting, and schema validation. |
+| [Mixed-provider projects](./MIXED_PROVIDERS.md) | Route styles to different providers, set separate budget ceilings, and resume safely from one lockfile. |
 | [Agent workflows](./AGENTS.md) | Install the official skill and pair agent guidance with the deterministic CLI. |
 
 ## Workflows

@@ -108,10 +108,12 @@ pixelkiln workspace status
 pixelkiln workspace claims
 ```
 
-`workspace status` reports aggregate provider, spend-by-unit, and plan state
-per project, offline. `workspace claims` validates the catalog and emits the
-exact union of `objectId`/`reviewObjectId`/`jobId` across every registered
-lock. This is the same union rule `--claims` uses, so the two paths cannot drift.
+`workspace status` reports each project's effective providers, spend-by-unit,
+and plan state offline. `workspace claims` validates the catalog and emits the
+exact union of provider-qualified `objectId`/`reviewObjectId`/`jobId` claims
+across every registered lock. Qualifying the IDs prevents two providers that
+reuse the same remote identifier from colliding. This is the same union rule
+`--claims` uses, so the two paths cannot drift.
 
 A registered lockfile that is missing or unreadable is a hard error for
 `claims`, never a silent skip: an incomplete claim set is precisely what makes
@@ -136,6 +138,12 @@ The catalog stores paths and project identity, never a credential. Each
 project still loads its own provider key from its own `.env`. `workspace
 remove` only edits the catalog file; it never touches art, a lock, or the
 provider account.
+
+In a mixed-provider manifest, account-wide operations require an explicit
+backend: for example, `salvage --provider retrodiffusion` or `adopt --provider
+pixellab`. The selected operation only sees styles and lock entries for that
+provider. Restore does not need the flag because each lock entry already records
+where its work came from.
 
 ## Confirmed purge
 

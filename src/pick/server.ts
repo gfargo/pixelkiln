@@ -21,12 +21,20 @@ export async function runPicker(
   provider: Provider,
   lock: Lock,
   lockPath: string,
-  opts: { port?: number; open?: boolean; onProgress?: (msg: string) => void } = {},
+  opts: {
+    port?: number
+    open?: boolean
+    onProgress?: (msg: string) => void
+    /** Optional lock-key selection for a filtered or mixed-provider run. */
+    keys?: Iterable<string>
+  } = {},
 ): Promise<PickResult> {
   const log = opts.onProgress ?? (() => {})
+  const selectedKeys = opts.keys ? new Set(opts.keys) : null
 
   const groups: SheetGroup[] = []
   for (const [key, entry] of Object.entries(lock.entries)) {
+    if (entry.provider !== provider.id || (selectedKeys && !selectedKeys.has(key))) continue
     if (entry.status !== "review" || !entry.reviewObjectId) continue
     try {
       const state = await provider.poll(entry.reviewObjectId, entry.generator)

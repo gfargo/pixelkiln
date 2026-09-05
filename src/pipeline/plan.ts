@@ -42,9 +42,21 @@ export interface Plan {
   items: PlanItem[]
   /** Items that would incur provider cost if the plan were executed. */
   actionable: PlanItem[]
-  cost: number
-  costUnit: CostUnit
+  /** Provider-scoped totals. Unlike units and accounts are never combined. */
+  groups: PlanGroup[]
+  /** Compatibility projection for a single provider group; null for mixed plans. */
+  cost: number | null
+  /** Compatibility projection for a single provider group; null for mixed plans. */
+  costUnit: CostUnit | null
   candidates: number
+}
+
+export interface PlanGroup {
+  provider: string
+  costUnit: CostUnit
+  cost: number
+  candidates: number
+  actionable: PlanItem[]
 }
 
 /**
@@ -135,14 +147,42 @@ export async function buildPlan(
   // "orphaned" entries may be re-downloadable from a persisted object without
   // paying again; only genuinely new work is counted toward cost.
   const actionable = items.filter((i) => i.state === "missing" || i.state === "stale" || i.state === "failed")
-  const units = new Set(actionable.map((item) => item.spec.costUnit ?? "generations"))
-  if (units.size > 1) throw new Error("A single plan cannot combine incompatible provider cost units")
+  const groupsByProvider = new Map<string, PlanGroup>()
+  for (const item of actionable) {
+    const provider = item.spec.provider
+    const costUnit = item.spec.costUnit ?? "generations"
+    const group = groupsByProvider.get(provider)
+    if (group && group.costUnit !== costUnit) {
+      throw new Error(
+        `Provider "${provider}" returned mixed cost units (${group.costUnit}, ${costUnit})`,
+      )
+    }
+    if (group) {
+      group.actionable.push(item)
+      group.cost += item.spec.cost
+      group.candidates += item.spec.candidates
+    } else {
+      groupsByProvider.set(provider, {
+        provider,
+        costUnit,
+        cost: item.spec.cost,
+        candidates: item.spec.candidates,
+        actionable: [item],
+      })
+    }
+  }
+  const groups = [...groupsByProvider.values()].sort((a, b) => a.provider.localeCompare(b.provider))
+  const fallbackUnits = new Set(specs.map((spec) => spec.costUnit))
+  const single = groups.length === 1 ? groups[0]! : null
 
   return {
     items,
     actionable,
-    cost: actionable.reduce((sum, i) => sum + i.spec.cost, 0),
-    costUnit: actionable[0]?.spec.costUnit ?? specs[0]?.costUnit ?? (specs.length ? "generations" : "free"),
+    groups,
+    cost: single?.cost ?? (groups.length ? null : 0),
+    costUnit: single?.costUnit ?? (groups.length || fallbackUnits.size > 1
+      ? null
+      : fallbackUnits.values().next().value ?? (specs.length ? "generations" : "free")),
     candidates: actionable.reduce((sum, i) => sum + i.spec.candidates, 0),
   }
 }

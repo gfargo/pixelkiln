@@ -98,6 +98,22 @@ describe("submit", () => {
     expect(reloaded.version).toBe(2)
   })
 
+  it("persists the provider before awaiting a submission", async () => {
+    const provider = new FakeProvider()
+    const { loaded, specs } = await project()
+    const lock = emptyLock()
+    const originalSubmit = provider.submit.bind(provider)
+    provider.submit = async (...args) => {
+      const saved = await loadLock(lockPath)
+      expect(saved.entries[lockKey("base", args[0].assetId)]?.provider).toBe("fake")
+      return originalSubmit(...args)
+    }
+
+    await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+  })
+
   it("refuses to exceed an explicit budget", async () => {
     const provider = new FakeProvider()
     const { loaded, specs } = await project()
@@ -600,6 +616,34 @@ describe("adopt", () => {
     expect(entry.outputs[0]!.path).toBe("out/tools/anvil.png")
     // Baselined against today's spec, so plan reports ok rather than stale.
     expect((await buildPlan(specs, lock)).items[0]!.state).toBe("ok")
+  })
+
+  it("does not retain a signed preview URL for adopted local bytes", async () => {
+    const provider = new FakeProvider()
+    const bytes = await provider.download(provider.seed({ id: "signed" }).previewUrl!)
+    const signed = "https://cdn.example.test/art.png?X-Amz-Credential=secret&X-Amz-Signature=secret"
+    provider.list = async function* () {
+      yield {
+        id: "signed",
+        prompt: "signed source",
+        width: 32,
+        height: 32,
+        createdAt: "2026-01-01T00:00:00Z",
+        status: "completed",
+        previewUrl: signed,
+        tags: [],
+      }
+    }
+    provider.download = async () => bytes
+    const { specs } = await project({ assets: { anvil: { prompt: "an anvil" } } })
+    await mkdir(path.dirname(specs[0]!.outFile), { recursive: true })
+    await writeFile(specs[0]!.outFile, bytes)
+
+    const lock = emptyLock()
+    expect((await adopt(provider, specs, lock, lockPath, { noCache: true })).matched).toBe(1)
+    expect(lock.entries["base/anvil"]!.sourceUrl).toBeNull()
+    expect(lock.entries["base/anvil"]!.sourceUrls).toEqual([])
+    expect(await readFile(lockPath, "utf8")).not.toContain("secret")
   })
 
   it("reports a remote asset that matches nothing local", async () => {

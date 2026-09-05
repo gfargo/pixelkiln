@@ -439,6 +439,9 @@ export default function Home() {
           </div>
 
           <div className="provider-showcase-links">
+            <TrackedLink className="text-link" id="showcase_mixed_providers" section="provider_showcase" href="/docs/mixed-providers">
+              Use several providers in one project →
+            </TrackedLink>
             <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
               Review the three-provider benchmark →
             </TrackedLink>
