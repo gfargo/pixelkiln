@@ -19,10 +19,12 @@ pixelkiln pack --style ground --output-role tile-00 --output-role tile-01
 pixelkiln pack --style mixed --primary-only
 ```
 
-Manifest mode reads exactly the outputs recorded by the lockfile. Frames sort
-by asset id for byte-stable layouts. Structural sets preserve provider order
-and qualify ids by role (`terrain/tile-03`). The grid cell is the largest source
-sprite; smaller frames retain their real dimensions at the cell's top-left.
+Manifest mode normally reads the outputs recorded by the lockfile. When a style
+declares `quality`, it instead requires every selected refinement record to be
+current and approved, then packs those derived PNGs. Frames sort by asset id for
+byte-stable layouts. Structural sets preserve provider order and qualify ids by
+role (`terrain/tile-03`). The grid cell is the largest source sprite; smaller
+frames retain their real dimensions at the cell's top-left.
 
 All standard non-interlaced PNG color modes and bit depths are decoded and
 normalized to RGBA. Corrupt/interlaced inputs are reported as skipped. If no
@@ -46,10 +48,23 @@ decoding because consumers must have one unambiguous frame per id.
 
 ## Refine
 
-`refine` needs no manifest and works on output from any provider. It calls a
-pinned local Pixel Art Fixer installation, reconstructs the detected native
-grid, applies the supplied palette without dithering, and writes the PNG beside
-a quality companion.
+`refine` can run the profiles declared in a manifest or process one `--from`
+PNG. Both modes call a pinned local Pixel Art Fixer installation, reconstruct
+the detected native grid, apply a closed palette without dithering, and write
+the PNG beside a quality companion.
+
+Manifest mode owns the output path and policy:
+
+```bash
+pixelkiln refine --style environment
+pixelkiln refine check --style environment
+```
+
+It preserves a current pending or approved record on repeat. A profile or source
+change rebuilds the result and resets approval; `--force` deliberately does the
+same for current work.
+
+Path mode is useful for one-off input:
 
 ```bash
 pixelkiln refine \
@@ -66,9 +81,11 @@ policy, audit thresholds and result, plus pending or approved review state.
 hashes. `pixelkiln refine approve` rewrites only the companion after a named
 person completes the native-scale review.
 
-An intentional rerun resets approval to pending. A manual PNG edit, palette or
-tool metadata edit, changed source, or altered approval invalidates the record.
-Use the refined PNG as an asset `source` when later mounting or packaging it.
+An actual rebuild resets approval to pending. A manual PNG edit, palette or tool
+metadata edit, changed source, or altered approval invalidates the record.
+For one-off refinement, use the PNG as an asset `source` when mounting it. A
+manifest quality profile routes approved output into `pack` and `mount`
+automatically and binds the quality record into their provenance.
 
 ## Mount
 
@@ -82,8 +99,10 @@ all other base pixels survive byte-for-byte. A sprite larger than its cell is
 reported and skipped rather than cropped. Two assets cannot own one cell.
 
 Use asset `source` when mounting a palette-remapped, aligned, hand-touched, or
-otherwise post-processed file instead of the raw lock output. Use `outputRole`
-to choose one member of a structural set. See [manifest reference](./MANIFEST.md).
+otherwise post-processed file instead of the raw lock output. A style quality
+profile takes precedence for participating cells, but only after approval. Use
+`outputRole` to choose one member of a structural set. See
+[manifest reference](./MANIFEST.md).
 
 ## Export
 
@@ -122,6 +141,9 @@ Source paths are relative to the companion. Options are recursively key-sorted
 before hashing. The fingerprint covers sources, options, and output hashes.
 Manifest-driven bundles conservatively include the project manifest and
 lockfile, so newly declared or recorded sources make an older artifact stale.
+Profile-driven pack and mount bundles also include one `$quality/<assetId>`
+source per refinement record. Changing an approval or its bound bytes makes the
+downstream bundle stale without hiding which gate changed.
 
 Verify without rebuilding:
 

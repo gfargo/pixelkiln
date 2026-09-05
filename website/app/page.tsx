@@ -15,7 +15,7 @@ export default function Home() {
         name: "PixelKiln",
         url: absoluteUrl("/"),
         description:
-          "Plan costs, review candidates, recover paid work, and package generated pixel art with recorded hashes.",
+          "Plan costs, review candidates, gate derived art, recover paid work, and package pixel art with recorded hashes.",
       },
       {
         "@type": "SoftwareSourceCode",
@@ -27,7 +27,7 @@ export default function Home() {
         programmingLanguage: "TypeScript",
         runtimePlatform: "Node.js",
         description:
-          "A build pipeline that plans provider costs, records human choices, restores paid work, and packages generated pixel art.",
+          "A build pipeline that plans provider costs, records human choices, verifies derived art, restores paid work, and packages pixel art.",
       },
     ],
   };
@@ -177,7 +177,7 @@ export default function Home() {
               <span className="step-number">01</span>
               <div className="step-glyph"><Image src="/sprites/workflow/declare.png" alt="" width={64} height={64} /></div>
               <h3>Declare</h3>
-              <p>Put asset names, prompts, sizes, palettes, references, and output paths in one file.</p>
+              <p>Put asset names, prompts, provider settings, and an optional final-art quality profile in one file.</p>
               <code>pixelkiln.manifest.json</code>
             </article>
             <article>
@@ -191,14 +191,14 @@ export default function Home() {
               <span className="step-number">03</span>
               <div className="step-glyph"><Image src="/sprites/workflow/review.png" alt="" width={64} height={64} /></div>
               <h3>Review</h3>
-              <p>Choose from a local candidate sheet. PixelKiln never asks another model to pick the winner.</p>
+              <p>Choose from a local candidate sheet, then approve the exact refined pixels you are willing to ship.</p>
               <code>pixelkiln pick</code>
             </article>
             <article>
               <span className="step-number">04</span>
               <div className="step-glyph"><Image src="/sprites/workflow/ship.png" alt="" width={64} height={64} /></div>
               <h3>Ship</h3>
-              <p>Verify downloaded pixels, restore missing files, and build repeatable atlases or engine metadata.</p>
+              <p>Build repeatable atlases and engine metadata. Quality-profile styles stay blocked until approval is current.</p>
               <code>pixelkiln pack</code>
             </article>
           </div>
@@ -212,7 +212,8 @@ export default function Home() {
               <p className="section-deck">
                 PixelLab, Retro Diffusion, ComfyUI, and Scenario use the same review,
                 lockfile, and recovery flow. PixelKiln records every candidate,
-                then leaves the visual decision to you.
+                then leaves the visual decision to you. The page preserves native
+                aspect ratios and stays readable on ultrawide displays.
               </p>
               <div className="provider-status" aria-label="Current provider support">
                 <span><i className="status-dot" /> PixelLab · production</span>
@@ -277,7 +278,9 @@ export default function Home() {
               pixel grid, because a large raster can still contain fake pixels.
               Its samples are diagnostics, not finished asset recommendations.
               Scenario shows its first paid integration smoke, not a comparable
-              environment benchmark.
+              environment benchmark. A manifest <code>style.quality</code> profile
+              can apply the same offline palette and approval gate after any
+              supported single-image provider.
             </p>
           </div>
 
@@ -417,7 +420,8 @@ export default function Home() {
                 SDXL Base plus Pixel Art XL found workable compositions, but
                 the raw files only imitated a pixel grid. Pixel Art Fixer
                 recovers editable 1× assets and applies a fixed palette.
-                PixelKiln verifies those mechanical checks. You still judge the
+                A manifest quality profile makes those mechanical checks and
+                approval part of planning and packaging. You still judge the
                 drawing. Build large scenes from small parts that pass review.
               </p>
               <dl>
@@ -567,8 +571,8 @@ export default function Home() {
             </article>
             <article className="capability-card">
               <span className="card-index">03 / AUDIT</span>
-              <h3>Make visual consistency measurable.</h3>
-              <p>Gate palette distance, transparency, color count, outliers, and cache integrity locally or in CI.</p>
+              <h3>Turn accepted pixels into a release gate.</h3>
+              <p>Declare the final palette and grid threshold, record human approval, and block stale or unreviewed art in CI.</p>
               <div className="audit-bars" aria-hidden="true"><span /><span /><span /><span /><span /></div>
             </article>
             <article className="capability-card large">

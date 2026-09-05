@@ -14,7 +14,7 @@ provider you are using. These Markdown files also render at
 | [Set up ComfyUI](./COMFYUI.md) | Bind a local composition workflow and understand the manual quality boundary. |
 | [Set up Scenario](./SCENARIO.md) | Configure hosted models, two-part credentials, CU ceilings, and durable downloads. |
 | [CLI reference](./CLI.md) | Every command and flag, offline/provider requirements, JSON output, and exit behavior. |
-| [Manifest reference](./MANIFEST.md) | Every style and asset field, inheritance, generator-specific constraints, mounting, and schema validation. |
+| [Manifest reference](./MANIFEST.md) | Every style and asset field, quality profiles, generator constraints, mounting, and schema validation. |
 | [Mixed-provider projects](./MIXED_PROVIDERS.md) | Route styles to different providers, set separate budget ceilings, and resume safely from one lockfile. |
 | [Agent workflows](./AGENTS.md) | Install the official skill and pair agent guidance with the deterministic CLI. |
 
@@ -24,9 +24,9 @@ provider you are using. These Markdown files also render at
 |---|---|
 | [Generators](./GENERATORS.md) | Choose between `map`, `1dir`, `pixflux`, and `tiles`; understand measured costs and capability trade-offs. |
 | [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and native-grid recovery. |
-| [Derived artifacts](./ARTIFACTS.md) | Pack, mount, and export; provenance companions; ownership; force takeover; transactional and crash recovery. |
+| [Derived artifacts](./ARTIFACTS.md) | Refine, pack, mount, and export; provenance, approval gates, ownership, and crash recovery. |
 | [Recovery and account safety](./RECOVERY.md) | Restore, caches, adopt, salvage, cross-project claims, tagging, and confirmed purge. |
-| [Quality gates](./QUALITY.md) | Image regression baselines, human review, plan, doctor, audit, cache, and CI usage. |
+| [Quality gates](./QUALITY.md) | Manifest quality profiles, image baselines, human review, audit, cache, and CI usage. |
 | [Versioned recipes](./RECIPES.md) | Install and verify pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 
 ## Internals and extension

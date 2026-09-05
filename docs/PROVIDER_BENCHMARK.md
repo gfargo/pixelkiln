@@ -233,6 +233,13 @@ native-dimension, palette ceiling, and transparency checks. Their checked-in
 quality companions remain `pending` because an automated benchmark cannot
 claim human approval.
 
+The benchmark predates manifest-native quality profiles, so its commands name
+each source and output explicitly. A project can now put the same palette,
+confidence, transparency, and destination rules under `style.quality`, run the
+batch with `pixelkiln refine --style <id>`, and make pack or mount wait for the
+same per-file human approval. This changes workflow enforcement, not the visual
+claim: these benchmark records stay pending.
+
 CI checks those three final PNGs against the committed ComfyUI quality
 baseline. It catches dimension, palette, alpha, edge, isolated-pixel, image,
 and refinement-record drift without contacting a provider. The gate protects

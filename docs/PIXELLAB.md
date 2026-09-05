@@ -58,6 +58,11 @@ pixelkiln gen --budget 1
 Copy the exact estimate from `plan` into `--budget`. PixelLab budgets use
 subscription generations.
 
+If selected stills need a shared final palette or native-grid gate, add
+`style.quality` and run `pixelkiln refine` after download. Those offline settings
+do not change PixelLab's request or cost. `pack` and `mount` then refuse raw or
+unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles).
+
 ## Choose a generator
 
 | Generator | Start here when | Measured cost |

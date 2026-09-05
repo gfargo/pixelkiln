@@ -14,7 +14,8 @@ different provider. `plan`, `doctor`, and pipeline commands route the resolved
 work accordingly. The experimental `retrodiffusion` adapter supports
 still-image `map`/`pixflux`, `tiles` sheets, and `animation` GIF/spritesheet
 work. The experimental `comfyui` adapter runs committed API-format `map`
-workflows on a self-hosted server.
+workflows on a self-hosted server. The experimental `scenario` adapter runs
+hosted still models with Compute Unit preflight and durable asset recovery.
 
 ## Everyday pipeline
 
@@ -42,14 +43,17 @@ pixelkiln plan
 pixelkiln plan --style neon --only anvil,hammer --json --check
 ```
 
-`--check` exits nonzero unless every selected entry is current.
+`--check` exits nonzero unless every selected entry is current. For styles with
+`quality`, current raw output is not enough: each derived PNG must also have a
+current named approval.
 
 ### `doctor`
 
-Validate the manifest, references, lockfile recovery sources, output ownership,
-writability, stale jobs, current plan, credential configuration, and provider
-connectivity. `--dry-run` skips only live connectivity. Supports `--json` and
-exits nonzero for unsafe state.
+Validate the manifest, references, lockfile recovery sources, raw and quality
+output paths, stale jobs, current plan, credential configuration, and provider
+connectivity. A pending or stale quality profile is reported as a warning.
+`--dry-run` skips only live connectivity. Supports `--json` and exits nonzero
+for unsafe state.
 
 ### `gen`
 
@@ -67,6 +71,8 @@ pixelkiln gen --budget pixellab=12 --budget retrodiffusion=0.20 --budget comfyui
 ```
 
 PixelKiln validates the complete budget set before submitting the first group.
+After downloading a style with `quality`, `gen` points to the offline refinement
+step. It does not run or approve that step on the user's behalf.
 
 ### `submit`
 
@@ -81,12 +87,13 @@ be rerun safely after an interrupted session.
 
 ### `pick`
 
-Open the local candidate-review UI for jobs with alternatives. Arrow keys
-navigate, Enter selects, 1–9 choose directly, and 0 leaves a row unresolved.
-Only rows submitted with **Apply selections** are written to the lockfile;
-unchosen rows remain ready for later review, and closing the window applies
+Open the local candidate-review UI for jobs with alternatives. The page keeps
+native aspect ratios, uses exact integer zoom for small art, fits large work,
+and centers the decision surface on wide displays. Arrow keys navigate, Enter
+selects, 1–9 choose directly, and 0 leaves a row unresolved. Only rows submitted
+with **Apply selections** are written to the lockfile. Closing the window applies
 nothing. See the [Getting started guide](GETTING_STARTED.md#start-a-new-project)
-for a screenshot of the actual interface.
+for a screenshot of the interface.
 
 ### `fetch`
 
@@ -253,9 +260,27 @@ pixelkiln audit --style neon --json --check \
 
 ### `refine`
 
-Turn an accepted raster candidate into a native-grid PNG with a fixed palette,
-then attach a review record. This command is provider-neutral and needs no
-manifest.
+Build or verify the quality profile declared by selected manifest styles. This
+work is provider-neutral and offline:
+
+```bash
+pixelkiln refine --style environment --only mountain,fortress
+pixelkiln refine check --style environment --json
+```
+
+Manifest mode reads the final output directory, palette, detector confidence,
+optional transparency floor, and fixer revision from `style.quality`. It uses a
+declared asset `source`, or exactly one intact downloaded PNG from the lockfile.
+Raw provider output stays untouched. A repeated run skips current pending and
+approved records; `--force` rebuilds them and resets approval.
+
+`refine check` exits nonzero until every selected profile result is current and
+approved. `plan` shows the same quality state without changing provider cost or
+generation actionability. `pack` and `mount` fail closed and use only approved
+profile output.
+
+Pass `--from` to refine one PNG without a manifest. Path mode also needs
+`--out` and an explicit palette.
 
 Install the pinned Pixel Art Fixer package into an isolated Python environment
 before the first run. The [ComfyUI guide](./COMFYUI.md#install-the-refiner) has
@@ -271,8 +296,8 @@ pixelkiln refine \
   --fixer-python .pixelkiln/pixelfixer/bin/python
 ```
 
-`refine` runs Pixel Art Fixer at its recorded revision, requires high grid
-confidence by default, reconstructs one stored pixel per detected cell, and
+Both modes run Pixel Art Fixer at its recorded revision, require high grid
+confidence by default, reconstruct one stored pixel per detected cell, and
 maps every visible pixel to the nearest supplied color without dithering. The
 palette size becomes the color-count ceiling. `--min-transparency` can add an
 alpha threshold for isolated assets. Failed checks write nothing.
@@ -292,11 +317,12 @@ pixelkiln refine check \
   --json
 ```
 
-`approve` asks the reviewer to confirm the native 1× and integer-zoom checks.
-Use `--yes` only when that review already happened and the named person is
-recording it non-interactively. `check` exits nonzero when approval is pending
-or when the source, output, palette metadata, fixer revision, or audit record
-has changed. Rerunning `refine` always resets approval to pending.
+`approve` remains record-based because approval belongs to one exact PNG. It
+asks the reviewer to confirm the native 1× and integer-zoom checks. Use `--yes`
+only when that review already happened and the named person is recording it
+non-interactively. `check` exits nonzero when approval is pending or when the
+source, output, palette metadata, fixer revision, or audit record has changed.
+Any actual rebuild resets approval to pending.
 
 `--min-grid-confidence medium` or `low` weakens the structural gate. Do that
 only after inspecting a representative batch. `--fixer-revision` records a
@@ -338,8 +364,10 @@ unreferenced cache data; it does not delete provider objects.
 ### `pack`
 
 Build a deterministic RGBA sprite sheet, JSON atlas, and `.pixelkiln.json`
-provenance companion. Manifest mode reads lock outputs. Explicit-input mode
-needs no manifest:
+provenance companion. Manifest mode reads lock outputs. When the style has a
+quality profile, it requires current human approval, packs the derived PNGs,
+and binds their quality records into sheet provenance. Explicit-input mode needs
+no manifest:
 
 ```bash
 pixelkiln pack --style neon --columns 8
@@ -353,7 +381,8 @@ unambiguous single outputs. These modes are mutually exclusive.
 
 Write sprites into manifest-declared cells, optionally over an existing base
 sheet. Undeclared cells survive byte-for-byte; each declared cell is cleared
-before its sprite is placed.
+before its sprite is placed. A quality profile overrides raw and declared
+sources for participating cells only after its record passes the approval gate.
 
 ### `export`
 
@@ -385,7 +414,7 @@ Print the package version. `-v` is an alias.
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. |
 | `--budget <n\|provider=n>` | submit/gen | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. |
-| `--force` | gen/derived commands/recipe install/quality snapshot | Regenerate current work, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refine rerun resets approval. |
+| `--force` | gen/derived commands/recipe install/quality snapshot | Regenerate current work, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/salvage/refine/recipe/quality | Machine-readable stdout where supported. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
@@ -397,13 +426,13 @@ Print the package version. `-v` is an alias.
 | `--provider <id>` | balance/adopt/salvage/purge/workspace add | Select the account provider for a mixed manifest, or set the workspace catalog's default provider hint. |
 | `--account <label>` | workspace add | Free-form account label, e.g. distinguishing sandboxes. |
 | `--all` | salvage dry run | List every unclaimed object rather than the first 30. |
-| `--from <path>` | init/refine/quality check | Existing source tree for init; source PNG or quality record for refine; baseline for quality check. |
+| `--from <path>` | init/refine/quality check | Existing source tree for init; source PNG or quality record for one-file refine mode; baseline for quality check. Omit it to use manifest `style.quality`. |
 | `--exclude <names>` | init | Directory/name fragments to exclude; repeatable. |
 | `--generator <name>` | init | Generator assigned to the scaffolded style. |
 | `--name <name>` | init | Project name for the scaffolded manifest. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--port <n>` | pick/salvage | Local review server port; otherwise chooses a free port. |
-| `--out <path>` | pack/export/refine/recipe install/quality snapshot | Output base override, final native PNG for refine, exact recipe destination, or quality baseline path. Export requires one selected tileset. |
+| `--out <path>` | pack/export/refine/recipe install/quality snapshot | Output base override, final native PNG for path-mode refine, exact recipe destination, or quality baseline path. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
 | `--format <name>` | export | `generic` (default), `tiled`, or `godot`. |
@@ -430,8 +459,9 @@ Print the package version. `-v` is an alias.
 - Human progress goes to stderr when `salvage --dry-run --json` reserves stdout
   for JSON.
 - `plan --check`, `audit --check`, and `cache --check` are intended as CI gates.
-- `refine check` is a fail-closed gate: pending review or any recorded-byte or
-  metadata drift exits nonzero.
+  Manifest quality profiles also make `plan --check` require current approval.
+- `refine check` is fail-closed in both modes. Pending review, the wrong raw
+  source, or recorded-byte and metadata drift exit nonzero.
 - `recipe verify` exits nonzero for changed metadata/workflows and, when
   `--model-root` is supplied, missing or mismatched models.
 - `quality check` is fail-closed for missing or unreadable images, measurements

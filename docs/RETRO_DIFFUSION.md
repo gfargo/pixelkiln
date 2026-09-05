@@ -65,6 +65,12 @@ Copy the exact USD estimate from `plan` into `--budget`. Before PixelKiln sends
 the paid request, it asks Retro Diffusion for a free authoritative quote and
 stops if that quote exceeds the remaining budget.
 
+For still-image styles, `style.quality` can add the same closed-palette,
+native-grid, and named-approval gate used by every provider. It does not change
+the Retro Diffusion quote or request. Tilesets and animation are excluded until
+refinement can preserve their roles and frames. See
+[Manifest quality profiles](./MANIFEST.md#quality-profiles).
+
 ## Match the style to the workflow
 
 | PixelKiln generator | Retro Diffusion selector | Output |

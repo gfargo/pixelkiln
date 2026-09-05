@@ -129,7 +129,9 @@ The command submits jobs, polls them, opens the local review sheet when a
 generator returns alternatives, downloads the selected images, and updates the
 lockfile. In review, use Left/Right to browse every candidate, Enter to select,
 1–9 for direct choices, 0 to leave a row unresolved, and Up/Down to change
-rows. Closing the sheet without applying discards no provider objects.
+rows. The page preserves non-square aspect ratios, fits large candidates, and
+keeps the review surface readable on ultrawide displays. Closing the sheet
+without applying discards no provider objects.
 
 ![PixelKiln local candidate review UI](../website/public/review-ui-showcase.jpg)
 
@@ -167,9 +169,17 @@ pixelkiln cache --check
 # Generate only the intended slice.
 pixelkiln gen --style neon --only anvil,hammer --budget 80
 
+# When the style declares quality, build and verify its final PNGs.
+pixelkiln refine --style neon
+pixelkiln refine check --style neon
+
 # Rebuild missing files from durable provider references or the local content cache.
 pixelkiln restore
 ```
+
+Manifest refinement prints one record path for each new result. Inspect that PNG
+at 1× and integer zoom, then run `pixelkiln refine approve --from <record>
+--reviewer <name>` before expecting the check or packaging to pass.
 
 Repeated `--style`, `--only`, `--claims`, and `--output-role` flags accumulate;
 comma-separated values also work. Unknown flags are errors, so a misspelled
@@ -181,6 +191,7 @@ Use machine-readable planning and auditing as build gates:
 
 ```bash
 pixelkiln plan --json --check
+pixelkiln refine check --style neon --json
 pixelkiln audit --json --check --max-distance 35 --max-colors 128
 ```
 
@@ -212,8 +223,8 @@ Commit:
 - `pixelkiln.manifest.json`
 - `pixelkiln.lock.json`
 - generated art and any derived sheets/export metadata your application uses
-- `.pixelkiln.json` provenance companions written beside managed sheets,
-  mounted trees, and tileset exports
+- `.pixelkiln.json` provenance companions written beside refined art, managed
+  sheets, mounted trees, and tileset exports
 
 Do not commit:
 

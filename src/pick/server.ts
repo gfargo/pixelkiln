@@ -46,7 +46,8 @@ export async function runPicker(
         prompt: entry.prompt,
         reviewObjectId: entry.reviewObjectId,
         frameUrls: state.candidateUrls,
-        size: Math.max(entry.width, entry.height),
+        width: entry.width,
+        height: entry.height,
       })
     } catch (err) {
       log(`  could not load candidates for ${key}: ${err instanceof Error ? err.message : String(err)}`)

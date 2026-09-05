@@ -18,14 +18,13 @@ import {
   transparencyRatio,
   type DecodedPng,
 } from "../png.ts"
+import type { GridConfidence } from "../types.ts"
 import { colorDistance } from "./audit.ts"
 
 const execFileAsync = promisify(execFile)
 
 export const PIXEL_ART_FIXER_URL = "https://github.com/Retro-Diffusion/pixel-art-fixer"
 export const PIXEL_ART_FIXER_REVISION = "ef376e57e1c272633ca2dbf5f29ec3fcf6596465"
-
-export type GridConfidence = "low" | "medium" | "high"
 
 export interface PixelArtFixerDetection {
   stepX: number
@@ -126,6 +125,7 @@ export interface QualityCheck {
   approved: boolean
   auditSafe: boolean
   record: string
+  source: string
   output: string
   options: RefineRecordOptions
   reasons: string[]
@@ -142,7 +142,7 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function qualityRecordPath(output: string): string {
+export function qualityRecordPath(output: string): string {
   if (!/\.png$/i.test(output)) throw new Error("Refined output must be a .png file.")
   return output.replace(/\.png$/i, ".pixelkiln.json")
 }
@@ -237,6 +237,11 @@ function normalizePalette(values: string[]): Array<{ hex: string; r: number; g: 
     throw new Error(`A refinement palette must contain 2–256 unique colors; got ${colors.size}.`)
   }
   return [...colors.values()]
+}
+
+/** Canonical lowercase palette identity shared by manifest quality profiles. */
+export function normalizeRefinementPalette(values: string[]): string[] {
+  return normalizePalette(values).map((color) => color.hex)
 }
 
 /** Map every visible pixel to the nearest explicit color, without dithering. */
@@ -484,6 +489,9 @@ export async function checkQualityRecord(recordPath: string): Promise<QualityChe
   const manifest = await readArtifactBundleManifest(record)
   const options = parseRecordOptions(manifest, record)
   const verification = await verifyArtifactBundle(record)
+  const source = manifest.sources.length === 1
+    ? path.resolve(path.dirname(record), manifest.sources[0]!.path)
+    : ""
   const output = manifest.outputs.length === 1
     ? path.resolve(path.dirname(record), manifest.outputs[0]!.path)
     : ""
@@ -501,6 +509,7 @@ export async function checkQualityRecord(recordPath: string): Promise<QualityChe
     approved: options.review.status === "approved",
     auditSafe: options.audit.safe,
     record,
+    source,
     output,
     options,
     reasons,

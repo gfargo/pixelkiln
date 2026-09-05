@@ -3,7 +3,7 @@
 PixelKiln separates provider mechanics from the project state machine:
 
 ```text
-manifest + lock + planning + review + recovery + artifact pipelines
+manifest + lock + planning + review + recovery + quality + artifact pipelines
 ──────────────────── Provider interface ─────────────────────────
 PixelLabProvider   RetroDiffusionProvider   ComfyUIProvider   ScenarioProvider   FakeProvider
 ```
@@ -24,6 +24,20 @@ runtime graph can then be submitted without putting a machine-specific path in
 the stable identity.
 
 See [manifest reference](./MANIFEST.md).
+
+## Derived quality state
+
+A style quality profile resolves beside the paid spec but is excluded from its
+hash. This keeps two questions separate: whether the provider output is current,
+and whether the derived PNG is ready to ship. A palette or threshold change
+cannot schedule another generation.
+
+The quality record binds one raw/source PNG, one refined PNG, the fixer revision,
+detected grid, palette, audit, and named approval. Planning and doctor inspect
+that record without changing it. Pack and mount require it to be current and
+approved, use its PNG as input, and include the record in downstream provenance.
+Tiles and animation are excluded until this layer can preserve structural roles
+and frame identity.
 
 ## Lockfile
 
@@ -98,7 +112,7 @@ Stale advisory locks are recoverable after their safety window.
 
 ## Derived artifact transactions
 
-Pack, mount, and export use a separate managed bundle writer:
+Refine, pack, mount, and export use a separate managed bundle writer:
 
 1. Recover an interrupted prior transaction.
 2. Validate provenance ownership and manual edits.
@@ -140,13 +154,13 @@ and RD Plus single-candidate still lifecycles have passed end to end. Its
 multi-candidate, tileset, GIF, and spritesheet paths retain mocked coverage
 pending paid live smokes. Its durable `retrodiffusion://` references refresh
 temporary result URLs when recovery cannot use the local cache.
-`ComfyUIProvider` is an experimental self-hosted
-adapter. It resolves and hashes an API-format workflow offline, submits an
-input-bound clone, polls local history, and stores portable `comfyui://` output
-references so a lockfile does not retain a workstation hostname. It supports
-one still-image output node today. A core-node Stable Diffusion 1.5 graph has
-passed single-image generation, four-candidate queue detection, and cache-only
-recovery on Apple MPS. `ScenarioProvider` is an experimental hosted still-image
+`ComfyUIProvider` is an experimental self-hosted adapter. It resolves and hashes
+an API-format workflow offline, submits an input-bound clone, polls local
+history, and stores portable `comfyui://` output references so a lockfile does
+not retain a workstation hostname. It supports one still-image output node
+today. Live Apple MPS runs cover a small Stable Diffusion 1.5 plumbing smoke and
+the SDXL Base plus Pixel Art XL composition benchmark, including four-candidate
+review, cache recovery, and native-grid refinement. `ScenarioProvider` is an experimental hosted still-image
 adapter. It keeps offline planning conservative, records the provider's free
 submit-time Compute Unit quote, and stores durable `scenario://` job and asset
 references that refresh signed URLs. Authentication and CU preflight have

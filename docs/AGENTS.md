@@ -29,9 +29,10 @@ With the skill loaded, an agent should:
    `provider=amount` ceiling for every paid provider in a mixed run.
 6. Leave artwork selection in the local `pick` page unless the user gives a
    specific selection rule.
-7. Treat ComfyUI output as source material until native-grid, final-palette,
-   prompt-coverage, and human 1× checks pass. Use `pixelkiln refine` and require
-   `refine check` before packaging refined output.
+7. When a style declares `quality`, run manifest-mode `pixelkiln refine`, leave
+   approval to a named human reviewing the exact PNG, and require `refine check`
+   before packaging. The rule is provider-neutral; ComfyUI still needs its extra
+   prompt-coverage and composition review.
 8. Commit the manifest, lockfile, generated output, and artifact companions, but
    never credentials or `.pixelkiln/` caches.
 9. Prefer a version-pinned recipe when one matches the provider and task. Verify

@@ -40,6 +40,10 @@ selected composition to the requested output size. Its declared stage is
 `composition-source`, not production-ready art. Reject weak compositions, then
 recover the native grid, apply the final palette, and complete the 1× human
 review described in the [ComfyUI guide](COMFYUI.md#quality-first-workflow).
+The recipe cannot choose your game's palette. Add a manifest `quality` block to
+the installed style once the project palette and final output directory are
+known; the recipe's recommended native range and palette range help choose that
+policy but do not enforce it by themselves.
 
 ## Verify the recipe and workstation
 
