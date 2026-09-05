@@ -269,6 +269,37 @@
               "source": {
                 "type": "string"
               },
+              "revision": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "image-to-image",
+                      "inpaint",
+                      "outpaint"
+                    ]
+                  },
+                  "from": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mask": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "strength": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "mode",
+                  "from"
+                ],
+                "additionalProperties": false
+              },
               "outputRole": {
                 "type": "string",
                 "minLength": 1

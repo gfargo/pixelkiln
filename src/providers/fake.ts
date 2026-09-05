@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import type { BalanceInfo, CostEstimate, JobState, Provider, RemoteAsset } from "../provider.ts"
-import type { Generator, ResolvedSpec } from "../types.ts"
+import type { Generator, ResolvedSpec, RevisionMode } from "../types.ts"
 
 /**
  * An in-memory Provider for tests.
@@ -63,6 +63,10 @@ export class FakeProvider implements Provider {
 
   supports(generator: Generator): boolean {
     return generator === "1dir" || generator === "map"
+  }
+
+  supportsRevision(_mode: RevisionMode): boolean {
+    return true
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {

@@ -1,0 +1,194 @@
+{
+  "version": 2,
+  "entries": {
+    "winter-revision/fortress-winter": {
+      "styleId": "winter-revision",
+      "assetId": "fortress-winter",
+      "specHash": "320d6e17579629912f5a73dbd69bfc7c7b72f21d3a141b97775dfcd3dc501306",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game asset, crisp clusters, preserve the source silhouette, preserve the fortress footprint, towers, stairs, entrance, and viewpoint; add snow caps, ice, and cold blue winter shadows, clean readable forms, no frame",
+      "width": 128,
+      "height": 128,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "fortress-source",
+        "sourceSha256": "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200",
+        "strength": 0.25
+      },
+      "jobId": "00666d92-7e71-401c-91cf-aff5828bb8d8#9",
+      "reviewObjectId": null,
+      "objectId": "00666d92-7e71-401c-91cf-aff5828bb8d8#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-sdxl-img2img_00001_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-sdxl-img2img_00001_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "raw/fortress-winter.png",
+          "sha256": "af8897aa735285f611a3500a1d5775674193e63a5593a1c8e24d13998f367f29",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "revision": {
+            "mode": "image-to-image",
+            "sourceAssetId": "fortress-source",
+            "sourceSha256": "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200",
+            "strength": 0.25
+          },
+          "promptId": "00666d92-7e71-401c-91cf-aff5828bb8d8",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "../../../recipes/comfyui/pixel-art-xl-img2img/1.0.0/workflow-api.json",
+          "workflowSha256": "0e575a5a7e18b9730799edc2cc423db0caa586574a719a8ac601dcc17b340541",
+          "files": [
+            {
+              "filename": "comfyui-sdxl-img2img_00001_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-05T20:23:00.166Z",
+      "downloadedAt": "2026-09-05T20:24:40.579Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    },
+    "winter-revision/fortress-winter-040": {
+      "styleId": "winter-revision",
+      "assetId": "fortress-winter-040",
+      "specHash": "9ba0647ada8f5e3f0a4a1434f11ffb3cc5201b9409716a56f66dbd028e5d0c55",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game asset, crisp clusters, preserve the source silhouette, preserve the fortress footprint, towers, stairs, entrance, and viewpoint; turn it into a snowbound winter fortress with bright white snow caps, icicles, and cold blue shadows, clean readable forms, no frame",
+      "width": 128,
+      "height": 128,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "fortress-source",
+        "sourceSha256": "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200",
+        "strength": 0.4
+      },
+      "jobId": "b62053c8-43d1-4467-9371-803d79746b45#9",
+      "reviewObjectId": null,
+      "objectId": "b62053c8-43d1-4467-9371-803d79746b45#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-sdxl-img2img_00002_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-sdxl-img2img_00002_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "raw/fortress-winter-040.png",
+          "sha256": "ab8f7472669709a5a36cd2cc4ca2c4ab5cecc8634c7195d4a0aa19ceb810b16e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "revision": {
+            "mode": "image-to-image",
+            "sourceAssetId": "fortress-source",
+            "sourceSha256": "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200",
+            "strength": 0.4
+          },
+          "promptId": "b62053c8-43d1-4467-9371-803d79746b45",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "../../../recipes/comfyui/pixel-art-xl-img2img/1.0.0/workflow-api.json",
+          "workflowSha256": "0e575a5a7e18b9730799edc2cc423db0caa586574a719a8ac601dcc17b340541",
+          "files": [
+            {
+              "filename": "comfyui-sdxl-img2img_00002_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-05T20:25:30.737Z",
+      "downloadedAt": "2026-09-05T20:27:06.118Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    },
+    "winter-revision/fortress-winter-060": {
+      "styleId": "winter-revision",
+      "assetId": "fortress-winter-060",
+      "specHash": "668bb37c07a70c5b1f61bc9d5bfc5b83cb0b81d3a6895d60e4ba9162318e774a",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixel art, polished 16-bit game asset, crisp clusters, preserve the source silhouette, preserve the fortress footprint and isometric viewpoint; a bright snowbound winter fortress, heavy white snow on every roof and ledge, blue ice, icicles, cold daylight, clean readable forms, no frame",
+      "width": 128,
+      "height": 128,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "fortress-source",
+        "sourceSha256": "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200",
+        "strength": 0.6
+      },
+      "jobId": "338667bd-4dd6-4d89-86d1-a21e0d249b3e#9",
+      "reviewObjectId": null,
+      "objectId": "338667bd-4dd6-4d89-86d1-a21e0d249b3e#9#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "comfyui://output?filename=comfyui-sdxl-img2img_00003_.png&subfolder=pixelkiln&type=output",
+      "sourceUrls": [
+        {
+          "url": "comfyui://output?filename=comfyui-sdxl-img2img_00003_.png&subfolder=pixelkiln&type=output",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "raw/fortress-winter-060.png",
+          "sha256": "e13b7452105d2a19dae65cac88c8f694b3a2222cc9a696de24ced36ad159adb3",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "comfyui": {
+          "revision": {
+            "mode": "image-to-image",
+            "sourceAssetId": "fortress-source",
+            "sourceSha256": "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200",
+            "strength": 0.6
+          },
+          "promptId": "338667bd-4dd6-4d89-86d1-a21e0d249b3e",
+          "outputNodeId": "9",
+          "outputCount": 1,
+          "workflowFile": "../../../recipes/comfyui/pixel-art-xl-img2img/1.0.0/workflow-api.json",
+          "workflowSha256": "0e575a5a7e18b9730799edc2cc423db0caa586574a719a8ac601dcc17b340541",
+          "files": [
+            {
+              "filename": "comfyui-sdxl-img2img_00003_.png",
+              "subfolder": "pixelkiln",
+              "type": "output"
+            }
+          ]
+        }
+      },
+      "submittedAt": "2026-09-05T20:28:02.348Z",
+      "downloadedAt": "2026-09-05T20:29:27.765Z",
+      "cost": 0,
+      "costUnit": "free",
+      "provider": "comfyui"
+    }
+  }
+}

@@ -5,6 +5,7 @@ import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
 import { inspectQualityProfile, type QualityProfileInspection } from "./quality-profile.ts"
+import { inspectRevisionReadiness } from "./revision.ts"
 
 export type PlanState =
   | "ok" // spec unchanged, file present and matching — nothing to do
@@ -14,6 +15,7 @@ export type PlanState =
   | "orphaned" // the bytes that should be on disk are gone or altered
   | "in-flight" // submitted, not yet downloaded
   | "recoverable" // generation succeeded; download can be retried without spending
+  | "blocked" // a declared revision input is missing, stale, or not approved
   | "failed"
 
 /**
@@ -81,7 +83,11 @@ export async function buildPlan(
     let state: PlanState
     let reason: string
 
-    if (opts.force) {
+    const revision = await inspectRevisionReadiness(spec, lock)
+    if (revision && !revision.ready) {
+      state = "blocked"
+      reason = revision.reason
+    } else if (opts.force) {
       state = "missing"
       reason = "--force"
     } else if (!entry && spec.source) {
@@ -194,7 +200,7 @@ export async function buildPlan(
 export function summarize(plan: Plan): Record<PlanState, number> {
   const counts = {
     ok: 0, missing: 0, untracked: 0, stale: 0, orphaned: 0, "in-flight": 0,
-    recoverable: 0, failed: 0,
+    recoverable: 0, blocked: 0, failed: 0,
   } as Record<PlanState, number>
   for (const item of plan.items) counts[item.state]++
   return counts

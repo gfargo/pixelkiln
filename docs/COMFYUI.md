@@ -2,7 +2,8 @@
 
 PixelKiln can run a committed ComfyUI workflow on a self-hosted server. This
 adapter is experimental. It supports still-image `map` jobs, one or more review
-candidates, local provenance, and cache-backed recovery. A core-node Stable
+candidates, controlled image-to-image/inpaint inputs, local provenance, and
+cache-backed recovery. A core-node Stable
 Diffusion 1.5 workflow has passed single-image generation and a four-candidate
 review queue on Apple MPS. An SDXL composition workflow has also passed four
 building and environment renders. ComfyUI Cloud is not part of this release.
@@ -95,10 +96,76 @@ exported JSON:
 - the positive text encoder's prompt input;
 - the latent image width, height, and batch-size inputs;
 - the sampler seed input, when the PixelKiln style declares a seed;
+- the source `LoadImage` input for a revision;
+- the mask `LoadImage` input for inpainting;
+- the sampler denoise/strength input when the asset declares strength;
 - the final `SaveImage` node.
 
 Node IDs are workflow-specific. Do not copy IDs from an example without
 checking the exported file.
+
+## Controlled revisions
+
+Install the first bundled image-to-image graph with:
+
+```bash
+pixelkiln recipe install comfyui/pixel-art-xl-img2img@1.0.0
+pixelkiln recipe verify \
+  pixelkiln-recipes/comfyui/pixel-art-xl-img2img/1.0.0 \
+  --model-root /path/to/ComfyUI/models
+```
+
+Keep the parent and revision as separate asset ids:
+
+```jsonc
+{
+  "assets": {
+    "tower-rough": {
+      "prompt": "rough stone tower",
+      "source": "concepts/tower.png"
+    },
+    "tower-snow": {
+      "prompt": "preserve the silhouette; add snow and cold blue shadows",
+      "width": 96,
+      "height": 96,
+      "revision": {
+        "mode": "image-to-image",
+        "from": "tower-rough",
+        "strength": 0.3
+      }
+    }
+  }
+}
+```
+
+The ComfyUI options accept `sourceImage`, `maskImage`, and `strength` bindings
+in addition to the ordinary prompt, dimensions, batch, and seed bindings.
+`sourceImage` is required for every revision. Inpainting also requires a PNG
+mask in `asset.revision.mask` and a `maskImage` binding. If the workflow omits
+width and height bindings, the requested output must keep the source
+dimensions.
+
+PixelKiln hashes and checks the parent first. A generated parent must be a
+current downloaded output. If its style declares `quality`, the approved
+quality PNG becomes the input and a pending approval blocks the child. At
+submission, PixelKiln checks the bytes again, uploads them to ComfyUI under a
+content-addressed `pixelkiln/` filename, and binds a clone of the committed
+workflow. The review page shows the parent beside all candidates.
+
+The bundled 1.0.0 graph uses the same SDXL Base and Pixel Art XL files as the
+environment recipe. It is square-only: it expands the source onto a 1024×1024
+working canvas and reduces the decoded result to the requested dimensions. Its
+workflow and transport contract are covered by automated tests. A live Apple
+MPS smoke at strengths `0.25`, `0.4`, and `0.6` preserved the broad fortress
+shape but barely produced the requested snow, removed the source transparency,
+and raised the visible palette from 15 colors to 4,208–5,224. Use it as a
+starting graph, not proof that the result is ready to ship. Reject weak prompt
+coverage and silhouette drift, then run the normal alpha, grid, palette, and
+approval steps. The exact files and lock provenance are in the
+[controlled-revision smoke](../benchmarks/provider-revisions/comfyui/README.md).
+
+Read [Controlled asset revisions](REVISIONS.md) for dependency states,
+invalidation, provenance, and the current outpaint limit.
 
 The repository includes a working core-node
 [smoke project](../examples/comfyui/README.md). It uses the public checkpoint

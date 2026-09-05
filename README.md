@@ -42,7 +42,7 @@ PixelKiln keeps the missing record:
 - a committed manifest defines assets, styles, generators, budgets, and output;
 - a committed lockfile maps each style/asset to paid provider work and exact
   output hashes;
-- planning distinguishes missing, stale, recoverable, in-flight, untracked, and
+- planning distinguishes blocked, missing, stale, recoverable, in-flight, untracked, and
   manually changed files before money is spent;
 - local review keeps human judgment where it matters, choosing artwork;
 - content-addressed recovery prevents a transient URL failure from buying the
@@ -56,6 +56,7 @@ PixelKiln keeps the missing record:
 |---|---|
 | Plan and budget | Offline manifest/lock/disk diff, provider-grouped estimates, keyed mixed-provider budget ceilings, JSON/CI gate. |
 | Generate and review | Resumable submit/poll/pick/fetch pipeline with a fast local candidate sheet. |
+| Controlled revisions | Hashed image-to-image/inpaint lineage, fail-closed parent approval, and source-versus-candidate review; ComfyUI is the first adapter. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Validated local content cache, durable provider-reference restore, account object-hash cache, and resumable jobs. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
@@ -342,7 +343,8 @@ console.log(plan.groups, plan.actionable.length)
 ```
 
 The package also exports audit and image-regression gates, quality-profile
-inspection and refinement, lock/output helpers, provider contracts, sprite packing/mounting, tile
+inspection and refinement, revision-readiness checks, lock/output helpers,
+provider contracts, sprite packing/mounting, tile
 exporters, managed artifact writes, and offline provenance verification. See
 [Library API](./docs/LIBRARY.md).
 
@@ -357,6 +359,7 @@ exporters, managed artifact writes, and offline provenance verification. See
 | [Set up ComfyUI](./docs/COMFYUI.md) | Experimental self-hosted server, workflow bindings, local cost semantics, and limits. |
 | [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, review, and durable downloads. |
 | [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
+| [Controlled revisions](./docs/REVISIONS.md) | Image-to-image/inpaint parents, masks, fail-closed readiness, provenance, and ComfyUI bindings. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Style/asset fields, quality profiles, and generator constraints. |
 | [Mixed-provider projects](./docs/MIXED_PROVIDERS.md) | Per-style routing, provider-keyed budgets, recovery, and account commands. |

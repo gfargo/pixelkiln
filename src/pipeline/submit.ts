@@ -9,6 +9,7 @@ import { saveLock, upsert } from "../lock.ts"
 import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
 import type { Lock, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
+import { requireRevisionReady } from "./revision.ts"
 
 /**
  * Two distinct limits, easy to conflate:
@@ -134,6 +135,10 @@ export async function submit(
     const since = Date.now() - lastSubmitAt
     if (since < spacing) await sleep(spacing - since)
 
+    // Planning already checked this dependency, but inputs can change while a
+    // long batch waits for a provider slot. Recheck at the spending boundary.
+    await requireRevisionReady(spec, lock)
+
     // Record intent before spending, so an interrupted run stays diagnosable.
     upsert(lock, key, {
       styleId: spec.styleId,
@@ -144,6 +149,15 @@ export async function submit(
       prompt: spec.prompt,
       width: spec.width,
       height: spec.height,
+      revision: spec.revision
+        ? {
+            mode: spec.revision.mode,
+            sourceAssetId: spec.revision.sourceAssetId,
+            sourceSha256: spec.revision.sourceSha256!,
+            ...(spec.revision.maskSha256 ? { maskSha256: spec.revision.maskSha256 } : {}),
+            ...(spec.revision.strength == null ? {} : { strength: spec.revision.strength }),
+          }
+        : null,
       status: "pending",
       jobId: null,
       objectId: null,

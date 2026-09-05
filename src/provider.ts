@@ -1,4 +1,4 @@
-import type { Generator, ResolvedSpec, ResolvedStyleImage } from "./types.ts"
+import type { Generator, ResolvedSpec, ResolvedStyleImage, RevisionMode } from "./types.ts"
 import type { MediaType } from "./media.ts"
 
 /**
@@ -195,6 +195,9 @@ export interface Provider {
 
   /** False for a generator this backend cannot express (e.g. non-square). */
   supports(generator: Generator): boolean
+
+  /** True only when the adapter can bind and submit this controlled edit mode. */
+  supportsRevision?(mode: RevisionMode): boolean
 
   /** Never performs I/O — `plan` must stay free and offline. */
   estimate(spec: ResolvedSpec): CostEstimate

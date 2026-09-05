@@ -351,7 +351,50 @@ credentials, cost semantics, recovery, and the paid live-test boundary.
 | `tags` | string array, `[]` | Asset tags combined with style tags. |
 | `cell` | `[column,row]` | Non-negative stable grid cell used by `mount`. |
 | `source` | string | Manifest-relative post-processed/hand-drawn source used by `mount` instead of lock output. |
+| `revision` | object | Generate a new asset from another asset's current bytes. `source` and `revision` are mutually exclusive. |
 | `outputRole` | string | Select one member of a structural output set for mounting. |
+
+## Controlled revisions
+
+```jsonc
+{
+  "assets": {
+    "keep-rough": {
+      "prompt": "rough mountain keep",
+      "source": "concepts/keep.png"
+    },
+    "keep-winter": {
+      "prompt": "preserve the keep silhouette; add snow and ice",
+      "width": 96,
+      "height": 96,
+      "revision": {
+        "mode": "image-to-image",
+        "from": "keep-rough",
+        "strength": 0.3
+      }
+    }
+  }
+}
+```
+
+| Revision field | Type | Meaning |
+|---|---|---|
+| `mode` | enum, required | `image-to-image`, `inpaint`, or `outpaint`. The selected provider must opt into the mode. |
+| `from` | asset id, required | Parent asset in the same style. Self-references, unknown ids, and cycles are rejected. |
+| `mask` | string | Manifest-relative PNG required for `inpaint`; rejected for the other modes. Its dimensions must match an available source. |
+| `strength` | number 0–1 | Workflow edit/denoise strength. Interpretation is provider- and model-specific. |
+
+The parent may use committed `source`, downloaded generated output, or a
+current approved quality output. Parent and mask hashes participate in the
+child spec hash; file paths do not. `plan` reports `blocked` and schedules no
+spend until every dependency is current. The check repeats immediately before
+submission.
+
+ComfyUI is the first adapter with revision support. Its workflow must bind the
+source image and, when applicable, mask and strength. Other built-in providers
+reject the revision during offline resolution. See
+[Controlled asset revisions](REVISIONS.md) for the full gate and
+[Set up ComfyUI](COMFYUI.md#controlled-revisions) for workflow details.
 
 ## Prompt and override resolution
 
@@ -362,12 +405,14 @@ For each participating style/asset pair:
 3. Apply the style prefix and suffix.
 4. Apply generator dimensions and the effective provider's settings.
 5. Merge style and asset tags.
-6. Derive a deterministic spec hash from every setting that changes generated
-   pixels, including style-image hashes.
+6. Resolve and hash revision parents and masks, when declared.
+7. Derive a deterministic spec hash from every setting that changes generated
+   pixels, including style-image and revision-input hashes.
 
 Project root, output path, and tags are excluded from the pixel identity, so
 moving a checkout or retagging does not buy new art. Prompt, size, palette,
-seed, view, provider choice, and reference-image bytes do change identity.
+seed, view, provider choice, reference-image bytes, and revision input bytes do
+change identity.
 
 ## Stable-cell mounting
 

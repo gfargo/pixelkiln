@@ -56,7 +56,7 @@ export async function workspaceClaims(ws: Workspace, dir: string): Promise<Works
 function emptyStateCounts(): Record<PlanState, number> {
   return {
     ok: 0, missing: 0, untracked: 0, stale: 0, orphaned: 0, "in-flight": 0,
-    recoverable: 0, failed: 0,
+    recoverable: 0, blocked: 0, failed: 0,
   }
 }
 

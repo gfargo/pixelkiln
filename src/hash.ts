@@ -18,7 +18,7 @@ export async function sha256File(path: string): Promise<string> {
 
 /**
  * Identity of a spec: everything that would change the generated image.
- * Project root, `outFile`, `source`, and `tags` are deliberately excluded —
+ * Project root, `outFile`, committed `source`, and `tags` are deliberately excluded —
  * moving a checkout, renaming the destination, swapping the committed art a
  * `mount` places, or retagging should not regenerate art.
  *
@@ -66,6 +66,15 @@ export function specHash(
       tileFeature: spec.tileFeature,
       outlineMode: spec.outlineMode,
       styleImages: styleImageHashes,
+      revision: spec.revision
+        ? {
+            mode: spec.revision.mode,
+            from: spec.revision.sourceAssetId,
+            sourceSha256: spec.revision.sourceSha256,
+            maskSha256: spec.revision.maskSha256,
+            strength: spec.revision.strength,
+          }
+        : undefined,
     }),
   )
 }

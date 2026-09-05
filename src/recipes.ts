@@ -51,10 +51,13 @@ export const RecipeSchema = z.object({
     numImages: z.number().int().min(1).max(16),
     bindings: z.object({
       prompt: RecipeBindingSchema,
-      width: RecipeBindingSchema,
-      height: RecipeBindingSchema,
-      batchSize: RecipeBindingSchema,
+      width: RecipeBindingSchema.optional(),
+      height: RecipeBindingSchema.optional(),
+      batchSize: RecipeBindingSchema.optional(),
       seed: RecipeBindingSchema.optional(),
+      sourceImage: RecipeBindingSchema.optional(),
+      maskImage: RecipeBindingSchema.optional(),
+      strength: RecipeBindingSchema.optional(),
     }).strict(),
   }).strict().optional(),
   quality: z.object({

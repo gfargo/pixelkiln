@@ -411,13 +411,64 @@
                     "input"
                   ],
                   "additionalProperties": false
+                },
+                "sourceImage": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "input": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "input"
+                  ],
+                  "additionalProperties": false
+                },
+                "maskImage": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "input": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "input"
+                  ],
+                  "additionalProperties": false
+                },
+                "strength": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "input": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "input"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [
-                "prompt",
-                "width",
-                "height",
-                "batchSize"
+                "prompt"
               ],
               "additionalProperties": false
             }

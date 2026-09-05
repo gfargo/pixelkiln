@@ -280,7 +280,9 @@ export default function Home() {
               Scenario shows its first paid integration smoke, not a comparable
               environment benchmark. A manifest <code>style.quality</code> profile
               can apply the same offline palette and approval gate after any
-              supported single-image provider.
+              supported single-image provider. ComfyUI is also the first
+              adapter for controlled revisions: parent and mask bytes are
+              hashed before a workflow can run.
             </p>
           </div>
 
@@ -427,7 +429,7 @@ export default function Home() {
               <dl>
                 <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
                 <div><dt>Quality target</dt><dd>48–128px native per part</dd></div>
-                <div><dt>Best fit</dt><dd>Local composition and custom graph experiments</dd></div>
+                <div><dt>Best fit</dt><dd>Local composition, controlled revisions, and custom graphs</dd></div>
                 <div><dt>Readiness</dt><dd>Refinement automated; art review required</dd></div>
               </dl>
               <div className="provider-card-links">
@@ -436,6 +438,12 @@ export default function Home() {
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">
                   Set up ComfyUI →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_comfyui_revisions" section="provider_showcase" href="/docs/revisions">
+                  Revise an existing asset →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_comfyui_revision_smoke" section="provider_showcase" href="https://github.com/gfargo/pixelkiln/tree/main/benchmarks/provider-revisions/comfyui" external>
+                  Inspect the revision smoke ↗
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_comfyui_site" section="provider_showcase" href="https://www.comfy.org/" external>
                   Visit ComfyUI ↗

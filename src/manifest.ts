@@ -43,7 +43,36 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
         unknownReferences.push(`assets.${assetId}.promptByStyle: unknown style "${styleId}"`)
       }
     }
+    if (asset.revision) {
+      if (!parsed.data.assets[asset.revision.from]) {
+        unknownReferences.push(
+          `assets.${assetId}.revision.from: unknown asset "${asset.revision.from}"`,
+        )
+      } else if (asset.revision.from === assetId) {
+        unknownReferences.push(`assets.${assetId}.revision.from: an asset cannot revise itself`)
+      }
+    }
   }
+  const visiting = new Set<string>()
+  const visited = new Set<string>()
+  const visitRevision = (assetId: string, chain: string[]) => {
+    if (visited.has(assetId)) return
+    if (visiting.has(assetId)) {
+      const start = chain.indexOf(assetId)
+      unknownReferences.push(
+        `assets.${assetId}.revision.from: revision cycle ${[...chain.slice(start), assetId].join(" -> ")}`,
+      )
+      return
+    }
+    visiting.add(assetId)
+    const parent = parsed.data.assets[assetId]?.revision?.from
+    if (parent && parent !== assetId && parsed.data.assets[parent]) {
+      visitRevision(parent, [...chain, assetId])
+    }
+    visiting.delete(assetId)
+    visited.add(assetId)
+  }
+  for (const assetId of Object.keys(parsed.data.assets)) visitRevision(assetId, [])
   if (unknownReferences.length) {
     throw new Error(`Manifest at ${abs} is invalid:\n${unknownReferences.map((i) => `  ${i}`).join("\n")}`)
   }
@@ -62,7 +91,10 @@ export async function resolveSpecs(
     styles?: string[]
     assets?: string[]
     /** Optional provider makes offline plan cost/candidate estimates adapter-owned. */
-    provider?: Pick<Provider, "supports" | "estimate" | "validate" | "resolveOptions" | "id">
+    provider?: Pick<
+      Provider,
+      "supports" | "supportsRevision" | "estimate" | "validate" | "resolveOptions" | "id"
+    >
   },
 ): Promise<ResolvedSpec[]> {
   const { manifest, root } = loaded
@@ -70,7 +102,10 @@ export async function resolveSpecs(
   // library callers and diagnostics. Normal manifest resolution constructs
   // one offline adapter per effective style provider.
   const providerOverride = filter?.provider
-  const providers = new Map<string, Pick<Provider, "supports" | "estimate" | "validate" | "resolveOptions" | "id">>()
+  const providers = new Map<string, Pick<
+    Provider,
+    "supports" | "supportsRevision" | "estimate" | "validate" | "resolveOptions" | "id"
+  >>()
   const providerFor = (id: string) => {
     if (providerOverride) return providerOverride
     let provider = providers.get(id)
@@ -95,6 +130,18 @@ export async function resolveSpecs(
   for (const unknownAsset of filter?.assets ?? []) {
     if (!manifest.assets[unknownAsset]) {
       throw new Error(`Unknown asset "${unknownAsset}".`)
+    }
+  }
+
+  const requestedAssetIds = new Set(filter?.assets?.length
+    ? filter.assets
+    : Object.keys(manifest.assets))
+  const resolutionAssetIds = new Set(requestedAssetIds)
+  for (const assetId of [...requestedAssetIds]) {
+    let current = manifest.assets[assetId]?.revision?.from
+    while (current && !resolutionAssetIds.has(current)) {
+      resolutionAssetIds.add(current)
+      current = manifest.assets[current]?.revision?.from
     }
   }
 
@@ -138,8 +185,14 @@ export async function resolveSpecs(
       styleImageDimensions.push(loadedImage)
     }
 
+    const resolvedImages = style.styleImages.map((image) => {
+      const hit = styleImageCache.get(path.resolve(root, image.path))!
+      return { base64: hit.base64, width: hit.width, height: hit.height, format: hit.format }
+    })
+    const styleSpecs = new Map<string, ResolvedSpec>()
+
     for (const [assetId, asset] of Object.entries(manifest.assets)) {
-      if (filter?.assets?.length && !filter.assets.includes(assetId)) continue
+      if (!resolutionAssetIds.has(assetId)) continue
       if (asset.styles.length && !asset.styles.includes(styleId)) continue
 
       const generator = style.generator
@@ -261,18 +314,83 @@ export async function resolveSpecs(
           : {}),
         tags,
         source: asset.source,
-        specHash: specHash(base, styleImageHashes, providerOptionIdentity),
+        // Revision identity is attached after every dependency in this style
+        // has a concrete output target. Finalization below computes the hash.
+        specHash: "",
       }
-      const resolvedImages = style.styleImages.map((image) => {
-        const hit = styleImageCache.get(path.resolve(root, image.path))!
-        return { base64: hit.base64, width: hit.width, height: hit.height, format: hit.format }
-      })
+      styleSpecs.set(assetId, resolved)
+    }
+
+    const finalized = new Set<string>()
+    const finalize = async (assetId: string): Promise<ResolvedSpec> => {
+      const resolved = styleSpecs.get(assetId)
+      if (!resolved) {
+        throw new Error(
+          `Asset "${assetId}" is not available in style "${styleId}"; ` +
+            "revision parents must participate in the same style.",
+        )
+      }
+      if (finalized.has(assetId)) return resolved
+      const asset = manifest.assets[assetId]!
+      if (asset.revision) {
+        if (!activeProvider.supportsRevision?.(asset.revision.mode)) {
+          throw new Error(
+            `Provider "${activeProvider.id}" does not support ${asset.revision.mode} revisions`,
+          )
+        }
+        const sourceSpec = await finalize(asset.revision.from)
+        const sourceFile = sourceSpec.quality?.outFile ??
+          (sourceSpec.source ? path.resolve(root, sourceSpec.source) : sourceSpec.outFile)
+        const sourceImage = await optionalRevisionImage(sourceFile, "revision source")
+        const maskFile = asset.revision.mask
+          ? path.resolve(root, asset.revision.mask)
+          : undefined
+        const maskImage = maskFile
+          ? await optionalRevisionImage(maskFile, "revision mask", "png")
+          : null
+        if (
+          sourceImage && maskImage &&
+          (sourceImage.width !== maskImage.width || sourceImage.height !== maskImage.height)
+        ) {
+          throw new Error(
+            `Revision mask for ${styleId}/${assetId} is ${maskImage.width}x${maskImage.height}; ` +
+              `source ${asset.revision.from} is ${sourceImage.width}x${sourceImage.height}`,
+          )
+        }
+        resolved.revision = {
+          mode: asset.revision.mode,
+          sourceAssetId: asset.revision.from,
+          sourceFile,
+          sourceSha256: sourceImage?.hash ?? null,
+          sourceWidth: sourceImage?.width ?? null,
+          sourceHeight: sourceImage?.height ?? null,
+          sourceFormat: sourceImage?.format ?? null,
+          sourceSpec,
+          ...(maskFile
+            ? {
+                maskFile,
+                maskSha256: maskImage?.hash ?? null,
+                maskWidth: maskImage?.width ?? null,
+                maskHeight: maskImage?.height ?? null,
+                maskFormat: maskImage?.format ?? null,
+              }
+            : {}),
+          ...(asset.revision.strength == null ? {} : { strength: asset.revision.strength }),
+        }
+      }
+      resolved.specHash = specHash(resolved, styleImageHashes, providerOptionIdentity)
       activeProvider.validate?.(resolved, resolvedImages)
       const estimate = validateCostEstimate(activeProvider.id, activeProvider.estimate(resolved))
       resolved.cost = estimate.amount
       resolved.costUnit = estimate.unit
       resolved.candidates = estimate.candidates
-      specs.push(resolved)
+      finalized.add(assetId)
+      return resolved
+    }
+
+    for (const assetId of Object.keys(manifest.assets)) {
+      if (!requestedAssetIds.has(assetId) || !styleSpecs.has(assetId)) continue
+      specs.push(await finalize(assetId))
     }
   }
 
@@ -296,6 +414,21 @@ export async function resolveSpecs(
 function pngPath(file: string): string {
   const extension = path.extname(file)
   return extension ? `${file.slice(0, -extension.length)}.png` : `${file}.png`
+}
+
+async function optionalRevisionImage(
+  file: string,
+  label: string,
+  requiredFormat?: "png" | "jpeg",
+): Promise<{ hash: string; width: number; height: number; format: "png" | "jpeg" } | null> {
+  if (!existsSync(file)) return null
+  const bytes = await readFile(file)
+  const metadata = imageMetadata(bytes)
+  if (!metadata) throw new Error(`${label} is not a readable PNG or JPEG: ${file}`)
+  if (requiredFormat && metadata.format !== requiredFormat) {
+    throw new Error(`${label} must be ${requiredFormat.toUpperCase()}: ${file}`)
+  }
+  return { hash: sha256(bytes), ...metadata }
 }
 
 /** Reference image bytes and measured dimensions, in manifest order. */

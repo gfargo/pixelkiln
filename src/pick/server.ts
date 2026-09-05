@@ -1,6 +1,6 @@
 import { requireSelectCandidate, type Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
-import type { Lock } from "../types.ts"
+import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
 import { renderSheet, type SheetGroup } from "./sheet.ts"
 import { serveReviewPage } from "./review-server.ts"
 
@@ -27,18 +27,34 @@ export async function runPicker(
     onProgress?: (msg: string) => void
     /** Optional lock-key selection for a filtered or mixed-provider run. */
     keys?: Iterable<string>
+    /** Resolved intent supplies immutable revision context for comparison. */
+    specs?: ResolvedSpec[]
   } = {},
 ): Promise<PickResult> {
   const log = opts.onProgress ?? (() => {})
   const selectedKeys = opts.keys ? new Set(opts.keys) : null
+  const specByKey = new Map(
+    (opts.specs ?? []).map((spec) => [lockKey(spec.styleId, spec.assetId), spec]),
+  )
+  const reviewAssets = new Map<string, { path: string; contentType: string }>()
 
   const groups: SheetGroup[] = []
   for (const [key, entry] of Object.entries(lock.entries)) {
     if (entry.provider !== provider.id || (selectedKeys && !selectedKeys.has(key))) continue
     if (entry.status !== "review" || !entry.reviewObjectId) continue
     try {
-      const state = await provider.poll(entry.reviewObjectId, entry.generator)
+      const spec = specByKey.get(key)
+      const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec })
       if (state.status !== "review" || !state.candidateUrls.length) continue
+      const sourceRoute = spec?.revision
+        ? `/revision-source/${encodeURIComponent(String(groups.length))}`
+        : null
+      if (sourceRoute && spec?.revision) {
+        reviewAssets.set(sourceRoute, {
+          path: spec.revision.sourceFile,
+          contentType: spec.revision.sourceFormat === "jpeg" ? "image/jpeg" : "image/png",
+        })
+      }
       groups.push({
         key,
         assetId: entry.assetId,
@@ -48,6 +64,17 @@ export async function runPicker(
         frameUrls: state.candidateUrls,
         width: entry.width,
         height: entry.height,
+        ...(sourceRoute && spec?.revision && spec.revision.sourceWidth && spec.revision.sourceHeight
+          ? {
+              revision: {
+                mode: spec.revision.mode,
+                sourceAssetId: spec.revision.sourceAssetId,
+                sourceUrl: sourceRoute,
+                width: spec.revision.sourceWidth,
+                height: spec.revision.sourceHeight,
+              },
+            }
+          : {}),
       })
     } catch (err) {
       log(`  could not load candidates for ${key}: ${err instanceof Error ? err.message : String(err)}`)
@@ -64,6 +91,7 @@ export async function runPicker(
     port: opts.port,
     open: opts.open,
     onProgress: log,
+    assets: reviewAssets,
     onReady: (url) => {
       log(`\n  ${groups.length} asset(s) awaiting selection: ${url}`)
       log(`  (leave this running; it exits once you apply)\n`)

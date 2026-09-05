@@ -94,7 +94,14 @@ manifest style entry without making a provider call:
 pixelkiln recipe install comfyui/pixel-art-xl-environment@1.0.0
 ```
 
-Verify its workflow and the workstation's model bytes before generation. See
+To revise an existing square asset, install the separate
+`comfyui/pixel-art-xl-img2img` recipe and declare `asset.revision`. Keep the
+parent and child as different asset ids. PixelKiln blocks the child until the
+exact parent bytes are current and, when a quality profile exists, approved.
+See [Controlled asset revisions](REVISIONS.md).
+
+Verify an installed recipe's workflow and the workstation's model bytes before
+generation. See
 [Versioned recipes](RECIPES.md).
 
 The provider setup guides give the shortest path for
