@@ -120,10 +120,10 @@ manifest ceiling protects each request from a changed live quote.
 ### Current live validation
 
 On September 5, 2026, PixelKiln authenticated against the read-only model
-endpoint and preflighted `model_bfl-flux-2-dev` with a 512×512 canvas, one
-output, guidance 4, and 28 inference steps. Scenario returned a 16 CU
-`custom-generation` quote. The request used `dryRun=true`; no generation was
-submitted and no CU was spent.
+endpoint and preflighted `model_bfl-flux-2-dev` with a 512×512 canvas, guidance
+4, and 28 inference steps. Scenario quoted 16 CU for one output and 32 CU for
+two; both costs were reported as `custom-generation`. The requests used
+`dryRun=true`; no generation was submitted and no CU was spent.
 
 ## Review and recovery
 
