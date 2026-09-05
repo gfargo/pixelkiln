@@ -1642,11 +1642,8 @@ async function main() {
     }
     return resolved
   }
-  const provider: Provider = selectedAccountProvider
-    ? providerFor(selectedAccountProvider)
-    : providerFor(specs[0]?.provider ?? loaded.manifest.provider)
-
   if (args.command === "adopt") {
+    const provider = providerFor(selectedAccountProvider!)
     log(`\n  Reconciling account objects against files already on disk…`)
     const res = await adopt(provider, specs, lock, args.lock, { onProgress: log })
     log(`\n  scanned ${res.scanned} remote object(s), adopted ${res.matched}`)
@@ -1708,6 +1705,7 @@ async function main() {
   }
 
   if (args.command === "salvage") {
+    const provider = providerFor(selectedAccountProvider!)
     // --json is a machine-readable contract: stdout must be the JSON array
     // and nothing else, so `pixelkiln salvage --dry-run --json | jq` works.
     // Every human-oriented line below goes through `diag` instead of `log` so
@@ -1892,6 +1890,7 @@ async function main() {
   }
 
   if (args.command === "purge") {
+    const provider = providerFor(selectedAccountProvider!)
     const doomed: { id: string; prompt: string }[] = []
     for await (const obj of requireList(provider)()) {
       if (obj.tags.includes("pixelkiln:discard")) {

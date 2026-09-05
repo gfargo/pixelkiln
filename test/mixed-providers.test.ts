@@ -104,7 +104,7 @@ describe("mixed provider projects", () => {
       "--manifest", loaded.path,
       "--lock", lockPath,
       "--json",
-    ])
+    ], { cwd: dir })
     const report = JSON.parse(stdout)
     expect(report.cost).toBeNull()
     expect(report.costUnit).toBeNull()
@@ -118,7 +118,7 @@ describe("mixed provider projects", () => {
       "--lock", lockPath,
       "--budget", "40",
       "--yes",
-    ])).rejects.toMatchObject({
+    ], { cwd: dir })).rejects.toMatchObject({
       stderr: expect.stringMatching(/mixed-provider run needs provider-keyed budgets/i),
     })
 
@@ -129,7 +129,7 @@ describe("mixed provider projects", () => {
       "--lock", lockPath,
       "--budget", "pixellab=40",
       "--yes",
-    ])).rejects.toMatchObject({
+    ], { cwd: dir })).rejects.toMatchObject({
       stderr: expect.stringMatching(/missing --budget retrodiffusion=/i),
     })
 
@@ -142,7 +142,7 @@ describe("mixed provider projects", () => {
       "--budget", "retrodiffusion=1",
       "--budget", "typo=1",
       "--yes",
-    ])).rejects.toMatchObject({
+    ], { cwd: dir })).rejects.toMatchObject({
       stderr: expect.stringMatching(/budget names provider "typo"/i),
     })
   })
@@ -155,7 +155,7 @@ describe("mixed provider projects", () => {
         path.resolve("src/cli.ts"),
         command,
         "--manifest", loaded.path,
-      ])).rejects.toMatchObject({
+      ], { cwd: dir })).rejects.toMatchObject({
         stderr: expect.stringMatching(/account-scoped.*--provider/),
       })
     }
@@ -170,7 +170,7 @@ describe("mixed provider projects", () => {
       "--lock", lockPath,
       "--dry-run",
       "--json",
-    ])
+    ], { cwd: dir })
     const report = JSON.parse(stdout)
     expect(report.checks).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "provider:pixellab", level: "warning" }),
@@ -199,7 +199,7 @@ describe("mixed provider projects", () => {
       "accept",
       "--manifest", loaded.path,
       "--lock", lockPath,
-    ])
+    ], { cwd: dir })
     expect(stdout).toMatch(/accepted 0 existing file/)
     expect((await loadLock(lockPath)).entries[portrait.key]!.specHash).toBe(oldHash)
   })
