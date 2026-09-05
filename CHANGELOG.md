@@ -1,3 +1,10 @@
+# [0.15.0](https://github.com/gfargo/pixelkiln/compare/v0.14.0...v0.15.0) (2026-09-05)
+
+
+### Features
+
+* add manifest-native quality profiles ([#66](https://github.com/gfargo/pixelkiln/issues/66)) ([5ed5a3b](https://github.com/gfargo/pixelkiln/commit/5ed5a3b8f103de734f82476703ab58f9c5faa78c))
+
 # [0.14.0](https://github.com/gfargo/pixelkiln/compare/v0.13.0...v0.14.0) (2026-09-05)
 
 
