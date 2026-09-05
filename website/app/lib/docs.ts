@@ -99,6 +99,13 @@ export const docs: DocEntry[] = [
     group: "Workflows",
   },
   {
+    slug: "revisions",
+    title: "Controlled asset revisions",
+    description: "Revise current art with hashed parents, masks, approval gates, and side-by-side review.",
+    file: "docs/REVISIONS.md",
+    group: "Workflows",
+  },
+  {
     slug: "artifacts",
     title: "Derived artifacts",
     description: "Refine, pack, mount, export, approval provenance, and recovery.",

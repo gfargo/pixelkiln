@@ -543,7 +543,9 @@ Examples
 
 function printPlan(plan: Plan): void {
   const counts = summarize(plan)
-  const order = ["missing", "untracked", "stale", "failed", "recoverable", "in-flight", "orphaned", "ok"] as const
+  const order = [
+    "blocked", "missing", "untracked", "stale", "failed", "recoverable", "in-flight", "orphaned", "ok",
+  ] as const
   for (const state of order) {
     const items = plan.items.filter((i) => i.state === state)
     if (!items.length) continue
@@ -554,7 +556,7 @@ function printPlan(plan: Plan): void {
     if (items.length > 40) log(`    … and ${items.length - 40} more`)
   }
   log(
-    `\n  totals: ${counts.ok} ok · ${counts.missing} missing · ${counts.untracked} untracked · ` +
+    `\n  totals: ${counts.ok} ok · ${counts.blocked} blocked · ${counts.missing} missing · ${counts.untracked} untracked · ` +
       `${counts.stale} stale · ${counts["in-flight"]} in-flight · ${counts.orphaned} orphaned · ` +
       `${counts.recoverable} recoverable · ${counts.failed} failed`,
   )
@@ -1376,10 +1378,23 @@ async function main() {
           actionable: group.actionable.map((item) => item.key),
         })),
         actionable: plan.actionable.map((i) => i.key),
-        items: plan.items.map(({ key, state, reason, quality }) => ({
+        items: plan.items.map(({ key, state, reason, quality, spec }) => ({
           key,
           state,
           reason,
+          ...(spec.revision
+            ? {
+                revision: {
+                  mode: spec.revision.mode,
+                  from: spec.revision.sourceAssetId,
+                  sourceSha256: spec.revision.sourceSha256,
+                  ...(spec.revision.maskSha256
+                    ? { maskSha256: spec.revision.maskSha256 }
+                    : {}),
+                  ...(spec.revision.strength == null ? {} : { strength: spec.revision.strength }),
+                },
+              }
+            : {}),
           ...(quality ? { quality: { state: quality.state, reason: quality.reason } } : {}),
         })),
       }, null, 2))
@@ -2180,6 +2195,7 @@ async function main() {
         open: !args.noOpen,
         onProgress: log,
         keys: providerSpecsForRun.map((spec) => lockKey(spec.styleId, spec.assetId)),
+        specs: providerSpecsForRun,
       })
       total.selected += res.selected
       total.skipped += res.skipped

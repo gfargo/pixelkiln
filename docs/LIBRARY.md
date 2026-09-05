@@ -35,11 +35,31 @@ The ComfyUI adapter uses that hook to parse and hash a workflow JSON file withou
 contacting the server. A resolved spec has the fully inherited style and asset
 settings plus its effective provider and deterministic spec hash. Optional
 quality settings resolve separately and do not affect provider identity or cost.
+Revision settings resolve into `spec.revision`, including the nested parent
+spec, absolute input paths for I/O, content hashes, measured dimensions, mode,
+and optional strength. Paths are excluded from the hash; input bytes are not.
 
 `plan.groups` is the authoritative cost view. Each group contains `provider`,
 `costUnit`, `cost`, `candidates`, and its actionable items. For compatibility,
 `plan.cost` and `plan.costUnit` retain the single-provider projection; both are
 `null` when a plan spans providers or units.
+
+For custom orchestration, inspect the dependency gate directly:
+
+```ts
+import { inspectRevisionReadiness, requireRevisionReady } from "pixelkiln"
+
+const readiness = await inspectRevisionReadiness(spec, lock)
+if (readiness && !readiness.ready) console.error(readiness.reason)
+
+// Run again at the boundary where provider work would begin.
+await requireRevisionReady(spec, lock)
+```
+
+`buildPlan` already does the first check and reports an unsafe child as
+`blocked`. `submit` does the second check automatically. Providers advertise
+accepted modes with optional `supportsRevision(mode)`. Omission means no
+revision support and makes resolution fail offline.
 
 ## Audit and gate generated art
 

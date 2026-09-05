@@ -39,12 +39,32 @@ approved, use its PNG as input, and include the record in downstream provenance.
 Tiles and animation are excluded until this layer can preserve structural roles
 and frame identity.
 
+## Revision dependency graph
+
+An asset revision adds an immutable edge from a child spec to a parent spec in
+the same style. Manifest loading rejects missing parents, self-references, and
+cycles. Resolution includes transitive parents even when `--only` selects just
+the child, chooses the parent's approved quality output when one exists, and
+hashes the parent and optional mask bytes into the child identity.
+
+Planning walks the graph from the child and reports `blocked` unless each
+parent is committed source, an intact current download, or a current approved
+quality output. Blocked work is not actionable and has zero planned spend. The
+submit boundary repeats the walk after queue and rate-limit waits, closing the
+gap between a printed plan and provider work.
+
+Providers opt into revision modes through `supportsRevision`. The first
+implementation is ComfyUI: it uploads content-addressed inputs, binds only the
+declared workflow inputs, and retains lineage in both the generic lock entry
+and provider metadata. Other adapters fail during offline resolution.
+
 ## Lockfile
 
 `pixelkiln.lock.json` is the committed paid-work record. Version 2 entries
 retain:
 
 - style/asset identity and spec hash;
+- revision mode, parent id/hash, optional mask hash, and strength;
 - provider and remote object/job ids;
 - explicit lifecycle status and errors;
 - durable provider source references, candidates, and selections;

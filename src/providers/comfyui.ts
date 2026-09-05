@@ -9,10 +9,11 @@ import type {
   PollContext,
   Provider,
   ProviderOptionContext,
+  ProviderSubmission,
   RateLimit,
   ResolvedProviderOptions,
 } from "../provider.ts"
-import type { Generator, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
+import type { Generator, ResolvedSpec, ResolvedStyleImage, RevisionMode } from "../types.ts"
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:8188"
 
@@ -26,10 +27,16 @@ export interface ComfyUIBinding {
 
 export interface ComfyUIBindings {
   prompt: ComfyUIBinding
-  width: ComfyUIBinding
-  height: ComfyUIBinding
-  batchSize: ComfyUIBinding
+  width?: ComfyUIBinding
+  height?: ComfyUIBinding
+  batchSize?: ComfyUIBinding
   seed?: ComfyUIBinding
+  /** LoadImage-compatible input populated from a hashed revision parent. */
+  sourceImage?: ComfyUIBinding
+  /** LoadImage-compatible input populated from an inpaint mask. */
+  maskImage?: ComfyUIBinding
+  /** Sampler denoise/edit-strength input. */
+  strength?: ComfyUIBinding
 }
 
 /** Options stored under `providerOptions.comfyui` in a manifest style. */
@@ -86,6 +93,43 @@ class ComfyUIClient {
       )
     }
     return promptId
+  }
+
+  async uploadImage(
+    bytes: Buffer,
+    sha256: string,
+    format: "png" | "jpeg",
+  ): Promise<string> {
+    const extension = format === "jpeg" ? "jpg" : "png"
+    const form = new FormData()
+    form.append(
+      "image",
+      new Blob([new Uint8Array(bytes)], { type: format === "jpeg" ? "image/jpeg" : "image/png" }),
+      `${sha256}.${extension}`,
+    )
+    form.append("type", "input")
+    form.append("subfolder", "pixelkiln")
+    form.append("overwrite", "true")
+    const url = this.endpoint("upload/image")
+    const response = await this.request(url, { method: "POST", body: form })
+    const text = await response.text()
+    let value: unknown = null
+    try {
+      value = text ? JSON.parse(text) : null
+    } catch {
+      value = null
+    }
+    if (!response.ok) {
+      throw new Error(
+        `ComfyUI image upload failed (${response.status})` +
+          (apiError(value) ? `: ${apiError(value)}` : ""),
+      )
+    }
+    if (!isObject(value) || typeof value.name !== "string" || !value.name) {
+      throw new Error("ComfyUI image upload returned an invalid response")
+    }
+    const subfolder = typeof value.subfolder === "string" ? value.subfolder : ""
+    return subfolder ? `${subfolder.replace(/\/+$/, "")}/${value.name}` : value.name
   }
 
   async history(promptId: string): Promise<unknown> {
@@ -198,12 +242,20 @@ export class ComfyUIProvider implements Provider {
     return generator === "map"
   }
 
+  supportsRevision(_mode: RevisionMode): boolean {
+    return true
+  }
+
   estimate(spec: ResolvedSpec): CostEstimate {
     return { unit: "free", amount: 0, candidates: resolvedOptions(spec).numImages }
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
     const options = resolvedOptions(spec)
+    // A committed source can be a revision parent in the same style, but it is
+    // never submitted. Revision-only workflows therefore do not need the
+    // text-to-image bindings that this placeholder spec would otherwise imply.
+    if (spec.source && !spec.revision) return
     if (spec.width < 16 || spec.height < 16 || spec.width > 4096 || spec.height > 4096) {
       throw new Error("ComfyUI output dimensions must be between 16 and 4096 pixels")
     }
@@ -216,6 +268,36 @@ export class ComfyUIProvider implements Provider {
     if (spec.seed != null && !options.bindings.seed) {
       throw new Error("ComfyUI requires bindings.seed when the style declares a seed")
     }
+    if (!options.bindings.width !== !options.bindings.height) {
+      throw new Error("ComfyUI width and height bindings must be declared together")
+    }
+    if (!spec.revision && (!options.bindings.width || !options.bindings.height)) {
+      throw new Error("ComfyUI text-to-image generation requires width and height bindings")
+    }
+    if (options.numImages > 1 && !options.bindings.batchSize) {
+      throw new Error("ComfyUI numImages greater than 1 requires bindings.batchSize")
+    }
+    if (spec.revision) {
+      if (!options.bindings.sourceImage) {
+        throw new Error("ComfyUI revisions require bindings.sourceImage")
+      }
+      if (spec.revision.mode === "inpaint" && !options.bindings.maskImage) {
+        throw new Error("ComfyUI inpaint revisions require bindings.maskImage")
+      }
+      if (spec.revision.strength != null && !options.bindings.strength) {
+        throw new Error("ComfyUI revision strength requires bindings.strength")
+      }
+      if (
+        (!options.bindings.width || !options.bindings.height) &&
+        spec.revision.sourceWidth != null &&
+        spec.revision.sourceHeight != null &&
+        (spec.width !== spec.revision.sourceWidth || spec.height !== spec.revision.sourceHeight)
+      ) {
+        throw new Error(
+          "ComfyUI revisions without width/height bindings must keep the source dimensions",
+        )
+      }
+    }
     validateWorkflowBindings(options.workflow, options)
   }
 
@@ -223,19 +305,71 @@ export class ComfyUIProvider implements Provider {
     return { spacingMs: 0, maxInFlight: 1 }
   }
 
-  async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<{ jobId: string }> {
+  async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<ProviderSubmission> {
     this.validate(spec, styleImages)
     const options = resolvedOptions(spec)
     const workflow = structuredClone(options.workflow)
     setBinding(workflow, options.bindings.prompt, spec.prompt)
-    setBinding(workflow, options.bindings.width, spec.width)
-    setBinding(workflow, options.bindings.height, spec.height)
-    setBinding(workflow, options.bindings.batchSize, options.numImages)
+    if (options.bindings.width) setBinding(workflow, options.bindings.width, spec.width)
+    if (options.bindings.height) setBinding(workflow, options.bindings.height, spec.height)
+    if (options.bindings.batchSize) {
+      setBinding(workflow, options.bindings.batchSize, options.numImages)
+    }
     if (spec.seed != null && options.bindings.seed) {
       setBinding(workflow, options.bindings.seed, spec.seed)
     }
+    if (spec.revision) {
+      if (!spec.revision.sourceSha256 || !spec.revision.sourceFormat) {
+        throw new Error("ComfyUI revision source is not ready")
+      }
+      const sourceBytes = await readFile(spec.revision.sourceFile)
+      if (sha256(sourceBytes) !== spec.revision.sourceSha256) {
+        throw new Error("ComfyUI revision source changed before upload")
+      }
+      const uploadedSource = await this.client.uploadImage(
+        sourceBytes,
+        spec.revision.sourceSha256,
+        spec.revision.sourceFormat,
+      )
+      setBinding(workflow, options.bindings.sourceImage!, uploadedSource)
+
+      if (spec.revision.maskFile) {
+        if (!spec.revision.maskSha256 || !spec.revision.maskFormat) {
+          throw new Error("ComfyUI revision mask is not ready")
+        }
+        const maskBytes = await readFile(spec.revision.maskFile)
+        if (sha256(maskBytes) !== spec.revision.maskSha256) {
+          throw new Error("ComfyUI revision mask changed before upload")
+        }
+        const uploadedMask = await this.client.uploadImage(
+          maskBytes,
+          spec.revision.maskSha256,
+          spec.revision.maskFormat,
+        )
+        setBinding(workflow, options.bindings.maskImage!, uploadedMask)
+      }
+      if (spec.revision.strength != null) {
+        setBinding(workflow, options.bindings.strength!, spec.revision.strength)
+      }
+    }
     const promptId = await this.client.submit(workflow)
-    return { jobId: encodeJob(promptId, options.outputNodeId) }
+    return {
+      jobId: encodeJob(promptId, options.outputNodeId),
+      ...(spec.revision
+        ? {
+            metadata: {
+              revision: {
+                mode: spec.revision.mode,
+                sourceAssetId: spec.revision.sourceAssetId,
+                sourceSha256: spec.revision.sourceSha256,
+                ...(spec.revision.maskSha256
+                  ? { maskSha256: spec.revision.maskSha256 }
+                  : {}),
+              },
+            },
+          }
+        : {}),
+    }
   }
 
   async poll(jobId: string, _generator: Generator, context?: PollContext): Promise<JobState> {
@@ -320,15 +454,28 @@ function parseOptions(value: Record<string, unknown>): ResolvedComfyUIOptions {
     throw new Error("ComfyUI numImages must be a whole number from 1 to 16")
   }
   if (!isObject(value.bindings)) throw new Error("ComfyUI bindings must be an object")
-  const bindingKeys = new Set(["prompt", "width", "height", "batchSize", "seed"])
+  const bindingKeys = new Set([
+    "prompt", "width", "height", "batchSize", "seed", "sourceImage", "maskImage", "strength",
+  ])
   const extraBindings = Object.keys(value.bindings).filter((key) => !bindingKeys.has(key))
   if (extraBindings.length) throw new Error(`Unknown ComfyUI binding(s): ${extraBindings.join(", ")}`)
   const bindings: ComfyUIBindings = {
     prompt: parseBinding(value.bindings.prompt, "prompt"),
-    width: parseBinding(value.bindings.width, "width"),
-    height: parseBinding(value.bindings.height, "height"),
-    batchSize: parseBinding(value.bindings.batchSize, "batchSize"),
+    ...(value.bindings.width == null ? {} : { width: parseBinding(value.bindings.width, "width") }),
+    ...(value.bindings.height == null ? {} : { height: parseBinding(value.bindings.height, "height") }),
+    ...(value.bindings.batchSize == null
+      ? {}
+      : { batchSize: parseBinding(value.bindings.batchSize, "batchSize") }),
     ...(value.bindings.seed == null ? {} : { seed: parseBinding(value.bindings.seed, "seed") }),
+    ...(value.bindings.sourceImage == null
+      ? {}
+      : { sourceImage: parseBinding(value.bindings.sourceImage, "sourceImage") }),
+    ...(value.bindings.maskImage == null
+      ? {}
+      : { maskImage: parseBinding(value.bindings.maskImage, "maskImage") }),
+    ...(value.bindings.strength == null
+      ? {}
+      : { strength: parseBinding(value.bindings.strength, "strength") }),
   }
   const workflow = value.workflow == null ? undefined : parseWorkflow(value.workflow, workflowFile)
   const workflowSha256 = value.workflowSha256 == null
@@ -442,6 +589,19 @@ function comfyMetadata(
     workflowFile: options.workflowFile,
     workflowSha256: options.workflowSha256,
     files: images.map((image) => ({ ...image })),
+    ...(spec.revision
+      ? {
+          revision: {
+            mode: spec.revision.mode,
+            sourceAssetId: spec.revision.sourceAssetId,
+            sourceSha256: spec.revision.sourceSha256,
+            ...(spec.revision.maskSha256
+              ? { maskSha256: spec.revision.maskSha256 }
+              : {}),
+            ...(spec.revision.strength == null ? {} : { strength: spec.revision.strength }),
+          },
+        }
+      : {}),
   }
 }
 

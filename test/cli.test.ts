@@ -414,6 +414,23 @@ describe("contact sheet", () => {
     expect(html).toContain("width:min(100%,var(--content))")
   })
 
+  it("shows the immutable revision source beside generated candidates", () => {
+    const html = renderSheet([{
+      ...group,
+      revision: {
+        mode: "inpaint" as const,
+        sourceAssetId: "rough-tower",
+        sourceUrl: "/revision-source/0",
+        width: 64,
+        height: 64,
+      },
+    }])
+    expect(html).toContain("/revision-source/0")
+    expect(html).toContain("rough-tower")
+    expect(html).toContain("g.revision.mode.toUpperCase()")
+    expect(html).toContain("grid-template-columns:minmax(180px,280px)")
+  })
+
   // The prompt is arbitrary author text and reaches both innerHTML and a <script>.
   it("escapes HTML in prompts", () => {
     const html = renderSheet([{ ...group, prompt: '<img src=x onerror="alert(1)">' }])

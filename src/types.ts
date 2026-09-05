@@ -39,6 +39,9 @@ export type Generator = z.infer<typeof GeneratorSchema>
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
 export type GridConfidence = z.infer<typeof GridConfidenceSchema>
 
+export const RevisionModeSchema = z.enum(["image-to-image", "inpaint", "outpaint"])
+export type RevisionMode = z.infer<typeof RevisionModeSchema>
+
 /** A decoded style reference ready for a provider-specific request body. */
 export interface ResolvedStyleImage {
   base64: string
@@ -196,6 +199,59 @@ export interface ResolvedQualityProfile {
   minGridConfidence: GridConfidence
   minTransparency?: number
   fixerRevision?: string
+}
+
+/** A provider generation whose visual starting point is another manifest asset. */
+export const RevisionSchema = z
+  .object({
+    /** What kind of controlled change the provider workflow performs. */
+    mode: RevisionModeSchema,
+    /** Parent asset id in the same style. */
+    from: z.string().min(1),
+    /** Manifest-relative black/white PNG. Required only for masked inpainting. */
+    mask: z.string().min(1).optional(),
+    /** Provider-neutral edit strength. The active adapter must bind it explicitly. */
+    strength: z.number().min(0).max(1).optional(),
+  })
+  .strict()
+  .superRefine((revision, context) => {
+    if (revision.mode === "inpaint" && !revision.mask) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "inpaint revisions require a mask",
+        path: ["mask"],
+      })
+    }
+    if (revision.mode !== "inpaint" && revision.mask) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${revision.mode} revisions do not accept a mask`,
+        path: ["mask"],
+      })
+    }
+  })
+
+export type Revision = z.infer<typeof RevisionSchema>
+
+/** Resolved immutable inputs supplied to a revision-capable provider. */
+export interface ResolvedRevision {
+  mode: RevisionMode
+  sourceAssetId: string
+  /** Absolute path selected from the parent asset's approved/final output. */
+  sourceFile: string
+  /** Null keeps planning possible while the parent is not ready. */
+  sourceSha256: string | null
+  sourceWidth: number | null
+  sourceHeight: number | null
+  sourceFormat: "png" | "jpeg" | null
+  /** Full parent intent used to prove the dependency is current before spending. */
+  sourceSpec: ResolvedSpec
+  maskFile?: string
+  maskSha256?: string | null
+  maskWidth?: number | null
+  maskHeight?: number | null
+  maskFormat?: "png" | "jpeg" | null
+  strength?: number
 }
 
 export const StyleSchema = z
@@ -386,6 +442,8 @@ export const AssetSchema = z
      * that wasn't. `prompt` still records what was asked for.
      */
     source: z.string().optional(),
+    /** Controlled generation derived from another asset in the same style. */
+    revision: RevisionSchema.optional(),
     /**
      * Generated output role to place in `cell` when this asset expands to
      * several files. Omit for ordinary single-output assets. A structural set
@@ -408,6 +466,15 @@ export const AssetSchema = z
     promptByStyle: z.record(z.string()).default({}),
   })
   .strict()
+  .superRefine((asset, context) => {
+    if (asset.source && asset.revision) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "source and revision are mutually exclusive",
+        path: ["revision"],
+      })
+    }
+  })
 
 export const ManifestSchema = z
   .object({
@@ -442,6 +509,18 @@ export const LockEntrySchema = z.object({
   prompt: z.string(),
   width: z.number().int(),
   height: z.number().int(),
+  /** Explicit parent/input lineage for a revision generation. */
+  revision: z
+    .object({
+      mode: RevisionModeSchema,
+      sourceAssetId: z.string().min(1),
+      sourceSha256: z.string().regex(/^[0-9a-f]{64}$/),
+      maskSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+      strength: z.number().min(0).max(1).optional(),
+    })
+    .strict()
+    .nullable()
+    .default(null),
 
   /** Set at submit time, before the request is awaited, so a crash is recoverable. */
   jobId: z.string().nullable().default(null),
@@ -570,6 +649,8 @@ export interface ResolvedSpec {
   outFile: string
   /** Derived quality output. Excluded from provider request identity and spend. */
   quality?: ResolvedQualityProfile
+  /** Provider generation derived from another current manifest asset. */
+  revision?: ResolvedRevision
   /**
    * Manifest-relative path of committed art that stands in for generated
    * output; excluded from the spec hash. Set only when the asset declares

@@ -26,7 +26,7 @@ them.
 |---|---|---|---|
 | PixelLab | Production; paid generation and account workflows live-tested | `PIXELLAB_API_KEY` | generations |
 | Retro Diffusion | Experimental; authenticated paid still generation, download, provenance, and recovery live-tested; advanced workflows pending | `RD_API_KEY` | USD |
-| ComfyUI | Experimental; local single-image generation, four-candidate queue, provenance, and cache-only recovery live-tested on Apple MPS | none; optional `COMFYUI_BASE_URL` | free |
+| ComfyUI | Experimental; local generation, review, recovery, and image-to-image revision smoke live-tested on Apple MPS; inpaint/outpaint remain mock-tested | none; optional `COMFYUI_BASE_URL` | free |
 | Scenario | Experimental; BFL Flux 2 Dev authentication, CU preflight, paid single/two-output generation, review, download, and durable recovery live-tested | `SCENARIO_SDK_API_KEY` and `SCENARIO_SDK_API_SECRET` | compute-units |
 | FakeProvider | Test-only deterministic lifecycle | none | free |
 
@@ -81,9 +81,10 @@ prompt, size, batch, and optional seed inputs PixelKiln may replace.
 
 | Decision | ComfyUI through PixelKiln |
 |---|---|
-| Best fit today | Local composition experiments, private inputs, and teams prepared to maintain and manually validate custom graphs |
+| Best fit today | Local composition experiments, private inputs, controlled revisions, and teams prepared to maintain and manually validate custom graphs |
 | PixelKiln generator | `map` stills |
 | Output | One PNG output node, with 1–16 review candidates |
+| Revision input | `image-to-image`, `inpaint`, and user-authored `outpaint` graphs; hashed parent/mask uploads and source comparison are covered. The bundled img2img graph passed a three-strength live smoke but missed the requested winter treatment and lost alpha. |
 | Cost model | `0 free`; local compute and hosting are outside PixelKiln's estimate |
 | Reproducibility | Workflow content is hashed; model files, custom-node versions, and runtime settings must still be managed outside PixelKiln |
 | Account lifecycle | Read-only connectivity check; no balance, remote object listing, tagging, or purge |
@@ -94,6 +95,12 @@ with a hosted provider when you want less cleanup. Two ComfyUI machines can run
 the same graph and still differ because their checkpoint bytes, custom nodes,
 or sampler settings differ. Commit the workflow and record the model stack used
 to test it.
+
+The revision manifest and dependency gate are provider-neutral, but ComfyUI is
+the only built-in adapter that currently opts in. PixelLab, Retro Diffusion,
+and Scenario reject revision assets offline. See
+[Controlled asset revisions](./docs/REVISIONS.md) before using the bundled
+square image-to-image graph.
 
 ## Where Scenario fits
 

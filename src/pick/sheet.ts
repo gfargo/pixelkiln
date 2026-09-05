@@ -7,6 +7,13 @@ export interface SheetGroup {
   frameUrls: string[]
   width: number
   height: number
+  revision?: {
+    mode: "image-to-image" | "inpaint" | "outpaint"
+    sourceAssetId: string
+    sourceUrl: string
+    width: number
+    height: number
+  }
 }
 
 const escapeHtml = (s: string) =>
@@ -32,6 +39,14 @@ export function renderSheet(groups: SheetGroup[]): string {
     styleId: escapeHtml(g.styleId),
     assetId: escapeHtml(g.assetId),
     prompt: escapeHtml(g.prompt),
+    ...(g.revision
+      ? {
+          revision: {
+            ...g.revision,
+            sourceAssetId: escapeHtml(g.revision.sourceAssetId),
+          },
+        }
+      : {}),
   }))
   const data = JSON.stringify(safe).replace(/<\//g, "<\\/")
   return `<!doctype html>
@@ -72,6 +87,18 @@ export function renderSheet(groups: SheetGroup[]): string {
     color:var(--accent-soft); border:1px solid var(--accent); border-radius:0; padding:2px 6px; }
   .aid { font-weight:650; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
   .prompt { flex:1; min-width:280px; color:var(--dim); font-size:12.5px; max-width:80ch; }
+  .review { display:grid; grid-template-columns:minmax(180px,280px) minmax(0,1fr); gap:16px;
+    align-items:start; }
+  .review.no-context { display:block; }
+  .context { border:1px solid var(--line); padding:8px; background:var(--panel-deep);
+    min-width:0; }
+  .context-label { display:flex; justify-content:space-between; gap:8px; margin-bottom:7px;
+    color:var(--dim); font-size:10.5px; font-variant-numeric:tabular-nums; }
+  .context img { display:block; width:100%; height:auto; max-height:420px; object-fit:contain;
+    image-rendering:pixelated;
+    background-image:linear-gradient(45deg,#0000 25%,#7f7f7f22 25%,#7f7f7f22 75%,#0000 75%),
+      linear-gradient(45deg,#0000 25%,#7f7f7f22 25%,#7f7f7f22 75%,#0000 75%);
+    background-size:12px 12px; background-position:0 0,6px 6px; }
   .frames { display:flex; flex-wrap:wrap; gap:10px; max-width:100%; overflow-x:auto; }
   .cand { border:2px solid var(--line-strong); border-radius:0; padding:7px; background:var(--panel-deep);
     cursor:pointer; display:flex; flex:0 0 auto; flex-direction:column; align-items:center; gap:5px;
@@ -97,6 +124,10 @@ export function renderSheet(groups: SheetGroup[]): string {
     .bar, .group { padding-inline:14px; }
     .prompt { min-width:100%; }
     .cand img.preview { max-width:calc(100vw - 50px); }
+  }
+  @media (max-width:900px) {
+    .review { grid-template-columns:1fr; }
+    .context { max-width:280px; }
   }
 </style>
 </head>
@@ -140,8 +171,26 @@ GROUPS.forEach((g, gi) => {
     '<div class="ghead"><span class="style">' + g.styleId + '</span>' +
     '<span class="aid">' + g.assetId + '</span>' +
     '<span class="prompt">' + g.prompt + '</span></div>' +
-    '<div class="frames"></div>';
+    '<div class="review' + (g.revision ? '' : ' no-context') + '">' +
+    '<div class="frames"></div></div>';
+  const review = el.querySelector('.review');
   const frames = el.querySelector('.frames');
+  if (g.revision) {
+    const context = document.createElement('aside');
+    context.className = 'context';
+    const label = document.createElement('div');
+    label.className = 'context-label';
+    const identity = document.createElement('span');
+    identity.textContent = g.revision.mode.toUpperCase() + ' · SOURCE ' + g.revision.sourceAssetId;
+    const dimensions = document.createElement('span');
+    dimensions.textContent = g.revision.width + '×' + g.revision.height;
+    label.append(identity, dimensions);
+    const source = document.createElement('img');
+    source.src = g.revision.sourceUrl;
+    source.alt = 'Revision source ' + g.revision.sourceAssetId;
+    context.append(label, source);
+    review.insertBefore(context, frames);
+  }
   g.frameUrls.forEach((url, i) => {
     const c = document.createElement('button');
     c.type = 'button';

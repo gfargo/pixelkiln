@@ -284,6 +284,27 @@ The run also caught two integration details:
   $0.057768 to $0.058. PixelKiln now rounds offline estimates up to the live
   quote precision, so planning remains a safe ceiling.
 
+### Controlled revision benchmark status
+
+The bundled `comfyui/pixel-art-xl-img2img@1.0.0` workflow is not included in
+the provider totals above. Its workflow integrity, content-addressed uploads,
+bindings, stale-input checks, lock lineage, and source-versus-candidate review
+have automated coverage. A live Apple MPS smoke also ran one fortress at
+strengths `0.25`, `0.4`, and `0.6`.
+
+The pipeline passed; the art did not. The broad footprint survived all three
+runs, but the requested snow barely appeared. The outputs lost the source's
+61.60% transparency and expanded from 15 colors to 4,208–5,224 colors. The
+[committed smoke](../benchmarks/provider-revisions/comfyui/README.md) retains
+all prompts, PNGs, hashes, and lock provenance.
+
+Before promoting the graph beyond experimental, replace or strengthen its
+conditioning and test at least one more subject family. Compare at 1× for
+silhouette retention, requested-change coverage, cluster clarity, alpha,
+palette size, and native-grid confidence. Until that broader A/B set passes,
+the recipe remains a transport example rather than a quality preset. See
+[Controlled asset revisions](REVISIONS.md).
+
 All three manifests now pass `doctor` and report a current plan. The hosted
 projects have ten healthy PNG cache entries each; the ComfyUI projects have
 four baseline, four cleanup, and two resolution-test entries. Three additional

@@ -103,6 +103,21 @@ describe("versioned recipes", () => {
     expect((await verifyRecipe("comfyui/pixel-art-xl-environment")).ok).toBe(true)
   })
 
+  it("ships an intact ComfyUI image-to-image recipe with explicit revision bindings", async () => {
+    const recipes = await listBundledRecipes()
+    const loaded = recipes.find(({ recipe }) => recipe.id === "comfyui/pixel-art-xl-img2img")
+    expect(loaded?.recipe.version).toBe("1.0.0")
+    expect(loaded?.recipe.workflow?.bindings).toMatchObject({
+      sourceImage: { nodeId: "12", input: "image" },
+      strength: { nodeId: "3", input: "denoise" },
+    })
+    expect(loaded?.recipe.quality).toMatchObject({
+      stage: "composition-source",
+      workingCanvas: { width: 1024, height: 1024 },
+    })
+    expect((await verifyRecipe("comfyui/pixel-art-xl-img2img")).ok).toBe(true)
+  })
+
   it("checks workflow and model bytes independently", async () => {
     const { recipePath, modelRoot } = await writeTestRecipe()
     const withoutModels = await verifyRecipe(recipePath)

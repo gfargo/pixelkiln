@@ -45,6 +45,22 @@ the installed style once the project palette and final output directory are
 known; the recipe's recommended native range and palette range help choose that
 policy but do not enforce it by themselves.
 
+For a controlled revision of a square source, install the separate image-to-image
+recipe:
+
+```bash
+pixelkiln recipe install comfyui/pixel-art-xl-img2img@1.0.0
+```
+
+It binds the hashed source upload, sampler strength, prompt, seed, candidate
+count, and final dimensions. It uses a square 1024×1024 working canvas, so it
+is not the right graph for wide source art. The workflow and binding contract
+have automated coverage. A live three-strength smoke preserved the broad source
+shape but missed the requested winter change, lost alpha, and produced thousands
+of colors. Keep it at `composition-source`; use the smoke to test plumbing, not
+as a quality preset. See
+[Controlled asset revisions](REVISIONS.md).
+
 ## Verify the recipe and workstation
 
 Verify the metadata digest and every included workflow before using a pack:

@@ -33,10 +33,14 @@ Prompts are deliberately empty because plausible text is not provenance. Use
 ### `plan`
 
 Diff the resolved manifest against the lockfile and disk without calling a
-provider. It reports current, missing, untracked, stale, failed, recoverable,
-in-flight, and orphaned entries plus estimated cost grouped by provider and
-unit. Single-provider JSON retains `cost` and `costUnit`; mixed plans set those
-legacy fields to `null` and expose the exact totals in `groups`.
+provider. It reports current, blocked, missing, untracked, stale, failed,
+recoverable, in-flight, and orphaned entries plus estimated cost grouped by
+provider and unit. A revision is blocked when its parent or mask is missing,
+stale, modified, or awaiting quality approval. Blocked work is not actionable
+and adds no cost. Single-provider JSON retains `cost` and `costUnit`; mixed
+plans set those legacy fields to `null` and expose the exact totals in `groups`.
+Revision items in JSON also include their mode, parent id/hash, optional mask
+hash, and strength.
 
 ```bash
 pixelkiln plan
@@ -78,7 +82,8 @@ step. It does not run or approve that step on the user's behalf.
 
 Queue selected missing/stale generation work without polling it. Enforces the
 provider spacing and concurrency limits, validates estimates at the spending
-boundary, and saves each remote id immediately.
+boundary, and saves each remote id immediately. Revision inputs are rechecked
+after any queue wait and before a provider request begins.
 
 ### `poll`
 
@@ -89,7 +94,8 @@ be rerun safely after an interrupted session.
 
 Open the local candidate-review UI for jobs with alternatives. The page keeps
 native aspect ratios, uses exact integer zoom for small art, fits large work,
-and centers the decision surface on wide displays. Arrow keys navigate, Enter
+and centers the decision surface on wide displays. A revision row shows its
+parent source beside the new candidates. Arrow keys navigate, Enter
 selects, 1–9 choose directly, and 0 leaves a row unresolved. Only rows submitted
 with **Apply selections** are written to the lockfile. Closing the window applies
 nothing. See the [Getting started guide](GETTING_STARTED.md#start-a-new-project)

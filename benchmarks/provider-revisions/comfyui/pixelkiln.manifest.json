@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-comfyui-revision-smoke",
+  "provider": "comfyui",
+  "styles": {
+    "winter-revision": {
+      "provider": "comfyui",
+      "generator": "map",
+      "outDir": "raw",
+      "seed": 31415,
+      "noBackground": false,
+      "promptPrefix": "pixel art, polished 16-bit game asset, crisp clusters, preserve the source silhouette",
+      "promptSuffix": "clean readable forms, no frame",
+      "providerOptions": {
+        "comfyui": {
+          "workflowFile": "../../../recipes/comfyui/pixel-art-xl-img2img/1.0.0/workflow-api.json",
+          "outputNodeId": "9",
+          "numImages": 1,
+          "bindings": {
+            "prompt": { "nodeId": "6", "input": "text" },
+            "width": { "nodeId": "11", "input": "width" },
+            "height": { "nodeId": "11", "input": "height" },
+            "batchSize": { "nodeId": "15", "input": "amount" },
+            "seed": { "nodeId": "3", "input": "seed" },
+            "sourceImage": { "nodeId": "12", "input": "image" },
+            "strength": { "nodeId": "3", "input": "denoise" }
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "fortress-source": {
+      "prompt": "a fortified monastery built into a sheer mountain cliff",
+      "source": "../../../website/public/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.png"
+    },
+    "fortress-winter": {
+      "prompt": "preserve the fortress footprint, towers, stairs, entrance, and viewpoint; add snow caps, ice, and cold blue winter shadows",
+      "width": 128,
+      "height": 128,
+      "revision": {
+        "mode": "image-to-image",
+        "from": "fortress-source",
+        "strength": 0.25
+      }
+    },
+    "fortress-winter-040": {
+      "prompt": "preserve the fortress footprint, towers, stairs, entrance, and viewpoint; turn it into a snowbound winter fortress with bright white snow caps, icicles, and cold blue shadows",
+      "width": 128,
+      "height": 128,
+      "revision": {
+        "mode": "image-to-image",
+        "from": "fortress-source",
+        "strength": 0.4
+      }
+    },
+    "fortress-winter-060": {
+      "prompt": "preserve the fortress footprint and isometric viewpoint; a bright snowbound winter fortress, heavy white snow on every roof and ledge, blue ice, icicles, cold daylight",
+      "width": 128,
+      "height": 128,
+      "revision": {
+        "mode": "image-to-image",
+        "from": "fortress-source",
+        "strength": 0.6
+      }
+    }
+  }
+}

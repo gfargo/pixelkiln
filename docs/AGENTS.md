@@ -37,6 +37,9 @@ With the skill loaded, an agent should:
    never credentials or `.pixelkiln/` caches.
 9. Prefer a version-pinned recipe when one matches the provider and task. Verify
    the installed workflow, and verify models when their local root is known.
+10. When an asset declares `revision`, treat a blocked parent or mask as a hard
+    dependency. Generate, fetch, refine, and approve the parent explicitly;
+    never bypass the gate or approve it for the user.
 
 The skill guides the workflow; PixelKiln remains the deterministic execution
 layer. This separation keeps agent reasoning out of polling, hashing, downloads,
@@ -55,7 +58,7 @@ not a replacement:
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
 | PixelLab adapter | The current production and live-tested generation backend. |
 | Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
-| ComfyUI adapter | Experimental self-hosted still-image backend; PixelKiln automates native-grid and palette checks, while a person retains visual approval. |
+| ComfyUI adapter | Experimental self-hosted still-image and controlled-revision backend; PixelKiln automates lineage, native-grid, and palette checks, while a person retains visual approval. |
 | Scenario adapter | Experimental hosted still-image backend; BFL Flux 2 Dev quote, paid single/two-output generation, human review, and durable recovery live-tested. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production

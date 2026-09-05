@@ -11,7 +11,7 @@ import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { submit } from "../src/pipeline/submit.ts"
-import { decodePng } from "../src/png.ts"
+import { decodePng, encodeRgbaPng } from "../src/png.ts"
 import { FAKE_PNG } from "../src/providers/fake.ts"
 import { lockKey, type Lock } from "../src/types.ts"
 
@@ -91,6 +91,70 @@ async function project(options: { numImages?: number; width?: number; seed?: num
   const loaded = await loadManifest(manifestPath)
   const specs = await resolveSpecs(loaded)
   return { loaded, spec: specs[0]!, workflowPath }
+}
+
+async function revisionProject(mode: "image-to-image" | "inpaint" = "image-to-image") {
+  const source = encodeRgbaPng(16, 16, Buffer.alloc(16 * 16 * 4, 255))
+  const mask = encodeRgbaPng(16, 16, Buffer.alloc(16 * 16 * 4, 127))
+  await writeFile(path.join(dir, "source.png"), source)
+  await writeFile(path.join(dir, "mask.png"), mask)
+  const workflowPath = path.join(dir, "revision-api.json")
+  await writeFile(workflowPath, JSON.stringify({
+    "3": {
+      class_type: "KSampler",
+      inputs: { seed: 1, steps: 20, denoise: 0.25, latent_image: ["14", 0] },
+    },
+    "6": { class_type: "CLIPTextEncode", inputs: { text: "placeholder" } },
+    "9": { class_type: "SaveImage", inputs: { filename_prefix: "PixelKiln", images: ["8", 0] } },
+    "12": { class_type: "LoadImage", inputs: { image: "source-placeholder.png" } },
+    "13": { class_type: "LoadImage", inputs: { image: "mask-placeholder.png" } },
+    "14": { class_type: "VAEEncode", inputs: { pixels: ["12", 0] } },
+    "15": { class_type: "RepeatLatentBatch", inputs: { samples: ["14", 0], amount: 1 } },
+  }))
+  const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+  await writeFile(manifestPath, JSON.stringify({
+    name: "comfy-revision-test",
+    provider: "comfyui",
+    styles: {
+      local: {
+        generator: "map",
+        size: 16,
+        outDir: "out",
+        providerOptions: {
+          comfyui: {
+            workflowFile: "revision-api.json",
+            outputNodeId: "9",
+            numImages: 1,
+            bindings: {
+              prompt: { nodeId: "6", input: "text" },
+              batchSize: { nodeId: "15", input: "amount" },
+              seed: { nodeId: "3", input: "seed" },
+              sourceImage: { nodeId: "12", input: "image" },
+              maskImage: { nodeId: "13", input: "image" },
+              strength: { nodeId: "3", input: "denoise" },
+            },
+          },
+        },
+      },
+    },
+    assets: {
+      source: { prompt: "source", source: "source.png" },
+      revised: {
+        prompt: "preserve the silhouette and add snow",
+        width: 16,
+        height: 16,
+        revision: {
+          mode,
+          from: "source",
+          ...(mode === "inpaint" ? { mask: "mask.png" } : {}),
+          strength: 0.4,
+        },
+      },
+    },
+  }))
+  const loaded = await loadManifest(manifestPath)
+  const [spec] = await resolveSpecs(loaded, { assets: ["revised"] })
+  return { loaded, spec: spec!, source, mask, manifestPath }
 }
 
 describe("ComfyUI provider", () => {
@@ -211,6 +275,40 @@ describe("ComfyUI provider", () => {
     }
   })
 
+  it("keeps the committed image-to-image smoke and lineage current", async () => {
+    const root = path.resolve("benchmarks/provider-revisions/comfyui")
+    const specs = await resolveSpecs(await loadManifest(path.join(root, "pixelkiln.manifest.json")))
+    const lock = await loadLock(path.join(root, "pixelkiln.lock.json"))
+    const plan = await buildPlan(specs, lock)
+
+    expect(plan.items).toHaveLength(4)
+    expect(plan.items.every((item) => item.state === "ok")).toBe(true)
+    expect(plan.actionable).toEqual([])
+    const revisions = specs.filter((spec) => spec.revision)
+    expect(revisions.map((spec) => spec.revision!.strength)).toEqual([0.25, 0.4, 0.6])
+    expect(new Set(revisions.map((spec) => spec.revision!.sourceSha256))).toEqual(new Set([
+      "35748d35ea4df5cb3ed2af60d7833c7cf8c7c769bf343d599fba57653eddd200",
+    ]))
+    for (const spec of revisions) {
+      expect(lock.entries[lockKey(spec.styleId, spec.assetId)]).toMatchObject({
+        status: "downloaded",
+        specHash: spec.specHash,
+        revision: {
+          mode: "image-to-image",
+          sourceAssetId: "fortress-source",
+          sourceSha256: spec.revision!.sourceSha256,
+          strength: spec.revision!.strength,
+        },
+        providerMetadata: {
+          comfyui: {
+            workflowSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+            revision: { sourceSha256: spec.revision!.sourceSha256 },
+          },
+        },
+      })
+    }
+  })
+
   it("hashes parsed workflow content and plans without a network request", async () => {
     const fetch = vi.fn()
     vi.stubGlobal("fetch", fetch)
@@ -327,6 +425,112 @@ describe("ComfyUI provider", () => {
     expect((spec.providerOptions.workflow as JsonObject)["6"]).toMatchObject({
       inputs: { text: "placeholder" },
     })
+  })
+
+  it("uploads immutable revision inputs and binds an inpaint workflow", async () => {
+    const uploads: Array<{
+      name: string
+      bytes: Buffer
+      type: FormDataEntryValue | null
+      subfolder: FormDataEntryValue | null
+      overwrite: FormDataEntryValue | null
+    }> = []
+    let queued: JsonObject | null = null
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith("/upload/image")) {
+        const form = init!.body as FormData
+        const image = form.get("image") as File
+        uploads.push({
+          name: image.name,
+          bytes: Buffer.from(await image.arrayBuffer()),
+          type: form.get("type"),
+          subfolder: form.get("subfolder"),
+          overwrite: form.get("overwrite"),
+        })
+        return json({ name: image.name, subfolder: "pixelkiln", type: "input" })
+      }
+      if (url.endsWith("/prompt")) {
+        queued = JSON.parse(String(init!.body))
+        return json({ prompt_id: "revision-1" })
+      }
+      return json({}, 404)
+    }))
+
+    const { spec, source, mask } = await revisionProject("inpaint")
+    await expect(createProvider("comfyui", "online").submit(spec, [])).resolves.toMatchObject({
+      jobId: "revision-1#9",
+      metadata: {
+        revision: {
+          mode: "inpaint",
+          sourceAssetId: "source",
+          sourceSha256: sha256(source),
+          maskSha256: sha256(mask),
+        },
+      },
+    })
+
+    expect(uploads).toEqual([
+      expect.objectContaining({
+        name: `${sha256(source)}.png`,
+        bytes: source,
+        type: "input",
+        subfolder: "pixelkiln",
+        overwrite: "true",
+      }),
+      expect.objectContaining({
+        name: `${sha256(mask)}.png`,
+        bytes: mask,
+        type: "input",
+        subfolder: "pixelkiln",
+        overwrite: "true",
+      }),
+    ])
+    expect(queued).toMatchObject({
+      prompt: {
+        "3": { inputs: { denoise: 0.4 } },
+        "6": { inputs: { text: "preserve the silhouette and add snow" } },
+        "12": { inputs: { image: `pixelkiln/${sha256(source)}.png` } },
+        "13": { inputs: { image: `pixelkiln/${sha256(mask)}.png` } },
+        "15": { inputs: { amount: 1 } },
+      },
+    })
+  })
+
+  it("rejects incomplete revision workflows offline", async () => {
+    const { manifestPath } = await revisionProject()
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"))
+    delete manifest.styles.local.providerOptions.comfyui.bindings.sourceImage
+    await writeFile(manifestPath, JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(manifestPath), { assets: ["revised"] }))
+      .rejects.toThrow(/revisions require bindings.sourceImage/)
+
+    manifest.styles.local.providerOptions.comfyui.bindings.sourceImage = {
+      nodeId: "12",
+      input: "image",
+    }
+    delete manifest.styles.local.providerOptions.comfyui.bindings.strength
+    await writeFile(manifestPath, JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(manifestPath), { assets: ["revised"] }))
+      .rejects.toThrow(/revision strength requires bindings.strength/)
+
+    manifest.styles.local.providerOptions.comfyui.bindings.strength = {
+      nodeId: "3",
+      input: "denoise",
+    }
+    manifest.assets.revised.width = 32
+    await writeFile(manifestPath, JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(manifestPath), { assets: ["revised"] }))
+      .rejects.toThrow(/without width\/height bindings must keep the source dimensions/)
+  })
+
+  it("reports upload failures without exposing image bytes or workflow JSON", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "disk full" }, 507)))
+    const { spec, source } = await revisionProject()
+    const error = await createProvider("comfyui", "online").submit(spec, []).catch(String)
+    expect(error).toContain("ComfyUI image upload failed (507): disk full")
+    expect(error).not.toContain(source.toString("base64"))
+    expect(error).not.toContain("preserve the silhouette")
   })
 
   it("reports queue validation errors without echoing the workflow", async () => {

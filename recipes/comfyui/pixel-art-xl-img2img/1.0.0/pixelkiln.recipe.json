@@ -1,0 +1,87 @@
+{
+  "$schema": "https://unpkg.com/pixelkiln/schema/recipe.schema.json",
+  "format": "pixelkiln-recipe",
+  "schemaVersion": 1,
+  "id": "comfyui/pixel-art-xl-img2img",
+  "version": "1.0.0",
+  "provider": "comfyui",
+  "summary": "SDXL and Pixel Art XL image-to-image workflow for controlled square-asset revisions.",
+  "files": [
+    {
+      "path": "workflow-api.json",
+      "role": "workflow",
+      "sha256": "ed8b727de0f3e369e54aff2fd2e56cbfaf18539a45722d5e6669a84657fe78e4"
+    }
+  ],
+  "models": [
+    {
+      "path": "checkpoints/sd_xl_base_1.0.safetensors",
+      "sha256": "31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b",
+      "source": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/sd_xl_base_1.0.safetensors",
+      "license": "CreativeML Open RAIL++-M"
+    },
+    {
+      "path": "loras/pixel-art-xl.safetensors",
+      "sha256": "4234637cb80c998f41e348e6a6cb6bc20d8d038b2b0f256b6129b3b5e353eef7",
+      "source": "https://huggingface.co/nerijs/pixel-art-xl/blob/main/pixel-art-xl.safetensors",
+      "license": "CreativeML OpenRAIL-M"
+    }
+  ],
+  "styleId": "comfyui-img2img",
+  "style": {
+    "provider": "comfyui",
+    "generator": "map",
+    "outDir": "art/generated/comfyui-img2img",
+    "seed": 31415,
+    "noBackground": false,
+    "promptPrefix": "pixel art, polished 16-bit game asset, crisp clusters, preserve the source silhouette",
+    "promptSuffix": "clean readable forms, no frame",
+    "providerOptions": {
+      "comfyui": {
+        "workflowFile": "{{recipeDir}}/workflow-api.json",
+        "outputNodeId": "9",
+        "numImages": 4,
+        "bindings": {
+          "prompt": { "nodeId": "6", "input": "text" },
+          "width": { "nodeId": "11", "input": "width" },
+          "height": { "nodeId": "11", "input": "height" },
+          "batchSize": { "nodeId": "15", "input": "amount" },
+          "seed": { "nodeId": "3", "input": "seed" },
+          "sourceImage": { "nodeId": "12", "input": "image" },
+          "strength": { "nodeId": "3", "input": "denoise" }
+        }
+      }
+    }
+  },
+  "workflow": {
+    "path": "workflow-api.json",
+    "outputNodeId": "9",
+    "numImages": 4,
+    "bindings": {
+      "prompt": { "nodeId": "6", "input": "text" },
+      "width": { "nodeId": "11", "input": "width" },
+      "height": { "nodeId": "11", "input": "height" },
+      "batchSize": { "nodeId": "15", "input": "amount" },
+      "seed": { "nodeId": "3", "input": "seed" },
+      "sourceImage": { "nodeId": "12", "input": "image" },
+      "strength": { "nodeId": "3", "input": "denoise" }
+    }
+  },
+  "quality": {
+    "stage": "composition-source",
+    "workingCanvas": { "width": 1024, "height": 1024 },
+    "recommendedNativeSize": { "min": 48, "max": 128 },
+    "paletteColors": { "min": 16, "max": 32 },
+    "background": "opaque",
+    "checks": ["prompt-coverage", "native-grid", "final-palette", "human-1x"],
+    "notes": [
+      "Use this version only with square sources; the working canvas is square.",
+      "Start near strength 0.25 and raise it only when the requested change is not visible.",
+      "The saved PNG is a revision candidate, not finished pixel art."
+    ]
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "47d1012a4d814121b51c9249527fd983380f0e6ebbfedd7e93c70241e5c55f12"
+  }
+}

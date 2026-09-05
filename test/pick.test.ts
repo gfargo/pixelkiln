@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from "vitest"
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { FakeProvider } from "../src/providers/fake.ts"
+import { FakeProvider, FAKE_PNG } from "../src/providers/fake.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
@@ -36,7 +36,7 @@ async function projectInReview(candidates = 4) {
   const lock: Lock = { version: 2, entries: {} }
   await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, { spacingMs: 0 })
   await poll(provider, lock, lockPath, { intervalMs: 0 })
-  return { provider, lock }
+  return { provider, lock, specs }
 }
 
 describe("runPicker", () => {
@@ -118,6 +118,49 @@ describe("runPicker", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ selections: [{ key, index: 0 }] }),
+    })
+    await picked
+  })
+
+  it("serves only the registered revision source for side-by-side review", async () => {
+    const { provider, lock, specs } = await projectInReview(4)
+    const sourceFile = path.join(dir, "source.png")
+    await writeFile(sourceFile, FAKE_PNG)
+    const sourceSpec = { ...specs[0]!, assetId: "source", source: "source.png" }
+    const revisionSpec = {
+      ...specs[0]!,
+      revision: {
+        mode: "image-to-image" as const,
+        sourceAssetId: "source",
+        sourceFile,
+        sourceSha256: "a".repeat(64),
+        sourceWidth: 1,
+        sourceHeight: 1,
+        sourceFormat: "png" as const,
+        sourceSpec,
+        strength: 0.3,
+      },
+    }
+
+    let url = ""
+    const picked = runPicker(provider, lock, lockPath, {
+      open: false,
+      specs: [revisionSpec],
+      onProgress: (message) => (url ||= message.match(/http:\/\/127\.0\.0\.1:\d+\//)?.[0] ?? ""),
+    })
+    await vi.waitFor(() => expect(url).not.toBe(""))
+
+    const page = await (await fetch(url)).text()
+    expect(page).toContain("/revision-source/0")
+    const source = await fetch(url + "revision-source/0")
+    expect(source.headers.get("content-type")).toBe("image/png")
+    expect(Buffer.from(await source.arrayBuffer())).toEqual(FAKE_PNG)
+    expect((await fetch(url + "revision-source/../pixelkiln.lock.json")).status).toBe(404)
+
+    await fetch(url + "apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selections: [{ key: lockKey("base", "anvil"), index: 0 }] }),
     })
     await picked
   })

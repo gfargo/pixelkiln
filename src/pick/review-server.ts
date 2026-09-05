@@ -1,5 +1,6 @@
 import { createServer } from "node:http"
 import { spawn } from "node:child_process"
+import { readFile } from "node:fs/promises"
 
 /**
  * The HTTP plumbing shared by every local review page (`pick`, `salvage`):
@@ -29,6 +30,8 @@ export interface ReviewServerOptions<TResult> {
   /** Open the URL in the system browser once listening. Default true. */
   open?: boolean
   onProgress?: (msg: string) => void
+  /** Exact local media routes exposed only for the lifetime of this review. */
+  assets?: ReadonlyMap<string, { path: string; contentType: string }>
 }
 
 export function serveReviewPage<TResult>(opts: ReviewServerOptions<TResult>): Promise<TResult> {
@@ -36,6 +39,23 @@ export function serveReviewPage<TResult>(opts: ReviewServerOptions<TResult>): Pr
 
   return new Promise<TResult>((resolve, reject) => {
     const server = createServer(async (req, res) => {
+      if (req.method === "GET" && req.url && opts.assets?.has(req.url)) {
+        try {
+          const asset = opts.assets.get(req.url)!
+          const bytes = await readFile(asset.path)
+          res.writeHead(200, {
+            "Content-Type": asset.contentType,
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+          })
+          res.end(bytes)
+        } catch {
+          res.writeHead(404, { "Content-Type": "text/plain" })
+          res.end("review asset is unavailable")
+        }
+        return
+      }
+
       if (req.method === "GET" && (req.url === "/" || req.url?.startsWith("/?"))) {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" })
         res.end(opts.html)
