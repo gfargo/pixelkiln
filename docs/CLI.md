@@ -47,7 +47,7 @@ pixelkiln plan --style neon --only anvil,hammer --json --check
 ### `doctor`
 
 Validate the manifest, references, lockfile recovery sources, output ownership,
-writability, stale jobs, current plan, API-key configuration, and provider
+writability, stale jobs, current plan, credential configuration, and provider
 connectivity. `--dry-run` skips only live connectivity. Supports `--json` and
 exits nonzero for unsafe state.
 

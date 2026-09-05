@@ -2,7 +2,8 @@
 
 Use more than one provider in a single manifest when each provider has a clear
 job. A common split is PixelLab for prompt-sensitive props, Retro Diffusion for
-cutouts or animation, and ComfyUI for private model experiments.
+cutouts or animation, Scenario for a hosted project model, and ComfyUI for
+private local experiments.
 
 The top-level `provider` is the default. A style can override it:
 
@@ -70,8 +71,8 @@ audit. Keep each style's output directory distinct.
 ## Plan and budget
 
 `plan` reports a separate group for every provider and cost unit. It never adds
-PixelLab generations, Retro Diffusion dollars, and ComfyUI's `free` unit into a
-fictional total.
+PixelLab generations, Retro Diffusion dollars, Scenario Compute Units, and
+ComfyUI's `free` unit into a fictional total.
 
 ```bash
 pixelkiln doctor --dry-run
@@ -79,6 +80,7 @@ pixelkiln plan
 pixelkiln gen \
   --budget pixellab=12 \
   --budget retrodiffusion=0.20 \
+  --budget scenario=60 \
   --budget comfyui=0
 ```
 

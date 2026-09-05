@@ -55,23 +55,27 @@ not a replacement:
 | PixelLab adapter | The current production and live-tested generation backend. |
 | Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
 | ComfyUI adapter | Experimental self-hosted still-image backend; PixelKiln automates native-grid and palette checks, while a person retains visual approval. |
+| Scenario adapter | Experimental hosted still-image backend; BFL Flux 2 Dev quote, paid single/two-output generation, human review, and durable recovery live-tested. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production
-and paid-generation-tested adapter. Retro Diffusion generation support is
-experimental. Paid RD Fast and RD Plus single-candidate stills have passed from
+adapter. Retro Diffusion generation support is experimental. Paid RD Fast and
+RD Plus single-candidate stills have passed from
 quote through validated download and recovery. Multi-candidate, tileset, GIF,
-and spritesheet workflows still need representative live smoke tests. See
+and spritesheet workflows still need representative live smoke tests. Scenario
+has one live-tested BFL Flux 2 Dev profile plus mocked edge coverage; other
+model schemas and broader batches remain unverified. See
 [provider comparison](../PROVIDERS.md) before choosing a provider for a
 new project or a large environment asset. Once chosen, follow
-[Set up PixelLab](./PIXELLAB.md) or
-[Set up Retro Diffusion](./RETRO_DIFFUSION.md), or
-[Set up ComfyUI](./COMFYUI.md).
+[Set up PixelLab](./PIXELLAB.md),
+[Set up Retro Diffusion](./RETRO_DIFFUSION.md),
+[Set up ComfyUI](./COMFYUI.md), or
+[Set up Scenario](./SCENARIO.md).
 
 The installed skill keeps the shared safety workflow in `SKILL.md` and loads a
-focused reference only when needed: PixelLab, Retro Diffusion, ComfyUI, or a
-project that uses more than one. In a mixed manifest, the top-level provider is
-the default and each style may override it. Plans, confirmations, and budgets
-stay separate by provider and unit. See
+focused reference only when needed: PixelLab, Retro Diffusion, ComfyUI,
+Scenario, or a project that uses more than one. In a mixed manifest, the
+top-level provider is the default and each style may override it. Plans,
+confirmations, and budgets stay separate by provider and unit. See
 [Mixed-provider projects](./MIXED_PROVIDERS.md) for the complete contract.
 
 ## Recommended first prompt

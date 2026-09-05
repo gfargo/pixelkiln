@@ -10,6 +10,10 @@ and seed numbers match, but seeds are not portable between models.
 This tests the adapters PixelKiln ships, not every model or endpoint each
 provider sells.
 
+Scenario's first paid run uses a different brief, so it is recorded separately
+as an [integration smoke](../benchmarks/provider-scenario-smoke/README.md)
+instead of being presented as a fourth comparable result.
+
 ## Setup
 
 | Brief | PixelLab route | Retro Diffusion style | Intended output |

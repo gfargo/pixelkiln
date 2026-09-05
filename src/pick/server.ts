@@ -79,7 +79,7 @@ export async function runPicker(
 
         // Promote the chosen candidate; the review parent is removed upstream
         // once nothing is left in it.
-        const { objectId, sourceUrl } = await requireSelectCandidate(provider)(
+        const { objectId, sourceUrl, metadata } = await requireSelectCandidate(provider)(
           entry.reviewObjectId,
           index,
           `asset:${entry.assetId}`,
@@ -93,6 +93,15 @@ export async function runPicker(
           sourceUrl: sourceUrl ?? group.frameUrls[index] ?? null,
           sourceUrls: [],
           provider: provider.id,
+          providerMetadata: metadata
+            ? {
+                ...entry.providerMetadata,
+                [provider.id]: {
+                  ...entry.providerMetadata[provider.id],
+                  ...metadata,
+                },
+              }
+            : entry.providerMetadata,
         })
         selected++
         log(`  picked  ${key} → candidate ${index + 1}`)

@@ -1,0 +1,120 @@
+{
+  "version": 2,
+  "entries": {
+    "review/mountain-keep": {
+      "styleId": "review",
+      "assetId": "mountain-keep",
+      "specHash": "44410673b8ad35abf4061122c4ab0659d98230454bc92629868cb548d57ce3da",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "jobId": "scenario://job?id=job_91mq8b8w4SMWTDSFoiRB3qok",
+      "reviewObjectId": "scenario://job?id=job_91mq8b8w4SMWTDSFoiRB3qok",
+      "objectId": "asset_J585V3TXq3eDcEDKbk8A3Yu7",
+      "candidateIndex": 1,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_J585V3TXq3eDcEDKbk8A3Yu7",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_J585V3TXq3eDcEDKbk8A3Yu7"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/review/mountain-keep.png",
+          "sha256": "e41466e7bcca0c36273b888428e7c2a2aeae54043e8933d604bd77c98989fb7f",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-dev",
+          "projectId": null,
+          "maxComputeUnits": 32,
+          "quotedComputeUnits": 32,
+          "creativeUnitsCost": 32,
+          "costDetails": {
+            "custom-generation": 32
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_91mq8b8w4SMWTDSFoiRB3qok",
+          "billedComputeUnits": 32,
+          "billing": {
+            "cuCost": 32,
+            "cuDiscount": 0
+          },
+          "assetIds": [
+            "asset_EaKtQZ8mLpng4R3Yo8MK2a2A",
+            "asset_J585V3TXq3eDcEDKbk8A3Yu7"
+          ],
+          "assetId": "asset_J585V3TXq3eDcEDKbk8A3Yu7",
+          "outputIndex": 0
+        }
+      },
+      "submittedAt": "2026-09-05T12:54:29.712Z",
+      "downloadedAt": "2026-09-05T12:57:28.954Z",
+      "cost": 32,
+      "costUnit": "compute-units",
+      "provider": "scenario"
+    },
+    "single/mountain-keep": {
+      "styleId": "single",
+      "assetId": "mountain-keep",
+      "specHash": "d5ee54914192fa8ce9284f960ac2ca2d28fb47a58b1b57560880a28db4354383",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "jobId": "scenario://job?id=job_z69WLXMKwLbcWFscqmFJ7h4T",
+      "reviewObjectId": null,
+      "objectId": "asset_tWag5eUH7s5PKd3pyBmwsvgC",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_tWag5eUH7s5PKd3pyBmwsvgC",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_tWag5eUH7s5PKd3pyBmwsvgC",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/single/mountain-keep.png",
+          "sha256": "b7c3723bfd7d07532be8c696519306efd8d49d67eccc7b5517398cc171dc0ada",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-dev",
+          "projectId": null,
+          "maxComputeUnits": 16,
+          "quotedComputeUnits": 16,
+          "creativeUnitsCost": 16,
+          "costDetails": {
+            "custom-generation": 16
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_z69WLXMKwLbcWFscqmFJ7h4T",
+          "billedComputeUnits": 16,
+          "billing": {
+            "cuCost": 16,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_tWag5eUH7s5PKd3pyBmwsvgC",
+          "outputIndex": 0
+        }
+      },
+      "submittedAt": "2026-09-05T12:54:28.704Z",
+      "downloadedAt": "2026-09-05T12:54:48.248Z",
+      "cost": 16,
+      "costUnit": "compute-units",
+      "provider": "scenario"
+    }
+  }
+}

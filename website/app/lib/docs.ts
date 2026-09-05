@@ -43,6 +43,13 @@ export const docs: DocEntry[] = [
     group: "Start here",
   },
   {
+    slug: "scenario",
+    title: "Set up Scenario",
+    description: "Configure hosted models, two-part credentials, CU preflight, and durable downloads.",
+    file: "docs/SCENARIO.md",
+    group: "Start here",
+  },
+  {
     slug: "cli",
     title: "CLI reference",
     description: "Every command and flag, including automation and exit behavior.",

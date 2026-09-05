@@ -12,6 +12,7 @@ provider you are using. These Markdown files also render at
 | [Set up PixelLab](./PIXELLAB.md) | Configure the production provider, choose a generator, and use its account workflows. |
 | [Set up Retro Diffusion](./RETRO_DIFFUSION.md) | Configure the experimental provider, choose a style, and understand its live-tested boundary. |
 | [Set up ComfyUI](./COMFYUI.md) | Bind a local composition workflow and understand the manual quality boundary. |
+| [Set up Scenario](./SCENARIO.md) | Configure hosted models, two-part credentials, CU ceilings, and durable downloads. |
 | [CLI reference](./CLI.md) | Every command and flag, offline/provider requirements, JSON output, and exit behavior. |
 | [Manifest reference](./MANIFEST.md) | Every style and asset field, inheritance, generator-specific constraints, mounting, and schema validation. |
 | [Mixed-provider projects](./MIXED_PROVIDERS.md) | Route styles to different providers, set separate budget ceilings, and resume safely from one lockfile. |

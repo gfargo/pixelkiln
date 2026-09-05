@@ -8,8 +8,9 @@ local. Generation and account commands connect to the selected provider.
 
 - Node.js 22 or newer. Node.js 24 LTS is the recommended default.
 - A credential for the selected hosted provider: `PIXELLAB_API_KEY` for
-  PixelLab or `RD_API_KEY` for Retro Diffusion. Self-hosted ComfyUI needs a
-  reachable server instead of an API key.
+  PixelLab, `RD_API_KEY` for Retro Diffusion, or both
+  `SCENARIO_SDK_API_KEY` and `SCENARIO_SDK_API_SECRET` for Scenario.
+  Self-hosted ComfyUI needs a reachable server instead of an API key.
 
 Install the published package in the project that owns the art:
 
@@ -66,6 +67,20 @@ remains the production adapter. See
 [Manifest reference](MANIFEST.md#experimental-retro-diffusion) for
 provider options and current limits, or
 [provider comparison](../PROVIDERS.md) for selection guidance.
+
+For experimental Scenario still generation, use both credentials:
+
+```dotenv
+SCENARIO_SDK_API_KEY=...
+SCENARIO_SDK_API_SECRET=...
+```
+
+Scenario also requires a model ID and a conservative per-asset Compute Unit
+ceiling in the manifest. Its quote, async job, review, download, and recovery
+paths are mock-tested. BFL Flux 2 Dev has also passed paid single- and two-output
+generation, human review, and provider-backed recovery. Start with
+[Set up Scenario](SCENARIO.md), one disposable asset, and a small budget.
+
 For self-hosted generation, set `provider` to `comfyui`, commit an API-format
 workflow, and bind the inputs PixelKiln may replace. Local ComfyUI jobs use a
 zero `free` budget, which describes the lack of a metered provider charge, not
@@ -84,7 +99,8 @@ Verify its workflow and the workstation's model bytes before generation. See
 
 The provider setup guides give the shortest path for
 [PixelLab](PIXELLAB.md), [Retro Diffusion](RETRO_DIFFUSION.md), and
-[ComfyUI](COMFYUI.md).
+[ComfyUI](COMFYUI.md), plus the experimentally live-tested
+[Scenario](SCENARIO.md) adapter.
 If one project needs several, set `provider` on the styles that differ from the
 top-level default. One lockfile can retain all of their provenance. See
 [Mixed-provider projects](MIXED_PROVIDERS.md).
@@ -106,7 +122,7 @@ pixelkiln gen --style base --budget 120
 For a run spanning several providers, pass one named ceiling per provider:
 
 ```bash
-pixelkiln gen --budget pixellab=12 --budget retrodiffusion=0.20 --budget comfyui=0
+pixelkiln gen --budget pixellab=12 --budget scenario=60 --budget comfyui=0
 ```
 
 The command submits jobs, polls them, opens the local review sheet when a

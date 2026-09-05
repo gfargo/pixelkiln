@@ -63,6 +63,7 @@ export function SiteFooter() {
             <TrackedLink id="footer_pixellab" section="footer" href="/docs/pixellab">Set up PixelLab</TrackedLink>
             <TrackedLink id="footer_retro" section="footer" href="/docs/retro-diffusion">Set up Retro Diffusion</TrackedLink>
             <TrackedLink id="footer_comfyui" section="footer" href="/docs/comfyui">Set up ComfyUI</TrackedLink>
+            <TrackedLink id="footer_scenario" section="footer" href="/docs/scenario">Set up Scenario</TrackedLink>
             <TrackedLink id="footer_benchmark" section="footer" href="/docs/provider-benchmark">Benchmark</TrackedLink>
             <TrackedLink id="footer_generators" section="footer" href="/docs/generators">Generators</TrackedLink>
           </div>

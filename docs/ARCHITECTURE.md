@@ -5,7 +5,7 @@ PixelKiln separates provider mechanics from the project state machine:
 ```text
 manifest + lock + planning + review + recovery + artifact pipelines
 ──────────────────── Provider interface ─────────────────────────
-PixelLabProvider      RetroDiffusionProvider      ComfyUIProvider      FakeProvider
+PixelLabProvider   RetroDiffusionProvider   ComfyUIProvider   ScenarioProvider   FakeProvider
 ```
 
 Everything above the provider boundary is backend-neutral. URL shapes, auth
@@ -46,9 +46,9 @@ manifest remains destination authority; a stale lock path cannot redirect
 restore into an unrelated project file.
 
 Cost units that differ are never summed. Built-in adapters currently use
-`generations`, `usd`, and `free`; custom adapters may register another
-non-empty unit. Candidate count also belongs to the provider estimate rather
-than being assumed globally.
+`generations`, `usd`, `compute-units`, and `free`; custom adapters may register
+another non-empty unit. Candidate count also belongs to the provider estimate
+rather than being assumed globally.
 
 ## State machine
 
@@ -146,7 +146,13 @@ input-bound clone, polls local history, and stores portable `comfyui://` output
 references so a lockfile does not retain a workstation hostname. It supports
 one still-image output node today. A core-node Stable Diffusion 1.5 graph has
 passed single-image generation, four-candidate queue detection, and cache-only
-recovery on Apple MPS. `FakeProvider` implements the same contract
+recovery on Apple MPS. `ScenarioProvider` is an experimental hosted still-image
+adapter. It keeps offline planning conservative, records the provider's free
+submit-time Compute Unit quote, and stores durable `scenario://` job and asset
+references that refresh signed URLs. Authentication and CU preflight have
+passed live with BFL Flux 2 Dev, along with paid single/two-output jobs, human
+selection, and provider-backed recovery. Other model schemas remain mocked.
+`FakeProvider` implements the same contract
 in memory, which keeps the pipeline testable without credentials or network
 access. See [library API](./LIBRARY.md) and
 [provider comparison](../PROVIDERS.md).

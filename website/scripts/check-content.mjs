@@ -85,10 +85,17 @@ if (!home.includes('href="/docs/mixed-providers"')) {
 if (!home.includes("still needs manual") || !home.includes("art review")) {
   failures.push("provider results are missing the ComfyUI manual-review warning");
 }
+if (!home.includes('/benchmarks/provider-scenario-smoke/mountain-keep.png')) {
+  failures.push("provider results are missing the paid Scenario smoke image");
+}
+if (!existsSync(path.join(repoRoot, "website/public/benchmarks/provider-scenario-smoke/mountain-keep.png"))) {
+  failures.push("the paid Scenario smoke image is missing from website/public");
+}
 for (const [provider, route, official] of [
   ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],
   ["Retro Diffusion", "/docs/retro-diffusion", "https://www.retrodiffusion.ai/"],
   ["ComfyUI", "/docs/comfyui", "https://www.comfy.org/"],
+  ["Scenario", "/docs/scenario", "https://www.scenario.com/"],
 ]) {
   if (!home.includes(`href="${route}"`)) {
     failures.push(`provider results are missing the ${provider} setup link`);
@@ -102,6 +109,7 @@ for (const [file, credential, official] of [
   ["docs/PIXELLAB.md", "PIXELLAB_API_KEY", "https://www.pixellab.ai/"],
   ["docs/RETRO_DIFFUSION.md", "RD_API_KEY", "https://www.retrodiffusion.ai/"],
   ["docs/COMFYUI.md", "COMFYUI_BASE_URL", "https://www.comfy.org/"],
+  ["docs/SCENARIO.md", "SCENARIO_SDK_API_SECRET", "https://www.scenario.com/"],
 ]) {
   const guide = readFileSync(path.join(repoRoot, file), "utf8");
   if (!guide.includes(credential)) failures.push(`${file} is missing ${credential}`);

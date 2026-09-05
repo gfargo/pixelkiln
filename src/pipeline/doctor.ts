@@ -37,6 +37,7 @@ export interface DoctorProviderTarget {
   provider?: Provider
   apiKeyPresent: boolean
   credentialEnv?: string
+  missingCredentialEnvs?: readonly string[]
 }
 
 /**
@@ -188,7 +189,10 @@ export async function doctor(
         checkId,
         "error",
         !target.apiKeyPresent
-          ? `${target.credentialEnv ?? (legacyTarget ? "PIXELLAB_API_KEY" : `${target.id} credential`)} is not configured`
+          ? `${target.missingCredentialEnvs?.length
+              ? target.missingCredentialEnvs.join(", ")
+              : target.credentialEnv ?? (legacyTarget ? "PIXELLAB_API_KEY" : `${target.id} credential`)} ` +
+            `${target.missingCredentialEnvs && target.missingCredentialEnvs.length > 1 ? "are" : "is"} not configured`
           : `${target.id} is not configured`,
       )
     } else if (!target.provider.balance && !target.provider.checkConnection) {
