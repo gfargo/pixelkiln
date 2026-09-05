@@ -1,3 +1,10 @@
+# [0.14.0](https://github.com/gfargo/pixelkiln/compare/v0.13.0...v0.14.0) (2026-09-05)
+
+
+### Features
+
+* add Scenario provider ([#64](https://github.com/gfargo/pixelkiln/issues/64)) ([bdd9f4e](https://github.com/gfargo/pixelkiln/commit/bdd9f4e37fcea0cad2206095c3e5d1f9286d0785))
+
 # [0.13.0](https://github.com/gfargo/pixelkiln/compare/v0.12.1...v0.13.0) (2026-09-05)
 
 
