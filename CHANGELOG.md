@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/gfargo/pixelkiln/compare/v0.12.1...v0.13.0) (2026-09-05)
+
+
+### Features
+
+* support per-style mixed providers ([#63](https://github.com/gfargo/pixelkiln/issues/63)) ([c08b0c6](https://github.com/gfargo/pixelkiln/commit/c08b0c632407ded5c237ef196713ddc3bb20d163))
+
 ## [0.12.1](https://github.com/gfargo/pixelkiln/compare/v0.12.0...v0.12.1) (2026-09-04)
 
 
