@@ -7,6 +7,7 @@ import { FakeProvider } from "../src/providers/fake.ts"
 import {
   availableProviders,
   createProvider,
+  providerCredentialEnvs,
   providerFactory,
   registerProvider,
 } from "../src/providers/registry.ts"
@@ -26,6 +27,14 @@ describe("provider registry", () => {
     expect(availableProviders()).toContain("pixellab")
     expect(providerFactory("pixellab").credentialEnv).toBe("PIXELLAB_API_KEY")
     expect(createProvider("pixellab", "offline").id).toBe("pixellab")
+  })
+
+  it("describes compound credentials without changing legacy factories", () => {
+    expect(providerCredentialEnvs(providerFactory("pixellab"))).toEqual(["PIXELLAB_API_KEY"])
+    expect(providerCredentialEnvs(providerFactory("scenario"))).toEqual([
+      "SCENARIO_SDK_API_KEY",
+      "SCENARIO_SDK_API_SECRET",
+    ])
   })
 
   it("uses a manifest provider for validation, estimates, and spec identity", async () => {

@@ -2,9 +2,7 @@
 
 ![PixelKiln](https://wp.griffen.codes/wp-content/uploads/2026/08/download.png)
 
-[Website](https://pixelkiln.griffen.codes) ·
-[Documentation](https://pixelkiln.griffen.codes/docs) ·
-[GitHub](https://github.com/gfargo/pixelkiln)
+[Website](https://pixelkiln.griffen.codes) · [Documentation](https://pixelkiln.griffen.codes/docs) · [GitHub](https://github.com/gfargo/pixelkiln)
 
 Generate pixel art from a manifest, review it locally, recover paid work, and
 package the accepted files for a game engine.
@@ -15,16 +13,17 @@ local contact sheet, and commit the source and output hashes. No LLM chooses
 what to run or which image wins. The CLI handles provider calls, polling,
 hashing, downloads, and file placement.
 
-PixelLab is the production backend. Retro Diffusion and self-hosted ComfyUI are
-experimental. The Retro Diffusion adapter has live coverage for RD Fast and RD
-Plus stills; its multi-candidate, tileset, GIF, and spritesheet paths are tested
-with fixtures but still need paid live runs. ComfyUI has passed local generation,
-four-candidate review, cache recovery, and native-grid refinement on Apple MPS.
-Its tested SDXL workflow can find a composition, but it is not a finished
-pixel-art preset. Styles in one manifest may use different providers with
-separate budget ceilings. The [provider comparison](./PROVIDERS.md) lists the tested
-limits and the best route for buildings and environments. `FakeProvider` covers
-the same contract in automated tests.
+PixelLab is the production backend. Retro Diffusion, self-hosted ComfyUI, and
+Scenario are experimental. The Retro Diffusion adapter has live coverage for
+RD Fast and RD Plus stills; its multi-candidate, tileset, GIF, and spritesheet
+paths are tested with fixtures but still need paid live runs. ComfyUI has passed
+local generation, four-candidate review, cache recovery, and native-grid
+refinement on Apple MPS. Its tested SDXL workflow can find a composition, but
+it is not a finished pixel-art preset. Scenario has mock-tested CU preflight,
+multi-output review, and signed-URL recovery; paid live validation is still
+pending. Styles in one manifest may use different providers with separate
+budget ceilings. The [provider comparison](./PROVIDERS.md) lists the tested limits
+and best routes. `FakeProvider` covers the same contract in automated tests.
 
 ## Release
 
@@ -106,10 +105,11 @@ Put a hosted provider's credential in `.env.local` beside the manifest:
 ```dotenv
 # PixelLab (the default provider)
 PIXELLAB_API_KEY=...
-
 # Or Retro Diffusion when `provider` is `retrodiffusion`
 RD_API_KEY=...
-
+# Scenario needs both values when `provider` is `scenario`
+SCENARIO_SDK_API_KEY=...
+SCENARIO_SDK_API_SECRET=...
 # Self-hosted ComfyUI needs no key; override its local URL only when needed
 COMFYUI_BASE_URL=http://127.0.0.1:8188
 ```
@@ -137,8 +137,9 @@ pixelkiln plan
 
 See [Getting started](./docs/GETTING_STARTED.md) for new and existing projects.
 Use [Set up PixelLab](./docs/PIXELLAB.md),
-[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), or
-[Set up ComfyUI](./docs/COMFYUI.md) for provider-specific configuration,
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md),
+[Set up ComfyUI](./docs/COMFYUI.md), or
+[Set up Scenario](./docs/SCENARIO.md) for provider-specific configuration,
 manifest examples, and current limits. See [Mixed-provider projects](./docs/MIXED_PROVIDERS.md)
 when styles in one manifest need different backends.
 
@@ -186,8 +187,9 @@ set. Generator choice, reference-image bytes, dimensions, palette, seed, and
 prompt settings participate in deterministic spec identity. A manifest may
 select another provider and pass namespaced `providerOptions`; see
 [Set up PixelLab](./docs/PIXELLAB.md),
-[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), and
-[Set up ComfyUI](./docs/COMFYUI.md). The
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md),
+[Set up ComfyUI](./docs/COMFYUI.md), and
+[Set up Scenario](./docs/SCENARIO.md). The
 [provider comparison](./PROVIDERS.md) covers costs,
 current confidence, and limitations. The committed ComfyUI projects now include
 transparent cutouts, palette-controlled backgrounds, wide environment canvases,
@@ -255,18 +257,17 @@ replace a hard palette or reference-image constraint. See
 Generator names describe PixelKiln workflows; their exact capabilities and
 prices depend on the selected provider. Retro Diffusion also supports the
 provider-specific `animation` generator. ComfyUI currently supports `map`
-through an operator-supplied workflow. Compare the adapters in the
-[provider comparison](./PROVIDERS.md).
+through an operator-supplied workflow. Scenario currently supports `map`
+with a required offline CU ceiling and a live quote before each paid call.
+Compare the adapters in the [provider comparison](./PROVIDERS.md).
 
 ## Derived artifacts
 
 ```bash
 # Deterministic sheet + atlas + provenance.
 pixelkiln pack --style base
-
 # Stable declared cells in an existing sheet.
 pixelkiln mount --style ground
-
 # Structural atlas + engine metadata + provenance.
 pixelkiln export --style ground --only terrain --format tiled
 ```
@@ -339,11 +340,9 @@ import {
   loadManifest,
   resolveSpecs,
 } from "pixelkiln"
-
 const loaded = await loadManifest("pixelkiln.manifest.json")
 const specs = await resolveSpecs(loaded)
 const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
-
 console.log(plan.groups, plan.actionable.length)
 ```
 
@@ -361,6 +360,7 @@ exporters, managed artifact writes, and offline provenance verification. See
 | [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
 | [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
 | [Set up ComfyUI](./docs/COMFYUI.md) | Experimental self-hosted server, workflow bindings, local cost semantics, and limits. |
+| [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, review, and durable downloads. |
 | [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Every style/asset field and generator constraint. |

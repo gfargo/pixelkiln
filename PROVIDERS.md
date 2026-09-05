@@ -1,8 +1,8 @@
 # Provider comparison
 
-PixelKiln can route one manifest through PixelLab, Retro Diffusion, and a
-self-hosted ComfyUI server. Planning, review, recovery, and packaging stay the
-same. Each adapter handles its service's authentication, prices, request
+PixelKiln can route one manifest through PixelLab, Retro Diffusion, Scenario,
+and a self-hosted ComfyUI server. Planning, review, recovery, and packaging stay
+the same. Each adapter handles its service's authentication, prices, request
 lifecycle, and file formats.
 
 PixelLab remains the default so existing manifests and spec hashes remain
@@ -10,8 +10,9 @@ compatible. The manifest's top-level `provider` is the default; a style may
 override it. Keep service settings under the matching `providerOptions` key.
 
 To configure a project, use [Set up PixelLab](./docs/PIXELLAB.md),
-[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md), or
-[Set up ComfyUI](./docs/COMFYUI.md). This page focuses on choosing between
+[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md),
+[Set up ComfyUI](./docs/COMFYUI.md), or
+[Set up Scenario](./docs/SCENARIO.md). This page focuses on choosing between
 them.
 
 ## Support status
@@ -21,6 +22,7 @@ them.
 | PixelLab | Production; paid generation and account workflows live-tested | `PIXELLAB_API_KEY` | generations |
 | Retro Diffusion | Experimental; authenticated paid still generation, download, provenance, and recovery live-tested; advanced workflows pending | `RD_API_KEY` | USD |
 | ComfyUI | Experimental; local single-image generation, four-candidate queue, provenance, and cache-only recovery live-tested on Apple MPS | none; optional `COMFYUI_BASE_URL` | free |
+| Scenario | Experimental; mocked CU preflight, async lifecycle, multi-output review, durable download, and recovery; paid live run pending | `SCENARIO_SDK_API_KEY` and `SCENARIO_SDK_API_SECRET` | compute-units |
 | FakeProvider | Test-only deterministic lifecycle | none | free |
 
 Live tests now cover single-candidate RD Fast and RD Plus stills from cost quote
@@ -34,6 +36,12 @@ have mocked integration coverage but still need representative paid live runs.
 ComfyUI's `free` unit means PixelKiln cannot identify a metered provider
 charge. It does not count hardware, hosting, electricity, or model-license
 costs.
+
+Scenario planning uses the manifest's conservative `maxComputeUnits` value.
+Immediately before paid work, the adapter asks Scenario for a free live quote
+using the identical request. The current integration is deliberately absent
+from the visual benchmark until a single-output and multi-output paid smoke
+have verified the selected model and returned PNGs.
 
 ## PixelLab vs. Retro Diffusion
 
@@ -81,6 +89,27 @@ the same graph and still differ because their checkpoint bytes, custom nodes,
 or sampler settings differ. Commit the workflow and record the model stack used
 to test it.
 
+## Where Scenario fits
+
+Scenario adds hosted third-party models and reusable project-specific models
+without requiring a local GPU. PixelKiln's first adapter intentionally covers
+only the part that fits its existing still-image pipeline.
+
+| Decision | Scenario through PixelKiln |
+|---|---|
+| Best fit today | A controlled one-asset spike using a hosted model or project LoRA with a hard CU ceiling |
+| PixelKiln generator | `map` stills |
+| Output | One to four PNG candidates, 128–2048px in multiples of 16 |
+| Cost model | Manifest `maxComputeUnits`, command budget, then free authoritative preflight before each paid request |
+| Recovery | Durable job and asset IDs refresh temporary signed original-file URLs |
+| Account lifecycle | Read-only connectivity check; no balance, list, adopt, salvage, tag, or purge yet |
+| Confidence | Full mocked lifecycle and edge-case coverage; paid single- and multi-output live smokes pending |
+
+Scenario model schemas differ. The current adapter sends prompt, width, height,
+output count, optional seed, and explicitly declared JSON parameters. Verify
+the chosen model accepts that shape before spending. Use
+[Set up Scenario](./docs/SCENARIO.md) for the safe first-run sequence.
+
 ## Large environments, mountains, and buildings
 
 Start by deciding whether the result is an isolated map object or a complete
@@ -116,15 +145,16 @@ repeatable.
 ## Use multiple providers in one project
 
 Set a provider on any style that differs from the manifest default. Planning
-and confirmations remain grouped by provider and unit, so PixelLab generations
-and Retro Diffusion dollars are never added together. A mixed run takes a
-separate named ceiling for each paid provider; the free group may be explicit:
+and confirmations remain grouped by provider and unit, so PixelLab generations,
+Retro Diffusion dollars, Scenario Compute Units, and local free work are never
+added together. A mixed run takes a separate named ceiling for each paid
+provider; the free group may be explicit:
 
 ```bash
 pixelkiln plan
 pixelkiln gen \
   --budget pixellab=12 \
-  --budget retrodiffusion=0.20 \
+  --budget scenario=60 \
   --budget comfyui=0
 ```
 
@@ -169,6 +199,11 @@ style, and candidate count affect the exact still-image quote. Treat
 as the authoritative submit-time check. See Retro Diffusion's
 [official API examples and pricing formulas](https://github.com/Retro-Diffusion/api-examples#pricing).
 
+Scenario uses Compute Units rather than USD in the API contract. Costs vary by
+model and inputs, so the manifest records a conservative per-asset ceiling
+instead of a stale formula. PixelKiln records Scenario's live dry-run quote and
+final job billing separately.
+
 ## Capability boundary
 
 The provider boundary owns behavior that differs between services:
@@ -197,30 +232,29 @@ PixelLab, an animation style to Retro Diffusion, and a private model workflow
 to ComfyUI. Provider-keyed budgets, independent orchestration, lock-authoritative
 recovery, and explicit account-provider selection ship with it.
 
-Scenario remains the best next hosted provider candidate. The implementation
-scope and acceptance criteria are tracked in
-[GitHub issue #52](https://github.com/gfargo/pixelkiln/issues/52).
+The Scenario still-image adapter from
+[GitHub issue #52](https://github.com/gfargo/pixelkiln/issues/52) is now
+implemented behind mocked safety and recovery coverage. Paid validation is the
+remaining gate before a visual benchmark or production claim.
 
 | Candidate | What it adds | Fit with PixelKiln | Main cost or risk | Priority |
 |---|---|---|---|---:|
-| Scenario | Custom-trained style models, references, image editing, background removal, upscaling, and managed assets | Async jobs, asset IDs, and free `dryRun` cost estimates map closely to PixelKiln's plan/submit/poll/download lifecycle | API access requires a paid plan; auth uses both an API key and secret, so the provider factory must describe more than one credential | 1 |
+| Scenario live benchmark | Custom-trained style models and hosted third-party generation | Confirms real CU accounting, model parameters, candidate order, PNG output, and signed-URL recovery | API access requires a paid plan; results and model inputs have not been live-tested through PixelKiln | 1 |
 | ComfyUI Cloud | Managed execution of workflow graphs without running a local GPU | Could reuse part of the workflow model, but authentication, endpoints, billing, and lifecycle must remain separate from the local adapter | Treating cloud as a base-URL swap would hide real security and cost differences | 2 |
 | fal | A large hosted model catalog, including pixel-art style controls, LoRAs, editing, upscaling, and background removal | Queue-based requests and model schemas are accessible through one client | Model-specific schemas and prices move the adapter toward a marketplace abstraction rather than one stable art workflow | 3 |
 
-Scenario is the next hosted spike because its [custom generation API](https://docs.scenario.com/get-started/generation/third-party-model-generation)
-returns an asynchronous job ID, its [generation surface](https://docs.scenario.com/get-started/documentation/key-capabilities-at-a-glance)
-supports custom models and image references, and its
+Scenario's [custom generation API](https://docs.scenario.com/get-started/generation/third-party-model-generation)
+returns asynchronous jobs, while its
 [Compute Unit guidance](https://help.scenario.com/articles/7934059476-api-usage-and-credits-compute-units)
-documents free cost preflights. That combination adds something the current
-providers do not: a project-specific visual model with a cost check that can be
-captured before submission.
+documents free cost preflights. PixelKiln now maps those mechanics into its
+normal plan, submit, poll, review, fetch, and restore lifecycle.
 
 Recommended order from here:
 
 1. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
    smoke tests.
-2. Build the Scenario still-image spike from issue #52 with dry-run cost, submit, poll,
-   download, and one custom-model or reference-image benchmark.
+2. Run Scenario single-output and multi-output paid smokes, then add one
+   custom-model or project-LoRA benchmark.
 3. Benchmark another pinned ComfyUI model and prompt pattern across at least two
    scene families. Reject any improvement that helps only one subject.
 4. Design ComfyUI Cloud as a separate authenticated and billable adapter.

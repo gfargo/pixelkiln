@@ -12,6 +12,7 @@ import {
 } from "./provider.ts"
 import {
   createProvider,
+  providerCredentialEnvs,
   providerFactory,
   type ProviderMode,
 } from "./providers/registry.ts"
@@ -1256,11 +1257,14 @@ async function main() {
     )].sort()
     const providers = providerIds.map((id) => {
       const factory = providerFactory(id)
-      const apiKeyPresent = !factory.credentialEnv || Boolean(process.env[factory.credentialEnv])
+      const credentialEnvs = providerCredentialEnvs(factory)
+      const missingCredentialEnvs = credentialEnvs.filter((name) => !process.env[name])
+      const apiKeyPresent = missingCredentialEnvs.length === 0
       return {
         id,
         apiKeyPresent,
         credentialEnv: factory.credentialEnv,
+        missingCredentialEnvs,
         provider: !args.dryRun && apiKeyPresent ? createProvider(id, "online") : undefined,
       }
     })

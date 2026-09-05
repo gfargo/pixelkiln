@@ -210,7 +210,7 @@ export default function Home() {
               <p className="eyebrow">Human review stays local</p>
               <h2>Choose the image.<br />Keep the receipts.</h2>
               <p className="section-deck">
-                PixelLab, Retro Diffusion, and ComfyUI use the same review,
+                PixelLab, Retro Diffusion, ComfyUI, and Scenario use the same review,
                 lockfile, and recovery flow. PixelKiln records every candidate,
                 then leaves the visual decision to you.
               </p>
@@ -218,6 +218,7 @@ export default function Home() {
                 <span><i className="status-dot" /> PixelLab · production</span>
                 <span><i /> Retro Diffusion · experimental</span>
                 <span><i /> ComfyUI · experimental</span>
+                <span><i /> Scenario · preview</span>
                 <span><i /> FakeProvider · tests</span>
               </div>
               <p className="provider-note">
@@ -225,7 +226,8 @@ export default function Home() {
                 Retro Diffusion has live-tested single-candidate stills. ComfyUI
                 has passed local generation, candidate review, cache recovery,
                 and grid refinement. Its tested SDXL graph still needs manual
-                cleanup and art review.
+                cleanup and art review. Scenario&apos;s adapter is mock-tested and
+                waiting for its first paid live benchmark.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
@@ -439,6 +441,12 @@ export default function Home() {
           </div>
 
           <div className="provider-showcase-links">
+            <TrackedLink className="text-link" id="showcase_scenario_setup" section="provider_showcase" href="/docs/scenario">
+              Set up the Scenario preview →
+            </TrackedLink>
+            <TrackedLink className="text-link" id="showcase_scenario_site" section="provider_showcase" href="https://www.scenario.com/" external>
+              Visit Scenario ↗
+            </TrackedLink>
             <TrackedLink className="text-link" id="showcase_mixed_providers" section="provider_showcase" href="/docs/mixed-providers">
               Use several providers in one project →
             </TrackedLink>

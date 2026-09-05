@@ -32,7 +32,7 @@ Unknown properties are rejected at every level.
 |---|---|---|
 | `$schema` | no | Editor schema URL/path. It does not affect generation identity. |
 | `name` | yes | Project/account tag namespace. |
-| `provider` | no | Default provider registry id. Defaults to `pixellab`; `retrodiffusion` and `comfyui` are experimental. |
+| `provider` | no | Default provider registry id. Defaults to `pixellab`; `retrodiffusion`, `comfyui`, and `scenario` are experimental. |
 | `styles` | yes | Map of style id to inherited generation/output settings. |
 | `assets` | yes | Map of stable asset id to subject and per-asset overrides. |
 
@@ -228,6 +228,52 @@ and `palette`; keep those controls inside the workflow. See
 [Set up ComfyUI](COMFYUI.md) for the complete procedure, safe workflow, and
 quality limits. The 4096px adapter ceiling is not a recommended generation or
 native-art size.
+
+## Experimental Scenario
+
+Scenario uses hosted model IDs and requires a conservative Compute Unit ceiling
+for every style:
+
+```jsonc
+{
+  "provider": "scenario",
+  "styles": {
+    "environment": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "assets/generated/environment",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-dev",
+          "projectId": "project_example",
+          "numOutputs": 4,
+          "maxComputeUnits": 60,
+          "parameters": {
+            "guidance": 4,
+            "numInferenceSteps": 28
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "mountain-town": { "prompt": "a fortified mountain town" }
+  }
+}
+```
+
+| Option | Meaning |
+|---|---|
+| `modelId` | Required Scenario endpoint model ID. |
+| `maxComputeUnits` | Required positive per-asset offline ceiling and maximum accepted live quote. |
+| `numOutputs` | One to four PNG candidates; defaults to one. |
+| `projectId` | Optional Scenario ownership/routing project. |
+| `parameters` | Additional model-specific JSON inputs. PixelKiln-owned request fields cannot be overridden. |
+
+The current adapter supports `map`, dimensions from 128–2048px in multiples of
+16, optional seed, and no style-image uploads. Every paid request is preceded
+by an identical `dryRun=true` request. See [Set up Scenario](SCENARIO.md) for
+credentials, cost semantics, recovery, and the paid live-test boundary.
 
 ## Asset fields
 

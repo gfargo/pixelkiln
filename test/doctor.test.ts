@@ -75,6 +75,22 @@ describe("doctor", () => {
     expect(report.checks.find((c) => c.id === "provider")?.message).toMatch(/API_KEY/)
   })
 
+  it("names every missing credential for a compound-auth provider", async () => {
+    const { loaded, specs, lockPath } = await project()
+    const report = await doctor(loaded, specs, { version: 2, entries: {} }, lockPath, {
+      providers: [{
+        id: "scenario",
+        apiKeyPresent: false,
+        missingCredentialEnvs: ["SCENARIO_SDK_API_KEY", "SCENARIO_SDK_API_SECRET"],
+      }],
+    })
+
+    expect(report.ok).toBe(false)
+    expect(report.checks.find((c) => c.id === "provider")?.message).toBe(
+      "SCENARIO_SDK_API_KEY, SCENARIO_SDK_API_SECRET are not configured",
+    )
+  })
+
   it("uses a read-only connectivity probe when balance reporting is unavailable", async () => {
     const { loaded, specs, lockPath } = await project()
     const provider = new FakeProvider()

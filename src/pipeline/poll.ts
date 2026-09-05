@@ -70,7 +70,13 @@ export async function poll(
             status: "review",
             reviewObjectId: entry.jobId,
             providerMetadata: state.metadata
-              ? { ...entry.providerMetadata, [provider.id]: state.metadata }
+              ? {
+                  ...entry.providerMetadata,
+                  [provider.id]: {
+                    ...entry.providerMetadata[provider.id],
+                    ...state.metadata,
+                  },
+                }
               : entry.providerMetadata,
           })
           result.review++
@@ -87,7 +93,13 @@ export async function poll(
             sourceUrl: sourceUrls[0]?.url ?? null,
             sourceUrls,
             providerMetadata: state.metadata
-              ? { ...entry.providerMetadata, [provider.id]: state.metadata }
+              ? {
+                  ...entry.providerMetadata,
+                  [provider.id]: {
+                    ...entry.providerMetadata[provider.id],
+                    ...state.metadata,
+                  },
+                }
               : entry.providerMetadata,
             error: null,
           })

@@ -171,13 +171,16 @@ export async function submit(
       // generator. Keeping that policy here used to silently discard valid
       // references for non-PixelLab still providers.
       const refs = styleImages.get(spec.styleId) ?? []
-      const { jobId } = await provider.submit(spec, refs)
+      const { jobId, metadata } = await provider.submit(spec, refs)
       upsert(lock, key, {
         jobId,
         // A multi-candidate generator routes through review; record the parent
         // so `pick` knows where to look.
         reviewObjectId: estimate.candidates > 1 && !spec.tileFeature ? jobId : null,
         status: "processing",
+        providerMetadata: metadata
+          ? { ...lock.entries[key]!.providerMetadata, [provider.id]: metadata }
+          : lock.entries[key]!.providerMetadata,
       })
       inFlight.set(jobId, spec)
       submitted++

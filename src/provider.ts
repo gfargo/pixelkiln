@@ -66,6 +66,19 @@ export interface PollContext {
 /** Provider-owned, JSON-serializable details needed by downstream exporters. */
 export type ProviderMetadata = Record<string, unknown>
 
+export interface ProviderSubmission {
+  jobId: string
+  /** Authoritative provider details known at submission, such as a live quote. */
+  metadata?: ProviderMetadata
+}
+
+export interface CandidateSelection {
+  objectId: string
+  sourceUrl: string | null
+  /** Details known only after choosing an output, such as its durable asset id. */
+  metadata?: ProviderMetadata
+}
+
 export interface ProviderOptionContext {
   /** Absolute directory containing the manifest. */
   root: string
@@ -199,7 +212,7 @@ export interface Provider {
    *  `DEFAULT_RATE_LIMIT` when absent — see that constant's doc. */
   rateLimit?(): RateLimit
 
-  submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<{ jobId: string }>
+  submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<ProviderSubmission>
 
   poll(jobId: string, generator: Generator, context?: PollContext): Promise<JobState>
 
@@ -217,7 +230,7 @@ export interface Provider {
     index: number,
     commonTag?: string,
     generator?: Generator,
-  ): Promise<{ objectId: string; sourceUrl: string | null }>
+  ): Promise<CandidateSelection>
 
   /** Storage URLs are usually public; implementations should not send auth. */
   download(url: string): Promise<Buffer>

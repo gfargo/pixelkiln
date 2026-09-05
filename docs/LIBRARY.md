@@ -190,7 +190,7 @@ See [TILES.md](./TILES.md) for file contracts and engine details.
 
 `Provider` is the capability boundary. Generation pipelines accept that
 interface rather than importing PixelLab directly; `PixelLabProvider`,
-`RetroDiffusionProvider`, and `ComfyUIProvider` are built in, while
+`RetroDiffusionProvider`, `ComfyUIProvider`, and `ScenarioProvider` are built in, while
 `FakeProvider` implements it in memory for deterministic tests.
 
 ```ts
@@ -219,6 +219,7 @@ provider-keyed budget before the first submission.
 provider-specific references, but drop signed URLs, inline data, and local file
 URLs after successful ingestion. Adapters should prefer refreshable references
 such as `retrodiffusion://` and `comfyui://` over temporary download URLs.
+Scenario uses the same rule with `scenario://` asset references.
 
 `submit` validates adapter estimates again at the spending boundary and returns
 `{ spent, unit }` for successful submissions. Lock entries retain fractional

@@ -4,6 +4,7 @@ export * from "./provider.ts"
 export * from "./media.ts"
 export { PixelLabProvider } from "./providers/pixellab.ts"
 export { RetroDiffusionProvider, type RetroDiffusionOptions } from "./providers/retrodiffusion.ts"
+export { ScenarioProvider, type ScenarioOptions } from "./providers/scenario.ts"
 export {
   ComfyUIProvider,
   type ComfyUIBinding,
@@ -14,6 +15,7 @@ export { FakeProvider, FAKE_PNG, type FakeOptions } from "./providers/fake.ts"
 export {
   registerProvider,
   providerFactory,
+  providerCredentialEnvs,
   createProvider,
   availableProviders,
   type ProviderFactory,
