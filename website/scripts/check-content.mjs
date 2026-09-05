@@ -85,6 +85,12 @@ if (!home.includes('href="/docs/mixed-providers"')) {
 if (!home.includes("still needs manual") || !home.includes("art review")) {
   failures.push("provider results are missing the ComfyUI manual-review warning");
 }
+if (!home.includes('/benchmarks/provider-scenario-smoke/mountain-keep.png')) {
+  failures.push("provider results are missing the paid Scenario smoke image");
+}
+if (!existsSync(path.join(repoRoot, "website/public/benchmarks/provider-scenario-smoke/mountain-keep.png"))) {
+  failures.push("the paid Scenario smoke image is missing from website/public");
+}
 for (const [provider, route, official] of [
   ["PixelLab", "/docs/pixellab", "https://www.pixellab.ai/"],
   ["Retro Diffusion", "/docs/retro-diffusion", "https://www.retrodiffusion.ai/"],

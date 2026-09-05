@@ -1,9 +1,9 @@
 # Scenario
 
 Use Scenario when the project needs a hosted third-party model or a reusable
-project-specific model. Authentication and CU preflight are live-tested; the
-generation, review, and recovery lifecycle remains mock-tested. Require a
-one-asset paid smoke before widening a batch.
+project-specific model. BFL Flux 2 Dev is live-tested through authentication,
+CU preflight, paid generation, human review, and durable recovery. Other model
+schemas remain unverified. Require a one-asset smoke before widening a batch.
 
 ## Safety boundary
 

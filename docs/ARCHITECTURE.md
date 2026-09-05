@@ -150,8 +150,9 @@ recovery on Apple MPS. `ScenarioProvider` is an experimental hosted still-image
 adapter. It keeps offline planning conservative, records the provider's free
 submit-time Compute Unit quote, and stores durable `scenario://` job and asset
 references that refresh signed URLs. Authentication and CU preflight have
-passed live, while paid generation and recovery remain mocked. `FakeProvider`
-implements the same contract
+passed live with BFL Flux 2 Dev, along with paid single/two-output jobs, human
+selection, and provider-backed recovery. Other model schemas remain mocked.
+`FakeProvider` implements the same contract
 in memory, which keeps the pipeline testable without credentials or network
 access. See [library API](./LIBRARY.md) and
 [provider comparison](../PROVIDERS.md).

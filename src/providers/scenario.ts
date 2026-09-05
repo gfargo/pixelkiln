@@ -403,9 +403,13 @@ export class ScenarioProvider implements Provider {
 
   private async assets(ids: string[], projectId?: string): Promise<ScenarioAsset[]> {
     const assets = await Promise.all(ids.map((id) => this.client.asset(id, projectId)))
+    const jobOrder = new Map(ids.map((id, index) => [id, index]))
     for (const asset of assets) assertPngAsset(asset)
     return assets.sort((left, right) =>
-      left.outputIndex - right.outputIndex || left.id.localeCompare(right.id))
+      left.outputIndex - right.outputIndex ||
+      (jobOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+        (jobOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER) ||
+      left.id.localeCompare(right.id))
   }
 }
 

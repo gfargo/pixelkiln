@@ -302,6 +302,39 @@ describe("Scenario provider", () => {
     })
   })
 
+  it("preserves job order when Scenario returns tied output indexes", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const path = requestPath(input)
+      if (path.endsWith("/jobs/job-tied-order")) {
+        return json({
+          job: {
+            jobId: "job-tied-order",
+            status: "success",
+            metadata: { assetIds: ["asset-z", "asset-a"] },
+          },
+        })
+      }
+      const id = path.split("/").at(-1)!
+      return json({
+        asset: {
+          id,
+          url: `https://cdn.test/${id}.png`,
+          mimeType: "image/png",
+          outputIndex: 0,
+        },
+      })
+    }))
+
+    await expect(createProvider("scenario", "online").poll("job-tied-order", "map"))
+      .resolves.toMatchObject({
+        status: "review",
+        candidateUrls: [
+          "https://cdn.test/asset-z.png",
+          "https://cdn.test/asset-a.png",
+        ],
+      })
+  })
+
   it("retains the quote, refreshes a signed URL, downloads, hashes, and caches", async () => {
     let assetReads = 0
     const urls: string[] = []

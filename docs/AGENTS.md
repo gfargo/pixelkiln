@@ -55,15 +55,15 @@ not a replacement:
 | PixelLab adapter | The current production and live-tested generation backend. |
 | Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
 | ComfyUI adapter | Experimental self-hosted still-image backend; PixelKiln automates native-grid and palette checks, while a person retains visual approval. |
-| Scenario adapter | Experimental hosted still-image backend; live authentication and CU preflight, mocked candidate review and durable recovery, with paid generation pending. |
+| Scenario adapter | Experimental hosted still-image backend; BFL Flux 2 Dev quote, paid single/two-output generation, human review, and durable recovery live-tested. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production
 adapter. Retro Diffusion generation support is experimental. Paid RD Fast and
 RD Plus single-candidate stills have passed from
 quote through validated download and recovery. Multi-candidate, tileset, GIF,
 and spritesheet workflows still need representative live smoke tests. Scenario
-has live authentication and CU preflight plus mocked lifecycle coverage; it
-still needs its first paid generation. See
+has one live-tested BFL Flux 2 Dev profile plus mocked edge coverage; other
+model schemas and broader batches remain unverified. See
 [provider comparison](../PROVIDERS.md) before choosing a provider for a
 new project or a large environment asset. Once chosen, follow
 [Set up PixelLab](./PIXELLAB.md),

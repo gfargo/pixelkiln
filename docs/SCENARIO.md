@@ -6,11 +6,11 @@ supports still PNG generation through Scenario's universal model endpoint,
 free Compute Unit preflight, asynchronous jobs, multi-output review, and
 refreshable asset downloads.
 
-The adapter has comprehensive mocked coverage. Authentication and a free BFL
-Flux 2 Dev cost preflight have passed against Scenario's live API, but no paid
-job has run. Start with one disposable asset and a small ceiling. Do not treat
-this integration as production-ready until the live checklist at the end of
-this guide passes for your chosen model.
+The adapter has comprehensive mocked coverage. BFL Flux 2 Dev has also passed
+live authentication, cost preflight, paid single- and two-output generation,
+human review, PNG download, and provider-backed recovery. Start every untested
+model with one disposable asset and a small ceiling. This integration remains
+experimental because Scenario model schemas vary.
 
 ## Requirements
 
@@ -124,6 +124,20 @@ endpoint and preflighted `model_bfl-flux-2-dev` with a 512×512 canvas, guidance
 4, and 28 inference steps. Scenario quoted 16 CU for one output and 32 CU for
 two; both costs were reported as `custom-generation`. The requests used
 `dryRun=true`; no generation was submitted and no CU was spent.
+
+The paid smoke used the same settings. The one-output job quoted and billed 16
+CU. The two-output job quoted and billed 32 CU, entered local review, and
+downloaded the second human-selected candidate without another generation.
+Both files were valid 512×512 RGB PNGs. A forced restore with the output and
+local cache removed recovered identical bytes from the durable Scenario asset
+ID. Neither credential nor a signed URL entered the lockfile.
+
+Scenario reported `outputIndex: 0` for both candidates in that live job.
+PixelKiln therefore retains job asset order when output indices tie and records
+its own selected `candidateIndex` alongside the chosen durable asset ID.
+
+The committed [Scenario live smoke](../benchmarks/provider-scenario-smoke/README.md)
+contains the manifest, lockfile, measured costs, and selected outputs.
 
 ## Review and recovery
 

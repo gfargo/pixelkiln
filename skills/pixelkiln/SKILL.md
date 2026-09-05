@@ -75,9 +75,9 @@ Read only the reference needed for the current decision:
 - When one game or repository needs more than one provider, read
   [references/mixed-providers.md](references/mixed-providers.md).
 
-`FakeProvider` is the deterministic test adapter. Do not describe Scenario as
-production-ready until single- and multi-output paid live smoke tests pass.
-Do not describe Retro Diffusion as production-ready until representative
+`FakeProvider` is the deterministic test adapter. Describe Scenario as
+experimental: one BFL Flux 2 Dev profile is live-tested, while other model
+schemas and broader batches are not. Do not describe Retro Diffusion as production-ready until representative
 multi-candidate, tileset, GIF, and spritesheet live smoke tests pass.
 
 When working in the PixelKiln repository, consult `docs/GETTING_STARTED.md` for

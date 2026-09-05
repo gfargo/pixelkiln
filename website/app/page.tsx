@@ -218,7 +218,7 @@ export default function Home() {
                 <span><i className="status-dot" /> PixelLab · production</span>
                 <span><i /> Retro Diffusion · experimental</span>
                 <span><i /> ComfyUI · experimental</span>
-                <span><i /> Scenario · preview</span>
+                <span><i /> Scenario · experimental</span>
                 <span><i /> FakeProvider · tests</span>
               </div>
               <p className="provider-note">
@@ -226,9 +226,9 @@ export default function Home() {
                 Retro Diffusion has live-tested single-candidate stills. ComfyUI
                 has passed local generation, candidate review, cache recovery,
                 and grid refinement. Its tested SDXL graph still needs manual
-                cleanup and art review. Scenario has passed live authentication
-                and CU preflight; paid generation is still waiting for its first
-                benchmark.
+                cleanup and art review. Scenario&apos;s BFL profile has passed paid
+                single- and two-output generation, human review, and durable
+                recovery.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
@@ -269,13 +269,15 @@ export default function Home() {
           <div className="section-heading split-heading provider-showcase-heading">
             <div>
               <p className="eyebrow">Provider results</p>
-              <h2>Same briefs.<br />Different pixels.</h2>
+              <h2>Real runs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
               These are outputs from committed benchmark projects. The
               ComfyUI card separates its model canvas from the recovered native
               pixel grid, because a large raster can still contain fake pixels.
               Its samples are diagnostics, not finished asset recommendations.
+              Scenario shows its first paid integration smoke, not a comparable
+              environment benchmark.
             </p>
           </div>
 
@@ -379,7 +381,7 @@ export default function Home() {
               </div>
             </article>
 
-            <article className="provider-card provider-card-comfy">
+            <article className="provider-card">
               <div className="provider-card-header">
                 <div>
                   <span className="provider-badge experimental">Experimental</span>
@@ -439,20 +441,58 @@ export default function Home() {
                 </TrackedLink>
               </div>
             </article>
+
+            <article className="provider-card">
+              <div className="provider-card-header">
+                <div>
+                  <span className="provider-badge experimental">Experimental</span>
+                  <h3>Scenario</h3>
+                </div>
+                <span className="provider-unit">Compute Units</span>
+              </div>
+              <div className="provider-image-grid provider-image-grid-single">
+                <figure>
+                  <Image
+                    src="/benchmarks/provider-scenario-smoke/mountain-keep.png"
+                    alt="Scenario BFL Flux 2 Dev result showing a stone keep on a mountain"
+                    width={512}
+                    height={512}
+                    sizes="(max-width: 680px) 100vw, 560px"
+                  />
+                  <figcaption>Live smoke · raw 512×512 · opaque · 19,619 colors</figcaption>
+                </figure>
+              </div>
+              <p>
+                BFL Flux 2 Dev produced a readable keep and completed the full
+                PixelKiln lifecycle. The raw file imitates pixel art but carries
+                a large RGB palette. Treat it as concept art or refinement input,
+                not a finished game asset.
+              </p>
+              <dl>
+                <div><dt>Measured cost</dt><dd>16 CU for one output; 32 CU for two</dd></div>
+                <div><dt>Best fit</dt><dd>Hosted models and project-specific LoRA experiments</dd></div>
+                <div><dt>Readiness</dt><dd>One BFL profile live-tested; other schemas unverified</dd></div>
+              </dl>
+              <div className="provider-card-links">
+                <TrackedLink className="text-link" id="showcase_scenario_setup" section="provider_showcase" href="/docs/scenario">
+                  Set up Scenario →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_scenario_smoke" section="provider_showcase" href="https://github.com/gfargo/pixelkiln/tree/main/benchmarks/provider-scenario-smoke" external>
+                  Inspect the live smoke ↗
+                </TrackedLink>
+                <TrackedLink className="text-link" id="showcase_scenario_site" section="provider_showcase" href="https://www.scenario.com/" external>
+                  Visit Scenario ↗
+                </TrackedLink>
+              </div>
+            </article>
           </div>
 
           <div className="provider-showcase-links">
-            <TrackedLink className="text-link" id="showcase_scenario_setup" section="provider_showcase" href="/docs/scenario">
-              Set up the Scenario preview →
-            </TrackedLink>
-            <TrackedLink className="text-link" id="showcase_scenario_site" section="provider_showcase" href="https://www.scenario.com/" external>
-              Visit Scenario ↗
-            </TrackedLink>
             <TrackedLink className="text-link" id="showcase_mixed_providers" section="provider_showcase" href="/docs/mixed-providers">
               Use several providers in one project →
             </TrackedLink>
             <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
-              Review the three-provider benchmark →
+              Review the environment benchmark →
             </TrackedLink>
             <TrackedLink className="text-link" id="showcase_comparison" section="provider_showcase" href="/docs/provider-notes">
               Compare provider capabilities →

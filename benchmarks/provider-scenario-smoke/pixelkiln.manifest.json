@@ -1,0 +1,45 @@
+{
+  "name": "scenario-live-smoke",
+  "provider": "scenario",
+  "styles": {
+    "single": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/single",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-dev",
+          "numOutputs": 1,
+          "maxComputeUnits": 16,
+          "parameters": {
+            "guidance": 4,
+            "numInferenceSteps": 28
+          }
+        }
+      }
+    },
+    "review": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/review",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-dev",
+          "numOutputs": 2,
+          "maxComputeUnits": 32,
+          "parameters": {
+            "guidance": 4,
+            "numInferenceSteps": 28
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "mountain-keep": {
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette"
+    }
+  }
+}
