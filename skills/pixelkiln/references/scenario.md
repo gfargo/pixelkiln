@@ -1,8 +1,9 @@
 # Scenario
 
 Use Scenario when the project needs a hosted third-party model or a reusable
-project-specific model. The adapter is experimental and mock-tested; require a
-one-asset live smoke before widening a batch.
+project-specific model. Authentication and CU preflight are live-tested; the
+generation, review, and recovery lifecycle remains mock-tested. Require a
+one-asset paid smoke before widening a batch.
 
 ## Safety boundary
 

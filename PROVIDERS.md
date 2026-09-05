@@ -22,7 +22,7 @@ them.
 | PixelLab | Production; paid generation and account workflows live-tested | `PIXELLAB_API_KEY` | generations |
 | Retro Diffusion | Experimental; authenticated paid still generation, download, provenance, and recovery live-tested; advanced workflows pending | `RD_API_KEY` | USD |
 | ComfyUI | Experimental; local single-image generation, four-candidate queue, provenance, and cache-only recovery live-tested on Apple MPS | none; optional `COMFYUI_BASE_URL` | free |
-| Scenario | Experimental; mocked CU preflight, async lifecycle, multi-output review, durable download, and recovery; paid live run pending | `SCENARIO_SDK_API_KEY` and `SCENARIO_SDK_API_SECRET` | compute-units |
+| Scenario | Experimental; authentication and CU preflight live-tested; async lifecycle, multi-output review, durable download, and recovery mock-tested; paid run pending | `SCENARIO_SDK_API_KEY` and `SCENARIO_SDK_API_SECRET` | compute-units |
 | FakeProvider | Test-only deterministic lifecycle | none | free |
 
 Live tests now cover single-candidate RD Fast and RD Plus stills from cost quote
@@ -103,7 +103,7 @@ only the part that fits its existing still-image pipeline.
 | Cost model | Manifest `maxComputeUnits`, command budget, then free authoritative preflight before each paid request |
 | Recovery | Durable job and asset IDs refresh temporary signed original-file URLs |
 | Account lifecycle | Read-only connectivity check; no balance, list, adopt, salvage, tag, or purge yet |
-| Confidence | Full mocked lifecycle and edge-case coverage; paid single- and multi-output live smokes pending |
+| Confidence | Live authentication and BFL Flux 2 Dev CU quote; full mocked lifecycle and edge-case coverage; paid single- and multi-output smokes pending |
 
 Scenario model schemas differ. The current adapter sends prompt, width, height,
 output count, optional seed, and explicitly declared JSON parameters. Verify
@@ -239,7 +239,7 @@ remaining gate before a visual benchmark or production claim.
 
 | Candidate | What it adds | Fit with PixelKiln | Main cost or risk | Priority |
 |---|---|---|---|---:|
-| Scenario live benchmark | Custom-trained style models and hosted third-party generation | Confirms real CU accounting, model parameters, candidate order, PNG output, and signed-URL recovery | API access requires a paid plan; results and model inputs have not been live-tested through PixelKiln | 1 |
+| Scenario live benchmark | Custom-trained style models and hosted third-party generation | Confirms final CU accounting, candidate order, PNG output, and signed-URL recovery after the successful live preflight | API access requires a paid plan; generated results have not been live-tested through PixelKiln | 1 |
 | ComfyUI Cloud | Managed execution of workflow graphs without running a local GPU | Could reuse part of the workflow model, but authentication, endpoints, billing, and lifecycle must remain separate from the local adapter | Treating cloud as a base-URL swap would hide real security and cost differences | 2 |
 | fal | A large hosted model catalog, including pixel-art style controls, LoRAs, editing, upscaling, and background removal | Queue-based requests and model schemas are accessible through one client | Model-specific schemas and prices move the adapter toward a marketplace abstraction rather than one stable art workflow | 3 |
 

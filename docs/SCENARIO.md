@@ -6,10 +6,11 @@ supports still PNG generation through Scenario's universal model endpoint,
 free Compute Unit preflight, asynchronous jobs, multi-output review, and
 refreshable asset downloads.
 
-The adapter has comprehensive mocked coverage but has not completed a paid live
-run. Start with one disposable asset and a small ceiling. Do not treat this
-integration as production-ready until the live checklist at the end of this
-guide passes for your chosen model.
+The adapter has comprehensive mocked coverage. Authentication and a free BFL
+Flux 2 Dev cost preflight have passed against Scenario's live API, but no paid
+job has run. Start with one disposable asset and a small ceiling. Do not treat
+this integration as production-ready until the live checklist at the end of
+this guide passes for your chosen model.
 
 ## Requirements
 
@@ -115,6 +116,14 @@ IP-detection charge is additive when Scenario reports one.
 
 The command budget is still a hard ceiling over the whole selected run. The
 manifest ceiling protects each request from a changed live quote.
+
+### Current live validation
+
+On September 5, 2026, PixelKiln authenticated against the read-only model
+endpoint and preflighted `model_bfl-flux-2-dev` with a 512×512 canvas, one
+output, guidance 4, and 28 inference steps. Scenario returned a 16 CU
+`custom-generation` quote. The request used `dryRun=true`; no generation was
+submitted and no CU was spent.
 
 ## Review and recovery
 

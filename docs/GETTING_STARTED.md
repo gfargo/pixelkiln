@@ -77,7 +77,8 @@ SCENARIO_SDK_API_SECRET=...
 
 Scenario also requires a model ID and a conservative per-asset Compute Unit
 ceiling in the manifest. Its quote, async job, review, download, and recovery
-paths are mock-tested; paid live validation remains. Start with
+paths are mock-tested. Authentication and BFL Flux 2 Dev preflight have passed
+live; paid generation remains. Start with
 [Set up Scenario](SCENARIO.md), one disposable asset, and a small budget.
 
 For self-hosted generation, set `provider` to `comfyui`, commit an API-format
@@ -98,7 +99,8 @@ Verify its workflow and the workstation's model bytes before generation. See
 
 The provider setup guides give the shortest path for
 [PixelLab](PIXELLAB.md), [Retro Diffusion](RETRO_DIFFUSION.md), and
-[ComfyUI](COMFYUI.md), plus the mock-tested [Scenario](SCENARIO.md) adapter.
+[ComfyUI](COMFYUI.md), plus the partially live-tested
+[Scenario](SCENARIO.md) adapter.
 If one project needs several, set `provider` on the styles that differ from the
 top-level default. One lockfile can retain all of their provenance. See
 [Mixed-provider projects](MIXED_PROVIDERS.md).

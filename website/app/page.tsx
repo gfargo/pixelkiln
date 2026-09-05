@@ -226,8 +226,9 @@ export default function Home() {
                 Retro Diffusion has live-tested single-candidate stills. ComfyUI
                 has passed local generation, candidate review, cache recovery,
                 and grid refinement. Its tested SDXL graph still needs manual
-                cleanup and art review. Scenario&apos;s adapter is mock-tested and
-                waiting for its first paid live benchmark.
+                cleanup and art review. Scenario has passed live authentication
+                and CU preflight; paid generation is still waiting for its first
+                benchmark.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">

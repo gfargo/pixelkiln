@@ -149,8 +149,9 @@ passed single-image generation, four-candidate queue detection, and cache-only
 recovery on Apple MPS. `ScenarioProvider` is an experimental hosted still-image
 adapter. It keeps offline planning conservative, records the provider's free
 submit-time Compute Unit quote, and stores durable `scenario://` job and asset
-references that refresh signed URLs. Its lifecycle is mock-tested; paid live
-validation remains. `FakeProvider` implements the same contract
+references that refresh signed URLs. Authentication and CU preflight have
+passed live, while paid generation and recovery remain mocked. `FakeProvider`
+implements the same contract
 in memory, which keeps the pipeline testable without credentials or network
 access. See [library API](./LIBRARY.md) and
 [provider comparison](../PROVIDERS.md).

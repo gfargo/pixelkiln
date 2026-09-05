@@ -19,9 +19,9 @@ RD Fast and RD Plus stills; its multi-candidate, tileset, GIF, and spritesheet
 paths are tested with fixtures but still need paid live runs. ComfyUI has passed
 local generation, four-candidate review, cache recovery, and native-grid
 refinement on Apple MPS. Its tested SDXL workflow can find a composition, but
-it is not a finished pixel-art preset. Scenario has mock-tested CU preflight,
-multi-output review, and signed-URL recovery; paid live validation is still
-pending. Styles in one manifest may use different providers with separate
+it is not a finished pixel-art preset. Scenario has live-tested authentication
+and CU preflight, plus mocked multi-output review and signed-URL recovery; paid
+generation is still pending. Styles may use different providers with separate
 budget ceilings. The [provider comparison](./PROVIDERS.md) lists the tested limits
 and best routes. `FakeProvider` covers the same contract in automated tests.
 
