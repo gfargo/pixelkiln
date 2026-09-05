@@ -1,3 +1,10 @@
+# [0.16.0](https://github.com/gfargo/pixelkiln/compare/v0.15.0...v0.16.0) (2026-09-05)
+
+
+### Features
+
+* add controlled asset revisions ([#71](https://github.com/gfargo/pixelkiln/issues/71)) ([54181f0](https://github.com/gfargo/pixelkiln/commit/54181f0fa8b9f172e14b6a958949b57f8a00bade))
+
 # [0.15.0](https://github.com/gfargo/pixelkiln/compare/v0.14.0...v0.15.0) (2026-09-05)
 
 
