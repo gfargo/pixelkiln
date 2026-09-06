@@ -11,6 +11,7 @@ import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { submit } from "../src/pipeline/submit.ts"
+import { runPicker } from "../src/pick/server.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 import { FAKE_PNG } from "../src/providers/fake.ts"
 import { lockKey, type Lock } from "../src/types.ts"
@@ -138,6 +139,61 @@ async function providerInputProject(poseFile = "pose.png") {
   const loaded = await loadManifest(manifestPath)
   const spec = (await resolveSpecs(loaded))[0]!
   return { loaded, spec, pose, poseFile: path.join(dir, poseFile), manifestPath }
+}
+
+async function frameSetProject() {
+  const makePose = (value: number) => {
+    const pixels = Buffer.alloc(2 * 2 * 4, value)
+    for (let offset = 3; offset < pixels.length; offset += 4) pixels[offset] = 255
+    return encodeRgbaPng(2, 2, pixels)
+  }
+  const poses = [makePose(64), makePose(192)]
+  await Promise.all(poses.map((pose, index) => writeFile(path.join(dir, `pose-${index}.png`), pose)))
+  const graph = workflow() as unknown as JsonObject
+  graph["19"] = { class_type: "LoadImage", inputs: { image: "placeholder.png" } }
+  await writeFile(path.join(dir, "frames-api.json"), JSON.stringify(graph))
+  const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+  await writeFile(manifestPath, JSON.stringify({
+    name: "comfy-frame-test",
+    provider: "comfyui",
+    styles: {
+      motion: {
+        generator: "frames",
+        outDir: "out",
+        seed: 100,
+        quality: {
+          outDir: "final",
+          palette: ["#111111", "#eeeeee"],
+          fps: 8,
+        },
+        providerOptions: {
+          comfyui: {
+            workflowFile: "frames-api.json",
+            outputNodeId: "9",
+            frames: { vary: "pose", seedStep: 7 },
+            bindings: {
+              prompt: { nodeId: "6", input: "text" },
+              width: { nodeId: "5", input: "width" },
+              height: { nodeId: "5", input: "height" },
+              seed: { nodeId: "3", input: "seed" },
+              pose: { nodeId: "19", input: "image" },
+            },
+          },
+        },
+      },
+    },
+    assets: {
+      dancer: {
+        prompt: "a dancer turning in place",
+        width: 64,
+        height: 96,
+        providerInputs: { pose: ["pose-0.png", "pose-1.png"] },
+      },
+    },
+  }))
+  const loaded = await loadManifest(manifestPath)
+  const spec = (await resolveSpecs(loaded))[0]!
+  return { loaded, spec, poses, manifestPath }
 }
 
 async function revisionProject(mode: "image-to-image" | "inpaint" = "image-to-image") {
@@ -436,6 +492,66 @@ describe("ComfyUI provider", () => {
     )
   })
 
+  it("rejects inconsistent frame-set declarations before submission", async () => {
+    const { manifestPath } = await frameSetProject()
+    const original = JSON.parse(await readFile(manifestPath, "utf8"))
+
+    const multiCandidate = structuredClone(original)
+    multiCandidate.styles.motion.providerOptions.comfyui.numImages = 2
+    multiCandidate.styles.motion.providerOptions.comfyui.bindings.batchSize = {
+      nodeId: "5",
+      input: "batch_size",
+    }
+    await writeFile(manifestPath, JSON.stringify(multiCandidate))
+    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
+      /frames generation requires numImages: 1/,
+    )
+
+    const noSequence = structuredClone(original)
+    noSequence.assets.dancer.providerInputs.pose = "pose-0.png"
+    await writeFile(manifestPath, JSON.stringify(noSequence))
+    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
+      /requires a providerInputs array of 2–64 values/,
+    )
+
+    const noSeed = structuredClone(original)
+    delete noSeed.styles.motion.seed
+    await writeFile(manifestPath, JSON.stringify(noSeed))
+    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
+      /frames\.seedStep requires a style seed/,
+    )
+
+    const mapFrames = structuredClone(original)
+    mapFrames.styles.motion.generator = "map"
+    await writeFile(manifestPath, JSON.stringify(mapFrames))
+    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
+      /providerOptions\.frames requires generator: frames/,
+    )
+
+    const extraSequence = structuredClone(original)
+    extraSequence.assets.dancer.providerInputs.extra = [1, 2]
+    extraSequence.styles.motion.providerOptions.comfyui.bindings.extra = {
+      nodeId: "20",
+      input: "strength",
+    }
+    const frameGraph = JSON.parse(await readFile(path.join(dir, "frames-api.json"), "utf8"))
+    const graph = structuredClone(frameGraph)
+    graph["20"] = { class_type: "ControlNetApply", inputs: { strength: 0.5 } }
+    await writeFile(path.join(dir, "frames-api.json"), JSON.stringify(graph))
+    await writeFile(manifestPath, JSON.stringify(extraSequence))
+    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
+      /providerInputs\.extra is an array but frames\.vary is "pose"/,
+    )
+
+    await writeFile(path.join(dir, "frames-api.json"), JSON.stringify(frameGraph))
+    const committedSource = structuredClone(original)
+    committedSource.assets.dancer.source = "pose-0.png"
+    await writeFile(manifestPath, JSON.stringify(committedSource))
+    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
+      /frame sets require generated provider outputs/,
+    )
+  })
+
   it("keeps PixelLab's 400px boundary after moving the shared schema ceiling", async () => {
     const manifestPath = path.join(dir, "pixellab.manifest.json")
     await writeFile(manifestPath, JSON.stringify({
@@ -600,6 +716,105 @@ describe("ComfyUI provider", () => {
       /provider input "pose" changed before upload/,
     )
   })
+
+  it("runs an ordered frame set as one reviewed, atomic, multi-output asset", async () => {
+    const nativeFetch = globalThis.fetch
+    const queued: JsonObject[] = []
+    const uploads: string[] = []
+    let nextPrompt = 0
+    let allReady = false
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      const url = String(input)
+      if (!url.startsWith("http://127.0.0.1:8188/")) return nativeFetch(input, init)
+      if (url.endsWith("/upload/image")) {
+        const image = (init!.body as FormData).get("image") as File
+        uploads.push(image.name)
+        return json({ name: image.name, subfolder: "pixelkiln", type: "input" })
+      }
+      if (url.endsWith("/prompt")) {
+        queued.push(JSON.parse(String(init!.body)).prompt)
+        return json({ prompt_id: `frame-prompt-${nextPrompt++}` })
+      }
+      if (url.includes("/history/")) {
+        const promptId = decodeURIComponent(new URL(url).pathname.split("/").at(-1)!)
+        if (!allReady && promptId === "frame-prompt-1") return json({})
+        const index = Number(promptId.at(-1))
+        return json(successHistory(promptId, [{
+          filename: `frame-${index}.png`,
+          subfolder: "sets/dancer",
+          type: "output",
+        }]))
+      }
+      if (url.includes("/view?")) {
+        const index = Number(new URL(url).searchParams.get("filename")!.match(/\d+/)![0])
+        return new Response(poses[index], { status: 200, headers: { "Content-Type": "image/png" } })
+      }
+      return json({}, 404)
+    }))
+
+    const { loaded, spec, poses } = await frameSetProject()
+    const provider = createProvider("comfyui", "online")
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    await submit(provider, loaded, (await buildPlan([spec], lock)).actionable, lock, lockPath, {
+      budget: 0,
+      spacingMs: 0,
+    })
+    let entry = lock.entries["motion/dancer"]!
+    expect(entry.status).toBe("processing")
+    expect(entry.reviewObjectId).toBe(entry.jobId)
+    expect(uploads.sort()).toEqual(poses.map((pose) => `${sha256(pose)}.png`).sort())
+    expect(queued).toHaveLength(2)
+    expect(queued[0]).toMatchObject({
+      "3": { inputs: { seed: 100 } },
+      "19": { inputs: { image: `pixelkiln/${sha256(poses[0]!)}.png` } },
+    })
+    expect(queued[1]).toMatchObject({
+      "3": { inputs: { seed: 107 } },
+      "19": { inputs: { image: `pixelkiln/${sha256(poses[1]!)}.png` } },
+    })
+
+    await expect(provider.poll(entry.jobId!, "frames", { spec })).resolves.toEqual({
+      status: "processing",
+    })
+    allReady = true
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs: [spec] })
+    entry = lock.entries["motion/dancer"]!
+    expect(entry.status).toBe("review")
+    expect(entry.outputs).toEqual([])
+
+    let reviewUrl = ""
+    const picked = runPicker(provider, lock, lockPath, {
+      open: false,
+      specs: [spec],
+      onProgress: (message) => {
+        reviewUrl ||= message.match(/http:\/\/127\.0\.0\.1:\d+\//)?.[0] ?? ""
+      },
+    })
+    await vi.waitFor(() => expect(reviewUrl).not.toBe(""))
+    const page = await nativeFetch(reviewUrl)
+    const html = await page.text()
+    expect(html).toContain("Animated frame-set preview")
+    expect(html).toContain("Accept ordered frame set")
+    const accepted = await nativeFetch(`${reviewUrl}apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selections: [{ key: "motion/dancer", index: 0 }] }),
+    })
+    expect(accepted.ok).toBe(true)
+    await expect(picked).resolves.toEqual({ selected: 1, skipped: 0 })
+    entry = lock.entries["motion/dancer"]!
+    expect(entry.status).toBe("selected")
+    expect(entry.sourceUrls.map((source) => source.role)).toEqual(["frame-00", "frame-01"])
+
+    await fetchAssets(provider, [spec], lock, lockPath)
+    entry = lock.entries["motion/dancer"]!
+    expect(entry.status).toBe("downloaded")
+    expect(entry.outputs.map((output) => output.role)).toEqual(["frame-00", "frame-01"])
+    await expect(readFile(path.join(dir, "out/dancer-frame-00.png"))).resolves.toEqual(poses[0])
+    await expect(readFile(path.join(dir, "out/dancer-frame-01.png"))).resolves.toEqual(poses[1])
+    expect(JSON.stringify(lock)).not.toContain(dir)
+  }, 15_000)
 
   it("uploads immutable revision inputs and binds an inpaint workflow", async () => {
     const uploads: Array<{

@@ -13,8 +13,9 @@ cost. The interpreter is execution configuration and does not invalidate a
 current refinement record by itself.
 
 The source is `asset.source` when declared. Otherwise PixelKiln requires one
-intact downloaded PNG from the lockfile. Do not refine modified, missing,
-multi-output, GIF, animation, or tileset input through this first contract.
+intact downloaded PNG from the lockfile. ComfyUI `frames` is the multi-output
+exception: it requires every ordered, role-named PNG. Do not refine modified,
+missing, GIF, provider-native animation, or tileset input through this contract.
 
 ## Run the gate
 
@@ -49,3 +50,7 @@ or permission to generate.
 `pack` and `mount` fail closed until every participating record is current and
 approved. They then use the refined PNG and include its quality record in their
 provenance. Do not bypass that gate with raw lock output or a copied file.
+
+For `frames`, one record owns the whole set. Require matching native dimensions,
+step, and phase; apply one palette; inspect the loop at 1×; and record one named
+approval. Packaging uses every `asset/frame-XX` member or fails.

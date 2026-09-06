@@ -9,6 +9,7 @@ export {
   ComfyUIProvider,
   type ComfyUIBinding,
   type ComfyUIBindings,
+  type ComfyUIFramesOptions,
   type ComfyUIImageInput,
   type ComfyUIOptions,
 } from "./providers/comfyui.ts"

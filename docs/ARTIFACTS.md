@@ -6,7 +6,8 @@ provider call:
 - `pack`: deterministic grid sheet plus frame atlas;
 - `mount`: declared stable cells in a new or existing sheet;
 - `export`: structural tile atlas plus generic, Tiled, or Godot metadata;
-- `refine`: native-grid PNG plus palette, audit, and human-review record.
+- `refine`: native-grid PNG or ordered frame set plus palette, audit, and
+  human-review record.
 
 Every CLI bundle includes generated output, metadata, and a
 `<base>.pixelkiln.json` provenance companion.
@@ -53,7 +54,8 @@ PNG. Both modes call a pinned local Pixel Art Fixer installation, reconstruct
 the detected native grid, apply a closed palette without dithering, and write
 the PNG beside a quality companion.
 
-Manifest mode owns the output path and policy:
+Manifest mode owns the output path and policy. ComfyUI `frames` writes numbered
+role-stable PNGs under one set-level record:
 
 ```bash
 pixelkiln refine --style environment
@@ -75,8 +77,9 @@ pixelkiln refine \
 ```
 
 The companion uses artifact kind `refine`. Its options store the tool revision,
-detected step and native dimensions, confidence, exact palette, no-dither
-policy, audit thresholds and result, plus pending or approved review state.
+detected step, phase, native dimensions, confidence, exact palette, no-dither
+policy, audit thresholds and result, plus pending or approved review state. A
+frame record also stores fps, ordered roles, and every frame's measurements.
 `pixelkiln refine check` verifies the fingerprint and current source/output
 hashes. `pixelkiln refine approve` rewrites only the companion after a named
 person completes the native-scale review.
@@ -103,6 +106,8 @@ otherwise post-processed file instead of the raw lock output. A style quality
 profile takes precedence for participating cells, but only after approval. Use
 `outputRole` to choose one member of a structural set. See
 [manifest reference](./MANIFEST.md).
+The same rule applies to an approved ComfyUI frame set: `pack` includes every
+frame, while `mount` needs one explicit `outputRole` for the declared cell.
 
 ## Export
 

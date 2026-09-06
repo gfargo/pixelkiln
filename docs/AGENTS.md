@@ -60,7 +60,7 @@ not a replacement:
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
 | PixelLab adapter | The current production and live-tested generation backend. |
 | Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
-| ComfyUI adapter | Experimental self-hosted still-image and controlled-revision backend; PixelKiln automates lineage, native-grid, and palette checks, while a person retains visual approval. |
+| ComfyUI adapter | Experimental self-hosted still, controlled-revision, and atomic frame-set backend; PixelKiln automates lineage and mechanical quality checks while a person retains visual approval. |
 | Scenario adapter | Experimental hosted still-image backend; BFL Flux 2 Dev quote, paid single/two-output generation, human review, and durable recovery live-tested. |
 
 PixelKiln's core is provider-neutral, but PixelLab remains the only production

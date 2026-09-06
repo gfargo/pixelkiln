@@ -198,7 +198,10 @@ export async function submit(
         jobId,
         // A multi-candidate generator routes through review; record the parent
         // so `pick` knows where to look.
-        reviewObjectId: estimate.candidates > 1 && !spec.tileFeature ? jobId : null,
+        reviewObjectId:
+          spec.generator === "frames" || (estimate.candidates > 1 && !spec.tileFeature)
+            ? jobId
+            : null,
         status: "processing",
         providerMetadata: metadata
           ? { ...lock.entries[key]!.providerMetadata, [provider.id]: metadata }

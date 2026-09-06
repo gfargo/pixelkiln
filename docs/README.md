@@ -11,7 +11,7 @@ provider you are using. These Markdown files also render at
 | [Getting started](./GETTING_STARTED.md) | Install from a checkout, create or adopt a project, run the everyday workflow, and decide what belongs in Git. |
 | [Set up PixelLab](./PIXELLAB.md) | Configure the production provider, choose a generator, and use its account workflows. |
 | [Set up Retro Diffusion](./RETRO_DIFFUSION.md) | Configure the experimental provider, choose a style, and understand its live-tested boundary. |
-| [Set up ComfyUI](./COMFYUI.md) | Bind a local composition workflow and understand the manual quality boundary. |
+| [Set up ComfyUI](./COMFYUI.md) | Bind local still, revision, and atomic frame-set workflows with an explicit quality boundary. |
 | [Set up Scenario](./SCENARIO.md) | Configure hosted models, two-part credentials, CU ceilings, and durable downloads. |
 | [CLI reference](./CLI.md) | Every command and flag, offline/provider requirements, JSON output, and exit behavior. |
 | [Manifest reference](./MANIFEST.md) | Every style and asset field, quality profiles, generator constraints, mounting, and schema validation. |
@@ -22,7 +22,7 @@ provider you are using. These Markdown files also render at
 
 | Guide | Use it for |
 |---|---|
-| [Generators](./GENERATORS.md) | Choose between `map`, `1dir`, `pixflux`, and `tiles`; understand measured costs and capability trade-offs. |
+| [Generators](./GENERATORS.md) | Choose between still, tile, hosted animation, and ComfyUI frame-set workflows. |
 | [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and native-grid recovery. |
 | [Controlled asset revisions](./REVISIONS.md) | Use image-to-image/inpaint parents, masks, approval gates, side-by-side review, and ComfyUI bindings. |
 | [Derived artifacts](./ARTIFACTS.md) | Refine, pack, mount, and export; provenance, approval gates, ownership, and crash recovery. |

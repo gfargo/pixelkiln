@@ -13,8 +13,8 @@ The manifest's top-level `provider` is the default; each style may select a
 different provider. `plan`, `doctor`, and pipeline commands route the resolved
 work accordingly. The experimental `retrodiffusion` adapter supports
 still-image `map`/`pixflux`, `tiles` sheets, and `animation` GIF/spritesheet
-work. The experimental `comfyui` adapter runs committed API-format `map`
-workflows on a self-hosted server. The experimental `scenario` adapter runs
+work. The experimental `comfyui` adapter runs committed API-format `map` and
+ordered still-frame workflows on a self-hosted server. The experimental `scenario` adapter runs
 hosted still models with Compute Unit preflight and durable asset recovery.
 
 ## Everyday pipeline
@@ -96,7 +96,8 @@ stage, the command prints the exact next command instead of ending silently.
 Open the local candidate-review UI for jobs with alternatives. The page keeps
 native aspect ratios, uses exact integer zoom for small art, fits large work,
 and centers the decision surface on wide displays. A revision row shows its
-parent source beside the new candidates. Arrow keys navigate, Enter
+parent source beside the new candidates. A ComfyUI frame set appears as an
+animated ordered strip and is accepted or left unresolved as a unit. Arrow keys navigate, Enter
 selects, 1–9 choose directly, and 0 leaves a row unresolved. Only rows submitted
 with **Apply selections** are written to the lockfile. Closing the window applies
 nothing. See the [Getting started guide](GETTING_STARTED.md#start-a-new-project)
@@ -298,15 +299,17 @@ pixelkiln refine check --style environment --json
 ```
 
 Manifest mode reads the final output directory, palette, detector confidence,
-optional transparency floor, and fixer revision from `style.quality`. It uses a
-declared asset `source`, or exactly one intact downloaded PNG from the lockfile.
-Raw provider output stays untouched. A repeated run skips current pending and
+optional transparency floor, fixer revision, and frame-set fps from
+`style.quality`. It uses a declared asset `source`, one intact downloaded PNG,
+or every ordered ComfyUI frame. Raw provider output stays untouched. A repeated run skips current pending and
 approved records; `--force` rebuilds them and resets approval.
 
 `refine check` exits nonzero until every selected profile result is current and
 approved. `plan` shows the same quality state without changing provider cost or
 generation actionability. `pack` and `mount` fail closed and use only approved
 profile output.
+For a frame-set style, `pack` uses every approved role. `mount` requires
+`asset.outputRole` for each frame-set asset assigned to a fixed cell.
 
 Pass `--from` to refine one PNG without a manifest. Path mode also needs
 `--out` and an explicit palette.
@@ -346,8 +349,9 @@ pixelkiln refine check \
   --json
 ```
 
-`approve` remains record-based because approval belongs to one exact PNG. It
-asks the reviewer to confirm the native 1× and integer-zoom checks. Use `--yes`
+`approve` remains record-based because approval belongs to exact bytes: one PNG
+or one ordered frame set. It asks the reviewer to confirm the native 1× and
+integer-zoom checks. Use `--yes`
 only when that review already happened and the named person is recording it
 non-interactively. `check` exits nonzero when approval is pending or when the
 source, output, palette metadata, fixer revision, or audit record has changed.

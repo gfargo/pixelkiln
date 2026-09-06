@@ -55,7 +55,7 @@ PixelKiln keeps the missing record:
 | Workflow | What PixelKiln provides |
 |---|---|
 | Plan and budget | Offline manifest/lock/disk diff, provider-grouped estimates, keyed mixed-provider budget ceilings, JSON/CI gate. |
-| Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, and a fast local candidate sheet. |
+| Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, and candidate or atomic frame-set review. |
 | Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, and resumable paid jobs. |
@@ -195,8 +195,8 @@ select another provider and pass namespaced `providerOptions`; see
 [provider comparison](./PROVIDERS.md) covers costs,
 current confidence, and limitations. ComfyUI works best as a composition tool:
 start with 48–128px native components and build larger scenes from accepted
-parts. Any single-image style can declare a `quality` profile for grid recovery,
-a closed palette, measurable checks, and named human approval. `plan --check`,
+parts. Supported still styles and ComfyUI frame sets can declare a `quality`
+profile for grid recovery, a closed palette, measurable checks, and named human approval. `plan --check`,
 `pack`, and `mount` then fail closed when that derived output is missing or
 stale. Changing the profile never schedules another provider generation.
 
@@ -253,8 +253,8 @@ replace a hard palette or reference-image constraint. See
 
 Generator names describe PixelKiln workflows; their exact capabilities and
 prices depend on the selected provider. Retro Diffusion also supports the
-provider-specific `animation` generator. ComfyUI currently supports `map`
-through an operator-supplied workflow. Scenario currently supports `map`
+provider-specific `animation` generator. ComfyUI supports `map` plus atomic
+still-image `frames` through an operator-supplied workflow. Scenario supports `map`
 with a required offline CU ceiling and a live quote before each paid call.
 Compare the adapters in the [provider comparison](./PROVIDERS.md).
 
@@ -356,7 +356,7 @@ exporters, managed artifact writes, and offline provenance verification. See
 | [Getting started](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, everyday workflow, and what to commit. |
 | [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
 | [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
-| [Set up ComfyUI](./docs/COMFYUI.md) | Self-hosted workflows, per-asset input uploads, local cost semantics, and quality limits. |
+| [Set up ComfyUI](./docs/COMFYUI.md) | Self-hosted stills, revisions, ordered frame sets, per-asset inputs, and quality limits. |
 | [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, review, and durable downloads. |
 | [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 | [Controlled revisions](./docs/REVISIONS.md) | Image-to-image/inpaint parents, masks, fail-closed readiness, provenance, and ComfyUI bindings. |

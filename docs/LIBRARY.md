@@ -93,10 +93,11 @@ files make the result unsafe even when all measured assets pass. Standard
 non-interlaced greyscale, indexed, RGB, greyscale-alpha, and RGBA PNGs are
 normalized to RGBA before palette and transparency measurements.
 
-Provider-neutral pixel refinement is also public:
+Provider-neutral pixel refinement is also public. `refineFrameSet` accepts
+ordered `{ role, path }` sources and writes one atomic multi-output record:
 
 ```ts
-import { refineAsset, checkQualityRecord } from "pixelkiln"
+import { refineAsset, refineFrameSet, checkQualityRecord } from "pixelkiln"
 
 await refineAsset({
   source: "candidates/mountain.png",
@@ -107,6 +108,16 @@ await refineAsset({
 
 const quality = await checkQualityRecord("art/mountain-native.pixelkiln.json")
 if (!quality.safe) console.error(quality.reasons)
+
+await refineFrameSet({
+  sources: [
+    { role: "frame-00", path: "raw/idle-00.png" },
+    { role: "frame-01", path: "raw/idle-01.png" },
+  ],
+  output: "art/idle.png",
+  fps: 12,
+  palette: ["#161321", "#49374f", "#c16c5b", "#f3d6b3"],
+})
 ```
 
 `refineAsset` reconstructs the native grid through a pinned Pixel Art Fixer

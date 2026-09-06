@@ -14,6 +14,8 @@ import {
   type ResolvedStyleImage,
 } from "./types.ts"
 import { sha256, specHash } from "./hash.ts"
+import { MediaType } from "./media.ts"
+import { expectedOutputPath } from "./outputs.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
 
@@ -223,6 +225,7 @@ export async function resolveSpecs(
             root,
             styleId,
             assetId,
+            generator,
             providerOptions,
           })
         : { inputs: {} }
@@ -343,6 +346,7 @@ export async function resolveSpecs(
                 ...(style.quality.fixerPython
                   ? { fixerPython: path.resolve(root, style.quality.fixerPython) }
                   : {}),
+                ...(style.quality.fps == null ? {} : { fps: style.quality.fps }),
               },
             }
           : {}),
@@ -444,7 +448,27 @@ export async function resolveSpecs(
   for (const spec of specs) {
     const key = `${spec.styleId}/${spec.assetId}`
     claimOutput(spec.outFile, key)
-    if (spec.quality) claimOutput(spec.quality.outFile, `${key} quality output`)
+    if (spec.quality) {
+      if (spec.generator === "frames") {
+        const frameInputs = Object.values(spec.providerInputs ?? {}).find(Array.isArray)
+        const count = frameInputs?.length ?? 0
+        for (let index = 0; index < count; index++) {
+          const role = `frame-${String(index).padStart(2, "0")}`
+          claimOutput(
+            expectedOutputPath(
+              { ...spec, outFile: spec.quality.outFile },
+              role,
+              index,
+              count,
+              MediaType.PNG,
+            ),
+            `${key} quality ${role}`,
+          )
+        }
+      } else {
+        claimOutput(spec.quality.outFile, `${key} quality output`)
+      }
+    }
   }
 
   return specs

@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -184,6 +184,8 @@ export const QualityProfileSchema = z
     fixerRevision: z.string().min(1).optional(),
     /** Python executable containing Pixel Art Fixer, relative to the manifest unless absolute. */
     fixerPython: z.string().min(1).optional(),
+    /** Playback rate recorded for an ordered frame set. */
+    fps: z.number().int().min(1).max(60).optional(),
   })
   .strict()
   .refine(
@@ -203,6 +205,7 @@ export interface ResolvedQualityProfile {
   fixerRevision?: string
   /** Absolute local executable path resolved from the manifest. */
   fixerPython?: string
+  fps?: number
 }
 
 /** A provider generation whose visual starting point is another manifest asset. */
@@ -470,11 +473,16 @@ export const AssetSchema = z
     promptByStyle: z.record(z.string()).default({}),
     /**
      * Named per-asset values consumed by the active provider's declared
-     * bindings. Values are JSON scalars; adapters may interpret a string as a
-     * manifest-relative file when the target node accepts an uploaded input.
+     * bindings. Values are JSON scalars, or a frame-set sequence of scalars;
+     * adapters may interpret a string as a manifest-relative uploaded file.
      */
     providerInputs: z
-      .record(z.union([z.string(), z.number().finite(), z.boolean()]))
+      .record(z.union([
+        z.string(),
+        z.number().finite(),
+        z.boolean(),
+        z.array(z.union([z.string(), z.number().finite(), z.boolean()])).min(2).max(64),
+      ]))
       .default({}),
   })
   .strict()

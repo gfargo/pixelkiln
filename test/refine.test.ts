@@ -8,6 +8,7 @@ import {
   checkQualityRecord,
   quantizeToPalette,
   refineAsset,
+  refineFrameSet,
 } from "../src/pipeline/refine.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 
@@ -61,6 +62,8 @@ describe("provider-neutral refinement", () => {
     expect(refined.detection).toMatchObject({
       columns: 2,
       rows: 2,
+      phaseX: 0,
+      phaseY: 0,
       confidence: "high",
       consensus: "fast:ac+rl(S)",
     })
@@ -181,6 +184,87 @@ describe("provider-neutral refinement", () => {
       fixerArgsPrefix: [fixture],
     })).rejects.toThrow(/transparency 50\.0% is below 75\.0%/)
     expect(existsSync(path.join(dir, "isolated.png"))).toBe(false)
+  })
+
+  it("preserves Pixel Art Fixer's supported source-size boundary", async () => {
+    const tooSmall = path.join(dir, "too-small.png")
+    const tooLarge = path.join(dir, "too-large.png")
+    await writeFile(tooSmall, encodeRgbaPng(15, 16, Buffer.alloc(15 * 16 * 4)))
+    await writeFile(tooLarge, encodeRgbaPng(2001, 2000, Buffer.alloc(2001 * 2000 * 4)))
+
+    await expect(refineAsset({
+      source: tooSmall,
+      output: path.join(dir, "small-final.png"),
+      palette,
+      fixerPython: "must-not-run",
+    })).rejects.toThrow(/at least 16px; got 15x16/)
+    await expect(refineAsset({
+      source: tooLarge,
+      output: path.join(dir, "large-final.png"),
+      palette,
+      fixerPython: "must-not-run",
+    })).rejects.toThrow(/at most 4,000,000 source pixels; got 2001x2000/)
+  })
+
+  it("refines and approves an ordered frame set atomically", async () => {
+    const first = path.join(dir, "pose-a.png")
+    const second = path.join(dir, "pose-b.png")
+    const output = path.join(dir, "final.png")
+    await writeFile(first, samplePng())
+    await writeFile(second, samplePng())
+
+    const refined = await refineFrameSet({
+      sources: [
+        { role: "frame-00", path: first },
+        { role: "frame-01", path: second },
+      ],
+      output,
+      fps: 8,
+      palette,
+      fixerCommand: process.execPath,
+      fixerArgsPrefix: [fixture],
+    })
+    expect(refined.outputs).toEqual([
+      path.join(dir, "final-frame-00.png"),
+      path.join(dir, "final-frame-01.png"),
+    ])
+    expect(refined.audit).toMatchObject({ safe: true, colorCount: 2 })
+    const pending = await checkQualityRecord(refined.record)
+    expect(pending).toMatchObject({ current: true, approved: false, auditSafe: true })
+    expect(pending.sources).toEqual([first, second])
+    expect(pending.outputs).toEqual(refined.outputs)
+    expect(pending.options.frameSet).toMatchObject({
+      fps: 8,
+      count: 2,
+      roles: ["frame-00", "frame-01"],
+    })
+
+    const approved = await approveQualityRecord(refined.record, { reviewer: "Ada" })
+    expect(approved).toMatchObject({ safe: true, current: true, approved: true })
+    await writeFile(refined.outputs[1]!, samplePng())
+    expect((await checkQualityRecord(refined.record)).reasons).toContain(
+      "output changed: final-frame-01.png",
+    )
+  })
+
+  it("rejects a frame set when recovered native grids disagree", async () => {
+    const first = path.join(dir, "pose.png")
+    const second = path.join(dir, "different-phase.png")
+    await writeFile(first, samplePng())
+    await writeFile(second, samplePng())
+
+    await expect(refineFrameSet({
+      sources: [
+        { role: "frame-00", path: first },
+        { role: "frame-01", path: second },
+      ],
+      output: path.join(dir, "final.png"),
+      fps: 8,
+      palette,
+      fixerCommand: process.execPath,
+      fixerArgsPrefix: [fixture],
+    })).rejects.toThrow(/Frame-set native grid mismatch/)
+    expect(existsSync(path.join(dir, "final-frame-00.png"))).toBe(false)
   })
 
   it("protects unowned output and refuses an in-place or underspecified palette", async () => {
