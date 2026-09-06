@@ -182,6 +182,8 @@ export const QualityProfileSchema = z
     minTransparency: z.number().min(0).max(1).optional(),
     /** Pixel Art Fixer revision written into the quality record. */
     fixerRevision: z.string().min(1).optional(),
+    /** Python executable containing Pixel Art Fixer, relative to the manifest unless absolute. */
+    fixerPython: z.string().min(1).optional(),
   })
   .strict()
   .refine(
@@ -199,6 +201,8 @@ export interface ResolvedQualityProfile {
   minGridConfidence: GridConfidence
   minTransparency?: number
   fixerRevision?: string
+  /** Absolute local executable path resolved from the manifest. */
+  fixerPython?: string
 }
 
 /** A provider generation whose visual starting point is another manifest asset. */
@@ -521,6 +525,21 @@ export const LockEntrySchema = z.object({
     .strict()
     .nullable()
     .default(null),
+
+  /**
+   * Output hashes owned by the previous generation while its replacement is
+   * pending. They authorize replacing only unchanged PixelKiln-owned files.
+   */
+  supersededOutputs: z
+    .array(
+      z.object({
+        path: z.string(),
+        sha256: z.string(),
+        role: z.string().optional(),
+        mediaType: MediaTypeSchema.optional(),
+      }),
+    )
+    .optional(),
 
   /** Set at submit time, before the request is awaited, so a crash is recoverable. */
   jobId: z.string().nullable().default(null),

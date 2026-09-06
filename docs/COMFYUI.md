@@ -430,7 +430,8 @@ mixed manifest:
           "#141b1e", "#23312a", "#384d4f", "#526a8d",
           "#709fcf", "#865c45", "#c6a766", "#f1bb70"
         ],
-        "minGridConfidence": "high"
+        "minGridConfidence": "high",
+        "fixerPython": ".pixelkiln/pixelfixer/bin/python"
       },
       "seed": 31415,
       "providerOptions": {
@@ -472,8 +473,9 @@ mixed manifest:
 The `quality` block is not a ComfyUI request option. It describes PixelKiln's
 offline final-art gate and works the same way with any supported single-image
 provider. Its output directory, palette, confidence threshold, optional
-transparency floor, and fixer revision do not affect generation identity or
-cost. See [Manifest quality profiles](MANIFEST.md#quality-profiles).
+transparency floor, fixer revision, and local fixer interpreter do not affect
+generation identity or cost. The interpreter path is resolved from the
+manifest directory. See [Manifest quality profiles](MANIFEST.md#quality-profiles).
 
 PixelKiln refuses missing nodes and inputs during the offline plan. It also
 clones the workflow before applying bindings, so one asset cannot mutate the
