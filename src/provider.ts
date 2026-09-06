@@ -50,6 +50,9 @@ export interface OutputSource {
   mediaType?: MediaType
 }
 
+export type ProviderInputScalar = string | number | boolean
+export type ProviderInputValue = ProviderInputScalar | ProviderInputScalar[]
+
 export interface PollContext {
   /** Distinguishes structural tile sets from independent tile candidates. */
   tileFeature?: string
@@ -79,6 +82,13 @@ export interface ProviderOptionContext {
   styleId: string
 }
 
+export interface ProviderInputContext extends ProviderOptionContext {
+  assetId: string
+  generator: Generator
+  /** The already-resolved options for this style. */
+  providerOptions: Record<string, unknown>
+}
+
 export interface ResolvedProviderOptions {
   /** Runtime options passed to estimate, validate, and submit. */
   options: Record<string, unknown>
@@ -86,10 +96,25 @@ export interface ResolvedProviderOptions {
   identity?: unknown
 }
 
+export interface ResolvedProviderInputs {
+  /** Runtime values passed to validate and submit. */
+  inputs: Record<string, unknown>
+  /** Stable JSON value hashed instead of runtime-only paths when present. */
+  identity?: unknown
+}
+
 /** Terminal and non-terminal states a queued job can be observed in. */
 export type JobState =
   | { status: "processing"; progressPercent?: number | null; etaSeconds?: number | null }
   | { status: "review"; candidateUrls: string[]; metadata?: ProviderMetadata }
+  | {
+      status: "review-set"
+      objectId: string
+      frameUrls: string[]
+      sources: OutputSource[]
+      fps: number
+      metadata?: ProviderMetadata
+    }
   | {
       status: "ready"
       objectId: string
@@ -192,6 +217,15 @@ export interface Provider {
     options: Record<string, unknown>,
     context: ProviderOptionContext,
   ): Promise<ResolvedProviderOptions>
+
+  /**
+   * Resolve adapter-owned per-asset values before spec hashing. This is where
+   * local control images become content hashes rather than machine paths.
+   */
+  resolveInputs?(
+    inputs: Record<string, ProviderInputValue>,
+    context: ProviderInputContext,
+  ): Promise<ResolvedProviderInputs>
 
   /** False for a generator this backend cannot express (e.g. non-square). */
   supports(generator: Generator): boolean

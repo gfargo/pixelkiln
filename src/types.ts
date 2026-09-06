@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -182,6 +182,10 @@ const QualityProfileObjectSchema = z
     minTransparency: z.number().min(0).max(1).optional(),
     /** Pixel Art Fixer revision written into the quality record. */
     fixerRevision: z.string().min(1).optional(),
+    /** Python executable containing Pixel Art Fixer, relative to the manifest unless absolute. */
+    fixerPython: z.string().min(1).optional(),
+    /** Playback rate recorded for an ordered frame set. */
+    fps: z.number().int().min(1).max(60).optional(),
   })
   .strict()
 
@@ -201,6 +205,9 @@ export interface ResolvedQualityProfile {
   minGridConfidence: GridConfidence
   minTransparency?: number
   fixerRevision?: string
+  /** Absolute local executable path resolved from the manifest. */
+  fixerPython?: string
+  fps?: number
 }
 
 /** A provider generation whose visual starting point is another manifest asset. */
@@ -485,6 +492,19 @@ export const AssetSchema = z
      * style would invalidate every other style's already-generated art.
      */
     promptByStyle: z.record(z.string()).default({}),
+    /**
+     * Named per-asset values consumed by the active provider's declared
+     * bindings. Values are JSON scalars, or a frame-set sequence of scalars;
+     * adapters may interpret a string as a manifest-relative uploaded file.
+     */
+    providerInputs: z
+      .record(z.union([
+        z.string(),
+        z.number().finite(),
+        z.boolean(),
+        z.array(z.union([z.string(), z.number().finite(), z.boolean()])).min(2).max(64),
+      ]))
+      .default({}),
   })
   .strict()
   .superRefine((asset, context) => {
@@ -553,6 +573,21 @@ export const LockEntrySchema = z.object({
     .strict()
     .nullable()
     .default(null),
+
+  /**
+   * Output hashes owned by the previous generation while its replacement is
+   * pending. They authorize replacing only unchanged PixelKiln-owned files.
+   */
+  supersededOutputs: z
+    .array(
+      z.object({
+        path: z.string(),
+        sha256: z.string(),
+        role: z.string().optional(),
+        mediaType: MediaTypeSchema.optional(),
+      }),
+    )
+    .optional(),
 
   /** Set at submit time, before the request is awaited, so a crash is recoverable. */
   jobId: z.string().nullable().default(null),
@@ -671,6 +706,8 @@ export interface ResolvedSpec {
   provider: string
   /** Adapter-owned settings selected from the active provider namespace. */
   providerOptions: Record<string, unknown>
+  /** Adapter-resolved per-asset inputs. Their stable identity participates in the spec hash. */
+  providerInputs?: Record<string, unknown>
   generator: Generator
   prompt: string
   width: number

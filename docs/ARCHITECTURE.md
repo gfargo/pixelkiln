@@ -29,6 +29,16 @@ ComfyUI uses this hook to parse and hash workflow JSON without making a network
 request. The runtime graph can then be submitted without putting a
 machine-specific path in the stable identity.
 
+Assets may also declare provider-owned scalar inputs or a provider-defined
+sequence. `Provider.resolveInputs`
+maps those values into runtime inputs and, when needed, a separate stable
+identity. ComfyUI uses the split for custom `LoadImage` bindings: the runtime
+value keeps an absolute path long enough to upload the file, while the spec and
+lock retain only its content hash and format. A move does not invalidate art;
+changing the bytes does. For ComfyUI `frames`, one named sequence expands into
+ordered still prompts while all other bindings stay fixed. Adapters without
+this capability reject non-empty `providerInputs`.
+
 See [manifest reference](./MANIFEST.md).
 
 ## Derived quality state
@@ -38,12 +48,12 @@ hash. This keeps two questions separate: whether the provider output is current,
 and whether the derived PNG is ready to ship. A palette or threshold change
 cannot schedule another generation.
 
-The quality record binds one raw/source PNG, one refined PNG, the fixer revision,
-detected grid, palette, audit, and named approval. Planning and doctor inspect
-that record without changing it. Pack and mount require it to be current and
-approved, use its PNG as input, and include the record in downstream provenance.
-Tiles and animation are excluded until this layer can preserve structural roles
-and frame identity.
+An ordinary quality record binds one raw/source PNG and one refined PNG. A
+ComfyUI frame record binds every ordered source/output role and adds fps plus
+per-frame step and phase. Both retain the fixer revision, palette, audit, and
+named approval. Planning and doctor inspect the record without changing it.
+Pack and mount require current approval and include the record downstream.
+Tiles and provider-native animation remain outside this contract.
 
 ## Revision dependency graph
 
@@ -76,6 +86,8 @@ retain:
 - durable provider source references, candidates, and selections;
 - `outputs[]` with portable path, SHA-256, optional structural role, and
   optional PNG/GIF media type;
+- temporary `supersededOutputs[]` ownership hashes while a stale generation is
+  being replaced;
 - provider-specific metadata under a provider-id namespace;
 - successful submission cost and cost unit.
 
@@ -102,7 +114,9 @@ plan → submit → poll → pick (when needed) → fetch
 Remote ids are saved immediately after submission. Generation and download
 failures remain separate, so paid work with a temporary CDN failure is
 recoverable at zero generation cost. Each stage can be rerun independently;
-`gen` is only their everyday orchestration.
+`gen` is only their everyday orchestration. Planning maps current `processing`,
+`review`, and `selected`/`download-failed` entries to `poll`, `pick`, and
+`fetch`, respectively.
 
 Provider responses are runtime-validated before entering lock state. A 2xx
 response with a missing object id, malformed URL set, invalid estimate, or
@@ -181,10 +195,15 @@ multi-candidate, tileset, GIF, and spritesheet paths retain mocked coverage
 pending paid live smokes. Its durable `retrodiffusion://` references refresh
 temporary result URLs when recovery cannot use the local cache.
 `ComfyUIProvider` is an experimental self-hosted adapter. It resolves and hashes
-an API-format workflow offline, submits an input-bound clone, polls local
-history, and stores portable `comfyui://` output references so a lockfile does
-not retain a workstation hostname. It supports one still-image output node
-today. Live Apple MPS runs cover a small Stable Diffusion 1.5 plumbing smoke and
+an API-format workflow offline, resolves arbitrary per-asset scalar bindings,
+uploads manifest-owned PNG/JPEG inputs by content hash, submits an input-bound
+clone, polls local history, and stores portable `comfyui://` output references
+so a lockfile does not retain a workstation hostname or input path. It supports
+`map` candidates and atomic `frames` sets from one still-image output node.
+Frame-set transport, ordered review/fetch, shared-palette refinement,
+step/phase verification, approval, and packing have deterministic integration
+coverage. Live Apple MPS runs cover a small Stable
+Diffusion 1.5 plumbing smoke and
 the SDXL Base plus Pixel Art XL composition benchmark, including four-candidate
 review, cache recovery, and native-grid refinement. `ScenarioProvider` is an experimental hosted still-image
 adapter. It keeps offline planning conservative, records the provider's free

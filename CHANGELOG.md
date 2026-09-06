@@ -1,3 +1,17 @@
+# [0.18.0](https://github.com/gfargo/pixelkiln/compare/v0.17.0...v0.18.0) (2026-09-06)
+
+
+### Features
+
+* support per-asset ComfyUI inputs ([#76](https://github.com/gfargo/pixelkiln/issues/76)) ([9c2da4b](https://github.com/gfargo/pixelkiln/commit/9c2da4be796acbc48c1bd58bb7f22f33f43dd6e3))
+
+# [0.17.0](https://github.com/gfargo/pixelkiln/compare/v0.16.0...v0.17.0) (2026-09-06)
+
+
+### Features
+
+* make generation workflows safely resumable ([#75](https://github.com/gfargo/pixelkiln/issues/75)) ([23f4be5](https://github.com/gfargo/pixelkiln/commit/23f4be59ec50f25c1efd82e4e8fcfe91c67830fc))
+
 # [0.16.0](https://github.com/gfargo/pixelkiln/compare/v0.15.0...v0.16.0) (2026-09-05)
 
 

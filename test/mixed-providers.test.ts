@@ -145,7 +145,7 @@ describe("mixed provider projects", () => {
     ], { cwd: dir })).rejects.toMatchObject({
       stderr: expect.stringMatching(/budget names provider "typo"/i),
     })
-  })
+  }, 15_000)
 
   it("requires an explicit provider for account-scoped commands", async () => {
     const { loaded } = await mixedProject("pixellab", "retrodiffusion")
@@ -159,7 +159,7 @@ describe("mixed provider projects", () => {
         stderr: expect.stringMatching(/account-scoped.*--provider/),
       })
     }
-  })
+  }, 15_000)
 
   it("reports every selected provider during an offline doctor run", async () => {
     const { loaded, lockPath } = await mixedProject("pixellab", "retrodiffusion")

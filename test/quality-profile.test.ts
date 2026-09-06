@@ -1,6 +1,6 @@
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
@@ -81,9 +81,51 @@ describe("manifest quality profiles", () => {
       palette: ["#111111", "#eeeeee"],
       minGridConfidence: "medium",
       minTransparency: 0.25,
+      fixerPython: "tools/pixelfixer-python",
     })
     expect(second.specs[0]!.specHash).toBe(firstHash)
     expect(second.specs[0]!.quality!.outFile).toBe(path.join(dir, "shipping/pixels/keep.png"))
+    expect(second.specs[0]!.quality!.fixerPython).toBe(path.join(dir, "tools/pixelfixer-python"))
+  })
+
+  it("uses the manifest's fixer Python without a repeated CLI override", async () => {
+    const tools = path.join(dir, "tools")
+    const fixerPython = path.join(tools, "pixelfixer-python.mjs")
+    await writeFile(
+      path.join(dir, "source.png"),
+      encodeRgbaPng(16, 16, Buffer.alloc(16 * 16 * 4, 255)),
+    )
+    await mkdir(tools, { recursive: true })
+    await writeFile(fixerPython, `#!/usr/bin/env node
+import { copyFileSync } from "node:fs"
+const source = process.argv.at(-2)
+const output = process.argv.at(-1)
+copyFileSync(source, output)
+process.stdout.write(JSON.stringify({
+  step_x: 1,
+  step_y: 1,
+  phase_x: 0,
+  phase_y: 0,
+  cols: 16,
+  rows: 16,
+  consensus: "fast:ac+rl(S)"
+}))
+`)
+    await chmod(fixerPython, 0o755)
+    const { specs } = await writeManifest({
+      outDir: "art/final",
+      palette: ["#000000", "#ffffff"],
+      minGridConfidence: "high",
+      fixerPython: "tools/pixelfixer-python.mjs",
+    })
+
+    expect(await refineQualityProfiles(specs, emptyLock)).toMatchObject({
+      processed: 1,
+      failed: 0,
+    })
+    expect(await inspectQualityProfile(specs[0]!, emptyLock)).toMatchObject({
+      state: "needs-approval",
+    })
   })
 
   it("refines a configured batch and preserves a current approval on rerun", async () => {
@@ -230,7 +272,7 @@ describe("manifest quality profiles", () => {
       expect.objectContaining({ id: "$quality/keep", included: true }),
       expect.objectContaining({ id: "keep", included: true }),
     ]))
-  })
+  }, 15_000)
 
   it("rejects duplicate palettes, unsupported generators, and output collisions", async () => {
     await expect(writeManifest({
@@ -328,5 +370,75 @@ describe("manifest quality profiles", () => {
     await expect(requireApprovedQualitySources([staleSpec], lock)).rejects.toThrow(
       /Packaging requires current, human-approved quality output/,
     )
+  })
+
+  it("gates and packages every frame under one quality approval", async () => {
+    const { specs } = await writeManifest()
+    const base = specs[0]!
+    const generatedSpec = { ...base, source: undefined, generator: "frames" as const }
+    const frames = [samplePng(12), samplePng(28)]
+    const rawPaths = [
+      path.join(dir, "art/raw/keep-frame-00.png"),
+      path.join(dir, "art/raw/keep-frame-01.png"),
+    ]
+    await mkdir(path.dirname(rawPaths[0]!), { recursive: true })
+    await Promise.all(rawPaths.map((file, index) => writeFile(file, frames[index]!)))
+    const lock: Lock = {
+      version: 2,
+      entries: {
+        "base/keep": {
+          styleId: "base", assetId: "keep", specHash: generatedSpec.specHash,
+          generator: "frames", tileFeature: null, prompt: generatedSpec.prompt,
+          width: 16, height: 16, status: "downloaded", jobId: "frames", objectId: "frames",
+          reviewObjectId: null, candidateIndex: null, error: null,
+          outputs: rawPaths.map((file, index) => ({
+            path: path.relative(dir, file),
+            sha256: sha256(frames[index]!),
+            role: `frame-${String(index).padStart(2, "0")}`,
+          })),
+          provider: "comfyui", providerMetadata: {}, sourceUrl: null, sourceUrls: [],
+          submittedAt: null, downloadedAt: null, cost: 0, costUnit: "free",
+        },
+      },
+    }
+
+    const refined = await refineQualityProfiles([generatedSpec], lock, {
+      fixerCommand: process.execPath,
+      fixerArgsPrefix: [fixture],
+    })
+    expect(refined).toMatchObject({ processed: 1, failed: 0 })
+    expect(refined.items[0]).toMatchObject({
+      state: "needs-approval",
+      outputs: [
+        path.join(dir, "art/final/keep-frame-00.png"),
+        path.join(dir, "art/final/keep-frame-01.png"),
+      ],
+    })
+    await approveQualityRecord(refined.items[0]!.record, { reviewer: "Ada" })
+    const approved = await requireApprovedQualitySources([generatedSpec], lock)
+    expect(approved).toEqual({
+      "keep/frame-00": path.join(dir, "art/final/keep-frame-00.png"),
+      "keep/frame-01": path.join(dir, "art/final/keep-frame-01.png"),
+    })
+    expect(packStyle(lock, "base", dir, { sourceOverrides: approved }).atlas.frames)
+      .toMatchObject([{ id: "keep/frame-00" }, { id: "keep/frame-01" }])
+    await expect(requireApprovedQualitySources(
+      [generatedSpec],
+      lock,
+      new Set(["keep"]),
+      {},
+    )).rejects.toThrow(/requires asset\.outputRole/)
+    await expect(requireApprovedQualitySources(
+      [generatedSpec],
+      lock,
+      new Set(["keep"]),
+      { keep: "frame-01" },
+    )).resolves.toEqual({ keep: path.join(dir, "art/final/keep-frame-01.png") })
+
+    await writeFile(rawPaths[1]!, samplePng(90))
+    expect(await inspectQualityProfile(generatedSpec, lock)).toMatchObject({
+      state: "blocked",
+      reason: "raw provider output was modified after download",
+    })
   })
 })

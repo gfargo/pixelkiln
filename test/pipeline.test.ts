@@ -417,6 +417,93 @@ describe("fetch", () => {
     expect(lock.entries[lockKey("base", "anvil")]!.status).toBe("downloaded")
   })
 
+  it("replaces an unchanged PixelKiln-owned file after deliberate regeneration", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const first = await project({ generator: "map", assets: { anvil: { prompt: "an anvil" } } })
+    const lock = emptyLock()
+    await submit(provider, first.loaded, (await buildPlan(first.specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs: first.specs })
+    await fetchAssets(provider, first.specs, lock, lockPath)
+
+    const key = lockKey("base", "anvil")
+    const firstOutput = primaryOutput(lock.entries[key]!)!
+    const second = await project({ generator: "map", assets: { anvil: { prompt: "a steel anvil" } } })
+    await submit(provider, second.loaded, (await buildPlan(second.specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    expect(lock.entries[key]!.outputs).toEqual([])
+    expect(lock.entries[key]!.supersededOutputs).toEqual([firstOutput])
+    expect((await loadLock(lockPath)).entries[key]!.supersededOutputs).toEqual([firstOutput])
+
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs: second.specs })
+    expect(await fetchAssets(provider, second.specs, lock, lockPath)).toMatchObject({
+      downloaded: 1,
+      failed: 0,
+    })
+    expect(primaryOutput(lock.entries[key]!)!.sha256).not.toBe(firstOutput.sha256)
+    expect(lock.entries[key]!.supersededOutputs).toEqual([])
+    expect((await buildPlan(second.specs, lock)).items[0]!.state).toBe("ok")
+  })
+
+  it("requires --force before replacing a legacy untracked destination", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const { loaded, specs } = await project({
+      generator: "map",
+      assets: { anvil: { prompt: "an anvil" } },
+    })
+    const lock = emptyLock()
+    await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs })
+    await mkdir(path.dirname(specs[0]!.outFile), { recursive: true })
+    await writeFile(specs[0]!.outFile, await provider.download("fake://legacy-output.png"))
+
+    expect(await fetchAssets(provider, specs, lock, lockPath)).toMatchObject({
+      downloaded: 0,
+      failed: 1,
+    })
+    expect(lock.entries[lockKey("base", "anvil")]!.error).toMatch(/pass --force/)
+    expect(await fetchAssets(provider, specs, lock, lockPath, { force: true })).toMatchObject({
+      downloaded: 1,
+      failed: 0,
+    })
+    expect(lock.entries[lockKey("base", "anvil")]!.status).toBe("downloaded")
+  })
+
+  it("preserves a manual edit made before stale output is replaced", async () => {
+    const provider = new FakeProvider({ candidates: 1 })
+    const first = await project({ generator: "map", assets: { anvil: { prompt: "an anvil" } } })
+    const lock = emptyLock()
+    await submit(provider, first.loaded, (await buildPlan(first.specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs: first.specs })
+    await fetchAssets(provider, first.specs, lock, lockPath)
+    await writeFile(first.specs[0]!.outFile, await provider.download("fake://manual-edit.png"))
+
+    const second = await project({ generator: "map", assets: { anvil: { prompt: "a steel anvil" } } })
+    await submit(provider, second.loaded, (await buildPlan(second.specs, lock)).actionable, lock, lockPath, {
+      spacingMs: 0,
+    })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs: second.specs })
+
+    expect(await fetchAssets(provider, second.specs, lock, lockPath)).toMatchObject({
+      downloaded: 0,
+      failed: 1,
+    })
+    const retry = await buildPlan(second.specs, lock)
+    expect(retry.items[0]).toMatchObject({ state: "recoverable" })
+    expect(retry.items[0]!.reason).toContain("pixelkiln fetch --force")
+    expect(await fetchAssets(provider, second.specs, lock, lockPath, { force: true })).toMatchObject({
+      downloaded: 1,
+      failed: 0,
+    })
+    expect(provider.submissions).toHaveLength(2)
+  })
+
   it("restores a missing downloaded file from its persisted source URL", async () => {
     const provider = new FakeProvider({ candidates: 1 })
     const { loaded, specs } = await project({ generator: "map", assets: { anvil: { prompt: "a" } } })

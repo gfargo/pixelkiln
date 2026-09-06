@@ -19,6 +19,8 @@ import {
   type StyleInput,
 } from "./types.ts"
 import { sha256, specHash } from "./hash.ts"
+import { MediaType } from "./media.ts"
+import { expectedOutputPath } from "./outputs.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
 
@@ -182,7 +184,13 @@ export async function resolveSpecs(
     /** Optional provider makes offline plan cost/candidate estimates adapter-owned. */
     provider?: Pick<
       Provider,
-      "supports" | "supportsRevision" | "estimate" | "validate" | "resolveOptions" | "id"
+      | "supports"
+      | "supportsRevision"
+      | "estimate"
+      | "validate"
+      | "resolveOptions"
+      | "resolveInputs"
+      | "id"
     >
   },
 ): Promise<ResolvedSpec[]> {
@@ -193,7 +201,13 @@ export async function resolveSpecs(
   const providerOverride = filter?.provider
   const providers = new Map<string, Pick<
     Provider,
-    "supports" | "supportsRevision" | "estimate" | "validate" | "resolveOptions" | "id"
+    | "supports"
+    | "supportsRevision"
+    | "estimate"
+    | "validate"
+    | "resolveOptions"
+    | "resolveInputs"
+    | "id"
   >>()
   const providerFor = (id: string) => {
     if (providerOverride) return providerOverride
@@ -279,6 +293,7 @@ export async function resolveSpecs(
       return { base64: hit.base64, width: hit.width, height: hit.height, format: hit.format }
     })
     const styleSpecs = new Map<string, ResolvedSpec>()
+    const providerInputIdentities = new Map<string, unknown>()
 
     for (const [assetId, asset] of Object.entries(manifest.assets)) {
       if (!resolutionAssetIds.has(assetId)) continue
@@ -288,6 +303,24 @@ export async function resolveSpecs(
       if (!activeProvider.supports(generator)) {
         throw new Error(`Provider "${activeProvider.id}" does not support generator "${generator}"`)
       }
+      if (Object.keys(asset.providerInputs).length && !activeProvider.resolveInputs) {
+        throw new Error(
+          `Provider "${activeProvider.id}" does not support asset providerInputs ` +
+            `(${styleId}/${assetId})`,
+        )
+      }
+      const inputResolution = activeProvider.resolveInputs
+        ? await activeProvider.resolveInputs(asset.providerInputs, {
+            root,
+            styleId,
+            assetId,
+            generator,
+            providerOptions,
+          })
+        : { inputs: {} }
+      const providerInputs = inputResolution.inputs
+      const providerInputIdentity = inputResolution.identity ?? providerInputs
+      providerInputIdentities.set(assetId, providerInputIdentity)
       let width: number
       let height: number
       let size: number
@@ -342,6 +375,7 @@ export async function resolveSpecs(
         assetId,
         provider: activeProvider.id,
         providerOptions,
+        providerInputs,
         generator,
         prompt,
         width,
@@ -398,6 +432,10 @@ export async function resolveSpecs(
                 ...(style.quality.fixerRevision
                   ? { fixerRevision: style.quality.fixerRevision }
                   : {}),
+                ...(style.quality.fixerPython
+                  ? { fixerPython: path.resolve(root, style.quality.fixerPython) }
+                  : {}),
+                ...(style.quality.fps == null ? {} : { fps: style.quality.fps }),
               },
             }
           : {}),
@@ -467,7 +505,12 @@ export async function resolveSpecs(
           ...(asset.revision.strength == null ? {} : { strength: asset.revision.strength }),
         }
       }
-      resolved.specHash = specHash(resolved, styleImageHashes, providerOptionIdentity)
+      resolved.specHash = specHash(
+        resolved,
+        styleImageHashes,
+        providerOptionIdentity,
+        providerInputIdentities.get(assetId),
+      )
       activeProvider.validate?.(resolved, resolvedImages)
       const estimate = validateCostEstimate(activeProvider.id, activeProvider.estimate(resolved))
       resolved.cost = estimate.amount
@@ -494,7 +537,27 @@ export async function resolveSpecs(
   for (const spec of specs) {
     const key = `${spec.styleId}/${spec.assetId}`
     claimOutput(spec.outFile, key)
-    if (spec.quality) claimOutput(spec.quality.outFile, `${key} quality output`)
+    if (spec.quality) {
+      if (spec.generator === "frames") {
+        const frameInputs = Object.values(spec.providerInputs ?? {}).find(Array.isArray)
+        const count = frameInputs?.length ?? 0
+        for (let index = 0; index < count; index++) {
+          const role = `frame-${String(index).padStart(2, "0")}`
+          claimOutput(
+            expectedOutputPath(
+              { ...spec, outFile: spec.quality.outFile },
+              role,
+              index,
+              count,
+              MediaType.PNG,
+            ),
+            `${key} quality ${role}`,
+          )
+        }
+      } else {
+        claimOutput(spec.quality.outFile, `${key} quality output`)
+      }
+    }
   }
 
   return specs

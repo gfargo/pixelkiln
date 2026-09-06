@@ -94,6 +94,7 @@ export async function runSalvage(
               file: rel,
               tags: ["salvaged"],
               styles: [ctx.styleId],
+              providerInputs: {},
               ...(orphan.width === orphan.height
                 ? { size: orphan.width }
                 : { width: orphan.width, height: orphan.height }),

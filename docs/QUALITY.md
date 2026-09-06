@@ -146,7 +146,8 @@ same native-grid and palette treatment:
   "quality": {
     "outDir": "assets/final/environment",
     "palette": ["#141b1e", "#23312a", "#526a8d", "#709fcf", "#f1bb70"],
-    "minGridConfidence": "high"
+    "minGridConfidence": "high",
+    "fixerPython": ".pixelkiln/pixelfixer/bin/python"
   }
 }
 ```
@@ -163,21 +164,33 @@ pixelkiln plan --style environment --check
 ```
 
 The first command reads the profile's output path, palette, detector threshold,
-optional transparency floor, and fixer revision. Do not repeat those as flags;
-manifest mode rejects conflicting path-owned settings. `--style` and `--only`
-can narrow a batch. A normal rerun skips current pending or approved records,
-so it does not erase review work. `--force` rebuilds them and resets approval.
+optional transparency floor, fixer revision, and Python executable. The
+executable is manifest-relative. A one-run `--fixer-python` override wins,
+followed by the manifest, `PIXELKILN_PIXEL_FIXER_PYTHON`, and `python3`. Do not
+repeat the other profile settings as flags; manifest mode rejects conflicting
+path-owned settings. `--style` and `--only` can narrow a batch. A normal rerun
+skips current pending or approved records, so it does not erase review work.
+`--force` rebuilds them and resets approval.
 
 Raw provider files and derived PNGs have separate identities. A profile change
-does not make the raw generation stale or add provider cost. It makes the
-quality state `needs-refinement`. A changed declared `asset.source` does the
-same. Provider output is `blocked` when its generation spec is stale or its
-locked PNG is missing, modified, non-PNG, or part of a multi-output set.
+does not make the raw generation stale or add provider cost. Palette, audit,
+revision, and output-policy changes make the quality state `needs-refinement`;
+changing only the local `fixerPython` path does not. A changed declared
+`asset.source` also requires refinement. Provider output is `blocked` when its
+generation spec is stale or its locked PNG is missing, modified, or non-PNG.
+ComfyUI `frames` is the supported multi-output exception: every ordered role
+and hash must be present.
 
 `pack` and `mount` consume the approved PNGs automatically and include their
 quality records in the new bundle's provenance. They fail before writing when
 any required record is pending, stale, made from a different source, or edited.
-The first release supports only one-PNG `map`, `1dir`, and `pixflux` styles.
+Single-image `map`, `1dir`, and `pixflux` styles produce one record per PNG.
+ComfyUI `frames` produces one record for the ordered set. It stores fps and
+per-frame grid measurements, applies one palette, rejects step/phase drift, and
+requires one human approval for the complete loop. Packaging exposes the
+approved members as `asset/frame-XX`; it never substitutes a partial set.
+`pack` includes the complete approved sequence. `mount` requires the asset's
+`outputRole` to name the one approved frame placed in its fixed cell.
 
 ### One-off refinement record
 

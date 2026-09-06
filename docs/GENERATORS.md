@@ -12,6 +12,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 20–40 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 20–40 generations | variations or complete set |
+| Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 
 Start with `map` unless a required capability points elsewhere. Forty `map`
 re-rolls cost the same as one 64×64 `1dir` call.
@@ -136,6 +137,21 @@ Important constraints:
   are rejected by engine exporters that cannot map them safely.
 
 See [tiles and engine exports](./TILES.md).
+
+## `frames`
+
+`frames` currently belongs to ComfyUI. It repeats one committed still-image
+workflow while varying one explicit per-asset binding, such as an ordered set
+of pose PNGs. It is not video diffusion. The whole sequence stays one planned,
+reviewed, downloaded, refined, and approved asset; partial sets never become
+packaging input.
+
+Keep a fixed seed for identity, or opt into a deterministic `seedStep`. Use a
+quality profile so every frame shares one palette and must agree on detected
+native grid step and phase. The review page animates the sequence and shows the
+ordered strip. After approval, `pack` emits the sprite sheet and stable
+`asset/frame-XX` atlas ids. See
+[Set up ComfyUI](./COMFYUI.md#generate-an-ordered-frame-set).
 
 ## Style variants
 

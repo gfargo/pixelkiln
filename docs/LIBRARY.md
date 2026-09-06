@@ -11,6 +11,7 @@ import {
   buildPlan,
   loadLock,
   loadManifest,
+  resumeActions,
   resolveSpecs,
   summarize,
 } from "pixelkiln"
@@ -19,11 +20,13 @@ const loaded = await loadManifest("pixelkiln.manifest.json")
 const specs = await resolveSpecs(loaded)
 const lock = await loadLock("pixelkiln.lock.json")
 const plan = await buildPlan(specs, lock)
+const remaining = resumeActions(specs, lock)
 
 console.log(summarize(plan))
 for (const group of plan.groups) {
   console.log(`${group.provider}: ${group.cost} ${group.costUnit}`)
 }
+for (const action of remaining) console.log(`pixelkiln ${action.command}`, action.keys)
 ```
 
 `loadManifest` resolves style inheritance before returning. Callers receive
@@ -37,8 +40,11 @@ style's provider or the manifest default, then lets that offline adapter's
 Passing `options.provider` deliberately overrides that routing for custom
 orchestration and tests. A provider may also resolve local files before hashing.
 The ComfyUI adapter uses that hook to parse and hash a workflow JSON file without
-contacting the server. A resolved spec has the fully inherited style and asset
-settings plus its effective provider and deterministic spec hash. Optional
+contacting the server. `Provider.resolveInputs` does the same for per-asset
+provider values: it can keep an absolute file path in the runtime spec while
+returning a content-only identity for hashing and provenance. A resolved spec
+has the fully inherited style and asset settings plus its effective provider
+and deterministic spec hash. Optional
 quality settings resolve separately and do not affect provider identity or cost.
 Revision settings resolve into `spec.revision`, including the nested parent
 spec, absolute input paths for I/O, content hashes, measured dimensions, mode,
@@ -48,6 +54,11 @@ and optional strength. Paths are excluded from the hash; input bytes are not.
 `costUnit`, `cost`, `candidates`, and its actionable items. For compatibility,
 `plan.cost` and `plan.costUnit` retain the single-provider projection; both are
 `null` when a plan spans providers or units.
+
+`resumeActions` groups current paid-work states into `poll`, `pick`, and
+`fetch`. It ignores stale specs and entries missing the remote id needed by
+their stage, so integrations can offer safe continuation without implying that
+a new submission is required.
 
 For custom orchestration, inspect the dependency gate directly:
 
@@ -87,10 +98,11 @@ files make the result unsafe even when all measured assets pass. Standard
 non-interlaced greyscale, indexed, RGB, greyscale-alpha, and RGBA PNGs are
 normalized to RGBA before palette and transparency measurements.
 
-Provider-neutral pixel refinement is also public:
+Provider-neutral pixel refinement is also public. `refineFrameSet` accepts
+ordered `{ role, path }` sources and writes one atomic multi-output record:
 
 ```ts
-import { refineAsset, checkQualityRecord } from "pixelkiln"
+import { refineAsset, refineFrameSet, checkQualityRecord } from "pixelkiln"
 
 await refineAsset({
   source: "candidates/mountain.png",
@@ -101,6 +113,16 @@ await refineAsset({
 
 const quality = await checkQualityRecord("art/mountain-native.pixelkiln.json")
 if (!quality.safe) console.error(quality.reasons)
+
+await refineFrameSet({
+  sources: [
+    { role: "frame-00", path: "raw/idle-00.png" },
+    { role: "frame-01", path: "raw/idle-01.png" },
+  ],
+  output: "art/idle.png",
+  fps: 12,
+  palette: ["#161321", "#49374f", "#c16c5b", "#f3d6b3"],
+})
 ```
 
 `refineAsset` reconstructs the native grid through a pinned Pixel Art Fixer
@@ -255,6 +277,13 @@ workflow boundary with `saveLock`. See
 [provider comparison](../PROVIDERS.md) before selecting or implementing
 another backend, especially its optional capabilities and cost units.
 
+Custom providers may implement `resolveInputs(inputs, context)` when assets can
+supply provider-owned values. Return `inputs` for runtime validation/submission
+and an optional JSON-safe `identity` for `specHash`. The identity must include
+every byte or scalar that can change provider output and must exclude
+machine-local paths or credentials. Providers that omit the hook fail closed
+when an asset declares non-empty `providerInputs`.
+
 These low-level operations intentionally accept one provider. A mixed-provider
 caller should partition specs and plan items by `spec.provider`, instantiate
 each adapter independently, and preserve the provider recorded on a lock entry
@@ -289,3 +318,7 @@ balance readings and keep that observed delta distinct from the estimate.
   such as `assetId/tile-03` in audits and atlases.
 - The lockfile is a paid-work record. Use its exported load/save/upsert helpers
   instead of rewriting it piecemeal.
+- During deliberate regeneration, `supersededOutputs` temporarily retains the
+  prior hashes. `fetchAssets` may replace only bytes that still match those
+  hashes; `{ force: true }` is the caller's explicit ownership override for a
+  changed or untracked destination.

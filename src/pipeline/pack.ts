@@ -197,13 +197,13 @@ export function packStyle(
     columns?: number
     outputRoles?: string[]
     primaryOnly?: boolean
-    /** Approved manifest quality outputs keyed by asset id. */
+    /** Approved manifest quality outputs keyed by asset id or role-qualified frame id. */
     sourceOverrides?: Record<string, string>
   } = {},
 ): PackedSheet {
   if (options.sourceOverrides) {
     if (options.outputRoles?.length) {
-      throw new Error("Quality-profile packing does not accept --output-role; profiles own one PNG per asset.")
+      throw new Error("Quality-profile packing does not accept --output-role; profiles own final output selection.")
     }
     const inputs = Object.entries(options.sourceOverrides).map(([id, source]) => ({
       id,

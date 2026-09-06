@@ -40,13 +40,38 @@ A resolved unit of work is one `styleId/assetId`. Asset ids are stable lookup
 keys, atlas frame ids, and default filenames; changing one is a data migration,
 not merely a label edit.
 
+## Asset fields
+
+| Field | Type/default | Meaning |
+|---|---|---|
+| `prompt` | string, required | The subject wording wrapped by the selected style's prompt prefix and suffix. |
+| `width` / `height` | integer 16–8192 | Per-asset dimensions for generators that accept rectangular output. Provider limits may be lower. |
+| `size` | integer 16–8192 | Per-asset square size where the generator uses one dimension. |
+| `file` | string | Output path below the style's `outDir`; defaults to `<category>/<assetId>.png`. |
+| `category` | string | Optional output subdirectory and logical grouping. |
+| `source` | string | Manifest-relative committed art used instead of generation. Mutually exclusive with `revision`. |
+| `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
+| `providerInputs` | JSON scalar/sequence map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI accepts scalars and, for `frames`, one ordered 2–64 value sequence. Image bindings upload PNG/JPEG inputs. |
+| `styles` | string array, `[]` | Restrict the asset to named styles; empty means every style. |
+| `promptByStyle` | string map, `{}` | Replace only the asset prompt for a named style. |
+| `outputRole` | string | Select one structural output when a generator returns a set. |
+| `tags` | string array, `[]` | Asset tags added to provider objects where supported. |
+
+`providerInputs` is provider-owned and participates in generation identity.
+Changing a value makes only that asset stale. A provider may replace a local
+runtime path with a content hash before hashing the spec; unsupported providers
+reject non-empty inputs rather than ignoring them.
+Only a provider that declares a sequence contract may accept an array. ComfyUI
+uses the array named by `providerOptions.comfyui.frames.vary`; other inputs stay
+constant across the set.
+
 ## Style fields
 
 | Field | Type/default | Meaning |
 |---|---|---|
 | `extends` | style id | Optional parent style. The child inherits resolved settings but must declare its own `outDir`. |
 | `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
-| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, or provider-specific `animation`. |
+| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, or provider-specific `animation`/`frames`. |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
@@ -131,6 +156,8 @@ Generator-specific fields are validated before planning. Important constraints:
   style-image support.
 - `tiles` cannot combine `tileFeature` with `styleImages` because the provider
   rejects connectable features in style-tile mode.
+- ComfyUI `frames` derives its count from one 2–64 item `providerInputs`
+  sequence, renders one still per item, and reviews the ordered set atomically.
 
 See [generator selection](./GENERATORS.md) for costs and trade-offs.
 See [mixed-provider projects](./MIXED_PROVIDERS.md) when styles in one manifest
@@ -150,7 +177,8 @@ A style can declare the derived art it is willing to ship:
         "outDir": "assets/final/environment",
         "palette": ["#141b1e", "#23312a", "#526a8d", "#709fcf", "#f1bb70"],
         "minGridConfidence": "high",
-        "minTransparency": 0.2
+        "minTransparency": 0.2,
+        "fixerPython": ".pixelkiln/pixelfixer/bin/python"
       }
     }
   }
@@ -164,15 +192,20 @@ A style can declare the derived art it is willing to ship:
 | `minGridConfidence` | `high` | Lowest accepted Pixel Art Fixer result: `high`, `medium`, or `low`. |
 | `minTransparency` | number 0–1 | Optional minimum transparent share for isolated assets. Omit it for opaque scenes. |
 | `fixerRevision` | tested pinned revision | Exact Pixel Art Fixer revision recorded in the quality companion. |
+| `fixerPython` | `PIXELKILN_PIXEL_FIXER_PYTHON`, then `python3` | Manifest-relative Python executable containing Pixel Art Fixer. An absolute path is also accepted. |
+| `fps` | integer 1–60, `12` for `frames` | Playback rate stored with a ComfyUI frame set and used by its review preview. |
 
 The raw provider output remains under the style's normal `outDir`. The quality
 output keeps the asset's relative category and filename under `quality.outDir`
-and always uses PNG. PixelKiln reads `asset.source` when one is declared;
-otherwise it requires one intact downloaded PNG from the lockfile.
+and always uses PNG. A ComfyUI frame set writes role-stable names such as
+`walk-frame-00.png` and one shared `walk.pixelkiln.json` record. PixelKiln reads
+`asset.source` for an ordinary asset; otherwise it requires intact downloaded
+PNG bytes from the lockfile.
 
 Quality settings do not participate in the provider spec hash. Changing the
-palette, threshold, fixer revision, or final output directory marks only the
-derived art for refinement. It never schedules a paid generation.
+palette, threshold, fixer revision, interpreter, or final output directory
+never schedules paid generation. The interpreter is execution configuration,
+so changing only `fixerPython` does not invalidate already-refined output.
 
 Run the profile as a batch, review its PNGs, and record approval per result:
 
@@ -190,10 +223,14 @@ and mount use the approved derived PNG and retain its quality record in their
 provenance. A stale generation spec blocks the gate even when an approval for
 the old raw bytes still exists. Repeating `refine` preserves pending and approved records; use
 `--force` only when you intend to rebuild current output and reset approval.
+`pack` includes every approved frame. A mounted frame-set asset must declare
+`outputRole`, because one fixed cell cannot hold an animation implicitly.
 
-Quality profiles currently support single-image `map`, `1dir`, and `pixflux`
-styles. The schema rejects `tiles` and `animation`, which need role-aware or
-multi-frame refinement rather than a one-PNG contract. See
+Quality profiles support single-image `map`, `1dir`, and `pixflux` styles plus
+atomic ComfyUI `frames`. The frame record binds every source and output, one
+palette, fps, ordered roles, and each frame's detected step and phase. A grid
+disagreement rejects the whole set. The schema rejects `tiles` and provider
+`animation`, whose output contracts differ. See
 [Quality gates](./QUALITY.md#manifest-quality-profile) for the release workflow.
 
 ## Experimental Retro Diffusion
@@ -318,7 +355,9 @@ still require a person.
             "width": { "nodeId": "5", "input": "width" },
             "height": { "nodeId": "5", "input": "height" },
             "batchSize": { "nodeId": "5", "input": "batch_size" },
-            "seed": { "nodeId": "3", "input": "seed" }
+            "seed": { "nodeId": "3", "input": "seed" },
+            "composition": { "nodeId": "19", "input": "image" },
+            "controlStrength": { "nodeId": "20", "input": "strength" }
           }
         }
       }
@@ -328,16 +367,30 @@ still require a person.
     "mountain": {
       "prompt": "a snowbound mountain pass",
       "width": 768,
-      "height": 512
+      "height": 512,
+      "providerInputs": {
+        "composition": "controls/mountain-layout.png",
+        "controlStrength": 0.7
+      }
     }
   }
 }
 ```
 
 Node IDs come from the exported workflow; they are not stable across unrelated
-workflows. The current adapter supports `map`, PNG output from one node, 1–16
-candidates, and dimensions from 16–4096px. It rejects manifest `styleImages`
-and `palette`; keep those controls inside the workflow. See
+workflows. Binding names beyond PixelKiln's built-ins are project-defined and
+an asset overrides one with a matching `providerInputs` value. A custom
+binding aimed at `LoadImage.image` or `LoadImageMask.image` treats its string as
+a manifest-relative PNG/JPEG, hashes it, and uploads it at submission. Other
+custom inputs accept a string, number, or boolean matching the workflow's
+placeholder type. Local paths never enter stable provenance.
+
+The current adapter supports `map` and ordered still-image `frames`, PNG output
+from one node, 1–16 `map` candidates, and dimensions from 16–4096px. A frame
+style uses `numImages: 1`; the varying input supplies 2–64 renders. It rejects
+manifest `styleImages` and `palette`;
+use custom image bindings for per-asset ControlNet or reference images, and keep
+shared model/LoRA/palette controls inside the workflow. See
 [Set up ComfyUI](COMFYUI.md) for the complete procedure, safe workflow, and
 quality limits. The 4096px adapter ceiling is not a recommended generation or
 native-art size.

@@ -9,10 +9,10 @@ PixelLab remains the default so existing manifests and spec hashes remain
 compatible. The manifest's top-level `provider` is the default; a style may
 override it. Keep service settings under the matching `providerOptions` key.
 
-Provider choice and release quality are separate. Any supported single-image
-style can declare one `quality` profile for native-grid recovery, a closed
-palette, measurable checks, and named approval. The profile does not change the
-provider request or its cost. Pack and mount use only approved derived PNGs.
+Provider choice and release quality are separate. Supported single-image styles
+and ComfyUI frame sets can declare one `quality` profile for native-grid
+recovery, a closed palette, measurable checks, and named approval. The profile
+does not change the provider request or cost. Packaging uses only approved PNGs.
 
 To configure a project, use [Set up PixelLab](./docs/PIXELLAB.md),
 [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md),
@@ -82,13 +82,13 @@ prompt, size, batch, and optional seed inputs PixelKiln may replace.
 | Decision | ComfyUI through PixelKiln |
 |---|---|
 | Best fit today | Local composition experiments, private inputs, controlled revisions, and teams prepared to maintain and manually validate custom graphs |
-| PixelKiln generator | `map` stills |
-| Output | One PNG output node, with 1–16 review candidates |
+| PixelKiln generator | `map` stills and atomic `frames` sets |
+| Output | One PNG output node: 1–16 map candidates or 2–64 ordered still frames |
 | Revision input | `image-to-image`, `inpaint`, and user-authored `outpaint` graphs; hashed parent/mask uploads and source comparison are covered. The bundled img2img graph passed a three-strength live smoke but missed the requested winter treatment and lost alpha. |
 | Cost model | `0 free`; local compute and hosting are outside PixelKiln's estimate |
 | Reproducibility | Workflow content is hashed; model files, custom-node versions, and runtime settings must still be managed outside PixelKiln |
 | Account lifecycle | Read-only connectivity check; no balance, remote object listing, tagging, or purge |
-| Confidence | Full mocked coverage plus live generation, four-candidate review, cache-only restore, and three provider-neutral refinement runs on Apple MPS; background removal stays in the graph and aesthetic approval remains human |
+| Confidence | Live map generation, four-candidate review, cache-only restore, and refinement on Apple MPS; deterministic coverage for frame submission, ordered review/fetch, shared-grid and palette gating, approval, and packing |
 
 Choose ComfyUI when control over the graph is worth the extra validation. Start
 with a hosted provider when you want less cleanup. Two ComfyUI machines can run
@@ -240,6 +240,8 @@ candidate review, cache recovery, native-grid recovery, palette enforcement,
 and the approval record work. The tested SDXL plus Pixel Art XL graph can find
 a composition, but it is not a production preset. Background removal stays in
 the graph. A person must still check the brief, pixel clusters, and drawing.
+The ordered frame-set lifecycle is deterministic-test complete; its next gate
+is a live, pinned pose workflow and a public identity/motion benchmark.
 
 Per-style provider routing now lets one manifest send a building style to
 PixelLab, an animation style to Retro Diffusion, and a private model workflow
@@ -253,9 +255,10 @@ experimental until more model schemas and representative art briefs pass.
 
 | Candidate | What it adds | Fit with PixelKiln | Main cost or risk | Priority |
 |---|---|---|---|---:|
-| Scenario comparable benchmark | Custom-trained style models and hosted third-party generation | Tests the same environment briefs now that CU accounting, review, PNG output, and signed-URL recovery are proven | Model schemas differ, and the first live smoke is not directly comparable to the existing provider set | 1 |
-| ComfyUI Cloud | Managed execution of workflow graphs without running a local GPU | Could reuse part of the workflow model, but authentication, endpoints, billing, and lifecycle must remain separate from the local adapter | Treating cloud as a base-URL swap would hide real security and cost differences | 2 |
-| fal | A large hosted model catalog, including pixel-art style controls, LoRAs, editing, upscaling, and background removal | Queue-based requests and model schemas are accessible through one client | Model-specific schemas and prices move the adapter toward a marketplace abstraction rather than one stable art workflow | 3 |
+| ComfyUI pose-to-frame recipe and benchmark | A repeatable route from ordered controls to one approved sprite sequence | Exercises the new atomic frame lifecycle and turns infrastructure into a workflow users can copy | Identity and loop quality still require live testing and human review | 1 |
+| Scenario comparable benchmark | Custom-trained style models and hosted third-party generation | Tests the same environment briefs now that CU accounting, review, PNG output, and signed-URL recovery are proven | Model schemas differ, and the first live smoke is not directly comparable to the existing provider set | 2 |
+| ComfyUI Cloud | Managed execution of workflow graphs without running a local GPU | Could reuse part of the workflow model, but authentication, endpoints, billing, and lifecycle must remain separate from the local adapter | Treating cloud as a base-URL swap would hide real security and cost differences | 3 |
+| fal | A large hosted model catalog, including pixel-art style controls, LoRAs, editing, upscaling, and background removal | Queue-based requests and model schemas are accessible through one client | Model-specific schemas and prices move the adapter toward a marketplace abstraction rather than one stable art workflow | 4 |
 
 Scenario's [custom generation API](https://docs.scenario.com/get-started/generation/third-party-model-generation)
 returns asynchronous jobs, while its
@@ -265,14 +268,16 @@ normal plan, submit, poll, review, fetch, and restore lifecycle.
 
 Recommended order from here:
 
-1. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
+1. Build and live-test one pinned ComfyUI pose workflow across two character
+   families, then publish its recipe and 4–8 frame identity/motion benchmark.
+2. Finish live Retro Diffusion multi-candidate, tileset, GIF, and spritesheet
    smoke tests.
-2. Run the shared environment briefs through Scenario, then add one custom-model
+3. Run the shared environment briefs through Scenario, then add one custom-model
    or project-LoRA benchmark.
-3. Benchmark another pinned ComfyUI model and prompt pattern across at least two
+4. Benchmark another pinned ComfyUI model and prompt pattern across at least two
    scene families. Reject any improvement that helps only one subject.
-4. Design ComfyUI Cloud as a separate authenticated and billable adapter.
-5. Consider general raster marketplaces only with explicit nearest-neighbor,
+5. Design ComfyUI Cloud as a separate authenticated and billable adapter.
+6. Consider general raster marketplaces only with explicit nearest-neighbor,
    palette, transparency, and reproducibility checks.
 
 Midjourney is not an adapter target without an official public API. Automating
