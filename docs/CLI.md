@@ -88,7 +88,8 @@ after any queue wait and before a provider request begins.
 ### `poll`
 
 Advance submitted jobs to completed, failed, or selection-ready states. It can
-be rerun safely after an interrupted session.
+be rerun safely after an interrupted session. When work settles in another
+stage, the command prints the exact next command instead of ending silently.
 
 ### `pick`
 
@@ -101,6 +102,10 @@ with **Apply selections** are written to the lockfile. Closing the window applie
 nothing. See the [Getting started guide](GETTING_STARTED.md#start-a-new-project)
 for a screenshot of the interface.
 
+The live localhost URL is progress, not piped command output. In a terminal it
+prints normally; when stdout is piped, PixelKiln sends it to stderr immediately
+so commands such as `pixelkiln pick | tail -20` cannot hide it until review ends.
+
 ### `fetch`
 
 Download completed or selected outputs, validate complete PNG or GIF structure,
@@ -108,11 +113,29 @@ write the manifest-authoritative destinations, populate the content cache, and
 update output hashes. `--tag` also pushes manifest tags after successful
 downloads when the provider supports tagging.
 
+After a stale spec is deliberately regenerated, `fetch` replaces the prior file
+only if its hash still proves PixelKiln wrote it. A changed or untracked
+destination is refused; inspect it, then pass `fetch --force` only when the new
+provider result should take ownership. `gen --force` applies the same rule.
+
 ### `restore`
 
 Repair missing generated files without buying new generations. It prefers
 validated local content-addressed cache bytes and otherwise reuses provider
 references. It never replaces a destination whose bytes disagree with the lock.
+
+The paid-work states have one safe next step:
+
+| Lock state | Resume command |
+|---|---|
+| `pending`, `processing` | `pixelkiln poll` |
+| `review` | `pixelkiln pick` |
+| `selected`, `download-failed` | `pixelkiln fetch` |
+| `downloaded` with a missing file | `pixelkiln restore` |
+
+`plan`, `doctor`, and each pipeline stage name these commands. None submits a
+new generation. Missing recovery ids are reported by `doctor` instead of being
+presented as resumable work.
 
 ## Reconciliation and lifecycle
 
@@ -420,7 +443,7 @@ Print the package version. `-v` is an alias.
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. |
 | `--budget <n\|provider=n>` | submit/gen | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. |
-| `--force` | gen/derived commands/recipe install/quality snapshot | Regenerate current work, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
+| `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/salvage/refine/recipe/quality | Machine-readable stdout where supported. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
@@ -450,7 +473,7 @@ Print the package version. `-v` is an alias.
 | `--sigma <n>` | audit | Relative outlier cutoff; defaults to 1.5. |
 | `--prune` | cache | Remove invalid and unreferenced cache data. |
 | `--palette <hexes>` | refine | Final `#rrggbb` colors; repeatable and comma-separated. Requires 2–256 unique colors. |
-| `--fixer-python <path>` | refine | Python executable containing Pixel Art Fixer. Defaults to `PIXELKILN_PIXEL_FIXER_PYTHON`, then `python3`. |
+| `--fixer-python <path>` | refine | One-run Python override containing Pixel Art Fixer. Manifest mode otherwise uses `quality.fixerPython`, then `PIXELKILN_PIXEL_FIXER_PYTHON`, then `python3`. |
 | `--fixer-revision <sha>` | refine | Revision recorded in the quality companion. Defaults to PixelKiln's tested pin. |
 | `--min-grid-confidence <level>` | refine | Minimum accepted detector confidence: `high` (default), `medium`, or `low`. |
 | `--reviewer <name>` | refine approve | Human reviewer stored in the quality companion. |

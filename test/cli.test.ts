@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { mkdtemp, writeFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { parseArgs } from "../src/cli.ts"
+import { announceReviewReady, parseArgs } from "../src/cli.ts"
 import { loadEnvFiles } from "../src/env.ts"
 import { PixelLabClient, shouldRetry, backoffMs, retryAfterMs, MAX_RETRIES } from "../src/client.ts"
 import { renderSheet } from "../src/pick/sheet.ts"
@@ -315,6 +315,22 @@ describe("parseArgs", () => {
 
   it("does not regress positional strictness for ordinary commands", () => {
     expect(() => parseArgs(["gen", "neon"])).toThrow(/Unexpected argument/)
+  })
+})
+
+describe("review readiness", () => {
+  it("writes the live review URL to stderr when stdout is piped", () => {
+    let stdout = ""
+    let stderr = ""
+    announceReviewReady(
+      { url: "http://127.0.0.1:43123/", keys: ["base/anvil"] },
+      { isTTY: false, write: (chunk) => { stdout += chunk } },
+      { isTTY: false, write: (chunk) => { stderr += chunk } },
+    )
+
+    expect(stdout).toBe("")
+    expect(stderr).toContain("http://127.0.0.1:43123/")
+    expect(stderr).toContain("1 asset awaiting selection")
   })
 })
 

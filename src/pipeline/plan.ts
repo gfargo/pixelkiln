@@ -64,6 +64,42 @@ export interface PlanGroup {
   actionable: PlanItem[]
 }
 
+export type ResumeCommand = "poll" | "pick" | "fetch"
+
+export interface ResumeAction {
+  command: ResumeCommand
+  keys: string[]
+}
+
+/** The zero-cost command that advances one settled lock state. */
+export function resumeCommandForStatus(
+  status: LockEntry["status"],
+): ResumeCommand | null {
+  if (status === "pending" || status === "processing") return "poll"
+  if (status === "review") return "pick"
+  if (status === "selected" || status === "download-failed") return "fetch"
+  return null
+}
+
+/** Group current selected specs by the command that can resume them safely. */
+export function resumeActions(specs: ResolvedSpec[], lock: Lock): ResumeAction[] {
+  const grouped = new Map<ResumeCommand, string[]>()
+  for (const spec of specs) {
+    const key = lockKey(spec.styleId, spec.assetId)
+    const entry = lock.entries[key]
+    if (!entry || entry.specHash !== spec.specHash) continue
+    const command = resumeCommandForStatus(entry.status)
+    if (!command) continue
+    if (command === "poll" && !entry.jobId) continue
+    if (command === "pick" && !entry.reviewObjectId) continue
+    grouped.set(command, [...(grouped.get(command) ?? []), key])
+  }
+  return (["poll", "pick", "fetch"] as const).flatMap((command) => {
+    const keys = grouped.get(command)
+    return keys?.length ? [{ command, keys }] : []
+  })
+}
+
 /**
  * Diffs the manifest against the lockfile and the files on disk. Nothing here
  * touches the network, so it is safe to run constantly — it is the cheap
@@ -119,10 +155,26 @@ export async function buildPlan(
       reason = "prompt, size, or style changed"
     } else if (entry.status === "download-failed") {
       state = "recoverable"
-      reason = `${entry.error ?? "download failed"}; run fetch or restore (no generation cost)`
+      const force = entry.error?.includes("pass --force") ? " --force" : ""
+      reason =
+        `${entry.error ?? "download failed"}; run pixelkiln fetch${force} ` +
+        "(no generation cost)"
     } else if (entry.status === "failed") {
       state = "failed"
       reason = entry.error ?? "previous attempt failed"
+    } else if (entry.status === "selected") {
+      state = "recoverable"
+      reason = "provider output is selected; run pixelkiln fetch (no generation cost)"
+    } else if (entry.status === "pending" || entry.status === "processing") {
+      state = "in-flight"
+      reason = entry.jobId
+        ? "awaiting processing; run pixelkiln poll"
+        : "submission state has no job id; run pixelkiln doctor before retrying"
+    } else if (entry.status === "review") {
+      state = "in-flight"
+      reason = entry.reviewObjectId
+        ? "awaiting review; run pixelkiln pick"
+        : "review state has no review object id; run pixelkiln doctor"
     } else if (entry.status !== "downloaded") {
       state = "in-flight"
       reason = `awaiting ${entry.status}`
