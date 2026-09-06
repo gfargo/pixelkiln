@@ -1,3 +1,10 @@
+## [0.20.1](https://github.com/gfargo/pixelkiln/compare/v0.20.0...v0.20.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* tighten provider docs and frame review ([#81](https://github.com/gfargo/pixelkiln/issues/81)) ([554e9cf](https://github.com/gfargo/pixelkiln/commit/554e9cfd9fd7201b39693c64b7c907ec905db6cd))
+
 # [0.20.0](https://github.com/gfargo/pixelkiln/compare/v0.19.0...v0.20.0) (2026-09-06)
 
 
