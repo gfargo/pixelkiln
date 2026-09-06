@@ -80,6 +80,8 @@ retain:
 - durable provider source references, candidates, and selections;
 - `outputs[]` with portable path, SHA-256, optional structural role, and
   optional PNG/GIF media type;
+- temporary `supersededOutputs[]` ownership hashes while a stale generation is
+  being replaced;
 - provider-specific metadata under a provider-id namespace;
 - successful submission cost and cost unit.
 
@@ -106,7 +108,9 @@ plan → submit → poll → pick (when needed) → fetch
 Remote ids are saved immediately after submission. Generation and download
 failures remain separate, so paid work with a temporary CDN failure is
 recoverable at zero generation cost. Each stage can be rerun independently;
-`gen` is only their everyday orchestration.
+`gen` is only their everyday orchestration. Planning maps current `processing`,
+`review`, and `selected`/`download-failed` entries to `poll`, `pick`, and
+`fetch`, respectively.
 
 Provider responses are runtime-validated before entering lock state. A 2xx
 response with a missing object id, malformed URL set, invalid estimate, or

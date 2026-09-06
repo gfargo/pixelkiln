@@ -343,6 +343,9 @@ export async function resolveSpecs(
                 ...(style.quality.fixerRevision
                   ? { fixerRevision: style.quality.fixerRevision }
                   : {}),
+                ...(style.quality.fixerPython
+                  ? { fixerPython: path.resolve(root, style.quality.fixerPython) }
+                  : {}),
                 ...(style.quality.fps == null ? {} : { fps: style.quality.fps }),
               },
             }

@@ -139,6 +139,11 @@ export async function submit(
     // long batch waits for a provider slot. Recheck at the spending boundary.
     await requireRevisionReady(spec, lock)
 
+    const previousEntry = lock.entries[key]
+    const supersededOutputs = previousEntry?.outputs.length
+      ? previousEntry.outputs
+      : previousEntry?.supersededOutputs ?? []
+
     // Record intent before spending, so an interrupted run stays diagnosable.
     upsert(lock, key, {
       styleId: spec.styleId,
@@ -165,6 +170,9 @@ export async function submit(
       candidateIndex: null,
       error: null,
       outputs: [],
+      // Keep the old ownership proof while new bytes are pending. Fetch may
+      // replace that file only while its hash still matches this record.
+      supersededOutputs,
       providerMetadata: {},
       sourceUrl: null,
       sourceUrls: [],

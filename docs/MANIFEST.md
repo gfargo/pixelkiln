@@ -125,7 +125,8 @@ A style can declare the derived art it is willing to ship:
         "outDir": "assets/final/environment",
         "palette": ["#141b1e", "#23312a", "#526a8d", "#709fcf", "#f1bb70"],
         "minGridConfidence": "high",
-        "minTransparency": 0.2
+        "minTransparency": 0.2,
+        "fixerPython": ".pixelkiln/pixelfixer/bin/python"
       }
     }
   }
@@ -139,6 +140,7 @@ A style can declare the derived art it is willing to ship:
 | `minGridConfidence` | `high` | Lowest accepted Pixel Art Fixer result: `high`, `medium`, or `low`. |
 | `minTransparency` | number 0–1 | Optional minimum transparent share for isolated assets. Omit it for opaque scenes. |
 | `fixerRevision` | tested pinned revision | Exact Pixel Art Fixer revision recorded in the quality companion. |
+| `fixerPython` | `PIXELKILN_PIXEL_FIXER_PYTHON`, then `python3` | Manifest-relative Python executable containing Pixel Art Fixer. An absolute path is also accepted. |
 | `fps` | integer 1–60, `12` for `frames` | Playback rate stored with a ComfyUI frame set and used by its review preview. |
 
 The raw provider output remains under the style's normal `outDir`. The quality
@@ -149,8 +151,9 @@ and always uses PNG. A ComfyUI frame set writes role-stable names such as
 PNG bytes from the lockfile.
 
 Quality settings do not participate in the provider spec hash. Changing the
-palette, threshold, fixer revision, or final output directory marks only the
-derived art for refinement. It never schedules a paid generation.
+palette, threshold, fixer revision, interpreter, or final output directory
+never schedules paid generation. The interpreter is execution configuration,
+so changing only `fixerPython` does not invalidate already-refined output.
 
 Run the profile as a batch, review its PNGs, and record approval per result:
 

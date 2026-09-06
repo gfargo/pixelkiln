@@ -169,6 +169,10 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "fixerPython": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "fps": {
                     "type": "integer",
                     "minimum": 1,

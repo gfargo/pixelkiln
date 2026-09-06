@@ -147,6 +147,10 @@ The sheet is served only on localhost and selection remains human-controlled.
 Only rows submitted with **Apply selections** are recorded; unresolved rows can
 be reopened later with [`pixelkiln pick`](CLI.md#pick).
 
+If a run stops between stages, rerun `plan`. It points `processing` work to
+`poll`, `review` work to `pick`, and `selected` or `download-failed` work to
+`fetch`; these resume existing paid work without another submission.
+
 ## Start from existing art
 
 Scaffold the manifest from PNGs, then reconcile exact file hashes with the
@@ -209,6 +213,9 @@ pipeline stages also exit nonzero after partial failures or timeouts.
 ## Recovery
 
 - `restore` repairs missing generated outputs without buying new generations.
+- A deliberate regeneration replaces the old output only while its hash still
+  matches the lock. Use `fetch --force` only after reviewing a changed or
+  untracked destination that the new result should replace.
 - `.pixelkiln/cache/` stores downloaded PNG bytes by SHA-256, so restoration can
   still work after a temporary provider URL expires. Hosted adapters keep
   refreshable references in the lock instead of signed storage URLs.
@@ -222,7 +229,7 @@ pipeline stages also exit nonzero after partial failures or timeouts.
   currently claims. `salvage` never deletes; `purge` is a separate confirmed
   operation.
 - PixelKiln refuses to overwrite a file whose bytes differ from its recorded
-  hash. Resolve intentional hand edits explicitly.
+  hash unless an explicit `fetch --force` takes ownership.
 
 ## What belongs in Git
 

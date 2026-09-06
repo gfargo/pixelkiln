@@ -9,6 +9,11 @@ export interface PickResult {
   skipped: number
 }
 
+export interface ReviewReadyInfo {
+  url: string
+  keys: string[]
+}
+
 /**
  * Serves the contact sheet on localhost, waits for the selections to be
  * applied, then shuts down.
@@ -29,6 +34,8 @@ export async function runPicker(
     keys?: Iterable<string>
     /** Resolved intent supplies immutable revision context for comparison. */
     specs?: ResolvedSpec[]
+    /** Receives the live URL as soon as the server listens. */
+    onReady?: (info: ReviewReadyInfo) => void
   } = {},
 ): Promise<PickResult> {
   const log = opts.onProgress ?? (() => {})
@@ -104,8 +111,13 @@ export async function runPicker(
     onProgress: log,
     assets: reviewAssets,
     onReady: (url) => {
-      log(`\n  ${groups.length} asset(s) awaiting selection: ${url}`)
-      log(`  (leave this running; it exits once you apply)\n`)
+      const info = { url, keys: groups.map((group) => group.key) }
+      if (opts.onReady) {
+        opts.onReady(info)
+      } else {
+        log(`\n  ${groups.length} asset(s) awaiting selection: ${url}`)
+        log(`  (leave this running; it exits once you apply)\n`)
+      }
     },
     handleApply: async (body) => {
       const { selections } = body as { selections: { key: string; index: number }[] }

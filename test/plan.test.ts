@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
-import { buildPlan } from "../src/pipeline/plan.ts"
+import { buildPlan, resumeActions } from "../src/pipeline/plan.ts"
 import { loadLock, remove, saveLock, upsert } from "../src/lock.ts"
 import { candidateCount, generationCost, lockKey, parseLock, primaryOutput, type Lock } from "../src/types.ts"
 import { sha256 } from "../src/hash.ts"
@@ -298,6 +298,47 @@ describe("plan", () => {
     const plan = await buildPlan(specs, lock)
     expect(plan.items.every((i) => i.state === "stale")).toBe(true)
     expect(plan.cost).toBe(80)
+  })
+
+  it("maps paid workflow states to their exact zero-cost resume commands", async () => {
+    const specs = await resolveSpecs(await writeManifest())
+    const lock: Lock = { version: 2, entries: {} }
+    const [alpha, beta] = specs
+    upsert(lock, lockKey(alpha!.styleId, alpha!.assetId), {
+      specHash: alpha!.specHash,
+      status: "processing",
+      jobId: "job-alpha",
+      outputs: [],
+    } as never)
+    upsert(lock, lockKey(beta!.styleId, beta!.assetId), {
+      specHash: beta!.specHash,
+      status: "selected",
+      objectId: "object-beta",
+      sourceUrl: "https://example.test/beta.png",
+      outputs: [],
+    } as never)
+
+    const processing = await buildPlan(specs, lock)
+    expect(processing.items.find((item) => item.spec.assetId === "alpha")).toMatchObject({
+      state: "in-flight",
+      reason: "awaiting processing; run pixelkiln poll",
+    })
+    expect(processing.items.find((item) => item.spec.assetId === "beta")).toMatchObject({
+      state: "recoverable",
+      reason: "provider output is selected; run pixelkiln fetch (no generation cost)",
+    })
+    expect(resumeActions(specs, lock)).toEqual([
+      { command: "poll", keys: ["base/alpha"] },
+      { command: "fetch", keys: ["base/beta"] },
+    ])
+
+    upsert(lock, "base/alpha", { status: "review", reviewObjectId: "review-alpha" })
+    expect((await buildPlan(specs, lock)).items.find((item) => item.spec.assetId === "alpha"))
+      .toMatchObject({ state: "in-flight", reason: "awaiting review; run pixelkiln pick" })
+    expect(resumeActions(specs, lock)).toEqual([
+      { command: "pick", keys: ["base/alpha"] },
+      { command: "fetch", keys: ["base/beta"] },
+    ])
   })
 })
 

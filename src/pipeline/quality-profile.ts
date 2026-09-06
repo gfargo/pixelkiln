@@ -249,7 +249,9 @@ export async function refineQualityProfiles(
           ? {}
           : { minTransparency: spec.quality!.minTransparency }),
         fixerRevision: spec.quality!.fixerRevision ?? PIXEL_ART_FIXER_REVISION,
-        fixerPython: options.fixerPython,
+        // A one-off CLI/library override wins; otherwise each style can carry
+        // the stable project-local interpreter that provides its pinned fixer.
+        fixerPython: options.fixerPython ?? spec.quality!.fixerPython,
         fixerCommand: options.fixerCommand,
         fixerArgsPrefix: options.fixerArgsPrefix,
         force: options.force,

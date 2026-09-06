@@ -28,13 +28,13 @@ import {
   type ResolvedSpec,
 } from "./types.ts"
 import { normalizeLockOutputPaths, resolveOutputPath } from "./outputs.ts"
-import { buildPlan, summarize, type Plan } from "./pipeline/plan.ts"
+import { buildPlan, resumeActions, summarize, type Plan } from "./pipeline/plan.ts"
 import { submit } from "./pipeline/submit.ts"
 import { poll } from "./pipeline/poll.ts"
 import { fetchAssets, pushTags } from "./pipeline/fetch.ts"
 import { doctor } from "./pipeline/doctor.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
-import { runPicker } from "./pick/server.ts"
+import { runPicker, type ReviewReadyInfo } from "./pick/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import {
   loadClaims,
@@ -86,6 +86,29 @@ import {
 } from "./pipeline/quality-regression.ts"
 
 const log = (msg = "") => console.log(msg)
+
+interface CliWritable {
+  isTTY?: boolean
+  write(chunk: string): unknown
+}
+
+/**
+ * Interactive readiness is progress, not command output. Keep it on stdout in
+ * a terminal, but use stderr when stdout is piped so consumers such as `tail`
+ * cannot hold the only copy of the live URL until the server exits.
+ */
+export function announceReviewReady(
+  info: ReviewReadyInfo,
+  stdout: CliWritable = process.stdout,
+  stderr: CliWritable = process.stderr,
+): void {
+  const stream = stdout.isTTY ? stdout : stderr
+  const count = info.keys.length
+  stream.write(
+    `\n  ${count} asset${count === 1 ? "" : "s"} awaiting selection: ${info.url}\n` +
+      "  (leave this running; it exits once you apply)\n\n",
+  )
+}
 
 async function provenanceFile(id: string, file: string): Promise<ArtifactSource> {
   const absolute = path.resolve(file)
@@ -489,7 +512,7 @@ Options
   --max-colors <n>    audit: maximum distinct opaque colors
   --sigma <n>         audit: relative outlier cutoff (default: 1.5)
   --palette <hexes>   refine: final comma-separated #rrggbb colors (repeatable)
-  --fixer-python <path>  refine: Python with Pixel Art Fixer installed
+  --fixer-python <path>  refine: override Python with Pixel Art Fixer installed
   --fixer-revision <sha>  refine: Pixel Art Fixer revision to record
   --min-grid-confidence <level>  refine: high (default), medium, or low
   --reviewer <name>   refine approve: human reviewer recorded in provenance
@@ -503,7 +526,7 @@ Options
   --budget <n|provider=n>  Refuse to exceed one provider ceiling; repeat keyed budgets
                            for a mixed-provider run
   --provider <id>     Choose the account for balance/adopt/salvage/purge in a mixed manifest
-  --force             Regenerate; also rerun refinement or replace changed derived state
+  --force             Regenerate, replace a fetch destination, or rebuild managed output
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
   --json              Machine-readable output where supported, including quality checks
@@ -579,6 +602,19 @@ function printPlan(plan: Plan): void {
       log(`    ${item.state.padEnd(16)} ${item.key}  ${item.reason}`)
     }
   }
+}
+
+function printResumeActions(specs: ResolvedSpec[], lock: Lock): number {
+  const actions = resumeActions(specs, lock)
+  for (const action of actions) {
+    const shown = action.keys.slice(0, 3).join(", ")
+    const more = action.keys.length > 3 ? `, +${action.keys.length - 3} more` : ""
+    log(
+      `  next: pixelkiln ${action.command} — ${action.keys.length} asset` +
+        `${action.keys.length === 1 ? "" : "s"} (${shown}${more})`,
+    )
+  }
+  return actions.length
 }
 
 function manifestProviderIds(manifest: Manifest): string[] {
@@ -2209,7 +2245,10 @@ async function main() {
         `${total.failed} failed`,
     )
     if (total.failed || total.stillRunning) process.exitCode = 1
-    if (args.command === "poll") return
+    if (args.command === "poll") {
+      printResumeActions(specs, lock)
+      return
+    }
   }
 
   if (args.command === "pick" || args.command === "gen") {
@@ -2219,6 +2258,7 @@ async function main() {
         port: args.port,
         open: !args.noOpen,
         onProgress: log,
+        onReady: announceReviewReady,
         keys: providerSpecsForRun.map((spec) => lockKey(spec.styleId, spec.assetId)),
         specs: providerSpecsForRun,
       })
@@ -2231,7 +2271,10 @@ async function main() {
       log(`\n  selected ${total.selected}, left in review ${total.skipped}`)
     }
     if (args.command === "gen" && total.skipped) process.exitCode = 1
-    if (args.command === "pick") return
+    if (args.command === "pick") {
+      printResumeActions(specs, lock)
+      return
+    }
   }
 
   if (args.command === "fetch" || args.command === "restore" || args.command === "gen") {
@@ -2242,6 +2285,7 @@ async function main() {
       const res = await fetchAssets(groupProvider, providerSpecsForRun, lock, args.lock, {
         onProgress: log,
         repair: args.command === "restore",
+        force: args.force,
       })
       total.downloaded += res.downloaded
       total.skipped += res.skipped
@@ -2259,9 +2303,23 @@ async function main() {
     if (args.tag) log(`  tagged ${total.tagged} object(s) upstream`)
     await saveLock(args.lock, lock)
     log(`  lockfile written: ${args.lock}`)
+    const resumeActionCount = printResumeActions(specs, lock)
     if (args.command === "gen" && specs.some((spec) => spec.quality) && !total.failed) {
-      log(`\n  Raw provider output is ready. Run \`pixelkiln refine\` to build the configured quality output.`)
-      log(`  Packaging stays blocked until each refined PNG has a current human approval.`)
+      const quality = (await Promise.all(
+        specs.filter((spec) => spec.quality).map((spec) => inspectQualityProfile(spec, lock)),
+      )).filter((item) => item !== null)
+      const blocked = quality.filter((item) => item.state === "blocked")
+      if (blocked.length) {
+        log(
+          `\n  ${blocked.length} quality source${blocked.length === 1 ? " is" : "s are"} not ready; ` +
+            (resumeActionCount
+              ? "finish the resume steps above before refining."
+              : "run `pixelkiln plan` for the blocking reason before refining."),
+        )
+      } else {
+        log(`\n  Raw provider output is ready. Run \`pixelkiln refine\` to build the configured quality output.`)
+        log(`  Packaging stays blocked until each refined PNG has a current human approval.`)
+      }
     }
     return
   }

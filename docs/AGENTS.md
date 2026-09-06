@@ -24,12 +24,14 @@ With the skill loaded, an agent should:
 1. Find and validate `pixelkiln.manifest.json`.
 2. Run `doctor --dry-run` and `plan` before paid work.
 3. Report actionable, recoverable, and cost totals for each provider and unit.
-4. Use `restore` instead of regenerating recoverable assets.
+4. Follow the plan's exact resume command for recoverable paid work: `poll`,
+   `pick`, `fetch`, or `restore`. Do not submit it again.
 5. Pass an explicit `--budget` within the amount the user authorized; use one
    `provider=amount` ceiling for every paid provider in a mixed run.
 6. Leave artwork selection in the local `pick` page unless the user gives a
    specific selection rule.
-7. When a style declares `quality`, run manifest-mode `pixelkiln refine`, leave
+7. When a style declares `quality`, run manifest-mode `pixelkiln refine`; its
+   `fixerPython` can pin the project-local interpreter. Leave
    approval to a named human reviewing the exact PNG, and require `refine check`
    before packaging. The rule is provider-neutral; ComfyUI still needs its extra
    prompt-coverage and composition review.
