@@ -468,6 +468,14 @@ export const AssetSchema = z
      * style would invalidate every other style's already-generated art.
      */
     promptByStyle: z.record(z.string()).default({}),
+    /**
+     * Named per-asset values consumed by the active provider's declared
+     * bindings. Values are JSON scalars; adapters may interpret a string as a
+     * manifest-relative file when the target node accepts an uploaded input.
+     */
+    providerInputs: z
+      .record(z.union([z.string(), z.number().finite(), z.boolean()]))
+      .default({}),
   })
   .strict()
   .superRefine((asset, context) => {
@@ -658,6 +666,8 @@ export interface ResolvedSpec {
   provider: string
   /** Adapter-owned settings selected from the active provider namespace. */
   providerOptions: Record<string, unknown>
+  /** Adapter-resolved per-asset inputs. Their stable identity participates in the spec hash. */
+  providerInputs?: Record<string, unknown>
   generator: Generator
   prompt: string
   width: number

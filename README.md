@@ -56,7 +56,7 @@ PixelKiln keeps the missing record:
 |---|---|
 | Plan and budget | Offline manifest/lock/disk diff, provider-grouped estimates, keyed mixed-provider budget ceilings, JSON/CI gate. |
 | Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, and a fast local candidate sheet. |
-| Controlled revisions | Hashed image-to-image/inpaint lineage, fail-closed parent approval, and source-versus-candidate review; ComfyUI is the first adapter. |
+| Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, and resumable paid jobs. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
@@ -356,7 +356,7 @@ exporters, managed artifact writes, and offline provenance verification. See
 | [Getting started](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, everyday workflow, and what to commit. |
 | [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
 | [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
-| [Set up ComfyUI](./docs/COMFYUI.md) | Experimental self-hosted server, workflow bindings, local cost semantics, and limits. |
+| [Set up ComfyUI](./docs/COMFYUI.md) | Self-hosted workflows, per-asset input uploads, local cost semantics, and quality limits. |
 | [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, review, and durable downloads. |
 | [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 | [Controlled revisions](./docs/REVISIONS.md) | Image-to-image/inpaint parents, masks, fail-closed readiness, provenance, and ComfyUI bindings. |

@@ -23,6 +23,14 @@ hook to parse and hash workflow JSON without making a network request. The
 runtime graph can then be submitted without putting a machine-specific path in
 the stable identity.
 
+Assets may also declare provider-owned scalar inputs. `Provider.resolveInputs`
+maps those values into runtime inputs and, when needed, a separate stable
+identity. ComfyUI uses the split for custom `LoadImage` bindings: the runtime
+value keeps an absolute path long enough to upload the file, while the spec and
+lock retain only its content hash and format. A move does not invalidate art;
+changing the bytes does. Adapters without this capability reject non-empty
+`providerInputs`.
+
 See [manifest reference](./MANIFEST.md).
 
 ## Derived quality state
@@ -179,10 +187,12 @@ multi-candidate, tileset, GIF, and spritesheet paths retain mocked coverage
 pending paid live smokes. Its durable `retrodiffusion://` references refresh
 temporary result URLs when recovery cannot use the local cache.
 `ComfyUIProvider` is an experimental self-hosted adapter. It resolves and hashes
-an API-format workflow offline, submits an input-bound clone, polls local
-history, and stores portable `comfyui://` output references so a lockfile does
-not retain a workstation hostname. It supports one still-image output node
-today. Live Apple MPS runs cover a small Stable Diffusion 1.5 plumbing smoke and
+an API-format workflow offline, resolves arbitrary per-asset scalar bindings,
+uploads manifest-owned PNG/JPEG inputs by content hash, submits an input-bound
+clone, polls local history, and stores portable `comfyui://` output references
+so a lockfile does not retain a workstation hostname or input path. It supports
+one still-image output node today. Live Apple MPS runs cover a small Stable
+Diffusion 1.5 plumbing smoke and
 the SDXL Base plus Pixel Art XL composition benchmark, including four-candidate
 review, cache recovery, and native-grid refinement. `ScenarioProvider` is an experimental hosted still-image
 adapter. It keeps offline planning conservative, records the provider's free

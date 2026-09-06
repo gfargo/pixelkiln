@@ -79,10 +79,23 @@ export interface ProviderOptionContext {
   styleId: string
 }
 
+export interface ProviderInputContext extends ProviderOptionContext {
+  assetId: string
+  /** The already-resolved options for this style. */
+  providerOptions: Record<string, unknown>
+}
+
 export interface ResolvedProviderOptions {
   /** Runtime options passed to estimate, validate, and submit. */
   options: Record<string, unknown>
   /** Stable JSON value hashed instead of runtime-only data when present. */
+  identity?: unknown
+}
+
+export interface ResolvedProviderInputs {
+  /** Runtime values passed to validate and submit. */
+  inputs: Record<string, unknown>
+  /** Stable JSON value hashed instead of runtime-only paths when present. */
   identity?: unknown
 }
 
@@ -192,6 +205,15 @@ export interface Provider {
     options: Record<string, unknown>,
     context: ProviderOptionContext,
   ): Promise<ResolvedProviderOptions>
+
+  /**
+   * Resolve adapter-owned per-asset values before spec hashing. This is where
+   * local control images become content hashes rather than machine paths.
+   */
+  resolveInputs?(
+    inputs: Record<string, string | number | boolean>,
+    context: ProviderInputContext,
+  ): Promise<ResolvedProviderInputs>
 
   /** False for a generator this backend cannot express (e.g. non-square). */
   supports(generator: Generator): boolean

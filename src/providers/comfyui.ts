@@ -8,9 +8,11 @@ import type {
   JobState,
   PollContext,
   Provider,
+  ProviderInputContext,
   ProviderOptionContext,
   ProviderSubmission,
   RateLimit,
+  ResolvedProviderInputs,
   ResolvedProviderOptions,
 } from "../provider.ts"
 import type { Generator, ResolvedSpec, ResolvedStyleImage, RevisionMode } from "../types.ts"
@@ -26,6 +28,7 @@ export interface ComfyUIBinding {
 }
 
 export interface ComfyUIBindings {
+  [name: string]: ComfyUIBinding | undefined
   prompt: ComfyUIBinding
   width?: ComfyUIBinding
   height?: ComfyUIBinding
@@ -37,6 +40,14 @@ export interface ComfyUIBindings {
   maskImage?: ComfyUIBinding
   /** Sampler denoise/edit-strength input. */
   strength?: ComfyUIBinding
+}
+
+export interface ComfyUIImageInput {
+  kind: "image"
+  /** Absolute local path used only at submission time. */
+  path: string
+  sha256: string
+  format: "png" | "jpeg"
 }
 
 /** Options stored under `providerOptions.comfyui` in a manifest style. */
@@ -62,6 +73,10 @@ interface ComfyImage {
   subfolder: string
   type: "output"
 }
+
+const BUILTIN_BINDINGS = new Set([
+  "prompt", "width", "height", "batchSize", "seed", "sourceImage", "maskImage", "strength",
+])
 
 class ComfyUIClient {
   readonly baseUrl: string
@@ -238,6 +253,70 @@ export class ComfyUIProvider implements Provider {
     }
   }
 
+  async resolveInputs(
+    value: Record<string, string | number | boolean>,
+    context: ProviderInputContext,
+  ): Promise<ResolvedProviderInputs> {
+    const options = parseOptions(context.providerOptions)
+    if (!options.workflow || !options.workflowSha256) {
+      throw new Error("ComfyUI provider inputs require resolved workflow options")
+    }
+    const inputs: Record<string, unknown> = {}
+    const identity: Record<string, unknown> = {}
+    for (const [name, input] of Object.entries(value)) {
+      if (BUILTIN_BINDINGS.has(name)) {
+        throw new Error(
+          `ComfyUI providerInputs.${name} is reserved; use PixelKiln's built-in ${name} field`,
+        )
+      }
+      const binding = Object.hasOwn(options.bindings, name) ? options.bindings[name] : undefined
+      if (!binding) {
+        throw new Error(
+          `ComfyUI providerInputs.${name} has no matching bindings.${name} target`,
+        )
+      }
+      if (isImageBinding(options.workflow, binding)) {
+        if (typeof input !== "string") {
+          throw new Error(`ComfyUI providerInputs.${name} must be a manifest-relative PNG or JPEG path`)
+        }
+        const file = path.resolve(context.root, input)
+        let bytes: Buffer
+        try {
+          bytes = await readFile(file)
+        } catch (error) {
+          throw new Error(
+            `ComfyUI providerInputs.${name} could not be read at ${file}: ` +
+              `${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+        const format = inputImageFormat(bytes)
+        if (!format) {
+          throw new Error(`ComfyUI providerInputs.${name} is not a PNG or JPEG: ${file}`)
+        }
+        const hash = sha256(bytes)
+        inputs[name] = { kind: "image", path: file, sha256: hash, format } satisfies ComfyUIImageInput
+        identity[name] = { kind: "image", sha256: hash, format }
+      } else {
+        const current = options.workflow[binding.nodeId]!.inputs[binding.input]
+        if (typeof current !== "string" && typeof current !== "number" && typeof current !== "boolean") {
+          throw new Error(
+            `ComfyUI providerInputs.${name} cannot replace non-scalar ` +
+              `${binding.nodeId}.${binding.input}`,
+          )
+        }
+        if (typeof current !== typeof input) {
+          throw new Error(
+            `ComfyUI providerInputs.${name} must be ${typeof current} to match ` +
+              `${binding.nodeId}.${binding.input}`,
+          )
+        }
+        inputs[name] = input
+        identity[name] = input
+      }
+    }
+    return { inputs, identity }
+  }
+
   supports(generator: Generator): boolean {
     return generator === "map"
   }
@@ -318,6 +397,20 @@ export class ComfyUIProvider implements Provider {
     if (spec.seed != null && options.bindings.seed) {
       setBinding(workflow, options.bindings.seed, spec.seed)
     }
+    for (const [name, input] of Object.entries(spec.providerInputs ?? {})) {
+      const binding = Object.hasOwn(options.bindings, name) ? options.bindings[name] : undefined
+      if (!binding) throw new Error(`ComfyUI provider input "${name}" has no binding`)
+      if (isComfyImageInput(input)) {
+        const bytes = await readFile(input.path)
+        if (sha256(bytes) !== input.sha256) {
+          throw new Error(`ComfyUI provider input "${name}" changed before upload`)
+        }
+        const uploaded = await this.client.uploadImage(bytes, input.sha256, input.format)
+        setBinding(workflow, binding, uploaded)
+      } else {
+        setBinding(workflow, binding, input)
+      }
+    }
     if (spec.revision) {
       if (!spec.revision.sourceSha256 || !spec.revision.sourceFormat) {
         throw new Error("ComfyUI revision source is not ready")
@@ -353,22 +446,23 @@ export class ComfyUIProvider implements Provider {
       }
     }
     const promptId = await this.client.submit(workflow)
-    return {
-      jobId: encodeJob(promptId, options.outputNodeId),
+    const inputs = providerInputProvenance(spec.providerInputs)
+    const metadata = {
+      ...(Object.keys(inputs).length ? { inputs } : {}),
       ...(spec.revision
         ? {
-            metadata: {
-              revision: {
-                mode: spec.revision.mode,
-                sourceAssetId: spec.revision.sourceAssetId,
-                sourceSha256: spec.revision.sourceSha256,
-                ...(spec.revision.maskSha256
-                  ? { maskSha256: spec.revision.maskSha256 }
-                  : {}),
-              },
+            revision: {
+              mode: spec.revision.mode,
+              sourceAssetId: spec.revision.sourceAssetId,
+              sourceSha256: spec.revision.sourceSha256,
+              ...(spec.revision.maskSha256 ? { maskSha256: spec.revision.maskSha256 } : {}),
             },
           }
         : {}),
+    }
+    return {
+      jobId: encodeJob(promptId, options.outputNodeId),
+      ...(Object.keys(metadata).length ? { metadata } : {}),
     }
   }
 
@@ -454,29 +548,10 @@ function parseOptions(value: Record<string, unknown>): ResolvedComfyUIOptions {
     throw new Error("ComfyUI numImages must be a whole number from 1 to 16")
   }
   if (!isObject(value.bindings)) throw new Error("ComfyUI bindings must be an object")
-  const bindingKeys = new Set([
-    "prompt", "width", "height", "batchSize", "seed", "sourceImage", "maskImage", "strength",
-  ])
-  const extraBindings = Object.keys(value.bindings).filter((key) => !bindingKeys.has(key))
-  if (extraBindings.length) throw new Error(`Unknown ComfyUI binding(s): ${extraBindings.join(", ")}`)
-  const bindings: ComfyUIBindings = {
-    prompt: parseBinding(value.bindings.prompt, "prompt"),
-    ...(value.bindings.width == null ? {} : { width: parseBinding(value.bindings.width, "width") }),
-    ...(value.bindings.height == null ? {} : { height: parseBinding(value.bindings.height, "height") }),
-    ...(value.bindings.batchSize == null
-      ? {}
-      : { batchSize: parseBinding(value.bindings.batchSize, "batchSize") }),
-    ...(value.bindings.seed == null ? {} : { seed: parseBinding(value.bindings.seed, "seed") }),
-    ...(value.bindings.sourceImage == null
-      ? {}
-      : { sourceImage: parseBinding(value.bindings.sourceImage, "sourceImage") }),
-    ...(value.bindings.maskImage == null
-      ? {}
-      : { maskImage: parseBinding(value.bindings.maskImage, "maskImage") }),
-    ...(value.bindings.strength == null
-      ? {}
-      : { strength: parseBinding(value.bindings.strength, "strength") }),
-  }
+  const bindings = Object.fromEntries(
+    Object.entries(value.bindings).map(([name, binding]) => [name, parseBinding(binding, name)]),
+  ) as unknown as ComfyUIBindings
+  if (!bindings.prompt) throw new Error("ComfyUI bindings.prompt must be an object")
   const workflow = value.workflow == null ? undefined : parseWorkflow(value.workflow, workflowFile)
   const workflowSha256 = value.workflowSha256 == null
     ? undefined
@@ -522,6 +597,7 @@ function parseWorkflow(value: unknown, label: string): ComfyWorkflow {
 }
 
 function validateWorkflowBindings(workflow: ComfyWorkflow, options: ComfyUIOptions): void {
+  const targets = new Map<string, string>()
   for (const [name, binding] of Object.entries(options.bindings)) {
     if (!binding) continue
     const node = workflow[binding.nodeId]
@@ -531,6 +607,12 @@ function validateWorkflowBindings(workflow: ComfyWorkflow, options: ComfyUIOptio
         `ComfyUI ${name} binding refers to missing input "${binding.input}" on node "${binding.nodeId}"`,
       )
     }
+    const target = `${binding.nodeId}.${binding.input}`
+    const prior = targets.get(target)
+    if (prior) {
+      throw new Error(`ComfyUI bindings.${name} and bindings.${prior} target the same input ${target}`)
+    }
+    targets.set(target, name)
   }
   if (!workflow[options.outputNodeId]) {
     throw new Error(`ComfyUI outputNodeId refers to missing node "${options.outputNodeId}"`)
@@ -582,6 +664,7 @@ function comfyMetadata(
   images: ComfyImage[],
 ): JsonObject {
   const options = resolvedOptions(spec)
+  const inputs = providerInputProvenance(spec.providerInputs)
   return {
     promptId,
     outputNodeId,
@@ -589,6 +672,7 @@ function comfyMetadata(
     workflowFile: options.workflowFile,
     workflowSha256: options.workflowSha256,
     files: images.map((image) => ({ ...image })),
+    ...(Object.keys(inputs).length ? { inputs } : {}),
     ...(spec.revision
       ? {
           revision: {
@@ -603,6 +687,64 @@ function comfyMetadata(
         }
       : {}),
   }
+}
+
+function isImageBinding(workflow: ComfyWorkflow, binding: ComfyUIBinding): boolean {
+  const node = workflow[binding.nodeId]
+  return binding.input === "image" &&
+    (node?.class_type === "LoadImage" || node?.class_type === "LoadImageMask")
+}
+
+function isComfyImageInput(value: unknown): value is ComfyUIImageInput {
+  return isObject(value) &&
+    value.kind === "image" &&
+    typeof value.path === "string" &&
+    typeof value.sha256 === "string" &&
+    (value.format === "png" || value.format === "jpeg")
+}
+
+function providerInputProvenance(
+  inputs: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(inputs ?? {}).map(([name, input]) => [
+    name,
+    isComfyImageInput(input)
+      ? { kind: "image", sha256: input.sha256, format: input.format }
+      : { kind: "value", value: input },
+  ]))
+}
+
+function inputImageFormat(bytes: Buffer): "png" | "jpeg" | null {
+  if (
+    bytes.length >= 24 &&
+    bytes.readUInt32BE(0) === 0x89504e47 &&
+    bytes.readUInt32BE(4) === 0x0d0a1a0a &&
+    bytes.toString("ascii", 12, 16) === "IHDR" &&
+    bytes.readUInt32BE(16) > 0 &&
+    bytes.readUInt32BE(20) > 0
+  ) return "png"
+
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null
+  let offset = 2
+  while (offset + 3 < bytes.length) {
+    if (bytes[offset] !== 0xff) return null
+    while (bytes[offset] === 0xff) offset++
+    const marker = bytes[offset++]
+    if (marker == null || marker === 0xd9 || marker === 0xda) break
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue
+    if (offset + 2 > bytes.length) return null
+    const length = bytes.readUInt16BE(offset)
+    if (length < 2 || offset + length > bytes.length) return null
+    const isStartOfFrame = marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)
+    if (isStartOfFrame) {
+      if (length < 7) return null
+      return bytes.readUInt16BE(offset + 3) > 0 && bytes.readUInt16BE(offset + 5) > 0
+        ? "jpeg"
+        : null
+    }
+    offset += length
+  }
+  return null
 }
 
 function encodeJob(promptId: string, outputNodeId: string): string {

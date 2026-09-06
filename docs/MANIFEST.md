@@ -40,6 +40,28 @@ A resolved unit of work is one `styleId/assetId`. Asset ids are stable lookup
 keys, atlas frame ids, and default filenames; changing one is a data migration,
 not merely a label edit.
 
+## Asset fields
+
+| Field | Type/default | Meaning |
+|---|---|---|
+| `prompt` | string, required | The subject wording wrapped by the selected style's prompt prefix and suffix. |
+| `width` / `height` | integer 16–8192 | Per-asset dimensions for generators that accept rectangular output. Provider limits may be lower. |
+| `size` | integer 16–8192 | Per-asset square size where the generator uses one dimension. |
+| `file` | string | Output path below the style's `outDir`; defaults to `<category>/<assetId>.png`. |
+| `category` | string | Optional output subdirectory and logical grouping. |
+| `source` | string | Manifest-relative committed art used instead of generation. Mutually exclusive with `revision`. |
+| `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
+| `providerInputs` | JSON scalar map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI uses these with arbitrary workflow bindings and can upload PNG/JPEG inputs. |
+| `styles` | string array, `[]` | Restrict the asset to named styles; empty means every style. |
+| `promptByStyle` | string map, `{}` | Replace only the asset prompt for a named style. |
+| `outputRole` | string | Select one structural output when a generator returns a set. |
+| `tags` | string array, `[]` | Asset tags added to provider objects where supported. |
+
+`providerInputs` is provider-owned and participates in generation identity.
+Changing a value makes only that asset stale. A provider may replace a local
+runtime path with a content hash before hashing the spec; unsupported providers
+reject non-empty inputs rather than ignoring them.
+
 ## Style fields
 
 | Field | Type/default | Meaning |
@@ -269,7 +291,9 @@ still require a person.
             "width": { "nodeId": "5", "input": "width" },
             "height": { "nodeId": "5", "input": "height" },
             "batchSize": { "nodeId": "5", "input": "batch_size" },
-            "seed": { "nodeId": "3", "input": "seed" }
+            "seed": { "nodeId": "3", "input": "seed" },
+            "composition": { "nodeId": "19", "input": "image" },
+            "controlStrength": { "nodeId": "20", "input": "strength" }
           }
         }
       }
@@ -279,16 +303,28 @@ still require a person.
     "mountain": {
       "prompt": "a snowbound mountain pass",
       "width": 768,
-      "height": 512
+      "height": 512,
+      "providerInputs": {
+        "composition": "controls/mountain-layout.png",
+        "controlStrength": 0.7
+      }
     }
   }
 }
 ```
 
 Node IDs come from the exported workflow; they are not stable across unrelated
-workflows. The current adapter supports `map`, PNG output from one node, 1–16
-candidates, and dimensions from 16–4096px. It rejects manifest `styleImages`
-and `palette`; keep those controls inside the workflow. See
+workflows. Binding names beyond PixelKiln's built-ins are project-defined and
+an asset overrides one with a matching `providerInputs` value. A custom
+binding aimed at `LoadImage.image` or `LoadImageMask.image` treats its string as
+a manifest-relative PNG/JPEG, hashes it, and uploads it at submission. Other
+custom inputs accept a string, number, or boolean matching the workflow's
+placeholder type. Local paths never enter stable provenance.
+
+The current adapter supports `map`, PNG output from one node, 1–16 candidates,
+and dimensions from 16–4096px. It rejects manifest `styleImages` and `palette`;
+use custom image bindings for per-asset ControlNet or reference images, and keep
+shared model/LoRA/palette controls inside the workflow. See
 [Set up ComfyUI](COMFYUI.md) for the complete procedure, safe workflow, and
 quality limits. The 4096px adapter ceiling is not a recommended generation or
 native-art size.

@@ -2,7 +2,8 @@
 
 PixelKiln can run a committed ComfyUI workflow on a self-hosted server. This
 adapter is experimental. It supports still-image `map` jobs, one or more review
-candidates, controlled image-to-image/inpaint inputs, local provenance, and
+candidates, controlled image-to-image/inpaint inputs, arbitrary per-asset
+workflow bindings, content-addressed input uploads, local provenance, and
 cache-backed recovery. A core-node Stable
 Diffusion 1.5 workflow has passed single-image generation and a four-candidate
 review queue on Apple MPS. An SDXL composition workflow has also passed four
@@ -99,10 +100,68 @@ exported JSON:
 - the source `LoadImage` input for a revision;
 - the mask `LoadImage` input for inpainting;
 - the sampler denoise/strength input when the asset declares strength;
+- any project-named inputs that should vary by asset, such as a pose image,
+  ControlNet strength, reference image, or LoRA weight;
 - the final `SaveImage` node.
 
 Node IDs are workflow-specific. Do not copy IDs from an example without
 checking the exported file.
+
+### Bind per-asset workflow inputs
+
+Use one project-defined binding name in the style and the same key under each
+asset's `providerInputs`. This keeps a pose, composition guide, reference image,
+or strength with the asset instead of cloning nearly identical workflow files:
+
+```jsonc
+{
+  "styles": {
+    "character": {
+      "generator": "map",
+      "outDir": "assets/generated/characters",
+      "providerOptions": {
+        "comfyui": {
+          "workflowFile": "workflows/pose-api.json",
+          "outputNodeId": "9",
+          "bindings": {
+            "prompt": { "nodeId": "6", "input": "text" },
+            "width": { "nodeId": "5", "input": "width" },
+            "height": { "nodeId": "5", "input": "height" },
+            "pose": { "nodeId": "19", "input": "image" },
+            "poseStrength": { "nodeId": "20", "input": "strength" }
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "showcase-performer": {
+      "prompt": "a stage performer mid-spin",
+      "width": 832,
+      "height": 1216,
+      "providerInputs": {
+        "pose": "controls/pole-spin.png",
+        "poseStrength": 0.75
+      }
+    }
+  }
+}
+```
+
+PixelKiln recognizes a custom binding as an image input when it targets the
+`image` input of a core `LoadImage` or `LoadImageMask` node. Its value must be a
+manifest-relative PNG or JPEG. Planning reads and hashes the file without
+contacting ComfyUI. Submission checks the bytes again, uploads them under a
+content-addressed `pixelkiln/` name, and refuses the job if the file changed in
+between. The lock records the hash and format, never the workstation path.
+
+Other custom bindings accept strings, finite numbers, or booleans. Their type
+must match the primitive placeholder already stored at the target input in the
+committed workflow. PixelKiln rejects missing targets, duplicate targets,
+reserved built-in names, missing files, and unsupported image formats during
+offline resolution. ComfyUI performs the final graph and custom-node validation
+when `/prompt` is submitted. Keep `providerInputs` names stable: values are part
+of the asset spec hash, so changing one correctly makes that asset stale.
 
 ## Controlled revisions
 
@@ -469,6 +528,7 @@ mixed manifest:
 | `bindings.width` / `height` | Inputs replaced with the asset dimensions. |
 | `bindings.batchSize` | Input replaced with `numImages`. |
 | `bindings.seed` | Optional sampler seed input. Required when the style declares `seed`. |
+| `bindings.<name>` | Project-defined input supplied by the asset's matching `providerInputs.<name>`. Core `LoadImage.image` and `LoadImageMask.image` targets upload a manifest-relative PNG/JPEG; other targets receive a scalar. |
 
 The `quality` block is not a ComfyUI request option. It describes PixelKiln's
 offline final-art gate and works the same way with any supported single-image
@@ -525,9 +585,11 @@ ComfyUI raster.
 - Provider generation may exceed the local refiner's four-million-pixel input
   limit. Crop or split those canvases before running `refine`.
 - PixelKiln `styleImages` and `palette` are rejected. Put image references,
-  ControlNet, LoRA, palette, and other controls inside the committed workflow.
-- Video, animation, masks, multiple output nodes, uploads, and ComfyUI Cloud
-  authentication are not implemented.
+  palette, and shared controls inside the committed workflow. Use custom
+  bindings plus `providerInputs` for per-asset ControlNet or reference images.
+- Video, animation, multiple output nodes, arbitrary binary uploads, and
+  ComfyUI Cloud authentication are not implemented. Custom image bindings and
+  revision inputs support manifest-owned PNG/JPEG uploads.
 - PixelKiln does not install checkpoints or custom nodes. Every machine running
   the project must provide the models and nodes named by the workflow. The
   benchmark workflows use only core ComfyUI nodes.
@@ -548,6 +610,10 @@ before assigning it a production batch.
 - **Connection refused:** start ComfyUI or correct `COMFYUI_BASE_URL`.
 - **Missing node or input:** export the workflow again and update the manifest
   bindings to match its API JSON.
+- **Custom input rejected offline:** match the `providerInputs` key to a custom
+  binding, keep built-in names reserved, and use a scalar with the same type as
+  the workflow placeholder. Image inputs must target core `LoadImage.image` or
+  `LoadImageMask.image` and point to a readable PNG/JPEG.
 - **Prompt validation failed:** open the workflow in ComfyUI and check missing
   custom nodes, checkpoints, VAEs, LoRAs, and invalid node values.
 - **Wrong image count:** make the bound batch input and `numImages` describe the

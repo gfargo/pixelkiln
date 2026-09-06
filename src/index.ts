@@ -9,6 +9,7 @@ export {
   ComfyUIProvider,
   type ComfyUIBinding,
   type ComfyUIBindings,
+  type ComfyUIImageInput,
   type ComfyUIOptions,
 } from "./providers/comfyui.ts"
 export { FakeProvider, FAKE_PNG, type FakeOptions } from "./providers/fake.ts"
