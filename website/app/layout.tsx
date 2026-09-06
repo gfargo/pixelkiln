@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · PixelKiln",
   },
   description:
-    "Plan provider costs, review candidates, recover paid work, and package pixel art from PixelLab, Retro Diffusion, or ComfyUI.",
+    "Plan provider costs, review candidates and frame sets, recover paid work, and package pixel art from PixelLab, Retro Diffusion, ComfyUI, or Scenario.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",

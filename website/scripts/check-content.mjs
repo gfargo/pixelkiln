@@ -51,6 +51,25 @@ for (const { file, source } of routeSources) {
 }
 
 const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
+const cli = readFileSync(path.join(repoRoot, "src/cli.ts"), "utf8");
+const commandsMatch = cli.match(/export const COMMANDS = \[([\s\S]*?)\]\s+as const/);
+if (!commandsMatch) {
+  failures.push("could not read the public command count from src/cli.ts");
+} else {
+  const commandCount = [...commandsMatch[1].matchAll(/"([^"]+)"/g)]
+    .map((match) => match[1])
+    .filter((command) => !command.startsWith("-"))
+    .length;
+  if (!home.includes(`<strong>${commandCount}</strong>`) || !home.includes("composable commands")) {
+    failures.push(`home page does not report the current ${commandCount}-command surface`);
+  }
+}
+const providerRegistry = readFileSync(path.join(repoRoot, "src/providers/registry.ts"), "utf8");
+const providerCount = [...providerRegistry.matchAll(/registerProvider\(\{/g)].length;
+const displayedProviderCount = String(providerCount).padStart(2, "0");
+if (!home.includes(`<strong>${displayedProviderCount}</strong>`) || !home.includes("generation providers")) {
+  failures.push(`home page does not report the current ${providerCount}-provider surface`);
+}
 const refinedSample = "/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.png";
 if (!home.includes(refinedSample)) {
   failures.push("provider results are missing the final-palette ComfyUI sample");
@@ -76,8 +95,8 @@ if (!home.includes("https://www.retrodiffusion.ai/tools/pixel-art-fixer/")) {
 if (!home.includes("48–128px native per part")) {
   failures.push("provider results are missing the ComfyUI native range");
 }
-if (!home.includes("Refinement automated; art review required")) {
-  failures.push("provider results are missing the ComfyUI refinement boundary");
+if (!home.includes("Still workflow live-tested") || !home.includes("frame workflow awaits a live benchmark")) {
+  failures.push("provider results are missing the ComfyUI still/frame readiness boundary");
 }
 if (!home.includes("style.quality") || !home.includes("blocked until approval is current")) {
   failures.push("home page is missing the manifest quality-profile release gate");
@@ -88,8 +107,12 @@ if (!home.includes("preserves native") || !home.includes("ultrawide")) {
 if (!home.includes('href="/docs/mixed-providers"')) {
   failures.push("provider results are missing the mixed-provider guide");
 }
-if (!home.includes("still needs manual") || !home.includes("art review")) {
+if (!home.includes("needs manual cleanup") || !home.includes("art review")) {
   failures.push("provider results are missing the ComfyUI manual-review warning");
+}
+if (!home.includes("Retro Diffusion GIFs and sprite sheets") ||
+    !home.includes("Controlled ComfyUI still sequences")) {
+  failures.push("generator comparison is missing provider-specific animation and frame routes");
 }
 if (!home.includes('/benchmarks/provider-scenario-smoke/mountain-keep.png')) {
   failures.push("provider results are missing the paid Scenario smoke image");

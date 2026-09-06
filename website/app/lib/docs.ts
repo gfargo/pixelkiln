@@ -38,7 +38,7 @@ export const docs: DocEntry[] = [
   {
     slug: "comfyui",
     title: "Set up ComfyUI",
-    description: "Connect a self-hosted server, run the tested composition stack, and understand its manual quality boundary.",
+    description: "Connect a self-hosted server for stills, revisions, and atomic frame sets, then apply its quality gate.",
     file: "docs/COMFYUI.md",
     group: "Start here",
   },

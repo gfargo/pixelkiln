@@ -148,8 +148,10 @@ packaging input.
 
 Keep a fixed seed for identity, or opt into a deterministic `seedStep`. Use a
 quality profile so every frame shares one palette and must agree on detected
-native grid step and phase. The review page animates the sequence and shows the
-ordered strip. After approval, `pack` emits the sprite sheet and stable
+native grid step and phase. The review page animates the sequence, shows the
+ordered strip, and lets the reviewer pause playback. It starts paused when the
+system requests reduced motion and stops while it is offscreen. After approval,
+`pack` emits the sprite sheet and stable
 `asset/frame-XX` atlas ids. See
 [Set up ComfyUI](./COMFYUI.md#generate-an-ordered-frame-set).
 

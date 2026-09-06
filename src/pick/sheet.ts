@@ -106,7 +106,10 @@ export function renderSheet(groups: SheetGroup[]): string {
   .loop { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; }
   .loop img { image-rendering:pixelated; border:2px solid var(--accent); padding:7px;
     background:var(--panel-deep); max-width:min(var(--preview),calc(100vw - 62px)); height:auto; }
-  .loop-copy { color:var(--dim); font-size:11px; max-width:32ch; }
+  .loop-copy { color:var(--dim); font-size:11px; max-width:32ch; display:flex;
+    flex-direction:column; gap:8px; }
+  .loop-copy p { margin:0; }
+  .loop-copy button { align-self:flex-start; padding:5px 9px; font-size:10.5px; }
   .cand { border:2px solid var(--line-strong); border-radius:0; padding:7px; background:var(--panel-deep);
     cursor:pointer; display:flex; flex:0 0 auto; flex-direction:column; align-items:center; gap:5px;
     position:relative; max-width:100%; }
@@ -210,15 +213,49 @@ GROUPS.forEach((g, gi) => {
     preview.alt = 'Animated frame-set preview';
     const copy = document.createElement('div');
     copy.className = 'loop-copy';
-    copy.textContent = g.frameUrls.length + ' ordered frames · ' + (g.fps || 12) +
+    const copyText = document.createElement('p');
+    copyText.textContent = g.frameUrls.length + ' ordered frames · ' + (g.fps || 12) +
       ' fps. Accepting keeps every frame; one bad frame means leave the set unchosen.';
+    const playback = document.createElement('button');
+    playback.type = 'button';
+    let userPaused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let loopVisible = true;
+    let pageVisible = !document.hidden;
+    let loopTimer = null;
+    let loopIndex = 0;
+    const stopLoop = () => {
+      if (loopTimer !== null) window.clearInterval(loopTimer);
+      loopTimer = null;
+    };
+    const syncLoop = () => {
+      stopLoop();
+      playback.textContent = userPaused ? 'Play preview' : 'Pause preview';
+      playback.setAttribute('aria-pressed', String(userPaused));
+      if (!userPaused && loopVisible && pageVisible) {
+        loopTimer = window.setInterval(() => {
+          loopIndex = (loopIndex + 1) % g.frameUrls.length;
+          preview.src = g.frameUrls[loopIndex];
+        }, Math.max(16, Math.round(1000 / (g.fps || 12))));
+      }
+    };
+    playback.addEventListener('click', () => {
+      userPaused = !userPaused;
+      syncLoop();
+    });
+    copy.append(copyText, playback);
     loop.append(preview, copy);
     review.insertBefore(loop, frames);
-    let loopIndex = 0;
-    setInterval(() => {
-      loopIndex = (loopIndex + 1) % g.frameUrls.length;
-      preview.src = g.frameUrls[loopIndex];
-    }, Math.max(16, Math.round(1000 / (g.fps || 12))));
+    document.addEventListener('visibilitychange', () => {
+      pageVisible = !document.hidden;
+      syncLoop();
+    });
+    syncLoop();
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver((entries) => {
+        loopVisible = entries[0]?.isIntersecting ?? false;
+        syncLoop();
+      }).observe(loop);
+    }
   }
   g.frameUrls.forEach((url, i) => {
     const c = document.createElement('button');
