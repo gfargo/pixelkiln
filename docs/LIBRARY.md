@@ -26,6 +26,11 @@ for (const group of plan.groups) {
 }
 ```
 
+`loadManifest` resolves style inheritance before returning. Callers receive
+ordinary, fully validated styles with defaults applied; the hand-authored
+`extends` marker is not present in `loaded.manifest`. Parent changes therefore
+flow into child specs without extra work in library integrations.
+
 Planning performs no provider calls and spends nothing. `resolveSpecs` uses each
 style's provider or the manifest default, then lets that offline adapter's
 `supports()` and `estimate()` methods determine cost unit and candidate count.

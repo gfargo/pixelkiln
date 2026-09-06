@@ -411,6 +411,132 @@ describe("specHash", () => {
 })
 
 describe("styles as namespaces", () => {
+  it("inherits style fields while keeping child outputs and focused overrides explicit", async () => {
+    const manifest = {
+      name: "test",
+      styles: {
+        base: {
+          generator: "map",
+          size: 96,
+          outDir: "out/base",
+          promptPrefix: "pixel art",
+          promptSuffix: "three-quarter view",
+          quality: {
+            outDir: "final/base",
+            palette: ["#111111", "#eeeeee"],
+            minGridConfidence: "medium",
+            minTransparency: 0.25,
+          },
+          providerOptions: {
+            custom: {
+              model: "model-a",
+              strength: 0.5,
+              nested: { keep: true, replace: true },
+            },
+            spare: { mode: "parent" },
+          },
+        },
+        explicit: {
+          extends: "base",
+          outDir: "out/explicit",
+          promptPrefix: "pixel art, rating_explicit",
+          seed: 24001,
+          quality: {
+            outDir: "final/explicit",
+            minGridConfidence: "high",
+          },
+          providerOptions: {
+            custom: {
+              strength: 0.75,
+              nested: { replace: false },
+            },
+          },
+        },
+      },
+      assets: { alpha: { prompt: "a performer" } },
+    }
+    await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
+    const loaded = await loadManifest(path.join(dir, "m.json"))
+
+    expect(Object.keys(loaded.manifest.styles)).toEqual(["base", "explicit"])
+    expect(loaded.manifest.styles.explicit).toMatchObject({
+      generator: "map",
+      size: 96,
+      outDir: "out/explicit",
+      promptPrefix: "pixel art, rating_explicit",
+      promptSuffix: "three-quarter view",
+      seed: 24001,
+      quality: {
+        outDir: "final/explicit",
+        palette: ["#111111", "#eeeeee"],
+        minGridConfidence: "high",
+        minTransparency: 0.25,
+      },
+      providerOptions: {
+        custom: {
+          model: "model-a",
+          strength: 0.75,
+          nested: { replace: false },
+        },
+        spare: { mode: "parent" },
+      },
+    })
+    expect(loaded.manifest.styles.base.promptPrefix).toBe("pixel art")
+    expect("extends" in loaded.manifest.styles.explicit!).toBe(false)
+  })
+
+  it("supports inheritance chains and hashes the fully resolved child", async () => {
+    const manifest = {
+      name: "test",
+      styles: {
+        front: { extends: "rated", outDir: "out/front", view: "side" },
+        rated: { extends: "base", outDir: "out/rated", promptPrefix: "rating_safe" },
+        base: { generator: "map", outDir: "out/base", promptSuffix: "clean clusters" },
+      },
+      assets: { alpha: { prompt: "a wall fixture" } },
+    }
+    const manifestPath = path.join(dir, "m.json")
+    await writeFile(manifestPath, JSON.stringify(manifest))
+    const loaded = await loadManifest(manifestPath)
+    expect(Object.keys(loaded.manifest.styles)).toEqual(["front", "rated", "base"])
+    const first = await resolveSpecs(loaded, { styles: ["front"] })
+    expect(first[0]).toMatchObject({
+      prompt: "rating_safe, a wall fixture, clean clusters",
+      view: "side",
+    })
+
+    manifest.styles.base.promptSuffix = "clean clusters, cool lighting"
+    await writeFile(manifestPath, JSON.stringify(manifest))
+    const changed = await resolveSpecs(await loadManifest(manifestPath), { styles: ["front"] })
+    expect(changed[0]!.specHash).not.toBe(first[0]!.specHash)
+  })
+
+  it("rejects missing child outputs, unknown parents, and inheritance cycles", async () => {
+    const manifestPath = path.join(dir, "m.json")
+    const writeStyles = async (styles: Record<string, unknown>) => {
+      await writeFile(manifestPath, JSON.stringify({
+        name: "test",
+        styles,
+        assets: { alpha: { prompt: "an anvil" } },
+      }))
+      return loadManifest(manifestPath)
+    }
+
+    await expect(writeStyles({
+      base: { outDir: "out/base" },
+      child: { extends: "base" },
+    })).rejects.toThrow(/styles\.child.*outDir/i)
+
+    await expect(writeStyles({
+      child: { extends: "missing", outDir: "out/child" },
+    })).rejects.toThrow(/styles\.child\.extends: unknown style "missing"/)
+
+    await expect(writeStyles({
+      first: { extends: "second", outDir: "out/first" },
+      second: { extends: "first", outDir: "out/second" },
+    })).rejects.toThrow(/inheritance cycle first -> second -> first/)
+  })
+
   it("keeps two styles of the same asset in separate keys and directories", async () => {
     const manifest = {
       name: "test",

@@ -52,6 +52,11 @@ the credential in `.env.local` beside the manifest:
 PIXELLAB_API_KEY=...
 ```
 
+When a rating, pose family, framing, or provider preset is a small variation of
+another style, use `extends` and declare a separate `outDir`. The child inherits
+later parent fixes while keeping its own output namespace. See
+[style inheritance](./MANIFEST.md#style-inheritance) for the exact merge rules.
+
 For experimental Retro Diffusion generation, set the manifest's
 top-level `provider` to `retrodiffusion` and use:
 

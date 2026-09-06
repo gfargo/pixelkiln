@@ -183,9 +183,10 @@ packaging layer.
 }
 ```
 
-Styles are namespaces. Adding a second style re-derives the same asset ids into
-a separate output directory and separate lock keys without clobbering the first
-set. Generator choice, reference-image bytes, dimensions, palette, seed, and
+Styles are namespaces. A variant can `extend` a base style while keeping its own
+output directory, so later parent fixes reach every child without copied config.
+Each style re-derives the same asset ids into separate lock keys. Generator
+choice, reference-image bytes, dimensions, palette, seed, and
 prompt settings participate in deterministic spec identity. A manifest may
 select another provider and pass namespaced `providerOptions`; see
 [Set up PixelLab](./docs/PIXELLAB.md),

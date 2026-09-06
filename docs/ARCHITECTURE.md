@@ -14,14 +14,20 @@ the adapter.
 
 ## Manifest and resolved specs
 
-The committed manifest is intent. Resolution combines one style and one asset,
-loads/reference-hashes style images, applies overrides, chooses a provider-
-supported generator, and computes a deterministic spec hash. The hash excludes
-project root, output location, and tags but includes every pixel-affecting
-setting. A provider may resolve local files before hashing. ComfyUI uses this
-hook to parse and hash workflow JSON without making a network request. The
-runtime graph can then be submitted without putting a machine-specific path in
-the stable identity.
+The committed manifest is intent. Manifest loading resolves each style's
+`extends` chain before defaults and generator constraints are applied. Ordinary
+fields use child-wins replacement; `quality` and provider option namespaces get
+their documented focused merge. Unknown parents and cycles fail before a plan.
+The inheritance marker never reaches runtime state.
+
+Spec resolution then combines one resolved style and one asset,
+loads/reference-hashes style images, applies overrides, chooses a
+provider-supported generator, and computes a deterministic spec hash. The hash
+excludes project root, output location, and tags but includes every
+pixel-affecting setting. A provider may resolve local files before hashing.
+ComfyUI uses this hook to parse and hash workflow JSON without making a network
+request. The runtime graph can then be submitted without putting a
+machine-specific path in the stable identity.
 
 See [manifest reference](./MANIFEST.md).
 
