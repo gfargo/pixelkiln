@@ -33,6 +33,7 @@ export function specHash(
   spec: Omit<ResolvedSpec, "specHash" | "root" | "outFile" | "quality" | "source" | "tags">,
   styleImageHashes: string[],
   providerOptionIdentity: unknown = spec.providerOptions,
+  providerInputIdentity: unknown = spec.providerInputs ?? {},
 ): string {
   return sha256(
     JSON.stringify({
@@ -43,6 +44,11 @@ export function specHash(
         providerOptionIdentity &&
         (typeof providerOptionIdentity !== "object" || Object.keys(providerOptionIdentity).length > 0)
           ? providerOptionIdentity
+          : undefined,
+      providerInputs:
+        providerInputIdentity &&
+        (typeof providerInputIdentity !== "object" || Object.keys(providerInputIdentity).length > 0)
+          ? providerInputIdentity
           : undefined,
       generator: spec.generator,
       prompt: spec.prompt,

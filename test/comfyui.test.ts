@@ -93,6 +93,53 @@ async function project(options: { numImages?: number; width?: number; seed?: num
   return { loaded, spec: specs[0]!, workflowPath }
 }
 
+async function providerInputProject(poseFile = "pose.png") {
+  const posePixels = Buffer.alloc(2 * 2 * 4, 127)
+  for (let offset = 3; offset < posePixels.length; offset += 4) posePixels[offset] = 255
+  const pose = encodeRgbaPng(2, 2, posePixels)
+  await writeFile(path.join(dir, poseFile), pose)
+  const workflowPath = path.join(dir, "workflow-api.json")
+  const graph = workflow() as unknown as JsonObject
+  graph["19"] = { class_type: "LoadImage", inputs: { image: "placeholder.png" } }
+  graph["20"] = { class_type: "ControlNetApplyAdvanced", inputs: { strength: 0.5 } }
+  await writeFile(workflowPath, JSON.stringify(graph))
+  const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+  await writeFile(manifestPath, JSON.stringify({
+    name: "comfy-provider-input-test",
+    provider: "comfyui",
+    styles: {
+      local: {
+        generator: "map",
+        outDir: "out",
+        providerOptions: {
+          comfyui: {
+            workflowFile: "workflow-api.json",
+            outputNodeId: "9",
+            bindings: {
+              prompt: { nodeId: "6", input: "text" },
+              width: { nodeId: "5", input: "width" },
+              height: { nodeId: "5", input: "height" },
+              pose: { nodeId: "19", input: "image" },
+              poseStrength: { nodeId: "20", input: "strength" },
+            },
+          },
+        },
+      },
+    },
+    assets: {
+      dancer: {
+        prompt: "a dancer holding a pole",
+        width: 832,
+        height: 1216,
+        providerInputs: { pose: poseFile, poseStrength: 0.75 },
+      },
+    },
+  }))
+  const loaded = await loadManifest(manifestPath)
+  const spec = (await resolveSpecs(loaded))[0]!
+  return { loaded, spec, pose, poseFile: path.join(dir, poseFile), manifestPath }
+}
+
 async function revisionProject(mode: "image-to-image" | "inpaint" = "image-to-image") {
   const source = encodeRgbaPng(16, 16, Buffer.alloc(16 * 16 * 4, 255))
   const mask = encodeRgbaPng(16, 16, Buffer.alloc(16 * 16 * 4, 127))
@@ -425,6 +472,133 @@ describe("ComfyUI provider", () => {
     expect((spec.providerOptions.workflow as JsonObject)["6"]).toMatchObject({
       inputs: { text: "placeholder" },
     })
+  })
+
+  it("hashes uploaded provider inputs by content and validates arbitrary scalar targets", async () => {
+    const first = await providerInputProject()
+    expect(first.spec.providerInputs).toEqual({
+      pose: {
+        kind: "image",
+        path: first.poseFile,
+        sha256: sha256(first.pose),
+        format: "png",
+      },
+      poseStrength: 0.75,
+    })
+
+    const copy = path.join(dir, "pose-copy.png")
+    await writeFile(copy, first.pose)
+    const manifest = JSON.parse(await readFile(first.manifestPath, "utf8"))
+    manifest.assets.dancer.providerInputs.pose = "pose-copy.png"
+    await writeFile(first.manifestPath, JSON.stringify(manifest))
+    const moved = (await resolveSpecs(await loadManifest(first.manifestPath)))[0]!
+    expect(moved.specHash).toBe(first.spec.specHash)
+
+    const changedPixels = Buffer.from(new Uint8Array(2 * 2 * 4).fill(255))
+    const changedPose = encodeRgbaPng(2, 2, changedPixels)
+    await writeFile(copy, changedPose)
+    const changed = (await resolveSpecs(await loadManifest(first.manifestPath)))[0]!
+    expect(changed.specHash).not.toBe(first.spec.specHash)
+
+    manifest.assets.dancer.providerInputs.poseStrength = "strong"
+    await writeFile(first.manifestPath, JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(first.manifestPath))).rejects.toThrow(
+      /providerInputs\.poseStrength must be number/,
+    )
+  })
+
+  it("rejects unbound, reserved, and duplicate custom input targets", async () => {
+    const first = await providerInputProject()
+    const manifest = JSON.parse(await readFile(first.manifestPath, "utf8"))
+
+    manifest.assets.dancer.providerInputs.unknown = true
+    await writeFile(first.manifestPath, JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(first.manifestPath))).rejects.toThrow(
+      /providerInputs\.unknown has no matching bindings\.unknown/,
+    )
+
+    delete manifest.assets.dancer.providerInputs.unknown
+    manifest.assets.dancer.providerInputs.seed = 42
+    await writeFile(first.manifestPath, JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(first.manifestPath))).rejects.toThrow(
+      /providerInputs\.seed is reserved/,
+    )
+
+    delete manifest.assets.dancer.providerInputs.seed
+    manifest.styles.local.providerOptions.comfyui.bindings.poseStrength = {
+      nodeId: "19",
+      input: "image",
+    }
+    await writeFile(first.manifestPath, JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(first.manifestPath))).rejects.toThrow(
+      /bindings\.poseStrength and bindings\.pose target the same input 19\.image/,
+    )
+
+    manifest.styles.local.providerOptions.comfyui.bindings.poseStrength = {
+      nodeId: "20",
+      input: "strength",
+    }
+    const workflowPath = path.join(dir, "workflow-api.json")
+    const graph = JSON.parse(await readFile(workflowPath, "utf8"))
+    graph["20"].inputs.strength = ["3", 0]
+    await writeFile(workflowPath, JSON.stringify(graph))
+    await writeFile(first.manifestPath, JSON.stringify(manifest))
+    await expect(resolveSpecs(await loadManifest(first.manifestPath))).rejects.toThrow(
+      /providerInputs\.poseStrength cannot replace non-scalar 20\.strength/,
+    )
+  })
+
+  it("uploads bound image inputs and records path-free input provenance", async () => {
+    const uploads: Array<{ name: string; bytes: Buffer }> = []
+    let queued: JsonObject | null = null
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith("/upload/image")) {
+        const image = (init!.body as FormData).get("image") as File
+        uploads.push({ name: image.name, bytes: Buffer.from(await image.arrayBuffer()) })
+        return json({ name: image.name, subfolder: "pixelkiln", type: "input" })
+      }
+      if (url.endsWith("/prompt")) {
+        queued = JSON.parse(String(init!.body))
+        return json({ prompt_id: "pose-1" })
+      }
+      return json({}, 404)
+    }))
+    const { loaded, spec, pose, poseFile } = await providerInputProject()
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const provider = createProvider("comfyui", "online")
+    await submit(provider, loaded, (await buildPlan([spec], lock)).actionable, lock, lockPath, {
+      budget: 0,
+      spacingMs: 0,
+    })
+
+    expect(uploads).toEqual([{ name: `${sha256(pose)}.png`, bytes: pose }])
+    expect(queued).toMatchObject({
+      prompt: {
+        "19": { inputs: { image: `pixelkiln/${sha256(pose)}.png` } },
+        "20": { inputs: { strength: 0.75 } },
+      },
+    })
+    expect(lock.entries["local/dancer"]!.providerMetadata).toEqual({
+      comfyui: {
+        inputs: {
+          pose: { kind: "image", sha256: sha256(pose), format: "png" },
+          poseStrength: { kind: "value", value: 0.75 },
+        },
+      },
+    })
+    expect(JSON.stringify(lock)).not.toContain(poseFile)
+  })
+
+  it("refuses a provider input image that changes between plan and submit", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ prompt_id: "should-not-submit" })))
+    const { spec, poseFile } = await providerInputProject()
+    const changedPixels = Buffer.from(new Uint8Array(2 * 2 * 4).fill(255))
+    await writeFile(poseFile, encodeRgbaPng(2, 2, changedPixels))
+    await expect(createProvider("comfyui", "online").submit(spec, [])).rejects.toThrow(
+      /provider input "pose" changed before upload/,
+    )
   })
 
   it("uploads immutable revision inputs and binds an inpaint workflow", async () => {

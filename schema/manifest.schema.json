@@ -324,6 +324,23 @@
                   "type": "string"
                 },
                 "default": {}
+              },
+              "providerInputs": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "default": {}
               }
             },
             "required": [

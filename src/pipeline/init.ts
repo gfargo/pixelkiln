@@ -102,6 +102,7 @@ export function buildManifest(
       file: asset.file,
       tags: [],
       styles: [],
+      providerInputs: {},
       ...(generator === "map"
         ? { width: asset.width, height: asset.height }
         : asset.width === asset.height && asset.width !== commonSize
