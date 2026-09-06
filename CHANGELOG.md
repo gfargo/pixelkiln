@@ -1,3 +1,10 @@
+# [0.18.0](https://github.com/gfargo/pixelkiln/compare/v0.17.0...v0.18.0) (2026-09-06)
+
+
+### Features
+
+* support per-asset ComfyUI inputs ([#76](https://github.com/gfargo/pixelkiln/issues/76)) ([9c2da4b](https://github.com/gfargo/pixelkiln/commit/9c2da4be796acbc48c1bd58bb7f22f33f43dd6e3))
+
 # [0.17.0](https://github.com/gfargo/pixelkiln/compare/v0.16.0...v0.17.0) (2026-09-06)
 
 
