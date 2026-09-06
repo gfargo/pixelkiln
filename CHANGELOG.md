@@ -1,3 +1,10 @@
+# [0.19.0](https://github.com/gfargo/pixelkiln/compare/v0.18.0...v0.19.0) (2026-09-06)
+
+
+### Features
+
+* add atomic ComfyUI frame sets ([#78](https://github.com/gfargo/pixelkiln/issues/78)) ([c749192](https://github.com/gfargo/pixelkiln/commit/c749192a4d3bdda84b1e6cbb138c88cab29884d9))
+
 # [0.18.0](https://github.com/gfargo/pixelkiln/compare/v0.17.0...v0.18.0) (2026-09-06)
 
 
