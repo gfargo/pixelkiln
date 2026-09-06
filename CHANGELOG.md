@@ -1,3 +1,10 @@
+# [0.20.0](https://github.com/gfargo/pixelkiln/compare/v0.19.0...v0.20.0) (2026-09-06)
+
+
+### Features
+
+* add safe style inheritance ([#77](https://github.com/gfargo/pixelkiln/issues/77)) ([c71dae7](https://github.com/gfargo/pixelkiln/commit/c71dae729fb30f9fad93440be1cf84bb579d45e9))
+
 # [0.19.0](https://github.com/gfargo/pixelkiln/compare/v0.18.0...v0.19.0) (2026-09-06)
 
 
