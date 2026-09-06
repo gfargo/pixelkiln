@@ -1,12 +1,12 @@
 /** Regenerates the manifest/workspace JSON Schemas from the zod types so they cannot drift. */
 import { writeFileSync } from "node:fs"
 import { zodToJsonSchema } from "zod-to-json-schema"
-import { ManifestSchema } from "../src/types.ts"
+import { ManifestInputSchema } from "../src/types.ts"
 import { WorkspaceSchema } from "../src/workspace.ts"
 import { RecipeSchema } from "../src/recipes.ts"
 import { QualityBaselineSchema } from "../src/pipeline/quality-regression.ts"
 
-const manifestSchema = zodToJsonSchema(ManifestSchema, {
+const manifestSchema = zodToJsonSchema(ManifestInputSchema, {
   name: "PixelkilnManifest",
   $refStrategy: "none",
 })

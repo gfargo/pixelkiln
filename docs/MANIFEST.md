@@ -69,6 +69,7 @@ constant across the set.
 
 | Field | Type/default | Meaning |
 |---|---|---|
+| `extends` | style id | Optional parent style. The child inherits resolved settings but must declare its own `outDir`. |
 | `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
 | `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, or provider-specific `animation`/`frames`. |
 | `outDir` | string, required | Output directory relative to the manifest. |
@@ -92,6 +93,57 @@ constant across the set.
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
+
+### Style inheritance
+
+Use `extends` for a real variant that differs from a base style by a few
+settings. Do not copy the whole style:
+
+```jsonc
+{
+  "styles": {
+    "pony-character": {
+      "generator": "map",
+      "promptPrefix": "score_9, score_8_up, rating_safe",
+      "promptSuffix": "clean pixel clusters",
+      "seed": 24000,
+      "outDir": "art/generated/pony-character",
+      "quality": {
+        "outDir": "art/native/pony-character",
+        "palette": ["#17111f", "#76506f", "#e5a9b8", "#fff1de"],
+        "minGridConfidence": "high"
+      }
+    },
+    "pony-explicit": {
+      "extends": "pony-character",
+      "promptPrefix": "score_9, score_8_up, rating_explicit",
+      "seed": 24001,
+      "outDir": "art/generated/pony-explicit",
+      "quality": {
+        "outDir": "art/native/pony-explicit"
+      }
+    }
+  }
+}
+```
+
+The child wins for ordinary fields. Arrays and nested objects are replaced,
+not concatenated or recursively merged. Two fields get a focused merge:
+
+- `quality` keeps parent keys that the child does not override;
+- `providerOptions` keeps parent provider namespaces and merges each provider's
+  immediate option keys. A deeper object such as `bindings` is still replaced
+  as a whole.
+
+Inheritance may span several styles. Unknown parents, self-reference, and
+cycles are errors. Every child must declare `outDir`; output ownership is never
+inherited. Omission means inherit, and there is no `null` deletion marker.
+Defaults and generator constraints are applied after the chain is resolved.
+
+Only the resolved style reaches planning. A parent edit to a pixel-affecting
+field therefore changes every child's spec hash; a quality-policy edit changes
+the child's derived quality state without buying new provider art. `extends`
+itself is not runtime or lockfile state.
 
 Generator-specific fields are validated before planning. Important constraints:
 

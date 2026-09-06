@@ -1,8 +1,11 @@
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
+import type { ZodIssue } from "zod"
 import {
+  ManifestInputSchema,
   ManifestSchema,
+  StyleSchema,
   candidateCount,
   countNumberedDescriptions,
   generationCost,
@@ -12,6 +15,8 @@ import {
   type Manifest,
   type ResolvedSpec,
   type ResolvedStyleImage,
+  type Style,
+  type StyleInput,
 } from "./types.ts"
 import { sha256, specHash } from "./hash.ts"
 import { MediaType } from "./media.ts"
@@ -29,9 +34,22 @@ export interface LoadedManifest {
 export async function loadManifest(manifestPath: string): Promise<LoadedManifest> {
   const abs = path.resolve(manifestPath)
   if (!existsSync(abs)) throw new Error(`No manifest at ${abs}`)
-  const parsed = ManifestSchema.safeParse(JSON.parse(await readFile(abs, "utf8")))
+  const input = ManifestInputSchema.safeParse(JSON.parse(await readFile(abs, "utf8")))
+  if (!input.success) {
+    const issues = formatManifestIssues(input.error.issues)
+    throw new Error(`Manifest at ${abs} is invalid:\n${issues}`)
+  }
+  let styles: Record<string, Style>
+  try {
+    styles = resolveStyleInheritance(input.data.styles)
+  } catch (error) {
+    throw new Error(
+      `Manifest at ${abs} is invalid:\n  ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+  const parsed = ManifestSchema.safeParse({ ...input.data, styles })
   if (!parsed.success) {
-    const issues = parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n")
+    const issues = formatManifestIssues(parsed.error.issues)
     throw new Error(`Manifest at ${abs} is invalid:\n${issues}`)
   }
   const styleIds = new Set(Object.keys(parsed.data.styles))
@@ -79,6 +97,77 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
     throw new Error(`Manifest at ${abs} is invalid:\n${unknownReferences.map((i) => `  ${i}`).join("\n")}`)
   }
   return { manifest: parsed.data, root: path.dirname(abs), path: abs }
+}
+
+function formatManifestIssues(issues: ZodIssue[]): string {
+  return issues.flatMap((issue): string[] => {
+    if (issue.code === "invalid_union") {
+      return issue.unionErrors.flatMap((error) => formatManifestIssues(error.issues).split("\n"))
+    }
+    return [`  ${issue.path.join(".")}: ${issue.message}`]
+  }).join("\n")
+}
+
+/** Resolve child styles without carrying the inheritance marker into runtime state. */
+function resolveStyleInheritance(styles: Record<string, StyleInput>): Record<string, Style> {
+  const resolved = new Map<string, Style>()
+
+  const visit = (styleId: string, chain: string[]): Style => {
+    const cached = resolved.get(styleId)
+    if (cached) return cached
+    const cycleStart = chain.indexOf(styleId)
+    if (cycleStart >= 0) {
+      throw new Error(
+        `styles.${styleId}.extends: inheritance cycle ` +
+          `${[...chain.slice(cycleStart), styleId].join(" -> ")}`,
+      )
+    }
+    const style = styles[styleId]
+    if (!style) throw new Error(`styles.${styleId}: unknown style`)
+    if (!("extends" in style)) {
+      resolved.set(styleId, style)
+      return style
+    }
+
+    const parentId = style.extends
+    if (!Object.hasOwn(styles, parentId)) {
+      throw new Error(`styles.${styleId}.extends: unknown style "${parentId}"`)
+    }
+    const parent = visit(parentId, [...chain, styleId])
+    const { extends: _parent, ...child } = style
+    const merged = {
+      ...parent,
+      ...child,
+      quality:
+        child.quality == null
+          ? parent.quality
+          : { ...(parent.quality ?? {}), ...child.quality },
+      providerOptions: mergeProviderOptions(parent.providerOptions, child.providerOptions),
+    }
+    const parsed = StyleSchema.safeParse(merged)
+    if (!parsed.success) {
+      const issues = parsed.error.issues
+        .map((issue) => `styles.${styleId}.${issue.path.join(".")}: ${issue.message}`)
+        .join("; ")
+      throw new Error(issues)
+    }
+    resolved.set(styleId, parsed.data)
+    return parsed.data
+  }
+
+  return Object.fromEntries(Object.keys(styles).map((styleId) => [styleId, visit(styleId, [])]))
+}
+
+function mergeProviderOptions(
+  parent: Record<string, Record<string, unknown>>,
+  child: Record<string, Record<string, unknown>> | undefined,
+): Record<string, Record<string, unknown>> {
+  if (!child) return parent
+  const merged = { ...parent }
+  for (const [provider, options] of Object.entries(child)) {
+    merged[provider] = { ...(parent[provider] ?? {}), ...options }
+  }
+  return merged
 }
 
 /**

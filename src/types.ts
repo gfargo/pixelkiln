@@ -170,7 +170,7 @@ const StyleImageSchema = z.object({
 const HexColorSchema = z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour")
 
 /** Required derived-art policy for one style's single-image outputs. */
-export const QualityProfileSchema = z
+const QualityProfileObjectSchema = z
   .object({
     /** Output root for approved refined art, relative to the manifest. */
     outDir: z.string().min(1),
@@ -188,6 +188,8 @@ export const QualityProfileSchema = z
     fps: z.number().int().min(1).max(60).optional(),
   })
   .strict()
+
+export const QualityProfileSchema = QualityProfileObjectSchema
   .refine(
     (profile) =>
       new Set(profile.palette.map((color) => color.replace(/^#/, "").toLowerCase())).size ===
@@ -261,7 +263,7 @@ export interface ResolvedRevision {
   strength?: number
 }
 
-export const StyleSchema = z
+const StyleObjectSchema = z
   .object({
     /** Generation backend for this style. Omit to inherit the manifest default. */
     provider: z.string().min(1).optional(),
@@ -386,6 +388,8 @@ export const StyleSchema = z
     providerOptions: z.record(z.record(z.unknown())).default({}),
   })
   .strict()
+
+export const StyleSchema = StyleObjectSchema
   /**
    * The API rejects a connectable set combined with style tiles:
    * "Connectable features (roads/tileset/building) cannot be combined with
@@ -409,6 +413,23 @@ export const StyleSchema = z
       })
     }
   })
+
+/**
+ * Hand-authored child style before inheritance is resolved. Defaults must not
+ * run here: an omitted value means "inherit", not "reset to the default".
+ */
+export const InheritedStyleSchema = StyleObjectSchema.partial()
+  .extend({
+    extends: z.string().min(1),
+    /** Children own their destination; sharing a parent's output is never implicit. */
+    outDir: z.string(),
+    /** A child may override only part of the inherited final-art policy. */
+    quality: QualityProfileObjectSchema.partial().optional(),
+  })
+  .strict()
+
+export const StyleInputSchema = z.union([StyleSchema, InheritedStyleSchema])
+export type StyleInput = z.infer<typeof StyleInputSchema>
 
 export const AssetSchema = z
   .object({
@@ -503,6 +524,17 @@ export const ManifestSchema = z
     /** Generation backend. Existing manifests remain PixelLab by default. */
     provider: z.string().min(1).default("pixellab"),
     styles: z.record(StyleSchema),
+    assets: z.record(AssetSchema),
+  })
+  .strict()
+
+/** Manifest contract accepted from disk before style inheritance is resolved. */
+export const ManifestInputSchema = z
+  .object({
+    $schema: z.string().optional(),
+    name: z.string(),
+    provider: z.string().min(1).default("pixellab"),
+    styles: z.record(StyleInputSchema),
     assets: z.record(AssetSchema),
   })
   .strict()

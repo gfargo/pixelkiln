@@ -18,129 +18,116 @@
         "styles": {
           "type": "object",
           "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "provider": {
-                "type": "string",
-                "minLength": 1
-              },
-              "generator": {
-                "type": "string",
-                "enum": [
-                  "1dir",
-                  "map",
-                  "pixflux",
-                  "tiles",
-                  "animation",
-                  "frames"
-                ],
-                "default": "map"
-              },
-              "size": {
-                "type": "integer",
-                "minimum": 16,
-                "maximum": 8192
-              },
-              "view": {
-                "type": "string"
-              },
-              "promptSuffix": {
-                "type": "string",
-                "default": ""
-              },
-              "promptPrefix": {
-                "type": "string",
-                "default": ""
-              },
-              "styleImages": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "path": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "path"
-                  ],
-                  "additionalProperties": false
-                },
-                "default": []
-              },
-              "outDir": {
-                "type": "string"
-              },
-              "outline": {
-                "type": "string"
-              },
-              "shading": {
-                "type": "string"
-              },
-              "detail": {
-                "type": "string"
-              },
-              "tileSize": {
-                "type": "integer",
-                "minimum": 16,
-                "maximum": 256
-              },
-              "tileType": {
-                "type": "string",
-                "enum": [
-                  "hex",
-                  "hex_pointy",
-                  "isometric",
-                  "oblique",
-                  "octagon",
-                  "square_topdown"
-                ]
-              },
-              "tileView": {
-                "type": "string",
-                "enum": [
-                  "top-down",
-                  "high top-down",
-                  "low top-down",
-                  "side"
-                ]
-              },
-              "tileFeature": {
-                "type": "string",
-                "enum": [
-                  "roads",
-                  "tileset",
-                  "building"
-                ]
-              },
-              "outlineMode": {
-                "type": "string",
-                "enum": [
-                  "outline",
-                  "segmentation"
-                ]
-              },
-              "noBackground": {
-                "type": "boolean",
-                "default": true
-              },
-              "seed": {
-                "type": "integer"
-              },
-              "palette": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "pattern": "^#?[0-9a-f]{6}$"
-                },
-                "default": []
-              },
-              "quality": {
+            "anyOf": [
+              {
                 "type": "object",
                 "properties": {
-                  "outDir": {
+                  "provider": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "generator": {
+                    "type": "string",
+                    "enum": [
+                      "1dir",
+                      "map",
+                      "pixflux",
+                      "tiles",
+                      "animation",
+                      "frames"
+                    ],
+                    "default": "map"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 16,
+                    "maximum": 8192
+                  },
+                  "view": {
+                    "type": "string"
+                  },
+                  "promptSuffix": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "promptPrefix": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "styleImages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "path"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "default": []
+                  },
+                  "outDir": {
+                    "type": "string"
+                  },
+                  "outline": {
+                    "type": "string"
+                  },
+                  "shading": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  },
+                  "tileSize": {
+                    "type": "integer",
+                    "minimum": 16,
+                    "maximum": 256
+                  },
+                  "tileType": {
+                    "type": "string",
+                    "enum": [
+                      "hex",
+                      "hex_pointy",
+                      "isometric",
+                      "oblique",
+                      "octagon",
+                      "square_topdown"
+                    ]
+                  },
+                  "tileView": {
+                    "type": "string",
+                    "enum": [
+                      "top-down",
+                      "high top-down",
+                      "low top-down",
+                      "side"
+                    ]
+                  },
+                  "tileFeature": {
+                    "type": "string",
+                    "enum": [
+                      "roads",
+                      "tileset",
+                      "building"
+                    ]
+                  },
+                  "outlineMode": {
+                    "type": "string",
+                    "enum": [
+                      "outline",
+                      "segmentation"
+                    ]
+                  },
+                  "noBackground": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "seed": {
+                    "type": "integer"
                   },
                   "palette": {
                     "type": "array",
@@ -148,88 +135,320 @@
                       "type": "string",
                       "pattern": "^#?[0-9a-f]{6}$"
                     },
-                    "minItems": 2,
-                    "maxItems": 256
+                    "default": []
                   },
-                  "minGridConfidence": {
+                  "quality": {
+                    "type": "object",
+                    "properties": {
+                      "outDir": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "palette": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^#?[0-9a-f]{6}$"
+                        },
+                        "minItems": 2,
+                        "maxItems": 256
+                      },
+                      "minGridConfidence": {
+                        "type": "string",
+                        "enum": [
+                          "low",
+                          "medium",
+                          "high"
+                        ],
+                        "default": "high"
+                      },
+                      "minTransparency": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "fixerRevision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fixerPython": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fps": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 60
+                      }
+                    },
+                    "required": [
+                      "outDir",
+                      "palette"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "mount": {
+                    "type": "object",
+                    "properties": {
+                      "base": {
+                        "type": "string"
+                      },
+                      "cellWidth": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "cellHeight": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "out": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "cellWidth",
+                      "cellHeight",
+                      "out"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "providerOptions": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "default": {}
+                  }
+                },
+                "required": [
+                  "outDir"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "generator": {
                     "type": "string",
                     "enum": [
-                      "low",
-                      "medium",
-                      "high"
+                      "1dir",
+                      "map",
+                      "pixflux",
+                      "tiles",
+                      "animation",
+                      "frames"
                     ],
-                    "default": "high"
+                    "default": "map"
                   },
-                  "minTransparency": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
-                  },
-                  "fixerRevision": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "fixerPython": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "fps": {
+                  "size": {
                     "type": "integer",
-                    "minimum": 1,
-                    "maximum": 60
+                    "minimum": 16,
+                    "maximum": 8192
+                  },
+                  "view": {
+                    "type": "string"
+                  },
+                  "promptSuffix": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "promptPrefix": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "styleImages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "path"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "default": []
+                  },
+                  "outDir": {
+                    "type": "string"
+                  },
+                  "outline": {
+                    "type": "string"
+                  },
+                  "shading": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  },
+                  "tileSize": {
+                    "type": "integer",
+                    "minimum": 16,
+                    "maximum": 256
+                  },
+                  "tileType": {
+                    "type": "string",
+                    "enum": [
+                      "hex",
+                      "hex_pointy",
+                      "isometric",
+                      "oblique",
+                      "octagon",
+                      "square_topdown"
+                    ]
+                  },
+                  "tileView": {
+                    "type": "string",
+                    "enum": [
+                      "top-down",
+                      "high top-down",
+                      "low top-down",
+                      "side"
+                    ]
+                  },
+                  "tileFeature": {
+                    "type": "string",
+                    "enum": [
+                      "roads",
+                      "tileset",
+                      "building"
+                    ]
+                  },
+                  "outlineMode": {
+                    "type": "string",
+                    "enum": [
+                      "outline",
+                      "segmentation"
+                    ]
+                  },
+                  "noBackground": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "seed": {
+                    "type": "integer"
+                  },
+                  "palette": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^#?[0-9a-f]{6}$"
+                    },
+                    "default": []
+                  },
+                  "quality": {
+                    "type": "object",
+                    "properties": {
+                      "outDir": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "palette": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^#?[0-9a-f]{6}$"
+                        },
+                        "minItems": 2,
+                        "maxItems": 256
+                      },
+                      "minGridConfidence": {
+                        "type": "string",
+                        "enum": [
+                          "low",
+                          "medium",
+                          "high"
+                        ],
+                        "default": "high"
+                      },
+                      "minTransparency": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "fixerRevision": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fixerPython": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fps": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 60
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "mount": {
+                    "type": "object",
+                    "properties": {
+                      "base": {
+                        "type": "string"
+                      },
+                      "cellWidth": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "cellHeight": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "out": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "cellWidth",
+                      "cellHeight",
+                      "out"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "providerOptions": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "default": {}
+                  },
+                  "extends": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
                   "outDir",
-                  "palette"
+                  "extends"
                 ],
                 "additionalProperties": false
-              },
-              "mount": {
-                "type": "object",
-                "properties": {
-                  "base": {
-                    "type": "string"
-                  },
-                  "cellWidth": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0
-                  },
-                  "cellHeight": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0
-                  },
-                  "out": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "cellWidth",
-                  "cellHeight",
-                  "out"
-                ],
-                "additionalProperties": false
-              },
-              "tags": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "default": []
-              },
-              "providerOptions": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": "object",
-                  "additionalProperties": {}
-                },
-                "default": {}
               }
-            },
-            "required": [
-              "outDir"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "assets": {

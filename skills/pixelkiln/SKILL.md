@@ -12,6 +12,9 @@ hashes.
 ## Working rules
 
 - Locate `pixelkiln.manifest.json` first. Paths are manifest-relative.
+- Treat `style.extends` as a source-level variant, not a reason to copy the
+  parent. Keep every child `outDir` explicit, inspect the resolved plan, and
+  remember that a pixel-affecting parent edit intentionally makes children stale.
 - Never inspect, print, or commit provider credentials. Read the top-level
   provider default and every style override, then load the matching provider
   references below.
