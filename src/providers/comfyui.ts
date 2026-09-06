@@ -9,6 +9,7 @@ import type {
   PollContext,
   Provider,
   ProviderInputContext,
+  ProviderInputValue,
   ProviderOptionContext,
   ProviderSubmission,
   RateLimit,
@@ -50,6 +51,13 @@ export interface ComfyUIImageInput {
   format: "png" | "jpeg"
 }
 
+export interface ComfyUIFramesOptions {
+  /** Project-defined binding whose asset value is an ordered scalar array. */
+  vary: string
+  /** Optional deterministic seed increment between frames. Defaults to 0. */
+  seedStep?: number
+}
+
 /** Options stored under `providerOptions.comfyui` in a manifest style. */
 export interface ComfyUIOptions {
   /** ComfyUI API-format workflow JSON, relative to the manifest. */
@@ -58,12 +66,15 @@ export interface ComfyUIOptions {
   outputNodeId: string
   /** Expected final images from the output node. */
   numImages?: number
+  /** Ordered still-frame generation using one varying custom binding. */
+  frames?: ComfyUIFramesOptions
   /** Exact workflow inputs PixelKiln is allowed to replace. */
   bindings: ComfyUIBindings
 }
 
 interface ResolvedComfyUIOptions extends ComfyUIOptions {
   numImages: number
+  frames?: { vary: string; seedStep: number }
   workflow: ComfyWorkflow
   workflowSha256: string
 }
@@ -72,6 +83,11 @@ interface ComfyImage {
   filename: string
   subfolder: string
   type: "output"
+}
+
+interface FrameSetJob {
+  outputNodeId: string
+  promptIds: string[]
 }
 
 const BUILTIN_BINDINGS = new Set([
@@ -247,6 +263,7 @@ export class ComfyUIProvider implements Provider {
       identity: {
         outputNodeId: options.outputNodeId,
         numImages: options.numImages,
+        ...(options.frames ? { frames: options.frames } : {}),
         bindings: options.bindings,
         workflowSha256,
       },
@@ -254,7 +271,7 @@ export class ComfyUIProvider implements Provider {
   }
 
   async resolveInputs(
-    value: Record<string, string | number | boolean>,
+    value: Record<string, ProviderInputValue>,
     context: ProviderInputContext,
   ): Promise<ResolvedProviderInputs> {
     const options = parseOptions(context.providerOptions)
@@ -275,50 +292,69 @@ export class ComfyUIProvider implements Provider {
           `ComfyUI providerInputs.${name} has no matching bindings.${name} target`,
         )
       }
-      if (isImageBinding(options.workflow, binding)) {
-        if (typeof input !== "string") {
-          throw new Error(`ComfyUI providerInputs.${name} must be a manifest-relative PNG or JPEG path`)
+      const resolveValue = async (
+        item: string | number | boolean,
+        index?: number,
+      ): Promise<{ runtime: unknown; stable: unknown }> => {
+        const label = `providerInputs.${name}${index == null ? "" : `[${index}]`}`
+        if (isImageBinding(options.workflow!, binding)) {
+          if (typeof item !== "string") {
+            throw new Error(`ComfyUI ${label} must be a manifest-relative PNG or JPEG path`)
+          }
+          const file = path.resolve(context.root, item)
+          let bytes: Buffer
+          try {
+            bytes = await readFile(file)
+          } catch (error) {
+            throw new Error(
+              `ComfyUI ${label} could not be read at ${file}: ` +
+                `${error instanceof Error ? error.message : String(error)}`,
+            )
+          }
+          const format = inputImageFormat(bytes)
+          if (!format) throw new Error(`ComfyUI ${label} is not a PNG or JPEG: ${file}`)
+          const hash = sha256(bytes)
+          return {
+            runtime: { kind: "image", path: file, sha256: hash, format } satisfies ComfyUIImageInput,
+            stable: { kind: "image", sha256: hash, format },
+          }
         }
-        const file = path.resolve(context.root, input)
-        let bytes: Buffer
-        try {
-          bytes = await readFile(file)
-        } catch (error) {
-          throw new Error(
-            `ComfyUI providerInputs.${name} could not be read at ${file}: ` +
-              `${error instanceof Error ? error.message : String(error)}`,
-          )
-        }
-        const format = inputImageFormat(bytes)
-        if (!format) {
-          throw new Error(`ComfyUI providerInputs.${name} is not a PNG or JPEG: ${file}`)
-        }
-        const hash = sha256(bytes)
-        inputs[name] = { kind: "image", path: file, sha256: hash, format } satisfies ComfyUIImageInput
-        identity[name] = { kind: "image", sha256: hash, format }
-      } else {
-        const current = options.workflow[binding.nodeId]!.inputs[binding.input]
+
+        const current = options.workflow![binding.nodeId]!.inputs[binding.input]
         if (typeof current !== "string" && typeof current !== "number" && typeof current !== "boolean") {
           throw new Error(
-            `ComfyUI providerInputs.${name} cannot replace non-scalar ` +
-              `${binding.nodeId}.${binding.input}`,
+            `ComfyUI ${label} cannot replace non-scalar ${binding.nodeId}.${binding.input}`,
           )
         }
-        if (typeof current !== typeof input) {
+        if (typeof current !== typeof item) {
           throw new Error(
-            `ComfyUI providerInputs.${name} must be ${typeof current} to match ` +
-              `${binding.nodeId}.${binding.input}`,
+            `ComfyUI ${label} must be ${typeof current} to match ${binding.nodeId}.${binding.input}`,
           )
         }
-        inputs[name] = input
-        identity[name] = input
+        return { runtime: item, stable: item }
+      }
+
+      if (Array.isArray(input)) {
+        if (!options.frames || name !== options.frames.vary) {
+          throw new Error(
+            `ComfyUI providerInputs.${name} is an array but frames.vary is ` +
+              `${options.frames ? `"${options.frames.vary}"` : "not configured"}`,
+          )
+        }
+        const resolved = await Promise.all(input.map((item, index) => resolveValue(item, index)))
+        inputs[name] = resolved.map((item) => item.runtime)
+        identity[name] = resolved.map((item) => item.stable)
+      } else {
+        const resolved = await resolveValue(input)
+        inputs[name] = resolved.runtime
+        identity[name] = resolved.stable
       }
     }
     return { inputs, identity }
   }
 
   supports(generator: Generator): boolean {
-    return generator === "map"
+    return generator === "map" || generator === "frames"
   }
 
   supportsRevision(_mode: RevisionMode): boolean {
@@ -326,7 +362,11 @@ export class ComfyUIProvider implements Provider {
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {
-    return { unit: "free", amount: 0, candidates: resolvedOptions(spec).numImages }
+    return {
+      unit: "free",
+      amount: 0,
+      candidates: spec.generator === "frames" ? 1 : resolvedOptions(spec).numImages,
+    }
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
@@ -334,7 +374,12 @@ export class ComfyUIProvider implements Provider {
     // A committed source can be a revision parent in the same style, but it is
     // never submitted. Revision-only workflows therefore do not need the
     // text-to-image bindings that this placeholder spec would otherwise imply.
-    if (spec.source && !spec.revision) return
+    if (spec.source && !spec.revision) {
+      if (spec.generator === "frames") {
+        throw new Error("ComfyUI frame sets require generated provider outputs, not asset.source")
+      }
+      return
+    }
     if (spec.width < 16 || spec.height < 16 || spec.width > 4096 || spec.height > 4096) {
       throw new Error("ComfyUI output dimensions must be between 16 and 4096 pixels")
     }
@@ -355,6 +400,28 @@ export class ComfyUIProvider implements Provider {
     }
     if (options.numImages > 1 && !options.bindings.batchSize) {
       throw new Error("ComfyUI numImages greater than 1 requires bindings.batchSize")
+    }
+    if (spec.generator === "frames") {
+      if (!options.frames) throw new Error("ComfyUI frames generation requires providerOptions.comfyui.frames")
+      if (options.numImages !== 1) throw new Error("ComfyUI frames generation requires numImages: 1")
+      if (spec.revision) throw new Error("ComfyUI frame sets do not support asset revisions yet")
+      const values = spec.providerInputs?.[options.frames.vary]
+      if (!Array.isArray(values) || values.length < 2 || values.length > 64) {
+        throw new Error(
+          `ComfyUI frames.vary "${options.frames.vary}" requires a providerInputs array of 2–64 values`,
+        )
+      }
+      if (options.frames.seedStep !== 0 && (spec.seed == null || !options.bindings.seed)) {
+        throw new Error("ComfyUI frames.seedStep requires a style seed and bindings.seed")
+      }
+      if (
+        spec.seed != null &&
+        !Number.isSafeInteger(spec.seed + (values.length - 1) * options.frames.seedStep)
+      ) {
+        throw new Error("ComfyUI frame seed schedule exceeds JavaScript's safe integer range")
+      }
+    } else if (options.frames) {
+      throw new Error("ComfyUI providerOptions.frames requires generator: frames")
     }
     if (spec.revision) {
       if (!options.bindings.sourceImage) {
@@ -387,30 +454,72 @@ export class ComfyUIProvider implements Provider {
   async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<ProviderSubmission> {
     this.validate(spec, styleImages)
     const options = resolvedOptions(spec)
-    const workflow = structuredClone(options.workflow)
-    setBinding(workflow, options.bindings.prompt, spec.prompt)
-    if (options.bindings.width) setBinding(workflow, options.bindings.width, spec.width)
-    if (options.bindings.height) setBinding(workflow, options.bindings.height, spec.height)
-    if (options.bindings.batchSize) {
-      setBinding(workflow, options.bindings.batchSize, options.numImages)
-    }
-    if (spec.seed != null && options.bindings.seed) {
-      setBinding(workflow, options.bindings.seed, spec.seed)
-    }
-    for (const [name, input] of Object.entries(spec.providerInputs ?? {})) {
+    const uploadedImages = new Map<string, string>()
+    const bindInput = async (
+      workflow: ComfyWorkflow,
+      name: string,
+      input: unknown,
+    ): Promise<void> => {
       const binding = Object.hasOwn(options.bindings, name) ? options.bindings[name] : undefined
       if (!binding) throw new Error(`ComfyUI provider input "${name}" has no binding`)
-      if (isComfyImageInput(input)) {
-        const bytes = await readFile(input.path)
-        if (sha256(bytes) !== input.sha256) {
-          throw new Error(`ComfyUI provider input "${name}" changed before upload`)
-        }
-        const uploaded = await this.client.uploadImage(bytes, input.sha256, input.format)
-        setBinding(workflow, binding, uploaded)
-      } else {
+      if (!isComfyImageInput(input)) {
         setBinding(workflow, binding, input)
+        return
+      }
+      const bytes = await readFile(input.path)
+      if (sha256(bytes) !== input.sha256) {
+        throw new Error(`ComfyUI provider input "${name}" changed before upload`)
+      }
+      let uploaded = uploadedImages.get(input.sha256)
+      if (!uploaded) {
+        uploaded = await this.client.uploadImage(bytes, input.sha256, input.format)
+        uploadedImages.set(input.sha256, uploaded)
+      }
+      setBinding(workflow, binding, uploaded)
+    }
+    const buildWorkflow = async (frameIndex?: number): Promise<ComfyWorkflow> => {
+      const workflow = structuredClone(options.workflow)
+      setBinding(workflow, options.bindings.prompt, spec.prompt)
+      if (options.bindings.width) setBinding(workflow, options.bindings.width, spec.width)
+      if (options.bindings.height) setBinding(workflow, options.bindings.height, spec.height)
+      if (options.bindings.batchSize) setBinding(workflow, options.bindings.batchSize, options.numImages)
+      if (spec.seed != null && options.bindings.seed) {
+        const seed = frameIndex == null ? spec.seed : spec.seed + frameIndex * (options.frames?.seedStep ?? 0)
+        setBinding(workflow, options.bindings.seed, seed)
+      }
+      for (const [name, input] of Object.entries(spec.providerInputs ?? {})) {
+        const selected = Array.isArray(input)
+          ? (frameIndex == null ? input : input[frameIndex])
+          : input
+        await bindInput(workflow, name, selected)
+      }
+      return workflow
+    }
+
+    const inputs = providerInputProvenance(spec.providerInputs)
+    if (spec.generator === "frames") {
+      const frames = options.frames!
+      const values = spec.providerInputs![frames.vary] as unknown[]
+      const promptIds: string[] = []
+      for (let index = 0; index < values.length; index++) {
+        promptIds.push(await this.client.submit(await buildWorkflow(index)))
+      }
+      return {
+        jobId: encodeFrameSetJob({ promptIds, outputNodeId: options.outputNodeId }),
+        metadata: {
+          inputs,
+          frameSet: {
+            count: values.length,
+            vary: frames.vary,
+            seedStep: frames.seedStep,
+            fps: spec.quality?.fps ?? 12,
+            promptIds,
+          },
+        },
       }
     }
+
+    const workflow = await buildWorkflow()
     if (spec.revision) {
       if (!spec.revision.sourceSha256 || !spec.revision.sourceFormat) {
         throw new Error("ComfyUI revision source is not ready")
@@ -446,7 +555,6 @@ export class ComfyUIProvider implements Provider {
       }
     }
     const promptId = await this.client.submit(workflow)
-    const inputs = providerInputProvenance(spec.providerInputs)
     const metadata = {
       ...(Object.keys(inputs).length ? { inputs } : {}),
       ...(spec.revision
@@ -466,7 +574,49 @@ export class ComfyUIProvider implements Provider {
     }
   }
 
-  async poll(jobId: string, _generator: Generator, context?: PollContext): Promise<JobState> {
+  async poll(jobId: string, generator: Generator, context?: PollContext): Promise<JobState> {
+    if (generator === "frames") {
+      const frameJob = decodeFrameSetJob(jobId)
+      const images: ComfyImage[] = []
+      for (let index = 0; index < frameJob.promptIds.length; index++) {
+        const promptId = frameJob.promptIds[index]!
+        const history = await this.client.history(promptId)
+        const entry = historyEntry(history, promptId)
+        if (!entry) return { status: "processing" }
+        const status = isObject(entry.status) ? entry.status : {}
+        if (status.status_str === "error") {
+          return { status: "failed", error: `frame ${index}: ${historyError(status)}` }
+        }
+        if (status.completed === false) return { status: "processing" }
+        const output = outputImages(entry, frameJob.outputNodeId)
+        if (output instanceof Error) {
+          return { status: "failed", error: `frame ${index}: ${output.message}` }
+        }
+        if (output.length !== 1) {
+          return {
+            status: "failed",
+            error: `frame ${index}: ComfyUI returned ${output.length} images, expected 1`,
+          }
+        }
+        images.push(output[0]!)
+      }
+      const fps = context?.spec?.quality?.fps ?? 12
+      const sources = images.map((image, index) => ({
+        url: sourceRef(image),
+        role: frameRole(index),
+        mediaType: MediaType.PNG,
+      }))
+      return {
+        status: "review-set",
+        objectId: jobId,
+        frameUrls: images.map((image) => this.client.viewUrl(image)),
+        sources,
+        fps,
+        metadata: context?.spec
+          ? comfyFrameMetadata(context.spec, frameJob, images, fps)
+          : { frameSet: { count: images.length, fps, promptIds: frameJob.promptIds } },
+      }
+    }
     const { promptId, outputNodeId } = decodeJob(jobId)
     const history = await this.client.history(promptId)
     const entry = historyEntry(history, promptId)
@@ -538,7 +688,9 @@ export class ComfyUIProvider implements Provider {
 }
 
 function parseOptions(value: Record<string, unknown>): ResolvedComfyUIOptions {
-  const allowed = new Set(["workflowFile", "outputNodeId", "numImages", "bindings", "workflow", "workflowSha256"])
+  const allowed = new Set([
+    "workflowFile", "outputNodeId", "numImages", "frames", "bindings", "workflow", "workflowSha256",
+  ])
   const extra = Object.keys(value).filter((key) => !allowed.has(key))
   if (extra.length) throw new Error(`Unknown ComfyUI option(s): ${extra.join(", ")}`)
   const workflowFile = requiredString(value.workflowFile, "workflowFile")
@@ -552,6 +704,15 @@ function parseOptions(value: Record<string, unknown>): ResolvedComfyUIOptions {
     Object.entries(value.bindings).map(([name, binding]) => [name, parseBinding(binding, name)]),
   ) as unknown as ComfyUIBindings
   if (!bindings.prompt) throw new Error("ComfyUI bindings.prompt must be an object")
+  const frames = value.frames == null ? undefined : parseFrames(value.frames)
+  if (frames) {
+    if (BUILTIN_BINDINGS.has(frames.vary)) {
+      throw new Error(`ComfyUI frames.vary must name a custom binding, not "${frames.vary}"`)
+    }
+    if (!Object.hasOwn(bindings, frames.vary)) {
+      throw new Error(`ComfyUI frames.vary "${frames.vary}" has no matching binding`)
+    }
+  }
   const workflow = value.workflow == null ? undefined : parseWorkflow(value.workflow, workflowFile)
   const workflowSha256 = value.workflowSha256 == null
     ? undefined
@@ -561,9 +722,22 @@ function parseOptions(value: Record<string, unknown>): ResolvedComfyUIOptions {
     outputNodeId,
     numImages: Number(numImages),
     bindings,
+    ...(frames ? { frames } : {}),
     ...(workflow ? { workflow } : {}),
     ...(workflowSha256 ? { workflowSha256 } : {}),
   } as ResolvedComfyUIOptions
+}
+
+function parseFrames(value: unknown): { vary: string; seedStep: number } {
+  if (!isObject(value)) throw new Error("ComfyUI frames must be an object")
+  const extra = Object.keys(value).filter((key) => key !== "vary" && key !== "seedStep")
+  if (extra.length) throw new Error(`Unknown ComfyUI frames field(s): ${extra.join(", ")}`)
+  const vary = requiredString(value.vary, "frames.vary")
+  const seedStep = value.seedStep ?? 0
+  if (!Number.isSafeInteger(seedStep) || Math.abs(Number(seedStep)) > 1_000_000) {
+    throw new Error("ComfyUI frames.seedStep must be a safe integer from -1000000 to 1000000")
+  }
+  return { vary, seedStep: Number(seedStep) }
 }
 
 function resolvedOptions(spec: ResolvedSpec): ResolvedComfyUIOptions {
@@ -689,6 +863,29 @@ function comfyMetadata(
   }
 }
 
+function comfyFrameMetadata(
+  spec: ResolvedSpec,
+  job: FrameSetJob,
+  images: ComfyImage[],
+  fps: number,
+): JsonObject {
+  const options = resolvedOptions(spec)
+  return {
+    workflowFile: options.workflowFile,
+    workflowSha256: options.workflowSha256,
+    outputNodeId: job.outputNodeId,
+    inputs: providerInputProvenance(spec.providerInputs),
+    frameSet: {
+      count: images.length,
+      vary: options.frames!.vary,
+      seedStep: options.frames!.seedStep,
+      fps,
+      promptIds: job.promptIds,
+      frames: images.map((image, index) => ({ role: frameRole(index), ...image })),
+    },
+  }
+}
+
 function isImageBinding(workflow: ComfyWorkflow, binding: ComfyUIBinding): boolean {
   const node = workflow[binding.nodeId]
   return binding.input === "image" &&
@@ -708,10 +905,16 @@ function providerInputProvenance(
 ): Record<string, unknown> {
   return Object.fromEntries(Object.entries(inputs ?? {}).map(([name, input]) => [
     name,
-    isComfyImageInput(input)
-      ? { kind: "image", sha256: input.sha256, format: input.format }
-      : { kind: "value", value: input },
+    Array.isArray(input)
+      ? { kind: "sequence", values: input.map(providerInputValueProvenance) }
+      : providerInputValueProvenance(input),
   ]))
+}
+
+function providerInputValueProvenance(input: unknown): unknown {
+  return isComfyImageInput(input)
+    ? { kind: "image", sha256: input.sha256, format: input.format }
+    : { kind: "value", value: input }
 }
 
 function inputImageFormat(bytes: Buffer): "png" | "jpeg" | null {
@@ -749,6 +952,36 @@ function inputImageFormat(bytes: Buffer): "png" | "jpeg" | null {
 
 function encodeJob(promptId: string, outputNodeId: string): string {
   return `${promptId}#${encodeURIComponent(outputNodeId)}`
+}
+
+function frameRole(index: number): string {
+  return `frame-${String(index).padStart(2, "0")}`
+}
+
+function encodeFrameSetJob(job: FrameSetJob): string {
+  return `frames:${Buffer.from(JSON.stringify(job)).toString("base64url")}`
+}
+
+function decodeFrameSetJob(jobId: string): FrameSetJob {
+  if (!jobId.startsWith("frames:")) throw new Error(`Invalid ComfyUI frame-set job id "${jobId}"`)
+  let value: unknown
+  try {
+    value = JSON.parse(Buffer.from(jobId.slice(7), "base64url").toString("utf8"))
+  } catch {
+    throw new Error(`Invalid ComfyUI frame-set job id "${jobId}"`)
+  }
+  if (
+    !isObject(value) ||
+    typeof value.outputNodeId !== "string" ||
+    !value.outputNodeId ||
+    !Array.isArray(value.promptIds) ||
+    value.promptIds.length < 2 ||
+    value.promptIds.length > 64 ||
+    !value.promptIds.every((id) => typeof id === "string" && id.length > 0)
+  ) {
+    throw new Error(`Invalid ComfyUI frame-set job id "${jobId}"`)
+  }
+  return { outputNodeId: value.outputNodeId, promptIds: value.promptIds as string[] }
 }
 
 function decodeJob(jobId: string): { promptId: string; outputNodeId: string } {

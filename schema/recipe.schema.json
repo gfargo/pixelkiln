@@ -113,7 +113,8 @@
                 "map",
                 "pixflux",
                 "tiles",
-                "animation"
+                "animation",
+                "frames"
               ],
               "default": "map"
             },
@@ -249,6 +250,11 @@
                 "fixerRevision": {
                   "type": "string",
                   "minLength": 1
+                },
+                "fps": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60
                 }
               },
               "required": [

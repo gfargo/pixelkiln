@@ -31,7 +31,8 @@
                   "map",
                   "pixflux",
                   "tiles",
-                  "animation"
+                  "animation",
+                  "frames"
                 ],
                 "default": "map"
               },
@@ -167,6 +168,11 @@
                   "fixerRevision": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "fps": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
                   }
                 },
                 "required": [
@@ -337,6 +343,24 @@
                     },
                     {
                       "type": "boolean"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      },
+                      "minItems": 2,
+                      "maxItems": 64
                     }
                   ]
                 },

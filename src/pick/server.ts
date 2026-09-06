@@ -45,7 +45,11 @@ export async function runPicker(
     try {
       const spec = specByKey.get(key)
       const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec })
-      if (state.status !== "review" || !state.candidateUrls.length) continue
+      if (
+        (state.status !== "review" && state.status !== "review-set") ||
+        (state.status === "review" ? !state.candidateUrls.length : !state.frameUrls.length)
+      ) continue
+      const frameUrls = state.status === "review" ? state.candidateUrls : state.frameUrls
       const sourceRoute = spec?.revision
         ? `/revision-source/${encodeURIComponent(String(groups.length))}`
         : null
@@ -61,9 +65,16 @@ export async function runPicker(
         styleId: entry.styleId,
         prompt: entry.prompt,
         reviewObjectId: entry.reviewObjectId,
-        frameUrls: state.candidateUrls,
+        frameUrls,
         width: entry.width,
         height: entry.height,
+        ...(state.status === "review-set"
+          ? {
+              mode: "frame-set" as const,
+              frameLabels: state.sources.map((source, index) => source.role ?? `frame-${index}`),
+              fps: state.fps,
+            }
+          : { mode: "candidates" as const }),
         ...(sourceRoute && spec?.revision && spec.revision.sourceWidth && spec.revision.sourceHeight
           ? {
               revision: {
@@ -105,6 +116,34 @@ export async function runPicker(
         const entry = lock.entries[key]
         if (!group || !entry?.reviewObjectId) continue
         if (!Number.isInteger(index) || index < 0 || index >= group.frameUrls.length) continue
+
+        if (group.mode === "frame-set") {
+          const spec = specByKey.get(key)
+          const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec })
+          if (state.status !== "review-set") {
+            throw new Error(`Frame set ${key} is no longer ready for review`)
+          }
+          upsert(lock, key, {
+            status: "selected",
+            objectId: state.objectId,
+            candidateIndex: null,
+            sourceUrl: state.sources[0]?.url ?? null,
+            sourceUrls: state.sources,
+            provider: provider.id,
+            providerMetadata: state.metadata
+              ? {
+                  ...entry.providerMetadata,
+                  [provider.id]: {
+                    ...entry.providerMetadata[provider.id],
+                    ...state.metadata,
+                  },
+                }
+              : entry.providerMetadata,
+          })
+          selected++
+          log(`  accepted ${key} → ${state.sources.length} ordered frames`)
+          continue
+        }
 
         // Promote the chosen candidate; the review parent is removed upstream
         // once nothing is left in it.

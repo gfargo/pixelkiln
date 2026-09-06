@@ -65,7 +65,7 @@ export async function poll(
           tileFeature: entry.tileFeature ?? currentSpec?.tileFeature,
           spec: currentSpec,
         })
-        if (state.status === "review") {
+        if (state.status === "review" || state.status === "review-set") {
           upsert(lock, key, {
             status: "review",
             reviewObjectId: entry.jobId,
@@ -80,7 +80,11 @@ export async function poll(
               : entry.providerMetadata,
           })
           result.review++
-          log(`  review  ${key} (${state.candidateUrls.length} candidates)`)
+          log(
+            state.status === "review-set"
+              ? `  review  ${key} (${state.frameUrls.length} ordered frames)`
+              : `  review  ${key} (${state.candidateUrls.length} candidates)`,
+          )
         } else if (state.status === "ready") {
           const sourceUrls = state.sources?.length
             ? state.sources

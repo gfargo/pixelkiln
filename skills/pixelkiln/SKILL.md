@@ -33,6 +33,8 @@ hashes.
 - Treat every ComfyUI output as source material until it passes the native-grid,
   final-palette, prompt-coverage, and human 1× checks in the ComfyUI reference.
   A successful PNG or high-confidence grid result is not quality approval.
+- Treat a ComfyUI `frames` asset as indivisible. Review its animated strip,
+  refine and approve the complete set, and never package a subset of its roles.
 - When the project commits a PixelKiln quality baseline, run `pixelkiln quality
   check --from <baseline>` before packaging. Treat a pass as structural
   continuity, never as human approval or proof that the prompt was satisfied.

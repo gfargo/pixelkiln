@@ -50,6 +50,9 @@ export interface OutputSource {
   mediaType?: MediaType
 }
 
+export type ProviderInputScalar = string | number | boolean
+export type ProviderInputValue = ProviderInputScalar | ProviderInputScalar[]
+
 export interface PollContext {
   /** Distinguishes structural tile sets from independent tile candidates. */
   tileFeature?: string
@@ -81,6 +84,7 @@ export interface ProviderOptionContext {
 
 export interface ProviderInputContext extends ProviderOptionContext {
   assetId: string
+  generator: Generator
   /** The already-resolved options for this style. */
   providerOptions: Record<string, unknown>
 }
@@ -103,6 +107,14 @@ export interface ResolvedProviderInputs {
 export type JobState =
   | { status: "processing"; progressPercent?: number | null; etaSeconds?: number | null }
   | { status: "review"; candidateUrls: string[]; metadata?: ProviderMetadata }
+  | {
+      status: "review-set"
+      objectId: string
+      frameUrls: string[]
+      sources: OutputSource[]
+      fps: number
+      metadata?: ProviderMetadata
+    }
   | {
       status: "ready"
       objectId: string
@@ -211,7 +223,7 @@ export interface Provider {
    * local control images become content hashes rather than machine paths.
    */
   resolveInputs?(
-    inputs: Record<string, string | number | boolean>,
+    inputs: Record<string, ProviderInputValue>,
     context: ProviderInputContext,
   ): Promise<ResolvedProviderInputs>
 

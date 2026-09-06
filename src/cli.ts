@@ -905,9 +905,19 @@ async function main() {
       if (!args.reviewer?.trim()) {
         throw new Error("refine approve needs --reviewer <name>.")
       }
-      log(`  Inspect the final PNG at 1× and integer zoom.`)
+      const pending = await checkQualityRecord(args.from)
+      log(
+        pending.options.frameSet
+          ? `  Inspect all ${pending.options.frameSet.count} ordered frames at 1×, integer zoom, and playback speed.`
+          : `  Inspect the final PNG at 1× and integer zoom.`,
+      )
       log(`  Confirm crisp edges, readable forms, palette separation, alpha, and seams.`)
-      if (!(await confirm("  Record this asset as human-approved?", args.yes))) {
+      if (!(await confirm(
+        pending.options.frameSet
+          ? "  Record this complete frame set as human-approved?"
+          : "  Record this asset as human-approved?",
+        args.yes,
+      ))) {
         log("  approval not recorded")
         return
       }
@@ -916,7 +926,13 @@ async function main() {
         note: args.note,
       })
       if (args.json) log(JSON.stringify(result, null, 2))
-      else log(`  approved ${path.relative(process.cwd(), result.output)} by ${args.reviewer.trim()}`)
+      else {
+        log(
+          result.options.frameSet
+            ? `  approved ${result.outputs.length} frames in ${path.relative(process.cwd(), result.record)} by ${args.reviewer.trim()}`
+            : `  approved ${path.relative(process.cwd(), result.output)} by ${args.reviewer.trim()}`,
+        )
+      }
       return
     }
 
@@ -1523,8 +1539,11 @@ async function main() {
       ]
       const qualityRecords = qualitySources
         ? await Promise.all(
-            Object.entries(qualitySources).map(([assetId, source]) =>
-              provenanceFile(`$quality/${assetId}`, qualityRecordPath(source))),
+            packagingSpecs.filter((spec) => spec.quality).map((spec) =>
+              provenanceFile(
+                `$quality/${spec.assetId}`,
+                qualityRecordPath(spec.quality!.outFile),
+              )),
           )
         : []
       await writeManagedArtifactBundle(`${base}.pixelkiln.json`, outputs, {
@@ -1586,6 +1605,7 @@ async function main() {
         packagingSpecs,
         lock,
         new Set(Object.keys(cells)),
+        outputRoles,
       )
       if (qualitySources) Object.assign(sources, qualitySources)
 
@@ -1608,8 +1628,13 @@ async function main() {
       ]
       const qualityRecords = qualitySources
         ? await Promise.all(
-            Object.entries(qualitySources).map(([assetId, source]) =>
-              provenanceFile(`$quality/${assetId}`, qualityRecordPath(source))),
+            packagingSpecs
+              .filter((spec) => spec.quality && Object.hasOwn(cells, spec.assetId))
+              .map((spec) =>
+                provenanceFile(
+                  `$quality/${spec.assetId}`,
+                  qualityRecordPath(spec.quality!.outFile),
+                )),
           )
         : []
       await writeManagedArtifactBundle(companion, outputs, {

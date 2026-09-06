@@ -79,10 +79,18 @@ the committed workflow placeholder. Treat an unknown binding, duplicate target,
 reserved built-in name, missing file, or type mismatch as a manifest error.
 Changing an input value or image bytes makes only the affected asset stale.
 
+For `generator: frames`, `providerOptions.comfyui.frames.vary` names one custom
+binding and the matching `providerInputs` value is an ordered 2–64 item array.
+Keep `numImages: 1`. A nonzero `seedStep` also requires `style.seed` and a seed
+binding. Review, fetch, refine, approve, and pack the set as one asset. Reject a
+set when any frame changes grid dimensions, step, or phase; never keep only its
+good-looking members.
+
 Planning parses and hashes the workflow file without contacting ComfyUI. A
-workflow content change makes affected assets stale. The adapter supports only
-the `map` generator, PNG output from one node, 1–16 candidates, and dimensions
-from 16–4096px. Manifest `styleImages` and `palette` are unsupported; those
+workflow content change makes affected assets stale. The adapter supports
+`map` and ordered still-image `frames`, PNG output from one node, 1–16 map
+candidates, 2–64 frames, and dimensions from 16–4096px. Manifest `styleImages`
+and `palette` are unsupported; those
 shared controls belong in the workflow. Per-asset ControlNet and reference
 images belong in custom bindings plus `providerInputs`.
 

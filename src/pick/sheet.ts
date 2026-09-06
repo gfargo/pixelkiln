@@ -7,6 +7,9 @@ export interface SheetGroup {
   frameUrls: string[]
   width: number
   height: number
+  mode?: "candidates" | "frame-set"
+  frameLabels?: string[]
+  fps?: number
   revision?: {
     mode: "image-to-image" | "inpaint" | "outpaint"
     sourceAssetId: string
@@ -100,12 +103,17 @@ export function renderSheet(groups: SheetGroup[]): string {
       linear-gradient(45deg,#0000 25%,#7f7f7f22 25%,#7f7f7f22 75%,#0000 75%);
     background-size:12px 12px; background-position:0 0,6px 6px; }
   .frames { display:flex; flex-wrap:wrap; gap:10px; max-width:100%; overflow-x:auto; }
+  .loop { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; }
+  .loop img { image-rendering:pixelated; border:2px solid var(--accent); padding:7px;
+    background:var(--panel-deep); max-width:min(var(--preview),calc(100vw - 62px)); height:auto; }
+  .loop-copy { color:var(--dim); font-size:11px; max-width:32ch; }
   .cand { border:2px solid var(--line-strong); border-radius:0; padding:7px; background:var(--panel-deep);
     cursor:pointer; display:flex; flex:0 0 auto; flex-direction:column; align-items:center; gap:5px;
     position:relative; max-width:100%; }
   .cand:hover { border-color:var(--dim); }
   .cand.active { border-color:var(--dim); box-shadow:0 0 0 2px color-mix(in srgb, var(--dim) 20%, transparent); }
   .cand.sel { border-color:var(--ok); box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .cand.set-frame { cursor:pointer; }
   .cand img { image-rendering:pixelated; display:block;
     background-image:
       linear-gradient(45deg,#0000 25%,#7f7f7f22 25%,#7f7f7f22 75%,#0000 75%),
@@ -143,7 +151,8 @@ export function renderSheet(groups: SheetGroup[]): string {
 </header>
 <main id="root"></main>
 <footer>
-  Click a candidate to choose it; click again to unchoose. In the focused row,
+  Click a candidate to choose it, or any ordered frame to accept its whole set;
+  click again to undo. In the focused row,
   <kbd>←</kbd>/<kbd>→</kbd> browses every candidate and <kbd>Enter</kbd> chooses;
   <kbd>1</kbd>–<kbd>9</kbd> picks directly, <kbd>0</kbd> skips, and
   <kbd>↑</kbd>/<kbd>↓</kbd> changes rows. Unchosen rows stay in review — nothing is
@@ -191,12 +200,34 @@ GROUPS.forEach((g, gi) => {
     context.append(label, source);
     review.insertBefore(context, frames);
   }
+  if (g.mode === 'frame-set') {
+    const loop = document.createElement('div');
+    loop.className = 'loop';
+    const preview = document.createElement('img');
+    preview.src = g.frameUrls[0];
+    preview.width = displayWidth;
+    preview.height = displayHeight;
+    preview.alt = 'Animated frame-set preview';
+    const copy = document.createElement('div');
+    copy.className = 'loop-copy';
+    copy.textContent = g.frameUrls.length + ' ordered frames · ' + (g.fps || 12) +
+      ' fps. Accepting keeps every frame; one bad frame means leave the set unchosen.';
+    loop.append(preview, copy);
+    review.insertBefore(loop, frames);
+    let loopIndex = 0;
+    setInterval(() => {
+      loopIndex = (loopIndex + 1) % g.frameUrls.length;
+      preview.src = g.frameUrls[loopIndex];
+    }, Math.max(16, Math.round(1000 / (g.fps || 12))));
+  }
   g.frameUrls.forEach((url, i) => {
     const c = document.createElement('button');
     c.type = 'button';
-    c.className = 'cand';
+    c.className = 'cand' + (g.mode === 'frame-set' ? ' set-frame' : '');
     c.tabIndex = -1;
-    c.setAttribute('aria-label', 'Choose candidate ' + (i + 1) + ' of ' + g.frameUrls.length);
+    c.setAttribute('aria-label', g.mode === 'frame-set'
+      ? 'Accept ordered frame set from frame ' + (i + 1)
+      : 'Choose candidate ' + (i + 1) + ' of ' + g.frameUrls.length);
 
     const preview = document.createElement('img');
     preview.className = 'preview';
@@ -206,7 +237,8 @@ GROUPS.forEach((g, gi) => {
     preview.loading = 'lazy';
     const index = document.createElement('span');
     index.className = 'idx';
-    index.textContent = String(i + 1) + ' · ' + g.width + '×' + g.height + ' · ' + scaleLabel;
+    index.textContent = (g.frameLabels?.[i] || String(i + 1)) + ' · ' +
+      g.width + '×' + g.height + ' · ' + scaleLabel;
     c.append(preview, index);
     if (displayScale > 1 && largestSide <= 96) {
       const actual = document.createElement('img');
@@ -247,6 +279,14 @@ function activate(i, frames) {
 }
 
 function choose(gi, i, node, frames, groupEl) {
+  if (GROUPS[gi].mode === 'frame-set') {
+    const selected = picks.has(gi);
+    frames.querySelectorAll('.cand').forEach(n => n.classList.toggle('sel', !selected));
+    if (selected) { picks.delete(gi); groupEl.classList.remove('done'); }
+    else { picks.set(gi, 0); groupEl.classList.add('done'); }
+    refresh();
+    return;
+  }
   const current = picks.get(gi);
   frames.querySelectorAll('.cand').forEach(n => n.classList.remove('sel'));
   if (current === i) { picks.delete(gi); groupEl.classList.remove('done'); }

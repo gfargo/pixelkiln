@@ -23,12 +23,17 @@ import { colorDistance } from "./audit.ts"
 
 const execFileAsync = promisify(execFile)
 
+const PIXEL_ART_FIXER_MIN_SIDE = 16
+const PIXEL_ART_FIXER_MAX_PIXELS = 4_000_000
+
 export const PIXEL_ART_FIXER_URL = "https://github.com/Retro-Diffusion/pixel-art-fixer"
 export const PIXEL_ART_FIXER_REVISION = "ef376e57e1c272633ca2dbf5f29ec3fcf6596465"
 
 export interface PixelArtFixerDetection {
   stepX: number
   stepY: number
+  phaseX: number
+  phaseY: number
   columns: number
   rows: number
   consensus: string
@@ -75,11 +80,14 @@ export interface RefineRecordOptions {
     tool: "pixel-art-fixer"
     url: typeof PIXEL_ART_FIXER_URL
     revision: string
-    protocol: "python-api-v1" | "python-cli-v1"
+    protocol: "python-api-v1" | "python-core-v1" | "python-cli-v1"
     confidence: GridConfidence
     consensus: string
     stepX: number
     stepY: number
+    /** Detector phase in source pixels. Older v1 single-image records omit it. */
+    phaseX?: number
+    phaseY?: number
     sourceWidth: number
     sourceHeight: number
     nativeWidth: number
@@ -92,6 +100,19 @@ export interface RefineRecordOptions {
   }
   audit: RefineAudit
   review: PendingQualityReview | ApprovedQualityReview
+  /** Present when one approval covers an ordered, jointly verified frame set. */
+  frameSet?: {
+    fps: number
+    count: number
+    roles: string[]
+    frames: Array<{
+      role: string
+      sourceWidth: number
+      sourceHeight: number
+      detection: PixelArtFixerDetection
+      audit: RefineAudit
+    }>
+  }
 }
 
 export interface RefineOptions {
@@ -119,6 +140,36 @@ export interface RefineResult {
   audit: RefineAudit
 }
 
+export interface RefineFrameSetOptions {
+  sources: Array<{ role: string; path: string }>
+  /** Virtual .png stem used to derive numbered outputs and the shared record. */
+  output: string
+  fps: number
+  palette: string[]
+  fixerPython?: string
+  fixerCommand?: string
+  fixerArgsPrefix?: string[]
+  fixerRevision?: string
+  minGridConfidence?: GridConfidence
+  minTransparency?: number
+  force?: boolean
+}
+
+export interface RefineFrameSetResult {
+  sources: string[]
+  outputs: string[]
+  record: string
+  frames: Array<{
+    role: string
+    sourceWidth: number
+    sourceHeight: number
+    detection: PixelArtFixerDetection
+    audit: RefineAudit
+  }>
+  palette: string[]
+  audit: RefineAudit
+}
+
 export interface QualityCheck {
   safe: boolean
   current: boolean
@@ -127,6 +178,8 @@ export interface QualityCheck {
   record: string
   source: string
   output: string
+  sources: string[]
+  outputs: string[]
   options: RefineRecordOptions
   reasons: string[]
 }
@@ -193,10 +246,14 @@ function firstJsonObject(text: string): unknown {
 
 const PYTHON_FIXER_BRIDGE = [
   "import json, sys",
-  "from pixelfixer.api import process",
-  "result = process(open(sys.argv[1], 'rb').read(), mode='full')",
-  "open(sys.argv[2], 'wb').write(result.pop('png'))",
-  "print(json.dumps(result))",
+  "from PIL import Image",
+  "from pixelfixer.api import _load",
+  "from pixelfixer.core import detect",
+  "from pixelfixer.reconstruct import two_stage_pack",
+  "rgba = _load(open(sys.argv[1], 'rb').read())",
+  "result = detect(rgba, mode='full')",
+  "Image.fromarray(two_stage_pack(rgba, result['cols'], result['rows'])).save(sys.argv[2], 'PNG')",
+  "print(json.dumps({key: result[key] for key in ('cols', 'rows', 'step_x', 'step_y', 'phase_x', 'phase_y', 'consensus')}))",
 ].join("; ")
 
 function parseDetection(raw: unknown): PixelArtFixerDetection {
@@ -204,12 +261,16 @@ function parseDetection(raw: unknown): PixelArtFixerDetection {
   const value = raw as Record<string, unknown>
   const stepX = Number(value.step_x)
   const stepY = Number(value.step_y)
+  const phaseX = Number(value.phase_x)
+  const phaseY = Number(value.phase_y)
   const columns = Number(value.cols)
   const rows = Number(value.rows)
   const consensus = value.consensus
   if (
     !Number.isFinite(stepX) || stepX <= 0 ||
     !Number.isFinite(stepY) || stepY <= 0 ||
+    !Number.isFinite(phaseX) || phaseX < 0 || phaseX > stepX ||
+    !Number.isFinite(phaseY) || phaseY < 0 || phaseY > stepY ||
     !Number.isInteger(columns) || columns < 1 ||
     !Number.isInteger(rows) || rows < 1 ||
     typeof consensus !== "string" || !consensus
@@ -219,6 +280,8 @@ function parseDetection(raw: unknown): PixelArtFixerDetection {
   return {
     stepX,
     stepY,
+    phaseX,
+    phaseY,
     columns,
     rows,
     consensus,
@@ -348,6 +411,62 @@ function isGridConfidence(value: unknown): value is GridConfidence {
   return value === "low" || value === "medium" || value === "high"
 }
 
+function isDetection(value: unknown): value is PixelArtFixerDetection {
+  if (!value || typeof value !== "object") return false
+  const detection = value as Partial<PixelArtFixerDetection>
+  return (
+    Number.isFinite(detection.stepX) && detection.stepX! > 0 &&
+    Number.isFinite(detection.stepY) && detection.stepY! > 0 &&
+    Number.isFinite(detection.phaseX) && detection.phaseX! >= 0 &&
+      detection.phaseX! <= detection.stepX! &&
+    Number.isFinite(detection.phaseY) && detection.phaseY! >= 0 &&
+      detection.phaseY! <= detection.stepY! &&
+    Number.isInteger(detection.columns) && detection.columns! > 0 &&
+    Number.isInteger(detection.rows) && detection.rows! > 0 &&
+    typeof detection.consensus === "string" && !!detection.consensus &&
+    isGridConfidence(detection.confidence)
+  )
+}
+
+function isAudit(value: unknown): value is RefineAudit {
+  if (!value || typeof value !== "object") return false
+  const audit = value as Partial<RefineAudit>
+  return (
+    Number.isInteger(audit.width) && audit.width! > 0 &&
+    Number.isInteger(audit.height) && audit.height! > 0 &&
+    Number.isInteger(audit.colorCount) && audit.colorCount! >= 0 &&
+    typeof audit.paletteConformant === "boolean" &&
+    Number.isFinite(audit.transparency) && audit.transparency! >= 0 && audit.transparency! <= 1 &&
+    !!audit.thresholds &&
+    Number.isInteger(audit.thresholds.maxColors) && audit.thresholds.maxColors > 0 &&
+    (audit.thresholds.minTransparency === null ||
+      (Number.isFinite(audit.thresholds.minTransparency) &&
+        audit.thresholds.minTransparency >= 0 && audit.thresholds.minTransparency <= 1)) &&
+    isGridConfidence(audit.thresholds.minGridConfidence) &&
+    typeof audit.safe === "boolean" &&
+    Array.isArray(audit.reasons) && audit.reasons.every((reason) => typeof reason === "string")
+  )
+}
+
+function validFrameSet(value: unknown): value is NonNullable<RefineRecordOptions["frameSet"]> {
+  if (!value || typeof value !== "object") return false
+  const frameSet = value as NonNullable<RefineRecordOptions["frameSet"]>
+  return (
+    Number.isInteger(frameSet.fps) && frameSet.fps >= 1 && frameSet.fps <= 60 &&
+    Number.isInteger(frameSet.count) && frameSet.count >= 2 && frameSet.count <= 64 &&
+    Array.isArray(frameSet.roles) && frameSet.roles.length === frameSet.count &&
+    new Set(frameSet.roles).size === frameSet.roles.length &&
+    frameSet.roles.every((role) => typeof role === "string" && !!role) &&
+    Array.isArray(frameSet.frames) && frameSet.frames.length === frameSet.count &&
+    frameSet.frames.every((frame, index) =>
+      frame.role === frameSet.roles[index] &&
+      Number.isInteger(frame.sourceWidth) && frame.sourceWidth > 0 &&
+      Number.isInteger(frame.sourceHeight) && frame.sourceHeight > 0 &&
+      isDetection(frame.detection) && isAudit(frame.audit),
+    )
+  )
+}
+
 function parseRecordOptions(manifest: ArtifactBundleManifest, record: string): RefineRecordOptions {
   if (manifest.kind !== "refine") throw new Error(`${record} is not a PixelKiln refinement record.`)
   const raw = manifest.options
@@ -361,21 +480,57 @@ function parseRecordOptions(manifest: ArtifactBundleManifest, record: string): R
     options.schema !== "pixelkiln-quality" || options.version !== 1 ||
     !grid || grid.tool !== "pixel-art-fixer" || grid.url !== PIXEL_ART_FIXER_URL ||
     typeof grid.revision !== "string" || !grid.revision ||
-    (grid.protocol !== "python-api-v1" && grid.protocol !== "python-cli-v1") ||
+    (grid.protocol !== "python-api-v1" && grid.protocol !== "python-core-v1" &&
+      grid.protocol !== "python-cli-v1") ||
     !isGridConfidence(grid.confidence) || typeof grid.consensus !== "string" ||
     !Number.isFinite(grid.stepX) || !Number.isFinite(grid.stepY) ||
+    ((grid.phaseX !== undefined || grid.phaseY !== undefined || options.frameSet !== undefined) &&
+      (!Number.isFinite(grid.phaseX) || !Number.isFinite(grid.phaseY))) ||
     !Number.isInteger(grid.sourceWidth) || !Number.isInteger(grid.sourceHeight) ||
     !Number.isInteger(grid.nativeWidth) || !Number.isInteger(grid.nativeHeight) ||
     !palette || !Array.isArray(palette.colors) || palette.colors.length < 2 ||
     !palette.colors.every((color) => typeof color === "string") ||
     palette.dither !== "none" || palette.distance !== "redmean" ||
-    !audit || typeof audit.safe !== "boolean" ||
-    typeof audit.paletteConformant !== "boolean" || !Array.isArray(audit.reasons) ||
-    !review || (review.status !== "pending" && review.status !== "approved")
+    !isAudit(audit) ||
+    !review || (review.status !== "pending" && review.status !== "approved") ||
+    (options.frameSet !== undefined && !validFrameSet(options.frameSet))
   ) {
     throw new Error(`${record} has invalid quality metadata.`)
   }
   return options as RefineRecordOptions
+}
+
+function safeFrameRole(role: string, index: number): string {
+  const safe = role.trim().replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "")
+  return safe || `frame-${String(index).padStart(2, "0")}`
+}
+
+/** Derive a stable frame PNG beside a quality profile's virtual output stem. */
+export function qualityFrameOutputPath(output: string, role: string, index: number): string {
+  if (!/\.png$/i.test(output)) throw new Error("Refined frame-set output must use a .png stem.")
+  return output.replace(/\.png$/i, `-${safeFrameRole(role, index)}.png`)
+}
+
+function sameFrameGrid(
+  first: RefineFrameSetResult["frames"][number],
+  next: RefineFrameSetResult["frames"][number],
+): boolean {
+  const phaseMatches = (a: number, b: number, step: number) => {
+    const distance = Math.abs(a - b) % step
+    return Math.min(distance, step - distance) <= 0.01
+  }
+  return (
+    next.detection.stepX === first.detection.stepX &&
+    next.detection.stepY === first.detection.stepY &&
+    next.detection.columns === first.detection.columns &&
+    next.detection.rows === first.detection.rows &&
+    phaseMatches(next.detection.phaseX, first.detection.phaseX, first.detection.stepX) &&
+    phaseMatches(next.detection.phaseY, first.detection.phaseY, first.detection.stepY) &&
+    next.audit.width === first.audit.width &&
+    next.audit.height === first.audit.height &&
+    next.sourceWidth === first.sourceWidth &&
+    next.sourceHeight === first.sourceHeight
+  )
 }
 
 /** Recover an image's native grid, enforce its final palette, and write an auditable bundle. */
@@ -398,9 +553,27 @@ export async function refineAsset(options: RefineOptions): Promise<RefineResult>
     throw new Error(`Cannot read refinement source ${source}: ${message(error)}`, { cause: error })
   }
 
+  const compatibilityCommand = options.fixerCommand
+  if (!compatibilityCommand) {
+    if (
+      sourcePng.width < PIXEL_ART_FIXER_MIN_SIDE ||
+      sourcePng.height < PIXEL_ART_FIXER_MIN_SIDE
+    ) {
+      throw new Error(
+        `Pixel Art Fixer requires each source side to be at least ` +
+          `${PIXEL_ART_FIXER_MIN_SIDE}px; got ${sourcePng.width}x${sourcePng.height}.`,
+      )
+    }
+    if (sourcePng.width * sourcePng.height > PIXEL_ART_FIXER_MAX_PIXELS) {
+      throw new Error(
+        `Pixel Art Fixer accepts at most ${PIXEL_ART_FIXER_MAX_PIXELS.toLocaleString("en-US")} ` +
+          `source pixels; got ${sourcePng.width}x${sourcePng.height}.`,
+      )
+    }
+  }
+
   const temp = await mkdtemp(path.join(tmpdir(), "pixelkiln-refine-"))
   const recovered = path.join(temp, "native.png")
-  const compatibilityCommand = options.fixerCommand
   const fixerCommand = compatibilityCommand ?? options.fixerPython ??
     process.env.PIXELKILN_PIXEL_FIXER_PYTHON ?? "python3"
   const args = compatibilityCommand
@@ -457,11 +630,13 @@ export async function refineAsset(options: RefineOptions): Promise<RefineResult>
         tool: "pixel-art-fixer",
         url: PIXEL_ART_FIXER_URL,
         revision: options.fixerRevision ?? PIXEL_ART_FIXER_REVISION,
-        protocol: compatibilityCommand ? "python-cli-v1" : "python-api-v1",
+        protocol: compatibilityCommand ? "python-cli-v1" : "python-core-v1",
         confidence: detection.confidence,
         consensus: detection.consensus,
         stepX: detection.stepX,
         stepY: detection.stepY,
+        phaseX: detection.phaseX,
+        phaseY: detection.phaseY,
         sourceWidth: sourcePng.width,
         sourceHeight: sourcePng.height,
         nativeWidth: quantized.width,
@@ -483,24 +658,156 @@ export async function refineAsset(options: RefineOptions): Promise<RefineResult>
   }
 }
 
+/** Refine ordered still frames as one palette-locked, atomically reviewed artifact. */
+export async function refineFrameSet(options: RefineFrameSetOptions): Promise<RefineFrameSetResult> {
+  if (!Number.isInteger(options.fps) || options.fps < 1 || options.fps > 60) {
+    throw new Error("Frame-set fps must be an integer between 1 and 60.")
+  }
+  if (options.sources.length < 2 || options.sources.length > 64) {
+    throw new Error(`A frame set must contain 2–64 ordered sources; got ${options.sources.length}.`)
+  }
+  const roles = options.sources.map((source) => source.role)
+  if (roles.some((role) => !role.trim()) || new Set(roles).size !== roles.length) {
+    throw new Error("Frame-set roles must be non-empty and unique.")
+  }
+
+  const output = path.resolve(options.output)
+  const record = path.resolve(qualityRecordPath(output))
+  const palette = normalizeRefinementPalette(options.palette)
+  const finalOutputs = options.sources.map((source, index) =>
+    qualityFrameOutputPath(output, source.role, index))
+  if (new Set(finalOutputs).size !== finalOutputs.length) {
+    throw new Error("Frame-set roles resolve to duplicate output filenames.")
+  }
+  const sourceSet = new Set(options.sources.map((source) => path.resolve(source.path)))
+  if (finalOutputs.some((file) => sourceSet.has(file))) {
+    throw new Error("Frame-set refinement sources and outputs must be different files.")
+  }
+  const temp = await mkdtemp(path.join(tmpdir(), "pixelkiln-refine-frames-"))
+  try {
+    const frames: RefineFrameSetResult["frames"] = []
+    const outputs: Array<{ path: string; data: Buffer }> = []
+    const provenanceSources: ArtifactSource[] = []
+    const sourcePaths: string[] = []
+    let firstOptions: RefineRecordOptions | null = null
+
+    for (const [index, sourceEntry] of options.sources.entries()) {
+      const source = path.resolve(sourceEntry.path)
+      const temporaryOutput = path.join(temp, `${String(index).padStart(2, "0")}.png`)
+      const refined = await refineAsset({
+        source,
+        output: temporaryOutput,
+        palette,
+        fixerPython: options.fixerPython,
+        fixerCommand: options.fixerCommand,
+        fixerArgsPrefix: options.fixerArgsPrefix,
+        fixerRevision: options.fixerRevision,
+        minGridConfidence: options.minGridConfidence,
+        minTransparency: options.minTransparency,
+        force: true,
+      })
+      const temporaryRecord = await readArtifactBundleManifest(refined.record)
+      const frameOptions = parseRecordOptions(temporaryRecord, refined.record)
+      firstOptions ??= frameOptions
+      frames.push({
+        role: sourceEntry.role,
+        sourceWidth: frameOptions.nativeGrid.sourceWidth,
+        sourceHeight: frameOptions.nativeGrid.sourceHeight,
+        detection: refined.detection,
+        audit: refined.audit,
+      })
+      sourcePaths.push(source)
+      provenanceSources.push({
+        id: sourceEntry.role,
+        path: source,
+        sha256: await sha256File(source),
+        included: true,
+      })
+      outputs.push({
+        path: finalOutputs[index]!,
+        data: await readFile(temporaryOutput),
+      })
+    }
+
+    const first = frames[0]!
+    const mismatch = frames.find((frame) => !sameFrameGrid(first, frame))
+    if (mismatch) {
+      throw new Error(
+        `Frame-set native grid mismatch: ${first.role} detected ` +
+          `${first.detection.columns}x${first.detection.rows} at ` +
+          `${first.detection.stepX}x${first.detection.stepY}, phase ` +
+          `${first.detection.phaseX},${first.detection.phaseY}; but ${mismatch.role} detected ` +
+          `${mismatch.detection.columns}x${mismatch.detection.rows} at ` +
+          `${mismatch.detection.stepX}x${mismatch.detection.stepY}, phase ` +
+          `${mismatch.detection.phaseX},${mismatch.detection.phaseY}.`,
+      )
+    }
+
+    const reasons = frames.flatMap((frame) =>
+      frame.audit.reasons.map((reason) => `${frame.role}: ${reason}`),
+    )
+    const audit: RefineAudit = {
+      width: first.audit.width,
+      height: first.audit.height,
+      colorCount: Math.max(...frames.map((frame) => frame.audit.colorCount)),
+      paletteConformant: frames.every((frame) => frame.audit.paletteConformant),
+      transparency: Math.min(...frames.map((frame) => frame.audit.transparency)),
+      thresholds: first.audit.thresholds,
+      safe: frames.every((frame) => frame.audit.safe) && reasons.length === 0,
+      reasons,
+    }
+    const baseOptions = firstOptions!
+    const recordOptions: RefineRecordOptions = {
+      ...baseOptions,
+      audit,
+      review: { status: "pending" },
+      frameSet: {
+        fps: options.fps,
+        count: frames.length,
+        roles,
+        frames,
+      },
+    }
+    await writeManagedArtifactBundle(
+      record,
+      outputs,
+      { kind: "refine", sources: provenanceSources, options: recordOptions },
+      { force: options.force },
+    )
+    return {
+      sources: sourcePaths,
+      outputs: outputs.map((item) => path.resolve(item.path)),
+      record,
+      frames,
+      palette,
+      audit,
+    }
+  } finally {
+    await rm(temp, { recursive: true, force: true })
+  }
+}
+
 /** Verify bytes, policy, audit, and human approval without rebuilding the image. */
 export async function checkQualityRecord(recordPath: string): Promise<QualityCheck> {
   const record = path.resolve(recordPath)
   const manifest = await readArtifactBundleManifest(record)
   const options = parseRecordOptions(manifest, record)
   const verification = await verifyArtifactBundle(record)
-  const source = manifest.sources.length === 1
-    ? path.resolve(path.dirname(record), manifest.sources[0]!.path)
-    : ""
-  const output = manifest.outputs.length === 1
-    ? path.resolve(path.dirname(record), manifest.outputs[0]!.path)
-    : ""
+  const sources = manifest.sources.map((source) => path.resolve(path.dirname(record), source.path))
+  const outputs = manifest.outputs.map((output) => path.resolve(path.dirname(record), output.path))
+  const source = sources[0] ?? ""
+  const output = outputs[0] ?? ""
+  const expectedCount = options.frameSet?.count ?? 1
   const reasons: string[] = []
   if (!verification.fingerprintValid) reasons.push("quality record fingerprint changed")
   for (const source of verification.changedSources) reasons.push(`source changed: ${source}`)
   for (const changed of verification.changedOutputs) reasons.push(`output changed: ${changed}`)
-  if (manifest.sources.length !== 1) reasons.push("quality record must contain exactly one source")
-  if (manifest.outputs.length !== 1) reasons.push("quality record must contain exactly one output")
+  if (manifest.sources.length !== expectedCount) {
+    reasons.push(`quality record must contain exactly ${expectedCount} source(s)`)
+  }
+  if (manifest.outputs.length !== expectedCount) {
+    reasons.push(`quality record must contain exactly ${expectedCount} output(s)`)
+  }
   if (!options.audit.safe) reasons.push(...options.audit.reasons.map((reason) => `audit: ${reason}`))
   if (options.review.status !== "approved") reasons.push("human 1× review is pending")
   return {
@@ -511,6 +818,8 @@ export async function checkQualityRecord(recordPath: string): Promise<QualityChe
     record,
     source,
     output,
+    sources,
+    outputs,
     options,
     reasons,
   }
@@ -538,13 +847,18 @@ export async function approveQualityRecord(
   if (!options.audit.safe) {
     throw new Error(`Cannot approve a failed quality audit: ${options.audit.reasons.join("; ")}`)
   }
-  if (manifest.sources.length !== 1 || manifest.outputs.length !== 1) {
-    throw new Error("A refinement record must contain exactly one source and one output.")
+  const expectedCount = options.frameSet?.count ?? 1
+  if (manifest.sources.length !== expectedCount || manifest.outputs.length !== expectedCount) {
+    throw new Error(
+      `A refinement record must contain exactly ${expectedCount} source(s) and output(s).`,
+    )
   }
 
   const root = path.dirname(record)
-  const outputPath = path.resolve(root, manifest.outputs[0]!.path)
-  const output = await readFile(outputPath)
+  const outputs = await Promise.all(manifest.outputs.map(async (entry) => {
+    const outputPath = path.resolve(root, entry.path)
+    return { path: outputPath, data: await readFile(outputPath) }
+  }))
   const sources: ArtifactSource[] = manifest.sources.map((source) => ({
     ...source,
     path: path.resolve(root, source.path),
@@ -567,7 +881,7 @@ export async function approveQualityRecord(
   }
   await writeManagedArtifactBundle(
     record,
-    [{ path: outputPath, data: output }],
+    outputs,
     { kind: "refine", sources, options: approved },
   )
   return checkQualityRecord(record)

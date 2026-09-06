@@ -1,8 +1,8 @@
 # Set up ComfyUI
 
 PixelKiln can run a committed ComfyUI workflow on a self-hosted server. This
-adapter is experimental. It supports still-image `map` jobs, one or more review
-candidates, controlled image-to-image/inpaint inputs, arbitrary per-asset
+adapter is experimental. It supports still-image `map` jobs, ordered `frames`
+sets, one or more review candidates, controlled image-to-image/inpaint inputs, arbitrary per-asset
 workflow bindings, content-addressed input uploads, local provenance, and
 cache-backed recovery. A core-node Stable
 Diffusion 1.5 workflow has passed single-image generation and a four-candidate
@@ -162,6 +162,75 @@ reserved built-in names, missing files, and unsupported image formats during
 offline resolution. ComfyUI performs the final graph and custom-node validation
 when `/prompt` is submitted. Keep `providerInputs` names stable: values are part
 of the asset spec hash, so changing one correctly makes that asset stale.
+
+## Generate an ordered frame set
+
+Use `frames` when one asset is a short sequence of still renders controlled by
+one changing workflow input. This is intended for pose images, expression
+labels, or another explicit per-frame control—not video diffusion.
+
+```jsonc
+{
+  "styles": {
+    "character-motion": {
+      "generator": "frames",
+      "outDir": "assets/generated/motion",
+      "seed": 1200,
+      "quality": {
+        "outDir": "assets/final/motion",
+        "palette": ["#161321", "#49374f", "#c16c5b", "#f3d6b3"],
+        "fps": 12
+      },
+      "providerOptions": {
+        "comfyui": {
+          "workflowFile": "workflows/pose-api.json",
+          "outputNodeId": "9",
+          "numImages": 1,
+          "frames": { "vary": "pose", "seedStep": 0 },
+          "bindings": {
+            "prompt": { "nodeId": "6", "input": "text" },
+            "width": { "nodeId": "5", "input": "width" },
+            "height": { "nodeId": "5", "input": "height" },
+            "seed": { "nodeId": "3", "input": "seed" },
+            "pose": { "nodeId": "19", "input": "image" }
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "hero-idle": {
+      "prompt": "the same hero breathing in place",
+      "width": 832,
+      "height": 1216,
+      "providerInputs": {
+        "pose": ["poses/idle-00.png", "poses/idle-01.png", "poses/idle-02.png"]
+      }
+    }
+  }
+}
+```
+
+`frames.vary` names one custom binding. Its asset value must be an ordered
+array of 2–64 matching scalars or manifest-relative PNG/JPEG paths. Every other
+binding remains fixed. `seedStep` defaults to zero; a nonzero value uses
+`style.seed + frameIndex × seedStep` and therefore requires a seed binding.
+The frame count comes from the array, so it cannot disagree with a separate
+count field.
+
+PixelKiln submits one still workflow per value but tracks the result as one
+asset. A partial completion remains in progress. The review page shows an
+animated loop and ordered strip; accepting any frame accepts the whole set.
+Fetch writes `hero-idle-frame-00.png`, `hero-idle-frame-01.png`, and so on.
+`pack` already turns those role-stable files into a sprite sheet and atlas.
+
+With a quality profile, `refine` applies one palette to every frame and writes
+one approval record for the set. It rejects the entire set when source size,
+native dimensions, detected pixel step, or detected grid phase differs. The
+pinned Pixel Art Fixer reports phase in source-pixel coordinates; PixelKiln
+compares it modulo the shared step. A passing grid check still cannot judge
+character identity, motion arcs, foot sliding, or loop timing. Review the
+animation at 1× before recording approval.
 
 ## Controlled revisions
 
@@ -523,6 +592,8 @@ mixed manifest:
 | `workflowFile` | API-format workflow JSON, relative to the manifest. |
 | `outputNodeId` | Node whose completed history contains the final `images` array. |
 | `numImages` | Expected candidates, from 1 to 16. Defaults to 1. |
+| `frames.vary` | Custom binding whose asset value is the ordered 2–64 item frame sequence. Requires `generator: frames`. |
+| `frames.seedStep` | Optional integer added per frame to `style.seed`. Defaults to 0. |
 | `bindings.prompt` | Workflow input replaced with the resolved PixelKiln prompt. |
 | `bindings.width` / `height` | Inputs replaced with the asset dimensions. |
 | `bindings.batchSize` | Input replaced with `numImages`. |
@@ -530,9 +601,9 @@ mixed manifest:
 | `bindings.<name>` | Project-defined input supplied by the asset's matching `providerInputs.<name>`. Core `LoadImage.image` and `LoadImageMask.image` targets upload a manifest-relative PNG/JPEG; other targets receive a scalar. |
 
 The `quality` block is not a ComfyUI request option. It describes PixelKiln's
-offline final-art gate and works the same way with any supported single-image
-provider. Its output directory, palette, confidence threshold, optional
-transparency floor, and fixer revision do not affect generation identity or
+offline final-art gate for ordinary stills and atomic ComfyUI frame sets. Its
+output directory, palette, confidence threshold, optional transparency floor,
+fixer revision, and frame playback rate do not affect generation identity or
 cost. See [Manifest quality profiles](MANIFEST.md#quality-profiles).
 
 PixelKiln refuses missing nodes and inputs during the offline plan. It also
@@ -553,7 +624,8 @@ zero budget. That means there is no metered provider charge. It does not claim
 that GPU time, electricity, hosted hardware, or model licenses are free.
 
 When `numImages` is greater than one, `pixelkiln pick` opens the same local
-candidate review used by hosted providers. The lockfile stores the ComfyUI
+candidate review used by hosted providers. A `frames` job always opens an
+ordered, animated whole-set review. The lockfile stores the ComfyUI
 prompt ID, output node, workflow hash, and selected output. Durable source
 references use `comfyui://` rather than embedding a workstation hostname.
 `pixelkiln restore` first uses the validated local content cache, then resolves
@@ -576,7 +648,7 @@ ComfyUI raster.
 
 ## Current boundary
 
-- Supported generator: `map`.
+- Supported generators: `map` and frame-by-frame still generation with `frames`.
 - Supported output: PNG images returned by one output node.
 - Supported dimensions: 16–4096px per edge, subject to the workflow, model,
   sampler, VRAM, and node constraints.
@@ -585,9 +657,11 @@ ComfyUI raster.
 - PixelKiln `styleImages` and `palette` are rejected. Put image references,
   palette, and shared controls inside the committed workflow. Use custom
   bindings plus `providerInputs` for per-asset ControlNet or reference images.
-- Video, animation, multiple output nodes, arbitrary binary uploads, and
-  ComfyUI Cloud authentication are not implemented. Custom image bindings and
-  revision inputs support manifest-owned PNG/JPEG uploads.
+- Video models, persisted GIF/APNG preview files, multiple output nodes,
+  arbitrary binary uploads, and ComfyUI Cloud authentication are not
+  implemented. `frames` is a set of ordinary still prompts, not temporal
+  sampling. Custom image bindings and revision inputs support manifest-owned
+  PNG/JPEG uploads.
 - PixelKiln does not install checkpoints or custom nodes. Every machine running
   the project must provide the models and nodes named by the workflow. The
   benchmark workflows use only core ComfyUI nodes.
@@ -617,6 +691,11 @@ before assigning it a production batch.
 - **Wrong image count:** make the bound batch input and `numImages` describe the
   same final output count. PixelKiln fails the job rather than recording a
   partial candidate set.
+- **Frame set stays in review:** this is deliberate. Accept or reject the
+  ordered set as a unit; PixelKiln never keeps a partial loop.
+- **Frame refinement reports a grid mismatch:** inspect the source renders at
+  integer zoom. Do not resize one frame to hide a step/phase change; fix the
+  workflow controls and regenerate the set.
 - **Out of memory:** lower asset dimensions or batch size, or change the
   workflow. PixelKiln's 4096px ceiling is a schema limit, not a promise that a
   particular machine can render that canvas.
