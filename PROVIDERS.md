@@ -85,7 +85,7 @@ prompt, size, batch, and optional seed inputs PixelKiln may replace.
 | PixelKiln generator | `map` stills and atomic `frames` sets |
 | Output | One PNG output node: 1–16 map candidates or 2–64 ordered still frames |
 | Revision input | `image-to-image`, `inpaint`, and user-authored `outpaint` graphs; hashed parent/mask uploads and source comparison are covered. The bundled img2img graph passed a three-strength live smoke but missed the requested winter treatment and lost alpha. |
-| Cost model | `0 free`; local compute and hosting are outside PixelKiln's estimate |
+| Cost model | No provider charge; local compute and hosting are outside PixelKiln's estimate |
 | Reproducibility | Workflow content is hashed; model files, custom-node versions, and runtime settings must still be managed outside PixelKiln |
 | Account lifecycle | Read-only connectivity check; no balance, remote object listing, tagging, or purge |
 | Confidence | Live map generation, four-candidate review, cache-only restore, and refinement on Apple MPS; deterministic coverage for frame submission, ordered review/fetch, shared-grid and palette gating, approval, and packing |

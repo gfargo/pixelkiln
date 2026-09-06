@@ -15,7 +15,7 @@ export default function Home() {
         name: "PixelKiln",
         url: absoluteUrl("/"),
         description:
-          "Plan costs, review candidates, gate derived art, recover paid work, and package pixel art with recorded hashes.",
+          "Plan costs, review candidates and frame sets, gate derived art, recover paid work, and package pixel art with recorded hashes.",
       },
       {
         "@type": "SoftwareSourceCode",
@@ -27,7 +27,7 @@ export default function Home() {
         programmingLanguage: "TypeScript",
         runtimePlatform: "Node.js",
         description:
-          "A build pipeline that plans provider costs, records human choices, verifies derived art, restores paid work, and packages pixel art.",
+          "A build pipeline that plans provider costs, records human choices, verifies derived art and frame sets, restores paid work, and packages pixel art.",
       },
     ],
   };
@@ -148,11 +148,11 @@ export default function Home() {
         <section className="proof-strip" aria-label="PixelKiln at a glance">
         <div className="shell proof-grid">
           <div>
-            <strong>05</strong>
-            <span>provider routes</span>
+            <strong>04</strong>
+            <span>generation providers</span>
           </div>
           <div>
-            <strong>22</strong>
+            <strong>27</strong>
             <span>composable commands</span>
           </div>
           <div>
@@ -226,10 +226,11 @@ export default function Home() {
                 PixelLab has live coverage for generation and account recovery.
                 Retro Diffusion has live-tested single-candidate stills. ComfyUI
                 has passed local generation, candidate review, cache recovery,
-                and grid refinement. Its tested SDXL graph still needs manual
-                cleanup and art review. Scenario&apos;s BFL profile has passed paid
-                single- and two-output generation, human review, and durable
-                recovery.
+                and grid refinement. Atomic frame sets have automated coverage,
+                but still need a live pose recipe and benchmark. The tested SDXL
+                graph needs manual cleanup and art review. Scenario&apos;s BFL profile
+                has passed paid single- and two-output generation, human review,
+                and durable recovery.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
@@ -280,9 +281,9 @@ export default function Home() {
               Scenario shows its first paid integration smoke, not a comparable
               environment benchmark. A manifest <code>style.quality</code> profile
               can apply the same offline palette and approval gate after any
-              supported single-image provider. ComfyUI is also the first
-              adapter for controlled revisions: parent and mask bytes are
-              hashed before a workflow can run.
+              supported single-image provider or an atomic ComfyUI frame set.
+              ComfyUI is also the first adapter for controlled revisions:
+              parent and mask bytes are hashed before a workflow can run.
             </p>
           </div>
 
@@ -427,10 +428,10 @@ export default function Home() {
                 drawing. Build large scenes from small parts that pass review.
               </p>
               <dl>
-                <div><dt>PixelKiln cost</dt><dd>0 free; hardware is external</dd></div>
+                <div><dt>Provider charge</dt><dd>None; hardware cost is external</dd></div>
                 <div><dt>Quality target</dt><dd>48–128px native per part</dd></div>
-                <div><dt>Best fit</dt><dd>Local composition, controlled revisions, and custom graphs</dd></div>
-                <div><dt>Readiness</dt><dd>Refinement automated; art review required</dd></div>
+                <div><dt>Best fit</dt><dd>Local composition, revisions, frame experiments, and custom graphs</dd></div>
+                <div><dt>Readiness</dt><dd>Still workflow live-tested; frame workflow awaits a live benchmark</dd></div>
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_comfyui_recipe" section="provider_showcase" href="/docs/recipes">
@@ -599,7 +600,7 @@ export default function Home() {
                 <p className="eyebrow">Different routes, different bills</p>
                 <h2>Use the capability you need.<br />Pay only for that.</h2>
               </div>
-              <p className="section-deck">Measured PixelLab costs vary by up to 40×. Retro Diffusion uses USD pricing. PixelKiln makes generator choice explicit and never combines unlike cost units.</p>
+              <p className="section-deck">Measured PixelLab costs vary by up to 40×. Retro Diffusion uses USD pricing. Self-hosted ComfyUI has no provider charge. PixelKiln keeps those units separate.</p>
             </div>
             <div className="generator-table">
               <div className="generator-row header"><span>Generator</span><span>Best for</span><span>Measured cost</span></div>
@@ -607,6 +608,8 @@ export default function Home() {
               <div className="generator-row"><strong>pixflux</strong><span>Exact closed palettes</span><span><i style={{ width: "2.5%" }} /> 1 gen</span></div>
               <div className="generator-row"><strong>1dir</strong><span>References and candidate variety</span><span><i style={{ width: "72%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 20–40 gen</span></div>
+              <div className="generator-row"><strong>animation</strong><span>Retro Diffusion GIFs and sprite sheets</span><span>USD quote</span></div>
+              <div className="generator-row"><strong>frames</strong><span>Controlled ComfyUI still sequences</span><span>0 provider units</span></div>
             </div>
             <div className="review-links">
               <TrackedLink className="text-link" id="generator_compare" section="generator" href="/docs/generators">

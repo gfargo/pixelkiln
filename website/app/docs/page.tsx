@@ -32,7 +32,7 @@ export default function DocsIndex() {
           <p>
             These pages render from the Markdown shipped with PixelKiln. Start
             with the everyday workflow, or open the setup guide for PixelLab,
-            Retro Diffusion, or ComfyUI.
+            Retro Diffusion, ComfyUI, or Scenario.
           </p>
         </div>
 

@@ -97,8 +97,10 @@ Open the local candidate-review UI for jobs with alternatives. The page keeps
 native aspect ratios, uses exact integer zoom for small art, fits large work,
 and centers the decision surface on wide displays. A revision row shows its
 parent source beside the new candidates. A ComfyUI frame set appears as an
-animated ordered strip and is accepted or left unresolved as a unit. Arrow keys navigate, Enter
-selects, 1–9 choose directly, and 0 leaves a row unresolved. Only rows submitted
+animated ordered strip and is accepted or left unresolved as a unit. Its preview
+can be paused, starts paused when reduced motion is enabled, and stops while it
+is offscreen. Arrow keys navigate, Enter selects, 1–9 choose directly, and 0
+leaves a row unresolved. Only rows submitted
 with **Apply selections** are written to the lockfile. Closing the window applies
 nothing. See the [Getting started guide](GETTING_STARTED.md#start-a-new-project)
 for a screenshot of the interface.

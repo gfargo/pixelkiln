@@ -121,7 +121,7 @@ Measured on one 64×64 riso badge with an exact 4-colour palette
 | `resize` → 32px | 38 | 0.57 | cream+rust came back **gold** |
 | `image-to-pixelart` → 32px | **455** | **0.00** | opaque grey background |
 
-**`remove-background` is a de-fringe pass, not just a matte.** It removed the
+**`remove-background` also de-fringes.** It removed the
 scattered sage-green speckles around the badge outline and left the three real
 inks untouched. Colour count went *down*, transparency went *up*. It is the one
 utility safe to run on palette-locked art.

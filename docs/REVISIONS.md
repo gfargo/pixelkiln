@@ -66,8 +66,8 @@ An inpaint revision also declares a manifest-relative mask:
 ```
 
 The mask must be a readable PNG. When the parent exists during planning, the
-mask must have the same dimensions. Mask meaning—white edits or black
-edits—belongs to the ComfyUI graph, so test the graph in ComfyUI before running
+mask must have the same dimensions. The ComfyUI graph decides whether white or
+black pixels mark edits, so test the graph in ComfyUI before running
 it through PixelKiln. The mask bytes and parent bytes both participate in the
 child spec hash.
 

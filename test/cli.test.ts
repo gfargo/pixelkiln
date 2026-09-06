@@ -409,6 +409,15 @@ describe("contact sheet", () => {
     expect(html).toContain("Choose candidate ' + (i + 1)")
   })
 
+  it("lets people pause frame-set playback and respects reduced motion", () => {
+    const html = renderSheet([{ ...group, mode: "frame-set" as const, fps: 12 }])
+    expect(html).toContain("Play preview")
+    expect(html).toContain("Pause preview")
+    expect(html).toContain("prefers-reduced-motion: reduce")
+    expect(html).toContain("IntersectionObserver")
+    expect(html).toContain("document.hidden")
+  })
+
   it("builds candidate image URLs through DOM properties instead of HTML interpolation", () => {
     const html = renderSheet([group])
     expect(html).toContain("preview.src = url")

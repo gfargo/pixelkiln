@@ -34,6 +34,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         `${siteUrl}/benchmarks/provider-hires/comfyui/refined/cliffside-fortress-128x128.png`,
         `${siteUrl}/benchmarks/provider-hires/comfyui/refined/alpine-valley-128x128.png`,
         `${siteUrl}/benchmarks/provider-hires/comfyui/refined/alpine-valley-wide-168x96.png`,
+        `${siteUrl}/benchmarks/provider-scenario-smoke/mountain-keep.png`,
       ],
     },
     { url: `${siteUrl}/docs`, changeFrequency: "weekly", priority: 0.9 },
