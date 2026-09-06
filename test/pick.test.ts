@@ -52,12 +52,17 @@ describe("runPicker", () => {
     expect(lock.entries[key]!.status).toBe("review")
 
     let url = ""
+    let readyKeys: string[] = []
     const picked = runPicker(provider, lock, lockPath, {
       open: false,
-      onProgress: (m) => (url ||= m.match(/http:\/\/127\.0\.0\.1:\d+\//)?.[0] ?? ""),
+      onReady: (ready) => {
+        url = ready.url
+        readyKeys = ready.keys
+      },
     })
 
     await vi.waitFor(() => expect(url).not.toBe(""))
+    expect(readyKeys).toEqual([key])
     const res = await fetch(url + "apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

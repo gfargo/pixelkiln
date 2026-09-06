@@ -19,6 +19,23 @@ Generation and download failures are separate lock states. A CDN failure after
 successful generation becomes `download-failed`; the next `fetch` or `restore`
 retries at zero generation cost.
 
+Use the lock state rather than guessing which stage to rerun:
+
+| State | Safe next command |
+|---|---|
+| `pending` or `processing` | `pixelkiln poll` |
+| `review` | `pixelkiln pick` |
+| `selected` or `download-failed` | `pixelkiln fetch` |
+| downloaded output is missing | `pixelkiln restore` |
+
+`plan`, `doctor`, and completed stages print these remaining actions. If a
+manifest change causes a deliberate regeneration, PixelKiln carries the old
+output hash until the replacement is fetched. An unchanged PixelKiln-owned file
+can then be replaced automatically. A hand-edited or untracked destination is
+still refused; after inspecting it, `pixelkiln fetch --force` explicitly lets
+the new result take ownership. This also recovers interrupted jobs created by
+older PixelKiln versions that could not retain the prior output hash.
+
 Provider adapters should keep expiring signed result URLs transient and store a
 provider-neutral reference that can refresh them. Once ingestion succeeds,
 PixelKiln removes credential-bearing URLs, inline data URLs, and local file URLs

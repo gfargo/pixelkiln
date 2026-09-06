@@ -55,10 +55,10 @@ PixelKiln keeps the missing record:
 | Workflow | What PixelKiln provides |
 |---|---|
 | Plan and budget | Offline manifest/lock/disk diff, provider-grouped estimates, keyed mixed-provider budget ceilings, JSON/CI gate. |
-| Generate and review | Resumable submit/poll/pick/fetch pipeline with a fast local candidate sheet. |
-| Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, and content-addressed per-asset ComfyUI bindings. |
+| Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, and a fast local candidate sheet. |
+| Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
-| Recovery | Validated local content cache, durable provider-reference restore, account object-hash cache, and resumable jobs. |
+| Recovery | Safe stale-output replacement, validated caches, durable references, and resumable paid jobs. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
 | Quality control | Manifest-native grid recovery, closed palettes, named approval, regression baselines, and fail-closed packaging. |
 | Sprite packaging | Deterministic RGBA packing, stable-cell mounting, explicit external input lists, structural output roles. |

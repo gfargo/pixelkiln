@@ -11,6 +11,7 @@ import {
   buildPlan,
   loadLock,
   loadManifest,
+  resumeActions,
   resolveSpecs,
   summarize,
 } from "pixelkiln"
@@ -19,11 +20,13 @@ const loaded = await loadManifest("pixelkiln.manifest.json")
 const specs = await resolveSpecs(loaded)
 const lock = await loadLock("pixelkiln.lock.json")
 const plan = await buildPlan(specs, lock)
+const remaining = resumeActions(specs, lock)
 
 console.log(summarize(plan))
 for (const group of plan.groups) {
   console.log(`${group.provider}: ${group.cost} ${group.costUnit}`)
 }
+for (const action of remaining) console.log(`pixelkiln ${action.command}`, action.keys)
 ```
 
 Planning performs no provider calls and spends nothing. `resolveSpecs` uses each
@@ -46,6 +49,11 @@ and optional strength. Paths are excluded from the hash; input bytes are not.
 `costUnit`, `cost`, `candidates`, and its actionable items. For compatibility,
 `plan.cost` and `plan.costUnit` retain the single-provider projection; both are
 `null` when a plan spans providers or units.
+
+`resumeActions` groups current paid-work states into `poll`, `pick`, and
+`fetch`. It ignores stale specs and entries missing the remote id needed by
+their stage, so integrations can offer safe continuation without implying that
+a new submission is required.
 
 For custom orchestration, inspect the dependency gate directly:
 
@@ -294,3 +302,7 @@ balance readings and keep that observed delta distinct from the estimate.
   such as `assetId/tile-03` in audits and atlases.
 - The lockfile is a paid-work record. Use its exported load/save/upsert helpers
   instead of rewriting it piecemeal.
+- During deliberate regeneration, `supersededOutputs` temporarily retains the
+  prior hashes. `fetchAssets` may replace only bytes that still match those
+  hashes; `{ force: true }` is the caller's explicit ownership override for a
+  changed or untracked destination.

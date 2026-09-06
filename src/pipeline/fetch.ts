@@ -6,6 +6,7 @@ import { sha256, sha256File } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import {
   expectedOutputPath,
+  currentOutputPath,
   normalizeLockOutputPaths,
   portableOutputPath,
   resolveOutputPath,
@@ -42,6 +43,8 @@ export async function fetchAssets(
     onProgress?: (msg: string) => void
     concurrency?: number
     repair?: boolean
+    /** Replace an existing untracked or modified destination. Explicit ownership override. */
+    force?: boolean
     /** Content-addressed media cache. Defaults beside the lockfile; false disables it. */
     cacheDir?: string | false
   } = {},
@@ -115,22 +118,42 @@ export async function fetchAssets(
             : expectedOutputPath(spec, source.role, index, sources.length, source.mediaType)
 
           if (existsSync(target)) {
-            if (!recorded) {
-              throw new Error(`refusing to overwrite untracked output ${target}`)
+            const currentHash = await sha256File(target)
+            if (recorded && currentHash === recorded.sha256) {
+              if (cacheDir) {
+                await cacheMedia(
+                  cacheDir,
+                  await readFile(target),
+                  recorded.mediaType ?? MediaType.PNG,
+                  recorded.sha256,
+                )
+              }
+              outputs.push({ ...recorded, path: portableOutputPath(target, spec.root) })
+              continue
             }
-            if ((await sha256File(target)) !== recorded.sha256) {
-              throw new Error(`refusing to overwrite modified output ${target}`)
+
+            const superseded = (entry.supersededOutputs ?? []).find((output, oldIndex, all) =>
+              currentOutputPath(output, spec, oldIndex, all.length) === target,
+            )
+            if (!opts.force) {
+              if (!recorded && superseded && currentHash === superseded.sha256) {
+                // A stale spec was intentionally regenerated. The old bytes
+                // are still exactly the ones PixelKiln wrote, so replacing
+                // them does not take ownership of a manual edit.
+              } else if (recorded || superseded) {
+                throw new Error(
+                  `refusing to overwrite modified output ${target}; pass --force to replace it`,
+                )
+              } else {
+                throw new Error(
+                  `refusing to overwrite untracked output ${target}; pass --force to replace it`,
+                )
+              }
             }
-            if (cacheDir) {
-              await cacheMedia(
-                cacheDir,
-                await readFile(target),
-                recorded.mediaType ?? MediaType.PNG,
-                recorded.sha256,
-              )
-            }
-            outputs.push({ ...recorded, path: portableOutputPath(target, spec.root) })
-            continue
+            log(
+              `  replace ${path.relative(process.cwd(), target)}` +
+                (opts.force ? " (--force)" : " (previous tracked generation)"),
+            )
           }
 
           const expectedMediaType = source.mediaType ?? recorded?.mediaType ?? MediaType.PNG
@@ -187,6 +210,7 @@ export async function fetchAssets(
           sourceUrls: persistentSources,
           downloadedAt: new Date().toISOString(),
           error: null,
+          supersededOutputs: [],
         })
         result.downloaded++
       } catch (err) {

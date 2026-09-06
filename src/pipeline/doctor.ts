@@ -7,7 +7,7 @@ import type { Lock, ResolvedSpec } from "../types.ts"
 import { sha256File } from "../hash.ts"
 import { currentEntryOutputPath, resolveOutputPath } from "../outputs.ts"
 import { cacheFileName, MediaType } from "../media.ts"
-import { buildPlan, summarize } from "./plan.ts"
+import { buildPlan, resumeActions, summarize } from "./plan.ts"
 
 export type DoctorLevel = "ok" | "warning" | "error"
 
@@ -174,6 +174,20 @@ export async function doctor(
           .map(([state, n]) => `${n} ${state}`)
           .join(", ")
       : "every resolved spec is current",
+  )
+
+  const resumable = resumeActions(specs, lock)
+  add(
+    "next-actions",
+    resumable.length ? "warning" : "ok",
+    resumable.length
+      ? "resume paid work without regenerating: " +
+        resumable
+          .map((action) =>
+            `pixelkiln ${action.command} (${action.keys.length} asset${action.keys.length === 1 ? "" : "s"})`
+          )
+          .join(", ")
+      : "no generation stage is waiting for poll, pick, or fetch",
   )
 
   const quality = plan.items.flatMap((item) => item.quality ? [item.quality] : [])

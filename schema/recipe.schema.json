@@ -249,6 +249,10 @@
                 "fixerRevision": {
                   "type": "string",
                   "minLength": 1
+                },
+                "fixerPython": {
+                  "type": "string",
+                  "minLength": 1
                 }
               },
               "required": [

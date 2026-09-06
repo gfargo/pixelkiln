@@ -100,6 +100,29 @@ describe("doctor", () => {
     expect(report.checks.find((c) => c.id === "recovery")).toMatchObject({ level: "error" })
   })
 
+  it("names the zero-cost command that advances unfinished paid work", async () => {
+    const { loaded, specs, lockPath } = await project()
+    const key = lockKey("base", "anvil")
+    const lock: Lock = {
+      version: 2,
+      entries: {
+        [key]: entry({
+          specHash: specs[0]!.specHash,
+          status: "processing",
+          jobId: "job-anvil",
+          objectId: null,
+          error: null,
+        }),
+      },
+    }
+    const report = await doctor(loaded, specs, lock, lockPath, { offline: true })
+
+    expect(report.checks.find((check) => check.id === "next-actions")).toMatchObject({
+      level: "warning",
+      message: "resume paid work without regenerating: pixelkiln poll (1 asset)",
+    })
+  })
+
   it("reports missing provider credentials as an actionable error", async () => {
     const { loaded, specs, lockPath } = await project()
     const report = await doctor(loaded, specs, { version: 2, entries: {} }, lockPath, {
