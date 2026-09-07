@@ -1,6 +1,6 @@
 {
   "name": "pixelkiln",
-  "version": "0.20.1",
+  "version": "0.20.2",
   "description": "Manifest-driven pixel-art generation, review, recovery, and packaging with deterministic provenance.",
   "type": "module",
   "sideEffects": false,

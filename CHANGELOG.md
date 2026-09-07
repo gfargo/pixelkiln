@@ -1,3 +1,10 @@
+## [0.20.2](https://github.com/gfargo/pixelkiln/compare/v0.20.1...v0.20.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* checkpoint ComfyUI frame submissions ([#82](https://github.com/gfargo/pixelkiln/issues/82)) ([0df12da](https://github.com/gfargo/pixelkiln/commit/0df12da6ebf6861c218b01ac93af0159890c6695))
+
 ## [0.20.1](https://github.com/gfargo/pixelkiln/compare/v0.20.0...v0.20.1) (2026-09-06)
 
 
