@@ -23,7 +23,8 @@ Use the lock state rather than guessing which stage to rerun:
 
 | State | Safe next command |
 |---|---|
-| `pending` or `processing` | `pixelkiln poll` |
+| incomplete submission checkpoint | `pixelkiln submit` |
+| complete `pending` or `processing` submission | `pixelkiln poll` |
 | `review` | `pixelkiln pick` |
 | `selected` or `download-failed` | `pixelkiln fetch` |
 | downloaded output is missing | `pixelkiln restore` |
@@ -35,6 +36,14 @@ can then be replaced automatically. A hand-edited or untracked destination is
 still refused; after inspecting it, `pixelkiln fetch --force` explicitly lets
 the new result take ownership. This also recovers interrupted jobs created by
 older PixelKiln versions that could not retain the prior output hash.
+
+ComfyUI frame sets submit one prompt per frame. PixelKiln saves the compound
+job after every accepted prompt, before asking ComfyUI to queue the next one.
+If submission stops halfway through, `plan` reports the saved checkpoint and
+`pixelkiln submit` continues at the first missing frame. `poll` will not advance
+an incomplete set into review. A changed prompt, workflow, input image, seed
+schedule, or other spec identity starts a fresh set instead of appending to old
+prompt ids.
 
 Provider adapters should keep expiring signed result URLs transient and store a
 provider-neutral reference that can refresh them. Once ingestion succeeds,

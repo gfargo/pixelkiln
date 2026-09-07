@@ -140,6 +140,17 @@ export async function submit(
     await requireRevisionReady(spec, lock)
 
     const previousEntry = lock.entries[key]
+    const resumesCheckpoint = Boolean(
+      previousEntry?.specHash === spec.specHash &&
+      previousEntry.provider === provider.id &&
+      previousEntry.generator === spec.generator &&
+      previousEntry.submissionComplete === false &&
+      previousEntry.jobId,
+    )
+    const previousJobId = resumesCheckpoint ? previousEntry!.jobId! : undefined
+    const previousMetadata = resumesCheckpoint
+      ? previousEntry!.providerMetadata[provider.id]
+      : undefined
     const supersededOutputs = previousEntry?.outputs.length
       ? previousEntry.outputs
       : previousEntry?.supersededOutputs ?? []
@@ -164,7 +175,8 @@ export async function submit(
           }
         : null,
       status: "pending",
-      jobId: null,
+      jobId: previousJobId ?? null,
+      ...(previousJobId ? { submissionComplete: false } : { submissionComplete: undefined }),
       objectId: null,
       reviewObjectId: null,
       candidateIndex: null,
@@ -173,10 +185,12 @@ export async function submit(
       // Keep the old ownership proof while new bytes are pending. Fetch may
       // replace that file only while its hash still matches this record.
       supersededOutputs,
-      providerMetadata: {},
+      providerMetadata: resumesCheckpoint ? previousEntry!.providerMetadata : {},
       sourceUrl: null,
       sourceUrls: [],
-      submittedAt: new Date().toISOString(),
+      submittedAt: resumesCheckpoint
+        ? previousEntry!.submittedAt
+        : new Date().toISOString(),
       cost: estimate.amount,
       costUnit: estimate.unit,
       // Persist routing before the request starts. If the process stops while
@@ -193,9 +207,38 @@ export async function submit(
       // generator. Keeping that policy here used to silently discard valid
       // references for non-PixelLab still providers.
       const refs = styleImages.get(spec.styleId) ?? []
-      const { jobId, metadata } = await provider.submit(spec, refs)
+      const { jobId, metadata } = await provider.submit(spec, refs, {
+        ...(previousJobId ? { previousJobId } : {}),
+        ...(previousMetadata ? { previousMetadata } : {}),
+        checkpoint: async (checkpoint) => {
+          if (!checkpoint.jobId) throw new Error("Provider checkpoint returned an empty job id")
+          const entry = lock.entries[key]!
+          upsert(lock, key, {
+            jobId: checkpoint.jobId,
+            submissionComplete: checkpoint.complete,
+            reviewObjectId:
+              checkpoint.complete &&
+              (spec.generator === "frames" || (estimate.candidates > 1 && !spec.tileFeature))
+                ? checkpoint.jobId
+                : null,
+            status: checkpoint.complete ? "processing" : "pending",
+            error: null,
+            providerMetadata: checkpoint.metadata
+              ? {
+                  ...entry.providerMetadata,
+                  [provider.id]: {
+                    ...entry.providerMetadata[provider.id],
+                    ...checkpoint.metadata,
+                  },
+                }
+              : entry.providerMetadata,
+          })
+          await saveLock(lockPath, lock)
+        },
+      })
       upsert(lock, key, {
         jobId,
+        submissionComplete: true,
         // A multi-candidate generator routes through review; record the parent
         // so `pick` knows where to look.
         reviewObjectId:
@@ -218,11 +261,27 @@ export async function submit(
           `, ${estimate.amount})`,
       )
     } catch (err) {
-      failed++
       const message = err instanceof Error ? err.message : String(err)
-      // A rejected request is not billed, so cost is cleared rather than kept.
-      upsert(lock, key, { status: "failed", error: message, cost: 0 })
-      log(`  FAILED ${key}: ${message}`)
+      const entry = lock.entries[key]!
+      if (entry.jobId && entry.submissionComplete === true) {
+        // A completed checkpoint is authoritative even if the adapter is
+        // interrupted before returning the same job id to this stack frame.
+        upsert(lock, key, { status: "processing", error: null })
+        inFlight.set(entry.jobId, spec)
+        submitted++
+        spent += estimate.amount
+        log(`  ${key} → ${entry.jobId}  (recovered from completed checkpoint)`)
+      } else {
+        failed++
+        // A request with no checkpoint was rejected before any remote identity
+        // was accepted. Partial submissions keep their estimate and every id.
+        upsert(lock, key, {
+          status: "failed",
+          error: message,
+          cost: entry.jobId ? estimate.amount : 0,
+        })
+        log(`  FAILED ${key}: ${message}`)
+      }
     }
     await saveLock(lockPath, lock)
   }

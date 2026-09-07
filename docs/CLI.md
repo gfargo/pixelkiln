@@ -83,13 +83,17 @@ step. It does not run or approve that step on the user's behalf.
 Queue selected missing/stale generation work without polling it. Enforces the
 provider spacing and concurrency limits, validates estimates at the spending
 boundary, and saves each remote id immediately. Revision inputs are rechecked
-after any queue wait and before a provider request begins.
+after any queue wait and before a provider request begins. For a provider that
+needs several requests per asset, an unchanged incomplete checkpoint resumes
+without repeating requests the provider already accepted.
 
 ### `poll`
 
 Advance submitted jobs to completed, failed, or selection-ready states. It can
 be rerun safely after an interrupted session. When work settles in another
 stage, the command prints the exact next command instead of ending silently.
+An incomplete multi-request checkpoint stays blocked here; rerun `submit` to
+finish it before polling.
 
 ### `pick`
 

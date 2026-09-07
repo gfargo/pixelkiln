@@ -88,6 +88,7 @@ export function resumeActions(specs: ResolvedSpec[], lock: Lock): ResumeAction[]
     const key = lockKey(spec.styleId, spec.assetId)
     const entry = lock.entries[key]
     if (!entry || entry.specHash !== spec.specHash) continue
+    if (entry.submissionComplete === false) continue
     const command = resumeCommandForStatus(entry.status)
     if (!command) continue
     if (command === "poll" && !entry.jobId) continue
@@ -161,10 +162,19 @@ export async function buildPlan(
         "(no generation cost)"
     } else if (entry.status === "failed") {
       state = "failed"
-      reason = entry.error ?? "previous attempt failed"
+      reason = entry.jobId && entry.submissionComplete === false
+        ? `${entry.error ?? "submission interrupted"}; saved checkpoint will resume`
+        : entry.error ?? "previous attempt failed"
     } else if (entry.status === "selected") {
       state = "recoverable"
       reason = "provider output is selected; run pixelkiln fetch (no generation cost)"
+    } else if (
+      (entry.status === "pending" || entry.status === "processing") &&
+      entry.jobId &&
+      entry.submissionComplete === false
+    ) {
+      state = "failed"
+      reason = "submission stopped after a saved checkpoint; rerun pixelkiln submit to resume"
     } else if (entry.status === "pending" || entry.status === "processing") {
       state = "in-flight"
       reason = entry.jobId

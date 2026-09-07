@@ -69,6 +69,22 @@ export interface ProviderSubmission {
   metadata?: ProviderMetadata
 }
 
+/** Durable progress recorded after a provider accepts one part of a submission. */
+export interface SubmissionCheckpoint extends ProviderSubmission {
+  /** False while more external requests are required for the same asset. */
+  complete: boolean
+}
+
+/** Optional state for providers that submit one asset through several requests. */
+export interface SubmitContext {
+  /** Persist accepted remote identity before the provider starts its next request. */
+  checkpoint(value: SubmissionCheckpoint): Promise<void>
+  /** Incomplete checkpoint from an earlier run of this exact resolved spec. */
+  previousJobId?: string
+  /** Provider-owned details saved with the previous checkpoint. */
+  previousMetadata?: ProviderMetadata
+}
+
 export interface CandidateSelection {
   objectId: string
   sourceUrl: string | null
@@ -243,7 +259,11 @@ export interface Provider {
    *  `DEFAULT_RATE_LIMIT` when absent — see that constant's doc. */
   rateLimit?(): RateLimit
 
-  submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<ProviderSubmission>
+  submit(
+    spec: ResolvedSpec,
+    styleImages: ResolvedStyleImage[],
+    context?: SubmitContext,
+  ): Promise<ProviderSubmission>
 
   poll(jobId: string, generator: Generator, context?: PollContext): Promise<JobState>
 

@@ -111,9 +111,15 @@ plan → submit → poll → pick (when needed) → fetch
                     └──────── structural/inline outputs ────────┘
 ```
 
-Remote ids are saved immediately after submission. Generation and download
-failures remain separate, so paid work with a temporary CDN failure is
-recoverable at zero generation cost. Each stage can be rerun independently;
+Remote ids are saved immediately after submission. Providers that need several
+requests for one asset receive a checkpoint callback. Each accepted remote id
+is written before the next request begins. An incomplete checkpoint remains
+submit-actionable; a complete checkpoint is safe to poll even if the provider
+is interrupted before returning. Checkpoints are reused only when provider,
+generator, and resolved spec hash still match.
+
+Generation and download failures remain separate, so paid work with a temporary
+CDN failure is recoverable at zero generation cost. Each stage can be rerun independently;
 `gen` is only their everyday orchestration. Planning maps current `processing`,
 `review`, and `selected`/`download-failed` entries to `poll`, `pick`, and
 `fetch`, respectively.
@@ -200,6 +206,8 @@ uploads manifest-owned PNG/JPEG inputs by content hash, submits an input-bound
 clone, polls local history, and stores portable `comfyui://` output references
 so a lockfile does not retain a workstation hostname or input path. It supports
 `map` candidates and atomic `frames` sets from one still-image output node.
+Each accepted frame prompt is checkpointed in the lockfile, so a retry resumes
+at the first unsubmitted frame instead of queuing the whole set again.
 Frame-set transport, ordered review/fetch, shared-palette refinement,
 step/phase verification, approval, and packing have deterministic integration
 coverage. Live Apple MPS runs cover a small Stable

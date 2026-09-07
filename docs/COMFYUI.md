@@ -219,8 +219,12 @@ The frame count comes from the array, so it cannot disagree with a separate
 count field.
 
 PixelKiln submits one still workflow per value but tracks the result as one
-asset. A partial completion remains in progress. The review page shows an
-animated loop and ordered strip; accepting any frame accepts the whole set.
+asset. After ComfyUI accepts a prompt, PixelKiln saves its id before submitting
+the next frame. An interrupted retry continues at the first missing frame. A
+changed spec starts a fresh set. Incomplete sets cannot be polled into review,
+and one failed render rejects the complete set while retaining every submitted
+prompt id for diagnosis. The review page shows an animated loop and ordered
+strip; accepting any frame accepts the whole set.
 Fetch writes `hero-idle-frame-00.png`, `hero-idle-frame-01.png`, and so on.
 `pack` already turns those role-stable files into a sprite sheet and atlas.
 
@@ -627,8 +631,8 @@ that GPU time, electricity, hosted hardware, or model licenses are free.
 
 When `numImages` is greater than one, `pixelkiln pick` opens the same local
 candidate review used by hosted providers. A `frames` job always opens an
-ordered, animated whole-set review. The lockfile stores the ComfyUI
-prompt ID, output node, workflow hash, and selected output. Durable source
+ordered, animated whole-set review. The lockfile stores every accepted ComfyUI
+prompt id, the expected frame count, output node, workflow hash, and selected output. Durable source
 references use `comfyui://` rather than embedding a workstation hostname.
 `pixelkiln restore` first uses the validated local content cache, then resolves
 the portable reference against the current `COMFYUI_BASE_URL`.
