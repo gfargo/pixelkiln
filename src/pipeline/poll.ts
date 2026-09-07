@@ -42,18 +42,32 @@ export async function poll(
 
   const result: PollResult = { review: 0, completed: 0, failed: 0, stillRunning: 0 }
 
+  const incompleteSubmissions = Object.entries(lock.entries).filter(
+    ([key, entry]) =>
+      entry.provider === provider.id &&
+      (!selectedKeys || selectedKeys.has(key)) &&
+      entry.jobId &&
+      entry.submissionComplete === false &&
+      (entry.status === "pending" || entry.status === "processing"),
+  )
+  for (const [key] of incompleteSubmissions) {
+    log(`  incomplete submission ${key}; rerun \`pixelkiln submit\` to resume`)
+  }
+  result.stillRunning = incompleteSubmissions.length
+
   const pending = () =>
     Object.entries(lock.entries).filter(
       ([key, e]) =>
         e.provider === provider.id &&
         (!selectedKeys || selectedKeys.has(key)) &&
         e.jobId &&
+        e.submissionComplete !== false &&
         (e.status === "pending" || e.status === "processing"),
     )
 
   while (pending().length > 0) {
     if (Date.now() - started > timeout) {
-      result.stillRunning = pending().length
+      result.stillRunning += pending().length
       log(`  timed out with ${result.stillRunning} job(s) still running — re-run \`poll\` to resume`)
       break
     }

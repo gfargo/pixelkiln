@@ -57,8 +57,8 @@ and optional strength. Paths are excluded from the hash; input bytes are not.
 
 `resumeActions` groups current paid-work states into `poll`, `pick`, and
 `fetch`. It ignores stale specs and entries missing the remote id needed by
-their stage, so integrations can offer safe continuation without implying that
-a new submission is required.
+their stage. It also excludes incomplete multi-request checkpoints; those
+remain actionable in `buildPlan` and must return through `submit`.
 
 For custom orchestration, inspect the dependency gate directly:
 
@@ -283,6 +283,14 @@ and an optional JSON-safe `identity` for `specHash`. The identity must include
 every byte or scalar that can change provider output and must exclude
 machine-local paths or credentials. Providers that omit the hook fail closed
 when an asset declares non-empty `providerInputs`.
+
+`Provider.submit` receives an optional third `SubmitContext` argument. A custom
+provider that needs several remote mutations for one asset should call
+`await context.checkpoint({ jobId, metadata, complete })` after each accepted
+mutation and before starting the next one. PixelKiln persists that checkpoint
+atomically. On an unchanged retry, `previousJobId` and `previousMetadata` let
+the provider continue from the first missing request. Set `complete: true` only
+when the returned job id is safe to poll as the complete asset.
 
 These low-level operations intentionally accept one provider. A mixed-provider
 caller should partition specs and plan items by `spec.provider`, instantiate

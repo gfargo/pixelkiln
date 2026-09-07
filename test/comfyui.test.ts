@@ -816,6 +816,157 @@ describe("ComfyUI provider", () => {
     expect(JSON.stringify(lock)).not.toContain(dir)
   }, 15_000)
 
+  it("checkpoints accepted frame prompts and resumes only the missing frame", async () => {
+    const promptSeeds: number[] = []
+    let promptAttempt = 0
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith("/upload/image")) {
+        const image = (init!.body as FormData).get("image") as File
+        return json({ name: image.name, subfolder: "pixelkiln", type: "input" })
+      }
+      if (url.endsWith("/prompt")) {
+        const body = JSON.parse(String(init!.body))
+        promptSeeds.push(body.prompt["3"].inputs.seed)
+        promptAttempt++
+        if (promptAttempt === 2) return json({ error: "queue unavailable" }, 503)
+        return json({ prompt_id: promptAttempt === 1 ? "frame-zero" : "frame-one" })
+      }
+      if (url.includes("/history/")) {
+        throw new Error("partial frame jobs must not poll ComfyUI history")
+      }
+      return json({}, 404)
+    }))
+
+    const { loaded, spec } = await frameSetProject()
+    const provider = createProvider("comfyui", "online")
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const first = await submit(
+      provider,
+      loaded,
+      (await buildPlan([spec], lock)).actionable,
+      lock,
+      lockPath,
+      { budget: 0, spacingMs: 0 },
+    )
+
+    expect(first).toMatchObject({ submitted: 0, failed: 1 })
+    const saved = await loadLock(lockPath)
+    let entry = saved.entries["motion/dancer"]!
+    expect(entry).toMatchObject({ status: "failed", submissionComplete: false })
+    expect(entry.providerMetadata.comfyui?.frameSet).toMatchObject({
+      count: 2,
+      promptIds: ["frame-zero"],
+    })
+    expect(JSON.stringify(saved)).not.toContain(dir)
+    await expect(provider.poll(entry.jobId!, "frames", { spec })).resolves.toEqual({
+      status: "processing",
+    })
+
+    const resumedPlan = await buildPlan([spec], saved)
+    expect(resumedPlan.items[0]).toMatchObject({ state: "failed" })
+    expect(resumedPlan.items[0]!.reason).toMatch(/saved checkpoint/)
+    const resumed = await submit(
+      provider,
+      loaded,
+      resumedPlan.actionable,
+      saved,
+      lockPath,
+      { budget: 0, spacingMs: 0 },
+    )
+
+    expect(resumed).toMatchObject({ submitted: 1, failed: 0 })
+    entry = (await loadLock(lockPath)).entries["motion/dancer"]!
+    expect(entry).toMatchObject({ status: "processing", submissionComplete: true })
+    expect(entry.providerMetadata.comfyui?.frameSet).toMatchObject({
+      count: 2,
+      promptIds: ["frame-zero", "frame-one"],
+    })
+    expect(promptSeeds).toEqual([100, 107, 107])
+  })
+
+  it("keeps complete frame job ids from older lockfiles pollable", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const promptId = decodeURIComponent(new URL(String(input)).pathname.split("/").at(-1)!)
+      const index = promptId === "legacy-zero" ? 0 : 1
+      return json(successHistory(promptId, [{
+        filename: `legacy-${index}.png`,
+        subfolder: "sets/legacy",
+        type: "output",
+      }]))
+    }))
+    const { spec } = await frameSetProject()
+    const legacyJob = `frames:${Buffer.from(JSON.stringify({
+      outputNodeId: "9",
+      promptIds: ["legacy-zero", "legacy-one"],
+    })).toString("base64url")}`
+
+    await expect(createProvider("comfyui", "online").poll(legacyJob, "frames", { spec }))
+      .resolves.toMatchObject({
+        status: "review-set",
+        sources: [{ role: "frame-00" }, { role: "frame-01" }],
+      })
+  })
+
+  it("starts a fresh frame set when the spec changes after a partial checkpoint", async () => {
+    const promptSeeds: number[] = []
+    let promptAttempt = 0
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith("/upload/image")) {
+        const image = (init!.body as FormData).get("image") as File
+        return json({ name: image.name, subfolder: "pixelkiln", type: "input" })
+      }
+      if (url.endsWith("/prompt")) {
+        const body = JSON.parse(String(init!.body))
+        promptSeeds.push(body.prompt["3"].inputs.seed)
+        promptAttempt++
+        if (promptAttempt === 2) return json({ error: "queue unavailable" }, 503)
+        return json({ prompt_id: promptAttempt === 1 ? "old-zero" : `new-${promptAttempt - 3}` })
+      }
+      return json({}, 404)
+    }))
+
+    const first = await frameSetProject()
+    const provider = createProvider("comfyui", "online")
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    await submit(
+      provider,
+      first.loaded,
+      (await buildPlan([first.spec], lock)).actionable,
+      lock,
+      lockPath,
+      { budget: 0, spacingMs: 0 },
+    )
+
+    const manifest = JSON.parse(await readFile(first.manifestPath, "utf8"))
+    manifest.assets.dancer.prompt = "a dancer taking one step forward"
+    await writeFile(first.manifestPath, JSON.stringify(manifest))
+    const changedLoaded = await loadManifest(first.manifestPath)
+    const [changedSpec] = await resolveSpecs(changedLoaded)
+    const saved = await loadLock(lockPath)
+    const changedPlan = await buildPlan([changedSpec!], saved)
+    expect(changedPlan.items[0]).toMatchObject({ state: "stale" })
+
+    await submit(
+      provider,
+      changedLoaded,
+      changedPlan.actionable,
+      saved,
+      lockPath,
+      { budget: 0, spacingMs: 0 },
+    )
+
+    const entry = (await loadLock(lockPath)).entries["motion/dancer"]!
+    expect(entry.providerMetadata.comfyui?.frameSet).toMatchObject({
+      promptIds: ["new-0", "new-1"],
+    })
+    expect(JSON.stringify(entry)).not.toContain("old-zero")
+    expect(promptSeeds).toEqual([100, 107, 100, 107])
+  })
+
   it("uploads immutable revision inputs and binds an inpaint workflow", async () => {
     const uploads: Array<{
       name: string

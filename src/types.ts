@@ -591,6 +591,8 @@ export const LockEntrySchema = z.object({
 
   /** Set at submit time, before the request is awaited, so a crash is recoverable. */
   jobId: z.string().nullable().default(null),
+  /** False only when a provider checkpoint says more requests remain. */
+  submissionComplete: z.boolean().optional(),
   /** For `1dir`: the multi-candidate parent object awaiting selection. */
   reviewObjectId: z.string().nullable().default(null),
   /** The chosen candidate's own object id, once selected. */

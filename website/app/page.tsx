@@ -227,7 +227,8 @@ export default function Home() {
                 Retro Diffusion has live-tested single-candidate stills. ComfyUI
                 has passed local generation, candidate review, cache recovery,
                 and grid refinement. Atomic frame sets have automated coverage,
-                but still need a live pose recipe and benchmark. The tested SDXL
+                and accepted frame prompts are saved before the next one is queued.
+                They still need a live pose recipe and benchmark. The tested SDXL
                 graph needs manual cleanup and art review. Scenario&apos;s BFL profile
                 has passed paid single- and two-output generation, human review,
                 and durable recovery.

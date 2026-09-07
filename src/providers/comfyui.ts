@@ -15,6 +15,7 @@ import type {
   RateLimit,
   ResolvedProviderInputs,
   ResolvedProviderOptions,
+  SubmitContext,
 } from "../provider.ts"
 import type { Generator, ResolvedSpec, ResolvedStyleImage, RevisionMode } from "../types.ts"
 
@@ -86,6 +87,7 @@ interface ComfyImage {
 }
 
 interface FrameSetJob {
+  expectedCount: number
   outputNodeId: string
   promptIds: string[]
 }
@@ -451,7 +453,11 @@ export class ComfyUIProvider implements Provider {
     return { spacingMs: 0, maxInFlight: 1 }
   }
 
-  async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<ProviderSubmission> {
+  async submit(
+    spec: ResolvedSpec,
+    styleImages: ResolvedStyleImage[],
+    context?: SubmitContext,
+  ): Promise<ProviderSubmission> {
     this.validate(spec, styleImages)
     const options = resolvedOptions(spec)
     const uploadedImages = new Map<string, string>()
@@ -500,22 +506,38 @@ export class ComfyUIProvider implements Provider {
     if (spec.generator === "frames") {
       const frames = options.frames!
       const values = spec.providerInputs![frames.vary] as unknown[]
-      const promptIds: string[] = []
-      for (let index = 0; index < values.length; index++) {
+      let promptIds: string[] = []
+      if (context?.previousJobId) {
+        const previous = decodeFrameSetJob(context.previousJobId)
+        if (
+          previous.outputNodeId !== options.outputNodeId ||
+          previous.expectedCount !== values.length
+        ) {
+          throw new Error("Saved ComfyUI frame checkpoint does not match the current frame set")
+        }
+        promptIds = [...previous.promptIds]
+      }
+      for (let index = promptIds.length; index < values.length; index++) {
         promptIds.push(await this.client.submit(await buildWorkflow(index)))
+        const frameJob = {
+          expectedCount: values.length,
+          promptIds: [...promptIds],
+          outputNodeId: options.outputNodeId,
+        }
+        await context?.checkpoint({
+          jobId: encodeFrameSetJob(frameJob),
+          metadata: comfyFrameSubmissionMetadata(spec, frameJob),
+          complete: promptIds.length === values.length,
+        })
+      }
+      const frameJob = {
+        expectedCount: values.length,
+        promptIds,
+        outputNodeId: options.outputNodeId,
       }
       return {
-        jobId: encodeFrameSetJob({ promptIds, outputNodeId: options.outputNodeId }),
-        metadata: {
-          inputs,
-          frameSet: {
-            count: values.length,
-            vary: frames.vary,
-            seedStep: frames.seedStep,
-            fps: spec.quality?.fps ?? 12,
-            promptIds,
-          },
-        },
+        jobId: encodeFrameSetJob(frameJob),
+        metadata: comfyFrameSubmissionMetadata(spec, frameJob),
       }
     }
 
@@ -577,6 +599,9 @@ export class ComfyUIProvider implements Provider {
   async poll(jobId: string, generator: Generator, context?: PollContext): Promise<JobState> {
     if (generator === "frames") {
       const frameJob = decodeFrameSetJob(jobId)
+      if (frameJob.promptIds.length < frameJob.expectedCount) {
+        return { status: "processing" }
+      }
       const images: ComfyImage[] = []
       for (let index = 0; index < frameJob.promptIds.length; index++) {
         const promptId = frameJob.promptIds[index]!
@@ -886,6 +911,23 @@ function comfyFrameMetadata(
   }
 }
 
+function comfyFrameSubmissionMetadata(
+  spec: ResolvedSpec,
+  job: FrameSetJob,
+): JsonObject {
+  const options = resolvedOptions(spec)
+  return {
+    inputs: providerInputProvenance(spec.providerInputs),
+    frameSet: {
+      count: job.expectedCount,
+      vary: options.frames!.vary,
+      seedStep: options.frames!.seedStep,
+      fps: spec.quality?.fps ?? 12,
+      promptIds: job.promptIds,
+    },
+  }
+}
+
 function isImageBinding(workflow: ComfyWorkflow, binding: ComfyUIBinding): boolean {
   const node = workflow[binding.nodeId]
   return binding.input === "image" &&
@@ -970,18 +1012,30 @@ function decodeFrameSetJob(jobId: string): FrameSetJob {
   } catch {
     throw new Error(`Invalid ComfyUI frame-set job id "${jobId}"`)
   }
+  if (!isObject(value) || !Array.isArray(value.promptIds)) {
+    throw new Error(`Invalid ComfyUI frame-set job id "${jobId}"`)
+  }
+  const expectedCount = value.expectedCount === undefined
+    ? value.promptIds.length
+    : value.expectedCount
   if (
-    !isObject(value) ||
     typeof value.outputNodeId !== "string" ||
     !value.outputNodeId ||
-    !Array.isArray(value.promptIds) ||
-    value.promptIds.length < 2 ||
-    value.promptIds.length > 64 ||
+    typeof expectedCount !== "number" ||
+    !Number.isSafeInteger(expectedCount) ||
+    expectedCount < 2 ||
+    expectedCount > 64 ||
+    value.promptIds.length < 1 ||
+    value.promptIds.length > expectedCount ||
     !value.promptIds.every((id) => typeof id === "string" && id.length > 0)
   ) {
     throw new Error(`Invalid ComfyUI frame-set job id "${jobId}"`)
   }
-  return { outputNodeId: value.outputNodeId, promptIds: value.promptIds as string[] }
+  return {
+    expectedCount,
+    outputNodeId: value.outputNodeId,
+    promptIds: value.promptIds as string[],
+  }
 }
 
 function decodeJob(jobId: string): { promptId: string; outputNodeId: string } {

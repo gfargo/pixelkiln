@@ -11,7 +11,7 @@ import { poll } from "../src/pipeline/poll.ts"
 import { fetchAssets, pushTags } from "../src/pipeline/fetch.ts"
 import { adopt } from "../src/pipeline/adopt.ts"
 import { loadLock, saveLock, spendByUnit, upsert } from "../src/lock.ts"
-import { measureBalanceChange } from "../src/provider.ts"
+import { measureBalanceChange, type Provider } from "../src/provider.ts"
 import { sha256 } from "../src/hash.ts"
 import { lockKey, primaryOutput, type Generator, type Lock } from "../src/types.ts"
 
@@ -96,6 +96,99 @@ describe("submit", () => {
     const reloaded = await loadLock(lockPath)
     expect(Object.keys(reloaded.entries)).toHaveLength(2)
     expect(reloaded.version).toBe(2)
+  })
+
+  it("trusts a completed checkpoint when submission is interrupted before return", async () => {
+    const base = new FakeProvider({ candidates: 1 })
+    const provider: Provider = {
+      id: base.id,
+      supports: base.supports.bind(base),
+      estimate: base.estimate.bind(base),
+      poll: base.poll.bind(base),
+      download: base.download.bind(base),
+      submit: async (_spec, _images, context) => {
+        await context!.checkpoint({ jobId: "complete-job", complete: true })
+        throw new Error("process interrupted after checkpoint")
+      },
+    }
+    const { loaded, specs } = await project({
+      generator: "map",
+      assets: { anvil: { prompt: "an anvil", category: "tools" } },
+    })
+    const lock = emptyLock()
+    const result = await submit(
+      provider,
+      loaded,
+      (await buildPlan(specs, lock)).actionable,
+      lock,
+      lockPath,
+      { spacingMs: 0 },
+    )
+
+    expect(result).toMatchObject({ submitted: 1, failed: 0 })
+    const entry = (await loadLock(lockPath)).entries[lockKey("base", "anvil")]!
+    expect(entry).toMatchObject({
+      jobId: "complete-job",
+      status: "processing",
+      submissionComplete: true,
+    })
+    expect((await buildPlan(specs, await loadLock(lockPath))).items[0]).toMatchObject({
+      state: "in-flight",
+    })
+  })
+
+  it("does not poll or advance an incomplete submission checkpoint", async () => {
+    const base = new FakeProvider({ candidates: 1 })
+    let pollCalls = 0
+    const provider: Provider = {
+      id: base.id,
+      supports: base.supports.bind(base),
+      estimate: base.estimate.bind(base),
+      download: base.download.bind(base),
+      submit: async (_spec, _images, context) => {
+        await context!.checkpoint({ jobId: "partial-job", complete: false })
+        throw new Error("submission interrupted")
+      },
+      poll: async () => {
+        pollCalls++
+        return { status: "processing" }
+      },
+    }
+    const { loaded, specs } = await project({
+      generator: "map",
+      assets: { anvil: { prompt: "an anvil", category: "tools" } },
+    })
+    const lock = emptyLock()
+    await submit(
+      provider,
+      loaded,
+      (await buildPlan(specs, lock)).actionable,
+      lock,
+      lockPath,
+      { spacingMs: 0 },
+    )
+    const key = lockKey("base", "anvil")
+    upsert(lock, key, { status: "pending", error: null })
+    await saveLock(lockPath, lock)
+    const messages: string[] = []
+    const interruptedPlan = await buildPlan(specs, lock)
+    expect(interruptedPlan.items[0]).toMatchObject({ state: "failed" })
+    expect(interruptedPlan.actionable.map((item) => item.key)).toEqual([key])
+
+    const result = await poll(provider, lock, lockPath, {
+      intervalMs: 0,
+      specs,
+      onProgress: (message) => messages.push(message),
+    })
+
+    expect(result).toMatchObject({ review: 0, completed: 0, failed: 0, stillRunning: 1 })
+    expect(pollCalls).toBe(0)
+    expect(lock.entries[key]).toMatchObject({
+      status: "pending",
+      jobId: "partial-job",
+      submissionComplete: false,
+    })
+    expect(messages.join("\n")).toMatch(/rerun `pixelkiln submit` to resume/)
   })
 
   it("persists the provider before awaiting a submission", async () => {
