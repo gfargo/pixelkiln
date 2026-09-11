@@ -152,7 +152,7 @@ export default function Home() {
             <span>generation providers</span>
           </div>
           <div>
-            <strong>27</strong>
+            <strong>28</strong>
             <span>composable commands</span>
           </div>
           <div>
@@ -213,7 +213,9 @@ export default function Home() {
                 PixelLab, Retro Diffusion, ComfyUI, and Scenario use the same review,
                 lockfile, and recovery flow. PixelKiln records every candidate,
                 then leaves the visual decision to you. The page preserves native
-                aspect ratios and stays readable on ultrawide displays.
+                aspect ratios and stays readable on ultrawide displays. Afterwards,{" "}
+                <code>pixelkiln gallery</code> keeps every generation and its
+                record — prompt, cost, hashes, lineage, approval — one click away.
               </p>
               <div className="provider-status" aria-label="Current provider support">
                 <span><i className="status-dot" /> PixelLab · production</span>
@@ -240,6 +242,9 @@ export default function Home() {
                 <TrackedLink className="text-link" id="review_provider_benchmark" section="review" href="/docs/provider-benchmark">
                   See the environment benchmark →
                 </TrackedLink>
+                <TrackedLink className="text-link" id="review_gallery_docs" section="review" href="/docs/cli#gallery">
+                  Browse the gallery command →
+                </TrackedLink>
                 <TrackedLink
                   className="text-link"
                   id="review_pixellab_mcp"
@@ -251,20 +256,36 @@ export default function Home() {
                 </TrackedLink>
               </div>
             </div>
-            <figure className="review-visual">
-              <div className="review-window-bar">
-                <span>localhost · pixelkiln pick</span>
-                <span>human review</span>
-              </div>
-              <Image
-                src="/review-ui-showcase.jpg"
-                alt="PixelKiln's local candidate review interface showing generated forge emblems"
-                width={1280}
-                height={720}
-                sizes="(max-width: 980px) 100vw, 56vw"
-              />
-              <figcaption>Actual local review UI · generated brand sprites · no model selects for you</figcaption>
-            </figure>
+            <div className="review-visuals">
+              <figure className="review-visual">
+                <div className="review-window-bar">
+                  <span>localhost · pixelkiln pick</span>
+                  <span>human review</span>
+                </div>
+                <Image
+                  src="/review-ui-showcase.jpg"
+                  alt="PixelKiln's local candidate review interface showing generated forge emblems"
+                  width={1280}
+                  height={720}
+                  sizes="(max-width: 980px) 100vw, 56vw"
+                />
+                <figcaption>Actual local review UI · generated brand sprites · no model selects for you</figcaption>
+              </figure>
+              <figure className="review-visual">
+                <div className="review-window-bar">
+                  <span>localhost · pixelkiln gallery</span>
+                  <span>provenance</span>
+                </div>
+                <Image
+                  src="/gallery-ui-showcase.jpg"
+                  alt="PixelKiln's local gallery showing 24 generated environments from three providers, with one record open"
+                  width={1280}
+                  height={720}
+                  sizes="(max-width: 980px) 100vw, 56vw"
+                />
+                <figcaption>Actual local gallery · the environment benchmark across three providers · every record one click away</figcaption>
+              </figure>
+            </div>
           </div>
         </section>
 

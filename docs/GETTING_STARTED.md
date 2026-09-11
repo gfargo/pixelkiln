@@ -156,6 +156,13 @@ If a run stops between stages, rerun `plan`. It points `processing` work to
 `poll`, `review` work to `pick`, and `selected` or `download-failed` work to
 `fetch`; these resume existing paid work without another submission.
 
+To browse what the project has made so far, run
+[`pixelkiln gallery`](CLI.md#gallery). It serves a read-only page of every
+generation with its full record — prompt, provider, cost, hashes, lineage, and
+quality state — and can stay open while `gen` runs.
+
+![PixelKiln local generation gallery](../website/public/gallery-ui-showcase.jpg)
+
 ## Start from existing art
 
 Scaffold the manifest from PNGs, then reconcile exact file hashes with the

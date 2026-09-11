@@ -207,6 +207,42 @@ when an installed provider, such as local ComfyUI, has no balance endpoint.
 Summarize lock entries by state and successful submission spend by cost unit.
 Supports `--json`; unlike units are never added together.
 
+### `gallery`
+
+Open a local, read-only gallery of everything the project has generated. Each
+lock entry is shown at integer zoom on a transparency checkerboard, grouped by
+style, with its provenance one click away: the prompt actually sent, provider
+and generator, dimensions, recorded cost, lock status and plan state, submit
+and download times, job and object ids, every output with its path, SHA-256,
+size, and on-disk status, revision lineage, the quality record (palette,
+native-grid detection, audit, named approval), the manifest asset as declared,
+and raw provider metadata.
+
+```bash
+pixelkiln gallery
+pixelkiln gallery --style environment --port 4180 --no-open
+pixelkiln gallery --json > generations.json
+```
+
+The gallery is lock-first. A lock entry the manifest no longer declares still
+appears, marked `undeclared`, so paid work is never hidden; a declared asset
+with no entry appears as a placeholder so the page also shows what has not
+been made. Search matches asset ids, prompts, job and object ids, hashes, and
+paths; chips filter by plan state, provider, and generator. Filters and sort
+live in the URL query (`?state=failed,orphaned&group=none`) and the open record
+in the hash (`#style/asset`), so a link lands on the same view. A render shows
+up to 600 cards before offering the rest, which keeps very large projects
+responsive. **Refresh** re-reads the manifest, lockfile, and disk, so the page
+can stay open while `gen` runs in another terminal. The server binds to
+localhost, serves only the files the current snapshot names, never contacts a
+provider, and never writes anything. Stop it with Ctrl+C. See the
+[Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
+screenshot.
+
+`--json` prints the same snapshot to stdout without starting a server. It is
+the offline, machine-readable answer to "what has this project generated?" for
+scripts and agents; `--style` and `--only` narrow it the same way.
+
 ### `workspace`
 
 Register sibling projects in a schema-versioned catalog file, outside any one
@@ -455,10 +491,10 @@ Print the package version. `-v` is an alias.
 | `--budget <n\|provider=n>` | submit/gen | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
-| `--json` | plan/doctor/audit/cache/status/salvage/refine/recipe/quality | Machine-readable stdout where supported. |
+| `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
-| `--no-open` | pick/salvage | Do not automatically open the browser. |
+| `--no-open` | pick/salvage/gallery | Do not automatically open the browser. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |
 | `--workspace <path>` | workspace/salvage | Workspace catalog path; defaults to `pixelkiln.workspace.json`. On salvage, derives the claim set instead of repeated `--claims`. |
@@ -470,7 +506,7 @@ Print the package version. `-v` is an alias.
 | `--generator <name>` | init | Generator assigned to the scaffolded style. |
 | `--name <name>` | init | Project name for the scaffolded manifest. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
-| `--port <n>` | pick/salvage | Local review server port; otherwise chooses a free port. |
+| `--port <n>` | pick/salvage/gallery | Local review or gallery server port; otherwise chooses a free port. |
 | `--out <path>` | pack/export/refine/recipe install/quality snapshot | Output base override, final native PNG for path-mode refine, exact recipe destination, or quality baseline path. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |

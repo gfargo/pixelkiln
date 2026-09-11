@@ -77,6 +77,42 @@ await requireRevisionReady(spec, lock)
 accepted modes with optional `supportsRevision(mode)`. Omission means no
 revision support and makes resolution fail offline.
 
+## Inspect every generation
+
+`buildGallerySnapshot` is the offline, serializable view behind
+`pixelkiln gallery`: every lock entry with its plan state, outputs, quality
+record, lineage, and manifest intent, plus lock entries the manifest no longer
+declares. It is built from the same sources as `buildPlan` and contacts no
+provider.
+
+```ts
+import {
+  buildGallerySnapshot,
+  loadLock,
+  loadManifest,
+  renderGallery,
+  resolveSpecs,
+  serveGallery,
+} from "pixelkiln"
+
+const loaded = await loadManifest("pixelkiln.manifest.json")
+const specs = await resolveSpecs(loaded)
+const lock = await loadLock("pixelkiln.lock.json")
+const { snapshot, media } = await buildGallerySnapshot({
+  loaded, specs, lock, lockPath: "pixelkiln.lock.json",
+})
+
+for (const item of snapshot.items) {
+  console.log(item.key, item.state, item.cost, item.costUnit, item.outputs.map((o) => o.sha256))
+}
+```
+
+`renderGallery(snapshot)` returns the self-contained HTML page, and
+`serveGallery({ load })` runs the localhost server; `load` is called again for
+every page load and `/api/gallery.json` request, and `media` is the exact
+allowlist of files the server will read. Output URLs inside the snapshot are
+only meaningful while that server runs.
+
 ## Audit and gate generated art
 
 ```ts

@@ -55,7 +55,7 @@ PixelKiln keeps the missing record:
 | Workflow | What PixelKiln provides |
 |---|---|
 | Plan and budget | Offline manifest/lock/disk diff, provider-grouped estimates, keyed mixed-provider budget ceilings, JSON/CI gate. |
-| Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, and candidate or atomic frame-set review. |
+| Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, candidate or atomic frame-set review, and a read-only provenance gallery. |
 | Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, and resumable paid jobs. |
@@ -68,16 +68,18 @@ PixelKiln keeps the missing record:
 
 ### Local human review
 
-`pixelkiln pick` opens a local candidate sheet. It preserves each image's aspect
-ratio, fits large work without blurring small sprites, and never asks a model to
-choose artwork for you.
+`pixelkiln pick` opens a local candidate sheet: native aspect ratios, no blurred
+small sprites, and no model choosing artwork for you.
 
 ![PixelKiln candidate review UI](./website/public/review-ui-showcase.jpg)
 
-Use Left/Right to inspect alternatives, Enter or 1–9 to select, and 0 to leave
-a row unresolved. Nothing is applied when the window is closed without using
-**Apply selections**. See the [CLI reference](docs/CLI.md#pick) for the full
-review workflow.
+Left/Right inspects alternatives, Enter or 1–9 selects, 0 leaves a row
+unresolved, and closing without **Apply selections** applies nothing
+([CLI reference](docs/CLI.md#pick)). [`pixelkiln gallery`](docs/CLI.md#gallery)
+is the read-only companion: every generation at integer zoom with the prompt,
+cost, hashes, lineage, and quality record behind it; `--json` prints the same.
+
+![PixelKiln generation gallery UI](./website/public/gallery-ui-showcase.jpg)
 
 ## Install
 
@@ -344,10 +346,9 @@ console.log(plan.groups, plan.actionable.length)
 ```
 
 The package also exports audit and image-regression gates, quality-profile
-inspection and refinement, revision-readiness checks, lock/output helpers,
-provider contracts, sprite packing/mounting, tile
-exporters, managed artifact writes, and offline provenance verification. See
-[Library API](./docs/LIBRARY.md).
+inspection and refinement, revision-readiness checks, lock/output helpers, the
+gallery snapshot, provider contracts, sprite packing/mounting, tile exporters,
+managed artifact writes, and provenance verification. See [Library API](./docs/LIBRARY.md).
 
 ## Documentation
 

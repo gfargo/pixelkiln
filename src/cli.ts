@@ -35,6 +35,8 @@ import { fetchAssets, pushTags } from "./pipeline/fetch.ts"
 import { doctor } from "./pipeline/doctor.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
 import { runPicker, type ReviewReadyInfo } from "./pick/server.ts"
+import { buildGallerySnapshot } from "./gallery/snapshot.ts"
+import { serveGallery } from "./gallery/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import {
   loadClaims,
@@ -107,6 +109,20 @@ export function announceReviewReady(
   stream.write(
     `\n  ${count} asset${count === 1 ? "" : "s"} awaiting selection: ${info.url}\n` +
       "  (leave this running; it exits once you apply)\n\n",
+  )
+}
+
+/** Same stream rule as review readiness: the live URL must not wait behind a pipe. */
+export function announceGalleryReady(
+  url: string,
+  count: number,
+  stdout: CliWritable = process.stdout,
+  stderr: CliWritable = process.stderr,
+): void {
+  const stream = stdout.isTTY ? stdout : stderr
+  stream.write(
+    `\n  gallery of ${count} generation${count === 1 ? "" : "s"}: ${url}\n` +
+      "  (read-only; press Ctrl+C to stop)\n\n",
   )
 }
 
@@ -197,7 +213,7 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
+  "gallery", "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -497,12 +513,14 @@ Commands
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
   status    Summarise the lockfile.
+  gallery   Open a local read-only gallery of every generation and its
+            provenance: prompt, provider, cost, outputs, lineage, quality.
   workspace Register sibling projects and derive account-wide claims/status.
             add/remove/list/status/claims. Offline.
 
 Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
-  --port <n>          Local review-server port (default: choose a free port)
+  --port <n>          Local review/gallery server port (default: choose a free port)
   --inputs <path>     pack/quality snapshot: JSON input list; needs --out
   --format <format>   export: generic (default), tiled, or godot
   --output-role <r>   pack: include only this output role (repeatable)
@@ -530,9 +548,10 @@ Options
   --dry-run           Never spend; doctor also skips provider connectivity
   --all               salvage --dry-run: list every unclaimed object, not just the first 30
   --json              Machine-readable output where supported, including quality checks
+                      and the gallery snapshot (no server)
   --check             plan/audit/cache: exit nonzero when the selected state is unsafe
   --yes, -y           Skip the confirmation prompt
-  --no-open           Do not auto-open the browser during pick
+  --no-open           Do not auto-open the browser during pick, salvage, or gallery
   --tag               Also push tags upstream after fetch
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
   --workspace <path>  Workspace catalog (default: pixelkiln.workspace.json). Also
@@ -544,6 +563,7 @@ Examples
   pixelkiln plan
   pixelkiln gen --style heybud-premium --budget 400
   pixelkiln gen --only first_review --force
+  pixelkiln gallery --style heybud-premium
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
@@ -1319,6 +1339,57 @@ async function main() {
       }
     }
     if (!reported) log(`  no successful submission cost recorded`)
+    return
+  }
+
+  if (args.command === "gallery") {
+    const filter = { styles: args.styles, assets: args.assets }
+    const build = () => buildGallerySnapshot({ loaded, specs, lock, lockPath: args.lock, filter })
+    if (args.json) {
+      log(JSON.stringify((await build()).snapshot, null, 2))
+      return
+    }
+    // Re-read state on every refresh: the lockfile may have moved on since
+    // the server started, and a stale in-memory copy would show old art.
+    const reload = async () => {
+      const freshLoaded = await loadManifest(args.manifest)
+      const freshSpecs = await resolveSpecs(freshLoaded, { styles: args.styles, assets: args.assets })
+      const freshLock = await loadLock(args.lock)
+      normalizeLockOutputPaths(freshLock, freshSpecs)
+      return buildGallerySnapshot({
+        loaded: freshLoaded,
+        specs: freshSpecs,
+        lock: freshLock,
+        lockPath: args.lock,
+        filter,
+      })
+    }
+    const initial = await build()
+    let first = true
+    const server = await serveGallery({
+      load: () => {
+        if (first) {
+          first = false
+          return Promise.resolve(initial)
+        }
+        return reload()
+      },
+      port: args.port,
+      open: !args.noOpen,
+      onProgress: log,
+      onReady: (url) => announceGalleryReady(url, initial.snapshot.totals.entries),
+    })
+    await new Promise<void>((resolve) => {
+      const stop = () => {
+        process.off("SIGINT", stop)
+        process.off("SIGTERM", stop)
+        resolve()
+      }
+      process.once("SIGINT", stop)
+      process.once("SIGTERM", stop)
+    })
+    await server.close()
+    log("\n  gallery closed")
     return
   }
 

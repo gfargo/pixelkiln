@@ -1,0 +1,430 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import { Script } from "node:vm"
+import { FakeProvider, FAKE_PNG } from "../src/providers/fake.ts"
+import { loadManifest, resolveSpecs } from "../src/manifest.ts"
+import { buildPlan } from "../src/pipeline/plan.ts"
+import { submit } from "../src/pipeline/submit.ts"
+import { poll } from "../src/pipeline/poll.ts"
+import { fetchAssets } from "../src/pipeline/fetch.ts"
+import { loadLock, saveLock, upsert } from "../src/lock.ts"
+import { sha256 } from "../src/hash.ts"
+import { lockKey, type Lock } from "../src/types.ts"
+import { buildGallerySnapshot, galleryMediaId } from "../src/gallery/snapshot.ts"
+import { renderGallery } from "../src/gallery/page.ts"
+import { serveGallery } from "../src/gallery/server.ts"
+import { announceGalleryReady, parseArgs } from "../src/cli.ts"
+import { refineQualityProfiles } from "../src/pipeline/quality-profile.ts"
+import { approveQualityRecord } from "../src/pipeline/refine.ts"
+import { encodeRgbaPng } from "../src/png.ts"
+
+const fixer = path.resolve("test/fixtures/fake-pixelfixer.mjs")
+
+let dir: string
+let lockPath: string
+
+beforeEach(async () => {
+  dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-gallery-"))
+  lockPath = path.join(dir, "pixelkiln.lock.json")
+})
+afterEach(async () => {
+  await rm(dir, { recursive: true, force: true })
+})
+
+/**
+ * A project with one style and three assets in three different situations:
+ * `anvil` and `hammer` downloaded through the real pipeline, `sketch` declared
+ * but never generated, plus a hand-written `base/ghost` lock entry the
+ * manifest no longer declares. That is the spread the gallery exists to show
+ * side by side.
+ */
+async function project(manifestOverride?: Record<string, unknown>) {
+  const manifest = manifestOverride ?? {
+    name: "gallery-test",
+    styles: { base: { generator: "map", outDir: "out", promptSuffix: "clean", palette: ["#101820", "#f2aa4c"] } },
+    assets: {
+      anvil: { prompt: "an anvil", width: 32, height: 32, category: "tools", tags: ["prop"] },
+      hammer: { prompt: "a hammer", width: 32, height: 32 },
+      sketch: { prompt: "a sketch", width: 64, height: 32 },
+    },
+  }
+  const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+  await writeFile(manifestPath, JSON.stringify(manifest))
+  const loaded = await loadManifest(manifestPath)
+  const specs = await resolveSpecs(loaded)
+  return { loaded, specs, manifestPath }
+}
+
+async function generated() {
+  const { loaded, specs, manifestPath } = await project()
+  const provider = new FakeProvider({ candidates: 1 })
+  const lock: Lock = { version: 2, entries: {} }
+  const generate = specs.filter((spec) => spec.assetId !== "sketch")
+  await submit(provider, loaded, (await buildPlan(generate, lock)).actionable, lock, lockPath, { spacingMs: 0 })
+  await poll(provider, lock, lockPath, { intervalMs: 0 })
+  await fetchAssets(provider, generate, lock, lockPath, { cacheDir: false })
+  upsert(lock, lockKey("base", "ghost"), {
+    styleId: "base",
+    assetId: "ghost",
+    specHash: "f".repeat(64),
+    generator: "map",
+    prompt: "a ghost",
+    width: 16,
+    height: 16,
+    status: "downloaded",
+    outputs: [{ path: "out/ghost.png", sha256: sha256(FAKE_PNG) }],
+    cost: 1,
+    costUnit: "generations",
+    provider: "fake",
+    submittedAt: "2026-01-01T00:00:00.000Z",
+    downloadedAt: "2026-01-01T00:01:00.000Z",
+  })
+  await saveLock(lockPath, lock)
+  return { loaded, specs, lock, manifestPath }
+}
+
+describe("buildGallerySnapshot", () => {
+  it("is lock-first: shows downloaded, never-generated, and undeclared work together", async () => {
+    const { loaded, specs, lock } = await generated()
+    const { snapshot, media } = await buildGallerySnapshot({
+      loaded, specs, lock, lockPath, now: () => new Date("2026-09-11T12:00:00Z"),
+    })
+
+    expect(snapshot.version).toBe(1)
+    expect(snapshot.generatedAt).toBe("2026-09-11T12:00:00.000Z")
+    expect(snapshot.project).toMatchObject({ name: "gallery-test", root: dir, lock: lockPath })
+    expect(snapshot.items.map((item) => item.key)).toEqual([
+      "base/anvil", "base/ghost", "base/hammer", "base/sketch",
+    ])
+    expect(snapshot.totals).toMatchObject({
+      entries: 3,
+      items: 4,
+      byState: { ok: 2, missing: 1, undeclared: 1 },
+      byStatus: { downloaded: 3 },
+    })
+    expect(snapshot.totals.spendByUnit.generations).toBe(3)
+
+    const anvil = snapshot.items.find((item) => item.key === "base/anvil")!
+    expect(anvil).toMatchObject({
+      declared: true,
+      state: "ok",
+      status: "downloaded",
+      provider: "fake",
+      generator: "map",
+      prompt: "an anvil, clean",
+      currentPrompt: null,
+      width: 32,
+      height: 32,
+      cost: 1,
+      costUnit: "generations",
+      candidates: 1,
+      category: "tools",
+      quality: null,
+    })
+    // Declared tags plus the routing tags pushed upstream, as `tag` would send them.
+    expect(anvil.tags).toEqual(expect.arrayContaining(["prop", "style:base", "asset:anvil"]))
+    expect(anvil.recordedSpecHash).toBe(anvil.currentSpecHash)
+    expect(anvil.jobId).toBeTruthy()
+    expect(anvil.submittedAt).toBeTruthy()
+    expect(anvil.asset).toMatchObject({ prompt: "an anvil", category: "tools" })
+    expect(anvil.outputs).toHaveLength(1)
+    const output = anvil.outputs[0]!
+    const bytes = await readFile(path.join(dir, "out", "tools", "anvil.png"))
+    expect(output).toMatchObject({
+      path: "out/tools/anvil.png",
+      absolutePath: path.join(dir, "out", "tools", "anvil.png"),
+      sha256: sha256(bytes),
+      exists: true,
+      bytes: bytes.length,
+      mediaType: "image/png",
+    })
+    const id = galleryMediaId(output.absolutePath)
+    expect(output.url).toBe(`/media/${id}?v=${output.sha256!.slice(0, 16)}`)
+    expect(media.get(id)).toEqual({ path: output.absolutePath, contentType: "image/png" })
+
+    const sketch = snapshot.items.find((item) => item.key === "base/sketch")!
+    expect(sketch).toMatchObject({
+      declared: true, state: "missing", status: null, outputs: [], cost: 0, estimatedCost: 1,
+      recordedSpecHash: null,
+    })
+    expect(sketch.currentSpecHash).toMatch(/^[0-9a-f]{64}$/)
+
+    const ghost = snapshot.items.find((item) => item.key === "base/ghost")!
+    expect(ghost).toMatchObject({ declared: false, state: "undeclared", asset: null, estimatedCost: null, fps: null })
+    expect(ghost.reason).toContain("prune")
+    // Its recorded file was never written, so the gallery says so instead of
+    // inventing a URL that would 404.
+    expect(ghost.outputs[0]).toMatchObject({ exists: false, url: null, sha256: sha256(FAKE_PNG) })
+
+    expect(snapshot.styles).toEqual([
+      expect.objectContaining({
+        id: "base", provider: "pixellab", generator: "map", outDir: "out",
+        palette: ["#101820", "#f2aa4c"], quality: false, items: 4, spendByUnit: { generations: 3 },
+      }),
+    ])
+  })
+
+  it("reports stale work with both prompts and both spec hashes", async () => {
+    const { lock, manifestPath } = await generated()
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"))
+    manifest.assets.anvil.prompt = "a battered anvil"
+    await writeFile(manifestPath, JSON.stringify(manifest))
+    const loaded = await loadManifest(manifestPath)
+    const specs = await resolveSpecs(loaded, { assets: ["anvil"] })
+
+    const { snapshot } = await buildGallerySnapshot({
+      loaded, specs, lock, lockPath, filter: { assets: ["anvil"] },
+    })
+    const anvil = snapshot.items.find((item) => item.key === "base/anvil")!
+    expect(anvil.state).toBe("stale")
+    expect(anvil.prompt).toBe("an anvil, clean")
+    expect(anvil.currentPrompt).toBe("a battered anvil, clean")
+    expect(anvil.currentSpecHash).not.toBe(anvil.recordedSpecHash)
+    // The art on disk still belongs to the recorded generation; it stays visible.
+    expect(anvil.outputs[0]!.exists).toBe(true)
+  })
+
+  it("keeps filters honest: filtered-out declared work is hidden, not called undeclared", async () => {
+    const { lock, manifestPath } = await generated()
+    const loaded = await loadManifest(manifestPath)
+    const specs = await resolveSpecs(loaded, { assets: ["hammer"] })
+    const { snapshot } = await buildGallerySnapshot({
+      loaded, specs, lock, lockPath, filter: { assets: ["hammer"] },
+    })
+    expect(snapshot.items.map((item) => item.key)).toEqual(["base/hammer"])
+    expect(snapshot.filter).toEqual({ styles: [], assets: ["hammer"] })
+    // The lock still has three entries; the filter changes what is shown, not the record.
+    expect(snapshot.totals.entries).toBe(3)
+
+    const wide = await buildGallerySnapshot({
+      loaded, specs: await resolveSpecs(loaded, { styles: ["base"] }), lock, lockPath,
+      filter: { styles: ["base"] },
+    })
+    expect(wide.snapshot.items.map((item) => item.key)).toContain("base/ghost")
+  })
+
+  it("reads a frame set's playback rate from provider metadata", async () => {
+    const { loaded, specs, lock } = await generated()
+    upsert(lock, lockKey("base", "walk"), {
+      styleId: "base", assetId: "walk", specHash: "e".repeat(64), generator: "frames",
+      prompt: "walk cycle", width: 16, height: 16, status: "downloaded", provider: "comfyui",
+      outputs: [0, 1].map((i) => ({ path: "out/walk-frame-0" + i + ".png", sha256: "0".repeat(64), role: "frame-0" + i })),
+      providerMetadata: { comfyui: { frameSet: { count: 2, fps: 8, promptIds: [] } } },
+      cost: 0, costUnit: "free",
+    })
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
+    expect(snapshot.items.find((item) => item.key === "base/walk")).toMatchObject({
+      state: "undeclared", generator: "frames", fps: 8,
+    })
+    expect(snapshot.items.find((item) => item.key === "base/anvil")!.fps).toBeNull()
+  })
+
+  it("shows untracked art on disk with no hash and no provenance", async () => {
+    const { loaded, specs } = await project()
+    const outFile = specs.find((spec) => spec.assetId === "anvil")!.outFile
+    await mkdir(path.dirname(outFile), { recursive: true })
+    await writeFile(outFile, FAKE_PNG)
+    const { snapshot } = await buildGallerySnapshot({
+      loaded, specs, lock: { version: 2, entries: {} }, lockPath,
+    })
+    const anvil = snapshot.items.find((item) => item.key === "base/anvil")!
+    expect(anvil.state).toBe("untracked")
+    expect(anvil.outputs[0]).toMatchObject({ sha256: null, exists: true, path: "out/tools/anvil.png" })
+    expect(anvil.outputs[0]!.url).toMatch(/^\/media\/[0-9a-f]{24}\?v=/)
+    expect(snapshot.totals.entries).toBe(0)
+  })
+})
+
+describe("buildGallerySnapshot quality records", () => {
+  it("reads the refinement record behind a quality profile", async () => {
+    const source = path.join(dir, "source.png")
+    await writeFile(source, encodeRgbaPng(2, 2, Buffer.from([
+      12, 18, 24, 255, 245, 240, 235, 255, 70, 70, 70, 0, 180, 180, 180, 96,
+    ])))
+    const { loaded, specs } = await project({
+      name: "quality-gallery",
+      styles: {
+        base: {
+          generator: "map", size: 16, outDir: "art/raw",
+          quality: { outDir: "art/final", palette: ["#000000", "#ffffff"], minGridConfidence: "high" },
+        },
+      },
+      assets: { keep: { prompt: "a mountain keep", source: "source.png" } },
+    })
+    const lock: Lock = { version: 2, entries: {} }
+
+    const { snapshot: before } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
+    expect(before.items[0]!.quality).toMatchObject({
+      state: "needs-refinement", recordExists: false, review: null, palette: null,
+      output: "art/final/keep.png", record: "art/final/keep.pixelkiln.json",
+    })
+    expect(before.items[0]!.quality!.outputs[0]).toMatchObject({ exists: false, url: null })
+    // Committed `source` art is what the gallery shows for a placed asset.
+    expect(before.items[0]).toMatchObject({ state: "ok", status: null, source: "source.png" })
+    expect(before.items[0]!.outputs[0]).toMatchObject({ path: "source.png", exists: true, sha256: null })
+
+    await refineQualityProfiles(specs, lock, { fixerCommand: process.execPath, fixerArgsPrefix: [fixer] })
+    await approveQualityRecord(path.join(dir, "art/final/keep.pixelkiln.json"), {
+      reviewer: "Ada", note: "crisp at 1×", approvedAt: new Date("2026-09-05T12:00:00.000Z"),
+    })
+
+    const { snapshot, media } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
+    const quality = snapshot.items[0]!.quality!
+    expect(quality).toMatchObject({
+      state: "approved",
+      recordExists: true,
+      palette: ["#000000", "#ffffff"],
+      review: { status: "approved", reviewer: "Ada", approvedAt: "2026-09-05T12:00:00.000Z", note: "crisp at 1×" },
+      audit: { safe: true },
+      frameSet: null,
+      check: { safe: true, current: true, reasons: [] },
+    })
+    expect(quality.nativeGrid).toMatchObject({ confidence: "high", sourceWidth: 2, sourceHeight: 2 })
+    const refined = quality.outputs[0]!
+    expect(refined).toMatchObject({ path: "art/final/keep.png", exists: true })
+    expect(refined.url).toMatch(/^\/media\/[0-9a-f]{24}\?v=/)
+    expect(media.has(galleryMediaId(refined.absolutePath))).toBe(true)
+  })
+})
+
+describe("renderGallery", () => {
+  it("embeds the snapshot without letting a prompt close the script tag", async () => {
+    const { loaded, specs, lock } = await generated()
+    lock.entries["base/anvil"]!.prompt = "</script><img src=x onerror=alert(1)><!-- -->"
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
+    const html = renderGallery(snapshot)
+    expect(html).toContain("<title>pixelkiln — gallery-test</title>")
+    expect(html).toContain("const INITIAL = {")
+    expect(html).not.toContain("</script><img")
+    expect(html).toContain("<\\/script><img")
+    expect(html).toContain("<\\u0021-- -->")
+    // The JSON is still valid after escaping.
+    const start = html.indexOf("const INITIAL = ") + "const INITIAL = ".length
+    const end = html.indexOf(";\nlet snap = INITIAL;")
+    expect(JSON.parse(html.slice(start, end))).toEqual(snapshot)
+  })
+
+  it("emits a page script that compiles", async () => {
+    // The page is authored inside a template literal, so a stray escape turns
+    // into a real newline in the emitted JS. Compiling (not running) the
+    // script catches that before a browser shows an empty gallery.
+    const { loaded, specs, lock } = await generated()
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
+    const html = renderGallery(snapshot)
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!)
+    expect(scripts).toHaveLength(1)
+    expect(() => new Script(scripts[0]!, { filename: "gallery.js" })).not.toThrow()
+  })
+})
+
+describe("serveGallery", () => {
+  it("serves the page, a fresh JSON snapshot, and only allowlisted media", async () => {
+    const { loaded, specs, lock } = await generated()
+    let loads = 0
+    const ready: string[] = []
+    const server = await serveGallery({
+      open: false,
+      load: async () => {
+        loads++
+        return buildGallerySnapshot({ loaded, specs, lock, lockPath })
+      },
+      onReady: (url) => ready.push(url),
+    })
+    try {
+      expect(ready).toEqual([server.url])
+      expect(server.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/)
+
+      const page = await fetch(server.url)
+      expect(page.status).toBe(200)
+      expect(page.headers.get("content-type")).toContain("text/html")
+      expect(await page.text()).toContain("gallery-test")
+      expect(loads).toBe(1)
+
+      const api = await fetch(new URL("/api/gallery.json", server.url))
+      expect(api.status).toBe(200)
+      const snapshot = await api.json()
+      expect(snapshot.items.map((item: { key: string }) => item.key)).toContain("base/anvil")
+      expect(loads).toBe(2)
+
+      const anvil = snapshot.items.find((item: { key: string }) => item.key === "base/anvil")
+      const mediaUrl = new URL(anvil.outputs[0].url, server.url)
+      const png = await fetch(mediaUrl)
+      expect(png.status).toBe(200)
+      expect(png.headers.get("content-type")).toBe("image/png")
+      expect(png.headers.get("x-content-type-options")).toBe("nosniff")
+      const onDisk = await readFile(anvil.outputs[0].absolutePath)
+      expect(Buffer.from(await png.arrayBuffer()).equals(onDisk)).toBe(true)
+
+      // Routes are an allowlist of the snapshot's own files: an unknown id,
+      // a path-shaped request, and the lockfile itself are all unreachable.
+      expect((await fetch(new URL("/media/" + "0".repeat(24), server.url))).status).toBe(404)
+      expect((await fetch(new URL("/media/../pixelkiln.lock.json", server.url))).status).toBe(404)
+      expect((await fetch(new URL("/pixelkiln.lock.json", server.url))).status).toBe(404)
+      expect((await fetch(new URL("/media/" + galleryMediaId(lockPath), server.url))).status).toBe(404)
+
+      const post = await fetch(new URL("/api/gallery.json", server.url), { method: "POST" })
+      expect(post.status).toBe(405)
+    } finally {
+      await server.close()
+    }
+    await expect(fetch(server.url)).rejects.toThrow()
+  })
+
+  it("reflects a refresh: work finished after startup appears without a restart", async () => {
+    const { loaded, specs, manifestPath } = await project()
+    const server = await serveGallery({
+      open: false,
+      load: async () => buildGallerySnapshot({
+        loaded, specs, lock: await loadLock(lockPath), lockPath,
+      }),
+    })
+    try {
+      const before = await (await fetch(new URL("/api/gallery.json", server.url))).json()
+      expect(before.totals.entries).toBe(0)
+      expect(before.items.every((item: { state: string }) => item.state === "missing")).toBe(true)
+
+      const provider = new FakeProvider({ candidates: 1 })
+      const lock: Lock = { version: 2, entries: {} }
+      const one = specs.filter((spec) => spec.assetId === "anvil")
+      await submit(provider, await loadManifest(manifestPath), (await buildPlan(one, lock)).actionable, lock, lockPath, { spacingMs: 0 })
+      await poll(provider, lock, lockPath, { intervalMs: 0 })
+      await fetchAssets(provider, one, lock, lockPath, { cacheDir: false })
+      await saveLock(lockPath, lock)
+
+      const after = await (await fetch(new URL("/api/gallery.json", server.url))).json()
+      expect(after.totals.entries).toBe(1)
+      const anvil = after.items.find((item: { key: string }) => item.key === "base/anvil")
+      expect(anvil.state).toBe("ok")
+      const png = await fetch(new URL(anvil.outputs[0].url, server.url))
+      expect(png.status).toBe(200)
+    } finally {
+      await server.close()
+    }
+  })
+})
+
+describe("gallery CLI surface", () => {
+  it("parses gallery with its server and filter flags", () => {
+    expect(parseArgs(["gallery"])).toMatchObject({ command: "gallery", json: false, noOpen: false })
+    expect(parseArgs(["gallery", "--port", "4321", "--no-open", "--json", "--style", "base", "--only", "anvil"]))
+      .toMatchObject({ command: "gallery", port: 4321, noOpen: true, json: true, styles: ["base"], assets: ["anvil"] })
+    expect(() => parseArgs(["gallery", "base"])).toThrow(/Unexpected argument/)
+  })
+
+  it("announces the URL on stderr when stdout is piped", () => {
+    const out: string[] = []
+    const err: string[] = []
+    announceGalleryReady("http://127.0.0.1:1234/", 3,
+      { isTTY: false, write: (chunk: string) => out.push(chunk) },
+      { isTTY: true, write: (chunk: string) => err.push(chunk) })
+    expect(out).toEqual([])
+    expect(err.join("")).toContain("gallery of 3 generations: http://127.0.0.1:1234/")
+
+    announceGalleryReady("http://127.0.0.1:1234/", 1,
+      { isTTY: true, write: (chunk: string) => out.push(chunk) },
+      { isTTY: false, write: (chunk: string) => err.push(chunk) })
+    expect(out.join("")).toContain("gallery of 1 generation:")
+  })
+})
