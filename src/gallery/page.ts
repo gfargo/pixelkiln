@@ -247,11 +247,50 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   .dialog .warn { color:var(--warn); font-size:12.5px; }
   .dialog .actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .dialog .msg { font-size:12.5px; color:var(--bad); }
-  .review-host { position:fixed; inset:0; z-index:25; background:var(--bg); display:grid; grid-template-rows:auto 1fr; }
-  .review-host .rbar { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line-strong);
-    background:var(--panel); font-size:13px; }
-  .review-host .rbar span { color:var(--dim); }
-  .review-host iframe { border:0; width:100%; height:100%; background:var(--bg); }
+  .sheet-scrim { position:fixed; inset:0; z-index:24; background:rgba(0,0,0,.5); }
+  .sheet { position:fixed; top:0; right:0; bottom:0; z-index:25; background:var(--bg);
+    border-left:1px solid var(--line-strong); display:grid; grid-template-rows:auto 1fr; min-width:0; }
+  .sheet.review-host { width:min(1180px, 94vw); }
+  .sheet.compare-host { width:min(1500px, 96vw); }
+  .sheet .rbar { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line-strong);
+    background:var(--panel); font-size:13px; flex-wrap:wrap; }
+  .sheet .rbar span { color:var(--dim); }
+  .sheet .rbar .zoom { margin-left:auto; }
+  .sheet iframe { border:0; width:100%; height:100%; background:var(--bg); }
+  @media (prefers-reduced-motion: no-preference) { .sheet { animation: slide .18s ease-out; } }
+  .compare-body { overflow:auto; padding:16px; }
+  .compare-body table { border-collapse:separate; border-spacing:0; min-width:100%; font-size:12.5px; }
+  .compare-body th, .compare-body td { text-align:left; vertical-align:top; padding:6px 10px; border-bottom:1px solid var(--line);
+    min-width:180px; max-width:420px; }
+  .compare-body th:first-child, .compare-body td:first-child { min-width:96px; max-width:120px; color:var(--dim);
+    position:sticky; left:0; background:var(--bg); z-index:1; }
+  .compare-body thead th { position:sticky; top:0; background:var(--bg); z-index:2; border-bottom:1px solid var(--line-strong); }
+  .compare-body .chead { display:grid; gap:4px; }
+  .compare-body .chead .aid { font-size:14px; }
+  .compare-body .chead .badges { display:flex; gap:6px; }
+  .compare-body .chead .badges .sid { display:inline-block; }
+  .compare-body .cimg { background:var(--panel-deep); background-image:var(--checker); background-size:12px 12px;
+    background-position:0 0,6px 6px; border:1px solid var(--line); display:grid; place-items:center; padding:10px;
+    min-height:120px; max-height:56vh; overflow:auto; }
+  .compare-body .cimg img { image-rendering:pixelated; display:block; }
+  .compare-body .cimg .none { color:var(--dim); font-size:12px; }
+  .compare-body td.diff { background:color-mix(in srgb, var(--warn) 9%, transparent); }
+  .compare-body td.mono { font-family:var(--mono); font-size:12px; word-break:break-all; }
+  .compare-body td .prompt { white-space:pre-wrap; }
+  .compare-body td .rm { float:right; padding:1px 6px; font-size:11px; color:var(--dim); border-color:transparent; }
+  .card.compared { outline:2px dashed var(--accent-soft); outline-offset:-2px; }
+  .card .slot { position:absolute; left:6px; top:6px; background:var(--accent); color:var(--bg); font:700 11px/1 var(--mono);
+    padding:3px 6px; }
+  .tray { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:18; background:var(--panel);
+    border:1px solid var(--accent); padding:8px 10px; display:flex; gap:8px; align-items:center; max-width:calc(100vw - 32px);
+    box-shadow:0 10px 30px rgba(0,0,0,.4); }
+  .tray .chipset { display:flex; gap:6px; overflow-x:auto; }
+  .tray .pick { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); padding:3px 4px 3px 6px;
+    font:12px/1.2 var(--mono); white-space:nowrap; }
+  .tray .pick img { width:22px; height:22px; object-fit:contain; image-rendering:pixelated; }
+  .tray .pick button { padding:0 5px; border-color:transparent; color:var(--dim); font-size:12px; }
+  .tray > button { padding:5px 11px; font-size:12.5px; }
+  @media (max-width: 900px) { .sheet.review-host, .sheet.compare-host { width:100vw; } }
   .drawer .gen { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
   .drawer .gen button.primary { padding:7px 14px; }
   @media (max-width: 720px) {
@@ -294,7 +333,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
 </header>
 <main id="root"></main>
 <footer>
-  Click a sprite for its full record. <kbd>←</kbd>/<kbd>→</kbd> step through the visible set while a record
+  Click a sprite for its full record; <kbd>shift</kbd>-click adds it to a side-by-side comparison. <kbd>←</kbd>/<kbd>→</kbd> step through the visible set while a record
   is open, <kbd>Esc</kbd> closes it, and <kbd>/</kbd> jumps to search. This page reads the manifest, lockfile,
   and disk only — it never contacts a provider<span id="foot-edit"> and never writes anything</span><span id="foot-editing" hidden>.
   Editing is on: saving rewrites the manifest and nothing else</span><span id="foot-gen" hidden>.
@@ -323,6 +362,10 @@ const ui = {
   editing: null,
   /** One-shot confirmation shown in the drawer after a save. */
   notice: null,
+  /** Record ids picked for side-by-side comparison, in pick order (max 4). */
+  compare: [],
+  /** Zoom for the comparison panel. */
+  compareZoom: 'auto',
   /** Jobs expanded to show their log. */
   logs: new Set(),
   /** Job ids already seen finished, so a completion refreshes exactly once. */
@@ -558,7 +601,9 @@ function generateDialog(items, { project = null, force = false, resume = false }
 function openReview(jobId) {
   const host = $('dialog-host');
   host.textContent = '';
-  const panel = el('div', 'review-host');
+  const scrim = el('div', 'sheet-scrim');
+  scrim.onclick = () => { host.textContent = ''; pollJobs(); refresh(); };
+  const panel = el('div', 'sheet review-host');
   const bar = el('div', 'rbar');
   const close = el('button', null, 'Back to gallery'); close.type = 'button';
   close.onclick = () => { host.textContent = ''; pollJobs(); refresh(); };
@@ -567,7 +612,7 @@ function openReview(jobId) {
   frame.src = '/review/' + encodeURIComponent(jobId);
   frame.title = 'Candidate review';
   panel.append(bar, frame);
-  host.append(panel);
+  host.append(scrim, panel);
 }
 window.addEventListener('message', (e) => {
   if (e.origin !== location.origin || !e.data || e.data.type !== 'pixelkiln:review-applied') return;
@@ -727,10 +772,11 @@ function thumb(item) {
 }
 
 function card(item) {
-  const c = el('button', 'card' + (item.outputs.some((o) => o.url) ? '' : ' ghost') + (ui.open === item.id ? ' active' : ''));
+  const slot = ui.compare.indexOf(item.id);
+  const c = el('button', 'card' + (item.outputs.some((o) => o.url) ? '' : ' ghost') + (ui.open === item.id ? ' active' : '') + (slot >= 0 ? ' compared' : ''));
   c.type = 'button';
   c.dataset.key = item.id;
-  c.setAttribute('aria-label', item.id + ', ' + item.state);
+  c.setAttribute('aria-label', item.id + ', ' + item.state + (slot >= 0 ? ', in comparison' : ''));
   const body = el('div', 'cbody');
   body.append(el('div', 'aid', item.assetId));
   const meta = el('div', 'cmeta');
@@ -739,8 +785,10 @@ function card(item) {
   meta.append(st, el('span', null, item.width + '×' + item.height));
   if (item.cost) meta.append(el('span', null, fmtCost(item.costUnit, item.cost)));
   body.append(meta);
-  c.append(thumb(item), body);
-  c.onclick = () => openItem(item.id);
+  const cell = thumb(item);
+  if (slot >= 0) cell.append(el('span', 'slot', String(slot + 1)));
+  c.append(cell, body);
+  c.onclick = (e) => { if (e.shiftKey) toggleCompare(item.id); else openItem(item.id); };
   return c;
 }
 
@@ -928,6 +976,134 @@ function generateActions(item) {
     }
   }
   return row;
+}
+
+// ---- compare ---------------------------------------------------------------
+
+function toggleCompare(id) {
+  const at = ui.compare.indexOf(id);
+  if (at >= 0) ui.compare.splice(at, 1);
+  else if (ui.compare.length >= 4) { $('note').textContent = ' Compare holds four records; remove one first.'; return; }
+  else ui.compare.push(id);
+  $('note').textContent = '';
+  render();
+}
+function renderTray() {
+  let tray = $('tray');
+  if (!ui.compare.length) { if (tray) tray.remove(); return; }
+  if (!tray) { tray = el('div', 'tray'); tray.id = 'tray'; document.body.append(tray); }
+  tray.textContent = '';
+  const chips = el('div', 'chipset');
+  for (const id of ui.compare) {
+    const item = snap.items.find((i) => i.id === id);
+    if (!item) continue;
+    const pick = el('span', 'pick');
+    const shown = item.outputs.find((o) => o.url);
+    if (shown) { const t = el('img'); t.src = shown.url; t.alt = ''; pick.append(t); }
+    pick.append(document.createTextNode((item.project ? item.project + ':' : '') + item.styleId + '/' + item.assetId));
+    const x = el('button', null, '×'); x.type = 'button'; x.title = 'Remove from comparison';
+    x.onclick = () => toggleCompare(id);
+    pick.append(x);
+    chips.append(pick);
+  }
+  const go = el('button', 'primary', 'Compare ' + ui.compare.length); go.type = 'button';
+  go.disabled = ui.compare.length < 2;
+  go.onclick = () => openCompare();
+  const clear = el('button', null, 'Clear'); clear.type = 'button';
+  clear.onclick = () => { ui.compare = []; render(); };
+  tray.append(chips, go, clear);
+}
+function openCompare() {
+  const items = ui.compare.map((id) => snap.items.find((i) => i.id === id)).filter(Boolean);
+  if (items.length < 2) return;
+  const host = $('dialog-host');
+  host.textContent = '';
+  const scrim = el('div', 'sheet-scrim'); scrim.onclick = () => { host.textContent = ''; };
+  const panel = el('div', 'sheet compare-host');
+  const bar = el('div', 'rbar');
+  const close = el('button', null, 'Back to gallery'); close.type = 'button'; close.onclick = () => { host.textContent = ''; };
+  bar.append(close, el('span', null, 'Fields that differ are tinted. Shift-click cards in the gallery to change the set.'));
+  const zoomBar = el('div', 'zoom');
+  zoomBar.append(el('span', null, 'zoom'));
+  const columnWidth = Math.max(160, Math.floor((Math.min(window.innerWidth * 0.96, 1500) - 140) / items.length) - 24);
+  const largest = Math.max(...items.map((i) => Math.max(i.width, i.height)));
+  const auto = displayScale(largest, largest, columnWidth, Math.min(window.innerHeight * 0.5, 520));
+  for (const z of ['fit', 1, 2, 4, 8]) {
+    const b = el('button', ui.compareZoom === String(z) || (ui.compareZoom === 'auto' && z === auto) ? 'on' : null, z === 'fit' ? 'fit' : z + '×');
+    b.type = 'button'; b.onclick = () => { ui.compareZoom = String(z); openCompare(); };
+    zoomBar.append(b);
+  }
+  bar.append(zoomBar);
+  const zoom = ui.compareZoom === 'auto' ? auto : ui.compareZoom === 'fit' ? Math.min(auto, 1) : Number(ui.compareZoom);
+
+  const body = el('div', 'compare-body');
+  const table = el('table');
+  const thead = el('thead'); const hr = el('tr'); hr.append(el('th', null, ''));
+  for (const item of items) {
+    const th = el('th');
+    const head = el('div', 'chead');
+    const badges = el('div', 'badges');
+    if (item.project) badges.append(el('span', 'sid project', item.project));
+    badges.append(el('span', 'sid', item.styleId));
+    const aid = el('div', 'aid', item.assetId);
+    const openBtn = el('button', 'linkish', 'open record'); openBtn.type = 'button';
+    openBtn.onclick = () => { host.textContent = ''; openItem(item.id); };
+    head.append(badges, aid, openBtn);
+    th.append(head);
+    hr.append(th);
+  }
+  thead.append(hr); table.append(thead);
+  const tbody = el('tbody');
+
+  // Images first, at one shared zoom, so like is compared with like.
+  const imgRow = el('tr'); imgRow.append(el('td', null, 'art'));
+  for (const item of items) {
+    const td = el('td');
+    const box = el('div', 'cimg');
+    const shown = item.outputs.find((o) => o.url);
+    if (shown) {
+      const img = el('img'); img.src = shown.url; img.alt = item.assetId;
+      if (zoom >= 1) { img.width = Math.round(item.width * zoom); img.height = Math.round(item.height * zoom); }
+      else { img.style.maxWidth = '100%'; img.style.height = 'auto'; }
+      box.append(img);
+    } else box.append(el('span', 'none', 'no art on disk'));
+    td.append(box);
+    if (item.outputs.filter((o) => o.url).length > 1) td.append(el('div', 'state-dim', item.outputs.length + ' outputs; first shown'));
+    imgRow.append(td);
+  }
+  tbody.append(imgRow);
+
+  const rows = [
+    ['state', (i) => i.state + (i.reason ? ' — ' + i.reason : ''), (i) => i.state],
+    ['provider', (i) => i.provider],
+    ['generator', (i) => i.generator + (i.tileFeature ? ' · ' + i.tileFeature : '')],
+    ['candidates', (i) => i.candidates ?? '—'],
+    ['size', (i) => i.width + ' × ' + i.height],
+    ['cost', (i) => i.status ? fmtCost(i.costUnit, i.cost) : (i.estimatedCost !== null ? 'est. ' + fmtCost(i.costUnit, i.estimatedCost) : '—')],
+    ['prompt', (i) => i.prompt, null, 'prompt'],
+    ['submitted', (i) => fmtWhen(i.submittedAt) || '—'],
+    ['downloaded', (i) => fmtWhen(i.downloadedAt) || '—'],
+    ['quality', (i) => i.quality ? i.quality.state + (i.quality.review && i.quality.review.status === 'approved' ? ' by ' + i.quality.review.reviewer : '') : '—'],
+    ['spec hash', (i) => i.recordedSpecHash ? i.recordedSpecHash.slice(0, 16) + '…' : '—', null, 'mono'],
+    ['sha256', (i) => i.outputs[0] && i.outputs[0].sha256 ? i.outputs[0].sha256.slice(0, 16) + '…' : '—', null, 'mono'],
+    ['tags', (i) => (i.tags || []).filter((t) => !/^(pixelkiln|asset|style):/.test(t)).join(', ') || '—'],
+  ];
+  for (const [label, show, keyOf, cls] of rows) {
+    const tr = el('tr'); tr.append(el('td', null, label));
+    const keys = items.map((i) => String((keyOf || show)(i)));
+    const differs = new Set(keys).size > 1;
+    for (const item of items) {
+      const td = el('td', (differs ? 'diff' : '') + (cls === 'mono' ? ' mono' : ''));
+      if (cls === 'prompt') td.append(el('div', 'prompt', show(item))); else td.textContent = String(show(item));
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+  table.append(tbody);
+  body.append(table);
+  panel.append(bar, body);
+  host.append(scrim, panel);
+  close.focus({ preventScroll: true });
 }
 
 // ---- editing (only when the server minted a session) ---------------------
@@ -1200,6 +1376,9 @@ function renderDrawer() {
   const next = el('button', null, '→'); next.type = 'button'; next.title = 'Next (→)';
   next.disabled = pos < 0 || pos >= items.length - 1; next.onclick = () => step(1);
   const close = el('button', null, 'Close'); close.type = 'button'; close.onclick = () => closeItem();
+  const cmp = el('button', null, ui.compare.includes(item.id) ? 'Remove from compare' : 'Compare +');
+  cmp.type = 'button'; cmp.onclick = () => toggleCompare(item.id);
+  nav.append(cmp);
   const canEdit = EDITABLE && item.declared && item.asset && projectOf(item)?.manifestSha256;
   if (canEdit) {
     const edit = el('button', null, ui.editing === item.id ? 'Cancel edit' : 'Edit');
@@ -1374,6 +1553,7 @@ function readUrlState() {
   ui.providers = new Set(list('provider'));
   ui.generators = new Set(list('generator'));
   ui.projects = new Set(list('project'));
+  ui.compare = list('compare').slice(0, 4);
   if (['key', 'newest', 'oldest', 'cost', 'size'].includes(params.get('sort'))) ui.sort = params.get('sort');
   if (['style', 'none'].includes(params.get('group'))) ui.group = params.get('group');
 }
@@ -1384,6 +1564,7 @@ function writeUrlState() {
   if (ui.providers.size) params.set('provider', [...ui.providers].join(','));
   if (ui.generators.size) params.set('generator', [...ui.generators].join(','));
   if (ui.projects.size) params.set('project', [...ui.projects].join(','));
+  if (ui.compare.length) params.set('compare', ui.compare.join(','));
   if (ui.sort !== 'key') params.set('sort', ui.sort);
   if (ui.group !== 'style') params.set('group', ui.group);
   const query = params.toString();
@@ -1439,6 +1620,7 @@ function render() {
   renderHeader();
   renderMain(visibleItems());
   renderDrawer();
+  renderTray();
 }
 
 // ---- refresh --------------------------------------------------------------
@@ -1501,9 +1683,11 @@ $('sort').value = ui.sort;
 $('group').value = ui.group;
 const initialKey = keyFromHash();
 if (initialKey && snap.items.some((i) => i.id === initialKey)) ui.open = initialKey;
+ui.compare = ui.compare.filter((id) => snap.items.some((i) => i.id === id));
 render();
 if (ui.open) document.querySelector('.card.active')?.scrollIntoView({ block: 'center' });
 if (GENERATION) pollJobs();
+if (ui.compare.length >= 2 && !ui.open) openCompare();
 </script>
 </body>
 </html>`

@@ -17,6 +17,12 @@ export interface SheetGroup {
     width: number
     height: number
   }
+  /** The art this generation replaces, shown beside the candidates. */
+  current?: {
+    url: string
+    width: number
+    height: number
+  }
 }
 
 const escapeHtml = (s: string) =>
@@ -111,7 +117,7 @@ export function renderSheet(groups: SheetGroup[], options: RenderSheetOptions = 
     align-items:start; }
   .review.no-context { display:block; }
   .context { border:1px solid var(--line); padding:8px; background:var(--panel-deep);
-    min-width:0; }
+    min-width:0; display:grid; gap:12px; align-content:start; }
   .context-label { display:flex; justify-content:space-between; gap:8px; margin-bottom:7px;
     color:var(--dim); font-size:10.5px; font-variant-numeric:tabular-nums; }
   .context img { display:block; width:100%; height:auto; max-height:420px; object-fit:contain;
@@ -201,24 +207,40 @@ GROUPS.forEach((g, gi) => {
     '<div class="ghead"><span class="style">' + g.styleId + '</span>' +
     '<span class="aid">' + g.assetId + '</span>' +
     '<span class="prompt">' + g.prompt + '</span></div>' +
-    '<div class="review' + (g.revision ? '' : ' no-context') + '">' +
+    '<div class="review' + (g.revision || g.current ? '' : ' no-context') + '">' +
     '<div class="frames"></div></div>';
   const review = el.querySelector('.review');
   const frames = el.querySelector('.frames');
-  if (g.revision) {
-    const context = document.createElement('aside');
-    context.className = 'context';
+  const contextPanel = (identityText, dimensionsText, url, alt) => {
+    const block = document.createElement('div');
     const label = document.createElement('div');
     label.className = 'context-label';
     const identity = document.createElement('span');
-    identity.textContent = g.revision.mode.toUpperCase() + ' · SOURCE ' + g.revision.sourceAssetId;
+    identity.textContent = identityText;
     const dimensions = document.createElement('span');
-    dimensions.textContent = g.revision.width + '×' + g.revision.height;
+    dimensions.textContent = dimensionsText;
     label.append(identity, dimensions);
-    const source = document.createElement('img');
-    source.src = g.revision.sourceUrl;
-    source.alt = 'Revision source ' + g.revision.sourceAssetId;
-    context.append(label, source);
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = alt;
+    block.append(label, img);
+    return block;
+  };
+  if (g.revision || g.current) {
+    const context = document.createElement('aside');
+    context.className = 'context';
+    if (g.revision) {
+      context.append(contextPanel(
+        g.revision.mode.toUpperCase() + ' · SOURCE ' + g.revision.sourceAssetId,
+        g.revision.width + '×' + g.revision.height,
+        g.revision.sourceUrl, 'Revision source ' + g.revision.sourceAssetId));
+    }
+    if (g.current) {
+      context.append(contextPanel(
+        'CURRENT ART · replaced if you choose',
+        g.current.width + '×' + g.current.height,
+        g.current.url, 'Current ' + g.assetId));
+    }
     review.insertBefore(context, frames);
   }
   if (g.mode === 'frame-set') {

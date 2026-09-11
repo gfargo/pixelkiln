@@ -1,6 +1,11 @@
+import { existsSync } from "node:fs"
+import { readFile } from "node:fs/promises"
 import { requireSelectCandidate, type Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
-import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
+import { mediaTypeFromExtension } from "../media.ts"
+import { resolveOutputPath } from "../outputs.ts"
+import { pngSize } from "../pipeline/init.ts"
+import { lockKey, primaryOutput, type LockEntry, type Lock, type ResolvedSpec } from "../types.ts"
 import { renderSheet, type RenderSheetOptions, type SheetGroup } from "./sheet.ts"
 import { serveReviewPage } from "./review-server.ts"
 
@@ -44,6 +49,34 @@ export interface PrepareReviewOptions {
   routePrefix?: string
 }
 
+/**
+ * The art a regeneration is about to replace, while it is still on disk.
+ *
+ * `submit` keeps the previous outputs as `supersededOutputs` until `fetch`
+ * swaps the file, so during review the old bytes are still there. Showing
+ * them beside the new candidates turns "is this good?" into "is this
+ * better?", which is the question a regeneration actually asks.
+ */
+async function currentArt(
+  entry: LockEntry,
+  spec: ResolvedSpec | undefined,
+): Promise<{ path: string; contentType: string; width: number; height: number } | null> {
+  if (!spec || !entry.supersededOutputs?.length) return null
+  const previous = primaryOutput({ ...entry, outputs: entry.supersededOutputs })
+  if (!previous) return null
+  const file = resolveOutputPath(previous.path, spec.root)
+  if (!existsSync(file)) return null
+  const contentType = previous.mediaType ?? mediaTypeFromExtension(file)
+  if (!contentType) return null
+  let width = entry.width
+  let height = entry.height
+  if (contentType === "image/png") {
+    const size = pngSize(await readFile(file))
+    if (size) ({ width, height } = size)
+  }
+  return { path: file, contentType, width, height }
+}
+
 /** Gather every entry in review for this provider. Null when nothing is waiting. */
 export async function prepareReview(
   provider: Provider,
@@ -79,6 +112,13 @@ export async function prepareReview(
           contentType: spec.revision.sourceFormat === "jpeg" ? "image/jpeg" : "image/png",
         })
       }
+      const current = await currentArt(entry, spec)
+      const currentRoute = current
+        ? `${prefix}/current-art/${encodeURIComponent(String(groups.length))}`
+        : null
+      if (current && currentRoute) {
+        reviewAssets.set(currentRoute, { path: current.path, contentType: current.contentType })
+      }
       groups.push({
         key,
         assetId: entry.assetId,
@@ -105,6 +145,9 @@ export async function prepareReview(
                 height: spec.revision.sourceHeight,
               },
             }
+          : {}),
+        ...(current && currentRoute
+          ? { current: { url: currentRoute, width: current.width, height: current.height } }
           : {}),
       })
     } catch (err) {
