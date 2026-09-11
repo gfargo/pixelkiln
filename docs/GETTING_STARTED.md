@@ -159,7 +159,9 @@ If a run stops between stages, rerun `plan`. It points `processing` work to
 To browse what the project has made so far, run
 [`pixelkiln gallery`](CLI.md#gallery). It serves a read-only page of every
 generation with its full record — prompt, provider, cost, hashes, lineage, and
-quality state — and can stay open while `gen` runs.
+quality state — and can stay open while `gen` runs. With several registered
+projects, `pixelkiln gallery --workspace pixelkiln.workspace.json` shows them
+all in one page.
 
 ![PixelKiln local generation gallery](../website/public/gallery-ui-showcase.jpg)
 

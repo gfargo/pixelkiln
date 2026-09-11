@@ -243,6 +243,20 @@ screenshot.
 the offline, machine-readable answer to "what has this project generated?" for
 scripts and agents; `--style` and `--only` narrow it the same way.
 
+`--workspace <catalog>` shows every project the catalog registers in one
+gallery, the way `workspace status` reads them: no manifest is needed in the
+current directory, each project gets its own section and filter chip, and a
+project whose manifest or lock cannot be read is listed with its error instead
+of hiding the rest. Lock keys repeat across projects, so records are identified
+as `project:style/asset` in links and search. `--style` and `--only` apply per
+project; a project without the named ids simply shows nothing. `--json` prints
+the combined snapshot with a `workspace.projects` summary.
+
+```bash
+pixelkiln gallery --workspace pixelkiln.workspace.json
+pixelkiln gallery --workspace pixelkiln.workspace.json --style base --json
+```
+
 ### `workspace`
 
 Register sibling projects in a schema-versioned catalog file, outside any one
@@ -497,7 +511,7 @@ Print the package version. `-v` is an alias.
 | `--no-open` | pick/salvage/gallery | Do not automatically open the browser. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |
-| `--workspace <path>` | workspace/salvage | Workspace catalog path; defaults to `pixelkiln.workspace.json`. On salvage, derives the claim set instead of repeated `--claims`. |
+| `--workspace <path>` | workspace/salvage/gallery | Workspace catalog path; defaults to `pixelkiln.workspace.json` for `workspace`. On salvage, derives the claim set instead of repeated `--claims`; on gallery, shows every registered project. |
 | `--provider <id>` | balance/adopt/salvage/purge/workspace add | Select the account provider for a mixed manifest, or set the workspace catalog's default provider hint. |
 | `--account <label>` | workspace add | Free-form account label, e.g. distinguishing sandboxes. |
 | `--all` | salvage dry run | List every unclaimed object rather than the first 30. |

@@ -107,6 +107,11 @@ for (const item of snapshot.items) {
 }
 ```
 
+`buildWorkspaceGallerySnapshot({ workspace, workspacePath })` does the same
+for every project a workspace catalog registers, namespacing item ids as
+`project:style/asset` and listing an unreadable project's error under
+`snapshot.workspace.projects` instead of throwing.
+
 `renderGallery(snapshot)` returns the self-contained HTML page, and
 `serveGallery({ load })` runs the localhost server; `load` is called again for
 every page load and `/api/gallery.json` request, and `media` is the exact

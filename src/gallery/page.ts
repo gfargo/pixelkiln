@@ -21,13 +21,14 @@ export function renderGallery(snapshot: GallerySnapshot): string {
   const data = JSON.stringify(snapshot)
     .replace(/<\//g, "<\\/")
     .replace(/<!--/g, "<\\u0021--")
-  const title = `pixelkiln — ${snapshot.project.name}`
+  const title = `pixelkiln — ${snapshot.project?.name ?? "workspace"}`
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
+<link rel="icon" href="data:,">
 <style>
   :root {
     --bg: #17150f; --panel: #201d17; --panel-deep: #100f0c;
@@ -91,6 +92,12 @@ export function renderGallery(snapshot: GallerySnapshot): string {
   main { width:min(100%,var(--content)); margin:0 auto; border-inline:1px solid var(--line);
     min-height:60vh; }
   .style { border-bottom:1px solid var(--line); padding:20px 22px 24px; }
+  .project { border-bottom:1px solid var(--line-strong); background:var(--panel); padding:14px 22px; }
+  .phead { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  .phead h2 { margin:0; font:700 15px/1.2 var(--mono); }
+  .phead h2::before { content:'◆'; color:var(--accent); margin-right:8px; font-size:10px; }
+  .phead .meta { color:var(--dim); font-size:12.5px; display:flex; gap:12px; flex-wrap:wrap; }
+  .sid.project { color:var(--dim); border-color:var(--line-strong); }
   .shead { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
   .shead h2 { margin:0; font:650 15px/1.2 var(--mono); }
   .shead .meta { color:var(--dim); font-size:12.5px; display:flex; gap:12px; flex-wrap:wrap;
@@ -234,7 +241,7 @@ const STATE_TONE = {
 };
 const STATE_ORDER = ['ok','stale','orphaned','untracked','in-flight','recoverable','blocked','failed','missing','undeclared'];
 const ui = {
-  q: '', states: new Set(), providers: new Set(), generators: new Set(),
+  q: '', states: new Set(), providers: new Set(), generators: new Set(), projects: new Set(),
   sort: 'key', group: 'style', open: null, member: 0, zoom: 'auto', playing: null,
   /** Cards rendered per pass; a project with thousands of assets opts into the rest. */
   limit: 600,
@@ -278,19 +285,20 @@ function visibleItems() {
     if (ui.states.size && !ui.states.has(item.state)) return false;
     if (ui.providers.size && !ui.providers.has(item.provider)) return false;
     if (ui.generators.size && !ui.generators.has(item.generator)) return false;
+    if (ui.projects.size && !ui.projects.has(item.project)) return false;
     if (!q) return true;
-    const hay = [item.key, item.prompt, item.currentPrompt, item.jobId, item.objectId,
+    const hay = [item.id, item.prompt, item.currentPrompt, item.jobId, item.objectId,
       item.recordedSpecHash, item.currentSpecHash, item.category, ...(item.tags || []),
       ...item.outputs.flatMap((o) => [o.path, o.sha256])].filter(Boolean).join('\\n').toLowerCase();
     return hay.includes(q);
   });
   const when = (item) => item.downloadedAt || item.submittedAt || '';
   const sorters = {
-    key: (a, b) => a.key.localeCompare(b.key),
-    newest: (a, b) => when(b).localeCompare(when(a)) || a.key.localeCompare(b.key),
-    oldest: (a, b) => when(a).localeCompare(when(b)) || a.key.localeCompare(b.key),
-    cost: (a, b) => (b.cost - a.cost) || a.key.localeCompare(b.key),
-    size: (a, b) => (b.width * b.height - a.width * a.height) || a.key.localeCompare(b.key),
+    key: (a, b) => a.id.localeCompare(b.id),
+    newest: (a, b) => when(b).localeCompare(when(a)) || a.id.localeCompare(b.id),
+    oldest: (a, b) => when(a).localeCompare(when(b)) || a.id.localeCompare(b.id),
+    cost: (a, b) => (b.cost - a.cost) || a.id.localeCompare(b.id),
+    size: (a, b) => (b.width * b.height - a.width * a.height) || a.id.localeCompare(b.id),
   };
   items.sort(sorters[ui.sort] || sorters.key);
   return items;
@@ -299,16 +307,28 @@ function visibleItems() {
 function renderHeader() {
   const p = $('project');
   p.textContent = '';
-  p.append(el('b', null, snap.project.name), ' ', document.createTextNode(shortPath(snap.project.manifest)));
-  p.title = snap.project.manifest + '\\nlockfile: ' + snap.project.lock;
+  if (snap.workspace) {
+    p.append(el('b', null, 'workspace'), ' ', document.createTextNode(shortPath(snap.workspace.path)));
+    p.title = snap.workspace.path;
+  } else {
+    p.append(el('b', null, snap.project.name), ' ', document.createTextNode(shortPath(snap.project.manifest)));
+    p.title = snap.project.manifest + '\\nlockfile: ' + snap.project.lock;
+  }
 
   const t = $('totals');
   t.textContent = '';
+  if (snap.workspace) {
+    const broken = snap.workspace.projects.filter((pr) => pr.error).length;
+    const w = el('span', null, '');
+    w.append(el('b', null, snap.workspace.projects.length), document.createTextNode(' project' +
+      (snap.workspace.projects.length === 1 ? '' : 's') + (broken ? ' (' + broken + ' unreadable)' : '')));
+    t.append(w);
+  }
   const n = snap.totals.entries;
   t.append(el('span', null, ''));
-  t.firstChild.append(el('b', null, n), document.createTextNode(' lock ' + (n === 1 ? 'entry' : 'entries')));
+  t.lastChild.append(el('b', null, n), document.createTextNode(' lock ' + (n === 1 ? 'entry' : 'entries')));
   const declared = snap.items.filter((i) => i.declared).length;
-  t.append(el('span', null, declared + ' declared by the manifest'));
+  t.append(el('span', null, declared + ' declared by ' + (snap.workspace ? 'a manifest' : 'the manifest')));
   t.append(el('span', null, fmtSpend(snap.totals.spendByUnit) + ' recorded'));
   if (snap.filter.styles.length || snap.filter.assets.length) {
     t.append(el('span', 'state-warn', 'filtered: ' +
@@ -333,6 +353,13 @@ function renderHeader() {
     b.onclick = () => { set.has(key) ? set.delete(key) : set.add(key); render(); };
     return b;
   };
+  if (snap.workspace) {
+    const byProject = counts((i) => i.project);
+    for (const pr of snap.workspace.projects) {
+      if (byProject.has(pr.id) || ui.projects.has(pr.id)) chips.append(chip(pr.id, byProject.get(pr.id) || 0, ui.projects, pr.id));
+    }
+    chips.append(el('span', 'sep'));
+  }
   const byState = counts((i) => i.state);
   for (const s of STATE_ORDER) if (byState.has(s)) chips.append(chip(s, byState.get(s), ui.states, s, STATE_TONE[s]));
   const byProvider = counts((i) => i.provider);
@@ -345,12 +372,18 @@ function renderHeader() {
     chips.append(el('span', 'sep'));
     for (const [k, v] of [...byGen].sort()) chips.append(chip(k, v, ui.generators, k));
   }
-  if (ui.states.size || ui.providers.size || ui.generators.size || ui.q) {
+  if (ui.states.size || ui.providers.size || ui.generators.size || ui.projects.size || ui.q) {
     const clear = el('button', 'chip', 'clear filters');
     clear.type = 'button';
-    clear.onclick = () => { ui.states.clear(); ui.providers.clear(); ui.generators.clear(); ui.q = ''; $('q').value = ''; render(); };
+    clear.onclick = () => clearFilters();
     chips.append(el('span', 'sep'), clear);
   }
+}
+
+function clearFilters() {
+  ui.states.clear(); ui.providers.clear(); ui.generators.clear(); ui.projects.clear();
+  ui.q = ''; $('q').value = '';
+  render();
 }
 
 function thumb(item) {
@@ -391,10 +424,10 @@ function thumb(item) {
 }
 
 function card(item) {
-  const c = el('button', 'card' + (item.outputs.some((o) => o.url) ? '' : ' ghost') + (ui.open === item.key ? ' active' : ''));
+  const c = el('button', 'card' + (item.outputs.some((o) => o.url) ? '' : ' ghost') + (ui.open === item.id ? ' active' : ''));
   c.type = 'button';
-  c.dataset.key = item.key;
-  c.setAttribute('aria-label', item.key + ', ' + item.state);
+  c.dataset.key = item.id;
+  c.setAttribute('aria-label', item.id + ', ' + item.state);
   const body = el('div', 'cbody');
   body.append(el('div', 'aid', item.assetId));
   const meta = el('div', 'cmeta');
@@ -404,7 +437,7 @@ function card(item) {
   if (item.cost) meta.append(el('span', null, fmtCost(item.costUnit, item.cost)));
   body.append(meta);
   c.append(thumb(item), body);
-  c.onclick = () => openItem(item.key);
+  c.onclick = () => openItem(item.id);
   return c;
 }
 
@@ -423,7 +456,7 @@ function renderMain(items) {
     e.append(el('p', null, 'No generations match these filters.'));
     const b = el('button', null, 'Clear filters');
     b.type = 'button';
-    b.onclick = () => { ui.states.clear(); ui.providers.clear(); ui.generators.clear(); ui.q = ''; $('q').value = ''; render(); };
+    b.onclick = clearFilters;
     e.append(b);
     root.append(e);
     return;
@@ -433,10 +466,30 @@ function renderMain(items) {
   // is one click away. Filters usually narrow well below the cap anyway.
   const hidden = Math.max(0, items.length - ui.limit);
   const shown = hidden ? items.slice(0, ui.limit) : items;
-  const sections = ui.group === 'style'
-    ? snap.styles.map((s) => ({ style: s, items: shown.filter((i) => i.styleId === s.id) })).filter((s) => s.items.length)
-    : [{ style: null, items: shown }];
+  // A workspace always breaks on project: lock keys repeat across projects,
+  // so a flat wall of "anvil" cards would be ambiguous. Style grouping stays
+  // optional inside each project, exactly as it is for one project.
+  const unfiltered = !ui.projects.size && !ui.q && !ui.states.size && !ui.providers.size && !ui.generators.size;
+  const projects = snap.workspace
+    ? snap.workspace.projects.filter((pr) => ui.projects.size
+        ? ui.projects.has(pr.id)
+        : unfiltered || shown.some((i) => i.project === pr.id))
+    : [null];
+  const sections = [];
+  for (const pr of projects) {
+    const inProject = pr ? shown.filter((i) => i.project === pr.id) : shown;
+    const styleSections = ui.group === 'style'
+      ? snap.styles.filter((s) => !pr || s.project === pr.id)
+          .map((s) => ({ style: s, items: inProject.filter((i) => i.styleId === s.id) })).filter((s) => s.items.length)
+      : (inProject.length ? [{ style: null, items: inProject }] : []);
+    if (pr) sections.push({ project: pr, style: null, items: null, count: inProject.length });
+    sections.push(...styleSections);
+  }
   for (const sec of sections) {
+    if (sec.project) {
+      root.append(projectHeader(sec.project, sec.count));
+      continue;
+    }
     const wrap = el('section', 'style');
     if (sec.style) {
       const s = sec.style;
@@ -472,6 +525,25 @@ function renderMain(items) {
   }
 }
 
+function projectHeader(pr, count) {
+  const head = el('section', 'project');
+  const line = el('div', 'phead');
+  line.append(el('h2', null, pr.id));
+  const meta = el('div', 'meta');
+  if (pr.name !== pr.id) meta.append(el('span', null, pr.name));
+  meta.append(el('span', 'mono', shortPath(pr.manifest)));
+  if (pr.account) meta.append(el('span', null, pr.account));
+  if (pr.error) {
+    meta.append(el('span', 'state-bad', 'unreadable: ' + pr.error));
+  } else {
+    meta.append(el('span', null, count + ' of ' + pr.items + ' shown · ' + pr.entries + ' lock ' + (pr.entries === 1 ? 'entry' : 'entries')));
+    if (Object.keys(pr.spendByUnit).length) meta.append(el('span', null, fmtSpend(pr.spendByUnit)));
+  }
+  line.append(meta);
+  head.append(line);
+  return head;
+}
+
 // ---- detail drawer -------------------------------------------------------
 
 function row(dl, label, value, opts = {}) {
@@ -505,12 +577,15 @@ function stateNode(state, reason) {
   box.append(st, el('span', 'why', reason));
   return box;
 }
-function keyLink(key, label) {
+function sibling(item, key) {
+  return snap.items.find((i) => i.key === key && i.project === item.project);
+}
+function keyLink(item, key, label) {
   const b = el('button', 'linkish', label || key);
   b.type = 'button';
-  const exists = snap.items.some((i) => i.key === key);
-  if (!exists) { b.disabled = true; b.title = 'not in this snapshot'; }
-  b.onclick = () => openItem(key);
+  const target = sibling(item, key);
+  if (!target) { b.disabled = true; b.title = 'not in this snapshot'; }
+  b.onclick = () => openItem(target.id);
   return b;
 }
 function jsonDetails(title, value) {
@@ -593,19 +668,20 @@ function renderDrawer() {
   const host = $('drawer-host');
   host.textContent = '';
   stopPlayback();
-  const item = ui.open && snap.items.find((i) => i.key === ui.open);
+  const item = ui.open && snap.items.find((i) => i.id === ui.open);
   if (!item) { ui.open = null; return; }
   const items = visibleItems();
-  const pos = items.findIndex((i) => i.key === item.key);
+  const pos = items.findIndex((i) => i.id === item.id);
 
   const scrim = el('div', 'scrim');
   scrim.onclick = () => closeItem();
   const drawer = el('aside', 'drawer');
   drawer.setAttribute('role', 'dialog');
-  drawer.setAttribute('aria-label', item.key);
+  drawer.setAttribute('aria-label', item.id);
 
   const head = el('div', 'dhead');
   const title = el('div', 'title');
+  if (item.project) title.append(el('span', 'sid project', item.project), ' ');
   title.append(el('span', 'sid', item.styleId), el('div', 'aid', item.assetId));
   const nav = el('div', 'nav');
   const prev = el('button', null, '←'); prev.type = 'button'; prev.title = 'Previous (←)';
@@ -673,7 +749,7 @@ function renderDrawer() {
   if (item.revision || item.revisionParentKey) {
     const { s, dl } = section('Lineage');
     row(dl, 'mode', item.revision ? item.revision.mode : (item.asset && item.asset.revision && item.asset.revision.mode));
-    if (item.revisionParentKey) row(dl, 'parent', keyLink(item.revisionParentKey));
+    if (item.revisionParentKey) row(dl, 'parent', keyLink(item, item.revisionParentKey));
     if (item.revision) {
       row(dl, 'parent sha256', item.revision.sourceSha256.slice(0, 16) + '…', { mono: true, copy: item.revision.sourceSha256 });
       if (item.revision.maskSha256) row(dl, 'mask sha256', item.revision.maskSha256.slice(0, 16) + '…', { mono: true, copy: item.revision.maskSha256 });
@@ -681,10 +757,10 @@ function renderDrawer() {
     }
     body.append(s);
   }
-  const children = snap.items.filter((i) => i.revisionParentKey === item.key);
+  const children = snap.items.filter((i) => i.revisionParentKey === item.key && i.project === item.project);
   if (children.length) {
     const { s, dl } = section('Revisions from this asset');
-    for (const c of children) row(dl, c.revision ? c.revision.mode : 'child', keyLink(c.key));
+    for (const c of children) row(dl, c.revision ? c.revision.mode : 'child', keyLink(item, c.key));
     body.append(s);
   }
 
@@ -733,6 +809,7 @@ function renderDrawer() {
 
   {
     const { s, dl } = section('Identity');
+    if (item.project) row(dl, 'project', item.project);
     row(dl, 'lock key', item.key, { mono: true, copy: item.key });
     if (item.recordedSpecHash) {
       row(dl, 'spec hash', item.recordedSpecHash.slice(0, 16) + '…', { mono: true, copy: item.recordedSpecHash });
@@ -768,6 +845,7 @@ function readUrlState() {
   ui.states = new Set(list('state'));
   ui.providers = new Set(list('provider'));
   ui.generators = new Set(list('generator'));
+  ui.projects = new Set(list('project'));
   if (['key', 'newest', 'oldest', 'cost', 'size'].includes(params.get('sort'))) ui.sort = params.get('sort');
   if (['style', 'none'].includes(params.get('group'))) ui.group = params.get('group');
 }
@@ -777,6 +855,7 @@ function writeUrlState() {
   if (ui.states.size) params.set('state', [...ui.states].join(','));
   if (ui.providers.size) params.set('provider', [...ui.providers].join(','));
   if (ui.generators.size) params.set('generator', [...ui.generators].join(','));
+  if (ui.projects.size) params.set('project', [...ui.projects].join(','));
   if (ui.sort !== 'key') params.set('sort', ui.sort);
   if (ui.group !== 'style') params.set('group', ui.group);
   const query = params.toString();
@@ -814,14 +893,14 @@ function closeItem() {
 }
 window.addEventListener('hashchange', () => {
   const key = keyFromHash();
-  if (key && key !== ui.open && snap.items.some((i) => i.key === key)) openItem(key);
+  if (key && key !== ui.open && snap.items.some((i) => i.id === key)) openItem(key);
   else if (!key && ui.open) closeItem();
 });
 function step(delta) {
   const items = visibleItems();
-  const pos = items.findIndex((i) => i.key === ui.open);
+  const pos = items.findIndex((i) => i.id === ui.open);
   const next = items[pos + delta];
-  if (next) openItem(next.key);
+  if (next) openItem(next.id);
 }
 
 function render() {
@@ -889,7 +968,7 @@ $('q').value = ui.q;
 $('sort').value = ui.sort;
 $('group').value = ui.group;
 const initialKey = keyFromHash();
-if (initialKey && snap.items.some((i) => i.key === initialKey)) ui.open = initialKey;
+if (initialKey && snap.items.some((i) => i.id === initialKey)) ui.open = initialKey;
 render();
 if (ui.open) document.querySelector('.card.active')?.scrollIntoView({ block: 'center' });
 </script>

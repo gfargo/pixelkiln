@@ -35,7 +35,11 @@ import { fetchAssets, pushTags } from "./pipeline/fetch.ts"
 import { doctor } from "./pipeline/doctor.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "./pipeline/adopt.ts"
 import { runPicker, type ReviewReadyInfo } from "./pick/server.ts"
-import { buildGallerySnapshot } from "./gallery/snapshot.ts"
+import {
+  buildGallerySnapshot,
+  buildWorkspaceGallerySnapshot,
+  type GalleryBuild,
+} from "./gallery/snapshot.ts"
 import { serveGallery } from "./gallery/server.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import {
@@ -124,6 +128,43 @@ export function announceGalleryReady(
     `\n  gallery of ${count} generation${count === 1 ? "" : "s"}: ${url}\n` +
       "  (read-only; press Ctrl+C to stop)\n\n",
   )
+}
+
+/**
+ * Serve one gallery until Ctrl+C. The first page load reuses the snapshot
+ * already built for the announcement; every later load and Refresh rebuilds
+ * from disk so the page never shows a lockfile that has since moved on.
+ */
+async function runGallery(
+  initial: GalleryBuild,
+  reload: () => Promise<GalleryBuild>,
+  args: Pick<Args, "port" | "noOpen">,
+): Promise<void> {
+  let first = true
+  const server = await serveGallery({
+    load: () => {
+      if (first) {
+        first = false
+        return Promise.resolve(initial)
+      }
+      return reload()
+    },
+    port: args.port,
+    open: !args.noOpen,
+    onProgress: log,
+    onReady: (url) => announceGalleryReady(url, initial.snapshot.totals.entries),
+  })
+  await new Promise<void>((resolve) => {
+    const stop = () => {
+      process.off("SIGINT", stop)
+      process.off("SIGTERM", stop)
+      resolve()
+    }
+    process.once("SIGINT", stop)
+    process.once("SIGTERM", stop)
+  })
+  await server.close()
+  log("\n  gallery closed")
 }
 
 async function provenanceFile(id: string, file: string): Promise<ArtifactSource> {
@@ -515,6 +556,7 @@ Commands
   status    Summarise the lockfile.
   gallery   Open a local read-only gallery of every generation and its
             provenance: prompt, provider, cost, outputs, lineage, quality.
+            --workspace <catalog> shows every registered project at once.
   workspace Register sibling projects and derive account-wide claims/status.
             add/remove/list/status/claims. Offline.
 
@@ -555,7 +597,8 @@ Options
   --tag               Also push tags upstream after fetch
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
   --workspace <path>  Workspace catalog (default: pixelkiln.workspace.json). Also
-                       derives salvage's claim set instead of repeated --claims.
+                       derives salvage's claim set instead of repeated --claims,
+                       and switches gallery to every registered project.
   --from <path>       Source for init/path-mode refine, or baseline for quality check
   --write-prompts     adopt: recover prompts into the manifest
 
@@ -564,6 +607,7 @@ Examples
   pixelkiln gen --style heybud-premium --budget 400
   pixelkiln gen --only first_review --force
   pixelkiln gallery --style heybud-premium
+  pixelkiln gallery --workspace pixelkiln.workspace.json
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
@@ -1270,6 +1314,32 @@ async function main() {
     }
   }
 
+  // A workspace gallery needs no manifest in cwd: every project comes from
+  // the catalog, the same way `workspace status` reads them.
+  if (args.command === "gallery" && args.workspace) {
+    const workspacePath = path.resolve(args.workspace)
+    if (!existsSync(workspacePath)) {
+      throw new Error(`Workspace catalog not found: ${workspacePath}`)
+    }
+    const filter = { styles: args.styles, assets: args.assets }
+    const build = async () =>
+      buildWorkspaceGallerySnapshot({
+        workspace: await loadWorkspace(workspacePath),
+        workspacePath,
+        filter,
+      })
+    const initial = await build()
+    if (args.json) {
+      log(JSON.stringify(initial.snapshot, null, 2))
+      return
+    }
+    for (const project of initial.snapshot.workspace?.projects ?? []) {
+      if (project.error) log(`  ${project.id}: unreadable — ${project.error}`)
+    }
+    await runGallery(initial, build, args)
+    return
+  }
+
   if (!existsSync(path.resolve(args.manifest))) {
     throw new Error(
       `No manifest at ${path.resolve(args.manifest)}. Pass --manifest, or run \`pixelkiln init --from <dir>\`.`,
@@ -1364,32 +1434,7 @@ async function main() {
         filter,
       })
     }
-    const initial = await build()
-    let first = true
-    const server = await serveGallery({
-      load: () => {
-        if (first) {
-          first = false
-          return Promise.resolve(initial)
-        }
-        return reload()
-      },
-      port: args.port,
-      open: !args.noOpen,
-      onProgress: log,
-      onReady: (url) => announceGalleryReady(url, initial.snapshot.totals.entries),
-    })
-    await new Promise<void>((resolve) => {
-      const stop = () => {
-        process.off("SIGINT", stop)
-        process.off("SIGTERM", stop)
-        resolve()
-      }
-      process.once("SIGINT", stop)
-      process.once("SIGTERM", stop)
-    })
-    await server.close()
-    log("\n  gallery closed")
+    await runGallery(await build(), reload, args)
     return
   }
 
