@@ -1,3 +1,10 @@
+# [0.24.0](https://github.com/gfargo/pixelkiln/compare/v0.23.0...v0.24.0) (2026-09-11)
+
+
+### Features
+
+* hand-edit generated art in your own editor without touching the record ([#91](https://github.com/gfargo/pixelkiln/issues/91)) ([f8ededc](https://github.com/gfargo/pixelkiln/commit/f8ededc659a94ed4fa7e8ca1596f46a3631f6cd7))
+
 # [0.23.0](https://github.com/gfargo/pixelkiln/compare/v0.22.0...v0.23.0) (2026-09-11)
 
 
