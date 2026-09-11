@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
-import { sha256File } from "../hash.ts"
+import { sha256 } from "../hash.ts"
 import { existsSync } from "node:fs"
-import { stat } from "node:fs/promises"
+import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
 import { loadLock, spendByUnit } from "../lock.ts"
 import { loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
@@ -137,11 +137,24 @@ export interface GalleryStyle {
   provider: string
   generator: string
   outDir: string
+  /** Resolved look, after inheritance. */
+  promptPrefix: string
+  promptSuffix: string
   palette: string[]
   quality: boolean
   tags: string[]
+  /** Parent style id when this style `extends` one. */
+  extends: string | null
+  /**
+   * Fields the style declares itself, as written. A field absent here is
+   * inherited (or a default), which is what decides whether a parent edit
+   * reaches this style.
+   */
+  ownFields: string[]
   items: number
   spendByUnit: Record<string, number>
+  /** What regenerating every declared asset in this style would cost now. */
+  regenerate: { assets: number; cost: number; costUnit: string }
   /** Candidates one generation returns for this style; null when its assets disagree or none resolve. */
   candidates: number | null
   /** Whether that count is a provider option the manifest can set (`patch-style`). */
@@ -359,12 +372,25 @@ async function describeQuality(
  * (possibly filtered) manifest entries the CLI already computed; lock entries
  * outside the manifest are added here so paid work is never hidden.
  */
+type RawStyleShape = { extends?: unknown } & Record<string, unknown>
+
 export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<GalleryBuild> {
   const { loaded, specs, lock } = opts
   const root = loaded.root
   const media = new Map<string, GalleryMedia>()
   const plan = await buildPlan(specs, lock)
   const items: GalleryItem[] = []
+  // One read of the manifest serves both the edit-drift hash and the raw
+  // style shapes; the loader already proved the file parses.
+  const manifestText = await readFile(loaded.path, "utf8")
+  const manifestSha256 = sha256(manifestText)
+  let rawStyles: Record<string, RawStyleShape> = {}
+  try {
+    const raw = JSON.parse(manifestText) as { styles?: Record<string, RawStyleShape> }
+    if (raw && typeof raw === "object" && raw.styles && typeof raw.styles === "object") rawStyles = raw.styles
+  } catch {
+    // Unreachable after loadManifest succeeded; the page simply sees no own fields.
+  }
 
   for (const planItem of plan.items) {
     const { spec, key } = planItem
@@ -519,6 +545,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         : styleItems[0]?.provider ?? loaded.manifest.provider
       const actionableItems = styleItems.filter((item) =>
         item.declared && (item.state === "missing" || item.state === "stale" || item.state === "failed"))
+      const declaredItems = styleItems.filter((item) => item.declared)
+      const rawStyle = Object.hasOwn(rawStyles, id) ? rawStyles[id] : undefined
       return {
         id,
         project: null,
@@ -527,11 +555,20 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         provider,
         generator: style?.generator ?? styleItems[0]?.generator ?? "map",
         outDir: style?.outDir ?? "",
+        promptPrefix: style?.promptPrefix ?? "",
+        promptSuffix: style?.promptSuffix ?? "",
         palette: style?.palette ?? [],
         quality: Boolean(style?.quality),
         tags: style?.tags ?? [],
+        extends: typeof rawStyle?.extends === "string" ? rawStyle.extends : null,
+        ownFields: rawStyle ? Object.keys(rawStyle).filter((key) => key !== "extends") : [],
         items: styleItems.length,
         spendByUnit: spend,
+        regenerate: {
+          assets: declaredItems.length,
+          cost: declaredItems.reduce((sum, item) => sum + (item.estimatedCost ?? 0), 0),
+          costUnit: declaredItems[0]?.costUnit ?? styleItems[0]?.costUnit ?? "generations",
+        },
         candidates: counts.size === 1 ? [...counts][0]! : null,
         candidatesEditable: Boolean(style) && Object.hasOwn(CANDIDATE_OPTION, provider),
         actionable: {
@@ -554,7 +591,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       root,
       provider: loaded.manifest.provider,
       account: null,
-      manifestSha256: await sha256File(loaded.path),
+      manifestSha256,
       entries: Object.keys(lock.entries).length,
       items: items.length,
       spendByUnit: spendByUnit(lock),
@@ -614,6 +651,7 @@ export async function buildWorkspaceGallerySnapshot(
       const lock = await loadLock(lockPath)
       let projectItems: GalleryItem[] = []
       let projectStyles: GalleryStyle[] = []
+      let manifestSha256: string | null = null
       if (!excluded) {
         const specs = await resolveSpecs(loaded, { styles: styleFilter, assets: assetFilter })
         normalizeLockOutputPaths(lock, specs)
@@ -626,6 +664,7 @@ export async function buildWorkspaceGallerySnapshot(
           now: opts.now,
         })
         for (const [id, file] of build.media) media.set(id, file)
+        manifestSha256 = build.snapshot.project?.manifestSha256 ?? null
         projectItems = build.snapshot.items.map((item) => ({
           ...item,
           id: `${project.id}:${item.key}`,
@@ -643,7 +682,7 @@ export async function buildWorkspaceGallerySnapshot(
         root: loaded.root,
         provider: loaded.manifest.provider,
         account: project.account ?? null,
-        manifestSha256: await sha256File(manifestPath),
+        manifestSha256: manifestSha256 ?? sha256(await readFile(manifestPath, "utf8")),
         entries: Object.keys(lock.entries).length,
         items: projectItems.length,
         spendByUnit: spendByUnit(lock),
