@@ -243,6 +243,23 @@ screenshot.
 the offline, machine-readable answer to "what has this project generated?" for
 scripts and agents; `--style` and `--only` narrow it the same way.
 
+`--edit` lets the page change *intent*: an asset's prompt (for every style or
+only the one being viewed), width, height, size, category, and tags, plus a
+form under each style to add a new asset. Saving rewrites the manifest and
+nothing else — the same edit you would make in an editor — so `plan` and the
+page immediately report the asset `stale` or `missing` with its estimate, and
+generation still goes through `pixelkiln gen` with its budget and confirmation.
+The write is refused when the manifest changed on disk since the page loaded,
+and a result the manifest loader would reject never lands. Edits are accepted
+only from the page itself: the request must come from the gallery's own origin
+and carry a session token minted when the server started. Without `--edit`
+the gallery has no write route at all.
+
+```bash
+pixelkiln gallery --edit
+pixelkiln gallery --edit --workspace pixelkiln.workspace.json
+```
+
 `--workspace <catalog>` shows every project the catalog registers in one
 gallery, the way `workspace status` reads them: no manifest is needed in the
 current directory, each project gets its own section and filter chip, and a
@@ -509,6 +526,7 @@ Print the package version. `-v` is an alias.
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage/gallery | Do not automatically open the browser. |
+| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |
 | `--workspace <path>` | workspace/salvage/gallery | Workspace catalog path; defaults to `pixelkiln.workspace.json` for `workspace`. On salvage, derives the claim set instead of repeated `--claims`; on gallery, shows every registered project. |

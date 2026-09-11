@@ -73,7 +73,17 @@ export {
   type GalleryState,
   type GalleryStyle,
 } from "./gallery/snapshot.ts"
-export { renderGallery } from "./gallery/page.ts"
+export { renderGallery, type RenderGalleryOptions } from "./gallery/page.ts"
+export {
+  applyManifestEdit,
+  createGalleryEditHandler,
+  ManifestDriftError,
+  ManifestEditError,
+  ManifestEditSchema,
+  type GalleryEditHandlerOptions,
+  type ManifestEdit,
+  type ManifestEditResult,
+} from "./gallery/edit.ts"
 export { serveGallery, type GalleryServer, type GalleryServerOptions } from "./gallery/server.ts"
 export { scanAssets, buildManifest, pngSize, slugify, type ScannedAsset } from "./pipeline/init.ts"
 export {
