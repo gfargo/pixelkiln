@@ -38,8 +38,8 @@ export interface GenerateJob {
   id: string
   project: string | null
   keys: string[]
-  /** `resume` skips submission: poll, review, and fetch existing work at no cost. */
-  mode: "generate" | "resume"
+  /** `resume` skips submission: poll, review, and fetch existing work at no cost; `refresh` re-pulls changed objects. */
+  mode: "generate" | "resume" | "refresh"
   phase: GeneratePhase
   startedAt: string
   finishedAt: string | null
@@ -108,8 +108,11 @@ export const GenerateRequestSchema = z
     force: z.boolean().optional(),
     /** Advance in-flight, review, or selected work without submitting anything. */
     resume: z.boolean().optional(),
+    /** Re-download downloaded outputs and replace files whose object changed upstream. */
+    refresh: z.boolean().optional(),
   })
   .strict()
+  .refine((request) => !(request.resume && request.refresh), { message: "resume and refresh are exclusive" })
 
 export class GenerateRequestError extends Error {
   constructor(message: string, readonly status: number = 400) {
@@ -180,6 +183,21 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
     return groups
   }
 
+  async function refresh(job: GenerateJob, ctx: GalleryProjectContext, specs: ResolvedSpec[]) {
+    job.phase = "fetching"
+    for (const [providerId, providerSpecs] of groupByRecordedProvider(specs, ctx.lock)) {
+      const provider = opts.providerFor(job.project ?? undefined, providerId)
+      const res = await fetchAssets(provider, providerSpecs, ctx.lock, ctx.lockPath, {
+        onProgress: (line) => say(job, line),
+        refresh: true,
+      })
+      job.counts.downloaded += res.downloaded
+      say(job, `${providerId}: ${res.downloaded} changed upstream and replaced, ${res.unchanged ?? 0} unchanged, ${res.skipped} skipped, ${res.failed} failed`)
+    }
+    job.phase = "done"
+    job.finishedAt = now().toISOString()
+  }
+
   async function settle(job: GenerateJob, ctx: GalleryProjectContext, specs: ResolvedSpec[]) {
     job.phase = "polling"
     for (const [providerId, providerSpecs] of groupByRecordedProvider(specs, ctx.lock)) {
@@ -217,6 +235,10 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
 
   async function run(job: GenerateJob, ctx: GalleryProjectContext, specs: ResolvedSpec[], groups: PlanGroup[]) {
     try {
+      if (job.mode === "refresh") {
+        await refresh(job, ctx, specs)
+        return
+      }
       if (job.mode === "generate") {
         job.phase = "submitting"
         for (const group of groups) {
@@ -286,7 +308,7 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
       }
 
       let groups: PlanGroup[] = []
-      if (!request.resume) {
+      if (!request.resume && !request.refresh) {
         const plan = await buildPlan(specs, ctx.lock, { force: request.force })
         if (!plan.actionable.length) {
           const reasons = plan.items.map((item) => `${item.key}: ${item.state} — ${item.reason}`).slice(0, 5)
@@ -310,7 +332,7 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
         id: randomBytes(8).toString("hex"),
         project: request.project ?? null,
         keys: request.keys,
-        mode: request.resume ? "resume" : "generate",
+        mode: request.refresh ? "refresh" : request.resume ? "resume" : "generate",
         phase: "queued",
         startedAt: now().toISOString(),
         finishedAt: null,
@@ -322,7 +344,9 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
       }
       jobs.set(job.id, job)
       contexts.set(job.id, ctx)
-      say(job, request.resume
+      say(job, request.refresh
+        ? `checking ${request.keys.length} asset(s) upstream at no cost`
+        : request.resume
         ? `resuming ${request.keys.length} asset(s) at no cost`
         : `generating ${groups.reduce((n, g) => n + g.actionable.length, 0)} asset(s): ` +
           groups.map((g) => `${g.provider} ${formatCost(g.costUnit, g.cost)}`).join("; "))

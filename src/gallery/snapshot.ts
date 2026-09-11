@@ -13,6 +13,7 @@ import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine
 import { lockKey, type Asset, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
+import { pixelLabObjectUrl } from "../providers/pixellab.ts"
 
 /**
  * A read-only view of everything the project has generated, built from the
@@ -145,6 +146,10 @@ export interface GalleryItem {
    */
   edit: GalleryOutput | null
   editStatus: HandEditStatus | null
+  /** Where the provider's own app shows this object, when it has one. */
+  upstreamUrl: string | null
+  /** Downloaded work with a durable provider reference; `fetch --refresh` can re-pull it. */
+  refreshable: boolean
   tags: string[]
   category: string | null
 }
@@ -499,6 +504,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       source: spec.source ?? null,
       edit,
       editStatus,
+      upstreamUrl: entry?.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
+      refreshable: Boolean(entry && entry.status === "downloaded" && entry.outputs.length && (entry.sourceUrls?.length || entry.sourceUrl)),
       tags: spec.tags,
       category: asset?.category ?? null,
     })
@@ -554,6 +561,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       source: null,
       edit: null,
       editStatus: null,
+      upstreamUrl: entry.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
+      refreshable: false,
       tags: [],
       category: null,
     })

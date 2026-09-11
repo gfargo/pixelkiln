@@ -505,7 +505,7 @@ function renderJobs() {
     const row = el('div', 'job');
     const ph = el('span', 'ph');
     ph.append(el('i', 'dot ' + PHASE_TONE[job.phase]), document.createTextNode(job.phase));
-    const what = (job.mode === 'resume' ? 'resume ' : 'generate ') + job.keys.length + (job.keys.length === 1 ? ' asset' : ' assets') +
+    const what = (job.mode === 'refresh' ? 'pull upstream for ' : job.mode === 'resume' ? 'resume ' : 'generate ') + job.keys.length + (job.keys.length === 1 ? ' asset' : ' assets') +
       (job.project ? ' in ' + job.project : '');
     const last = el('span', 'last', what + (job.messages.length ? ' — ' + job.messages[job.messages.length - 1].trim() : ''));
     last.title = job.keys.join('\\n');
@@ -544,13 +544,15 @@ function budgetLine() {
 
 // The confirm step: what will be sent, what it is estimated to cost, and what
 // this session may still spend. Mirrors gen's "Spend … on N asset(s)?" prompt.
-function generateDialog(items, { project = null, force = false, resume = false } = {}) {
+function generateDialog(items, { project = null, force = false, resume = false, refresh = false } = {}) {
   const host = $('dialog-host');
   host.textContent = '';
   const wrap = el('div', 'dialog');
   const form = el('form');
-  form.append(el('h3', null, resume ? 'Resume ' + items.length + (items.length === 1 ? ' asset' : ' assets')
-    : (force ? 'Regenerate ' : 'Generate ') + items.length + (items.length === 1 ? ' asset' : ' assets')));
+  const noun = items.length + (items.length === 1 ? ' asset' : ' assets');
+  form.append(el('h3', null, refresh ? 'Pull upstream changes for ' + noun
+    : resume ? 'Resume ' + noun
+    : (force ? 'Regenerate ' : 'Generate ') + noun));
   const table = el('table');
   const thead = el('tr'); thead.append(el('th', null, 'asset'), el('th', null, 'state'), el('th', 'n', 'candidates'), el('th', 'n', 'estimate'));
   table.append(thead);
@@ -558,16 +560,18 @@ function generateDialog(items, { project = null, force = false, resume = false }
   for (const item of items) {
     const tr = el('tr');
     tr.append(el('td', 'mono', item.key), el('td', null, item.state), el('td', 'n', item.candidates ?? '—'),
-      el('td', 'n', resume ? 'no cost' : fmtCost(item.costUnit, item.estimatedCost ?? 0)));
+      el('td', 'n', resume || refresh ? 'no cost' : fmtCost(item.costUnit, item.estimatedCost ?? 0)));
     table.append(tr);
-    if (!resume) {
+    if (!resume && !refresh) {
       const g = byProvider.get(item.provider) || { cost: 0, unit: item.costUnit };
       g.cost += item.estimatedCost ?? 0; byProvider.set(item.provider, g);
     }
   }
   form.append(table);
   const sum = el('div', 'sum');
-  if (resume) {
+  if (refresh) {
+    sum.append(el('div', null, 'Re-downloads each object from the provider and replaces the local file only when the object changed upstream — for example after editing it in the provider\u2019s own editor. Unchanged objects are left alone; a file you changed locally is refused. Nothing is submitted.'));
+  } else if (resume) {
     sum.append(el('div', null, 'Polls, reviews, and downloads existing provider work. Nothing is submitted.'));
   } else {
     for (const [provider, g] of byProvider) {
@@ -584,7 +588,7 @@ function generateDialog(items, { project = null, force = false, resume = false }
   }
   form.append(sum);
   const actions = el('div', 'actions');
-  const go = el('button', 'primary', resume ? 'Resume' : 'Generate');
+  const go = el('button', 'primary', refresh ? 'Pull changes' : resume ? 'Resume' : 'Generate');
   go.type = 'submit';
   const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { host.textContent = ''; };
   const msg = el('span', 'msg');
@@ -598,6 +602,7 @@ function generateDialog(items, { project = null, force = false, resume = false }
       if (project) body.project = project;
       if (force) body.force = true;
       if (resume) body.resume = true;
+      if (refresh) body.refresh = true;
       const job = await postGenerate(body);
       host.textContent = '';
       GEN.jobs.unshift(job);
@@ -887,6 +892,13 @@ function renderMain(items) {
         g.onclick = () => generateDialog(snap.items.filter((i) => i.project === s.project && s.actionable.keys.includes(i.key)), { project: s.project });
         tools.append(g);
       }
+      const refreshable = snap.items.filter((i) => i.project === s.project && i.styleId === s.id && i.refreshable && i.upstreamUrl);
+      if (GENERATION && refreshable.length) {
+        const r = el('button', null, 'Pull upstream ' + refreshable.length); r.type = 'button';
+        r.title = 'Re-download objects edited in the provider\u2019s own editor; no cost';
+        r.onclick = () => generateDialog(refreshable, { project: s.project, refresh: true });
+        tools.append(r);
+      }
       const styleKey = 'style:' + (s.project || '') + ':' + s.id;
       if (EDITABLE && s.outDir) {
         const es = el('button', null, ui.editing === styleKey ? 'Cancel' : 'Edit style');
@@ -978,6 +990,30 @@ function candidatesControl(style) {
   wrap.append(input, save, cancel, note);
   setTimeout(() => input.focus(), 0);
   return wrap;
+}
+
+function upstreamSection(item) {
+  if (!item.upstreamUrl && !(GENERATION && item.refreshable)) return null;
+  const s = el('section', 'meta');
+  s.append(el('h3', null, 'Upstream'));
+  const dl = el('dl');
+  if (item.upstreamUrl) {
+    const a = el('a', null, 'Open in ' + item.provider + ' \u2197');
+    a.href = item.upstreamUrl; a.target = '_blank'; a.rel = 'noopener';
+    row(dl, 'object', a);
+    row(dl, 'note', item.provider === 'pixellab'
+      ? 'The account object this generation came from. Edit it there with PixelLab\u2019s editor, then pull the changes back here; the lockfile records the new bytes as this generation.'
+      : 'The provider\u2019s page for this object.');
+  }
+  s.append(dl);
+  if (GENERATION && item.refreshable) {
+    const acts = el('div', 'hand-actions');
+    const b = el('button', null, 'Pull upstream changes \u00b7 no cost'); b.type = 'button';
+    b.onclick = () => generateDialog([item], { project: item.project, refresh: true });
+    acts.append(b);
+    s.append(acts);
+  }
+  return s;
 }
 
 function generateActions(item) {
@@ -1698,6 +1734,8 @@ function renderDrawer() {
 
   const hand = handEditSection(item);
   if (hand) body.append(hand);
+  const upstream = upstreamSection(item);
+  if (upstream) body.append(upstream);
 
   if (item.revision || item.revisionParentKey) {
     const { s, dl } = section('Lineage');

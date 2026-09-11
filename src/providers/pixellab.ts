@@ -21,6 +21,18 @@ import type { BalanceInfo, CostEstimate, JobState, PollContext, Provider, RateLi
  * object's job record expires while its image does not, and that pixflux
  * returns bytes inline instead of a job id.
  */
+/**
+ * Where a generated object can be opened in the PixelLab web app — for a
+ * look, or for a hand edit in its built-in editor, after which
+ * `pixelkiln fetch --refresh` pulls the changed bytes back down. Only
+ * generators that create an account object have a page; pixflux returns an
+ * inline image and keeps no object to open.
+ */
+export function pixelLabObjectUrl(generator: Generator, objectId: string | null): string | null {
+  if (!objectId || (generator !== "map" && generator !== "1dir")) return null
+  return `https://www.pixellab.ai/objects/${encodeURIComponent(objectId)}`
+}
+
 export class PixelLabProvider implements Provider {
   readonly id = "pixellab"
 
