@@ -27,6 +27,9 @@ hashes.
   pass one `--budget provider=amount` ceiling for every paid provider in the plan.
 - Leave visual selection to the local `pixelkiln pick` review page unless the
   user explicitly provides a selection rule. Closing it applies nothing.
+- To answer "what has this project generated?", use `pixelkiln gallery --json`
+  for the offline provenance snapshot, or open `pixelkiln gallery` for the
+  person to browse it. Both are read-only and contact no provider.
 - When a selected style declares `quality`, run manifest-mode `pixelkiln refine`
   after its source is accepted and downloaded. Read the quality reference below.
   Do not copy manifest-owned palette, path, interpreter, or threshold settings

@@ -56,6 +56,22 @@ export { doctor, type DoctorCheck, type DoctorLevel, type DoctorOptions, type Do
 export { adopt, tagAdopted, type AdoptResult } from "./pipeline/adopt.ts"
 export { runPicker, type PickResult, type ReviewReadyInfo } from "./pick/server.ts"
 export { renderSheet, type SheetGroup } from "./pick/sheet.ts"
+export {
+  buildGallerySnapshot,
+  galleryMediaId,
+  galleryMediaRoute,
+  type BuildGalleryOptions,
+  type GalleryBuild,
+  type GalleryItem,
+  type GalleryMedia,
+  type GalleryOutput,
+  type GalleryQuality,
+  type GallerySnapshot,
+  type GalleryState,
+  type GalleryStyle,
+} from "./gallery/snapshot.ts"
+export { renderGallery } from "./gallery/page.ts"
+export { serveGallery, type GalleryServer, type GalleryServerOptions } from "./gallery/server.ts"
 export { scanAssets, buildManifest, pngSize, slugify, type ScannedAsset } from "./pipeline/init.ts"
 export {
   loadClaims,
