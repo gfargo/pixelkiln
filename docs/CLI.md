@@ -100,7 +100,10 @@ finish it before polling.
 Open the local candidate-review UI for jobs with alternatives. The page keeps
 native aspect ratios, uses exact integer zoom for small art, fits large work,
 and centers the decision surface on wide displays. A revision row shows its
-parent source beside the new candidates. A ComfyUI frame set appears as an
+parent source beside the new candidates, and a regeneration (`gen --force`)
+shows the art it would replace beside them while that file is still on disk,
+so the question is "is this better?" rather than "is this good?". A ComfyUI
+frame set appears as an
 animated ordered strip and is accepted or left unresolved as a unit. Its preview
 can be paused, starts paused when reduced motion is enabled, and stops while it
 is offscreen. Arrow keys navigate, Enter selects, 1–9 choose directly, and 0
@@ -273,9 +276,17 @@ provider, and what the session budget still allows — the page's version of
 `poll`, and `fetch` library calls `gen` makes, writing the same lockfile, so a
 terminal `plan` in another window agrees at every step. Progress appears in a
 job strip under the filters; each job keeps the log lines the CLI would have
-printed. Candidate sets stop in `review`: **Review** opens the `pick` sheet
-inside the gallery, **Apply selections** writes the lockfile and downloads the
-chosen art, and unchosen rows stay in review exactly as with `pick`.
+printed. Candidate sets stop in `review`: **Review** slides the `pick` sheet
+out over the gallery, **Apply selections** writes the lockfile and downloads
+the chosen art, and unchosen rows stay in review exactly as with `pick`. A
+regeneration's sheet shows the current art beside the candidates.
+
+**Compare** puts two to four records side by side at one shared zoom with
+their fields in rows — provider, generator, candidates, size, cost, prompt,
+dates, quality, hashes — and tints every row whose values differ. Shift-click
+cards (or use **Compare +** in a record) to build the set; the tray at the
+bottom opens it. The set lives in the URL (`?compare=a,b`), so a comparison
+can be linked like any other view. It works in the read-only gallery too.
 
 Two ceilings guard spend. The session budget is charged with each job's
 estimate up front, so two quick clicks cannot both fit under the same
