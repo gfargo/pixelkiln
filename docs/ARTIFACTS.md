@@ -20,9 +20,13 @@ pixelkiln pack --style ground --output-role tile-00 --output-role tile-01
 pixelkiln pack --style mixed --primary-only
 ```
 
-Manifest mode normally reads the outputs recorded by the lockfile. When a style
-declares `quality`, it instead requires every selected refinement record to be
-current and approved, then packs those derived PNGs. Frames sort by asset id for
+Manifest mode normally reads the outputs recorded by the lockfile. An asset
+with a `source` (or a `sourceByStyle` entry for this style) is packed from that
+file instead — a hand edit made with `pixelkiln edit`, a palette remap, an
+alignment fix — and an asset with a source but no lock entry is packed from it
+too, the same rule `mount` applies. Structural sets keep their lock outputs.
+When a style declares `quality`, it instead requires every selected refinement
+record to be current and approved, then packs those derived PNGs. Frames sort by asset id for
 byte-stable layouts. Structural sets preserve provider order and qualify ids by
 role (`terrain/tile-03`). The grid cell is the largest source sprite; smaller
 frames retain their real dimensions at the cell's top-left.
@@ -101,8 +105,9 @@ is optional and may equal the output. Only declared cells are cleared/replaced;
 all other base pixels survive byte-for-byte. A sprite larger than its cell is
 reported and skipped rather than cropped. Two assets cannot own one cell.
 
-Use asset `source` when mounting a palette-remapped, aligned, hand-touched, or
-otherwise post-processed file instead of the raw lock output. A style quality
+Use asset `source` (or `sourceByStyle` for one style) when mounting a
+palette-remapped, aligned, hand-touched, or otherwise post-processed file
+instead of the raw lock output; `pixelkiln edit` sets it up for you. A style quality
 profile takes precedence for participating cells, but only after approval. Use
 `outputRole` to choose one member of a structural set. See
 [manifest reference](./MANIFEST.md).

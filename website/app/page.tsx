@@ -152,7 +152,7 @@ export default function Home() {
             <span>generation providers</span>
           </div>
           <div>
-            <strong>28</strong>
+            <strong>29</strong>
             <span>composable commands</span>
           </div>
           <div>

@@ -63,6 +63,11 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
         unknownReferences.push(`assets.${assetId}.promptByStyle: unknown style "${styleId}"`)
       }
     }
+    for (const styleId of Object.keys(asset.sourceByStyle)) {
+      if (!styleIds.has(styleId)) {
+        unknownReferences.push(`assets.${assetId}.sourceByStyle: unknown style "${styleId}"`)
+      }
+    }
     if (asset.revision) {
       if (!parsed.data.assets[asset.revision.from]) {
         unknownReferences.push(
@@ -440,7 +445,7 @@ export async function resolveSpecs(
             }
           : {}),
         tags,
-        source: asset.source,
+        source: asset.sourceByStyle[styleId] ?? asset.source,
         // Revision identity is attached after every dependency in this style
         // has a concrete output target. Finalization below computes the hash.
         specHash: "",

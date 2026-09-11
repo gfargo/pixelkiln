@@ -498,6 +498,14 @@
               "source": {
                 "type": "string"
               },
+              "sourceByStyle": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "default": {}
+              },
               "revision": {
                 "type": "object",
                 "properties": {
