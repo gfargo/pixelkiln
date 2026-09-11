@@ -1,3 +1,14 @@
+# [0.21.0](https://github.com/gfargo/pixelkiln/compare/v0.20.2...v0.21.0) (2026-09-11)
+
+
+### Features
+
+* add read-only gallery of every generation ([#83](https://github.com/gfargo/pixelkiln/issues/83)) ([322b9f0](https://github.com/gfargo/pixelkiln/commit/322b9f03ded73c655a1d68a611ea828796ff860e))
+* **gallery:** compare records side by side; show current art in review ([#87](https://github.com/gfargo/pixelkiln/issues/87)) ([b6179ce](https://github.com/gfargo/pixelkiln/commit/b6179ce7d5254b0d69ea76d3ad57b3931923af66))
+* **gallery:** edit manifest intent from the page with --edit ([#85](https://github.com/gfargo/pixelkiln/issues/85)) ([339b475](https://github.com/gfargo/pixelkiln/commit/339b475dfbba536de6630baae1eae34c536e9ff7))
+* **gallery:** generate, resume, and review from the page with --budget ([#86](https://github.com/gfargo/pixelkiln/issues/86)) ([b87360f](https://github.com/gfargo/pixelkiln/commit/b87360f6f677de81a04fbf11e801db7038fa85f7))
+* **gallery:** show every workspace project with --workspace ([#88](https://github.com/gfargo/pixelkiln/issues/88)) ([9e47f63](https://github.com/gfargo/pixelkiln/commit/9e47f63765eab9ab2e077e1a49e4a7f5d24825e5))
+
 ## [0.20.2](https://github.com/gfargo/pixelkiln/compare/v0.20.1...v0.20.2) (2026-09-07)
 
 
