@@ -12,7 +12,7 @@ import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { loadLock, saveLock, upsert } from "../src/lock.ts"
 import { sha256 } from "../src/hash.ts"
 import { lockKey, type Lock } from "../src/types.ts"
-import { buildGallerySnapshot, galleryMediaId } from "../src/gallery/snapshot.ts"
+import { buildGallerySnapshot, buildWorkspaceGallerySnapshot, galleryMediaId } from "../src/gallery/snapshot.ts"
 import { renderGallery } from "../src/gallery/page.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { announceGalleryReady, parseArgs } from "../src/cli.ts"
@@ -289,6 +289,88 @@ describe("buildGallerySnapshot quality records", () => {
   })
 })
 
+describe("buildWorkspaceGallerySnapshot", () => {
+  it("namespaces every registered project and reports an unreadable one inline", async () => {
+    // Two real projects with colliding lock keys, one catalog entry that does
+    // not exist, and a catalog directory that is not either project's root.
+    const first = await generated()
+    const second = path.join(dir, "second")
+    await mkdir(second, { recursive: true })
+    const secondManifest = {
+      name: "second-project",
+      styles: { base: { generator: "map", outDir: "out", promptSuffix: "worn" } },
+      assets: { anvil: { prompt: "an anvil", width: 16, height: 16 } },
+    }
+    await writeFile(path.join(second, "pixelkiln.manifest.json"), JSON.stringify(secondManifest))
+    await writeFile(path.join(second, "pixelkiln.lock.json"), JSON.stringify({ version: 2, entries: {} }))
+    const catalogDir = path.join(dir, "catalog")
+    await mkdir(catalogDir, { recursive: true })
+    const workspacePath = path.join(catalogDir, "pixelkiln.workspace.json")
+    const workspace = {
+      version: 1 as const,
+      projects: [
+        { id: "alpha", manifest: "../pixelkiln.manifest.json", lock: "../pixelkiln.lock.json", provider: "pixellab" },
+        { id: "beta", manifest: "../second/pixelkiln.manifest.json", lock: "../second/pixelkiln.lock.json", provider: "pixellab", account: "sandbox" },
+        { id: "ghost-project", manifest: "../nowhere/pixelkiln.manifest.json", lock: "../nowhere/pixelkiln.lock.json", provider: "pixellab" },
+      ],
+    }
+
+    const { snapshot, media } = await buildWorkspaceGallerySnapshot({
+      workspace, workspacePath, now: () => new Date("2026-09-11T12:00:00Z"),
+    })
+    expect(snapshot.project).toBeNull()
+    expect(snapshot.workspace).toMatchObject({ path: workspacePath, dir: catalogDir })
+    expect(snapshot.workspace!.projects.map((p) => [p.id, p.items, p.entries, p.error === null])).toEqual([
+      ["alpha", 4, 3, true],
+      ["beta", 1, 0, true],
+      ["ghost-project", 0, 0, false],
+    ])
+    expect(snapshot.workspace!.projects[1]).toMatchObject({ name: "second-project", account: "sandbox" })
+    expect(snapshot.workspace!.projects[2]!.error).toMatch(/No manifest at/)
+
+    // Both projects own `base/anvil`; ids keep them apart, keys stay honest.
+    const anvils = snapshot.items.filter((item) => item.key === "base/anvil")
+    expect(anvils.map((item) => [item.id, item.project, item.state])).toEqual([
+      ["alpha:base/anvil", "alpha", "ok"],
+      ["beta:base/anvil", "beta", "missing"],
+    ])
+    expect(snapshot.styles.map((style) => `${style.project}/${style.id}`)).toEqual(["alpha/base", "beta/base"])
+    expect(snapshot.totals).toMatchObject({ entries: 3, items: 5, byState: { ok: 2, missing: 2, undeclared: 1 } })
+    expect(snapshot.totals.spendByUnit.generations).toBe(3)
+    // Media from every readable project is served through one allowlist.
+    const alphaAnvil = anvils[0]!.outputs[0]!
+    expect(media.get(galleryMediaId(alphaAnvil.absolutePath))?.path).toBe(alphaAnvil.absolutePath)
+    expect(renderGallery(snapshot)).toContain("<title>pixelkiln — workspace</title>")
+    void first
+  })
+
+  it("applies --style/--only per project instead of failing a project that lacks the id", async () => {
+    await generated()
+    const other = path.join(dir, "other")
+    await mkdir(other, { recursive: true })
+    await writeFile(path.join(other, "pixelkiln.manifest.json"), JSON.stringify({
+      name: "other", styles: { neon: { generator: "map", outDir: "out" } }, assets: { sign: { prompt: "a sign", width: 16, height: 16 } },
+    }))
+    const workspacePath = path.join(dir, "pixelkiln.workspace.json")
+    const workspace = {
+      version: 1 as const,
+      projects: [
+        { id: "alpha", manifest: "pixelkiln.manifest.json", lock: "pixelkiln.lock.json", provider: "pixellab" },
+        { id: "other", manifest: "other/pixelkiln.manifest.json", lock: "other/pixelkiln.lock.json", provider: "pixellab" },
+      ],
+    }
+    const { snapshot } = await buildWorkspaceGallerySnapshot({
+      workspace, workspacePath, filter: { styles: ["base"], assets: ["hammer"] },
+    })
+    expect(snapshot.filter).toEqual({ styles: ["base"], assets: ["hammer"] })
+    expect(snapshot.items.map((item) => item.id)).toEqual(["alpha:base/hammer"])
+    expect(snapshot.workspace!.projects.map((p) => [p.id, p.items, p.error])).toEqual([
+      ["alpha", 1, null],
+      ["other", 0, null],
+    ])
+  })
+})
+
 describe("renderGallery", () => {
   it("embeds the snapshot without letting a prompt close the script tag", async () => {
     const { loaded, specs, lock } = await generated()
@@ -407,7 +489,9 @@ describe("serveGallery", () => {
 
 describe("gallery CLI surface", () => {
   it("parses gallery with its server and filter flags", () => {
-    expect(parseArgs(["gallery"])).toMatchObject({ command: "gallery", json: false, noOpen: false })
+    expect(parseArgs(["gallery"])).toMatchObject({ command: "gallery", json: false, noOpen: false, workspace: undefined })
+    expect(parseArgs(["gallery", "--workspace", "pixelkiln.workspace.json", "--json"]))
+      .toMatchObject({ command: "gallery", workspace: "pixelkiln.workspace.json", json: true })
     expect(parseArgs(["gallery", "--port", "4321", "--no-open", "--json", "--style", "base", "--only", "anvil"]))
       .toMatchObject({ command: "gallery", port: 4321, noOpen: true, json: true, styles: ["base"], assets: ["anvil"] })
     expect(() => parseArgs(["gallery", "base"])).toThrow(/Unexpected argument/)

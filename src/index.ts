@@ -58,13 +58,16 @@ export { runPicker, type PickResult, type ReviewReadyInfo } from "./pick/server.
 export { renderSheet, type SheetGroup } from "./pick/sheet.ts"
 export {
   buildGallerySnapshot,
+  buildWorkspaceGallerySnapshot,
   galleryMediaId,
   galleryMediaRoute,
   type BuildGalleryOptions,
+  type BuildWorkspaceGalleryOptions,
   type GalleryBuild,
   type GalleryItem,
   type GalleryMedia,
   type GalleryOutput,
+  type GalleryProject,
   type GalleryQuality,
   type GallerySnapshot,
   type GalleryState,

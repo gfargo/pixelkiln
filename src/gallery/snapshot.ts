@@ -2,14 +2,15 @@ import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
 import { stat } from "node:fs/promises"
 import path from "node:path"
-import { spendByUnit } from "../lock.ts"
-import type { LoadedManifest } from "../manifest.ts"
+import { loadLock, spendByUnit } from "../lock.ts"
+import { loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
 import { mediaTypeFromExtension, type MediaType } from "../media.ts"
-import { currentEntryOutputPath, portableOutputPath, resolveOutputPath } from "../outputs.ts"
+import { currentEntryOutputPath, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath } from "../outputs.ts"
 import { buildPlan, type PlanState } from "../pipeline/plan.ts"
 import type { QualityProfileInspection } from "../pipeline/quality-profile.ts"
 import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine.ts"
 import { lockKey, type Asset, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
+import { resolveProject, type Workspace } from "../workspace.ts"
 
 /**
  * A read-only view of everything the project has generated, built from the
@@ -75,6 +76,10 @@ export interface GalleryQuality {
 }
 
 export interface GalleryItem {
+  /** Page identity: the lock key, prefixed by project id in a workspace. */
+  id: string
+  /** Workspace project id, or null for a single-project gallery. */
+  project: string | null
   key: string
   styleId: string
   assetId: string
@@ -125,6 +130,8 @@ export interface GalleryItem {
 
 export interface GalleryStyle {
   id: string
+  /** Workspace project id, or null for a single-project gallery. */
+  project: string | null
   provider: string
   generator: string
   outDir: string
@@ -135,16 +142,30 @@ export interface GalleryStyle {
   spendByUnit: Record<string, number>
 }
 
+export interface GalleryProject {
+  /** Workspace catalog id; the manifest name for a single project. */
+  id: string
+  name: string
+  manifest: string
+  lock: string
+  root: string
+  /** Manifest default provider, or the catalog provider when the manifest failed to load. */
+  provider: string
+  account: string | null
+  entries: number
+  items: number
+  spendByUnit: Record<string, number>
+  /** Why this project contributed nothing; a broken sibling never hides the rest. */
+  error: string | null
+}
+
 export interface GallerySnapshot {
   version: 1
   generatedAt: string
-  project: {
-    name: string
-    manifest: string
-    lock: string
-    root: string
-    provider: string
-  }
+  /** The one project shown; null in a workspace gallery. */
+  project: GalleryProject | null
+  /** Every registered project, in catalog order; null for a single project. */
+  workspace: { path: string; dir: string; projects: GalleryProject[] } | null
   /** Active `--style`/`--only` filters, so the page can say what it is showing. */
   filter: { styles: string[]; assets: string[] }
   totals: {
@@ -359,6 +380,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
 
     const quality = planItem.quality ? await describeQuality(media, root, planItem.quality) : null
     items.push({
+      id: key,
+      project: null,
       key,
       styleId: spec.styleId,
       assetId: spec.assetId,
@@ -414,6 +437,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       ),
     )
     items.push({
+      id: key,
+      project: null,
       key,
       styleId: entry.styleId,
       assetId: entry.assetId,
@@ -480,6 +505,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       }
       return {
         id,
+        project: null,
         // A declared style inherits the manifest default; only a style the
         // manifest no longer has falls back to what its entries recorded.
         provider: style
@@ -500,12 +526,19 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
     version: 1,
     generatedAt: (opts.now ?? (() => new Date()))().toISOString(),
     project: {
+      id: loaded.manifest.name,
       name: loaded.manifest.name,
       manifest: loaded.path,
       lock: path.resolve(opts.lockPath),
       root,
       provider: loaded.manifest.provider,
+      account: null,
+      entries: Object.keys(lock.entries).length,
+      items: items.length,
+      spendByUnit: spendByUnit(lock),
+      error: null,
     },
+    workspace: null,
     filter: { styles: opts.filter?.styles ?? [], assets: opts.filter?.assets ?? [] },
     totals: {
       entries: Object.keys(lock.entries).length,
@@ -518,4 +551,126 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
     items,
   }
   return { snapshot, media }
+}
+
+export interface BuildWorkspaceGalleryOptions {
+  workspace: Workspace
+  /** Catalog path; project paths resolve against its directory. */
+  workspacePath: string
+  filter?: { styles?: string[]; assets?: string[] }
+  now?: () => Date
+}
+
+/**
+ * One gallery for every project a workspace catalog registers. Each project
+ * is built with the single-project builder and its items are namespaced by
+ * project id, so two projects can both own `base/anvil`. A project whose
+ * manifest or lock fails to load is listed with its error and contributes
+ * nothing, mirroring `workspace status`: one broken sibling must not hide
+ * the rest. A `--style`/`--only` filter is applied per project and a project
+ * that has none of the requested ids simply shows zero items.
+ */
+export async function buildWorkspaceGallerySnapshot(
+  opts: BuildWorkspaceGalleryOptions,
+): Promise<GalleryBuild> {
+  const dir = path.dirname(path.resolve(opts.workspacePath))
+  const media = new Map<string, GalleryMedia>()
+  const projects: GalleryProject[] = []
+  const items: GalleryItem[] = []
+  const styles: GalleryStyle[] = []
+  const filter = { styles: opts.filter?.styles ?? [], assets: opts.filter?.assets ?? [] }
+
+  for (const project of opts.workspace.projects) {
+    const { manifestPath, lockPath } = resolveProject(dir, project)
+    try {
+      const loaded = await loadManifest(manifestPath)
+      const styleFilter = filter.styles.filter((id) => loaded.manifest.styles[id])
+      const assetFilter = filter.assets.filter((id) => loaded.manifest.assets[id])
+      const excluded =
+        (filter.styles.length > 0 && styleFilter.length === 0) ||
+        (filter.assets.length > 0 && assetFilter.length === 0)
+      const lock = await loadLock(lockPath)
+      let projectItems: GalleryItem[] = []
+      let projectStyles: GalleryStyle[] = []
+      if (!excluded) {
+        const specs = await resolveSpecs(loaded, { styles: styleFilter, assets: assetFilter })
+        normalizeLockOutputPaths(lock, specs)
+        const build = await buildGallerySnapshot({
+          loaded,
+          specs,
+          lock,
+          lockPath,
+          filter: { styles: styleFilter, assets: assetFilter },
+          now: opts.now,
+        })
+        for (const [id, file] of build.media) media.set(id, file)
+        projectItems = build.snapshot.items.map((item) => ({
+          ...item,
+          id: `${project.id}:${item.key}`,
+          project: project.id,
+        }))
+        projectStyles = build.snapshot.styles.map((style) => ({ ...style, project: project.id }))
+      }
+      items.push(...projectItems)
+      styles.push(...projectStyles)
+      projects.push({
+        id: project.id,
+        name: loaded.manifest.name,
+        manifest: manifestPath,
+        lock: path.resolve(lockPath),
+        root: loaded.root,
+        provider: loaded.manifest.provider,
+        account: project.account ?? null,
+        entries: Object.keys(lock.entries).length,
+        items: projectItems.length,
+        spendByUnit: spendByUnit(lock),
+        error: null,
+      })
+    } catch (err) {
+      projects.push({
+        id: project.id,
+        name: project.id,
+        manifest: manifestPath,
+        lock: path.resolve(lockPath),
+        root: path.dirname(manifestPath),
+        provider: project.provider,
+        account: project.account ?? null,
+        entries: 0,
+        items: 0,
+        spendByUnit: {},
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  const byState: Record<string, number> = {}
+  for (const item of items) byState[item.state] = (byState[item.state] ?? 0) + 1
+  const byStatus: Record<string, number> = {}
+  for (const item of items) if (item.status) byStatus[item.status] = (byStatus[item.status] ?? 0) + 1
+  const spend: Record<string, number> = {}
+  for (const project of projects) {
+    for (const [unit, amount] of Object.entries(project.spendByUnit)) {
+      spend[unit] = (spend[unit] ?? 0) + amount
+    }
+  }
+
+  return {
+    snapshot: {
+      version: 1,
+      generatedAt: (opts.now ?? (() => new Date()))().toISOString(),
+      project: null,
+      workspace: { path: path.resolve(opts.workspacePath), dir, projects },
+      filter,
+      totals: {
+        entries: projects.reduce((sum, project) => sum + project.entries, 0),
+        items: items.length,
+        byState,
+        byStatus,
+        spendByUnit: spend,
+      },
+      styles,
+      items,
+    },
+    media,
+  }
 }
