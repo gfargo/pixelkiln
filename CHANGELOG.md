@@ -1,3 +1,10 @@
+# [0.22.0](https://github.com/gfargo/pixelkiln/compare/v0.21.0...v0.22.0) (2026-09-11)
+
+
+### Features
+
+* **gallery:** edit a style's prefix, suffix, and palette with the blast radius shown ([#89](https://github.com/gfargo/pixelkiln/issues/89)) ([0799db5](https://github.com/gfargo/pixelkiln/commit/0799db5557285eeb0659111969bf67a03e908f49))
+
 # [0.21.0](https://github.com/gfargo/pixelkiln/compare/v0.20.2...v0.21.0) (2026-09-11)
 
 
