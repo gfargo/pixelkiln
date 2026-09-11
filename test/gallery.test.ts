@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { existsSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -23,6 +24,9 @@ import {
   ManifestEditError,
 } from "../src/gallery/edit.ts"
 import { sha256File } from "../src/hash.ts"
+import { createGenerateHandlers, type GalleryGenerateHandlers, type GenerateJob } from "../src/gallery/generate.ts"
+import { normalizeLockOutputPaths } from "../src/outputs.ts"
+import type { Provider } from "../src/provider.ts"
 import { refineQualityProfiles } from "../src/pipeline/quality-profile.ts"
 import { approveQualityRecord } from "../src/pipeline/refine.ts"
 import { encodeRgbaPng } from "../src/png.ts"
@@ -661,12 +665,208 @@ describe("serveGallery with --edit", () => {
   })
 })
 
+/** Poll a job until it leaves the active phases the test is not waiting on. */
+async function untilPhase(handlers: GalleryGenerateHandlers, id: string, phases: string[]): Promise<GenerateJob> {
+  for (let i = 0; i < 500; i++) {
+    const job = handlers.status().jobs.find((candidate) => candidate.id === id)!
+    if (phases.includes(job.phase)) return job
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  throw new Error(`job ${id} did not reach ${phases.join("/")}`)
+}
+
+function generateHandlers(
+  manifestPath: string,
+  provider: Provider,
+  budget: { amount?: number; byProvider: Record<string, number> },
+) {
+  const loadProject = async () => {
+    const loaded = await loadManifest(manifestPath)
+    const specs = await resolveSpecs(loaded)
+    const lock = await loadLock(lockPath)
+    normalizeLockOutputPaths(lock, specs)
+    return { loaded, specs, lock, lockPath }
+  }
+  const reload = async () => {
+    const ctx = await loadProject()
+    return buildGallerySnapshot({ loaded: ctx.loaded, specs: ctx.specs, lock: ctx.lock, lockPath })
+  }
+  return createGenerateHandlers({
+    loadProject,
+    providerFor: () => provider,
+    budget,
+    reload,
+    pollIntervalMs: 0,
+    submitSpacingMs: 0,
+  })
+}
+
+describe("createGenerateHandlers", () => {
+  it("runs submit, poll, and fetch as a job and charges the session budget", async () => {
+    const { manifestPath } = await project()
+    const provider = new FakeProvider({ candidates: 1 })
+    const handlers = generateHandlers(manifestPath, provider, { amount: 3, byProvider: {} })
+
+    const job = await handlers.start({ keys: ["base/anvil", "base/hammer"] })
+    expect(job).toMatchObject({ mode: "generate", keys: ["base/anvil", "base/hammer"], project: null })
+    const done = await untilPhase(handlers, job.id, ["done", "failed"])
+    expect(done.error).toBeNull()
+    expect(done).toMatchObject({ phase: "done", counts: { submitted: 2, failed: 0, downloaded: 2 }, review: [] })
+    // Spend is keyed by the provider the plan grouped on — the manifest's id,
+    // which a real adapter also reports as its own.
+    expect(done.spent).toEqual({ pixellab: 2 })
+    expect(done.messages.join("\n")).toMatch(/pixellab: submitted 2, failed 0, estimated 2 generations/)
+
+    const status = handlers.status()
+    expect(status.spent).toEqual({ pixellab: 2 })
+    expect(status.units).toEqual({ pixellab: "generations" })
+    const lock = await loadLock(lockPath)
+    expect(lock.entries["base/anvil"]).toMatchObject({ status: "downloaded", cost: 1 })
+    expect(existsSync(path.join(dir, "out", "tools", "anvil.png"))).toBe(true)
+
+    // The remaining budget is 1; a third asset would fit, a regenerate of both would not.
+    await expect(handlers.start({ keys: ["base/anvil", "base/hammer"], force: true }))
+      .rejects.toThrow(/would spend 2 generations but only 1 generation of this session's budget remain/)
+    // Up-to-date work is not actionable without force.
+    await expect(handlers.start({ keys: ["base/anvil"] })).rejects.toThrow(/nothing to generate; base\/anvil: ok/)
+    const third = await handlers.start({ keys: ["base/sketch"] })
+    expect((await untilPhase(handlers, third.id, ["done", "failed"])).phase).toBe("done")
+    expect(handlers.status().spent).toEqual({ pixellab: 3 })
+    await expect(handlers.start({ keys: ["base/anvil"], force: true })).rejects.toThrow(/only 0 generations/)
+  })
+
+  it("refuses unknown keys, keys another job holds, and providers with no budget", async () => {
+    const { manifestPath } = await project()
+    const provider = new FakeProvider({ candidates: 1, processingPolls: 50 })
+    const handlers = generateHandlers(manifestPath, provider, { amount: undefined, byProvider: { pixellab: 10 } })
+    await expect(handlers.start({ keys: ["base/nobody"] })).rejects.toThrow(/not declared/)
+    await expect(handlers.start({ keys: [] })).rejects.toThrow(/invalid request/)
+    const job = await handlers.start({ keys: ["base/anvil"] })
+    await expect(handlers.start({ keys: ["base/anvil"], force: true })).rejects.toMatchObject({ status: 409 })
+    await untilPhase(handlers, job.id, ["done", "failed"])
+
+    const unbudgeted = generateHandlers(manifestPath, provider, { amount: undefined, byProvider: { retrodiffusion: 10 } })
+    await expect(unbudgeted.start({ keys: ["base/hammer"] })).rejects.toThrow(/No session budget for pixellab/)
+  })
+
+  it("parks candidate sets in review and finishes after the sheet applies", async () => {
+    const { manifestPath } = await project({
+      name: "review-test",
+      styles: { base: { generator: "1dir", size: 64, outDir: "out", promptSuffix: "clean" } },
+      assets: { anvil: { prompt: "an anvil" } },
+    })
+    const provider = new FakeProvider({ candidates: 4 })
+    const handlers = generateHandlers(manifestPath, provider, { amount: 100, byProvider: {} })
+    const job = await handlers.start({ keys: ["base/anvil"] })
+    const parked = await untilPhase(handlers, job.id, ["review", "done", "failed"])
+    expect(parked.phase).toBe("review")
+    expect(parked.review).toEqual(["base/anvil"])
+    expect(parked.finishedAt).toBeNull()
+    expect((await loadLock(lockPath)).entries["base/anvil"]!.status).toBe("review")
+
+    const session = await handlers.review(job.id, { routePrefix: "/review/" + job.id })
+    expect(session).not.toBeNull()
+    expect(session!.groups.map((group) => [group.key, group.frameUrls.length])).toEqual([["base/anvil", 4]])
+    const html = session!.html({ applyUrl: `/review/${job.id}/apply`, embedded: true })
+    expect(html).toContain(`"url":"/review/${job.id}/apply"`)
+    expect(html).toContain('"embedded":true')
+
+    const result = await handlers.applyReview(job.id, { selections: [{ key: "base/anvil", index: 2 }] })
+    expect(result).toEqual({ selected: 1, skipped: 0 })
+    const finished = await untilPhase(handlers, job.id, ["done", "failed"])
+    expect(finished).toMatchObject({ phase: "done", review: [], counts: { downloaded: 1 } })
+    expect((await loadLock(lockPath)).entries["base/anvil"]).toMatchObject({ status: "downloaded", candidateIndex: 2 })
+    // The sheet is gone once applied; a second apply has nothing to act on.
+    await expect(handlers.applyReview(job.id, { selections: [] })).rejects.toMatchObject({ status: 404 })
+  })
+
+  it("resumes existing provider work without charging anything", async () => {
+    const { loaded, specs, manifestPath } = await project()
+    const provider = new FakeProvider({ candidates: 1 })
+    const lock: Lock = { version: 2, entries: {} }
+    const one = specs.filter((spec) => spec.assetId === "hammer")
+    await submit(provider, loaded, (await buildPlan(one, lock)).actionable, lock, lockPath, { spacingMs: 0 })
+    await saveLock(lockPath, lock)
+    expect(["pending", "processing"]).toContain(lock.entries["base/hammer"]!.status)
+
+    const handlers = generateHandlers(manifestPath, provider, { amount: 0, byProvider: {} })
+    const job = await handlers.start({ keys: ["base/hammer"], resume: true })
+    expect(job.mode).toBe("resume")
+    const done = await untilPhase(handlers, job.id, ["done", "failed"])
+    expect(done).toMatchObject({ phase: "done", spent: {}, counts: { submitted: 0, downloaded: 1 } })
+    expect(handlers.status().spent).toEqual({})
+    expect((await loadLock(lockPath)).entries["base/hammer"]!.status).toBe("downloaded")
+  })
+})
+
+describe("serveGallery with a session budget", () => {
+  it("starts jobs, reports them, and hosts the review sheet behind the same guards", async () => {
+    const { manifestPath } = await project({
+      name: "review-test",
+      styles: { base: { generator: "1dir", size: 64, outDir: "out", promptSuffix: "clean" } },
+      assets: { anvil: { prompt: "an anvil" } },
+    })
+    const provider = new FakeProvider({ candidates: 4 })
+    const handlers = generateHandlers(manifestPath, provider, { amount: 100, byProvider: {} })
+    const reload = async () => {
+      const loaded = await loadManifest(manifestPath)
+      const specs = await resolveSpecs(loaded)
+      return buildGallerySnapshot({ loaded, specs, lock: await loadLock(lockPath), lockPath })
+    }
+    const server = await serveGallery({ open: false, load: reload, generate: handlers })
+    try {
+      const origin = server.url.replace(/\/$/, "")
+      const page = await (await fetch(server.url)).text()
+      expect(page).toContain("const GENERATION = true;")
+      expect(page).toContain("const EDITABLE = false;")
+      const post = (url: string, headers: Record<string, string>, body: unknown) => fetch(new URL(url, server.url), {
+        method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body),
+      })
+      expect((await post("/api/generate", { Origin: origin }, { keys: ["base/anvil"] })).status).toBe(403)
+      expect((await post("/api/generate", { Origin: "http://evil.example", "X-Pixelkiln-Session": server.session! }, { keys: ["base/anvil"] })).status).toBe(403)
+      expect((await post("/api/edit", { Origin: origin, "X-Pixelkiln-Session": server.session! }, {})).status).toBe(405)
+
+      const started = await post("/api/generate", { Origin: origin, "X-Pixelkiln-Session": server.session! }, { keys: ["base/anvil"] })
+      expect(started.status).toBe(202)
+      const job = (await started.json()) as GenerateJob
+      const parked = await untilPhase(handlers, job.id, ["review", "done", "failed"])
+      expect(parked.phase).toBe("review")
+
+      const status = await (await fetch(new URL("/api/jobs", server.url))).json() as { jobs: GenerateJob[]; budget: unknown; spent: Record<string, number> }
+      expect(status.jobs.map((candidate) => [candidate.id, candidate.phase])).toEqual([[job.id, "review"]])
+      expect(status.spent).toEqual({ pixellab: 40 })
+
+      const sheet = await fetch(new URL(`/review/${job.id}`, server.url))
+      expect(sheet.status).toBe(200)
+      const sheetHtml = await sheet.text()
+      expect(sheetHtml).toContain("pick candidates")
+      expect(sheetHtml).toContain(`"url":"/review/${job.id}/apply"`)
+      expect(sheetHtml).toContain(`"X-Pixelkiln-Session":"${server.session}"`)
+      expect((await fetch(new URL(`/review/${"0".repeat(16)}`, server.url))).status).toBe(404)
+
+      expect((await post(`/review/${job.id}/apply`, { Origin: origin }, { selections: [] })).status).toBe(403)
+      const applied = await post(`/review/${job.id}/apply`, { Origin: origin, "X-Pixelkiln-Session": server.session! }, { selections: [{ key: "base/anvil", index: 0 }] })
+      expect(applied.status).toBe(200)
+      expect(await applied.json()).toEqual({ selected: 1, skipped: 0 })
+      const finished = await untilPhase(handlers, job.id, ["done", "failed"])
+      expect(finished.phase).toBe("done")
+      const after = await (await fetch(new URL("/api/gallery.json", server.url))).json() as { items: Array<{ key: string; state: string }> }
+      expect(after.items.find((item) => item.key === "base/anvil")?.state).toBe("ok")
+    } finally {
+      await server.close()
+    }
+  })
+})
+
 describe("gallery CLI surface", () => {
   it("parses gallery with its server and filter flags", () => {
     expect(parseArgs(["gallery"])).toMatchObject({ command: "gallery", json: false, noOpen: false, workspace: undefined })
     expect(parseArgs(["gallery", "--workspace", "pixelkiln.workspace.json", "--json"]))
       .toMatchObject({ command: "gallery", workspace: "pixelkiln.workspace.json", json: true })
     expect(parseArgs(["gallery", "--edit"])).toMatchObject({ command: "gallery", edit: true })
+    expect(parseArgs(["gallery", "--budget", "80"])).toMatchObject({ command: "gallery", budget: 80 })
+    expect(parseArgs(["gallery", "--budget", "pixellab=40", "--budget", "retrodiffusion=1.5"]).providerBudgets)
+      .toEqual({ pixellab: 40, retrodiffusion: 1.5 })
     expect(parseArgs(["plan"]).edit).toBe(false)
     expect(parseArgs(["gallery", "--port", "4321", "--no-open", "--json", "--style", "base", "--only", "anvil"]))
       .toMatchObject({ command: "gallery", port: 4321, noOpen: true, json: true, styles: ["base"], assets: ["anvil"] })

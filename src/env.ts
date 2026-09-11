@@ -13,24 +13,52 @@ import path from "node:path"
  */
 export function loadEnvFiles(dir: string): string[] {
   const loaded: string[] = []
+  for (const [file, vars] of envFiles(dir)) {
+    for (const [key, value] of Object.entries(vars)) {
+      if (!(key in process.env)) process.env[key] = value
+    }
+    loaded.push(file)
+  }
+  return loaded
+}
+
+/**
+ * The variables a directory's env files would provide, without applying them.
+ * A long-lived process serving several projects uses this to notice that a
+ * project's file names a credential the process already holds with another
+ * value — the never-override rule would otherwise route its work to the
+ * wrong account silently.
+ */
+export function readEnvFiles(dir: string): Record<string, string> {
+  const merged: Record<string, string> = {}
+  for (const [, vars] of envFiles(dir)) {
+    for (const [key, value] of Object.entries(vars)) {
+      if (!(key in merged)) merged[key] = value
+    }
+  }
+  return merged
+}
+
+function envFiles(dir: string): Array<[string, Record<string, string>]> {
+  const out: Array<[string, Record<string, string>]> = []
   // .env.local last-writer-wins over .env, matching the Next.js convention
   // these projects already follow — so it is read first and .env cannot
-  // clobber it, given the never-override rule below.
+  // clobber it, given the never-override rule in loadEnvFiles.
   for (const name of [".env.local", ".env"]) {
     const file = path.join(dir, name)
     if (!existsSync(file)) continue
     try {
-      applyEnv(readFileSync(file, "utf8"))
-      loaded.push(file)
+      out.push([file, parseEnv(readFileSync(file, "utf8"))])
     } catch {
       // An unreadable env file is not worth failing the command over; the
       // missing-key error downstream is clearer than a parse trace.
     }
   }
-  return loaded
+  return out
 }
 
-function applyEnv(contents: string): void {
+function parseEnv(contents: string): Record<string, string> {
+  const vars: Record<string, string> = {}
   for (const rawLine of contents.split("\n")) {
     const line = rawLine.trim()
     if (!line || line.startsWith("#")) continue
@@ -39,7 +67,7 @@ function applyEnv(contents: string): void {
     if (eq <= 0) continue
 
     const key = line.slice(0, eq).replace(/^export\s+/, "").trim()
-    if (!key || key in process.env) continue
+    if (!key || key in vars) continue
 
     let value = line.slice(eq + 1).trim()
     // Strip one matching pair of surrounding quotes, if present.
@@ -47,6 +75,7 @@ function applyEnv(contents: string): void {
     if ((quote === '"' || quote === "'") && value.endsWith(quote) && value.length >= 2) {
       value = value.slice(1, -1)
     }
-    process.env[key] = value
+    vars[key] = value
   }
+  return vars
 }

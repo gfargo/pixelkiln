@@ -77,8 +77,8 @@ Left/Right inspects alternatives, Enter or 1–9 selects, 0 leaves a row
 unresolved, and closing without **Apply selections** applies nothing
 ([CLI reference](docs/CLI.md#pick)). [`pixelkiln gallery`](docs/CLI.md#gallery)
 is its companion: every generation at integer zoom with its prompt, cost, hashes,
-lineage, and quality record; `--edit` changes prompts and adds assets without
-spending; `--json` prints the snapshot.
+lineage, and quality record; `--edit` changes prompts and adds assets; `--budget`
+generates and reviews from the page under that ceiling; `--json` prints the snapshot.
 
 ![PixelKiln generation gallery UI](./website/public/gallery-ui-showcase.jpg)
 

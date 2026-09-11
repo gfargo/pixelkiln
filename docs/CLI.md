@@ -260,6 +260,46 @@ pixelkiln gallery --edit
 pixelkiln gallery --edit --workspace pixelkiln.workspace.json
 ```
 
+`--budget <n|provider=n>` enables generation from the page under that session
+ceiling. It is the same `--budget` `gen` takes: one unkeyed amount when a run
+involves a single provider, or one keyed amount per provider for a mixed run,
+and nothing is queued without it. Each asset record and each style header
+gains **Generate** (for `missing`, `stale`, and `failed` work), **Regenerate**
+(for up-to-date work, as `gen --force`), and **Resume** (poll, review, and
+fetch existing provider work at no cost). Before anything is submitted a
+dialog lists every asset with its candidate count and estimate, the total per
+provider, and what the session budget still allows — the page's version of
+`gen`'s "Spend … on N asset(s)?" question. A run is then the same `submit`,
+`poll`, and `fetch` library calls `gen` makes, writing the same lockfile, so a
+terminal `plan` in another window agrees at every step. Progress appears in a
+job strip under the filters; each job keeps the log lines the CLI would have
+printed. Candidate sets stop in `review`: **Review** opens the `pick` sheet
+inside the gallery, **Apply selections** writes the lockfile and downloads the
+chosen art, and unchosen rows stay in review exactly as with `pick`.
+
+Two ceilings guard spend. The session budget is charged with each job's
+estimate up front, so two quick clicks cannot both fit under the same
+remainder, and each submission also carries the remaining ceiling as its own
+`budget`, so a provider estimate that grows between plan and submit is refused
+rather than paid. The balance preflight is the same as `gen`'s. Provider
+credentials are loaded from the project's own `.env` files and never reach the
+page; in a workspace whose projects name the same credential with different
+values, the gallery refuses to generate for the second project rather than run
+it on the first project's account — start a separate gallery for it.
+
+"How many candidates" is a style setting, because it is part of the request
+identity: Retro Diffusion, ComfyUI, and Scenario expose it as a provider option
+(`numImages`/`numOutputs`), which each style header shows and, with `--edit`,
+lets you change — every asset in the style becomes `stale`, and the header
+says how many. PixelLab's count follows the generator and size (`map` and
+`pixflux` return one image; a `1dir` style returns 4–64), so the header
+explains that instead of offering a number.
+
+```bash
+pixelkiln gallery --edit --budget 80
+pixelkiln gallery --budget pixellab=40 --budget retrodiffusion=1.25 --workspace pixelkiln.workspace.json
+```
+
 `--workspace <catalog>` shows every project the catalog registers in one
 gallery, the way `workspace status` reads them: no manifest is needed in the
 current directory, each project gets its own section and filter chip, and a
@@ -519,7 +559,7 @@ Print the package version. `-v` is an alias.
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. |
-| `--budget <n\|provider=n>` | submit/gen | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. |
+| `--budget <n\|provider=n>` | submit/gen/gallery | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |

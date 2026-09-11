@@ -1,7 +1,7 @@
 import { requireSelectCandidate, type Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
-import { renderSheet, type SheetGroup } from "./sheet.ts"
+import { renderSheet, type RenderSheetOptions, type SheetGroup } from "./sheet.ts"
 import { serveReviewPage } from "./review-server.ts"
 
 export interface PickResult {
@@ -15,35 +15,48 @@ export interface ReviewReadyInfo {
 }
 
 /**
- * Serves the contact sheet on localhost, waits for the selections to be
- * applied, then shuts down.
- *
- * Selections are committed through the provider (`select-frames` promotes the chosen
- * candidate to its own object and drops the rest) and written to the lockfile
- * before the browser gets its response, so a closed tab never loses a choice.
+ * Everything a review needs except the HTTP server: the candidate groups to
+ * show, the local files the sheet may load, and the apply step. `runPicker`
+ * wraps this in the one-shot review server; the gallery hosts the same sheet
+ * inside its own long-lived server instead.
  */
-export async function runPicker(
+export interface ReviewSession {
+  groups: SheetGroup[]
+  /** Exact local media routes the sheet references (revision sources). */
+  assets: ReadonlyMap<string, { path: string; contentType: string }>
+  /** Render the sheet, optionally addressed for an embedding host. */
+  html(options?: RenderSheetOptions): string
+  /**
+   * Commit the posted selections through the provider and write the lockfile.
+   * Selections are persisted before the caller responds, so a closed tab never
+   * loses a choice. Throws (leaving the sheet free to retry) on a provider error.
+   */
+  apply(body: unknown, lockPath: string): Promise<PickResult>
+}
+
+export interface PrepareReviewOptions {
+  onProgress?: (msg: string) => void
+  /** Optional lock-key selection for a filtered or mixed-provider run. */
+  keys?: Iterable<string>
+  /** Resolved intent supplies immutable revision context for comparison. */
+  specs?: ResolvedSpec[]
+  /** Prefix for the sheet's local media routes when hosted under a sub-path. */
+  routePrefix?: string
+}
+
+/** Gather every entry in review for this provider. Null when nothing is waiting. */
+export async function prepareReview(
   provider: Provider,
   lock: Lock,
-  lockPath: string,
-  opts: {
-    port?: number
-    open?: boolean
-    onProgress?: (msg: string) => void
-    /** Optional lock-key selection for a filtered or mixed-provider run. */
-    keys?: Iterable<string>
-    /** Resolved intent supplies immutable revision context for comparison. */
-    specs?: ResolvedSpec[]
-    /** Receives the live URL as soon as the server listens. */
-    onReady?: (info: ReviewReadyInfo) => void
-  } = {},
-): Promise<PickResult> {
+  opts: PrepareReviewOptions = {},
+): Promise<ReviewSession | null> {
   const log = opts.onProgress ?? (() => {})
   const selectedKeys = opts.keys ? new Set(opts.keys) : null
   const specByKey = new Map(
     (opts.specs ?? []).map((spec) => [lockKey(spec.styleId, spec.assetId), spec]),
   )
   const reviewAssets = new Map<string, { path: string; contentType: string }>()
+  const prefix = opts.routePrefix ?? ""
 
   const groups: SheetGroup[] = []
   for (const [key, entry] of Object.entries(lock.entries)) {
@@ -58,7 +71,7 @@ export async function runPicker(
       ) continue
       const frameUrls = state.status === "review" ? state.candidateUrls : state.frameUrls
       const sourceRoute = spec?.revision
-        ? `/revision-source/${encodeURIComponent(String(groups.length))}`
+        ? `${prefix}/revision-source/${encodeURIComponent(String(groups.length))}`
         : null
       if (sourceRoute && spec?.revision) {
         reviewAssets.set(sourceRoute, {
@@ -99,27 +112,15 @@ export async function runPicker(
     }
   }
 
-  if (groups.length === 0) return { selected: 0, skipped: 0 }
+  if (groups.length === 0) return null
 
-  const html = renderSheet(groups)
   const byKey = new Map(groups.map((g) => [g.key, g]))
 
-  return serveReviewPage<PickResult>({
-    html,
-    port: opts.port,
-    open: opts.open,
-    onProgress: log,
+  return {
+    groups,
     assets: reviewAssets,
-    onReady: (url) => {
-      const info = { url, keys: groups.map((group) => group.key) }
-      if (opts.onReady) {
-        opts.onReady(info)
-      } else {
-        log(`\n  ${groups.length} asset(s) awaiting selection: ${url}`)
-        log(`  (leave this running; it exits once you apply)\n`)
-      }
-    },
-    handleApply: async (body) => {
+    html: (options) => renderSheet(groups, options),
+    apply: async (body, lockPath) => {
       const { selections } = body as { selections: { key: string; index: number }[] }
 
       let selected = 0
@@ -190,5 +191,57 @@ export async function runPicker(
       await saveLock(lockPath, lock)
       return { selected, skipped: groups.length - selected }
     },
+  }
+}
+
+/**
+ * Serves the contact sheet on localhost, waits for the selections to be
+ * applied, then shuts down.
+ *
+ * Selections are committed through the provider (`select-frames` promotes the chosen
+ * candidate to its own object and drops the rest) and written to the lockfile
+ * before the browser gets its response, so a closed tab never loses a choice.
+ */
+export async function runPicker(
+  provider: Provider,
+  lock: Lock,
+  lockPath: string,
+  opts: {
+    port?: number
+    open?: boolean
+    onProgress?: (msg: string) => void
+    /** Optional lock-key selection for a filtered or mixed-provider run. */
+    keys?: Iterable<string>
+    /** Resolved intent supplies immutable revision context for comparison. */
+    specs?: ResolvedSpec[]
+    /** Receives the live URL as soon as the server listens. */
+    onReady?: (info: ReviewReadyInfo) => void
+  } = {},
+): Promise<PickResult> {
+  const log = opts.onProgress ?? (() => {})
+  const session = await prepareReview(provider, lock, {
+    onProgress: log,
+    keys: opts.keys,
+    specs: opts.specs,
+  })
+  if (!session) return { selected: 0, skipped: 0 }
+  const groups = session.groups
+
+  return serveReviewPage<PickResult>({
+    html: session.html(),
+    port: opts.port,
+    open: opts.open,
+    onProgress: log,
+    assets: session.assets,
+    onReady: (url) => {
+      const info = { url, keys: groups.map((group) => group.key) }
+      if (opts.onReady) {
+        opts.onReady(info)
+      } else {
+        log(`\n  ${groups.length} asset(s) awaiting selection: ${url}`)
+        log(`  (leave this running; it exits once you apply)\n`)
+      }
+    },
+    handleApply: (body) => session.apply(body, lockPath),
   })
 }

@@ -4,14 +4,16 @@ import { createServer, type IncomingMessage, type Server } from "node:http"
 import { readFile } from "node:fs/promises"
 import { renderGallery } from "./page.ts"
 import type { GalleryBuild, GalleryMedia } from "./snapshot.ts"
+import type { GalleryGenerateHandlers } from "./generate.ts"
 
 /**
  * The gallery's HTTP surface. Unlike the review server this is long-lived:
  * three GET routes, bound to loopback, running until the caller closes it
  * (the CLI does so on Ctrl+C). It has no write path unless the caller opts
- * in with `edit`, which adds exactly one POST route for manifest edits.
+ * in: `edit` adds one POST route for manifest edits, and `generate` adds the
+ * routes that start a generation job and host its review sheet.
  *
- * That route is guarded twice, because a page on localhost is reachable by
+ * Every POST is guarded twice, because a page on localhost is reachable by
  * every other page in the browser: the request's Origin must be this server,
  * and it must carry the session token minted at startup, which only the
  * served page knows. A cross-origin page can neither read the token nor send
@@ -39,6 +41,11 @@ export interface GalleryServerOptions {
    * the page can explain what happened.
    */
   edit?: (body: unknown) => Promise<GalleryBuild>
+  /**
+   * Enable `POST /api/generate`, `GET /api/jobs`, and the `/review/<job>`
+   * sheet. The handlers own budgets and provider access; see `generate.ts`.
+   */
+  generate?: GalleryGenerateHandlers
 }
 
 export interface GalleryServer {
@@ -67,9 +74,11 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryServer> {
   const log = opts.onProgress ?? (() => {})
-  const session = opts.edit ? randomBytes(16).toString("hex") : null
+  const session = opts.edit || opts.generate ? randomBytes(16).toString("hex") : null
   let media: ReadonlyMap<string, GalleryMedia> = new Map()
   let loading: Promise<GalleryBuild> | null = null
+  /** Local files each open review sheet may load, keyed by job. */
+  const reviewAssets = new Map<string, ReadonlyMap<string, { path: string; contentType: string }>>()
 
   // Coalesce concurrent loads: a page load fires the HTML request and, with
   // auto-refresh on, the JSON request close together. Hashing every output
@@ -92,37 +101,127 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
       res.writeHead(status, { "Content-Type": "text/plain; charset=utf-8" })
       res.end(message)
     }
-    if (req.method === "POST" && url.pathname === "/api/edit") {
-      if (!opts.edit || !session) return fail(405, "the gallery is read-only; start it with --edit to change the manifest")
+    const json = (status: number, value: unknown) => {
+      res.writeHead(status, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+      })
+      res.end(JSON.stringify(value))
+    }
+    /** Same-origin, session-bearing JSON, or nothing. */
+    const guardedBody = async (what: string): Promise<unknown | undefined> => {
       const expectedOrigin = req.headers.host ? `http://${req.headers.host}` : null
       if (!req.headers.origin || req.headers.origin !== expectedOrigin) {
-        return fail(403, "cross-origin edits are not allowed")
+        fail(403, `cross-origin ${what} are not allowed`)
+        return undefined
       }
-      if (req.headers["x-pixelkiln-session"] !== session) return fail(403, "missing or stale gallery session")
+      if (req.headers["x-pixelkiln-session"] !== session) {
+        fail(403, "missing or stale gallery session")
+        return undefined
+      }
       if (!req.headers["content-type"]?.toLowerCase().startsWith("application/json")) {
-        return fail(415, "application/json is required")
+        fail(415, "application/json is required")
+        return undefined
       }
+      return readJsonBody(req)
+    }
+    const reportError = (what: string, err: unknown) => {
+      const status = typeof (err as { status?: unknown })?.status === "number"
+        ? (err as { status: number }).status
+        : 500
+      const message = err instanceof Error ? err.message : String(err)
+      if (status >= 500) log(`  gallery ${what} failed: ${message}`)
+      fail(status, message)
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/edit") {
+      if (!opts.edit || !session) return fail(405, "the gallery is read-only; start it with --edit to change the manifest")
       try {
-        const body = await readJsonBody(req)
+        const body = await guardedBody("edits")
+        if (body === undefined) return
         const build = await opts.edit(body)
         media = build.media
-        res.writeHead(200, {
-          "Content-Type": "application/json; charset=utf-8",
-          "Cache-Control": "no-store",
-          "X-Content-Type-Options": "nosniff",
-        })
-        res.end(JSON.stringify(build.snapshot))
+        json(200, build.snapshot)
       } catch (err) {
-        const status = typeof (err as { status?: unknown })?.status === "number"
-          ? (err as { status: number }).status
-          : 500
-        const message = err instanceof Error ? err.message : String(err)
-        if (status >= 500) log(`  gallery edit failed: ${message}`)
-        fail(status, message)
+        reportError("edit", err)
       }
       return
     }
+    if (req.method === "POST" && url.pathname === "/api/generate") {
+      if (!opts.generate || !session) return fail(405, "generation is off; start the gallery with --budget to enable it")
+      try {
+        const body = await guardedBody("generation requests")
+        if (body === undefined) return
+        json(202, await opts.generate.start(body))
+      } catch (err) {
+        reportError("generate", err)
+      }
+      return
+    }
+    const reviewMatch = /^\/review\/([0-9a-f]{16})(\/.*)?$/.exec(url.pathname)
+    if (reviewMatch && opts.generate) {
+      const [, jobId, rest = ""] = reviewMatch
+      if (req.method === "POST" && rest === "/apply") {
+        try {
+          const body = await guardedBody("review submissions")
+          if (body === undefined) return
+          const result = await opts.generate.applyReview(jobId!, body)
+          reviewAssets.delete(jobId!)
+          json(200, result)
+        } catch (err) {
+          reportError("review", err)
+        }
+        return
+      }
+      if (req.method === "GET" && rest === "") {
+        try {
+          const routePrefix = `/review/${jobId}`
+          const review = await opts.generate.review(jobId!, {
+            routePrefix,
+            applyUrl: `${routePrefix}/apply`,
+            applyHeaders: { "X-Pixelkiln-Session": session! },
+            embedded: true,
+          })
+          if (!review) return fail(404, "nothing is waiting for review on this job")
+          reviewAssets.set(jobId!, review.assets)
+          res.writeHead(200, {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+          })
+          res.end(review.html({
+            applyUrl: `${routePrefix}/apply`,
+            applyHeaders: { "X-Pixelkiln-Session": session! },
+            embedded: true,
+          }))
+        } catch (err) {
+          reportError("review", err)
+        }
+        return
+      }
+      if (req.method === "GET") {
+        const asset = reviewAssets.get(jobId!)?.get(url.pathname)
+        if (!asset) return fail(404, "no such review asset")
+        try {
+          const bytes = await readFile(asset.path)
+          res.writeHead(200, {
+            "Content-Type": asset.contentType,
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+          })
+          res.end(bytes)
+        } catch {
+          fail(404, "review asset is unavailable")
+        }
+        return
+      }
+    }
     if (req.method !== "GET" && req.method !== "HEAD") return fail(405, "the gallery is read-only")
+    if (url.pathname === "/api/jobs") {
+      if (!opts.generate) return fail(404, "generation is off")
+      return json(200, opts.generate.status())
+    }
 
     try {
       if (url.pathname === "/") {
@@ -132,7 +231,11 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
           "Cache-Control": "no-store",
           "X-Content-Type-Options": "nosniff",
         })
-        res.end(renderGallery(snapshot, session ? { session } : undefined))
+        res.end(renderGallery(snapshot, {
+          ...(session ? { session } : {}),
+          editable: Boolean(opts.edit),
+          generation: Boolean(opts.generate),
+        }))
         return
       }
       if (url.pathname === "/api/gallery.json") {

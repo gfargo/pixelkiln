@@ -32,7 +32,19 @@ const escapeHtml = (s: string) =>
  * review into an oversized or stretched image wall. Keyboard-first, one row
  * per asset, and the page posts back and closes itself.
  */
-export function renderSheet(groups: SheetGroup[]): string {
+export interface RenderSheetOptions {
+  /** Where selections are POSTed. Default `/apply`, the standalone review server. */
+  applyUrl?: string
+  /** Extra headers on the apply request, e.g. a gallery session token. */
+  applyHeaders?: Record<string, string>
+  /**
+   * Hosted inside another page: after a successful apply the sheet tells its
+   * parent window (same origin only) so the host can close it and refresh.
+   */
+  embedded?: boolean
+}
+
+export function renderSheet(groups: SheetGroup[], options: RenderSheetOptions = {}): string {
   // Prompts are author-controlled but arbitrary text, and they reach the page
   // both as JSON inside a <script> and via innerHTML. Escape for both: HTML
   // entities for the markup path, and `<\/` for the script-tag path so a
@@ -52,6 +64,11 @@ export function renderSheet(groups: SheetGroup[]): string {
       : {}),
   }))
   const data = JSON.stringify(safe).replace(/<\//g, "<\\/")
+  const apply = JSON.stringify({
+    url: options.applyUrl ?? "/apply",
+    headers: options.applyHeaders ?? {},
+    embedded: options.embedded === true,
+  }).replace(/<\//g, "<\\/")
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -163,6 +180,7 @@ export function renderSheet(groups: SheetGroup[]): string {
 </footer>
 <script>
 const GROUPS = ${data};
+const APPLY = ${apply};
 const picks = new Map();
 const root = document.getElementById('root');
 document.getElementById('total').textContent = GROUPS.length;
@@ -384,13 +402,17 @@ document.getElementById('submit').onclick = async () => {
   status.textContent = 'applying…';
   const selections = [...picks.entries()].map(([gi, index]) => ({ key: GROUPS[gi].key, index }));
   try {
-    const res = await fetch('/apply', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const res = await fetch(APPLY.url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...APPLY.headers },
       body: JSON.stringify({ selections }),
     });
     if (!res.ok) throw new Error(await res.text());
-    status.textContent = 'done — you can close this tab';
+    const result = await res.json();
+    status.textContent = APPLY.embedded ? 'applied' : 'done — you can close this tab';
     document.body.style.opacity = '.6';
+    if (APPLY.embedded && window.parent !== window) {
+      window.parent.postMessage({ type: 'pixelkiln:review-applied', result }, location.origin);
+    }
   } catch (err) {
     status.textContent = 'failed: ' + err.message;
     btn.disabled = false;
