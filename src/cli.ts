@@ -2,7 +2,7 @@
 import path from "node:path"
 import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
-import { loadEnvFiles } from "./env.ts"
+import { loadEnvFiles, readEnvFiles } from "./env.ts"
 import {
   formatCost,
   measureBalanceChange,
@@ -11,6 +11,7 @@ import {
   requireList,
 } from "./provider.ts"
 import {
+  availableProviders,
   createProvider,
   providerCredentialEnvs,
   providerFactory,
@@ -42,6 +43,7 @@ import {
 } from "./gallery/snapshot.ts"
 import { serveGallery } from "./gallery/server.ts"
 import { createGalleryEditHandler } from "./gallery/edit.ts"
+import { createGenerateHandlers, type GalleryProjectContext } from "./gallery/generate.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import {
   loadClaims,
@@ -124,14 +126,31 @@ export function announceGalleryReady(
   stdout: CliWritable = process.stdout,
   stderr: CliWritable = process.stderr,
   edit = false,
+  budget: string | null = null,
 ): void {
   const stream = stdout.isTTY ? stdout : stderr
+  const notes: string[] = []
+  if (edit) notes.push("editing enabled: saves rewrite the manifest only")
+  if (budget) notes.push(`generation enabled under a session budget of ${budget}`)
   stream.write(
     `\n  gallery of ${count} generation${count === 1 ? "" : "s"}: ${url}\n` +
-      (edit
-        ? "  (editing enabled: saves rewrite the manifest only; nothing is generated or spent; Ctrl+C to stop)\n\n"
+      (notes.length
+        ? `  (${notes.join("; ")}; Ctrl+C to stop)\n\n`
         : "  (read-only; press Ctrl+C to stop)\n\n"),
   )
+}
+
+/** The `--budget` flags as one session ceiling, or null when none was given. */
+function sessionBudget(args: Pick<Args, "budget" | "providerBudgets">) {
+  const keyed = Object.keys(args.providerBudgets).length
+  if (args.budget === undefined && !keyed) return null
+  return { amount: args.budget, byProvider: { ...args.providerBudgets } }
+}
+
+function describeBudget(budget: { amount?: number; byProvider: Record<string, number> }): string {
+  const parts = Object.entries(budget.byProvider).map(([provider, amount]) => `${provider}=${amount}`)
+  if (budget.amount !== undefined) parts.unshift(String(budget.amount))
+  return parts.join(", ")
 }
 
 /**
@@ -139,14 +158,52 @@ export function announceGalleryReady(
  * already built for the announcement; every later load and Refresh rebuilds
  * from disk so the page never shows a lockfile that has since moved on.
  */
+interface GalleryProjectAccess {
+  /** Maps a workspace project id (or undefined) to the manifest an edit may rewrite. */
+  manifestFor: (project?: string) => string | Promise<string>
+  /** Loads a project fresh from disk for a generation job. */
+  loadProject: (project?: string) => Promise<GalleryProjectContext>
+}
+
 async function runGallery(
   initial: GalleryBuild,
   reload: () => Promise<GalleryBuild>,
-  args: Pick<Args, "port" | "noOpen" | "edit">,
-  /** Maps a workspace project id (or undefined) to the manifest an edit may rewrite. */
-  manifestFor?: (project?: string) => string | Promise<string>,
+  args: Pick<Args, "port" | "noOpen" | "edit" | "budget" | "providerBudgets">,
+  access: GalleryProjectAccess,
 ): Promise<void> {
   let first = true
+  const budget = sessionBudget(args)
+  // Providers are created online, per project, with that project's own env
+  // loaded first — a workspace may register accounts with different keys.
+  const providers = new Map<string, Provider>()
+  const providerFor = (project: string | undefined, providerId: string): Provider => {
+    const cacheKey = `${project ?? ""}:${providerId}`
+    let provider = providers.get(cacheKey)
+    if (!provider) {
+      provider = createProvider(providerId, "online")
+      providers.set(cacheKey, provider)
+    }
+    return provider
+  }
+  const loadProject = async (project?: string) => {
+    const ctx = await access.loadProject(project)
+    const dir = path.dirname(ctx.loaded.path)
+    // Env loading never overrides, so a second project whose files name a
+    // credential this process already holds with another value would run on
+    // the first project's account. Refuse that instead of guessing.
+    const declared = readEnvFiles(dir)
+    const credentialNames = new Set(availableProviders().flatMap((id) => providerCredentialEnvs(providerFactory(id))))
+    for (const [name, value] of Object.entries(declared)) {
+      if (credentialNames.has(name) && name in process.env && process.env[name] !== value) {
+        throw new Error(
+          `${path.relative(process.cwd(), dir) || "."} sets ${name} to a different value than the one this ` +
+            "gallery already loaded; run a separate gallery for that project so its work uses its own account.",
+        )
+      }
+    }
+    loadEnvFiles(dir)
+    return ctx
+  }
   const server = await serveGallery({
     load: () => {
       if (first) {
@@ -158,9 +215,14 @@ async function runGallery(
     port: args.port,
     open: !args.noOpen,
     onProgress: log,
-    onReady: (url) => announceGalleryReady(url, initial.snapshot.totals.entries, undefined, undefined, args.edit),
-    ...(args.edit && manifestFor
-      ? { edit: createGalleryEditHandler({ manifestFor, reload, onProgress: log }) }
+    onReady: (url) => announceGalleryReady(
+      url, initial.snapshot.totals.entries, undefined, undefined, args.edit, budget ? describeBudget(budget) : null,
+    ),
+    ...(args.edit
+      ? { edit: createGalleryEditHandler({ manifestFor: access.manifestFor, reload, onProgress: log }) }
+      : {}),
+    ...(budget
+      ? { generate: createGenerateHandlers({ loadProject, providerFor, budget, reload, onProgress: log }) }
       : {}),
   })
   await new Promise<void>((resolve) => {
@@ -570,7 +632,8 @@ Commands
   gallery   Open a local read-only gallery of every generation and its
             provenance: prompt, provider, cost, outputs, lineage, quality.
             --workspace <catalog> shows every registered project at once;
-            --edit lets the page change prompts, sizes, tags, and add assets.
+            --edit lets the page change prompts, sizes, tags, and add assets;
+            --budget enables Generate, Regenerate, and review under that ceiling.
   workspace Register sibling projects and derive account-wide claims/status.
             add/remove/list/status/claims. Offline.
 
@@ -598,7 +661,8 @@ Options
   --style a,b         Restrict to these styles
   --only id1,id2      Restrict to these asset ids
   --budget <n|provider=n>  Refuse to exceed one provider ceiling; repeat keyed budgets
-                           for a mixed-provider run
+                           for a mixed-provider run. For gallery: the session ceiling
+                           that enables generation from the page
   --provider <id>     Choose the account for balance/adopt/salvage/purge in a mixed manifest
   --force             Regenerate, replace a fetch destination, or rebuild managed output
   --dry-run           Never spend; doctor also skips provider connectivity
@@ -623,6 +687,7 @@ Examples
   pixelkiln gen --only first_review --force
   pixelkiln gallery --style heybud-premium
   pixelkiln gallery --workspace pixelkiln.workspace.json
+  pixelkiln gallery --edit --budget 80
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
@@ -1351,12 +1416,23 @@ async function main() {
     for (const project of initial.snapshot.workspace?.projects ?? []) {
       if (project.error) log(`  ${project.id}: unreadable — ${project.error}`)
     }
-    await runGallery(initial, build, args, async (projectId) => {
-      // Re-read the catalog so an edit targets the project as registered now,
-      // never a path captured when the server started.
+    // Re-read the catalog on every write so an edit or job targets the
+    // project as registered now, never a path captured when the server started.
+    const registered = async (projectId?: string) => {
       const project = (await loadWorkspace(workspacePath)).projects.find((candidate) => candidate.id === projectId)
       if (!projectId || !project) throw new Error(`unknown workspace project "${projectId ?? ""}"`)
-      return resolveProject(path.dirname(workspacePath), project).manifestPath
+      return resolveProject(path.dirname(workspacePath), project)
+    }
+    await runGallery(initial, build, args, {
+      manifestFor: async (projectId) => (await registered(projectId)).manifestPath,
+      loadProject: async (projectId) => {
+        const { manifestPath, lockPath } = await registered(projectId)
+        const freshLoaded = await loadManifest(manifestPath)
+        const freshSpecs = await resolveSpecs(freshLoaded)
+        const freshLock = await loadLock(lockPath)
+        normalizeLockOutputPaths(freshLock, freshSpecs)
+        return { loaded: freshLoaded, specs: freshSpecs, lock: freshLock, lockPath }
+      },
     })
     return
   }
@@ -1455,7 +1531,16 @@ async function main() {
         filter,
       })
     }
-    await runGallery(await build(), reload, args, () => path.resolve(args.manifest))
+    await runGallery(await build(), reload, args, {
+      manifestFor: () => path.resolve(args.manifest),
+      loadProject: async () => {
+        const freshLoaded = await loadManifest(args.manifest)
+        const freshSpecs = await resolveSpecs(freshLoaded)
+        const freshLock = await loadLock(args.lock)
+        normalizeLockOutputPaths(freshLock, freshSpecs)
+        return { loaded: freshLoaded, specs: freshSpecs, lock: freshLock, lockPath: args.lock }
+      },
+    })
     return
   }
 

@@ -12,6 +12,7 @@ import type { QualityProfileInspection } from "../pipeline/quality-profile.ts"
 import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine.ts"
 import { lockKey, type Asset, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import { resolveProject, type Workspace } from "../workspace.ts"
+import { CANDIDATE_OPTION } from "./edit.ts"
 
 /**
  * A read-only view of everything the project has generated, built from the
@@ -141,6 +142,12 @@ export interface GalleryStyle {
   tags: string[]
   items: number
   spendByUnit: Record<string, number>
+  /** Candidates one generation returns for this style; null when its assets disagree or none resolve. */
+  candidates: number | null
+  /** Whether that count is a provider option the manifest can set (`patch-style`). */
+  candidatesEditable: boolean
+  /** Declared assets `plan` would generate right now, with their offline estimate. */
+  actionable: { keys: string[]; cost: number; costUnit: string }
 }
 
 export interface GalleryProject {
@@ -506,14 +513,18 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       for (const item of styleItems) {
         if (item.cost) spend[item.costUnit] = (spend[item.costUnit] ?? 0) + item.cost
       }
+      const counts = new Set(styleItems.filter((item) => item.declared && item.candidates !== null).map((item) => item.candidates))
+      const provider = style
+        ? style.provider ?? loaded.manifest.provider
+        : styleItems[0]?.provider ?? loaded.manifest.provider
+      const actionableItems = styleItems.filter((item) =>
+        item.declared && (item.state === "missing" || item.state === "stale" || item.state === "failed"))
       return {
         id,
         project: null,
         // A declared style inherits the manifest default; only a style the
         // manifest no longer has falls back to what its entries recorded.
-        provider: style
-          ? style.provider ?? loaded.manifest.provider
-          : styleItems[0]?.provider ?? loaded.manifest.provider,
+        provider,
         generator: style?.generator ?? styleItems[0]?.generator ?? "map",
         outDir: style?.outDir ?? "",
         palette: style?.palette ?? [],
@@ -521,6 +532,13 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         tags: style?.tags ?? [],
         items: styleItems.length,
         spendByUnit: spend,
+        candidates: counts.size === 1 ? [...counts][0]! : null,
+        candidatesEditable: Boolean(style) && Object.hasOwn(CANDIDATE_OPTION, provider),
+        actionable: {
+          keys: actionableItems.map((item) => item.key),
+          cost: actionableItems.reduce((sum, item) => sum + (item.estimatedCost ?? 0), 0),
+          costUnit: actionableItems[0]?.costUnit ?? styleItems[0]?.costUnit ?? "generations",
+        },
       }
     })
     .filter((style) => style.items > 0 || !opts.filter?.styles?.length)

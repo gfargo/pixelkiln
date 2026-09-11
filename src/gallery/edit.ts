@@ -45,6 +45,17 @@ const NewAssetSchema = z
   })
   .strict()
 
+/**
+ * Which style-level provider option carries "how many candidates per
+ * generation". PixelLab has none: its count follows the generator and size,
+ * so a candidate set means a `1dir` style, not a number.
+ */
+export const CANDIDATE_OPTION: Record<string, string> = {
+  retrodiffusion: "numImages",
+  comfyui: "numImages",
+  scenario: "numOutputs",
+}
+
 export const ManifestEditSchema = z.discriminatedUnion("action", [
   z
     .object({
@@ -64,6 +75,20 @@ export const ManifestEditSchema = z.discriminatedUnion("action", [
       assetId: z.string().min(1).regex(/^[^/\\]+$/, "asset ids cannot contain slashes"),
       expectedSha256: HexSha,
       asset: NewAssetSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("patch-style"),
+      project: z.string().min(1).optional(),
+      styleId: z.string().min(1),
+      expectedSha256: HexSha,
+      patch: z
+        .object({
+          /** Candidates per generation, written to the provider's own option. */
+          candidates: z.number().int().min(1).max(64),
+        })
+        .strict(),
     })
     .strict(),
 ])
@@ -103,7 +128,21 @@ function serializeLike(original: string, value: unknown): string {
 }
 
 type RawAsset = Record<string, unknown> & { promptByStyle?: Record<string, string> }
-type RawManifest = { assets?: Record<string, RawAsset>; styles?: Record<string, unknown> }
+type RawStyle = Record<string, unknown> & {
+  provider?: string
+  extends?: string
+  providerOptions?: Record<string, Record<string, unknown>>
+}
+type RawManifest = { provider?: string; assets?: Record<string, RawAsset>; styles?: Record<string, RawStyle> }
+
+/** Walk `extends` to find the provider a style actually resolves to. */
+function styleProvider(raw: RawManifest, styleId: string, seen = new Set<string>()): string {
+  const style = raw.styles?.[styleId]
+  if (!style || seen.has(styleId)) return raw.provider ?? "pixellab"
+  if (style.provider) return style.provider
+  seen.add(styleId)
+  return style.extends ? styleProvider(raw, style.extends, seen) : (raw.provider ?? "pixellab")
+}
 
 function setOrDelete(target: Record<string, unknown>, key: string, value: unknown): void {
   if (value === null || value === undefined) delete target[key]
@@ -112,6 +151,23 @@ function setOrDelete(target: Record<string, unknown>, key: string, value: unknow
 
 function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
   raw.assets ??= {}
+  if (edit.action === "patch-style") {
+    const style = raw.styles && Object.hasOwn(raw.styles, edit.styleId) ? raw.styles[edit.styleId] : undefined
+    if (!style) throw new ManifestEditError(`style "${edit.styleId}" is not declared by the manifest`)
+    const provider = styleProvider(raw, edit.styleId)
+    const option = CANDIDATE_OPTION[provider]
+    if (!option) {
+      throw new ManifestEditError(
+        provider === "pixellab"
+          ? "PixelLab's candidate count follows the generator and size: map and pixflux return one image; a 1dir style returns 4–64 for its size"
+          : `provider "${provider}" has no candidate-count option`,
+      )
+    }
+    const options = { ...(style.providerOptions ?? {}) }
+    options[provider] = { ...(options[provider] ?? {}), [option]: edit.patch.candidates }
+    style.providerOptions = options
+    return
+  }
   if (edit.action === "add-asset") {
     if (Object.hasOwn(raw.assets, edit.assetId)) {
       throw new ManifestEditError(`asset "${edit.assetId}" already exists`)
@@ -236,7 +292,8 @@ export function createGalleryEditHandler(
     if (result.changed) {
       const relative = path.relative(process.cwd(), result.manifestPath)
       const shown = !relative || relative.startsWith("..") ? result.manifestPath : relative
-      log(`  manifest edited: ${parsed.data.action === "add-asset" ? "added" : "changed"} ${parsed.data.assetId} in ${shown}`)
+      const subject = parsed.data.action === "patch-style" ? `style ${parsed.data.styleId}` : parsed.data.assetId
+      log(`  manifest edited: ${parsed.data.action === "add-asset" ? "added" : "changed"} ${subject} in ${shown}`)
     }
     return opts.reload()
   }

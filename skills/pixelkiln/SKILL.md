@@ -29,7 +29,9 @@ hashes.
   user explicitly provides a selection rule. Closing it applies nothing.
 - To answer "what has this project generated?", use `pixelkiln gallery --json`
   for the offline provenance snapshot, or open `pixelkiln gallery` for the
-  person to browse it. Both are read-only and contact no provider.
+  person to browse it. Both are read-only and contact no provider. Leave
+  `gallery --edit` and `gallery --budget` to the person: an agent changes the
+  manifest directly and spends only through `gen` with an explicit `--budget`.
 - When a selected style declares `quality`, run manifest-mode `pixelkiln refine`
   after its source is accepted and downloaded. Read the quality reference below.
   Do not copy manifest-owned palette, path, interpreter, or threshold settings

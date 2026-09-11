@@ -54,8 +54,15 @@ export { poll, type PollOptions, type PollResult } from "./pipeline/poll.ts"
 export { fetchAssets, pushTags, type FetchResult } from "./pipeline/fetch.ts"
 export { doctor, type DoctorCheck, type DoctorLevel, type DoctorOptions, type DoctorReport } from "./pipeline/doctor.ts"
 export { adopt, tagAdopted, type AdoptResult } from "./pipeline/adopt.ts"
-export { runPicker, type PickResult, type ReviewReadyInfo } from "./pick/server.ts"
-export { renderSheet, type SheetGroup } from "./pick/sheet.ts"
+export {
+  prepareReview,
+  runPicker,
+  type PickResult,
+  type PrepareReviewOptions,
+  type ReviewReadyInfo,
+  type ReviewSession,
+} from "./pick/server.ts"
+export { renderSheet, type RenderSheetOptions, type SheetGroup } from "./pick/sheet.ts"
 export {
   buildGallerySnapshot,
   buildWorkspaceGallerySnapshot,
@@ -85,6 +92,18 @@ export {
   type ManifestEditResult,
 } from "./gallery/edit.ts"
 export { serveGallery, type GalleryServer, type GalleryServerOptions } from "./gallery/server.ts"
+export {
+  createGenerateHandlers,
+  GenerateRequestError,
+  GenerateRequestSchema,
+  type GalleryGenerateHandlers,
+  type GalleryProjectContext,
+  type GenerateHandlerOptions,
+  type GenerateJob,
+  type GeneratePhase,
+  type GenerateStatus,
+  type SessionBudget,
+} from "./gallery/generate.ts"
 export { scanAssets, buildManifest, pngSize, slugify, type ScannedAsset } from "./pipeline/init.ts"
 export {
   loadClaims,

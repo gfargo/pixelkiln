@@ -126,6 +126,15 @@ file's indentation, refuses to write when the file's hash no longer matches
 `loadManifest` and `resolveSpecs` before the rename (`ManifestEditError`).
 It never touches the lockfile or a provider.
 
+`createGenerateHandlers({ loadProject, providerFor, budget, reload })` is the
+generation side of `pixelkiln gallery --budget`: `start` validates a request
+against `buildPlan` and the session budget and runs `submit`, `poll`, and
+`fetchAssets` as a background job; `status` reports jobs and spend; `review`
+and `applyReview` host the `pick` sheet for a job's waiting keys. The sheet
+itself comes from `prepareReview`, which `runPicker` also uses: it gathers the
+candidate groups, the local files the sheet may load, and the apply step,
+without an HTTP server of its own.
+
 ## Audit and gate generated art
 
 ```ts

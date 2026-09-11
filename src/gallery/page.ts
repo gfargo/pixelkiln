@@ -18,8 +18,12 @@ import type { GallerySnapshot } from "./snapshot.ts"
  * the very same bytes back for the refresh path).
  */
 export interface RenderGalleryOptions {
-  /** Present only when the server accepts edits; the page sends it back on every write. */
+  /** Present when the server accepts any write; the page sends it back on every POST. */
   session?: string
+  /** Manifest editing is enabled (`--edit`). */
+  editable?: boolean
+  /** Generation jobs are enabled (`--budget`). */
+  generation?: boolean
 }
 
 export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOptions = {}): string {
@@ -27,6 +31,8 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
     .replace(/<\//g, "<\\/")
     .replace(/<!--/g, "<\\u0021--")
   const session = JSON.stringify(opts.session ?? null)
+  const editable = JSON.stringify(Boolean(opts.editable && opts.session))
+  const generation = JSON.stringify(Boolean(opts.generation && opts.session))
   const title = `pixelkiln — ${snapshot.project?.name ?? "workspace"}`
   return `<!doctype html>
 <html lang="en">
@@ -211,7 +217,43 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   form.edit .msg { font-size:12.5px; }
   form.edit .msg.bad { color:var(--bad); }
   .notice { margin:14px 0 0; padding:10px 12px; border:1px solid var(--ok); color:var(--ok); font-size:13px; }
-  .shead .add { margin-left:auto; padding:3px 9px; font-size:12px; }
+  .shead .tools { margin-left:auto; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .shead .tools button { padding:3px 9px; font-size:12px; }
+  .shead .cand { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); }
+  .shead .cand input { width:56px; background:var(--panel-deep); border:1px solid var(--line); color:var(--text);
+    padding:2px 6px; font:12px/1.4 inherit; border-radius:0; }
+  #jobs { width:min(100%,var(--content)); margin:0 auto; padding:0 22px 12px; display:grid; gap:6px; }
+  #jobs:empty { display:none; }
+  .job { border:1px solid var(--line); background:var(--panel-deep); padding:8px 12px; display:grid;
+    grid-template-columns:auto 1fr auto; gap:6px 14px; align-items:center; font-size:12.5px; }
+  .job .ph { display:inline-flex; align-items:center; gap:6px; font:650 12px/1 var(--mono); white-space:nowrap; }
+  .job .last { color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .job .acts { display:flex; gap:6px; }
+  .job .acts button { padding:3px 9px; font-size:12px; }
+  .job pre { grid-column:1 / -1; margin:0; padding:8px 10px; border-top:1px solid var(--line);
+    font:11.5px/1.45 var(--mono); color:var(--dim); max-height:220px; overflow:auto; white-space:pre-wrap; }
+  .budget { color:var(--dim); }
+  .budget b { color:var(--text); }
+  .dialog { position:fixed; inset:0; z-index:30; display:grid; place-items:center; background:rgba(0,0,0,.55); }
+  .dialog form { background:var(--panel); border:1px solid var(--accent); width:min(560px, calc(100vw - 32px));
+    max-height:calc(100vh - 32px); overflow:auto; padding:16px 18px 18px; display:grid; gap:12px; }
+  .dialog h3 { margin:0; font:650 14px/1.2 var(--mono); }
+  .dialog table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .dialog td, .dialog th { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); }
+  .dialog th { color:var(--dim); font-weight:500; }
+  .dialog td.n, .dialog th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .dialog .sum { display:grid; gap:4px; font-size:13px; }
+  .dialog .sum b { font-weight:600; }
+  .dialog .warn { color:var(--warn); font-size:12.5px; }
+  .dialog .actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .dialog .msg { font-size:12.5px; color:var(--bad); }
+  .review-host { position:fixed; inset:0; z-index:25; background:var(--bg); display:grid; grid-template-rows:auto 1fr; }
+  .review-host .rbar { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line-strong);
+    background:var(--panel); font-size:13px; }
+  .review-host .rbar span { color:var(--dim); }
+  .review-host iframe { border:0; width:100%; height:100%; background:var(--bg); }
+  .drawer .gen { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .drawer .gen button.primary { padding:7px 14px; }
   @media (max-width: 720px) {
     .bar, .totals, .chips, .style, footer { padding-inline:14px; }
     .grid { grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); }
@@ -248,20 +290,24 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   </div>
   <div class="totals" id="totals"></div>
   <div class="chips" id="chips"></div>
+  <div id="jobs"></div>
 </header>
 <main id="root"></main>
 <footer>
   Click a sprite for its full record. <kbd>←</kbd>/<kbd>→</kbd> step through the visible set while a record
   is open, <kbd>Esc</kbd> closes it, and <kbd>/</kbd> jumps to search. This page reads the manifest, lockfile,
   and disk only — it never contacts a provider<span id="foot-edit"> and never writes anything</span><span id="foot-editing" hidden>.
-  Editing is on: saving rewrites the manifest and nothing else; generation still goes through <code>pixelkiln gen</code></span>.
+  Editing is on: saving rewrites the manifest and nothing else</span><span id="foot-gen" hidden>.
+  Generation is on under the session budget shown above; every run is the same submit, poll, and fetch as <code>pixelkiln gen</code></span>.
   <span id="note"></span>
 </footer>
 <div id="drawer-host"></div>
+<div id="dialog-host"></div>
 <script>
 const INITIAL = ${data};
 const SESSION = ${session};
-const EDITABLE = SESSION !== null;
+const EDITABLE = ${editable};
+const GENERATION = ${generation};
 let snap = INITIAL;
 const STATE_TONE = {
   ok: 'ok', stale: 'warn', orphaned: 'warn', untracked: 'warn', blocked: 'warn',
@@ -277,7 +323,13 @@ const ui = {
   editing: null,
   /** One-shot confirmation shown in the drawer after a save. */
   notice: null,
+  /** Jobs expanded to show their log. */
+  logs: new Set(),
+  /** Job ids already seen finished, so a completion refreshes exactly once. */
+  settled: new Set(),
 };
+/** Generation status from /api/jobs: jobs, session budget, spend so far. */
+let GEN = { jobs: [], budget: { byProvider: {} }, spent: {}, units: {} };
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -345,6 +397,183 @@ const numberInput = (value, placeholder) => {
 const numberOrNull = (input) => input.value.trim() === '' ? null : Number(input.value);
 const splitTags = (value) => value.split(',').map((t) => t.trim()).filter(Boolean);
 
+// ---- generation (only when the server holds a session budget) -------------
+
+const ACTIVE_PHASES = new Set(['queued', 'submitting', 'polling', 'fetching', 'review']);
+const PHASE_TONE = { queued: 'cool', submitting: 'cool', polling: 'cool', fetching: 'cool', review: 'warn', done: 'ok', failed: 'bad' };
+const remainingBudget = (provider) => {
+  const keyed = GEN.budget.byProvider[provider];
+  const ceiling = keyed !== undefined ? keyed : GEN.budget.amount;
+  return ceiling === undefined ? null : Math.max(0, ceiling - (GEN.spent[provider] || 0));
+};
+async function postGenerate(body) {
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Pixelkiln-Session': SESSION },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { const err = new Error(await res.text()); err.status = res.status; throw err; }
+  return res.json();
+}
+let jobsTimer = null;
+async function pollJobs() {
+  if (!GENERATION) return;
+  try {
+    const res = await fetch('/api/jobs', { cache: 'no-store' });
+    if (!res.ok) throw new Error(await res.text());
+    GEN = await res.json();
+  } catch (err) {
+    $('note').textContent = ' Job status unavailable: ' + err.message;
+    return;
+  }
+  renderJobs();
+  renderHeader();
+  let changed = false;
+  for (const job of GEN.jobs) {
+    if (!ACTIVE_PHASES.has(job.phase) && !ui.settled.has(job.id)) { ui.settled.add(job.id); changed = true; }
+    if (job.phase === 'review' && !ui.settled.has(job.id + ':review')) { ui.settled.add(job.id + ':review'); changed = true; }
+  }
+  if (changed) refresh();
+  const active = GEN.jobs.some((job) => ACTIVE_PHASES.has(job.phase) && job.phase !== 'review');
+  clearTimeout(jobsTimer);
+  if (active) jobsTimer = setTimeout(pollJobs, 2000);
+}
+function renderJobs() {
+  const host = $('jobs');
+  host.textContent = '';
+  if (!GENERATION) return;
+  for (const job of GEN.jobs) {
+    if (ui.settled.has(job.id + ':dismissed')) continue;
+    const row = el('div', 'job');
+    const ph = el('span', 'ph');
+    ph.append(el('i', 'dot ' + PHASE_TONE[job.phase]), document.createTextNode(job.phase));
+    const what = (job.mode === 'resume' ? 'resume ' : 'generate ') + job.keys.length + (job.keys.length === 1 ? ' asset' : ' assets') +
+      (job.project ? ' in ' + job.project : '');
+    const last = el('span', 'last', what + (job.messages.length ? ' — ' + job.messages[job.messages.length - 1].trim() : ''));
+    last.title = job.keys.join('\\n');
+    const acts = el('div', 'acts');
+    if (job.phase === 'review' && job.review.length) {
+      const b = el('button', 'primary', 'Review ' + job.review.length);
+      b.type = 'button'; b.onclick = () => openReview(job.id);
+      acts.append(b);
+    }
+    const logBtn = el('button', null, ui.logs.has(job.id) ? 'Hide log' : 'Log');
+    logBtn.type = 'button';
+    logBtn.onclick = () => { ui.logs.has(job.id) ? ui.logs.delete(job.id) : ui.logs.add(job.id); renderJobs(); };
+    acts.append(logBtn);
+    if (!ACTIVE_PHASES.has(job.phase)) {
+      const d = el('button', null, 'Dismiss');
+      d.type = 'button'; d.onclick = () => { ui.settled.add(job.id + ':dismissed'); renderJobs(); };
+      acts.append(d);
+    }
+    row.append(ph, last, acts);
+    if (ui.logs.has(job.id)) row.append(el('pre', null, job.messages.join('\\n')));
+    host.append(row);
+  }
+}
+function budgetLine() {
+  const providers = new Set([...Object.keys(GEN.budget.byProvider), ...Object.keys(GEN.spent)]);
+  const parts = [];
+  for (const provider of [...providers].sort()) {
+    const left = remainingBudget(provider);
+    const unit = GEN.units[provider] || 'generations';
+    if (left !== null) parts.push(provider + ': ' + fmtCost(unit, Math.round(left * 100) / 100) + ' left');
+  }
+  // An unkeyed ceiling belongs to whichever single provider first spends it.
+  if (GEN.budget.amount !== undefined && !Object.keys(GEN.spent).length) parts.push(GEN.budget.amount + ' available');
+  return parts.length ? 'session budget — ' + parts.join(' · ') : '';
+}
+
+// The confirm step: what will be sent, what it is estimated to cost, and what
+// this session may still spend. Mirrors gen's "Spend … on N asset(s)?" prompt.
+function generateDialog(items, { project = null, force = false, resume = false } = {}) {
+  const host = $('dialog-host');
+  host.textContent = '';
+  const wrap = el('div', 'dialog');
+  const form = el('form');
+  form.append(el('h3', null, resume ? 'Resume ' + items.length + (items.length === 1 ? ' asset' : ' assets')
+    : (force ? 'Regenerate ' : 'Generate ') + items.length + (items.length === 1 ? ' asset' : ' assets')));
+  const table = el('table');
+  const thead = el('tr'); thead.append(el('th', null, 'asset'), el('th', null, 'state'), el('th', 'n', 'candidates'), el('th', 'n', 'estimate'));
+  table.append(thead);
+  const byProvider = new Map();
+  for (const item of items) {
+    const tr = el('tr');
+    tr.append(el('td', 'mono', item.key), el('td', null, item.state), el('td', 'n', item.candidates ?? '—'),
+      el('td', 'n', resume ? 'no cost' : fmtCost(item.costUnit, item.estimatedCost ?? 0)));
+    table.append(tr);
+    if (!resume) {
+      const g = byProvider.get(item.provider) || { cost: 0, unit: item.costUnit };
+      g.cost += item.estimatedCost ?? 0; byProvider.set(item.provider, g);
+    }
+  }
+  form.append(table);
+  const sum = el('div', 'sum');
+  if (resume) {
+    sum.append(el('div', null, 'Polls, reviews, and downloads existing provider work. Nothing is submitted.'));
+  } else {
+    for (const [provider, g] of byProvider) {
+      const left = remainingBudget(provider);
+      const line = el('div');
+      line.append(el('b', null, provider + ': ' + fmtCost(g.unit, Math.round(g.cost * 100) / 100)));
+      line.append(document.createTextNode(left === null ? ' — no session budget for this provider'
+        : ' · ' + fmtCost(g.unit, Math.round(left * 100) / 100) + ' of the session budget left'));
+      if (left !== null && g.cost > left) line.className = 'warn';
+      sum.append(line);
+    }
+    if (force) sum.append(el('div', 'warn', 'Regenerating replaces the current art. The previous file is replaced when the new result is fetched; the provider objects it came from are not deleted.'));
+    sum.append(el('div', null, 'Candidate sets land in review; you choose from them here before anything is downloaded.'));
+  }
+  form.append(sum);
+  const actions = el('div', 'actions');
+  const go = el('button', 'primary', resume ? 'Resume' : 'Generate');
+  go.type = 'submit';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { host.textContent = ''; };
+  const msg = el('span', 'msg');
+  actions.append(go, cancel, msg);
+  form.append(actions);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    go.disabled = true; msg.textContent = '';
+    try {
+      const body = { keys: items.map((i) => i.key) };
+      if (project) body.project = project;
+      if (force) body.force = true;
+      if (resume) body.resume = true;
+      const job = await postGenerate(body);
+      host.textContent = '';
+      GEN.jobs.unshift(job);
+      renderJobs();
+      pollJobs();
+    } catch (err) {
+      go.disabled = false;
+      msg.textContent = err.message;
+    }
+  };
+  wrap.append(form);
+  host.append(wrap);
+  setTimeout(() => go.focus(), 0);
+}
+
+function openReview(jobId) {
+  const host = $('dialog-host');
+  host.textContent = '';
+  const panel = el('div', 'review-host');
+  const bar = el('div', 'rbar');
+  const close = el('button', null, 'Back to gallery'); close.type = 'button';
+  close.onclick = () => { host.textContent = ''; pollJobs(); refresh(); };
+  bar.append(close, el('span', null, 'Choose from the candidates below. Apply selections writes the lockfile and downloads what you chose; unchosen rows stay in review.'));
+  const frame = el('iframe');
+  frame.src = '/review/' + encodeURIComponent(jobId);
+  frame.title = 'Candidate review';
+  panel.append(bar, frame);
+  host.append(panel);
+}
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || e.data.type !== 'pixelkiln:review-applied') return;
+  setTimeout(() => { $('dialog-host').textContent = ''; pollJobs(); refresh(); }, 600);
+});
+
 function visibleItems() {
   const q = ui.q.trim().toLowerCase();
   let items = snap.items.filter((item) => {
@@ -374,6 +603,7 @@ function renderHeader() {
   $('editing').hidden = !EDITABLE;
   $('foot-edit').hidden = EDITABLE;
   $('foot-editing').hidden = !EDITABLE;
+  $('foot-gen').hidden = !GENERATION;
   const p = $('project');
   p.textContent = '';
   if (snap.workspace) {
@@ -405,6 +635,10 @@ function renderHeader() {
        snap.filter.assets.length ? '--only ' + snap.filter.assets.join(',') : ''].filter(Boolean).join(' ')));
   }
   t.append(el('span', null, 'snapshot ' + fmtWhen(snap.generatedAt)));
+  if (GENERATION) {
+    const line = budgetLine();
+    if (line) t.append(el('span', 'budget', line));
+  }
 
   const chips = $('chips');
   chips.textContent = '';
@@ -577,12 +811,21 @@ function renderMain(items) {
       if (Object.keys(s.spendByUnit).length) meta.append(el('span', null, fmtSpend(s.spendByUnit)));
       head.append(meta);
       const addKey = 'new:' + (s.project || '') + ':' + s.id;
+      const tools = el('div', 'tools');
+      if (s.outDir && s.candidates !== null) tools.append(candidatesControl(s));
+      if (GENERATION && s.actionable.keys.length) {
+        const g = el('button', 'primary', 'Generate ' + s.actionable.keys.length + ' · ' + fmtCost(s.actionable.costUnit, Math.round(s.actionable.cost * 100) / 100));
+        g.type = 'button';
+        g.onclick = () => generateDialog(snap.items.filter((i) => i.project === s.project && s.actionable.keys.includes(i.key)), { project: s.project });
+        tools.append(g);
+      }
       if (EDITABLE && s.outDir) {
         const add = el('button', 'add', ui.editing === addKey ? 'Cancel' : '+ Add asset');
         add.type = 'button';
         add.onclick = () => { ui.editing = ui.editing === addKey ? null : addKey; render(); };
-        head.append(add);
+        tools.append(add);
       }
+      if (tools.childNodes.length) head.append(tools);
       wrap.append(head);
       if (ui.editing === addKey) wrap.append(addAssetForm(s));
     }
@@ -619,6 +862,72 @@ function projectHeader(pr, count) {
   line.append(meta);
   head.append(line);
   return head;
+}
+
+// How many images one generation returns for this style. A provider option
+// where the adapter has one; a fact of the generator where it does not.
+function candidatesControl(style) {
+  const wrap = el('span', 'cand');
+  const editKey = 'cand:' + (style.project || '') + ':' + style.id;
+  const declared = snap.items.filter((i) => i.project === style.project && i.styleId === style.id && i.declared).length;
+  if (!(EDITABLE && style.candidatesEditable) || ui.editing !== editKey) {
+    wrap.append(el('span', null, style.candidates + (style.candidates === 1 ? ' candidate' : ' candidates') + ' per generation'));
+    if (EDITABLE && style.candidatesEditable) {
+      const b = el('button', null, 'change'); b.type = 'button';
+      b.onclick = () => { ui.editing = editKey; render(); };
+      wrap.append(b);
+    } else if (style.provider === 'pixellab') {
+      wrap.title = 'PixelLab: map and pixflux return one image per generation; a 1dir style returns 4–64 for its size.';
+    }
+    return wrap;
+  }
+  const input = el('input'); input.type = 'number'; input.min = '1'; input.max = '64'; input.value = String(style.candidates);
+  const save = el('button', 'primary', 'Save'); save.type = 'button';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; render(); };
+  const note = el('span', null, 'affects ' + declared + (declared === 1 ? ' asset' : ' assets') + ' — they become stale');
+  save.onclick = async () => {
+    save.disabled = true;
+    try {
+      const pr = snap.workspace ? snap.workspace.projects.find((x) => x.id === style.project) : snap.project;
+      const body = { action: 'patch-style', styleId: style.id, expectedSha256: pr.manifestSha256, patch: { candidates: Number(input.value) } };
+      if (style.project) body.project = style.project;
+      snap = await postEdit(body);
+      ui.editing = null;
+      render();
+    } catch (err) {
+      save.disabled = false;
+      note.textContent = err.message;
+      note.className = 'state-bad';
+    }
+  };
+  wrap.append(input, save, cancel, note);
+  setTimeout(() => input.focus(), 0);
+  return wrap;
+}
+
+function generateActions(item) {
+  const row = el('div', 'gen');
+  if (!GENERATION || !item.declared || item.currentSpecHash === null) return row;
+  const cost = item.estimatedCost === null ? '' : ' · ' + fmtCost(item.costUnit, item.estimatedCost);
+  const add = (label, cls, opts) => {
+    const b = el('button', cls, label); b.type = 'button';
+    b.onclick = () => generateDialog([item], { project: item.project, ...opts });
+    row.append(b);
+  };
+  if (item.state === 'missing' || item.state === 'stale' || item.state === 'failed') add('Generate' + cost, 'primary', {});
+  else if (item.state === 'ok') add('Regenerate' + cost, null, { force: true });
+  if (item.state === 'in-flight' || item.state === 'recoverable') {
+    // A job already parked this asset in review: go straight to its sheet.
+    const holder = GEN.jobs.find((job) => job.phase === 'review' && job.project === item.project && job.review.includes(item.key));
+    if (holder) {
+      const b = el('button', 'primary', 'Review candidates'); b.type = 'button';
+      b.onclick = () => openReview(holder.id);
+      row.append(b);
+    } else {
+      add(item.status === 'review' ? 'Resume review' : 'Resume · no cost', 'primary', { resume: true });
+    }
+  }
+  return row;
 }
 
 // ---- editing (only when the server minted a session) ---------------------
@@ -907,6 +1216,7 @@ function renderDrawer() {
   body.append(previewHost);
   if (ui.notice && ui.notice.id === item.id) body.append(el('div', 'notice', ui.notice.text));
   body.append(stateNode(item.state, item.reason));
+  if (GENERATION) body.append(generateActions(item));
   if (canEdit && ui.editing === item.id) body.append(editForm(item));
   // Plan already quotes the error as the reason for a failed entry; only a
   // stale or superseded failure needs its own line.
@@ -1174,6 +1484,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '/' && !typing) { e.preventDefault(); $('q').focus(); return; }
   if (e.key === 'Escape') {
     if (typing && document.activeElement.id === 'q') { document.activeElement.blur(); return; }
+    if ($('dialog-host').childNodes.length) { e.preventDefault(); $('dialog-host').textContent = ''; return; }
     if (ui.open) { e.preventDefault(); closeItem(); }
     return;
   }
@@ -1192,6 +1503,7 @@ const initialKey = keyFromHash();
 if (initialKey && snap.items.some((i) => i.id === initialKey)) ui.open = initialKey;
 render();
 if (ui.open) document.querySelector('.card.active')?.scrollIntoView({ block: 'center' });
+if (GENERATION) pollJobs();
 </script>
 </body>
 </html>`
