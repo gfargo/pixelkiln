@@ -199,6 +199,13 @@ export function packStyle(
     primaryOnly?: boolean
     /** Approved manifest quality outputs keyed by asset id or role-qualified frame id. */
     sourceOverrides?: Record<string, string>
+    /**
+     * Manifest `source` art keyed by asset id, manifest-relative. A hand edit
+     * or other post-processed file stands in for that asset's single output,
+     * and an asset with a source but no lock entry is packed from it — the
+     * same rule `mount` applies. Structural sets keep their lock outputs.
+     */
+    sources?: Record<string, string>
   } = {},
 ): PackedSheet {
   if (options.sourceOverrides) {
@@ -217,8 +224,9 @@ export function packStyle(
   // Lock keys are `<styleId>/<assetId>`.
   const prefix = `${styleId}/`
   const entries = Object.entries(lock.entries).filter(([key]) => key.startsWith(prefix))
+  const sources = options.sources ?? {}
 
-  if (!entries.length) {
+  if (!entries.length && !Object.keys(sources).length) {
     throw new Error(
       `No locked assets for style "${styleId}". Run \`pixelkiln gen --style ${styleId}\` first.`,
     )
@@ -226,10 +234,17 @@ export function packStyle(
 
   const inputs: SpriteInput[] = []
   const noOutput: { id: string; reason: string }[] = []
+  const locked = new Set<string>()
 
   for (const [key, entry] of entries) {
     const id = key.slice(prefix.length)
+    locked.add(id)
     const outputs = resolveEntryOutputs(entry, id, manifestDir)
+    const source = sources[id]
+    if (source && outputs.length <= 1) {
+      inputs.push({ id, path: path.resolve(manifestDir, source) })
+      continue
+    }
     let selected = outputs
     if (options.outputRoles?.length) {
       selected = outputs.filter(
@@ -251,6 +266,10 @@ export function packStyle(
       continue
     }
     for (const output of selected) inputs.push({ id: output.id, path: output.absolutePath })
+  }
+  // Committed art the manifest places without a generation of its own.
+  for (const [id, source] of Object.entries(sources)) {
+    if (!locked.has(id)) inputs.push({ id, path: path.resolve(manifestDir, source) })
   }
 
   if (!inputs.length) {

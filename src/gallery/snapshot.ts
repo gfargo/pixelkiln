@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { sha256 } from "../hash.ts"
+import { sha256, sha256File } from "../hash.ts"
 import { existsSync } from "node:fs"
 import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
@@ -43,9 +43,21 @@ export interface GalleryOutput {
   mediaType: MediaType | null
   exists: boolean
   bytes: number | null
+  /** File modification time, for telling an edit from the generation it started from. */
+  modifiedAt: string | null
   /** Served only while the gallery runs; null when the file is missing. */
   url: string | null
 }
+
+export type HandEditStatus =
+  /** The edit file is byte-identical to the generated art. */
+  | "same"
+  /** The author changed it. */
+  | "edited"
+  /** The generated art changed after the edit was last saved. */
+  | "regenerated-since"
+  /** The declared file is not on disk. */
+  | "missing"
 
 export interface GalleryQuality {
   state: QualityProfileInspection["state"]
@@ -126,6 +138,13 @@ export interface GalleryItem {
   asset: Asset | null
   /** Manifest-relative committed art placed instead of generated output. */
   source: string | null
+  /**
+   * The hand edit that stands in for this generation, when the asset has both
+   * a lock entry and a `source`. Placed by mount and pack in place of the
+   * generated file, which stays on disk as the record.
+   */
+  edit: GalleryOutput | null
+  editStatus: HandEditStatus | null
   tags: string[]
   category: string | null
 }
@@ -260,10 +279,10 @@ function metadataFps(entry: LockEntry | undefined): number | null {
   return null
 }
 
-async function fileBytes(absolutePath: string): Promise<number | null> {
+async function fileInfo(absolutePath: string): Promise<{ bytes: number; modifiedAt: string } | null> {
   try {
     const info = await stat(absolutePath)
-    return info.isFile() ? info.size : null
+    return info.isFile() ? { bytes: info.size, modifiedAt: info.mtime.toISOString() } : null
   } catch {
     return null
   }
@@ -275,16 +294,17 @@ async function describeOutput(
   absolutePath: string,
   recorded: { sha256?: string | null; role?: string; mediaType?: MediaType } = {},
 ): Promise<GalleryOutput> {
-  const bytes = await fileBytes(absolutePath)
-  const exists = bytes !== null
+  const info = await fileInfo(absolutePath)
+  const exists = info !== null
   const mediaType = recorded.mediaType ?? mediaTypeFromExtension(absolutePath)
   let url: string | null = null
   if (exists && mediaType) {
     const id = galleryMediaId(absolutePath)
     media.set(id, { path: absolutePath, contentType: mediaType })
-    // The hash (or size) doubles as a cache-buster so a regenerated file with
-    // the same path is not shown from the browser cache after Refresh.
-    url = `${galleryMediaRoute(id)}?v=${(recorded.sha256 ?? String(bytes)).slice(0, 16)}`
+    // The hash (or size and mtime) doubles as a cache-buster so a rewritten
+    // file at the same path is not shown from the browser cache after Refresh.
+    const version = recorded.sha256 ?? `${info.bytes}-${Date.parse(info.modifiedAt).toString(36)}`
+    url = `${galleryMediaRoute(id)}?v=${version.slice(0, 24)}`
   }
   return {
     path: portableOutputPath(absolutePath, root),
@@ -293,7 +313,8 @@ async function describeOutput(
     role: recorded.role ?? null,
     mediaType,
     exists,
-    bytes,
+    bytes: info?.bytes ?? null,
+    modifiedAt: info?.modifiedAt ?? null,
     url,
   }
 }
@@ -402,12 +423,27 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
     const asset = loaded.manifest.assets[spec.assetId] ?? null
 
     let outputs: GalleryOutput[]
+    let edit: GalleryOutput | null = null
+    let editStatus: HandEditStatus | null = null
     if (entry && entry.outputs.length) {
       outputs = await Promise.all(
         entry.outputs.map((output, index) =>
           describeOutput(media, root, currentEntryOutputPath(entry, spec, index), output),
         ),
       )
+      if (spec.source) {
+        const editPath = path.resolve(root, spec.source)
+        const editSha = existsSync(editPath) ? await sha256File(editPath) : null
+        edit = await describeOutput(media, root, editPath, { sha256: editSha })
+        const generated = outputs[0]
+        editStatus = !edit.exists
+          ? "missing"
+          : generated && editSha === generated.sha256
+            ? "same"
+            : generated?.modifiedAt && edit.modifiedAt && generated.modifiedAt > edit.modifiedAt && generated.exists
+              ? "regenerated-since"
+              : "edited"
+      }
     } else if (spec.source) {
       outputs = [await describeOutput(media, root, path.resolve(root, spec.source))]
     } else if (!entry && existsSync(spec.outFile)) {
@@ -461,6 +497,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       providerMetadata: entry?.providerMetadata ?? {},
       asset,
       source: spec.source ?? null,
+      edit,
+      editStatus,
       tags: spec.tags,
       category: asset?.category ?? null,
     })
@@ -514,6 +552,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       providerMetadata: entry.providerMetadata ?? {},
       asset: null,
       source: null,
+      edit: null,
+      editStatus: null,
       tags: [],
       category: null,
     })

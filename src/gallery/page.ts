@@ -298,6 +298,14 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   .tray > button { padding:5px 11px; font-size:12.5px; }
   @media (max-width: 900px) { .sheet.review-host, .sheet.compare-host { width:100vw; } }
   .drawer .gen { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 10px; }
+  .pair figure { margin:0; border:1px solid var(--line); background:var(--panel-deep); background-image:var(--checker);
+    background-size:12px 12px; background-position:0 0,6px 6px; display:grid; place-items:center; padding:8px; min-height:96px; }
+  .pair figure img { image-rendering:pixelated; display:block; max-width:100%; }
+  .pair figcaption { font:11px/1.4 var(--mono); color:var(--dim); background:var(--panel); padding:2px 6px; margin-top:6px; }
+  .card .pen { position:absolute; right:6px; top:6px; background:var(--panel); color:var(--accent-soft); border:1px solid var(--accent);
+    font:700 11px/1 var(--mono); padding:3px 5px; }
+  .hand-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
   .drawer .gen button.primary { padding:7px 14px; }
   @media (max-width: 720px) {
     .bar, .totals, .chips, .style, footer { padding-inline:14px; }
@@ -744,7 +752,8 @@ function clearFilters() {
 
 function thumb(item) {
   const cell = el('div', 'cell');
-  const shown = item.outputs.filter((o) => o.url);
+  // A hand edit is what ships, so it is what the card shows.
+  const shown = item.edit && item.edit.url && item.editStatus === 'edited' ? [item.edit] : item.outputs.filter((o) => o.url);
   if (!shown.length) {
     cell.classList.add('none');
     cell.append(el('span', null, item.state === 'missing' ? 'not generated yet'
@@ -795,6 +804,9 @@ function card(item) {
   body.append(meta);
   const cell = thumb(item);
   if (slot >= 0) cell.append(el('span', 'slot', String(slot + 1)));
+  if (item.editStatus === 'edited' || item.editStatus === 'regenerated-since') {
+    const pen = el('span', 'pen', '✎'); pen.title = 'hand-edited'; cell.append(pen);
+  }
   c.append(cell, body);
   c.onclick = (e) => { if (e.shiftKey) toggleCompare(item.id); else openItem(item.id); };
   return c;
@@ -1119,6 +1131,78 @@ function openCompare() {
   panel.append(bar, body);
   host.append(scrim, panel);
   close.focus({ preventScroll: true });
+}
+
+// ---- hand edits -------------------------------------------------------------
+
+const EDIT_STATUS_TEXT = {
+  same: 'A copy of the generated art, not changed yet. Open it in your editor and save.',
+  edited: 'Differs from the generated art. mount and pack place this file; the generated file stays as the record.',
+  'regenerated-since': 'The generated art changed after this edit was saved — the edit is based on an older generation.',
+  missing: 'The declared file is not on disk.',
+};
+async function postHandEdit(item, action, extra) {
+  const pr = projectOf(item);
+  const body = { action, assetId: item.assetId, styleId: item.styleId, expectedSha256: pr.manifestSha256, ...extra };
+  if (item.project) body.project = item.project;
+  snap = await postEdit(body);
+}
+function handEditSection(item) {
+  const canStart = EDITABLE && item.declared && item.asset && projectOf(item)?.manifestSha256 &&
+    item.outputs.length === 1 && item.outputs[0].exists && item.outputs[0].mediaType === 'image/png';
+  if (!item.edit && !canStart) return null;
+  const s = el('section', 'meta');
+  s.append(el('h3', null, 'Hand edit'));
+  if (item.edit) {
+    const pair = el('div', 'pair');
+    const shared = displayScale(item.width, item.height, 200, 160);
+    const fig = (out, label) => {
+      const f = el('figure');
+      if (out && out.url) {
+        const img = el('img'); img.src = out.url; img.alt = label;
+        if (shared >= 1) { img.width = item.width * shared; img.height = item.height * shared; }
+        f.append(img);
+      } else f.append(el('span', 'state-dim', 'not on disk'));
+      f.append(el('figcaption', null, label));
+      return f;
+    };
+    pair.append(fig(item.outputs[0], 'generated'), fig(item.edit, 'edit'));
+    s.append(pair);
+    const dl = el('dl');
+    const tone = item.editStatus === 'edited' ? 'ok' : item.editStatus === 'same' ? 'dim' : 'warn';
+    const st = el('span', 'state-' + tone); st.append(el('i', 'dot ' + tone), document.createTextNode(' ' + item.editStatus));
+    row(dl, 'status', st);
+    row(dl, 'why', EDIT_STATUS_TEXT[item.editStatus] || '');
+    row(dl, 'file', item.edit.path, { mono: true, copy: item.edit.absolutePath });
+    if (item.edit.sha256) row(dl, 'sha256', item.edit.sha256.slice(0, 16) + '…', { mono: true, copy: item.edit.sha256 });
+    row(dl, 'saved', fmtWhen(item.edit.modifiedAt));
+    s.append(dl);
+  } else {
+    s.append(el('div', 'state-dim', 'Touch it up in your own editor. The generated file stays untouched; the edit is a sibling file the manifest points at, and mount and pack place that instead.'));
+  }
+  if (EDITABLE && item.declared && projectOf(item)?.manifestSha256) {
+    const acts = el('div', 'hand-actions');
+    const msg = el('span', 'msg');
+    const go = async (label, action, extra, done) => {
+      const b = el('button', label === 'Detach edit' ? null : 'primary', label); b.type = 'button';
+      b.onclick = async () => {
+        b.disabled = true; msg.className = 'msg'; msg.textContent = '…';
+        try { await postHandEdit(item, action, extra); ui.notice = { id: item.id, text: done }; render(); }
+        catch (err) { b.disabled = false; msg.className = 'msg bad'; msg.textContent = err.message + (err.status === 409 ? ' — press Refresh.' : ''); }
+      };
+      acts.append(b);
+    };
+    if (item.edit) {
+      go('Open in editor', 'start-edit', { open: true }, 'Opened ' + item.edit.path + ' in your editor. Save there, then Refresh.');
+      go('Detach edit', 'detach-edit', {}, 'Detached. The file is still at ' + item.edit.path + '; the generated art is placed again.');
+    } else if (canStart) {
+      go('Edit by hand', 'start-edit', { open: true }, 'Created the edit file and opened it in your editor. Save there, then Refresh to see it here.');
+      go('Create edit file only', 'start-edit', { open: false }, 'Created the edit file and declared it in the manifest.');
+    }
+    acts.append(msg);
+    s.append(acts);
+  }
+  return s;
 }
 
 // ---- editing (only when the server minted a session) ---------------------
@@ -1611,6 +1695,9 @@ function renderDrawer() {
     }
     body.append(s);
   }
+
+  const hand = handEditSection(item);
+  if (hand) body.append(hand);
 
   if (item.revision || item.revisionParentKey) {
     const { s, dl } = section('Lineage');

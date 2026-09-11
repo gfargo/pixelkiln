@@ -98,6 +98,7 @@ export function buildManifest(
     assets[asset.id] = {
       prompt: "",
       promptByStyle: {},
+      sourceByStyle: {},
       category: asset.category || undefined,
       file: asset.file,
       tags: [],

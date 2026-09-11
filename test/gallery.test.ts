@@ -152,7 +152,7 @@ describe("buildGallerySnapshot", () => {
       mediaType: "image/png",
     })
     const id = galleryMediaId(output.absolutePath)
-    expect(output.url).toBe(`/media/${id}?v=${output.sha256!.slice(0, 16)}`)
+    expect(output.url).toBe(`/media/${id}?v=${output.sha256!.slice(0, 24)}`)
     expect(media.get(id)).toEqual({ path: output.absolutePath, contentType: "image/png" })
 
     const sketch = snapshot.items.find((item) => item.key === "base/sketch")!

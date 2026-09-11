@@ -210,6 +210,33 @@ when an installed provider, such as local ComfyUI, has no balance endpoint.
 Summarize lock entries by state and successful submission spend by cost unit.
 Supports `--json`; unlike units are never added together.
 
+### `edit`
+
+Hand-edit one asset in the editor you already use, without touching the
+generated file.
+
+```bash
+pixelkiln edit --only anvil --style base
+PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
+pixelkiln edit detach --only anvil --style base
+```
+
+The generated PNG is the provenance record — its hash is in the lockfile,
+`plan` verifies it, and a regeneration replaces it — so the edit lives in a
+sibling file: `edit` copies the generated art to `<outDir>/edits/<same
+relative path>`, declares it as the asset's `source` (or `sourceByStyle` entry
+for that style when the asset is in several styles), and opens it. `mount` and
+`pack` then place the edit; quality profiles read it; a revision starts from
+it; and `plan` keeps reporting the generation itself as `ok`. Run it again to
+reopen the same file. `detach` clears the manifest key and leaves the file where
+it is. `--no-open` creates and declares without launching anything.
+
+`PIXELKILN_EDITOR` names the program (a name, or a command with arguments; the
+file path is appended). Without it the file opens with the OS default handler.
+Single-image PNG assets only for now; structural sets and GIF animations are
+refused with the reason. `--only` must resolve to one asset in one style, so
+add `--style` when the asset is shared.
+
 ### `gallery`
 
 Open a local, read-only gallery of everything the project has generated. Each
@@ -312,6 +339,14 @@ lets you change — every asset in the style becomes `stale`, and the header
 says how many. PixelLab's count follows the generator and size (`map` and
 `pixflux` return one image; a `1dir` style returns 4–64), so the header
 explains that instead of offering a number.
+
+With `--edit`, a record also gains **Edit by hand**, the page's form of
+[`pixelkiln edit`](#edit): it creates the edit file, declares it, and opens
+it in `PIXELKILN_EDITOR` or the OS default. The record then shows the generated
+art and the edit side by side with its status — an unchanged copy, edited, or
+based on an older generation because the art was regenerated since — plus
+**Open in editor** and **Detach edit**. A card whose edit differs from the
+generated art shows the edit, since that is what ships, with a ✎ mark.
 
 ```bash
 pixelkiln gallery --edit --budget 80
@@ -583,7 +618,7 @@ Print the package version. `-v` is an alias.
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
-| `--no-open` | pick/salvage/gallery | Do not automatically open the browser. |
+| `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser, or the editor for `edit`. |
 | `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |

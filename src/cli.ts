@@ -44,6 +44,7 @@ import {
 import { serveGallery } from "./gallery/server.ts"
 import { createGalleryEditHandler } from "./gallery/edit.ts"
 import { createGenerateHandlers, type GalleryProjectContext } from "./gallery/generate.ts"
+import { detachHandEdit, openInEditor, startHandEdit } from "./pipeline/hand-edit.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import {
   loadClaims,
@@ -219,7 +220,7 @@ async function runGallery(
       url, initial.snapshot.totals.entries, undefined, undefined, args.edit, budget ? describeBudget(budget) : null,
     ),
     ...(args.edit
-      ? { edit: createGalleryEditHandler({ manifestFor: access.manifestFor, reload, onProgress: log }) }
+      ? { edit: createGalleryEditHandler({ manifestFor: access.manifestFor, loadProject: access.loadProject, reload, onProgress: log }) }
       : {}),
     ...(budget
       ? { generate: createGenerateHandlers({ loadProject, providerFor, budget, reload, onProgress: log }) }
@@ -328,13 +329,14 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
+  "gallery", "edit", "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
 const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
 const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
 const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
+const EDIT_SUBCOMMANDS = ["start", "detach"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -402,6 +404,12 @@ export function parseArgs(argv: string[]): Args {
       }
       rest = rest.slice(1)
     }
+  } else if (command === "edit") {
+    subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "start" : rest[0]
+    if (!(EDIT_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new Error(`Unknown edit subcommand "${subcommand}". Known: ${EDIT_SUBCOMMANDS.join(", ")}`)
+    }
+    if (rest[0] === subcommand) rest = rest.slice(1)
   } else if (command === "refine") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "run" : rest[0]
     if (!(REFINE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
@@ -629,6 +637,9 @@ Commands
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
   status    Summarise the lockfile.
+  edit      Hand-edit an asset in your own editor: copies the generated PNG to
+            <outDir>/edits/, declares it as the asset's source, and opens it.
+            edit detach places the generated art again (the file is kept).
   gallery   Open a local read-only gallery of every generation and its
             provenance: prompt, provider, cost, outputs, lineage, quality.
             --workspace <catalog> shows every registered project at once;
@@ -671,7 +682,7 @@ Options
                       and the gallery snapshot (no server)
   --check             plan/audit/cache: exit nonzero when the selected state is unsafe
   --yes, -y           Skip the confirmation prompt
-  --no-open           Do not auto-open the browser during pick, salvage, or gallery
+  --no-open           Do not auto-open the browser (pick, salvage, gallery) or editor (edit)
   --edit              gallery: allow manifest edits from the page (never spends)
   --tag               Also push tags upstream after fetch
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
@@ -688,6 +699,8 @@ Examples
   pixelkiln gallery --style heybud-premium
   pixelkiln gallery --workspace pixelkiln.workspace.json
   pixelkiln gallery --edit --budget 80
+  pixelkiln edit --style base --only anvil
+  PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
@@ -759,6 +772,17 @@ function printResumeActions(specs: ResolvedSpec[], lock: Lock): number {
     )
   }
   return actions.length
+}
+
+/** Manifest `source` art for one style: the per-style entry wins over the shared one. */
+function manifestSources(manifest: Manifest, styleId: string): Record<string, string> {
+  const sources: Record<string, string> = {}
+  for (const [assetId, asset] of Object.entries(manifest.assets)) {
+    if (asset.styles.length && !asset.styles.includes(styleId)) continue
+    const source = asset.sourceByStyle[styleId] ?? asset.source
+    if (source) sources[assetId] = source
+  }
+  return sources
 }
 
 function manifestProviderIds(manifest: Manifest): string[] {
@@ -1544,6 +1568,35 @@ async function main() {
     return
   }
 
+  if (args.command === "edit") {
+    if (!args.assets.length) throw new Error("edit needs --only <asset id> (and --style when the asset is in several styles).")
+    if (specs.length !== 1) {
+      throw new Error(
+        specs.length
+          ? `edit works on one asset in one style; --only ${args.assets.join(",")} resolves to ${specs.length}: ` +
+            specs.map((spec) => `${spec.styleId}/${spec.assetId}`).join(", ") + ". Add --style."
+          : "edit matched no asset.",
+      )
+    }
+    const spec = specs[0]!
+    if (args.subcommand === "detach") {
+      const result = await detachHandEdit(loaded, spec)
+      log(result.changed
+        ? `  detached the hand edit for ${spec.styleId}/${spec.assetId}; the generated art is placed again (the edit file is kept)`
+        : `  ${spec.styleId}/${spec.assetId} has no hand edit`)
+      return
+    }
+    const started = await startHandEdit(loaded, lock, spec)
+    log(`  ${started.created ? "created" : "found"} ${started.source}${started.declared ? " and declared it as the asset's source" : ""}`)
+    if (args.noOpen) {
+      log(`  edit it with your own tool, then run pixelkiln plan; mount and pack place it in place of the generated art`)
+    } else {
+      const command = openInEditor(started.editPath)
+      log(`  opened with: ${command}${process.env.PIXELKILN_EDITOR ? "" : " (set PIXELKILN_EDITOR to choose the program)"}`)
+    }
+    return
+  }
+
   const plan = await buildPlan(specs, lock, { force: args.force })
 
   if (args.command === "refine") {
@@ -1782,6 +1835,7 @@ async function main() {
         outputRoles: args.outputRoles,
         primaryOnly: args.primaryOnly,
         sourceOverrides: qualitySources,
+        sources: manifestSources(loaded.manifest, styleId),
       })
 
       // Default beside the style's own output tree, so sheets for different
@@ -1852,10 +1906,11 @@ async function main() {
       const cells: Record<string, [number, number]> = {}
       const sources: Record<string, string> = {}
       const outputRoles: Record<string, string> = {}
+      const styleSources = manifestSources(loaded.manifest, styleId)
       for (const [assetId, asset] of Object.entries(loaded.manifest.assets)) {
         if (!asset.cell) continue
         cells[assetId] = asset.cell
-        if (asset.source) sources[assetId] = asset.source
+        if (styleSources[assetId]) sources[assetId] = styleSources[assetId]!
         if (asset.outputRole) outputRoles[assetId] = asset.outputRole
       }
       const packagingSpecs = await resolveSpecs(loaded, { styles: [styleId] })

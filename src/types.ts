@@ -470,6 +470,15 @@ export const AssetSchema = z
      * that wasn't. `prompt` still records what was asked for.
      */
     source: z.string().optional(),
+    /**
+     * Per-style replacement for `source`, keyed by style id.
+     *
+     * A hand edit belongs to one generation: the same asset generated in two
+     * styles is two different pictures, so the touch-up of one must not be
+     * placed for the other. `pixelkiln edit` writes here when an asset is in
+     * more than one style, and to `source` when it is in exactly one.
+     */
+    sourceByStyle: z.record(z.string().min(1)).default({}),
     /** Controlled generation derived from another asset in the same style. */
     revision: RevisionSchema.optional(),
     /**
@@ -508,7 +517,7 @@ export const AssetSchema = z
   })
   .strict()
   .superRefine((asset, context) => {
-    if (asset.source && asset.revision) {
+    if ((asset.source || Object.keys(asset.sourceByStyle).length) && asset.revision) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "source and revision are mutually exclusive",
