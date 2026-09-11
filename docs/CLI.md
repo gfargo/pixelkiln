@@ -247,8 +247,13 @@ the offline, machine-readable answer to "what has this project generated?" for
 scripts and agents; `--style` and `--only` narrow it the same way.
 
 `--edit` lets the page change *intent*: an asset's prompt (for every style or
-only the one being viewed), width, height, size, category, and tags, plus a
-form under each style to add a new asset. Saving rewrites the manifest and
+only the one being viewed), width, height, size, category, and tags; a style's
+prompt prefix, prompt suffix, and forced palette; and a form under each style
+to add a new asset. A style edit shows its blast radius before you save —
+how many assets it changes the request for, including assets in styles that
+`extends` this one and do not override the field themselves, and what
+regenerating all of them would cost. Editing a child style sets a value on the
+child only; clearing a field there makes it inherit again. Saving rewrites the manifest and
 nothing else — the same edit you would make in an editor — so `plan` and the
 page immediately report the asset `stale` or `missing` with its estimate, and
 generation still goes through `pixelkiln gen` with its budget and confirmation.

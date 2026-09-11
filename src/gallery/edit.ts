@@ -86,9 +86,15 @@ export const ManifestEditSchema = z.discriminatedUnion("action", [
       patch: z
         .object({
           /** Candidates per generation, written to the provider's own option. */
-          candidates: z.number().int().min(1).max(64),
+          candidates: z.number().int().min(1).max(64).optional(),
+          /** Empty clears the style's own value (inherit, or the default). */
+          promptPrefix: z.string().optional(),
+          promptSuffix: z.string().optional(),
+          /** `#rrggbb` values; null or empty clears the style's own palette. */
+          palette: z.array(z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour")).max(256).nullable().optional(),
         })
-        .strict(),
+        .strict()
+        .refine((patch) => Object.keys(patch).length > 0, { message: "nothing to change" }),
     })
     .strict(),
 ])
@@ -154,18 +160,30 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
   if (edit.action === "patch-style") {
     const style = raw.styles && Object.hasOwn(raw.styles, edit.styleId) ? raw.styles[edit.styleId] : undefined
     if (!style) throw new ManifestEditError(`style "${edit.styleId}" is not declared by the manifest`)
-    const provider = styleProvider(raw, edit.styleId)
-    const option = CANDIDATE_OPTION[provider]
-    if (!option) {
-      throw new ManifestEditError(
-        provider === "pixellab"
-          ? "PixelLab's candidate count follows the generator and size: map and pixflux return one image; a 1dir style returns 4–64 for its size"
-          : `provider "${provider}" has no candidate-count option`,
-      )
+    const { patch } = edit
+    if (patch.candidates !== undefined) {
+      const provider = styleProvider(raw, edit.styleId)
+      const option = CANDIDATE_OPTION[provider]
+      if (!option) {
+        throw new ManifestEditError(
+          provider === "pixellab"
+            ? "PixelLab's candidate count follows the generator and size: map and pixflux return one image; a 1dir style returns 4–64 for its size"
+            : `provider "${provider}" has no candidate-count option`,
+        )
+      }
+      const options = { ...(style.providerOptions ?? {}) }
+      options[provider] = { ...(options[provider] ?? {}), [option]: patch.candidates }
+      style.providerOptions = options
     }
-    const options = { ...(style.providerOptions ?? {}) }
-    options[provider] = { ...(options[provider] ?? {}), [option]: edit.patch.candidates }
-    style.providerOptions = options
+    // An empty value removes the style's own key: for a child that means
+    // "inherit again", for a base style "the default" — exactly what the
+    // author would write by hand in either case.
+    if (patch.promptPrefix !== undefined) setOrDelete(style, "promptPrefix", patch.promptPrefix || null)
+    if (patch.promptSuffix !== undefined) setOrDelete(style, "promptSuffix", patch.promptSuffix || null)
+    if (patch.palette !== undefined) {
+      const colors = (patch.palette ?? []).map((color) => "#" + color.replace(/^#/, "").toLowerCase())
+      setOrDelete(style, "palette", colors.length ? colors : null)
+    }
     return
   }
   if (edit.action === "add-asset") {

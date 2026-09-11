@@ -603,6 +603,90 @@ describe("applyManifestEdit", () => {
   })
 })
 
+describe("applyManifestEdit for styles", () => {
+  it("sets prefix, suffix, and palette on the style itself and leaves a parent untouched", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "styles",
+      styles: {
+        base: { generator: "pixflux", outDir: "out/base", promptSuffix: "clean", palette: ["#101820", "#f2aa4c"] },
+        neon: { extends: "base", outDir: "out/neon" },
+        mono: { extends: "base", outDir: "out/mono", promptSuffix: "one colour" },
+      },
+      assets: { anvil: { prompt: "an anvil", width: 32, height: 32 } },
+    }, null, 2) + "\n")
+    const before = await sha256File(manifestPath)
+
+    // The child gets its own suffix; the parent and its other child are untouched.
+    const one = await applyManifestEdit(manifestPath, {
+      action: "patch-style", styleId: "neon", expectedSha256: before,
+      patch: { promptSuffix: "glowing", palette: ["FF6B35", "#17150F"] },
+    })
+    const written = JSON.parse(await readFile(manifestPath, "utf8"))
+    expect(written.styles.neon).toEqual({ extends: "base", outDir: "out/neon", promptSuffix: "glowing", palette: ["#ff6b35", "#17150f"] })
+    expect(written.styles.base.promptSuffix).toBe("clean")
+    expect(written.styles.mono.promptSuffix).toBe("one colour")
+
+    // Clearing the child's own values makes it inherit again.
+    const two = await applyManifestEdit(manifestPath, {
+      action: "patch-style", styleId: "neon", expectedSha256: one.sha256, patch: { promptSuffix: "", palette: null },
+    })
+    const cleared = JSON.parse(await readFile(manifestPath, "utf8"))
+    expect(cleared.styles.neon).toEqual({ extends: "base", outDir: "out/neon" })
+    const loaded = await loadManifest(manifestPath)
+    expect(loaded.manifest.styles.neon).toMatchObject({ promptSuffix: "clean", palette: ["#101820", "#f2aa4c"] })
+
+    // A parent edit changes what every non-overriding child resolves to.
+    await applyManifestEdit(manifestPath, {
+      action: "patch-style", styleId: "base", expectedSha256: two.sha256, patch: { promptPrefix: "pixel art,", promptSuffix: "crisp" },
+    })
+    const after = await loadManifest(manifestPath)
+    expect(after.manifest.styles.neon).toMatchObject({ promptPrefix: "pixel art,", promptSuffix: "crisp" })
+    expect(after.manifest.styles.mono).toMatchObject({ promptPrefix: "pixel art,", promptSuffix: "one colour" })
+
+    // Bad colours are refused before anything is written; duplicates by the loader.
+    const sha = await sha256File(manifestPath)
+    await expect(applyManifestEdit(manifestPath, {
+      action: "patch-style", styleId: "base", expectedSha256: sha, patch: { palette: ["#12345"] },
+    })).rejects.toThrow()
+    // An empty patch is a no-op at the primitive and a schema error at the route.
+    expect((await applyManifestEdit(manifestPath, {
+      action: "patch-style", styleId: "base", expectedSha256: sha, patch: {},
+    })).changed).toBe(false)
+    const handler = createGalleryEditHandler({ manifestFor: () => manifestPath, reload: async () => { throw new Error("unreached") } })
+    await expect(handler({ action: "patch-style", styleId: "base", expectedSha256: sha, patch: {} }))
+      .rejects.toThrow(/nothing to change/)
+    expect(await sha256File(manifestPath)).toBe(sha)
+  })
+
+  it("exposes inheritance and the cost of regenerating a style", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "styles",
+      styles: {
+        base: { generator: "map", outDir: "out/base", promptPrefix: "pixel art,", promptSuffix: "clean" },
+        neon: { extends: "base", outDir: "out/neon", promptSuffix: "glowing" },
+      },
+      assets: { anvil: { prompt: "an anvil", width: 32, height: 32 }, hammer: { prompt: "a hammer", width: 32, height: 32 } },
+    }))
+    const loaded = await loadManifest(manifestPath)
+    const specs = await resolveSpecs(loaded)
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock: { version: 2, entries: {} }, lockPath })
+    const base = snapshot.styles.find((style) => style.id === "base")!
+    const neon = snapshot.styles.find((style) => style.id === "neon")!
+    expect(base).toMatchObject({
+      promptPrefix: "pixel art,", promptSuffix: "clean", extends: null,
+      ownFields: ["generator", "outDir", "promptPrefix", "promptSuffix"],
+      regenerate: { assets: 2, cost: 2, costUnit: "generations" },
+    })
+    expect(neon).toMatchObject({
+      promptPrefix: "pixel art,", promptSuffix: "glowing", extends: "base",
+      ownFields: ["outDir", "promptSuffix"],
+      regenerate: { assets: 2, cost: 2 },
+    })
+  })
+})
+
 describe("serveGallery with --edit", () => {
   it("accepts a same-origin edit with the session token and refuses everything else", async () => {
     const { loaded, specs, lock, manifestPath } = await generated()
