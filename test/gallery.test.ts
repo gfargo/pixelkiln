@@ -644,6 +644,20 @@ describe("applyManifestEdit for styles", () => {
     expect(after.manifest.styles.neon).toMatchObject({ promptPrefix: "pixel art,", promptSuffix: "crisp" })
     expect(after.manifest.styles.mono).toMatchObject({ promptPrefix: "pixel art,", promptSuffix: "one colour" })
 
+    // View and background: explicit values are written, empty/null clears the key.
+    const three = await applyManifestEdit(manifestPath, {
+      action: "patch-style", styleId: "neon", expectedSha256: await sha256File(manifestPath),
+      patch: { view: "side", noBackground: false },
+    })
+    expect(JSON.parse(await readFile(manifestPath, "utf8")).styles.neon).toMatchObject({ view: "side", noBackground: false })
+    expect((await loadManifest(manifestPath)).manifest.styles.neon).toMatchObject({ view: "side", noBackground: false })
+    await applyManifestEdit(manifestPath, {
+      action: "patch-style", styleId: "neon", expectedSha256: three.sha256, patch: { view: "", noBackground: null },
+    })
+    const neonAfter = JSON.parse(await readFile(manifestPath, "utf8")).styles.neon
+    expect(neonAfter).not.toHaveProperty("view")
+    expect(neonAfter).not.toHaveProperty("noBackground")
+
     // Bad colours are refused before anything is written; duplicates by the loader.
     const sha = await sha256File(manifestPath)
     await expect(applyManifestEdit(manifestPath, {
@@ -682,6 +696,7 @@ describe("applyManifestEdit for styles", () => {
     expect(neon).toMatchObject({
       promptPrefix: "pixel art,", promptSuffix: "glowing", extends: "base",
       ownFields: ["outDir", "promptSuffix"],
+      view: null, noBackground: true,
       regenerate: { assets: 2, cost: 2 },
     })
   })

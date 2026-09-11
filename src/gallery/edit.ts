@@ -92,6 +92,10 @@ export const ManifestEditSchema = z.discriminatedUnion("action", [
           promptSuffix: z.string().optional(),
           /** `#rrggbb` values; null or empty clears the style's own palette. */
           palette: z.array(z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour")).max(256).nullable().optional(),
+          /** Provider view name (PixelLab: low top-down, high top-down, side); empty clears. */
+          view: z.string().max(64).nullable().optional(),
+          /** pixflux only; null clears the style's own value. */
+          noBackground: z.boolean().nullable().optional(),
         })
         .strict()
         .refine((patch) => Object.keys(patch).length > 0, { message: "nothing to change" }),
@@ -184,6 +188,8 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
       const colors = (patch.palette ?? []).map((color) => "#" + color.replace(/^#/, "").toLowerCase())
       setOrDelete(style, "palette", colors.length ? colors : null)
     }
+    if (patch.view !== undefined) setOrDelete(style, "view", patch.view?.trim() || null)
+    if (patch.noBackground !== undefined) setOrDelete(style, "noBackground", patch.noBackground)
     return
   }
   if (edit.action === "add-asset") {

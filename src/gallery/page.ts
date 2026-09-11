@@ -348,6 +348,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
 </footer>
 <div id="drawer-host"></div>
 <div id="dialog-host"></div>
+<datalist id="view-options"><option value="low top-down"><option value="high top-down"><option value="side"><option value="sidescroller"></datalist>
 <script>
 const INITIAL = ${data};
 const SESSION = ${session};
@@ -1139,9 +1140,18 @@ function inheritorsOf(style, field) {
   }
   return out;
 }
+// noBackground reaches the request only for pixflux and non-PixelLab
+// providers; elsewhere a change is recorded but alters nothing.
+const fieldReaches = (field, style) =>
+  field !== 'noBackground' || style.generator === 'pixflux' || style.provider !== 'pixellab';
 function blastRadius(style, fields) {
-  const styleIds = new Set([style.id]);
-  for (const field of fields) for (const id of inheritorsOf(style, field)) styleIds.add(id);
+  const byId = new Map(snap.styles.filter((x) => x.project === style.project).map((x) => [x.id, x]));
+  const styleIds = new Set();
+  for (const field of fields) {
+    for (const id of [style.id, ...inheritorsOf(style, field)]) {
+      if (fieldReaches(field, byId.get(id) || style)) styleIds.add(id);
+    }
+  }
   const affected = snap.items.filter((i) => i.project === style.project && i.declared && styleIds.has(i.styleId));
   const units = new Map();
   for (const i of affected) if (i.estimatedCost !== null) units.set(i.costUnit, (units.get(i.costUnit) || 0) + i.estimatedCost);
@@ -1166,6 +1176,11 @@ function styleForm(style) {
   const prefix = el('input'); prefix.type = 'text'; prefix.value = style.promptPrefix; prefix.placeholder = 'none';
   const suffix = el('input'); suffix.type = 'text'; suffix.value = style.promptSuffix; suffix.placeholder = 'none';
   const palette = el('input'); palette.type = 'text'; palette.value = style.palette.join(', '); palette.placeholder = '#rrggbb, #rrggbb — leave empty for no forced palette';
+  const view = el('input'); view.type = 'text'; view.value = style.view || ''; view.placeholder = 'provider default';
+  view.setAttribute('list', 'view-options');
+  const noBg = el('select');
+  noBg.append(new Option(style.extends ? 'inherit from ' + style.extends : 'default (on)', 'default'), new Option('on — strip the generated background', 'on'), new Option('off — keep the background (scenes, banners)', 'off'));
+  noBg.value = own('noBackground') ? (style.noBackground ? 'on' : 'off') : 'default';
   const swatches = el('div', 'pal');
   const drawSwatches = () => {
     swatches.textContent = '';
@@ -1178,12 +1193,21 @@ function styleForm(style) {
     field('palette', palette, 'Forced colours where the provider supports them (pixflux). ' + provenance('palette')),
     swatches,
   );
+  const row = el('div', 'row');
+  row.append(
+    field('view', view, 'PixelLab accepts low top-down, high top-down, side; Retro Diffusion reads sidescroller. ' + provenance('view')),
+    field('background', noBg, (fieldReaches('noBackground', style) ? 'Sent for this style. ' : 'Not sent for ' + style.provider + ' ' + style.generator + '; recorded only. ') + provenance('noBackground')),
+  );
+  form.append(row);
   const blast = el('div', 'blast');
   const changed = () => {
     const out = [];
     if (prefix.value !== style.promptPrefix) out.push('promptPrefix');
     if (suffix.value !== style.promptSuffix) out.push('promptSuffix');
     if (parsePalette(palette.value).join(',') !== style.palette.map((c) => c.toLowerCase()).join(',')) out.push('palette');
+    if (view.value.trim() !== (style.view || '')) out.push('view');
+    const bgNow = own('noBackground') ? (style.noBackground ? 'on' : 'off') : 'default';
+    if (noBg.value !== bgNow) out.push('noBackground');
     return out;
   };
   const updateBlast = () => {
@@ -1191,6 +1215,11 @@ function styleForm(style) {
     drawSwatches();
     if (!fields.length) { blast.className = 'blast'; blast.textContent = 'No changes yet. A style change alters the request for every asset that uses it.'; return; }
     const r = blastRadius(style, fields);
+    if (!r.assets) {
+      blast.className = 'blast';
+      blast.textContent = 'Recorded in the manifest only: nothing in ' + style.id + ' sends this field, so no request changes.';
+      return;
+    }
     blast.className = 'blast hot';
     blast.textContent = '';
     const others = r.styles.filter((id) => id !== style.id);
@@ -1200,7 +1229,8 @@ function styleForm(style) {
       : ' in ' + style.id + '.'));
     blast.append(document.createTextNode(' Generated ones become stale; regenerating all of them is about ' + (r.cost || 'nothing') + '. Nothing is spent until you generate.'));
   };
-  for (const input of [prefix, suffix, palette]) input.addEventListener('input', updateBlast);
+  for (const input of [prefix, suffix, palette, view]) input.addEventListener('input', updateBlast);
+  noBg.addEventListener('change', updateBlast);
   updateBlast();
   form.append(blast);
   const actions = el('div', 'actions');
@@ -1219,6 +1249,8 @@ function styleForm(style) {
     if (fields.includes('promptPrefix')) patch.promptPrefix = prefix.value;
     if (fields.includes('promptSuffix')) patch.promptSuffix = suffix.value;
     if (fields.includes('palette')) patch.palette = colors;
+    if (fields.includes('view')) patch.view = view.value.trim();
+    if (fields.includes('noBackground')) patch.noBackground = noBg.value === 'default' ? null : noBg.value === 'on';
     save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
     const r = blastRadius(style, fields);
     try {
@@ -1227,7 +1259,9 @@ function styleForm(style) {
       snap = await postEdit(body);
       ui.editing = null;
       ui.notice = { id: 'style:' + (style.project || '') + ':' + style.id,
-        text: 'Saved. The request for ' + r.assets + (r.assets === 1 ? ' asset' : ' assets') + ' changed' + (r.cost ? ' — about ' + r.cost + ' to regenerate.' : '.') + ' Nothing is spent until you generate.' };
+        text: r.assets
+          ? 'Saved. The request for ' + r.assets + (r.assets === 1 ? ' asset' : ' assets') + ' changed' + (r.cost ? ' — about ' + r.cost + ' to regenerate.' : '.') + ' Nothing is spent until you generate.'
+          : 'Saved. Recorded in the manifest; no request changed.' };
       render();
     } catch (err) {
       save.disabled = false;

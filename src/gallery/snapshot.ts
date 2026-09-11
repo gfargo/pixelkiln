@@ -141,6 +141,10 @@ export interface GalleryStyle {
   promptPrefix: string
   promptSuffix: string
   palette: string[]
+  /** Provider view name, when the style sets one. */
+  view: string | null
+  /** Strip the generated background (sent for pixflux and non-PixelLab providers). */
+  noBackground: boolean
   quality: boolean
   tags: string[]
   /** Parent style id when this style `extends` one. */
@@ -558,6 +562,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         promptPrefix: style?.promptPrefix ?? "",
         promptSuffix: style?.promptSuffix ?? "",
         palette: style?.palette ?? [],
+        view: style?.view ?? null,
+        noBackground: style?.noBackground ?? true,
         quality: Boolean(style?.quality),
         tags: style?.tags ?? [],
         extends: typeof rawStyle?.extends === "string" ? rawStyle.extends : null,
