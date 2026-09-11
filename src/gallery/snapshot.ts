@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { sha256File } from "../hash.ts"
 import { existsSync } from "node:fs"
 import { stat } from "node:fs/promises"
 import path from "node:path"
@@ -152,6 +153,8 @@ export interface GalleryProject {
   /** Manifest default provider, or the catalog provider when the manifest failed to load. */
   provider: string
   account: string | null
+  /** Hash of the manifest bytes this snapshot was built from; an edit must quote it. */
+  manifestSha256: string | null
   entries: number
   items: number
   spendByUnit: Record<string, number>
@@ -533,6 +536,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       root,
       provider: loaded.manifest.provider,
       account: null,
+      manifestSha256: await sha256File(loaded.path),
       entries: Object.keys(lock.entries).length,
       items: items.length,
       spendByUnit: spendByUnit(lock),
@@ -621,6 +625,7 @@ export async function buildWorkspaceGallerySnapshot(
         root: loaded.root,
         provider: loaded.manifest.provider,
         account: project.account ?? null,
+        manifestSha256: await sha256File(manifestPath),
         entries: Object.keys(lock.entries).length,
         items: projectItems.length,
         spendByUnit: spendByUnit(lock),
@@ -635,6 +640,7 @@ export async function buildWorkspaceGallerySnapshot(
         root: path.dirname(manifestPath),
         provider: project.provider,
         account: project.account ?? null,
+        manifestSha256: null,
         entries: 0,
         items: 0,
         spendByUnit: {},

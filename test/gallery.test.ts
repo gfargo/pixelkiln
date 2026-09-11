@@ -16,6 +16,13 @@ import { buildGallerySnapshot, buildWorkspaceGallerySnapshot, galleryMediaId } f
 import { renderGallery } from "../src/gallery/page.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { announceGalleryReady, parseArgs } from "../src/cli.ts"
+import {
+  applyManifestEdit,
+  createGalleryEditHandler,
+  ManifestDriftError,
+  ManifestEditError,
+} from "../src/gallery/edit.ts"
+import { sha256File } from "../src/hash.ts"
 import { refineQualityProfiles } from "../src/pipeline/quality-profile.ts"
 import { approveQualityRecord } from "../src/pipeline/refine.ts"
 import { encodeRgbaPng } from "../src/png.ts"
@@ -384,8 +391,10 @@ describe("renderGallery", () => {
     expect(html).toContain("<\\u0021-- -->")
     // The JSON is still valid after escaping.
     const start = html.indexOf("const INITIAL = ") + "const INITIAL = ".length
-    const end = html.indexOf(";\nlet snap = INITIAL;")
+    const end = html.indexOf(";\nconst SESSION = ")
     expect(JSON.parse(html.slice(start, end))).toEqual(snapshot)
+    expect(html).toContain("const SESSION = null;")
+    expect(renderGallery(snapshot, { session: "abc123" })).toContain('const SESSION = "abc123";')
   })
 
   it("emits a page script that compiles", async () => {
@@ -487,11 +496,178 @@ describe("serveGallery", () => {
   })
 })
 
+describe("applyManifestEdit", () => {
+  it("patches one asset in place, keeps the author's formatting, and makes the work stale", async () => {
+    const { loaded, lock, manifestPath } = await generated()
+    // Re-write the manifest with four-space indentation and a trailing newline
+    // so the edit has something to preserve.
+    const pretty = JSON.stringify(JSON.parse(await readFile(manifestPath, "utf8")), null, 4) + "\n"
+    await writeFile(manifestPath, pretty)
+    const expectedSha256 = await sha256File(manifestPath)
+
+    const result = await applyManifestEdit(manifestPath, {
+      action: "patch-asset",
+      assetId: "anvil",
+      expectedSha256,
+      patch: { prompt: "a battered anvil", category: null, tags: ["prop", "iron"], width: 48 },
+    })
+    expect(result).toMatchObject({ manifestPath, changed: true })
+    const text = await readFile(manifestPath, "utf8")
+    expect(text.endsWith("\n")).toBe(true)
+    expect(text).toContain("\n    \"assets\": {")
+    expect(text).toContain("\n        \"anvil\": {")
+    const written = JSON.parse(text)
+    expect(written.assets.anvil).toEqual({ prompt: "a battered anvil", width: 48, height: 32, tags: ["prop", "iron"] })
+    expect(written.assets.hammer).toEqual({ prompt: "a hammer", width: 32, height: 32 })
+    expect(result.sha256).toBe(await sha256File(manifestPath))
+
+    // The change is visible through the same offline path as `plan`.
+    const specs = await resolveSpecs(await loadManifest(manifestPath))
+    const { snapshot } = await buildGallerySnapshot({ loaded: await loadManifest(manifestPath), specs, lock, lockPath })
+    const anvil = snapshot.items.find((item) => item.key === "base/anvil")!
+    expect(anvil.state).toBe("stale")
+    expect(anvil.currentPrompt).toBe("a battered anvil, clean")
+    expect(anvil.width).toBe(32) // the recorded generation is still 32×32
+    expect(anvil.asset).toMatchObject({ width: 48 })
+    void loaded
+  })
+
+  it("sets and clears a per-style prompt", async () => {
+    const { manifestPath } = await generated()
+    const one = await applyManifestEdit(manifestPath, {
+      action: "patch-asset", assetId: "anvil", expectedSha256: await sha256File(manifestPath),
+      patch: { promptForStyle: { styleId: "base", prompt: "an anvil, for base" } },
+    })
+    expect(JSON.parse(await readFile(manifestPath, "utf8")).assets.anvil.promptByStyle).toEqual({ base: "an anvil, for base" })
+    const two = await applyManifestEdit(manifestPath, {
+      action: "patch-asset", assetId: "anvil", expectedSha256: one.sha256,
+      patch: { promptForStyle: { styleId: "base", prompt: null } },
+    })
+    expect(two.changed).toBe(true)
+    expect(JSON.parse(await readFile(manifestPath, "utf8")).assets.anvil).not.toHaveProperty("promptByStyle")
+    await expect(applyManifestEdit(manifestPath, {
+      action: "patch-asset", assetId: "anvil", expectedSha256: two.sha256,
+      patch: { promptForStyle: { styleId: "nope", prompt: "x" } },
+    })).rejects.toThrow(/unknown style "nope"/)
+  })
+
+  it("refuses to write over a manifest that changed since the page loaded", async () => {
+    const { manifestPath } = await generated()
+    const stale = await sha256File(manifestPath)
+    await writeFile(manifestPath, (await readFile(manifestPath, "utf8")) + "\n")
+    await expect(applyManifestEdit(manifestPath, {
+      action: "patch-asset", assetId: "anvil", expectedSha256: stale, patch: { prompt: "changed" },
+    })).rejects.toBeInstanceOf(ManifestDriftError)
+    expect(JSON.parse(await readFile(manifestPath, "utf8")).assets.anvil.prompt).toBe("an anvil")
+  })
+
+  it("never lands a manifest the loader would reject", async () => {
+    const { manifestPath } = await generated()
+    const before = await readFile(manifestPath, "utf8")
+    const expectedSha256 = await sha256File(manifestPath)
+    // width 8 is below the schema minimum; a missing asset id is unknown.
+    await expect(applyManifestEdit(manifestPath, {
+      action: "patch-asset", assetId: "anvil", expectedSha256, patch: { width: 8 },
+    })).rejects.toBeInstanceOf(ManifestEditError)
+    await expect(applyManifestEdit(manifestPath, {
+      action: "patch-asset", assetId: "nobody", expectedSha256, patch: { prompt: "x" },
+    })).rejects.toThrow(/not declared/)
+    expect(await readFile(manifestPath, "utf8")).toBe(before)
+    // No temp file is left behind by the rejected validation.
+    const { readdir } = await import("node:fs/promises")
+    expect((await readdir(dir)).filter((name) => name.includes(".tmp"))).toEqual([])
+  })
+
+  it("adds a new asset, optionally restricted to one style, and refuses duplicates", async () => {
+    const { manifestPath } = await generated()
+    const result = await applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "tongs", expectedSha256: await sha256File(manifestPath),
+      asset: { prompt: "blacksmith tongs", width: 32, height: 16, styles: ["base"], tags: [] },
+    })
+    expect(result.changed).toBe(true)
+    const written = JSON.parse(await readFile(manifestPath, "utf8"))
+    expect(written.assets.tongs).toEqual({ prompt: "blacksmith tongs", width: 32, height: 16, styles: ["base"] })
+    await expect(applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "tongs", expectedSha256: result.sha256, asset: { prompt: "again" },
+    })).rejects.toThrow(/already exists/)
+    await expect(applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "bellows", expectedSha256: result.sha256,
+      asset: { prompt: "bellows", styles: ["missing-style"] },
+    })).rejects.toThrow(/unknown style/)
+    const specs = await resolveSpecs(await loadManifest(manifestPath))
+    expect(specs.map((spec) => spec.assetId)).toContain("tongs")
+  })
+})
+
+describe("serveGallery with --edit", () => {
+  it("accepts a same-origin edit with the session token and refuses everything else", async () => {
+    const { loaded, specs, lock, manifestPath } = await generated()
+    const reload = async () => buildGallerySnapshot({
+      loaded: await loadManifest(manifestPath),
+      specs: await resolveSpecs(await loadManifest(manifestPath)),
+      lock, lockPath,
+    })
+    const readOnly = await serveGallery({ open: false, load: reload })
+    try {
+      const res = await fetch(new URL("/api/edit", readOnly.url), {
+        method: "POST", headers: { "Content-Type": "application/json", Origin: readOnly.url.replace(/\/$/, "") }, body: "{}",
+      })
+      expect(res.status).toBe(405)
+      expect(readOnly.session).toBeNull()
+    } finally {
+      await readOnly.close()
+    }
+
+    const server = await serveGallery({
+      open: false,
+      load: reload,
+      edit: createGalleryEditHandler({ manifestFor: () => manifestPath, reload }),
+    })
+    try {
+      expect(server.session).toMatch(/^[0-9a-f]{32}$/)
+      const page = await (await fetch(server.url)).text()
+      expect(page).toContain(`const SESSION = "${server.session}";`)
+      const origin = server.url.replace(/\/$/, "")
+      const before = (await (await fetch(new URL("/api/gallery.json", server.url))).json()) as { project: { manifestSha256: string } }
+      const post = (headers: Record<string, string>, body: unknown) => fetch(new URL("/api/edit", server.url), {
+        method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body),
+      })
+      const edit = {
+        action: "patch-asset", assetId: "anvil", expectedSha256: before.project.manifestSha256, patch: { prompt: "a gilded anvil" },
+      }
+
+      expect((await post({ Origin: "http://evil.example", "X-Pixelkiln-Session": server.session! }, edit)).status).toBe(403)
+      expect((await post({ Origin: origin }, edit)).status).toBe(403)
+      expect((await post({ Origin: origin, "X-Pixelkiln-Session": "0".repeat(32) }, edit)).status).toBe(403)
+      const invalid = await post({ Origin: origin, "X-Pixelkiln-Session": server.session! }, { action: "patch-asset" })
+      expect(invalid.status).toBe(400)
+      expect(await invalid.text()).toMatch(/invalid edit/)
+      expect(JSON.parse(await readFile(manifestPath, "utf8")).assets.anvil.prompt).toBe("an anvil")
+
+      const ok = await post({ Origin: origin, "X-Pixelkiln-Session": server.session! }, edit)
+      expect(ok.status).toBe(200)
+      const after = (await ok.json()) as { items: Array<{ key: string; state: string; currentPrompt: string | null }>; project: { manifestSha256: string } }
+      expect(after.items.find((item) => item.key === "base/anvil")).toMatchObject({ state: "stale", currentPrompt: "a gilded anvil, clean" })
+      expect(after.project.manifestSha256).not.toBe(before.project.manifestSha256)
+      expect(JSON.parse(await readFile(manifestPath, "utf8")).assets.anvil.prompt).toBe("a gilded anvil")
+
+      // Replaying the old hash is a conflict, and nothing is written.
+      const replay = await post({ Origin: origin, "X-Pixelkiln-Session": server.session! }, edit)
+      expect(replay.status).toBe(409)
+      expect(await replay.text()).toMatch(/changed on disk/)
+    } finally {
+      await server.close()
+    }
+  })
+})
+
 describe("gallery CLI surface", () => {
   it("parses gallery with its server and filter flags", () => {
     expect(parseArgs(["gallery"])).toMatchObject({ command: "gallery", json: false, noOpen: false, workspace: undefined })
     expect(parseArgs(["gallery", "--workspace", "pixelkiln.workspace.json", "--json"]))
       .toMatchObject({ command: "gallery", workspace: "pixelkiln.workspace.json", json: true })
+    expect(parseArgs(["gallery", "--edit"])).toMatchObject({ command: "gallery", edit: true })
+    expect(parseArgs(["plan"]).edit).toBe(false)
     expect(parseArgs(["gallery", "--port", "4321", "--no-open", "--json", "--style", "base", "--only", "anvil"]))
       .toMatchObject({ command: "gallery", port: 4321, noOpen: true, json: true, styles: ["base"], assets: ["anvil"] })
     expect(() => parseArgs(["gallery", "base"])).toThrow(/Unexpected argument/)

@@ -68,7 +68,7 @@ PixelKiln keeps the missing record:
 
 ### Local human review
 
-`pixelkiln pick` opens a local candidate sheet: native aspect ratios, no blurred
+`pixelkiln pick` opens a local candidate sheet — native aspect ratios, crisp
 small sprites, and no model choosing artwork for you.
 
 ![PixelKiln candidate review UI](./website/public/review-ui-showcase.jpg)
@@ -76,15 +76,15 @@ small sprites, and no model choosing artwork for you.
 Left/Right inspects alternatives, Enter or 1–9 selects, 0 leaves a row
 unresolved, and closing without **Apply selections** applies nothing
 ([CLI reference](docs/CLI.md#pick)). [`pixelkiln gallery`](docs/CLI.md#gallery)
-is the read-only companion: every generation at integer zoom with the prompt,
-cost, hashes, lineage, and quality record behind it; `--json` prints the same.
+is its companion: every generation at integer zoom with its prompt, cost, hashes,
+lineage, and quality record; `--edit` changes prompts and adds assets without
+spending; `--json` prints the snapshot.
 
 ![PixelKiln generation gallery UI](./website/public/gallery-ui-showcase.jpg)
 
 ## Install
 
-Requires Node.js 22 or newer. Use the latest Node.js 24 LTS release for local
-development.
+Requires Node.js 22 or newer; use the latest Node.js 24 LTS for development.
 
 ```bash
 npm install --save-dev pixelkiln

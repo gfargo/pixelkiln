@@ -41,6 +41,7 @@ import {
   type GalleryBuild,
 } from "./gallery/snapshot.ts"
 import { serveGallery } from "./gallery/server.ts"
+import { createGalleryEditHandler } from "./gallery/edit.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import {
   loadClaims,
@@ -122,11 +123,14 @@ export function announceGalleryReady(
   count: number,
   stdout: CliWritable = process.stdout,
   stderr: CliWritable = process.stderr,
+  edit = false,
 ): void {
   const stream = stdout.isTTY ? stdout : stderr
   stream.write(
     `\n  gallery of ${count} generation${count === 1 ? "" : "s"}: ${url}\n` +
-      "  (read-only; press Ctrl+C to stop)\n\n",
+      (edit
+        ? "  (editing enabled: saves rewrite the manifest only; nothing is generated or spent; Ctrl+C to stop)\n\n"
+        : "  (read-only; press Ctrl+C to stop)\n\n"),
   )
 }
 
@@ -138,7 +142,9 @@ export function announceGalleryReady(
 async function runGallery(
   initial: GalleryBuild,
   reload: () => Promise<GalleryBuild>,
-  args: Pick<Args, "port" | "noOpen">,
+  args: Pick<Args, "port" | "noOpen" | "edit">,
+  /** Maps a workspace project id (or undefined) to the manifest an edit may rewrite. */
+  manifestFor?: (project?: string) => string | Promise<string>,
 ): Promise<void> {
   let first = true
   const server = await serveGallery({
@@ -152,7 +158,10 @@ async function runGallery(
     port: args.port,
     open: !args.noOpen,
     onProgress: log,
-    onReady: (url) => announceGalleryReady(url, initial.snapshot.totals.entries),
+    onReady: (url) => announceGalleryReady(url, initial.snapshot.totals.entries, undefined, undefined, args.edit),
+    ...(args.edit && manifestFor
+      ? { edit: createGalleryEditHandler({ manifestFor, reload, onProgress: log }) }
+      : {}),
   })
   await new Promise<void>((resolve) => {
     const stop = () => {
@@ -194,6 +203,8 @@ interface Args {
   check: boolean
   noOpen: boolean
   tag: boolean
+  /** gallery: allow the page to edit manifest intent (prompts, sizes, tags, new assets). */
+  edit: boolean
   from?: string
   out?: string
   generator?: string
@@ -249,6 +260,7 @@ const VALUE_FLAGS = [
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
+  "--edit",
 ] as const
 
 export const COMMANDS = [
@@ -487,6 +499,7 @@ export function parseArgs(argv: string[]): Args {
     check: rest.includes("--check"),
     noOpen: rest.includes("--no-open"),
     tag: rest.includes("--tag"),
+    edit: rest.includes("--edit"),
     from: get("--from"),
     out: get("--out"),
     generator: get("--generator"),
@@ -556,7 +569,8 @@ Commands
   status    Summarise the lockfile.
   gallery   Open a local read-only gallery of every generation and its
             provenance: prompt, provider, cost, outputs, lineage, quality.
-            --workspace <catalog> shows every registered project at once.
+            --workspace <catalog> shows every registered project at once;
+            --edit lets the page change prompts, sizes, tags, and add assets.
   workspace Register sibling projects and derive account-wide claims/status.
             add/remove/list/status/claims. Offline.
 
@@ -594,6 +608,7 @@ Options
   --check             plan/audit/cache: exit nonzero when the selected state is unsafe
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser during pick, salvage, or gallery
+  --edit              gallery: allow manifest edits from the page (never spends)
   --tag               Also push tags upstream after fetch
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
   --workspace <path>  Workspace catalog (default: pixelkiln.workspace.json). Also
@@ -1336,7 +1351,13 @@ async function main() {
     for (const project of initial.snapshot.workspace?.projects ?? []) {
       if (project.error) log(`  ${project.id}: unreadable — ${project.error}`)
     }
-    await runGallery(initial, build, args)
+    await runGallery(initial, build, args, async (projectId) => {
+      // Re-read the catalog so an edit targets the project as registered now,
+      // never a path captured when the server started.
+      const project = (await loadWorkspace(workspacePath)).projects.find((candidate) => candidate.id === projectId)
+      if (!projectId || !project) throw new Error(`unknown workspace project "${projectId ?? ""}"`)
+      return resolveProject(path.dirname(workspacePath), project).manifestPath
+    })
     return
   }
 
@@ -1434,7 +1455,7 @@ async function main() {
         filter,
       })
     }
-    await runGallery(await build(), reload, args)
+    await runGallery(await build(), reload, args, () => path.resolve(args.manifest))
     return
   }
 

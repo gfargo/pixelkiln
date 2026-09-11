@@ -17,10 +17,16 @@ import type { GallerySnapshot } from "./snapshot.ts"
  * (`<\/` and `<\u0021--` are both still valid JSON, so the page can parse
  * the very same bytes back for the refresh path).
  */
-export function renderGallery(snapshot: GallerySnapshot): string {
+export interface RenderGalleryOptions {
+  /** Present only when the server accepts edits; the page sends it back on every write. */
+  session?: string
+}
+
+export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOptions = {}): string {
   const data = JSON.stringify(snapshot)
     .replace(/<\//g, "<\\/")
     .replace(/<!--/g, "<\\u0021--")
+  const session = JSON.stringify(opts.session ?? null)
   const title = `pixelkiln — ${snapshot.project?.name ?? "workspace"}`
   return `<!doctype html>
 <html lang="en">
@@ -188,6 +194,24 @@ export function renderGallery(snapshot: GallerySnapshot): string {
     font-family:var(--mono); font-size:12px; text-decoration:underline; }
   .nav { display:flex; gap:6px; }
   #note { color:var(--warn); font-size:12.5px; }
+  .editing { color:var(--accent-soft); border:1px solid var(--accent); padding:2px 7px; font:650 10.5px/1.4 var(--mono); }
+  form.edit { border:1px solid var(--accent); padding:12px 14px 14px; margin-top:14px; display:grid; gap:10px; }
+  form.edit h3 { margin:0; font:650 12.5px/1 var(--mono); color:var(--accent-soft); }
+  form.edit .row { display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px; }
+  .field { display:grid; gap:4px; font-size:12px; color:var(--dim); min-width:0; }
+  .field span { font-family:var(--mono); font-size:11px; }
+  .field small { font-size:11px; color:var(--dim); }
+  .field input, .field textarea, .field select { background:var(--panel-deep); border:1px solid var(--line);
+    color:var(--text); padding:6px 8px; border-radius:0; font:13px/1.45 inherit; width:100%; min-width:0; }
+  .field textarea { resize:vertical; min-height:64px; font-family:inherit; }
+  .field input:focus, .field textarea:focus, .field select:focus { outline:none; border-color:var(--accent); }
+  .field.check { display:flex; align-items:center; gap:8px; }
+  .field.check input { width:auto; }
+  form.edit .actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  form.edit .msg { font-size:12.5px; }
+  form.edit .msg.bad { color:var(--bad); }
+  .notice { margin:14px 0 0; padding:10px 12px; border:1px solid var(--ok); color:var(--ok); font-size:13px; }
+  .shead .add { margin-left:auto; padding:3px 9px; font-size:12px; }
   @media (max-width: 720px) {
     .bar, .totals, .chips, .style, footer { padding-inline:14px; }
     .grid { grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); }
@@ -218,6 +242,7 @@ export function renderGallery(snapshot: GallerySnapshot): string {
       <option value="style">Group: by style</option>
       <option value="none">Group: none</option>
     </select>
+    <span id="editing" class="editing" hidden title="This gallery can write the manifest. It never contacts a provider.">editing</span>
     <button id="refresh" type="button" title="Re-read the manifest, lockfile, and disk">Refresh</button>
     <label class="chip" title="Refresh every 5 seconds while this tab is visible"><input id="auto" type="checkbox"> auto</label>
   </div>
@@ -228,12 +253,15 @@ export function renderGallery(snapshot: GallerySnapshot): string {
 <footer>
   Click a sprite for its full record. <kbd>←</kbd>/<kbd>→</kbd> step through the visible set while a record
   is open, <kbd>Esc</kbd> closes it, and <kbd>/</kbd> jumps to search. This page reads the manifest, lockfile,
-  and disk only — it never contacts a provider and never writes anything.
+  and disk only — it never contacts a provider<span id="foot-edit"> and never writes anything</span><span id="foot-editing" hidden>.
+  Editing is on: saving rewrites the manifest and nothing else; generation still goes through <code>pixelkiln gen</code></span>.
   <span id="note"></span>
 </footer>
 <div id="drawer-host"></div>
 <script>
 const INITIAL = ${data};
+const SESSION = ${session};
+const EDITABLE = SESSION !== null;
 let snap = INITIAL;
 const STATE_TONE = {
   ok: 'ok', stale: 'warn', orphaned: 'warn', untracked: 'warn', blocked: 'warn',
@@ -245,6 +273,10 @@ const ui = {
   sort: 'key', group: 'style', open: null, member: 0, zoom: 'auto', playing: null,
   /** Cards rendered per pass; a project with thousands of assets opts into the rest. */
   limit: 600,
+  /** Item id whose edit form is open, or 'new:<project>:<style>' for an add form. */
+  editing: null,
+  /** One-shot confirmation shown in the drawer after a save. */
+  notice: null,
 };
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -279,6 +311,40 @@ const displayScale = (w, h, boxW, boxH) => {
   return s >= 1 ? Math.floor(s) : s;
 };
 
+const projectOf = (item) => snap.workspace
+  ? snap.workspace.projects.find((pr) => pr.id === item.project)
+  : snap.project;
+
+// The only write this page ever makes: one manifest edit, quoting the
+// manifest hash it was rendered from so a concurrent hand edit is refused
+// rather than overwritten. The server answers with the rebuilt gallery.
+async function postEdit(body) {
+  const res = await fetch('/api/edit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Pixelkiln-Session': SESSION },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = new Error(await res.text());
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+const field = (label, input, hint) => {
+  const w = el('label', 'field');
+  w.append(el('span', null, label), input);
+  if (hint) w.append(el('small', null, hint));
+  return w;
+};
+const numberInput = (value, placeholder) => {
+  const i = el('input'); i.type = 'number'; i.min = '16'; i.step = '1';
+  i.value = value == null ? '' : String(value); i.placeholder = placeholder || '';
+  return i;
+};
+const numberOrNull = (input) => input.value.trim() === '' ? null : Number(input.value);
+const splitTags = (value) => value.split(',').map((t) => t.trim()).filter(Boolean);
+
 function visibleItems() {
   const q = ui.q.trim().toLowerCase();
   let items = snap.items.filter((item) => {
@@ -305,6 +371,9 @@ function visibleItems() {
 }
 
 function renderHeader() {
+  $('editing').hidden = !EDITABLE;
+  $('foot-edit').hidden = EDITABLE;
+  $('foot-editing').hidden = !EDITABLE;
   const p = $('project');
   p.textContent = '';
   if (snap.workspace) {
@@ -507,7 +576,15 @@ function renderMain(items) {
       meta.append(el('span', null, sec.items.length + ' of ' + s.items + (s.items === 1 ? ' asset' : ' assets')));
       if (Object.keys(s.spendByUnit).length) meta.append(el('span', null, fmtSpend(s.spendByUnit)));
       head.append(meta);
+      const addKey = 'new:' + (s.project || '') + ':' + s.id;
+      if (EDITABLE && s.outDir) {
+        const add = el('button', 'add', ui.editing === addKey ? 'Cancel' : '+ Add asset');
+        add.type = 'button';
+        add.onclick = () => { ui.editing = ui.editing === addKey ? null : addKey; render(); };
+        head.append(add);
+      }
       wrap.append(head);
+      if (ui.editing === addKey) wrap.append(addAssetForm(s));
     }
     const grid = el('div', 'grid');
     for (const item of sec.items) grid.append(card(item));
@@ -542,6 +619,131 @@ function projectHeader(pr, count) {
   line.append(meta);
   head.append(line);
   return head;
+}
+
+// ---- editing (only when the server minted a session) ---------------------
+
+function addAssetForm(style) {
+  const pr = snap.workspace ? snap.workspace.projects.find((x) => x.id === style.project) : snap.project;
+  const siblings = snap.styles.filter((x) => x.project === style.project);
+  const form = el('form', 'edit');
+  form.append(el('h3', null, 'New asset in ' + style.id));
+  const id = el('input'); id.type = 'text'; id.placeholder = 'asset-id'; id.required = true; id.autocomplete = 'off';
+  id.pattern = '[^/\\\\]+';
+  const prompt = el('textarea'); prompt.placeholder = 'What to generate. The style adds its prefix and suffix.'; prompt.required = true;
+  const width = numberInput(null, 'style default'), height = numberInput(null, 'style default');
+  const category = el('input'); category.type = 'text'; category.placeholder = 'optional subfolder';
+  const only = el('input'); only.type = 'checkbox'; only.checked = siblings.length > 1;
+  const onlyField = el('label', 'field check'); onlyField.append(only, el('span', null, 'only in ' + style.id));
+  const row1 = el('div', 'row'); row1.append(field('id', id), field('category', category));
+  const row2 = el('div', 'row'); row2.append(field('width', width), field('height', height));
+  form.append(row1, field('prompt', prompt), row2);
+  if (siblings.length > 1) form.append(onlyField);
+  const actions = el('div', 'actions');
+  const save = el('button', 'primary', 'Add asset'); save.type = 'submit';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; render(); };
+  const msg = el('span', 'msg');
+  actions.append(save, cancel, msg);
+  form.append(actions);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
+    const asset = { prompt: prompt.value };
+    if (numberOrNull(width) !== null) asset.width = numberOrNull(width);
+    if (numberOrNull(height) !== null) asset.height = numberOrNull(height);
+    if (category.value.trim()) asset.category = category.value.trim();
+    if (siblings.length > 1 && only.checked) asset.styles = [style.id];
+    try {
+      const body = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr.manifestSha256, asset };
+      if (style.project) body.project = style.project;
+      snap = await postEdit(body);
+      const newId = (style.project ? style.project + ':' : '') + style.id + '/' + id.value.trim();
+      ui.editing = null;
+      ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
+      render();
+      if (snap.items.some((i) => i.id === newId)) openItem(newId);
+    } catch (err) {
+      save.disabled = false;
+      msg.className = 'msg bad';
+      msg.textContent = err.message + (err.status === 409 ? ' — press Refresh.' : '');
+    }
+  };
+  setTimeout(() => id.focus(), 0);
+  return form;
+}
+
+function editForm(item) {
+  const pr = projectOf(item);
+  const a = item.asset;
+  const styled = !!(a.promptByStyle && Object.hasOwn(a.promptByStyle, item.styleId));
+  const form = el('form', 'edit');
+  form.append(el('h3', null, 'Edit intent'));
+  const scope = el('select');
+  scope.append(new Option('Prompt for every style', 'all'), new Option('Prompt only for ' + item.styleId, 'style'));
+  scope.value = styled ? 'style' : 'all';
+  const prompt = el('textarea');
+  prompt.value = styled ? a.promptByStyle[item.styleId] : a.prompt;
+  scope.onchange = () => {
+    prompt.value = scope.value === 'style' ? (a.promptByStyle?.[item.styleId] ?? a.prompt) : a.prompt;
+  };
+  const width = numberInput(a.width, 'style default'), height = numberInput(a.height, 'style default'), size = numberInput(a.size, 'style default');
+  const category = el('input'); category.type = 'text'; category.value = a.category || '';
+  const tags = el('input'); tags.type = 'text'; tags.value = (a.tags || []).join(', '); tags.placeholder = 'comma-separated';
+  form.append(field('prompt', prompt, 'The style adds its prefix and suffix; the sent prompt is shown below.'), field('applies to', scope));
+  const row = el('div', 'row'); row.append(field('width', width), field('height', height), field('size', size));
+  form.append(row);
+  const row2 = el('div', 'row');
+  row2.append(field('category', category, 'Output subfolder. The existing file stays put; restore or gen writes the new path.'), field('tags', tags));
+  form.append(row2);
+  const actions = el('div', 'actions');
+  const save = el('button', 'primary', 'Save to manifest'); save.type = 'submit';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; renderDrawer(); };
+  const msg = el('span', 'msg');
+  actions.append(save, cancel, msg);
+  form.append(actions);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const patch = {};
+    if (scope.value === 'style') {
+      if (!styled || prompt.value !== a.promptByStyle[item.styleId]) patch.promptForStyle = { styleId: item.styleId, prompt: prompt.value };
+    } else {
+      if (prompt.value !== a.prompt) patch.prompt = prompt.value;
+      if (styled) patch.promptForStyle = { styleId: item.styleId, prompt: null };
+    }
+    for (const [key, input] of [['width', width], ['height', height], ['size', size]]) {
+      const next = numberOrNull(input);
+      if (next !== (a[key] ?? null)) patch[key] = next;
+    }
+    const nextCategory = category.value.trim() || null;
+    if (nextCategory !== (a.category || null)) patch.category = nextCategory;
+    const nextTags = splitTags(tags.value);
+    if (nextTags.join('\\u0000') !== (a.tags || []).join('\\u0000')) patch.tags = nextTags;
+    if (!Object.keys(patch).length) { ui.editing = null; renderDrawer(); return; }
+    save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
+    try {
+      const body = { action: 'patch-asset', assetId: item.assetId, expectedSha256: pr.manifestSha256, patch };
+      if (item.project) body.project = item.project;
+      snap = await postEdit(body);
+      const after = snap.items.find((i) => i.id === item.id);
+      ui.editing = null;
+      ui.notice = {
+        id: item.id,
+        text: after
+          ? 'Saved. plan now reports ' + after.state +
+            (after.estimatedCost !== null && (after.state === 'stale' || after.state === 'missing')
+              ? ' — ' + fmtCost(after.costUnit, after.estimatedCost) + ' to generate. Nothing is spent until you run pixelkiln gen.'
+              : '.')
+          : 'Saved.',
+      };
+      render();
+    } catch (err) {
+      save.disabled = false;
+      msg.className = 'msg bad';
+      msg.textContent = err.message + (err.status === 409 ? ' — press Refresh.' : '');
+    }
+  };
+  setTimeout(() => prompt.focus(), 0);
+  return form;
 }
 
 // ---- detail drawer -------------------------------------------------------
@@ -689,13 +891,23 @@ function renderDrawer() {
   const next = el('button', null, '→'); next.type = 'button'; next.title = 'Next (→)';
   next.disabled = pos < 0 || pos >= items.length - 1; next.onclick = () => step(1);
   const close = el('button', null, 'Close'); close.type = 'button'; close.onclick = () => closeItem();
+  const canEdit = EDITABLE && item.declared && item.asset && projectOf(item)?.manifestSha256;
+  if (canEdit) {
+    const edit = el('button', null, ui.editing === item.id ? 'Cancel edit' : 'Edit');
+    edit.type = 'button';
+    edit.onclick = () => { ui.editing = ui.editing === item.id ? null : item.id; ui.notice = null; renderDrawer(); };
+    nav.append(edit);
+  }
   nav.append(prev, next, close);
   head.append(title, nav);
 
   const body = el('div', 'dbody');
   const previewHost = el('div');
   renderPreview(item, previewHost);
-  body.append(previewHost, stateNode(item.state, item.reason));
+  body.append(previewHost);
+  if (ui.notice && ui.notice.id === item.id) body.append(el('div', 'notice', ui.notice.text));
+  body.append(stateNode(item.state, item.reason));
+  if (canEdit && ui.editing === item.id) body.append(editForm(item));
   // Plan already quotes the error as the reason for a failed entry; only a
   // stale or superseded failure needs its own line.
   if (item.error && !item.reason.includes(item.error)) body.append(stateNode('failed', item.error));
@@ -825,7 +1037,13 @@ function renderDrawer() {
     body.append(s);
   }
 
-  if (item.asset) body.append(jsonDetails('Manifest asset', item.asset));
+  if (item.asset) {
+    // Show the asset as the author would write it: schema defaults that are
+    // empty add nothing but noise to a record.
+    const declared = Object.fromEntries(Object.entries(item.asset).filter(([, v]) =>
+      !(Array.isArray(v) && !v.length) && !(v && typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)));
+    body.append(jsonDetails('Manifest asset', declared));
+  }
   if (item.providerMetadata && Object.keys(item.providerMetadata).length) {
     body.append(jsonDetails('Provider metadata', item.providerMetadata));
   }
@@ -876,6 +1094,7 @@ function markActive(key) {
   return card;
 }
 function openItem(key) {
+  if (ui.open !== key) { ui.editing = null; if (ui.notice && ui.notice.id !== key) ui.notice = null; }
   ui.open = key; ui.member = 0; ui.zoom = 'auto';
   syncHash();
   const card = markActive(key);
@@ -885,6 +1104,8 @@ function openItem(key) {
 function closeItem() {
   const key = ui.open;
   ui.open = null;
+  ui.editing = null;
+  ui.notice = null;
   syncHash();
   const card = markActive(null);
   renderDrawer();

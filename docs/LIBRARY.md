@@ -118,6 +118,14 @@ every page load and `/api/gallery.json` request, and `media` is the exact
 allowlist of files the server will read. Output URLs inside the snapshot are
 only meaningful while that server runs.
 
+Passing `edit: createGalleryEditHandler({ manifestFor, reload })` adds the one
+write route behind `pixelkiln gallery --edit`. `applyManifestEdit(path, edit)`
+is the underlying primitive: it patches the raw manifest JSON, preserves the
+file's indentation, refuses to write when the file's hash no longer matches
+`expectedSha256` (`ManifestDriftError`), and validates the result through
+`loadManifest` and `resolveSpecs` before the rename (`ManifestEditError`).
+It never touches the lockfile or a provider.
+
 ## Audit and gate generated art
 
 ```ts
