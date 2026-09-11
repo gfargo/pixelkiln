@@ -1,3 +1,10 @@
+# [0.23.0](https://github.com/gfargo/pixelkiln/compare/v0.22.0...v0.23.0) (2026-09-11)
+
+
+### Features
+
+* **gallery:** edit a style's view and background removal ([#90](https://github.com/gfargo/pixelkiln/issues/90)) ([79b0956](https://github.com/gfargo/pixelkiln/commit/79b09567602a4b16bc5c2aa48dacb696619e20b0))
+
 # [0.22.0](https://github.com/gfargo/pixelkiln/compare/v0.21.0...v0.22.0) (2026-09-11)
 
 
