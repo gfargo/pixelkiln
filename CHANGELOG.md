@@ -1,3 +1,15 @@
+# [0.32.0](https://github.com/gfargo/pixelkiln/compare/v0.31.0...v0.32.0) (2026-09-12)
+
+
+### Bug Fixes
+
+* **gallery:** say which flags unlock editing and generation on a read-only page ([#106](https://github.com/gfargo/pixelkiln/issues/106)) ([8efae32](https://github.com/gfargo/pixelkiln/commit/8efae32113d9e36c8e07d2090866e75907246bda))
+
+
+### Features
+
+* **gallery:** restore or regenerate orphaned and untracked records ([#107](https://github.com/gfargo/pixelkiln/issues/107)) ([c98776d](https://github.com/gfargo/pixelkiln/commit/c98776d3266cef39a522c48d3f2b85a33670ad53))
+
 # [0.31.0](https://github.com/gfargo/pixelkiln/compare/v0.30.0...v0.31.0) (2026-09-12)
 
 
