@@ -118,8 +118,11 @@ every page load and `/api/gallery.json` request, and `media` is the exact
 allowlist of files the server will read. Output URLs inside the snapshot are
 only meaningful while that server runs.
 
-Passing `edit: createGalleryEditHandler({ manifestFor, reload })` adds the one
-write route behind `pixelkiln gallery --edit`. `applyManifestEdit(path, edit)`
+Passing `edit: createGalleryEditHandler({ manifestFor, reload, loadProject })`
+adds the one write route behind `pixelkiln gallery --edit`, which also carries
+the page's hand-edit actions (`start-edit`, `detach-edit`, `save-edit`);
+`editor: createGalleryEditorHandlers()` adds the in-browser editor beside it.
+`applyManifestEdit(path, edit)`
 is the underlying primitive: it patches the raw manifest JSON, preserves the
 file's indentation, refuses to write when the file's hash no longer matches
 `expectedSha256` (`ManifestDriftError`), and validates the result through
@@ -134,6 +137,49 @@ and `applyReview` host the `pick` sheet for a job's waiting keys. The sheet
 itself comes from `prepareReview`, which `runPicker` also uses: it gathers the
 candidate groups, the local files the sheet may load, and the apply step,
 without an HTTP server of its own.
+
+## Hand edits and the in-browser editor
+
+A hand edit never touches the generated file: it is a sibling under
+`<outDir>/edits/` that the manifest points at with `source` (or
+`sourceByStyle`), so `plan` keeps the generation `ok` while `packStyle`,
+`mountStyle`, and `exportTileset` place the edit. `startHandEdit` and
+`saveHandEdit` are what `pixelkiln edit` and the gallery's editor call:
+
+```ts
+import {
+  detachHandEdit,
+  readHandEditCompanion,
+  saveHandEdit,
+  startHandEdit,
+} from "pixelkiln"
+
+const spec = specs.find((s) => s.styleId === "base" && s.assetId === "anvil")!
+const started = await startHandEdit(loaded, lock, spec)   // copies, declares, idempotent
+started.members                                           // one file, or one per member of a set
+await saveHandEdit(loaded, lock, spec, {
+  png: bytesFromYourEditor,                                // or frames: [{ role, png }] for a set
+  project: pxoBytes,                                       // optional layered file kept beside it
+  editor: "your-editor@1.0", protocol: 3,
+})
+await readHandEditCompanion(started.editPath)             // { version: 2, outputs: [{ role, basedOn, sha256 }], … }
+await detachHandEdit(loaded, spec)                        // manifest only; the files stay
+```
+
+`saveHandEdit` validates every PNG, checks its size against the generated
+art, refuses a set whose members changed, replaces the files atomically, and
+writes the companion; `startHandEdit` and `saveHandEdit` take
+`expectedSha256` so a stale caller is refused with `ManifestDriftError` when
+the manifest must change. `handEditPath`, `handEditMembers`, and
+`sourceOutputPath` give the file layout without writing anything.
+
+The in-browser editor is a pinned Pixelorama build the package does not carry:
+`EDITOR_PIN` names its release and file hashes, `editorStatus()` says whether
+it is installed under `editorDir()`, and `installEditor({ onProgress })`
+fetches and verifies only what is missing. `createGalleryEditorHandlers()`
+is the `editor` option `serveGallery` takes to report, install, and serve it;
+the page speaks the bridge protocol documented in
+`tools/pixelorama-bridge/README.md`.
 
 ## Audit and gate generated art
 

@@ -71,6 +71,7 @@ export {
   type BuildGalleryOptions,
   type BuildWorkspaceGalleryOptions,
   type GalleryBuild,
+  type GalleryEditMeta,
   type GalleryItem,
   type GalleryMedia,
   type GalleryOutput,
@@ -79,8 +80,54 @@ export {
   type GallerySnapshot,
   type GalleryState,
   type GalleryStyle,
+  type HandEditStatus,
 } from "./gallery/snapshot.ts"
 export { renderGallery, type RenderGalleryOptions } from "./gallery/page.ts"
+export {
+  detachHandEdit,
+  HAND_EDIT_DIR,
+  handEditBase,
+  handEditBases,
+  handEditCompanionPath,
+  HandEditCompanionSchema,
+  handEditMembers,
+  handEditPath,
+  handEditProjectPath,
+  MAX_HAND_EDIT_BYTES,
+  openInEditor,
+  readHandEditCompanion,
+  saveHandEdit,
+  startHandEdit,
+  type HandEditCompanion,
+  type HandEditMember,
+  type HandEditSave,
+  type HandEditSaveInput,
+  type HandEditStart,
+} from "./pipeline/hand-edit.ts"
+export {
+  EDITOR_PIN,
+  EDITOR_RELEASE_BASE,
+  type EditorPin,
+} from "./editor/pin.ts"
+export {
+  editorBaseUrl,
+  editorDir,
+  EditorInstallError,
+  editorStatus,
+  editorToolsRoot,
+  installEditor,
+  type EditorInstallOptions,
+  type EditorInstallProgress,
+  type EditorInstallResult,
+  type EditorInstallStatus,
+} from "./editor/install.ts"
+export {
+  createGalleryEditorHandlers,
+  editorRoute,
+  type GalleryEditorHandlers,
+  type GalleryEditorOptions,
+  type GalleryEditorStatus,
+} from "./gallery/editor.ts"
 export {
   applyManifestEdit,
   createGalleryEditHandler,

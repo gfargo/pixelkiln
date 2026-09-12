@@ -182,6 +182,20 @@ provider object ids to remote content hashes for adoption/salvage. Neither is
 authoritative or committed; both can be deleted and rebuilt. Every recovery
 byte is structurally validated before use.
 
+## Hand edits
+
+A hand edit is committed art laid beside a generation, never over it. The
+manifest points at it with `asset.source` (or `sourceByStyle` for one style);
+`plan` keeps reporting the generation from the lockfile, while `pack`,
+`mount`, `export`, quality profiles, and revisions read the edit. For an entry
+with several PNG outputs the source is a stem and each member is
+`<stem>-<role>.png`, the same rule generated outputs follow — unless a file
+exists at the source path, which is one image placed for the whole set. A
+browser save writes `<edit>.edit.json` beside the edit: the editor, the time,
+and per file the hash of the generation it started from and its own hash, so
+`regenerated-since` is decided by comparing hashes, and "unchanged" is decided
+by comparing pixels rather than bytes, since editors re-encode.
+
 ## Pinned editor build
 
 The gallery's in-browser editor is a web export of Pixelorama with PixelKiln's
