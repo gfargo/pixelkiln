@@ -6,7 +6,7 @@ import path from "node:path"
 import { loadLock, spendByUnit } from "../lock.ts"
 import { loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
 import { mediaTypeFromExtension, type MediaType } from "../media.ts"
-import { currentEntryOutputPath, isFrameSetEntry, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath, sourceOutputPath } from "../outputs.ts"
+import { currentEntryOutputPath, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath, sourceIsStem, sourceOutputPath } from "../outputs.ts"
 import { buildPlan, type PlanState } from "../pipeline/plan.ts"
 import type { QualityProfileInspection } from "../pipeline/quality-profile.ts"
 import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine.ts"
@@ -153,7 +153,7 @@ export interface GalleryItem {
   edit: GalleryOutput | null
   /**
    * Every file of the edit, one per output in the same order — the edit
-   * itself for a single image, `<stem>-<role>.png` per member of a frame set.
+   * itself for a single image, `<stem>-<role>.png` per member of a set.
    * Empty without a source.
    */
   edits: GalleryOutput[]
@@ -490,9 +490,9 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       )
       if (spec.source) {
         const editPath = path.resolve(root, spec.source)
-        // The source itself, or one file per output for a frame set, so
-        // status is judged member by member.
-        const memberCount = isFrameSetEntry(entry) ? entry.outputs.length : 1
+        // The source itself, or one file per output for a set's hand edit,
+        // so status is judged member by member.
+        const memberCount = sourceIsStem(spec.source, entry, root) ? entry.outputs.length : 1
         const editShas = await Promise.all(
           Array.from({ length: memberCount }, async (_, index) => {
             const file = sourceOutputPath(spec.source!, entry, index, root)

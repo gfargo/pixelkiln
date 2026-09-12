@@ -1676,14 +1676,15 @@ async function main() {
     }
     const started = await startHandEdit(loaded, lock, spec)
     const set = started.members.length > 1
-    log(`  ${started.created ? "created" : "found"} ${started.source}${set ? ` (${started.members.length} frames)` : ""}${started.declared ? " and declared it as the asset's source" : ""}`)
+    const kind = spec.generator === "frames" ? "frames" : "members"
+    log(`  ${started.created ? "created" : "found"} ${started.source}${set ? ` (${started.members.length} ${kind})` : ""}${started.declared ? " and declared it as the asset's source" : ""}`)
     if (set) for (const member of started.members) log(`    ${member.role ?? ""}  ${path.relative(process.cwd(), member.path)}`)
     if (args.noOpen) {
       log(`  edit ${set ? "them" : "it"} with your own tool, then run pixelkiln plan; mount and pack place ${set ? "them" : "it"} in place of the generated art`)
     } else {
       // A desktop editor opens one file; a set's first frame is the way in.
       const command = openInEditor(started.members[0]!.path)
-      log(`  opened ${set ? "the first frame " : ""}with: ${command}${process.env.PIXELKILN_EDITOR ? "" : " (set PIXELKILN_EDITOR to choose the program)"}`)
+      log(`  opened ${set ? `the first ${kind === "frames" ? "frame" : "member"} ` : ""}with: ${command}${process.env.PIXELKILN_EDITOR ? "" : " (set PIXELKILN_EDITOR to choose the program)"}`)
     }
     return
   }

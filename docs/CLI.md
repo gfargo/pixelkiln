@@ -243,12 +243,13 @@ it is. `--no-open` creates and declares without launching anything.
 
 `PIXELKILN_EDITOR` names the program (a name, or a command with arguments; the
 file path is appended). Without it the file opens with the OS default handler.
-A ComfyUI `frames` asset is edited as a set: one file per frame,
-`<outDir>/edits/<name>-<role>.png`, with the manifest `source` naming the stem
-(`<outDir>/edits/<name>.png`), and the first frame is what opens; `pack` and
-`mount` place the members by role. Other structural sets and GIF animations
-are refused with the reason. `--only` must resolve to one asset in one style,
-so add `--style` when the asset is shared.
+A set of PNG outputs — a ComfyUI `frames` animation, a PixelLab `tiles` set —
+is edited as a set: one file per member, `<outDir>/edits/<name>-<role>.png`,
+with the manifest `source` naming the stem (`<outDir>/edits/<name>.png`), and
+the first member is what opens; `pack`, `mount`, and `export` place the
+members by role. GIF animations and sets with a GIF in them are refused with
+the reason. `--only` must resolve to one asset in one style, so add `--style`
+when the asset is shared.
 
 ### `tools`
 
@@ -404,10 +405,10 @@ that click or `tools install editor`. **Save to project** (or ⌘S / Ctrl+S in
 the editor) hands the flattened image back to the page, which writes the same
 `edits/` file `pixelkiln edit` would and declares it; the sheet stays open for
 the next change, **Save & close** does both, and closing with unsaved changes
-asks first. A ComfyUI `frames` asset opens as one Pixelorama project with a
-frame per member at the set's fps; saving writes every frame back under its
-role, and a set that comes back with a different number of frames is refused
-rather than guessed at. A browser save also keeps Pixelorama's layered `.pxo`
+asks first. A set opens as one Pixelorama project with a frame per member —
+an animation at its fps, a tile set as one frame per tile — and saving writes
+every member back under its role; a set that comes back with a different
+number of frames is refused rather than guessed at. A browser save also keeps Pixelorama's layered `.pxo`
 beside the edit — the next **Edit in browser** hands it back, so layers and
 frames come back as they were (the flattened PNG is used only if the file
 cannot be read, and the sheet says which) — and writes `<edit>.edit.json`

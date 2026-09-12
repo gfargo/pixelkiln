@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs"
 import path from "node:path"
 import { upsert } from "./lock.ts"
 import { mediaExtension, type MediaType } from "./media.ts"
@@ -64,24 +65,36 @@ export function memberPath(
   return `${stem}-${safeRole}${ext}`
 }
 
-/** A lock entry whose `source` names a stem with one file per member rather than one file. */
+/** Several PNG outputs — a frame set, a tile set — that a hand edit covers one file per member. */
+export function isMemberSetEntry(entry: Pick<LockEntry, "outputs">): boolean {
+  return entry.outputs.length > 1 && entry.outputs.every((output) => !output.mediaType || output.mediaType === "image/png")
+}
+
+/** An ordered animation: the members are frames, played at the recorded fps. */
 export function isFrameSetEntry(entry: Pick<LockEntry, "generator" | "outputs">): boolean {
-  return entry.generator === "frames" && entry.outputs.length > 1
+  return entry.generator === "frames" && isMemberSetEntry(entry)
 }
 
 /**
- * Where a declared `source` places one output of an entry. A frame set's
- * source is a stem, expanded per role like its generated frames; anything
- * else places the source file itself.
+ * Whether a declared `source` for this entry names a stem with one file per
+ * member (`<stem>-<role>.png`, the rule generated outputs follow) rather than
+ * one file. A hand edit of a set is always the former; a file that exists at
+ * the source path itself is one committed image placed for the whole set, as
+ * it always was.
  */
+export function sourceIsStem(source: string, entry: Pick<LockEntry, "outputs">, manifestDir: string): boolean {
+  return isMemberSetEntry(entry) && !existsSync(path.resolve(manifestDir, source))
+}
+
+/** Where a declared `source` places one output of an entry. */
 export function sourceOutputPath(
   source: string,
-  entry: Pick<LockEntry, "generator" | "outputs">,
+  entry: Pick<LockEntry, "outputs">,
   index: number,
   manifestDir: string,
 ): string {
   const absolute = path.resolve(manifestDir, source)
-  if (!isFrameSetEntry(entry)) return absolute
+  if (!sourceIsStem(source, entry, manifestDir)) return absolute
   const output = entry.outputs[index]!
   return memberPath(absolute, output.role, index, entry.outputs.length, output.mediaType)
 }
