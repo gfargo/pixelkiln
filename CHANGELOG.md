@@ -1,3 +1,11 @@
+# [0.27.0](https://github.com/gfargo/pixelkiln/compare/v0.26.0...v0.27.0) (2026-09-12)
+
+
+### Features
+
+* **editor:** install and serve the pinned Pixelorama build from the gallery ([#96](https://github.com/gfargo/pixelkiln/issues/96)) ([65773b4](https://github.com/gfargo/pixelkiln/commit/65773b40d6b12d9322d7cc0cae27f3b79dde43bd))
+* **gallery:** edit sprites in the browser and save them back as hand edits ([#97](https://github.com/gfargo/pixelkiln/issues/97)) ([9518103](https://github.com/gfargo/pixelkiln/commit/951810307b2102c07914ccf56e7e75ae73690dfa))
+
 # [0.26.0](https://github.com/gfargo/pixelkiln/compare/v0.25.0...v0.26.0) (2026-09-12)
 
 
