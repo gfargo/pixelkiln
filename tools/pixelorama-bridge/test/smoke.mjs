@@ -1,0 +1,73 @@
+// End-to-end smoke for the bridge: open → paint → save, against a built
+// editor, driven through the host page. Needs Chrome (CHROME env or the usual
+// paths) and puppeteer-core on the path; the build dir is the first argument.
+import { spawn } from "node:child_process"
+import { existsSync } from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+import puppeteer from "puppeteer-core"
+
+const build = path.resolve(process.argv[2] ?? ".work/build")
+const chrome = process.env.CHROME ?? [
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/usr/bin/google-chrome-stable", "/usr/bin/google-chrome", "/usr/bin/chromium-browser", "/usr/bin/chromium",
+].find(existsSync)
+if (!chrome) { console.error("no Chrome found; set CHROME"); process.exit(2) }
+const here = path.dirname(fileURLToPath(import.meta.url))
+const port = 4399
+const server = spawn(process.execPath, [path.join(here, "../scripts/serve.mjs"), build, String(port)], { stdio: ["ignore", "pipe", "inherit"] })
+await new Promise((resolve) => server.stdout.on("data", (d) => { if (String(d).includes("bridge host")) resolve() }))
+const fail = (msg) => { console.error("FAIL: " + msg); process.exitCode = 1 }
+// Under software WebGL the wasm compile blocks the renderer for 30-60 s, so
+// give the protocol room and poll slowly rather than hammer a stalled thread.
+const browser = await puppeteer.launch({ executablePath: chrome, headless: true, protocolTimeout: 600_000, args: ["--no-first-run", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--no-sandbox"] })
+try {
+  const page = await browser.newPage()
+  const errors = []
+  page.on("pageerror", (e) => errors.push(e.message))
+  page.on("console", (m) => { if (/EXTENSION ERROR|SCRIPT ERROR|pixelkiln/.test(m.text())) console.log("  console:", m.text().slice(0, 200)) })
+  await page.setViewport({ width: 1400, height: 900 })
+  const t0 = Date.now()
+  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "domcontentloaded" })
+  await page.waitForFunction(() => window.__host.ready !== null, { timeout: 300_000, polling: 2000 })
+  const ready = await page.evaluate(() => window.__host.ready)
+  console.log(`ready in ${Math.round((Date.now() - t0) / 1000)}s:`, JSON.stringify(ready))
+  if (ready.version !== 1) fail("protocol version " + ready.version)
+
+  await page.evaluate(() => window.__host.openSample())
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const opened = await page.evaluate(() => window.__host.opened)
+  console.log("opened:", JSON.stringify(opened))
+  if (opened.width !== 32 || opened.height !== 32) fail("opened size " + opened.width + "x" + opened.height)
+  await new Promise((r) => setTimeout(r, 1500))
+  if (await page.evaluate(() => window.__host.dirty)) fail("document dirty right after open")
+
+  // Paint one pixel: the pencil is the default left tool; click the canvas
+  // centre inside the iframe. The canvas fills the iframe's viewport.
+  const frame = await page.$("#editor")
+  const box = await frame.boundingBox()
+  await page.mouse.click(box.x + box.width * 0.48, box.y + box.height * 0.45)
+  await new Promise((r) => setTimeout(r, 1200))
+  const dirty = await page.evaluate(() => window.__host.dirty)
+  console.log("dirty after paint:", dirty)
+  if (!dirty) fail("no dirty message after painting")
+
+  const request = await page.evaluate(() => window.__host.requestSave())
+  await page.waitForFunction(() => window.__host.lastSave !== null, { timeout: 30_000 })
+  const save = await page.evaluate(() => { const s = window.__host.lastSave; return { request: s.request, width: s.width, height: s.height, png: s.png.length, pxo: s.pxo.length, differs: (() => { const a = new Uint8Array(window.__host.sample); if (a.length !== s.png.length) return true; for (let i = 0; i < a.length; i++) if (a[i] !== s.png[i]) return true; return false })(), pngSig: [...s.png.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join(""), pxoSig: [...s.pxo.slice(0, 2)].map((b) => b.toString(16)).join("") } })
+  console.log("save:", JSON.stringify(save))
+  if (save.request !== request) fail("save answered a different request")
+  if (save.width !== 32 || save.height !== 32) fail("saved size changed")
+  if (save.pngSig !== "89504e470d0a1a0a") fail("save is not a PNG")
+  if (!save.differs) fail("saved PNG is identical to the sample; paint did not land")
+  if (save.pxo < 100 || save.pxoSig !== "504b") fail("pxo missing or not a zip")
+  if (await page.evaluate(() => window.__host.dirty)) fail("still dirty after save")
+  const errs = await page.evaluate(() => window.__host.errors)
+  if (errs.length) fail("bridge errors: " + JSON.stringify(errs))
+  if (errors.length) console.log("page errors:", errors.slice(0, 3))
+  await page.screenshot({ path: path.join(process.cwd(), "smoke.png") })
+  console.log(process.exitCode ? "smoke FAILED" : "smoke OK")
+} finally {
+  await browser.close()
+  server.kill()
+}

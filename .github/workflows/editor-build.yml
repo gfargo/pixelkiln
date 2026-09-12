@@ -1,0 +1,122 @@
+name: Editor build
+
+# Builds the PixelKiln editor: upstream Pixelorama at the tag pinned in
+# tools/pixelorama-bridge/pin.json plus the PixelKiln host bridge, exported for
+# the web. Verifies the open → paint → save round trip against the built
+# editor, and publishes a release only when asked (workflow_dispatch with
+# publish=true). Release tags use the `editor-` prefix, which semantic-release
+# does not consider a package version.
+
+on:
+  pull_request:
+    paths:
+      - "tools/pixelorama-bridge/**"
+      - ".github/workflows/editor-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tools/pixelorama-bridge/**"
+      - ".github/workflows/editor-build.yml"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the build as a GitHub release (editor-pixelorama-<tag>-pk.<run>)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: editor-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Export web build
+    runs-on: ubuntu-latest
+    container:
+      image: docker://barichello/godot-ci:4.7.2
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          if [ -d /root/.local/share/godot/export_templates/4.7.2.stable ] && [ ! -d ~/.local/share/godot/export_templates/4.7.2.stable ]; then
+            mv /root/.local/share/godot/export_templates/4.7.2.stable ~/.local/share/godot/export_templates/4.7.2.stable
+          fi
+          godot --version
+      - name: Build
+        run: |
+          apt-get update -qq && apt-get install -y -qq perl git >/dev/null
+          WORK=/tmp/editor tools/pixelorama-bridge/scripts/build.sh
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-web
+          path: /tmp/editor/build
+          if-no-files-found: error
+          retention-days: 14
+
+  verify:
+    name: Manifest and smoke
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: editor-web
+          path: build
+      - name: Manifest
+        run: node tools/pixelorama-bridge/scripts/manifest.mjs build && cat build/manifest.json
+      - name: Smoke (open → paint → save)
+        run: |
+          cd tools/pixelorama-bridge && npm init -y >/dev/null && npm install --no-audit --no-fund puppeteer-core@24 >/dev/null
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser)" \
+            node test/smoke.mjs "$GITHUB_WORKSPACE/build"
+      - name: Upload verified build
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-web-verified
+          path: |
+            build
+            tools/pixelorama-bridge/smoke.png
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish release
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Download verified build
+        uses: actions/download-artifact@v4
+        with:
+          name: editor-web-verified
+          path: dist
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG_UPSTREAM="$(sed -n 's/.*"pixelorama": *"\([^"]*\)".*/\1/p' tools/pixelorama-bridge/pin.json)"
+          TAG="editor-pixelorama-${TAG_UPSTREAM}-pk.${{ github.run_number }}"
+          gh release create "$TAG" dist/build/* \
+            --title "PixelKiln editor build (Pixelorama ${TAG_UPSTREAM}, pk.${{ github.run_number }})" \
+            --notes "Pixelorama ${TAG_UPSTREAM} with the PixelKiln host bridge, exported for the web. Hashes in manifest.json; pin with tools/pixelorama-bridge/pin.json." \
+            --target "${{ github.sha }}"
+          echo "released $TAG"

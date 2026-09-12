@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PixelKiln bridge host</title>
+<style>
+  :root { --bg:#17150f; --panel:#201d17; --line:rgba(243,234,214,.16); --text:#f3ead6; --dim:#9b9384; --accent:#ff6b35; --ok:#b9f27c; --bad:#ff7a6b; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 ui-sans-serif,system-ui,sans-serif; display:grid; grid-template-columns:320px 1fr; height:100vh; }
+  aside { padding:14px; border-right:1px solid var(--line); display:grid; gap:10px; align-content:start; overflow:auto; }
+  h1 { font:700 13px/1 ui-monospace,Menlo,monospace; margin:0 0 4px; } h1::before { content:'◆ '; color:var(--accent); }
+  button { font:inherit; color:inherit; background:transparent; border:1px solid var(--line); padding:6px 10px; cursor:pointer; border-radius:0; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:600; }
+  input, textarea { font:inherit; color:inherit; background:#100f0c; border:1px solid var(--line); padding:5px 7px; width:100%; box-sizing:border-box; }
+  .row { display:flex; gap:6px; flex-wrap:wrap; }
+  .state { font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--dim); }
+  .state b { color:var(--text); }
+  .art { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .art figure { margin:0; border:1px solid var(--line); background:#100f0c; padding:6px; display:grid; place-items:center; min-height:80px; }
+  .art img { image-rendering:pixelated; width:96px; height:auto; }
+  .art figcaption { font-size:11px; color:var(--dim); margin-top:4px; }
+  pre { margin:0; font:11px/1.4 ui-monospace,Menlo,monospace; color:var(--dim); white-space:pre-wrap; max-height:40vh; overflow:auto; border-top:1px solid var(--line); padding-top:8px; }
+  iframe { border:0; width:100%; height:100%; background:var(--bg); }
+  .dirty { color:var(--accent); } .clean { color:var(--ok); }
+</style>
+</head>
+<body>
+<aside>
+  <h1>bridge host</h1>
+  <div class="state">editor: <b id="ready">loading…</b></div>
+  <div class="state">document: <b id="dirty">—</b></div>
+  <label>palette (hex, comma-separated)<input id="palette" value="#17150f, #f3ead6, #ff6b35, #ff9c5f, #b9f27c"></label>
+  <div class="row">
+    <button id="open-sample" class="primary" disabled>Open sample 32×32</button>
+    <label><input id="file" type="file" accept="image/png" hidden><button id="open-file" disabled>Open a PNG…</button></label>
+  </div>
+  <div class="row">
+    <button id="save" disabled>Request save</button>
+  </div>
+  <div class="art">
+    <figure><img id="sent" alt=""><figcaption>sent</figcaption></figure>
+    <figure><img id="got" alt=""><figcaption id="got-cap">received</figcaption></figure>
+  </div>
+  <pre id="log"></pre>
+</aside>
+<iframe id="editor" src="/editor/index.html" title="Pixelorama"></iframe>
+<script>
+// A host page with no PixelKiln code in it: this is the protocol contract the
+// gallery will implement in M3, exercised against the built editor. State is
+// exposed on window.__host so the smoke test can drive and assert it.
+const editor = document.getElementById('editor');
+const log = (line) => { const el = document.getElementById('log'); el.textContent = new Date().toISOString().slice(11, 19) + '  ' + line + '\n' + el.textContent; };
+const host = window.__host = { ready: null, opened: null, dirty: false, lastSave: null, errors: [], sample: null, requests: 0 };
+const post = (msg, transfer = []) => editor.contentWindow.postMessage(msg, location.origin, transfer);
+
+function samplePng() {
+  // A 32×32 checker with a red diagonal, as PNG bytes; deterministic.
+  const c = document.createElement('canvas'); c.width = 32; c.height = 32;
+  const x = c.getContext('2d');
+  for (let i = 0; i < 32; i++) for (let j = 0; j < 32; j++) { x.fillStyle = ((i >> 2) + (j >> 2)) % 2 ? '#f3ead6' : '#17150f'; x.fillRect(i, j, 1, 1); }
+  x.fillStyle = '#ff6b35'; for (let i = 0; i < 32; i++) x.fillRect(i, i, 1, 1);
+  return new Promise((resolve) => c.toBlob((b) => b.arrayBuffer().then(resolve), 'image/png'));
+}
+function show(id, bytes) { const img = document.getElementById(id); img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' })); }
+async function open(bytes, name, width, height) {
+  host.opened = null; host.lastSave = null;
+  const palette = document.getElementById('palette').value.split(',').map((s) => s.trim()).filter(Boolean);
+  show('sent', bytes.slice(0));
+  const request = 'open-' + (++host.requests);
+  post({ type: 'pixelkiln:open', request, asset: { key: 'demo/' + name, id: 'demo/' + name, name, width, height }, png: bytes, palette }, [bytes]);
+  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length);
+}
+host.openSample = async () => { const bytes = await samplePng(); host.sample = bytes.slice(0); await open(bytes, 'sample', 32, 32); };
+host.requestSave = () => { const request = 'save-' + (++host.requests); post({ type: 'pixelkiln:request-save', request }); log('→ request-save ' + request); return request; };
+
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || e.source !== editor.contentWindow || !e.data || typeof e.data.type !== 'string') return;
+  const m = e.data;
+  switch (m.type) {
+    case 'pixelkiln:ready':
+      host.ready = m; document.getElementById('ready').textContent = m.editor + ' · protocol ' + m.version + ' · api ' + m.api;
+      for (const id of ['open-sample', 'open-file', 'save']) document.getElementById(id).disabled = false;
+      log('← ready ' + JSON.stringify(m)); break;
+    case 'pixelkiln:opened': host.opened = m; log('← opened ' + m.request + ' ' + m.width + '×' + m.height); break;
+    case 'pixelkiln:dirty': host.dirty = !!m.dirty; { const d = document.getElementById('dirty'); d.textContent = m.dirty ? 'unsaved changes' : 'clean'; d.className = m.dirty ? 'dirty' : 'clean'; } log('← dirty ' + m.dirty); break;
+    case 'pixelkiln:save': {
+      host.lastSave = { request: m.request, width: m.width, height: m.height, png: new Uint8Array(m.png), pxo: new Uint8Array(m.pxo || new ArrayBuffer(0)) };
+      show('got', m.png.slice(0)); document.getElementById('got-cap').textContent = 'received ' + m.width + '×' + m.height + ' · png ' + m.png.byteLength + ' B · pxo ' + (m.pxo ? m.pxo.byteLength : 0) + ' B';
+      log('← save ' + m.request + ' png=' + m.png.byteLength + ' pxo=' + (m.pxo ? m.pxo.byteLength : 0)); break;
+    }
+    case 'pixelkiln:error': host.errors.push(m); log('← error ' + m.message); break;
+    default: log('← ' + m.type);
+  }
+});
+document.getElementById('open-sample').onclick = host.openSample;
+document.getElementById('open-file').onclick = () => document.getElementById('file').click();
+document.getElementById('file').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const bytes = await f.arrayBuffer();
+  const bmp = await createImageBitmap(new Blob([bytes]));
+  await open(bytes, f.name.replace(/\.png$/i, ''), bmp.width, bmp.height);
+};
+document.getElementById('save').onclick = host.requestSave;
+</script>
+</body>
+</html>
