@@ -46,10 +46,11 @@ Same origin only, both directions checked. Bytes are `ArrayBuffer`s
 
 | direction | type | fields |
 |---|---|---|
-| host → editor | `open` | `request`, `asset: {key, id, name, width, height}`, `png`, `pxo?`, `frames?: [{role, png}]`, `fps?`, `palette: ["#rrggbb", …]` |
+| host → editor | `open` | `request`, `asset: {key, id, name, width, height}`, `png`, `pxo?`, `frames?: [{role, png}]`, `fps?`, `palette: ["#rrggbb", …]`, `reference?: [{role, png}]` |
 | host → editor | `request-save` | `request` |
+| host → editor | `reference` | `visible` |
 | editor → host | `ready` | `version`, `editor`, `api` |
-| editor → host | `opened` | `request`, `width`, `height`, `source: "pxo" \| "frames" \| "png"`, `layers`, `frames` |
+| editor → host | `opened` | `request`, `width`, `height`, `source: "pxo" \| "frames" \| "png"`, `layers`, `frames`, `reference` |
 | editor → host | `dirty` | `dirty` |
 | editor → host | `save` | `request`, `width`, `height`, `png`, `frames: [{role, png}]`, `pxo` |
 | editor → host | `error` | `request?`, `message` |
@@ -61,9 +62,14 @@ in `open` (protocol 2) and the editor restores the layered project, using the
 says which. An ordered set (protocol 3) opens as one project with a frame per
 member at the given `fps`; each saved frame carries the role it was opened
 under, or `null` for a frame added in the editor, so the host can refuse a
-set whose shape changed. The editor also answers ⌘S / Ctrl+S and a **File →
-Save to PixelKiln** item with a `save`; its disk-oriented File items are
-removed, since the page owns the file.
+set whose shape changed. `reference` (protocol 4) is the generated art the
+edit is compared against: it becomes a locked, half-transparent layer on top
+with one cel per frame — an onion skin — that `save` never flattens in,
+`reference {visible}` shows or hides, and a reopened `.pxo` keeps once,
+refreshed with the current bytes; `opened.layers` counts the author's layers
+without it. The editor also answers ⌘S / Ctrl+S and a **File → Save to
+PixelKiln** item with a `save`; its disk-oriented File items are removed,
+since the page owns the file.
 
 ## Local build
 

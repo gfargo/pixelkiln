@@ -8,10 +8,12 @@ extends Node
 ##
 ## Protocol (all messages carry `type: "pixelkiln:<name>"`; same origin only):
 ##   host → editor   open          { request, asset: {key, id, name, width, height}, png: ArrayBuffer, pxo?: ArrayBuffer,
-##                                   frames?: [{role, png: ArrayBuffer}], fps?, palette: [#rrggbb] }
+##                                   frames?: [{role, png: ArrayBuffer}], fps?, palette: [#rrggbb],
+##                                   reference?: [{role, png: ArrayBuffer}] }
 ##   host → editor   request-save  { request }
+##   host → editor   reference     { visible: bool }
 ##   editor → host   ready         { version, editor }
-##   editor → host   opened        { request, width, height, source: "pxo" | "png" | "frames", layers, frames }
+##   editor → host   opened        { request, width, height, source: "pxo" | "png" | "frames", layers, frames, reference }
 ##   editor → host   dirty         { dirty }
 ##   editor → host   save          { request, width, height, png: ArrayBuffer, frames: [{role, png}], pxo: ArrayBuffer }
 ##   editor → host   error         { request?, message }
@@ -23,16 +25,24 @@ extends Node
 ## flattened, each tagged with the role it was opened under (null for a frame
 ## added in the editor), and `png` stays the first frame for older hosts.
 ##
+## `reference` is the generated art the edit is compared against: it becomes a
+## locked, half-transparent layer on top — one cel per frame — that `save`
+## never flattens in and `reference {visible}` shows or hides. Opening a
+## project file that already carries the layer refreshes its pixels.
+##
 ## Bytes cross the JavaScript boundary as base64 inside a small shim this
 ## node installs on `window.__pixelkiln`; the shim converts to and from
 ## ArrayBuffers so the page-facing protocol stays binary.
 
-const PROTOCOL_VERSION := 3
+const PROTOCOL_VERSION := 4
 const PXO_TMP := "user://pixelkiln-edit.pxo"
 ## Projects handed over by the host are written here to be opened; the file
 ## name becomes the project name, so one file per asset name.
 const PXO_OPEN_DIR := "user://pixelkiln-open"
 const MENU_LABEL := "Save to PixelKiln"
+## The layer that shows the generated art behind an edit; never saved.
+const REFERENCE_LAYER := "Generated (PixelKiln reference)"
+const REFERENCE_OPACITY := 0.5
 
 ## Installed once via JavaScriptBridge.eval. Keeps an inbox the node drains
 ## every frame, and posts replies to the parent window on the same origin.
@@ -49,7 +59,7 @@ const SHIM := """
     if (e.origin !== window.location.origin || !e.data || typeof e.data.type !== "string" || !e.data.type.startsWith("pixelkiln:")) return;
     const m = Object.assign({}, e.data);
     for (const k of ["png", "pxo"]) { if (m[k] instanceof ArrayBuffer || ArrayBuffer.isView(m[k])) m[k] = toB64(m[k].buffer || m[k]); }
-    if (Array.isArray(m.frames)) m.frames = m.frames.map((f) => Object.assign({}, f, { png: (f.png instanceof ArrayBuffer || ArrayBuffer.isView(f.png)) ? toB64(f.png.buffer || f.png) : f.png }));
+    for (const k of ["frames", "reference"]) { if (Array.isArray(m[k])) m[k] = m[k].map((f) => Object.assign({}, f, { png: (f.png instanceof ArrayBuffer || ArrayBuffer.isView(f.png)) ? toB64(f.png.buffer || f.png) : f.png })); }
     box.queue.push(m);
   });
   window.__pixelkiln = box;
@@ -117,6 +127,8 @@ func _handle(message: Dictionary) -> void:
 			_open(message, request)
 		"pixelkiln:request-save":
 			_save(request)
+		"pixelkiln:reference":
+			_set_reference_visible(bool(message.get("visible", true)))
 		_:
 			_post_error("unknown message type: %s" % str(message.get("type", "")), request)
 
@@ -157,6 +169,7 @@ func _open(message: Dictionary, request: String) -> void:
 		source = "png"
 	var project := Global.current_project
 	_load_palette(message.get("palette"), name)
+	var reference := _apply_reference(project, message.get("reference"))
 	project.has_changed = false
 	_set_dirty(false)
 	_post({
@@ -165,9 +178,75 @@ func _open(message: Dictionary, request: String) -> void:
 		"width": project.size.x,
 		"height": project.size.y,
 		"source": source,
-		"layers": project.layers.size(),
+		"layers": project.layers.size() - (1 if _reference_layer_index(project) >= 0 else 0),
 		"frames": project.frames.size(),
+		"reference": reference,
 	})
+
+
+## Put the generated art on a locked, half-transparent layer above the edit,
+## one cel per frame (a set's members in order, or the one image everywhere).
+## A project file that already carries the layer gets its pixels refreshed,
+## so a regeneration since the last save shows through. Returns whether the
+## layer is there.
+func _apply_reference(project: Project, reference) -> bool:
+	var existing := _reference_layer_index(project)
+	if typeof(reference) != TYPE_ARRAY or (reference as Array).is_empty():
+		return existing >= 0
+	var images: Array[Image] = []
+	for entry in reference:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var image := Image.new()
+		if image.load_png_from_buffer(Marshalls.base64_to_raw(str(entry.get("png", "")))) != OK:
+			continue
+		if image.get_size() != project.size:
+			_post_error("reference image is %dx%d; the project is %dx%d" % [image.get_width(), image.get_height(), project.size.x, project.size.y])
+			return existing >= 0
+		image.convert(project.get_image_format())
+		images.append(image)
+	if images.is_empty():
+		return existing >= 0
+	if existing >= 0:
+		var layer := project.layers[existing]
+		for index in project.frames.size():
+			var cel := project.frames[index].cels[existing]
+			if cel is PixelCel:
+				(cel as PixelCel).set_content(images[mini(index, images.size() - 1)])
+		layer.locked = true
+		Global.canvas.queue_redraw_all_layers()
+		return true
+	var layer := PixelLayer.new(project, REFERENCE_LAYER)
+	layer.locked = true
+	layer.opacity = REFERENCE_OPACITY
+	var cels := []
+	for index in project.frames.size():
+		cels.append(layer.new_cel_from_image(images[mini(index, images.size() - 1)]))
+	project.add_layers([layer], [project.layers.size()], [cels])
+	# change_cel re-orders the layers for the canvas (what the timeline's own
+	# Add Layer does next); painting goes on the edit, not the reference.
+	var current := project.current_layer
+	project.change_cel(-1, 0 if current >= project.layers.size() - 1 else current)
+	Global.canvas.queue_redraw_all_layers()
+	return true
+
+
+func _reference_layer_index(project: Project) -> int:
+	for index in project.layers.size():
+		if project.layers[index].name == REFERENCE_LAYER:
+			return index
+	return -1
+
+
+func _set_reference_visible(visible: bool) -> void:
+	var project := Global.current_project
+	var index := _reference_layer_index(project)
+	if index < 0:
+		return
+	project.layers[index].visible = visible
+	# What the timeline's eye button does, minus the undo step.
+	Global.canvas.update_all_layers = true
+	Global.canvas.queue_redraw()
 
 
 ## One project with a frame per member, one layer, at the members' shared
@@ -260,6 +339,11 @@ func _save(request: String) -> void:
 	if project == null or project.frames.is_empty():
 		_post_error("nothing to save", request)
 		return
+	# The reference layer is for looking, never for shipping.
+	var reference := _reference_layer_index(project)
+	var reference_visible := reference >= 0 and project.layers[reference].visible
+	if reference_visible:
+		project.layers[reference].visible = false
 	var frames: Array = []
 	for index in project.frames.size():
 		var image := Image.create(project.size.x, project.size.y, false, Image.FORMAT_RGBA8)
@@ -268,6 +352,8 @@ func _save(request: String) -> void:
 			"role": _frame_roles[index] if index < _frame_roles.size() else null,
 			"png": Marshalls.raw_to_base64(image.save_png_to_buffer()),
 		})
+	if reference_visible:
+		project.layers[reference].visible = true
 	var pxo := PackedByteArray()
 	if OpenSave.save_pxo_file(PXO_TMP, true, false, project):
 		pxo = FileAccess.get_file_as_bytes(PXO_TMP)

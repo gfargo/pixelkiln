@@ -32,7 +32,7 @@ try {
   await page.waitForFunction(() => window.__host.ready !== null, { timeout: 300_000, polling: 2000 })
   const ready = await page.evaluate(() => window.__host.ready)
   console.log(`ready in ${Math.round((Date.now() - t0) / 1000)}s:`, JSON.stringify(ready))
-  if (ready.version !== 3) fail("protocol version " + ready.version)
+  if (ready.version !== 4) fail("protocol version " + ready.version)
 
   await page.evaluate(() => window.__host.openSample())
   await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
@@ -126,6 +126,34 @@ try {
   const framesSame = framesSecond.pngs.length === 3 && framesSecond.pngs.every((p, i) => p.length === framesFirst[i].length && p.every((b, j) => b === framesFirst[i][j]))
   console.log("frames round trip: roles " + framesSecond.roles.join() + ", identical: " + framesSame)
   if (!framesSame || framesSecond.roles.join() !== "frame-00,frame-01,frame-02") fail("frames after reopening the pxo differ or lost their roles")
+
+  // The generated-art reference: a layer for looking that never reaches the save.
+  await page.evaluate(() => window.__host.openWithReference())
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const refOpened = await page.evaluate(() => window.__host.opened)
+  console.log("reference opened:", JSON.stringify(refOpened))
+  if (!refOpened.reference || refOpened.layers !== 1) fail("reference layer missing or counted as a user layer: " + JSON.stringify(refOpened))
+  await new Promise((r) => setTimeout(r, 1000))
+  if (await page.evaluate(() => window.__host.dirty)) fail("document dirty right after opening with a reference")
+  await page.evaluate(() => window.__host.requestSave())
+  await page.waitForFunction(() => window.__host.lastSave !== null, { timeout: 30_000 })
+  const refSave = await page.evaluate(async () => {
+    const s = window.__host.lastSave
+    const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i])
+    return { frames: s.frames.length, pixelsEqualSample: same(await window.__host.pixels(s.png), await window.__host.pixels(window.__host.sample)) }
+  })
+  console.log("save with reference:", JSON.stringify(refSave))
+  if (!refSave.pixelsEqualSample) fail("the reference layer leaked into the saved image")
+  await page.evaluate(() => window.__host.showReference(false))
+  await new Promise((r) => setTimeout(r, 800))
+  await page.evaluate(() => window.__host.showReference(true))
+  await new Promise((r) => setTimeout(r, 800))
+  // Reopening the project file keeps the layer once, refreshed, still not saved.
+  await page.evaluate(() => window.__host.reopenLastSave())
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const refReopened = await page.evaluate(() => window.__host.opened)
+  console.log("reference reopened:", JSON.stringify(refReopened))
+  if (refReopened.source !== "pxo" || !refReopened.reference || refReopened.layers !== 1) fail("reference layer not restored once from the pxo: " + JSON.stringify(refReopened))
 
   const errs = await page.evaluate(() => window.__host.errors)
   if (errs.length) fail("bridge errors: " + JSON.stringify(errs))

@@ -32,6 +32,7 @@
   <div class="row">
     <button id="open-sample" class="primary" disabled>Open sample 32×32</button>
     <button id="open-frames" disabled>Open 3 frames</button>
+    <button id="open-reference" disabled>Open with reference</button>
     <label><input id="file" type="file" accept="image/png" hidden><button id="open-file" disabled>Open a PNG…</button></label>
   </div>
   <div class="row">
@@ -71,7 +72,7 @@ host.pixels = async (bytes) => {
   return [...x.getImageData(0, 0, bmp.width, bmp.height).data];
 };
 function show(id, bytes) { const img = document.getElementById(id); img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' })); }
-async function open(bytes, name, width, height, pxo, frames, fps) {
+async function open(bytes, name, width, height, pxo, frames, fps, reference) {
   host.opened = null; host.lastSave = null;
   const palette = document.getElementById('palette').value.split(',').map((s) => s.trim()).filter(Boolean);
   show('sent', bytes.slice(0));
@@ -80,10 +81,18 @@ async function open(bytes, name, width, height, pxo, frames, fps) {
   const transfer = [bytes];
   if (pxo) { message.pxo = pxo; transfer.push(pxo); }
   if (frames) { message.frames = frames; message.fps = fps; for (const f of frames) transfer.push(f.png); }
+  if (reference) { message.reference = reference; for (const r of reference) transfer.push(r.png); }
   // Log before posting: the buffers are transferred and read as empty afterwards.
-  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length + (pxo ? ' pxo=' + pxo.byteLength : '') + (frames ? ' frames=' + frames.length + ' fps=' + fps : ''));
+  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length + (pxo ? ' pxo=' + pxo.byteLength : '') + (frames ? ' frames=' + frames.length + ' fps=' + fps : '') + (reference ? ' reference=' + reference.length : ''));
   post(message, transfer);
 }
+// The sample with the generated-art reference layer: a shifted checker on top at 50%.
+host.openWithReference = async () => {
+  const bytes = await samplePng(); host.sample = bytes.slice(0);
+  const generated = await samplePng(16);
+  await open(bytes, 'sample', 32, 32, null, null, null, [{ role: null, png: generated }]);
+};
+host.showReference = (visible) => { post({ type: 'pixelkiln:reference', visible }); log('→ reference visible=' + visible); };
 host.openSample = async () => { const bytes = await samplePng(); host.sample = bytes.slice(0); await open(bytes, 'sample', 32, 32); };
 // An ordered set: three members, roles frame-00.., the first also sent as `png` for older editors.
 host.openFrames = async (count = 3, fps = 8) => {
@@ -108,9 +117,9 @@ window.addEventListener('message', (e) => {
   switch (m.type) {
     case 'pixelkiln:ready':
       host.ready = m; document.getElementById('ready').textContent = m.editor + ' · protocol ' + m.version + ' · api ' + m.api;
-      for (const id of ['open-sample', 'open-frames', 'open-file', 'save', 'reopen']) document.getElementById(id).disabled = false;
+      for (const id of ['open-sample', 'open-frames', 'open-reference', 'open-file', 'save', 'reopen']) document.getElementById(id).disabled = false;
       log('← ready ' + JSON.stringify(m)); break;
-    case 'pixelkiln:opened': host.opened = m; log('← opened ' + m.request + ' ' + m.width + '×' + m.height + ' from ' + m.source + ' (' + m.layers + ' layers, ' + m.frames + ' frames)'); break;
+    case 'pixelkiln:opened': host.opened = m; log('← opened ' + m.request + ' ' + m.width + '×' + m.height + ' from ' + m.source + ' (' + m.layers + ' layers, ' + m.frames + ' frames' + (m.reference ? ', reference' : '') + ')'); break;
     case 'pixelkiln:dirty': host.dirty = !!m.dirty; { const d = document.getElementById('dirty'); d.textContent = m.dirty ? 'unsaved changes' : 'clean'; d.className = m.dirty ? 'dirty' : 'clean'; } log('← dirty ' + m.dirty); break;
     case 'pixelkiln:save': {
       const frames = (m.frames || []).map((f) => ({ role: f.role, png: new Uint8Array(f.png) }));
@@ -124,6 +133,7 @@ window.addEventListener('message', (e) => {
 });
 document.getElementById('open-sample').onclick = host.openSample;
 document.getElementById('open-frames').onclick = () => host.openFrames();
+document.getElementById('open-reference').onclick = () => host.openWithReference();
 document.getElementById('open-file').onclick = () => document.getElementById('file').click();
 document.getElementById('file').onchange = async (e) => {
   const f = e.target.files[0]; if (!f) return;
