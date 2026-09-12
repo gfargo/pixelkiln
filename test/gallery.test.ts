@@ -972,6 +972,14 @@ describe("gallery CLI surface", () => {
     expect(() => parseArgs(["gallery", "base"])).toThrow(/Unexpected argument/)
   })
 
+  it("tells a read-only page which flags unlock writes", () => {
+    const snapshot = { items: [], styles: [], totals: { entries: 0 }, project: { name: "x", manifest: "m", lock: "l" } } as never
+    const page = renderGallery(snapshot)
+    expect(page).toContain("This gallery is read-only. Restart it with ")
+    expect(page).toContain("--edit to change its prompt, size, and tags or open it in the browser editor")
+    expect(page).toContain("--budget <n> to generate or regenerate it from here")
+  })
+
   it("announces the URL on stderr when stdout is piped", () => {
     const out: string[] = []
     const err: string[] = []
