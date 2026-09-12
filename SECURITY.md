@@ -28,8 +28,8 @@ reporter.
 ## Sensitive areas
 
 PixelKiln handles provider credentials, paid API actions, remote object deletion,
-local output paths, a localhost review server, and generated HTML containing
-provider data. Temporary provider result URLs can also contain signing
+local output paths, a localhost review server, generated HTML containing
+provider data, and a downloaded editor build served to the browser. Temporary provider result URLs can also contain signing
 credentials in their query string. Reports involving authentication leakage, path traversal,
 cross-origin review actions, HTML/script injection, unsafe overwrite/delete
 behavior, lockfile corruption, or budget bypass are security relevant.
@@ -46,3 +46,13 @@ download may retain its source locally so `fetch` can retry, but that in-flight
 lockfile should not be committed. `npm run test:security` checks every tracked
 JSON file for credential-bearing URLs and reports only the file and JSON path,
 never the sensitive value.
+
+The in-browser editor is fetched from a PixelKiln GitHub release and verified
+file by file against SHA-256 hashes pinned inside the package before anything
+is served; `PIXELKILN_EDITOR_URL` changes where the bytes come from but not
+what is accepted. The gallery serves it only under the pinned release path and
+only the pinned file names, with a Content-Security-Policy that keeps the
+editor page to its own files and lets only the gallery frame it. A report that
+the editor can be served from another location, that verification can be
+bypassed, or that the editor page can reach beyond its origin is security
+relevant.

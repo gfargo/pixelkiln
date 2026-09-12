@@ -182,6 +182,22 @@ provider object ids to remote content hashes for adoption/salvage. Neither is
 authoritative or committed; both can be deleted and rebuilt. Every recovery
 byte is structurally validated before use.
 
+## Pinned editor build
+
+The gallery's in-browser editor is a web export of Pixelorama with PixelKiln's
+bridge extension, built in CI from a build-time overlay on the pinned upstream
+tag (`tools/pixelorama-bridge/`) and published as a GitHub release whose tag
+semantic-release ignores. The package does not carry the 46 MB build; it
+carries `tools/pixelorama-bridge/pin.json` — the release tag plus the SHA-256
+and size of every file — inlined into `src/editor/pin.ts` at bundle time, so
+the shipped code and the build it trusts are one artifact. `installEditor`
+fetches only missing or mismatched files into a per-release directory under
+the user cache, verifies each against the pin before renaming it into place,
+and the gallery serves a file only after the whole directory verified and its
+size still matches; a file that changed on disk is refused rather than served.
+The release tag is part of the served path, so the browser may cache the
+files as immutable, and a new pin is a new path.
+
 ## Provider capability boundary
 
 Providers are selected from a registry by each style's `provider`, falling back

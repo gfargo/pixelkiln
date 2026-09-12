@@ -24,6 +24,8 @@ export interface RenderGalleryOptions {
   editable?: boolean
   /** Generation jobs are enabled (`--budget`). */
   generation?: boolean
+  /** The in-browser editor can be installed and served (`--edit` without `--no-editor`). */
+  editor?: boolean
 }
 
 export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOptions = {}): string {
@@ -33,6 +35,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   const session = JSON.stringify(opts.session ?? null)
   const editable = JSON.stringify(Boolean(opts.editable && opts.session))
   const generation = JSON.stringify(Boolean(opts.generation && opts.session))
+  const editor = JSON.stringify(Boolean(opts.editor && opts.session))
   const title = `pixelkiln — ${snapshot.project?.name ?? "workspace"}`
   return `<!doctype html>
 <html lang="en">
@@ -238,6 +241,15 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   .job .acts button { padding:3px 9px; font-size:12px; }
   .job pre { grid-column:1 / -1; margin:0; padding:8px 10px; border-top:1px solid var(--line);
     font:11.5px/1.45 var(--mono); color:var(--dim); max-height:220px; overflow:auto; white-space:pre-wrap; }
+  #tools { width:min(100%,var(--content)); margin:0 auto; padding:0 22px 12px; }
+  #tools:empty { display:none; }
+  .tool { border:1px solid var(--line); background:var(--panel-deep); padding:8px 12px; display:grid;
+    grid-template-columns:auto 1fr auto; gap:6px 14px; align-items:center; font-size:12.5px; }
+  .tool .ph { display:inline-flex; align-items:center; gap:6px; font:650 12px/1 var(--mono); white-space:nowrap; }
+  .tool .last { color:var(--dim); min-width:0; }
+  .tool .acts { display:flex; gap:6px; }
+  .tool .acts button { padding:3px 9px; font-size:12px; }
+  .tool progress { grid-column:1 / -1; width:100%; height:6px; accent-color:var(--accent); }
   .budget { color:var(--dim); }
   .budget b { color:var(--text); }
   .dialog { position:fixed; inset:0; z-index:30; display:grid; place-items:center; background:rgba(0,0,0,.55); }
@@ -344,6 +356,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   <div class="totals" id="totals"></div>
   <div class="chips" id="chips"></div>
   <div id="jobs"></div>
+  <div id="tools"></div>
 </header>
 <main id="root"></main>
 <footer>
@@ -362,6 +375,7 @@ const INITIAL = ${data};
 const SESSION = ${session};
 const EDITABLE = ${editable};
 const GENERATION = ${generation};
+const EDITOR = ${editor};
 let snap = INITIAL;
 const STATE_TONE = {
   ok: 'ok', stale: 'warn', orphaned: 'warn', untracked: 'warn', blocked: 'warn',
@@ -529,6 +543,91 @@ function renderJobs() {
     host.append(row);
   }
 }
+// ---- the in-browser editor (only when the server serves one) -------------
+// The build is a 46 MB web export fetched once into a user-level cache and
+// verified against hashes this PixelKiln release carries; the page only
+// reports and asks, the server downloads. Nothing is fetched without a click.
+
+let ED = null;
+let edTimer = null;
+const fmtMb = (bytes) => (bytes / 1e6).toFixed(1) + ' MB';
+async function pollEditor() {
+  if (!EDITOR) return;
+  try {
+    const res = await fetch('/api/editor', { cache: 'no-store' });
+    if (!res.ok) throw new Error(await res.text());
+    ED = await res.json();
+  } catch (err) {
+    ED = { error: 'status unavailable: ' + err.message, installed: false, installing: null, missing: [], totalBytes: 0 };
+  }
+  renderTools();
+  clearTimeout(edTimer);
+  if (ED.installing) edTimer = setTimeout(pollEditor, 1000);
+}
+async function installEditor() {
+  try {
+    const res = await fetch('/api/editor/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Pixelkiln-Session': SESSION },
+      body: '{}',
+    });
+    if (!res.ok) throw new Error(await res.text());
+    ED = await res.json();
+  } catch (err) {
+    ED = Object.assign({}, ED, { error: err.message });
+  }
+  renderTools();
+  clearTimeout(edTimer);
+  edTimer = setTimeout(pollEditor, 500);
+}
+function renderTools() {
+  const host = $('tools');
+  host.textContent = '';
+  if (!EDITOR || !ED) return;
+  const row = el('div', 'tool');
+  const ph = el('span', 'ph');
+  const last = el('span', 'last');
+  const acts = el('div', 'acts');
+  const name = 'Browser editor' + (ED.pixelorama ? ' (Pixelorama ' + ED.pixelorama + ')' : '');
+  if (ED.installing) {
+    const p = ED.installing;
+    ph.append(el('i', 'dot cool'), document.createTextNode('installing'));
+    last.textContent = name + ': fetching ' + (p.file || 'the build') + ' — ' + fmtMb(p.fetchedBytes) + ' of ' + fmtMb(p.totalBytes);
+    row.append(ph, last, acts);
+    const bar = el('progress');
+    if (p.totalBytes) { bar.max = p.totalBytes; bar.value = p.fetchedBytes; }
+    row.append(bar);
+  } else if (ED.installed) {
+    ph.append(el('i', 'dot ok'), document.createTextNode('ready'));
+    last.textContent = name + ' is installed and verified.';
+    last.title = ED.dir || '';
+    const b = el('button', null, 'Open editor');
+    b.type = 'button'; b.onclick = () => window.open(ED.url, '_blank', 'noopener');
+    acts.append(b);
+    row.append(ph, last, acts);
+  } else if (ED.error) {
+    ph.append(el('i', 'dot bad'), document.createTextNode('failed'));
+    last.textContent = name + ': ' + ED.error;
+    const b = el('button', 'primary', 'Retry install');
+    b.type = 'button'; b.onclick = installEditor;
+    acts.append(b);
+    row.append(ph, last, acts);
+  } else if (!ED.release) {
+    ph.append(el('i', 'dot dim'), document.createTextNode('unavailable'));
+    last.textContent = name + ': this PixelKiln version pins no published build.';
+    row.append(ph, last, acts);
+  } else {
+    ph.append(el('i', 'dot dim'), document.createTextNode('not installed'));
+    last.textContent = name + ': ' + fmtMb(ED.totalBytes - (ED.installedBytes || 0)) + ' fetched once from the PixelKiln release ' +
+      ED.release + ', verified against the hashes this version carries, and kept outside the project.';
+    const b = el('button', 'primary', 'Install editor');
+    b.type = 'button'; b.onclick = installEditor;
+    acts.append(b);
+    row.append(ph, last, acts);
+  }
+  host.append(row);
+}
+
 function budgetLine() {
   const providers = new Set([...Object.keys(GEN.budget.byProvider), ...Object.keys(GEN.spent)]);
   const parts = [];
@@ -1977,6 +2076,7 @@ ui.compare = ui.compare.filter((id) => snap.items.some((i) => i.id === id));
 render();
 if (ui.open) document.querySelector('.card.active')?.scrollIntoView({ block: 'center' });
 if (GENERATION) pollJobs();
+if (EDITOR) pollEditor();
 if (ui.compare.length >= 2 && !ui.open) openCompare();
 </script>
 </body>

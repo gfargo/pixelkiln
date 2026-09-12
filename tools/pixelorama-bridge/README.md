@@ -17,6 +17,19 @@ and publishes a release on request. One editor version is pinned per PixelKiln
 release; `pin.json` carries the upstream tag, the Godot version, and — once a
 build is published — the release tag and file hashes the gallery verifies.
 
+## Publishing a new build
+
+1. Change the overlay or bump `pixelorama`/`godot` in `pin.json`, open a PR;
+   the workflow builds and smoke-tests it.
+2. Once merged, run the workflow on `main` with `publish` checked:
+   `gh workflow run "Editor build" --ref main -f publish=true`. It creates
+   release `editor-pixelorama-<tag>-pk.<run>` with the build and `manifest.json`.
+3. Copy the tag into `pin.json` `release` and the manifest's `files` map into
+   `pin.json` `files`, commit, and ship it with the next PixelKiln release —
+   `src/editor/pin.ts` inlines the file, and `test/editor-install.test.ts`
+   checks the pin names a release and every file. Until step 3 lands, the
+   package keeps trusting the previous build.
+
 ## Layout
 
 - `overlay/src/Extensions/PixelKilnBridge/` — the extension: `extension.json`,
