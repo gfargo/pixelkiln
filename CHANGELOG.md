@@ -1,3 +1,10 @@
+# [0.26.0](https://github.com/gfargo/pixelkiln/compare/v0.25.0...v0.26.0) (2026-09-12)
+
+
+### Features
+
+* **editor:** Pixelorama host bridge, build pipeline, and smoke test ([#95](https://github.com/gfargo/pixelkiln/issues/95)) ([31c0cbb](https://github.com/gfargo/pixelkiln/commit/31c0cbbe26b1c809a90eb446d6cd34e99fc29fd3))
+
 # [0.25.0](https://github.com/gfargo/pixelkiln/compare/v0.24.0...v0.25.0) (2026-09-12)
 
 
