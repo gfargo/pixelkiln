@@ -1,3 +1,11 @@
+# [0.29.0](https://github.com/gfargo/pixelkiln/compare/v0.28.0...v0.29.0) (2026-09-12)
+
+
+### Features
+
+* **editor:** open and save ordered frame sets in the bridge (protocol 3) ([#100](https://github.com/gfargo/pixelkiln/issues/100)) ([1312e17](https://github.com/gfargo/pixelkiln/commit/1312e17fd6c02e789799c9840e1d445b88a0803e))
+* **gallery:** edit ComfyUI frame sets as Pixelorama frames ([#101](https://github.com/gfargo/pixelkiln/issues/101)) ([c668b66](https://github.com/gfargo/pixelkiln/commit/c668b66ea9487cf1ded03a043df95b8a3b3a2e71))
+
 # [0.28.0](https://github.com/gfargo/pixelkiln/compare/v0.27.0...v0.28.0) (2026-09-12)
 
 
