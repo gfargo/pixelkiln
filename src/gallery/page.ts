@@ -321,6 +321,8 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   .tray > button { padding:5px 11px; font-size:12.5px; }
   @media (max-width: 900px) { .sheet.review-host, .sheet.compare-host, .sheet.editor-host { width:100vw; } }
   .drawer .gen { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .drawer .readonly-hint { margin-top:10px; font-size:12.5px; line-height:1.5; }
+  .drawer .readonly-hint code { font:12px var(--mono); color:var(--text); }
   .pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 10px; }
   .pair figure { margin:0; border:1px solid var(--line); background:var(--panel-deep); background-image:var(--checker);
     background-size:12px 12px; background-position:0 0,6px 6px; display:grid; place-items:center; padding:8px; min-height:96px; }
@@ -2062,6 +2064,15 @@ function renderDrawer() {
   if (ui.notice && ui.notice.id === item.id) body.append(el('div', 'notice', ui.notice.text));
   body.append(stateNode(item.state, item.reason));
   if (GENERATION) body.append(generateActions(item));
+  // Writes are opt-in flags on the command line; say so where the buttons would be.
+  if ((!EDITABLE || !GENERATION) && item.declared) {
+    const missing = [];
+    if (!EDITABLE) missing.push('--edit to change its prompt, size, and tags or open it in the browser editor');
+    if (!GENERATION) missing.push('--budget <n> to generate or regenerate it from here');
+    const hint = el('div', 'state-dim readonly-hint');
+    hint.append(document.createTextNode('This gallery is read-only. Restart it with '), el('code', null, 'pixelkiln gallery'), document.createTextNode(' plus ' + missing.join(', and ') + '.'));
+    body.append(hint);
+  }
   if (canEdit && ui.editing === item.id) body.append(editForm(item));
   // Plan already quotes the error as the reason for a failed entry; only a
   // stale or superseded failure needs its own line.

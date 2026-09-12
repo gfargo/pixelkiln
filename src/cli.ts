@@ -140,7 +140,7 @@ export function announceGalleryReady(
     `\n  gallery of ${count} generation${count === 1 ? "" : "s"}: ${url}\n` +
       (notes.length
         ? `  (${notes.join("; ")}; Ctrl+C to stop)\n\n`
-        : "  (read-only; press Ctrl+C to stop)\n\n"),
+        : "  (read-only — add --edit to change prompts or edit sprites, --budget <n> to generate; Ctrl+C to stop)\n\n"),
   )
 }
 
