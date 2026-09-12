@@ -25,19 +25,12 @@ Styles may use different providers with separate budget ceilings. The
 [provider comparison](./PROVIDERS.md) lists the tested limits and best routes.
 `FakeProvider` covers the shared contract in automated tests.
 
-## Release
-
-PixelKiln is published on npm. Merges to `main` use Semantic Release and npm
-Trusted Publishing, with signed provenance and no long-lived npm token.
-
 ## Why PixelKiln
 
 Image generators leave two piles behind: remote jobs that cost money and local
 files that no longer explain where they came from. Prompts drift. Failed
 downloads look like failed generations. Teams rerun whole sets because they
-cannot tell which asset changed.
-
-PixelKiln keeps the missing record:
+cannot tell which asset changed. PixelKiln keeps the missing record:
 
 - a committed manifest defines assets, styles, generators, budgets, and output;
 - a committed lockfile maps each style/asset to paid provider work and exact
@@ -50,12 +43,16 @@ PixelKiln keeps the missing record:
 - derived artifact bundles retain source provenance and recover across ordinary
   write failures or abrupt process termination.
 
+Released on npm through Semantic Release and npm Trusted Publishing, with signed
+provenance and no long-lived npm token.
+
 ## Capabilities
 
 | Workflow | What PixelKiln provides |
 |---|---|
 | Plan and budget | Offline manifest/lock/disk diff, provider-grouped estimates, keyed mixed-provider budget ceilings, JSON/CI gate. |
-| Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, candidate or atomic frame-set review, and a read-only provenance gallery. |
+| Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, candidate or atomic frame-set review, and a provenance gallery that can edit intent, generate under a budget, and compare records. |
+| Hand edits | Touch-ups in your own editor or a pinned in-browser Pixelorama, kept beside the generated art with the generation still the record; frame and tile sets member by member. |
 | Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, and resumable paid jobs. |
@@ -77,10 +74,19 @@ Left/Right inspects alternatives, Enter or 1–9 selects, 0 leaves a row
 unresolved, and closing without **Apply selections** applies nothing
 ([CLI reference](docs/CLI.md#pick)). [`pixelkiln gallery`](docs/CLI.md#gallery)
 is its companion: every generation at integer zoom with its prompt, cost, hashes,
-lineage, and quality record; `--edit` changes prompts, adds assets, and serves a pinned,
-hash-verified [Pixelorama](docs/CLI.md#tools) build; `--budget` generates and reviews from the page.
+lineage, and quality record, side-by-side comparison, and a `--workspace` view
+across projects. `--edit` changes prompts, sizes, tags, and style fields (with the
+blast radius shown first) and adds assets; `--budget` generates, regenerates, and
+reviews from the page under that ceiling.
 
 ![PixelKiln generation gallery UI](./website/public/gallery-ui-showcase.jpg)
+
+Hand edits live beside the art, not in place of the record. [`pixelkiln edit`](docs/CLI.md#edit)
+opens a copy in your own editor; with `--edit` the gallery does the same, or opens
+it in a pinned, hash-verified [Pixelorama](docs/CLI.md#tools) build right in the page
+and saves it back — layers kept, frame and tile sets one file per member.
+
+![PixelKiln in-browser editor](./website/public/gallery-editor-showcase.jpg)
 
 ## Install
 
@@ -91,9 +97,8 @@ npm install --save-dev pixelkiln
 npx pixelkiln --help
 ```
 
-For library use, both `import("pixelkiln")` and `require("pixelkiln")` are
-supported. Contributors can still run `npm run pixelkiln -- …` from a checkout
-to execute the TypeScript source directly.
+Both `import("pixelkiln")` and `require("pixelkiln")` work; contributors can run
+`npm run pixelkiln -- …` from a checkout to execute the TypeScript source.
 
 ## Five-minute start
 
@@ -220,12 +225,16 @@ pixelkiln plan
 # Generate only an intended slice with a provider-unit ceiling.
 pixelkiln gen --style base --only anvil,hammer --budget 80
 
-# Repair paid output without regenerating.
+# Repair paid output without regenerating; pull edits made in PixelLab's editor.
 pixelkiln restore
+pixelkiln fetch --refresh
+
+# Touch one sprite up by hand, in your editor or the gallery's.
+pixelkiln edit --only anvil --style base
+pixelkiln gallery --edit
 
 # Optional local gates.
 pixelkiln audit --check --max-distance 35 --min-transparency 0.1
-pixelkiln cache --check
 
 # Build and verify the quality output declared by style.quality.
 pixelkiln refine --style base
@@ -233,9 +242,8 @@ pixelkiln refine approve --from assets/final/anvil.pixelkiln.json --reviewer "Yo
 pixelkiln refine check --style base
 ```
 
-Repeated `--style`, `--only`, `--claims`, and `--output-role` filters
-accumulate; comma-separated values also work. Unknown flags are hard errors, so
-a typo cannot silently widen paid work.
+Repeated `--style`, `--only`, `--claims`, and `--output-role` filters accumulate;
+commas work too. Unknown flags are hard errors, so a typo cannot widen paid work.
 
 ## Choose the right generator
 
@@ -273,14 +281,11 @@ pixelkiln export --style ground --only terrain --format tiled
 ```
 
 Pack, mount, and export write managed bundles. When a style has a quality
-profile, pack and mount consume only its current approved PNGs and include their
-records in provenance. Existing unowned output is adopted only when already
-byte-identical; manual edits stop the whole write unless `--force` takes ownership.
-
-All changing members stage before promotion. Ordinary failures roll back.
-Abrupt termination leaves a validated transaction journal: the next invocation
-restores an incomplete old bundle or finishes cleanup for a committed new one.
-See [Derived artifacts](./docs/ARTIFACTS.md) and
+profile they consume only its current approved PNGs; a hand edit stands in for
+its generation. Unowned output is adopted only when byte-identical; manual edits
+stop the write unless `--force` takes ownership. Changing members stage before
+promotion, ordinary failures roll back, and abrupt termination leaves a journal
+the next invocation finishes. See [Derived artifacts](./docs/ARTIFACTS.md) and
 [Tiles and engine exports](./docs/TILES.md).
 
 ## Recovery and shared accounts
@@ -310,9 +315,8 @@ pixelkiln salvage --workspace pixelkiln.workspace.json
 ```
 
 A registered project's missing or unreadable lockfile is a hard error for
-`workspace claims` and `salvage --workspace`. Missing claims are never skipped.
-Purge only targets objects already tagged discard and requires an explicit
-confirmation.
+`workspace claims` and `salvage --workspace`; missing claims are never skipped.
+Purge only targets objects already tagged discard and asks first.
 See [Recovery and account safety](./docs/RECOVERY.md).
 
 ## Automation
@@ -347,8 +351,9 @@ console.log(plan.groups, plan.actionable.length)
 
 The package also exports audit and image-regression gates, quality-profile
 inspection and refinement, revision-readiness checks, lock/output helpers, the
-gallery snapshot, provider contracts, sprite packing/mounting, tile exporters,
-managed artifact writes, and provenance verification. See [Library API](./docs/LIBRARY.md).
+gallery snapshot and server, hand edits and the editor install, provider contracts,
+sprite packing/mounting, tile exporters, managed artifact writes, and provenance
+verification. See [Library API](./docs/LIBRARY.md).
 
 ## Documentation
 
@@ -377,22 +382,17 @@ managed artifact writes, and provenance verification. See [Library API](./docs/L
 | [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
 | [Provider comparison](./PROVIDERS.md) | Provider selection, costs, supported workflows, confidence, and limitations. |
 
-The [public documentation site](https://pixelkiln.griffen.codes/docs) is built by
-the application in [`website/`](./website/README.md). It reads these Markdown
-files directly at build time, so the website and published package share one
-documentation source.
-
-Project policies: [Contributing](./CONTRIBUTING.md),
-[Security](./SECURITY.md), and [provider comparison](./PROVIDERS.md).
+The [public documentation site](https://pixelkiln.griffen.codes/docs) is built from
+these Markdown files by [`website/`](./website/README.md), so the site and the
+package share one source. Policies: [Contributing](./CONTRIBUTING.md),
+[Security](./SECURITY.md), [provider comparison](./PROVIDERS.md).
 
 ## Scope
 
 Animated eight-direction characters and their ZIP/engine-resource export are
-not currently implemented. Cross-project content-cache reuse and
-`workspace find <hash|asset-id>` are deferred beyond the current read-only
-workspace catalog. See the open
-[roadmap issues](https://github.com/gfargo/pixelkiln/issues) for additional
-provider adapters and this remaining workspace work.
+not implemented. Cross-project content-cache reuse and `workspace find` are
+deferred beyond the current workspace catalog. See the open
+[roadmap issues](https://github.com/gfargo/pixelkiln/issues).
 
 ## License
 

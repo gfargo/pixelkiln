@@ -17,7 +17,7 @@ export const docs: DocEntry[] = [
   {
     slug: "getting-started",
     title: "Getting started",
-    description: "Create a project, adopt existing art, and run the everyday workflow.",
+    description: "Create a project, adopt existing art, run the everyday workflow, and touch art up by hand.",
     file: "docs/GETTING_STARTED.md",
     group: "Start here",
   },
@@ -52,7 +52,7 @@ export const docs: DocEntry[] = [
   {
     slug: "cli",
     title: "CLI reference",
-    description: "Every command and flag, including automation and exit behavior.",
+    description: "Every command and flag — gallery, editing, the in-browser editor, automation, and exit behavior.",
     file: "docs/CLI.md",
     group: "Start here",
   },
@@ -108,7 +108,7 @@ export const docs: DocEntry[] = [
   {
     slug: "artifacts",
     title: "Derived artifacts",
-    description: "Refine, pack, mount, export, approval provenance, and recovery.",
+    description: "Refine, pack, mount, export, hand-edit companions, approval provenance, and recovery.",
     file: "docs/ARTIFACTS.md",
     group: "Workflows",
   },
@@ -129,7 +129,7 @@ export const docs: DocEntry[] = [
   {
     slug: "architecture",
     title: "Architecture",
-    description: "The state machine, provider boundary, output identity, and durable writes.",
+    description: "The state machine, provider boundary, output identity, hand edits, the pinned editor, and durable writes.",
     file: "docs/ARCHITECTURE.md",
     group: "Internals",
   },
@@ -171,7 +171,7 @@ export const docs: DocEntry[] = [
   {
     slug: "security",
     title: "Security",
-    description: "Supported versions and private vulnerability reporting.",
+    description: "Supported versions, sensitive areas including the downloaded editor, and private vulnerability reporting.",
     file: "SECURITY.md",
     group: "Policies",
   },

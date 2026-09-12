@@ -159,11 +159,53 @@ If a run stops between stages, rerun `plan`. It points `processing` work to
 To browse what the project has made so far, run
 [`pixelkiln gallery`](CLI.md#gallery). It serves a read-only page of every
 generation with its full record — prompt, provider, cost, hashes, lineage, and
-quality state — and can stay open while `gen` runs. With several registered
-projects, `pixelkiln gallery --workspace pixelkiln.workspace.json` shows them
-all in one page.
+quality state — and can stay open while `gen` runs. Shift-click two records to
+compare them side by side. With several registered projects,
+`pixelkiln gallery --workspace pixelkiln.workspace.json` shows them all in one
+page.
 
 ![PixelKiln local generation gallery](../website/public/gallery-ui-showcase.jpg)
+
+The gallery can also do work, each ability behind its own flag:
+
+```bash
+pixelkiln gallery --edit              # change prompts, sizes, tags, style fields; add assets
+pixelkiln gallery --edit --budget 40  # …and generate, regenerate, and review from the page
+```
+
+`--edit` rewrites the manifest only — the same edit you would make in a text
+editor, with the blast radius of a style-level change shown before you save —
+and `--budget` runs the same submit, poll, and fetch as `gen` under that
+session ceiling. Without a flag the page has no write route at all.
+
+## Touch art up by hand
+
+A hand edit never replaces the generated file: it is a sibling under
+`<outDir>/edits/` that the manifest points at with `source`, so `plan` still
+reports the generation `ok` while `pack`, `mount`, and `export` place your
+version. Start one from the terminal or the gallery:
+
+```bash
+pixelkiln edit --only anvil --style base            # copy, declare, open in your editor
+PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
+pixelkiln tools install editor                      # optional: prefetch the in-browser editor
+```
+
+With `gallery --edit`, a record's **Hand edit** section offers the same
+**Edit by hand**, and **Edit in browser**: a pinned, hash-verified
+[Pixelorama](https://pixelorama.org) build the gallery serves itself, opened
+in a sheet with the sprite and the style's palette loaded. Save writes the edit
+back, keeps the layered `.pxo` beside it for the next time, and records which
+generation it was based on. A ComfyUI frame set or a PixelLab tile set opens as
+one project with a frame per member and saves every member back. The 46 MB
+editor is fetched once per PixelKiln release into a user cache, on the first
+click or with `tools install editor`; see [`tools`](CLI.md#tools).
+
+![PixelKiln in-browser editor](../website/public/gallery-editor-showcase.jpg)
+
+Art edited in PixelLab's own editor comes back with `pixelkiln fetch --refresh`
+(or the record's **Pull upstream changes**), which replaces the local file only
+if the object changed upstream and records the new bytes as that generation.
 
 ## Start from existing art
 

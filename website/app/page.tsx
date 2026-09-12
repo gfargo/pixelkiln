@@ -15,7 +15,7 @@ export default function Home() {
         name: "PixelKiln",
         url: absoluteUrl("/"),
         description:
-          "Plan costs, review candidates and frame sets, gate derived art, recover paid work, and package pixel art with recorded hashes.",
+          "Plan costs, review candidates and frame sets, edit sprites in the browser, gate derived art, recover paid work, and package pixel art with recorded hashes.",
       },
       {
         "@type": "SoftwareSourceCode",
@@ -27,7 +27,7 @@ export default function Home() {
         programmingLanguage: "TypeScript",
         runtimePlatform: "Node.js",
         description:
-          "A build pipeline that plans provider costs, records human choices, verifies derived art and frame sets, restores paid work, and packages pixel art.",
+          "A build pipeline that plans provider costs, records human choices and hand edits, verifies derived art and frame sets, restores paid work, and packages pixel art.",
       },
     ],
   };
@@ -191,7 +191,7 @@ export default function Home() {
               <span className="step-number">03</span>
               <div className="step-glyph"><Image src="/sprites/workflow/review.png" alt="" width={64} height={64} /></div>
               <h3>Review</h3>
-              <p>Choose from a local candidate sheet, then approve the exact refined pixels you are willing to ship.</p>
+              <p>Choose from a local candidate sheet, touch a sprite up in the gallery&apos;s editor, then approve the exact pixels you ship.</p>
               <code>pixelkiln pick</code>
             </article>
             <article>
@@ -207,15 +207,29 @@ export default function Home() {
         <section className="review-section">
           <div className="shell review-grid">
             <div className="section-heading review-copy">
-              <p className="eyebrow">Human review stays local</p>
-              <h2>Choose the image.<br />Keep the receipts.</h2>
+              <p className="eyebrow">Review and edits stay local</p>
+              <h2>Choose the image.<br />Fix the pixel.<br />Keep the receipts.</h2>
               <p className="section-deck">
                 PixelLab, Retro Diffusion, ComfyUI, and Scenario use the same review,
                 lockfile, and recovery flow. PixelKiln records every candidate,
-                then leaves the visual decision to you. The page preserves native
+                then leaves the visual decision to you; the page preserves native
                 aspect ratios and stays readable on ultrawide displays. Afterwards,{" "}
                 <code>pixelkiln gallery</code> keeps every generation and its
-                record — prompt, cost, hashes, lineage, approval — one click away.
+                record — prompt, cost, hashes, lineage, approval — one click away,
+                compares records side by side, and with <code>--edit</code> changes
+                prompts and style fields, adds assets, and generates again under a
+                budget you set.
+              </p>
+              <p className="section-deck">
+                Hand edits stay beside the art, never over the record. Open a
+                sprite in your own editor with <code>pixelkiln edit</code>, or in
+                the gallery&apos;s built-in{" "}
+                <a href="https://pixelorama.org" rel="noreferrer">Pixelorama</a>{" "}
+                — a pinned build, fetched once and verified by hash — and save it
+                back with its layers kept. Frame sets and tile sets open as one
+                project, one frame per member, and every member is written back
+                under its role. Art edited in PixelLab&apos;s own editor returns
+                with <code>fetch --refresh</code>.
               </p>
               <div className="provider-status" aria-label="Current provider support">
                 <span><i className="status-dot" /> PixelLab · production</span>
@@ -244,6 +258,9 @@ export default function Home() {
                 </TrackedLink>
                 <TrackedLink className="text-link" id="review_gallery_docs" section="review" href="/docs/cli#gallery">
                   Browse the gallery command →
+                </TrackedLink>
+                <TrackedLink className="text-link" id="review_edit_docs" section="review" href="/docs/getting-started#touch-art-up-by-hand">
+                  Touch art up by hand →
                 </TrackedLink>
                 <TrackedLink
                   className="text-link"
@@ -284,6 +301,20 @@ export default function Home() {
                   sizes="(max-width: 980px) 100vw, 56vw"
                 />
                 <figcaption>Actual local gallery · the environment benchmark across three providers · every record one click away</figcaption>
+              </figure>
+              <figure className="review-visual">
+                <div className="review-window-bar">
+                  <span>localhost · pixelkiln gallery --edit</span>
+                  <span>hand edit</span>
+                </div>
+                <Image
+                  src="/gallery-editor-showcase.jpg"
+                  alt="PixelKiln's gallery with a benchmark fortress sprite open in the built-in Pixelorama editor, ready to save back to the project"
+                  width={1280}
+                  height={720}
+                  sizes="(max-width: 980px) 100vw, 56vw"
+                />
+                <figcaption>Actual in-browser editor · Pixelorama, pinned and hash-verified · saves beside the generated file, never over it</figcaption>
               </figure>
             </div>
           </div>
@@ -548,6 +579,7 @@ export default function Home() {
               <ul className="check-list">
                 <li><span>✓</span> Remote identity saved before polling</li>
                 <li><span>✓</span> Content-addressed local recovery cache</li>
+                <li><span>✓</span> Hand edits kept beside the generated file</li>
                 <li><span>✓</span> Manual-edit and overwrite protection</li>
                 <li><span>✓</span> Transactional atlas and export writes</li>
               </ul>
