@@ -124,7 +124,7 @@ describe("saveHandEdit", () => {
     let item = snapshot.items.find((i) => i.key === "base/anvil")!
     expect(item.editStatus).toBe("edited")
     expect(item.editMeta).toEqual({
-      editor: EDITOR.editor, savedAt: expect.any(String), basedOn: item.outputs[0]!.sha256, changedSince: false, project: null,
+      editor: EDITOR.editor, savedAt: expect.any(String), basedOn: item.outputs[0]!.sha256, changedSince: false, project: null, projectUrl: null,
     })
 
     // Touching the generated file's mtime is not a regeneration.
@@ -213,6 +213,12 @@ describe("POST /api/edit save-edit", () => {
       expect(item).toMatchObject({ editStatus: "edited", source: "art/edits/anvil.png" })
       expect(item.editMeta).toMatchObject({ editor: EDITOR.editor, project: "art/edits/anvil.pxo", changedSince: false })
       expect(after.project.manifestSha256).not.toBe(before.project.manifestSha256)
+      // The project file is served back to the page so a re-edit restores the layers.
+      expect(item.editMeta!.projectUrl).toMatch(/^\/media\/[0-9a-f]{24}\?v=/)
+      const pxo = await fetch(new URL(item.editMeta!.projectUrl!, server.url))
+      expect(pxo.status).toBe(200)
+      expect(pxo.headers.get("content-type")).toBe("application/octet-stream")
+      expect(Buffer.from(await pxo.arrayBuffer())).toEqual(PXO)
       expect(await readFile(path.join(dir, "art/edits/anvil.png"))).toEqual(RED)
       expect(await readFile(path.join(dir, "art/edits/anvil.pxo"))).toEqual(PXO)
       expect(messages.some((m) => /hand edit saved from pixelorama@v1.2.2-stable: art\/edits\/anvil.png \(declared in the manifest\) \+ project file/.test(m))).toBe(true)
@@ -245,6 +251,8 @@ describe("POST /api/edit save-edit", () => {
       expect(page).toContain(`'${type}'`)
     }
     expect(page).toContain("'save-edit'")
+    expect(page).toContain("message.pxo = pxo")
+    expect(page).toContain("' restored'")
     expect(page).toContain("Discard unsaved changes in the editor?")
     expect(page).toContain("beforeunload")
     expect(page).toContain("e.source === SHEET.frame.contentWindow")

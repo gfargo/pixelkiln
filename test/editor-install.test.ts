@@ -61,7 +61,7 @@ function fakeBuild(overrides: Partial<Record<string, Buffer>> = {}) {
 describe("the pinned editor build", () => {
   it("names a published release and every file with a hash", () => {
     expect(EDITOR_PIN.release).toMatch(/^editor-pixelorama-v\d+\.\d+\.\d+-pk\.\d+$/)
-    expect(EDITOR_PIN.protocol).toBe(1)
+    expect(EDITOR_PIN.protocol).toBe(2)
     const names = Object.keys(EDITOR_PIN.files)
     expect(names).toEqual(expect.arrayContaining(["index.html", "index.js", "index.wasm", "index.pck"]))
     for (const [name, file] of Object.entries(EDITOR_PIN.files)) {

@@ -402,9 +402,11 @@ the editor) hands the flattened image back to the page, which writes the same
 `edits/` file `pixelkiln edit` would and declares it; the sheet stays open for
 the next change, **Save & close** does both, and closing with unsaved changes
 asks first. A browser save also keeps Pixelorama's layered `.pxo` beside the
-edit and writes `<edit>.edit.json` recording the editor, the time, and the
-hash of the generation the edit was based on, so `regenerated-since` is
-decided by hash rather than file times for those edits. The record shows the
+edit — the next **Edit in browser** hands it back, so layers and frames come
+back as they were (the flattened PNG is used only if the file cannot be read,
+and the sheet says which) — and writes `<edit>.edit.json` recording the
+editor, the time, and the hash of the generation the edit was based on, so
+`regenerated-since` is decided by hash rather than file times for those edits. The record shows the
 editor and the layer file; **Open in desktop editor** and **Detach edit** work
 on the same file. The editor page runs same-origin under its own
 content-security policy and never sees the gallery's session token — the page

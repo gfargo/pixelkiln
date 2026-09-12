@@ -147,7 +147,7 @@ transactional:
 `basedOn` lets the gallery report `regenerated-since` by comparing hashes
 rather than modification times; `sha256` shows when another tool rewrote the
 edit after the editor did; `project` names the layered Pixelorama file kept
-beside the edit for re-editing. An edit made with a desktop editor has no
+beside the edit, which the next in-browser edit opens so layers survive. An edit made with a desktop editor has no
 companion and is judged by file times. Commit the companion and the `.pxo`
 with the edit if you want that history; nothing else reads them.
 

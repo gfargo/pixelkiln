@@ -813,30 +813,42 @@ function openEditorSheet(item) {
   stage.append(frame, loading);
   panel.append(bar, stage);
   host.append(scrim, panel);
-  SHEET = { item, frame, loading, status, msg, save, saveClose, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src };
+  SHEET = { item, frame, loading, status, msg, save, saveClose, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false };
   sheetStatus('cool', 'loading');
   sheetButtons();
   close.focus({ preventScroll: true });
 }
+// The edit file is what the editor gets; when a browser save kept the layered
+// project beside it, that goes along too and the editor restores the layers,
+// falling back to the flattened PNG if the file cannot be read.
 async function sendOpen() {
   const { item, source } = SHEET;
   const style = snap.styles.find((s) => s.id === item.styleId && s.project === item.project);
-  let png;
+  const projectUrl = source === item.edit && item.editMeta && item.editMeta.projectUrl && SHEET.ready.version >= 2 ? item.editMeta.projectUrl : null;
+  let png, pxo = null;
   try {
     const res = await fetch(source.url, { cache: 'no-store' });
     if (!res.ok) throw new Error(await res.text());
     png = await res.arrayBuffer();
+    if (projectUrl) {
+      const p = await fetch(projectUrl, { cache: 'no-store' });
+      if (p.ok) pxo = await p.arrayBuffer();
+    }
   } catch (err) {
     if (SHEET) { SHEET.msg.textContent = 'Could not load the image: ' + err.message; sheetStatus('bad', 'failed'); }
     return;
   }
   if (!SHEET) return;
   const request = 'open-' + (++SHEET.requests);
-  SHEET.frame.contentWindow.postMessage({
+  SHEET.sentProject = !!pxo;
+  const message = {
     type: 'pixelkiln:open', request,
     asset: { key: item.styleId + '/' + item.assetId, id: item.id, name: item.assetId, width: item.width, height: item.height },
     png, palette: style ? style.palette : [],
-  }, location.origin, [png]);
+  };
+  const transfer = [png];
+  if (pxo) { message.pxo = pxo; transfer.push(pxo); }
+  SHEET.frame.contentWindow.postMessage(message, location.origin, transfer);
   sheetStatus('cool', 'opening');
 }
 function requestEditorSave(close) {
@@ -862,7 +874,9 @@ async function onEditorMessage(m) {
     case 'pixelkiln:opened':
       SHEET.opened = true;
       SHEET.loading.remove();
-      sheetStatus('ok', SHEET.item.edit && SHEET.item.edit.exists ? 'editing the edit file' : 'editing a copy of the generated art');
+      if (m.source === 'pxo') sheetStatus('ok', 'editing the edit file with its ' + (m.layers === 1 ? 'layer' : m.layers + ' layers') + ' restored');
+      else if (SHEET.sentProject) sheetStatus('warn', 'editing the flattened edit file; its layer file could not be opened');
+      else sheetStatus('ok', SHEET.item.edit && SHEET.item.edit.exists ? 'editing the edit file' : 'editing a copy of the generated art');
       sheetButtons();
       break;
     case 'pixelkiln:dirty':

@@ -32,8 +32,12 @@ export type GalleryState = PlanState | "undeclared"
 export interface GalleryMedia {
   /** Absolute path of the file the server may read for this id. */
   path: string
-  contentType: MediaType
+  /** Images, or the editor's own project file kept beside a browser edit. */
+  contentType: MediaType | typeof PROJECT_FILE_TYPE
 }
+
+/** Served type of a Pixelorama `.pxo`: a zip the browser never renders. */
+export const PROJECT_FILE_TYPE = "application/octet-stream"
 
 export interface GalleryOutput {
   /** Manifest-relative path as recorded (or as the manifest would record it). */
@@ -414,6 +418,8 @@ export interface GalleryEditMeta {
   changedSince: boolean
   /** Manifest-relative path of the layered project file kept beside the edit, if present. */
   project: string | null
+  /** Where the page fetches that file to hand it back to the editor; null without one. */
+  projectUrl: string | null
 }
 
 type RawStyleShape = { extends?: unknown } & Record<string, unknown>
@@ -462,12 +468,20 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         const companion = await readHandEditCompanion(editPath)
         if (companion) {
           const projectPath = handEditProjectPath(editPath)
+          const project = companion.project && existsSync(projectPath) ? await fileInfo(projectPath) : null
+          let projectUrl: string | null = null
+          if (project) {
+            const id = galleryMediaId(projectPath)
+            media.set(id, { path: projectPath, contentType: PROJECT_FILE_TYPE })
+            projectUrl = `${galleryMediaRoute(id)}?v=${project.bytes}-${Date.parse(project.modifiedAt).toString(36)}`
+          }
           editMeta = {
             editor: companion.editor,
             savedAt: companion.savedAt,
             basedOn: companion.basedOn,
             changedSince: editSha !== null && editSha !== companion.sha256,
-            project: companion.project && existsSync(projectPath) ? portableOutputPath(projectPath, root) : null,
+            project: project ? portableOutputPath(projectPath, root) : null,
+            projectUrl,
           }
         }
         const regenerated = companion
