@@ -46,18 +46,20 @@ Same origin only, both directions checked. Bytes are `ArrayBuffer`s
 
 | direction | type | fields |
 |---|---|---|
-| host → editor | `open` | `request`, `asset: {key, id, name, width, height}`, `png`, `palette: ["#rrggbb", …]` |
+| host → editor | `open` | `request`, `asset: {key, id, name, width, height}`, `png`, `pxo?`, `palette: ["#rrggbb", …]` |
 | host → editor | `request-save` | `request` |
 | editor → host | `ready` | `version`, `editor`, `api` |
-| editor → host | `opened` | `request`, `width`, `height` |
+| editor → host | `opened` | `request`, `width`, `height`, `source: "pxo" \| "png"`, `layers`, `frames` |
 | editor → host | `dirty` | `dirty` |
 | editor → host | `save` | `request`, `width`, `height`, `png`, `pxo` |
 | editor → host | `error` | `request?`, `message` |
 
 `save` is the flattened first frame as PNG plus Pixelorama's own `.pxo`
-(layers intact) for re-editing. The editor also answers ⌘S / Ctrl+S and a
-**File → Save to PixelKiln** item with a `save`; its disk-oriented File items
-are removed, since the page owns the file.
+(layers intact) for re-editing; hand that `.pxo` back in `open` (protocol 2)
+and the editor restores the layered project, using the `png` only if the
+project file cannot be read — `opened.source` says which. The editor also
+answers ⌘S / Ctrl+S and a **File → Save to PixelKiln** item with a `save`;
+its disk-oriented File items are removed, since the page owns the file.
 
 ## Local build
 

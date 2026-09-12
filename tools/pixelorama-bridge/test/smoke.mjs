@@ -32,13 +32,14 @@ try {
   await page.waitForFunction(() => window.__host.ready !== null, { timeout: 300_000, polling: 2000 })
   const ready = await page.evaluate(() => window.__host.ready)
   console.log(`ready in ${Math.round((Date.now() - t0) / 1000)}s:`, JSON.stringify(ready))
-  if (ready.version !== 1) fail("protocol version " + ready.version)
+  if (ready.version !== 2) fail("protocol version " + ready.version)
 
   await page.evaluate(() => window.__host.openSample())
   await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
   const opened = await page.evaluate(() => window.__host.opened)
   console.log("opened:", JSON.stringify(opened))
   if (opened.width !== 32 || opened.height !== 32) fail("opened size " + opened.width + "x" + opened.height)
+  if (opened.source !== "png") fail("opened from " + opened.source + ", expected png")
   await new Promise((r) => setTimeout(r, 1500))
   if (await page.evaluate(() => window.__host.dirty)) fail("document dirty right after open")
 
@@ -62,6 +63,32 @@ try {
   if (!save.differs) fail("saved PNG is identical to the sample; paint did not land")
   if (save.pxo < 100 || save.pxoSig !== "504b") fail("pxo missing or not a zip")
   if (await page.evaluate(() => window.__host.dirty)) fail("still dirty after save")
+
+  // Round trip the project file: re-open from the .pxo, save again, and the
+  // flattened PNG must be the same bytes — the painted pixel survived.
+  const firstPng = await page.evaluate(() => [...window.__host.lastSave.png])
+  await page.evaluate(() => window.__host.reopenLastSave())
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const reopened = await page.evaluate(() => window.__host.opened)
+  console.log("reopened:", JSON.stringify(reopened))
+  if (reopened.source !== "pxo") fail("reopen used " + reopened.source + ", expected pxo")
+  if (reopened.width !== 32 || reopened.height !== 32) fail("reopened size " + reopened.width + "x" + reopened.height)
+  if (reopened.layers < 1 || reopened.frames < 1) fail("reopened project has no layers or frames")
+  await new Promise((r) => setTimeout(r, 1000))
+  if (await page.evaluate(() => window.__host.dirty)) fail("document dirty right after reopen")
+  await page.evaluate(() => window.__host.requestSave())
+  await page.waitForFunction(() => window.__host.lastSave !== null, { timeout: 30_000 })
+  const secondPng = await page.evaluate(() => [...window.__host.lastSave.png])
+  const same = firstPng.length === secondPng.length && firstPng.every((b, i) => b === secondPng[i])
+  console.log("reopen round trip: png " + secondPng.length + " B, identical: " + same)
+  if (!same) fail("PNG after reopening the pxo differs from the one saved before")
+
+  // A project file Pixelorama cannot read falls back to the PNG, and says so.
+  await page.evaluate(() => window.__host.reopenLastSave(true))
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const fallback = await page.evaluate(() => window.__host.opened)
+  console.log("corrupt pxo fallback:", JSON.stringify(fallback))
+  if (fallback.source !== "png") fail("corrupt pxo did not fall back to png (" + fallback.source + ")")
   const errs = await page.evaluate(() => window.__host.errors)
   if (errs.length) fail("bridge errors: " + JSON.stringify(errs))
   if (errors.length) console.log("page errors:", errors.slice(0, 3))

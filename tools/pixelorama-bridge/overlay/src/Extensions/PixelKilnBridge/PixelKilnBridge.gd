@@ -7,20 +7,27 @@ extends Node
 ## in HandleExtensions.gd) and does nothing outside a web export.
 ##
 ## Protocol (all messages carry `type: "pixelkiln:<name>"`; same origin only):
-##   host → editor   open          { request, asset: {key, id, name, width, height}, png: ArrayBuffer, palette: [#rrggbb] }
+##   host → editor   open          { request, asset: {key, id, name, width, height}, png: ArrayBuffer, pxo?: ArrayBuffer, palette: [#rrggbb] }
 ##   host → editor   request-save  { request }
 ##   editor → host   ready         { version, editor }
-##   editor → host   opened        { request, width, height }
+##   editor → host   opened        { request, width, height, source: "pxo" | "png", layers, frames }
 ##   editor → host   dirty         { dirty }
 ##   editor → host   save          { request, width, height, png: ArrayBuffer, pxo: ArrayBuffer }
 ##   editor → host   error         { request?, message }
+##
+## `open` with a `pxo` restores the layered project a previous `save` returned;
+## the `png` is the fallback when the project file cannot be read. `opened`
+## says which one the editor used.
 ##
 ## Bytes cross the JavaScript boundary as base64 inside a small shim this
 ## node installs on `window.__pixelkiln`; the shim converts to and from
 ## ArrayBuffers so the page-facing protocol stays binary.
 
-const PROTOCOL_VERSION := 1
+const PROTOCOL_VERSION := 2
 const PXO_TMP := "user://pixelkiln-edit.pxo"
+## Projects handed over by the host are written here to be opened; the file
+## name becomes the project name, so one file per asset name.
+const PXO_OPEN_DIR := "user://pixelkiln-open"
 const MENU_LABEL := "Save to PixelKiln"
 
 ## Installed once via JavaScriptBridge.eval. Keeps an inbox the node drains
@@ -36,7 +43,7 @@ const SHIM := """
   window.addEventListener("message", (e) => {
     if (e.origin !== window.location.origin || !e.data || typeof e.data.type !== "string" || !e.data.type.startsWith("pixelkiln:")) return;
     const m = Object.assign({}, e.data);
-    if (m.png instanceof ArrayBuffer || ArrayBuffer.isView(m.png)) m.png = toB64(m.png.buffer || m.png);
+    for (const k of ["png", "pxo"]) { if (m[k] instanceof ArrayBuffer || ArrayBuffer.isView(m[k])) m[k] = toB64(m[k].buffer || m[k]); }
     box.queue.push(m);
   });
   window.__pixelkiln = box;
@@ -108,19 +115,28 @@ func _handle(message: Dictionary) -> void:
 
 func _open(message: Dictionary, request: String) -> void:
 	var png := Marshalls.base64_to_raw(str(message.get("png", "")))
-	if png.is_empty():
-		_post_error("open needs png bytes", request)
-		return
-	var image := Image.new()
-	var err := image.load_png_from_buffer(png)
-	if err != OK:
-		_post_error("could not decode PNG: %s" % error_string(err), request)
+	var pxo := Marshalls.base64_to_raw(str(message.get("pxo", "")))
+	if png.is_empty() and pxo.is_empty():
+		_post_error("open needs png or pxo bytes", request)
 		return
 	var asset: Dictionary = message.get("asset", {}) if typeof(message.get("asset")) == TYPE_DICTIONARY else {}
 	var name := str(asset.get("name", "pixelkiln")).replace("/", "-")
 	if not name.is_valid_filename():
 		name = "pixelkiln"
-	OpenSave.open_image_as_new_tab(name + ".png", image)
+	var source := ""
+	if not pxo.is_empty() and _open_pxo(pxo, name):
+		source = "pxo"
+	else:
+		if png.is_empty():
+			_post_error("could not open the project file and no png was given", request)
+			return
+		var image := Image.new()
+		var err := image.load_png_from_buffer(png)
+		if err != OK:
+			_post_error("could not decode PNG: %s" % error_string(err), request)
+			return
+		OpenSave.open_image_as_new_tab(name + ".png", image)
+		source = "png"
 	var project := Global.current_project
 	_load_palette(message.get("palette"), name)
 	project.has_changed = false
@@ -128,9 +144,43 @@ func _open(message: Dictionary, request: String) -> void:
 	_post({
 		"type": "pixelkiln:opened",
 		"request": request,
-		"width": image.get_width(),
-		"height": image.get_height(),
+		"width": project.size.x,
+		"height": project.size.y,
+		"source": source,
+		"layers": project.layers.size(),
+		"frames": project.frames.size(),
 	})
+
+
+## Restore a project file a previous save returned. Opened as a new tab rather
+## than into the empty one, so a file Pixelorama cannot read leaves nothing
+## half-cleared behind; the empty tab is dropped afterwards, as an import does.
+## Opened as a "backup" so Pixelorama neither rewrites the File menu items
+## this bridge removed nor records the temp path as the last project.
+func _open_pxo(pxo: PackedByteArray, name: String) -> bool:
+	if DirAccess.make_dir_recursive_absolute(PXO_OPEN_DIR) != OK:
+		return false
+	var path := PXO_OPEN_DIR + "/" + name + ".pxo"
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_buffer(pxo)
+	file.close()
+	var previous_empty := Global.current_project.is_empty()
+	var previous_index := Global.current_project_index
+	var count := Global.projects.size()
+	OpenSave.open_pxo_file(path, true, false)
+	if Global.projects.size() != count + 1:
+		return false
+	var project: Project = Global.projects[count]
+	if project.frames.is_empty() or project.layers.is_empty():
+		return false
+	project.backup_path = ""
+	project.export_profile.file_name = name
+	project.was_exported = true
+	if previous_empty:
+		Global.tabs.delete_tab(previous_index)
+	return true
 
 
 func _load_palette(palette, name: String) -> void:
