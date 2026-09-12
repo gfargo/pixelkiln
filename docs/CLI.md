@@ -391,15 +391,24 @@ based on an older generation because the art was regenerated since — plus
 **Open in editor** and **Detach edit**. A card whose edit differs from the
 generated art shows the edit, since that is what ships, with a ✎ mark.
 
-`--edit` also offers the in-browser editor, a pinned build of
-[Pixelorama](https://pixelorama.org) that the gallery serves itself; see
-[`tools`](#tools) for what is fetched, where it lives, and how it is verified.
-The header shows whether it is installed and, if not, an **Install editor**
-button that fetches it once with a progress bar; nothing is downloaded without
-that click or `tools install editor`. Once installed, **Open editor** launches
-it in a new tab (opening a sprite from a record and saving it back is the next
-step of [#94](https://github.com/gfargo/pixelkiln/issues/94)). `--no-editor`
-hides all of it and serves none of its routes.
+`--edit` also offers **Edit in browser**: a pinned build of
+[Pixelorama](https://pixelorama.org) that the gallery serves itself, opened in
+a slide-out sheet with the sprite and the style's palette loaded. See
+[`tools`](#tools) for what is fetched, where it lives, and how it is verified;
+the header shows whether it is installed and, if not, an **Install editor**
+button that fetches it once with a progress bar — nothing is downloaded without
+that click or `tools install editor`. **Save to project** (or ⌘S / Ctrl+S in
+the editor) hands the flattened image back to the page, which writes the same
+`edits/` file `pixelkiln edit` would and declares it; the sheet stays open for
+the next change, **Save & close** does both, and closing with unsaved changes
+asks first. A browser save also keeps Pixelorama's layered `.pxo` beside the
+edit and writes `<edit>.edit.json` recording the editor, the time, and the
+hash of the generation the edit was based on, so `regenerated-since` is
+decided by hash rather than file times for those edits. The record shows the
+editor and the layer file; **Open in desktop editor** and **Detach edit** work
+on the same file. The editor page runs same-origin under its own
+content-security policy and never sees the gallery's session token — the page
+does the write. `--no-editor` hides all of it and serves none of its routes.
 
 A PixelLab `map` or `1dir` record also links to its account object (**Open in
 pixellab ↗**), where PixelLab's own editor can change it; with `--budget`

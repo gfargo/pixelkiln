@@ -270,6 +270,16 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
     border-left:1px solid var(--line-strong); display:grid; grid-template-rows:auto 1fr; min-width:0; }
   .sheet.review-host { width:min(1180px, 94vw); }
   .sheet.compare-host { width:min(1500px, 96vw); }
+  .sheet.editor-host { width:min(1400px, 96vw); grid-template-rows:auto 1fr; }
+  .sheet.editor-host .rbar b { font:650 12.5px/1.4 var(--mono); color:var(--text); }
+  .sheet.editor-host .rbar .acts { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .sheet.editor-host .rbar .st { display:inline-flex; align-items:center; gap:6px; font:650 11.5px/1 var(--mono); }
+  .sheet.editor-host .rbar .msg { color:var(--bad); font-size:12.5px; }
+  .sheet.editor-host .stage { position:relative; min-height:0; }
+  .sheet.editor-host .stage iframe { position:absolute; inset:0; }
+  .sheet.editor-host .loading { position:absolute; inset:0; display:grid; place-items:center; background:var(--bg);
+    color:var(--dim); text-align:center; padding:24px; }
+  .sheet.editor-host .loading b { display:block; color:var(--text); margin-bottom:6px; }
   .sheet .rbar { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line-strong);
     background:var(--panel); font-size:13px; flex-wrap:wrap; }
   .sheet .rbar span { color:var(--dim); }
@@ -308,7 +318,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   .tray .pick img { width:22px; height:22px; object-fit:contain; image-rendering:pixelated; }
   .tray .pick button { padding:0 5px; border-color:transparent; color:var(--dim); font-size:12px; }
   .tray > button { padding:5px 11px; font-size:12.5px; }
-  @media (max-width: 900px) { .sheet.review-host, .sheet.compare-host { width:100vw; } }
+  @media (max-width: 900px) { .sheet.review-host, .sheet.compare-host, .sheet.editor-host { width:100vw; } }
   .drawer .gen { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
   .pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 10px; }
   .pair figure { margin:0; border:1px solid var(--line); background:var(--panel-deep); background-image:var(--checker);
@@ -563,6 +573,7 @@ async function pollEditor() {
   renderTools();
   clearTimeout(edTimer);
   if (ED.installing) edTimer = setTimeout(pollEditor, 1000);
+  else if (ui.open) renderDrawer();
 }
 async function installEditor() {
   try {
@@ -599,7 +610,7 @@ function renderTools() {
     row.append(bar);
   } else if (ED.installed) {
     ph.append(el('i', 'dot ok'), document.createTextNode('ready'));
-    last.textContent = name + ' is installed and verified.';
+    last.textContent = name + ' is installed and verified; a record\u2019s Hand edit section opens sprites in it.';
     last.title = ED.dir || '';
     const b = el('button', null, 'Open editor');
     b.type = 'button'; b.onclick = () => window.open(ED.url, '_blank', 'noopener');
@@ -734,8 +745,169 @@ function openReview(jobId) {
   host.append(scrim, panel);
 }
 window.addEventListener('message', (e) => {
-  if (e.origin !== location.origin || !e.data || e.data.type !== 'pixelkiln:review-applied') return;
-  setTimeout(() => { $('dialog-host').textContent = ''; pollJobs(); refresh(); }, 600);
+  if (e.origin !== location.origin || !e.data || typeof e.data.type !== 'string') return;
+  if (e.data.type === 'pixelkiln:review-applied') {
+    setTimeout(() => { $('dialog-host').textContent = ''; pollJobs(); refresh(); }, 600);
+    return;
+  }
+  if (SHEET && e.source === SHEET.frame.contentWindow) onEditorMessage(e.data);
+});
+
+// ---- the in-browser editor sheet -------------------------------------------
+// The page is the protocol host: it hands the editor the PNG and palette,
+// asks it for the image back, and does the authenticated write itself. The
+// iframe never sees the session token, and the server validates, sizes, and
+// declares the file the same way pixelkiln edit does.
+
+let SHEET = null;
+const editorSource = (item) => item.edit && item.edit.exists ? item.edit
+  : item.outputs.length === 1 && item.outputs[0].exists && item.outputs[0].mediaType === 'image/png' ? item.outputs[0] : null;
+const canEditInBrowser = (item) => EDITOR && EDITABLE && item.declared && item.asset && projectOf(item)?.manifestSha256 && editorSource(item) &&
+  !(item.outputs.length > 1);
+const toBase64 = (buf) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(String(r.result).slice(String(r.result).indexOf(',') + 1));
+  r.onerror = () => reject(r.error);
+  r.readAsDataURL(new Blob([buf]));
+});
+function sheetStatus(tone, text) {
+  if (!SHEET) return;
+  SHEET.status.textContent = '';
+  SHEET.status.append(el('i', 'dot ' + tone), document.createTextNode(text));
+}
+function sheetButtons() {
+  if (!SHEET) return;
+  const busy = !SHEET.opened || SHEET.pending !== null;
+  SHEET.save.disabled = busy || !SHEET.dirty;
+  SHEET.saveClose.disabled = busy;
+}
+function openEditorSheet(item) {
+  if (SHEET) return;
+  const src = editorSource(item);
+  const host = $('dialog-host');
+  host.textContent = '';
+  const scrim = el('div', 'sheet-scrim');
+  scrim.onclick = () => closeEditorSheet();
+  const panel = el('div', 'sheet editor-host');
+  const bar = el('div', 'rbar');
+  const close = el('button', null, 'Close'); close.type = 'button';
+  close.onclick = () => closeEditorSheet();
+  const title = el('b', null, (item.project ? item.project + ':' : '') + item.styleId + '/' + item.assetId + ' · ' + item.width + '×' + item.height);
+  const status = el('span', 'st');
+  const acts = el('div', 'acts');
+  const msg = el('span', 'msg');
+  const save = el('button', 'primary', 'Save to project'); save.type = 'button';
+  save.onclick = () => requestEditorSave(false);
+  const saveClose = el('button', null, 'Save & close'); saveClose.type = 'button';
+  saveClose.onclick = () => requestEditorSave(true);
+  acts.append(msg, save, saveClose);
+  bar.append(close, title, status, acts);
+  const stage = el('div', 'stage');
+  const frame = el('iframe');
+  frame.title = 'Pixelorama';
+  frame.src = ED.url;
+  const loading = el('div', 'loading');
+  const loadText = el('div');
+  loadText.append(el('b', null, 'Loading the editor'), document.createTextNode('The first open compiles a 40 MB build; later opens come from the browser cache.'));
+  loading.append(loadText);
+  stage.append(frame, loading);
+  panel.append(bar, stage);
+  host.append(scrim, panel);
+  SHEET = { item, frame, loading, status, msg, save, saveClose, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src };
+  sheetStatus('cool', 'loading');
+  sheetButtons();
+  close.focus({ preventScroll: true });
+}
+async function sendOpen() {
+  const { item, source } = SHEET;
+  const style = snap.styles.find((s) => s.id === item.styleId && s.project === item.project);
+  let png;
+  try {
+    const res = await fetch(source.url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(await res.text());
+    png = await res.arrayBuffer();
+  } catch (err) {
+    if (SHEET) { SHEET.msg.textContent = 'Could not load the image: ' + err.message; sheetStatus('bad', 'failed'); }
+    return;
+  }
+  if (!SHEET) return;
+  const request = 'open-' + (++SHEET.requests);
+  SHEET.frame.contentWindow.postMessage({
+    type: 'pixelkiln:open', request,
+    asset: { key: item.styleId + '/' + item.assetId, id: item.id, name: item.assetId, width: item.width, height: item.height },
+    png, palette: style ? style.palette : [],
+  }, location.origin, [png]);
+  sheetStatus('cool', 'opening');
+}
+function requestEditorSave(close) {
+  if (!SHEET || !SHEET.opened || SHEET.pending) return;
+  const request = 'save-' + (++SHEET.requests);
+  SHEET.pending = { request, close };
+  SHEET.msg.textContent = '';
+  sheetStatus('cool', 'saving');
+  sheetButtons();
+  SHEET.frame.contentWindow.postMessage({ type: 'pixelkiln:request-save', request }, location.origin);
+}
+async function onEditorMessage(m) {
+  switch (m.type) {
+    case 'pixelkiln:ready':
+      SHEET.ready = m;
+      if (m.version !== ED.protocol) {
+        SHEET.msg.textContent = 'The editor speaks protocol ' + m.version + '; this gallery expects ' + ED.protocol + '. Reinstall it with pixelkiln tools install editor.';
+        sheetStatus('bad', 'mismatch');
+        return;
+      }
+      sendOpen();
+      break;
+    case 'pixelkiln:opened':
+      SHEET.opened = true;
+      SHEET.loading.remove();
+      sheetStatus('ok', SHEET.item.edit && SHEET.item.edit.exists ? 'editing the edit file' : 'editing a copy of the generated art');
+      sheetButtons();
+      break;
+    case 'pixelkiln:dirty':
+      SHEET.dirty = !!m.dirty;
+      if (SHEET.opened && !SHEET.pending) sheetStatus(SHEET.dirty ? 'warn' : 'ok', SHEET.dirty ? 'unsaved changes' : 'saved');
+      sheetButtons();
+      break;
+    case 'pixelkiln:save': {
+      const pending = SHEET.pending;
+      if (!pending || pending.request !== m.request) return;
+      try {
+        const body = { png: await toBase64(m.png), editor: SHEET.ready.editor, protocol: SHEET.ready.version };
+        if (m.pxo && m.pxo.byteLength) body.pxo = await toBase64(m.pxo);
+        await postHandEdit(SHEET.item, 'save-edit', body);
+        const saved = snap.items.find((i) => i.id === SHEET.item.id);
+        if (saved) SHEET.item = saved;
+        SHEET.dirty = false;
+        SHEET.pending = null;
+        ui.notice = { id: SHEET.item.id, text: 'Saved ' + (saved && saved.edit ? saved.edit.path : 'the edit') + '. mount and pack place it in place of the generated art.' };
+        render();
+        if (pending.close) { closeEditorSheet(true); return; }
+        sheetStatus('ok', 'saved');
+      } catch (err) {
+        SHEET.pending = null;
+        SHEET.msg.textContent = err.message + (err.status === 409 ? ' — press Refresh, then save again.' : '');
+        sheetStatus('bad', 'not saved');
+      }
+      sheetButtons();
+      break;
+    }
+    case 'pixelkiln:error':
+      SHEET.msg.textContent = m.message || 'The editor reported an error.';
+      if (SHEET.pending) { SHEET.pending = null; sheetStatus('bad', 'not saved'); sheetButtons(); }
+      break;
+  }
+}
+function closeEditorSheet(force) {
+  if (!SHEET) return;
+  if (SHEET.dirty && !force && !confirm('Discard unsaved changes in the editor?')) return;
+  SHEET = null;
+  $('dialog-host').textContent = '';
+  refresh();
+}
+window.addEventListener('beforeunload', (e) => {
+  if (SHEET && SHEET.dirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
 function visibleItems() {
@@ -1311,6 +1483,11 @@ function handEditSection(item) {
     row(dl, 'file', item.edit.path, { mono: true, copy: item.edit.absolutePath });
     if (item.edit.sha256) row(dl, 'sha256', item.edit.sha256.slice(0, 16) + '…', { mono: true, copy: item.edit.sha256 });
     row(dl, 'saved', fmtWhen(item.edit.modifiedAt));
+    if (item.editMeta) {
+      row(dl, 'editor', item.editMeta.editor + ', ' + fmtWhen(item.editMeta.savedAt) + (item.editMeta.changedSince ? ' — the file changed since' : ''));
+      if (item.editMeta.basedOn) row(dl, 'based on', item.editMeta.basedOn.slice(0, 16) + '…', { mono: true, copy: item.editMeta.basedOn });
+      if (item.editMeta.project) row(dl, 'layers', item.editMeta.project, { mono: true });
+    }
     s.append(dl);
   } else {
     s.append(el('div', 'state-dim', 'Touch it up in your own editor. The generated file stays untouched; the edit is a sibling file the manifest points at, and mount and pack place that instead.'));
@@ -1319,7 +1496,7 @@ function handEditSection(item) {
     const acts = el('div', 'hand-actions');
     const msg = el('span', 'msg');
     const go = async (label, action, extra, done) => {
-      const b = el('button', label === 'Detach edit' ? null : 'primary', label); b.type = 'button';
+      const b = el('button', label === 'Detach edit' || (EDITOR && ED && ED.installed) ? null : 'primary', label); b.type = 'button';
       b.onclick = async () => {
         b.disabled = true; msg.className = 'msg'; msg.textContent = '…';
         try { await postHandEdit(item, action, extra); ui.notice = { id: item.id, text: done }; render(); }
@@ -1327,8 +1504,20 @@ function handEditSection(item) {
       };
       acts.append(b);
     };
+    if (EDITOR && ED && (item.edit || canStart) && editorSource(item)) {
+      if (ED.installed) {
+        const b = el('button', 'primary', 'Edit in browser'); b.type = 'button';
+        b.title = 'Open in Pixelorama here; Save writes the edit file and declares it';
+        b.onclick = () => openEditorSheet(item);
+        acts.append(b);
+      } else if (ED.release && !ED.installing) {
+        const b = el('button', null, 'Install editor to edit in browser'); b.type = 'button';
+        b.onclick = () => { installEditor(); window.scrollTo({ top: 0 }); };
+        acts.append(b);
+      }
+    }
     if (item.edit) {
-      go('Open in editor', 'start-edit', { open: true }, 'Opened ' + item.edit.path + ' in your editor. Save there, then Refresh.');
+      go('Open in desktop editor', 'start-edit', { open: true }, 'Opened ' + item.edit.path + ' in your editor. Save there, then Refresh.');
       go('Detach edit', 'detach-edit', {}, 'Detached. The file is still at ' + item.edit.path + '; the generated art is placed again.');
     } else if (canStart) {
       go('Edit by hand', 'start-edit', { open: true }, 'Created the edit file and opened it in your editor. Save there, then Refresh to see it here.');
@@ -2055,6 +2244,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '/' && !typing) { e.preventDefault(); $('q').focus(); return; }
   if (e.key === 'Escape') {
     if (typing && document.activeElement.id === 'q') { document.activeElement.blur(); return; }
+    if (SHEET) { e.preventDefault(); closeEditorSheet(); return; }
     if ($('dialog-host').childNodes.length) { e.preventDefault(); $('dialog-host').textContent = ''; return; }
     if (ui.open) { e.preventDefault(); closeItem(); }
     return;

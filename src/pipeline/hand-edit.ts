@@ -1,10 +1,13 @@
 import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
-import { copyFile, mkdir } from "node:fs/promises"
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { sha256File } from "../hash.ts"
+import { z } from "zod"
+import { sha256, sha256File } from "../hash.ts"
 import type { LoadedManifest } from "../manifest.ts"
+import { MediaType, validateMedia } from "../media.ts"
 import { currentEntryOutputPath, portableOutputPath } from "../outputs.ts"
+import { decodePng } from "../png.ts"
 import { lockKey, primaryOutput, type Lock, type ResolvedSpec } from "../types.ts"
 import { applyManifestEdit, ManifestEditError } from "../manifest-edit.ts"
 
@@ -121,6 +124,137 @@ export async function detachHandEdit(
     expectedSha256: opts.expectedSha256 ?? (await sha256File(loaded.path)),
   })
   return { manifestSha256: result.sha256, changed: result.changed }
+}
+
+/**
+ * What an in-browser save leaves beside the edit: which generation it was
+ * based on (by hash, so a regeneration is detected however the clocks read),
+ * which editor made it, and whether the layered project file is there too.
+ * Written as `<edit>.edit.json`; a hand edit made in a desktop editor has none.
+ */
+export const HandEditCompanionSchema = z
+  .object({
+    version: z.literal(1),
+    /** sha256 of the generated art the edit started from; null when it started from untracked art. */
+    basedOn: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+    /** sha256 of the edit PNG as saved, so a later change by another tool is visible. */
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    /** Editor identity the bridge reported, e.g. `pixelorama@v1.2.2-stable`. */
+    editor: z.string().min(1),
+    protocol: z.number().int().positive(),
+    savedAt: z.string().datetime(),
+    /** Basename of the layered project file beside the edit, when one was kept. */
+    project: z.string().min(1).nullable(),
+  })
+  .strict()
+export type HandEditCompanion = z.infer<typeof HandEditCompanionSchema>
+
+export function handEditCompanionPath(editPath: string): string {
+  return editPath.replace(/\.png$/i, "") + ".edit.json"
+}
+
+/** The layered project (Pixelorama `.pxo`) kept beside the edit for re-editing. */
+export function handEditProjectPath(editPath: string): string {
+  return editPath.replace(/\.png$/i, "") + ".pxo"
+}
+
+export async function readHandEditCompanion(editPath: string): Promise<HandEditCompanion | null> {
+  let text: string
+  try {
+    text = await readFile(handEditCompanionPath(editPath), "utf8")
+  } catch {
+    return null
+  }
+  try {
+    return HandEditCompanionSchema.parse(JSON.parse(text))
+  } catch {
+    return null
+  }
+}
+
+/** Edits bigger than this are refused before decoding; a sprite sheet is far smaller. */
+export const MAX_HAND_EDIT_BYTES = 16 * 1024 * 1024
+
+export interface HandEditSaveInput {
+  /** The flattened image, as PNG bytes. */
+  png: Buffer
+  /** The editor's own layered project file, kept beside the edit when given. */
+  project?: Buffer
+  editor: string
+  protocol: number
+  expectedSha256?: string
+  now?: Date
+}
+
+export interface HandEditSave extends HandEditStart {
+  sha256: string
+  basedOn: string | null
+  companionPath: string
+  projectPath: string | null
+}
+
+/**
+ * Save an edit made in the in-browser editor. The PNG must be a valid image
+ * at the asset's generated size; it replaces the edit file atomically, the
+ * companion records what it was based on, and the manifest declares the file
+ * if it does not yet — the same path `startHandEdit` takes, so the first save
+ * from the browser and `pixelkiln edit` leave the same manifest.
+ */
+export async function saveHandEdit(
+  loaded: LoadedManifest,
+  lock: Lock,
+  spec: ResolvedSpec,
+  input: HandEditSaveInput,
+): Promise<HandEditSave> {
+  if (input.png.length > MAX_HAND_EDIT_BYTES) {
+    throw new ManifestEditError(`the edit is ${input.png.length} bytes; the limit is ${MAX_HAND_EDIT_BYTES}`)
+  }
+  if (input.project && input.project.length > MAX_HAND_EDIT_BYTES) {
+    throw new ManifestEditError(`the project file is ${input.project.length} bytes; the limit is ${MAX_HAND_EDIT_BYTES}`)
+  }
+  let decoded: { width: number; height: number }
+  try {
+    validateMedia(input.png, MediaType.PNG)
+    decoded = decodePng(input.png)
+  } catch (error) {
+    throw new ManifestEditError(`the edit is not a valid PNG: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  const base = handEditBase(spec, lock)
+  const expected = base ? decodePng(await readFile(base)) : { width: spec.width, height: spec.height }
+  if (decoded.width !== expected.width || decoded.height !== expected.height) {
+    throw new ManifestEditError(
+      `the edit is ${decoded.width}×${decoded.height}; ${spec.styleId}/${spec.assetId} is ${expected.width}×${expected.height}`,
+    )
+  }
+  const started = await startHandEdit(loaded, lock, spec, { expectedSha256: input.expectedSha256 })
+  const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
+  const basedOn = entry ? primaryOutput(entry)?.sha256 ?? null : null
+  const digest = sha256(input.png)
+  const projectPath = input.project ? handEditProjectPath(started.editPath) : null
+  const companion: HandEditCompanion = {
+    version: 1,
+    basedOn,
+    sha256: digest,
+    editor: input.editor,
+    protocol: input.protocol,
+    savedAt: (input.now ?? new Date()).toISOString(),
+    project: projectPath ? path.basename(projectPath) : null,
+  }
+  await replaceFile(started.editPath, input.png)
+  if (projectPath && input.project) await replaceFile(projectPath, input.project)
+  const companionPath = handEditCompanionPath(started.editPath)
+  await replaceFile(companionPath, JSON.stringify(companion, null, 2) + "\n")
+  return { ...started, sha256: digest, basedOn, companionPath, projectPath }
+}
+
+async function replaceFile(file: string, bytes: Buffer | string): Promise<void> {
+  const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
+  try {
+    await writeFile(tmp, bytes)
+    await rename(tmp, file)
+  } finally {
+    await rm(tmp, { force: true })
+  }
 }
 
 /**

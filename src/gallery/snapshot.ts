@@ -13,6 +13,7 @@ import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine
 import { lockKey, type Asset, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
+import { handEditProjectPath, readHandEditCompanion } from "../pipeline/hand-edit.ts"
 import { pixelLabObjectUrl } from "../providers/pixellab.ts"
 
 /**
@@ -146,6 +147,8 @@ export interface GalleryItem {
    */
   edit: GalleryOutput | null
   editStatus: HandEditStatus | null
+  /** What an in-browser save recorded beside the edit; null for edits made elsewhere. */
+  editMeta: GalleryEditMeta | null
   /** Where the provider's own app shows this object, when it has one. */
   upstreamUrl: string | null
   /** Downloaded work with a durable provider reference; `fetch --refresh` can re-pull it. */
@@ -402,6 +405,17 @@ async function describeQuality(
  * (possibly filtered) manifest entries the CLI already computed; lock entries
  * outside the manifest are added here so paid work is never hidden.
  */
+export interface GalleryEditMeta {
+  editor: string
+  savedAt: string
+  /** sha256 of the generation the edit was based on, or null for untracked art. */
+  basedOn: string | null
+  /** The edit file changed since the editor saved it (another tool touched it). */
+  changedSince: boolean
+  /** Manifest-relative path of the layered project file kept beside the edit, if present. */
+  project: string | null
+}
+
 type RawStyleShape = { extends?: unknown } & Record<string, unknown>
 
 export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<GalleryBuild> {
@@ -430,6 +444,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
     let outputs: GalleryOutput[]
     let edit: GalleryOutput | null = null
     let editStatus: HandEditStatus | null = null
+    let editMeta: GalleryEditMeta | null = null
     if (entry && entry.outputs.length) {
       outputs = await Promise.all(
         entry.outputs.map((output, index) =>
@@ -441,11 +456,28 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         const editSha = existsSync(editPath) ? await sha256File(editPath) : null
         edit = await describeOutput(media, root, editPath, { sha256: editSha })
         const generated = outputs[0]
+        // A browser save records the generation it started from by hash,
+        // which survives clock skew and a restore; without it, file times
+        // are the only evidence.
+        const companion = await readHandEditCompanion(editPath)
+        if (companion) {
+          const projectPath = handEditProjectPath(editPath)
+          editMeta = {
+            editor: companion.editor,
+            savedAt: companion.savedAt,
+            basedOn: companion.basedOn,
+            changedSince: editSha !== null && editSha !== companion.sha256,
+            project: companion.project && existsSync(projectPath) ? portableOutputPath(projectPath, root) : null,
+          }
+        }
+        const regenerated = companion
+          ? generated?.sha256 !== undefined && generated.sha256 !== null && companion.basedOn !== generated.sha256
+          : Boolean(generated?.modifiedAt && edit.modifiedAt && generated.modifiedAt > edit.modifiedAt && generated.exists)
         editStatus = !edit.exists
           ? "missing"
           : generated && editSha === generated.sha256
             ? "same"
-            : generated?.modifiedAt && edit.modifiedAt && generated.modifiedAt > edit.modifiedAt && generated.exists
+            : regenerated
               ? "regenerated-since"
               : "edited"
       }
@@ -504,6 +536,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       source: spec.source ?? null,
       edit,
       editStatus,
+      editMeta,
       upstreamUrl: entry?.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
       refreshable: Boolean(entry && entry.status === "downloaded" && entry.outputs.length && (entry.sourceUrls?.length || entry.sourceUrl)),
       tags: spec.tags,
@@ -561,6 +594,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       source: null,
       edit: null,
       editStatus: null,
+      editMeta: null,
       upstreamUrl: entry.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
       refreshable: false,
       tags: [],
