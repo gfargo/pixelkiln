@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import type { Provider } from "../provider.ts"
@@ -77,8 +77,14 @@ export async function fetchAssets(
     if (opts.refresh) return e.outputs.length > 0 && Boolean(e.sourceUrls?.length || e.sourceUrl)
     if (!opts.repair) return false
     const spec = specByKey.get(key)
-    return e.outputs.length === 0 || !spec ||
-      e.outputs.some((output) => !existsSync(resolveOutputPath(output.path, spec.root)))
+    if (e.outputs.length === 0 || !spec) return true
+    return e.outputs.some((output) => {
+      const file = resolveOutputPath(output.path, spec.root)
+      if (!existsSync(file)) return true
+      // `restore --force` also puts the recorded bytes back over a file that
+      // was changed after download; without force such a file is left alone.
+      return Boolean(opts.force) && sha256(readFileSync(file)) !== output.sha256
+    })
   })
   const concurrency = Math.min(Math.max(1, opts.concurrency ?? 8), Math.max(1, pending.length))
   let cursor = 0

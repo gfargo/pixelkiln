@@ -142,7 +142,10 @@ provider result should take ownership. `gen --force` applies the same rule.
 
 Repair missing generated files without buying new generations. It prefers
 validated local content-addressed cache bytes and otherwise reuses provider
-references. It never replaces a destination whose bytes disagree with the lock.
+references. It never replaces a destination whose bytes disagree with the lock
+unless `--force` says to: `restore --force` puts the recorded bytes back over
+a file that was changed after download (an `orphaned` plan entry), discarding
+that change — copy it aside, or declare it with [`edit`](#edit), first.
 
 The paid-work states have one safe next step:
 
@@ -343,6 +346,13 @@ the gallery has no write route at all.
 pixelkiln gallery --edit
 pixelkiln gallery --edit --workspace pixelkiln.workspace.json
 ```
+
+An `orphaned` record — its file gone, or changed after download — offers
+**Restore** (the recorded bytes back from the cache or the provider, no cost)
+and, for a changed file, **Regenerate**; both replacements say what they
+discard and ask first, and the way to keep the change is **Edit by hand** or
+**Edit in browser**, which copies it beside the record. An `untracked` file
+can be replaced by a generation the same way.
 
 `--budget <n|provider=n>` enables generation from the page under that session
 ceiling. It is the same `--budget` `gen` takes: one unkeyed amount when a run

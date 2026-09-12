@@ -896,6 +896,60 @@ describe("createGenerateHandlers", () => {
     expect(handlers.status().spent).toEqual({})
     expect((await loadLock(lockPath)).entries["base/hammer"]!.status).toBe("downloaded")
   })
+
+  it("restores an orphan from the cache, and replaces a modified file only when forced", async () => {
+    const { manifestPath, lock } = await generated()
+    const provider = new FakeProvider({ candidates: 1 })
+    const handlers = generateHandlers(manifestPath, provider, { amount: 0, byProvider: {} })
+    const anvil = path.join(dir, "out/tools/anvil.png")
+    const recorded = await readFile(anvil)
+    const recordedSha = lock.entries["base/anvil"]!.outputs[0]!.sha256
+
+    // Gone from disk: restore puts the recorded bytes back at no cost.
+    await rm(anvil)
+    let snapshot = (await buildGallerySnapshot({ loaded: await loadManifest(manifestPath), specs: await resolveSpecs(await loadManifest(manifestPath)), lock, lockPath })).snapshot
+    expect(snapshot.items.find((i) => i.key === "base/anvil")).toMatchObject({ state: "orphaned", reason: expect.stringMatching(/missing on disk/) })
+    let job = await handlers.start({ keys: ["base/anvil"], restore: true })
+    expect(job).toMatchObject({ mode: "restore", force: false })
+    let done = await untilPhase(handlers, job.id, ["done", "failed"])
+    expect(done).toMatchObject({ phase: "done", spent: {}, counts: { submitted: 0, downloaded: 1 } })
+    expect(await readFile(anvil)).toEqual(recorded)
+
+    // Changed on disk: a plain restore leaves it alone; a forced one replaces it.
+    const edited = encodeRgbaPng(1, 1, Buffer.from([255, 0, 0, 255]))
+    await writeFile(anvil, edited)
+    snapshot = (await buildGallerySnapshot({ loaded: await loadManifest(manifestPath), specs: await resolveSpecs(await loadManifest(manifestPath)), lock, lockPath })).snapshot
+    expect(snapshot.items.find((i) => i.key === "base/anvil")).toMatchObject({ state: "orphaned", reason: "output modified since download" })
+    job = await handlers.start({ keys: ["base/anvil"], restore: true })
+    done = await untilPhase(handlers, job.id, ["done", "failed"])
+    expect(done).toMatchObject({ phase: "done", counts: { downloaded: 0 } })
+    expect(await readFile(anvil)).toEqual(edited)
+    job = await handlers.start({ keys: ["base/anvil"], restore: true, force: true })
+    expect(job.force).toBe(true)
+    done = await untilPhase(handlers, job.id, ["done", "failed"])
+    expect(done).toMatchObject({ phase: "done", counts: { downloaded: 1 } })
+    expect(sha256(await readFile(anvil))).toBe(recordedSha)
+
+    // Nothing recorded → nothing to restore; exclusive with the other modes.
+    await expect(handlers.start({ keys: ["base/sketch"], restore: true })).rejects.toThrow(/no downloaded output recorded to restore/)
+    await expect(handlers.start({ keys: ["base/anvil"], restore: true, refresh: true })).rejects.toThrow(/exclusive/)
+  })
+
+  it("lets a forced regeneration replace a modified file, as gen --force does", async () => {
+    const { manifestPath } = await generated()
+    const provider = new FakeProvider({ candidates: 1 })
+    const handlers = generateHandlers(manifestPath, provider, { amount: 5, byProvider: {} })
+    const anvil = path.join(dir, "out/tools/anvil.png")
+    await writeFile(anvil, encodeRgbaPng(1, 1, Buffer.from([0, 0, 255, 255])))
+
+    const refused = await handlers.start({ keys: ["base/anvil"], force: true })
+    expect(refused).toMatchObject({ mode: "generate", force: true })
+    const done = await untilPhase(handlers, refused.id, ["done", "failed"])
+    expect(done).toMatchObject({ phase: "done", counts: { submitted: 1, downloaded: 1 } })
+    const lock = await loadLock(lockPath)
+    expect(sha256(await readFile(anvil))).toBe(lock.entries["base/anvil"]!.outputs[0]!.sha256)
+    expect(Object.values(handlers.status().spent)).toEqual([1])
+  })
 })
 
 describe("serveGallery with a session budget", () => {

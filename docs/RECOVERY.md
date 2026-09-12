@@ -13,7 +13,9 @@ pixelkiln restore --style neon --only anvil
 
 `restore` repairs a missing lock output from validated content-cache bytes or a
 durable provider reference. It does not submit generation and refuses to
-replace a file whose current bytes differ from the recorded hash.
+replace a file whose current bytes differ from the recorded hash; `--force`
+overrides that for a file changed after download, and the gallery's
+**Restore** button on an `orphaned` record does the same after asking.
 
 Generation and download failures are separate lock states. A CDN failure after
 successful generation becomes `download-failed`; the next `fetch` or `restore`
