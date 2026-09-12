@@ -62,7 +62,12 @@ export interface GalleryServer {
   close(): Promise<void>
 }
 
-const MAX_EDIT_BYTES = 64 * 1024
+/**
+ * Manifest edits are a few hundred bytes; an in-browser save carries the
+ * edit PNG and the editor's project file as base64, so `/api/edit` allows
+ * what two files at the pipeline's own limit encode to.
+ */
+const MAX_EDIT_BYTES = 48 * 1024 * 1024
 
 /**
  * What the editor page may do: load its own files, compile wasm, and run the

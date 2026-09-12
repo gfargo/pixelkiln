@@ -126,6 +126,31 @@ Generic JSON retains all provider rules and normalized masks. Tiled and Godot
 translate recognized four-edge/four-corner semantics and reject unknown or
 lossy mappings. See [TILES.md](./TILES.md) for the format contracts.
 
+## Hand-edit companion
+
+A hand edit saved from the gallery's in-browser editor leaves a small record
+beside it, `<edit>.edit.json`, that is not a provenance companion and is not
+transactional:
+
+```json
+{
+  "version": 1,
+  "basedOn": "<sha256 of the generated PNG the edit started from, or null>",
+  "sha256": "<sha256 of the edit as saved>",
+  "editor": "pixelorama@v1.2.2-stable",
+  "protocol": 1,
+  "savedAt": "2026-09-12T10:00:00.000Z",
+  "project": "anvil.pxo"
+}
+```
+
+`basedOn` lets the gallery report `regenerated-since` by comparing hashes
+rather than modification times; `sha256` shows when another tool rewrote the
+edit after the editor did; `project` names the layered Pixelorama file kept
+beside the edit for re-editing. An edit made with a desktop editor has no
+companion and is judged by file times. Commit the companion and the `.pxo`
+with the edit if you want that history; nothing else reads them.
+
 ## Provenance companion
 
 The companion is engine-neutral and versioned:

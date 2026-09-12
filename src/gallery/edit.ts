@@ -5,10 +5,13 @@ import {
   ManifestEditError,
   ManifestEditSchema,
 } from "../manifest-edit.ts"
-import { detachHandEdit, openInEditor, startHandEdit } from "../pipeline/hand-edit.ts"
+import { detachHandEdit, MAX_HAND_EDIT_BYTES, openInEditor, saveHandEdit, startHandEdit } from "../pipeline/hand-edit.ts"
 import { lockKey } from "../types.ts"
 import type { GalleryProjectContext } from "./generate.ts"
 import type { GalleryBuild } from "./snapshot.ts"
+
+/** Standard base64, sized so a decoded payload cannot exceed the edit limit. */
+const Base64 = z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/).max(Math.ceil(MAX_HAND_EDIT_BYTES / 3) * 4)
 
 /** Page-level hand-edit actions: resolve the asset, then use the pipeline. */
 const HandEditRequestSchema = z.discriminatedUnion("action", [
@@ -30,6 +33,22 @@ const HandEditRequestSchema = z.discriminatedUnion("action", [
       assetId: z.string().min(1),
       styleId: z.string().min(1),
       expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
+    })
+    .strict(),
+  /** From the in-browser editor: the page holds the bytes, the server validates and writes. */
+  z
+    .object({
+      action: z.literal("save-edit"),
+      project: z.string().min(1).optional(),
+      assetId: z.string().min(1),
+      styleId: z.string().min(1),
+      expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
+      png: Base64.min(1),
+      /** The editor's layered project file, kept beside the edit. */
+      pxo: Base64.optional(),
+      /** Editor identity from the bridge's ready message. */
+      editor: z.string().min(1).max(200),
+      protocol: z.number().int().positive(),
     })
     .strict(),
 ])
@@ -76,6 +95,15 @@ export function createGalleryEditHandler(
           const command = (opts.openEditor ?? openInEditor)(started.editPath)
           log(`  opened with: ${command}`)
         }
+      } else if (request.action === "save-edit") {
+        const saved = await saveHandEdit(ctx.loaded, ctx.lock, spec, {
+          png: Buffer.from(request.png, "base64"),
+          ...(request.pxo ? { project: Buffer.from(request.pxo, "base64") } : {}),
+          editor: request.editor,
+          protocol: request.protocol,
+          expectedSha256: request.expectedSha256,
+        })
+        log(`  hand edit saved from ${request.editor}: ${saved.source}${saved.declared ? " (declared in the manifest)" : ""}${saved.projectPath ? " + project file" : ""}`)
       } else {
         const result = await detachHandEdit(ctx.loaded, spec, { expectedSha256: request.expectedSha256 })
         if (result.changed) log(`  hand edit detached: ${request.styleId}/${request.assetId} (file kept)`)
