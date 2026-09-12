@@ -123,6 +123,16 @@ write the manifest-authoritative destinations, populate the content cache, and
 update output hashes. `--tag` also pushes manifest tags after successful
 downloads when the provider supports tagging.
 
+`fetch --refresh` re-downloads already-downloaded outputs from their durable
+provider reference and replaces the local file only when the object's bytes
+changed upstream — after editing it in the provider's own editor, for
+example. Unchanged objects are reported as such and left alone; a changed
+object replaces the local file only if that file still hashes to what
+PixelKiln wrote, so a local hand edit is never overwritten without `--force`.
+The lockfile then records the new bytes as this generation. Objects with no
+durable reference (PixelLab pixflux images, for one) are not eligible; use
+`pixelkiln edit` for those.
+
 After a stale spec is deliberately regenerated, `fetch` replaces the prior file
 only if its hash still proves PixelKiln wrote it. A changed or untracked
 destination is refused; inspect it, then pass `fetch --force` only when the new
@@ -347,6 +357,13 @@ art and the edit side by side with its status — an unchanged copy, edited, or
 based on an older generation because the art was regenerated since — plus
 **Open in editor** and **Detach edit**. A card whose edit differs from the
 generated art shows the edit, since that is what ships, with a ✎ mark.
+
+A PixelLab `map` or `1dir` record also links to its account object (**Open in
+pixellab ↗**), where PixelLab's own editor can change it; with `--budget`
+(any amount — `--budget 0` allows provider contact and no spend) the record
+and its style header offer **Pull upstream changes**, the page's form of
+`fetch --refresh`, which re-downloads the object and replaces the local file
+only if it changed upstream.
 
 ```bash
 pixelkiln gallery --edit --budget 80
@@ -621,6 +638,7 @@ Print the package version. `-v` is an alias.
 | `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser, or the editor for `edit`. |
 | `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
+| `--refresh` | fetch | Re-download downloaded outputs and replace files whose object changed upstream; never generates, never overwrites a local edit without `--force`. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |
 | `--workspace <path>` | workspace/salvage/gallery | Workspace catalog path; defaults to `pixelkiln.workspace.json` for `workspace`. On salvage, derives the claim set instead of repeated `--claims`; on gallery, shows every registered project. |
 | `--provider <id>` | balance/adopt/salvage/purge/workspace add | Select the account provider for a mixed manifest, or set the workspace catalog's default provider hint. |

@@ -268,6 +268,8 @@ interface Args {
   tag: boolean
   /** gallery: allow the page to edit manifest intent (prompts, sizes, tags, new assets). */
   edit: boolean
+  /** fetch: re-download downloaded outputs and replace files whose object changed upstream. */
+  refresh: boolean
   from?: string
   out?: string
   generator?: string
@@ -323,7 +325,7 @@ const VALUE_FLAGS = [
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit",
+  "--edit", "--refresh",
 ] as const
 
 export const COMMANDS = [
@@ -570,6 +572,7 @@ export function parseArgs(argv: string[]): Args {
     noOpen: rest.includes("--no-open"),
     tag: rest.includes("--tag"),
     edit: rest.includes("--edit"),
+    refresh: rest.includes("--refresh"),
     from: get("--from"),
     out: get("--out"),
     generator: get("--generator"),
@@ -685,6 +688,8 @@ Options
   --no-open           Do not auto-open the browser (pick, salvage, gallery) or editor (edit)
   --edit              gallery: allow manifest edits from the page (never spends)
   --tag               Also push tags upstream after fetch
+  --refresh           fetch: re-download and replace files whose object changed
+                      upstream (e.g. edited in PixelLab's editor); no generation
   --claims a.json,b   Other projects' lockfiles (salvage; required if account is shared)
   --workspace <path>  Workspace catalog (default: pixelkiln.workspace.json). Also
                        derives salvage's claim set instead of repeated --claims,
@@ -2556,17 +2561,19 @@ async function main() {
 
   if (args.command === "fetch" || args.command === "restore" || args.command === "gen") {
     log(`\n  downloading…`)
-    const total = { downloaded: 0, skipped: 0, failed: 0, tagged: 0 }
+    const total = { downloaded: 0, skipped: 0, failed: 0, tagged: 0, unchanged: 0 }
     for (const [providerId, providerSpecsForRun] of specsByRecordedProvider(specs, lock)) {
       const groupProvider = providerFor(providerId)
       const res = await fetchAssets(groupProvider, providerSpecsForRun, lock, args.lock, {
         onProgress: log,
         repair: args.command === "restore",
         force: args.force,
+        refresh: args.command === "fetch" && args.refresh,
       })
       total.downloaded += res.downloaded
       total.skipped += res.skipped
       total.failed += res.failed
+      total.unchanged += res.unchanged ?? 0
       if (args.tag) {
         total.tagged += await pushTags(groupProvider, providerSpecsForRun, lock, {
           onProgress: log,
@@ -2574,7 +2581,8 @@ async function main() {
       }
     }
     log(
-      `\n  downloaded ${total.downloaded}, skipped ${total.skipped}, failed ${total.failed}`,
+      `\n  downloaded ${total.downloaded}, skipped ${total.skipped}, failed ${total.failed}` +
+        (args.refresh ? `, unchanged upstream ${total.unchanged}` : ""),
     )
     if (total.failed) process.exitCode = 1
     if (args.tag) log(`  tagged ${total.tagged} object(s) upstream`)

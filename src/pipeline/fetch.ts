@@ -25,6 +25,8 @@ export interface FetchResult {
   downloaded: number
   skipped: number
   failed: number
+  /** `refresh` only: outputs re-downloaded and found byte-identical upstream. */
+  unchanged?: number
 }
 
 /**
@@ -45,12 +47,19 @@ export async function fetchAssets(
     repair?: boolean
     /** Replace an existing untracked or modified destination. Explicit ownership override. */
     force?: boolean
+    /**
+     * Re-download `downloaded` outputs from their durable provider reference
+     * and replace the local file when the upstream bytes changed — an object
+     * edited in the provider's own editor, say. Unchanged objects are left
+     * alone; a locally modified file is still refused without `force`.
+     */
+    refresh?: boolean
     /** Content-addressed media cache. Defaults beside the lockfile; false disables it. */
     cacheDir?: string | false
   } = {},
 ): Promise<FetchResult> {
   const log = opts.onProgress ?? (() => {})
-  const result: FetchResult = { downloaded: 0, skipped: 0, failed: 0 }
+  const result: FetchResult = { downloaded: 0, skipped: 0, failed: 0, ...(opts.refresh ? { unchanged: 0 } : {}) }
   const specByKey = new Map(specs.map((s) => [lockKey(s.styleId, s.assetId), s]))
   normalizeLockOutputPaths(lock, specs)
   const cacheDir =
@@ -64,7 +73,9 @@ export async function fetchAssets(
   const pending = Object.entries(lock.entries).filter(([key, e]) => {
     if (e.provider !== provider.id || !specByKey.has(key)) return false
     if (e.status === "selected" || e.status === "download-failed") return true
-    if (!opts.repair || e.status !== "downloaded") return false
+    if (e.status !== "downloaded") return false
+    if (opts.refresh) return e.outputs.length > 0 && Boolean(e.sourceUrls?.length || e.sourceUrl)
+    if (!opts.repair) return false
     const spec = specByKey.get(key)
     return e.outputs.length === 0 || !spec ||
       e.outputs.some((output) => !existsSync(resolveOutputPath(output.path, spec.root)))
@@ -107,6 +118,7 @@ export async function fetchAssets(
       }
 
       const outputs: LockOutput[] = []
+      let wrote = false
       try {
         for (let index = 0; index < sources.length; index++) {
           const source = sources[index]!
@@ -117,49 +129,67 @@ export async function fetchAssets(
             ? resolveOutputPath(recorded.path, spec.root)
             : expectedOutputPath(spec, source.role, index, sources.length, source.mediaType)
 
-          if (existsSync(target)) {
-            const currentHash = await sha256File(target)
-            if (recorded && currentHash === recorded.sha256) {
-              if (cacheDir) {
-                await cacheMedia(
-                  cacheDir,
-                  await readFile(target),
-                  recorded.mediaType ?? MediaType.PNG,
-                  recorded.sha256,
-                )
-              }
+          // A refresh asks the provider first: only a changed object touches
+          // disk, and the ownership rules below still apply to that write.
+          let fresh: Buffer | null = null
+          if (opts.refresh) {
+            if (!source.url) throw new Error(`no durable source URL to refresh ${source.role ?? "asset"} from`)
+            fresh = await provider.download(source.url)
+            if (recorded && sha256(fresh) === recorded.sha256) {
+              log(`  current ${path.relative(process.cwd(), target)}`)
               outputs.push({ ...recorded, path: portableOutputPath(target, spec.root) })
               continue
             }
+          }
 
-            const superseded = (entry.supersededOutputs ?? []).find((output, oldIndex, all) =>
-              currentOutputPath(output, spec, oldIndex, all.length) === target,
-            )
-            if (!opts.force) {
-              if (!recorded && superseded && currentHash === superseded.sha256) {
-                // A stale spec was intentionally regenerated. The old bytes
-                // are still exactly the ones PixelKiln wrote, so replacing
-                // them does not take ownership of a manual edit.
-              } else if (recorded || superseded) {
-                throw new Error(
-                  `refusing to overwrite modified output ${target}; pass --force to replace it`,
-                )
-              } else {
-                throw new Error(
-                  `refusing to overwrite untracked output ${target}; pass --force to replace it`,
-                )
+          if (existsSync(target)) {
+            const currentHash = await sha256File(target)
+            if (recorded && currentHash === recorded.sha256) {
+              if (!fresh) {
+                if (cacheDir) {
+                  await cacheMedia(
+                    cacheDir,
+                    await readFile(target),
+                    recorded.mediaType ?? MediaType.PNG,
+                    recorded.sha256,
+                  )
+                }
+                outputs.push({ ...recorded, path: portableOutputPath(target, spec.root) })
+                continue
               }
+              // The local file is exactly what PixelKiln wrote; the object
+              // changed upstream, so replacing it takes nothing from anyone.
+              log(`  changed ${path.relative(process.cwd(), target)} (upstream)`)
+            } else {
+              const superseded = (entry.supersededOutputs ?? []).find((output, oldIndex, all) =>
+                currentOutputPath(output, spec, oldIndex, all.length) === target,
+              )
+              if (!opts.force) {
+                if (!recorded && superseded && currentHash === superseded.sha256) {
+                  // A stale spec was intentionally regenerated. The old bytes
+                  // are still exactly the ones PixelKiln wrote, so replacing
+                  // them does not take ownership of a manual edit.
+                } else if (recorded || superseded) {
+                  throw new Error(
+                    `refusing to overwrite modified output ${target}; pass --force to replace it`,
+                  )
+                } else {
+                  throw new Error(
+                    `refusing to overwrite untracked output ${target}; pass --force to replace it`,
+                  )
+                }
+              }
+              log(
+                `  replace ${path.relative(process.cwd(), target)}` +
+                  (opts.force ? " (--force)" : " (previous tracked generation)"),
+              )
             }
-            log(
-              `  replace ${path.relative(process.cwd(), target)}` +
-                (opts.force ? " (--force)" : " (previous tracked generation)"),
-            )
           }
 
           const expectedMediaType = source.mediaType ?? recorded?.mediaType ?? MediaType.PNG
-          let buf = recorded && cacheDir
+          let buf = fresh ?? (recorded && cacheDir
             ? await readCachedMedia(cacheDir, recorded.sha256, expectedMediaType)
-            : null
+            : null)
           if (buf) {
             log(`  cached  ${path.relative(process.cwd(), target)}`)
           } else {
@@ -196,7 +226,14 @@ export async function fetchAssets(
           upsert(lock, key, { outputs: mergeOutputs(entry.outputs, outputs) })
           await saveLock(lockPath, lock)
           await rename(tmp, target)
+          wrote = true
           log(`  wrote   ${path.relative(process.cwd(), target)}`)
+        }
+        if (opts.refresh && !wrote) {
+          // Every object is still what the record says; there is nothing to
+          // write and no reason to touch the entry's download time.
+          result.unchanged = (result.unchanged ?? 0) + 1
+          continue
         }
         const persistentSources = sources.filter((source) => shouldPersistSourceUrl(source.url))
         upsert(lock, key, {

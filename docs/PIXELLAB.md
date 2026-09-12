@@ -95,6 +95,18 @@ one provider account or when existing local art needs its original provenance.
 Read [Recovery and account safety](./RECOVERY.md) before changing remote
 objects.
 
+### Editing an object in PixelLab's editor
+
+A `map` or `1dir` generation is an object in your PixelLab account, and the
+web app can edit it in place with its built-in editor. `pixelkiln gallery`
+links each such record to the object (`https://www.pixellab.ai/objects/<id>`),
+and `pixelkiln fetch --refresh --only <asset>` pulls the edited bytes back
+down: the local file is replaced only if the object changed upstream and the
+local file is still exactly what PixelKiln wrote, and the lockfile records the
+new bytes as this generation. A `pixflux` image is returned inline and keeps no
+account object, so it cannot be edited upstream; use `pixelkiln edit` to touch
+it up locally.
+
 PixelLab's official
 [MCP server](https://github.com/pixellab-code/pixellab-mcp) gives agents direct
 access to PixelLab generation tools. It complements PixelKiln: the MCP handles
