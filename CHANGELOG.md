@@ -1,3 +1,11 @@
+# [0.28.0](https://github.com/gfargo/pixelkiln/compare/v0.27.0...v0.28.0) (2026-09-12)
+
+
+### Features
+
+* **editor:** reopen the layered .pxo in the bridge (protocol 2) ([#98](https://github.com/gfargo/pixelkiln/issues/98)) ([ce058cb](https://github.com/gfargo/pixelkiln/commit/ce058cb45db53d6234ace0ce73f4fa160c9bbe2a))
+* **gallery:** reopen a browser edit from its layered .pxo ([#99](https://github.com/gfargo/pixelkiln/issues/99)) ([2334989](https://github.com/gfargo/pixelkiln/commit/233498929395c340f86dbb080fbf7696b3693341))
+
 # [0.27.0](https://github.com/gfargo/pixelkiln/compare/v0.26.0...v0.27.0) (2026-09-12)
 
 
