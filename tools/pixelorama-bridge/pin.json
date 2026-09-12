@@ -3,6 +3,43 @@
   "godot": "4.7.2",
   "extensionsApi": 9,
   "protocol": 1,
-  "release": null,
-  "files": {}
+  "release": "editor-pixelorama-v1.2.2-pk.6",
+  "files": {
+    "index.apple-touch-icon.png": {
+      "sha256": "ee5434873e0fed91e9a888c3ea5a8b79beac25999308be7a6eb41bf4ce640d27",
+      "bytes": 1036
+    },
+    "index.audio.position.worklet.js": {
+      "sha256": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
+      "bytes": 2973
+    },
+    "index.audio.worklet.js": {
+      "sha256": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
+      "bytes": 7298
+    },
+    "index.html": {
+      "sha256": "43299b159b780809044fc0a484906bb93a280116c22cc87388ee2ab8263ac1f3",
+      "bytes": 5442
+    },
+    "index.icon.png": {
+      "sha256": "42a327d23178ddc26cc97e3560ebca6bc7c575d2a1b12a4837f2462049ca5745",
+      "bytes": 1070
+    },
+    "index.js": {
+      "sha256": "33c94cb3175f3333b82e2a3be5e8e86f77986f0aa2042b1631f6367a4e5bb6ba",
+      "bytes": 279815
+    },
+    "index.pck": {
+      "sha256": "ee10aa3d6e09a1ff2a334d0de7df1ae57f32ce00698948892a46443c2c67ae7a",
+      "bytes": 6426700
+    },
+    "index.png": {
+      "sha256": "6e3ca3eb4a99e4c07bdd89ebc873b440ec0ffd66ce1955160da9e7ed80d538d7",
+      "bytes": 13558
+    },
+    "index.wasm": {
+      "sha256": "fc74679e3b97f76878947fcd4fbe1268cbfa6188182a2e33bbc3f5dc9bfa57d0",
+      "bytes": 39514754
+    }
+  }
 }

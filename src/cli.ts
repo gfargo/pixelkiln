@@ -44,6 +44,9 @@ import {
 import { serveGallery } from "./gallery/server.ts"
 import { createGalleryEditHandler } from "./gallery/edit.ts"
 import { createGenerateHandlers, type GalleryProjectContext } from "./gallery/generate.ts"
+import { createGalleryEditorHandlers } from "./gallery/editor.ts"
+import { editorStatus, installEditor, EditorInstallError } from "./editor/install.ts"
+import { EDITOR_PIN } from "./editor/pin.ts"
 import { detachHandEdit, openInEditor, startHandEdit } from "./pipeline/hand-edit.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
 import {
@@ -169,7 +172,7 @@ interface GalleryProjectAccess {
 async function runGallery(
   initial: GalleryBuild,
   reload: () => Promise<GalleryBuild>,
-  args: Pick<Args, "port" | "noOpen" | "edit" | "budget" | "providerBudgets">,
+  args: Pick<Args, "port" | "noOpen" | "edit" | "noEditor" | "budget" | "providerBudgets">,
   access: GalleryProjectAccess,
 ): Promise<void> {
   let first = true
@@ -225,6 +228,8 @@ async function runGallery(
     ...(budget
       ? { generate: createGenerateHandlers({ loadProject, providerFor, budget, reload, onProgress: log }) }
       : {}),
+    // The editor exists to write hand edits back, so it follows the write gate.
+    ...(args.edit && !args.noEditor ? { editor: createGalleryEditorHandlers({ onProgress: log }) } : {}),
   })
   await new Promise<void>((resolve) => {
     const stop = () => {
@@ -268,6 +273,8 @@ interface Args {
   tag: boolean
   /** gallery: allow the page to edit manifest intent (prompts, sizes, tags, new assets). */
   edit: boolean
+  /** gallery: do not offer the in-browser editor even with --edit. */
+  noEditor: boolean
   /** fetch: re-download downloaded outputs and replace files whose object changed upstream. */
   refresh: boolean
   from?: string
@@ -325,13 +332,13 @@ const VALUE_FLAGS = [
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh",
+  "--edit", "--refresh", "--no-editor",
 ] as const
 
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
+  "gallery", "edit", "tools", "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -339,6 +346,8 @@ const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
 const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
 const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 const EDIT_SUBCOMMANDS = ["start", "detach"] as const
+const TOOLS_SUBCOMMANDS = ["status", "install"] as const
+const TOOLS = ["editor"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -412,6 +421,22 @@ export function parseArgs(argv: string[]): Args {
       throw new Error(`Unknown edit subcommand "${subcommand}". Known: ${EDIT_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
+  } else if (command === "tools") {
+    subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "status" : rest[0]
+    if (!(TOOLS_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new Error(`Unknown tools subcommand "${subcommand}". Known: ${TOOLS_SUBCOMMANDS.join(", ")}`)
+    }
+    if (rest[0] === subcommand) rest = rest.slice(1)
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (subcommand === "install" && target === undefined) {
+      throw new Error(`tools install needs a tool name: ${TOOLS.join(", ")}`)
+    }
+    if (target !== undefined) {
+      if (!(TOOLS as readonly string[]).includes(target)) {
+        throw new Error(`Unknown tool "${target}". Known: ${TOOLS.join(", ")}`)
+      }
+      rest = rest.slice(1)
+    }
   } else if (command === "refine") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "run" : rest[0]
     if (!(REFINE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
@@ -572,6 +597,7 @@ export function parseArgs(argv: string[]): Args {
     noOpen: rest.includes("--no-open"),
     tag: rest.includes("--tag"),
     edit: rest.includes("--edit"),
+    noEditor: rest.includes("--no-editor"),
     refresh: rest.includes("--refresh"),
     from: get("--from"),
     out: get("--out"),
@@ -603,6 +629,52 @@ export function parseArgs(argv: string[]): Args {
     target,
     provider: get("--provider"),
     account: get("--account"),
+  }
+}
+
+/**
+ * `tools status` / `tools install editor`: the in-browser editor is a 46 MB
+ * web build fetched once per PixelKiln release into a user-level cache, so a
+ * machine can be prepared before the gallery is opened (or offline, through
+ * PIXELKILN_EDITOR_URL pointing at a mirror).
+ */
+async function runTools(args: Pick<Args, "subcommand" | "target" | "json" | "yes">): Promise<void> {
+  const mb = (bytes: number) => bytes < 1e6 ? `${(bytes / 1e3).toFixed(0)} kB` : `${(bytes / 1e6).toFixed(1)} MB`
+  if (args.subcommand === "status") {
+    const status = await editorStatus()
+    if (args.json) {
+      log(JSON.stringify({ version: 1, editor: { ...status, pixelorama: EDITOR_PIN.pixelorama, protocol: EDITOR_PIN.protocol } }, null, 2))
+      return
+    }
+    log(`  editor  Pixelorama ${EDITOR_PIN.pixelorama} (bridge protocol ${EDITOR_PIN.protocol})`)
+    if (!status.release) {
+      log("          no published build is pinned by this PixelKiln version")
+      return
+    }
+    log(`          release ${status.release}`)
+    log(`          ${status.installed ? "installed and verified" : status.installedBytes ? `partial: ${status.missing.length} of ${Object.keys(EDITOR_PIN.files).length} files missing` : "not installed"} — ${mb(status.totalBytes)} in ${status.dir}`)
+    if (!status.installed) log("          run: pixelkiln tools install editor")
+    return
+  }
+  const status = await editorStatus()
+  if (status.installed) {
+    log(`  editor is already installed and verified in ${status.dir}`)
+    return
+  }
+  if (!status.release) {
+    throw new Error("this PixelKiln version pins no published editor build; upgrade, or set PIXELKILN_EDITOR_URL to a build you trust")
+  }
+  log(`  fetching ${status.missing.length} file(s), ${mb(status.totalBytes - status.installedBytes)}, from release ${status.release}`)
+  try {
+    const result = await installEditor({
+      onProgress: (p) => {
+        if (p.phase === "start") log(`    ${p.file.padEnd(34)} ${mb(p.bytes).padStart(9)}`)
+      },
+    })
+    log(`  editor ready in ${result.dir} (${result.downloaded.length} fetched, ${result.skipped.length} already present, every hash verified)`)
+  } catch (err) {
+    if (err instanceof EditorInstallError) throw new Error(`editor install failed: ${err.message}`)
+    throw err
   }
 }
 
@@ -646,8 +718,12 @@ Commands
   gallery   Open a local read-only gallery of every generation and its
             provenance: prompt, provider, cost, outputs, lineage, quality.
             --workspace <catalog> shows every registered project at once;
-            --edit lets the page change prompts, sizes, tags, and add assets;
+            --edit lets the page change prompts, sizes, tags, and add assets,
+            and offers the in-browser pixel editor (--no-editor hides it);
             --budget enables Generate, Regenerate, and review under that ceiling.
+  tools     status/install editor: the in-browser editor (Pixelorama) is a
+            46 MB web build fetched once per release into a user cache and
+            verified against pinned hashes. Offline once installed.
   workspace Register sibling projects and derive account-wide claims/status.
             add/remove/list/status/claims. Offline.
 
@@ -687,6 +763,7 @@ Options
   --yes, -y           Skip the confirmation prompt
   --no-open           Do not auto-open the browser (pick, salvage, gallery) or editor (edit)
   --edit              gallery: allow manifest edits from the page (never spends)
+  --no-editor         gallery: do not offer or serve the in-browser editor
   --tag               Also push tags upstream after fetch
   --refresh           fetch: re-download and replace files whose object changed
                       upstream (e.g. edited in PixelLab's editor); no generation
@@ -705,6 +782,7 @@ Examples
   pixelkiln gallery --workspace pixelkiln.workspace.json
   pixelkiln gallery --edit --budget 80
   pixelkiln edit --style base --only anvil
+  pixelkiln tools install editor
   PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
@@ -919,6 +997,11 @@ async function main() {
       await readFile(new URL("../package.json", import.meta.url), "utf8"),
     ) as { name: string; version: string }
     log(`${pkg.name} ${pkg.version}`)
+    return
+  }
+
+  if (args.command === "tools") {
+    await runTools(args)
     return
   }
 

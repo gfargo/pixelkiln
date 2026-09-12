@@ -5,13 +5,15 @@ import { readFile } from "node:fs/promises"
 import { renderGallery } from "./page.ts"
 import type { GalleryBuild, GalleryMedia } from "./snapshot.ts"
 import type { GalleryGenerateHandlers } from "./generate.ts"
+import type { GalleryEditorHandlers } from "./editor.ts"
 
 /**
  * The gallery's HTTP surface. Unlike the review server this is long-lived:
  * three GET routes, bound to loopback, running until the caller closes it
  * (the CLI does so on Ctrl+C). It has no write path unless the caller opts
- * in: `edit` adds one POST route for manifest edits, and `generate` adds the
- * routes that start a generation job and host its review sheet.
+ * in: `edit` adds one POST route for manifest edits, `generate` adds the
+ * routes that start a generation job and host its review sheet, and `editor`
+ * adds the routes that install and serve the in-browser pixel editor.
  *
  * Every POST is guarded twice, because a page on localhost is reachable by
  * every other page in the browser: the request's Origin must be this server,
@@ -46,6 +48,11 @@ export interface GalleryServerOptions {
    * sheet. The handlers own budgets and provider access; see `generate.ts`.
    */
   generate?: GalleryGenerateHandlers
+  /**
+   * Enable `GET /api/editor`, `POST /api/editor/install`, and the static
+   * `/editor/<release>/<file>` routes that serve the pinned editor build.
+   */
+  editor?: GalleryEditorHandlers
 }
 
 export interface GalleryServer {
@@ -56,6 +63,22 @@ export interface GalleryServer {
 }
 
 const MAX_EDIT_BYTES = 64 * 1024
+
+/**
+ * What the editor page may do: load its own files, compile wasm, and run the
+ * boot script Godot inlines into its export. `unsafe-eval` is for the bridge,
+ * which talks to the host through `JavaScriptBridge.eval`; nothing external
+ * is reachable, and only this gallery may frame it.
+ */
+const EDITOR_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "worker-src 'self' blob:",
+  "connect-src 'self'",
+  "frame-ancestors 'self'",
+].join("; ")
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
@@ -74,7 +97,7 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryServer> {
   const log = opts.onProgress ?? (() => {})
-  const session = opts.edit || opts.generate ? randomBytes(16).toString("hex") : null
+  const session = opts.edit || opts.generate || opts.editor ? randomBytes(16).toString("hex") : null
   let media: ReadonlyMap<string, GalleryMedia> = new Map()
   let loading: Promise<GalleryBuild> | null = null
   /** Local files each open review sheet may load, keyed by job. */
@@ -159,6 +182,17 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
       }
       return
     }
+    if (req.method === "POST" && url.pathname === "/api/editor/install") {
+      if (!opts.editor || !session) return fail(405, "the in-browser editor is off for this gallery")
+      try {
+        const body = await guardedBody("editor installs")
+        if (body === undefined) return
+        json(202, await opts.editor.install())
+      } catch (err) {
+        reportError("editor install", err)
+      }
+      return
+    }
     const reviewMatch = /^\/review\/([0-9a-f]{16})(\/.*)?$/.exec(url.pathname)
     if (reviewMatch && opts.generate) {
       const [, jobId, rest = ""] = reviewMatch
@@ -222,6 +256,32 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
       if (!opts.generate) return fail(404, "generation is off")
       return json(200, opts.generate.status())
     }
+    if (url.pathname === "/api/editor") {
+      if (!opts.editor) return fail(404, "the in-browser editor is off for this gallery")
+      try {
+        return json(200, await opts.editor.status())
+      } catch (err) {
+        return reportError("editor status", err)
+      }
+    }
+    const editorMatch = /^\/editor\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)$/.exec(url.pathname)
+    if (editorMatch) {
+      if (!opts.editor) return fail(404, "the in-browser editor is off for this gallery")
+      const file = await opts.editor.file(editorMatch[1]!, editorMatch[2]!)
+      if (!file) return fail(404, "that editor file is not installed; check /api/editor")
+      res.writeHead(200, {
+        "Content-Type": file.contentType,
+        "Content-Length": file.bytes.length,
+        // The release tag is in the path, so these bytes never change under
+        // this URL; the 40 MB wasm should come from the browser cache.
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        ...(editorMatch[2] === "index.html" ? { "Content-Security-Policy": EDITOR_CSP } : {}),
+      })
+      res.end(req.method === "HEAD" ? undefined : file.bytes)
+      return
+    }
 
     try {
       if (url.pathname === "/") {
@@ -235,6 +295,7 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
           ...(session ? { session } : {}),
           editable: Boolean(opts.edit),
           generation: Boolean(opts.generate),
+          editor: Boolean(opts.editor),
         }))
         return
       }

@@ -247,6 +247,39 @@ Single-image PNG assets only for now; structural sets and GIF animations are
 refused with the reason. `--only` must resolve to one asset in one style, so
 add `--style` when the asset is shared.
 
+### `tools`
+
+Prepare the in-browser editor before opening a gallery, or check what is on
+disk.
+
+```bash
+pixelkiln tools status
+pixelkiln tools install editor
+PIXELKILN_TOOLS_DIR=/srv/pixelkiln-tools pixelkiln tools install editor
+```
+
+The editor is a web build of [Pixelorama](https://pixelorama.org) with a small
+PixelKiln bridge extension, about 46 MB, and is not part of the npm package.
+Each PixelKiln release pins one build — its GitHub release tag
+(`editor-pixelorama-<upstream tag>-pk.<n>`) and the SHA-256 and size of every
+file — and `install` fetches only the files that are missing or wrong from
+that release, verifies each against the pinned hash before it lands, and
+leaves nothing partial behind: a file that fails verification is discarded
+and the command fails naming it. `status` reports the pinned version, the
+release, and whether every file is present and verified (`--json` for the
+machine-readable form). Running `install` on a complete build fetches nothing.
+
+The files live outside the project, in a per-release directory under the
+user's cache (`~/Library/Caches/pixelkiln/tools` on macOS, `$XDG_CACHE_HOME`
+or `~/.cache/pixelkiln/tools` on Linux, `%LOCALAPPDATA%\pixelkiln\tools` on
+Windows), so one copy serves every project and an upgrade never overwrites the
+build an older PixelKiln still expects. `PIXELKILN_TOOLS_DIR` moves that root;
+`PIXELKILN_EDITOR_URL` points the download at a mirror or an internal server
+that hosts the same files (they are still verified against the pinned hashes,
+so a mirror cannot substitute a different build). Once installed the editor
+runs entirely offline; the gallery serves it from the local directory with no
+outbound requests.
+
 ### `gallery`
 
 Open a local, read-only gallery of everything the project has generated. Each
@@ -357,6 +390,16 @@ art and the edit side by side with its status — an unchanged copy, edited, or
 based on an older generation because the art was regenerated since — plus
 **Open in editor** and **Detach edit**. A card whose edit differs from the
 generated art shows the edit, since that is what ships, with a ✎ mark.
+
+`--edit` also offers the in-browser editor, a pinned build of
+[Pixelorama](https://pixelorama.org) that the gallery serves itself; see
+[`tools`](#tools) for what is fetched, where it lives, and how it is verified.
+The header shows whether it is installed and, if not, an **Install editor**
+button that fetches it once with a progress bar; nothing is downloaded without
+that click or `tools install editor`. Once installed, **Open editor** launches
+it in a new tab (opening a sprite from a record and saving it back is the next
+step of [#94](https://github.com/gfargo/pixelkiln/issues/94)). `--no-editor`
+hides all of it and serves none of its routes.
 
 A PixelLab `map` or `1dir` record also links to its account object (**Open in
 pixellab ↗**), where PixelLab's own editor can change it; with `--budget`
@@ -636,7 +679,8 @@ Print the package version. `-v` is an alias.
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser, or the editor for `edit`. |
-| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. |
+| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor. |
+| `--no-editor` | gallery | With `--edit`, do not offer, install, or serve the in-browser editor. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--refresh` | fetch | Re-download downloaded outputs and replace files whose object changed upstream; never generates, never overwrites a local edit without `--force`. |
 | `--claims <paths>` | salvage | Other project lockfiles; repeatable and comma-separated. |
