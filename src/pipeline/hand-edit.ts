@@ -6,9 +6,9 @@ import { z } from "zod"
 import { sha256, sha256File } from "../hash.ts"
 import type { LoadedManifest } from "../manifest.ts"
 import { MediaType, validateMedia } from "../media.ts"
-import { currentEntryOutputPath, portableOutputPath } from "../outputs.ts"
+import { currentEntryOutputPath, isFrameSetEntry, memberPath, portableOutputPath } from "../outputs.ts"
 import { decodePng } from "../png.ts"
-import { lockKey, primaryOutput, type Lock, type ResolvedSpec } from "../types.ts"
+import { lockKey, primaryOutput, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import { applyManifestEdit, ManifestEditError } from "../manifest-edit.ts"
 
 /**
@@ -19,17 +19,33 @@ import { applyManifestEdit, ManifestEditError } from "../manifest-edit.ts"
  * `pack` place that file, quality profiles read it, and revisions start from
  * it, while `plan` keeps reporting the generation itself as `ok`.
  *
+ * A frame set is edited the same way, one file per member: the manifest's
+ * `source` names the stem, and each frame is `<stem>-<role>.png` beside it,
+ * the rule its generated frames already follow.
+ *
  * The author edits with whatever they already use: `PIXELKILN_EDITOR` names
  * the program, otherwise the file opens with the OS default.
  */
 export const HAND_EDIT_DIR = "edits"
 
-export interface HandEditStart {
+/** One file of a hand edit: the whole edit for a single image, one frame of a set. */
+export interface HandEditMember {
+  /** Output role for a set member; null for a single image. */
+  role: string | null
   /** Absolute path of the file the author edits. */
+  path: string
+  /** The generated file it starts from, when on disk. */
+  base: string | null
+}
+
+export interface HandEditStart {
+  /** Absolute path of the file the author edits; the stem for a frame set. */
   editPath: string
+  /** Every file of the edit, in output order. One entry for a single image. */
+  members: HandEditMember[]
   /** Manifest-relative form recorded in the manifest. */
   source: string
-  /** True when the file was created now as a copy of the generated art. */
+  /** True when any file was created now as a copy of the generated art. */
   created: boolean
   /** True when the manifest was rewritten to point at it. */
   declared: boolean
@@ -47,23 +63,53 @@ export function handEditPath(loaded: LoadedManifest, spec: ResolvedSpec): string
   return path.join(outDir, HAND_EDIT_DIR, file.replace(/\.gif$/i, ".png"))
 }
 
-/** The generated (or untracked) art a fresh edit starts from, if it is on disk. */
-export function handEditBase(spec: ResolvedSpec, lock: Lock): string | null {
+/**
+ * The generated (or untracked) art a fresh edit starts from, per member.
+ * Null when the asset is not something a hand edit covers: a structural set,
+ * a GIF, or nothing on disk to copy.
+ */
+export function handEditBases(spec: ResolvedSpec, lock: Lock): Array<{ role: string | null; path: string }> | null {
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
   if (entry) {
-    if (entry.outputs.length !== 1) return null
-    const primary = primaryOutput(entry)
-    if (!primary || (primary.mediaType && primary.mediaType !== "image/png")) return null
-    const file = currentEntryOutputPath(entry, spec, 0)
-    return existsSync(file) ? file : null
+    if (entry.outputs.length !== 1 && !isFrameSetEntry(entry)) return null
+    const members = entry.outputs.map((output, index) => ({
+      role: entry.outputs.length === 1 ? null : output.role ?? null,
+      path: currentEntryOutputPath(entry, spec, index),
+      mediaType: output.mediaType,
+    }))
+    if (members.some((member) => member.mediaType && member.mediaType !== "image/png")) return null
+    if (entry.outputs.length === 1 && !primaryOutput(entry)) return null
+    if (!members.every((member) => existsSync(member.path))) return null
+    return members.map(({ role, path: file }) => ({ role, path: file }))
   }
-  return existsSync(spec.outFile) ? spec.outFile : null
+  return existsSync(spec.outFile) ? [{ role: null, path: spec.outFile }] : null
+}
+
+/** The generated (or untracked) art a fresh single-image edit starts from, if it is on disk. */
+export function handEditBase(spec: ResolvedSpec, lock: Lock): string | null {
+  const bases = handEditBases(spec, lock)
+  return bases && bases.length === 1 ? bases[0]!.path : null
+}
+
+/** The files a declared `source` stands for, in output order; the source itself for a single image. */
+export function handEditMembers(loaded: LoadedManifest, spec: ResolvedSpec, lock: Lock, editPath: string): HandEditMember[] {
+  const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
+  const bases = handEditBases(spec, lock)
+  if (entry && isFrameSetEntry(entry)) {
+    return entry.outputs.map((output, index) => ({
+      role: output.role ?? null,
+      path: memberPath(editPath, output.role, index, entry.outputs.length, output.mediaType),
+      base: bases?.[index]?.path ?? null,
+    }))
+  }
+  return [{ role: null, path: editPath, base: bases?.[0]?.path ?? null }]
 }
 
 /**
  * Make (or reuse) the edit file for one asset in one style and declare it in
  * the manifest. Idempotent: a second call finds the same file and changes
- * nothing, so "open my edit again" and "start editing" are one action.
+ * nothing, so "open my edit again" and "start editing" are one action. A
+ * frame set gets one file per member; a member already there is kept.
  */
 export async function startHandEdit(
   loaded: LoadedManifest,
@@ -72,23 +118,24 @@ export async function startHandEdit(
   opts: { expectedSha256?: string } = {},
 ): Promise<HandEditStart> {
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
-  if (entry && entry.outputs.length > 1) {
+  if (entry && entry.outputs.length > 1 && !isFrameSetEntry(entry)) {
     throw new ManifestEditError(
-      `${spec.styleId}/${spec.assetId} has ${entry.outputs.length} outputs; hand edits currently cover single-image assets`,
+      `${spec.styleId}/${spec.assetId} is a structural set of ${entry.outputs.length} outputs; hand edits cover single images and frame sets`,
     )
   }
   const existing = spec.source ? path.resolve(loaded.root, spec.source) : null
   const editPath = existing ?? handEditPath(loaded, spec)
+  const members = handEditMembers(loaded, spec, lock, editPath)
   let created = false
-  if (!existsSync(editPath)) {
-    const base = handEditBase(spec, lock)
-    if (!base) {
+  for (const member of members) {
+    if (existsSync(member.path)) continue
+    if (!member.base) {
       throw new ManifestEditError(
         `${spec.styleId}/${spec.assetId} has no generated PNG on disk to start from; generate or restore it first`,
       )
     }
-    await mkdir(path.dirname(editPath), { recursive: true })
-    await copyFile(base, editPath)
+    await mkdir(path.dirname(member.path), { recursive: true })
+    await copyFile(member.base, member.path)
     created = true
   }
   const source = portableOutputPath(editPath, loaded.root)
@@ -105,7 +152,7 @@ export async function startHandEdit(
     declared = result.changed
     manifestSha256 = result.sha256
   }
-  return { editPath, source, created, declared, manifestSha256 }
+  return { editPath, members, source, created, declared, manifestSha256 }
 }
 
 /** Stop placing the edit. The file stays where it is; only the manifest changes. */
@@ -127,27 +174,63 @@ export async function detachHandEdit(
 }
 
 /**
- * What an in-browser save leaves beside the edit: which generation it was
- * based on (by hash, so a regeneration is detected however the clocks read),
- * which editor made it, and whether the layered project file is there too.
- * Written as `<edit>.edit.json`; a hand edit made in a desktop editor has none.
+ * What an in-browser save leaves beside the edit: which generation each file
+ * was based on (by hash, so a regeneration is detected however the clocks
+ * read), which editor made it, and whether the layered project file is there
+ * too. Written as `<edit>.edit.json` beside the edit (the stem, for a frame
+ * set); a hand edit made in a desktop editor has none.
  */
-export const HandEditCompanionSchema = z
+const CompanionOutputSchema = z
   .object({
-    version: z.literal(1),
-    /** sha256 of the generated art the edit started from; null when it started from untracked art. */
+    /** Output role for a set member; null for a single image. */
+    role: z.string().nullable(),
+    /** sha256 of the generated file this member started from; null when it started from untracked art. */
     basedOn: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
-    /** sha256 of the edit PNG as saved, so a later change by another tool is visible. */
+    /** sha256 of the member as saved, so a later change by another tool is visible. */
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  })
+  .strict()
+
+const CompanionV2Schema = z
+  .object({
+    version: z.literal(2),
     /** Editor identity the bridge reported, e.g. `pixelorama@v1.2.2-stable`. */
     editor: z.string().min(1),
     protocol: z.number().int().positive(),
     savedAt: z.string().datetime(),
     /** Basename of the layered project file beside the edit, when one was kept. */
     project: z.string().min(1).nullable(),
+    /** One entry per file, in output order. */
+    outputs: z.array(CompanionOutputSchema).min(1),
   })
   .strict()
-export type HandEditCompanion = z.infer<typeof HandEditCompanionSchema>
+
+/** The first shape, one image only; read and upgraded, never written. */
+const CompanionV1Schema = z
+  .object({
+    version: z.literal(1),
+    basedOn: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    editor: z.string().min(1),
+    protocol: z.number().int().positive(),
+    savedAt: z.string().datetime(),
+    project: z.string().min(1).nullable(),
+  })
+  .strict()
+
+export const HandEditCompanionSchema = z.union([CompanionV2Schema, CompanionV1Schema]).transform((value): HandEditCompanion =>
+  value.version === 2
+    ? value
+    : {
+        version: 2,
+        editor: value.editor,
+        protocol: value.protocol,
+        savedAt: value.savedAt,
+        project: value.project,
+        outputs: [{ role: null, basedOn: value.basedOn, sha256: value.sha256 }],
+      },
+)
+export type HandEditCompanion = z.infer<typeof CompanionV2Schema>
 
 export function handEditCompanionPath(editPath: string): string {
   return editPath.replace(/\.png$/i, "") + ".edit.json"
@@ -176,8 +259,10 @@ export async function readHandEditCompanion(editPath: string): Promise<HandEditC
 export const MAX_HAND_EDIT_BYTES = 16 * 1024 * 1024
 
 export interface HandEditSaveInput {
-  /** The flattened image, as PNG bytes. */
-  png: Buffer
+  /** The flattened image, as PNG bytes. For a frame set, use `frames`. */
+  png?: Buffer
+  /** Every frame of a set, tagged with the role it was opened under (null for one added in the editor). */
+  frames?: Array<{ role: string | null; png: Buffer }>
   /** The editor's own layered project file, kept beside the edit when given. */
   project?: Buffer
   editor: string
@@ -187,18 +272,23 @@ export interface HandEditSaveInput {
 }
 
 export interface HandEditSave extends HandEditStart {
+  /** sha256 of the edit as saved; of the first member for a frame set. */
   sha256: string
+  /** Hash of the generation the edit started from; of the first member for a frame set. */
   basedOn: string | null
+  companion: HandEditCompanion
   companionPath: string
   projectPath: string | null
 }
 
 /**
- * Save an edit made in the in-browser editor. The PNG must be a valid image
- * at the asset's generated size; it replaces the edit file atomically, the
- * companion records what it was based on, and the manifest declares the file
- * if it does not yet — the same path `startHandEdit` takes, so the first save
- * from the browser and `pixelkiln edit` leave the same manifest.
+ * Save an edit made in the in-browser editor. Every PNG must be a valid
+ * image at the asset's generated size, a frame set must come back with the
+ * same members it was opened with, and the files replace the edit
+ * atomically; the companion records what each was based on, and the
+ * manifest declares the edit if it does not yet — the same path
+ * `startHandEdit` takes, so the first save from the browser and
+ * `pixelkiln edit` leave the same manifest.
  */
 export async function saveHandEdit(
   loaded: LoadedManifest,
@@ -206,45 +296,82 @@ export async function saveHandEdit(
   spec: ResolvedSpec,
   input: HandEditSaveInput,
 ): Promise<HandEditSave> {
-  if (input.png.length > MAX_HAND_EDIT_BYTES) {
-    throw new ManifestEditError(`the edit is ${input.png.length} bytes; the limit is ${MAX_HAND_EDIT_BYTES}`)
-  }
+  const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
+  const frameSet = entry ? isFrameSetEntry(entry) : false
+  const incoming = input.frames ?? (input.png ? [{ role: null, png: input.png }] : [])
+  if (!incoming.length) throw new ManifestEditError("the save carried no image")
   if (input.project && input.project.length > MAX_HAND_EDIT_BYTES) {
     throw new ManifestEditError(`the project file is ${input.project.length} bytes; the limit is ${MAX_HAND_EDIT_BYTES}`)
   }
-  let decoded: { width: number; height: number }
-  try {
-    validateMedia(input.png, MediaType.PNG)
-    decoded = decodePng(input.png)
-  } catch (error) {
-    throw new ManifestEditError(`the edit is not a valid PNG: ${error instanceof Error ? error.message : String(error)}`)
+  if (frameSet) {
+    const expected = entry!.outputs.map((output) => output.role ?? null)
+    const got = incoming.map((frame) => frame.role)
+    if (got.length !== expected.length || expected.some((role, index) => got[index] !== role)) {
+      throw new ManifestEditError(
+        `${spec.styleId}/${spec.assetId} is a set of ${expected.length} frames (${expected.join(", ")}); ` +
+          `the editor returned ${got.length} (${got.map((role) => role ?? "new").join(", ")}) — keep the frames it opened with`,
+      )
+    }
+  } else if (incoming.length !== 1) {
+    throw new ManifestEditError(`${spec.styleId}/${spec.assetId} is one image; the editor returned ${incoming.length} frames — keep a single frame`)
   }
-  const base = handEditBase(spec, lock)
-  const expected = base ? decodePng(await readFile(base)) : { width: spec.width, height: spec.height }
-  if (decoded.width !== expected.width || decoded.height !== expected.height) {
-    throw new ManifestEditError(
-      `the edit is ${decoded.width}×${decoded.height}; ${spec.styleId}/${spec.assetId} is ${expected.width}×${expected.height}`,
-    )
+  const decoded = incoming.map((frame, index) => {
+    if (frame.png.length > MAX_HAND_EDIT_BYTES) {
+      throw new ManifestEditError(`the edit is ${frame.png.length} bytes; the limit is ${MAX_HAND_EDIT_BYTES}`)
+    }
+    try {
+      validateMedia(frame.png, MediaType.PNG)
+      return decodePng(frame.png)
+    } catch (error) {
+      const which = frameSet ? `frame ${frame.role ?? index}` : "the edit"
+      throw new ManifestEditError(`${which} is not a valid PNG: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  })
+  const bases = handEditBases(spec, lock)
+  const expectedSize = bases?.[0] ? decodePng(await readFile(bases[0].path)) : { width: spec.width, height: spec.height }
+  for (const [index, image] of decoded.entries()) {
+    if (image.width !== expectedSize.width || image.height !== expectedSize.height) {
+      const which = frameSet ? `frame ${incoming[index]!.role ?? index}` : "the edit"
+      throw new ManifestEditError(
+        `${which} is ${image.width}×${image.height}; ${spec.styleId}/${spec.assetId} is ${expectedSize.width}×${expectedSize.height}`,
+      )
+    }
   }
+
   const started = await startHandEdit(loaded, lock, spec, { expectedSha256: input.expectedSha256 })
-  const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
-  const basedOn = entry ? primaryOutput(entry)?.sha256 ?? null : null
-  const digest = sha256(input.png)
   const projectPath = input.project ? handEditProjectPath(started.editPath) : null
   const companion: HandEditCompanion = {
-    version: 1,
-    basedOn,
-    sha256: digest,
+    version: 2,
     editor: input.editor,
     protocol: input.protocol,
     savedAt: (input.now ?? new Date()).toISOString(),
     project: projectPath ? path.basename(projectPath) : null,
+    outputs: incoming.map((frame, index) => ({
+      role: frame.role,
+      basedOn: basedOnHash(entry, index),
+      sha256: sha256(frame.png),
+    })),
   }
-  await replaceFile(started.editPath, input.png)
+  for (const [index, member] of started.members.entries()) {
+    await replaceFile(member.path, incoming[index]!.png)
+  }
   if (projectPath && input.project) await replaceFile(projectPath, input.project)
   const companionPath = handEditCompanionPath(started.editPath)
   await replaceFile(companionPath, JSON.stringify(companion, null, 2) + "\n")
-  return { ...started, sha256: digest, basedOn, companionPath, projectPath }
+  return {
+    ...started,
+    sha256: companion.outputs[0]!.sha256,
+    basedOn: companion.outputs[0]!.basedOn,
+    companion,
+    companionPath,
+    projectPath,
+  }
+}
+
+function basedOnHash(entry: LockEntry | undefined, index: number): string | null {
+  if (!entry) return null
+  if (entry.outputs.length === 1) return primaryOutput(entry)?.sha256 ?? null
+  return entry.outputs[index]?.sha256 ?? null
 }
 
 async function replaceFile(file: string, bytes: Buffer | string): Promise<void> {

@@ -243,9 +243,12 @@ it is. `--no-open` creates and declares without launching anything.
 
 `PIXELKILN_EDITOR` names the program (a name, or a command with arguments; the
 file path is appended). Without it the file opens with the OS default handler.
-Single-image PNG assets only for now; structural sets and GIF animations are
-refused with the reason. `--only` must resolve to one asset in one style, so
-add `--style` when the asset is shared.
+A ComfyUI `frames` asset is edited as a set: one file per frame,
+`<outDir>/edits/<name>-<role>.png`, with the manifest `source` naming the stem
+(`<outDir>/edits/<name>.png`), and the first frame is what opens; `pack` and
+`mount` place the members by role. Other structural sets and GIF animations
+are refused with the reason. `--only` must resolve to one asset in one style,
+so add `--style` when the asset is shared.
 
 ### `tools`
 
@@ -401,12 +404,17 @@ that click or `tools install editor`. **Save to project** (or ⌘S / Ctrl+S in
 the editor) hands the flattened image back to the page, which writes the same
 `edits/` file `pixelkiln edit` would and declares it; the sheet stays open for
 the next change, **Save & close** does both, and closing with unsaved changes
-asks first. A browser save also keeps Pixelorama's layered `.pxo` beside the
-edit — the next **Edit in browser** hands it back, so layers and frames come
-back as they were (the flattened PNG is used only if the file cannot be read,
-and the sheet says which) — and writes `<edit>.edit.json` recording the
-editor, the time, and the hash of the generation the edit was based on, so
-`regenerated-since` is decided by hash rather than file times for those edits. The record shows the
+asks first. A ComfyUI `frames` asset opens as one Pixelorama project with a
+frame per member at the set's fps; saving writes every frame back under its
+role, and a set that comes back with a different number of frames is refused
+rather than guessed at. A browser save also keeps Pixelorama's layered `.pxo`
+beside the edit — the next **Edit in browser** hands it back, so layers and
+frames come back as they were (the flattened PNG is used only if the file
+cannot be read, and the sheet says which) — and writes `<edit>.edit.json`
+recording the editor, the time, and the hash of the generation each file was
+based on, so `regenerated-since` is decided by hash rather than file times for
+those edits. Edit status compares pixels, not bytes: an edit that was opened
+and saved without a change stays `same`, whatever its editor did to the PNG. The record shows the
 editor and the layer file; **Open in desktop editor** and **Detach edit** work
 on the same file. The editor page runs same-origin under its own
 content-security policy and never sees the gallery's session token — the page

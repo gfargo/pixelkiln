@@ -6,10 +6,11 @@ import path from "node:path"
 import { loadLock, spendByUnit } from "../lock.ts"
 import { loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
 import { mediaTypeFromExtension, type MediaType } from "../media.ts"
-import { currentEntryOutputPath, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath } from "../outputs.ts"
+import { currentEntryOutputPath, isFrameSetEntry, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath, sourceOutputPath } from "../outputs.ts"
 import { buildPlan, type PlanState } from "../pipeline/plan.ts"
 import type { QualityProfileInspection } from "../pipeline/quality-profile.ts"
 import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine.ts"
+import { decodePng } from "../png.ts"
 import { lockKey, type Asset, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
@@ -56,7 +57,7 @@ export interface GalleryOutput {
 }
 
 export type HandEditStatus =
-  /** The edit file is byte-identical to the generated art. */
+  /** The edit file has the generated art's pixels — nothing has been changed yet. */
   | "same"
   /** The author changed it. */
   | "edited"
@@ -150,6 +151,18 @@ export interface GalleryItem {
    * generated file, which stays on disk as the record.
    */
   edit: GalleryOutput | null
+  /**
+   * Every file of the edit, one per output in the same order — the edit
+   * itself for a single image, `<stem>-<role>.png` per member of a frame set.
+   * Empty without a source.
+   */
+  edits: GalleryOutput[]
+  /**
+   * Per member of `edits`: true where its pixels differ from the generated
+   * file. Compared by pixels, not bytes, because every editor re-encodes a
+   * PNG it merely opened and saved.
+   */
+  editChanged: boolean[]
   editStatus: HandEditStatus | null
   /** What an in-browser save recorded beside the edit; null for edits made elsewhere. */
   editMeta: GalleryEditMeta | null
@@ -277,6 +290,22 @@ function matchesFilter(
   if (filter?.styles?.length && !filter.styles.includes(styleId)) return false
   if (filter?.assets?.length && !filter.assets.includes(assetId)) return false
   return true
+}
+
+/** Sprites are small; past this an edit is simply taken as changed rather than decoded. */
+const MAX_COMPARED_BYTES = 8 * 1024 * 1024
+
+/** Same dimensions and RGBA bytes, whatever the two encoders did with the PNG around them. */
+async function samePixels(a: string, b: string): Promise<boolean> {
+  try {
+    const [left, right] = await Promise.all([readFile(a), readFile(b)])
+    if (left.length > MAX_COMPARED_BYTES || right.length > MAX_COMPARED_BYTES) return false
+    const x = decodePng(left)
+    const y = decodePng(right)
+    return x.width === y.width && x.height === y.height && x.pixels.equals(y.pixels)
+  } catch {
+    return false
+  }
 }
 
 /** ComfyUI records the frame-set rate under its own namespace; other adapters may too. */
@@ -412,9 +441,9 @@ async function describeQuality(
 export interface GalleryEditMeta {
   editor: string
   savedAt: string
-  /** sha256 of the generation the edit was based on, or null for untracked art. */
+  /** sha256 of the generation the edit was based on (its first member for a set), or null for untracked art. */
   basedOn: string | null
-  /** The edit file changed since the editor saved it (another tool touched it). */
+  /** An edit file changed since the editor saved it (another tool touched it). */
   changedSince: boolean
   /** Manifest-relative path of the layered project file kept beside the edit, if present. */
   project: string | null
@@ -449,6 +478,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
 
     let outputs: GalleryOutput[]
     let edit: GalleryOutput | null = null
+    let edits: GalleryOutput[] = []
+    let editChanged: boolean[] = []
     let editStatus: HandEditStatus | null = null
     let editMeta: GalleryEditMeta | null = null
     if (entry && entry.outputs.length) {
@@ -459,12 +490,20 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       )
       if (spec.source) {
         const editPath = path.resolve(root, spec.source)
-        const editSha = existsSync(editPath) ? await sha256File(editPath) : null
-        edit = await describeOutput(media, root, editPath, { sha256: editSha })
-        const generated = outputs[0]
-        // A browser save records the generation it started from by hash,
-        // which survives clock skew and a restore; without it, file times
-        // are the only evidence.
+        // The source itself, or one file per output for a frame set, so
+        // status is judged member by member.
+        const memberCount = isFrameSetEntry(entry) ? entry.outputs.length : 1
+        const editShas = await Promise.all(
+          Array.from({ length: memberCount }, async (_, index) => {
+            const file = sourceOutputPath(spec.source!, entry, index, root)
+            return { file, sha256: existsSync(file) ? await sha256File(file) : null }
+          }),
+        )
+        edits = await Promise.all(editShas.map(({ file, sha256: editSha }) => describeOutput(media, root, file, { sha256: editSha })))
+        edit = edits[0] ?? null
+        // A browser save records the generation each member started from by
+        // hash, which survives clock skew and a restore; without it, file
+        // times are the only evidence.
         const companion = await readHandEditCompanion(editPath)
         if (companion) {
           const projectPath = handEditProjectPath(editPath)
@@ -478,18 +517,32 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
           editMeta = {
             editor: companion.editor,
             savedAt: companion.savedAt,
-            basedOn: companion.basedOn,
-            changedSince: editSha !== null && editSha !== companion.sha256,
+            basedOn: companion.outputs[0]?.basedOn ?? null,
+            changedSince: editShas.some(({ sha256: editSha }, index) => {
+              const recorded = companion.outputs[index]?.sha256
+              return editSha !== null && recorded !== undefined && editSha !== recorded
+            }),
             project: project ? portableOutputPath(projectPath, root) : null,
             projectUrl,
           }
         }
-        const regenerated = companion
-          ? generated?.sha256 !== undefined && generated.sha256 !== null && companion.basedOn !== generated.sha256
-          : Boolean(generated?.modifiedAt && edit.modifiedAt && generated.modifiedAt > edit.modifiedAt && generated.exists)
-        editStatus = !edit.exists
+        const regenerated = edits.some((member, index) => {
+          const generated = outputs[index]!
+          if (companion) {
+            const recorded = companion.outputs[index]
+            return recorded !== undefined && generated.sha256 !== null && recorded.basedOn !== generated.sha256
+          }
+          return Boolean(generated.modifiedAt && member.modifiedAt && generated.modifiedAt > member.modifiedAt && generated.exists)
+        })
+        editChanged = await Promise.all(edits.map(async (member, index) => {
+          const generated = outputs[index]!
+          if (!member.exists || !generated.exists) return true
+          if (member.sha256 === generated.sha256) return false
+          return !(await samePixels(member.absolutePath, generated.absolutePath))
+        }))
+        editStatus = edits.some((member) => !member.exists)
           ? "missing"
-          : generated && editSha === generated.sha256
+          : editChanged.every((changed) => !changed)
             ? "same"
             : regenerated
               ? "regenerated-since"
@@ -549,6 +602,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       asset,
       source: spec.source ?? null,
       edit,
+      edits,
+      editChanged,
       editStatus,
       editMeta,
       upstreamUrl: entry?.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
@@ -607,6 +662,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       asset: null,
       source: null,
       edit: null,
+      edits: [],
+      editChanged: [],
       editStatus: null,
       editMeta: null,
       upstreamUrl: entry.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,

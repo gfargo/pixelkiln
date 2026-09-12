@@ -2,8 +2,8 @@
   "pixelorama": "v1.2.2",
   "godot": "4.7.2",
   "extensionsApi": 9,
-  "protocol": 2,
-  "release": "editor-pixelorama-v1.2.2-pk.10",
+  "protocol": 3,
+  "release": "editor-pixelorama-v1.2.2-pk.14",
   "files": {
     "index.apple-touch-icon.png": {
       "sha256": "ee5434873e0fed91e9a888c3ea5a8b79beac25999308be7a6eb41bf4ce640d27",
@@ -18,7 +18,7 @@
       "bytes": 7298
     },
     "index.html": {
-      "sha256": "ad777659ca39a22872437d44595b749c1637f83994d5f82d50dca861f2186b9c",
+      "sha256": "2974146c89f4df9f796e840947c334aaf3e4fa3dd18bcd7e08db2eabfd0f086e",
       "bytes": 5442
     },
     "index.icon.png": {
@@ -30,8 +30,8 @@
       "bytes": 279815
     },
     "index.pck": {
-      "sha256": "546a3f9851df0854c9f6052f29f1e559de79deb53b936d44a72c3475234c26ff",
-      "bytes": 6427868
+      "sha256": "736bd383c82fdadf31cc894caf08490b99c5df572aa20db683972c35c7a0465b",
+      "bytes": 6429628
     },
     "index.png": {
       "sha256": "6e3ca3eb4a99e4c07bdd89ebc873b440ec0ffd66ce1955160da9e7ed80d538d7",

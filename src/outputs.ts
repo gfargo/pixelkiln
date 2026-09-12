@@ -41,12 +41,49 @@ export function expectedOutputPath(
   total: number,
   mediaType?: MediaType,
 ): string {
-  const originalExt = path.extname(spec.outFile)
+  return memberPath(spec.outFile, role, index, total, mediaType)
+}
+
+/**
+ * One member of a set beside a stem file: `<stem>-<role><ext>`, or the stem
+ * itself for a single output. Generated outputs and a `source` for a frame
+ * set follow the same rule, so an edit's members sit where its generation's do.
+ */
+export function memberPath(
+  file: string,
+  role: string | undefined,
+  index: number,
+  total: number,
+  mediaType?: MediaType,
+): string {
+  const originalExt = path.extname(file)
   const ext = mediaType ? mediaExtension(mediaType) : (originalExt || ".png")
-  const stem = originalExt ? spec.outFile.slice(0, -originalExt.length) : spec.outFile
+  const stem = originalExt ? file.slice(0, -originalExt.length) : file
   if (total === 1) return `${stem}${ext}`
   const safeRole = (role ?? fallbackOutputRole(index)).replace(/[^a-zA-Z0-9_-]+/g, "-")
   return `${stem}-${safeRole}${ext}`
+}
+
+/** A lock entry whose `source` names a stem with one file per member rather than one file. */
+export function isFrameSetEntry(entry: Pick<LockEntry, "generator" | "outputs">): boolean {
+  return entry.generator === "frames" && entry.outputs.length > 1
+}
+
+/**
+ * Where a declared `source` places one output of an entry. A frame set's
+ * source is a stem, expanded per role like its generated frames; anything
+ * else places the source file itself.
+ */
+export function sourceOutputPath(
+  source: string,
+  entry: Pick<LockEntry, "generator" | "outputs">,
+  index: number,
+  manifestDir: string,
+): string {
+  const absolute = path.resolve(manifestDir, source)
+  if (!isFrameSetEntry(entry)) return absolute
+  const output = entry.outputs[index]!
+  return memberPath(absolute, output.role, index, entry.outputs.length, output.mediaType)
 }
 
 /** Resolve one recorded output from the current manifest-owned destination. */

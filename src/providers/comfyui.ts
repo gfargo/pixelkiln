@@ -376,12 +376,9 @@ export class ComfyUIProvider implements Provider {
     // A committed source can be a revision parent in the same style, but it is
     // never submitted. Revision-only workflows therefore do not need the
     // text-to-image bindings that this placeholder spec would otherwise imply.
-    if (spec.source && !spec.revision) {
-      if (spec.generator === "frames") {
-        throw new Error("ComfyUI frame sets require generated provider outputs, not asset.source")
-      }
-      return
-    }
+    // A frame set's source is different: it is a hand edit laid beside the
+    // generated frames, so the set is still generated and validated as such.
+    if (spec.source && !spec.revision && spec.generator !== "frames") return
     if (spec.width < 16 || spec.height < 16 || spec.width > 4096 || spec.height > 4096) {
       throw new Error("ComfyUI output dimensions must be between 16 and 4096 pixels")
     }

@@ -43,7 +43,10 @@ const HandEditRequestSchema = z.discriminatedUnion("action", [
       assetId: z.string().min(1),
       styleId: z.string().min(1),
       expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
-      png: Base64.min(1),
+      /** The flattened image; for a frame set, `frames` instead. */
+      png: Base64.min(1).optional(),
+      /** Every frame of a set, tagged with the role it was opened under (null for one added in the editor). */
+      frames: z.array(z.object({ role: z.string().min(1).nullable(), png: Base64.min(1) }).strict()).min(1).max(256).optional(),
       /** The editor's layered project file, kept beside the edit. */
       pxo: Base64.optional(),
       /** Editor identity from the bridge's ready message. */
@@ -92,18 +95,23 @@ export function createGalleryEditHandler(
         const started = await startHandEdit(ctx.loaded, ctx.lock, spec, { expectedSha256: request.expectedSha256 })
         log(`  hand edit ${started.created ? "created" : "found"}: ${started.source}${started.declared ? " (declared in the manifest)" : ""}`)
         if (request.open) {
-          const command = (opts.openEditor ?? openInEditor)(started.editPath)
+          const command = (opts.openEditor ?? openInEditor)(started.members[0]!.path)
           log(`  opened with: ${command}`)
         }
       } else if (request.action === "save-edit") {
+        if ((request.png !== undefined) === (request.frames !== undefined)) {
+          throw new ManifestEditError("invalid edit: send png for one image or frames for a set, not both")
+        }
         const saved = await saveHandEdit(ctx.loaded, ctx.lock, spec, {
-          png: Buffer.from(request.png, "base64"),
+          ...(request.png !== undefined ? { png: Buffer.from(request.png, "base64") } : {}),
+          ...(request.frames ? { frames: request.frames.map((frame) => ({ role: frame.role, png: Buffer.from(frame.png, "base64") })) } : {}),
           ...(request.pxo ? { project: Buffer.from(request.pxo, "base64") } : {}),
           editor: request.editor,
           protocol: request.protocol,
           expectedSha256: request.expectedSha256,
         })
-        log(`  hand edit saved from ${request.editor}: ${saved.source}${saved.declared ? " (declared in the manifest)" : ""}${saved.projectPath ? " + project file" : ""}`)
+        const what = saved.members.length > 1 ? `${saved.source} (${saved.members.length} frames)` : saved.source
+        log(`  hand edit saved from ${request.editor}: ${what}${saved.declared ? " (declared in the manifest)" : ""}${saved.projectPath ? " + project file" : ""}`)
       } else {
         const result = await detachHandEdit(ctx.loaded, spec, { expectedSha256: request.expectedSha256 })
         if (result.changed) log(`  hand edit detached: ${request.styleId}/${request.assetId} (file kept)`)

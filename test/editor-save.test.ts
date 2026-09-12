@@ -3,6 +3,7 @@ import { existsSync } from "node:fs"
 import { mkdtemp, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { crc32 } from "node:zlib"
 import { FakeProvider } from "../src/providers/fake.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
@@ -82,8 +83,8 @@ describe("saveHandEdit", () => {
     expect(saved.companionPath).toBe(handEditCompanionPath(saved.editPath))
     expect(saved.companionPath).toBe(path.join(dir, "art/edits/anvil.edit.json"))
     expect(JSON.parse(await readFile(saved.companionPath, "utf8"))).toEqual({
-      version: 1, basedOn: saved.basedOn, sha256: sha256(RED), editor: EDITOR.editor, protocol: 1,
-      savedAt: "2026-09-12T10:00:00.000Z", project: "anvil.pxo",
+      version: 2, editor: EDITOR.editor, protocol: 1, savedAt: "2026-09-12T10:00:00.000Z", project: "anvil.pxo",
+      outputs: [{ role: null, basedOn: saved.basedOn, sha256: sha256(RED) }],
     })
     expect(JSON.parse(await readFile(manifestPath, "utf8")).assets.anvil.source).toBe("art/edits/anvil.png")
     // No temp files beside it.
@@ -95,7 +96,17 @@ describe("saveHandEdit", () => {
     const second = await saveHandEdit(again, lock, respec, { png: BLUE, ...EDITOR, expectedSha256: saved.manifestSha256 })
     expect(second).toMatchObject({ created: false, declared: false, sha256: sha256(BLUE), projectPath: null })
     expect(await readFile(second.editPath)).toEqual(BLUE)
-    expect((await readHandEditCompanion(second.editPath))!).toMatchObject({ sha256: sha256(BLUE), project: null })
+    expect((await readHandEditCompanion(second.editPath))!).toMatchObject({ outputs: [{ sha256: sha256(BLUE) }], project: null })
+
+    // A companion written by the first release (one image, flat fields) still reads.
+    await writeFile(second.companionPath, JSON.stringify({
+      version: 1, basedOn: saved.basedOn, sha256: sha256(BLUE), editor: "pixelorama@v1.2.2-stable", protocol: 1,
+      savedAt: "2026-09-12T09:00:00.000Z", project: null,
+    }))
+    expect(await readHandEditCompanion(second.editPath)).toEqual({
+      version: 2, editor: "pixelorama@v1.2.2-stable", protocol: 1, savedAt: "2026-09-12T09:00:00.000Z", project: null,
+      outputs: [{ role: null, basedOn: saved.basedOn, sha256: sha256(BLUE) }],
+    })
   })
 
   it("refuses bytes that are not a PNG, the wrong size, or too large, and writes nothing", async () => {
@@ -144,6 +155,22 @@ describe("saveHandEdit", () => {
     item = snapshot.items.find((i) => i.key === "base/anvil")!
     expect(item.editStatus).toBe("regenerated-since")
     expect(item.editMeta!.basedOn).not.toBe(item.outputs[0]!.sha256)
+
+    // A save whose pixels equal the generated art is "same" however the PNG was encoded.
+    const generatedBytes = await readFile(generatedFile)
+    const reencoded = encodeRgbaPng(1, 1, Buffer.from([0, 0, 255, 255]))
+    expect(sha256(reencoded)).toBe(sha256(BLUE))
+    expect(reencoded.equals(generatedBytes)).toBe(true)
+    const text = Buffer.from("tEXtpk\0x", "latin1")
+    const chunk = Buffer.alloc(4 + text.length + 4)
+    chunk.writeUInt32BE(text.length - 4, 0)
+    text.copy(chunk, 4)
+    chunk.writeUInt32BE(crc32(text) >>> 0, 4 + text.length)
+    await writeFile(path.join(dir, "art/edits/anvil.png"), Buffer.concat([reencoded.subarray(0, reencoded.length - 12), chunk, reencoded.subarray(reencoded.length - 12)]))
+    ;({ snapshot } = await buildGallerySnapshot({ loaded: again, specs: resolved, lock, lockPath }))
+    // (a text chunk before IEND is still a decodable PNG with the same pixels; hashes differ, status is same)
+    expect(snapshot.items.find((i) => i.key === "base/anvil")!.edit!.sha256).not.toBe(sha256(BLUE))
+    expect(snapshot.items.find((i) => i.key === "base/anvil")!.editChanged).toEqual([false])
 
     // Another tool rewriting the edit shows as changed since the editor saved it.
     await writeFile(path.join(dir, "art/edits/anvil.png"), encodeRgbaPng(1, 1, Buffer.from([0, 255, 0, 255])))

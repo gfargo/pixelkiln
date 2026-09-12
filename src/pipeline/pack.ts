@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { Lock } from "../types.ts"
-import { resolveEntryOutputs, resolveOutputPath, selectEntryOutput } from "../outputs.ts"
+import { isFrameSetEntry, resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceOutputPath } from "../outputs.ts"
 import { sha256 } from "../hash.ts"
 
 export interface PackedSource {
@@ -203,7 +203,9 @@ export function packStyle(
      * Manifest `source` art keyed by asset id, manifest-relative. A hand edit
      * or other post-processed file stands in for that asset's single output,
      * and an asset with a source but no lock entry is packed from it — the
-     * same rule `mount` applies. Structural sets keep their lock outputs.
+     * same rule `mount` applies. A frame set's source is a stem: each frame
+     * is packed from `<stem>-<role>.png`. Other structural sets keep their
+     * lock outputs.
      */
     sources?: Record<string, string>
   } = {},
@@ -239,11 +241,14 @@ export function packStyle(
   for (const [key, entry] of entries) {
     const id = key.slice(prefix.length)
     locked.add(id)
-    const outputs = resolveEntryOutputs(entry, id, manifestDir)
+    let outputs = resolveEntryOutputs(entry, id, manifestDir)
     const source = sources[id]
     if (source && outputs.length <= 1) {
       inputs.push({ id, path: path.resolve(manifestDir, source) })
       continue
+    }
+    if (source && isFrameSetEntry(entry)) {
+      outputs = outputs.map((output) => ({ ...output, absolutePath: sourceOutputPath(source, entry, output.index, manifestDir) }))
     }
     let selected = outputs
     if (options.outputRoles?.length) {
@@ -459,11 +464,22 @@ export function mountStyle(
   for (const id of ids) {
     const cell = cells[id]!
     const source = sources[id]
-    if (source) {
+    const entry = lock.entries[`${styleId}/${id}`]
+    if (source && !(entry && isFrameSetEntry(entry))) {
       placements.push({ id, path: path.resolve(manifestDir, source), cell })
       continue
     }
-    const entry = lock.entries[`${styleId}/${id}`]
+    if (source && entry) {
+      // A frame set's edit is one file per member; the cell still holds one.
+      const selection = selectEntryOutput(entry, outputRoles[id])
+      if (!selection.ok) {
+        skipped.push({ id, reason: selection.reason })
+        continue
+      }
+      const index = entry.outputs.findIndex((output) => output.path === selection.output.path)
+      placements.push({ id, path: sourceOutputPath(source, entry, Math.max(index, 0), manifestDir), cell })
+      continue
+    }
     if (!entry) {
       skipped.push({
         id,
