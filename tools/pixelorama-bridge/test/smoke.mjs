@@ -32,7 +32,7 @@ try {
   await page.waitForFunction(() => window.__host.ready !== null, { timeout: 300_000, polling: 2000 })
   const ready = await page.evaluate(() => window.__host.ready)
   console.log(`ready in ${Math.round((Date.now() - t0) / 1000)}s:`, JSON.stringify(ready))
-  if (ready.version !== 2) fail("protocol version " + ready.version)
+  if (ready.version !== 3) fail("protocol version " + ready.version)
 
   await page.evaluate(() => window.__host.openSample())
   await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
@@ -62,6 +62,8 @@ try {
   if (save.pngSig !== "89504e470d0a1a0a") fail("save is not a PNG")
   if (!save.differs) fail("saved PNG is identical to the sample; paint did not land")
   if (save.pxo < 100 || save.pxoSig !== "504b") fail("pxo missing or not a zip")
+  const single = await page.evaluate(() => window.__host.lastSave.frames.map((f) => [f.role, f.png.length]))
+  if (single.length !== 1 || single[0][0] !== null || single[0][1] !== save.png) fail("single image save should carry one untagged frame equal to png: " + JSON.stringify(single))
   if (await page.evaluate(() => window.__host.dirty)) fail("still dirty after save")
 
   // Round trip the project file: re-open from the .pxo, save again, and the
@@ -89,6 +91,42 @@ try {
   const fallback = await page.evaluate(() => window.__host.opened)
   console.log("corrupt pxo fallback:", JSON.stringify(fallback))
   if (fallback.source !== "png") fail("corrupt pxo did not fall back to png (" + fallback.source + ")")
+  // An ordered frame set: one project, a frame per member, roles round-tripped.
+  await page.evaluate(() => window.__host.openFrames(3, 8))
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const framesOpened = await page.evaluate(() => window.__host.opened)
+  console.log("frames opened:", JSON.stringify(framesOpened))
+  if (framesOpened.source !== "frames" || framesOpened.frames !== 3 || framesOpened.width !== 32) fail("frame set did not open as 3 frames from frames")
+  await new Promise((r) => setTimeout(r, 1000))
+  await page.mouse.click(box.x + box.width * 0.48, box.y + box.height * 0.45)
+  await new Promise((r) => setTimeout(r, 1200))
+  if (!(await page.evaluate(() => window.__host.dirty))) fail("no dirty message after painting a frame")
+  await page.evaluate(() => window.__host.requestSave())
+  await page.waitForFunction(() => window.__host.lastSave !== null, { timeout: 30_000 })
+  const framesSaved = await page.evaluate(async () => {
+    const s = window.__host.lastSave
+    const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i])
+    const changed = []
+    for (const [i, f] of s.frames.entries()) changed.push(!same(await window.__host.pixels(f.png), await window.__host.pixels(window.__host.sampleFrames[i])))
+    return { roles: s.frames.map((f) => f.role), sizes: s.frames.map((f) => f.png.length), pngIsFirst: same([...s.png], [...s.frames[0].png]), changed }
+  })
+  console.log("frames saved:", JSON.stringify(framesSaved))
+  if (framesSaved.roles.join() !== "frame-00,frame-01,frame-02") fail("frame roles did not round-trip: " + framesSaved.roles.join())
+  if (!framesSaved.pngIsFirst) fail("png is not the first frame")
+  if (framesSaved.changed.filter(Boolean).length !== 1) fail("expected exactly one frame to change after painting: " + JSON.stringify(framesSaved.changed))
+  const framesFirst = await page.evaluate(() => window.__host.lastSave.frames.map((f) => [...f.png]))
+  await page.evaluate(() => window.__host.reopenLastSave())
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const framesReopened = await page.evaluate(() => window.__host.opened)
+  console.log("frames reopened:", JSON.stringify(framesReopened))
+  if (framesReopened.source !== "pxo" || framesReopened.frames !== 3) fail("frame set did not reopen as 3 frames from pxo")
+  await page.evaluate(() => window.__host.requestSave())
+  await page.waitForFunction(() => window.__host.lastSave !== null, { timeout: 30_000 })
+  const framesSecond = await page.evaluate(() => ({ roles: window.__host.lastSave.frames.map((f) => f.role), pngs: window.__host.lastSave.frames.map((f) => [...f.png]) }))
+  const framesSame = framesSecond.pngs.length === 3 && framesSecond.pngs.every((p, i) => p.length === framesFirst[i].length && p.every((b, j) => b === framesFirst[i][j]))
+  console.log("frames round trip: roles " + framesSecond.roles.join() + ", identical: " + framesSame)
+  if (!framesSame || framesSecond.roles.join() !== "frame-00,frame-01,frame-02") fail("frames after reopening the pxo differ or lost their roles")
+
   const errs = await page.evaluate(() => window.__host.errors)
   if (errs.length) fail("bridge errors: " + JSON.stringify(errs))
   if (errors.length) console.log("page errors:", errors.slice(0, 3))

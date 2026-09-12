@@ -1,10 +1,10 @@
 {
 	"name": "PixelKilnBridge",
 	"display_name": "PixelKiln host bridge",
-	"description": "Lets a same-origin page hand Pixelorama an image (or a saved .pxo) and palette and receive the saved PNG and .pxo back over postMessage. Web builds only.",
+	"description": "Lets a same-origin page hand Pixelorama an image, an ordered frame set, or a saved .pxo plus a palette, and receive the saved PNG(s) and .pxo back over postMessage. Web builds only.",
 	"author": "PixelKiln",
 	"supported_api_versions": [ 9 ],
-	"version": "2",
+	"version": "3",
 	"license": "MIT",
 	"nodes": [
 		"PixelKilnBridge.tscn"
