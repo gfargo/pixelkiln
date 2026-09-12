@@ -279,6 +279,10 @@ describe("POST /api/edit save-edit", () => {
     }
     expect(page).toContain("'save-edit'")
     expect(page).toContain("message.pxo = pxo")
+    // The generated art goes along as a reference layer when an edit is opened, with a toggle.
+    expect(page).toContain("message.reference = reference")
+    expect(page).toContain("'pixelkiln:reference'")
+    expect(page).toContain("show generated")
     expect(page).toContain("' restored'")
     expect(page).toContain("Discard unsaved changes in the editor?")
     expect(page).toContain("beforeunload")

@@ -405,10 +405,13 @@ that click or `tools install editor`. **Save to project** (or ⌘S / Ctrl+S in
 the editor) hands the flattened image back to the page, which writes the same
 `edits/` file `pixelkiln edit` would and declares it; the sheet stays open for
 the next change, **Save & close** does both, and closing with unsaved changes
-asks first. A set opens as one Pixelorama project with a frame per member —
-an animation at its fps, a tile set as one frame per tile — and saving writes
-every member back under its role; a set that comes back with a different
-number of frames is refused rather than guessed at. A browser save also keeps Pixelorama's layered `.pxo`
+asks first. Opening an existing edit also lays the generated art on a locked
+**Generated (PixelKiln reference)** layer at 50% — an onion skin for seeing
+what changed — that the sheet's **show generated** box hides and shows and
+that a save never flattens in. A set opens as one Pixelorama project with a
+frame per member — an animation at its fps, a tile set as one frame per tile —
+and saving writes every member back under its role; a set that comes back with
+a different number of frames is refused rather than guessed at. A browser save also keeps Pixelorama's layered `.pxo`
 beside the edit — the next **Edit in browser** hands it back, so layers and
 frames come back as they were (the flattened PNG is used only if the file
 cannot be read, and the sheet says which) — and writes `<edit>.edit.json`
