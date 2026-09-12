@@ -530,7 +530,7 @@ function renderJobs() {
     const row = el('div', 'job');
     const ph = el('span', 'ph');
     ph.append(el('i', 'dot ' + PHASE_TONE[job.phase]), document.createTextNode(job.phase));
-    const what = (job.mode === 'refresh' ? 'pull upstream for ' : job.mode === 'resume' ? 'resume ' : 'generate ') + job.keys.length + (job.keys.length === 1 ? ' asset' : ' assets') +
+    const what = (job.mode === 'refresh' ? 'pull upstream for ' : job.mode === 'restore' ? 'restore ' : job.mode === 'resume' ? 'resume ' : 'generate ') + job.keys.length + (job.keys.length === 1 ? ' asset' : ' assets') +
       (job.project ? ' in ' + job.project : '');
     const last = el('span', 'last', what + (job.messages.length ? ' — ' + job.messages[job.messages.length - 1].trim() : ''));
     last.title = job.keys.join('\\n');
@@ -655,13 +655,16 @@ function budgetLine() {
 
 // The confirm step: what will be sent, what it is estimated to cost, and what
 // this session may still spend. Mirrors gen's "Spend … on N asset(s)?" prompt.
-function generateDialog(items, { project = null, force = false, resume = false, refresh = false } = {}) {
+function generateDialog(items, { project = null, force = false, resume = false, refresh = false, restore = false } = {}) {
   const host = $('dialog-host');
   host.textContent = '';
   const wrap = el('div', 'dialog');
   const form = el('form');
   const noun = items.length + (items.length === 1 ? ' asset' : ' assets');
+  const free = resume || refresh || restore;
+  const replacing = items.filter((i) => i.state === 'orphaned' && i.outputs.every((o) => o.exists) || i.state === 'untracked');
   form.append(el('h3', null, refresh ? 'Pull upstream changes for ' + noun
+    : restore ? 'Restore ' + noun
     : resume ? 'Resume ' + noun
     : (force ? 'Regenerate ' : 'Generate ') + noun));
   const table = el('table');
@@ -671,9 +674,9 @@ function generateDialog(items, { project = null, force = false, resume = false, 
   for (const item of items) {
     const tr = el('tr');
     tr.append(el('td', 'mono', item.key), el('td', null, item.state), el('td', 'n', item.candidates ?? '—'),
-      el('td', 'n', resume || refresh ? 'no cost' : fmtCost(item.costUnit, item.estimatedCost ?? 0)));
+      el('td', 'n', free ? 'no cost' : fmtCost(item.costUnit, item.estimatedCost ?? 0)));
     table.append(tr);
-    if (!resume && !refresh) {
+    if (!free) {
       const g = byProvider.get(item.provider) || { cost: 0, unit: item.costUnit };
       g.cost += item.estimatedCost ?? 0; byProvider.set(item.provider, g);
     }
@@ -682,6 +685,9 @@ function generateDialog(items, { project = null, force = false, resume = false, 
   const sum = el('div', 'sum');
   if (refresh) {
     sum.append(el('div', null, 'Re-downloads each object from the provider and replaces the local file only when the object changed upstream — for example after editing it in the provider\u2019s own editor. Unchanged objects are left alone; a file you changed locally is refused. Nothing is submitted.'));
+  } else if (restore) {
+    sum.append(el('div', null, 'Puts the recorded bytes back on disk from the local cache or the provider object. Nothing is generated or submitted.'));
+    if (force && replacing.length) sum.append(el('div', 'warn', 'The file on disk was changed after PixelKiln wrote it. Restoring discards that change. To keep it instead, cancel and use Edit by hand or Edit in browser first: the edit is copied beside the generated file, and the record stays intact.'));
   } else if (resume) {
     sum.append(el('div', null, 'Polls, reviews, and downloads existing provider work. Nothing is submitted.'));
   } else {
@@ -694,12 +700,13 @@ function generateDialog(items, { project = null, force = false, resume = false, 
       if (left !== null && g.cost > left) line.className = 'warn';
       sum.append(line);
     }
-    if (force) sum.append(el('div', 'warn', 'Regenerating replaces the current art. The previous file is replaced when the new result is fetched; the provider objects it came from are not deleted.'));
+    if (force && replacing.length) sum.append(el('div', 'warn', (replacing.length === 1 ? 'This file' : replacing.length + ' of these files') + ' changed on disk after PixelKiln wrote it (or was never recorded). Generating replaces it and that change is lost. To keep it, cancel and use Edit by hand or Edit in browser first.'));
+    else if (force) sum.append(el('div', 'warn', 'Regenerating replaces the current art. The previous file is replaced when the new result is fetched; the provider objects it came from are not deleted.'));
     sum.append(el('div', null, 'Candidate sets land in review; you choose from them here before anything is downloaded.'));
   }
   form.append(sum);
   const actions = el('div', 'actions');
-  const go = el('button', 'primary', refresh ? 'Pull changes' : resume ? 'Resume' : 'Generate');
+  const go = el('button', 'primary', refresh ? 'Pull changes' : restore ? (force && replacing.length ? 'Restore and discard my change' : 'Restore') : resume ? 'Resume' : force && replacing.length ? 'Generate and replace' : 'Generate');
   go.type = 'submit';
   const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { host.textContent = ''; };
   const msg = el('span', 'msg');
@@ -714,6 +721,7 @@ function generateDialog(items, { project = null, force = false, resume = false, 
       if (force) body.force = true;
       if (resume) body.resume = true;
       if (refresh) body.refresh = true;
+      if (restore) body.restore = true;
       const job = await postGenerate(body);
       host.textContent = '';
       GEN.jobs.unshift(job);
@@ -1372,6 +1380,13 @@ function generateActions(item) {
   };
   if (item.state === 'missing' || item.state === 'stale' || item.state === 'failed') add('Generate' + cost, 'primary', {});
   else if (item.state === 'ok') add('Regenerate' + cost, null, { force: true });
+  else if (item.state === 'orphaned' && item.outputs.every((o) => o.exists)) {
+    // The file changed after download. Putting the recorded bytes back and
+    // regenerating both discard that change, so both say so and ask.
+    add('Restore recorded bytes \u00b7 no cost', null, { restore: true, force: true });
+    add('Regenerate' + cost, null, { force: true });
+  } else if (item.state === 'orphaned') add('Restore \u00b7 no cost', 'primary', { restore: true });
+  else if (item.state === 'untracked') add('Generate' + cost + ' \u00b7 replaces the file', null, { force: true });
   if (item.state === 'in-flight' || item.state === 'recoverable') {
     // A job already parked this asset in review: go straight to its sheet.
     const holder = GEN.jobs.find((job) => job.phase === 'review' && job.project === item.project && job.review.includes(item.key));

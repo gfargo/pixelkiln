@@ -38,8 +38,14 @@ export interface GenerateJob {
   id: string
   project: string | null
   keys: string[]
-  /** `resume` skips submission: poll, review, and fetch existing work at no cost; `refresh` re-pulls changed objects. */
-  mode: "generate" | "resume" | "refresh"
+  /**
+   * `resume` skips submission: poll, review, and fetch existing work at no
+   * cost; `refresh` re-pulls changed objects; `restore` puts the recorded
+   * bytes back on disk from the cache or the provider, as `pixelkiln restore`.
+   */
+  mode: "generate" | "resume" | "refresh" | "restore"
+  /** The job may replace a locally modified or untracked file, as `--force` does. */
+  force: boolean
   phase: GeneratePhase
   startedAt: string
   finishedAt: string | null
@@ -104,15 +110,23 @@ export const GenerateRequestSchema = z
   .object({
     project: z.string().min(1).optional(),
     keys: z.array(z.string().min(1)).min(1).max(500),
-    /** Regenerate work that is up to date, as `gen --force` does. */
+    /**
+     * Regenerate work that is up to date, as `gen --force` does, and let the
+     * fetch replace a locally modified or untracked file. With `restore`, put
+     * the recorded bytes back over a modified file.
+     */
     force: z.boolean().optional(),
     /** Advance in-flight, review, or selected work without submitting anything. */
     resume: z.boolean().optional(),
     /** Re-download downloaded outputs and replace files whose object changed upstream. */
     refresh: z.boolean().optional(),
+    /** Put recorded outputs back on disk from the cache or the provider, without generating. */
+    restore: z.boolean().optional(),
   })
   .strict()
-  .refine((request) => !(request.resume && request.refresh), { message: "resume and refresh are exclusive" })
+  .refine((request) => [request.resume, request.refresh, request.restore].filter(Boolean).length <= 1, {
+    message: "resume, refresh, and restore are exclusive",
+  })
 
 export class GenerateRequestError extends Error {
   constructor(message: string, readonly status: number = 400) {
@@ -218,6 +232,8 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
       const provider = opts.providerFor(job.project ?? undefined, providerId)
       const res = await fetchAssets(provider, providerSpecs, ctx.lock, ctx.lockPath, {
         onProgress: (line) => say(job, line),
+        // A forced regeneration replaces whatever is on disk, as `gen --force`.
+        force: job.force,
       })
       job.counts.downloaded += res.downloaded
       if (res.downloaded || res.failed) {
@@ -233,10 +249,31 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
     }
   }
 
+  async function restore(job: GenerateJob, ctx: GalleryProjectContext, specs: ResolvedSpec[]) {
+    job.phase = "fetching"
+    for (const [providerId, providerSpecs] of groupByRecordedProvider(specs, ctx.lock)) {
+      const provider = opts.providerFor(job.project ?? undefined, providerId)
+      const res = await fetchAssets(provider, providerSpecs, ctx.lock, ctx.lockPath, {
+        onProgress: (line) => say(job, line),
+        repair: true,
+        force: job.force,
+      })
+      job.counts.downloaded += res.downloaded
+      say(job, `${providerId}: restored ${res.downloaded}, skipped ${res.skipped}, failed ${res.failed}`)
+      if (res.failed) throw new Error(`${res.failed} file(s) could not be restored`)
+    }
+    job.phase = "done"
+    job.finishedAt = now().toISOString()
+  }
+
   async function run(job: GenerateJob, ctx: GalleryProjectContext, specs: ResolvedSpec[], groups: PlanGroup[]) {
     try {
       if (job.mode === "refresh") {
         await refresh(job, ctx, specs)
+        return
+      }
+      if (job.mode === "restore") {
+        await restore(job, ctx, specs)
         return
       }
       if (job.mode === "generate") {
@@ -307,8 +344,16 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
         if (holder) throw new GenerateRequestError(`"${key}" is already being worked on by job ${holder}`, 409)
       }
 
+      if (request.restore) {
+        for (const key of request.keys) {
+          const entry = ctx.lock.entries[key]
+          if (!entry || entry.status !== "downloaded" || !entry.outputs.length) {
+            throw new GenerateRequestError(`"${key}" has no downloaded output recorded to restore`)
+          }
+        }
+      }
       let groups: PlanGroup[] = []
-      if (!request.resume && !request.refresh) {
+      if (!request.resume && !request.refresh && !request.restore) {
         const plan = await buildPlan(specs, ctx.lock, { force: request.force })
         if (!plan.actionable.length) {
           const reasons = plan.items.map((item) => `${item.key}: ${item.state} — ${item.reason}`).slice(0, 5)
@@ -332,7 +377,8 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
         id: randomBytes(8).toString("hex"),
         project: request.project ?? null,
         keys: request.keys,
-        mode: request.refresh ? "refresh" : request.resume ? "resume" : "generate",
+        mode: request.refresh ? "refresh" : request.resume ? "resume" : request.restore ? "restore" : "generate",
+        force: Boolean(request.force),
         phase: "queued",
         startedAt: now().toISOString(),
         finishedAt: null,
@@ -346,6 +392,8 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
       contexts.set(job.id, ctx)
       say(job, request.refresh
         ? `checking ${request.keys.length} asset(s) upstream at no cost`
+        : request.restore
+        ? `restoring ${request.keys.length} asset(s) at no cost${request.force ? " (replacing modified files)" : ""}`
         : request.resume
         ? `resuming ${request.keys.length} asset(s) at no cost`
         : `generating ${groups.reduce((n, g) => n + g.actionable.length, 0)} asset(s): ` +
