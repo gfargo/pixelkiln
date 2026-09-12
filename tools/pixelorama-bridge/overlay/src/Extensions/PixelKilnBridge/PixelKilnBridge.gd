@@ -200,7 +200,8 @@ func _post_error(text: String, request := "") -> void:
 
 
 ## The page owns the file; Pixelorama's own open/save/export would only reach
-## a browser download dialog here.
+## a browser download dialog here, and quitting would leave a dead canvas in
+## the host's sheet.
 func _remove_disk_menu_items() -> void:
 	for id in [
 		Global.FileMenu.OPEN,
@@ -210,6 +211,7 @@ func _remove_disk_menu_items() -> void:
 		Global.FileMenu.SAVE_AS,
 		Global.FileMenu.EXPORT,
 		Global.FileMenu.EXPORT_AS,
+		Global.FileMenu.QUIT,
 	]:
 		ExtensionsApi.menu.remove_menu_item(ExtensionsApi.menu.FILE, id)
 
