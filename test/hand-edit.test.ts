@@ -164,8 +164,14 @@ describe("hand edits", () => {
     await chmod(script, 0o755)
     const command = openInEditor(path.join(dir, "some.png"), `${script} --flag`)
     expect(command).toBe(`${script} --flag`)
-    for (let i = 0; i < 50 && !existsSync(marker); i++) await new Promise((r) => setTimeout(r, 20))
-    expect((await readFile(marker, "utf8")).trim()).toBe(`--flag ${path.join(dir, "some.png")}`)
+    // The shell creates the marker empty before echo writes into it, so wait
+    // for content rather than existence.
+    let content = ""
+    for (let i = 0; i < 250 && !content; i++) {
+      await new Promise((r) => setTimeout(r, 20))
+      content = existsSync(marker) ? (await readFile(marker, "utf8")).trim() : ""
+    }
+    expect(content).toBe(`--flag ${path.join(dir, "some.png")}`)
   })
 
   it("is reachable from the CLI and parses its subcommands", async () => {
