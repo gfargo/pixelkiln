@@ -31,6 +31,7 @@
   <label>palette (hex, comma-separated)<input id="palette" value="#17150f, #f3ead6, #ff6b35, #ff9c5f, #b9f27c"></label>
   <div class="row">
     <button id="open-sample" class="primary" disabled>Open sample 32×32</button>
+    <button id="open-frames" disabled>Open 3 frames</button>
     <label><input id="file" type="file" accept="image/png" hidden><button id="open-file" disabled>Open a PNG…</button></label>
   </div>
   <div class="row">
@@ -53,16 +54,24 @@ const log = (line) => { const el = document.getElementById('log'); el.textConten
 const host = window.__host = { ready: null, opened: null, dirty: false, lastSave: null, errors: [], sample: null, requests: 0 };
 const post = (msg, transfer = []) => editor.contentWindow.postMessage(msg, location.origin, transfer);
 
-function samplePng() {
-  // A 32×32 checker with a red diagonal, as PNG bytes; deterministic.
+function samplePng(shift = 0) {
+  // A 32×32 checker with a red diagonal, as PNG bytes; deterministic. `shift`
+  // slides the diagonal so a frame set has visibly different members.
   const c = document.createElement('canvas'); c.width = 32; c.height = 32;
   const x = c.getContext('2d');
   for (let i = 0; i < 32; i++) for (let j = 0; j < 32; j++) { x.fillStyle = ((i >> 2) + (j >> 2)) % 2 ? '#f3ead6' : '#17150f'; x.fillRect(i, j, 1, 1); }
-  x.fillStyle = '#ff6b35'; for (let i = 0; i < 32; i++) x.fillRect(i, i, 1, 1);
+  x.fillStyle = '#ff6b35'; for (let i = 0; i < 32; i++) x.fillRect((i + shift) % 32, i, 1, 1);
   return new Promise((resolve) => c.toBlob((b) => b.arrayBuffer().then(resolve), 'image/png'));
 }
+// Decoded RGBA for comparing images across encoders (canvas and Godot write different PNG bytes).
+host.pixels = async (bytes) => {
+  const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+  const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+  const x = c.getContext('2d'); x.drawImage(bmp, 0, 0);
+  return [...x.getImageData(0, 0, bmp.width, bmp.height).data];
+};
 function show(id, bytes) { const img = document.getElementById(id); img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' })); }
-async function open(bytes, name, width, height, pxo) {
+async function open(bytes, name, width, height, pxo, frames, fps) {
   host.opened = null; host.lastSave = null;
   const palette = document.getElementById('palette').value.split(',').map((s) => s.trim()).filter(Boolean);
   show('sent', bytes.slice(0));
@@ -70,17 +79,26 @@ async function open(bytes, name, width, height, pxo) {
   const message = { type: 'pixelkiln:open', request, asset: { key: 'demo/' + name, id: 'demo/' + name, name, width, height }, png: bytes, palette };
   const transfer = [bytes];
   if (pxo) { message.pxo = pxo; transfer.push(pxo); }
+  if (frames) { message.frames = frames; message.fps = fps; for (const f of frames) transfer.push(f.png); }
   // Log before posting: the buffers are transferred and read as empty afterwards.
-  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length + (pxo ? ' pxo=' + pxo.byteLength : ''));
+  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length + (pxo ? ' pxo=' + pxo.byteLength : '') + (frames ? ' frames=' + frames.length + ' fps=' + fps : ''));
   post(message, transfer);
 }
 host.openSample = async () => { const bytes = await samplePng(); host.sample = bytes.slice(0); await open(bytes, 'sample', 32, 32); };
-// Re-open the last save's project file (layers intact); the PNG rides along as the fallback.
+// An ordered set: three members, roles frame-00.., the first also sent as `png` for older editors.
+host.openFrames = async (count = 3, fps = 8) => {
+  const frames = [];
+  for (let i = 0; i < count; i++) frames.push({ role: 'frame-' + String(i).padStart(2, '0'), png: await samplePng(i * 4) });
+  host.sampleFrames = frames.map((f) => f.png.slice(0));
+  await open(frames[0].png.slice(0), 'walk', 32, 32, null, frames, fps);
+};
+// Re-open the last save's project file (layers intact); the PNG(s) ride along as the fallback.
 host.reopenLastSave = async (corrupt = false) => {
   const last = host.lastSave; if (!last) throw new Error('nothing saved yet');
   const png = last.png.slice().buffer;
   const pxo = corrupt ? new TextEncoder().encode('not a project').buffer : last.pxo.slice().buffer;
-  await open(png, 'sample', last.width, last.height, pxo);
+  const frames = last.frames.length > 1 ? last.frames.map((f) => ({ role: f.role, png: f.png.slice().buffer })) : null;
+  await open(png, last.frames.length > 1 ? 'walk' : 'sample', last.width, last.height, pxo, frames, 8);
 };
 host.requestSave = () => { const request = 'save-' + (++host.requests); post({ type: 'pixelkiln:request-save', request }); log('→ request-save ' + request); return request; };
 
@@ -90,20 +108,22 @@ window.addEventListener('message', (e) => {
   switch (m.type) {
     case 'pixelkiln:ready':
       host.ready = m; document.getElementById('ready').textContent = m.editor + ' · protocol ' + m.version + ' · api ' + m.api;
-      for (const id of ['open-sample', 'open-file', 'save', 'reopen']) document.getElementById(id).disabled = false;
+      for (const id of ['open-sample', 'open-frames', 'open-file', 'save', 'reopen']) document.getElementById(id).disabled = false;
       log('← ready ' + JSON.stringify(m)); break;
     case 'pixelkiln:opened': host.opened = m; log('← opened ' + m.request + ' ' + m.width + '×' + m.height + ' from ' + m.source + ' (' + m.layers + ' layers, ' + m.frames + ' frames)'); break;
     case 'pixelkiln:dirty': host.dirty = !!m.dirty; { const d = document.getElementById('dirty'); d.textContent = m.dirty ? 'unsaved changes' : 'clean'; d.className = m.dirty ? 'dirty' : 'clean'; } log('← dirty ' + m.dirty); break;
     case 'pixelkiln:save': {
-      host.lastSave = { request: m.request, width: m.width, height: m.height, png: new Uint8Array(m.png), pxo: new Uint8Array(m.pxo || new ArrayBuffer(0)) };
-      show('got', m.png.slice(0)); document.getElementById('got-cap').textContent = 'received ' + m.width + '×' + m.height + ' · png ' + m.png.byteLength + ' B · pxo ' + (m.pxo ? m.pxo.byteLength : 0) + ' B';
-      log('← save ' + m.request + ' png=' + m.png.byteLength + ' pxo=' + (m.pxo ? m.pxo.byteLength : 0)); break;
+      const frames = (m.frames || []).map((f) => ({ role: f.role, png: new Uint8Array(f.png) }));
+      host.lastSave = { request: m.request, width: m.width, height: m.height, png: new Uint8Array(m.png), pxo: new Uint8Array(m.pxo || new ArrayBuffer(0)), frames };
+      show('got', m.png.slice(0)); document.getElementById('got-cap').textContent = 'received ' + m.width + '×' + m.height + ' · png ' + m.png.byteLength + ' B · ' + frames.length + ' frame(s) · pxo ' + (m.pxo ? m.pxo.byteLength : 0) + ' B';
+      log('← save ' + m.request + ' png=' + m.png.byteLength + ' frames=' + frames.map((f) => (f.role || '?') + ':' + f.png.length).join(',') + ' pxo=' + (m.pxo ? m.pxo.byteLength : 0)); break;
     }
     case 'pixelkiln:error': host.errors.push(m); log('← error ' + m.message); break;
     default: log('← ' + m.type);
   }
 });
 document.getElementById('open-sample').onclick = host.openSample;
+document.getElementById('open-frames').onclick = () => host.openFrames();
 document.getElementById('open-file').onclick = () => document.getElementById('file').click();
 document.getElementById('file').onchange = async (e) => {
   const f = e.target.files[0]; if (!f) return;

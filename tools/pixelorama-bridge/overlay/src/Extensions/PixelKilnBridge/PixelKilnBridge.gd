@@ -7,23 +7,27 @@ extends Node
 ## in HandleExtensions.gd) and does nothing outside a web export.
 ##
 ## Protocol (all messages carry `type: "pixelkiln:<name>"`; same origin only):
-##   host → editor   open          { request, asset: {key, id, name, width, height}, png: ArrayBuffer, pxo?: ArrayBuffer, palette: [#rrggbb] }
+##   host → editor   open          { request, asset: {key, id, name, width, height}, png: ArrayBuffer, pxo?: ArrayBuffer,
+##                                   frames?: [{role, png: ArrayBuffer}], fps?, palette: [#rrggbb] }
 ##   host → editor   request-save  { request }
 ##   editor → host   ready         { version, editor }
-##   editor → host   opened        { request, width, height, source: "pxo" | "png", layers, frames }
+##   editor → host   opened        { request, width, height, source: "pxo" | "png" | "frames", layers, frames }
 ##   editor → host   dirty         { dirty }
-##   editor → host   save          { request, width, height, png: ArrayBuffer, pxo: ArrayBuffer }
+##   editor → host   save          { request, width, height, png: ArrayBuffer, frames: [{role, png}], pxo: ArrayBuffer }
 ##   editor → host   error         { request?, message }
 ##
 ## `open` with a `pxo` restores the layered project a previous `save` returned;
-## the `png` is the fallback when the project file cannot be read. `opened`
-## says which one the editor used.
+## the `png` (or `frames`) is the fallback when the project file cannot be
+## read. `opened` says which one the editor used. An ordered frame set opens
+## as one project with a frame per member; `save` returns every frame
+## flattened, each tagged with the role it was opened under (null for a frame
+## added in the editor), and `png` stays the first frame for older hosts.
 ##
 ## Bytes cross the JavaScript boundary as base64 inside a small shim this
 ## node installs on `window.__pixelkiln`; the shim converts to and from
 ## ArrayBuffers so the page-facing protocol stays binary.
 
-const PROTOCOL_VERSION := 2
+const PROTOCOL_VERSION := 3
 const PXO_TMP := "user://pixelkiln-edit.pxo"
 ## Projects handed over by the host are written here to be opened; the file
 ## name becomes the project name, so one file per asset name.
@@ -39,11 +43,13 @@ const SHIM := """
   const fromB64 = (b) => { const s = atob(b); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; };
   const box = { queue: [], take() { const q = this.queue; this.queue = []; return JSON.stringify(q); },
     post(json) { const m = JSON.parse(json); const transfer = []; for (const k of ["png", "pxo"]) { if (typeof m[k] === "string") { m[k] = fromB64(m[k]); transfer.push(m[k]); } }
+      if (Array.isArray(m.frames)) for (const f of m.frames) { if (typeof f.png === "string") { f.png = fromB64(f.png); transfer.push(f.png); } }
       if (window.parent && window.parent !== window) window.parent.postMessage(m, window.location.origin, transfer); } };
   window.addEventListener("message", (e) => {
     if (e.origin !== window.location.origin || !e.data || typeof e.data.type !== "string" || !e.data.type.startsWith("pixelkiln:")) return;
     const m = Object.assign({}, e.data);
     for (const k of ["png", "pxo"]) { if (m[k] instanceof ArrayBuffer || ArrayBuffer.isView(m[k])) m[k] = toB64(m[k].buffer || m[k]); }
+    if (Array.isArray(m.frames)) m.frames = m.frames.map((f) => Object.assign({}, f, { png: (f.png instanceof ArrayBuffer || ArrayBuffer.isView(f.png)) ? toB64(f.png.buffer || f.png) : f.png }));
     box.queue.push(m);
   });
   window.__pixelkiln = box;
@@ -53,6 +59,8 @@ const SHIM := """
 var _active := false
 var _dirty := false
 var _menu_item_id := -1
+## Roles of the frames the current project was opened with, in frame order.
+var _frame_roles: Array = []
 
 
 func _ready() -> void:
@@ -116,16 +124,26 @@ func _handle(message: Dictionary) -> void:
 func _open(message: Dictionary, request: String) -> void:
 	var png := Marshalls.base64_to_raw(str(message.get("png", "")))
 	var pxo := Marshalls.base64_to_raw(str(message.get("pxo", "")))
-	if png.is_empty() and pxo.is_empty():
-		_post_error("open needs png or pxo bytes", request)
+	var frames: Array = message.get("frames", []) if typeof(message.get("frames")) == TYPE_ARRAY else []
+	if png.is_empty() and pxo.is_empty() and frames.is_empty():
+		_post_error("open needs png, frames, or pxo bytes", request)
 		return
 	var asset: Dictionary = message.get("asset", {}) if typeof(message.get("asset")) == TYPE_DICTIONARY else {}
 	var name := str(asset.get("name", "pixelkiln")).replace("/", "-")
 	if not name.is_valid_filename():
 		name = "pixelkiln"
+	_frame_roles = []
+	for frame in frames:
+		_frame_roles.append(frame.get("role") if typeof(frame) == TYPE_DICTIONARY and frame.get("role") != null else null)
 	var source := ""
 	if not pxo.is_empty() and _open_pxo(pxo, name):
 		source = "pxo"
+	elif not frames.is_empty():
+		var error := _open_frames(frames, name, message.get("fps"))
+		if error != "":
+			_post_error(error, request)
+			return
+		source = "frames"
 	else:
 		if png.is_empty():
 			_post_error("could not open the project file and no png was given", request)
@@ -150,6 +168,40 @@ func _open(message: Dictionary, request: String) -> void:
 		"layers": project.layers.size(),
 		"frames": project.frames.size(),
 	})
+
+
+## One project with a frame per member, one layer, at the members' shared
+## size — what `open_image_as_new_tab` does for one image, for a set. Returns
+## an error message, or "" once the project is the current tab.
+func _open_frames(frames: Array, name: String, fps) -> String:
+	var images: Array[Image] = []
+	for frame in frames:
+		if typeof(frame) != TYPE_DICTIONARY:
+			return "every frame needs {role, png}"
+		var bytes := Marshalls.base64_to_raw(str(frame.get("png", "")))
+		var image := Image.new()
+		var err := image.load_png_from_buffer(bytes)
+		if err != OK:
+			return "could not decode frame %d: %s" % [images.size(), error_string(err)]
+		if not images.is_empty() and image.get_size() != images[0].get_size():
+			return "frame %d is %dx%d; the first frame is %dx%d" % [images.size(), image.get_width(), image.get_height(), images[0].get_width(), images[0].get_height()]
+		images.append(image)
+	if images.is_empty():
+		return "frames is empty"
+	var project := Project.new([], name, images[0].get_size())
+	var layer := PixelLayer.new(project)
+	project.layers.append(layer)
+	Global.projects.append(project)
+	for image in images:
+		var frame := Frame.new()
+		image.convert(project.get_image_format())
+		frame.cels.append(layer.new_cel_from_image(image))
+		project.frames.append(frame)
+	if typeof(fps) == TYPE_FLOAT or typeof(fps) == TYPE_INT:
+		if fps > 0:
+			project.fps = float(fps)
+	OpenSave.set_new_imported_tab(project, name + ".png")
+	return ""
 
 
 ## Restore a project file a previous save returned. Opened as a new tab rather
@@ -208,9 +260,14 @@ func _save(request: String) -> void:
 	if project == null or project.frames.is_empty():
 		_post_error("nothing to save", request)
 		return
-	var image := Image.create(project.size.x, project.size.y, false, Image.FORMAT_RGBA8)
-	DrawingAlgos.blend_layers(image, project.frames[0], Vector2i.ZERO, project)
-	var png := image.save_png_to_buffer()
+	var frames: Array = []
+	for index in project.frames.size():
+		var image := Image.create(project.size.x, project.size.y, false, Image.FORMAT_RGBA8)
+		DrawingAlgos.blend_layers(image, project.frames[index], Vector2i.ZERO, project)
+		frames.append({
+			"role": _frame_roles[index] if index < _frame_roles.size() else null,
+			"png": Marshalls.raw_to_base64(image.save_png_to_buffer()),
+		})
 	var pxo := PackedByteArray()
 	if OpenSave.save_pxo_file(PXO_TMP, true, false, project):
 		pxo = FileAccess.get_file_as_bytes(PXO_TMP)
@@ -219,7 +276,8 @@ func _save(request: String) -> void:
 		"request": request,
 		"width": project.size.x,
 		"height": project.size.y,
-		"png": Marshalls.raw_to_base64(png),
+		"png": frames[0]["png"],
+		"frames": frames,
 		"pxo": Marshalls.raw_to_base64(pxo),
 	})
 	project.has_changed = false
