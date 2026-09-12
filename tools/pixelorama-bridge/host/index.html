@@ -35,6 +35,7 @@
   </div>
   <div class="row">
     <button id="save" disabled>Request save</button>
+    <button id="reopen" disabled>Re-open last save (.pxo)</button>
   </div>
   <div class="art">
     <figure><img id="sent" alt=""><figcaption>sent</figcaption></figure>
@@ -61,15 +62,26 @@ function samplePng() {
   return new Promise((resolve) => c.toBlob((b) => b.arrayBuffer().then(resolve), 'image/png'));
 }
 function show(id, bytes) { const img = document.getElementById(id); img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' })); }
-async function open(bytes, name, width, height) {
+async function open(bytes, name, width, height, pxo) {
   host.opened = null; host.lastSave = null;
   const palette = document.getElementById('palette').value.split(',').map((s) => s.trim()).filter(Boolean);
   show('sent', bytes.slice(0));
   const request = 'open-' + (++host.requests);
-  post({ type: 'pixelkiln:open', request, asset: { key: 'demo/' + name, id: 'demo/' + name, name, width, height }, png: bytes, palette }, [bytes]);
-  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length);
+  const message = { type: 'pixelkiln:open', request, asset: { key: 'demo/' + name, id: 'demo/' + name, name, width, height }, png: bytes, palette };
+  const transfer = [bytes];
+  if (pxo) { message.pxo = pxo; transfer.push(pxo); }
+  // Log before posting: the buffers are transferred and read as empty afterwards.
+  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length + (pxo ? ' pxo=' + pxo.byteLength : ''));
+  post(message, transfer);
 }
 host.openSample = async () => { const bytes = await samplePng(); host.sample = bytes.slice(0); await open(bytes, 'sample', 32, 32); };
+// Re-open the last save's project file (layers intact); the PNG rides along as the fallback.
+host.reopenLastSave = async (corrupt = false) => {
+  const last = host.lastSave; if (!last) throw new Error('nothing saved yet');
+  const png = last.png.slice().buffer;
+  const pxo = corrupt ? new TextEncoder().encode('not a project').buffer : last.pxo.slice().buffer;
+  await open(png, 'sample', last.width, last.height, pxo);
+};
 host.requestSave = () => { const request = 'save-' + (++host.requests); post({ type: 'pixelkiln:request-save', request }); log('→ request-save ' + request); return request; };
 
 window.addEventListener('message', (e) => {
@@ -78,9 +90,9 @@ window.addEventListener('message', (e) => {
   switch (m.type) {
     case 'pixelkiln:ready':
       host.ready = m; document.getElementById('ready').textContent = m.editor + ' · protocol ' + m.version + ' · api ' + m.api;
-      for (const id of ['open-sample', 'open-file', 'save']) document.getElementById(id).disabled = false;
+      for (const id of ['open-sample', 'open-file', 'save', 'reopen']) document.getElementById(id).disabled = false;
       log('← ready ' + JSON.stringify(m)); break;
-    case 'pixelkiln:opened': host.opened = m; log('← opened ' + m.request + ' ' + m.width + '×' + m.height); break;
+    case 'pixelkiln:opened': host.opened = m; log('← opened ' + m.request + ' ' + m.width + '×' + m.height + ' from ' + m.source + ' (' + m.layers + ' layers, ' + m.frames + ' frames)'); break;
     case 'pixelkiln:dirty': host.dirty = !!m.dirty; { const d = document.getElementById('dirty'); d.textContent = m.dirty ? 'unsaved changes' : 'clean'; d.className = m.dirty ? 'dirty' : 'clean'; } log('← dirty ' + m.dirty); break;
     case 'pixelkiln:save': {
       host.lastSave = { request: m.request, width: m.width, height: m.height, png: new Uint8Array(m.png), pxo: new Uint8Array(m.pxo || new ArrayBuffer(0)) };
@@ -100,6 +112,7 @@ document.getElementById('file').onchange = async (e) => {
   await open(bytes, f.name.replace(/\.png$/i, ''), bmp.width, bmp.height);
 };
 document.getElementById('save').onclick = host.requestSave;
+document.getElementById('reopen').onclick = () => host.reopenLastSave().catch((e) => log('! ' + e.message));
 </script>
 </body>
 </html>
