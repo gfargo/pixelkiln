@@ -18,7 +18,9 @@ const port = 4399
 const server = spawn(process.execPath, [path.join(here, "../scripts/serve.mjs"), build, String(port)], { stdio: ["ignore", "pipe", "inherit"] })
 await new Promise((resolve) => server.stdout.on("data", (d) => { if (String(d).includes("bridge host")) resolve() }))
 const fail = (msg) => { console.error("FAIL: " + msg); process.exitCode = 1 }
-const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ["--no-first-run", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--no-sandbox"] })
+// Under software WebGL the wasm compile blocks the renderer for 30-60 s, so
+// give the protocol room and poll slowly rather than hammer a stalled thread.
+const browser = await puppeteer.launch({ executablePath: chrome, headless: true, protocolTimeout: 600_000, args: ["--no-first-run", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--no-sandbox"] })
 try {
   const page = await browser.newPage()
   const errors = []
@@ -27,7 +29,7 @@ try {
   await page.setViewport({ width: 1400, height: 900 })
   const t0 = Date.now()
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "domcontentloaded" })
-  await page.waitForFunction(() => window.__host.ready !== null, { timeout: 240_000 })
+  await page.waitForFunction(() => window.__host.ready !== null, { timeout: 300_000, polling: 2000 })
   const ready = await page.evaluate(() => window.__host.ready)
   console.log(`ready in ${Math.round((Date.now() - t0) / 1000)}s:`, JSON.stringify(ready))
   if (ready.version !== 1) fail("protocol version " + ready.version)
@@ -63,7 +65,7 @@ try {
   const errs = await page.evaluate(() => window.__host.errors)
   if (errs.length) fail("bridge errors: " + JSON.stringify(errs))
   if (errors.length) console.log("page errors:", errors.slice(0, 3))
-  await page.screenshot({ path: path.join(build, "..", "smoke.png") })
+  await page.screenshot({ path: path.join(process.cwd(), "smoke.png") })
   console.log(process.exitCode ? "smoke FAILED" : "smoke OK")
 } finally {
   await browser.close()

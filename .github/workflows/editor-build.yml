@@ -81,17 +81,16 @@ jobs:
         run: node tools/pixelorama-bridge/scripts/manifest.mjs build && cat build/manifest.json
       - name: Smoke (open → paint → save)
         run: |
-          mkdir -p /tmp/smoke && cd /tmp/smoke && npm init -y >/dev/null && npm install --no-audit --no-fund puppeteer-core@24 >/dev/null
-          cd "$GITHUB_WORKSPACE"
-          NODE_PATH=/tmp/smoke/node_modules CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser)" \
-            node tools/pixelorama-bridge/test/smoke.mjs build
+          cd tools/pixelorama-bridge && npm init -y >/dev/null && npm install --no-audit --no-fund puppeteer-core@24 >/dev/null
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser)" \
+            node test/smoke.mjs "$GITHUB_WORKSPACE/build"
       - name: Upload verified build
         uses: actions/upload-artifact@v4
         with:
           name: editor-web-verified
           path: |
             build
-            smoke.png
+            tools/pixelorama-bridge/smoke.png
           if-no-files-found: error
           retention-days: 30
 
