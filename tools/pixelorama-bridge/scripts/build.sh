@@ -19,7 +19,11 @@ echo "cloning Pixelorama $TAG"
 git clone --quiet --depth 1 --branch "$TAG" --recurse-submodules https://github.com/Orama-Interactive/Pixelorama "$UPSTREAM"
 
 echo "applying overlay"
+# Upstream ships no src/Extensions directory; without it `cp -R` would create
+# one *as* the bridge folder and flatten the files a level too high.
+mkdir -p "$UPSTREAM/src/Extensions"
 cp -R "$HERE/overlay/src/Extensions/PixelKilnBridge" "$UPSTREAM/src/Extensions/"
+[ -f "$UPSTREAM/src/Extensions/PixelKilnBridge/extension.json" ] || { echo "overlay did not land at src/Extensions/PixelKilnBridge/" >&2; exit 1; }
 perl -0pi -e 's/func _add_internal_extensions\(\) -> void:\n\tpass\b/func _add_internal_extensions() -> void:\n\t_load_extension("PixelKilnBridge", true)/' "$UPSTREAM/src/HandleExtensions.gd"
 grep -q '_load_extension("PixelKilnBridge", true)' "$UPSTREAM/src/HandleExtensions.gd" || { echo "hook did not apply; upstream changed _add_internal_extensions" >&2; exit 1; }
 # No PWA: a service worker would register under the gallery's origin.
