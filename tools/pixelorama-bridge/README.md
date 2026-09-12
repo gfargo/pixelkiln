@@ -1,0 +1,59 @@
+# PixelKiln editor: Pixelorama + host bridge
+
+The in-gallery editor is [Pixelorama](https://github.com/Orama-Interactive/Pixelorama)
+(MIT), exported for the web with one addition: a **host bridge** extension that
+lets the page that embeds it hand over an image and palette and receive the
+saved PNG and `.pxo` back over `postMessage`. Nothing else about Pixelorama
+changes, and no drawing code lives here.
+
+There is no standing fork. `scripts/build.sh` materialises one at build time:
+clone upstream at the tag pinned in `pin.json`, copy `overlay/` in, replace the
+empty `_add_internal_extensions()` body in `src/HandleExtensions.gd` with
+`_load_extension("PixelKilnBridge", true)`, disable the PWA export option so no
+service worker registers under the gallery's origin, and export the `Web`
+preset. The GitHub workflow `editor-build.yml` does this in the same container
+Pixelorama's own web CI uses, verifies the round trip with `test/smoke.mjs`,
+and publishes a release on request. One editor version is pinned per PixelKiln
+release; `pin.json` carries the upstream tag, the Godot version, and — once a
+build is published — the release tag and file hashes the gallery verifies.
+
+## Layout
+
+- `overlay/src/Extensions/PixelKilnBridge/` — the extension: `extension.json`,
+  the scene, and `PixelKilnBridge.gd`. Web-only; a no-op elsewhere.
+- `host/index.html` — a host page with no PixelKiln code that speaks the
+  protocol; the contract the gallery implements.
+- `scripts/build.sh`, `scripts/manifest.mjs`, `scripts/serve.mjs`.
+- `test/smoke.mjs` — open → paint → save against a built editor, in Chrome.
+
+## Protocol
+
+Same origin only, both directions checked. Bytes are `ArrayBuffer`s
+(transferred). Every message has `type: "pixelkiln:<name>"`.
+
+| direction | type | fields |
+|---|---|---|
+| host → editor | `open` | `request`, `asset: {key, id, name, width, height}`, `png`, `palette: ["#rrggbb", …]` |
+| host → editor | `request-save` | `request` |
+| editor → host | `ready` | `version`, `editor`, `api` |
+| editor → host | `opened` | `request`, `width`, `height` |
+| editor → host | `dirty` | `dirty` |
+| editor → host | `save` | `request`, `width`, `height`, `png`, `pxo` |
+| editor → host | `error` | `request?`, `message` |
+
+`save` is the flattened first frame as PNG plus Pixelorama's own `.pxo`
+(layers intact) for re-editing. The editor also answers ⌘S / Ctrl+S and a
+**File → Save to PixelKiln** item with a `save`; its disk-oriented File items
+are removed, since the page owns the file.
+
+## Local build
+
+Needs Godot 4.7.2 with web export templates on `PATH` as `godot` (or set
+`GODOT`), plus `git` and `perl`:
+
+```bash
+tools/pixelorama-bridge/scripts/build.sh            # → tools/pixelorama-bridge/.work/build
+node tools/pixelorama-bridge/scripts/manifest.mjs tools/pixelorama-bridge/.work/build
+node tools/pixelorama-bridge/scripts/serve.mjs tools/pixelorama-bridge/.work/build 4321
+node tools/pixelorama-bridge/test/smoke.mjs tools/pixelorama-bridge/.work/build   # needs puppeteer-core + Chrome
+```
