@@ -6,7 +6,7 @@ import { z } from "zod"
 import { sha256, sha256File } from "../hash.ts"
 import type { LoadedManifest } from "../manifest.ts"
 import { MediaType, validateMedia } from "../media.ts"
-import { currentEntryOutputPath, isFrameSetEntry, memberPath, portableOutputPath } from "../outputs.ts"
+import { currentEntryOutputPath, isMemberSetEntry, memberPath, portableOutputPath, sourceIsStem } from "../outputs.ts"
 import { decodePng } from "../png.ts"
 import { lockKey, primaryOutput, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import { applyManifestEdit, ManifestEditError } from "../manifest-edit.ts"
@@ -19,9 +19,10 @@ import { applyManifestEdit, ManifestEditError } from "../manifest-edit.ts"
  * `pack` place that file, quality profiles read it, and revisions start from
  * it, while `plan` keeps reporting the generation itself as `ok`.
  *
- * A frame set is edited the same way, one file per member: the manifest's
- * `source` names the stem, and each frame is `<stem>-<role>.png` beside it,
- * the rule its generated frames already follow.
+ * A set — an ordered frame set, a tile set, any entry with several PNG
+ * outputs — is edited the same way, one file per member: the manifest's
+ * `source` names the stem, and each member is `<stem>-<role>.png` beside it,
+ * the rule its generated outputs already follow.
  *
  * The author edits with whatever they already use: `PIXELKILN_EDITOR` names
  * the program, otherwise the file opens with the OS default.
@@ -65,13 +66,13 @@ export function handEditPath(loaded: LoadedManifest, spec: ResolvedSpec): string
 
 /**
  * The generated (or untracked) art a fresh edit starts from, per member.
- * Null when the asset is not something a hand edit covers: a structural set,
- * a GIF, or nothing on disk to copy.
+ * Null when the asset is not something a hand edit covers: a GIF, a set with
+ * a GIF in it, or nothing on disk to copy.
  */
 export function handEditBases(spec: ResolvedSpec, lock: Lock): Array<{ role: string | null; path: string }> | null {
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
   if (entry) {
-    if (entry.outputs.length !== 1 && !isFrameSetEntry(entry)) return null
+    if (entry.outputs.length !== 1 && !isMemberSetEntry(entry)) return null
     const members = entry.outputs.map((output, index) => ({
       role: entry.outputs.length === 1 ? null : output.role ?? null,
       path: currentEntryOutputPath(entry, spec, index),
@@ -95,7 +96,7 @@ export function handEditBase(spec: ResolvedSpec, lock: Lock): string | null {
 export function handEditMembers(loaded: LoadedManifest, spec: ResolvedSpec, lock: Lock, editPath: string): HandEditMember[] {
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
   const bases = handEditBases(spec, lock)
-  if (entry && isFrameSetEntry(entry)) {
+  if (entry && isMemberSetEntry(entry)) {
     return entry.outputs.map((output, index) => ({
       role: output.role ?? null,
       path: memberPath(editPath, output.role, index, entry.outputs.length, output.mediaType),
@@ -109,7 +110,7 @@ export function handEditMembers(loaded: LoadedManifest, spec: ResolvedSpec, lock
  * Make (or reuse) the edit file for one asset in one style and declare it in
  * the manifest. Idempotent: a second call finds the same file and changes
  * nothing, so "open my edit again" and "start editing" are one action. A
- * frame set gets one file per member; a member already there is kept.
+ * set gets one file per member; a member already there is kept.
  */
 export async function startHandEdit(
   loaded: LoadedManifest,
@@ -118,9 +119,15 @@ export async function startHandEdit(
   opts: { expectedSha256?: string } = {},
 ): Promise<HandEditStart> {
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
-  if (entry && entry.outputs.length > 1 && !isFrameSetEntry(entry)) {
+  if (entry && entry.outputs.length > 1 && !isMemberSetEntry(entry)) {
     throw new ManifestEditError(
-      `${spec.styleId}/${spec.assetId} is a structural set of ${entry.outputs.length} outputs; hand edits cover single images and frame sets`,
+      `${spec.styleId}/${spec.assetId} is a set of ${entry.outputs.length} outputs that are not all PNG; hand edits cover PNG images and sets of them`,
+    )
+  }
+  if (entry && spec.source && isMemberSetEntry(entry) && !sourceIsStem(spec.source, entry, loaded.root)) {
+    throw new ManifestEditError(
+      `${spec.styleId}/${spec.assetId} declares ${spec.source}, one committed file placed for the whole set; ` +
+        "clear that source (pixelkiln edit detach) to hand-edit the members one by one",
     )
   }
   const existing = spec.source ? path.resolve(loaded.root, spec.source) : null
@@ -283,8 +290,8 @@ export interface HandEditSave extends HandEditStart {
 
 /**
  * Save an edit made in the in-browser editor. Every PNG must be a valid
- * image at the asset's generated size, a frame set must come back with the
- * same members it was opened with, and the files replace the edit
+ * image at the asset's generated size, a set must come back with the same
+ * members it was opened with, and the files replace the edit
  * atomically; the companion records what each was based on, and the
  * manifest declares the edit if it does not yet — the same path
  * `startHandEdit` takes, so the first save from the browser and
@@ -297,18 +304,18 @@ export async function saveHandEdit(
   input: HandEditSaveInput,
 ): Promise<HandEditSave> {
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
-  const frameSet = entry ? isFrameSetEntry(entry) : false
+  const memberSet = entry ? isMemberSetEntry(entry) : false
   const incoming = input.frames ?? (input.png ? [{ role: null, png: input.png }] : [])
   if (!incoming.length) throw new ManifestEditError("the save carried no image")
   if (input.project && input.project.length > MAX_HAND_EDIT_BYTES) {
     throw new ManifestEditError(`the project file is ${input.project.length} bytes; the limit is ${MAX_HAND_EDIT_BYTES}`)
   }
-  if (frameSet) {
+  if (memberSet) {
     const expected = entry!.outputs.map((output) => output.role ?? null)
     const got = incoming.map((frame) => frame.role)
     if (got.length !== expected.length || expected.some((role, index) => got[index] !== role)) {
       throw new ManifestEditError(
-        `${spec.styleId}/${spec.assetId} is a set of ${expected.length} frames (${expected.join(", ")}); ` +
+        `${spec.styleId}/${spec.assetId} is a set of ${expected.length} members (${expected.join(", ")}); ` +
           `the editor returned ${got.length} (${got.map((role) => role ?? "new").join(", ")}) — keep the frames it opened with`,
       )
     }
@@ -323,7 +330,7 @@ export async function saveHandEdit(
       validateMedia(frame.png, MediaType.PNG)
       return decodePng(frame.png)
     } catch (error) {
-      const which = frameSet ? `frame ${frame.role ?? index}` : "the edit"
+      const which = memberSet ? `member ${frame.role ?? index}` : "the edit"
       throw new ManifestEditError(`${which} is not a valid PNG: ${error instanceof Error ? error.message : String(error)}`)
     }
   })
@@ -331,7 +338,7 @@ export async function saveHandEdit(
   const expectedSize = bases?.[0] ? decodePng(await readFile(bases[0].path)) : { width: spec.width, height: spec.height }
   for (const [index, image] of decoded.entries()) {
     if (image.width !== expectedSize.width || image.height !== expectedSize.height) {
-      const which = frameSet ? `frame ${incoming[index]!.role ?? index}` : "the edit"
+      const which = memberSet ? `member ${incoming[index]!.role ?? index}` : "the edit"
       throw new ManifestEditError(
         `${which} is ${image.width}×${image.height}; ${spec.styleId}/${spec.assetId} is ${expectedSize.width}×${expectedSize.height}`,
       )

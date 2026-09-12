@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { Lock } from "../types.ts"
-import { isFrameSetEntry, resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceOutputPath } from "../outputs.ts"
+import { resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceIsStem, sourceOutputPath } from "../outputs.ts"
 import { sha256 } from "../hash.ts"
 
 export interface PackedSource {
@@ -203,9 +203,9 @@ export function packStyle(
      * Manifest `source` art keyed by asset id, manifest-relative. A hand edit
      * or other post-processed file stands in for that asset's single output,
      * and an asset with a source but no lock entry is packed from it — the
-     * same rule `mount` applies. A frame set's source is a stem: each frame
-     * is packed from `<stem>-<role>.png`. Other structural sets keep their
-     * lock outputs.
+     * same rule `mount` applies. A set's hand edit is a stem: each member is
+     * packed from `<stem>-<role>.png`. A set whose source is one existing
+     * file keeps its lock outputs, as before.
      */
     sources?: Record<string, string>
   } = {},
@@ -247,7 +247,7 @@ export function packStyle(
       inputs.push({ id, path: path.resolve(manifestDir, source) })
       continue
     }
-    if (source && isFrameSetEntry(entry)) {
+    if (source && sourceIsStem(source, entry, manifestDir)) {
       outputs = outputs.map((output) => ({ ...output, absolutePath: sourceOutputPath(source, entry, output.index, manifestDir) }))
     }
     let selected = outputs
@@ -465,12 +465,12 @@ export function mountStyle(
     const cell = cells[id]!
     const source = sources[id]
     const entry = lock.entries[`${styleId}/${id}`]
-    if (source && !(entry && isFrameSetEntry(entry))) {
+    if (source && !(entry && sourceIsStem(source, entry, manifestDir))) {
       placements.push({ id, path: path.resolve(manifestDir, source), cell })
       continue
     }
     if (source && entry) {
-      // A frame set's edit is one file per member; the cell still holds one.
+      // A set's edit is one file per member; the cell still holds one.
       const selection = selectEntryOutput(entry, outputRoles[id])
       if (!selection.ok) {
         skipped.push({ id, reason: selection.reason })

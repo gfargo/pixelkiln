@@ -47,7 +47,9 @@ pixelkiln export --style ground --only terrain --format godot
 base when exactly one entry is selected. `--columns` controls atlas columns.
 Without `--out`, files land in the style's `outDir` as
 `<asset>-tileset.<extension>`, `<asset>-tileset.png`, and
-`<asset>-tileset.pixelkiln.json`.
+`<asset>-tileset.pixelkiln.json`. A hand-edited set ([`pixelkiln edit`](CLI.md#edit)
+or the gallery's editor) is exported tile by tile from its edit files, and the
+companion records those paths as the sources.
 
 The companion record is engine-neutral: it stores portable source paths and
 SHA-256s, export options (including raw provider rules), output hashes, and a

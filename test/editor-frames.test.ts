@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { existsSync } from "node:fs"
+import { existsSync, writeFileSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -7,7 +7,7 @@ import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { loadLock, saveLock, upsert } from "../src/lock.ts"
 import { sha256 } from "../src/hash.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
-import { memberPath, sourceOutputPath } from "../src/outputs.ts"
+import { memberPath, sourceIsStem, sourceOutputPath } from "../src/outputs.ts"
 import {
   handEditBases,
   readHandEditCompanion,
@@ -16,6 +16,7 @@ import {
 } from "../src/pipeline/hand-edit.ts"
 import { mountStyle, packStyle } from "../src/pipeline/pack.ts"
 import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
+import { exportTileset } from "../src/pipeline/tileset-export.ts"
 import { createGalleryEditHandler } from "../src/gallery/edit.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { renderGallery } from "../src/gallery/page.ts"
@@ -97,9 +98,17 @@ describe("a frame set's source is a stem with one file per member", () => {
     expect(memberPath("/a/walk.png", "frame-02", 2, 3)).toBe("/a/walk-frame-02.png")
     const single = { generator: "map", outputs: [{ path: "x", sha256: "y" }] } as never
     expect(sourceOutputPath("out/edits/anvil.png", single, 0, dir)).toBe(path.join(dir, "out/edits/anvil.png"))
-    // Structural sets still place the source file itself.
+    // Any PNG set: a tile set's edit is a stem too — unless the source is one
+    // existing file, which is still a single image placed for the whole set.
     const tiles = { generator: "tiles", outputs: [{ path: "x", sha256: "y", role: "tile-00" }, { path: "z", sha256: "y", role: "tile-01" }] } as never
+    expect(sourceOutputPath("out/edits/ground.png", tiles, 1, dir)).toBe(path.join(dir, "out/edits/ground-tile-01.png"))
+    expect(sourceIsStem("out/edits/ground.png", tiles, dir)).toBe(true)
+    writeFileSync(path.join(dir, "sheet.png"), "x")
+    expect(sourceIsStem("sheet.png", tiles, dir)).toBe(false)
     expect(sourceOutputPath("sheet.png", tiles, 1, dir)).toBe(path.join(dir, "sheet.png"))
+    // A set with a GIF in it is not a member set.
+    const gif = { generator: "animation", outputs: [{ path: "a.gif", sha256: "y", role: "gif", mediaType: "image/gif" }, { path: "b.png", sha256: "y", role: "sheet" }] } as never
+    expect(sourceIsStem("out/edits/run.png", gif, dir)).toBe(false)
   })
 
   it("starts an edit by copying every frame and declaring the stem", async () => {
@@ -172,12 +181,12 @@ describe("saving a frame set from the browser", () => {
     const reloaded = await loadManifest(manifestPath)
     const respec = (await resolveSpecs(reloaded)).find((s) => s.assetId === "walk")!
     await expect(saveHandEdit(reloaded, lock, respec, { frames: [...edited.map((png, i) => ({ role: ROLES[i]!, png })), { role: null, png: px(0, 0, 0) }], ...EDITOR }))
-      .rejects.toThrow(/set of 3 frames \(frame-00, frame-01, frame-02\); the editor returned 4 \(frame-00, frame-01, frame-02, new\)/)
+      .rejects.toThrow(/set of 3 members \(frame-00, frame-01, frame-02\); the editor returned 4 \(frame-00, frame-01, frame-02, new\)/)
     await expect(saveHandEdit(reloaded, lock, respec, { frames: edited.slice(0, 2).map((png, i) => ({ role: ROLES[i]!, png })), ...EDITOR }))
       .rejects.toThrow(/returned 2/)
     await expect(saveHandEdit(reloaded, lock, respec, { frames: [{ role: "frame-00", png: px(1, 1, 1) }, { role: "frame-01", png: encodeRgbaPng(1, 1, Buffer.alloc(4, 9)) }, { role: "frame-02", png: px(1, 1, 1) }], ...EDITOR }))
-      .rejects.toThrow(/frame frame-01 is 1×1; motion\/walk is 2×2/)
-    await expect(saveHandEdit(reloaded, lock, respec, { png: px(1, 1, 1), ...EDITOR })).rejects.toThrow(/set of 3 frames/)
+      .rejects.toThrow(/member frame-01 is 1×1; motion\/walk is 2×2/)
+    await expect(saveHandEdit(reloaded, lock, respec, { png: px(1, 1, 1), ...EDITOR })).rejects.toThrow(/set of 3 members/)
     for (const [i, member] of saved.members.entries()) expect(await readFile(member.path)).toEqual(edited[i])
 
     // The gallery sees one edit per member and judges the set as a whole.
@@ -225,7 +234,7 @@ describe("saving a frame set from the browser", () => {
       expect(await both.text()).toMatch(/not both/)
       const asPng = await post({ ...base, png: px(1, 1, 1).toString("base64") })
       expect(asPng.status).toBe(400)
-      expect(await asPng.text()).toMatch(/set of 3 frames/)
+      expect(await asPng.text()).toMatch(/set of 3 members/)
       const ok = await post({ ...base, frames: ROLES.map((role) => ({ role, png: px(4, 4, 4).toString("base64") })), pxo: Buffer.from("PKx").toString("base64") })
       expect(ok.status).toBe(200)
       const after = (await ok.json()) as { items: Array<{ key: string; editStatus: string; edits: Array<{ path: string }>; source: string }> }
@@ -243,7 +252,89 @@ describe("saving a frame set from the browser", () => {
     const page = renderGallery(snapshot, { editable: true, editor: true, session: "0".repeat(32) })
     expect(page).toContain("message.frames = pngs.map((png, i) => ({ role: SHEET.roles[i], png }))")
     expect(page).toContain("body.frames.push({ role: f.role === undefined ? null : f.role, png: await toBase64(f.png) })")
-    expect(page).toContain("cannot open frame sets")
-    expect(page).toContain("Hand edit (' + item.edits.length + ' frames)")
+    expect(page).toContain("cannot open sets")
+    expect(page).toContain("Hand edit (' + item.edits.length + ' ' + memberNoun(item, item.edits.length) + ')")
+  })
+})
+
+describe("a tile set is edited the same way, one file per tile", () => {
+  /** A PixelLab connectable tileset as the lockfile records it: four 4×4 tiles under `out/`. */
+  async function tileProject() {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "tile-edit",
+      styles: { ground: { generator: "tiles", tileSize: 32, tileFeature: "tileset", outDir: "out" } },
+      assets: { terrain: { prompt: "grass meeting water", width: 32, height: 32, cell: [0, 0], outputRole: "tile-02" } },
+    }, null, 2) + "\n")
+    const loaded = await loadManifest(manifestPath)
+    const spec = (await resolveSpecs(loaded)).find((s) => s.assetId === "terrain")!
+    await mkdir(path.join(dir, "out"), { recursive: true })
+    const rules = JSON.parse(await readFile(path.resolve("test/fixtures/tileset/tile-rules.json"), "utf8"))
+    const tiles = [0, 1, 2, 3].map((i) => {
+      const pixels = Buffer.alloc(4 * 4 * 4, i * 40)
+      for (let p = 3; p < pixels.length; p += 4) pixels[p] = 255
+      return encodeRgbaPng(4, 4, pixels)
+    })
+    const roles = tiles.map((_, i) => `tile-0${i}`)
+    for (const [i, png] of tiles.entries()) await writeFile(path.join(dir, `out/terrain-${roles[i]}.png`), png)
+    const lock: Lock = { version: 2, entries: {} }
+    upsert(lock, lockKey("ground", "terrain"), {
+      styleId: "ground", assetId: "terrain", specHash: spec.specHash, generator: "tiles", prompt: spec.prompt, width: 32, height: 32,
+      status: "downloaded", provider: "pixellab",
+      outputs: tiles.map((png, i) => ({ path: `out/terrain-${roles[i]}.png`, sha256: sha256(png), role: roles[i]! })),
+      providerMetadata: { pixellab: { tileKind: "tileset", tileRules: rules } },
+      cost: 40, costUnit: "generations",
+    })
+    await saveLock(lockPath, lock)
+    return { manifestPath, loaded, spec, lock, tiles, roles }
+  }
+
+  it("starts, saves, packs, mounts, and exports per tile", async () => {
+    const { manifestPath, loaded, spec, lock, tiles, roles } = await tileProject()
+    const started = await startHandEdit(loaded, lock, spec)
+    expect(started.source).toBe("out/edits/terrain.png")
+    expect(started.members.map((m) => m.role)).toEqual(roles)
+    const reloaded = await loadManifest(manifestPath)
+    const respec = (await resolveSpecs(reloaded)).find((s) => s.assetId === "terrain")!
+    const solid = (v: number) => { const p = Buffer.alloc(64, v); for (let i = 3; i < 64; i += 4) p[i] = 255; return encodeRgbaPng(4, 4, p) }
+    const saved = await saveHandEdit(reloaded, lock, respec, {
+      frames: roles.map((role, i) => ({ role, png: i === 2 ? solid(200) : tiles[i]! })), ...EDITOR,
+    })
+    expect(saved.companion.outputs.map((o) => o.role)).toEqual(roles)
+
+    const { snapshot } = await buildGallerySnapshot({ loaded: reloaded, specs: await resolveSpecs(reloaded), lock, lockPath })
+    const item = snapshot.items.find((i) => i.key === "ground/terrain")!
+    expect(item).toMatchObject({ editStatus: "edited", editChanged: [false, false, true, false] })
+    expect(item.edits.map((e) => e.path)).toEqual(roles.map((role) => `out/edits/terrain-${role}.png`))
+
+    const sources = { terrain: "out/edits/terrain.png" }
+    const packed = packStyle(lock, "ground", dir, { sources })
+    const tile2 = packed.atlas.frames.find((f) => f.id === "terrain/tile-02")!
+    const decoded = decodePng(packed.png)
+    expect(decoded.pixels[(tile2.y * decoded.width + tile2.x) * 4]).toBe(200)
+    const mounted = mountStyle(lock, "ground", dir, { cellWidth: 4, cellHeight: 4 }, { terrain: [0, 0] }, sources, { terrain: "tile-02" })
+    expect(decodePng(mounted.png).pixels[0]).toBe(200)
+    const exported = exportTileset(lock.entries[lockKey("ground", "terrain")]!, respec, { format: "generic", manifestDir: dir, imageName: "terrain.png", columns: 2 })
+    const atlasTile2 = exported.generic.tiles.find((t) => t.role === "tile-02")!
+    const atlas = decodePng(exported.png)
+    expect(atlas.pixels[(atlasTile2.y * atlas.width + atlasTile2.x) * 4]).toBe(200)
+    expect(exported.sources.some((s) => s.path.endsWith("out/edits/terrain-tile-02.png"))).toBe(true)
+  })
+
+  it("leaves a single committed file placed for the whole set alone", async () => {
+    const { manifestPath, lock, tiles } = await tileProject()
+    await writeFile(path.join(dir, "sheet.png"), tiles[3]!)
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"))
+    manifest.assets.terrain.source = "sheet.png"
+    await writeFile(manifestPath, JSON.stringify(manifest))
+    const loaded = await loadManifest(manifestPath)
+    const spec = (await resolveSpecs(loaded)).find((s) => s.assetId === "terrain")!
+    await expect(startHandEdit(loaded, lock, spec)).rejects.toThrow(/one committed file placed for the whole set/)
+    // mount places that file; pack keeps the lock outputs; the gallery shows one edit.
+    const mounted = mountStyle(lock, "ground", dir, { cellWidth: 4, cellHeight: 4 }, { terrain: [0, 0] }, { terrain: "sheet.png" }, { terrain: "tile-02" })
+    expect(decodePng(mounted.png).pixels[0]).toBe(120)
+    expect(packStyle(lock, "ground", dir, { sources: { terrain: "sheet.png" } }).atlas.frames).toHaveLength(4)
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs: await resolveSpecs(loaded), lock, lockPath })
+    expect(snapshot.items.find((i) => i.key === "ground/terrain")!.edits).toHaveLength(1)
   })
 })
