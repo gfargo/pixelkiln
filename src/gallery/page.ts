@@ -760,10 +760,15 @@ window.addEventListener('message', (e) => {
 // declares the file the same way pixelkiln edit does.
 
 let SHEET = null;
-const editorSource = (item) => item.edit && item.edit.exists ? item.edit
-  : item.outputs.length === 1 && item.outputs[0].exists && item.outputs[0].mediaType === 'image/png' ? item.outputs[0] : null;
-const canEditInBrowser = (item) => EDITOR && EDITABLE && item.declared && item.asset && projectOf(item)?.manifestSha256 && editorSource(item) &&
-  !(item.outputs.length > 1);
+// What the editor gets: the edit files when they are all there, else the
+// generated outputs (one PNG, or every frame of a set).
+const editorSources = (item) => {
+  if (item.edits.length && item.edits.every((e) => e.exists)) return { files: item.edits, fromEdit: true };
+  if (editableOutputs(item)) return { files: item.outputs, fromEdit: false };
+  return null;
+};
+const editorSource = (item) => { const s = editorSources(item); return s ? s.files[0] : null; };
+const canEditInBrowser = (item) => EDITOR && EDITABLE && item.declared && item.asset && projectOf(item)?.manifestSha256 && editorSources(item);
 const toBase64 = (buf) => new Promise((resolve, reject) => {
   const r = new FileReader();
   r.onload = () => resolve(String(r.result).slice(String(r.result).indexOf(',') + 1));
@@ -792,7 +797,7 @@ function openEditorSheet(item) {
   const bar = el('div', 'rbar');
   const close = el('button', null, 'Close'); close.type = 'button';
   close.onclick = () => closeEditorSheet();
-  const title = el('b', null, (item.project ? item.project + ':' : '') + item.styleId + '/' + item.assetId + ' · ' + item.width + '×' + item.height);
+  const title = el('b', null, (item.project ? item.project + ':' : '') + item.styleId + '/' + item.assetId + ' · ' + item.width + '×' + item.height + (item.outputs.length > 1 ? ' · ' + item.outputs.length + ' frames' : ''));
   const status = el('span', 'st');
   const acts = el('div', 'acts');
   const msg = el('span', 'msg');
@@ -813,23 +818,34 @@ function openEditorSheet(item) {
   stage.append(frame, loading);
   panel.append(bar, stage);
   host.append(scrim, panel);
-  SHEET = { item, frame, loading, status, msg, save, saveClose, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false };
+  SHEET = { item, frame, loading, status, msg, save, saveClose, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false, roles: null };
   sheetStatus('cool', 'loading');
   sheetButtons();
   close.focus({ preventScroll: true });
 }
-// The edit file is what the editor gets; when a browser save kept the layered
-// project beside it, that goes along too and the editor restores the layers,
-// falling back to the flattened PNG if the file cannot be read.
+// The edit files are what the editor gets; when a browser save kept the
+// layered project beside them, that goes along too and the editor restores
+// the layers, falling back to the flattened PNGs if the file cannot be read.
+// A frame set is sent as frames, one per member, and comes back the same way.
 async function sendOpen() {
-  const { item, source } = SHEET;
+  const { item } = SHEET;
+  const sources = editorSources(item);
   const style = snap.styles.find((s) => s.id === item.styleId && s.project === item.project);
-  const projectUrl = source === item.edit && item.editMeta && item.editMeta.projectUrl && SHEET.ready.version >= 2 ? item.editMeta.projectUrl : null;
-  let png, pxo = null;
+  const projectUrl = sources.fromEdit && item.editMeta && item.editMeta.projectUrl && SHEET.ready.version >= 2 ? item.editMeta.projectUrl : null;
+  const set = sources.files.length > 1;
+  if (set && SHEET.ready.version < 3) {
+    SHEET.msg.textContent = 'This editor build cannot open frame sets; reinstall it with pixelkiln tools install editor.';
+    sheetStatus('bad', 'unsupported');
+    return;
+  }
+  const pngs = [];
+  let pxo = null;
   try {
-    const res = await fetch(source.url, { cache: 'no-store' });
-    if (!res.ok) throw new Error(await res.text());
-    png = await res.arrayBuffer();
+    for (const file of sources.files) {
+      const res = await fetch(file.url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(await res.text());
+      pngs.push(await res.arrayBuffer());
+    }
     if (projectUrl) {
       const p = await fetch(projectUrl, { cache: 'no-store' });
       if (p.ok) pxo = await p.arrayBuffer();
@@ -841,12 +857,21 @@ async function sendOpen() {
   if (!SHEET) return;
   const request = 'open-' + (++SHEET.requests);
   SHEET.sentProject = !!pxo;
+  SHEET.roles = set ? item.outputs.map((o) => o.role || null) : null;
   const message = {
     type: 'pixelkiln:open', request,
     asset: { key: item.styleId + '/' + item.assetId, id: item.id, name: item.assetId, width: item.width, height: item.height },
-    png, palette: style ? style.palette : [],
+    png: pngs[0], palette: style ? style.palette : [],
   };
-  const transfer = [png];
+  const transfer = [pngs[0]];
+  if (set) {
+    message.frames = pngs.map((png, i) => ({ role: SHEET.roles[i], png }));
+    message.fps = item.fps || 12;
+    for (const png of pngs.slice(1)) transfer.push(png);
+    // The first frame is both png (older editors) and frames[0]; copy it so both transfer.
+    message.png = pngs[0].slice(0);
+    transfer.push(message.png);
+  }
   if (pxo) { message.pxo = pxo; transfer.push(pxo); }
   SHEET.frame.contentWindow.postMessage(message, location.origin, transfer);
   sheetStatus('cool', 'opening');
@@ -874,8 +899,9 @@ async function onEditorMessage(m) {
     case 'pixelkiln:opened':
       SHEET.opened = true;
       SHEET.loading.remove();
-      if (m.source === 'pxo') sheetStatus('ok', 'editing the edit file with its ' + (m.layers === 1 ? 'layer' : m.layers + ' layers') + ' restored');
-      else if (SHEET.sentProject) sheetStatus('warn', 'editing the flattened edit file; its layer file could not be opened');
+      if (m.source === 'pxo') sheetStatus('ok', 'editing the edit file' + (m.frames > 1 ? 's' : '') + ' with ' + (m.layers === 1 ? 'the layer' : m.layers + ' layers') + (m.frames > 1 ? ' and ' + m.frames + ' frames' : '') + ' restored');
+      else if (SHEET.sentProject) sheetStatus('warn', 'editing the flattened edit file' + (m.frames > 1 ? 's' : '') + '; the layer file could not be opened');
+      else if (m.source === 'frames') sheetStatus('ok', (SHEET.item.edits.length ? 'editing the edit files' : 'editing a copy of the generated frames') + ' as ' + m.frames + ' frames');
       else sheetStatus('ok', SHEET.item.edit && SHEET.item.edit.exists ? 'editing the edit file' : 'editing a copy of the generated art');
       sheetButtons();
       break;
@@ -888,14 +914,21 @@ async function onEditorMessage(m) {
       const pending = SHEET.pending;
       if (!pending || pending.request !== m.request) return;
       try {
-        const body = { png: await toBase64(m.png), editor: SHEET.ready.editor, protocol: SHEET.ready.version };
+        const body = { editor: SHEET.ready.editor, protocol: SHEET.ready.version };
+        if (SHEET.roles) {
+          if (!Array.isArray(m.frames)) throw new Error('the editor returned no frames');
+          body.frames = [];
+          for (const f of m.frames) body.frames.push({ role: f.role === undefined ? null : f.role, png: await toBase64(f.png) });
+        } else {
+          body.png = await toBase64(m.png);
+        }
         if (m.pxo && m.pxo.byteLength) body.pxo = await toBase64(m.pxo);
         await postHandEdit(SHEET.item, 'save-edit', body);
         const saved = snap.items.find((i) => i.id === SHEET.item.id);
         if (saved) SHEET.item = saved;
         SHEET.dirty = false;
         SHEET.pending = null;
-        ui.notice = { id: SHEET.item.id, text: 'Saved ' + (saved && saved.edit ? saved.edit.path : 'the edit') + '. mount and pack place it in place of the generated art.' };
+        ui.notice = { id: SHEET.item.id, text: 'Saved ' + (saved && saved.edits.length > 1 ? saved.edits.length + ' frames to ' + saved.source : saved && saved.edit ? saved.edit.path : 'the edit') + '. mount and pack place ' + (saved && saved.edits.length > 1 ? 'them' : 'it') + ' in place of the generated art.' };
         render();
         if (pending.close) { closeEditorSheet(true); return; }
         sheetStatus('ok', 'saved');
@@ -1043,7 +1076,7 @@ function clearFilters() {
 function thumb(item) {
   const cell = el('div', 'cell');
   // A hand edit is what ships, so it is what the card shows.
-  const shown = item.edit && item.edit.url && item.editStatus === 'edited' ? [item.edit] : item.outputs.filter((o) => o.url);
+  const shown = item.edit && item.editStatus === 'edited' && item.edits.every((e) => e.url) ? item.edits : item.outputs.filter((o) => o.url);
   if (!shown.length) {
     cell.classList.add('none');
     cell.append(el('span', null, item.state === 'missing' ? 'not generated yet'
@@ -1457,7 +1490,7 @@ function openCompare() {
 // ---- hand edits -------------------------------------------------------------
 
 const EDIT_STATUS_TEXT = {
-  same: 'A copy of the generated art, not changed yet. Open it in your editor and save.',
+  same: 'The generated art\u2019s pixels, not changed yet. Open it in your editor and save.',
   edited: 'Differs from the generated art. mount and pack place this file; the generated file stays as the record.',
   'regenerated-since': 'The generated art changed after this edit was saved — the edit is based on an older generation.',
   missing: 'The declared file is not on disk.',
@@ -1468,12 +1501,16 @@ async function postHandEdit(item, action, extra) {
   if (item.project) body.project = item.project;
   snap = await postEdit(body);
 }
+// A single PNG, or an ordered frame set: both are hand-editable, one file per
+// member. Structural sets (tiles, characters) are not.
+const editableOutputs = (item) => item.outputs.length && (item.outputs.length === 1 || isFrameSet(item)) &&
+  item.outputs.every((o) => o.exists && o.mediaType === 'image/png');
 function handEditSection(item) {
-  const canStart = EDITABLE && item.declared && item.asset && projectOf(item)?.manifestSha256 &&
-    item.outputs.length === 1 && item.outputs[0].exists && item.outputs[0].mediaType === 'image/png';
+  const canStart = EDITABLE && item.declared && item.asset && projectOf(item)?.manifestSha256 && editableOutputs(item);
   if (!item.edit && !canStart) return null;
+  const set = item.edits.length > 1;
   const s = el('section', 'meta');
-  s.append(el('h3', null, 'Hand edit'));
+  s.append(el('h3', null, set ? 'Hand edit (' + item.edits.length + ' frames)' : 'Hand edit'));
   if (item.edit) {
     const pair = el('div', 'pair');
     const shared = displayScale(item.width, item.height, 200, 160);
@@ -1487,24 +1524,36 @@ function handEditSection(item) {
       f.append(el('figcaption', null, label));
       return f;
     };
-    pair.append(fig(item.outputs[0], 'generated'), fig(item.edit, 'edit'));
+    // For a set, the member the preview is on; the strip there steps through them.
+    const at = set ? Math.min(ui.member, item.edits.length - 1) : 0;
+    const which = set ? ' · ' + (item.outputs[at].role || 'frame ' + (at + 1)) : '';
+    pair.append(fig(item.outputs[at], 'generated' + which), fig(item.edits[at], 'edit' + which));
     s.append(pair);
     const dl = el('dl');
     const tone = item.editStatus === 'edited' ? 'ok' : item.editStatus === 'same' ? 'dim' : 'warn';
     const st = el('span', 'state-' + tone); st.append(el('i', 'dot ' + tone), document.createTextNode(' ' + item.editStatus));
     row(dl, 'status', st);
     row(dl, 'why', EDIT_STATUS_TEXT[item.editStatus] || '');
-    row(dl, 'file', item.edit.path, { mono: true, copy: item.edit.absolutePath });
-    if (item.edit.sha256) row(dl, 'sha256', item.edit.sha256.slice(0, 16) + '…', { mono: true, copy: item.edit.sha256 });
-    row(dl, 'saved', fmtWhen(item.edit.modifiedAt));
+    if (set) {
+      row(dl, 'files', item.source + ' — one per frame: ' + item.edits.map((e) => e.path.split('/').pop()).join(', '), { mono: true, copy: item.edits.map((e) => e.absolutePath).join('\\n') });
+      const differing = item.editChanged.filter(Boolean).length;
+      row(dl, 'changed', differing + ' of ' + item.edits.length + ' frames differ from the generated art' +
+        (differing ? ': ' + item.edits.filter((e, i) => item.editChanged[i]).map((e) => item.outputs[item.edits.indexOf(e)].role || e.path.split('/').pop()).join(', ') : ''));
+    } else {
+      row(dl, 'file', item.edit.path, { mono: true, copy: item.edit.absolutePath });
+      if (item.edit.sha256) row(dl, 'sha256', item.edit.sha256.slice(0, 16) + '…', { mono: true, copy: item.edit.sha256 });
+    }
+    row(dl, 'saved', fmtWhen(item.edits.reduce((latest, e) => e.modifiedAt && (!latest || e.modifiedAt > latest) ? e.modifiedAt : latest, null)));
     if (item.editMeta) {
-      row(dl, 'editor', item.editMeta.editor + ', ' + fmtWhen(item.editMeta.savedAt) + (item.editMeta.changedSince ? ' — the file changed since' : ''));
-      if (item.editMeta.basedOn) row(dl, 'based on', item.editMeta.basedOn.slice(0, 16) + '…', { mono: true, copy: item.editMeta.basedOn });
+      row(dl, 'editor', item.editMeta.editor + ', ' + fmtWhen(item.editMeta.savedAt) + (item.editMeta.changedSince ? ' — a file changed since' : ''));
+      if (item.editMeta.basedOn && !set) row(dl, 'based on', item.editMeta.basedOn.slice(0, 16) + '…', { mono: true, copy: item.editMeta.basedOn });
       if (item.editMeta.project) row(dl, 'layers', item.editMeta.project, { mono: true });
     }
     s.append(dl);
   } else {
-    s.append(el('div', 'state-dim', 'Touch it up in your own editor. The generated file stays untouched; the edit is a sibling file the manifest points at, and mount and pack place that instead.'));
+    s.append(el('div', 'state-dim', isFrameSet(item)
+      ? 'Touch the frames up in your own editor or in the browser, where they open as one animation. The generated files stay untouched; the edit is one sibling file per frame that the manifest points at, and mount and pack place those instead.'
+      : 'Touch it up in your own editor. The generated file stays untouched; the edit is a sibling file the manifest points at, and mount and pack place that instead.'));
   }
   if (EDITABLE && item.declared && projectOf(item)?.manifestSha256) {
     const acts = el('div', 'hand-actions');
@@ -1532,10 +1581,10 @@ function handEditSection(item) {
     }
     if (item.edit) {
       go('Open in desktop editor', 'start-edit', { open: true }, 'Opened ' + item.edit.path + ' in your editor. Save there, then Refresh.');
-      go('Detach edit', 'detach-edit', {}, 'Detached. The file is still at ' + item.edit.path + '; the generated art is placed again.');
+      go('Detach edit', 'detach-edit', {}, 'Detached. The file' + (set ? 's are' : ' is') + ' still at ' + item.source + '; the generated art is placed again.');
     } else if (canStart) {
-      go('Edit by hand', 'start-edit', { open: true }, 'Created the edit file and opened it in your editor. Save there, then Refresh to see it here.');
-      go('Create edit file only', 'start-edit', { open: false }, 'Created the edit file and declared it in the manifest.');
+      go('Edit by hand', 'start-edit', { open: true }, 'Created the edit file' + (isFrameSet(item) ? 's and opened the first frame' : ' and opened it') + ' in your editor. Save there, then Refresh to see it here.');
+      go('Create edit file' + (isFrameSet(item) ? 's' : '') + ' only', 'start-edit', { open: false }, 'Created the edit file' + (isFrameSet(item) ? 's' : '') + ' and declared ' + (isFrameSet(item) ? 'them' : 'it') + ' in the manifest.');
     }
     acts.append(msg);
     s.append(acts);

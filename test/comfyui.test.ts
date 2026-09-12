@@ -543,13 +543,17 @@ describe("ComfyUI provider", () => {
       /providerInputs\.extra is an array but frames\.vary is "pose"/,
     )
 
+    // A frame set's `source` is a hand edit laid beside the generated frames
+    // (see hand-edit.ts), so the set keeps generating and is validated as such.
     await writeFile(path.join(dir, "frames-api.json"), JSON.stringify(frameGraph))
     const committedSource = structuredClone(original)
-    committedSource.assets.dancer.source = "pose-0.png"
+    committedSource.assets.dancer.source = "out/edits/dancer.png"
     await writeFile(manifestPath, JSON.stringify(committedSource))
-    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
-      /frame sets require generated provider outputs/,
-    )
+    expect((await resolveSpecs(await loadManifest(manifestPath)))[0]).toMatchObject({ source: "out/edits/dancer.png", generator: "frames" })
+    const editedButBroken = structuredClone(committedSource)
+    delete editedButBroken.styles.motion.seed
+    await writeFile(manifestPath, JSON.stringify(editedButBroken))
+    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(/frames\.seedStep requires a style seed/)
   })
 
   it("keeps PixelLab's 400px boundary after moving the shared schema ceiling", async () => {

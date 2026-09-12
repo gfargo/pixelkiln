@@ -49,7 +49,7 @@ not merely a label edit.
 | `size` | integer 16–8192 | Per-asset square size where the generator uses one dimension. |
 | `file` | string | Output path below the style's `outDir`; defaults to `<category>/<assetId>.png`. |
 | `category` | string | Optional output subdirectory and logical grouping. |
-| `source` | string | Manifest-relative committed art used instead of generation. Mutually exclusive with `revision`. |
+| `source` | string | Manifest-relative committed art used instead of generation. For a `frames` asset, the stem of a hand edit laid beside the generated frames (`<stem>-<role>.png` per member); the set still generates. Mutually exclusive with `revision`. |
 | `sourceByStyle` | object | Per-style `source`, keyed by style id; wins over `source` for that style. Written by `pixelkiln edit` for a hand edit of an asset that is in several styles. |
 | `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
 | `providerInputs` | JSON scalar/sequence map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI accepts scalars and, for `frames`, one ordered 2–64 value sequence. Image bindings upload PNG/JPEG inputs. |
@@ -456,7 +456,7 @@ credentials, cost semantics, recovery, and the paid live-test boundary.
 | `promptByStyle` | object, `{}` | Replace the asset prompt for specific style ids. |
 | `tags` | string array, `[]` | Asset tags combined with style tags. |
 | `cell` | `[column,row]` | Non-negative stable grid cell used by `mount`. |
-| `source` | string | Manifest-relative post-processed/hand-drawn source placed by `mount` and `pack` instead of lock output. |
+| `source` | string | Manifest-relative post-processed/hand-drawn source placed by `mount` and `pack` instead of lock output. For a `frames` asset it is a stem: each member is placed from `<stem>-<role>.png`, the rule its generated frames follow. |
 | `sourceByStyle` | object | The same, for one style only. A hand edit belongs to one generation, so an asset shared by styles keeps one edit per style. |
 | `revision` | object | Generate a new asset from another asset's current bytes. `source` and `revision` are mutually exclusive. |
 | `outputRole` | string | Select one member of a structural output set for mounting. |
