@@ -1,3 +1,11 @@
+# [0.31.0](https://github.com/gfargo/pixelkiln/compare/v0.30.0...v0.31.0) (2026-09-12)
+
+
+### Features
+
+* **editor:** compare-with-generated reference layer in the bridge (protocol 4) ([#104](https://github.com/gfargo/pixelkiln/issues/104)) ([a35b309](https://github.com/gfargo/pixelkiln/commit/a35b3094547dda43f7c2ad7a3175d41d9ecb9f6c))
+* **gallery:** show the generated art through an edit as a reference layer ([#105](https://github.com/gfargo/pixelkiln/issues/105)) ([8ab70ab](https://github.com/gfargo/pixelkiln/commit/8ab70ab73c020a354f23b748106c10bcc6e84ae9))
+
 # [0.30.0](https://github.com/gfargo/pixelkiln/compare/v0.29.0...v0.30.0) (2026-09-12)
 
 
