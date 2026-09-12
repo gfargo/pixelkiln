@@ -1,3 +1,10 @@
+# [0.30.0](https://github.com/gfargo/pixelkiln/compare/v0.29.0...v0.30.0) (2026-09-12)
+
+
+### Features
+
+* **gallery:** hand-edit tile sets and other PNG sets per member ([#102](https://github.com/gfargo/pixelkiln/issues/102)) ([bd46d0d](https://github.com/gfargo/pixelkiln/commit/bd46d0d341cc7cb38a7db7431a6c29972593f15e))
+
 # [0.29.0](https://github.com/gfargo/pixelkiln/compare/v0.28.0...v0.29.0) (2026-09-12)
 
 
