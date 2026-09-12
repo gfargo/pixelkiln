@@ -1,3 +1,15 @@
+# [0.25.0](https://github.com/gfargo/pixelkiln/compare/v0.24.0...v0.25.0) (2026-09-12)
+
+
+### Bug Fixes
+
+* wait for the editor-launch marker to have content ([#93](https://github.com/gfargo/pixelkiln/issues/93)) ([f356619](https://github.com/gfargo/pixelkiln/commit/f35661991d5b448794dc29093799beb86db895d5))
+
+
+### Features
+
+* pull objects edited in PixelLab's editor back with fetch --refresh ([#92](https://github.com/gfargo/pixelkiln/issues/92)) ([db73256](https://github.com/gfargo/pixelkiln/commit/db73256fdb962de4cacffa3944907eb0909c75d0))
+
 # [0.24.0](https://github.com/gfargo/pixelkiln/compare/v0.23.0...v0.24.0) (2026-09-11)
 
 
