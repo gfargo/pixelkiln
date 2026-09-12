@@ -196,7 +196,8 @@ With `gallery --edit`, a record's **Hand edit** section offers the same
 [Pixelorama](https://pixelorama.org) build the gallery serves itself, opened
 in a sheet with the sprite and the style's palette loaded. Save writes the edit
 back, keeps the layered `.pxo` beside it for the next time, and records which
-generation it was based on. A ComfyUI frame set or a PixelLab tile set opens as
+generation it was based on; reopening the edit shows the generated art through
+it at 50% on a locked reference layer, so what changed is always in view. A ComfyUI frame set or a PixelLab tile set opens as
 one project with a frame per member and saves every member back. The 46 MB
 editor is fetched once per PixelKiln release into a user cache, on the first
 click or with `tools install editor`; see [`tools`](CLI.md#tools).

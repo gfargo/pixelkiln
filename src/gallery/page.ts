@@ -273,6 +273,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   .sheet.editor-host { width:min(1400px, 96vw); grid-template-rows:auto 1fr; }
   .sheet.editor-host .rbar b { font:650 12.5px/1.4 var(--mono); color:var(--text); }
   .sheet.editor-host .rbar .acts { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .sheet.editor-host .rbar .chip { color:var(--dim); font-size:12.5px; display:inline-flex; align-items:center; gap:5px; margin-right:6px; }
   .sheet.editor-host .rbar .st { display:inline-flex; align-items:center; gap:6px; font:650 11.5px/1 var(--mono); }
   .sheet.editor-host .rbar .msg { color:var(--bad); font-size:12.5px; }
   .sheet.editor-host .stage { position:relative; min-height:0; }
@@ -801,11 +802,16 @@ function openEditorSheet(item) {
   const status = el('span', 'st');
   const acts = el('div', 'acts');
   const msg = el('span', 'msg');
+  const compare = el('label', 'chip'); compare.hidden = true;
+  compare.title = 'The generated art on a locked layer at 50%, for comparison; never part of the saved file';
+  const compareBox = el('input'); compareBox.type = 'checkbox'; compareBox.checked = true;
+  compareBox.onchange = () => showReference(compareBox.checked);
+  compare.append(compareBox, document.createTextNode(' show generated'));
   const save = el('button', 'primary', 'Save to project'); save.type = 'button';
   save.onclick = () => requestEditorSave(false);
   const saveClose = el('button', null, 'Save & close'); saveClose.type = 'button';
   saveClose.onclick = () => requestEditorSave(true);
-  acts.append(msg, save, saveClose);
+  acts.append(msg, compare, save, saveClose);
   bar.append(close, title, status, acts);
   const stage = el('div', 'stage');
   const frame = el('iframe');
@@ -818,7 +824,7 @@ function openEditorSheet(item) {
   stage.append(frame, loading);
   panel.append(bar, stage);
   host.append(scrim, panel);
-  SHEET = { item, frame, loading, status, msg, save, saveClose, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false, roles: null };
+  SHEET = { item, frame, loading, status, msg, save, saveClose, compare, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false, sentReference: false, reference: false, roles: null };
   sheetStatus('cool', 'loading');
   sheetButtons();
   close.focus({ preventScroll: true });
@@ -838,7 +844,11 @@ async function sendOpen() {
     sheetStatus('bad', 'unsupported');
     return;
   }
+  // When an edit is being opened, the generated art rides along as a
+  // reference layer: what the editor shows through at 50% for comparison.
+  const referenceFiles = sources.fromEdit && SHEET.ready.version >= 4 && item.outputs.every((o) => o.exists && o.url) ? item.outputs : null;
   const pngs = [];
+  const reference = [];
   let pxo = null;
   try {
     for (const file of sources.files) {
@@ -849,6 +859,10 @@ async function sendOpen() {
     if (projectUrl) {
       const p = await fetch(projectUrl, { cache: 'no-store' });
       if (p.ok) pxo = await p.arrayBuffer();
+    }
+    for (const file of referenceFiles || []) {
+      const res = await fetch(file.url, { cache: 'no-store' });
+      if (res.ok) reference.push({ role: file.role || null, png: await res.arrayBuffer() });
     }
   } catch (err) {
     if (SHEET) { SHEET.msg.textContent = 'Could not load the image: ' + err.message; sheetStatus('bad', 'failed'); }
@@ -874,8 +888,17 @@ async function sendOpen() {
     transfer.push(message.png);
   }
   if (pxo) { message.pxo = pxo; transfer.push(pxo); }
+  if (reference.length === (referenceFiles || []).length && reference.length) {
+    message.reference = reference;
+    for (const r of reference) transfer.push(r.png);
+  }
+  SHEET.sentReference = !!message.reference;
   SHEET.frame.contentWindow.postMessage(message, location.origin, transfer);
   sheetStatus('cool', 'opening');
+}
+function showReference(visible) {
+  if (!SHEET || !SHEET.opened || !SHEET.reference) return;
+  SHEET.frame.contentWindow.postMessage({ type: 'pixelkiln:reference', visible }, location.origin);
 }
 function requestEditorSave(close) {
   if (!SHEET || !SHEET.opened || SHEET.pending) return;
@@ -900,10 +923,13 @@ async function onEditorMessage(m) {
     case 'pixelkiln:opened':
       SHEET.opened = true;
       SHEET.loading.remove();
+      SHEET.reference = !!m.reference;
+      SHEET.compare.hidden = !SHEET.reference;
       if (m.source === 'pxo') sheetStatus('ok', 'editing the edit file' + (m.frames > 1 ? 's' : '') + ' with ' + (m.layers === 1 ? 'the layer' : m.layers + ' layers') + (m.frames > 1 ? ' and ' + m.frames + ' ' + memberNoun(SHEET.item, m.frames) : '') + ' restored');
       else if (SHEET.sentProject) sheetStatus('warn', 'editing the flattened edit file' + (m.frames > 1 ? 's' : '') + '; the layer file could not be opened');
       else if (m.source === 'frames') sheetStatus('ok', (SHEET.item.edits.length ? 'editing the edit files' : 'editing a copy of the generated ' + memberNoun(SHEET.item, m.frames)) + ' as ' + m.frames + ' frames' + (isFrameSet(SHEET.item) ? '' : ', one per ' + memberNoun(SHEET.item, 1)));
       else sheetStatus('ok', SHEET.item.edit && SHEET.item.edit.exists ? 'editing the edit file' : 'editing a copy of the generated art');
+      if (SHEET.reference) SHEET.status.append(document.createTextNode(' · generated art shown through at 50%'));
       sheetButtons();
       break;
     case 'pixelkiln:dirty':
