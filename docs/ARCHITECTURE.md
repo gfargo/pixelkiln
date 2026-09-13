@@ -89,7 +89,13 @@ retain:
 - temporary `supersededOutputs[]` ownership hashes while a stale generation is
   being replaced;
 - provider-specific metadata under a provider-id namespace;
-- successful submission cost and cost unit.
+- successful submission cost and cost unit;
+- `history[]`: the generations this entry replaced, newest first — each one's
+  object and job ids, durable sources, output hashes, prompt, cost, and when
+  it was retired — capped by `PIXELKILN_HISTORY` or the manifest's `history`.
+  A restore swaps a kept generation back in and moves the current one onto
+  the list; the content cache keeps every kept generation's bytes through a
+  prune.
 
 Lock keys are `styleId/assetId`. Output paths use manifest-relative `/`
 separators so a clone or moved checkout remains valid. Legacy absolute v2 paths

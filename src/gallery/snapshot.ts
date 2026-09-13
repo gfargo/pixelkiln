@@ -5,7 +5,7 @@ import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
 import { loadLock, spendByUnit } from "../lock.ts"
 import { loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
-import { mediaTypeFromExtension, type MediaType } from "../media.ts"
+import { cacheFileName, MediaType, mediaTypeFromExtension } from "../media.ts"
 import { currentEntryOutputPath, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath, sourceIsStem, sourceOutputPath } from "../outputs.ts"
 import { buildPlan, type PlanState } from "../pipeline/plan.ts"
 import type { QualityProfileInspection } from "../pipeline/quality-profile.ts"
@@ -15,6 +15,7 @@ import { lockKey, type Asset, type Lock, type LockEntry, type ResolvedSpec } fro
 import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
 import { handEditProjectPath, readHandEditCompanion } from "../pipeline/hand-edit.ts"
+import { historyLimit } from "../pipeline/history.ts"
 import { pixelLabObjectUrl } from "../providers/pixellab.ts"
 
 /**
@@ -170,6 +171,8 @@ export interface GalleryItem {
   upstreamUrl: string | null
   /** Downloaded work with a durable provider reference; `fetch --refresh` can re-pull it. */
   refreshable: boolean
+  /** Generations this one replaced, newest first; each can be brought back. */
+  history: GalleryGeneration[]
   tags: string[]
   category: string | null
 }
@@ -223,6 +226,8 @@ export interface GalleryProject {
   account: string | null
   /** Hash of the manifest bytes this snapshot was built from; an edit must quote it. */
   manifestSha256: string | null
+  /** Replaced generations kept per asset (`PIXELKILN_HISTORY` or the manifest's `history`). */
+  historyLimit: number
   entries: number
   items: number
   spendByUnit: Record<string, number>
@@ -290,6 +295,40 @@ function matchesFilter(
   if (filter?.styles?.length && !filter.styles.includes(styleId)) return false
   if (filter?.assets?.length && !filter.assets.includes(assetId)) return false
   return true
+}
+
+/** The replaced generations of an entry, with cache-backed thumbnails where the bytes remain. */
+function describeHistory(media: Map<string, GalleryMedia>, entry: LockEntry, cacheDir: string): GalleryGeneration[] {
+  return (entry.history ?? []).map((generation, i) => {
+    const outputs = generation.outputs.map((output) => {
+      const mediaType = output.mediaType ?? MediaType.PNG
+      const file = path.join(cacheDir, cacheFileName(output.sha256, mediaType))
+      let url: string | null = null
+      if (existsSync(file)) {
+        const id = galleryMediaId(file)
+        media.set(id, { path: file, contentType: mediaType })
+        url = `${galleryMediaRoute(id)}?v=${output.sha256.slice(0, 24)}`
+      }
+      return { role: output.role ?? null, sha256: output.sha256, path: output.path, url }
+    })
+    return {
+      index: i + 1,
+      objectId: generation.objectId,
+      jobId: generation.jobId,
+      prompt: generation.prompt,
+      promptDiffers: generation.prompt !== entry.prompt,
+      width: generation.width,
+      height: generation.height,
+      cost: generation.cost,
+      costUnit: generation.costUnit,
+      submittedAt: generation.submittedAt,
+      downloadedAt: generation.downloadedAt,
+      retiredAt: generation.retiredAt,
+      outputs,
+      cached: outputs.length > 0 && outputs.every((output) => output.url !== null),
+      upstreamUrl: generation.provider === "pixellab" ? pixelLabObjectUrl(generation.generator, generation.objectId) : null,
+    }
+  })
 }
 
 /** Sprites are small; past this an edit is simply taken as changed rather than decoded. */
@@ -438,6 +477,29 @@ async function describeQuality(
  * (possibly filtered) manifest entries the CLI already computed; lock entries
  * outside the manifest are added here so paid work is never hidden.
  */
+/** A replaced generation still recorded in the lockfile, as the record lists it. */
+export interface GalleryGeneration {
+  /** 1 is the most recently replaced. */
+  index: number
+  objectId: string | null
+  jobId: string | null
+  prompt: string
+  /** The prompt differs from the current generation's. */
+  promptDiffers: boolean
+  width: number
+  height: number
+  cost: number
+  costUnit: string
+  submittedAt: string | null
+  downloadedAt: string | null
+  retiredAt: string
+  /** Its files, with a thumbnail URL when the bytes are still in the local content cache. */
+  outputs: Array<{ role: string | null; sha256: string; path: string; url: string | null }>
+  /** Every output's bytes are cached locally; a restore needs no provider. */
+  cached: boolean
+  upstreamUrl: string | null
+}
+
 export interface GalleryEditMeta {
   editor: string
   savedAt: string
@@ -463,6 +525,9 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
   // style shapes; the loader already proved the file parses.
   const manifestText = await readFile(loaded.path, "utf8")
   const manifestSha256 = sha256(manifestText)
+  // Where fetch keeps every downloaded file by hash: a replaced generation's
+  // thumbnail comes from here, and so does its restore when it is still there.
+  const cacheDir = path.resolve(path.dirname(opts.lockPath), ".pixelkiln", "cache")
   let rawStyles: Record<string, RawStyleShape> = {}
   try {
     const raw = JSON.parse(manifestText) as { styles?: Record<string, RawStyleShape> }
@@ -608,6 +673,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       editMeta,
       upstreamUrl: entry?.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
       refreshable: Boolean(entry && entry.status === "downloaded" && entry.outputs.length && (entry.sourceUrls?.length || entry.sourceUrl)),
+      history: entry ? describeHistory(media, entry, cacheDir) : [],
       tags: spec.tags,
       category: asset?.category ?? null,
     })
@@ -668,6 +734,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       editMeta: null,
       upstreamUrl: entry.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
       refreshable: false,
+      history: describeHistory(media, entry, cacheDir),
       tags: [],
       category: null,
     })
@@ -752,6 +819,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       provider: loaded.manifest.provider,
       account: null,
       manifestSha256,
+      historyLimit: historyLimit(loaded.manifest),
       entries: Object.keys(lock.entries).length,
       items: items.length,
       spendByUnit: spendByUnit(lock),
@@ -843,6 +911,7 @@ export async function buildWorkspaceGallerySnapshot(
         provider: loaded.manifest.provider,
         account: project.account ?? null,
         manifestSha256: manifestSha256 ?? sha256(await readFile(manifestPath, "utf8")),
+        historyLimit: historyLimit(loaded.manifest),
         entries: Object.keys(lock.entries).length,
         items: projectItems.length,
         spendByUnit: spendByUnit(lock),
@@ -858,6 +927,7 @@ export async function buildWorkspaceGallerySnapshot(
         provider: project.provider,
         account: project.account ?? null,
         manifestSha256: null,
+        historyLimit: 0,
         entries: 0,
         items: 0,
         spendByUnit: {},

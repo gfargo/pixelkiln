@@ -81,9 +81,12 @@ export async function fetchAssets(
     return e.outputs.some((output) => {
       const file = resolveOutputPath(output.path, spec.root)
       if (!existsSync(file)) return true
-      // `restore --force` also puts the recorded bytes back over a file that
-      // was changed after download; without force such a file is left alone.
-      return Boolean(opts.force) && sha256(readFileSync(file)) !== output.sha256
+      const current = sha256(readFileSync(file))
+      if (current === output.sha256) return false
+      // A file holding an outgoing generation's bytes (a revert in progress)
+      // is PixelKiln's to replace; `restore --force` also puts the recorded
+      // bytes back over a file that was changed after download.
+      return Boolean(opts.force) || (e.supersededOutputs ?? []).some((old) => old.sha256 === current)
     })
   })
   const concurrency = Math.min(Math.max(1, opts.concurrency ?? 8), Math.max(1, pending.length))
@@ -171,10 +174,11 @@ export async function fetchAssets(
                 currentOutputPath(output, spec, oldIndex, all.length) === target,
               )
               if (!opts.force) {
-                if (!recorded && superseded && currentHash === superseded.sha256) {
-                  // A stale spec was intentionally regenerated. The old bytes
-                  // are still exactly the ones PixelKiln wrote, so replacing
-                  // them does not take ownership of a manual edit.
+                if (superseded && currentHash === superseded.sha256) {
+                  // A stale spec was intentionally regenerated, or an older
+                  // generation is being brought back. The bytes on disk are
+                  // still exactly the ones PixelKiln wrote, so replacing them
+                  // does not take ownership of a manual edit.
                 } else if (recorded || superseded) {
                   throw new Error(
                     `refusing to overwrite modified output ${target}; pass --force to replace it`,

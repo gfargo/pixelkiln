@@ -526,12 +526,18 @@ export const AssetSchema = z
     }
   })
 
+/** How many replaced generations a lock entry keeps, unless the environment or manifest says otherwise. */
+export const DEFAULT_HISTORY_LIMIT = 5
+const HistoryLimitSchema = z.number().int().min(0).max(100)
+
 export const ManifestSchema = z
   .object({
     $schema: z.string().optional(),
     name: z.string(),
     /** Generation backend. Existing manifests remain PixelLab by default. */
     provider: z.string().min(1).default("pixellab"),
+    /** Replaced generations kept per asset for this project; overrides PIXELKILN_HISTORY. 0 keeps none. */
+    history: HistoryLimitSchema.optional(),
     styles: z.record(StyleSchema),
     assets: z.record(AssetSchema),
   })
@@ -543,6 +549,7 @@ export const ManifestInputSchema = z
     $schema: z.string().optional(),
     name: z.string(),
     provider: z.string().min(1).default("pixellab"),
+    history: HistoryLimitSchema.optional(),
     styles: z.record(StyleInputSchema),
     assets: z.record(AssetSchema),
   })
@@ -558,6 +565,49 @@ export type Asset = z.infer<typeof AssetSchema>
  * did not exist before — without it, generated objects and downloaded files are
  * two unrelated piles.
  */
+const LockOutputSchema = z.object({
+  path: z.string(),
+  sha256: z.string(),
+  role: z.string().optional(),
+  mediaType: MediaTypeSchema.optional(),
+})
+
+const LockSourceSchema = z.object({
+  url: z.string(),
+  role: z.string().optional(),
+  mediaType: MediaTypeSchema.optional(),
+})
+
+/**
+ * A generation this entry replaced, kept so it can be brought back. It is the
+ * retired entry's identity — object, sources, output hashes, prompt, cost —
+ * without the live-state fields; `pixelkiln restore --generation` swaps it
+ * back in. How many are kept is `PIXELKILN_HISTORY` or the manifest's
+ * `history`, newest first.
+ */
+export const LockHistoryEntrySchema = z.object({
+  specHash: z.string(),
+  generator: GeneratorSchema,
+  tileFeature: z.string().nullable().default(null),
+  prompt: z.string(),
+  width: z.number().int(),
+  height: z.number().int(),
+  jobId: z.string().nullable().default(null),
+  objectId: z.string().nullable().default(null),
+  candidateIndex: z.number().int().nullable().default(null),
+  sourceUrl: z.string().nullable().default(null),
+  sourceUrls: z.array(LockSourceSchema).default([]),
+  outputs: z.array(LockOutputSchema).default([]),
+  providerMetadata: z.record(z.record(z.unknown())).default({}),
+  submittedAt: z.string().nullable().default(null),
+  downloadedAt: z.string().nullable().default(null),
+  cost: z.number().finite().nonnegative().default(0),
+  costUnit: z.string().min(1).default("generations"),
+  provider: z.string().default("pixellab"),
+  /** When the replacement was submitted. */
+  retiredAt: z.string(),
+})
+
 export const LockEntrySchema = z.object({
   styleId: z.string(),
   assetId: z.string(),
@@ -667,6 +717,9 @@ export const LockEntrySchema = z.object({
   costUnit: z.string().min(1).default("generations"),
   /** Which provider produced this. Absent on entries written before providers. */
   provider: z.string().default("pixellab"),
+
+  /** Generations this entry replaced, newest first; see LockHistoryEntrySchema. */
+  history: z.array(LockHistoryEntrySchema).optional(),
 })
 
 export const LockSchema = z.object({
@@ -677,6 +730,7 @@ export const LockSchema = z.object({
 export type LockEntry = z.infer<typeof LockEntrySchema>
 export type Lock = z.infer<typeof LockSchema>
 export type LockOutput = LockEntry["outputs"][number]
+export type LockHistoryEntry = z.infer<typeof LockHistoryEntrySchema>
 
 /**
  * Parses a lockfile, rejecting anything that is not v2.

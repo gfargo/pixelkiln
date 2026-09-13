@@ -33,6 +33,7 @@ Unknown properties are rejected at every level.
 | `$schema` | no | Editor schema URL/path. It does not affect generation identity. |
 | `name` | yes | Project/account tag namespace. |
 | `provider` | no | Default provider registry id. Defaults to `pixellab`; `retrodiffusion`, `comfyui`, and `scenario` are experimental. |
+| `history` | no | Replaced generations kept per asset in the lockfile, 0–100. Overrides the personal `PIXELKILN_HISTORY` default (5) for this project; `0` keeps none. See [`history`](CLI.md#history). |
 | `styles` | yes | Map of style id to inherited generation/output settings. |
 | `assets` | yes | Map of stable asset id to subject and per-asset overrides. |
 

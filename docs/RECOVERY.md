@@ -17,6 +17,13 @@ replace a file whose current bytes differ from the recorded hash; `--force`
 overrides that for a file changed after download, and the gallery's
 **Restore** button on an `orphaned` record does the same after asking.
 
+A regeneration is not the end of the generation it replaces: the lock entry
+keeps it in `history` (up to `PIXELKILN_HISTORY` or the manifest's `history`,
+5 by default), its bytes stay in the content cache, and its provider object
+was never deleted. `pixelkiln history` lists them and
+`pixelkiln restore --only <asset> --generation <n|hash>` brings one back at no
+cost, moving the current generation onto the list in its place.
+
 Generation and download failures are separate lock states. A CDN failure after
 successful generation becomes `download-failed`; the next `fetch` or `restore`
 retries at zero generation cost.

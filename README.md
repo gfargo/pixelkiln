@@ -55,7 +55,7 @@ provenance and no long-lived npm token.
 | Hand edits | Touch-ups in your own editor or a pinned in-browser Pixelorama, kept beside the generated art with the generation still the record; frame and tile sets member by member. |
 | Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
-| Recovery | Safe stale-output replacement, validated caches, durable references, and resumable paid jobs. |
+| Recovery | Safe stale-output replacement, validated caches, durable references, resumable paid jobs, and per-asset generation history with free restores. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
 | Quality control | Manifest-native grid recovery, closed palettes, named approval, regression baselines, and fail-closed packaging. |
 | Sprite packaging | Deterministic RGBA packing, stable-cell mounting, explicit external input lists, structural output roles. |

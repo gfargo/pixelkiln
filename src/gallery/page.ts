@@ -328,6 +328,19 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
     background-size:12px 12px; background-position:0 0,6px 6px; display:grid; place-items:center; padding:8px; min-height:96px; }
   .pair figure img { image-rendering:pixelated; display:block; max-width:100%; }
   .pair figcaption { font:11px/1.4 var(--mono); color:var(--dim); background:var(--panel); padding:2px 6px; margin-top:6px; }
+  .versions { display:grid; gap:8px; margin:8px 0 4px; }
+  .version { display:grid; grid-template-columns:auto 1fr auto; gap:6px 12px; align-items:center; border:1px solid var(--line);
+    background:var(--panel-deep); padding:8px 10px; font-size:12.5px; }
+  .version .thumb { width:64px; height:64px; display:grid; place-items:center; background-image:var(--checker); border:1px solid var(--line); }
+  .version .thumb img { image-rendering:pixelated; max-width:64px; max-height:64px; }
+  .version .thumb span { font:10.5px var(--mono); color:var(--dim); text-align:center; padding:4px; }
+  .version .facts { display:grid; gap:2px; min-width:0; }
+  .version .facts b { font:650 12px/1.4 var(--mono); }
+  .version .facts .prompt { color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .version .facts .prompt.differs { color:var(--warn); }
+  .version .facts .meta { color:var(--dim); font-size:12px; }
+  .version .acts { display:grid; gap:6px; justify-items:end; }
+  .version .acts button { padding:3px 9px; font-size:12px; white-space:nowrap; }
   .dot.busy { background:var(--cool); animation: pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity:1; } 50% { opacity:.25; } }
   @media (prefers-reduced-motion: reduce) { .dot.busy { animation:none; } }
@@ -501,7 +514,7 @@ const PHASE_TONE = { queued: 'cool', submitting: 'cool', polling: 'cool', fetchi
 // The job still working on this record, if any: what the drawer and its card
 // show while a regeneration, restore, or pull is in flight.
 const activeJobFor = (item) => GEN.jobs.find((job) => ACTIVE_PHASES.has(job.phase) && job.project === item.project && job.keys.includes(item.key)) || null;
-const JOB_VERB = { generate: 'regenerating', resume: 'resuming', refresh: 'pulling upstream changes for', restore: 'restoring' };
+const JOB_VERB = { generate: 'regenerating', resume: 'resuming', refresh: 'pulling upstream changes for', restore: 'restoring', revert: 'bringing back a previous generation of' };
 const PHASE_TEXT = { queued: 'queued', submitting: 'submitting to the provider', polling: 'waiting for the provider to finish', fetching: 'downloading the result', review: 'candidates are ready to review' };
 const remainingBudget = (provider) => {
   const keyed = GEN.budget.byProvider[provider];
@@ -541,6 +554,7 @@ async function pollJobs() {
           ? (JOB_VERB[job.mode] || job.mode).replace(/ing$/, 'ing') + ' this asset failed: ' + (job.error || 'see the log above')
           : job.mode === 'generate' ? 'Regenerated. The new result is on disk and recorded as this generation.'
           : job.mode === 'restore' ? 'Restored. The recorded bytes are back on disk.'
+          : job.mode === 'revert' ? 'Brought back generation #' + job.revert + '. The one it replaced is now #1 in the list below.'
           : job.mode === 'refresh' ? (job.counts.downloaded ? 'Pulled the upstream change; the lockfile records the new bytes.' : 'Nothing changed upstream; the file was left alone.')
           : 'Done.' };
       }
@@ -572,7 +586,7 @@ function renderJobs() {
     const row = el('div', 'job');
     const ph = el('span', 'ph');
     ph.append(el('i', 'dot ' + PHASE_TONE[job.phase]), document.createTextNode(job.phase));
-    const what = (job.mode === 'refresh' ? 'pull upstream for ' : job.mode === 'restore' ? 'restore ' : job.mode === 'resume' ? 'resume ' : 'generate ') + job.keys.length + (job.keys.length === 1 ? ' asset' : ' assets') +
+    const what = (job.mode === 'refresh' ? 'pull upstream for ' : job.mode === 'restore' ? 'restore ' : job.mode === 'revert' ? 'bring back generation #' + job.revert + ' of ' : job.mode === 'resume' ? 'resume ' : 'generate ') + job.keys.length + (job.keys.length === 1 ? ' asset' : ' assets') +
       (job.project ? ' in ' + job.project : '');
     const last = el('span', 'last', what + (job.messages.length ? ' — ' + job.messages[job.messages.length - 1].trim() : ''));
     last.title = job.keys.join('\\n');
@@ -697,15 +711,16 @@ function budgetLine() {
 
 // The confirm step: what will be sent, what it is estimated to cost, and what
 // this session may still spend. Mirrors gen's "Spend … on N asset(s)?" prompt.
-function generateDialog(items, { project = null, force = false, resume = false, refresh = false, restore = false } = {}) {
+function generateDialog(items, { project = null, force = false, resume = false, refresh = false, restore = false, revert = null, generation = null } = {}) {
   const host = $('dialog-host');
   host.textContent = '';
   const wrap = el('div', 'dialog');
   const form = el('form');
   const noun = items.length + (items.length === 1 ? ' asset' : ' assets');
-  const free = resume || refresh || restore;
+  const free = resume || refresh || restore || revert !== null;
   const replacing = items.filter((i) => i.state === 'orphaned' && i.outputs.every((o) => o.exists) || i.state === 'untracked');
   form.append(el('h3', null, refresh ? 'Pull upstream changes for ' + noun
+    : revert !== null ? 'Bring back generation #' + revert + ' of ' + items[0].key
     : restore ? 'Restore ' + noun
     : resume ? 'Resume ' + noun
     : (force ? 'Regenerate ' : 'Generate ') + noun));
@@ -727,6 +742,10 @@ function generateDialog(items, { project = null, force = false, resume = false, 
   const sum = el('div', 'sum');
   if (refresh) {
     sum.append(el('div', null, 'Re-downloads each object from the provider and replaces the local file only when the object changed upstream — for example after editing it in the provider\u2019s own editor. Unchanged objects are left alone; a file you changed locally is refused. Nothing is submitted.'));
+  } else if (revert !== null) {
+    sum.append(el('div', null, 'The current generation moves into this asset\u2019s history and generation #' + revert + ' becomes current again: its object, hashes, and cost are recorded as this generation, and its bytes are written back ' +
+      (generation && generation.cached ? 'from the local cache.' : 'by re-downloading them from the provider.') + ' Nothing is generated; nothing upstream changes. Undo it from the same list.'));
+    if (generation && generation.promptDiffers) sum.append(el('div', 'warn', 'That generation was made with a different prompt than the current one; the record will show it as stale until the manifest matches or it is regenerated.'));
   } else if (restore) {
     sum.append(el('div', null, 'Puts the recorded bytes back on disk from the local cache or the provider object. Nothing is generated or submitted.'));
     if (force && replacing.length) sum.append(el('div', 'warn', 'The file on disk was changed after PixelKiln wrote it. Restoring discards that change. To keep it instead, cancel and use Edit by hand or Edit in browser first: the edit is copied beside the generated file, and the record stays intact.'));
@@ -748,7 +767,7 @@ function generateDialog(items, { project = null, force = false, resume = false, 
   }
   form.append(sum);
   const actions = el('div', 'actions');
-  const go = el('button', 'primary', refresh ? 'Pull changes' : restore ? (force && replacing.length ? 'Restore and discard my change' : 'Restore') : resume ? 'Resume' : force && replacing.length ? 'Generate and replace' : 'Generate');
+  const go = el('button', 'primary', refresh ? 'Pull changes' : revert !== null ? 'Bring it back' : restore ? (force && replacing.length ? 'Restore and discard my change' : 'Restore') : resume ? 'Resume' : force && replacing.length ? 'Generate and replace' : 'Generate');
   go.type = 'submit';
   const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { host.textContent = ''; };
   const msg = el('span', 'msg');
@@ -764,6 +783,7 @@ function generateDialog(items, { project = null, force = false, resume = false, 
       if (resume) body.resume = true;
       if (refresh) body.refresh = true;
       if (restore) body.restore = true;
+      if (revert !== null) body.revert = revert;
       const job = await postGenerate(body);
       host.textContent = '';
       GEN.jobs.unshift(job);
@@ -1392,6 +1412,54 @@ function candidatesControl(style) {
   wrap.append(input, save, cancel, note);
   setTimeout(() => input.focus(), 0);
   return wrap;
+}
+
+// The generations this one replaced: what the lockfile still remembers, with
+// thumbnails from the content cache while the bytes are there, and a way back.
+function historySection(item) {
+  const limit = projectOf(item)?.historyLimit;
+  if (!item.history.length && !(limit > 0 && item.status === 'downloaded')) return null;
+  const s = el('section', 'meta');
+  s.append(el('h3', null, item.history.length ? 'Previous generations (' + item.history.length + ')' : 'Previous generations'));
+  if (!item.history.length) {
+    s.append(el('div', 'state-dim', 'None yet. A regeneration keeps the generation it replaces — up to ' + limit + ' per asset (PIXELKILN_HISTORY, or the manifest\u2019s history) — so it can be brought back from here.'));
+    return s;
+  }
+  const list = el('div', 'versions');
+  const job = GENERATION ? activeJobFor(item) : null;
+  for (const g of item.history) {
+    const v = el('div', 'version');
+    const thumb = el('div', 'thumb');
+    const first = g.outputs[0];
+    if (first && first.url) { const img = el('img'); img.src = first.url; img.alt = 'generation #' + g.index; thumb.append(img); }
+    else thumb.append(el('span', null, g.cached ? '' : 'not cached'));
+    const facts = el('div', 'facts');
+    const head = el('div');
+    head.append(el('b', null, '#' + g.index), document.createTextNode(' · ' + fmtWhen(g.downloadedAt || g.submittedAt) + ' · ' + fmtCost(g.costUnit, g.cost) +
+      (g.outputs.length > 1 ? ' · ' + g.outputs.length + ' files' : '')));
+    facts.append(head);
+    const prompt = el('div', 'prompt' + (g.promptDiffers ? ' differs' : ''), (g.promptDiffers ? 'prompt: ' : 'same prompt: ') + g.prompt);
+    prompt.title = g.prompt;
+    facts.append(prompt);
+    const meta = el('div', 'meta');
+    meta.append(document.createTextNode((first ? first.sha256.slice(0, 12) + '\u2026' : '') + (g.cached ? ' · bytes cached locally' : ' · not in the local cache; a restore re-downloads it')));
+    if (g.upstreamUrl) { const a = el('a', null, 'open in ' + item.provider + ' \u2197'); a.href = g.upstreamUrl; a.target = '_blank'; a.rel = 'noopener'; meta.append(document.createTextNode(' · '), a); }
+    facts.append(meta);
+    const acts = el('div', 'acts');
+    if (GENERATION) {
+      const b = el('button', null, 'Restore this one \u00b7 no cost'); b.type = 'button';
+      b.disabled = !!job;
+      b.title = job ? 'Wait for the running job to finish' : 'The current generation moves into history; this one becomes current and its bytes are written back';
+      b.onclick = () => generateDialog([item], { project: item.project, revert: String(g.index), generation: g });
+      acts.append(b);
+    }
+    v.append(thumb, facts, acts);
+    list.append(v);
+  }
+  s.append(list);
+  s.append(el('div', 'state-dim', 'Keeping up to ' + limit + ' per asset; a restore moves the current generation into this list, so it can be undone the same way.' +
+    (GENERATION ? '' : ' Restoring needs the gallery started with --budget (any amount; nothing is spent).')));
+  return s;
 }
 
 function upstreamSection(item) {
@@ -2218,6 +2286,8 @@ function renderDrawer() {
   if (hand) body.append(hand);
   const upstream = upstreamSection(item);
   if (upstream) body.append(upstream);
+  const versions = historySection(item);
+  if (versions) body.append(versions);
 
   if (item.revision || item.revisionParentKey) {
     const { s, dl } = section('Lineage');

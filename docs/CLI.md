@@ -147,6 +147,39 @@ unless `--force` says to: `restore --force` puts the recorded bytes back over
 a file that was changed after download (an `orphaned` plan entry), discarding
 that change — copy it aside, or declare it with [`edit`](#edit), first.
 
+```bash
+pixelkiln restore --only anvil --style base --generation 1
+pixelkiln restore --only anvil --style base --generation d14b73af
+```
+
+`--generation` brings a replaced generation back instead: `1` is the most
+recently replaced (see [`history`](#history)), or give a prefix of one of its
+output hashes. The current generation moves into the asset's history, the
+chosen one becomes current — its object id, hashes, prompt, and cost are the
+record again — and its bytes are written back from the local content cache or,
+failing that, re-downloaded from its durable provider reference. Nothing is
+generated and nothing upstream changes, so a restore can be undone the same
+way. The file being replaced is the outgoing generation's own bytes, so no
+`--force` is needed unless it was changed by hand since. Works on one asset at
+a time.
+
+### `history`
+
+```bash
+pixelkiln history
+pixelkiln history --only anvil --style base
+pixelkiln history --json
+```
+
+List, per asset, the current generation and the ones it replaced — hash,
+download time, object id, and whether the prompt differed — newest first.
+`--json` prints the records as the lockfile keeps them. A regeneration keeps
+the generation it replaces up to a limit: `PIXELKILN_HISTORY` in the
+environment (5 unless set, `0` to keep none) as the personal default, which a
+manifest's top-level `history` overrides for that project. Bytes of every
+kept generation survive `cache --prune`; the provider objects were never
+deleted. Restore one with [`restore --generation`](#restore).
+
 The paid-work states have one safe next step:
 
 | Lock state | Resume command |
@@ -353,6 +386,12 @@ and, for a changed file, **Regenerate**; both replacements say what they
 discard and ask first, and the way to keep the change is **Edit by hand** or
 **Edit in browser**, which copies it beside the record. An `untracked` file
 can be replaced by a generation the same way.
+
+A record's **Previous generations** lists what its regenerations replaced —
+thumbnail from the local cache, date, cost, prompt when it differed, object
+link — and **Restore this one** brings one back at no cost, the page's form of
+[`restore --generation`](#restore). Any `--budget` (even `0`) enables it; the
+current generation moves into the list so the restore can be undone.
 
 `--budget <n|provider=n>` enables generation from the page under that session
 ceiling. It is the same `--budget` `gen` takes: one unkeyed amount when a run
@@ -745,6 +784,7 @@ Print the package version. `-v` is an alias.
 | `--reviewer <name>` | refine approve | Human reviewer stored in the quality companion. |
 | `--note <text>` | refine approve | Optional review note stored in the quality companion. |
 | `--model-root <path>` | recipe verify | ComfyUI `models` directory. Enables streamed hash checks for every external model declared by the recipe. |
+| `--generation <n\|hash>` | restore | Bring a replaced generation back: `1` is the most recently replaced, or a prefix of one of its output hashes. One asset at a time. |
 
 ## Exit and output contract
 

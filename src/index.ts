@@ -72,6 +72,7 @@ export {
   type BuildWorkspaceGalleryOptions,
   type GalleryBuild,
   type GalleryEditMeta,
+  type GalleryGeneration,
   type GalleryItem,
   type GalleryMedia,
   type GalleryOutput,
@@ -104,6 +105,18 @@ export {
   type HandEditSaveInput,
   type HandEditStart,
 } from "./pipeline/hand-edit.ts"
+export {
+  historyAfterReplacing,
+  historyLimit,
+  HISTORY_ENV,
+  pickHistory,
+  referencedHashes,
+  retireGeneration,
+  revertGeneration,
+  type HistoryPick,
+  type RevertOptions,
+  type RevertResult,
+} from "./pipeline/history.ts"
 export {
   EDITOR_PIN,
   EDITOR_RELEASE_BASE,

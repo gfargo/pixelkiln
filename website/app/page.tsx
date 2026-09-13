@@ -152,7 +152,7 @@ export default function Home() {
             <span>generation providers</span>
           </div>
           <div>
-            <strong>30</strong>
+            <strong>31</strong>
             <span>composable commands</span>
           </div>
           <div>
@@ -580,6 +580,7 @@ export default function Home() {
                 <li><span>✓</span> Remote identity saved before polling</li>
                 <li><span>✓</span> Content-addressed local recovery cache</li>
                 <li><span>✓</span> Hand edits kept beside the generated file</li>
+                <li><span>✓</span> Replaced generations kept, restorable at no cost</li>
                 <li><span>✓</span> Manual-edit and overwrite protection</li>
                 <li><span>✓</span> Transactional atlas and export writes</li>
               </ul>
