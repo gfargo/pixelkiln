@@ -1,3 +1,10 @@
+## [0.32.1](https://github.com/gfargo/pixelkiln/compare/v0.32.0...v0.32.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* **pixellab:** link objects to /create-object and tile sets to /maps/tiles ([#108](https://github.com/gfargo/pixelkiln/issues/108)) ([a3245cb](https://github.com/gfargo/pixelkiln/commit/a3245cb35116f956213b2c7741dcc34c9a8e003a))
+
 # [0.32.0](https://github.com/gfargo/pixelkiln/compare/v0.31.0...v0.32.0) (2026-09-12)
 
 
