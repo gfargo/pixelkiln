@@ -116,8 +116,10 @@ describe("fetch --refresh", () => {
 
 describe("upstream objects in the gallery", () => {
   it("links PixelLab objects and marks refreshable work", async () => {
-    expect(pixelLabObjectUrl("map", "abc")).toBe("https://www.pixellab.ai/objects/abc")
-    expect(pixelLabObjectUrl("1dir", "a b")).toBe("https://www.pixellab.ai/objects/a%20b")
+    expect(pixelLabObjectUrl("map", "abc")).toBe("https://www.pixellab.ai/create-object/abc")
+    expect(pixelLabObjectUrl("1dir", "a b")).toBe("https://www.pixellab.ai/create-object/a%20b")
+    expect(pixelLabObjectUrl("tiles", "set-1")).toBe("https://www.pixellab.ai/maps/tiles/set-1")
+    expect(pixelLabObjectUrl("tiles", "set-1#3")).toBe("https://www.pixellab.ai/maps/tiles/set-1")
     expect(pixelLabObjectUrl("pixflux", "abc")).toBeNull()
     expect(pixelLabObjectUrl("map", null)).toBeNull()
 
@@ -126,7 +128,7 @@ describe("upstream objects in the gallery", () => {
     upsert(lock, lockKey("base", "anvil"), { provider: "pixellab", objectId: "obj-42" })
     const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
     const anvil = snapshot.items.find((item) => item.key === "base/anvil")!
-    expect(anvil.upstreamUrl).toBe("https://www.pixellab.ai/objects/obj-42")
+    expect(anvil.upstreamUrl).toBe("https://www.pixellab.ai/create-object/obj-42")
     expect(anvil.refreshable).toBe(true)
     const hammer = snapshot.items.find((item) => item.key === "base/hammer")!
     expect(hammer.upstreamUrl).toBeNull()

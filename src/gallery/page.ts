@@ -1355,9 +1355,11 @@ function upstreamSection(item) {
   if (item.upstreamUrl) {
     const a = el('a', null, 'Open in ' + item.provider + ' \u2197');
     a.href = item.upstreamUrl; a.target = '_blank'; a.rel = 'noopener';
-    row(dl, 'object', a);
+    const tiles = item.generator === 'tiles';
+    row(dl, tiles ? 'tile set' : 'object', a);
     row(dl, 'note', item.provider === 'pixellab'
-      ? 'The account object this generation came from. Edit it there with PixelLab\u2019s editor, then pull the changes back here; the lockfile records the new bytes as this generation.'
+      ? (tiles ? 'The tile set this generation was chosen from. Edit it there with PixelLab\u2019s editor, then pull the changes back here; the lockfile records the new bytes as this generation.'
+        : 'The account object this generation came from. Edit it there with PixelLab\u2019s editor, then pull the changes back here; the lockfile records the new bytes as this generation.')
       : 'The provider\u2019s page for this object.');
   }
   s.append(dl);

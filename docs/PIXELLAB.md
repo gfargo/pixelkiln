@@ -99,7 +99,8 @@ objects.
 
 A `map` or `1dir` generation is an object in your PixelLab account, and the
 web app can edit it in place with its built-in editor. `pixelkiln gallery`
-links each such record to the object (`https://www.pixellab.ai/objects/<id>`),
+links each such record to the object (`https://www.pixellab.ai/create-object/<id>`)
+and a `tiles` record to its set (`https://www.pixellab.ai/maps/tiles/<id>`),
 and `pixelkiln fetch --refresh --only <asset>` pulls the edited bytes back
 down: the local file is replaced only if the object changed upstream and the
 local file is still exactly what PixelKiln wrote, and the lockfile records the
