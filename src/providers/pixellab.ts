@@ -22,15 +22,23 @@ import type { BalanceInfo, CostEstimate, JobState, PollContext, Provider, RateLi
  * returns bytes inline instead of a job id.
  */
 /**
- * Where a generated object can be opened in the PixelLab web app — for a
- * look, or for a hand edit in its built-in editor, after which
- * `pixelkiln fetch --refresh` pulls the changed bytes back down. Only
- * generators that create an account object have a page; pixflux returns an
- * inline image and keeps no object to open.
+ * Where a generation can be opened in the PixelLab web app — for a look, or
+ * for a hand edit in its built-in editor, after which `pixelkiln fetch
+ * --refresh` pulls the changed bytes back down. A `map` or `1dir` object has
+ * a page at `/create-object/<id>`; a tile set at `/maps/tiles/<set id>` (a
+ * chosen variation records `<set id>#<index>`, and the page is the set's).
+ * pixflux returns an inline image and keeps no object to open.
  */
 export function pixelLabObjectUrl(generator: Generator, objectId: string | null): string | null {
-  if (!objectId || (generator !== "map" && generator !== "1dir")) return null
-  return `https://www.pixellab.ai/objects/${encodeURIComponent(objectId)}`
+  if (!objectId) return null
+  if (generator === "map" || generator === "1dir") {
+    return `https://www.pixellab.ai/create-object/${encodeURIComponent(objectId)}`
+  }
+  if (generator === "tiles") {
+    const setId = objectId.split("#")[0]!
+    return setId ? `https://www.pixellab.ai/maps/tiles/${encodeURIComponent(setId)}` : null
+  }
+  return null
 }
 
 export class PixelLabProvider implements Provider {
