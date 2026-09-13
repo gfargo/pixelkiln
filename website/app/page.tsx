@@ -40,7 +40,7 @@ export default function Home() {
       <section className="hero shell">
         <div className="hero-copy">
           <p className="eyebrow">
-            <span className="status-dot" /> Generated pixel art without guesswork
+            <span className="status-dot" /> Generated pixel art, without the guesswork
           </p>
           <h1>
             Fire once.
@@ -60,7 +60,7 @@ export default function Home() {
               section="hero"
               href="/docs/getting-started"
             >
-              Read the quickstart <span aria-hidden="true">→</span>
+              Read the quickstart
             </TrackedLink>
             <TrackedLink
               className="button button-secondary"
@@ -169,7 +169,7 @@ export default function Home() {
 
         <section className="workflow-section shell" id="workflow">
           <div className="section-heading">
-            <p className="eyebrow">Four steps, one committed manifest</p>
+            <p className="eyebrow">Four steps from one committed manifest</p>
             <h2>Declare it. Price it.<br />Review it. Ship it.</h2>
           </div>
           <div className="workflow-grid">
@@ -238,11 +238,11 @@ export default function Home() {
                 with <code>fetch --refresh</code>.
               </p>
               <div className="provider-status" aria-label="Current provider support">
-                <span><i className="status-dot" /> PixelLab · production</span>
-                <span><i /> Retro Diffusion · experimental</span>
-                <span><i /> ComfyUI · experimental</span>
-                <span><i /> Scenario · experimental</span>
-                <span><i /> FakeProvider · tests</span>
+                <span><i className="status-dot" /> PixelLab <em>production</em></span>
+                <span><i /> Retro Diffusion <em>experimental</em></span>
+                <span><i /> ComfyUI <em>experimental</em></span>
+                <span><i /> Scenario <em>experimental</em></span>
+                <span><i /> FakeProvider <em>tests</em></span>
               </div>
               <p className="provider-note">
                 PixelLab has live coverage for generation and account recovery.
@@ -257,16 +257,16 @@ export default function Home() {
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
-                  Compare providers →
+                  Compare providers
                 </TrackedLink>
                 <TrackedLink className="text-link" id="review_provider_benchmark" section="review" href="/docs/provider-benchmark">
-                  See the environment benchmark →
+                  See the environment benchmark
                 </TrackedLink>
                 <TrackedLink className="text-link" id="review_gallery_docs" section="review" href="/docs/cli#gallery">
-                  Browse the gallery command →
+                  Browse the gallery command
                 </TrackedLink>
                 <TrackedLink className="text-link" id="review_edit_docs" section="review" href="/docs/getting-started#touch-art-up-by-hand">
-                  Touch art up by hand →
+                  Touch art up by hand
                 </TrackedLink>
                 <TrackedLink
                   className="text-link"
@@ -282,7 +282,7 @@ export default function Home() {
             <div className="review-visuals">
               <figure className="review-visual">
                 <div className="review-window-bar">
-                  <span>localhost · pixelkiln pick</span>
+                  <span>localhost <code>pixelkiln pick</code></span>
                   <span>human review</span>
                 </div>
                 <Image
@@ -292,11 +292,11 @@ export default function Home() {
                   height={720}
                   sizes="(max-width: 980px) 100vw, 56vw"
                 />
-                <figcaption>Actual local review UI · generated brand sprites · no model selects for you</figcaption>
+                <figcaption>The local review page with generated brand sprites. No model chooses for you.</figcaption>
               </figure>
               <figure className="review-visual">
                 <div className="review-window-bar">
-                  <span>localhost · pixelkiln gallery</span>
+                  <span>localhost <code>pixelkiln gallery</code></span>
                   <span>provenance</span>
                 </div>
                 <Image
@@ -306,11 +306,11 @@ export default function Home() {
                   height={720}
                   sizes="(max-width: 980px) 100vw, 56vw"
                 />
-                <figcaption>Actual local gallery · the environment benchmark across three providers · every record one click away</figcaption>
+                <figcaption>The local gallery on the environment benchmark, three providers in one view, every record a click away.</figcaption>
               </figure>
               <figure className="review-visual">
                 <div className="review-window-bar">
-                  <span>localhost · pixelkiln gallery --edit</span>
+                  <span>localhost <code>pixelkiln gallery --edit</code></span>
                   <span>hand edit</span>
                 </div>
                 <Image
@@ -320,7 +320,7 @@ export default function Home() {
                   height={720}
                   sizes="(max-width: 980px) 100vw, 56vw"
                 />
-                <figcaption>Actual in-browser editor · Pixelorama, pinned and hash-verified · saves beside the generated file, never over it</figcaption>
+                <figcaption>The in-browser editor, a pinned and hash-verified Pixelorama. It saves beside the generated file, never over it.</figcaption>
               </figure>
             </div>
           </div>
@@ -329,7 +329,6 @@ export default function Home() {
         <section className="provider-showcase-section shell" id="providers">
           <div className="section-heading split-heading provider-showcase-heading">
             <div>
-              <p className="eyebrow">Provider results</p>
               <h2>Real runs.<br />Different pixels.</h2>
             </div>
             <p className="section-deck">
@@ -341,8 +340,8 @@ export default function Home() {
               environment benchmark. A manifest <code>style.quality</code> profile
               can apply the same offline palette and approval gate after any
               supported single-image provider or an atomic ComfyUI frame set.
-              ComfyUI is also the first adapter for controlled revisions:
-              parent and mask bytes are hashed before a workflow can run.
+              ComfyUI is also the first adapter for controlled revisions. It
+              hashes the parent and mask bytes before a workflow can run.
             </p>
           </div>
 
@@ -364,7 +363,7 @@ export default function Home() {
                     height={384}
                     sizes="(max-width: 680px) 50vw, 280px"
                   />
-                  <figcaption>Large building · map</figcaption>
+                  <figcaption>Large building, map generator</figcaption>
                 </figure>
                 <figure>
                   <Image
@@ -374,7 +373,7 @@ export default function Home() {
                     height={256}
                     sizes="(max-width: 680px) 50vw, 280px"
                   />
-                  <figcaption>Scenic background · Pixflux</figcaption>
+                  <figcaption>Scenic background, pixflux generator</figcaption>
                 </figure>
               </div>
               <p>
@@ -389,7 +388,7 @@ export default function Home() {
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_pixellab_setup" section="provider_showcase" href="/docs/pixellab">
-                  Set up PixelLab →
+                  Set up PixelLab
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_pixellab_site" section="provider_showcase" href="https://www.pixellab.ai/" external>
                   Visit PixelLab ↗
@@ -414,7 +413,7 @@ export default function Home() {
                     height={384}
                     sizes="(max-width: 680px) 50vw, 280px"
                   />
-                  <figcaption>Large building · RD Plus</figcaption>
+                  <figcaption>Large building, RD Plus</figcaption>
                 </figure>
                 <figure>
                   <Image
@@ -424,7 +423,7 @@ export default function Home() {
                     height={256}
                     sizes="(max-width: 680px) 50vw, 280px"
                   />
-                  <figcaption>Scenic background · RD Plus</figcaption>
+                  <figcaption>Scenic background, RD Plus</figcaption>
                 </figure>
               </div>
               <p>
@@ -438,7 +437,7 @@ export default function Home() {
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_retro_setup" section="provider_showcase" href="/docs/retro-diffusion">
-                  Set up Retro Diffusion →
+                  Set up Retro Diffusion
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_retro_site" section="provider_showcase" href="https://www.retrodiffusion.ai/" external>
                   Visit Retro Diffusion ↗
@@ -464,7 +463,7 @@ export default function Home() {
                     sizes="(max-width: 680px) 50vw, 280px"
                     unoptimized
                   />
-                  <figcaption>Refined · native 128×128 · 15 colors · transparent</figcaption>
+                  <figcaption>Refined to a native 128×128 grid, 15 colors, transparent</figcaption>
                 </figure>
                 <figure>
                   <Image
@@ -475,7 +474,7 @@ export default function Home() {
                     sizes="(max-width: 680px) 50vw, 280px"
                     unoptimized
                   />
-                  <figcaption>Refined · native 128×128 · 24 colors</figcaption>
+                  <figcaption>Refined to a native 128×128 grid, 24 colors</figcaption>
                 </figure>
               </div>
               <p>
@@ -494,13 +493,13 @@ export default function Home() {
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_comfyui_recipe" section="provider_showcase" href="/docs/recipes">
-                  Install tested recipe →
+                  Install tested recipe
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_comfyui_setup" section="provider_showcase" href="/docs/comfyui">
-                  Set up ComfyUI →
+                  Set up ComfyUI
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_comfyui_revisions" section="provider_showcase" href="/docs/revisions">
-                  Revise an existing asset →
+                  Revise an existing asset
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_comfyui_revision_smoke" section="provider_showcase" href="https://github.com/gfargo/pixelkiln/tree/main/benchmarks/provider-revisions/comfyui" external>
                   Inspect the revision smoke ↗
@@ -531,7 +530,7 @@ export default function Home() {
                     height={512}
                     sizes="(max-width: 680px) 100vw, 560px"
                   />
-                  <figcaption>Live smoke · raw 512×512 · opaque · 19,619 colors</figcaption>
+                  <figcaption>Live smoke test, raw 512×512, opaque, 19,619 colors</figcaption>
                 </figure>
               </div>
               <p>
@@ -547,7 +546,7 @@ export default function Home() {
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_scenario_setup" section="provider_showcase" href="/docs/scenario">
-                  Set up Scenario →
+                  Set up Scenario
                 </TrackedLink>
                 <TrackedLink className="text-link" id="showcase_scenario_smoke" section="provider_showcase" href="https://github.com/gfargo/pixelkiln/tree/main/benchmarks/provider-scenario-smoke" external>
                   Inspect the live smoke ↗
@@ -561,13 +560,13 @@ export default function Home() {
 
           <div className="provider-showcase-links">
             <TrackedLink className="text-link" id="showcase_mixed_providers" section="provider_showcase" href="/docs/mixed-providers">
-              Use several providers in one project →
+              Use several providers in one project
             </TrackedLink>
             <TrackedLink className="text-link" id="showcase_benchmark" section="provider_showcase" href="/docs/provider-benchmark">
-              Review the environment benchmark →
+              Review the environment benchmark
             </TrackedLink>
             <TrackedLink className="text-link" id="showcase_comparison" section="provider_showcase" href="/docs/provider-notes">
-              Compare provider capabilities →
+              Compare provider capabilities
             </TrackedLink>
           </div>
         </section>
@@ -575,7 +574,6 @@ export default function Home() {
         <section className="safety-section">
           <div className="shell safety-grid">
             <div className="section-heading safety-copy">
-              <p className="eyebrow">Keep the record after generation</p>
               <h2>Paid work needs a paper trail.</h2>
               <p className="section-deck">
                 Every provider object, prompt identity, output role, path, and
@@ -591,7 +589,7 @@ export default function Home() {
                 <li><span>✓</span> Transactional atlas and export writes</li>
               </ul>
               <TrackedLink className="text-link" id="safety_recovery" section="safety" href="/docs/recovery">
-                Explore recovery guarantees →
+                Explore recovery guarantees
               </TrackedLink>
             </div>
             <div className="lock-visual" aria-label="Example provenance lock entry">
@@ -609,8 +607,8 @@ export default function Home() {
     }]
   }
 }`}</code></pre>
-              <div className="lock-callout top"><span>01</span> paid-work identity</div>
-              <div className="lock-callout bottom"><span>02</span> exact output bytes</div>
+              <div className="lock-callout top"><span>◇</span> paid-work identity</div>
+              <div className="lock-callout bottom"><span>◇</span> exact output bytes</div>
             </div>
           </div>
         </section>
@@ -618,14 +616,13 @@ export default function Home() {
         <section className="capabilities-section shell">
           <div className="section-heading split-heading">
             <div>
-              <p className="eyebrow">What happens around generation</p>
               <h2>The prompt is only the start.</h2>
             </div>
             <p className="section-deck">PixelKiln handles the work between a prompt and the files your game loads.</p>
           </div>
           <div className="capability-grid">
             <article className="capability-card large">
-              <span className="card-index">01 / PLAN</span>
+              <span className="card-index">Plan</span>
               <h3>Know the bill before the fire starts.</h3>
               <p>Offline diffs distinguish new spend from zero-cost recovery. Copy the estimate into a hard budget ceiling.</p>
               <div className="budget-meter">
@@ -634,19 +631,19 @@ export default function Home() {
               </div>
             </article>
             <article className="capability-card">
-              <span className="card-index">02 / RECOVER</span>
+              <span className="card-index">Recover</span>
               <h3>Restore before you regenerate.</h3>
               <p>Rebuild missing output from trusted cache bytes or a provider URL without new generation cost. A regeneration keeps the version it replaced, so the old one is one command away.</p>
-              <div className="micro-state"><span className="status-dot" /> recoverable · 0 gen</div>
+              <div className="micro-state"><span className="status-dot" /> recoverable, 0 generations</div>
             </article>
             <article className="capability-card">
-              <span className="card-index">03 / AUDIT</span>
+              <span className="card-index">Audit</span>
               <h3>Turn accepted pixels into a release gate.</h3>
               <p>Declare the final palette and grid threshold, record human approval, and block stale or unreviewed art in CI.</p>
               <div className="audit-bars" aria-hidden="true"><span /><span /><span /><span /><span /></div>
             </article>
             <article className="capability-card large">
-              <span className="card-index">04 / PACKAGE</span>
+              <span className="card-index">Package</span>
               <h3>Build the files your engine expects.</h3>
               <p>Pack sheets, mount stable cells, and export lossless generic, Tiled, or Godot terrain metadata with provenance.</p>
               <div className="format-list"><span>PNG</span><span>JSON</span><span>TILED</span><span>GODOT 4</span></div>
@@ -674,10 +671,10 @@ export default function Home() {
             </div>
             <div className="review-links">
               <TrackedLink className="text-link" id="generator_compare" section="generator" href="/docs/generators">
-                Compare generator capabilities →
+                Compare generator capabilities
               </TrackedLink>
               <TrackedLink className="text-link" id="provider_compare" section="generator" href="/docs/provider-notes">
-                Compare providers →
+                Compare providers
               </TrackedLink>
             </div>
           </div>
@@ -686,7 +683,6 @@ export default function Home() {
         <section className="install-section shell">
           <div className="install-panel">
             <div>
-              <p className="eyebrow">Official agent skill · one command</p>
               <h2>Teach your agent the PixelKiln workflow.</h2>
               <p>The skill tells compatible agents when to plan, ask for a budget, restore existing work, stop for human review, and verify output.</p>
             </div>
@@ -699,7 +695,7 @@ export default function Home() {
                   section="install"
                   href="/docs/agents"
                 >
-                  Agent setup →
+                  Agent setup
                 </TrackedLink>
                 <TrackedLink
                   className="button button-secondary"
@@ -707,7 +703,7 @@ export default function Home() {
                   section="install"
                   href="/docs/getting-started"
                 >
-                  Library quickstart →
+                  Library quickstart
                 </TrackedLink>
               </div>
             </div>

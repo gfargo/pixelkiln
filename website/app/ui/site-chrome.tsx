@@ -37,7 +37,7 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
         section="header"
         href="/docs/getting-started"
       >
-        Start building <span aria-hidden="true">↗</span>
+        Start building
       </TrackedLink>
     </header>
   );
@@ -92,7 +92,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="shell footer-base">
-        <span>MIT licensed · pre-1.0</span>
+        <span>MIT licensed, pre-1.0</span>
         <span>Built for game-asset pipelines</span>
       </div>
     </footer>

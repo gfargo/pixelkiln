@@ -77,6 +77,8 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   padding-block: 86px 104px;
 }
+/* A small mono line above a heading, only where it says something the heading
+   does not. Sentence case: it is a sentence, not a badge. */
 .eyebrow {
   margin: 0 0 30px;
   display: flex;
@@ -84,10 +86,8 @@ a { color: inherit; text-decoration: none; }
   gap: 10px;
   color: var(--cream-muted);
   font-family: var(--font-geist-mono), monospace;
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
 }
 .status-dot {
   width: 7px;
@@ -136,9 +136,7 @@ a { color: inherit; text-decoration: none; }
   margin-top: 34px;
   color: #908877;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 11px;
 }
 .trust-line span::before { content: "◇"; margin-right: 7px; color: var(--ember); }
 
@@ -277,10 +275,8 @@ a { color: inherit; text-decoration: none; }
 .proof-grid span {
   color: #857e70;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
 }
 .proof-grid p {
   align-self: center;
@@ -311,6 +307,7 @@ a { color: inherit; text-decoration: none; }
   gap: 80px;
   align-items: end;
 }
+/* Links read as links by their underline, not by an arrow glued to the text. */
 .text-link {
   display: inline-flex;
   margin-top: 30px;
@@ -318,8 +315,12 @@ a { color: inherit; text-decoration: none; }
   font-family: var(--font-geist-mono), monospace;
   font-size: 11px;
   font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 156, 95, 0.35);
+  text-underline-offset: 4px;
+  transition: color 160ms ease, text-decoration-color 160ms ease;
 }
-.text-link:hover { color: var(--cream); }
+.text-link:hover { color: var(--cream); text-decoration-color: var(--cream); }
 
 .workflow-section { padding-block: 150px; }
 .workflow-grid {
@@ -392,11 +393,10 @@ a { color: inherit; text-decoration: none; }
   margin-top: 30px;
   color: #aaa293;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 9px;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+  font-size: 11px;
 }
 .provider-status span { display: flex; align-items: center; gap: 10px; }
+.provider-status em { font-style: normal; font-size: 10px; color: #7f786b; border: 1px solid #3a352c; padding: 1px 6px; }
 .provider-status i { width: 7px; height: 7px; border: 1px solid #6f685d; }
 .provider-status i.status-dot { border: 0; }
 .provider-note {
@@ -425,11 +425,10 @@ a { color: inherit; text-decoration: none; }
   border-bottom: 1px solid var(--line);
   color: #6f685d;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 8px;
-  letter-spacing: .07em;
-  text-transform: uppercase;
+  font-size: 10px;
 }
 .review-window-bar span:last-child { color: var(--lime); }
+.review-window-bar code { font: inherit; color: #a39b8c; margin-left: 8px; }
 .review-visual > img {
   width: 100%;
   height: auto;
@@ -438,10 +437,10 @@ a { color: inherit; text-decoration: none; }
 .review-visual figcaption {
   padding: 12px 15px;
   border-top: 1px solid var(--line);
-  color: #655f54;
+  color: #7d766a;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 8px;
-  text-transform: uppercase;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .provider-showcase-section { padding-block: 150px; }
@@ -527,11 +526,10 @@ a { color: inherit; text-decoration: none; }
   padding: 10px 11px;
   border-top: 1px solid var(--line);
   background: #12100d;
-  color: #716a5f;
+  color: #857e70;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1.4;
-  text-transform: uppercase;
 }
 .provider-card > p {
   min-height: 68px;
@@ -552,7 +550,6 @@ a { color: inherit; text-decoration: none; }
 .provider-card dt {
   color: #6f685d;
   font-family: var(--font-geist-mono), monospace;
-  text-transform: uppercase;
 }
 .provider-card dd { margin: 0; color: #c3baaa; }
 .provider-card-links { display: flex; flex-wrap: wrap; gap: 24px; }
@@ -613,7 +610,6 @@ a { color: inherit; text-decoration: none; }
   color: #a39a8b;
   font-family: var(--font-geist-mono), monospace;
   font-size: 8px;
-  text-transform: uppercase;
 }
 .lock-callout span { color: var(--ember-light); }
 .lock-callout.top { top: 105px; }
@@ -633,12 +629,12 @@ a { color: inherit; text-decoration: none; }
   padding: 38px;
   background: #1b1913;
 }
-.card-index { color: #6e685d; font-family: var(--font-geist-mono), monospace; font-size: 9px; letter-spacing: 0.08em; }
+.card-index { color: #8a8273; font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 600; }
 .capability-card h3 { max-width: 500px; margin: 70px 0 18px; font-size: 30px; line-height: 1.1; letter-spacing: -0.045em; }
 .capability-card p { max-width: 500px; margin: 0; color: #968e7f; font-size: 13px; line-height: 1.7; }
 .capability-card.large { min-height: 390px; }
 .budget-meter { margin-top: 42px; }
-.budget-meter > div:first-child { display: flex; justify-content: space-between; color: #827b6e; font-family: var(--font-geist-mono), monospace; font-size: 9px; text-transform: uppercase; }
+.budget-meter > div:first-child { display: flex; justify-content: space-between; color: #827b6e; font-family: var(--font-geist-mono), monospace; font-size: 11px; }
 .budget-meter strong { color: var(--cream); }
 .meter-track { height: 7px; margin-top: 12px; background: #373228; }
 .meter-track span { display: block; width: 66.66%; height: 100%; background: var(--ember); }
@@ -661,7 +657,7 @@ a { color: inherit; text-decoration: none; }
   color: #9a9283;
   font-size: 13px;
 }
-.generator-row.header { min-height: 46px; color: #686257; font-family: var(--font-geist-mono), monospace; font-size: 8px; text-transform: uppercase; }
+.generator-row.header { min-height: 46px; color: #7a7367; font-family: var(--font-geist-mono), monospace; font-size: 11px; }
 .generator-row strong { color: var(--cream); font-family: var(--font-geist-mono), monospace; font-size: 14px; }
 .generator-row > span:last-child { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px; color: #b4ab9c; font-family: var(--font-geist-mono), monospace; font-size: 9px; }
 .generator-row i { display: block; min-width: 4px; height: 6px; background: var(--ember); }
@@ -715,7 +711,7 @@ a { color: inherit; text-decoration: none; }
 .footer-grid > div:first-child p { margin: 24px 0 0; color: #777064; font-size: 12px; }
 .footer-links { display: grid; grid-template-columns: repeat(2, 150px); gap: 40px; }
 .footer-links > div { display: flex; flex-direction: column; gap: 12px; font-size: 11px; }
-.footer-links span { margin-bottom: 7px; color: #5f5a50; font-family: var(--font-geist-mono), monospace; font-size: 8px; text-transform: uppercase; }
+.footer-links span { margin-bottom: 7px; color: #6f695d; font-family: var(--font-geist-mono), monospace; font-size: 11px; }
 .footer-links a { color: #a9a091; }
 .footer-links a:hover { color: var(--ember-light); }
 .footer-base { min-height: 64px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); color: #555046; font-family: var(--font-geist-mono), monospace; font-size: 8px; text-transform: uppercase; }
@@ -744,8 +740,7 @@ a { color: inherit; text-decoration: none; }
 .docs-featured strong { font-family: var(--font-geist-mono), monospace; font-size: 18px; }
 .docs-groups { margin-top: 105px; }
 .docs-group { display: grid; grid-template-columns: 190px 1fr; gap: 42px; padding-block: 55px; border-top: 1px solid var(--line-strong); }
-.docs-group-heading span { color: var(--ember-light); font-family: var(--font-geist-mono), monospace; font-size: 9px; }
-.docs-group-heading h2 { margin: 12px 0 0; font-size: 19px; }
+.docs-group-heading h2 { margin: 0; font-size: 19px; }
 .docs-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); }
 .docs-card { min-height: 190px; position: relative; padding: 28px; background: #1b1913; }
 .docs-card:hover { background: #211e17; }
