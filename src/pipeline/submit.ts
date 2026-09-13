@@ -10,6 +10,7 @@ import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
 import type { Lock, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
 import { requireRevisionReady } from "./revision.ts"
+import { historyAfterReplacing, historyLimit } from "./history.ts"
 
 /**
  * Two distinct limits, easy to conflate:
@@ -154,6 +155,9 @@ export async function submit(
     const supersededOutputs = previousEntry?.outputs.length
       ? previousEntry.outputs
       : previousEntry?.supersededOutputs ?? []
+    const submittedAt = resumesCheckpoint ? previousEntry!.submittedAt : new Date().toISOString()
+    // The generation being replaced is kept, not forgotten, so it can come back.
+    const history = historyAfterReplacing(previousEntry, historyLimit(loaded.manifest), submittedAt ?? new Date().toISOString())
 
     // Record intent before spending, so an interrupted run stays diagnosable.
     upsert(lock, key, {
@@ -188,9 +192,8 @@ export async function submit(
       providerMetadata: resumesCheckpoint ? previousEntry!.providerMetadata : {},
       sourceUrl: null,
       sourceUrls: [],
-      submittedAt: resumesCheckpoint
-        ? previousEntry!.submittedAt
-        : new Date().toISOString(),
+      submittedAt,
+      history,
       cost: estimate.amount,
       costUnit: estimate.unit,
       // Persist routing before the request starts. If the process stops while

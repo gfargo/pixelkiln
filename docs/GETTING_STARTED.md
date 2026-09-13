@@ -173,10 +173,16 @@ pixelkiln gallery --edit              # change prompts, sizes, tags, style field
 pixelkiln gallery --edit --budget 40  # …and generate, regenerate, and review from the page
 ```
 
-`--edit` rewrites the manifest only — the same edit you would make in a text
-editor, with the blast radius of a style-level change shown before you save —
-and `--budget` runs the same submit, poll, and fetch as `gen` under that
+`--edit` rewrites the manifest only. It is the same edit you would make in a
+text editor, with the blast radius of a style-level change shown before you
+save. `--budget` runs the same submit, poll, and fetch as `gen` under that
 session ceiling. Without a flag the page has no write route at all.
+
+Regenerating keeps the generation it replaces. The record's **Previous
+generations** lists them with thumbnails, and **Restore this one** swaps one
+back at no cost; `pixelkiln history` and `pixelkiln restore --generation <n>`
+do the same from the terminal. `PIXELKILN_HISTORY` sets how many are kept (5
+unless set) and a manifest's `history` overrides it per project.
 
 ## Touch art up by hand
 

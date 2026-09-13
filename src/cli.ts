@@ -46,6 +46,7 @@ import { createGalleryEditHandler } from "./gallery/edit.ts"
 import { createGenerateHandlers, type GalleryProjectContext } from "./gallery/generate.ts"
 import { createGalleryEditorHandlers } from "./gallery/editor.ts"
 import { editorStatus, installEditor, EditorInstallError } from "./editor/install.ts"
+import { historyLimit, revertGeneration } from "./pipeline/history.ts"
 import { EDITOR_PIN } from "./editor/pin.ts"
 import { detachHandEdit, openInEditor, startHandEdit } from "./pipeline/hand-edit.ts"
 import { scanAssets, buildManifest, writeManifestFile } from "./pipeline/init.ts"
@@ -303,6 +304,8 @@ interface Args {
   note?: string
   /** ComfyUI `models` directory used for offline recipe model verification. */
   modelRoot?: string
+  /** restore: a previous generation to bring back — 1-based, newest first, or an output hash prefix. */
+  generation?: string
   /** Subcommand for `quality`, `recipe`, `refine`, or `workspace`. */
   subcommand?: string
   /** Path to a workspace catalog. Defaults to `pixelkiln.workspace.json` in cwd. */
@@ -328,7 +331,7 @@ const VALUE_FLAGS = [
   "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma", "--workspace",
   "--provider", "--account", "--palette", "--fixer-python", "--fixer-revision", "--min-grid-confidence",
   "--reviewer", "--note",
-  "--model-root",
+  "--model-root", "--generation",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -338,7 +341,7 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "tools", "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
+  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -624,6 +627,7 @@ export function parseArgs(argv: string[]): Args {
     reviewer: get("--reviewer"),
     note: get("--note"),
     modelRoot: get("--model-root"),
+    generation: get("--generation"),
     subcommand,
     workspace: get("--workspace"),
     target,
@@ -691,7 +695,9 @@ Commands
   poll      Advance in-flight jobs to their settled state.
   pick      Open the contact sheet to choose among candidates.
   fetch     Download selected objects to their manifest paths.
-  restore   Re-download missing generated files without generating new art.
+  restore   Re-download missing generated files without generating new art;
+            --generation <n|hash> brings a previous generation back instead.
+  history   List the generations each asset has replaced and can restore.
   adopt     Match existing account objects to files already in the repo.
   accept    Keep existing art after a style reword — re-baseline, do not regenerate.
   salvage   Triage account objects no lockfile claims. Recovers usable art.
@@ -745,6 +751,7 @@ Options
   --reviewer <name>   refine approve: human reviewer recorded in provenance
   --note <text>       refine approve: optional review note
   --model-root <dir>  recipe verify: also hash required local model files
+  --generation <n|hash>  restore: the previous generation to bring back (1 = newest)
   --prune             cache: remove invalid/unreferenced local cache data
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
@@ -1600,6 +1607,40 @@ async function main() {
   const lock = await loadLock(args.lock)
   normalizeLockOutputPaths(lock, specs)
 
+  if (args.command === "history") {
+    const limit = historyLimit(loaded.manifest)
+    const selected = specs.map((spec) => ({ spec, entry: lock.entries[lockKey(spec.styleId, spec.assetId)] }))
+    if (args.json) {
+      log(JSON.stringify({
+        version: 1,
+        limit,
+        assets: selected.map(({ spec, entry }) => ({
+          key: lockKey(spec.styleId, spec.assetId),
+          current: entry ? { objectId: entry.objectId, outputs: entry.outputs, downloadedAt: entry.downloadedAt, cost: entry.cost, costUnit: entry.costUnit } : null,
+          history: entry?.history ?? [],
+        })),
+      }, null, 2))
+      return
+    }
+    log(`  keeping up to ${limit} replaced generation${limit === 1 ? "" : "s"} per asset` +
+      (loaded.manifest.history !== undefined ? " (manifest history)" : ` (${process.env.PIXELKILN_HISTORY ? "PIXELKILN_HISTORY" : "default; set PIXELKILN_HISTORY or manifest history"})`))
+    let shown = 0
+    for (const { spec, entry } of selected) {
+      if (!entry?.history?.length) continue
+      shown++
+      const key = lockKey(spec.styleId, spec.assetId)
+      log(`\n  ${key}`)
+      log(`    current  ${entry.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${entry.downloadedAt ?? ""}  ${entry.objectId ?? ""}`)
+      for (const [i, generation] of entry.history.entries()) {
+        const changed = generation.prompt !== entry.prompt ? "  (different prompt)" : ""
+        log(`    #${String(i + 1).padEnd(2)}      ${generation.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${generation.downloadedAt ?? ""}  ${generation.objectId ?? ""}${changed}`)
+      }
+    }
+    if (!shown) log(`  no asset has a previous generation recorded${selected.length ? "" : " (nothing selected)"}`)
+    else log(`\n  bring one back: pixelkiln restore --only <asset> --style <style> --generation <n|hash>`)
+    return
+  }
+
   if (args.command === "status") {
     const byStatus: Record<string, number> = {}
     for (const e of Object.values(lock.entries)) byStatus[e.status] = (byStatus[e.status] ?? 0) + 1
@@ -2192,6 +2233,28 @@ async function main() {
     args.command === "restore" || (args.command === "fetch" && !args.tag)
       ? "downloads"
       : "online"
+  if (args.command === "restore" && args.generation !== undefined) {
+    if (specs.length !== 1) {
+      throw new Error(
+        specs.length
+          ? `restore --generation works on one asset; --only/--style select ${specs.length}. Add --style or narrow --only.`
+          : "restore --generation matched no asset; pass --only <asset id> (and --style when it is in several styles).",
+      )
+    }
+    const spec = specs[0]!
+    const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
+    if (!entry) throw new Error(`${spec.styleId}/${spec.assetId} is not in the lockfile`)
+    const provider = createProvider(entry.provider, "downloads")
+    const result = await revertGeneration(provider, spec, lock, args.lock, {
+      generation: args.generation,
+      force: args.force,
+      onProgress: log,
+    })
+    log(`\n  restored generation #${result.index} of ${spec.styleId}/${spec.assetId}` +
+      `${result.restored.objectId ? ` (${result.restored.objectId})` : ""}; the replaced one is now #1 in its history`)
+    log(`  lockfile written: ${args.lock}`)
+    return
+  }
   const providers = new Map<string, Provider>()
   const providerFor = (id: string) => {
     let resolved = providers.get(id)

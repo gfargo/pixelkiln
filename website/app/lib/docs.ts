@@ -52,7 +52,7 @@ export const docs: DocEntry[] = [
   {
     slug: "cli",
     title: "CLI reference",
-    description: "Every command and flag — gallery, editing, the in-browser editor, automation, and exit behavior.",
+    description: "Every command and flag, including gallery, edit, history, tools, automation, and exit behavior.",
     file: "docs/CLI.md",
     group: "Start here",
   },
@@ -115,7 +115,7 @@ export const docs: DocEntry[] = [
   {
     slug: "recovery",
     title: "Recovery and account safety",
-    description: "Restore, cache, adopt, salvage, claims, and confirmed purge.",
+    description: "Restore, generation history, cache, adopt, salvage, claims, and confirmed purge.",
     file: "docs/RECOVERY.md",
     group: "Workflows",
   },

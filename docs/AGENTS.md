@@ -43,7 +43,10 @@ With the skill loaded, an agent should:
 10. When an asset declares `revision`, treat a blocked parent or mask as a hard
     dependency. Generate, fetch, refine, and approve the parent explicitly;
     never bypass the gate or approve it for the user.
-11. Answer "what has this project made?" with `pixelkiln gallery --json`, or open
+11. When the person wants an earlier result back, use `pixelkiln history` and
+    `restore --generation`; a regeneration keeps what it replaced, and a
+    restore costs nothing. Never spend to recover something the lockfile kept.
+12. Answer "what has this project made?" with `pixelkiln gallery --json`, or open
     `pixelkiln gallery` for the person. Leave `--edit`, `--budget`, and the
     in-browser editor to them: an agent changes the manifest directly and
     spends only through `gen`. For a hand touch-up, `pixelkiln edit --no-open`

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto"
 import { z } from "zod"
 import { fetchAssets } from "../pipeline/fetch.ts"
+import { revertGeneration } from "../pipeline/history.ts"
 import { buildPlan, type PlanGroup } from "../pipeline/plan.ts"
 import { poll } from "../pipeline/poll.ts"
 import { submit } from "../pipeline/submit.ts"
@@ -43,9 +44,11 @@ export interface GenerateJob {
    * cost; `refresh` re-pulls changed objects; `restore` puts the recorded
    * bytes back on disk from the cache or the provider, as `pixelkiln restore`.
    */
-  mode: "generate" | "resume" | "refresh" | "restore"
+  mode: "generate" | "resume" | "refresh" | "restore" | "revert"
   /** The job may replace a locally modified or untracked file, as `--force` does. */
   force: boolean
+  /** For `revert`: which replaced generation, as the request named it. */
+  revert: string | null
   phase: GeneratePhase
   startedAt: string
   finishedAt: string | null
@@ -122,11 +125,17 @@ export const GenerateRequestSchema = z
     refresh: z.boolean().optional(),
     /** Put recorded outputs back on disk from the cache or the provider, without generating. */
     restore: z.boolean().optional(),
+    /**
+     * Bring a replaced generation back: 1-based position in the record's
+     * history (newest first) or an output hash prefix. One key at a time.
+     */
+    revert: z.string().min(1).max(64).optional(),
   })
   .strict()
-  .refine((request) => [request.resume, request.refresh, request.restore].filter(Boolean).length <= 1, {
-    message: "resume, refresh, and restore are exclusive",
+  .refine((request) => [request.resume, request.refresh, request.restore, request.revert !== undefined].filter(Boolean).length <= 1, {
+    message: "resume, refresh, restore, and revert are exclusive",
   })
+  .refine((request) => request.revert === undefined || request.keys.length === 1, { message: "revert takes one key" })
 
 export class GenerateRequestError extends Error {
   constructor(message: string, readonly status: number = 400) {
@@ -276,6 +285,22 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
         await restore(job, ctx, specs)
         return
       }
+      if (job.mode === "revert") {
+        job.phase = "fetching"
+        const spec = specs[0]!
+        const entry = ctx.lock.entries[lockKey(spec.styleId, spec.assetId)]!
+        const provider = opts.providerFor(job.project ?? undefined, entry.provider)
+        const result = await revertGeneration(provider, spec, ctx.lock, ctx.lockPath, {
+          generation: job.revert!,
+          force: job.force,
+          onProgress: (line) => say(job, line),
+        })
+        job.counts.downloaded += result.downloaded
+        say(job, `restored generation #${result.index}${result.restored.objectId ? ` (${result.restored.objectId})` : ""}; the replaced one is now #1 in its history`)
+        job.phase = "done"
+        job.finishedAt = now().toISOString()
+        return
+      }
       if (job.mode === "generate") {
         job.phase = "submitting"
         for (const group of groups) {
@@ -352,8 +377,13 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
           }
         }
       }
+      if (request.revert !== undefined) {
+        const entry = ctx.lock.entries[request.keys[0]!]
+        if (!entry?.history?.length) throw new GenerateRequestError(`"${request.keys[0]}" has no previous generation recorded`)
+        if (entry.status !== "downloaded") throw new GenerateRequestError(`"${request.keys[0]}" is ${entry.status}; finish or fetch the current generation first`)
+      }
       let groups: PlanGroup[] = []
-      if (!request.resume && !request.refresh && !request.restore) {
+      if (!request.resume && !request.refresh && !request.restore && request.revert === undefined) {
         const plan = await buildPlan(specs, ctx.lock, { force: request.force })
         if (!plan.actionable.length) {
           const reasons = plan.items.map((item) => `${item.key}: ${item.state} — ${item.reason}`).slice(0, 5)
@@ -377,8 +407,9 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
         id: randomBytes(8).toString("hex"),
         project: request.project ?? null,
         keys: request.keys,
-        mode: request.refresh ? "refresh" : request.resume ? "resume" : request.restore ? "restore" : "generate",
+        mode: request.refresh ? "refresh" : request.resume ? "resume" : request.restore ? "restore" : request.revert !== undefined ? "revert" : "generate",
         force: Boolean(request.force),
+        revert: request.revert ?? null,
         phase: "queued",
         startedAt: now().toISOString(),
         finishedAt: null,
@@ -394,6 +425,8 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
         ? `checking ${request.keys.length} asset(s) upstream at no cost`
         : request.restore
         ? `restoring ${request.keys.length} asset(s) at no cost${request.force ? " (replacing modified files)" : ""}`
+        : request.revert !== undefined
+        ? `bringing back generation ${request.revert} of ${request.keys[0]} at no cost`
         : request.resume
         ? `resuming ${request.keys.length} asset(s) at no cost`
         : `generating ${groups.reduce((n, g) => n + g.actionable.length, 0)} asset(s): ` +

@@ -11,6 +11,7 @@ import {
 import { sha256 } from "../hash.ts"
 import type { Lock } from "../types.ts"
 import { mediaTypeFromExtension, validateMedia } from "../media.ts"
+import { referencedHashes } from "./history.ts"
 
 export interface ContentCacheIssue {
   name: string
@@ -73,9 +74,9 @@ export async function inspectCaches(
   }
   const contentDir = path.resolve(path.dirname(lockPath), ".pixelkiln", "cache")
   const remotePath = path.resolve(cachePathFor(lockPath))
-  const referenced = new Set(
-    Object.values(lock.entries).flatMap((entry) => entry.outputs.map((output) => output.sha256)),
-  )
+  // Current outputs and every generation kept in history: a prune must not
+  // take the bytes a restore would come back to.
+  const referenced = referencedHashes(lock)
 
   let content = await inspectContentCache(contentDir, referenced)
   let remoteHashes = await inspectRemoteHashCache(remotePath)
