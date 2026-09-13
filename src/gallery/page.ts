@@ -328,6 +328,18 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
     background-size:12px 12px; background-position:0 0,6px 6px; display:grid; place-items:center; padding:8px; min-height:96px; }
   .pair figure img { image-rendering:pixelated; display:block; max-width:100%; }
   .pair figcaption { font:11px/1.4 var(--mono); color:var(--dim); background:var(--panel); padding:2px 6px; margin-top:6px; }
+  .dot.busy { background:var(--cool); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity:1; } 50% { opacity:.25; } }
+  @media (prefers-reduced-motion: reduce) { .dot.busy { animation:none; } }
+  .card .busy-badge { position:absolute; left:6px; bottom:6px; display:inline-flex; align-items:center; gap:5px;
+    background:var(--panel); color:var(--cool); border:1px solid var(--cool); padding:2px 7px; font:650 10.5px/1.4 var(--mono); }
+  .drawer .job-strip { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; align-items:baseline; margin-top:10px;
+    padding:10px 12px; border:1px solid var(--cool); background:color-mix(in srgb, var(--cool) 8%, var(--panel-deep)); font-size:12.5px; }
+  .drawer .job-strip .ph { display:inline-flex; align-items:center; gap:6px; font:650 12px/1.4 var(--mono); color:var(--cool); white-space:nowrap; }
+  .drawer .job-strip .last { color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .drawer .job-strip .what { grid-column:1 / -1; color:var(--text); }
+  .drawer .job-strip .acts { grid-column:1 / -1; display:flex; gap:6px; }
+  .drawer .job-strip .acts button { padding:3px 9px; font-size:12px; }
   .card .pen { position:absolute; right:6px; top:6px; background:var(--panel); color:var(--accent-soft); border:1px solid var(--accent);
     font:700 11px/1 var(--mono); padding:3px 5px; }
   .hand-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
@@ -486,6 +498,11 @@ const splitTags = (value) => value.split(',').map((t) => t.trim()).filter(Boolea
 
 const ACTIVE_PHASES = new Set(['queued', 'submitting', 'polling', 'fetching', 'review']);
 const PHASE_TONE = { queued: 'cool', submitting: 'cool', polling: 'cool', fetching: 'cool', review: 'warn', done: 'ok', failed: 'bad' };
+// The job still working on this record, if any: what the drawer and its card
+// show while a regeneration, restore, or pull is in flight.
+const activeJobFor = (item) => GEN.jobs.find((job) => ACTIVE_PHASES.has(job.phase) && job.project === item.project && job.keys.includes(item.key)) || null;
+const JOB_VERB = { generate: 'regenerating', resume: 'resuming', refresh: 'pulling upstream changes for', restore: 'restoring' };
+const PHASE_TEXT = { queued: 'queued', submitting: 'submitting to the provider', polling: 'waiting for the provider to finish', fetching: 'downloading the result', review: 'candidates are ready to review' };
 const remainingBudget = (provider) => {
   const keyed = GEN.budget.byProvider[provider];
   const ceiling = keyed !== undefined ? keyed : GEN.budget.amount;
@@ -515,10 +532,33 @@ async function pollJobs() {
   renderHeader();
   let changed = false;
   for (const job of GEN.jobs) {
-    if (!ACTIVE_PHASES.has(job.phase) && !ui.settled.has(job.id)) { ui.settled.add(job.id); changed = true; }
+    if (!ACTIVE_PHASES.has(job.phase) && !ui.settled.has(job.id)) {
+      ui.settled.add(job.id); changed = true;
+      // The open record hears how its job ended, where the strip was.
+      const open = ui.open && snap.items.find((i) => i.id === ui.open);
+      if (open && job.project === open.project && job.keys.includes(open.key)) {
+        ui.notice = { id: open.id, text: job.phase === 'failed'
+          ? (JOB_VERB[job.mode] || job.mode).replace(/ing$/, 'ing') + ' this asset failed: ' + (job.error || 'see the log above')
+          : job.mode === 'generate' ? 'Regenerated. The new result is on disk and recorded as this generation.'
+          : job.mode === 'restore' ? 'Restored. The recorded bytes are back on disk.'
+          : job.mode === 'refresh' ? (job.counts.downloaded ? 'Pulled the upstream change; the lockfile records the new bytes.' : 'Nothing changed upstream; the file was left alone.')
+          : 'Done.' };
+      }
+    }
     if (job.phase === 'review' && !ui.settled.has(job.id + ':review')) { ui.settled.add(job.id + ':review'); changed = true; }
   }
   if (changed) refresh();
+  else {
+    // A job in flight: keep the open record's strip and the card badges honest without a full re-render.
+    if (ui.open && !$('dialog-host').childNodes.length) renderDrawer();
+    for (const c of document.querySelectorAll('.card')) {
+      const item = snap.items.find((i) => i.id === c.dataset.key);
+      const job = item && activeJobFor(item);
+      const badge = c.querySelector('.busy-badge');
+      if (job && !badge) c.replaceWith(card(item));
+      else if (!job && badge) badge.remove();
+    }
+  }
   const active = GEN.jobs.some((job) => ACTIVE_PHASES.has(job.phase) && job.phase !== 'review');
   clearTimeout(jobsTimer);
   if (active) jobsTimer = setTimeout(pollJobs, 2000);
@@ -1167,6 +1207,13 @@ function card(item) {
   if (item.editStatus === 'edited' || item.editStatus === 'regenerated-since') {
     const pen = el('span', 'pen', '✎'); pen.title = 'hand-edited'; cell.append(pen);
   }
+  const job = activeJobFor(item);
+  if (job) {
+    const badge = el('span', 'busy-badge');
+    badge.append(el('i', 'dot busy'), document.createTextNode(job.phase === 'review' ? 'review' : job.mode === 'generate' ? 'generating' : job.mode));
+    badge.title = (JOB_VERB[job.mode] || job.mode) + ' this asset — ' + (PHASE_TEXT[job.phase] || job.phase);
+    cell.append(badge);
+  }
   c.append(cell, body);
   c.onclick = (e) => { if (e.shiftKey) toggleCompare(item.id); else openItem(item.id); };
   return c;
@@ -1371,6 +1418,30 @@ function upstreamSection(item) {
     s.append(acts);
   }
   return s;
+}
+
+// What a job is doing to this record right now. The record's state line still
+// says what is on disk; this says what is about to replace it.
+function jobStrip(item, job) {
+  const strip = el('div', 'job-strip');
+  const ph = el('span', 'ph');
+  ph.append(el('i', 'dot busy'), document.createTextNode(job.phase));
+  const last = el('span', 'last', job.messages.length ? job.messages[job.messages.length - 1].trim() : '');
+  last.title = job.messages.join('\\n');
+  const what = el('span', 'what', (JOB_VERB[job.mode] || job.mode) + ' this asset — ' + (PHASE_TEXT[job.phase] || job.phase) +
+    (job.mode === 'generate' && job.phase !== 'review' ? '. The current file stays until the new result is downloaded.' : '.'));
+  strip.append(ph, last, what);
+  const acts = el('div', 'acts');
+  if (job.phase === 'review' && job.review.includes(item.key)) {
+    const b = el('button', 'primary', 'Review candidates'); b.type = 'button'; b.onclick = () => openReview(job.id);
+    acts.append(b);
+  }
+  const logBtn = el('button', null, ui.logs.has(job.id) ? 'Hide log' : 'Log'); logBtn.type = 'button';
+  logBtn.onclick = () => { ui.logs.has(job.id) ? ui.logs.delete(job.id) : ui.logs.add(job.id); renderDrawer(); };
+  acts.append(logBtn);
+  strip.append(acts);
+  if (ui.logs.has(job.id)) { const pre = el('pre', null, job.messages.join('\\n')); pre.style.gridColumn = '1 / -1'; strip.append(pre); }
+  return strip;
 }
 
 function generateActions(item) {
@@ -2080,7 +2151,9 @@ function renderDrawer() {
   body.append(previewHost);
   if (ui.notice && ui.notice.id === item.id) body.append(el('div', 'notice', ui.notice.text));
   body.append(stateNode(item.state, item.reason));
-  if (GENERATION) body.append(generateActions(item));
+  const job = GENERATION ? activeJobFor(item) : null;
+  if (job) body.append(jobStrip(item, job));
+  else if (GENERATION) body.append(generateActions(item));
   // Writes are opt-in flags on the command line; say so where the buttons would be.
   if ((!EDITABLE || !GENERATION) && item.declared) {
     const missing = [];

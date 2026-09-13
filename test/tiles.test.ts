@@ -361,6 +361,17 @@ describe("polling a tiles job", () => {
     await expect(provider.poll("job", "tiles")).rejects.toThrow(/nope/)
   })
 
+  // A map object being drawn answers the same way; before this it was logged
+  // as "error polling … → 423" on every poll until the object completed.
+  it("reads a map object's 423 as still processing too", async () => {
+    const provider = new PixelLabProvider({
+      getMapObject: async () => {
+        throw new PixelLabError("locked", 423, "")
+      },
+    } as never)
+    expect(await provider.poll("job", "map")).toEqual({ status: "processing" })
+  })
+
   it("reports an empty set as failed rather than an empty review", async () => {
     const provider = new PixelLabProvider({
       getTilesPro: async () => ({ storage_urls: {}, kind: "tiles" }),

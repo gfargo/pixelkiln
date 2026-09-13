@@ -254,6 +254,8 @@ export class PixelLabProvider implements Provider {
       if (obj.status === "failed") return { status: "failed", error: "generation failed upstream" }
       return { status: "processing" }
     } catch (err) {
+      // Like tiles, a map object answers 423 while it is still being drawn.
+      if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }
       if (!(err instanceof PixelLabError) || err.status !== 404) throw err
       const survivor = await this.client.getObject(jobId).catch(() => null)
       const url = firstUrl(survivor?.rotation_urls) ?? survivor?.preview_url ?? null
