@@ -65,8 +65,8 @@ provenance and no long-lived npm token.
 
 ### Local human review
 
-`pixelkiln pick` opens a local candidate sheet — native aspect ratios, crisp
-small sprites, and no model choosing artwork for you.
+`pixelkiln pick` opens a local candidate sheet with native aspect ratios and
+crisp small sprites. No model chooses artwork for you.
 
 ![PixelKiln candidate review UI](./website/public/review-ui-showcase.jpg)
 
@@ -84,7 +84,7 @@ reviews from the page under that ceiling.
 Hand edits live beside the art, not in place of the record. [`pixelkiln edit`](docs/CLI.md#edit)
 opens a copy in your own editor; with `--edit` the gallery does the same, or opens
 it in a pinned, hash-verified [Pixelorama](docs/CLI.md#tools) build right in the page
-and saves it back — layers kept, frame and tile sets one file per member.
+and saves it back with its layers kept, one file per member for frame and tile sets.
 
 ![PixelKiln in-browser editor](./website/public/gallery-editor-showcase.jpg)
 
