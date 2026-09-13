@@ -1,3 +1,10 @@
+# [0.33.0](https://github.com/gfargo/pixelkiln/compare/v0.32.1...v0.33.0) (2026-09-13)
+
+
+### Features
+
+* **gallery:** show a record and its card what a job is doing to it ([#109](https://github.com/gfargo/pixelkiln/issues/109)) ([61df4d7](https://github.com/gfargo/pixelkiln/commit/61df4d7f23a712c3d4cd50f8a640aa7f2463574e))
+
 ## [0.32.1](https://github.com/gfargo/pixelkiln/compare/v0.32.0...v0.32.1) (2026-09-13)
 
 
