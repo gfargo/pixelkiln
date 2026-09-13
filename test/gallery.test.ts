@@ -1026,6 +1026,16 @@ describe("gallery CLI surface", () => {
     expect(() => parseArgs(["gallery", "base"])).toThrow(/Unexpected argument/)
   })
 
+  it("shows a record and its card what a job is doing to it", () => {
+    const snapshot = { items: [], styles: [], totals: { entries: 0 }, project: { name: "x", manifest: "m", lock: "l" } } as never
+    const page = renderGallery(snapshot, { generation: true, session: "0".repeat(32) })
+    expect(page).toContain("const activeJobFor = (item) =>")
+    expect(page).toContain("function jobStrip(item, job)")
+    expect(page).toContain("if (job) body.append(jobStrip(item, job));")
+    expect(page).toContain("busy-badge")
+    expect(page).toContain("Regenerated. The new result is on disk and recorded as this generation.")
+  })
+
   it("tells a read-only page which flags unlock writes", () => {
     const snapshot = { items: [], styles: [], totals: { entries: 0 }, project: { name: "x", manifest: "m", lock: "l" } } as never
     const page = renderGallery(snapshot)
