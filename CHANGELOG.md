@@ -1,3 +1,10 @@
+# [0.34.0](https://github.com/gfargo/pixelkiln/compare/v0.33.0...v0.34.0) (2026-09-13)
+
+
+### Features
+
+* keep replaced generations in the lockfile and restore them for free ([#110](https://github.com/gfargo/pixelkiln/issues/110)) ([f394acb](https://github.com/gfargo/pixelkiln/commit/f394acbf001dcba62fb87577920a7bcbd14caabe))
+
 # [0.33.0](https://github.com/gfargo/pixelkiln/compare/v0.32.1...v0.33.0) (2026-09-13)
 
 
