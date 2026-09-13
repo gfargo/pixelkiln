@@ -212,22 +212,28 @@ export default function Home() {
               <p className="section-deck">
                 PixelLab, Retro Diffusion, ComfyUI, and Scenario use the same review,
                 lockfile, and recovery flow. PixelKiln records every candidate,
-                then leaves the visual decision to you; the page preserves native
+                then leaves the visual decision to you. The page preserves native
                 aspect ratios and stays readable on ultrawide displays. Afterwards,{" "}
-                <code>pixelkiln gallery</code> keeps every generation and its
-                record — prompt, cost, hashes, lineage, approval — one click away,
-                compares records side by side, and with <code>--edit</code> changes
-                prompts and style fields, adds assets, and generates again under a
-                budget you set.
+                <code>pixelkiln gallery</code> opens any generation with its
+                prompt, cost, hashes, lineage, and approval. It compares two
+                records side by side. With <code>--edit</code> it changes prompts
+                and style fields and adds assets. With <code>--budget</code> it
+                generates again, under a ceiling you set.
+              </p>
+              <p className="section-deck">
+                Regenerating keeps the version it replaces. Each record lists its
+                previous generations, up to a count you choose, and one click
+                brings any of them back. Nothing is spent, and the swap can be
+                undone from the same list.
               </p>
               <p className="section-deck">
                 Hand edits stay beside the art, never over the record. Open a
                 sprite in your own editor with <code>pixelkiln edit</code>, or in
                 the gallery&apos;s built-in{" "}
-                <a href="https://pixelorama.org" rel="noreferrer">Pixelorama</a>{" "}
-                — a pinned build, fetched once and verified by hash — and save it
+                <a href="https://pixelorama.org" rel="noreferrer">Pixelorama</a>,
+                a pinned build fetched once and verified by hash, and save it
                 back with its layers kept. Frame sets and tile sets open as one
-                project, one frame per member, and every member is written back
+                project with a frame per member, and every member is written back
                 under its role. Art edited in PixelLab&apos;s own editor returns
                 with <code>fetch --refresh</code>.
               </p>
@@ -630,7 +636,7 @@ export default function Home() {
             <article className="capability-card">
               <span className="card-index">02 / RECOVER</span>
               <h3>Restore before you regenerate.</h3>
-              <p>Rebuild missing output from trusted cache bytes or a provider URL without new generation cost.</p>
+              <p>Rebuild missing output from trusted cache bytes or a provider URL without new generation cost. A regeneration keeps the version it replaced, so the old one is one command away.</p>
               <div className="micro-state"><span className="status-dot" /> recoverable · 0 gen</div>
             </article>
             <article className="capability-card">
