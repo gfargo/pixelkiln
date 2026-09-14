@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
+import { ProjectError } from "./errors.ts"
 import { z } from "zod"
 
 /**
@@ -40,7 +41,7 @@ export type Workspace = z.infer<typeof WorkspaceSchema>
 export function parseWorkspace(raw: unknown): Workspace {
   const parsed = WorkspaceSchema.safeParse(raw)
   if (parsed.success) return parsed.data
-  throw new Error(
+  throw new ProjectError(
     `Workspace catalog is not valid v1:\n${parsed.error.issues
       .slice(0, 5)
       .map((i) => `  ${i.path.join(".")}: ${i.message}`)
@@ -54,7 +55,7 @@ export async function loadWorkspace(workspacePath: string): Promise<Workspace> {
   try {
     raw = JSON.parse(await readFile(workspacePath, "utf8"))
   } catch (err) {
-    throw new Error(
+    throw new ProjectError(
       `Workspace catalog at ${workspacePath} is malformed:\n` +
         `${err instanceof Error ? err.message : String(err)}`,
     )

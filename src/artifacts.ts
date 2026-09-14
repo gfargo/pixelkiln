@@ -1,4 +1,5 @@
 import path from "node:path"
+import { OverwriteRefusedError } from "./errors.ts"
 import { createHash, randomUUID } from "node:crypto"
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 
@@ -406,11 +407,12 @@ export async function writeManagedArtifactBundle(
       if (!expected || digest(current) !== expected) conflicts.push(destination)
     }
     if (conflicts.length) {
-      throw new Error(
+      throw new OverwriteRefusedError(
         `Refusing to overwrite modified or unowned artifact file(s):\n` +
           conflicts.map((file) => `  ${file}`).join("\n") +
           `\nPass { force: true } (CLI: --force) to take ownership and replace ` +
           `the complete bundle.`,
+        conflicts,
       )
     }
   }

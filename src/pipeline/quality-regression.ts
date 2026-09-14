@@ -1,4 +1,5 @@
 import path from "node:path"
+import { OverwriteRefusedError } from "../errors.ts"
 import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { z } from "zod"
@@ -346,7 +347,10 @@ export async function snapshotQualityBaseline(
   if (existsSync(absolute) && !options.force) {
     const current = await readFile(absolute)
     if (!current.equals(data)) {
-      throw new Error(`Quality baseline already exists with different content: ${absolute}. Pass --force to replace it.`)
+      throw new OverwriteRefusedError(
+        `Quality baseline already exists with different content: ${absolute}. Pass --force to replace it.`,
+        [absolute],
+      )
     }
   }
   const result = await writeArtifactBundle([{ path: absolute, data }])

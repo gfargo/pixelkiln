@@ -1,4 +1,5 @@
 import path from "node:path"
+import { OverwriteRefusedError } from "./errors.ts"
 import { existsSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
@@ -436,8 +437,9 @@ export async function installRecipe(
       if (!existsSync(file.path)) continue
       const current = await readFile(file.path)
       if (!current.equals(file.data)) {
-        throw new Error(
+        throw new OverwriteRefusedError(
           `Recipe destination has local changes: ${file.path}. Choose another --out or pass --force to replace declared recipe files.`,
+          [file.path],
         )
       }
     }

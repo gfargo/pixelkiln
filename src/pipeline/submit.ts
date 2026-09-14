@@ -1,3 +1,4 @@
+import { BudgetError } from "../errors.ts"
 import {
   DEFAULT_RATE_LIMIT,
   formatCost,
@@ -79,7 +80,7 @@ export async function submit(
   if (opts.budget != null) {
     const cost = [...estimates.values()].reduce((sum, estimate) => sum + estimate.amount, 0)
     if (cost > opts.budget) {
-      throw new Error(
+      throw new BudgetError(
         `This run would spend ${formatCost(unit, cost)} but the budget is ` +
           `${formatCost(unit, opts.budget)}. ` +
           `Narrow it with --only/--style, or raise --budget.`,

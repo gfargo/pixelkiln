@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { sha256 } from "../hash.ts"
 import { fetchWithRetry, type RetryInit, type RetryingFetch, type RetryOptions } from "../http.ts"
+import { ProviderError } from "../errors.ts"
 import { MediaType } from "../media.ts"
 import type {
   CostEstimate,
@@ -158,9 +159,11 @@ class ComfyUIClient {
       value = null
     }
     if (!response.ok) {
-      throw new Error(
+      throw new ProviderError(
+        "comfyui",
         `ComfyUI image upload failed (${response.status})` +
           (apiError(value) ? `: ${apiError(value)}` : ""),
+        { status: response.status },
       )
     }
     if (!isObject(value) || typeof value.name !== "string" || !value.name) {
@@ -186,7 +189,7 @@ class ComfyUIClient {
     let target = source
     if (source.startsWith("comfyui://")) target = this.viewUrl(parseSource(source))
     const response = await this.request(target)
-    if (!response.ok) throw new Error(`ComfyUI download failed (${response.status})`)
+    if (!response.ok) throw new ProviderError("comfyui", `ComfyUI download failed (${response.status})`, { status: response.status })
     return Buffer.from(await response.arrayBuffer())
   }
 
@@ -213,9 +216,11 @@ class ComfyUIClient {
     }
     if (!response.ok) {
       const detail = apiError(value)
-      throw new Error(
+      throw new ProviderError(
+        "comfyui",
         `ComfyUI request failed (${response.status}) at ${url.pathname}` +
           (detail ? `: ${detail}` : ""),
+        { status: response.status },
       )
     }
     return value

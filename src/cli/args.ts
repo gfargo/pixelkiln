@@ -1,5 +1,6 @@
 /** Argument parsing. Strict on purpose: an unknown flag is an error, never a silently dropped filter. */
 import path from "node:path"
+import { UsageError } from "../errors.ts"
 import type { GridConfidence } from "../types.ts"
 import type { TilesetFormat } from "../pipeline/tileset-export.ts"
 
@@ -110,7 +111,7 @@ const TOOLS = ["editor"] as const
 export function parseArgs(argv: string[]): Args {
   const [command = "help"] = argv
   if (!(COMMANDS as readonly string[]).includes(command)) {
-    throw new Error(`Unknown command "${command}". Run \`pixelkiln help\` for the list.`)
+    throw new UsageError(`Unknown command "${command}". Run \`pixelkiln help\` for the list.`)
   }
 
   let rest = argv.slice(1)
@@ -119,10 +120,10 @@ export function parseArgs(argv: string[]): Args {
   if (command === "quality") {
     subcommand = rest[0]
     if (subcommand === undefined || subcommand.startsWith("-")) {
-      throw new Error(`quality needs a subcommand: ${QUALITY_SUBCOMMANDS.join(", ")}`)
+      throw new UsageError(`quality needs a subcommand: ${QUALITY_SUBCOMMANDS.join(", ")}`)
     }
     if (!(QUALITY_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
-      throw new Error(
+      throw new UsageError(
         `Unknown quality subcommand "${subcommand}". Known: ${QUALITY_SUBCOMMANDS.join(", ")}`,
       )
     }
@@ -130,10 +131,10 @@ export function parseArgs(argv: string[]): Args {
   } else if (command === "recipe") {
     subcommand = rest[0]
     if (subcommand === undefined || subcommand.startsWith("-")) {
-      throw new Error(`recipe needs a subcommand: ${RECIPE_SUBCOMMANDS.join(", ")}`)
+      throw new UsageError(`recipe needs a subcommand: ${RECIPE_SUBCOMMANDS.join(", ")}`)
     }
     if (!(RECIPE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
-      throw new Error(
+      throw new UsageError(
         `Unknown recipe subcommand "${subcommand}". Known: ${RECIPE_SUBCOMMANDS.join(", ")}`,
       )
     }
@@ -141,17 +142,17 @@ export function parseArgs(argv: string[]): Args {
     if (subcommand !== "list") {
       target = rest[0]
       if (target === undefined || target.startsWith("-")) {
-        throw new Error(`recipe ${subcommand} needs a recipe id, selector, or path.`)
+        throw new UsageError(`recipe ${subcommand} needs a recipe id, selector, or path.`)
       }
       rest = rest.slice(1)
     }
   } else if (command === "workspace") {
     subcommand = rest[0]
     if (subcommand === undefined || subcommand.startsWith("-")) {
-      throw new Error(`workspace needs a subcommand: ${WORKSPACE_SUBCOMMANDS.join(", ")}`)
+      throw new UsageError(`workspace needs a subcommand: ${WORKSPACE_SUBCOMMANDS.join(", ")}`)
     }
     if (!(WORKSPACE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
-      throw new Error(
+      throw new UsageError(
         `Unknown workspace subcommand "${subcommand}". Known: ${WORKSPACE_SUBCOMMANDS.join(", ")}`,
       )
     }
@@ -159,7 +160,7 @@ export function parseArgs(argv: string[]): Args {
     if (subcommand === "add" || subcommand === "remove") {
       target = rest[0]
       if (target === undefined || target.startsWith("-")) {
-        throw new Error(
+        throw new UsageError(
           subcommand === "add"
             ? "workspace add needs a manifest path."
             : "workspace remove needs a project id or manifest path.",
@@ -170,29 +171,29 @@ export function parseArgs(argv: string[]): Args {
   } else if (command === "edit") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "start" : rest[0]
     if (!(EDIT_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
-      throw new Error(`Unknown edit subcommand "${subcommand}". Known: ${EDIT_SUBCOMMANDS.join(", ")}`)
+      throw new UsageError(`Unknown edit subcommand "${subcommand}". Known: ${EDIT_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
   } else if (command === "tools") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "status" : rest[0]
     if (!(TOOLS_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
-      throw new Error(`Unknown tools subcommand "${subcommand}". Known: ${TOOLS_SUBCOMMANDS.join(", ")}`)
+      throw new UsageError(`Unknown tools subcommand "${subcommand}". Known: ${TOOLS_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (subcommand === "install" && target === undefined) {
-      throw new Error(`tools install needs a tool name: ${TOOLS.join(", ")}`)
+      throw new UsageError(`tools install needs a tool name: ${TOOLS.join(", ")}`)
     }
     if (target !== undefined) {
       if (!(TOOLS as readonly string[]).includes(target)) {
-        throw new Error(`Unknown tool "${target}". Known: ${TOOLS.join(", ")}`)
+        throw new UsageError(`Unknown tool "${target}". Known: ${TOOLS.join(", ")}`)
       }
       rest = rest.slice(1)
     }
   } else if (command === "refine") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "run" : rest[0]
     if (!(REFINE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
-      throw new Error(
+      throw new UsageError(
         `Unknown refine subcommand "${subcommand}". Known: ${REFINE_SUBCOMMANDS.join(", ")}`,
       )
     }
@@ -202,7 +203,7 @@ export function parseArgs(argv: string[]): Args {
   for (let i = 0; i < rest.length; i++) {
     const token = rest[i]!
     if (!token.startsWith("-")) {
-      throw new Error(`Unexpected argument "${token}". Options must be passed with a named flag.`)
+      throw new UsageError(`Unexpected argument "${token}". Options must be passed with a named flag.`)
     }
     if ((BOOL_FLAGS as readonly string[]).includes(token)) continue
     if ((VALUE_FLAGS as readonly string[]).includes(token)) {
@@ -211,12 +212,12 @@ export function parseArgs(argv: string[]): Args {
       // `--budget -5` reaches the range check and reports the real problem.
       const looksLikeFlag = value !== undefined && value.startsWith("-") && !Number.isFinite(Number(value))
       if (value === undefined || looksLikeFlag) {
-        throw new Error(`${token} needs a value.`)
+        throw new UsageError(`${token} needs a value.`)
       }
       i++
       continue
     }
-    throw new Error(
+    throw new UsageError(
       `Unknown flag "${token}". Known flags: ${[...VALUE_FLAGS, ...BOOL_FLAGS].join(", ")}`,
     )
   }
@@ -252,7 +253,7 @@ export function parseArgs(argv: string[]): Args {
     // Same guard as --budget: NaN would silently fall through to the default
     // and quietly produce a differently-shaped sheet than asked for.
     if (!Number.isInteger(columns) || columns < 1 || columns > 1024) {
-      throw new Error(`--columns must be a whole number between 1 and 1024, got "${rawColumns}"`)
+      throw new UsageError(`--columns must be a whole number between 1 and 1024, got "${rawColumns}"`)
     }
   }
 
@@ -261,7 +262,7 @@ export function parseArgs(argv: string[]): Args {
   if (rawPort !== undefined) {
     port = Number(rawPort)
     if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-      throw new Error(`--port must be a whole number between 1 and 65535, got "${rawPort}"`)
+      throw new UsageError(`--port must be a whole number between 1 and 65535, got "${rawPort}"`)
     }
   }
 
@@ -278,31 +279,31 @@ export function parseArgs(argv: string[]): Args {
       const rawAmount = rawBudget.slice(separator + 1).trim()
       const amount = Number(rawAmount)
       if (!providerId || /[=\s]/.test(providerId) || !Number.isFinite(amount) || amount < 0) {
-        throw new Error(
+        throw new UsageError(
           `--budget must be a non-negative number or provider=number, got "${rawBudget}".`,
         )
       }
       if (Object.hasOwn(providerBudgets, providerId)) {
-        throw new Error(`--budget repeats provider "${providerId}".`)
+        throw new UsageError(`--budget repeats provider "${providerId}".`)
       }
       providerBudgets[providerId] = amount
       continue
     }
     const amount = Number(rawBudget)
     if (!Number.isFinite(amount) || amount < 0) {
-      throw new Error(`--budget must be a non-negative number, got "${rawBudget}".`)
+      throw new UsageError(`--budget must be a non-negative number, got "${rawBudget}".`)
     }
-    if (budget !== undefined) throw new Error("Only one unkeyed --budget may be passed.")
+    if (budget !== undefined) throw new UsageError("Only one unkeyed --budget may be passed.")
     budget = amount
   }
   if (budget !== undefined && Object.keys(providerBudgets).length) {
-    throw new Error("Do not mix an unkeyed --budget with provider-keyed budgets.")
+    throw new UsageError("Do not mix an unkeyed --budget with provider-keyed budgets.")
   }
 
   const manifest = get("--manifest") ?? "pixelkiln.manifest.json"
   const rawFormat = get("--format")
   if (rawFormat && rawFormat !== "generic" && rawFormat !== "tiled" && rawFormat !== "godot") {
-    throw new Error(`--format must be generic, tiled, or godot, got "${rawFormat}"`)
+    throw new UsageError(`--format must be generic, tiled, or godot, got "${rawFormat}"`)
   }
   const numberOption = (
     flag: string,
@@ -318,7 +319,7 @@ export function parseArgs(argv: string[]): Args {
       (opts.integer && !Number.isInteger(value))
     ) {
       const range = opts.max === undefined ? `at least ${opts.min}` : `${opts.min} to ${opts.max}`
-      throw new Error(`${flag} must be ${opts.integer ? "a whole number " : "a number "}${range}, got "${raw}"`)
+      throw new UsageError(`${flag} must be ${opts.integer ? "a whole number " : "a number "}${range}, got "${raw}"`)
     }
     return value
   }
@@ -327,7 +328,7 @@ export function parseArgs(argv: string[]): Args {
     rawGridConfidence !== undefined &&
     rawGridConfidence !== "low" && rawGridConfidence !== "medium" && rawGridConfidence !== "high"
   ) {
-    throw new Error(
+    throw new UsageError(
       `--min-grid-confidence must be low, medium, or high, got "${rawGridConfidence}"`,
     )
   }

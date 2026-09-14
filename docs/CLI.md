@@ -790,6 +790,23 @@ Print the package version. `-v` is an alias.
 
 ## Exit and output contract
 
+A command that stops on an error prints `error: <message>` to stderr and
+exits with a code that says what kind of error it was, so a script can branch
+without matching message text.
+
+| Exit code | Kind | Example |
+|---|---|---|
+| 1 | anything else | a file the OS would not let PixelKiln write |
+| 2 | usage | an unknown flag, a `--style` that the manifest does not define |
+| 3 | project | no manifest at the path, an invalid manifest, a malformed lockfile or workspace catalog |
+| 4 | provider | the provider rejected a request or answered with something unusable |
+| 5 | refused overwrite | a file on disk differs from its record; nothing was replaced (`--force` overrides) |
+| 6 | budget | the run would spend past `--budget`, or the balance cannot cover it |
+| 7 | capability | the recorded provider does not offer the operation (for example `purge` on a backend with no delete) |
+
+Commands that finish with some items failed, such as `fetch` with one
+download refused, exit 1 after printing their totals.
+
 - Parse, schema, ownership, provider, and filesystem errors exit nonzero.
 - `submit`, `poll`, `fetch`, and `gen` exit nonzero on partial failure or
   timeout; automation cannot mistake an incomplete batch for success.
