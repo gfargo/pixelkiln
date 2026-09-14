@@ -42,6 +42,22 @@ live connectivity. It warns when a configured quality result is not approved.
 `--dry-run` skips only provider connectivity. It changes nothing and exits
 nonzero for unsafe state.
 
+## Palette enforcement
+
+```json
+"palette": ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"],
+"enforcePalette": true
+```
+
+A style with `enforcePalette` never ships a PNG with a colour outside its
+palette: `fetch` snaps each pixel to the nearest palette colour as the file
+is written, records the raw hash and the palette on the lock entry, and
+`plan` reports an entry whose files were made under a different rule as
+`recoverable` until the next `fetch` re-applies it for free. It runs on the
+provider's bytes with no external tool and no approval step, which is the
+difference from a quality profile. See
+[Palette enforcement](./MANIFEST.md#palette-enforcement).
+
 ## Visual consistency audit
 
 ```bash

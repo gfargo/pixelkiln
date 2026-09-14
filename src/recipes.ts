@@ -173,6 +173,8 @@ export type Recipe = z.infer<typeof RecipeSchema>
 
 export interface LoadedRecipe {
   recipe: Recipe
+  /** The file's JSON as written, before schema defaults; what the digest covers. */
+  authored: Record<string, unknown>
   path: string
   dir: string
   bundled: boolean
@@ -247,8 +249,15 @@ function canonical(value: unknown): unknown {
   throw new Error(`Recipe metadata cannot contain ${typeof value} values.`)
 }
 
-export function recipeDigest(recipe: Recipe): string {
-  const { integrity: _integrity, ...payload } = recipe
+/**
+ * The digest covers the recipe as its author wrote it, minus `integrity`.
+ * It used to cover the parsed form, which meant every schema default added
+ * to a style changed the digest of every recipe ever published; the
+ * `enforcePalette` default was the first to trip it. What the author
+ * signed is what the file says, so that is what is hashed.
+ */
+export function recipeDigest(recipe: Recipe | Record<string, unknown>): string {
+  const { integrity: _integrity, ...payload } = recipe as Record<string, unknown>
   return sha256(JSON.stringify(canonical(payload)))
 }
 
@@ -271,7 +280,7 @@ async function readRecipeFile(recipePath: string, bundled: boolean): Promise<Loa
         parsed.error.issues.map((issue) => `  ${issue.path.join(".") || "$"}: ${issue.message}`).join("\n"),
     )
   }
-  return { recipe: parsed.data, path: absolute, dir: path.dirname(absolute), bundled }
+  return { recipe: parsed.data, authored: raw as Record<string, unknown>, path: absolute, dir: path.dirname(absolute), bundled }
 }
 
 async function walkRecipeFiles(root: string): Promise<string[]> {
@@ -356,7 +365,7 @@ export async function verifyRecipe(
   options: { modelRoot?: string; bundledRoot?: string } = {},
 ): Promise<RecipeVerification> {
   const loaded = await resolveRecipe(target, options.bundledRoot)
-  const actualIntegrity = recipeDigest(loaded.recipe)
+  const actualIntegrity = recipeDigest(loaded.authored)
   const files = await Promise.all(loaded.recipe.files.map((file) => verifyFile(loaded.dir, file)))
   const modelRoot = options.modelRoot ? path.resolve(options.modelRoot) : null
   const models: RecipeModelVerification[] = modelRoot

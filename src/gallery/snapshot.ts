@@ -11,7 +11,7 @@ import { buildPlan, type PlanState } from "../pipeline/plan.ts"
 import type { QualityProfileInspection } from "../pipeline/quality-profile.ts"
 import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine.ts"
 import { decodePng } from "../png.ts"
-import { lockKey, type Asset, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
+import { lockKey, type Asset, type Lock, type LockEntry, type Postprocess, type ResolvedSpec } from "../types.ts"
 import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
 import { handEditProjectPath, readHandEditCompanion } from "../pipeline/hand-edit.ts"
@@ -142,6 +142,8 @@ export interface GalleryItem {
   outputs: GalleryOutput[]
   quality: GalleryQuality | null
   providerMetadata: Record<string, unknown>
+  /** Post-processing recorded on the entry: the palette its files were snapped to, if any. */
+  postprocess: Postprocess | null
   /** Manifest asset as declared, for the "intent" side of the record. */
   asset: Asset | null
   /** Manifest-relative committed art placed instead of generated output. */
@@ -188,6 +190,8 @@ export interface GalleryStyle {
   promptPrefix: string
   promptSuffix: string
   palette: string[]
+  /** Downloaded art is snapped to `palette` by fetch. */
+  enforcePalette: boolean
   /** Provider view name, when the style sets one. */
   view: string | null
   /** Strip the generated background (sent for pixflux and non-PixelLab providers). */
@@ -664,6 +668,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       outputs,
       quality,
       providerMetadata: entry?.providerMetadata ?? {},
+      postprocess: entry?.postprocess ?? null,
       asset,
       source: spec.source ?? null,
       edit,
@@ -725,6 +730,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       outputs,
       quality: null,
       providerMetadata: entry.providerMetadata ?? {},
+      postprocess: entry.postprocess ?? null,
       asset: null,
       source: null,
       edit: null,
@@ -783,6 +789,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         promptPrefix: style?.promptPrefix ?? "",
         promptSuffix: style?.promptSuffix ?? "",
         palette: style?.palette ?? [],
+        enforcePalette: style?.enforcePalette ?? false,
         view: style?.view ?? null,
         noBackground: style?.noBackground ?? true,
         quality: Boolean(style?.quality),

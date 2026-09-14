@@ -19,7 +19,7 @@ import {
   type DecodedPng,
 } from "../png.ts"
 import type { GridConfidence } from "../types.ts"
-import { colorDistance } from "./audit.ts"
+import { normalizePalette, quantizeToPalette } from "../palette.ts"
 
 const execFileAsync = promisify(execFile)
 
@@ -289,53 +289,16 @@ function parseDetection(raw: unknown): PixelArtFixerDetection {
   }
 }
 
-function normalizePalette(values: string[]): Array<{ hex: string; r: number; g: number; b: number }> {
-  const colors = new Map<string, { hex: string; r: number; g: number; b: number }>()
-  for (const value of values) {
-    const rgb = parseHex(value)
-    const hex = `#${rgb.r.toString(16).padStart(2, "0")}${rgb.g.toString(16).padStart(2, "0")}${rgb.b.toString(16).padStart(2, "0")}`
-    colors.set(hex, { hex, ...rgb })
-  }
-  if (colors.size < 2 || colors.size > 256) {
-    throw new Error(`A refinement palette must contain 2–256 unique colors; got ${colors.size}.`)
-  }
-  return [...colors.values()]
-}
-
 /** Canonical lowercase palette identity shared by manifest quality profiles. */
 export function normalizeRefinementPalette(values: string[]): string[] {
-  return normalizePalette(values).map((color) => color.hex)
+  try {
+    return normalizePalette(values).map((color) => color.hex)
+  } catch (err) {
+    throw new Error(`A refinement palette must contain 2–256 unique colors; got ${new Set(values.map((v) => v.toLowerCase())).size}.`, { cause: err })
+  }
 }
 
-/** Map every visible pixel to the nearest explicit color, without dithering. */
-export function quantizeToPalette(png: DecodedPng, palette: string[]): DecodedPng {
-  const colors = normalizePalette(palette)
-  const pixels = Buffer.from(png.pixels)
-  for (let i = 0; i < pixels.length; i += 4) {
-    const alpha = pixels[i + 3]!
-    if (alpha === 0) {
-      pixels[i] = 0
-      pixels[i + 1] = 0
-      pixels[i + 2] = 0
-      continue
-    }
-    const pixel = { r: pixels[i]!, g: pixels[i + 1]!, b: pixels[i + 2]! }
-    let nearest = colors[0]!
-    let distance = colorDistance(pixel, nearest)
-    for (let j = 1; j < colors.length; j++) {
-      const candidate = colors[j]!
-      const candidateDistance = colorDistance(pixel, candidate)
-      if (candidateDistance < distance) {
-        nearest = candidate
-        distance = candidateDistance
-      }
-    }
-    pixels[i] = nearest.r
-    pixels[i + 1] = nearest.g
-    pixels[i + 2] = nearest.b
-  }
-  return { width: png.width, height: png.height, pixels }
-}
+export { quantizeToPalette }
 
 function colorCount(png: DecodedPng): number {
   const colors = new Set<number>()

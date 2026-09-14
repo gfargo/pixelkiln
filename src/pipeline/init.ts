@@ -126,6 +126,7 @@ export function buildManifest(
         promptSuffix: "",
         styleImages: [],
         palette: [],
+        enforcePalette: false,
         outDir,
         tags: [name],
         providerOptions: {},

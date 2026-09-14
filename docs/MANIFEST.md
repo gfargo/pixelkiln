@@ -84,7 +84,8 @@ constant across the set.
 | `shading` | string | PixelLab `map`: `flat shading`, `basic shading`, `medium shading`, or `detailed shading`. |
 | `detail` | string | PixelLab `map`: `low detail`, `medium detail`, or `high detail`. |
 | `seed` | integer | Deterministic provider seed where supported. |
-| `palette` | hex array, `[]` | Forced palette for `pixflux`; `#` is optional. |
+| `palette` | hex array, `[]` | The style's palette; `#` is optional. Sent to providers that take one (`pixflux`, Retro Diffusion, ComfyUI bindings). |
+| `enforcePalette` | boolean, `false` | Snap every downloaded PNG to the nearest `palette` colour, no dithering. Needs at least two colours. See [Palette enforcement](#palette-enforcement). |
 | `noBackground` | boolean, `true` | `pixflux` background removal. Set false for scenes/backdrops. |
 | `providerOptions` | object, `{}` | Options grouped by provider id. Only the active provider's object is resolved and hashed. |
 | `tileSize` | integer 16–256 | Edge length for `tiles` when no style reference supplies geometry. |
@@ -153,7 +154,7 @@ Generator-specific fields are validated before planning. Important constraints:
 - When `size` and `styleImages` are both present, PixelLab derives size from
   the largest reference image and the declared size is advisory.
 - `map` supports arbitrary asset `width` and `height` but not forced palettes
-  or style images.
+  or style images. `enforcePalette` still holds its output to the palette.
 - `pixflux` accepts a forced `palette` and returns inline output; it has no
   style-image support.
 - `tiles` cannot combine `tileFeature` with `styleImages` because the provider
@@ -164,6 +165,53 @@ Generator-specific fields are validated before planning. Important constraints:
 See [generator selection](./GENERATORS.md) for costs and trade-offs.
 See [mixed-provider projects](./MIXED_PROVIDERS.md) when styles in one manifest
 need different backends and budget units.
+
+## Palette enforcement
+
+```json
+{
+  "styles": {
+    "gb": {
+      "generator": "map",
+      "outDir": "art/gb",
+      "palette": ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"],
+      "enforcePalette": true
+    }
+  }
+}
+```
+
+With `enforcePalette`, `fetch` maps every visible pixel of a downloaded PNG
+to the nearest palette colour (redmean distance, no dithering) before the
+file is written, and records what it did on the lock entry:
+
+```json
+"postprocess": { "palette": { "colors": ["#0f380f", "..."], "dither": "none", "distance": "redmean" } },
+"outputs": [{ "path": "art/gb/anvil.png", "sha256": "<snapped>", "raw": "<provider bytes>" }]
+```
+
+`sha256` is the file on disk. `raw` is the provider's bytes before snapping,
+present only when snapping changed something; a provider that honoured the
+palette leaves the file, and the record, exactly as it came. Both live in
+the content cache, so the step can be undone or redone without a download.
+
+The flag is not part of the spec hash. Turning it on for a style with
+generated art makes `plan` report each entry as `recoverable`, and the next
+`fetch` (or `gen`, or `restore`) re-applies the rule to the files already on
+disk, spending nothing. Turning it off puts the provider's bytes back the
+same way. Changing the colours themselves is a different matter: `palette`
+is sent to providers, so it is in the spec hash and a change is `stale`.
+
+A file you changed by hand is never re-snapped; it shows as `orphaned` and
+waits for `--force` or `pixelkiln edit`. GIF output passes through untouched.
+Transparent pixels keep their alpha and get zeroed colour so the same
+picture always has the same bytes.
+
+`enforcePalette` and a `quality` profile are different tools. Enforcement
+is one deterministic step on the provider's bytes with no external
+dependency and no review gate. A quality profile recovers the native pixel
+grid with Pixel Art Fixer first, then applies its own closed palette, and
+holds packaging until a person approves the result.
 
 ## Quality profiles
 

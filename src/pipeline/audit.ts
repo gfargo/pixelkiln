@@ -1,30 +1,14 @@
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
+import { colorDistance } from "../palette.ts"
 import { decodePng, extractPalette, transparencyRatio, type PaletteEntry } from "../png.ts"
 import type { LoadedManifest } from "../manifest.ts"
 import type { Lock, ResolvedSpec } from "../types.ts"
 import { resolveSpecOutputs } from "../outputs.ts"
 
-/**
- * Perceptual-ish distance between two colours, 0-255ish.
- *
- * "Redmean" — a cheap weighting that tracks human perception far better than
- * raw RGB euclidean and needs no colour-space conversion or dependency. Good
- * enough to rank outliers, which is all this is for; it is not colourimetry.
- */
-export function colorDistance(
-  a: { r: number; g: number; b: number },
-  b: { r: number; g: number; b: number },
-): number {
-  const rmean = (a.r + b.r) / 2
-  const dr = a.r - b.r
-  const dg = a.g - b.g
-  const db = a.b - b.b
-  return Math.sqrt(
-    (((512 + rmean) * dr * dr) / 256) + 4 * dg * dg + (((767 - rmean) * db * db) / 256),
-  )
-}
+/** Redmean distance, now in palette.ts where fetch and refine share it. */
+export { colorDistance }
 
 /**
  * How far an asset's palette sits from a reference palette.

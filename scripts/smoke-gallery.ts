@@ -105,7 +105,13 @@ const check = (ok: unknown, what: string) => {
   console.log(`  ${ok ? "ok  " : "FAIL"} ${what}`)
 }
 
-const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ["--no-sandbox", "--no-first-run"] })
+// A launch can time out waiting for the DevTools endpoint when another Chrome
+// is still shutting down on the same machine; one more try is cheap.
+const launch = () => puppeteer.launch({ executablePath: chrome, headless: true, args: ["--no-sandbox", "--no-first-run"] })
+const browser = await launch().catch(async (error: unknown) => {
+  console.log(`  chrome launch failed once (${error instanceof Error ? error.message.split("\n")[0] : String(error)}); retrying`)
+  return launch()
+})
 try {
   const page = await browser.newPage()
   const consoleErrors: string[] = []

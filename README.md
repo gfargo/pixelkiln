@@ -57,7 +57,7 @@ provenance and no long-lived npm token.
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, resumable paid jobs, and per-asset generation history with free restores. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
-| Quality control | Manifest-native grid recovery, closed palettes, named approval, regression baselines, and fail-closed packaging. |
+| Quality control | Palette snapping on download, native grid recovery, named approval, regression baselines, and fail-closed packaging. |
 | Sprite packaging | Deterministic RGBA packing, stable-cell mounting, explicit external input lists, structural output roles. |
 | Engine export | Lossless generic tile contract, Tiled Wang sets, and Godot 4 terrain sets. |
 | Artifact integrity | Portable source/output hashes, canonical fingerprints, manual-edit protection, transactional promotion, crash journal recovery. |

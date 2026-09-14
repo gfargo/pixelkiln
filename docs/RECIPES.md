@@ -122,11 +122,15 @@ local changes before using it.
 | `styleId`, `style` | Manifest style template. `{{recipeDir}}` is replaced with the installed path. |
 | `workflow` | Output node, candidate count, and the inputs PixelKiln may bind. |
 | `quality` | Working canvas, recommended native range, palette range, output stage, and required review checks. |
-| `integrity` | Canonical SHA-256 digest of the recipe metadata. |
+| `integrity` | Canonical SHA-256 digest of the recipe metadata as written. |
 
 Included paths must be portable relative paths. Absolute paths, backslashes,
 empty segments, `.` and `..` are rejected. The recipe file cannot include its
-own hash; its metadata digest covers that document instead.
+own hash; its metadata digest covers that document instead, keys sorted,
+`integrity` left out, exactly as the author wrote it. Schema defaults are not
+part of it, so a new style field with a default does not change the digest
+of a recipe published before it existed. (Recipes signed before 0.37 were
+digested with defaults applied; re-sign those with `recipeDigest`.)
 
 Recipes do not install models, custom nodes, credentials, or Python packages.
 Follow each linked source and license, place dependencies yourself, verify them,

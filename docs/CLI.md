@@ -23,6 +23,7 @@ hosted still models with Compute Unit preflight and durable asset recovery.
 |---|---|
 | see what a run would do and cost, spending nothing | `pixelkiln plan` |
 | generate everything the manifest still needs | `pixelkiln gen --budget 40` |
+| hold every generated file to the style's palette | set `"enforcePalette": true` on the style, then `pixelkiln fetch` |
 | generate one asset, or one style | `pixelkiln gen --only anvil --budget 2`, `pixelkiln gen --style neon --budget 20` |
 | finish a run that was interrupted | `pixelkiln plan`, then the `next:` command it prints (`poll`, `pick`, or `fetch`) |
 | choose among candidates the provider returned | `pixelkiln pick` |
@@ -164,6 +165,13 @@ PixelKiln wrote, so a local hand edit is never overwritten without `--force`.
 The lockfile then records the new bytes as this generation. Objects with no
 durable reference (PixelLab pixflux images, for one) are not eligible; use
 `pixelkiln edit` for those.
+
+When a style sets `enforcePalette`, `fetch` snaps each downloaded PNG to the
+style's palette before writing it and records the raw hash and the palette on
+the lock entry. Turning the flag on or off later makes `plan` report the
+style's generated entries as `recoverable`; the next `fetch` re-applies the
+rule to the files already on disk from the raw bytes in the content cache,
+contacting no provider. See [Palette enforcement](./MANIFEST.md#palette-enforcement).
 
 After a stale spec is deliberately regenerated, `fetch` replaces the prior file
 only if its hash still proves PixelKiln wrote it. A changed or untracked
@@ -391,8 +399,11 @@ scripts and agents; `--style` and `--only` narrow it the same way.
 
 `--edit` lets the page change *intent*: an asset's prompt (for every style or
 only the one being viewed), width, height, size, category, and tags; a style's
-prompt prefix, prompt suffix, forced palette, view, and background removal;
-and a form under each style to add a new asset. A style edit shows its blast
+prompt prefix, prompt suffix, palette, whether downloaded art is snapped to
+it, view, and background removal; and a form under each style to add a new
+asset. The palette rule is the one style field that changes no request:
+saving it makes the style's generated entries `recoverable`, and the next
+fetch re-applies it for free. A style edit shows its blast
 radius before you save —
 how many assets it changes the request for, including assets in styles that
 `extends` this one and do not override the field themselves, and what
