@@ -17,6 +17,38 @@ work. The experimental `comfyui` adapter runs committed API-format `map` and
 ordered still-frame workflows on a self-hosted server. The experimental `scenario` adapter runs
 hosted still models with Compute Unit preflight and durable asset recovery.
 
+## Which command
+
+| I want to | Run |
+|---|---|
+| see what a run would do and cost, spending nothing | `pixelkiln plan` |
+| generate everything the manifest still needs | `pixelkiln gen --budget 40` |
+| generate one asset, or one style | `pixelkiln gen --only anvil --budget 2`, `pixelkiln gen --style neon --budget 20` |
+| finish a run that was interrupted | `pixelkiln plan`, then the `next:` command it prints (`poll`, `pick`, or `fetch`) |
+| choose among candidates the provider returned | `pixelkiln pick` |
+| get back a generated file I deleted or lost | `pixelkiln restore` |
+| bring back the generation a regeneration replaced | `pixelkiln history`, then `pixelkiln restore --only anvil --generation 1` |
+| look at everything the project has made | `pixelkiln gallery` |
+| change prompts and sizes, or regenerate, from the browser | `pixelkiln gallery --edit --budget 10` |
+| touch a sprite up by hand and keep the edit | `pixelkiln edit --only anvil` |
+| stop tracking a hand edit | `pixelkiln edit detach --only anvil` |
+| build a sprite sheet | `pixelkiln pack --style base` |
+| place sprites on a sheet at declared cells | `pixelkiln mount --style base` |
+| export a tileset for Tiled or Godot | `pixelkiln export --style ground --format tiled` |
+| check the art against the style's palette and grid | `pixelkiln audit --style base` |
+| produce the palette-clean, grid-true final art | `pixelkiln refine` then `pixelkiln refine approve --from <record> --reviewer "Name"` |
+| claim art already on my provider account | `pixelkiln adopt` |
+| find paid work on the account that no lockfile claims | `pixelkiln salvage` |
+| accept reworded prompts without regenerating | `pixelkiln accept` |
+| drop lock entries the manifest no longer declares | `pixelkiln prune` |
+| check the project before committing or in CI | `pixelkiln doctor`, `pixelkiln plan --check` |
+| see the account balance | `pixelkiln balance` |
+| work across several projects | `pixelkiln workspace add ../other/pixelkiln.manifest.json`, then `--workspace` on `gallery` and `salvage` |
+
+Every command takes `--manifest <file>` when the manifest is not in the
+working directory. Commands that spend take `--budget`; commands that replace
+a file you changed take `--force`.
+
 ## Everyday pipeline
 
 ### `init`
