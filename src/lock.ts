@@ -1,6 +1,7 @@
 import { readFile, writeFile, rename, mkdir, rmdir, rm, stat } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
+import { ProjectError } from "./errors.ts"
 import { parseLock, type Lock, type LockEntry } from "./types.ts"
 import type { CostUnit } from "./provider.ts"
 
@@ -15,8 +16,9 @@ export async function loadLock(lockPath: string): Promise<Lock> {
   try {
     return parseLock(JSON.parse(await readFile(lockPath, "utf8")))
   } catch (err) {
-    throw new Error(
+    throw new ProjectError(
       `Lockfile at ${lockPath} is malformed:\n${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     )
   }
 }
@@ -69,9 +71,10 @@ async function writeLockWhileHeld(file: string, lock: Lock): Promise<void> {
     try {
       disk = parseLock(JSON.parse(await readFile(file, "utf8")))
     } catch (err) {
-      throw new Error(
+      throw new ProjectError(
         `Refusing to overwrite malformed lockfile at ${file}: ` +
           `${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
       )
     }
   }

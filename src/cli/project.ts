@@ -1,6 +1,7 @@
 /** Opening a project the way commands need it, plus the manifest and provider helpers they share. */
 import path from "node:path"
 import { existsSync } from "node:fs"
+import { BudgetError, ProjectError, UsageError } from "../errors.ts"
 import { formatCost, type Provider } from "../provider.ts"
 import { createProvider, type ProviderMode } from "../providers/registry.ts"
 import type { LoadedManifest } from "../manifest.ts"
@@ -53,14 +54,14 @@ export function accountProviderId(manifest: Manifest, requested: string | undefi
   const providers = manifestProviderIds(manifest)
   if (requested) {
     if (!providers.includes(requested)) {
-      throw new Error(
+      throw new UsageError(
         `Provider "${requested}" is not used by this manifest. Used: ${providers.join(", ")}.`,
       )
     }
     return requested
   }
   if (providers.length > 1) {
-    throw new Error(
+    throw new UsageError(
       `${command} is account-scoped and this manifest uses ${providers.join(", ")}. ` +
         `Pass --provider <id>.`,
     )
@@ -73,14 +74,14 @@ export function budgetsForPlan(plan: Plan, args: Args): Map<string, number | und
   const keyed = Object.entries(args.providerBudgets)
   for (const [provider] of keyed) {
     if (!providerIds.has(provider)) {
-      throw new Error(
+      throw new BudgetError(
         `Budget names provider "${provider}", but this run has work only for ` +
           `${[...providerIds].join(", ") || "no providers"}.`,
       )
     }
   }
   if (plan.groups.length > 1 && args.budget !== undefined) {
-    throw new Error(
+    throw new BudgetError(
       "A mixed-provider run needs provider-keyed budgets, for example " +
         "--budget pixellab=40 --budget retrodiffusion=1.25.",
     )
@@ -94,7 +95,7 @@ export function budgetsForPlan(plan: Plan, args: Args): Map<string, number | und
       group.cost > 0 &&
       ceiling === undefined
     ) {
-      throw new Error(
+      throw new BudgetError(
         `Mixed-provider run is missing --budget ${group.provider}=<amount> for ` +
           `${formatCost(group.costUnit, group.cost)} of planned work.`,
       )
@@ -119,14 +120,14 @@ export function budgetsForPlan(plan: Plan, args: Args): Map<string, number | und
  */
 export async function requireCompleteWorkspaceClaims(workspacePath: string) {
   if (!existsSync(workspacePath)) {
-    throw new Error(`Workspace catalog not found: ${workspacePath}`)
+    throw new ProjectError(`Workspace catalog not found: ${workspacePath}`)
   }
   const dir = path.dirname(path.resolve(workspacePath))
   const ws = await loadWorkspace(workspacePath)
   const diagnostics = validateWorkspace(ws, dir)
   const errors = diagnostics.filter((d) => d.level === "error")
   if (errors.length) {
-    throw new Error(
+    throw new ProjectError(
       `Workspace catalog at ${workspacePath} is not safe to derive a claim set from:\n` +
         errors.map((d) => `  ${d.id}: ${d.message}`).join("\n"),
     )
@@ -169,7 +170,7 @@ export async function openAccountProject(args: Args): Promise<CliAccountProject>
 
 async function open(args: Args): Promise<CliProject & Partial<CliAccountProject>> {
   if (!existsSync(path.resolve(args.manifest))) {
-    throw new Error(
+    throw new ProjectError(
       `No manifest at ${path.resolve(args.manifest)}. Pass --manifest, or run \`pixelkiln init --from <dir>\`.`,
     )
   }
@@ -180,7 +181,7 @@ async function open(args: Args): Promise<CliProject & Partial<CliAccountProject>
     ? accountProviderId(loaded.manifest, args.provider, args.command)
     : undefined
   if (args.provider && !accountProvider) {
-    throw new Error("--provider is only used by balance, adopt, salvage, purge, or workspace add.")
+    throw new UsageError("--provider is only used by balance, adopt, salvage, purge, or workspace add.")
   }
   if (accountProvider) specs = specs.filter((spec) => spec.provider === accountProvider)
   const accountManifest: Manifest = accountProvider
@@ -195,7 +196,7 @@ async function open(args: Args): Promise<CliProject & Partial<CliAccountProject>
       }
     : loaded.manifest
   if (accountProvider && args.styles.some((styleId) => !accountManifest.styles[styleId])) {
-    throw new Error(`Selected style is not assigned to provider "${accountProvider}".`)
+    throw new UsageError(`Selected style is not assigned to provider "${accountProvider}".`)
   }
   return { loaded, specs, lock, accountProvider, accountManifest }
 }

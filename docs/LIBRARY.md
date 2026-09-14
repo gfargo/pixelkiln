@@ -447,6 +447,38 @@ costs with their unit; use `spendByUnit(lock)` for history. Use
 `measureBalanceChange(before, after)` when the provider exposes authoritative
 balance readings and keep that observed delta distinct from the estimate.
 
+## Errors a caller can branch on
+
+Most failures are plain `Error`s whose message is written for a person. The
+kinds a program might handle differently extend `PixelKilnError` and carry a
+`code`:
+
+| Class | `code` | Thrown by |
+|---|---|---|
+| `UsageError` | `usage` | `parseArgs`, `resolveSpecs` when a filter names an unknown style or asset |
+| `ProjectError` | `project` | `loadManifest`, `loadLock`, `loadWorkspace`, `openProject` |
+| `ProviderError` | `provider` | every built-in client on a failed request; `provider` and `status` say which and what. `PixelLabError` is one with the response `body`. |
+| `OverwriteRefusedError` | `refused-overwrite` | `revertGeneration`, `writeManagedArtifactBundle`, `installRecipe`, `snapshotQualityBaseline`; `files` lists what was left alone |
+| `BudgetError` | `budget` | `submit` and the CLI's balance checks |
+| `UnsupportedCapabilityError` | `capability` | `requireList`, `requireDelete`, `requireBalance` |
+
+`errorCode(err)` returns the code or `undefined`, and `exitCodeFor(err)` the
+exit code the CLI uses (`EXIT_CODES` is the table). A new code is added only
+when some caller would branch on it; a message that is merely different is
+still a plain `Error`.
+
+```ts
+import { errorCode, ProviderError } from "pixelkiln"
+
+try {
+  await submit(provider, project.loaded, plan.actionable, project.lock, project.lockPath)
+} catch (err) {
+  if (err instanceof ProviderError && err.status === 402) console.error("top up", err.provider)
+  else if (errorCode(err) === "budget") console.error("raise the budget or narrow the run")
+  else throw err
+}
+```
+
 ## Stability and file paths
 
 - Public imports come from `pixelkiln`; internal `src/` paths are not part of

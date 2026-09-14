@@ -1,5 +1,6 @@
 import type { ResolvedStyleImage } from "./types.ts"
 import { z } from "zod"
+import { ProviderError } from "./errors.ts"
 import { fetchWithRetry, type RetryingFetch } from "./http.ts"
 
 /**
@@ -157,13 +158,13 @@ function validateResponse<S extends z.ZodTypeAny>(
   throw new Error(`Invalid PixelLab response for ${operation}: ${issues}`)
 }
 
-export class PixelLabError extends Error {
+export class PixelLabError extends ProviderError {
   constructor(
     message: string,
-    readonly status: number,
+    status: number,
     readonly body: string,
   ) {
-    super(message)
+    super("pixellab", message, { status })
     this.name = "PixelLabError"
   }
 }

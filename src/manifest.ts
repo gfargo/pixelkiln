@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import type { ZodIssue } from "zod"
+import { ProjectError, UsageError } from "./errors.ts"
 import {
   ManifestInputSchema,
   ManifestSchema,
@@ -33,24 +34,24 @@ export interface LoadedManifest {
 
 export async function loadManifest(manifestPath: string): Promise<LoadedManifest> {
   const abs = path.resolve(manifestPath)
-  if (!existsSync(abs)) throw new Error(`No manifest at ${abs}`)
+  if (!existsSync(abs)) throw new ProjectError(`No manifest at ${abs}`)
   const input = ManifestInputSchema.safeParse(JSON.parse(await readFile(abs, "utf8")))
   if (!input.success) {
     const issues = formatManifestIssues(input.error.issues)
-    throw new Error(`Manifest at ${abs} is invalid:\n${issues}`)
+    throw new ProjectError(`Manifest at ${abs} is invalid:\n${issues}`)
   }
   let styles: Record<string, Style>
   try {
     styles = resolveStyleInheritance(input.data.styles)
   } catch (error) {
-    throw new Error(
+    throw new ProjectError(
       `Manifest at ${abs} is invalid:\n  ${error instanceof Error ? error.message : String(error)}`,
     )
   }
   const parsed = ManifestSchema.safeParse({ ...input.data, styles })
   if (!parsed.success) {
     const issues = formatManifestIssues(parsed.error.issues)
-    throw new Error(`Manifest at ${abs} is invalid:\n${issues}`)
+    throw new ProjectError(`Manifest at ${abs} is invalid:\n${issues}`)
   }
   const styleIds = new Set(Object.keys(parsed.data.styles))
   const unknownReferences: string[] = []
@@ -99,7 +100,7 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
   }
   for (const assetId of Object.keys(parsed.data.assets)) visitRevision(assetId, [])
   if (unknownReferences.length) {
-    throw new Error(`Manifest at ${abs} is invalid:\n${unknownReferences.map((i) => `  ${i}`).join("\n")}`)
+    throw new ProjectError(`Manifest at ${abs} is invalid:\n${unknownReferences.map((i) => `  ${i}`).join("\n")}`)
   }
   return { manifest: parsed.data, root: path.dirname(abs), path: abs }
 }
@@ -230,14 +231,14 @@ export async function resolveSpecs(
   )
   for (const unknownStyle of filter?.styles ?? []) {
     if (!manifest.styles[unknownStyle]) {
-      throw new Error(
+      throw new UsageError(
         `Unknown style "${unknownStyle}". Defined: ${Object.keys(manifest.styles).join(", ") || "(none)"}`,
       )
     }
   }
   for (const unknownAsset of filter?.assets ?? []) {
     if (!manifest.assets[unknownAsset]) {
-      throw new Error(`Unknown asset "${unknownAsset}".`)
+      throw new UsageError(`Unknown asset "${unknownAsset}".`)
     }
   }
 

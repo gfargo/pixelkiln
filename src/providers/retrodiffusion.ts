@@ -1,4 +1,5 @@
 import { fetchWithRetry, type RetryingFetch, type RetryOptions } from "../http.ts"
+import { ProviderError } from "../errors.ts"
 import { paletteSwatch } from "../png.ts"
 import type {
   BalanceInfo,
@@ -93,7 +94,7 @@ class RetroDiffusionClient {
   /** Result URLs are signed; no token header, and the same retry policy as the API. */
   async download(url: string): Promise<Buffer> {
     const response = await this.request(url)
-    if (!response.ok) throw new Error(`Retro Diffusion download failed (${response.status})`)
+    if (!response.ok) throw new ProviderError("retrodiffusion", `Retro Diffusion download failed (${response.status})`, { status: response.status })
     return Buffer.from(await response.arrayBuffer())
   }
 
@@ -117,9 +118,11 @@ class RetroDiffusionClient {
     if (!response.ok) {
       const retry = response.headers.get("retry-after")
       const detail = retroError(value)
-      throw new Error(
+      throw new ProviderError(
+        "retrodiffusion",
         `Retro Diffusion request failed (${response.status}): ${detail}` +
           (retry ? `; retry after ${retry}s` : ""),
+        { status: response.status },
       )
     }
     return value

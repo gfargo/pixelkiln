@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
+import { OverwriteRefusedError } from "../errors.ts"
 import { sha256File } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
@@ -164,8 +165,9 @@ export async function revertGeneration(
     const file = currentEntryOutputPath(entry, spec, i)
     if (!existsSync(file)) continue
     if ((await sha256File(file)) !== entry.outputs[i]!.sha256 && !opts.force) {
-      throw new Error(
+      throw new OverwriteRefusedError(
         `${path.relative(process.cwd(), file)} was changed after download; keep it with pixelkiln edit, or pass --force to replace it`,
+        [file],
       )
     }
   }

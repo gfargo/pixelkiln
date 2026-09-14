@@ -1,5 +1,6 @@
 import type { Generator, ResolvedSpec, ResolvedStyleImage, RevisionMode } from "./types.ts"
 import type { MediaType } from "./media.ts"
+import { PixelKilnError } from "./errors.ts"
 
 /**
  * Human-readable unit attached to every estimate and recorded charge.
@@ -302,11 +303,12 @@ export interface Provider {
   delete?(assetId: string): Promise<void>
 }
 
-export class UnsupportedCapabilityError extends Error {
+export class UnsupportedCapabilityError extends PixelKilnError {
   constructor(providerId: string, capability: string) {
     super(
       `Provider "${providerId}" does not support ${capability}. ` +
         `That command is unavailable with this backend.`,
+      "capability",
     )
     this.name = "UnsupportedCapabilityError"
   }

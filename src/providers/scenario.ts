@@ -1,5 +1,6 @@
 import { MAX_DOWNLOAD_BYTES } from "../client.ts"
 import { fetchWithRetry, type RetryInit, type RetryingFetch, type RetryOptions } from "../http.ts"
+import { ProviderError } from "../errors.ts"
 import { MediaType } from "../media.ts"
 import type {
   CandidateSelection,
@@ -184,7 +185,7 @@ class ScenarioClient {
       throw new Error("Scenario downloads must use HTTP or HTTPS")
     }
     const response = await this.request(parsed)
-    if (!response.ok) throw new Error(`Scenario download failed (${response.status})`)
+    if (!response.ok) throw new ProviderError("scenario", `Scenario download failed (${response.status})`, { status: response.status })
     const declared = Number(response.headers.get("content-length"))
     if (Number.isFinite(declared) && declared > MAX_DOWNLOAD_BYTES) {
       throw new Error(`Scenario download exceeds the ${MAX_DOWNLOAD_BYTES}-byte safety limit`)
@@ -237,9 +238,11 @@ class ScenarioClient {
     if (!response.ok) {
       const retry = response.headers.get("retry-after")
       const detail = redactScenarioError(value, [this.apiKey, this.apiSecret, auth])
-      throw new Error(
+      throw new ProviderError(
+        "scenario",
         `Scenario request failed (${response.status}): ${detail}` +
           (retry ? `; retry after ${retry}s` : ""),
+        { status: response.status },
       )
     }
     return value

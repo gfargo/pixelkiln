@@ -1,5 +1,6 @@
 /** The generation lifecycle: submit, poll, pick, fetch, restore, and `gen` which chains them. */
 import { formatCost, measureBalanceChange, type BalanceInfo } from "../../provider.ts"
+import { BudgetError } from "../../errors.ts"
 import { saveLock } from "../../lock.ts"
 import { lockKey } from "../../types.ts"
 import { buildPlan } from "../../pipeline/plan.ts"
@@ -38,13 +39,13 @@ export async function runGenerate(args: Args): Promise<void> {
               `(${group.provider})`,
           )
           if (balance.unit !== group.costUnit) {
-            throw new Error(
+            throw new BudgetError(
               `Provider ${group.provider} estimate unit ${group.costUnit} does not match ` +
                 `balance unit ${balance.unit}.`,
             )
           }
           if (balance.unit !== "free" && group.cost > balance.remaining) {
-            throw new Error(
+            throw new BudgetError(
               `${group.provider} needs ${formatCost(balance.unit, group.cost)} but only ` +
                 `${formatCost(balance.unit, balance.remaining)} remain.`,
             )
@@ -57,7 +58,7 @@ export async function runGenerate(args: Args): Promise<void> {
         }
         const ceiling = budgets.get(group.provider)
         if (ceiling !== undefined && group.cost > ceiling) {
-          throw new Error(
+          throw new BudgetError(
             `${group.provider} would spend ${formatCost(group.costUnit, group.cost)} but its ` +
               `budget is ${formatCost(group.costUnit, ceiling)}.`,
           )
