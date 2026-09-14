@@ -472,7 +472,7 @@ describe("contact sheet", () => {
   })
 
   // A session commonly spans multiple styles at once (unlike salvage, which
-  // now opens one tab per style) — nothing distinguished which style a row's
+  // now opens one tab per style); nothing distinguished which style a row's
   // candidates belonged to beyond recognising the art itself.
   it("labels each row with its style, not just the asset id", () => {
     const html = renderSheet([
@@ -492,7 +492,7 @@ describe("contact sheet", () => {
 
 describe("env file loading", () => {
   // Regression: the missing-key error told people to put PIXELLAB_API_KEY in a
-  // .env file next to the manifest, but nothing ever read one — so following
+  // .env file next to the manifest, but nothing ever read one, so following
   // the instruction correctly still failed.
   it("reads .env.local and .env from a directory", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-env-"))

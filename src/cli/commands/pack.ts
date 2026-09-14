@@ -17,8 +17,8 @@ export async function runPack(args: Args): Promise<void> {
   if (args.inputs) {
     // Handled before the manifest-required check below, deliberately: the
     // whole point of `--inputs` is packing sprites that were never part of a
-    // pixelkiln manifest at all. Requiring one anyway — as this did until a
-    // manual smoke test caught it — defeated the feature for exactly the
+    // pixelkiln manifest at all. Requiring one anyway, as this did until a
+    // manual smoke test caught it, defeated the feature for exactly the
     // no-manifest consumer it was built for; heybud-admin's sync script never
     // noticed because it happens to run from a directory that has its own
     // manifest for an unrelated reason.
@@ -54,7 +54,7 @@ export async function runPack(args: Args): Promise<void> {
 
   const { loaded, lock } = await openProject(args)
   // The --inputs form is handled earlier, before the manifest is required
-  // at all — reaching here means the manifest-driven (lockfile) form.
+  // at all; reaching here means the manifest-driven (lockfile) form.
   if (args.primaryOnly && args.outputRoles.length) {
     throw new Error("pack accepts either --primary-only or --output-role, not both")
   }
@@ -130,7 +130,7 @@ export async function runMount(args: Args): Promise<void> {
   for (const styleId of styleIds) {
     const style = loaded.manifest.styles[styleId]
     if (!style?.mount) {
-      // Not an error when the caller did not name a style — `mount` with no
+      // Not an error when the caller did not name a style; `mount` with no
       // --style should do the mounted ones and stay quiet about the rest.
       if (args.styles.length) {
         throw new Error(

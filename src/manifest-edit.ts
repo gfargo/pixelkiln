@@ -235,7 +235,7 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
       style.providerOptions = options
     }
     // An empty value removes the style's own key: for a child that means
-    // "inherit again", for a base style "the default" — exactly what the
+    // "inherit again", for a base style "the default", exactly what the
     // author would write by hand in either case.
     if (patch.promptPrefix !== undefined) setOrDelete(style, "promptPrefix", patch.promptPrefix || null)
     if (patch.promptSuffix !== undefined) setOrDelete(style, "promptSuffix", patch.promptSuffix || null)

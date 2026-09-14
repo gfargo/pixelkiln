@@ -110,7 +110,7 @@ export async function fetchAssets(
 
       const spec = specByKey.get(key)
       if (!spec) {
-        // In the lockfile but no longer in the manifest — the asset was removed.
+        // In the lockfile but no longer in the manifest; the asset was removed.
         log(`  skip    ${key} (not in current manifest)`)
         result.skipped++
         continue
@@ -397,7 +397,7 @@ export async function pushTags(
     const spec = specByKey.get(key)
     if (!spec || entry.provider !== provider.id || !entry.objectId) continue
     // pixflux results are local files with a synthetic id, not account
-    // objects — tagging one would 404.
+    // objects; tagging one would 404.
     if (entry.generator === "pixflux") continue
     if (!provider.setTags) return tagged // capability absent; nothing to do
     try {

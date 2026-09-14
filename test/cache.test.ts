@@ -27,8 +27,8 @@ describe("cachePathFor", () => {
   })
 
   // Regression: a lock name that doesn't end in exactly ".lock.json" used to
-  // come back unchanged, so `adopt` would load and save the cache — a
-  // completely different schema — at the real lockfile's own path,
+  // come back unchanged, so `adopt` would load and save the cache, a
+  // completely different schema, at the real lockfile's own path,
   // overwriting every entry on the first run.
   it("never returns the same path it was given, for any input", () => {
     for (const name of ["mylock.json", "custom.json", "lock.json", "pixelkiln.lock", "pixelkiln.lock.json.bak"]) {
@@ -64,7 +64,7 @@ describe("loadCache / saveCache", () => {
 
   it("rebuilds rather than throwing on a schema mismatch", async () => {
     // The exact shape a real lockfile would have if cachePathFor ever
-    // collided with it again — must not be mistaken for a valid cache.
+    // collided with it again, must not be mistaken for a valid cache.
     const p = path.join(dir, "wrong-shape.cache.json")
     await writeFile(p, JSON.stringify({ version: 2, entries: { "a/b": {} } }))
     await expect(loadCache(p)).resolves.toEqual({ version: 1, hashes: {} })

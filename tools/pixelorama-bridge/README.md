@@ -14,8 +14,8 @@ service worker registers under the gallery's origin, and export the `Web`
 preset. The GitHub workflow `editor-build.yml` does this in the same container
 Pixelorama's own web CI uses, verifies the round trip with `test/smoke.mjs`,
 and publishes a release on request. One editor version is pinned per PixelKiln
-release; `pin.json` carries the upstream tag, the Godot version, and — once a
-build is published — the release tag and file hashes the gallery verifies.
+release; `pin.json` carries the upstream tag, the Godot version, and, once a
+build is published, the release tag and file hashes the gallery verifies.
 
 ## Publishing a new build
 
@@ -25,19 +25,19 @@ build is published — the release tag and file hashes the gallery verifies.
    `gh workflow run "Editor build" --ref main -f publish=true`. It creates
    release `editor-pixelorama-<tag>-pk.<run>` with the build and `manifest.json`.
 3. Copy the tag into `pin.json` `release` and the manifest's `files` map into
-   `pin.json` `files`, commit, and ship it with the next PixelKiln release —
+   `pin.json` `files`, commit, and ship it with the next PixelKiln release.
    `src/editor/pin.ts` inlines the file, and `test/editor-install.test.ts`
    checks the pin names a release and every file. Until step 3 lands, the
    package keeps trusting the previous build.
 
 ## Layout
 
-- `overlay/src/Extensions/PixelKilnBridge/` — the extension: `extension.json`,
+- `overlay/src/Extensions/PixelKilnBridge/`: the extension, `extension.json`,
   the scene, and `PixelKilnBridge.gd`. Web-only; a no-op elsewhere.
-- `host/index.html` — a host page with no PixelKiln code that speaks the
+- `host/index.html`: a host page with no PixelKiln code that speaks the
   protocol; the contract the gallery implements.
 - `scripts/build.sh`, `scripts/manifest.mjs`, `scripts/serve.mjs`.
-- `test/smoke.mjs` — open → paint → save against a built editor, in Chrome.
+- `test/smoke.mjs`: open, paint, save against a built editor, in Chrome.
 
 ## Protocol
 
@@ -58,13 +58,13 @@ Same origin only, both directions checked. Bytes are `ArrayBuffer`s
 `save` is every frame flattened (`png` stays the first, for older hosts) plus
 Pixelorama's own `.pxo` (layers intact) for re-editing; hand that `.pxo` back
 in `open` (protocol 2) and the editor restores the layered project, using the
-`png` or `frames` only if the project file cannot be read — `opened.source`
+`png` or `frames` only if the project file cannot be read; `opened.source`
 says which. An ordered set (protocol 3) opens as one project with a frame per
 member at the given `fps`; each saved frame carries the role it was opened
 under, or `null` for a frame added in the editor, so the host can refuse a
 set whose shape changed. `reference` (protocol 4) is the generated art the
 edit is compared against: it becomes a locked, half-transparent layer on top
-with one cel per frame — an onion skin — that `save` never flattens in,
+with one cel per frame, an onion skin, that `save` never flattens in,
 `reference {visible}` shows or hides, and a reopened `.pxo` keeps once,
 refreshed with the current bytes; `opened.layers` counts the author's layers
 without it. The editor also answers ⌘S / Ctrl+S and a **File → Save to

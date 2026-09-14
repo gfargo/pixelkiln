@@ -184,7 +184,7 @@ export async function loadSiblingManifests(
       const { manifest } = await loadManifest(siblingManifestPath)
       siblings.push({ label: path.basename(path.dirname(siblingManifestPath)), manifest })
     } catch {
-      // Not this run's problem to solve — the orphan just gets no extra signal.
+      // Not this run's problem to solve; the orphan just gets no extra signal.
     }
   }
   return siblings
@@ -248,8 +248,8 @@ export function groupOrphansByStyle(
     }
 
     // Nothing recognised it anywhere. A single-style manifest still has no
-    // better place to put it than its one style — the same pragmatic default
-    // matchOrphanStyle uses — but a multi-style one genuinely doesn't know.
+    // better place to put it than its one style, the same pragmatic default
+    // matchOrphanStyle uses, but a multi-style one genuinely doesn't know.
     if (ownStyleIds.length <= 1 && ownStyleIds[0]) matched.get(ownStyleIds[0])!.push(o)
     else unmatched.push(o)
   }

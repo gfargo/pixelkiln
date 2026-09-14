@@ -9,8 +9,8 @@ import { postprocessCurrent } from "./postprocess.ts"
 import { inspectRevisionReadiness } from "./revision.ts"
 
 export type PlanState =
-  | "ok" // spec unchanged, file present and matching — nothing to do
-  | "missing" // no lock entry and no file — genuinely needs generating
+  | "ok" // spec unchanged, file present and matching; nothing to do
+  | "missing" // no lock entry and no file; genuinely needs generating
   | "untracked" // file exists but has no lock entry; the art is fine, provenance is not known
   | "stale" // prompt/style/size changed since the file was made
   | "orphaned" // the bytes that should be on disk are gone or altered
@@ -145,7 +145,7 @@ export async function buildPlan(
       }
     } else if (!entry) {
       // Distinguish "no art" from "art exists but unmatched upstream". Calling
-      // the latter `missing` invites regenerating perfectly good files — which
+      // the latter `missing` invites regenerating perfectly good files, which
       // is exactly what happens to assets that were retouched by hand after
       // download, since their bytes no longer match any remote object.
       if (existsSync(spec.outFile)) {

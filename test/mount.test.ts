@@ -155,7 +155,7 @@ describe("mountSprites", () => {
 
 // ── mountStyle: where the pixels come from ──────────────────────────────────
 // `mount` reads the lockfile, which records what the API returned. That is
-// the wrong file whenever the art needs a step pixelkiln does not perform —
+// the wrong file whenever the art needs a step pixelkiln does not perform:
 // the terrain atlas reduces every generated tile onto a closed palette before
 // it goes on the sheet. `source` is how an asset says so.
 

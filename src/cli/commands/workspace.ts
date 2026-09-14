@@ -18,7 +18,7 @@ import { log } from "../io.ts"
 import type { Args } from "../args.ts"
 
 export async function runWorkspace(args: Args): Promise<void> {
-  // No manifest is required in cwd for any of these — a catalog is meant to
+  // No manifest is required in cwd for any of these; a catalog is meant to
   // be operated on from outside any one project.
   const workspacePath = path.resolve(args.workspace ?? "pixelkiln.workspace.json")
   const dir = path.dirname(workspacePath)

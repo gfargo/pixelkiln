@@ -311,7 +311,7 @@ describe("auditStyle", () => {
   })
 
   // Without declared references the set is compared to its own average, which
-  // still surfaces outliers — it just cannot tell you the whole set drifted.
+  // still surfaces outliers; it just cannot tell you the whole set drifted.
   it("falls back to the set's own palette when no styleImages are set", async () => {
     const { loaded, specs } = await styleProject(false)
     const audit = await auditStyle(loaded, specs, "base")

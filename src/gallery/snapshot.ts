@@ -611,7 +611,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       outputs = [await describeOutput(media, root, path.resolve(root, spec.source))]
     } else if (!entry && existsSync(spec.outFile)) {
       // Untracked: the art is on disk with no provenance. Showing it is the
-      // point — it is exactly the file a careless regeneration would clobber.
+      // point; it is exactly the file a careless regeneration would clobber.
       outputs = [await describeOutput(media, root, spec.outFile)]
     } else {
       outputs = []

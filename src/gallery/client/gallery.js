@@ -1287,7 +1287,7 @@ async function postHandEdit(item, action, extra) {
   if (item.project) body.project = item.project;
   snap = await postEdit(body);
 }
-// A single PNG or a set of them — frames, tiles — is hand-editable, one file
+// A single PNG or a set of them (frames, tiles) is hand-editable, one file
 // per member; a set with a GIF in it is not.
 const editableOutputs = (item) => item.outputs.length && item.outputs.every((o) => o.exists && o.mediaType === 'image/png');
 // What the members of a set are called: frames for an animation, tiles for a tile set.
@@ -1848,7 +1848,7 @@ function renderDrawer() {
   // stale or superseded failure needs its own line.
   if (item.error && !item.reason.includes(item.error)) body.append(stateNode('failed', item.error));
 
-  // Generation — what was sent and what it cost.
+  // Generation: what was sent and what it cost.
   {
     const { s, dl } = section('Generation');
     row(dl, 'provider', item.provider);
@@ -1880,7 +1880,7 @@ function renderDrawer() {
     body.append(s);
   }
 
-  // Outputs — every file with its hash and whether it is really there.
+  // Outputs: every file with its hash and whether it is really there.
   {
     const s = el('section', 'meta');
     s.append(el('h3', null, item.outputs.length === 1 ? 'Output' : 'Outputs (' + item.outputs.length + ')'));
@@ -2005,8 +2005,8 @@ function renderDrawer() {
   close.focus({ preventScroll: true });
 }
 
-// View state lives in the URL — filters and sort in the query, the open
-// record in the hash — so a link to "every failed generation" or to one
+// View state lives in the URL (filters and sort in the query, the open
+// record in the hash) so a link to "every failed generation" or to one
 // specific record can be pasted into a review thread and land there.
 function readUrlState() {
   const params = new URLSearchParams(location.search);

@@ -19,7 +19,7 @@ import { lockKey, primaryOutput, type Generator, type Lock } from "../src/types.
  * Integration coverage for the stages that spend money.
  *
  * These were the only modules with no tests, and four of the five real bugs
- * found in this project lived here — rate-limit spacing, the wrong
+ * found in this project lived here: rate-limit spacing, the wrong
  * select-frames field, and two baseline-hash mistakes. The FakeProvider drives
  * the genuine state machine with no network and no API key.
  */
@@ -291,7 +291,7 @@ describe("submit", () => {
     const plan = await buildPlan(specs, lock)
 
     const start = Date.now()
-    // No spacingMs override here — this run relies entirely on the
+    // No spacingMs override here; this run relies entirely on the
     // provider's declared 0ms, not the module's own default spacing.
     await submit(fast, loaded, plan.actionable, lock, lockPath, {})
     // DEFAULT_RATE_LIMIT's 2500ms spacing would make 2 submissions take over
@@ -859,7 +859,7 @@ describe("adopt", () => {
 
 describe("concurrent lock writes", () => {
   // Regression: parallel fetch workers each save after their own upsert. With
-  // a shared `<path>.tmp` they raced — one worker's rename moved the file out
+  // a shared `<path>.tmp` they raced; one worker's rename moved the file out
   // from under another's, failing with ENOENT and losing that write.
   it("survives many concurrent saves without losing one", async () => {
     const lock = emptyLock()

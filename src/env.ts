@@ -42,7 +42,7 @@ export function readEnvFiles(dir: string): Record<string, string> {
 function envFiles(dir: string): Array<[string, Record<string, string>]> {
   const out: Array<[string, Record<string, string>]> = []
   // .env.local last-writer-wins over .env, matching the Next.js convention
-  // these projects already follow — so it is read first and .env cannot
+  // these projects already follow, so it is read first and .env cannot
   // clobber it, given the never-override rule in loadEnvFiles.
   for (const name of [".env.local", ".env"]) {
     const file = path.join(dir, name)

@@ -57,7 +57,7 @@ async function serveUntilStopped(
   let first = true
   const budget = sessionBudget(args)
   // Providers are created online, per project, with that project's own env
-  // loaded first — a workspace may register accounts with different keys.
+  // loaded first; a workspace may register accounts with different keys.
   const providers = new Map<string, Provider>()
   const providerFor = (project: string | undefined, providerId: string): Provider => {
     const cacheKey = `${project ?? ""}:${providerId}`

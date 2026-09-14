@@ -102,7 +102,7 @@ export async function doctor(
   if (duplicateOutputs.length) {
     // Name the remedy. This almost always means an asset was renamed or moved
     // between styles and the old entry stayed behind still claiming the path,
-    // which `prune` clears — reporting the breakage without saying what fixes
+    // which `prune` clears; reporting the breakage without saying what fixes
     // it left the only route as hand-editing the lockfile.
     add(
       "lock-outputs",
