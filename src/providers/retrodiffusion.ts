@@ -1,3 +1,4 @@
+import { fetchWithRetry, type RetryingFetch, type RetryOptions } from "../http.ts"
 import { paletteSwatch } from "../png.ts"
 import type {
   BalanceInfo,
@@ -44,11 +45,16 @@ interface TaskResponse {
 }
 
 class RetroDiffusionClient {
+  private readonly request: RetryingFetch
+
   constructor(
     private readonly token: string | undefined,
     private readonly baseUrl = DEFAULT_BASE_URL,
-    private readonly request: typeof fetch = fetch,
-  ) {}
+    request?: typeof fetch,
+    retry?: RetryOptions,
+  ) {
+    this.request = fetchWithRetry(request, retry)
+  }
 
   async submit(body: Record<string, unknown>): Promise<string> {
     const response = await this.call("/inferences", { method: "POST", body: JSON.stringify(body) })
@@ -82,6 +88,13 @@ class RetroDiffusionClient {
       throw new Error("Retro Diffusion returned an invalid balance")
     }
     return balance
+  }
+
+  /** Result URLs are signed; no token header, and the same retry policy as the API. */
+  async download(url: string): Promise<Buffer> {
+    const response = await this.request(url)
+    if (!response.ok) throw new Error(`Retro Diffusion download failed (${response.status})`)
+    return Buffer.from(await response.arrayBuffer())
   }
 
   private async call(path: string, init: RequestInit = {}): Promise<unknown> {
@@ -318,9 +331,7 @@ export class RetroDiffusionProvider implements Provider {
   private async downloadResolved(url: string): Promise<Buffer> {
     const data = /^data:[^;]+;base64,(.+)$/.exec(url)?.[1]
     if (data) return Buffer.from(data, "base64")
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`Retro Diffusion download failed (${response.status})`)
-    return Buffer.from(await response.arrayBuffer())
+    return this.client.download(url)
   }
 
   async balance(): Promise<BalanceInfo> {

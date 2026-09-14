@@ -752,7 +752,7 @@ Print the package version. `-v` is an alias.
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
-| `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser, or the editor for `edit`. |
+| `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser (`open`, `xdg-open`, or `start`, by platform), or the editor for `edit`. |
 | `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor. |
 | `--no-editor` | gallery | With `--edit`, do not offer, install, or serve the in-browser editor. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |

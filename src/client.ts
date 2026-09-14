@@ -1,5 +1,6 @@
 import type { ResolvedStyleImage } from "./types.ts"
 import { z } from "zod"
+import { fetchWithRetry, type RetryingFetch } from "./http.ts"
 
 /**
  * PixelLab REST client.
@@ -13,29 +14,9 @@ import { z } from "zod"
 
 const BASE = process.env.PIXELLAB_API_BASE ?? "https://api.pixellab.ai/v2"
 
-export const MAX_RETRIES = 4
 export const MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-export function shouldRetry(status: number): boolean {
-  return status === 429 || status === 408 || status >= 500
-}
-
-/** Exponential backoff with jitter, so parallel workers don't retry in lockstep. */
-export function backoffMs(attempt: number): number {
-  const base = Math.min(1000 * 2 ** attempt, 16_000)
-  return base + Math.floor(Math.random() * 400)
-}
-
-/** Supports both Retry-After forms: seconds and an HTTP date. */
-export function retryAfterMs(value: string | null, now = Date.now()): number | null {
-  if (!value) return null
-  const seconds = Number(value)
-  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000
-  const date = Date.parse(value)
-  if (!Number.isFinite(date)) return null
-  return Math.max(0, date - now)
-}
+/** The retry policy now lives in http.ts and is shared by every provider; these names stay for callers that import them from here. */
+export { MAX_RETRIES, backoffMs, retryAfterMs, shouldRetry } from "./http.ts"
 
 export interface Balance {
   usd: number
@@ -188,49 +169,27 @@ export class PixelLabError extends Error {
 }
 
 export class PixelLabClient {
+  private readonly http: RetryingFetch
+
   constructor(
     private readonly apiKey: string,
-    private readonly timeoutMs = 120_000,
+    timeoutMs = 120_000,
   ) {
     if (!apiKey) throw new Error("PIXELLAB_API_KEY is required")
+    this.http = fetchWithRetry(undefined, { timeoutMs })
   }
 
-  /**
-   * Retries only what is safe to retry: transport failures, 429, and 5xx.
-   * A 4xx other than 429 is a bad request and retrying it just wastes time.
-   *
-   * POSTs that create objects are included, which is a deliberate trade: the
-   * failure mode of not retrying (a dropped asset in a 65-item run) is more
-   * common than the failure mode of retrying (a duplicate object), and a
-   * duplicate is visible and free to delete whereas a silent gap is neither.
-   */
-  private async request<T>(path: string, init?: RequestInit, attempt = 0): Promise<T> {
+  /** Retries transport failures, 429, and 5xx; see http.ts for the policy. */
+  private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const auth = this.apiKey.startsWith("Bearer ") ? this.apiKey : `Bearer ${this.apiKey}`
-    let res: Response
-    try {
-      res = await fetch(`${BASE}${path}`, {
-        ...init,
-        signal: init?.signal ?? AbortSignal.timeout(this.timeoutMs),
-        headers: {
-          Authorization: auth,
-          "Content-Type": "application/json",
-          ...(init?.headers ?? {}),
-        },
-      })
-    } catch (err) {
-      if (attempt < MAX_RETRIES) {
-        await sleep(backoffMs(attempt))
-        return this.request<T>(path, init, attempt + 1)
-      }
-      throw err
-    }
-
-    if (!res.ok && shouldRetry(res.status) && attempt < MAX_RETRIES) {
-      // Honour Retry-After when the server sends one; it knows better than we do.
-      const waitMs = retryAfterMs(res.headers.get("retry-after")) ?? backoffMs(attempt)
-      await sleep(waitMs)
-      return this.request<T>(path, init, attempt + 1)
-    }
+    const res = await this.http(`${BASE}${path}`, {
+      ...init,
+      headers: {
+        Authorization: auth,
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    })
 
     const text = await res.text()
     if (!res.ok) {
@@ -470,7 +429,7 @@ export class PixelLabClient {
 
   /** Storage URLs are public; no auth header, and sending one can break the CDN request. */
   async download(url: string): Promise<Buffer> {
-    const res = await fetch(url, { signal: AbortSignal.timeout(this.timeoutMs) })
+    const res = await this.http(url)
     if (!res.ok) throw new PixelLabError(`download ${url} → ${res.status}`, res.status, "")
     const declared = Number(res.headers.get("content-length"))
     if (Number.isFinite(declared) && declared > MAX_DOWNLOAD_BYTES) {

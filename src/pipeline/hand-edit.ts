@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
 import { copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
@@ -6,6 +5,7 @@ import { z } from "zod"
 import { sha256, sha256File } from "../hash.ts"
 import type { LoadedManifest } from "../manifest.ts"
 import { MediaType, validateMedia } from "../media.ts"
+import { defaultOpenCommand, openExternal } from "../open.ts"
 import { currentEntryOutputPath, isMemberSetEntry, memberPath, portableOutputPath, sourceIsStem } from "../outputs.ts"
 import { decodePng } from "../png.ts"
 import { lockKey, primaryOutput, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
@@ -397,19 +397,6 @@ async function replaceFile(file: string, bytes: Buffer | string): Promise<void> 
  * file path is appended. Without it the OS default handler is used.
  */
 export function openInEditor(file: string, editor = process.env.PIXELKILN_EDITOR): string {
-  const command = editor?.trim()
-    ? editor.trim().split(/\s+/)
-    : process.platform === "darwin"
-      ? ["open"]
-      : process.platform === "win32"
-        ? ["cmd", "/c", "start", ""]
-        : ["xdg-open"]
-  const [program, ...args] = command
-  const child = spawn(program!, [...args, file], { stdio: "ignore", detached: true })
-  child.on("error", () => {
-    // A missing editor surfaces as nothing happening; the caller has already
-    // printed the path, which is the useful part.
-  })
-  child.unref()
-  return command.join(" ")
+  const command = editor?.trim() ? editor.trim().split(/\s+/) : defaultOpenCommand()
+  return openExternal(file, command)
 }
