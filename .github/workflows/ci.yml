@@ -31,6 +31,21 @@ jobs:
       - run: npm run build
       - run: npm run test:package
 
+  # The gallery in a real browser over the in-memory provider: buttons,
+  # progress badge, regeneration history, free restore, no console errors.
+  gallery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Align npm version
+        run: npm install --global npm@11.19.1
+      - run: npm ci
+      - run: CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser)" npm run test:gallery
+
   website:
     runs-on: ubuntu-latest
     steps:
