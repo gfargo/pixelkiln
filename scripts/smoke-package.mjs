@@ -32,6 +32,8 @@ try {
     "dist/index.js",
     "dist/index.cjs",
     "dist/index.d.ts",
+    "dist/client/gallery.css",
+    "dist/client/gallery.js",
     "bin/pixelkiln.js",
     "schema/manifest.schema.json",
     "schema/recipe.schema.json",
@@ -68,12 +70,12 @@ try {
   run(process.execPath, [
     "--input-type=module",
     "--eval",
-    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function' || typeof m.shouldPersistSourceUrl !== 'function') process.exit(1)",
+    "const m = await import('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function' || typeof m.shouldPersistSourceUrl !== 'function') process.exit(1); const html = m.renderGallery({ project: { name: 'smoke' }, items: [], totals: { entries: 0 } }); if (!html.includes('function renderJobs') || !html.includes('--checker:')) process.exit(2)",
   ], consumer)
   run(process.execPath, [
     "--input-type=commonjs",
     "--eval",
-    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function' || typeof m.shouldPersistSourceUrl !== 'function') process.exit(1)",
+    "const m = require('pixelkiln'); if (typeof m.buildPlan !== 'function' || typeof m.verifyArtifactBundle !== 'function' || typeof m.verifyRecipe !== 'function' || typeof m.checkQualityBaseline !== 'function' || typeof m.shouldPersistSourceUrl !== 'function') process.exit(1); const html = m.renderGallery({ project: { name: 'smoke' }, items: [], totals: { entries: 0 } }); if (!html.includes('function renderJobs') || !html.includes('--checker:')) process.exit(2)",
   ], consumer)
 
   const cli = path.join(

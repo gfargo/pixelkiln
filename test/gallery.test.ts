@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -403,15 +403,29 @@ describe("renderGallery", () => {
   })
 
   it("emits a page script that compiles", async () => {
-    // The page is authored inside a template literal, so a stray escape turns
-    // into a real newline in the emitted JS. Compiling (not running) the
-    // script catches that before a browser shows an empty gallery.
+    // The client script is a real file inlined after the data prelude, so
+    // what a browser parses is the prelude plus the file. Compiling (not
+    // running) the whole thing catches a broken prelude or a file that
+    // stopped being valid before a browser shows an empty gallery.
     const { loaded, specs, lock } = await generated()
     const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
     const html = renderGallery(snapshot)
     const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!)
     expect(scripts).toHaveLength(1)
     expect(() => new Script(scripts[0]!, { filename: "gallery.js" })).not.toThrow()
+    // A regex escape that a template literal used to swallow: the palette
+    // field split on the letter "s" instead of whitespace.
+    expect(scripts[0]).toContain("split(/[\\s,]+/)")
+    expect(html).toContain("<style>\n:root {")
+  })
+
+  it("keeps the inlined client files free of anything that would close their tags", () => {
+    const dir = new URL("../src/gallery/client/", import.meta.url)
+    const js = readFileSync(new URL("gallery.js", dir), "utf8")
+    const css = readFileSync(new URL("gallery.css", dir), "utf8")
+    expect(js).not.toMatch(/<\/script/i)
+    expect(css).not.toMatch(/<\/style/i)
+    expect(js).not.toContain("${")
   })
 })
 
