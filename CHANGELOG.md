@@ -1,3 +1,10 @@
+# [0.38.0](https://github.com/gfargo/pixelkiln/compare/v0.37.0...v0.38.0) (2026-09-14)
+
+
+### Features
+
+* **pack:** Aseprite sheet JSON and Godot SpriteFrames from pack and mount ([#120](https://github.com/gfargo/pixelkiln/issues/120)) ([995a5e0](https://github.com/gfargo/pixelkiln/commit/995a5e011a28bec0c7abbe54f47c76e87222f7e8))
+
 # [0.37.0](https://github.com/gfargo/pixelkiln/compare/v0.36.0...v0.37.0) (2026-09-14)
 
 
