@@ -1,3 +1,10 @@
+## [0.34.1](https://github.com/gfargo/pixelkiln/compare/v0.34.0...v0.34.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **providers:** share one retry policy across adapters and open the browser on every platform ([#112](https://github.com/gfargo/pixelkiln/issues/112)) ([71b0d52](https://github.com/gfargo/pixelkiln/commit/71b0d5211696b080f18fa3738c582a87b0f5d380))
+
 # [0.34.0](https://github.com/gfargo/pixelkiln/compare/v0.33.0...v0.34.0) (2026-09-13)
 
 
