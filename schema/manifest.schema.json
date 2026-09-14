@@ -142,6 +142,10 @@
                     },
                     "default": []
                   },
+                  "enforcePalette": {
+                    "type": "boolean",
+                    "default": false
+                  },
                   "quality": {
                     "type": "object",
                     "properties": {
@@ -355,6 +359,10 @@
                       "pattern": "^#?[0-9a-f]{6}$"
                     },
                     "default": []
+                  },
+                  "enforcePalette": {
+                    "type": "boolean",
+                    "default": false
                   },
                   "quality": {
                     "type": "object",

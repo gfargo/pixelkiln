@@ -354,6 +354,18 @@ const StyleObjectSchema = z
     palette: z
       .array(HexColorSchema)
       .default([]),
+    /**
+     * Snap every visible pixel of the downloaded art to the nearest `palette`
+     * colour, without dithering. The palette is sent to providers that take
+     * one, and most honour it most of the time; this makes it a guarantee
+     * for every generator, including the ones with no palette parameter.
+     * Applied by `fetch` as the file is written and recorded on the lock
+     * entry, so a restore reproduces the same bytes. Turning it on or off
+     * does not change the spec hash: `plan` reports the entry as recoverable
+     * and the next `fetch` or `restore` re-applies it from the art already
+     * on disk or in the cache, spending nothing.
+     */
+    enforcePalette: z.boolean().default(false),
     /** Fail-closed native-grid, palette, and human-approval policy for derived art. */
     quality: QualityProfileSchema.optional(),
     /**
@@ -410,6 +422,13 @@ export const StyleSchema = StyleObjectSchema
         code: z.ZodIssueCode.custom,
         message: "quality profiles currently support single-image generators only",
         path: ["quality"],
+      })
+    }
+    if (style.enforcePalette && style.palette.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "enforcePalette needs a palette of at least two colours to snap to",
+        path: ["enforcePalette"],
       })
     }
   })
@@ -570,7 +589,30 @@ const LockOutputSchema = z.object({
   sha256: z.string(),
   role: z.string().optional(),
   mediaType: MediaTypeSchema.optional(),
+  /**
+   * Hash of the provider's bytes before post-processing changed them, when
+   * it did. The content cache keeps both, so the post-processing can be
+   * undone or redone without contacting the provider.
+   */
+  raw: z.string().optional(),
 })
+
+/**
+ * What `fetch` did to the provider's bytes before writing them. Recorded on
+ * the entry so `plan` can tell when the manifest asks for something else
+ * and `restore` can reproduce the recorded hash from the raw bytes.
+ */
+export const PostprocessSchema = z.object({
+  palette: z
+    .object({
+      /** Canonical lowercase `#rrggbb` values, in manifest order. */
+      colors: z.array(z.string()).min(2).max(256),
+      dither: z.literal("none"),
+      distance: z.literal("redmean"),
+    })
+    .optional(),
+})
+export type Postprocess = z.infer<typeof PostprocessSchema>
 
 const LockSourceSchema = z.object({
   url: z.string(),
@@ -604,6 +646,7 @@ export const LockHistoryEntrySchema = z.object({
   cost: z.number().finite().nonnegative().default(0),
   costUnit: z.string().min(1).default("generations"),
   provider: z.string().default("pixellab"),
+  postprocess: PostprocessSchema.optional(),
   /** When the replacement was submitted. */
   retiredAt: z.string(),
 })
@@ -691,16 +734,7 @@ export const LockEntrySchema = z.object({
    * `role` labels non-primary artifacts (e.g. "portrait", "spriteframes") so a
    * consumer can find the one it wants without pattern-matching on paths.
    */
-  outputs: z
-    .array(
-      z.object({
-        path: z.string(),
-        sha256: z.string(),
-        role: z.string().optional(),
-        mediaType: MediaTypeSchema.optional(),
-      }),
-    )
-    .default([]),
+  outputs: z.array(LockOutputSchema).default([]),
 
   /**
    * Provider-owned data retained for downstream consumers, namespaced by
@@ -720,6 +754,8 @@ export const LockEntrySchema = z.object({
 
   /** Generations this entry replaced, newest first; see LockHistoryEntrySchema. */
   history: z.array(LockHistoryEntrySchema).optional(),
+  /** Post-processing applied to the recorded outputs; absent when the bytes are the provider's. */
+  postprocess: PostprocessSchema.optional(),
 })
 
 export const LockSchema = z.object({
@@ -802,6 +838,8 @@ export interface ResolvedSpec {
   seed?: number
   /** Forced palette hex values; empty unless the style sets one. */
   palette: string[]
+  /** Snap downloaded art to `palette`; excluded from the spec hash. */
+  enforcePalette: boolean
   /** `pixflux` only — strip the generated background. Defaults to true. */
   noBackground: boolean
   /** `tiles` generator only — see StyleSchema for what each one means. */

@@ -5,6 +5,7 @@ import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
 import { inspectQualityProfile, type QualityProfileInspection } from "./quality-profile.ts"
+import { postprocessCurrent } from "./postprocess.ts"
 import { inspectRevisionReadiness } from "./revision.ts"
 
 export type PlanState =
@@ -89,7 +90,8 @@ export function resumeActions(specs: ResolvedSpec[], lock: Lock): ResumeAction[]
     const entry = lock.entries[key]
     if (!entry || entry.specHash !== spec.specHash) continue
     if (entry.submissionComplete === false) continue
-    const command = resumeCommandForStatus(entry.status)
+    const command = resumeCommandForStatus(entry.status) ??
+      (entry.status === "downloaded" && entry.outputs.length && !postprocessCurrent(entry, spec) ? "fetch" : null)
     if (!command) continue
     if (command === "poll" && !entry.jobId) continue
     if (command === "pick" && !entry.reviewObjectId) continue
@@ -209,6 +211,14 @@ export async function buildPlan(
       // is reported rather than silently overwritten.
       state = "orphaned"
       reason = "output modified since download"
+    } else if (!postprocessCurrent(entry, spec)) {
+      // The bytes are PixelKiln's and the provider work stands; only the
+      // post-processing the manifest asks for changed. Re-applying it needs
+      // the raw bytes, not a generation.
+      state = "recoverable"
+      reason = spec.enforcePalette
+        ? "palette enforcement turned on; run pixelkiln fetch to snap the file (no generation cost)"
+        : "palette enforcement turned off; run pixelkiln fetch to restore the provider's bytes (no generation cost)"
     } else {
       state = "ok"
       reason = "up to date"

@@ -85,7 +85,14 @@ retain:
 - explicit lifecycle status and errors;
 - durable provider source references, candidates, and selections;
 - `outputs[]` with portable path, SHA-256, optional structural role, and
-  optional PNG/GIF media type;
+  optional PNG/GIF media type, plus `raw` (the provider's bytes' hash) when
+  post-processing changed them;
+- `postprocess`: what `fetch` did to the provider's bytes before writing
+  them, today a palette snap (`colors`, `dither: "none"`,
+  `distance: "redmean"`). Same raw bytes and same record always give the
+  same output bytes, which is what lets a restore reproduce a recorded hash.
+  It is compared against the manifest on every `plan`: a difference is
+  `recoverable`, never `stale`, because no provider work is involved;
 - temporary `supersededOutputs[]` ownership hashes while a stale generation is
   being replaced;
 - provider-specific metadata under a provider-id namespace;

@@ -55,6 +55,7 @@ export function retireGeneration(entry: LockEntry, retiredAt: string): LockHisto
     cost: entry.cost,
     costUnit: entry.costUnit,
     provider: entry.provider,
+    postprocess: entry.postprocess,
     retiredAt,
   }
 }
@@ -73,12 +74,18 @@ export function historyAfterReplacing(previous: LockEntry | undefined, limit: nu
   return history.length ? history : undefined
 }
 
-/** Output hashes every generation in the lockfile, current or retired, still refers to. */
+/** Hashes every generation in the lockfile, current or retired, still refers to: outputs and the raw bytes behind them. */
 export function referencedHashes(lock: Lock): Set<string> {
   const hashes = new Set<string>()
+  const add = (output: { sha256: string; raw?: string }) => {
+    hashes.add(output.sha256)
+    // The provider's bytes behind a snapped output are what a changed
+    // palette rule is re-applied to; pruning them would cost a download.
+    if (output.raw) hashes.add(output.raw)
+  }
   for (const entry of Object.values(lock.entries)) {
-    for (const output of entry.outputs) hashes.add(output.sha256)
-    for (const generation of entry.history ?? []) for (const output of generation.outputs) hashes.add(output.sha256)
+    for (const output of entry.outputs) add(output)
+    for (const generation of entry.history ?? []) for (const output of generation.outputs) add(output)
   }
   return hashes
 }
@@ -200,6 +207,7 @@ export async function revertGeneration(
     cost: generation.cost,
     costUnit: generation.costUnit,
     provider: generation.provider,
+    postprocess: generation.postprocess,
     history,
   })
   await saveLock(lockPath, lock)

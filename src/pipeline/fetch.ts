@@ -20,6 +20,7 @@ import {
   type MediaType as MediaKind,
 } from "../media.ts"
 import { shouldPersistSourceUrl } from "../source-url.ts"
+import { applyPostprocess, postprocessCurrent, postprocessFor } from "./postprocess.ts"
 
 export interface FetchResult {
   downloaded: number
@@ -75,8 +76,17 @@ export async function fetchAssets(
     if (e.status === "selected" || e.status === "download-failed") return true
     if (e.status !== "downloaded") return false
     if (opts.refresh) return e.outputs.length > 0 && Boolean(e.sourceUrls?.length || e.sourceUrl)
-    if (!opts.repair) return false
     const spec = specByKey.get(key)
+    // The manifest asks for different post-processing than the files got.
+    // Re-applying it needs no provider, only the raw bytes, and replaces a
+    // file PixelKiln wrote; a hand-changed one is left for --force.
+    if (spec && e.specHash === spec.specHash && e.outputs.length && !postprocessCurrent(e, spec)) {
+      return Boolean(opts.force) || e.outputs.every((output) => {
+        const file = resolveOutputPath(output.path, spec.root)
+        return existsSync(file) && sha256(readFileSync(file)) === output.sha256
+      })
+    }
+    if (!opts.repair) return false
     if (e.outputs.length === 0 || !spec) return true
     return e.outputs.some((output) => {
       const file = resolveOutputPath(output.path, spec.root)
@@ -128,6 +138,8 @@ export async function fetchAssets(
 
       const outputs: LockOutput[] = []
       let wrote = false
+      const wanted = postprocessFor(spec)
+      const reapply = entry.status === "downloaded" && !postprocessCurrent(entry, spec)
       try {
         for (let index = 0; index < sources.length; index++) {
           const source = sources[index]!
@@ -137,6 +149,10 @@ export async function fetchAssets(
           const target = recorded
             ? resolveOutputPath(recorded.path, spec.root)
             : expectedOutputPath(spec, source.role, index, sources.length, source.mediaType)
+          const expectedMediaType = source.mediaType ?? recorded?.mediaType ?? MediaType.PNG
+          // The provider's bytes before post-processing; what a refresh
+          // compares against and what a re-application starts from.
+          const recordedRaw = recorded?.raw ?? recorded?.sha256
 
           // A refresh asks the provider first: only a changed object touches
           // disk, and the ownership rules below still apply to that write.
@@ -144,17 +160,24 @@ export async function fetchAssets(
           if (opts.refresh) {
             if (!source.url) throw new Error(`no durable source URL to refresh ${source.role ?? "asset"} from`)
             fresh = await provider.download(source.url)
-            if (recorded && sha256(fresh) === recorded.sha256) {
+            if (recorded && sha256(fresh) === recordedRaw && !reapply) {
               log(`  current ${path.relative(process.cwd(), target)}`)
               outputs.push({ ...recorded, path: portableOutputPath(target, spec.root) })
               continue
             }
           }
 
+          // Raw bytes on hand without asking the provider: the file itself
+          // when it holds the provider's bytes, or the cache.
+          let raw: Buffer | null = null
+          // Bytes already post-processed the way the record says, so they
+          // are written as they are.
+          let final: Buffer | null = null
+
           if (existsSync(target)) {
             const currentHash = await sha256File(target)
             if (recorded && currentHash === recorded.sha256) {
-              if (!fresh) {
+              if (!fresh && !reapply) {
                 if (cacheDir) {
                   await cacheMedia(
                     cacheDir,
@@ -166,9 +189,14 @@ export async function fetchAssets(
                 outputs.push({ ...recorded, path: portableOutputPath(target, spec.root) })
                 continue
               }
-              // The local file is exactly what PixelKiln wrote; the object
-              // changed upstream, so replacing it takes nothing from anyone.
-              log(`  changed ${path.relative(process.cwd(), target)} (upstream)`)
+              if (reapply && !fresh) {
+                if (!recorded.raw) raw = await readFile(target)
+                log(`  reapply ${path.relative(process.cwd(), target)}`)
+              } else {
+                // The local file is exactly what PixelKiln wrote; the object
+                // changed upstream, so replacing it takes nothing from anyone.
+                log(`  changed ${path.relative(process.cwd(), target)} (upstream)`)
+              }
             } else {
               const superseded = (entry.supersededOutputs ?? []).find((output, oldIndex, all) =>
                 currentOutputPath(output, spec, oldIndex, all.length) === target,
@@ -196,28 +224,47 @@ export async function fetchAssets(
             }
           }
 
-          const expectedMediaType = source.mediaType ?? recorded?.mediaType ?? MediaType.PNG
-          let buf = fresh ?? (recorded && cacheDir
-            ? await readCachedMedia(cacheDir, recorded.sha256, expectedMediaType)
-            : null)
-          if (buf) {
-            log(`  cached  ${path.relative(process.cwd(), target)}`)
-          } else {
+          if (fresh) {
+            raw = fresh
+          } else if (!raw && recorded && cacheDir) {
+            // The recorded output is the finished article; the raw bytes are
+            // the way back to it when the manifest now asks for something else.
+            if (!reapply) final = await readCachedMedia(cacheDir, recorded.sha256, expectedMediaType)
+            if (!final && recordedRaw) raw = await readCachedMedia(cacheDir, recordedRaw, expectedMediaType)
+            if (final || raw) log(`  cached  ${path.relative(process.cwd(), target)}`)
+          }
+          if (!final && !raw) {
             if (!source.url) {
               throw new Error(`no source URL or cached bytes remain for ${source.role ?? "asset"}`)
             }
-            buf = await provider.download(source.url)
+            raw = await provider.download(source.url)
           }
+
           let mediaType: MediaKind
+          const bytes = final ?? raw!
           try {
-            mediaType = validateMedia(buf, expectedMediaType)
+            mediaType = validateMedia(bytes, expectedMediaType)
           } catch (err) {
             const label = expectedMediaType === MediaType.GIF ? "GIF" : "PNG"
-            const mismatch = detectMediaType(buf) !== expectedMediaType
+            const mismatch = detectMediaType(bytes) !== expectedMediaType
             throw new Error(
               `response for ${source.role ?? "asset"} was not ${mismatch ? "a" : "a valid"} ${label}` +
-                (mismatch ? ` (${buf.length} bytes)` : `: ${err instanceof Error ? err.message : String(err)}`),
+                (mismatch ? ` (${bytes.length} bytes)` : `: ${err instanceof Error ? err.message : String(err)}`),
             )
+          }
+          // Finished bytes from the cache keep the raw hash they were made from.
+          let rawHash: string | undefined = final ? recorded?.raw : undefined
+          let buf = bytes
+          if (!final) {
+            // The provider's bytes are cached under their own hash so the
+            // post-processing can be undone or redone later without a download.
+            if (cacheDir) await cacheMedia(cacheDir, raw!, mediaType)
+            const processed = applyPostprocess(raw!, mediaType, wanted)
+            buf = processed.bytes
+            if (processed.changed) {
+              rawHash = sha256(raw!)
+              log(`  snapped ${path.relative(process.cwd(), target)} to ${wanted!.palette!.colors.length} colours`)
+            }
           }
           if (cacheDir) await cacheMedia(cacheDir, buf, mediaType)
           await mkdir(path.dirname(target), { recursive: true })
@@ -228,6 +275,7 @@ export async function fetchAssets(
             sha256: sha256(buf),
             ...(source.role ? { role: source.role } : {}),
             mediaType,
+            ...(rawHash ? { raw: rawHash } : {}),
           })
           // Record the intended rename before performing it. If the process
           // dies in either half of this two-step commit, the next repair sees
@@ -258,6 +306,7 @@ export async function fetchAssets(
           downloadedAt: new Date().toISOString(),
           error: null,
           supersededOutputs: [],
+          postprocess: wanted,
         })
         result.downloaded++
       } catch (err) {

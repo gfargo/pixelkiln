@@ -217,6 +217,10 @@
               },
               "default": []
             },
+            "enforcePalette": {
+              "type": "boolean",
+              "default": false
+            },
             "quality": {
               "type": "object",
               "properties": {

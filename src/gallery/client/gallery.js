@@ -97,6 +97,11 @@ const ACTIVE_PHASES = new Set(['queued', 'submitting', 'polling', 'fetching', 'r
 const PHASE_TONE = { queued: 'cool', submitting: 'cool', polling: 'cool', fetching: 'cool', review: 'warn', done: 'ok', failed: 'bad' };
 // The job still working on this record, if any: what the drawer and its card
 // show while a regeneration, restore, or pull is in flight.
+/** The style's palette rule as the manifest has it now, or null. */
+const paletteRuleOf = (item) => {
+  const style = snap.styles.find((s) => s.id === item.styleId && s.project === item.project);
+  return style && style.enforcePalette && style.palette.length >= 2 ? style.palette : null;
+};
 const activeJobFor = (item) => GEN.jobs.find((job) => ACTIVE_PHASES.has(job.phase) && job.project === item.project && job.keys.includes(item.key)) || null;
 const JOB_VERB = { generate: 'regenerating', resume: 'resuming', refresh: 'pulling upstream changes for', restore: 'restoring', revert: 'bringing back a previous generation of' };
 const PHASE_TEXT = { queued: 'queued', submitting: 'submitting to the provider', polling: 'waiting for the provider to finish', fetching: 'downloading the result', review: 'candidates are ready to review' };
@@ -140,6 +145,7 @@ async function pollJobs() {
           : job.mode === 'restore' ? 'Restored. The recorded bytes are back on disk.'
           : job.mode === 'revert' ? 'Brought back generation #' + job.revert + '. The one it replaced is now #1 in the list below.'
           : job.mode === 'refresh' ? (job.counts.downloaded ? 'Pulled the upstream change; the lockfile records the new bytes.' : 'Nothing changed upstream; the file was left alone.')
+          : job.mode === 'resume' && job.counts.downloaded ? 'Done. The file on disk and the record now match the manifest.'
           : 'Done.' };
       }
     }
@@ -334,7 +340,14 @@ function generateDialog(items, { project = null, force = false, resume = false, 
     sum.append(el('div', null, 'Puts the recorded bytes back on disk from the local cache or the provider object. Nothing is generated or submitted.'));
     if (force && replacing.length) sum.append(el('div', 'warn', 'The file on disk was changed after PixelKiln wrote it. Restoring discards that change. To keep it instead, cancel and use Edit by hand or Edit in browser first: the edit is copied beside the generated file, and the record stays intact.'));
   } else if (resume) {
-    sum.append(el('div', null, 'Polls, reviews, and downloads existing provider work. Nothing is submitted.'));
+    const drifted = items.filter((i) => i.state === 'recoverable' && i.status === 'downloaded');
+    if (drifted.length === items.length) {
+      sum.append(el('div', null, drifted.every((i) => paletteRuleOf(i))
+        ? 'Snaps each file to the style’s palette from the provider’s bytes in the local cache (or the file itself). The record keeps both hashes, so this can be undone the same way. Nothing is submitted.'
+        : 'Puts the provider’s original bytes back from the local cache, or re-downloads them, and clears the palette record. Nothing is submitted.'));
+    } else {
+      sum.append(el('div', null, 'Polls, reviews, and downloads existing provider work. Nothing is submitted.'));
+    }
   } else {
     for (const [provider, g] of byProvider) {
       const left = remainingBudget(provider);
@@ -1114,7 +1127,11 @@ function generateActions(item) {
     add('Regenerate' + cost, null, { force: true });
   } else if (item.state === 'orphaned') add('Restore · no cost', 'primary', { restore: true });
   else if (item.state === 'untracked') add('Generate' + cost + ' · replaces the file', null, { force: true });
-  if (item.state === 'in-flight' || item.state === 'recoverable') {
+  if (item.state === 'recoverable' && item.status === 'downloaded') {
+    // The files are fine; the manifest's palette rule changed under them.
+    // A resume runs the same fetch that re-applies it, from the raw bytes.
+    add(paletteRuleOf(item) ? 'Snap to the palette · no cost' : 'Put the provider’s bytes back · no cost', 'primary', { resume: true });
+  } else if (item.state === 'in-flight' || item.state === 'recoverable') {
     // A job already parked this asset in review: go straight to its sheet.
     const holder = GEN.jobs.find((job) => job.phase === 'review' && job.project === item.project && job.review.includes(item.key));
     if (holder) {
@@ -1386,7 +1403,8 @@ function inheritorsOf(style, field) {
 // noBackground reaches the request only for pixflux and non-PixelLab
 // providers; elsewhere a change is recorded but alters nothing.
 const fieldReaches = (field, style) =>
-  field !== 'noBackground' || style.generator === 'pixflux' || style.provider !== 'pixellab';
+  field === 'enforcePalette' ? false
+    : field !== 'noBackground' || style.generator === 'pixflux' || style.provider !== 'pixellab';
 function blastRadius(style, fields) {
   const byId = new Map(snap.styles.filter((x) => x.project === style.project).map((x) => [x.id, x]));
   const styleIds = new Set();
@@ -1424,6 +1442,9 @@ function styleForm(style) {
   const noBg = el('select');
   noBg.append(new Option(style.extends ? 'inherit from ' + style.extends : 'default (on)', 'default'), new Option('on — strip the generated background', 'on'), new Option('off — keep the background (scenes, banners)', 'off'));
   noBg.value = own('noBackground') ? (style.noBackground ? 'on' : 'off') : 'default';
+  const enforce = el('input'); enforce.type = 'checkbox'; enforce.checked = style.enforcePalette;
+  const enforceLabel = el('label', 'chip');
+  enforceLabel.append(enforce, document.createTextNode(' snap downloaded art to this palette (no dithering)'));
   const swatches = el('div', 'pal');
   const drawSwatches = () => {
     swatches.textContent = '';
@@ -1433,8 +1454,9 @@ function styleForm(style) {
   form.append(
     field('prompt prefix', prefix, 'Prepended to every asset prompt in this style. ' + provenance('promptPrefix')),
     field('prompt suffix', suffix, 'Appended to every asset prompt in this style. ' + provenance('promptSuffix')),
-    field('palette', palette, 'Forced colours where the provider supports them (pixflux). ' + provenance('palette')),
+    field('palette', palette, 'Sent to providers that take a palette; with snapping on, guaranteed on every file after download. ' + provenance('palette')),
     swatches,
+    field('after download', enforceLabel, 'Turning this on or off changes no request: the next fetch re-applies it to the files already on disk, spending nothing. ' + provenance('enforcePalette')),
   );
   const row = el('div', 'row');
   row.append(
@@ -1448,6 +1470,7 @@ function styleForm(style) {
     if (prefix.value !== style.promptPrefix) out.push('promptPrefix');
     if (suffix.value !== style.promptSuffix) out.push('promptSuffix');
     if (parsePalette(palette.value).join(',') !== style.palette.map((c) => c.toLowerCase()).join(',')) out.push('palette');
+    if (enforce.checked !== style.enforcePalette) out.push('enforcePalette');
     if (view.value.trim() !== (style.view || '')) out.push('view');
     const bgNow = own('noBackground') ? (style.noBackground ? 'on' : 'off') : 'default';
     if (noBg.value !== bgNow) out.push('noBackground');
@@ -1460,7 +1483,9 @@ function styleForm(style) {
     const r = blastRadius(style, fields);
     if (!r.assets) {
       blast.className = 'blast';
-      blast.textContent = 'Recorded in the manifest only: nothing in ' + style.id + ' sends this field, so no request changes.';
+      blast.textContent = fields.every((f) => f === 'enforcePalette')
+        ? 'No request changes. Generated files in ' + style.id + ' become recoverable; the next fetch or restore re-applies the palette rule to them for free.'
+        : 'Recorded in the manifest only: nothing in ' + style.id + ' sends this field, so no request changes.';
       return;
     }
     blast.className = 'blast hot';
@@ -1474,6 +1499,7 @@ function styleForm(style) {
   };
   for (const input of [prefix, suffix, palette, view]) input.addEventListener('input', updateBlast);
   noBg.addEventListener('change', updateBlast);
+  enforce.addEventListener('change', updateBlast);
   updateBlast();
   form.append(blast);
   const actions = el('div', 'actions');
@@ -1488,10 +1514,12 @@ function styleForm(style) {
     if (!fields.length) { ui.editing = null; render(); return; }
     const colors = parsePalette(palette.value);
     if (fields.includes('palette') && !paletteValid(colors)) { msg.className = 'msg bad'; msg.textContent = 'palette must be six-digit hex colours'; return; }
+    if (enforce.checked && colors.length < 2) { msg.className = 'msg bad'; msg.textContent = 'snapping needs a palette of at least two colours'; return; }
     const patch = {};
     if (fields.includes('promptPrefix')) patch.promptPrefix = prefix.value;
     if (fields.includes('promptSuffix')) patch.promptSuffix = suffix.value;
     if (fields.includes('palette')) patch.palette = colors;
+    if (fields.includes('enforcePalette')) patch.enforcePalette = enforce.checked;
     if (fields.includes('view')) patch.view = view.value.trim();
     if (fields.includes('noBackground')) patch.noBackground = noBg.value === 'default' ? null : noBg.value === 'on';
     save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
@@ -1830,6 +1858,15 @@ function renderDrawer() {
     if (item.currentPrompt) row(dl, 'prompt now', el('div', 'prompt state-warn', item.currentPrompt));
     row(dl, 'size', item.width + ' × ' + item.height + ' px');
     if (item.status) row(dl, 'cost', fmtCost(item.costUnit, item.cost));
+    if (item.postprocess && item.postprocess.palette) {
+      // What fetch did to the provider's bytes before writing them.
+      const p = item.postprocess.palette;
+      const wrap = el('span');
+      const sw = el('span', 'swatches');
+      for (const c of p.colors) { const i = el('i'); i.style.background = c; i.title = c; sw.append(i); }
+      wrap.append(document.createTextNode('snapped to ' + p.colors.length + ' colours, no dithering '), sw);
+      row(dl, 'palette', wrap);
+    }
     if (item.estimatedCost !== null && (item.estimatedCost !== item.cost || !item.status)) {
       row(dl, 'estimate now', fmtCost(item.costUnit, item.estimatedCost) +
         (item.candidates && item.candidates > 1 ? ' for ' + item.candidates + ' candidates' : ''));

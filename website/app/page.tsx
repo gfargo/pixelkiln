@@ -198,7 +198,7 @@ export default function Home() {
               <span className="step-number">04</span>
               <div className="step-glyph"><Image src="/sprites/workflow/ship.png" alt="" width={64} height={64} /></div>
               <h3>Ship</h3>
-              <p>Build repeatable atlases and engine metadata. Quality-profile styles stay blocked until approval is current.</p>
+              <p>Build repeatable atlases and engine metadata. A style with a palette rule never ships a colour outside it. Quality-profile styles stay blocked until approval is current.</p>
               <code>pixelkiln pack</code>
             </article>
           </div>
@@ -225,6 +225,13 @@ export default function Home() {
                 previous generations, up to a count you choose, and one click
                 brings any of them back. Nothing is spent, and the swap can be
                 undone from the same list.
+              </p>
+              <p className="section-deck">
+                Providers are asked for your palette; <code>enforcePalette</code>{" "}
+                makes it a guarantee. Every downloaded sprite is snapped to the
+                nearest palette colour as it is written, the provider&apos;s
+                bytes stay in the cache, and turning the rule on or off later
+                re-applies it to art you already paid for.
               </p>
               <p className="section-deck">
                 Hand edits stay beside the art, never over the record. Open a
