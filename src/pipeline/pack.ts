@@ -122,7 +122,7 @@ export function packSprites(
   // key, and a consumer doing `frames.find(f => f.id === x)` gets whichever
   // came first with no signal that the other was dropped. Caught here, before
   // any file I/O, rather than left for the next caller to discover the hard
-  // way — heybud's own sync script has to dedupe upstream today for exactly
+  // way; heybud's own sync script has to dedupe upstream today for exactly
   // this reason (its archetype sources deliberately overlap).
   const seen = new Set<string>()
   const dupes = new Set<string>()
@@ -409,7 +409,7 @@ export function mountSprites(
   }
 
   // The sheet must cover the base if there is one, and every declared cell
-  // either way — a cell past the base's edge grows it rather than failing,
+  // either way; a cell past the base's edge grows it rather than failing,
   // so adding a row of tiles does not need the base redrawn first.
   const maxCol = Math.max(...loaded.map((l) => l.p.cell[0]))
   const maxRow = Math.max(...loaded.map((l) => l.p.cell[1]))

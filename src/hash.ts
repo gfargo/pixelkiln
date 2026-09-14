@@ -62,7 +62,7 @@ export function specHash(
       palette: spec.palette,
       // `noBackground` only reaches the wire for pixflux; the tile fields are
       // undefined for every other generator. `tileSize` is intentionally
-      // absent — width/height are derived from it, so it is already covered.
+      // absent; width/height are derived from it, so it is already covered.
       noBackground:
         spec.generator === "pixflux" || spec.provider !== "pixellab"
           ? spec.noBackground

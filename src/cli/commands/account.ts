@@ -104,14 +104,14 @@ export async function runSalvage(args: Args): Promise<void> {
   // --json is a machine-readable contract: stdout must be the JSON array
   // and nothing else, so `pixelkiln salvage --dry-run --json | jq` works.
   // Every human-oriented line below goes through `diag` instead of `log` so
-  // it lands on stderr — visible in a terminal, invisible to a pipe — and
+  // it lands on stderr (visible in a terminal, invisible to a pipe) and
   // only the final JSON.stringify call ever reaches console.log.
   const jsonMode = args.dryRun && args.json
   const diag = jsonMode ? (msg = "") => console.error(msg) : log
 
   // Correctness depends on a complete claim set. Missing a lockfile makes
   // another project's shipped art look unclaimed, so this is stated loudly.
-  // This project's own lockfile is optional — salvage is a reasonable first
+  // This project's own lockfile is optional; salvage is a reasonable first
   // command in a fresh project, which has none yet. Paths given via --claims
   // are required, because a typo there silently widens the orphan set.
   const ownLock = path.resolve(args.lock)
@@ -161,7 +161,7 @@ export async function runSalvage(args: Args): Promise<void> {
   }
 
   // Each sibling project's manifest, loaded purely so a single-style
-  // manifest — which has no pattern of its own to check against — can still
+  // manifest, which has no pattern of its own to check against, can still
   // recognise "this looks like project X's art" instead of silently
   // claiming everything by default.
   const siblings = await loadSiblingManifests(
@@ -213,7 +213,7 @@ export async function runSalvage(args: Args): Promise<void> {
   const rebaseline = async () => {
     // Imports append to the manifest, so their spec hashes only exist after
     // it is rewritten. Without this every salvaged asset reports `stale` on
-    // the next plan and offers to regenerate art that was just recovered —
+    // the next plan and offers to regenerate art that was just recovered,
     // which would re-pay for all of it.
     const reloaded = await loadManifest(args.manifest)
     const rebased = (await resolveSpecs(reloaded)).filter((spec) => spec.provider === provider.id)
@@ -253,7 +253,7 @@ export async function runSalvage(args: Args): Promise<void> {
   }
 
   // An explicit --style bypasses grouping entirely and runs one session
-  // across every unclaimed object, same as before grouping existed — for
+  // across every unclaimed object, same as before grouping existed, for
   // when the auto-match misses a real candidate and a human already knows
   // where it belongs.
   if (args.styles.length) {

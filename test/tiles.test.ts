@@ -44,7 +44,7 @@ afterEach(async () => {
 
 describe("numbered descriptions", () => {
   // The endpoint documents "1). grass 2). dirt" as the way to say what should
-  // come back, and returns a group of variations per number — so the count
+  // come back, and returns a group of variations per number, so the count
   // drives both the price and how many candidates the pick sheet shows.
   it("counts the numbered items the endpoint groups by", () => {
     expect(countNumberedDescriptions("1). grass tile 2). dirt tile 3). stone tile")).toBe(3)
@@ -198,7 +198,7 @@ describe("style images", () => {
 
 describe("tile url ordering", () => {
   // A connectable set is sliced by index, so the order the pick sheet and the
-  // lockfile see has to be tile_0, tile_1, ... — not whatever order the JSON
+  // lockfile see has to be tile_0, tile_1, and so on, not whatever order the JSON
   // object happened to arrive in.
   it("sorts numerically, not lexicographically", async () => {
     const urls: Record<string, string> = {}
@@ -340,7 +340,7 @@ describe("selecting a tiles variation", () => {
 })
 
 describe("polling a tiles job", () => {
-  // There is no `status` field on GET /tiles-pro/{id} — the HTTP code is the
+  // There is no `status` field on GET /tiles-pro/{id}; the HTTP code is the
   // status. 423 means still drawing, and treating it as a hard error would
   // abort a run that was merely early.
   it("reads 423 as still processing", async () => {
@@ -420,7 +420,7 @@ describe("outline mode and connectable sets", () => {
 describe("pixflux background", () => {
   // The API's own default is no_background: false. pixelkiln forced it true
   // for every pixflux asset, which is right for a sprite and wrong for
-  // anything that IS a scene — a cover banner came back as a small subject
+  // anything that IS a scene; a cover banner came back as a small subject
   // floating in a mostly-empty frame.
   it("strips the background by default, as a sprite wants", async () => {
     const loaded = await writeManifest({ generator: "pixflux" })

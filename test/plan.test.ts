@@ -12,7 +12,7 @@ import { candidateCount, generationCost, lockKey, parseLock, primaryOutput, type
 import { sha256 } from "../src/hash.ts"
 import { normalizeLockOutputPaths } from "../src/outputs.ts"
 
-// A 1x1 transparent PNG — enough to exist on disk and be hashed.
+// A 1x1 transparent PNG, enough to exist on disk and be hashed.
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
   "base64",
@@ -155,7 +155,7 @@ describe("plan", () => {
   })
 
   // AssetSchema.source documents that a source-backed asset needs no lock entry
-  // at all — it is committed art that `mount` places, not something pixelkiln
+  // at all; it is committed art that `mount` places, not something pixelkiln
   // generates. `plan` never read the field, so a whole terrain style landed in
   // the actionable list and was quoted a generation cost it can never incur.
   it("counts a source-backed asset as ok, not as work to generate", async () => {
@@ -395,7 +395,7 @@ describe("specHash", () => {
   })
 
   // Every tile parameter below changes the image the endpoint draws, and none
-  // of them was hashed — so flipping `outlineMode` on a generated set left it
+  // of them was hashed, so flipping `outlineMode` on a generated set left it
   // reporting `ok`. Measured on a real fairway set, outline vs segmentation was
   // the difference between borders that read as quilting and a seamless tiling.
   it.each([
@@ -437,7 +437,7 @@ describe("specHash", () => {
   // that had not changed. A generator-specific field must stay `undefined` for
   // the generators it does not reach, so JSON.stringify drops the key and the
   // serialized form is untouched. If this pin moves, every existing lockfile
-  // in every consuming project goes stale on upgrade — that is the cost.
+  // in every consuming project goes stale on upgrade; that is the cost.
   it("pins the hash of a plain map spec against accidental schema churn", async () => {
     await writeFile(path.join(dir, "m.json"), JSON.stringify({
       name: "t",
@@ -843,7 +843,7 @@ describe("lock removal", () => {
 
     const reloaded = await loadLock(file)
     expect(Object.keys(reloaded.entries)).toEqual(["base/alpha"])
-    // The re-add wins, and it is the re-added value that landed — not the
+    // The re-add wins, and it is the re-added value that landed, not the
     // pre-removal one surviving because the delete quietly did nothing.
     expect(reloaded.entries["base/alpha"]!.status).toBe("selected")
   })

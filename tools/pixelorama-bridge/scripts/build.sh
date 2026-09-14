@@ -2,7 +2,7 @@
 # Materialise the PixelKiln editor build: upstream Pixelorama at the pinned
 # tag, plus our bridge extension and the one-line hook that loads it, exported
 # for the web with the PWA service worker disabled. Needs `godot` (4.x, same
-# version as pin.json) with web export templates installed — the CI job uses
+# version as pin.json) with web export templates installed. The CI job uses
 # the barichello/godot-ci image; locally, any Godot 4.7.2 install works.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"

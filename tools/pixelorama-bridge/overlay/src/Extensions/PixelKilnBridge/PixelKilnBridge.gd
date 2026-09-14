@@ -26,7 +26,7 @@ extends Node
 ## added in the editor), and `png` stays the first frame for older hosts.
 ##
 ## `reference` is the generated art the edit is compared against: it becomes a
-## locked, half-transparent layer on top — one cel per frame — that `save`
+## locked, half-transparent layer on top, one cel per frame, that `save`
 ## never flattens in and `reference {visible}` shows or hides. Opening a
 ## project file that already carries the layer refreshes its pixels.
 ##
@@ -250,7 +250,7 @@ func _set_reference_visible(visible: bool) -> void:
 
 
 ## One project with a frame per member, one layer, at the members' shared
-## size — what `open_image_as_new_tab` does for one image, for a set. Returns
+## size, what `open_image_as_new_tab` does for one image, for a set. Returns
 ## an error message, or "" once the project is the current tab.
 func _open_frames(frames: Array, name: String, fps) -> String:
 	var images: Array[Image] = []

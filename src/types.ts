@@ -412,7 +412,7 @@ export const StyleSchema = StyleObjectSchema
    */
   .refine((s) => !(s.tileFeature && s.styleImages.length), {
     message:
-      "tileFeature and styleImages cannot be combined — a connectable set " +
+      "tileFeature and styleImages cannot be combined; a connectable set " +
       "derives its own tile geometry, so remove one or the other",
     path: ["tileFeature"],
   })

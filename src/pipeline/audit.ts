@@ -177,8 +177,8 @@ export async function auditStyle(
   } else {
     // Reported reference is the whole set, but each asset is scored against
     // the set MINUS itself. Including an asset in its own reference lets it
-    // match perfectly, which would make the most divergent asset — the one
-    // worth finding — score zero.
+    // match perfectly, which would make the most divergent asset, the one
+    // worth finding, score zero.
     reference = mergePalettes(assets.map((a) => a.palette))
     for (const asset of assets) {
       const others = assets.filter((a) => a !== asset).map((a) => a.palette)

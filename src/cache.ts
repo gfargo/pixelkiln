@@ -47,7 +47,7 @@ export async function loadCache(path: string): Promise<HashCache> {
       ),
     }
   } catch {
-    // A corrupt cache is not worth failing a run over — rebuild it.
+    // A corrupt cache is not worth failing a run over. Rebuild it.
     return { version: 1, hashes: {} }
   }
 }

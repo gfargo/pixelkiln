@@ -67,7 +67,7 @@ try {
   if (await page.evaluate(() => window.__host.dirty)) fail("still dirty after save")
 
   // Round trip the project file: re-open from the .pxo, save again, and the
-  // flattened PNG must be the same bytes — the painted pixel survived.
+  // flattened PNG must be the same bytes; the painted pixel survived.
   const firstPng = await page.evaluate(() => [...window.__host.lastSave.png])
   await page.evaluate(() => window.__host.reopenLastSave())
   await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })

@@ -356,7 +356,7 @@ export async function resolveSpecs(
       }
 
       // A per-style override replaces the subject wording, not the style
-      // wrapping — prefix and suffix still apply.
+      // wrapping; prefix and suffix still apply.
       const subject = asset.promptByStyle[styleId] ?? asset.prompt
       const prompt = [style.promptPrefix, subject, style.promptSuffix]
         .map((p) => p.trim())

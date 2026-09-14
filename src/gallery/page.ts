@@ -100,7 +100,7 @@ ${css}</style>
 <footer>
   Click a sprite for its full record; <kbd>shift</kbd>-click adds it to a side-by-side comparison. <kbd>←</kbd>/<kbd>→</kbd> step through the visible set while a record
   is open, <kbd>Esc</kbd> closes it, and <kbd>/</kbd> jumps to search. This page reads the manifest, lockfile,
-  and disk only — it never contacts a provider<span id="foot-edit"> and never writes anything</span><span id="foot-editing" hidden>.
+  and disk only. It never contacts a provider<span id="foot-edit"> and never writes anything</span><span id="foot-editing" hidden>.
   Editing is on: saving rewrites the manifest and nothing else</span><span id="foot-gen" hidden>.
   Generation is on under the session budget shown above; every run is the same submit, poll, and fetch as <code>pixelkiln gen</code></span>.
   <span id="note"></span>

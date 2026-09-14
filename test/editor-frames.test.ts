@@ -39,8 +39,8 @@ const ROLES = ["frame-00", "frame-01", "frame-02"]
 const EDITOR = { editor: "pixelorama@v1.2.2-stable", protocol: 3 }
 
 /**
- * A ComfyUI frame set as the lockfile records it after a download — three
- * 2×2 members on disk under `out/` — beside a single-image asset, declared by
+ * A ComfyUI frame set as the lockfile records it after a download (three
+ * 2×2 members on disk under `out/`) beside a single-image asset, declared by
  * a manifest whose frames style is shaped like the ComfyUI adapter expects.
  */
 async function frameProject() {
@@ -98,7 +98,7 @@ describe("a frame set's source is a stem with one file per member", () => {
     expect(memberPath("/a/walk.png", "frame-02", 2, 3)).toBe("/a/walk-frame-02.png")
     const single = { generator: "map", outputs: [{ path: "x", sha256: "y" }] } as never
     expect(sourceOutputPath("out/edits/anvil.png", single, 0, dir)).toBe(path.join(dir, "out/edits/anvil.png"))
-    // Any PNG set: a tile set's edit is a stem too — unless the source is one
+    // Any PNG set: a tile set's edit is a stem too, unless the source is one
     // existing file, which is still a single image placed for the whole set.
     const tiles = { generator: "tiles", outputs: [{ path: "x", sha256: "y", role: "tile-00" }, { path: "z", sha256: "y", role: "tile-01" }] } as never
     expect(sourceOutputPath("out/edits/ground.png", tiles, 1, dir)).toBe(path.join(dir, "out/edits/ground-tile-01.png"))

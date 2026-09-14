@@ -85,7 +85,7 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
       styles: { base: style({ promptSuffix: "clean" }) },
       assets: {},
     }
-    // Two styles, so classification runs — but "clean" is under the length
+    // Two styles, so classification runs, but "clean" is under the length
     // floor, so it must not swallow every prompt that happens to contain it.
     const twoStyle: Manifest = { ...loose, styles: { ...loose.styles, other: style() } }
     expect(matchOrphanStyle("a very clean sword", twoStyle)).toBeNull()
@@ -94,7 +94,7 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
   it("skips classification for a single-style manifest, matching everything to it", () => {
     const single: Manifest = {
       name: "m",
-      styles: { base: style() }, // empty prefix/suffix — nothing to pattern-match against
+      styles: { base: style() }, // empty prefix/suffix; nothing to pattern-match against
       assets: {},
     }
     expect(matchOrphanStyle("literally anything", single)).toBe("base")
@@ -126,7 +126,7 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
   // The real gap this closes: disc-golf-game's own manifest has one style
   // with an empty prompt template, so it has nothing to pattern-match
   // against and used to claim its whole shared account's orphan pool by
-  // default — including heybud-admin's badge art.
+  // default, including heybud-admin's badge art.
   describe("with sibling manifests", () => {
     const single: Manifest = {
       name: "disc-golf-game",
@@ -174,7 +174,7 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
 })
 
 // docs/RECOVERY.md promises `--claims` "unions with a workspace's claim set",
-// which only holds if the sibling STYLE signal also unions — otherwise a
+// which only holds if the sibling STYLE signal also unions; otherwise a
 // --claims project passed alongside --workspace loses the exclusion that
 // keeps its art out of the workspace project's orphan pool.
 describe("loadSiblingManifests", () => {
@@ -330,11 +330,11 @@ describe("salvage sheet", () => {
   })
 
   // With one tab open per matched style (grouping), every tab title used to
-  // read the same generic "pixelkiln — salvage" — no way to tell them apart
+  // read the same generic "pixelkiln salvage" title, with no way to tell them apart
   // without checking which images had loaded.
   it("names the style and import destination in the title and header when given a context", () => {
     const html = renderSalvageSheet([orphan], { styleId: "heybud-neon", importDir: "public/badges/variants/neon" })
-    expect(html).toMatch(/<title>pixelkiln salvage — heybud-neon<\/title>/)
+    expect(html).toMatch(/<title>heybud-neon \| pixelkiln salvage<\/title>/)
     expect(html).toContain("heybud-neon")
     expect(html).toContain("public/badges/variants/neon/_salvaged/")
   })
@@ -487,7 +487,7 @@ describe("runSalvage", () => {
     await vi.waitFor(() => expect(url).not.toBe(""))
 
     const page = await (await fetch(url)).text()
-    expect(page).toContain("<title>pixelkiln salvage — neon</title>")
+    expect(page).toContain("<title>neon | pixelkiln salvage</title>")
 
     await fetch(url + "apply", {
       method: "POST",
@@ -502,7 +502,7 @@ describe("salvaged spec hash", () => {
   // Regression: salvage writes a placeholder hash because the real one cannot
   // exist until the manifest has been rewritten. If the CLI fails to
   // re-baseline afterwards, every recovered asset reports `stale` and offers to
-  // regenerate art that was just imported — re-paying for all of it.
+  // regenerate art that was just imported, re-paying for all of it.
   it("is a sentinel the re-baseliner can recognise", () => {
     expect(SALVAGED_SPEC_HASH).toBe("salvaged")
   })

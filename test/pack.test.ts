@@ -61,7 +61,7 @@ describe("packStyle", () => {
     }
   })
 
-  it("preserves transparency — the whole point of an RGBA sheet", async () => {
+  it("preserves transparency, the whole point of an RGBA sheet", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "pk-pack-"))
     try {
       await writeFile(path.join(dir, "a.png"), sprite(8, 200, 100, 50))

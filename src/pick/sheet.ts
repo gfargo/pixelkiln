@@ -80,7 +80,7 @@ export function renderSheet(groups: SheetGroup[], options: RenderSheetOptions = 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>pixelkiln — pick candidates</title>
+<title>pick candidates | pixelkiln</title>
 <style>
   :root {
     --bg: #17150f; --panel: #201d17; --panel-deep: #100f0c;
@@ -181,7 +181,7 @@ export function renderSheet(groups: SheetGroup[], options: RenderSheetOptions = 
   click again to undo. In the focused row,
   <kbd>←</kbd>/<kbd>→</kbd> browses every candidate and <kbd>Enter</kbd> chooses;
   <kbd>1</kbd>–<kbd>9</kbd> picks directly, <kbd>0</kbd> skips, and
-  <kbd>↑</kbd>/<kbd>↓</kbd> changes rows. Unchosen rows stay in review — nothing is
+  <kbd>↑</kbd>/<kbd>↓</kbd> changes rows. Unchosen rows stay in review; nothing is
   discarded by closing this page.
 </footer>
 <script>
@@ -430,7 +430,7 @@ document.getElementById('submit').onclick = async () => {
     });
     if (!res.ok) throw new Error(await res.text());
     const result = await res.json();
-    status.textContent = APPLY.embedded ? 'applied' : 'done — you can close this tab';
+    status.textContent = APPLY.embedded ? 'applied' : 'done, you can close this tab';
     document.body.style.opacity = '.6';
     if (APPLY.embedded && window.parent !== window) {
       window.parent.postMessage({ type: 'pixelkiln:review-applied', result }, location.origin);

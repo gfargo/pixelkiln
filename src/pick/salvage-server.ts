@@ -62,7 +62,7 @@ export async function runSalvage(
     onProgress: log,
     onReady: (url) => {
       log(`\n  ${orphans.length} unclaimed object(s) to triage: ${url}`)
-      log(`  (nothing is deleted here — discard only tags)\n`)
+      log(`  (nothing is deleted here; discard only tags)\n`)
     },
     handleApply: async (body) => {
       const { decisions } = body as { decisions: SalvageDecision[] }
@@ -150,7 +150,7 @@ export async function runSalvage(
       await applyTags(provider, decisions, existingTags, { onProgress: log })
 
       // Persist the manifest additions and the lock together. Only the
-      // newly imported entries are written back — re-merging the whole
+      // newly imported entries are written back; re-merging the whole
       // in-memory manifest would overwrite every pre-existing asset with
       // its loadManifest()-normalized copy, turning a one-asset import
       // into a diff touching the entire file.

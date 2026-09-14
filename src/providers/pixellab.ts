@@ -92,7 +92,7 @@ export class PixelLabProvider implements Provider {
 
   estimate(spec: ResolvedSpec): CostEstimate {
     // `tiles` prices and counts off the whole set, both of which the manifest
-    // layer already worked out — see tilesCost / tileVariationCount.
+    // layer already worked out; see tilesCost / tileVariationCount.
     if (spec.generator === "tiles") {
       return { unit: "generations", amount: spec.cost, candidates: spec.candidates }
     }
@@ -208,7 +208,7 @@ export class PixelLabProvider implements Provider {
         return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }] }
       }
       // The bytes only ever lived here, so a missing file means the temp dir
-      // was cleared. Nothing to recover from upstream — say so plainly.
+      // was cleared. Nothing to recover from upstream, so say so plainly.
       return {
         status: "failed",
         error: "pixflux result is no longer cached locally; re-run submit for this asset",
@@ -305,7 +305,7 @@ export class PixelLabProvider implements Provider {
     commonTag?: string,
     generator?: Generator,
   ): Promise<{ objectId: string; sourceUrl: string | null }> {
-    // A tiles variation is already a finished image at a stable URL — there is
+    // A tiles variation is already a finished image at a stable URL; there is
     // no frame to promote and no new account object to create. The identity we
     // record is the job plus the index, which is what actually reproduces it.
     if (generator === "tiles") {

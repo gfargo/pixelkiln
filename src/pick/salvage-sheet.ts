@@ -35,7 +35,7 @@ export function renderSalvageSheet(orphans: Orphan[], ctx?: SalvageSheetContext)
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>pixelkiln salvage${styleId ? ` — ${styleId}` : ""}</title>
+<title>${styleId ? `${styleId} | ` : ""}pixelkiln salvage</title>
 <style>
   :root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e6e8ee; --dim:#8b93a7;
           --import:#6ee7a8; --keep:#7cc4ff; --discard:#f87171; }
@@ -88,7 +88,7 @@ export function renderSalvageSheet(orphans: Orphan[], ctx?: SalvageSheetContext)
 <header>
   <h1>pixelkiln salvage${
     styleId
-      ? ` <span class="ctx">— ${styleId}<span class="dest"> → ${importDir}/_salvaged/</span></span>`
+      ? ` <span class="ctx">${styleId}<span class="dest">, imports to ${importDir}/_salvaged/</span></span>`
       : ""
   }</h1>
   <span class="tally"><b id="ti">0</b> import · <b id="tk">0</b> keep · <b id="td">0</b> discard ·
@@ -101,7 +101,7 @@ export function renderSalvageSheet(orphans: Orphan[], ctx?: SalvageSheetContext)
 <main id="grid"></main>
 <footer>
   <b>import</b> downloads it and adds it to your manifest · <b>keep</b> tags it and leaves it ·
-  <b>discard</b> only tags it — nothing is deleted here.
+  <b>discard</b> only tags it; nothing is deleted here.
   Hover a card and press <kbd>i</kbd> / <kbd>k</kbd> / <kbd>d</kbd>, or <kbd>u</kbd> to undo.
 </footer>
 <script>
@@ -172,7 +172,7 @@ document.getElementById('submit').onclick = async () => {
       body: JSON.stringify({ decisions }),
     });
     if (!res.ok) throw new Error(await res.text());
-    btn.textContent = 'done — close this tab';
+    btn.textContent = 'done, close this tab';
     document.body.style.opacity = '.6';
   } catch (err) {
     btn.textContent = 'failed: ' + err.message; btn.disabled = false;

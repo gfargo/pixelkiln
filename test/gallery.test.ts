@@ -826,7 +826,7 @@ describe("createGenerateHandlers", () => {
     const done = await untilPhase(handlers, job.id, ["done", "failed"])
     expect(done.error).toBeNull()
     expect(done).toMatchObject({ phase: "done", counts: { submitted: 2, failed: 0, downloaded: 2 }, review: [] })
-    // Spend is keyed by the provider the plan grouped on — the manifest's id,
+    // Spend is keyed by the provider the plan grouped on, the manifest's id,
     // which a real adapter also reports as its own.
     expect(done.spent).toEqual({ pixellab: 2 })
     expect(done.messages.join("\n")).toMatch(/pixellab: submitted 2, failed 0, estimated 2 generations/)

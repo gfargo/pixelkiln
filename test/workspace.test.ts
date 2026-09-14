@@ -447,7 +447,7 @@ describe("workspaceStatus", () => {
   })
 })
 
-// `loadWorkspace` treats a missing catalog file as an empty one — correct for
+// `loadWorkspace` treats a missing catalog file as an empty one, correct for
 // `workspace add`, which creates the file on first use. Every claim-consuming
 // entry point needs the opposite default: a typo'd --workspace path must be a
 // hard error, never a silently empty (and therefore vacuously "safe") claim
@@ -475,7 +475,7 @@ describe("a nonexistent --workspace catalog is a hard error for claim consumers"
   })
 
   // `status`/`list` are read-only gates a CI job could plausibly `--check`
-  // against — a nonexistent catalog reporting `safe: true` there is the same
+  // against; a nonexistent catalog reporting `safe: true` there is the same
   // hazard class as the claim-consumer case above, just on a different pair
   // of subcommands.
   it("`workspace status` refuses rather than reporting an empty, safe report", async () => {
