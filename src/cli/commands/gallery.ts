@@ -8,9 +8,6 @@ import {
   providerCredentialEnvs,
   providerFactory,
 } from "../../providers/registry.ts"
-import { loadManifest, resolveSpecs } from "../../manifest.ts"
-import { loadLock } from "../../lock.ts"
-import { normalizeLockOutputPaths } from "../../outputs.ts"
 import {
   buildGallerySnapshot,
   buildWorkspaceGallerySnapshot,
@@ -23,6 +20,7 @@ import { createGalleryEditorHandlers } from "../../gallery/editor.ts"
 import { loadWorkspace, resolveProject } from "../../workspace.ts"
 import type { Provider } from "../../provider.ts"
 import { openProject } from "../project.ts"
+import { openProject as openLibraryProject } from "../../project.ts"
 import { log, announceGalleryReady } from "../io.ts"
 import type { Args } from "../args.ts"
 
@@ -157,13 +155,11 @@ export async function runGallery(args: Args): Promise<void> {
     }
     await serveUntilStopped(initial, build, args, {
       manifestFor: async (projectId) => (await registered(projectId)).manifestPath,
+      // Env is handled by serveUntilStopped, which refuses a project whose
+      // files would put this gallery on a different account.
       loadProject: async (projectId) => {
         const { manifestPath, lockPath } = await registered(projectId)
-        const freshLoaded = await loadManifest(manifestPath)
-        const freshSpecs = await resolveSpecs(freshLoaded)
-        const freshLock = await loadLock(lockPath)
-        normalizeLockOutputPaths(freshLock, freshSpecs)
-        return { loaded: freshLoaded, specs: freshSpecs, lock: freshLock, lockPath }
+        return openLibraryProject(manifestPath, { lockPath, env: false })
       },
     })
     return
@@ -179,26 +175,11 @@ export async function runGallery(args: Args): Promise<void> {
   // Re-read state on every refresh: the lockfile may have moved on since
   // the server started, and a stale in-memory copy would show old art.
   const reload = async () => {
-    const freshLoaded = await loadManifest(args.manifest)
-    const freshSpecs = await resolveSpecs(freshLoaded, { styles: args.styles, assets: args.assets })
-    const freshLock = await loadLock(args.lock)
-    normalizeLockOutputPaths(freshLock, freshSpecs)
-    return buildGallerySnapshot({
-      loaded: freshLoaded,
-      specs: freshSpecs,
-      lock: freshLock,
-      lockPath: args.lock,
-      filter,
-    })
+    const fresh = await openLibraryProject(args.manifest, { lockPath: args.lock, ...filter, env: false })
+    return buildGallerySnapshot({ ...fresh, filter })
   }
   await serveUntilStopped(await build(), reload, args, {
     manifestFor: () => path.resolve(args.manifest),
-    loadProject: async () => {
-      const freshLoaded = await loadManifest(args.manifest)
-      const freshSpecs = await resolveSpecs(freshLoaded)
-      const freshLock = await loadLock(args.lock)
-      normalizeLockOutputPaths(freshLock, freshSpecs)
-      return { loaded: freshLoaded, specs: freshSpecs, lock: freshLock, lockPath: args.lock }
-    },
+    loadProject: () => openLibraryProject(args.manifest, { lockPath: args.lock, env: false }),
   })
 }

@@ -337,17 +337,17 @@ artifacts agree rather than regenerate them. See
 ## TypeScript library
 
 ```ts
-import {
-  buildPlan,
-  loadLock,
-  loadManifest,
-  resolveSpecs,
-} from "pixelkiln"
-const loaded = await loadManifest("pixelkiln.manifest.json")
-const specs = await resolveSpecs(loaded)
-const plan = await buildPlan(specs, await loadLock("pixelkiln.lock.json"))
+import { openProject } from "pixelkiln"
+
+const project = await openProject("pixelkiln.manifest.json")
+const plan = await project.plan()
 console.log(plan.groups, plan.actionable.length)
 ```
+
+`openProject` reads the env files beside the manifest, loads it, resolves
+every spec, and loads the lockfile with its paths canonicalised for this
+checkout. `project.specs`, `project.lock`, and `project.lockPath` are what the
+lower-level `submit`, `poll`, and `fetchAssets` calls take.
 
 The package also exports audit and image-regression gates, quality-profile
 inspection and refinement, revision-readiness checks, lock/output helpers, the

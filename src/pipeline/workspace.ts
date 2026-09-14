@@ -1,6 +1,5 @@
-import { loadLock, spendByUnit } from "../lock.ts"
-import { loadManifest, resolveSpecs } from "../manifest.ts"
-import { normalizeLockOutputPaths } from "../outputs.ts"
+import { spendByUnit } from "../lock.ts"
+import { openProject } from "../project.ts"
 import type { CostUnit } from "../provider.ts"
 import {
   resolveProject,
@@ -112,16 +111,13 @@ export async function workspaceStatus(ws: Workspace, dir: string): Promise<Works
       lock: lockPath,
     }
     try {
-      const loaded = await loadManifest(manifestPath)
-      const specs = await resolveSpecs(loaded)
+      const { loaded, specs, lock } = await openProject(manifestPath, { lockPath, env: false })
       const providers = [...new Set(
         Object.values(loaded.manifest.styles).map(
           (style) => style.provider ?? loaded.manifest.provider,
         ),
       )].sort()
       if (!providers.length) providers.push(loaded.manifest.provider)
-      const lock = await loadLock(lockPath)
-      normalizeLockOutputPaths(lock, specs)
       const plan = await buildPlan(specs, lock)
       const byState = summarize(plan)
       const spend = spendByUnit(lock)
