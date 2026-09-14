@@ -19,7 +19,14 @@ npm run test:security
 npm test
 npm run build
 npm run test:package
+npm run test:gallery
 ```
+
+`test:gallery` serves a gallery over `FakeProvider` and drives it in headless
+Chrome: the Generate and Regenerate buttons, the busy badge while a job runs,
+the previous generation kept and restored for free, and zero console errors.
+It needs a Chrome or Chromium binary (`CHROME=/path/to/chrome` when it is not
+in a usual place) and skips without one outside CI.
 
 The Next.js marketing/documentation site is isolated in `website/`:
 
