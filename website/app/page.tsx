@@ -198,7 +198,7 @@ export default function Home() {
               <span className="step-number">04</span>
               <div className="step-glyph"><Image src="/sprites/workflow/ship.png" alt="" width={64} height={64} /></div>
               <h3>Ship</h3>
-              <p>Build repeatable atlases and engine metadata. A style with a palette rule never ships a colour outside it. Quality-profile styles stay blocked until approval is current.</p>
+              <p>Build repeatable atlases, Aseprite sheet JSON, Godot SpriteFrames, and tilesets for Tiled and Godot. A style with a palette rule never ships a colour outside it. Quality-profile styles stay blocked until approval is current.</p>
               <code>pixelkiln pack</code>
             </article>
           </div>

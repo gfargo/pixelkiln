@@ -336,7 +336,14 @@ const shared = packSprites([
 ```
 
 Both return PNG bytes, a deterministic JSON-compatible atlas, and details for
-skipped files plus source hashes for provenance. Common non-interlaced PNG color
+skipped files plus source hashes for provenance. `packStyle` also lists the
+sheet's `sets`: each multi-output asset with its member frame ids, and for a
+frame set the fps its provider recorded (12 when none was). `renderSheetDocument(format, atlas, { imageName })`
+turns that atlas into the document an engine reads, `aseprite` (sheet JSON
+with a `frameTag` per set and per-frame durations) or `godot` (a
+`SpriteFrames` resource with one looping animation per frame set), or the
+generic atlas itself; `renderAsepriteSheet` and `renderGodotSpriteFrames`
+are the two writers. Common non-interlaced PNG color
 modes and bit depths are accepted as inputs; packed output is always RGBA.
 Corrupt and interlaced inputs are skipped with a specific reason. `mountStyle`
 and `mountSprites` provide declared-cell placement when existing atlas

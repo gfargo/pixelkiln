@@ -2,8 +2,12 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { Lock } from "../types.ts"
-import { resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceIsStem, sourceOutputPath } from "../outputs.ts"
+import { frameSetFps, resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceIsStem, sourceOutputPath } from "../outputs.ts"
+import type { AtlasSet } from "./sheet-formats.ts"
 import { sha256 } from "../hash.ts"
+
+/** What a frame set plays at when its provider recorded no rate. */
+const DEFAULT_FRAME_SET_FPS = 12
 
 export interface PackedSource {
   id: string
@@ -33,6 +37,12 @@ export interface PackedSheet {
     cell: { width: number; height: number }
     columns: number
     frames: PackedFrame[]
+    /**
+     * Multi-output assets whose members are on the sheet, so an engine
+     * format can group a frame set into one animation. Present only when a
+     * lockfile style was packed and had one.
+     */
+    sets?: AtlasSet[]
   }
   /** Assets skipped because their file was missing or unreadable. */
   skipped: { id: string; reason: string }[]
@@ -237,6 +247,7 @@ export function packStyle(
   const inputs: SpriteInput[] = []
   const noOutput: { id: string; reason: string }[] = []
   const locked = new Set<string>()
+  const sets: AtlasSet[] = []
 
   for (const [key, entry] of entries) {
     const id = key.slice(prefix.length)
@@ -271,6 +282,15 @@ export function packStyle(
       continue
     }
     for (const output of selected) inputs.push({ id: output.id, path: output.absolutePath })
+    if (entry.outputs.length > 1) {
+      const fps = entry.generator === "frames" ? frameSetFps(entry) ?? DEFAULT_FRAME_SET_FPS : null
+      sets.push({
+        id,
+        kind: entry.generator === "frames" ? "frames" : "members",
+        ...(fps ? { fps } : {}),
+        frames: selected.map((output) => output.id),
+      })
+    }
   }
   // Committed art the manifest places without a generation of its own.
   for (const [id, source] of Object.entries(sources)) {
@@ -282,9 +302,14 @@ export function packStyle(
   }
 
   const packed = packSprites(inputs, options)
+  const packedIds = new Set(packed.atlas.frames.map((frame) => frame.id))
+  const placed = sets
+    .map((set) => ({ ...set, frames: set.frames.filter((frameId) => packedIds.has(frameId)) }))
+    .filter((set) => set.frames.length)
+    .sort((a, b) => a.id.localeCompare(b.id))
   return {
     ...packed,
-    atlas: { ...packed.atlas, style: styleId },
+    atlas: { ...packed.atlas, style: styleId, ...(placed.length ? { sets: placed } : {}) },
     skipped: [...noOutput, ...packed.skipped],
   }
 }

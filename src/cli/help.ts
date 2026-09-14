@@ -56,7 +56,8 @@ Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
   --port <n>          Local review/gallery server port (default: choose a free port)
   --inputs <path>     pack/quality snapshot: JSON input list; needs --out
-  --format <format>   export: generic (default), tiled, or godot
+  --format <format>   export: generic (default), tiled, or godot (TileSet)
+                      pack/mount: generic (default), aseprite, or godot (SpriteFrames)
   --output-role <r>   pack: include only this output role (repeatable)
   --primary-only      pack: include only unambiguous primary/single outputs
   --max-distance <n>  audit: maximum palette distance
@@ -113,6 +114,7 @@ Examples
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
+  pixelkiln pack --style hero --format aseprite         # sheet JSON engines load
   pixelkiln mount --style ground
   pixelkiln export --style ground --only terrain --format tiled
   pixelkiln refine --style environment

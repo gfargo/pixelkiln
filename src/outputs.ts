@@ -262,3 +262,18 @@ export function resolveSpecOutputs(
     sha256: "",
   }]
 }
+
+/**
+ * The playback rate a frame-set entry recorded. ComfyUI keeps it under its
+ * own metadata namespace; another adapter may do the same. Null when the
+ * entry is not a frame set or recorded no rate.
+ */
+export function frameSetFps(entry: Pick<LockEntry, "provider" | "providerMetadata">): number | null {
+  const namespace = entry.providerMetadata?.[entry.provider]
+  const frameSet = namespace?.frameSet
+  if (frameSet && typeof frameSet === "object" && "fps" in frameSet) {
+    const fps = (frameSet as { fps?: unknown }).fps
+    if (typeof fps === "number" && Number.isFinite(fps) && fps > 0) return fps
+  }
+  return null
+}

@@ -3,8 +3,9 @@
 PixelKiln turns validated source PNGs into application-ready bundles without a
 provider call:
 
-- `pack`: deterministic grid sheet plus frame atlas;
-- `mount`: declared stable cells in a new or existing sheet;
+- `pack`: deterministic grid sheet plus frame atlas, or Aseprite sheet
+  JSON, or a Godot `SpriteFrames` resource;
+- `mount`: declared stable cells in a new or existing sheet, same formats;
 - `export`: structural tile atlas plus generic, Tiled, or Godot metadata;
 - `refine`: native-grid PNG or ordered frame set plus palette, audit, and
   human-review record.
@@ -34,6 +35,21 @@ frames retain their real dimensions at the cell's top-left.
 All standard non-interlaced PNG color modes and bit depths are decoded and
 normalized to RGBA. Corrupt/interlaced inputs are reported as skipped. If no
 input is readable, packing fails rather than emitting an empty sheet.
+
+The generic atlas lists `sets` when a multi-output asset is on the sheet:
+
+```json
+"sets": [
+  { "id": "dancer", "kind": "frames", "fps": 12, "frames": ["dancer/frame-00", "dancer/frame-01"] },
+  { "id": "terrain", "kind": "members", "frames": ["terrain/tile-00", "terrain/tile-01"] }
+]
+```
+
+`--format aseprite` writes that same information as Aseprite's sheet JSON
+(each set a `frameTag`, frame durations from the fps) and `--format godot`
+as a `SpriteFrames` `.tres` (each frame set a looping animation at its fps,
+every other frame a one-frame animation). The sheet PNG is the same file in
+every format; the companion records `options.format`.
 
 Explicit mode packs sources from any project and requires no manifest:
 
