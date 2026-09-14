@@ -1,3 +1,10 @@
+# [0.37.0](https://github.com/gfargo/pixelkiln/compare/v0.36.0...v0.37.0) (2026-09-14)
+
+
+### Features
+
+* **palette:** enforcePalette snaps downloaded art to the style's palette and records it ([#119](https://github.com/gfargo/pixelkiln/issues/119)) ([096fbce](https://github.com/gfargo/pixelkiln/commit/096fbceb91dea7603599ce3644addc5ba13846aa))
+
 # [0.36.0](https://github.com/gfargo/pixelkiln/compare/v0.35.0...v0.36.0) (2026-09-14)
 
 
