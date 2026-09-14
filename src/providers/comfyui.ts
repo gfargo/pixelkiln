@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { sha256 } from "../hash.ts"
+import { fetchWithRetry, type RetryInit, type RetryingFetch, type RetryOptions } from "../http.ts"
 import { MediaType } from "../media.ts"
 import type {
   CostEstimate,
@@ -98,16 +99,20 @@ const BUILTIN_BINDINGS = new Set([
 
 class ComfyUIClient {
   readonly baseUrl: string
+  private readonly request: RetryingFetch
 
   constructor(
     baseUrl = process.env.COMFYUI_BASE_URL ?? DEFAULT_BASE_URL,
-    private readonly request: typeof fetch = fetch,
+    request?: typeof fetch,
+    retry?: RetryOptions,
   ) {
     this.baseUrl = normalizeBaseUrl(baseUrl)
+    this.request = fetchWithRetry(request, retry)
   }
 
+  /** A connectivity check should answer fast, so it does not retry. */
   async checkConnection(): Promise<void> {
-    const value = await this.json("system_stats")
+    const value = await this.json("system_stats", { retries: 0 })
     if (!isObject(value)) throw new Error("ComfyUI returned invalid system stats")
   }
 
@@ -189,7 +194,7 @@ class ComfyUIClient {
     return new URL(route.replace(/^\/+/, ""), `${this.baseUrl}/`)
   }
 
-  private async json(route: string, init: RequestInit = {}): Promise<unknown> {
+  private async json(route: string, init: RetryInit = {}): Promise<unknown> {
     const url = this.endpoint(route)
     const response = await this.request(url, {
       ...init,

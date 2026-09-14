@@ -1,6 +1,6 @@
 import { createServer } from "node:http"
-import { spawn } from "node:child_process"
 import { readFile } from "node:fs/promises"
+import { openExternal } from "../open.ts"
 
 /**
  * The HTTP plumbing shared by every local review page (`pick`, `salvage`):
@@ -109,10 +109,9 @@ export function serveReviewPage<TResult>(opts: ReviewServerOptions<TResult>): Pr
     server.listen(opts.port ?? 0, "127.0.0.1", () => {
       const address = server.address()
       const port = typeof address === "object" && address ? address.port : opts.port
-      opts.onReady(`http://127.0.0.1:${port}/`)
-      if (opts.open !== false && process.platform === "darwin") {
-        spawn("open", [`http://127.0.0.1:${port}/`], { stdio: "ignore", detached: true }).unref()
-      }
+      const url = `http://127.0.0.1:${port}/`
+      opts.onReady(url)
+      if (opts.open !== false) openExternal(url)
     })
   })
 }

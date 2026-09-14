@@ -1,5 +1,7 @@
 export * from "./types.ts"
 export * from "./client.ts"
+export * from "./http.ts"
+export * from "./open.ts"
 export * from "./provider.ts"
 export * from "./media.ts"
 export { PixelLabProvider } from "./providers/pixellab.ts"

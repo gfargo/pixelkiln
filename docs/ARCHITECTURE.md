@@ -230,6 +230,12 @@ Account-wide listing, tagging, deletion, and balance are optional. Commands
 such as adopt or salvage report a capability gap rather than failing through
 an undefined method.
 
+All four adapters share one retry policy (`src/http.ts`): transport
+failures, 408, 429, and the transient 5xx codes are retried up to four more
+times with `Retry-After` honoured, and every attempt has its own timeout.
+Connectivity checks opt out so `doctor` reports an unreachable server at
+once. A 4xx is never retried.
+
 `PixelLabProvider` is production and live-tested. `RetroDiffusionProvider` is
 an experimental still, tileset, and animation adapter. Authenticated RD Fast
 and RD Plus single-candidate still lifecycles have passed end to end. Its

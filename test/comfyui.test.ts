@@ -833,7 +833,7 @@ describe("ComfyUI provider", () => {
         const body = JSON.parse(String(init!.body))
         promptSeeds.push(body.prompt["3"].inputs.seed)
         promptAttempt++
-        if (promptAttempt === 2) return json({ error: "queue unavailable" }, 503)
+        if (promptAttempt === 2) return json({ error: "prompt rejected" }, 400)
         return json({ prompt_id: promptAttempt === 1 ? "frame-zero" : "frame-one" })
       }
       if (url.includes("/history/")) {
@@ -926,7 +926,7 @@ describe("ComfyUI provider", () => {
         const body = JSON.parse(String(init!.body))
         promptSeeds.push(body.prompt["3"].inputs.seed)
         promptAttempt++
-        if (promptAttempt === 2) return json({ error: "queue unavailable" }, 503)
+        if (promptAttempt === 2) return json({ error: "prompt rejected" }, 400)
         return json({ prompt_id: promptAttempt === 1 ? "old-zero" : `new-${promptAttempt - 3}` })
       }
       return json({}, 404)

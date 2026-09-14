@@ -1,7 +1,7 @@
-import { spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { createServer, type IncomingMessage, type Server } from "node:http"
 import { readFile } from "node:fs/promises"
+import { openExternal } from "../open.ts"
 import { renderGallery } from "./page.ts"
 import type { GalleryBuild, GalleryMedia } from "./snapshot.ts"
 import type { GalleryGenerateHandlers } from "./generate.ts"
@@ -353,9 +353,7 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
   })
 
   opts.onReady?.(url)
-  if (opts.open !== false && process.platform === "darwin") {
-    spawn("open", [url], { stdio: "ignore", detached: true }).unref()
-  }
+  if (opts.open !== false) openExternal(url)
 
   return {
     url,

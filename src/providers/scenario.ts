@@ -1,4 +1,5 @@
 import { MAX_DOWNLOAD_BYTES } from "../client.ts"
+import { fetchWithRetry, type RetryInit, type RetryingFetch, type RetryOptions } from "../http.ts"
 import { MediaType } from "../media.ts"
 import type {
   CandidateSelection,
@@ -69,12 +70,17 @@ interface ScenarioAsset {
 }
 
 class ScenarioClient {
+  private readonly request: RetryingFetch
+
   constructor(
     private readonly apiKey: string | undefined,
     private readonly apiSecret: string | undefined,
     private readonly baseUrl = DEFAULT_BASE_URL,
-    private readonly request: typeof fetch = fetch,
-  ) {}
+    request?: typeof fetch,
+    retry?: RetryOptions,
+  ) {
+    this.request = fetchWithRetry(request, retry)
+  }
 
   async quote(modelId: string, body: Record<string, unknown>, projectId?: string): Promise<ScenarioQuote> {
     const response = await this.call(
@@ -190,13 +196,14 @@ class ScenarioClient {
     return bytes
   }
 
+  /** A connectivity check should answer fast, so it does not retry. */
   async checkConnection(): Promise<void> {
-    await this.call("/models", {}, { pageSize: "1" })
+    await this.call("/models", { retries: 0 }, { pageSize: "1" })
   }
 
   private async call(
     pathname: string,
-    init: RequestInit = {},
+    init: RetryInit = {},
     query: Record<string, string | undefined> = {},
   ): Promise<unknown> {
     if (!this.apiKey || !this.apiSecret) {

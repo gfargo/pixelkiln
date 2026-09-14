@@ -402,6 +402,21 @@ each adapter independently, and preserve the provider recorded on a lock entry
 when resuming work. The CLI is the reference orchestration and validates every
 provider-keyed budget before the first submission.
 
+Every built-in adapter sends its HTTP through `fetchWithRetry`, exported for
+custom providers. It retries transport failures, 408, 429, 500, 502, 503, and
+504 up to `MAX_RETRIES` (4) more times, waits on `Retry-After` when the server
+sends one and on exponential backoff with jitter otherwise, and gives each
+attempt its own 120-second timeout unless the caller passes a signal. An abort
+the caller asked for is never retried. Pass `{ retries: 0 }` on a call that
+must answer fast; the built-in connectivity checks behind `doctor` do.
+
+```ts
+import { fetchWithRetry } from "pixelkiln"
+
+const http = fetchWithRetry(undefined, { timeoutMs: 30_000 })
+const res = await http("https://api.example.test/jobs", { method: "POST", body })
+```
+
 `isSensitiveSourceUrl` detects credential-bearing provider URLs, while
 `shouldPersistSourceUrl` applies the lockfile rule: keep durable public or
 provider-specific references, but drop signed URLs, inline data, and local file
