@@ -26,6 +26,7 @@ export {
   type ProviderMode,
 } from "./providers/registry.ts"
 export * from "./manifest.ts"
+export { openProject, type OpenProjectOptions, type Project } from "./project.ts"
 export * from "./lock.ts"
 export * from "./hash.ts"
 export * from "./source-url.ts"

@@ -1,14 +1,12 @@
 /** Opening a project the way commands need it, plus the manifest and provider helpers they share. */
 import path from "node:path"
 import { existsSync } from "node:fs"
-import { loadEnvFiles } from "../env.ts"
 import { formatCost, type Provider } from "../provider.ts"
 import { createProvider, type ProviderMode } from "../providers/registry.ts"
-import { loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
-import { loadLock } from "../lock.ts"
+import type { LoadedManifest } from "../manifest.ts"
+import { openProject as openLibraryProject } from "../project.ts"
 import { sha256File } from "../hash.ts"
 import { lockKey, type Lock, type Manifest, type ResolvedSpec } from "../types.ts"
-import { normalizeLockOutputPaths } from "../outputs.ts"
 import type { Plan } from "../pipeline/plan.ts"
 import { loadWorkspace, validateWorkspace } from "../workspace.ts"
 import { workspaceClaims } from "../pipeline/workspace.ts"
@@ -175,12 +173,9 @@ async function open(args: Args): Promise<CliProject & Partial<CliAccountProject>
       `No manifest at ${path.resolve(args.manifest)}. Pass --manifest, or run \`pixelkiln init --from <dir>\`.`,
     )
   }
-  const manifestDir = path.dirname(path.resolve(args.manifest))
-  loadEnvFiles(manifestDir)
-  if (path.resolve(process.cwd()) !== manifestDir) loadEnvFiles(process.cwd())
-
-  const loaded = await loadManifest(args.manifest)
-  let specs = await resolveSpecs(loaded, { styles: args.styles, assets: args.assets })
+  const project = await openLibraryProject(args.manifest, { lockPath: args.lock, styles: args.styles, assets: args.assets })
+  const { loaded, lock } = project
+  let specs = project.specs
   const accountProvider = ACCOUNT_COMMANDS.has(args.command)
     ? accountProviderId(loaded.manifest, args.provider, args.command)
     : undefined
@@ -202,8 +197,6 @@ async function open(args: Args): Promise<CliProject & Partial<CliAccountProject>
   if (accountProvider && args.styles.some((styleId) => !accountManifest.styles[styleId])) {
     throw new Error(`Selected style is not assigned to provider "${accountProvider}".`)
   }
-  const lock = await loadLock(args.lock)
-  normalizeLockOutputPaths(lock, specs)
   return { loaded, specs, lock, accountProvider, accountManifest }
 }
 

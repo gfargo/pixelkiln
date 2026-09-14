@@ -4,29 +4,57 @@ PixelKiln's public package entry point exposes the same provider-independent
 primitives used by the CLI. Use these when a build tool, editor integration, or
 game pipeline needs structured results instead of terminal output.
 
-## Load, resolve, and plan
+## Open a project
 
 ```ts
-import {
-  buildPlan,
-  loadLock,
-  loadManifest,
-  resumeActions,
-  resolveSpecs,
-  summarize,
-} from "pixelkiln"
+import { openProject, resumeActions, summarize } from "pixelkiln"
 
-const loaded = await loadManifest("pixelkiln.manifest.json")
-const specs = await resolveSpecs(loaded)
-const lock = await loadLock("pixelkiln.lock.json")
-const plan = await buildPlan(specs, lock)
-const remaining = resumeActions(specs, lock)
+const project = await openProject("pixelkiln.manifest.json")
+const plan = await project.plan()
+const remaining = resumeActions(project.specs, project.lock)
 
 console.log(summarize(plan))
 for (const group of plan.groups) {
   console.log(`${group.provider}: ${group.cost} ${group.costUnit}`)
 }
 for (const action of remaining) console.log(`pixelkiln ${action.command}`, action.keys)
+```
+
+`openProject(manifestPath, options)` is the sequence the CLI runs before any
+command: read `.env.local` and `.env` beside the manifest (and in the working
+directory) into `process.env` without overriding anything already set, load
+the manifest, resolve specs, load the lockfile, and canonicalise its output
+paths for this checkout. Options: `lockPath` (default `pixelkiln.lock.json`
+beside the manifest), `styles` and `assets` filters, and `env: false` to leave
+`process.env` alone.
+
+The returned `Project` carries `manifestPath`, `root`, `lockPath`, `loaded`,
+`specs`, and `lock`, plus `plan()`, `saveLock()`, `reload()`, `providers()`,
+and `provider(id, mode)`, which hands out one adapter per id for the life of
+the object (`"online"` needs credentials; `"downloads"` only fetches recorded
+objects). The lower-level calls below take `project.specs`, `project.lock`,
+and `project.lockPath` directly:
+
+```ts
+const provider = project.provider("pixellab")
+await submit(provider, project.loaded, plan.actionable, project.lock, project.lockPath)
+await poll(provider, project.lock, project.lockPath, { specs: project.specs })
+await fetchAssets(provider, project.specs, project.lock, project.lockPath)
+```
+
+## Load, resolve, and plan by hand
+
+The pieces `openProject` composes are exported for callers that need one of
+them alone, for example a manifest with no lockfile yet, or specs resolved
+against a provider the registry does not know.
+
+```ts
+import { buildPlan, loadLock, loadManifest, resolveSpecs } from "pixelkiln"
+
+const loaded = await loadManifest("pixelkiln.manifest.json")
+const specs = await resolveSpecs(loaded)
+const lock = await loadLock("pixelkiln.lock.json")
+const plan = await buildPlan(specs, lock)
 ```
 
 `loadManifest` resolves style inheritance before returning. Callers receive
@@ -86,21 +114,10 @@ declares. It is built from the same sources as `buildPlan` and contacts no
 provider.
 
 ```ts
-import {
-  buildGallerySnapshot,
-  loadLock,
-  loadManifest,
-  renderGallery,
-  resolveSpecs,
-  serveGallery,
-} from "pixelkiln"
+import { buildGallerySnapshot, openProject, renderGallery, serveGallery } from "pixelkiln"
 
-const loaded = await loadManifest("pixelkiln.manifest.json")
-const specs = await resolveSpecs(loaded)
-const lock = await loadLock("pixelkiln.lock.json")
-const { snapshot, media } = await buildGallerySnapshot({
-  loaded, specs, lock, lockPath: "pixelkiln.lock.json",
-})
+const project = await openProject("pixelkiln.manifest.json")
+const { snapshot, media } = await buildGallerySnapshot(project)
 
 for (const item of snapshot.items) {
   console.log(item.key, item.state, item.cost, item.costUnit, item.outputs.map((o) => o.sha256))
