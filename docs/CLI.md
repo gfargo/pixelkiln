@@ -36,6 +36,7 @@ hosted still models with Compute Unit preflight and durable asset recovery.
 | build a sprite sheet | `pixelkiln pack --style base` |
 | place sprites on a sheet at declared cells | `pixelkiln mount --style base` |
 | export a tileset for Tiled or Godot | `pixelkiln export --style ground --format tiled` |
+| get a sheet Phaser, Unity, or Godot loads as animations | `pixelkiln pack --style hero --format aseprite` or `--format godot` |
 | check the art against the style's palette and grid | `pixelkiln audit --style base` |
 | produce the palette-clean, grid-true final art | `pixelkiln refine` then `pixelkiln refine approve --from <record> --reviewer "Name"` |
 | claim art already on my provider account | `pixelkiln adopt` |
@@ -753,12 +754,33 @@ pixelkiln pack --inputs sprites.json --out dist/sheet
 Use repeatable `--output-role` for structural members or `--primary-only` for
 unambiguous single outputs. These modes are mutually exclusive.
 
+`--format` chooses the document written beside the sheet. `generic` (the
+default) is PixelKiln's atlas: `frames` by id with their rectangles, and
+`sets` for every multi-output asset on the sheet, a frame set with its fps
+or a structural set's members. `aseprite` writes Aseprite's sheet JSON in
+its hash layout, which Phaser's `load.aseprite`, Unity's Aseprite importers,
+and Godot's Aseprite plugins read: each frame set becomes a `frameTag` with
+per-frame durations of `1000 / fps`. `godot` writes a Godot 4 `SpriteFrames`
+resource (`.tres`) an `AnimatedSprite2D` plays as it is: one `AtlasTexture`
+per frame, a frame set as one looping animation at its fps, every other
+sprite as a one-frame animation under its id.
+
+```bash
+pixelkiln pack --style hero --format aseprite   # hero-sheet.png + hero-sheet.json
+pixelkiln pack --style hero --format godot      # hero-sheet.png + hero-sheet.tres
+```
+
+One document per run, like `export`; the sheet PNG is identical whichever
+format is chosen, and the `.pixelkiln.json` companion records the format.
+
 ### `mount`
 
 Write sprites into manifest-declared cells, optionally over an existing base
 sheet. Undeclared cells survive byte-for-byte; each declared cell is cleared
 before its sprite is placed. A quality profile overrides raw and declared
 sources for participating cells only after its record passes the approval gate.
+`--format` works as for `pack`; a mounted sheet has no sets, so every sprite
+is a single frame.
 
 ### `export`
 
@@ -814,7 +836,7 @@ Print the package version. `-v` is an alias.
 | `--out <path>` | pack/export/refine/recipe install/quality snapshot | Output base override, final native PNG for path-mode refine, exact recipe destination, or quality baseline path. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
-| `--format <name>` | export | `generic` (default), `tiled`, or `godot`. |
+| `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, or `godot` (TileSet). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
 | `--output-role <role>` | pack | Include named structural roles; repeatable. |
 | `--primary-only` | pack | Include only unambiguous primary/single outputs. |
 | `--max-distance <n>` | audit | Absolute palette-distance ceiling. |

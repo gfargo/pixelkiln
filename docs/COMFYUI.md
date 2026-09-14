@@ -226,7 +226,10 @@ and one failed render rejects the complete set while retaining every submitted
 prompt id for diagnosis. The review page shows an animated loop and ordered
 strip; accepting any frame accepts the whole set.
 Fetch writes `hero-idle-frame-00.png`, `hero-idle-frame-01.png`, and so on.
-`pack` already turns those role-stable files into a sprite sheet and atlas.
+`pack` turns those role-stable files into a sprite sheet whose atlas lists
+the set with its fps; `pack --format aseprite` makes it a `frameTag` with
+per-frame durations, and `pack --format godot` a looping `SpriteFrames`
+animation an `AnimatedSprite2D` plays by the asset's id.
 
 With a quality profile, `refine` applies one palette to every frame and writes
 one approval record for the set. It rejects the entire set when source size,

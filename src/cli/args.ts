@@ -2,6 +2,7 @@
 import path from "node:path"
 import { UsageError } from "../errors.ts"
 import type { GridConfidence } from "../types.ts"
+import type { SheetFormat } from "../pipeline/sheet-formats.ts"
 import type { TilesetFormat } from "../pipeline/tileset-export.ts"
 
 
@@ -38,7 +39,8 @@ export interface Args {
   port?: number
   inputs?: string
   claims: string[]
-  format?: TilesetFormat
+  /** `export`: generic, tiled, or godot. `pack` and `mount`: generic, aseprite, or godot. */
+  format?: TilesetFormat | SheetFormat
   outputRoles: string[]
   primaryOnly: boolean
   prune: boolean
@@ -301,9 +303,12 @@ export function parseArgs(argv: string[]): Args {
   }
 
   const manifest = get("--manifest") ?? "pixelkiln.manifest.json"
+  // Tilesets take generic, tiled, or godot; sheets take generic, aseprite,
+  // or godot. Each command checks its own set once it knows what it is.
   const rawFormat = get("--format")
-  if (rawFormat && rawFormat !== "generic" && rawFormat !== "tiled" && rawFormat !== "godot") {
-    throw new UsageError(`--format must be generic, tiled, or godot, got "${rawFormat}"`)
+  const formats = command === "export" ? ["generic", "tiled", "godot"] : ["generic", "aseprite", "godot"]
+  if (rawFormat && !formats.includes(rawFormat)) {
+    throw new UsageError(`--format must be ${formats.slice(0, -1).join(", ")}, or ${formats.at(-1)}, got "${rawFormat}"`)
   }
   const numberOption = (
     flag: string,
@@ -362,7 +367,7 @@ export function parseArgs(argv: string[]): Args {
     port,
     inputs: get("--inputs"),
     claims: list("--claims"),
-    format: rawFormat as TilesetFormat | undefined,
+    format: rawFormat as TilesetFormat | SheetFormat | undefined,
     outputRoles: list("--output-role"),
     primaryOnly: rest.includes("--primary-only"),
     prune: rest.includes("--prune"),

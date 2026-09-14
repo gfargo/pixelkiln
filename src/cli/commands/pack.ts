@@ -6,8 +6,9 @@ import { mountStyle, packSprites, packStyle, resolvePackInputs } from "../../pip
 import { lockKey } from "../../types.ts"
 import { qualityRecordPath } from "../../pipeline/refine.ts"
 import { requireApprovedQualitySources } from "../../pipeline/quality-profile.ts"
-import { exportTileset } from "../../pipeline/tileset-export.ts"
+import { exportTileset, type TilesetFormat } from "../../pipeline/tileset-export.ts"
 import { writeManagedArtifactBundle, type ArtifactFile } from "../../artifacts.ts"
+import { renderSheetDocument, SHEET_FORMATS, type SheetFormat } from "../../pipeline/sheet-formats.ts"
 import { openProject, manifestSources, provenanceFile } from "../project.ts"
 import { log } from "../io.ts"
 import type { Args } from "../args.ts"
@@ -30,21 +31,23 @@ export async function runPack(args: Args): Promise<void> {
     const inputs = resolvePackInputs(raw, args.inputs)
 
     const { png, atlas, skipped, sources } = packSprites(inputs, { columns: args.columns })
-    const base = path.resolve(args.out.replace(/\.png$/, ""))
+    const format = sheetFormat(args)
+    const base = path.resolve(args.out.replace(/\.(?:png|json|tres)$/i, ""))
+    const { extension, document } = renderSheetDocument(format, atlas, { imageName: path.basename(`${base}.png`) })
     const outputs: ArtifactFile[] = [
       { path: `${base}.png`, data: png },
-      { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
+      { path: `${base}${extension}`, data: document },
     ]
     await writeManagedArtifactBundle(`${base}.pixelkiln.json`, outputs, {
       kind: "pack",
       sources: [await provenanceFile("$inputs", args.inputs), ...sources],
-      options: { columns: args.columns ?? null, order: "id", style: null },
+      options: { columns: args.columns ?? null, format, order: "id", style: null },
     }, { force: args.force })
     log(
       `  ${atlas.frames.length} sprite(s), ${atlas.sheet.width}x${atlas.sheet.height} ` +
-        `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB`,
+        `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB (${format})`,
     )
-    log(`    ${path.relative(process.cwd(), base)}.png + .json + .pixelkiln.json`)
+    log(`    ${path.relative(process.cwd(), base)}.png + ${extension} + .pixelkiln.json`)
     for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
     return
   }
@@ -73,12 +76,14 @@ export async function runPack(args: Args): Promise<void> {
     // styles cannot overwrite each other when --out is omitted.
     const style = loaded.manifest.styles[styleId]
     const base = args.out
-      ? path.resolve(args.out.replace(/\.png$/, ""))
+      ? path.resolve(args.out.replace(/\.(?:png|json|tres)$/i, ""))
       : path.resolve(manifestDir, style!.outDir, `${styleId}-sheet`)
+    const format = sheetFormat(args)
+    const { extension, document } = renderSheetDocument(format, atlas, { imageName: path.basename(`${base}.png`) })
 
     const outputs: ArtifactFile[] = [
       { path: `${base}.png`, data: png },
-      { path: `${base}.json`, data: JSON.stringify(atlas, null, 2) + "\n" },
+      { path: `${base}${extension}`, data: document },
     ]
     const qualityRecords = qualitySources
       ? await Promise.all(
@@ -99,6 +104,7 @@ export async function runPack(args: Args): Promise<void> {
       ],
       options: {
         columns: args.columns ?? null,
+        format,
         order: "id",
         outputRoles: [...args.outputRoles].sort(),
         primaryOnly: args.primaryOnly,
@@ -108,9 +114,10 @@ export async function runPack(args: Args): Promise<void> {
 
     log(
       `  ${styleId} — ${atlas.frames.length} sprite(s), ` +
-        `${atlas.sheet.width}x${atlas.sheet.height} in ${atlas.columns} column(s)`,
+        `${atlas.sheet.width}x${atlas.sheet.height} in ${atlas.columns} column(s)` +
+        (atlas.sets?.length ? `, ${atlas.sets.length} set(s)` : "") + ` (${format})`,
     )
-    log(`    ${path.relative(process.cwd(), base)}.png + .json + .pixelkiln.json`)
+    log(`    ${path.relative(process.cwd(), base)}.png + ${extension} + .pixelkiln.json`)
     for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
   }
 }
@@ -164,11 +171,13 @@ export async function runMount(args: Args): Promise<void> {
     )
 
     const out = path.resolve(manifestDir, style.mount.out)
-    const metadata = out.replace(/\.png$/, "") + ".json"
+    const format = sheetFormat(args)
+    const { extension, document } = renderSheetDocument(format, atlas, { imageName: path.basename(out) })
+    const metadata = out.replace(/\.png$/, "") + extension
     const companion = out.replace(/\.png$/, "") + ".pixelkiln.json"
     const outputs: ArtifactFile[] = [
       { path: out, data: png },
-      { path: metadata, data: JSON.stringify(atlas, null, 2) + "\n" },
+      { path: metadata, data: document },
     ]
     const qualityRecords = qualitySources
       ? await Promise.all(
@@ -195,6 +204,7 @@ export async function runMount(args: Args): Promise<void> {
         cellHeight: style.mount.cellHeight,
         cellWidth: style.mount.cellWidth,
         cells: Object.entries(cells).sort(([a], [b]) => a.localeCompare(b)),
+        format,
         style: styleId,
       },
     }, { force: args.force })
@@ -211,7 +221,7 @@ export async function runMount(args: Args): Promise<void> {
 
 export async function runExport(args: Args): Promise<void> {
   const { loaded, specs, lock } = await openProject(args)
-  const format = args.format ?? "generic"
+  const format = (args.format ?? "generic") as TilesetFormat
   const manifestDir = path.dirname(path.resolve(args.manifest))
   const selected = specs.filter((spec) => {
     if (spec.generator !== "tiles") return false
@@ -269,4 +279,13 @@ export async function runExport(args: Args): Promise<void> {
         `${path.basename(base)}${result.extension} + .pixelkiln.json`,
     )
   }
+}
+
+/** The sheet document format asked for; the parser already rejected tileset-only values. */
+function sheetFormat(args: Pick<Args, "format">): SheetFormat {
+  const format = args.format ?? "generic"
+  if (!(SHEET_FORMATS as readonly string[]).includes(format)) {
+    throw new Error(`--format ${format} is for export; sheets take ${SHEET_FORMATS.join(", ")}`)
+  }
+  return format as SheetFormat
 }

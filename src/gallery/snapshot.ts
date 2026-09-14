@@ -6,7 +6,7 @@ import path from "node:path"
 import { loadLock, spendByUnit } from "../lock.ts"
 import { loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
 import { cacheFileName, MediaType, mediaTypeFromExtension } from "../media.ts"
-import { currentEntryOutputPath, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath, sourceIsStem, sourceOutputPath } from "../outputs.ts"
+import { currentEntryOutputPath, frameSetFps, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath, sourceIsStem, sourceOutputPath } from "../outputs.ts"
 import { buildPlan, type PlanState } from "../pipeline/plan.ts"
 import type { QualityProfileInspection } from "../pipeline/quality-profile.ts"
 import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine.ts"
@@ -351,17 +351,7 @@ async function samePixels(a: string, b: string): Promise<boolean> {
   }
 }
 
-/** ComfyUI records the frame-set rate under its own namespace; other adapters may too. */
-function metadataFps(entry: LockEntry | undefined): number | null {
-  if (!entry) return null
-  const namespace = entry.providerMetadata?.[entry.provider]
-  const frameSet = namespace?.frameSet
-  if (frameSet && typeof frameSet === "object" && "fps" in frameSet) {
-    const fps = (frameSet as { fps?: unknown }).fps
-    if (typeof fps === "number" && Number.isFinite(fps) && fps > 0) return fps
-  }
-  return null
-}
+const metadataFps = (entry: LockEntry | undefined): number | null => (entry ? frameSetFps(entry) : null)
 
 async function fileInfo(absolutePath: string): Promise<{ bytes: number; modifiedAt: string } | null> {
   try {
