@@ -1,3 +1,10 @@
+# [0.35.0](https://github.com/gfargo/pixelkiln/compare/v0.34.1...v0.35.0) (2026-09-14)
+
+
+### Features
+
+* **library:** openProject opens a manifest, its specs, lock, and env in one call ([#115](https://github.com/gfargo/pixelkiln/issues/115)) ([6d46157](https://github.com/gfargo/pixelkiln/commit/6d46157f1419bc25403e086627c9468d504f6a2a))
+
 ## [0.34.1](https://github.com/gfargo/pixelkiln/compare/v0.34.0...v0.34.1) (2026-09-14)
 
 
