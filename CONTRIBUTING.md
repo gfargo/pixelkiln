@@ -97,6 +97,11 @@ wire contracts.
   especially dangerous when a command can spend provider quota.
 - Never overwrite a generated file whose current bytes differ from its recorded
   hash, and never make deletion an implicit side effect of recovery/triage.
+- The CLI is a thin layer. `src/cli.ts` is the bin entry, `src/cli/main.ts`
+  maps command names to modules under `src/cli/commands/`, `src/cli/args.ts`
+  parses flags, and `src/cli/project.ts` opens a project the way every
+  command needs it. A command module should read and print; anything it
+  computes belongs in `src/pipeline/` where the library exports it.
 
 ## Pull requests
 

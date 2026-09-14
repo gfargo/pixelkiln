@@ -51,10 +51,10 @@ for (const { file, source } of routeSources) {
 }
 
 const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
-const cli = readFileSync(path.join(repoRoot, "src/cli.ts"), "utf8");
+const cli = readFileSync(path.join(repoRoot, "src/cli/args.ts"), "utf8");
 const commandsMatch = cli.match(/export const COMMANDS = \[([\s\S]*?)\]\s+as const/);
 if (!commandsMatch) {
-  failures.push("could not read the public command count from src/cli.ts");
+  failures.push("could not read the public command count from src/cli/args.ts");
 } else {
   const commandCount = [...commandsMatch[1].matchAll(/"([^"]+)"/g)]
     .map((match) => match[1])

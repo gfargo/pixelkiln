@@ -19,7 +19,7 @@ import { renderGallery } from "../src/gallery/page.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
-import { parseArgs } from "../src/cli.ts"
+import { parseArgs } from "../src/cli/args.ts"
 import type { EditorPin } from "../src/editor/pin.ts"
 
 let dir: string

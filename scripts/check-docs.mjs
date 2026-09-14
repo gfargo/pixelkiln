@@ -150,12 +150,12 @@ for (const provider of providerCatalog) {
   }
 }
 
-const cli = readFileSync(path.join(root, "src", "cli.ts"), "utf8")
+const cli = readFileSync(path.join(root, "src", "cli", "args.ts"), "utf8")
 const cliDocs = readFileSync(path.join(root, "docs", "CLI.md"), "utf8")
 
 function valuesFromArray(name) {
   const match = cli.match(new RegExp(`(?:export\\s+)?const\\s+${name}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s+as const`))
-  if (!match) throw new Error(`Could not find ${name} in src/cli.ts`)
+  if (!match) throw new Error(`Could not find ${name} in src/cli/args.ts`)
   return [...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1])
 }
 

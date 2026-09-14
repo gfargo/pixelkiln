@@ -17,7 +17,7 @@ import { sha256 } from "../src/hash.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 import { detachHandEdit, handEditPath, openInEditor, startHandEdit } from "../src/pipeline/hand-edit.ts"
 import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
-import { parseArgs } from "../src/cli.ts"
+import { parseArgs } from "../src/cli/args.ts"
 import type { Lock } from "../src/types.ts"
 
 const execFileAsync = promisify(execFile)
