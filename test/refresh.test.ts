@@ -14,7 +14,7 @@ import { sha256 } from "../src/hash.ts"
 import { encodeRgbaPng } from "../src/png.ts"
 import { createGenerateHandlers, type GenerateJob, type GalleryGenerateHandlers } from "../src/gallery/generate.ts"
 import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
-import { parseArgs } from "../src/cli.ts"
+import { parseArgs } from "../src/cli/args.ts"
 import { normalizeLockOutputPaths } from "../src/outputs.ts"
 import { lockKey, type Lock } from "../src/types.ts"
 

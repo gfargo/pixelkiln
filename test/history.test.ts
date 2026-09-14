@@ -19,7 +19,7 @@ import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
 import { createGenerateHandlers, type GalleryGenerateHandlers, type GenerateJob } from "../src/gallery/generate.ts"
 import { normalizeLockOutputPaths } from "../src/outputs.ts"
 import { renderGallery } from "../src/gallery/page.ts"
-import { parseArgs } from "../src/cli.ts"
+import { parseArgs } from "../src/cli/args.ts"
 
 let dir: string
 let lockPath: string

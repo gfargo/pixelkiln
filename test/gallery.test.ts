@@ -16,7 +16,8 @@ import { lockKey, type Lock } from "../src/types.ts"
 import { buildGallerySnapshot, buildWorkspaceGallerySnapshot, galleryMediaId } from "../src/gallery/snapshot.ts"
 import { renderGallery } from "../src/gallery/page.ts"
 import { serveGallery } from "../src/gallery/server.ts"
-import { announceGalleryReady, parseArgs } from "../src/cli.ts"
+import { parseArgs } from "../src/cli/args.ts"
+import { announceGalleryReady } from "../src/cli/io.ts"
 import {
   applyManifestEdit,
   createGalleryEditHandler,
