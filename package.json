@@ -23,7 +23,7 @@
   },
   "scripts": {
     "pixelkiln": "tsx src/cli.ts",
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && tsup src/cli.ts --format esm --dts --sourcemap",
+    "build": "tsup",
     "prepack": "npm run build",
     "release": "semantic-release",
     "typecheck": "tsc --noEmit",
