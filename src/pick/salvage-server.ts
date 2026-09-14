@@ -32,7 +32,7 @@ export interface SalvageResult {
  * `import` is the only action that touches local state: it downloads the image,
  * writes a manifest asset and a lock entry, so a recovered sprite becomes a
  * first-class tracked asset rather than a loose file. `keep` and `discard` only
- * write tags upstream — no object is ever deleted here.
+ * write tags upstream; no object is ever deleted here.
  */
 export async function runSalvage(
   provider: Provider,

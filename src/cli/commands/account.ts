@@ -55,7 +55,7 @@ export async function runAdopt(args: Args): Promise<void> {
     log(
       `\n  One account is shared across projects, so this list mixes discarded\n` +
         `  candidates with assets belonging to other manifests. Do not bulk-delete\n` +
-        `  it — run adopt from each project first, then \`pixelkiln salvage\` to\n` +
+        `  it. Run adopt from each project first, then \`pixelkiln salvage\` to\n` +
         `  triage what is left over.`,
     )
   }
@@ -146,7 +146,7 @@ export async function runSalvage(args: Args): Promise<void> {
   ) {
     diag(
       `\n  This project's manifest is not registered in the workspace catalog. Its own\n` +
-        `  lockfile is still included above, so this run's claim set is complete — but\n` +
+        `  lockfile is still included above, so this run's claim set is complete, but\n` +
         `  \`pixelkiln workspace add ${args.manifest}\` would keep it aggregated too.`,
     )
   }
@@ -183,12 +183,12 @@ export async function runSalvage(args: Args): Promise<void> {
   if (elsewhere.size) {
     diag(`\n  matched a sibling project's own style instead of this one:`)
     for (const [label, list] of elsewhere) diag(`    ${label.padEnd(28)} ${list.length}`)
-    diag(`  excluded from every session below — not this project's art.`)
+    diag(`  excluded from every session below; not this project's art.`)
   }
   if (unmatched.length) {
     diag(
       `\n  ${unmatched.length} object(s) don't match any known style pattern.\n` +
-        `  If the account is shared, they may belong to a different project — check\n` +
+        `  If the account is shared, they may belong to a different project. Check\n` +
         `  you've passed every sibling project's lockfile via --claims. They're left\n` +
         `  out of the sessions below; force them into one style with --style <id>.`,
     )
@@ -266,14 +266,14 @@ export async function runSalvage(args: Args): Promise<void> {
   }
 
   if (!matched.size) {
-    log(`\n  nothing matched a known style — nothing to triage`)
+    log(`\n  nothing matched a known style; nothing to triage`)
     return
   }
 
   log(`\n  ${matched.size} session(s), one style at a time:`)
   let totalDiscarded = 0
   for (const [styleId, list] of matched) {
-    log(`\n  — ${styleId} (${list.length}) —`)
+    log(`\n  ${styleId} (${list.length})`)
     const res = await runOne(styleId, list)
     totalDiscarded += res.discarded
   }
@@ -294,7 +294,7 @@ export async function runPurge(args: Args): Promise<void> {
     }
   }
   if (!doomed.length) {
-    log(`  nothing tagged pixelkiln:discard — run \`pixelkiln salvage\` first`)
+    log(`  nothing tagged pixelkiln:discard; run \`pixelkiln salvage\` first`)
     return
   }
   log(`\n  ${doomed.length} object(s) tagged for discard:`)

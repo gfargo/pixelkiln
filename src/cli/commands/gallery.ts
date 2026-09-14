@@ -144,7 +144,7 @@ export async function runGallery(args: Args): Promise<void> {
       return
     }
     for (const project of initial.snapshot.workspace?.projects ?? []) {
-      if (project.error) log(`  ${project.id}: unreadable — ${project.error}`)
+      if (project.error) log(`  ${project.id}: unreadable: ${project.error}`)
     }
     // Re-read the catalog on every write so an edit or job targets the
     // project as registered now, never a path captured when the server started.

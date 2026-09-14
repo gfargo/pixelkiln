@@ -5,7 +5,7 @@ import type { Generator, ResolvedSpec, RevisionMode } from "../types.ts"
 /**
  * An in-memory Provider for tests.
  *
- * This exists because the stages that spend money — submit, poll, fetch — were
+ * This exists because the stages that spend money (submit, poll, fetch) were
  * the only ones without coverage, and four of the five real bugs found so far
  * lived in them. A fake at this seam exercises the actual state machine,
  * including the review/candidate path, without a network or an API key.
@@ -50,7 +50,7 @@ export class FakeProvider implements Provider {
   readonly assets = new Map<string, RemoteAsset>()
   readonly tags = new Map<string, string[]>()
   readonly deleted: string[] = []
-  /** Every submit, in order — lets a test assert on call count and spacing. */
+  /** Every submit, in order, so a test can assert on call count and spacing. */
   readonly submissions: { jobId: string; assetId: string; at: number }[] = []
 
   private counter = 0

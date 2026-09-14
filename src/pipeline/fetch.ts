@@ -50,7 +50,7 @@ export async function fetchAssets(
     force?: boolean
     /**
      * Re-download `downloaded` outputs from their durable provider reference
-     * and replace the local file when the upstream bytes changed — an object
+     * and replace the local file when the upstream bytes changed, an object
      * edited in the provider's own editor, say. Unchanged objects are left
      * alone; a locally modified file is still refused without `force`.
      */
@@ -379,7 +379,7 @@ function mergeOutputs(previous: LockOutput[], current: LockOutput[]): LockOutput
 
 /**
  * Applies the manifest's tags to each generated object upstream. Tagging is
- * free and synchronous, and it makes the account itself queryable — the thing
+ * free and synchronous, and it makes the account itself queryable, the thing
  * that was missing when 350 objects accumulated with no way to tell which 65
  * were the keepers.
  */

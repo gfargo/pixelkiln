@@ -8,7 +8,7 @@ import path from "node:path"
  * secret is never silently overridden by a checked-out file.
  *
  * This exists because the "PIXELLAB_API_KEY is not set" error told people to
- * put the key in a .env file next to the manifest — advice the code did not
+ * put the key in a .env file next to the manifest, advice the code did not
  * actually implement, so following it correctly still failed.
  */
 export function loadEnvFiles(dir: string): string[] {
@@ -26,7 +26,7 @@ export function loadEnvFiles(dir: string): string[] {
  * The variables a directory's env files would provide, without applying them.
  * A long-lived process serving several projects uses this to notice that a
  * project's file names a credential the process already holds with another
- * value — the never-override rule would otherwise route its work to the
+ * value; the never-override rule would otherwise route its work to the
  * wrong account silently.
  */
 export function readEnvFiles(dir: string): Record<string, string> {

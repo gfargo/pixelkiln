@@ -22,7 +22,7 @@ export interface PollResult {
 /**
  * Advances every unfinished lock entry to its settled state.
  *
- * Safe to run repeatedly and safe to interrupt — all state lives in the
+ * Safe to run repeatedly and safe to interrupt. All state lives in the
  * lockfile, so a re-run picks up exactly where the last one stopped. Provider
  * quirks (a job record that expires before its image does, review-status
  * candidate lists) are the provider's problem, not this loop's.
@@ -68,7 +68,7 @@ export async function poll(
   while (pending().length > 0) {
     if (Date.now() - started > timeout) {
       result.stillRunning += pending().length
-      log(`  timed out with ${result.stillRunning} job(s) still running — re-run \`poll\` to resume`)
+      log(`  timed out with ${result.stillRunning} job(s) still running; re-run \`poll\` to resume`)
       break
     }
 

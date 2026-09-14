@@ -20,7 +20,7 @@ import { pixelLabObjectUrl } from "../providers/pixellab.ts"
 
 /**
  * A read-only view of everything the project has generated, built from the
- * same three sources `plan` reads — manifest, lockfile, and disk — and nothing
+ * same three sources `plan` reads (manifest, lockfile, and disk) and nothing
  * else. No provider is contacted, so the snapshot is free to rebuild on every
  * page refresh while a `gen` runs in another terminal.
  *
@@ -58,7 +58,7 @@ export interface GalleryOutput {
 }
 
 export type HandEditStatus =
-  /** The edit file has the generated art's pixels — nothing has been changed yet. */
+  /** The edit file has the generated art's pixels; nothing has been changed yet. */
   | "same"
   /** The author changed it. */
   | "edited"
@@ -155,7 +155,7 @@ export interface GalleryItem {
    */
   edit: GalleryOutput | null
   /**
-   * Every file of the edit, one per output in the same order — the edit
+   * Every file of the edit, one per output in the same order: the edit
    * itself for a single image, `<stem>-<role>.png` per member of a set.
    * Empty without a source.
    */

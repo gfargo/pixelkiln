@@ -11,7 +11,7 @@ import { fetchAssets } from "./fetch.ts"
 /**
  * Regenerating an asset used to forget the generation it replaced the moment
  * the new bytes landed: the lockfile kept the new object, and the old one was
- * findable only by hand — in the content cache by hash, in git, or upstream
+ * findable only by hand: in the content cache by hash, in git, or upstream
  * as an unclaimed object. A lock entry now keeps its replaced generations as
  * `history`, newest first, and a retired generation can be swapped back in
  * without spending: its bytes come from the content cache when they are
@@ -147,7 +147,7 @@ export interface RevertResult {
  * the front of history (so a revert can itself be reverted), the chosen one
  * becomes the entry, and its files are written back by the same fetch that
  * repairs missing output: cache first, provider reference second. The file
- * being replaced is PixelKiln's own — the outgoing generation's bytes — so
+ * being replaced is PixelKiln's own, the outgoing generation's bytes, so
  * no `--force` is needed unless it was changed by hand since.
  */
 export async function revertGeneration(

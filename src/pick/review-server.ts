@@ -8,8 +8,8 @@ import { openExternal } from "../open.ts"
  * body to the caller, and resolve once that caller's handler succeeds.
  *
  * This exists because `pick` and `salvage` each hand-rolled the identical
- * server — same GET/POST routing, same ephemeral-port dance, same `open`
- * spawn, same error handling — and a bug fixed in one silently stayed a bug
+ * server (same GET/POST routing, same ephemeral-port dance, same `open`
+ * spawn, same error handling), and a bug fixed in one silently stayed a bug
  * in the other (as happened here: `salvage`'s manifest-write bug had no
  * equivalent in `pick` only because `pick` never merges a whole manifest back
  * in). A third review page now gets this for free instead of a third copy to
@@ -22,7 +22,7 @@ export interface ReviewServerOptions<TResult> {
   /** The full HTML document served at GET /. */
   html: string
   /** Parses the POSTed decisions and performs them. Only closes the server
-   *  on success — a thrown error leaves the page free to retry. */
+   *  on success; a thrown error leaves the page free to retry. */
   handleApply: (body: unknown) => Promise<TResult>
   /** Logged once the server is listening, given its localhost URL. */
   onReady: (url: string) => void

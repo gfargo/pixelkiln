@@ -13,7 +13,7 @@ provider you are using. These Markdown files also render at
 | [Set up Retro Diffusion](./RETRO_DIFFUSION.md) | Configure the experimental provider, choose a style, and understand its live-tested boundary. |
 | [Set up ComfyUI](./COMFYUI.md) | Bind local still, revision, and atomic frame-set workflows with an explicit quality boundary. |
 | [Set up Scenario](./SCENARIO.md) | Configure hosted models, two-part credentials, CU ceilings, and durable downloads. |
-| [CLI reference](./CLI.md) | Every command and flag — including `gallery`, `edit`, and `tools` — offline/provider requirements, JSON output, and exit behavior. |
+| [CLI reference](./CLI.md) | Every command and flag, including `gallery`, `edit`, and `tools`; offline and provider requirements; JSON output; exit codes. |
 | [Manifest reference](./MANIFEST.md) | Every style and asset field, quality profiles, generator constraints, mounting, and schema validation. |
 | [Mixed-provider projects](./MIXED_PROVIDERS.md) | Route styles to different providers, set separate budget ceilings, and resume safely from one lockfile. |
 | [Agent workflows](./AGENTS.md) | Install the official skill and pair agent guidance with the deterministic CLI. |

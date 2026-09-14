@@ -16,10 +16,10 @@ export interface SalvageSheetContext {
  *
  * Optimised for volume: a couple of hundred items, most of which get a
  * one-keystroke verdict. Everything defaults to no decision, so closing the tab
- * changes nothing, and `discard` only ever writes a tag — deletion is a
+ * changes nothing, and `discard` only ever writes a tag; deletion is a
  * separate command that has to be asked for by name.
  *
- * `salvage` opens one tab per matched style in sequence (grouping — see
+ * `salvage` opens one tab per matched style in sequence (for grouping, see
  * pipeline/salvage.ts), and every one of them used to render the exact same
  * generic title. With several left open across styles there was no way to
  * tell them apart short of squinting at which images loaded. The tab title

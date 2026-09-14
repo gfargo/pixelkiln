@@ -8,7 +8,7 @@ import { loadManifest, resolveSpecs } from "./manifest.ts"
  * The gallery's one write path: editing *intent* in the manifest. Nothing here
  * touches a provider or the lockfile. A saved edit changes the spec hash, so
  * the very next snapshot reports the asset `stale` (or `missing`) with its
- * estimate — the same thing that happens when the manifest is edited by hand,
+ * estimate, the same thing that happens when the manifest is edited by hand,
  * and the same `plan`/`gen` gate applies before anything is spent.
  *
  * Edits are applied to the raw on-disk JSON rather than the resolved manifest
@@ -295,7 +295,7 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
 /**
  * Apply one edit to the manifest on disk. The write is refused when the file
  * no longer matches what the page saw, and rolled back when the edited
- * manifest fails to load or resolve — an invalid manifest never lands.
+ * manifest fails to load or resolve; an invalid manifest never lands.
  */
 export async function applyManifestEdit(
   manifestPath: string,

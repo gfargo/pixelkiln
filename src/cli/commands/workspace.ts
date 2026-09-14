@@ -55,7 +55,7 @@ export async function runWorkspace(args: Args): Promise<void> {
     log(`    lock:     ${project.lock}`)
     if (!existsSync(lockPath)) {
       log(
-        `  warning: no lockfile there yet — this project contributes no claims until one is generated`,
+        `  warning: no lockfile there yet; this project contributes no claims until one is generated`,
       )
     }
     return
@@ -111,7 +111,7 @@ export async function runWorkspace(args: Args): Promise<void> {
       log(`  workspace: ${path.relative(process.cwd(), workspacePath)}`)
       for (const p of report.projects) {
         if (p.error) {
-          log(`\n  ${p.id} — ERROR: ${p.error}`)
+          log(`\n  ${p.id}: ERROR: ${p.error}`)
           continue
         }
         log(

@@ -352,7 +352,7 @@ describe("buildWorkspaceGallerySnapshot", () => {
     // Media from every readable project is served through one allowlist.
     const alphaAnvil = anvils[0]!.outputs[0]!
     expect(media.get(galleryMediaId(alphaAnvil.absolutePath))?.path).toBe(alphaAnvil.absolutePath)
-    expect(renderGallery(snapshot)).toContain("<title>pixelkiln — workspace</title>")
+    expect(renderGallery(snapshot)).toContain("<title>workspace | pixelkiln</title>")
     void first
   })
 
@@ -389,7 +389,7 @@ describe("renderGallery", () => {
     lock.entries["base/anvil"]!.prompt = "</script><img src=x onerror=alert(1)><!-- -->"
     const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
     const html = renderGallery(snapshot)
-    expect(html).toContain("<title>pixelkiln — gallery-test</title>")
+    expect(html).toContain("<title>gallery-test | pixelkiln</title>")
     expect(html).toContain("const INITIAL = {")
     expect(html).not.toContain("</script><img")
     expect(html).toContain("<\\/script><img")

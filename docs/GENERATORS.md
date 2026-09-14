@@ -186,8 +186,8 @@ background jobs are tier-limited. PixelKiln enforces both globally.
 Image-in/image-out resize, rotate, and pixel-art conversion endpoints are
 generative and can change a closed palette or alpha channel. They cost the same
 as a fresh one-generation image. Regenerate at the target dimensions when
-palette fidelity matters; background removal is the measured exception that
-acts as a genuine de-fringe pass.
+palette fidelity matters; background removal is the measured exception, a
+real de-fringe pass.
 
 Animated eight-direction characters and their ZIP/engine-resource export are
 outside the current library scope.

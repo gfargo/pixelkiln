@@ -318,7 +318,7 @@ export interface PaletteEntry {
 /**
  * Dominant colours of an image, ignoring transparency.
  *
- * Pixel art uses a small deliberate palette, so exact colour counting works —
+ * Pixel art uses a small deliberate palette, so exact colour counting works;
  * no clustering needed. Nearly-transparent pixels are excluded because
  * anti-aliased edges would otherwise dominate the histogram of a small sprite.
  */
@@ -346,7 +346,7 @@ export function extractPalette(png: DecodedPng, topN = 8, alphaThreshold = 128):
     }))
 }
 
-/** Fraction of pixels that are effectively transparent — a silhouette check. */
+/** Fraction of pixels that are effectively transparent, as a silhouette check. */
 export function transparencyRatio(png: DecodedPng, alphaThreshold = 128): number {
   let clear = 0
   const total = png.pixels.length / 4
@@ -377,7 +377,7 @@ function chunk(type: string, data: Buffer): Buffer {
 
 /**
  * Writes an 8-bit RGB PNG. Used to build the small swatch image that carries a
- * forced palette to the API — not a general encoder.
+ * forced palette to the API, not a general encoder.
  */
 export function encodeRgbPng(width: number, height: number, rgb: Buffer): Buffer {
   if (rgb.length !== width * height * 3) {
@@ -407,7 +407,7 @@ export function encodeRgbPng(width: number, height: number, rgb: Buffer): Buffer
  * Writes an 8-bit RGBA PNG.
  *
  * Separate from `encodeRgbPng` rather than replacing it: the palette swatch
- * the API accepts is RGB, and sprite sheets must keep their alpha channel —
+ * the API accepts is RGB, and sprite sheets must keep their alpha channel;
  * flattening it would fill every sprite's transparent background with black
  * and the sheet would be unusable over anything but that colour.
  */
@@ -439,7 +439,7 @@ export function encodeRgbaPng(width: number, height: number, rgba: Buffer): Buff
 /**
  * Builds the palette swatch the API expects: a block of solid colour per entry.
  *
- * Deliberately chunky rather than one pixel per colour — a 4x1 image was
+ * Deliberately chunky rather than one pixel per colour: a 4x1 image was
  * rejected outright with "cannot identify image file", while a 64x64 block
  * swatch was accepted.
  */
@@ -462,7 +462,7 @@ export function paletteSwatch(hexes: string[], size = 64): Buffer {
 
 export function parseHex(hex: string): { r: number; g: number; b: number } {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
-  if (!m) throw new Error(`invalid hex colour "${hex}" — expected #rrggbb`)
+  if (!m) throw new Error(`invalid hex colour "${hex}"; expected #rrggbb`)
   const n = parseInt(m[1]!, 16)
   return { r: (n >> 16) & 0xff, g: (n >> 8) & 0xff, b: n & 0xff }
 }

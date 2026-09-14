@@ -24,7 +24,7 @@ export async function runCache(args: Args): Promise<void> {
     log(
       report.content.exists
         ? `    ${report.content.valid} valid PNG(s), ${report.content.referenced} referenced, ` +
-          `${report.content.unreferenced.length} unreferenced — ${size}`
+          `${report.content.unreferenced.length} unreferenced, ${size}`
         : "    not created yet",
     )
     if (report.content.missingReferenced.length) {
@@ -108,7 +108,7 @@ export async function runPrune(args: Args): Promise<void> {
   const declared = new Set((await resolveSpecs(loaded)).map((s) => lockKey(s.styleId, s.assetId)))
   const orphans = Object.keys(lock.entries).filter((key) => !declared.has(key)).sort()
   if (!orphans.length) {
-    log(`  every lock entry is declared by the manifest — nothing to prune`)
+    log(`  every lock entry is declared by the manifest; nothing to prune`)
     return
   }
 
@@ -128,7 +128,7 @@ ${orphans.length} lock entr(ies) the manifest no longer declares:`)
   }
   log(`
 This drops their provenance from the lockfile. The art on disk is`)
-  log(`  untouched, and nothing is deleted from your provider account — but`)
+  log(`  untouched, and nothing is deleted from your provider account, but`)
   log(`  the link from those files back to the objects that made them is gone,`)
   log(`  and the objects will read as unclaimed the next time you run salvage.`)
   if (!(await confirm(`  Remove ${orphans.length} lock entr(ies)?`, args.yes))) {

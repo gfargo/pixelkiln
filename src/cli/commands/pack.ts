@@ -45,7 +45,7 @@ export async function runPack(args: Args): Promise<void> {
     }, { force: args.force })
     log(
       `  ${atlas.frames.length} sprite(s), ${atlas.sheet.width}x${atlas.sheet.height} ` +
-        `in ${atlas.columns} column(s) — ${(png.length / 1024).toFixed(1)} KB (${format})`,
+        `in ${atlas.columns} column(s), ${(png.length / 1024).toFixed(1)} KB (${format})`,
     )
     log(`    ${path.relative(process.cwd(), base)}.png + ${extension} + .pixelkiln.json`)
     for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
@@ -113,7 +113,7 @@ export async function runPack(args: Args): Promise<void> {
     }, { force: args.force })
 
     log(
-      `  ${styleId} — ${atlas.frames.length} sprite(s), ` +
+      `  ${styleId}: ${atlas.frames.length} sprite(s), ` +
         `${atlas.sheet.width}x${atlas.sheet.height} in ${atlas.columns} column(s)` +
         (atlas.sets?.length ? `, ${atlas.sets.length} set(s)` : "") + ` (${format})`,
     )
@@ -210,7 +210,7 @@ export async function runMount(args: Args): Promise<void> {
     }, { force: args.force })
 
     log(
-      `  ${styleId} — ${atlas.frames.length} cell(s) into ` +
+      `  ${styleId}: ${atlas.frames.length} cell(s) into ` +
         `${atlas.sheet.width}x${atlas.sheet.height}` +
         (overBase ? ` over ${style.mount.base}` : " (new sheet)"),
     )
@@ -271,7 +271,7 @@ export async function runExport(args: Args): Promise<void> {
       },
     }, { force: args.force })
     log(
-      `  ${spec.styleId}/${spec.assetId} — ${result.generic.tiles.length} tile(s), ` +
+      `  ${spec.styleId}/${spec.assetId}: ${result.generic.tiles.length} tile(s), ` +
         `${result.generic.sheet.width}x${result.generic.sheet.height} (${format})`,
     )
     log(

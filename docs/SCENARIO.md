@@ -6,7 +6,7 @@ supports still PNG generation through Scenario's universal model endpoint,
 free Compute Unit preflight, asynchronous jobs, multi-output review, and
 refreshable asset downloads.
 
-The adapter has comprehensive mocked coverage. BFL Flux 2 Dev has also passed
+Every code path in the adapter has mocked coverage. BFL Flux 2 Dev has also passed
 live authentication, cost preflight, paid single- and two-output generation,
 human review, PNG download, and provider-backed recovery. Start every untested
 model with one disposable asset and a small ceiling. This integration remains

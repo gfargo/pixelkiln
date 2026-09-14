@@ -20,7 +20,7 @@ import { historyAfterReplacing, historyLimit } from "./history.ts"
  *
  * Both are the provider's own constraint (PixelLab: >2s apart; Tier 1=8,
  * Tier 2=10, Tier 3=20 in flight) surfaced through `provider.rateLimit()`,
- * not a number this pipeline layer should know on its own — a second
+ * not a number this pipeline layer should know on its own; a second
  * provider with different limits must not silently inherit PixelLab's.
  *
  * Submission is fast and job execution is slow, so the correct shape is a

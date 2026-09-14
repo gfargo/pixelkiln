@@ -109,7 +109,7 @@ export async function doctor(
       "error",
       `lock entries share output paths: ${duplicateOutputs.slice(0, 3).join(", ")}` +
         `${duplicateOutputs.length > 3 ? `, and ${duplicateOutputs.length - 3} more` : ""}` +
-        ` — run \`pixelkiln prune\` if the manifest no longer declares them`,
+        `; run \`pixelkiln prune\` if the manifest no longer declares them`,
     )
   } else {
     add("lock-outputs", "ok", `${outputOwners.size} recorded output path(s) are uniquely owned`)

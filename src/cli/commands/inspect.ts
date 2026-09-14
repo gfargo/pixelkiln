@@ -135,13 +135,13 @@ export async function runAudit(args: Args): Promise<void> {
     })
     reports.push({ audit, evaluation })
     if (args.json) continue
-    log(`\n  ${styleId} — ${audit.assets.length} asset(s) measured`)
+    log(`\n  ${styleId}: ${audit.assets.length} asset(s) measured`)
     log(
       `  reference palette: ${audit.referenceFromStyleImages ? "style images" : "the set's own average"}` +
         `  ${audit.reference.slice(0, 6).map(hex).join(" ")}`,
     )
     if (!audit.referenceFromStyleImages) {
-      log(`  (no styleImages set — this finds outliers but cannot tell you the whole set drifted)`)
+      log(`  (no styleImages set; this finds outliers but cannot tell you the whole set drifted)`)
     }
 
     const offIds = new Set(evaluation.outliers)

@@ -178,7 +178,7 @@ function renderJobs() {
     ph.append(el('i', 'dot ' + PHASE_TONE[job.phase]), document.createTextNode(job.phase));
     const what = (job.mode === 'refresh' ? 'pull upstream for ' : job.mode === 'restore' ? 'restore ' : job.mode === 'revert' ? 'bring back generation #' + job.revert + ' of ' : job.mode === 'resume' ? 'resume ' : 'generate ') + job.keys.length + (job.keys.length === 1 ? ' asset' : ' assets') +
       (job.project ? ' in ' + job.project : '');
-    const last = el('span', 'last', what + (job.messages.length ? ' — ' + job.messages[job.messages.length - 1].trim() : ''));
+    const last = el('span', 'last', what + (job.messages.length ? ': ' + job.messages[job.messages.length - 1].trim() : ''));
     last.title = job.keys.join('\n');
     const acts = el('div', 'acts');
     if (job.phase === 'review' && job.review.length) {
@@ -250,7 +250,7 @@ function renderTools() {
   if (ED.installing) {
     const p = ED.installing;
     ph.append(el('i', 'dot cool'), document.createTextNode('installing'));
-    last.textContent = name + ': fetching ' + (p.file || 'the build') + ' — ' + fmtMb(p.fetchedBytes) + ' of ' + fmtMb(p.totalBytes);
+    last.textContent = name + ': fetching ' + (p.file || 'the build') + ', ' + fmtMb(p.fetchedBytes) + ' of ' + fmtMb(p.totalBytes);
     row.append(ph, last, acts);
     const bar = el('progress');
     if (p.totalBytes) { bar.max = p.totalBytes; bar.value = p.fetchedBytes; }
@@ -296,7 +296,7 @@ function budgetLine() {
   }
   // An unkeyed ceiling belongs to whichever single provider first spends it.
   if (GEN.budget.amount !== undefined && !Object.keys(GEN.spent).length) parts.push(GEN.budget.amount + ' available');
-  return parts.length ? 'session budget — ' + parts.join(' · ') : '';
+  return parts.length ? 'session budget ' + parts.join(', ') : '';
 }
 
 // The confirm step: what will be sent, what it is estimated to cost, and what
@@ -331,7 +331,7 @@ function generateDialog(items, { project = null, force = false, resume = false, 
   form.append(table);
   const sum = el('div', 'sum');
   if (refresh) {
-    sum.append(el('div', null, 'Re-downloads each object from the provider and replaces the local file only when the object changed upstream — for example after editing it in the provider’s own editor. Unchanged objects are left alone; a file you changed locally is refused. Nothing is submitted.'));
+    sum.append(el('div', null, 'Re-downloads each object from the provider and replaces the local file only when the object changed upstream, for example after editing it in the provider’s own editor. Unchanged objects are left alone; a file you changed locally is refused. Nothing is submitted.'));
   } else if (revert !== null) {
     sum.append(el('div', null, 'The current generation moves into this asset’s history and generation #' + revert + ' becomes current again: its object, hashes, and cost are recorded as this generation, and its bytes are written back ' +
       (generation && generation.cached ? 'from the local cache.' : 'by re-downloading them from the provider.') + ' Nothing is generated; nothing upstream changes. Undo it from the same list.'));
@@ -353,7 +353,7 @@ function generateDialog(items, { project = null, force = false, resume = false, 
       const left = remainingBudget(provider);
       const line = el('div');
       line.append(el('b', null, provider + ': ' + fmtCost(g.unit, Math.round(g.cost * 100) / 100)));
-      line.append(document.createTextNode(left === null ? ' — no session budget for this provider'
+      line.append(document.createTextNode(left === null ? ', no session budget for this provider'
         : ' · ' + fmtCost(g.unit, Math.round(left * 100) / 100) + ' of the session budget left'));
       if (left !== null && g.cost > left) line.className = 'warn';
       sum.append(line);
@@ -628,7 +628,7 @@ async function onEditorMessage(m) {
         sheetStatus('ok', 'saved');
       } catch (err) {
         SHEET.pending = null;
-        SHEET.msg.textContent = err.message + (err.status === 409 ? ' — press Refresh, then save again.' : '');
+        SHEET.msg.textContent = err.message + (err.status === 409 ? ' Press Refresh, then save again.' : '');
         sheetStatus('bad', 'not saved');
       }
       sheetButtons();
@@ -828,7 +828,7 @@ function card(item) {
   if (job) {
     const badge = el('span', 'busy-badge');
     badge.append(el('i', 'dot busy'), document.createTextNode(job.phase === 'review' ? 'review' : job.mode === 'generate' ? 'generating' : job.mode));
-    badge.title = (JOB_VERB[job.mode] || job.mode) + ' this asset — ' + (PHASE_TEXT[job.phase] || job.phase);
+    badge.title = (JOB_VERB[job.mode] || job.mode) + ' this asset: ' + (PHASE_TEXT[job.phase] || job.phase);
     cell.append(badge);
   }
   c.append(cell, body);
@@ -990,7 +990,7 @@ function candidatesControl(style) {
   const input = el('input'); input.type = 'number'; input.min = '1'; input.max = '64'; input.value = String(style.candidates);
   const save = el('button', 'primary', 'Save'); save.type = 'button';
   const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; render(); };
-  const note = el('span', null, 'affects ' + declared + (declared === 1 ? ' asset' : ' assets') + ' — they become stale');
+  const note = el('span', null, 'affects ' + declared + (declared === 1 ? ' asset, which becomes stale' : ' assets, which become stale'));
   save.onclick = async () => {
     save.disabled = true;
     try {
@@ -1019,7 +1019,7 @@ function historySection(item) {
   const s = el('section', 'meta');
   s.append(el('h3', null, item.history.length ? 'Previous generations (' + item.history.length + ')' : 'Previous generations'));
   if (!item.history.length) {
-    s.append(el('div', 'state-dim', 'None yet. A regeneration keeps the generation it replaces — up to ' + limit + ' per asset (PIXELKILN_HISTORY, or the manifest’s history) — so it can be brought back from here.'));
+    s.append(el('div', 'state-dim', 'None yet. A regeneration keeps the generation it replaces, up to ' + limit + ' per asset (PIXELKILN_HISTORY, or the manifest’s history), so it can be brought back from here.'));
     return s;
   }
   const list = el('div', 'versions');
@@ -1093,7 +1093,7 @@ function jobStrip(item, job) {
   ph.append(el('i', 'dot busy'), document.createTextNode(job.phase));
   const last = el('span', 'last', job.messages.length ? job.messages[job.messages.length - 1].trim() : '');
   last.title = job.messages.join('\n');
-  const what = el('span', 'what', (JOB_VERB[job.mode] || job.mode) + ' this asset — ' + (PHASE_TEXT[job.phase] || job.phase) +
+  const what = el('span', 'what', (JOB_VERB[job.mode] || job.mode) + ' this asset: ' + (PHASE_TEXT[job.phase] || job.phase) +
     (job.mode === 'generate' && job.phase !== 'review' ? '. The current file stays until the new result is downloaded.' : '.'));
   strip.append(ph, last, what);
   const acts = el('div', 'acts');
@@ -1241,7 +1241,7 @@ function openCompare() {
   tbody.append(imgRow);
 
   const rows = [
-    ['state', (i) => i.state + (i.reason ? ' — ' + i.reason : ''), (i) => i.state],
+    ['state', (i) => i.state + (i.reason ? ': ' + i.reason : ''), (i) => i.state],
     ['provider', (i) => i.provider],
     ['generator', (i) => i.generator + (i.tileFeature ? ' · ' + i.tileFeature : '')],
     ['candidates', (i) => i.candidates ?? '—'],
@@ -1278,7 +1278,7 @@ function openCompare() {
 const EDIT_STATUS_TEXT = {
   same: 'The generated art’s pixels, not changed yet. Open it in your editor and save.',
   edited: 'Differs from the generated art. mount and pack place this file; the generated file stays as the record.',
-  'regenerated-since': 'The generated art changed after this edit was saved — the edit is based on an older generation.',
+  'regenerated-since': 'The generated art changed after this edit was saved; the edit is based on an older generation.',
   missing: 'The declared file is not on disk.',
 };
 async function postHandEdit(item, action, extra) {
@@ -1323,7 +1323,7 @@ function handEditSection(item) {
     row(dl, 'status', st);
     row(dl, 'why', EDIT_STATUS_TEXT[item.editStatus] || '');
     if (set) {
-      row(dl, 'files', item.source + ' — one per ' + memberNoun(item, 1) + ': ' + item.edits.map((e) => e.path.split('/').pop()).join(', '), { mono: true, copy: item.edits.map((e) => e.absolutePath).join('\n') });
+      row(dl, 'files', item.source + ', one per ' + memberNoun(item, 1) + ': ' + item.edits.map((e) => e.path.split('/').pop()).join(', '), { mono: true, copy: item.edits.map((e) => e.absolutePath).join('\n') });
       const differing = item.editChanged.filter(Boolean).length;
       row(dl, 'changed', differing + ' of ' + item.edits.length + ' ' + memberNoun(item, item.edits.length) + ' differ from the generated art' +
         (differing ? ': ' + item.edits.filter((e, i) => item.editChanged[i]).map((e) => item.outputs[item.edits.indexOf(e)].role || e.path.split('/').pop()).join(', ') : ''));
@@ -1333,7 +1333,7 @@ function handEditSection(item) {
     }
     row(dl, 'saved', fmtWhen(item.edits.reduce((latest, e) => e.modifiedAt && (!latest || e.modifiedAt > latest) ? e.modifiedAt : latest, null)));
     if (item.editMeta) {
-      row(dl, 'editor', item.editMeta.editor + ', ' + fmtWhen(item.editMeta.savedAt) + (item.editMeta.changedSince ? ' — a file changed since' : ''));
+      row(dl, 'editor', item.editMeta.editor + ', ' + fmtWhen(item.editMeta.savedAt) + (item.editMeta.changedSince ? '; a file changed since' : ''));
       if (item.editMeta.basedOn && !set) row(dl, 'based on', item.editMeta.basedOn.slice(0, 16) + '…', { mono: true, copy: item.editMeta.basedOn });
       if (item.editMeta.project) row(dl, 'layers', item.editMeta.project, { mono: true });
     }
@@ -1351,7 +1351,7 @@ function handEditSection(item) {
       b.onclick = async () => {
         b.disabled = true; msg.className = 'msg'; msg.textContent = '…';
         try { await postHandEdit(item, action, extra); ui.notice = { id: item.id, text: done }; render(); }
-        catch (err) { b.disabled = false; msg.className = 'msg bad'; msg.textContent = err.message + (err.status === 409 ? ' — press Refresh.' : ''); }
+        catch (err) { b.disabled = false; msg.className = 'msg bad'; msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : ''); }
       };
       acts.append(b);
     };
@@ -1430,17 +1430,17 @@ function styleForm(style) {
   const pr = snap.workspace ? snap.workspace.projects.find((x) => x.id === style.project) : snap.project;
   const own = (field) => style.ownFields.includes(field);
   const provenance = (field) => own(field) ? 'set on this style'
-    : style.extends ? 'inherited from ' + style.extends + ' — saving sets a value on this style itself; ' + style.extends + ' is unchanged'
-    : 'default — saving sets a value on this style itself';
+    : style.extends ? 'inherited from ' + style.extends + '. Saving sets a value on this style itself; ' + style.extends + ' is unchanged'
+    : 'default. Saving sets a value on this style itself';
   const form = el('form', 'edit style-form');
   form.append(el('h3', null, 'Edit style ' + style.id));
   const prefix = el('input'); prefix.type = 'text'; prefix.value = style.promptPrefix; prefix.placeholder = 'none';
   const suffix = el('input'); suffix.type = 'text'; suffix.value = style.promptSuffix; suffix.placeholder = 'none';
-  const palette = el('input'); palette.type = 'text'; palette.value = style.palette.join(', '); palette.placeholder = '#rrggbb, #rrggbb — leave empty for no forced palette';
+  const palette = el('input'); palette.type = 'text'; palette.value = style.palette.join(', '); palette.placeholder = '#rrggbb, #rrggbb (leave empty for no forced palette)';
   const view = el('input'); view.type = 'text'; view.value = style.view || ''; view.placeholder = 'provider default';
   view.setAttribute('list', 'view-options');
   const noBg = el('select');
-  noBg.append(new Option(style.extends ? 'inherit from ' + style.extends : 'default (on)', 'default'), new Option('on — strip the generated background', 'on'), new Option('off — keep the background (scenes, banners)', 'off'));
+  noBg.append(new Option(style.extends ? 'inherit from ' + style.extends : 'default (on)', 'default'), new Option('on: strip the generated background', 'on'), new Option('off: keep the background (scenes, banners)', 'off'));
   noBg.value = own('noBackground') ? (style.noBackground ? 'on' : 'off') : 'default';
   const enforce = el('input'); enforce.type = 'checkbox'; enforce.checked = style.enforcePalette;
   const enforceLabel = el('label', 'chip');
@@ -1531,13 +1531,13 @@ function styleForm(style) {
       ui.editing = null;
       ui.notice = { id: 'style:' + (style.project || '') + ':' + style.id,
         text: r.assets
-          ? 'Saved. The request for ' + r.assets + (r.assets === 1 ? ' asset' : ' assets') + ' changed' + (r.cost ? ' — about ' + r.cost + ' to regenerate.' : '.') + ' Nothing is spent until you generate.'
+          ? 'Saved. The request for ' + r.assets + (r.assets === 1 ? ' asset' : ' assets') + ' changed' + (r.cost ? ', about ' + r.cost + ' to regenerate.' : '.') + ' Nothing is spent until you generate.'
           : 'Saved. Recorded in the manifest; no request changed.' };
       render();
     } catch (err) {
       save.disabled = false;
       msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' — press Refresh.' : '');
+      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
     }
   };
   setTimeout(() => prefix.focus(), 0);
@@ -1586,7 +1586,7 @@ function addAssetForm(style) {
     } catch (err) {
       save.disabled = false;
       msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' — press Refresh.' : '');
+      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
     }
   };
   setTimeout(() => id.focus(), 0);
@@ -1652,7 +1652,7 @@ function editForm(item) {
         text: after
           ? 'Saved. plan now reports ' + after.state +
             (after.estimatedCost !== null && (after.state === 'stale' || after.state === 'missing')
-              ? ' — ' + fmtCost(after.costUnit, after.estimatedCost) + ' to generate. Nothing is spent until you run pixelkiln gen.'
+              ? ', ' + fmtCost(after.costUnit, after.estimatedCost) + ' to generate. Nothing is spent until you run pixelkiln gen.'
               : '.')
           : 'Saved.',
       };
@@ -1660,7 +1660,7 @@ function editForm(item) {
     } catch (err) {
       save.disabled = false;
       msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' — press Refresh.' : '');
+      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
     }
   };
   setTimeout(() => prompt.focus(), 0);
@@ -1853,7 +1853,7 @@ function renderDrawer() {
     const { s, dl } = section('Generation');
     row(dl, 'provider', item.provider);
     row(dl, 'generator', item.generator + (item.tileFeature ? ' · ' + item.tileFeature : ''));
-    row(dl, 'lock status', item.status || 'none — nothing submitted');
+    row(dl, 'lock status', item.status || 'none (nothing submitted)');
     const pr = el('div', 'prompt', item.prompt); row(dl, item.status ? 'prompt sent' : 'prompt', pr);
     if (item.currentPrompt) row(dl, 'prompt now', el('div', 'prompt state-warn', item.currentPrompt));
     row(dl, 'size', item.width + ' × ' + item.height + ' px');
@@ -1982,7 +1982,7 @@ function renderDrawer() {
       row(dl, item.recordedSpecHash ? 'spec hash now' : 'spec hash',
         el('span', item.recordedSpecHash ? 'state-warn' : null, item.currentSpecHash.slice(0, 16) + '…'), { mono: true, copy: item.currentSpecHash });
     }
-    row(dl, 'declared', item.declared ? 'yes' : 'no — the manifest no longer has this asset in this style');
+    row(dl, 'declared', item.declared ? 'yes' : 'no; the manifest no longer has this asset in this style');
     row(dl, 'category', item.category);
     row(dl, 'tags', item.tags && item.tags.length ? item.tags.join(', ') : null);
     row(dl, 'source art', item.source, { mono: true });
@@ -2101,7 +2101,7 @@ async function refresh() {
     $('note').textContent = '';
     render();
   } catch (err) {
-    $('note').textContent = ' Refresh failed: ' + err.message + ' — is pixelkiln gallery still running?';
+    $('note').textContent = ' Refresh failed: ' + err.message + '. Is pixelkiln gallery still running?';
   } finally {
     refreshing = false;
     b.disabled = false;

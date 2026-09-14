@@ -3,7 +3,7 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import type { Generator, Manifest } from "../types.ts"
 
-/** Minimal PNG header read — avoids pulling in an image library just for dimensions. */
+/** Minimal PNG header read; avoids pulling in an image library just for dimensions. */
 export function pngSize(buf: Buffer): { width: number; height: number } | null {
   if (buf.length < 24) return null
   const isPng = buf.readUInt32BE(0) === 0x89504e47 && buf.readUInt32BE(4) === 0x0d0a1a0a
@@ -44,7 +44,7 @@ async function walk(dir: string, exclude: string[]): Promise<string[]> {
  * Scans an existing asset tree and produces manifest entries for it.
  *
  * Prompts are left empty on purpose. For a project whose art already exists,
- * the accurate prompts are the ones actually used upstream — `adopt
+ * the accurate prompts are the ones actually used upstream; `adopt
  * --write-prompts` recovers those from the matched objects rather than having
  * anyone invent plausible-looking replacements.
  */
@@ -144,7 +144,7 @@ function mode(values: number[]): number {
 
 export async function writeManifestFile(target: string, manifest: Manifest): Promise<void> {
   if (existsSync(target)) {
-    throw new Error(`${target} already exists — refusing to overwrite an existing manifest.`)
+    throw new Error(`${target} already exists; refusing to overwrite an existing manifest.`)
   }
   await writeFile(target, JSON.stringify(manifest, null, 2) + "\n")
 }

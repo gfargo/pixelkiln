@@ -22,7 +22,7 @@ import type { BalanceInfo, CostEstimate, JobState, PollContext, Provider, RateLi
  * returns bytes inline instead of a job id.
  */
 /**
- * Where a generation can be opened in the PixelLab web app — for a look, or
+ * Where a generation can be opened in the PixelLab web app, for a look or
  * for a hand edit in its built-in editor, after which `pixelkiln fetch
  * --refresh` pulls the changed bytes back down. A `map` or `1dir` object has
  * a page at `/create-object/<id>`; a tile set at `/maps/tiles/<set id>` (a
@@ -71,7 +71,7 @@ export class PixelLabProvider implements Provider {
 
   /** PixelLab's own constraints: submissions must be >2s apart, and
    *  background jobs in flight are capped by subscription tier (Tier 1=8,
-   *  Tier 2=10, Tier 3=20) — 8 is the safe floor across every tier. */
+   *  Tier 2=10, Tier 3=20); 8 is the safe floor across every tier. */
   rateLimit(): RateLimit {
     return { spacingMs: 2500, maxInFlight: 8 }
   }
@@ -370,7 +370,7 @@ function requirePixelLabOption(
 }
 
 /**
- * `storage_urls` is an object keyed `tile_0`, `tile_1`, ... — JSON object order
+ * `storage_urls` is an object keyed `tile_0`, `tile_1`, and so on. JSON object order
  * is not something to rely on, and a connectable set is sliced by index, so
  * sort numerically rather than taking Object.values() as it comes.
  */

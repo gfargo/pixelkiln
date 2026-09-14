@@ -14,7 +14,7 @@ export interface AdoptResult {
   scanned: number
   matched: number
   unmatchedLocal: string[]
-  /** Objects on the account that correspond to no local file — safe to delete. */
+  /** Objects on the account that correspond to no local file; safe to delete. */
   unmatchedRemote: RemoteAsset[]
   ambiguous: string[]
 }

@@ -10,7 +10,7 @@ import { fetchWithRetry, type RetryingFetch } from "./http.ts"
  * here was exercised against a live account before being written, so the shapes
  * are observed rather than assumed.
  *
- * Notably this needs no LLM and no MCP client — it is ordinary HTTP.
+ * Notably this needs no LLM and no MCP client. It is ordinary HTTP.
  */
 
 const BASE = process.env.PIXELLAB_API_BASE ?? "https://api.pixellab.ai/v2"
@@ -219,7 +219,7 @@ export class PixelLabClient {
    *
    * `size` and `styleImages` are mutually exclusive at the API level: when style
    * images are supplied the largest one dictates the output size. So style
-   * references must already be at the target resolution — a 128px reference
+   * references must already be at the target resolution; a 128px reference
    * silently produces 128px output and a different candidate count.
    */
   async create1Direction(args: {
@@ -250,7 +250,7 @@ export class PixelLabClient {
   }
 
   /**
-   * Arbitrary width x height. Returns a single result — no selection step.
+   * Arbitrary width x height. Returns a single result, no selection step.
    *
    * These AUTO-DELETE AFTER 8 HOURS, so `fetch` must run in the same session as
    * `submit`. The pipeline warns when a map-object entry is older than that.
@@ -282,12 +282,12 @@ export class PixelLabClient {
   }
 
   /**
-   * Draws a whole tile set in one call — many variations, or a connectable
+   * Draws a whole tile set in one call: many variations, or a connectable
    * set when `tileFeature` is given.
    *
    * `styleImages` here is NOT the shape `create-1-direction-object` uses.
-   * TilesProStyleImage is flat — `{base64, width, height}`, all three
-   * required — where 1dir wants `{type, base64, format}`. Confirmed against
+   * TilesProStyleImage is flat, `{base64, width, height}` with all three
+   * required, where 1dir wants `{type, base64, format}`. Confirmed against
    * the OpenAPI schema; sending 1dir's shape is rejected as an extra field.
    *
    * Passing style images also makes the API ignore `tileType` and `tileView`
@@ -318,7 +318,7 @@ export class PixelLabClient {
     )
   }
 
-  /** Throws PixelLabError(423) while the set is still drawing — see TilesPro. */
+  /** Throws PixelLabError(423) while the set is still drawing; see TilesPro. */
   async getTilesPro(tileId: string): Promise<TilesPro> {
     return validateResponse(
       TilesProSchema,
@@ -329,7 +329,7 @@ export class PixelLabClient {
 
   /**
    * Synchronous single-image generation. Returns the PNG inline rather than a
-   * job id, and is the only endpoint that honours a forced palette —
+   * job id, and is the only endpoint that honours a forced palette;
    * `color_image` on /map-objects returns a 500 whatever the payload shape.
    */
   async createImagePixflux(args: {
@@ -400,7 +400,7 @@ export class PixelLabClient {
   /**
    * Promotes chosen candidates to standalone objects, each with its own id.
    * The review parent survives until nothing is left in it, so the returned
-   * `created_object_ids` — not the parent id — is what should be recorded.
+   * `created_object_ids`, not the parent id, is what should be recorded.
    */
   async selectFrames(
     objectId: string,
@@ -423,7 +423,7 @@ export class PixelLabClient {
     return this.request(`/objects/${objectId}/dismiss-review`, { method: "POST" })
   }
 
-  /** Free and synchronous. Replaces the full tag set — include tags you want to keep. */
+  /** Free and synchronous. Replaces the full tag set, so include tags you want to keep. */
   setTags(objectId: string, tags: string[]): Promise<unknown> {
     return this.request(`/objects/${objectId}/tags`, { method: "PATCH", body: JSON.stringify({ tags }) })
   }

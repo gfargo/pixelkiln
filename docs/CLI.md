@@ -159,7 +159,7 @@ downloads when the provider supports tagging.
 
 `fetch --refresh` re-downloads already-downloaded outputs from their durable
 provider reference and replaces the local file only when the object's bytes
-changed upstream — after editing it in the provider's own editor, for
+changed upstream, after editing it in the provider's own editor, for
 example. Unchanged objects are reported as such and left alone; a changed
 object replaces the local file only if that file still hashes to what
 PixelKiln wrote, so a local hand edit is never overwritten without `--force`.
@@ -186,7 +186,7 @@ validated local content-addressed cache bytes and otherwise reuses provider
 references. It never replaces a destination whose bytes disagree with the lock
 unless `--force` says to: `restore --force` puts the recorded bytes back over
 a file that was changed after download (an `orphaned` plan entry), discarding
-that change — copy it aside, or declare it with [`edit`](#edit), first.
+that change. Copy it aside, or declare it with [`edit`](#edit), first.
 
 ```bash
 pixelkiln restore --only anvil --style base --generation 1
@@ -309,9 +309,9 @@ PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
 pixelkiln edit detach --only anvil --style base
 ```
 
-The generated PNG is the provenance record — its hash is in the lockfile,
-`plan` verifies it, and a regeneration replaces it — so the edit lives in a
-sibling file: `edit` copies the generated art to `<outDir>/edits/<same
+The generated PNG is the provenance record. Its hash is in the lockfile,
+`plan` verifies it, and a regeneration replaces it, so the edit lives in a
+sibling file. `edit` copies the generated art to `<outDir>/edits/<same
 relative path>`, declares it as the asset's `source` (or `sourceByStyle` entry
 for that style when the asset is in several styles), and opens it. `mount` and
 `pack` then place the edit; quality profiles read it; a revision starts from
@@ -321,8 +321,8 @@ it is. `--no-open` creates and declares without launching anything.
 
 `PIXELKILN_EDITOR` names the program (a name, or a command with arguments; the
 file path is appended). Without it the file opens with the OS default handler.
-A set of PNG outputs — a ComfyUI `frames` animation, a PixelLab `tiles` set —
-is edited as a set: one file per member, `<outDir>/edits/<name>-<role>.png`,
+A set of PNG outputs, such as a ComfyUI `frames` animation or a PixelLab
+`tiles` set, is edited as a set: one file per member, `<outDir>/edits/<name>-<role>.png`,
 with the manifest `source` naming the stem (`<outDir>/edits/<name>.png`), and
 the first member is what opens; `pack`, `mount`, and `export` place the
 members by role. GIF animations and sets with a GIF in them are refused with
@@ -342,9 +342,9 @@ PIXELKILN_TOOLS_DIR=/srv/pixelkiln-tools pixelkiln tools install editor
 
 The editor is a web build of [Pixelorama](https://pixelorama.org) with a small
 PixelKiln bridge extension, about 46 MB, and is not part of the npm package.
-Each PixelKiln release pins one build — its GitHub release tag
+Each PixelKiln release pins one build, meaning its GitHub release tag
 (`editor-pixelorama-<upstream tag>-pk.<n>`) and the SHA-256 and size of every
-file — and `install` fetches only the files that are missing or wrong from
+file. `install` fetches only the files that are missing or wrong from
 that release, verifies each against the pinned hash before it lands, and
 leaves nothing partial behind: a file that fails verification is discarded
 and the command fails naming it. `status` reports the pinned version, the
@@ -405,13 +405,13 @@ it, view, and background removal; and a form under each style to add a new
 asset. The palette rule is the one style field that changes no request:
 saving it makes the style's generated entries `recoverable`, and the next
 fetch re-applies it for free. A style edit shows its blast
-radius before you save —
+radius before you save:
 how many assets it changes the request for, including assets in styles that
 `extends` this one and do not override the field themselves, and what
 regenerating all of them would cost (`noBackground` counts only styles that
 send it: pixflux, and non-PixelLab providers). Editing a child style sets a
 value on the child only; clearing a field there makes it inherit again. Saving rewrites the manifest and
-nothing else — the same edit you would make in an editor — so `plan` and the
+nothing else, the same edit you would make in an editor, so `plan` and the
 page immediately report the asset `stale` or `missing` with its estimate, and
 generation still goes through `pixelkiln gen` with its budget and confirmation.
 The write is refused when the manifest changed on disk since the page loaded,
@@ -425,7 +425,7 @@ pixelkiln gallery --edit
 pixelkiln gallery --edit --workspace pixelkiln.workspace.json
 ```
 
-An `orphaned` record — its file gone, or changed after download — offers
+An `orphaned` record, one whose file is gone or changed after download, offers
 **Restore** (the recorded bytes back from the cache or the provider, no cost)
 and, for a changed file, **Regenerate**; both replacements say what they
 discard and ask first, and the way to keep the change is **Edit by hand** or
@@ -447,7 +447,7 @@ gains **Generate** (for `missing`, `stale`, and `failed` work), **Regenerate**
 (for up-to-date work, as `gen --force`), and **Resume** (poll, review, and
 fetch existing provider work at no cost). Before anything is submitted a
 dialog lists every asset with its candidate count and estimate, the total per
-provider, and what the session budget still allows — the page's version of
+provider, and what the session budget still allows. It is the page's version of
 `gen`'s "Spend … on N asset(s)?" question. A run is then the same `submit`,
 `poll`, and `fetch` library calls `gen` makes, writing the same lockfile, so a
 terminal `plan` in another window agrees at every step. Progress appears in a
@@ -458,8 +458,8 @@ the chosen art, and unchosen rows stay in review exactly as with `pick`. A
 regeneration's sheet shows the current art beside the candidates.
 
 **Compare** puts two to four records side by side at one shared zoom with
-their fields in rows — provider, generator, candidates, size, cost, prompt,
-dates, quality, hashes — and tints every row whose values differ. Shift-click
+their fields in rows (provider, generator, candidates, size, cost, prompt,
+dates, quality, hashes) and tints every row whose values differ. Shift-click
 cards (or use **Compare +** in a record) to build the set; the tray at the
 bottom opens it. The set lives in the URL (`?compare=a,b`), so a comparison
 can be linked like any other view. It works in the read-only gallery too.
@@ -472,12 +472,12 @@ rather than paid. The balance preflight is the same as `gen`'s. Provider
 credentials are loaded from the project's own `.env` files and never reach the
 page; in a workspace whose projects name the same credential with different
 values, the gallery refuses to generate for the second project rather than run
-it on the first project's account — start a separate gallery for it.
+it on the first project's account. Start a separate gallery for it.
 
 "How many candidates" is a style setting, because it is part of the request
 identity: Retro Diffusion, ComfyUI, and Scenario expose it as a provider option
 (`numImages`/`numOutputs`), which each style header shows and, with `--edit`,
-lets you change — every asset in the style becomes `stale`, and the header
+lets you change. Every asset in the style then becomes `stale`, and the header
 says how many. PixelLab's count follows the generator and size (`map` and
 `pixflux` return one image; a `1dir` style returns 4–64), so the header
 explains that instead of offering a number.
@@ -485,8 +485,8 @@ explains that instead of offering a number.
 With `--edit`, a record also gains **Edit by hand**, the page's form of
 [`pixelkiln edit`](#edit): it creates the edit file, declares it, and opens
 it in `PIXELKILN_EDITOR` or the OS default. The record then shows the generated
-art and the edit side by side with its status — an unchanged copy, edited, or
-based on an older generation because the art was regenerated since — plus
+art and the edit side by side with its status (an unchanged copy, edited, or
+based on an older generation because the art was regenerated since), plus
 **Open in editor** and **Detach edit**. A card whose edit differs from the
 generated art shows the edit, since that is what ships, with a ✎ mark.
 
@@ -495,33 +495,33 @@ generated art shows the edit, since that is what ships, with a ✎ mark.
 a slide-out sheet with the sprite and the style's palette loaded. See
 [`tools`](#tools) for what is fetched, where it lives, and how it is verified;
 the header shows whether it is installed and, if not, an **Install editor**
-button that fetches it once with a progress bar — nothing is downloaded without
+button that fetches it once with a progress bar. Nothing is downloaded without
 that click or `tools install editor`. **Save to project** (or ⌘S / Ctrl+S in
 the editor) hands the flattened image back to the page, which writes the same
 `edits/` file `pixelkiln edit` would and declares it; the sheet stays open for
 the next change, **Save & close** does both, and closing with unsaved changes
 asks first. Opening an existing edit also lays the generated art on a locked
-**Generated (PixelKiln reference)** layer at 50% — an onion skin for seeing
-what changed — that the sheet's **show generated** box hides and shows and
-that a save never flattens in. A set opens as one Pixelorama project with a
-frame per member — an animation at its fps, a tile set as one frame per tile —
+**Generated (PixelKiln reference)** layer at 50%, an onion skin for seeing
+what changed. The sheet's **show generated** box hides and shows it, and
+a save never flattens it in. A set opens as one Pixelorama project with a
+frame per member, an animation at its fps or a tile set as one frame per tile,
 and saving writes every member back under its role; a set that comes back with
 a different number of frames is refused rather than guessed at. A browser save also keeps Pixelorama's layered `.pxo`
-beside the edit — the next **Edit in browser** hands it back, so layers and
-frames come back as they were (the flattened PNG is used only if the file
-cannot be read, and the sheet says which) — and writes `<edit>.edit.json`
+beside the edit. The next **Edit in browser** hands it back, so layers and
+frames come back as they were; the flattened PNG is used only if the file
+cannot be read, and the sheet says which. The save also writes `<edit>.edit.json`
 recording the editor, the time, and the hash of the generation each file was
 based on, so `regenerated-since` is decided by hash rather than file times for
 those edits. Edit status compares pixels, not bytes: an edit that was opened
 and saved without a change stays `same`, whatever its editor did to the PNG. The record shows the
 editor and the layer file; **Open in desktop editor** and **Detach edit** work
 on the same file. The editor page runs same-origin under its own
-content-security policy and never sees the gallery's session token — the page
+content-security policy and never sees the gallery's session token; the page
 does the write. `--no-editor` hides all of it and serves none of its routes.
 
 A PixelLab `map` or `1dir` record also links to its account object (**Open in
 pixellab ↗**), where PixelLab's own editor can change it; with `--budget`
-(any amount — `--budget 0` allows provider contact and no spend) the record
+(any amount; `--budget 0` allows provider contact and no spend) the record
 and its style header offer **Pull upstream changes**, the page's form of
 `fetch --refresh`, which re-downloads the object and replaces the local file
 only if it changed upstream.
@@ -537,7 +537,7 @@ current directory, each project gets its own section and filter chip, and a
 project whose manifest or lock cannot be read is listed with its error instead
 of hiding the rest. Lock keys repeat across projects, so records are identified
 as `project:style/asset` in links and search. `--style` and `--only` apply per
-project; a project without the named ids simply shows nothing. `--json` prints
+project; a project without the named ids shows nothing. `--json` prints
 the combined snapshot with a `workspace.projects` summary.
 
 ```bash

@@ -8,8 +8,8 @@ import type { CostUnit } from "./provider.ts"
 /**
  * The lockfile is the record that maps a spec to the provider work that
  * satisfies it and the file on disk that came from it. It is written after
- * every state transition — including immediately after submitting, before the
- * job is awaited — so an interrupted run never loses track of paid-for work.
+ * every state transition, including immediately after submitting and before the
+ * job is awaited, so an interrupted run never loses track of paid-for work.
  */
 export async function loadLock(lockPath: string): Promise<Lock> {
   if (!existsSync(lockPath)) return { version: 2, entries: {} }
@@ -36,7 +36,7 @@ const saveQueues = new Map<string, Promise<void>>()
 const dirtyPatches = new WeakMap<Lock, Map<string, Partial<LockEntry>>>()
 const dirtyDeletes = new WeakMap<Lock, Set<string>>()
 
-/** Atomic write — a crash mid-save must not leave a truncated lockfile. */
+/** Atomic write. A crash mid-save must not leave a truncated lockfile. */
 export function saveLock(lockPath: string, lock: Lock): Promise<void> {
   const queueKey = path.resolve(lockPath)
   const previous = saveQueues.get(queueKey) ?? Promise.resolve()

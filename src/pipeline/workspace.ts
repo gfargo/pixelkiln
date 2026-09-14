@@ -23,8 +23,8 @@ export interface WorkspaceClaims {
  *
  * Delegates the union rule itself to `loadClaims` rather than reimplementing
  * it, so the workspace and single-project `--claims` paths cannot drift. Each
- * lock is loaded one at a time — rather than handing `loadClaims` the whole
- * path list at once — purely so a failure can be attributed to the project
+ * lock is loaded one at a time, rather than handing `loadClaims` the whole
+ * path list at once, purely so a failure can be attributed to the project
  * that owns it; the safety property (any unreadable registered lock aborts
  * before returning a claim set) is identical either way.
  */
@@ -77,7 +77,7 @@ export interface WorkspaceProjectStatus {
 export interface WorkspaceStatusReport {
   version: 1
   safe: boolean
-  /** The catalog's own directory — resolved paths in `projects` sit under it. */
+  /** The catalog's own directory; resolved paths in `projects` sit under it. */
   dir: string
   projects: WorkspaceProjectStatus[]
   totals: {
@@ -89,7 +89,7 @@ export interface WorkspaceStatusReport {
 }
 
 /**
- * Aggregate, read-only account/project state — offline throughout, using the
+ * Aggregate, read-only account/project state, offline throughout, using the
  * same offline cost estimator `plan` uses. A project whose manifest or lock
  * fails to load surfaces as that project's own `error` rather than aborting
  * the whole report, so one broken sibling does not hide every other

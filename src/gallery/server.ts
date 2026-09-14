@@ -23,7 +23,7 @@ import type { GalleryEditorHandlers } from "./editor.ts"
  *
  * The snapshot is rebuilt on every page load and every `/api/gallery.json`
  * request, and the media allowlist is replaced with it, so the page's Refresh
- * button shows a `gen` that finished in another terminal — including files
+ * button shows a `gen` that finished in another terminal, including files
  * that did not exist when the server started. Only paths the current
  * snapshot names are ever read; nothing else on disk is reachable.
  */
