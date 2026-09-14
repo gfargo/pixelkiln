@@ -1,3 +1,10 @@
+# [0.36.0](https://github.com/gfargo/pixelkiln/compare/v0.35.0...v0.36.0) (2026-09-14)
+
+
+### Features
+
+* **errors:** a small error taxonomy with codes, and CLI exit codes that follow it ([#116](https://github.com/gfargo/pixelkiln/issues/116)) ([d1cdc6e](https://github.com/gfargo/pixelkiln/commit/d1cdc6e088af417d8a8310ca905475be96ac8ae2))
+
 # [0.35.0](https://github.com/gfargo/pixelkiln/compare/v0.34.1...v0.35.0) (2026-09-14)
 
 
