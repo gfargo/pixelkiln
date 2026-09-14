@@ -6,7 +6,7 @@ import { z } from "zod"
 
 /**
  * One sibling project registered in a workspace catalog. Only paths and
- * identity live here — never a credential. Each project keeps loading its own
+ * identity live here, never a credential. Each project keeps loading its own
  * key from its own `.env`, the same as it does standalone.
  */
 export const WorkspaceProjectSchema = z
@@ -63,7 +63,7 @@ export async function loadWorkspace(workspacePath: string): Promise<Workspace> {
   return parseWorkspace(raw)
 }
 
-/** Atomic write — a crash mid-save must not leave a truncated catalog. */
+/** Atomic write. A crash mid-save must not leave a truncated catalog. */
 export async function saveWorkspace(workspacePath: string, ws: Workspace): Promise<void> {
   const sorted: Workspace = {
     version: 1,
@@ -110,7 +110,7 @@ export interface WorkspaceDiagnostic {
 
 /**
  * Checks the catalog without touching the network or any registered
- * project's files. Duplicate ids and duplicate lock paths are errors — either
+ * project's files. Duplicate ids and duplicate lock paths are errors; either
  * would corrupt the union claim set. A duplicate manifest is only a warning,
  * because a manifest paired with a variant `--lock` is an already-supported
  * pattern (see `cachePathFor`). Missing files are errors: a claim set derived
@@ -136,7 +136,7 @@ export function validateWorkspace(ws: Workspace, dir: string): WorkspaceDiagnost
         id: "absolute-path",
         level: "warning",
         message:
-          `project "${project.id}" stores an absolute path — the catalog will not resolve ` +
+          `project "${project.id}" stores an absolute path; the catalog will not resolve ` +
           `correctly if this tree is cloned or moved elsewhere`,
       })
     }
@@ -180,7 +180,7 @@ export function validateWorkspace(ws: Workspace, dir: string): WorkspaceDiagnost
         id: "duplicate-manifest",
         level: "warning",
         message:
-          `${ids.join(", ")} share manifest ${manifestPath} — expected only when they are ` +
+          `${ids.join(", ")} share manifest ${manifestPath}; expected only when they are ` +
           `variant lockfiles beside one manifest`,
       })
     }
@@ -192,7 +192,7 @@ export function validateWorkspace(ws: Workspace, dir: string): WorkspaceDiagnost
       id: "mixed-provider",
       level: "warning",
       message:
-        `registered projects use different providers: ${[...providers].sort().join(", ")} — ` +
+        `registered providers differ (${[...providers].sort().join(", ")}); ` +
         `spend totals are kept separate per unit, but confirm this is intentional`,
     })
   }

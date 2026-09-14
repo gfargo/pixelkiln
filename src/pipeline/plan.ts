@@ -105,7 +105,7 @@ export function resumeActions(specs: ResolvedSpec[], lock: Lock): ResumeAction[]
 
 /**
  * Diffs the manifest against the lockfile and the files on disk. Nothing here
- * touches the network, so it is safe to run constantly — it is the cheap
+ * touches the network, so it is safe to run constantly. It is the cheap
  * "what would this cost me?" question that should precede every real run.
  */
 export async function buildPlan(

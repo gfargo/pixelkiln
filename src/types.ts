@@ -4,19 +4,19 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
 
 /**
  * Which provider capability produces the asset. The choice is mostly about cost,
- * and the gap is enormous — all figures measured against a live account.
+ * and the gap is enormous. All figures were measured against a live account.
  *
- *   map   POST /map-objects — THE DEFAULT.
+ *   map   POST /map-objects. THE DEFAULT.
  *         A flat 1 generation at any size. Purpose-built for standalone props
  *         with transparent backgrounds, which is what an icon or a prop is.
  *         Arbitrary width x height. Returns exactly one result, so there is no
  *         selection step: if you dislike it, re-roll for 1 more.
  *
- *   1dir  POST /create-1-direction-object — 20-40 generations.
+ *   1dir  POST /create-1-direction-object. 20-40 generations.
  *         The single-facing sibling of create-8-direction-object, meant for
  *         objects you may later want rotations or animations of. Square only.
  *         Returns 4-64 candidates for its one fixed price, which is genuinely
- *         useful when you want to compare options side by side — but at 40x the
+ *         useful when you want to compare options side by side, but at 40x the
  *         cost of a map object, re-rolling a map object forty times is the same
  *         money. Reach for this when you need rotations, or when the extra
  *         rendering detail is worth 40x.
@@ -27,7 +27,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *
  * Not yet implemented, but measured and worth knowing (see README):
  *   POST /create-image-pixflux also costs 1 generation, returns the image
- *   INLINE with no polling, and accepts `color_image` — a forced palette that
+ *   INLINE with no polling, and accepts `color_image`, a forced palette that
  *   constrains output to exact hex values. Verified: a four-colour Game Boy
  *   swatch produced output containing precisely those four colours. The same
  *   parameter on /map-objects returns a 500, so the palette lock is
@@ -146,7 +146,7 @@ export function generationCost(
 
 /**
  * Cost of one `tiles` call. Same canvas tiers as `1dir`, but the canvas is the
- * sheet the API lays the variations out on, not one tile — so tile size alone
+ * sheet the API lays the variations out on, not one tile, so tile size alone
  * under-reads it badly (a 32px tile is 1024px on its own and would always
  * price at the floor).
  *
@@ -288,7 +288,7 @@ const StyleObjectSchema = z
     /**
      * `tiles` generator only. Edge length of one tile, 16-256.
      *
-     * Ignored when `styleImages` is set — style mode takes the tile's shape
+     * Ignored when `styleImages` is set: style mode takes the tile's shape
      * and dimensions from the reference image, which is the whole reason to
      * use it against an existing sheet.
      */
@@ -304,7 +304,7 @@ const StyleObjectSchema = z
      * independent variations:
      *
      *   roads    18-configuration path set
-     *   tileset  16-tile Wang corner set for a terrain transition — describe
+     *   tileset  16-tile Wang corner set for a terrain transition. Describe
      *            the asset as the transition itself ("fairway grass to rough
      *            meadow"), not as one terrain
      *   building floor/wall/doorway construction kit
@@ -322,7 +322,7 @@ const StyleObjectSchema = z
      * surface into visible quilting, with a dark seam at every cell edge.
      * `segmentation` omits them and the same set tiles seamlessly.
      *
-     * Measured on a fairway-to-rough terrain set — the difference decided
+     * Measured on a fairway-to-rough terrain set, where the difference decided
      * whether the art was usable at all, so it is worth setting deliberately
      * rather than inheriting.
      */
@@ -331,7 +331,7 @@ const StyleObjectSchema = z
      * `pixflux` only. Whether to strip the generated background.
      *
      * Defaults to true, which is right for the sprites this tool was built
-     * for — a prop or an icon wants to sit on whatever is behind it. It is
+     * for; a prop or an icon wants to sit on whatever is behind it. It is
      * wrong for anything that IS a scene: a cover banner, a splash, a
      * backdrop. The API's own default is false; forcing it true unconditionally
      * meant a full-bleed image came back as a small subject floating in a
@@ -344,7 +344,7 @@ const StyleObjectSchema = z
     /**
      * Forced palette, as `#rrggbb` values. `pixflux` only.
      *
-     * Unlike prose, this is a hard constraint — the API is handed a swatch
+     * Unlike prose, this is a hard constraint. The API is handed a swatch
      * image and the output is limited to those colours. Verified: a four-colour
      * Game Boy palette produced output containing exactly those four values.
      * Prose asking for the same thing does not reliably hold, which is why the
@@ -371,8 +371,8 @@ const StyleObjectSchema = z
     /**
      * Composites this style's assets into declared cells of a sheet, rather
      * than letting `pack` derive a layout. Use it when the atlas coordinates
-     * are already load-bearing somewhere else — a tile engine naming tiles by
-     * cell, or saved data storing cell indices — since `pack`'s id-sorted grid
+     * are already load-bearing somewhere else, a tile engine naming tiles by
+     * cell or saved data storing cell indices, since `pack`'s id-sorted grid
      * moves every position when an asset is added or renamed.
      *
      * Assets in a mounted style declare their own `cell`; ones that do not are
@@ -406,7 +406,7 @@ export const StyleSchema = StyleObjectSchema
    * The API rejects a connectable set combined with style tiles:
    * "Connectable features (roads/tileset/building) cannot be combined with
    * style tiles". Catching it here means `plan` reports it for free rather
-   * than a `submit` discovering it after the run has started — and the two
+   * than a `submit` discovering it after the run has started. The two
    * are individually the best reasons to use this generator, so reaching for
    * both at once is an easy mistake to make.
    */
@@ -474,14 +474,14 @@ export const AssetSchema = z
     cell: z.tuple([z.number().int().min(0), z.number().int().min(0)]).optional(),
     /**
      * Path, relative to the manifest, of the art that goes on a mounted
-     * sheet — when that is not the raw generated output.
+     * sheet, when that is not the raw generated output.
      *
      * `mount` otherwise takes its pixels from the lockfile, which records
      * what the API returned. That is the wrong file whenever the art needs a
      * step pixelkiln does not perform: a palette reduction onto a sheet's
      * closed palette, a hand touch-up, an alignment shift. Without somewhere
      * to say so, the choice is to mount the unprocessed art or to abandon
-     * `mount` and composite by hand — and the hand-composited sheet is
+     * `mount` and composite by hand, and the hand-composited sheet is
      * exactly the unreproducible artifact `mount` exists to replace.
      *
      * An asset with a `source` needs no lockfile entry at all, so art
@@ -581,7 +581,7 @@ export type Asset = z.infer<typeof AssetSchema>
 /**
  * One line of the lockfile: the mapping from a spec to the provider work that
  * satisfies it and the file on disk that came from it. This is the record that
- * did not exist before — without it, generated objects and downloaded files are
+ * did not exist before. Without it, generated objects and downloaded files are
  * two unrelated piles.
  */
 const LockOutputSchema = z.object({
@@ -622,7 +622,7 @@ const LockSourceSchema = z.object({
 
 /**
  * A generation this entry replaced, kept so it can be brought back. It is the
- * retired entry's identity — object, sources, output hashes, prompt, cost —
+ * retired entry's identity (object, sources, output hashes, prompt, cost)
  * without the live-state fields; `pixelkiln restore --generation` swaps it
  * back in. How many are kept is `PIXELKILN_HISTORY` or the manifest's
  * `history`, newest first.
@@ -728,8 +728,8 @@ export const LockEntrySchema = z.object({
 
   /**
    * Files this entry produced. A plain object generates one; asset kinds that
-   * expand into many — an animated character is ~35 spritesheets plus an engine
-   * resource — need the list, which is why v1's single `file` became this.
+   * expand into many, an animated character being ~35 spritesheets plus an engine
+   * resource, need the list, which is why v1's single `file` became this.
    *
    * `role` labels non-primary artifacts (e.g. "portrait", "spriteframes") so a
    * consumer can find the one it wants without pattern-matching on paths.
@@ -773,7 +773,7 @@ export type LockHistoryEntry = z.infer<typeof LockHistoryEntrySchema>
  *
  * There is deliberately no migration path. Both consuming projects were
  * onboarded after v2 landed, so a v1 file would be a corruption or a
- * hand-edit rather than a legacy artifact — better to fail loudly than to
+ * hand-edit rather than a legacy artifact. Better to fail loudly than to
  * quietly reinterpret it.
  */
 export function parseLock(raw: unknown): Lock {
@@ -787,7 +787,7 @@ export function parseLock(raw: unknown): Lock {
   )
 }
 
-/** The file a consumer means when it says "the asset" — the first output. */
+/** The file a consumer means when it says "the asset": the first output. */
 export function primaryOutput(entry: LockEntry): LockOutput | null {
   return entry.outputs.find((o) => !o.role) ?? entry.outputs[0] ?? null
 }
@@ -797,7 +797,7 @@ export function lockKey(styleId: string, assetId: string): string {
   return `${styleId}/${assetId}`
 }
 
-/** A manifest entry resolved against its style — everything needed to generate. */
+/** A manifest entry resolved against its style, everything needed to generate. */
 export interface ResolvedSpec {
   /** Absolute directory containing the manifest; excluded from the spec hash. */
   root: string
@@ -840,9 +840,9 @@ export interface ResolvedSpec {
   palette: string[]
   /** Snap downloaded art to `palette`; excluded from the spec hash. */
   enforcePalette: boolean
-  /** `pixflux` only — strip the generated background. Defaults to true. */
+  /** `pixflux` only. Strip the generated background. Defaults to true. */
   noBackground: boolean
-  /** `tiles` generator only — see StyleSchema for what each one means. */
+  /** `tiles` generator only. See StyleSchema for what each one means. */
   tileSize?: number
   tileType?: string
   tileView?: string

@@ -65,7 +65,7 @@ export function memberPath(
   return `${stem}-${safeRole}${ext}`
 }
 
-/** Several PNG outputs — a frame set, a tile set — that a hand edit covers one file per member. */
+/** Several PNG outputs (a frame set, a tile set) that a hand edit covers one file per member. */
 export function isMemberSetEntry(entry: Pick<LockEntry, "outputs">): boolean {
   return entry.outputs.length > 1 && entry.outputs.every((output) => !output.mediaType || output.mediaType === "image/png")
 }

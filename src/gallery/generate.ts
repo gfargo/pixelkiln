@@ -386,7 +386,7 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
       if (!request.resume && !request.refresh && !request.restore && request.revert === undefined) {
         const plan = await buildPlan(specs, ctx.lock, { force: request.force })
         if (!plan.actionable.length) {
-          const reasons = plan.items.map((item) => `${item.key}: ${item.state} — ${item.reason}`).slice(0, 5)
+          const reasons = plan.items.map((item) => `${item.key}: ${item.state}, ${item.reason}`).slice(0, 5)
           throw new GenerateRequestError(`nothing to generate; ${reasons.join("; ")}`)
         }
         groups = plan.groups

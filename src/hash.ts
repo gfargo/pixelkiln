@@ -18,7 +18,7 @@ export async function sha256File(path: string): Promise<string> {
 
 /**
  * Identity of a spec: everything that would change the generated image.
- * Project root, `outFile`, committed `source`, and `tags` are deliberately excluded —
+ * Project root, `outFile`, committed `source`, and `tags` are deliberately excluded;
  * moving a checkout, renaming the destination, swapping the committed art a
  * `mount` places, or retagging should not regenerate art.
  *

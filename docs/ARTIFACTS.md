@@ -23,8 +23,8 @@ pixelkiln pack --style mixed --primary-only
 
 Manifest mode normally reads the outputs recorded by the lockfile. An asset
 with a `source` (or a `sourceByStyle` entry for this style) is packed from that
-file instead — a hand edit made with `pixelkiln edit`, a palette remap, an
-alignment fix — and an asset with a source but no lock entry is packed from it
+file instead (a hand edit made with `pixelkiln edit`, a palette remap, an
+alignment fix), and an asset with a source but no lock entry is packed from it
 too, the same rule `mount` applies. Structural sets keep their lock outputs.
 When a style declares `quality`, it instead requires every selected refinement
 record to be current and approved, then packs those derived PNGs. Frames sort by asset id for

@@ -25,7 +25,7 @@ export async function runTools(args: Pick<Args, "subcommand" | "target" | "json"
       return
     }
     log(`          release ${status.release}`)
-    log(`          ${status.installed ? "installed and verified" : status.installedBytes ? `partial: ${status.missing.length} of ${Object.keys(EDITOR_PIN.files).length} files missing` : "not installed"} — ${mb(status.totalBytes)} in ${status.dir}`)
+    log(`          ${status.installed ? "installed and verified" : status.installedBytes ? `partial: ${status.missing.length} of ${Object.keys(EDITOR_PIN.files).length} files missing` : "not installed"}, ${mb(status.totalBytes)} in ${status.dir}`)
     if (!status.installed) log("          run: pixelkiln tools install editor")
     return
   }

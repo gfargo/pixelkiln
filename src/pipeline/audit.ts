@@ -106,7 +106,7 @@ export interface AuditEvaluation {
  * This exists to answer "is this variant working?" with a number instead of an
  * eyeball. Measured on a real neon trial, prose alone carried the style on
  * subjects with no strong inherent colour but was ignored on ones that had
- * some — a chocolate bar stayed brown, a camera stayed grey. Those are exactly
+ * some: a chocolate bar stayed brown, a camera stayed grey. Those are exactly
  * the assets this ranks to the top, before another 57 are generated to match.
  *
  * Reference palette comes from the style's `styleImages` when set, since those

@@ -167,7 +167,7 @@ of the asset spec hash, so changing one correctly makes that asset stale.
 
 Use `frames` when one asset is a short sequence of still renders controlled by
 one changing workflow input. This is intended for pose images, expression
-labels, or another explicit per-frame control—not video diffusion.
+labels, or another explicit per-frame control. It is not video diffusion.
 
 ```jsonc
 {
@@ -688,29 +688,17 @@ before assigning it a production batch.
 
 ## Troubleshooting
 
-- **Connection refused:** start ComfyUI or correct `COMFYUI_BASE_URL`.
-- **Missing node or input:** export the workflow again and update the manifest
-  bindings to match its API JSON.
-- **Custom input rejected offline:** match the `providerInputs` key to a custom
-  binding, keep built-in names reserved, and use a scalar with the same type as
-  the workflow placeholder. Image inputs must target core `LoadImage.image` or
-  `LoadImageMask.image` and point to a readable PNG/JPEG.
-- **Prompt validation failed:** open the workflow in ComfyUI and check missing
-  custom nodes, checkpoints, VAEs, LoRAs, and invalid node values.
-- **Wrong image count:** make the bound batch input and `numImages` describe the
-  same final output count. PixelKiln fails the job rather than recording a
-  partial candidate set.
-- **Frame set stays in review:** this is deliberate. Accept or reject the
-  ordered set as a unit; PixelKiln never keeps a partial loop.
-- **Frame refinement reports a grid mismatch:** inspect the source renders at
-  integer zoom. Do not resize one frame to hide a step/phase change; fix the
-  workflow controls and regenerate the set.
-- **Out of memory:** lower asset dimensions or batch size, or change the
-  workflow. PixelKiln's 4096px ceiling is a schema limit, not a promise that a
-  particular machine can render that canvas.
-- **The result looks pixelated but muddy:** reject it as source material. Do not
-  upscale it or accept it because grid detection succeeds. Compare a different
-  model, prompt pattern, or smaller native target on at least two scene types.
+| Symptom | What to do |
+|---|---|
+| Connection refused | Start ComfyUI or correct `COMFYUI_BASE_URL`. |
+| Missing node or input | Export the workflow again and update the manifest bindings to match its API JSON. |
+| Custom input rejected offline | Match the `providerInputs` key to a custom binding, keep built-in names reserved, and use a scalar with the same type as the workflow placeholder. Image inputs must target core `LoadImage.image` or `LoadImageMask.image` and point to a readable PNG/JPEG. |
+| Prompt validation failed | Open the workflow in ComfyUI and check missing custom nodes, checkpoints, VAEs, LoRAs, and invalid node values. |
+| Wrong image count | Make the bound batch input and `numImages` describe the same final output count. PixelKiln fails the job rather than recording a partial candidate set. |
+| Frame set stays in review | Deliberate. Accept or reject the ordered set as a unit; PixelKiln never keeps a partial loop. |
+| Frame refinement reports a grid mismatch | Inspect the source renders at integer zoom. Do not resize one frame to hide a step or phase change; fix the workflow controls and regenerate the set. |
+| Out of memory | Lower asset dimensions or batch size, or change the workflow. PixelKiln's 4096px ceiling is a schema limit, not a promise that a particular machine can render that canvas. |
+| The result looks pixelated but muddy | Reject it as source material. Do not upscale it or accept it because grid detection succeeds. Compare a different model, prompt pattern, or smaller native target on at least two scene types. |
 
 ComfyUI's official server route reference documents the `/prompt`,
 `/history/{prompt_id}`, `/view`, and `/system_stats` endpoints used by this

@@ -56,7 +56,7 @@ export interface Args {
   note?: string
   /** ComfyUI `models` directory used for offline recipe model verification. */
   modelRoot?: string
-  /** restore: a previous generation to bring back — 1-based, newest first, or an output hash prefix. */
+  /** restore: a previous generation to bring back, 1-based newest first, or an output hash prefix. */
   generation?: string
   /** Subcommand for `quality`, `recipe`, `refine`, or `workspace`. */
   subcommand?: string
@@ -232,7 +232,7 @@ export function parseArgs(argv: string[]): Args {
    * Collects every occurrence of a list flag, not just the first.
    *
    * `--style a --style b` is the natural way to write this and previously kept
-   * only `a`, silently discarding `b` — so a run that looked like it covered
+   * only `a`, silently discarding `b`, so a run that looked like it covered
    * two styles covered one, and `plan` quoted a cost for work it would not do.
    * Repeated flags now accumulate; commas still work within each occurrence.
    */

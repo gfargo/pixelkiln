@@ -1,7 +1,7 @@
 /** The help text. docs/CLI.md is the long form; scripts/check-docs.mjs keeps the two in step. */
 
 
-export const HELP = `pixelkiln — manifest-driven pixel art generation
+export const HELP = `pixelkiln: manifest-driven pixel art generation
 
   pixelkiln <command> [options]
 
@@ -18,7 +18,7 @@ Commands
             --generation <n|hash> brings a previous generation back instead.
   history   List the generations each asset has replaced and can restore.
   adopt     Match existing account objects to files already in the repo.
-  accept    Keep existing art after a style reword — re-baseline, do not regenerate.
+  accept    Keep existing art after a style reword. Re-baseline, do not regenerate.
   salvage   Triage account objects no lockfile claims. Recovers usable art.
             One session per matching style unless --style forces a single one.
   audit     Measure how consistently a style's assets hold together. Offline.

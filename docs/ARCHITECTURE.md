@@ -202,7 +202,7 @@ manifest points at it with `asset.source` (or `sourceByStyle` for one style);
 `plan` keeps reporting the generation from the lockfile, while `pack`,
 `mount`, `export`, quality profiles, and revisions read the edit. For an entry
 with several PNG outputs the source is a stem and each member is
-`<stem>-<role>.png`, the same rule generated outputs follow — unless a file
+`<stem>-<role>.png`, the same rule generated outputs follow, unless a file
 exists at the source path, which is one image placed for the whole set. A
 browser save writes `<edit>.edit.json` beside the edit: the editor, the time,
 and per file the hash of the generation it started from and its own hash, so
@@ -215,8 +215,8 @@ The gallery's in-browser editor is a web export of Pixelorama with PixelKiln's
 bridge extension, built in CI from a build-time overlay on the pinned upstream
 tag (`tools/pixelorama-bridge/`) and published as a GitHub release whose tag
 semantic-release ignores. The package does not carry the 46 MB build; it
-carries `tools/pixelorama-bridge/pin.json` — the release tag plus the SHA-256
-and size of every file — inlined into `src/editor/pin.ts` at bundle time, so
+carries `tools/pixelorama-bridge/pin.json`, the release tag plus the SHA-256
+and size of every file, inlined into `src/editor/pin.ts` at bundle time, so
 the shipped code and the build it trusts are one artifact. `installEditor`
 fetches only missing or mismatched files into a per-release directory under
 the user cache, verifies each against the pin before renaming it into place,

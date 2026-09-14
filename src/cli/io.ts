@@ -47,7 +47,7 @@ export function announceGalleryReady(
     `\n  gallery of ${count} generation${count === 1 ? "" : "s"}: ${url}\n` +
       (notes.length
         ? `  (${notes.join("; ")}; Ctrl+C to stop)\n\n`
-        : "  (read-only — add --edit to change prompts or edit sprites, --budget <n> to generate; Ctrl+C to stop)\n\n"),
+        : "  (read-only; add --edit to change prompts or edit sprites, --budget <n> to generate; Ctrl+C to stop)\n\n"),
   )
 }
 
@@ -74,7 +74,7 @@ export function printPlan(plan: Plan): void {
   if (plan.actionable.length) {
     for (const group of plan.groups) {
       log(
-        `  ${group.provider}: ${group.actionable.length} asset(s) — ` +
+        `  ${group.provider}: ${group.actionable.length} asset(s), ` +
           `${formatCost(group.costUnit, group.cost)}, ` +
           `${group.candidates} candidate/output image(s)`,
       )
@@ -98,7 +98,7 @@ export function printResumeActions(specs: ResolvedSpec[], lock: Lock): number {
     const shown = action.keys.slice(0, 3).join(", ")
     const more = action.keys.length > 3 ? `, +${action.keys.length - 3} more` : ""
     log(
-      `  next: pixelkiln ${action.command} — ${action.keys.length} asset` +
+      `  next: pixelkiln ${action.command} for ${action.keys.length} asset` +
         `${action.keys.length === 1 ? "" : "s"} (${shown}${more})`,
     )
   }

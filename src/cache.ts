@@ -25,7 +25,7 @@ export function parseCache(value: unknown): HashCache {
  * Remembers the hash of every remote object already downloaded.
  *
  * `adopt` and `salvage` work by hashing image bytes, which means downloading
- * every object on the account on every run — measured at 363 downloads and
+ * every object on the account on every run, measured at 363 downloads and
  * ~4.5s for one project, and it grows with the account rather than with the
  * work. Generated objects are immutable, so a hash only ever needs computing
  * once.
@@ -83,8 +83,8 @@ export function pruneCache(cache: HashCache, liveIds: Set<string>): number {
 
 /**
  * A lockfile named exactly `*.lock.json` gets the conventional
- * `*.cache.json` sibling. Anything else — a custom `--lock` name, which
- * projects in this monorepo already use for variant lockfiles — falls back
+ * `*.cache.json` sibling. Anything else, such as a custom `--lock` name, which
+ * projects in this monorepo already use for variant lockfiles, falls back
  * to appending `.cache.json` to the whole path instead of returning it
  * unchanged. Returning the input unchanged here used to mean the cache,
  * which is a completely different schema, got written straight over the

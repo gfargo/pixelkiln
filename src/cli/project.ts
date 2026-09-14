@@ -107,8 +107,8 @@ export function budgetsForPlan(plan: Plan, args: Args): Map<string, number | und
 
 /**
  * Loads a workspace catalog and derives its complete claim set, refusing when
- * the catalog itself is unsafe — missing entirely, or containing duplicate
- * ids/locks, or a registered manifest or lock that does not exist — rather
+ * the catalog itself is unsafe (missing entirely, or containing duplicate
+ * ids/locks, or a registered manifest or lock that does not exist) rather
  * than silently deriving a partial (or empty) claim set. `loadWorkspace`
  * treats a missing file as an empty catalog because that's the right
  * behavior for `workspace add` (creating one for the first time); a claim

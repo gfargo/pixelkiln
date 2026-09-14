@@ -14,7 +14,7 @@ export interface CostEstimate {
   amount: number
   /**
    * How many candidates one call returns. This is a provider property, not a
-   * universal truth — PixelLab's `1dir` returns up to 64 for a single fixed
+   * universal truth. PixelLab's `1dir` returns up to 64 for a single fixed
    * price, whereas a per-image provider returns one and charges N times for N.
    * The "generate small, pick from many" strategy only pays off where this is
    * greater than 1 at no extra cost.
@@ -194,7 +194,7 @@ export function measureBalanceChange(
 }
 
 /**
- * Submission constraints a backend enforces upstream, in its own units —
+ * Submission constraints a backend enforces upstream, in its own units.
  * `submit` has no business knowing these numbers itself.
  */
 export interface RateLimit {
@@ -205,7 +205,7 @@ export interface RateLimit {
 }
 
 /**
- * Used when a provider doesn't declare `rateLimit()` — conservative enough
+ * Used when a provider doesn't declare `rateLimit()`. Conservative enough
  * not to be a real constraint for a provider that has none of its own, and
  * overridable per run via `submit`'s own options regardless.
  */
@@ -214,8 +214,8 @@ export const DEFAULT_RATE_LIMIT: RateLimit = { spacingMs: 2500, maxInFlight: 8 }
 /**
  * A backend that turns a resolved spec into durable image or animation bytes.
  *
- * Everything above this interface — the manifest, the lockfile, plan diffing,
- * salvage, the contact sheets — is provider-agnostic. Everything that knows a
+ * Everything above this interface (the manifest, the lockfile, plan diffing,
+ * salvage, the contact sheets) is provider-agnostic. Everything that knows a
  * URL shape or an auth header lives below it.
  *
  * The optional members are genuinely optional capabilities rather than
@@ -250,14 +250,14 @@ export interface Provider {
   /** True only when the adapter can bind and submit this controlled edit mode. */
   supportsRevision?(mode: RevisionMode): boolean
 
-  /** Never performs I/O — `plan` must stay free and offline. */
+  /** Never performs I/O; `plan` must stay free and offline. */
   estimate(spec: ResolvedSpec): CostEstimate
 
   /** Provider-specific, offline validation after references resolve. */
   validate?(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void
 
   /** This backend's own submission constraints. Falls back to
-   *  `DEFAULT_RATE_LIMIT` when absent — see that constant's doc. */
+   *  `DEFAULT_RATE_LIMIT` when absent; see that constant's doc. */
   rateLimit?(): RateLimit
 
   submit(

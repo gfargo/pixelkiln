@@ -13,14 +13,14 @@ import { applyManifestEdit, ManifestEditError } from "../manifest-edit.ts"
 
 /**
  * Hand edits never touch the generated file. The generated PNG is the
- * provenance record — its hash is in the lockfile, `plan` verifies it, and a
- * regeneration replaces it — so an author's touch-up lives in a sibling file
+ * provenance record. Its hash is in the lockfile, `plan` verifies it, and a
+ * regeneration replaces it, so an author's touch-up lives in a sibling file
  * that the manifest points at with `source` (or `sourceByStyle`). `mount` and
  * `pack` place that file, quality profiles read it, and revisions start from
  * it, while `plan` keeps reporting the generation itself as `ok`.
  *
- * A set — an ordered frame set, a tile set, any entry with several PNG
- * outputs — is edited the same way, one file per member: the manifest's
+ * A set (an ordered frame set, a tile set, any entry with several PNG
+ * outputs) is edited the same way, one file per member: the manifest's
  * `source` names the stem, and each member is `<stem>-<role>.png` beside it,
  * the rule its generated outputs already follow.
  *
@@ -293,7 +293,7 @@ export interface HandEditSave extends HandEditStart {
  * image at the asset's generated size, a set must come back with the same
  * members it was opened with, and the files replace the edit
  * atomically; the companion records what each was based on, and the
- * manifest declares the edit if it does not yet — the same path
+ * manifest declares the edit if it does not yet, the same path
  * `startHandEdit` takes, so the first save from the browser and
  * `pixelkiln edit` leave the same manifest.
  */
@@ -316,11 +316,11 @@ export async function saveHandEdit(
     if (got.length !== expected.length || expected.some((role, index) => got[index] !== role)) {
       throw new ManifestEditError(
         `${spec.styleId}/${spec.assetId} is a set of ${expected.length} members (${expected.join(", ")}); ` +
-          `the editor returned ${got.length} (${got.map((role) => role ?? "new").join(", ")}) — keep the frames it opened with`,
+          `the editor returned ${got.length} (${got.map((role) => role ?? "new").join(", ")}); keep the frames it opened with`,
       )
     }
   } else if (incoming.length !== 1) {
-    throw new ManifestEditError(`${spec.styleId}/${spec.assetId} is one image; the editor returned ${incoming.length} frames — keep a single frame`)
+    throw new ManifestEditError(`${spec.styleId}/${spec.assetId} is one image; the editor returned ${incoming.length} frames; keep a single frame`)
   }
   const decoded = incoming.map((frame, index) => {
     if (frame.png.length > MAX_HAND_EDIT_BYTES) {

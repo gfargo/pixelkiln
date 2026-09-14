@@ -5,8 +5,8 @@ import type { GallerySnapshot } from "./snapshot.ts"
  * The gallery page: every generation the project has made, at integer zoom,
  * with the provenance record behind each one a click away.
  *
- * It shares the review sheet's visual language on purpose — same palette, same
- * square corners, same monospace identity — so `pick` and `gallery` read as two
+ * It shares the review sheet's visual language on purpose (same palette, same
+ * square corners, same monospace identity) so `pick` and `gallery` read as two
  * rooms of one tool. Where `pick` is built for deciding fast, this page is
  * built for looking things up: search, filter, and a detail drawer that shows
  * the lockfile, quality record, and manifest intent side by side.
@@ -57,7 +57,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   const editable = JSON.stringify(Boolean(opts.editable && opts.session))
   const generation = JSON.stringify(Boolean(opts.generation && opts.session))
   const editor = JSON.stringify(Boolean(opts.editor && opts.session))
-  const title = `pixelkiln — ${snapshot.project?.name ?? "workspace"}`
+  const title = `${snapshot.project?.name ?? "workspace"} | pixelkiln`
   const { css, js } = clientAssets()
   return `<!doctype html>
 <html lang="en">

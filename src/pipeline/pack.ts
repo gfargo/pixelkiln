@@ -55,7 +55,7 @@ export interface PackedSheet {
  *
  * A grid rather than a bin-packer. Every sprite in a style shares a generator
  * and a size, so rectangles are near-uniform and the gain from tight packing
- * is a few percent of area — not worth the loss of a stable, predictable
+ * is a few percent of area, not worth the loss of a stable, predictable
  * layout. A grid also means a frame's position is derivable from its index,
  * which matters when someone is reading the sheet by eye to debug it.
  *
@@ -64,7 +64,7 @@ export interface PackedSheet {
  * Smaller sprites are placed at the cell's top-left and their real dimensions
  * recorded, rather than being centred: centring would bake half-pixel offsets
  * into odd-sized differences, and a consumer that ignores the atlas and slices
- * on the cell grid still gets a correct — if padded — sprite.
+ * on the cell grid still gets a correct, if padded, sprite.
  */
 export interface SpriteInput {
   /** The name this sprite is looked up by in the atlas. */
@@ -79,7 +79,7 @@ export interface SpriteInput {
  * A plain function rather than inline in the CLI so it is testable without
  * spawning the binary: `main()` in cli.ts runs at module load and is not
  * exported, so anything left inline there has no seam a test can reach. This
- * is also the only place that needs to know the file is JSON at all — once it
+ * is also the only place that needs to know the file is JSON at all. Once it
  * returns, everything downstream just deals in `SpriteInput[]`.
  *
  * `entry.path` resolves relative to `inputsFilePath`'s directory, not the
@@ -107,7 +107,7 @@ export function resolvePackInputs(raw: unknown, inputsFilePath: string): SpriteI
  *
  * Separate from `packStyle` because the lockfile is not the only way to decide
  * what belongs on a sheet. A consumer may draw from several manifests, or key
- * frames by its own vocabulary rather than by pixelkiln asset ids — heybud's
+ * frames by its own vocabulary rather than by pixelkiln asset ids; heybud's
  * review-form icons do both. Keeping the pixel work here and the "which files,
  * called what" decision at the call site avoids teaching this module about
  * anyone else's naming.
@@ -160,7 +160,7 @@ export function packSprites(
   }
 
   if (!sprites.length) {
-    throw new Error(`packSprites: nothing readable — ${skipped.length} skipped.`)
+    throw new Error(`packSprites: nothing readable; ${skipped.length} skipped.`)
   }
 
   const cellW = Math.max(...sprites.map((s) => s.width))
@@ -212,7 +212,7 @@ export function packStyle(
     /**
      * Manifest `source` art keyed by asset id, manifest-relative. A hand edit
      * or other post-processed file stands in for that asset's single output,
-     * and an asset with a source but no lock entry is packed from it — the
+     * and an asset with a source but no lock entry is packed from it, the
      * same rule `mount` applies. A set's hand edit is a stem: each member is
      * packed from `<stem>-<role>.png`. A set whose source is one existing
      * file keeps its lock outputs, as before.
@@ -298,7 +298,7 @@ export function packStyle(
   }
 
   if (!inputs.length) {
-    throw new Error(`No readable sprites for style "${styleId}" — ${noOutput.length} skipped.`)
+    throw new Error(`No readable sprites for style "${styleId}"; ${noOutput.length} skipped.`)
   }
 
   const packed = packSprites(inputs, options)
@@ -339,7 +339,7 @@ export interface MountedSheet {
  *
  * The sibling of `packSprites`, for the case its layout rules cannot serve.
  * `packSprites` derives position from index and sorts by asset id so the sheet
- * is byte-stable — excellent when pixelkiln owns the whole sheet, and fatal
+ * is byte-stable, excellent when pixelkiln owns the whole sheet and fatal
  * when it does not. A consumer whose atlas coordinates are already load-bearing
  * (a tile engine naming tiles by cell, a scene file storing cell indices in
  * saved data) cannot accept a layout that moves when an asset is added or
@@ -357,7 +357,7 @@ export interface MountedSheet {
  *     invisible until it shipped.
  *
  * Sprites larger than the cell are a declaration error, not something to crop
- * silently — cropping would produce a sheet that looks right in isolation and
+ * silently; cropping would produce a sheet that looks right in isolation and
  * is wrong at every seam.
  */
 export function mountSprites(
@@ -376,7 +376,7 @@ export function mountSprites(
     const owner = byCell.get(key)
     if (owner) {
       throw new Error(
-        `mountSprites: "${p.id}" and "${owner}" both claim cell ${key} — ` +
+        `mountSprites: "${p.id}" and "${owner}" both claim cell ${key}; ` +
           `a cell has exactly one owner`,
       )
     }
@@ -405,7 +405,7 @@ export function mountSprites(
     }
   }
   if (!loaded.length) {
-    throw new Error(`mountSprites: nothing readable — ${skipped.length} skipped.`)
+    throw new Error(`mountSprites: nothing readable; ${skipped.length} skipped.`)
   }
 
   // The sheet must cover the base if there is one, and every declared cell
