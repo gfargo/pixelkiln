@@ -159,9 +159,10 @@ system requests reduced motion and stops while it is offscreen. After approval,
 ## `character`
 
 `character` is PixelLab's character family as managed assets: a base drawn
-facing 4 or 8 directions, states (a pose, an outfit) that PixelLab applies to
-every direction of an existing character, and animations, one loop of one
-character in one direction. The three share one PixelLab character. A state
+facing 4 or 8 directions (from a prompt, or from your own south-facing
+sprite with `reference`), states (a pose, an outfit) that PixelLab applies
+to every direction of an existing character, and animations, one loop of
+one character in one direction. The three share one PixelLab character. A state
 or animation depends on its parent the way a revision does: the parent must
 be downloaded and current before the child can be submitted, and
 regenerating the parent makes the child stale.

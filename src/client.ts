@@ -1,4 +1,4 @@
-import type { ResolvedStyleImage } from "./types.ts"
+import type { CharacterProportions, ResolvedStyleImage } from "./types.ts"
 import { z } from "zod"
 import { ProviderError } from "./errors.ts"
 import { fetchWithRetry, type RetryingFetch } from "./http.ts"
@@ -251,6 +251,24 @@ export class PixelLabError extends ProviderError {
   ) {
     super("pixellab", message, { status })
     this.name = "PixelLabError"
+  }
+}
+
+export interface Base64Image {
+  base64: string
+  format: "png" | "jpeg"
+}
+
+/** PixelLab's discriminated proportions object from the manifest's preset name or multipliers. */
+export function proportionsPayload(proportions: CharacterProportions): Record<string, unknown> {
+  if (typeof proportions === "string") return { type: "preset", name: proportions }
+  return {
+    type: "custom",
+    ...(proportions.headSize !== undefined ? { head_size: proportions.headSize } : {}),
+    ...(proportions.armsLength !== undefined ? { arms_length: proportions.armsLength } : {}),
+    ...(proportions.legsLength !== undefined ? { legs_length: proportions.legsLength } : {}),
+    ...(proportions.shoulderWidth !== undefined ? { shoulder_width: proportions.shoulderWidth } : {}),
+    ...(proportions.hipWidth !== undefined ? { hip_width: proportions.hipWidth } : {}),
   }
 }
 
@@ -517,6 +535,11 @@ export class PixelLabClient {
    * A base character. Standard mode picks the 4- or 8-direction template
    * endpoint; v3 and pro have their own and always draw 8. Every one answers
    * at once with the character id and a background job.
+   *
+   * A `reference` is the author's own sprite: standard takes one per
+   * direction and draws the rest, v3 rotates the south one, and pro
+   * switches to its rotate method for it. A `styleReference` is pro's style
+   * anchor; the other engines have no such input.
    */
   async createCharacter(args: {
     mode: "standard" | "v3" | "pro"
@@ -531,11 +554,18 @@ export class PixelLabClient {
     seed?: number
     noBackground?: boolean
     paletteSwatchBase64?: string
+    proportions?: CharacterProportions
+    textGuidanceScale?: number
+    isometric?: boolean
+    reference?: Partial<Record<string, Base64Image>>
+    styleReference?: Base64Image
   }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const imageSize = { width: args.size, height: args.size }
     const palette = args.paletteSwatchBase64
       ? { color_image: { type: "base64", base64: args.paletteSwatchBase64, format: "png" }, force_colors: true }
       : {}
+    const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
+    const south = args.reference?.south
     let path: string
     let body: Record<string, unknown>
     if (args.mode === "v3") {
@@ -549,6 +579,7 @@ export class PixelLabClient {
         ...(args.outline ? { outline: args.outline } : {}),
         ...(args.detail ? { detail: args.detail } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
+        ...(south ? { reference_image: encode(south) } : {}),
       }
     } else if (args.mode === "pro") {
       path = "/create-character-pro"
@@ -557,8 +588,10 @@ export class PixelLabClient {
         image_size: imageSize,
         template_id: args.template,
         no_background: args.noBackground ?? true,
+        method: south ? "rotate_character" : "create_with_style",
         ...(args.view ? { view: args.view } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
+        ...(south ? { reference_image: encode(south) } : args.styleReference ? { reference_image: encode(args.styleReference) } : {}),
       }
     } else {
       path = args.directions === 4 ? "/create-character-with-4-directions" : "/create-character-with-8-directions"
@@ -571,6 +604,12 @@ export class PixelLabClient {
         ...(args.shading ? { shading: args.shading } : {}),
         ...(args.detail ? { detail: args.detail } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
+        ...(args.proportions !== undefined ? { proportions: proportionsPayload(args.proportions) } : {}),
+        ...(args.textGuidanceScale !== undefined ? { text_guidance_scale: args.textGuidanceScale } : {}),
+        ...(args.isometric !== undefined ? { isometric: args.isometric } : {}),
+        ...(args.reference && Object.keys(args.reference).length
+          ? { directions: Object.fromEntries(Object.entries(args.reference).flatMap(([direction, image]) => (image ? [[direction, encode(image)]] : []))) }
+          : {}),
         ...palette,
       }
     }
@@ -618,6 +657,9 @@ export class PixelLabClient {
     keepFirstFrame?: boolean
     directions: string[]
     seed?: number
+    /** Template mode only. */
+    textGuidanceScale?: number
+    isometric?: boolean
   }): Promise<{ background_job_ids: string[]; directions: string[]; usage?: PixelLabUsage | null }> {
     const raw = await this.request<unknown>("/animate-character", {
       method: "POST",
@@ -630,6 +672,8 @@ export class PixelLabClient {
         ...(args.actionDescription ? { action_description: args.actionDescription } : {}),
         ...(args.mode === "v3" && args.frameCount ? { frame_count: args.frameCount } : {}),
         ...(args.mode === "v3" && args.keepFirstFrame === false ? { keep_first_frame: false } : {}),
+        ...(args.mode === "template" && args.textGuidanceScale !== undefined ? { text_guidance_scale: args.textGuidanceScale } : {}),
+        ...(args.isometric !== undefined ? { isometric: args.isometric } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
       }),
     })
