@@ -57,6 +57,8 @@ not merely a label edit.
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](#characters). |
 | `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](#characters). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](#mirrors). |
+| `proportions` | preset or object | `character` styles: this base's proportions, over the style's. |
+| `reference` | string or object | `character` styles, bases: the character's own south-facing sprite (or `{ "south": ..., "east": ... }`), which PixelLab rotates instead of drawing from the prompt. See [Characters](#characters). |
 | `providerInputs` | JSON scalar/sequence map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI accepts scalars and, for `frames`, one ordered 2–64 value sequence. Image bindings upload PNG/JPEG inputs. |
 | `styles` | string array, `[]` | Restrict the asset to named styles; empty means every style. |
 | `promptByStyle` | string map, `{}` | Replace only the asset prompt for a named style. |
@@ -100,6 +102,9 @@ constant across the set.
 | `mode` | `standard` | `character` only. `standard`, `v3`, or `pro`; see [Characters](#characters). |
 | `directions` | `8` | `character` only. `4` or `8`; `v3` and `pro` always draw 8. |
 | `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`. |
+| `proportions` | | `character` only, `standard` humanoid bases. A preset (`default`, `chibi`, `cartoon`, `stylized`, `realistic_male`, `realistic_female`, `heroic`) or multipliers `{ headSize, armsLength, legsLength, shoulderWidth, hipWidth }`, each 0.5 to 2. An asset may override it. |
+| `textGuidanceScale` | `8` | `character` only. How closely a `standard` base and a template loop follow their text, 1 to 20. |
+| `isometric` | `false` | `character` only. Draw `standard` bases and every loop in isometric view. |
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
@@ -517,6 +522,8 @@ credentials, cost semantics, recovery, and the paid live-test boundary.
 | `revision` | object | Generate a new asset from another asset's current bytes. `source` and `revision` are mutually exclusive. |
 | `outputRole` | string | Select one member of a structural output set for mounting. |
 | `mirror` | string | Another asset of this style, flipped left to right. No prompt, no provider, no cost. See [Mirrors](#mirrors). |
+| `proportions` | preset or object | This base's body proportions, over the style's. `standard` humanoid bases only. |
+| `reference` | string or object | The character's own sprite(s) for PixelLab to rotate. Bases only. |
 
 ## Characters
 
@@ -564,9 +571,45 @@ reference), `v3` (2 to 9 by size, the highest quality, up to 256px), or
 `pro` (20 to 40 by size). `size` is the character's size; `view` is `low
 top-down` (the default), `high top-down`, or `side`; `template` picks the
 body. Each direction lands as `<asset>-<direction>.png`, south first.
-Standard mode draws on a canvas about 40% larger than `size` to leave room
-for animation (a 64px character comes back as 92px files); the lock records
-the size asked for, and the files are what PixelLab drew.
+Standard mode draws on a canvas 28px larger than `size`, 14px of room on
+each side for animation (a 64px character comes back as 92px files, a
+104px one as 132px); the lock records the size asked for, and the files
+are what PixelLab drew.
+
+Three more knobs shape a `standard` base. `proportions` is a preset
+(`chibi`, `heroic`, and so on) or multipliers on the mannequin's head,
+arms, legs, shoulders, and hips; it lives on the style and any base may
+override it, and only the mannequin template has proportions to set.
+`textGuidanceScale` (1 to 20, PixelLab's default 8) is how closely the text
+is followed, and applies to template loops as well. `isometric` draws the
+base and every loop in isometric view. The v3 and pro engines take none of
+the three for a base; a v3 style may still set the last two for its loops.
+
+A base can also start from your own sprite. `reference` names a
+manifest-relative PNG or JPEG of the character facing south, and PixelLab
+draws the other directions from it, with the prompt as guidance:
+
+```json
+"mira": { "prompt": "small young woman, oversized hoodie", "reference": "refs/mira-south.png" }
+```
+
+`standard` uses each image as it is, centred on its larger canvas, and
+generates the rest, so the image must be the style's `size` exactly; it
+accepts one image per direction
+(`{ "south": ..., "east": ... }`), and a quadruped template needs south and
+east. `v3` rotates one south image of up to 256px (its `template` must
+match the body in the image). `pro` rotates one south image of up to 168px
+through its `rotate_character` method. The reference's bytes are part of
+the base's identity, so a redrawn file makes the base stale, and the file
+is read again at submit time and refused if it changed since `plan`.
+States, animations, and mirrors take their look from their parent and
+cannot carry a reference.
+
+Style images on a `character` style are a pro-only input: one image of up
+to 168px that anchors the look of a `pro` base drawn from text (PixelLab's
+`create_with_style`). `standard` and `v3` have no such slot and refuse
+them; a pro base with a `reference` refuses them too, since the rotate
+method has one image slot and it is the character.
 
 A state is a text edit of an existing character, `state.of`, applied to
 every direction at once: a pose, an outfit, a held object. The prompt is

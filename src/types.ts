@@ -252,6 +252,27 @@ export const MIRRORED_DIRECTION: Readonly<Record<CharacterDirection, CharacterDi
 
 export const CharacterModeSchema = z.enum(["standard", "v3", "pro"])
 export type CharacterMode = z.infer<typeof CharacterModeSchema>
+
+export const CHARACTER_PROPORTION_PRESETS = ["default", "chibi", "cartoon", "stylized", "realistic_male", "realistic_female", "heroic"] as const
+/**
+ * Body proportions for a `standard` humanoid base: one of PixelLab's presets,
+ * or multipliers on the mannequin (0.5 to 2; PixelLab recommends heads no
+ * larger than 1.7). Quadruped templates and the v3 and pro engines have no
+ * proportions to set.
+ */
+export const CharacterProportionsSchema = z.union([
+  z.enum(CHARACTER_PROPORTION_PRESETS),
+  z
+    .object({
+      headSize: z.number().min(0.5).max(2).optional(),
+      armsLength: z.number().min(0.5).max(2).optional(),
+      legsLength: z.number().min(0.5).max(2).optional(),
+      shoulderWidth: z.number().min(0.5).max(2).optional(),
+      hipWidth: z.number().min(0.5).max(2).optional(),
+    })
+    .strict(),
+])
+export type CharacterProportions = z.infer<typeof CharacterProportionsSchema>
 export const CharacterAnimationModeSchema = z.enum(["template", "v3", "pro"])
 export type CharacterAnimationMode = z.infer<typeof CharacterAnimationModeSchema>
 
@@ -317,6 +338,16 @@ export const CharacterAnimationSchema = z
   })
 export type CharacterAnimation = z.infer<typeof CharacterAnimationSchema>
 
+/** One of a base's reference sprites, read when the manifest is resolved; its hash is part of the spec's identity. */
+export interface ResolvedReferenceImage {
+  /** Absolute path. */
+  path: string
+  sha256: string
+  width: number
+  height: number
+  format: "png" | "jpeg"
+}
+
 /** How a resolved spec describes its place in a character family. */
 export interface ResolvedCharacter {
   kind: "base" | "state" | "animation"
@@ -326,6 +357,14 @@ export interface ResolvedCharacter {
   directions: 4 | 8
   /** PixelLab body template: `mannequin`, or a quadruped such as `cat`. */
   template: string
+  /** `standard` humanoid bases only. */
+  proportions?: CharacterProportions
+  /** `standard` bases and template loops. */
+  textGuidanceScale?: number
+  /** `standard` bases and every loop. */
+  isometric?: boolean
+  /** A base drawn by rotating the author's own sprite(s), keyed by the direction each shows. */
+  reference?: Partial<Record<CharacterDirection, ResolvedReferenceImage>>
   /** For a state or animation: the parent asset in the same style. */
   parentAssetId?: string
   parentSpec?: ResolvedSpec
@@ -487,6 +526,16 @@ const StyleObjectSchema = z
     directions: z.union([z.literal(4), z.literal(8)]).optional(),
     /** `character` only. Body template: `mannequin` (default) or a quadruped (`bear`, `cat`, `dog`, `horse`, `lion`). */
     template: z.string().min(1).optional(),
+    /** `character` only, `standard` humanoid bases. A preset or multipliers; an asset may override it. */
+    proportions: CharacterProportionsSchema.optional(),
+    /**
+     * `character` only. How closely a `standard` base and a template loop
+     * follow their text, 1 to 20; PixelLab's default is 8. The v3 and pro
+     * engines do not take it.
+     */
+    textGuidanceScale: z.number().min(1).max(20).optional(),
+    /** `character` only. Draw `standard` bases and every loop in isometric view. */
+    isometric: z.boolean().optional(),
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**
@@ -676,6 +725,19 @@ export const AssetSchema = z
     state: CharacterStateSchema.optional(),
     /** `character` styles: this asset is a loop of another character asset in one direction. */
     animation: CharacterAnimationSchema.optional(),
+    /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
+    proportions: CharacterProportionsSchema.optional(),
+    /**
+     * `character` styles, bases only: the character's own sprite, which
+     * PixelLab rotates into the other directions instead of drawing from
+     * the prompt. A manifest-relative PNG or JPEG of the south-facing
+     * sprite, or an object keyed by direction (`{ "south": ..., "east":
+     * ... }`); quadrupeds in `standard` mode need south and east, and only
+     * `standard` takes more than south. `standard` wants each image at the
+     * style's size; v3 accepts up to 256px, pro up to 168px. The prompt
+     * still guides the result.
+     */
+    reference: z.union([z.string().min(1), z.record(CharacterDirectionSchema, z.string().min(1))]).optional(),
     /**
      * Another asset of the same style flipped left to right, made locally
      * from that asset's downloaded files at no generation cost.
@@ -753,6 +815,16 @@ export const AssetSchema = z
         message: "Required",
         path: ["prompt"],
       })
+    }
+    if (asset.reference && (asset.state || asset.animation || asset.mirror)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "a reference sprite belongs on a base; a state, animation, or mirror takes its look from its parent",
+        path: ["reference"],
+      })
+    }
+    if (typeof asset.reference === "object" && !Object.keys(asset.reference).length) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "a reference needs at least a south image", path: ["reference"] })
     }
   })
 

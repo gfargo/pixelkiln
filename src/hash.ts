@@ -85,6 +85,13 @@ export function specHash(
             parentSha256: spec.character.parentSha256 ?? null,
             state: spec.character.state,
             animation: spec.character.animation,
+            // Absent keys keep the hashes of manifests that never set these.
+            proportions: spec.character.proportions,
+            textGuidanceScale: spec.character.textGuidanceScale,
+            isometric: spec.character.isometric,
+            reference: spec.character.reference
+              ? Object.fromEntries(Object.entries(spec.character.reference).map(([direction, image]) => [direction, image.sha256]))
+              : undefined,
           }
         : undefined,
       // A mirror's bytes come from its source's recorded outputs; the plan

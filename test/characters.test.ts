@@ -131,6 +131,85 @@ describe("manifest resolution", () => {
   })
 })
 
+describe("character controls", () => {
+  it("resolves proportions, guidance, isometric, and a reference sprite into the base's identity", async () => {
+    await writeFile(path.join(dir, "mira-south.png"), px(64, 30))
+    const file = await writeManifest({
+      style: { proportions: "chibi", textGuidanceScale: 12, isometric: true },
+      assets: {
+        mira: { prompt: "mira", reference: "mira-south.png" },
+        rook: { prompt: "rook", proportions: { headSize: 1.6 } },
+        "mira.walk": { prompt: "", animation: { of: "mira", template: "walk" } },
+      },
+    })
+    const specs = await resolveSpecs(await loadManifest(file))
+    const byId = new Map(specs.map((s) => [s.assetId, s]))
+    expect(byId.get("mira")!.character).toMatchObject({
+      proportions: "chibi", textGuidanceScale: 12, isometric: true,
+      reference: { south: { path: path.join(dir, "mira-south.png"), width: 64, height: 64, format: "png" } },
+    })
+    // The asset's own proportions win over the style's.
+    expect(byId.get("rook")!.character).toMatchObject({ proportions: { headSize: 1.6 } })
+    expect(byId.get("mira.walk")!.character).toMatchObject({ textGuidanceScale: 12, isometric: true })
+
+    // A redrawn reference is a different base; a plain style tweak is too.
+    const before = byId.get("mira")!.specHash
+    await writeFile(path.join(dir, "mira-south.png"), px(64, 31))
+    const redrawn = await resolveSpecs(await loadManifest(file))
+    expect(redrawn.find((s) => s.assetId === "mira")!.specHash).not.toBe(before)
+    await writeFile(path.join(dir, "mira-south.png"), px(64, 30))
+    const plain = await resolveSpecs(await loadManifest(await writeManifest({ style: { proportions: "chibi", textGuidanceScale: 12, isometric: true }, assets: { mira: { prompt: "mira" } } })))
+    expect(plain[0]!.specHash).not.toBe(before)
+    // Manifests that never set these keep the hashes they had before the
+    // controls existed (pinned from v0.42.0).
+    const unset = await resolveSpecs(await loadManifest(await writeManifest({ assets: { mira: { prompt: "mira" } } })))
+    expect(unset[0]!.specHash).toBe("8cbc9748fa2b75699f0aefb15743991d36ce9c9ca5230bc57f83e99813c6379b")
+  })
+
+  it("refuses controls where the engine or template cannot take them", async () => {
+    await writeFile(path.join(dir, "s64.png"), px(64, 30))
+    await writeFile(path.join(dir, "s48.png"), px(48, 30))
+    await writeFile(path.join(dir, "s200.png"), px(200, 30))
+    const refused = async (overrides: Parameters<typeof writeManifest>[0]) => resolveSpecs(await loadManifest(await writeManifest(overrides)))
+    await expect(refused({ style: { mode: "v3", proportions: "chibi" }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/proportions apply to standard bases; the v3 engine/)
+    await expect(refused({ style: { template: "cat", proportions: "chibi" }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/mannequin template; cat is a quadruped/)
+    await expect(refused({ assets: { a: { prompt: "a", reference: "s48.png" } } })).rejects.toThrow(/reference \(south\) is 48x48; standard mode wants each image at the style's size, 64x64/)
+    await expect(refused({ style: { template: "cat" }, assets: { a: { prompt: "a", reference: "s64.png" } } })).rejects.toThrow(/a cat reference needs south and east images/)
+    await expect(refused({ style: { directions: 4 }, assets: { a: { prompt: "a", reference: { south: "s64.png", "south-east": "s64.png" } } } })).rejects.toThrow(/"south-east" is not one of this character's 4 directions/)
+    await expect(refused({ assets: { a: { prompt: "a", reference: { east: "s64.png" } } } })).rejects.toThrow(/needs a south-facing sprite/)
+    await expect(refused({ assets: { a: { prompt: "a", reference: "missing.png" } } })).rejects.toThrow(/Reference sprite \(south\) not found/)
+    await expect(refused({ style: { mode: "v3" }, assets: { a: { prompt: "a", reference: { south: "s64.png", east: "s64.png" } } } })).rejects.toThrow(/v3 rotates one south-facing reference/)
+    await expect(refused({ style: { mode: "pro" }, assets: { a: { prompt: "a", reference: "s200.png" } } })).rejects.toThrow(/reference is 200x200; PixelLab pro takes up to 168px/)
+    await expect(refused({ assets: { a: { prompt: "a" }, b: { prompt: "b", state: { of: "a" }, reference: "s64.png" } } })).rejects.toThrow(/reference sprite belongs on a base/)
+    // Style images: pro takes one as its style anchor; the other engines have no slot.
+    await expect(refused({ style: { styleImages: [{ path: "s64.png" }] }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/standard characters take no style images/)
+    await expect(refused({ style: { mode: "pro", styleImages: [{ path: "s64.png" }, { path: "s48.png" }] }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/pro characters take one style image/)
+    await expect(refused({ style: { mode: "pro", styleImages: [{ path: "s200.png" }] }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/style image is 200x200; the limit is 168px/)
+    await expect(refused({ style: { mode: "pro", styleImages: [{ path: "s64.png" }] }, assets: { a: { prompt: "a", reference: "s64.png" } } })).rejects.toThrow(/rotating its own reference takes no style image/)
+    const ok = await refused({ style: { mode: "pro", styleImages: [{ path: "s64.png" }] }, assets: { a: { prompt: "a" } } })
+    expect(ok[0]!.styleImagePaths).toEqual(["s64.png"])
+    // v3 with a reference and a quadruped standard base with both sprites resolve.
+    await expect(refused({ style: { mode: "v3" }, assets: { a: { prompt: "a", reference: "s200.png" } } })).resolves.toHaveLength(1)
+    await expect(refused({ style: { template: "cat" }, assets: { a: { prompt: "a", reference: { south: "s64.png", east: "s64.png" } } } })).resolves.toHaveLength(1)
+  })
+
+  it("reads the reference at submit time and refuses one that changed since resolve", async () => {
+    await writeFile(path.join(dir, "mira-south.png"), px(64, 30))
+    const file = await writeManifest({ style: { proportions: "heroic" }, assets: { mira: { prompt: "mira", reference: "mira-south.png" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(client.created[0]).toMatchObject({ proportions: "heroic", reference: { south: { base64: px(64, 30).toString("base64"), format: "png" } } })
+
+    await writeFile(path.join(dir, "mira-south.png"), px(64, 99))
+    const forced = await buildPlan(p.specs, p.lock, { force: true })
+    const result = await submit(provider, p.loaded, forced.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(result.failed).toBe(1)
+    expect(p.lock.entries["cast/mira"]!.error).toMatch(/reference \(south\) changed after the manifest was resolved/)
+  })
+})
+
 describe("characterCost", () => {
   const spec = (character: Partial<ResolvedSpec["character"]>, size = 64) =>
     ({ width: size, height: size, character: { kind: "base", mode: "standard", directions: 8, template: "mannequin", ...character } } as unknown as ResolvedSpec)
@@ -197,6 +276,40 @@ describe("the wire", () => {
     expect(calls[3]!.body).toMatchObject({ no_background: false })
   })
 
+  it("sends proportions, guidance, isometric, and reference sprites where each engine takes them", async () => {
+    const client = new PixelLabClient("key")
+    const south = { base64: "U09VVEg=", format: "png" as const }
+    const east = { base64: "RUFTVA==", format: "png" as const }
+    await client.createCharacter({ mode: "standard", description: "a", size: 64, directions: 8, template: "mannequin", proportions: "chibi", textGuidanceScale: 12, isometric: true, reference: { south, east } })
+    await client.createCharacter({ mode: "standard", description: "a", size: 64, directions: 8, template: "mannequin", proportions: { headSize: 1.4, legsLength: 0.8 } })
+    await client.createCharacter({ mode: "v3", description: "a", size: 64, directions: 8, template: "mannequin", reference: { south }, proportions: "chibi", isometric: true })
+    await client.createCharacter({ mode: "pro", description: "a", size: 64, directions: 8, template: "mannequin", reference: { south } })
+    await client.createCharacter({ mode: "pro", description: "a", size: 64, directions: 8, template: "mannequin", styleReference: east })
+    await client.createCharacter({ mode: "pro", description: "a", size: 64, directions: 8, template: "mannequin" })
+    await client.animateCharacter({ characterId: "char-1", animationName: "n", template: "walk", mode: "template", directions: ["south"], textGuidanceScale: 5, isometric: true })
+    await client.animateCharacter({ characterId: "char-1", animationName: "n", actionDescription: "x", mode: "v3", directions: ["south"], textGuidanceScale: 5, isometric: true })
+    expect(calls[0]!.body).toMatchObject({
+      proportions: { type: "preset", name: "chibi" }, text_guidance_scale: 12, isometric: true,
+      directions: { south: { type: "base64", base64: "U09VVEg=", format: "png" }, east: { type: "base64", base64: "RUFTVA==", format: "png" } },
+    })
+    expect(calls[1]!.body).toMatchObject({ proportions: { type: "custom", head_size: 1.4, legs_length: 0.8 } })
+    expect(calls[1]!.body.proportions).not.toHaveProperty("arms_length")
+    // v3 rotates the south sprite and has no proportions or isometric to set.
+    expect(calls[2]!.body).toMatchObject({ reference_image: { type: "base64", base64: "U09VVEg=", format: "png" } })
+    expect(calls[2]!.body).not.toHaveProperty("proportions")
+    expect(calls[2]!.body).not.toHaveProperty("isometric")
+    expect(calls[2]!.body).not.toHaveProperty("directions")
+    // pro rotates a reference, or anchors its style on one, or neither.
+    expect(calls[3]!.body).toMatchObject({ method: "rotate_character", reference_image: { base64: "U09VVEg=" } })
+    expect(calls[4]!.body).toMatchObject({ method: "create_with_style", reference_image: { base64: "RUFTVA==" } })
+    expect(calls[5]!.body).toMatchObject({ method: "create_with_style" })
+    expect(calls[5]!.body).not.toHaveProperty("reference_image")
+    // Guidance is a template-mode knob; isometric applies to every loop.
+    expect(calls[6]!.body).toMatchObject({ text_guidance_scale: 5, isometric: true })
+    expect(calls[7]!.body).toMatchObject({ isometric: true })
+    expect(calls[7]!.body).not.toHaveProperty("text_guidance_scale")
+  })
+
   it("sends a state and an animation the way the API documents them", async () => {
     const client = new PixelLabClient("key")
     await client.createCharacterState({ characterId: "char-1", editDescription: "sitting", stateName: "chair", paletteFromReference: true, canvas: { width: 80, height: 80 } })
@@ -223,9 +336,11 @@ function fakeClient() {
     tags: new Map<string, string[]>(),
     pixels: new Map<string, Buffer>(),
     characters,
+    created: [] as Record<string, unknown>[],
     async createCharacter(args: { directions: 4 | 8; description: string }) {
       const id = `char-${++counter}`
       client.calls.push(`create:${args.description}`)
+      client.created.push(args)
       characters.set(id, { id, status: "pending", directions: args.directions, rotations: {}, animations: [], group_id: null, state_name: null })
       return { character_id: id, background_job_id: `job-${id}` }
     },

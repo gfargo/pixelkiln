@@ -2,7 +2,8 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { randomUUID } from "node:crypto"
 import os from "node:os"
 import path from "node:path"
-import { PixelLabClient, PixelLabError, clientFromEnv, type PixelLabCharacter } from "../client.ts"
+import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type PixelLabCharacter } from "../client.ts"
+import { sha256 } from "../hash.ts"
 import { paletteSwatch } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
@@ -11,6 +12,7 @@ import {
   generationCost,
   type CharacterDirection,
   type Generator,
+  type ResolvedCharacter,
   type ResolvedSpec,
   type ResolvedStyleImage,
 } from "../types.ts"
@@ -204,8 +206,8 @@ export class PixelLabProvider implements Provider {
         "low detail", "medium detail", "high detail",
       ])
     }
-    if (spec.generator === "character") this.validateCharacter(spec)
-    if ((spec.generator === "map" || spec.generator === "pixflux" || spec.generator === "character") && styleImages.length) {
+    if (spec.generator === "character") this.validateCharacter(spec, styleImages)
+    if ((spec.generator === "map" || spec.generator === "pixflux") && styleImages.length) {
       throw new Error(`PixelLab ${spec.generator} does not support style images`)
     }
     for (const image of styleImages) {
@@ -223,9 +225,63 @@ export class PixelLabProvider implements Provider {
     }
   }
 
-  private validateCharacter(spec: ResolvedSpec): void {
+  private validateCharacter(spec: ResolvedSpec, styleImages: ResolvedStyleImage[] = []): void {
     const character = spec.character
     if (!character) throw new Error(`${spec.styleId}/${spec.assetId} has no character shape`)
+    const label = `${spec.styleId}/${spec.assetId}`
+    if (character.kind === "base" && character.proportions !== undefined) {
+      if (character.mode !== "standard") {
+        throw new Error(`${label}: proportions apply to standard bases; the ${character.mode} engine has none to set`)
+      }
+      if (character.template !== "mannequin") {
+        throw new Error(`${label}: proportions apply to the mannequin template; ${character.template} is a quadruped`)
+      }
+    }
+    if (character.reference) {
+      const given = Object.keys(character.reference) as CharacterDirection[]
+      if (!character.reference.south) throw new Error(`${label}: a reference needs a south-facing sprite`)
+      if (character.mode !== "standard") {
+        if (given.length > 1) throw new Error(`${label}: PixelLab ${character.mode} rotates one south-facing reference; drop the other directions`)
+        const limit = character.mode === "v3" ? 256 : 168
+        const south = character.reference.south
+        if (south.width > limit || south.height > limit) {
+          throw new Error(`${label}: reference is ${south.width}x${south.height}; PixelLab ${character.mode} takes up to ${limit}px`)
+        }
+      } else {
+        const allowed = character.directions === 4 ? CHARACTER_DIRECTIONS_4 : CHARACTER_DIRECTIONS_8
+        for (const direction of given) {
+          if (!allowed.includes(direction)) {
+            throw new Error(`${label}: reference "${direction}" is not one of this character's ${character.directions} directions`)
+          }
+          const image = character.reference[direction]!
+          if (image.width !== spec.width || image.height !== spec.height) {
+            throw new Error(
+              `${label}: reference (${direction}) is ${image.width}x${image.height}; ` +
+                `standard mode wants each image at the style's size, ${spec.width}x${spec.height}`,
+            )
+          }
+        }
+        if (character.template !== "mannequin" && !character.reference.east) {
+          throw new Error(`${label}: a ${character.template} reference needs south and east images`)
+        }
+      }
+    }
+    if (styleImages.length) {
+      if (character.mode !== "pro") {
+        throw new Error(
+          `PixelLab ${character.mode} characters take no style images; ` +
+            "give a base its own sprite with `reference`, or use mode pro for a style anchor",
+        )
+      }
+      if (styleImages.length > 1) throw new Error("PixelLab pro characters take one style image")
+      if (character.kind === "base" && character.reference) {
+        throw new Error(`${label}: a pro base rotating its own reference takes no style image`)
+      }
+      const image = styleImages[0]!
+      if (image.width > 168 || image.height > 168) {
+        throw new Error(`PixelLab pro character style image is ${image.width}x${image.height}; the limit is 168px`)
+      }
+    }
     const maxSize = character.mode === "v3" ? 256 : 128
     if (spec.width < 16 || spec.height < 16 || spec.width > maxSize || spec.height > maxSize) {
       throw new Error(`PixelLab ${character.mode} characters must be between 16 and ${maxSize} pixels`)
@@ -265,12 +321,13 @@ export class PixelLabProvider implements Provider {
    * asset so a later run can find it, and clears its own earlier take for
    * that direction first, since PixelLab skips a direction that exists.
    */
-  private async submitCharacter(spec: ResolvedSpec, context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
+  private async submitCharacter(spec: ResolvedSpec, styleImages: ResolvedStyleImage[], context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
     const character = spec.character!
     if (character.kind === "base") {
       const swatch = spec.palette.length && character.mode === "standard"
         ? paletteSwatch(spec.palette).toString("base64")
         : undefined
+      const styleImage = styleImages[0]
       const res = await this.client.createCharacter({
         mode: character.mode,
         description: spec.prompt,
@@ -284,6 +341,11 @@ export class PixelLabProvider implements Provider {
         seed: spec.seed,
         noBackground: spec.noBackground,
         paletteSwatchBase64: swatch,
+        proportions: character.proportions,
+        textGuidanceScale: character.textGuidanceScale,
+        isometric: character.isometric,
+        reference: character.reference ? readReference(spec, character.reference) : undefined,
+        styleReference: styleImage ? { base64: styleImage.base64, format: styleImage.format } : undefined,
       })
       return { jobId: res.character_id, metadata: { character: { kind: "base", characterId: res.character_id, mode: character.mode, directions: character.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -336,6 +398,8 @@ export class PixelLabProvider implements Provider {
       keepFirstFrame: animation.keepFirstFrame,
       directions: [animation.direction],
       seed: spec.seed,
+      textGuidanceScale: character.textGuidanceScale,
+      isometric: character.isometric,
     })
     const job: AnimationJob = { characterId: parentId, name, direction: animation.direction, jobIds: res.background_job_ids }
     return {
@@ -433,7 +497,7 @@ export class PixelLabProvider implements Provider {
 
   async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[], context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
     this.validate(spec, styleImages)
-    if (spec.generator === "character") return this.submitCharacter(spec, context)
+    if (spec.generator === "character") return this.submitCharacter(spec, styleImages, context)
     if (spec.generator === "pixflux") {
       const swatch = spec.palette.length
         ? paletteSwatch(spec.palette).toString("base64")
@@ -754,6 +818,22 @@ function firstUrl(urls: Record<string, string | null> | null | undefined): strin
  * One direction of one animation on a character, if it has landed: by the
  * name PixelKiln gave it, or by the animation id in its frame URLs.
  */
+/**
+ * The reference sprites as the request wants them, read now rather than at
+ * resolve time so a redrawn file is caught at the spending boundary.
+ */
+function readReference(spec: ResolvedSpec, reference: NonNullable<ResolvedCharacter["reference"]>): Partial<Record<string, Base64Image>> {
+  const images: Partial<Record<string, Base64Image>> = {}
+  for (const [direction, image] of Object.entries(reference)) {
+    const bytes = readFileSync(image.path)
+    if (sha256(bytes) !== image.sha256) {
+      throw new Error(`${spec.styleId}/${spec.assetId}: reference (${direction}) changed after the manifest was resolved: ${image.path}`)
+    }
+    images[direction] = { base64: bytes.toString("base64"), format: image.format }
+  }
+  return images
+}
+
 /** A character's directions as output sources, south first. */
 function rotationSources(character: PixelLabCharacter): OutputSource[] {
   const order = character.directions === 4 ? CHARACTER_DIRECTIONS_4 : CHARACTER_DIRECTIONS_8

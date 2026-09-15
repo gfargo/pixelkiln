@@ -24,6 +24,11 @@ providers, or before any PixelLab account operation.
 | `tiles` | Ground variations or connected structures | 20–40 generations |
 | `character` | A character in 4 or 8 directions, its poses (`state`), and its loops (`animation`) | 1 per base, 20–40 per pose, 1 per template loop per direction |
 
+A base can start from the author's own south-facing sprite (`reference` on
+the asset; standard wants it at the style's size, v3 up to 256px, pro up
+to 168px), and a standard humanoid base takes `proportions` (`chibi`,
+`heroic`, or multipliers) on the style or the asset.
+
 A loop costs per direction, and a sprite facing east is the sprite facing
 west flipped. Declare the west loop and make the east one `{ "mirror":
 "hero.walk.west" }`: PixelKiln flips it locally for nothing, in the wave

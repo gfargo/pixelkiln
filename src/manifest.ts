@@ -17,6 +17,7 @@ import {
   CHARACTER_DIRECTIONS_8,
   MIRRORED_DIRECTION,
   type Asset,
+  type CharacterDirection,
   type Manifest,
   type ResolvedCharacter,
   type ResolvedSpec,
@@ -286,16 +287,16 @@ export async function resolveSpecs(
     string,
     { base64: string; hash: string; width: number; height: number; format: "png" | "jpeg" }
   >()
-  async function loadStyleImage(rel: string) {
+  async function loadStyleImage(rel: string, what = "Style image") {
     const abs = path.resolve(root, rel)
     let hit = styleImageCache.get(abs)
     if (!hit) {
-      if (!existsSync(abs)) throw new Error(`Style image not found: ${abs}`)
+      if (!existsSync(abs)) throw new Error(`${what} not found: ${abs}`)
       const buf = await readFile(abs)
       const metadata = imageMetadata(buf)
-      if (!metadata) throw new Error(`Style image is not a readable PNG or JPEG: ${abs}`)
+      if (!metadata) throw new Error(`${what} is not a readable PNG or JPEG: ${abs}`)
       if (metadata.width < 1 || metadata.height < 1) {
-        throw new Error(`Style image has invalid dimensions: ${abs}`)
+        throw new Error(`${what} has invalid dimensions: ${abs}`)
       }
       hit = { base64: buf.toString("base64"), hash: sha256(buf), ...metadata }
       styleImageCache.set(abs, hit)
@@ -447,7 +448,7 @@ export async function resolveSpecs(
         tileFeature: generator === "tiles" ? style.tileFeature : undefined,
         outlineMode: generator === "tiles" ? style.outlineMode : undefined,
         ...(generator === "character"
-          ? { character: resolveCharacterShape(asset, style, characterKind) }
+          ? { character: await resolveCharacterShape(asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
         cost:
           generator === "tiles"
@@ -762,14 +763,39 @@ export function imageMetadata(
 }
 
 /** The character-family shape of one asset, before its parent is known. */
-function resolveCharacterShape(asset: Asset, style: Style, kind: ResolvedCharacter["kind"]): ResolvedCharacter {
+async function resolveCharacterShape(
+  asset: Asset,
+  style: Style,
+  kind: ResolvedCharacter["kind"],
+  files: { root: string; load: (rel: string, what: string) => Promise<{ hash: string; width: number; height: number; format: "png" | "jpeg" }> },
+): Promise<ResolvedCharacter> {
   const mode = style.mode ?? "standard"
   const directions: 4 | 8 = mode === "standard" ? (style.directions ?? 8) : 8
+  const proportions = asset.proportions ?? style.proportions
   const shape: ResolvedCharacter = {
     kind,
     mode,
     directions,
     template: style.template ?? "mannequin",
+    ...(proportions !== undefined ? { proportions } : {}),
+    ...(style.textGuidanceScale !== undefined ? { textGuidanceScale: style.textGuidanceScale } : {}),
+    ...(style.isometric !== undefined ? { isometric: style.isometric } : {}),
+  }
+  if (asset.reference) {
+    // The author's own sprite, hashed so a redrawn reference makes the base
+    // stale the way an edited style image does.
+    const byDirection = typeof asset.reference === "string" ? { south: asset.reference } : asset.reference
+    shape.reference = {}
+    for (const [direction, rel] of Object.entries(byDirection)) {
+      const image = await files.load(rel, `Reference sprite (${direction})`)
+      shape.reference[direction as CharacterDirection] = {
+        path: path.resolve(files.root, rel),
+        sha256: image.hash,
+        width: image.width,
+        height: image.height,
+        format: image.format,
+      }
+    }
   }
   if (asset.state) {
     shape.state = {

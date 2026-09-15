@@ -226,6 +226,61 @@
               "type": "string",
               "minLength": 1
             },
+            "proportions": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "default",
+                    "chibi",
+                    "cartoon",
+                    "stylized",
+                    "realistic_male",
+                    "realistic_female",
+                    "heroic"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "headSize": {
+                      "type": "number",
+                      "minimum": 0.5,
+                      "maximum": 2
+                    },
+                    "armsLength": {
+                      "type": "number",
+                      "minimum": 0.5,
+                      "maximum": 2
+                    },
+                    "legsLength": {
+                      "type": "number",
+                      "minimum": 0.5,
+                      "maximum": 2
+                    },
+                    "shoulderWidth": {
+                      "type": "number",
+                      "minimum": 0.5,
+                      "maximum": 2
+                    },
+                    "hipWidth": {
+                      "type": "number",
+                      "minimum": 0.5,
+                      "maximum": 2
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "textGuidanceScale": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "isometric": {
+              "type": "boolean"
+            },
             "seed": {
               "type": "integer"
             },
