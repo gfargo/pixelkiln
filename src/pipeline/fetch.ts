@@ -73,6 +73,9 @@ export async function fetchAssets(
   // recoverable.
   const pending = Object.entries(lock.entries).filter(([key, e]) => {
     if (e.provider !== provider.id || !specByKey.has(key)) return false
+    // A mirror has nothing upstream; a missing or drifted one is flipped
+    // again by the next gen, which the plan says.
+    if (specByKey.get(key)?.mirror) return false
     if (e.status === "selected" || e.status === "download-failed") return true
     if (e.status !== "downloaded") return false
     if (opts.refresh) return e.outputs.length > 0 && Boolean(e.sourceUrls?.length || e.sourceUrl)

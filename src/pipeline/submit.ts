@@ -12,6 +12,7 @@ import { lockKey, type Lock, type ResolvedSpec, type ResolvedStyleImage } from "
 import type { PlanItem } from "./plan.ts"
 import { requireRevisionReady } from "./revision.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
+import { deriveMirror } from "./mirror.ts"
 
 /**
  * Two distinct limits, easy to conflate:
@@ -67,9 +68,13 @@ export async function submit(
   const slotTimeoutMs = opts.slotTimeoutMs ?? 15 * 60 * 1000
   const log = opts.onProgress ?? (() => {})
 
+  // A mirror is flipped locally; the provider never sees it and it costs
+  // nothing, in whatever unit the rest of the batch is priced in.
   const estimates = new Map(items.map((item) => [
     item.key,
-    validateCostEstimate(provider.id, provider.estimate(item.spec)),
+    item.spec.mirror
+      ? { amount: 0, unit: item.spec.costUnit, candidates: 1 }
+      : validateCostEstimate(provider.id, provider.estimate(item.spec)),
   ]))
   const units = new Set([...estimates.values()].map((estimate) => estimate.unit))
   if (units.size > 1) {
@@ -132,6 +137,34 @@ export async function submit(
 
   for (const { spec, key } of items) {
     const estimate = estimates.get(key)!
+    if (spec.mirror) {
+      try {
+        await requireRevisionReady(spec, lock)
+        await deriveMirror(spec, lock, lockPath, { onProgress: log })
+        submitted++
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        failed++
+        upsert(lock, key, {
+          styleId: spec.styleId,
+          assetId: spec.assetId,
+          specHash: spec.specHash,
+          generator: spec.generator,
+          prompt: "",
+          width: spec.width,
+          height: spec.height,
+          status: "failed",
+          error: message,
+          outputs: lock.entries[key]?.outputs ?? [],
+          cost: 0,
+          costUnit: spec.costUnit,
+          provider: provider.id,
+        })
+        await saveLock(lockPath, lock)
+        log(`  FAILED ${key}: ${message}`)
+      }
+      continue
+    }
     await waitForSlot()
 
     const since = Date.now() - lastSubmitAt

@@ -277,7 +277,7 @@ describe("asset revisions", () => {
       styles: ["other"],
       assets: ["revised"],
       provider,
-    })).rejects.toThrow(/revision parents must participate in the same style/)
+    })).rejects.toThrow(/mirror sources must be in the same style/)
   })
 
   it("surfaces blocked lineage in CLI text and JSON without scheduling cost", async () => {

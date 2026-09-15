@@ -234,6 +234,22 @@ export const CHARACTER_DIRECTIONS_8: readonly CharacterDirection[] = [
 /** PixelLab's 4-direction set. South first, so the primary file is the same either way. */
 export const CHARACTER_DIRECTIONS_4: readonly CharacterDirection[] = ["south", "west", "east", "north"]
 
+/**
+ * The direction a sprite faces after a left-to-right flip. South and north
+ * map onto themselves, which is why a mirror of either is refused: it would
+ * be the same direction with its asymmetries swapped, not a new one.
+ */
+export const MIRRORED_DIRECTION: Readonly<Record<CharacterDirection, CharacterDirection>> = {
+  south: "south",
+  "south-east": "south-west",
+  east: "west",
+  "north-east": "north-west",
+  north: "north",
+  "north-west": "north-east",
+  west: "east",
+  "south-west": "south-east",
+}
+
 export const CharacterModeSchema = z.enum(["standard", "v3", "pro"])
 export type CharacterMode = z.infer<typeof CharacterModeSchema>
 export const CharacterAnimationModeSchema = z.enum(["template", "v3", "pro"])
@@ -601,8 +617,8 @@ export type StyleInput = z.infer<typeof StyleInputSchema>
 
 export const AssetSchema = z
   .object({
-    /** The subject. Style wrapping comes from the style's prefix/suffix. */
-    prompt: z.string(),
+    /** The subject. Style wrapping comes from the style's prefix/suffix. Only a `mirror` may leave it out. */
+    prompt: z.string().optional(),
     /** Subdirectory under the style's outDir. Optional. */
     category: z.string().optional(),
     /** Overrides the style default. `map` generator only. */
@@ -661,6 +677,19 @@ export const AssetSchema = z
     /** `character` styles: this asset is a loop of another character asset in one direction. */
     animation: CharacterAnimationSchema.optional(),
     /**
+     * Another asset of the same style flipped left to right, made locally
+     * from that asset's downloaded files at no generation cost.
+     *
+     * The saving is in character loops, where each direction is its own
+     * generation: a walk facing west mirrored is the walk facing east, and a
+     * diagonal mirrors to the other diagonal. South and north mirror onto
+     * themselves and are refused. A single image or a frame set from any
+     * generator can be mirrored too; a tile set cannot, since its edges
+     * carry meaning. Mirroring swaps handedness, so an asymmetric character
+     * (a sword hand, a parted fringe) comes out the other way round.
+     */
+    mirror: z.string().min(1).optional(),
+    /**
      * Generated output role to place in `cell` when this asset expands to
      * several files. Omit for ordinary single-output assets. A structural set
      * is otherwise ambiguous and `mount` refuses to guess by taking index zero.
@@ -703,12 +732,26 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: `${shapes.join(" and ")} are mutually exclusive`,
         path: [shapes[1] as string],
+      })
+    }
+    if (asset.mirror && (asset.source || Object.keys(asset.sourceByStyle).length)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "a mirror is made from another asset's files; it cannot also declare a source",
+        path: ["mirror"],
+      })
+    }
+    if (asset.prompt === undefined && !asset.mirror) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["prompt"],
       })
     }
   })
@@ -843,6 +886,15 @@ export const LockEntrySchema = z.object({
     .strict()
     .nullable()
     .default(null),
+  /** For a mirror: the asset it flips and a hash over that asset's output hashes when this was made. */
+  mirror: z
+    .object({
+      sourceAssetId: z.string().min(1),
+      sourceSha256: z.string().regex(/^[0-9a-f]{64}$/),
+    })
+    .strict()
+    .nullable()
+    .default(null),
 
   /**
    * Output hashes owned by the previous generation while its replacement is
@@ -965,6 +1017,11 @@ export function lockKey(styleId: string, assetId: string): string {
   return `${styleId}/${assetId}`
 }
 
+export interface ResolvedMirror {
+  sourceAssetId: string
+  sourceSpec: ResolvedSpec
+}
+
 /** A manifest entry resolved against its style, everything needed to generate. */
 export interface ResolvedSpec {
   /** Absolute directory containing the manifest; excluded from the spec hash. */
@@ -991,6 +1048,8 @@ export interface ResolvedSpec {
   revision?: ResolvedRevision
   /** Set for every spec in a `character` style: base, state, or animation. */
   character?: ResolvedCharacter
+  /** A local left-to-right flip of another asset in this style; costs nothing. */
+  mirror?: ResolvedMirror
   /** Provider-side id declared for adoption; excluded from the spec hash. */
   remoteId?: string
   /**

@@ -273,7 +273,7 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
     // Another wave is worth a look only when this one put new art on disk
     // and something in the manifest waits on a parent.
     return args.command === "gen" && submitted > 0 && total.downloaded > 0 && !total.failed &&
-      specs.some((spec) => spec.character?.parentSpec || spec.revision)
+      specs.some((spec) => spec.character?.parentSpec || spec.revision || spec.mirror)
   }
   return false
 }

@@ -685,6 +685,10 @@
                 ],
                 "additionalProperties": false
               },
+              "mirror": {
+                "type": "string",
+                "minLength": 1
+              },
               "outputRole": {
                 "type": "string",
                 "minLength": 1
@@ -746,9 +750,6 @@
                 "default": {}
               }
             },
-            "required": [
-              "prompt"
-            ],
             "additionalProperties": false
           }
         }

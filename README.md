@@ -255,7 +255,7 @@ Measured PixelLab economics vary by 40×:
 | Exact closed palette | `pixflux` | 1 generation |
 | Candidate variety/reference anchoring/future animation | `1dir` | 20–40 generations |
 | Independent or connectable ground tiles | `tiles` | 20–40 generations |
-| A character in 4 or 8 directions, its poses, its loops | `character` | 1 per base, 20–40 per pose, 1 per template loop |
+| A character in 4 or 8 directions, its poses, its loops | `character` | 1 per base, 20–40 per pose, 1 per template loop per direction; a `mirror` of a loop is free |
 
 Start with the required capability, not the most expensive endpoint. Forty
 `map` re-rolls cost the same as one 64×64 `1dir` call; conversely, `map` cannot

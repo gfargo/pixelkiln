@@ -181,8 +181,12 @@ the job runs and reserved against the floor, so `plan` reports the tier the
 canvas lands in. Every direction of a base or state is one file
 (`<asset>-south.png`, ...); an animation's frames are `<asset>-frame-00.png`
 onwards, with the resting pose as frame 0 unless `keepFirstFrame` is off.
-`enforcePalette` snaps all of them. `pack --format godot` writes each base
-direction as a still and each animation as a looping set. The gallery
+`enforcePalette` snaps all of them. Since each direction of a loop is its
+own generation, declare the east-facing loop as a `mirror` of the west one
+(and each diagonal as a mirror of the other) and PixelKiln flips it locally
+for nothing; see [Mirrors](./MANIFEST.md#mirrors). `pack --format godot`
+writes each base direction as a still and each animation as a looping set.
+The gallery
 labels a state or loop with its parent ("state of hero", "loop of
 hero.sit, east"), links parent and children in the record, and counts the
 family in the style header ("3 characters, 4 states, 6 loops"). See
