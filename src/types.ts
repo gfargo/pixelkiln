@@ -649,6 +649,13 @@ export const AssetSchema = z
     sourceByStyle: z.record(z.string().min(1)).default({}),
     /** Controlled generation derived from another asset in the same style. */
     revision: RevisionSchema.optional(),
+    /**
+     * The provider's own id for art that already exists on the account, so
+     * `adopt` can map it without matching bytes: an object id, a character
+     * id, or `<character id>#<animation group id>` for a character animation.
+     * Not part of the spec's identity.
+     */
+    remoteId: z.string().min(1).optional(),
     /** `character` styles: this asset is a pose or outfit of another character asset. */
     state: CharacterStateSchema.optional(),
     /** `character` styles: this asset is a loop of another character asset in one direction. */
@@ -984,6 +991,8 @@ export interface ResolvedSpec {
   revision?: ResolvedRevision
   /** Set for every spec in a `character` style: base, state, or animation. */
   character?: ResolvedCharacter
+  /** Provider-side id declared for adoption; excluded from the spec hash. */
+  remoteId?: string
   /**
    * Manifest-relative path of committed art that stands in for generated
    * output; excluded from the spec hash. Set only when the asset declares

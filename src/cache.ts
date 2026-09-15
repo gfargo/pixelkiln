@@ -69,12 +69,19 @@ export async function saveCache(path: string, cache: HashCache): Promise<void> {
   }
 }
 
-/** Drop entries for objects that no longer exist, so the file cannot grow forever. */
-export function pruneCache(cache: HashCache, liveIds: Set<string>): number {
+/**
+ * Drop entries for objects that no longer exist, so the file cannot grow
+ * forever. Keys under another namespace (`character:<id>`) belong to another
+ * listing and are left to its own prune.
+ */
+export function pruneCache(cache: HashCache, liveIds: Set<string>, namespace = ""): number {
   let removed = 0
-  for (const id of Object.keys(cache.hashes)) {
+  for (const key of Object.keys(cache.hashes)) {
+    const owned = namespace ? key.startsWith(namespace) : !key.includes(":")
+    if (!owned) continue
+    const id = namespace ? key.slice(namespace.length) : key
     if (!liveIds.has(id)) {
-      delete cache.hashes[id]
+      delete cache.hashes[key]
       removed++
     }
   }

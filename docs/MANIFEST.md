@@ -52,6 +52,7 @@ not merely a label edit.
 | `category` | string | Optional output subdirectory and logical grouping. |
 | `source` | string | Manifest-relative committed art used instead of generation. For a set of PNG outputs (a `frames` animation, a `tiles` set) a path that is not a file is the stem of a hand edit laid beside the generated members (`<stem>-<role>.png` each); the set still generates. Mutually exclusive with `revision`. |
 | `sourceByStyle` | object | Per-style `source`, keyed by style id; wins over `source` for that style. Written by `pixelkiln edit` for a hand edit of an asset that is in several styles. |
+| `remoteId` | string | The provider's own id for art that already exists on the account, so `adopt` maps it without matching bytes: an object id, a character id, or `<character id>#<animation group id>`. Not part of the spec's identity. |
 | `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](#characters). |
 | `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](#characters). |
@@ -609,6 +610,14 @@ PixelKiln.
 --format godot` writes a `SpriteFrames` with each direction of a base or
 state as a still and each animation as a looping set at its fps;
 `--format aseprite` does the same with `frameTags`.
+
+Characters that already exist on the account come under the manifest with
+`adopt`. Declare the asset with `remoteId` (the character id, or
+`<character id>#<animation group id>` for a loop; `get_character` in
+PixelLab's own tools shows both) and run `pixelkiln adopt`: it records the
+character, writes every direction and frame that is not on disk, and costs
+nothing. A base can also be matched by the bytes of its south-facing file.
+See [`adopt`](CLI.md#adopt).
 
 ## Controlled revisions
 
