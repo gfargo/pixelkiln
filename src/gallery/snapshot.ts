@@ -139,6 +139,8 @@ export interface GalleryItem {
   revision: LockEntry["revision"]
   /** Parent lock key for a revision, so the page can link lineage. */
   revisionParentKey: string | null
+  /** A character family member: what it is, whose it is, and what PixelLab holds for it. */
+  character: GalleryCharacter | null
   outputs: GalleryOutput[]
   quality: GalleryQuality | null
   providerMetadata: Record<string, unknown>
@@ -179,6 +181,18 @@ export interface GalleryItem {
   category: string | null
 }
 
+export interface GalleryCharacter {
+  kind: "base" | "state" | "animation"
+  /** Lock key of the base or state this is drawn from; null for a base. */
+  parentKey: string | null
+  mode: string
+  directions: number
+  /** Animations only. */
+  direction: string | null
+  /** Provider-side character id (an animation's is its character's). */
+  characterId: string | null
+}
+
 export interface GalleryStyle {
   id: string
   /** Workspace project id, or null for a single-project gallery. */
@@ -197,6 +211,8 @@ export interface GalleryStyle {
   /** Strip the generated background (sent for pixflux and non-PixelLab providers). */
   noBackground: boolean
   quality: boolean
+  /** Family counts for a `character` style; null otherwise. */
+  characters: { bases: number; states: number; animations: number } | null
   tags: string[]
   /** Parent style id when this style `extends` one. */
   extends: string | null
@@ -352,6 +368,39 @@ async function samePixels(a: string, b: string): Promise<boolean> {
 }
 
 const metadataFps = (entry: LockEntry | undefined): number | null => (entry ? frameSetFps(entry) : null)
+
+/**
+ * What the page needs to draw a character family: from the manifest when the
+ * asset is declared, else from what the adapter recorded on the entry.
+ */
+function describeCharacter(spec: ResolvedSpec | undefined, entry: LockEntry | undefined): GalleryCharacter | null {
+  const recorded = entry?.providerMetadata?.[entry.provider]?.character as
+    | { kind?: string; characterId?: string; direction?: string; directions?: number; mode?: string }
+    | undefined
+  if (spec?.character) {
+    const character = spec.character
+    return {
+      kind: character.kind,
+      parentKey: character.parentAssetId ? lockKey(spec.styleId, character.parentAssetId) : null,
+      mode: character.kind === "animation" ? character.animation!.mode : character.mode,
+      directions: character.directions,
+      direction: character.animation?.direction ?? null,
+      characterId: recorded?.characterId ?? entry?.objectId?.split("#")[0] ?? null,
+    }
+  }
+  if (entry?.generator === "character") {
+    const kind = recorded?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-")) ? "animation" : "base"
+    return {
+      kind,
+      parentKey: null,
+      mode: recorded?.mode ?? "standard",
+      directions: recorded?.directions ?? entry.outputs.length,
+      direction: recorded?.direction ?? null,
+      characterId: recorded?.characterId ?? entry.objectId?.split("#")[0] ?? null,
+    }
+  }
+  return null
+}
 
 async function fileInfo(absolutePath: string): Promise<{ bytes: number; modifiedAt: string } | null> {
   try {
@@ -655,6 +704,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         : entry?.revision
           ? lockKey(spec.styleId, entry.revision.sourceAssetId)
           : null,
+      character: describeCharacter(spec, entry),
       outputs,
       quality,
       providerMetadata: entry?.providerMetadata ?? {},
@@ -717,6 +767,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       currentSpecHash: null,
       revision: entry.revision,
       revisionParentKey: entry.revision ? lockKey(entry.styleId, entry.revision.sourceAssetId) : null,
+      character: describeCharacter(undefined, entry),
       outputs,
       quality: null,
       providerMetadata: entry.providerMetadata ?? {},
@@ -783,6 +834,13 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         view: style?.view ?? null,
         noBackground: style?.noBackground ?? true,
         quality: Boolean(style?.quality),
+        characters: style?.generator === "character"
+          ? {
+              bases: styleItems.filter((item) => item.character?.kind === "base").length,
+              states: styleItems.filter((item) => item.character?.kind === "state").length,
+              animations: styleItems.filter((item) => item.character?.kind === "animation").length,
+            }
+          : null,
         tags: style?.tags ?? [],
         extends: typeof rawStyle?.extends === "string" ? rawStyle.extends : null,
         ownFields: rawStyle ? Object.keys(rawStyle).filter((key) => key !== "extends") : [],
