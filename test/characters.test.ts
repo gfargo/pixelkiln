@@ -356,6 +356,10 @@ describe("character controls", () => {
     await expect(refused({ style: { mode: "v3", styleTraits: { outline: false } }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/styleTraits choose what a pro-flash style image lends/)
     await expect(refused({ style: { mode: "pro-flash" }, assets: { a: { prompt: "a", reference: "s300.png" } } })).rejects.toThrow(/reference is 300x300; PixelLab pro-flash takes up to 256px/)
     await expect(refused({ style: { mode: "pro-flash", styleImages: [{ path: "s300.png" }] }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/style image is 300x300; the limit is 256px/)
+    // Read from a live 422 in September 2026: the style image has to fit the canvas being drawn.
+    await writeFile(path.join(dir, "s104.png"), px(104, 30))
+    await expect(refused({ style: { mode: "pro-flash", styleImages: [{ path: "s104.png" }] }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/style image is 104x104 but the character is 64x64; crop the image/)
+    await expect(refused({ style: { mode: "pro-flash", size: 128, styleImages: [{ path: "s104.png" }] }, assets: { a: { prompt: "a" } } })).resolves.toHaveLength(1)
     await expect(refused({ style: { mode: "pro-flash", proportions: "chibi" }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/proportions apply to standard bases; the pro-flash engine/)
     await expect(refused({ style: { mode: "pro-flash", styleCharacter: "a" }, assets: { a: { prompt: "a" }, b: { prompt: "b" } } })).rejects.toThrow(/styleCharacter is a pro input; the pro-flash engine/)
   })

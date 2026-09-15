@@ -637,7 +637,8 @@ character.
 Style images on a `character` style are a pro input: one image of up to
 168px that anchors the look of a `pro` base drawn from text or a concept
 (`create_with_style` and `create_from_concept` both take it), or one of
-up to 256px that a `pro-flash` base copies its look from, with
+up to 256px that a `pro-flash` base copies its look from, no larger than
+the character's `size` on either side (crop it to its subject), with
 `styleTraits` (`palette`, `outline`, `detail`, `shading`, each on by
 default) choosing which traits it lends. `standard` and `v3` have no such
 slot and refuse them; a base with a `reference` refuses them too, in

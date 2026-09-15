@@ -344,6 +344,15 @@ export class PixelLabProvider implements Provider {
       if (image.width > limit || image.height > limit) {
         throw new Error(`PixelLab ${character.mode} character style image is ${image.width}x${image.height}; the limit is ${limit}px`)
       }
+      // Pro Flash lays the style image on the canvas it draws; one that
+      // does not fit is refused upstream ("crop the reference or choose a
+      // larger supported canvas").
+      if (character.mode === "pro-flash" && (image.width > spec.width || image.height > spec.height)) {
+        throw new Error(
+          `PixelLab pro-flash style image is ${image.width}x${image.height} but the character is ${spec.width}x${spec.height}; ` +
+            "crop the image to its subject or raise the style's size",
+        )
+      }
     }
     if (character.styleTraits && character.mode !== "pro-flash") {
       throw new Error(`${label}: styleTraits choose what a pro-flash style image lends; the ${character.mode} engine does not take them`)
