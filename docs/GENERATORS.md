@@ -178,7 +178,10 @@ regenerating the parent makes the child stale.
 
 The 20–40 tiers are PixelLab's; the tier is resolved from the canvas when
 the job runs and reserved against the floor, so `plan` reports the tier the
-canvas lands in. Every direction of a base or state is one file
+canvas lands in. `plan` prices a 64px state at 40 (the 1dir tier for that
+many pixels); one live 64px state in September 2026 moved the balance by
+about 22, so the estimate reads high, which is the safe side for a budget.
+Every direction of a base or state is one file
 (`<asset>-south.png`, ...); an animation's frames are `<asset>-frame-00.png`
 onwards, with the resting pose as frame 0 unless `keepFirstFrame` is off.
 `enforcePalette` snaps all of them. Since each direction of a loop is its
