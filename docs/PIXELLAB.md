@@ -124,7 +124,10 @@ packaging.
 ## What is outside this adapter
 
 PixelLab offers more than PixelKiln currently exposes. Portraits, outfit
-transfer, lip-sync, skeleton-driven animation, and Pro Flash are not part of
-this adapter. Characters, their states, and their animations are the
-`character` generator; see [Characters](./MANIFEST.md#characters). Use the
-[manifest reference](./MANIFEST.md) for the fields PixelKiln supports today.
+transfer, lip-sync, and skeleton-driven animation are not part of this
+adapter. Characters, their states, and their animations are the `character`
+generator, with all four creation engines (standard, v3, pro, pro-flash),
+reference sprites, concept images, style anchors, mirrors, and every
+`animate-character` control; see [Characters](./MANIFEST.md#characters). Use
+the [manifest reference](./MANIFEST.md) for the fields PixelKiln supports
+today.

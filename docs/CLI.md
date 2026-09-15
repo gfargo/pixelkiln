@@ -25,6 +25,8 @@ hosted still models with Compute Unit preflight and durable asset recovery.
 | generate everything the manifest still needs | `pixelkiln gen --budget 40` |
 | hold every generated file to the style's palette | set `"enforcePalette": true` on the style, then `pixelkiln fetch` |
 | draw a character in 8 directions, then its poses and loops | a `character` style with `state` and `animation` assets; one `pixelkiln gen` runs the waves |
+| rotate your own sprite into 8 directions | `"reference": "refs/hero-south.png"` on the base; `mode: pro-flash` does it for 1 generation at 64px |
+| get the east-facing loop without paying for it | `"hero.walk.east": { "mirror": "hero.walk.west" }` |
 | generate one asset, or one style | `pixelkiln gen --only anvil --budget 2`, `pixelkiln gen --style neon --budget 20` |
 | finish a run that was interrupted | `pixelkiln plan`, then the `next:` command it prints (`poll`, `pick`, or `fetch`) |
 | choose among candidates the provider returned | `pixelkiln pick` |
@@ -113,8 +115,9 @@ PixelKiln validates the complete budget set before submitting the first group.
 
 `gen` runs in waves. A wave is the whole lifecycle for everything the plan
 can act on now. Once its downloads land, assets that were `blocked` on a
-parent (a character's states, then their animations; a revision of a still
-that was just made) become actionable, and the next wave takes them under
+parent (a character's states, then their animations and the mirrors of
+those; a pro base drawn in another character's style; a revision of a
+still that was just made) become actionable, and the next wave takes them under
 what is left of the same budget, asking the same "Spend ...?" question each
 time unless `--yes`. It stops when a wave finds nothing new, when a wave
 submits nothing, or when the remaining budget cannot cover the next wave; in

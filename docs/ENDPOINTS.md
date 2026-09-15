@@ -325,8 +325,32 @@ Listed so the gaps are known rather than assumed away:
 - the tileset family, with schema documented above and costs unmeasured
 - `create-isometric-tile`, `create-ui-asset`, `generate-font-pro`, all job-based,
   with response shapes not in the simple `{usage, image}` form
-- the character family beyond what the `character` generator uses (portraits,
-  outfit transfer, lip-sync, skeleton animation, Pro Flash)
+- the character family beyond what the `character` generator uses: portraits
+  (`portrait-character-pro` both ways, `/characters/{id}/portrait`), outfit
+  transfer (`transfer-outfit-v2`), lip-sync, skeleton animation, and
+  `source_image_id` on Pro Flash. The four creation engines, states, and
+  `animate-character` are covered in full; see the September 2026 measurements
+  below.
+
+## Characters, measured
+
+- Standard bases draw on a canvas 28px larger than `image_size` (64 → 92,
+  104 → 132). A `directions` reference is placed on it as is, centred, pixel
+  for pixel.
+- Pro Flash returns exactly the requested canvas, and refuses a `style_image`
+  larger than it ("Style image must fit the native canvas"). Its
+  `/pro-flash/cost` answer for `operation=character` was `image` 5 up to 96px,
+  6 from 100 to 208px, 9 at 224px and above, plus `rotations` equal to v3's
+  `ceil(side² × 8 / 65536)` on the padded square canvas; two live jobs (7 and
+  2) billed exactly the estimate. `first_frame` bills the rotations only.
+- A 64px `create-character-state` moved the balance by about 22 against the
+  20 to 40 tier documented; other jobs were running on the account, so it is a
+  rough number.
+- `animate-character` with `custom_start_frame` and `end_frame` may return
+  frames taller than the rotation (92 × 104 for a crouch). `enhance_prompt`
+  writes the expanded text into the animation's `animation_type`.
+- Request validation is strict: an unknown body field is a 422 listing every
+  problem at once, which is a free way to check a body's shape.
 
 ---
 
