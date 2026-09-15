@@ -61,7 +61,7 @@ export async function adoptCharacters(
   const log = opts.onProgress ?? (() => {})
   const result: AdoptCharactersResult = { scanned: 0, matched: 0, unmatched: [], remaining: [], written: [], differing: [] }
   if (!provider.listCharacters || !provider.getCharacter) return result
-  const wanted = specs.filter((spec) => spec.character)
+  const wanted = specs.filter((spec) => spec.character && !spec.mirror)
   if (!wanted.length) return result
 
   const remote: RemoteCharacter[] = []

@@ -23,9 +23,24 @@ export async function inspectRevisionReadiness(
   spec: ResolvedSpec,
   lock: Lock,
 ): Promise<RevisionReadiness | null> {
+  if (spec.mirror) return inspectMirror(spec, lock, new Set())
   if (spec.character?.parentSpec) return inspectCharacterParent(spec, lock, new Set())
   if (!spec.revision) return null
   return inspectRevision(spec, lock, new Set())
+}
+
+/**
+ * A mirror is flipped from its source's downloaded files, so the source has
+ * to be downloaded, current, and untouched. Its own parents (a loop's
+ * character, a revision's source) are checked through it.
+ */
+async function inspectMirror(spec: ResolvedSpec, lock: Lock, seen: Set<string>): Promise<RevisionReadiness> {
+  const source = spec.mirror!.sourceSpec
+  const label = `mirror source ${spec.styleId}/${spec.mirror!.sourceAssetId}`
+  const dependency = await inspectParent(source, lock, seen)
+  return dependency.ready
+    ? { ready: true, reason: `${label} is current` }
+    : { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
 }
 
 /**
@@ -105,6 +120,10 @@ async function inspectParent(
   const nextSeen = new Set(seen)
   nextSeen.add(key)
 
+  if (spec.mirror) {
+    const inputs = await inspectMirror(spec, lock, nextSeen)
+    if (!inputs.ready) return inputs
+  }
   if (spec.revision) {
     const inputs = await inspectRevision(spec, lock, nextSeen)
     if (!inputs.ready) return inputs

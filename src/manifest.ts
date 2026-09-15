@@ -15,6 +15,7 @@ import {
   tilesCost,
   CHARACTER_DIRECTIONS_4,
   CHARACTER_DIRECTIONS_8,
+  MIRRORED_DIRECTION,
   type Asset,
   type Manifest,
   type ResolvedCharacter,
@@ -399,7 +400,7 @@ export async function resolveSpecs(
       // wrapping; prefix and suffix still apply. A state's edit and an
       // animation's action describe a change to a character that already
       // carries the look, so they go to the provider as written.
-      const subject = asset.promptByStyle[styleId] ?? asset.prompt
+      const subject = asset.promptByStyle[styleId] ?? asset.prompt ?? ""
       const prompt = generator === "character" && characterKind !== "base"
         ? subject.trim()
         : [style.promptPrefix, subject, style.promptSuffix]
@@ -509,11 +510,46 @@ export async function resolveSpecs(
       if (!resolved) {
         throw new Error(
           `Asset "${assetId}" is not available in style "${styleId}"; ` +
-            "revision parents must participate in the same style.",
+            "revision parents, character parents, and mirror sources must be in the same style.",
         )
       }
       if (finalized.has(assetId)) return resolved
       const asset = manifest.assets[assetId]!
+      if (asset.mirror) {
+        // A mirror is the source's shape with its direction flipped: no
+        // prompt, no provider request, no cost. It is finalized after its
+        // source so the source's own dependencies are already settled.
+        if (asset.mirror === assetId) throw new Error(`assets.${assetId}: an asset cannot mirror itself`)
+        const sourceSpec = await finalize(asset.mirror)
+        if (sourceSpec.generator === "tiles") {
+          throw new Error(`assets.${assetId}: a tile set cannot be mirrored; its edges carry meaning`)
+        }
+        if (sourceSpec.character?.kind === "animation") {
+          const facing = sourceSpec.character.animation!.direction
+          const mirrored = MIRRORED_DIRECTION[facing]
+          if (mirrored === facing) {
+            throw new Error(
+              `assets.${assetId}: mirroring ${asset.mirror} gives another ${facing}-facing loop; ` +
+                "mirror a loop facing east, west, or a diagonal",
+            )
+          }
+          resolved.character = { ...sourceSpec.character, animation: { ...sourceSpec.character.animation!, direction: mirrored } }
+        } else if (sourceSpec.character) {
+          resolved.character = { ...sourceSpec.character }
+        }
+        resolved.mirror = { sourceAssetId: asset.mirror, sourceSpec }
+        resolved.generator = sourceSpec.generator
+        resolved.width = sourceSpec.width
+        resolved.height = sourceSpec.height
+        resolved.size = sourceSpec.size
+        resolved.prompt = ""
+        resolved.specHash = specHash(resolved, styleImageHashes, providerOptionIdentity, providerInputIdentities.get(assetId))
+        resolved.cost = 0
+        resolved.costUnit = sourceSpec.costUnit
+        resolved.candidates = 1
+        finalized.add(assetId)
+        return resolved
+      }
       const characterParent = asset.state?.of ?? asset.animation?.of
       if (resolved.character && characterParent) {
         // The parent is resolved first so its output path is final; its

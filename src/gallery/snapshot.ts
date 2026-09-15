@@ -139,6 +139,8 @@ export interface GalleryItem {
   revision: LockEntry["revision"]
   /** Parent lock key for a revision, so the page can link lineage. */
   revisionParentKey: string | null
+  /** Lock key of the asset this one is a left-to-right flip of, when it is a mirror. */
+  mirrorOfKey: string | null
   /** A character family member: what it is, whose it is, and what PixelLab holds for it. */
   character: GalleryCharacter | null
   outputs: GalleryOutput[]
@@ -704,6 +706,11 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         : entry?.revision
           ? lockKey(spec.styleId, entry.revision.sourceAssetId)
           : null,
+      mirrorOfKey: spec.mirror
+        ? lockKey(spec.styleId, spec.mirror.sourceAssetId)
+        : entry?.mirror
+          ? lockKey(spec.styleId, entry.mirror.sourceAssetId)
+          : null,
       character: describeCharacter(spec, entry),
       outputs,
       quality,
@@ -767,6 +774,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       currentSpecHash: null,
       revision: entry.revision,
       revisionParentKey: entry.revision ? lockKey(entry.styleId, entry.revision.sourceAssetId) : null,
+      mirrorOfKey: entry.mirror ? lockKey(entry.styleId, entry.mirror.sourceAssetId) : null,
       character: describeCharacter(undefined, entry),
       outputs,
       quality: null,

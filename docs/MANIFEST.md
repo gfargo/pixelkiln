@@ -45,7 +45,7 @@ not merely a label edit.
 
 | Field | Type/default | Meaning |
 |---|---|---|
-| `prompt` | string, required | The subject wording wrapped by the selected style's prompt prefix and suffix. |
+| `prompt` | string, required unless `mirror` | The subject wording wrapped by the selected style's prompt prefix and suffix. |
 | `width` / `height` | integer 16–8192 | Per-asset dimensions for generators that accept rectangular output. Provider limits may be lower. |
 | `size` | integer 16–8192 | Per-asset square size where the generator uses one dimension. |
 | `file` | string | Output path below the style's `outDir`; defaults to `<category>/<assetId>.png`. |
@@ -56,6 +56,7 @@ not merely a label edit.
 | `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](#characters). |
 | `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](#characters). |
+| `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](#mirrors). |
 | `providerInputs` | JSON scalar/sequence map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI accepts scalars and, for `frames`, one ordered 2–64 value sequence. Image bindings upload PNG/JPEG inputs. |
 | `styles` | string array, `[]` | Restrict the asset to named styles; empty means every style. |
 | `promptByStyle` | string map, `{}` | Replace only the asset prompt for a named style. |
@@ -501,7 +502,7 @@ credentials, cost semantics, recovery, and the paid live-test boundary.
 
 | Field | Type/default | Meaning |
 |---|---|---|
-| `prompt` | string, required | Subject-specific prompt. It may be empty only during existing-art onboarding. |
+| `prompt` | string, required unless `mirror` | Subject-specific prompt. It may be empty only during existing-art onboarding. |
 | `category` | string | Human grouping metadata. |
 | `width` | integer 16–8192 | Per-asset width override. Each provider applies its own ceiling. |
 | `height` | integer 16–8192 | Per-asset height override. Each provider applies its own ceiling. |
@@ -515,6 +516,7 @@ credentials, cost semantics, recovery, and the paid live-test boundary.
 | `sourceByStyle` | object | The same, for one style only. A hand edit belongs to one generation, so an asset shared by styles keeps one edit per style. |
 | `revision` | object | Generate a new asset from another asset's current bytes. `source` and `revision` are mutually exclusive. |
 | `outputRole` | string | Select one member of a structural output set for mounting. |
+| `mirror` | string | Another asset of this style, flipped left to right. No prompt, no provider, no cost. See [Mirrors](#mirrors). |
 
 ## Characters
 
@@ -586,7 +588,8 @@ files, `<asset>-frame-00.png` onwards. `fps` is recorded with the frames
 for the gallery, `pack`, and the Godot and Aseprite formats; PixelLab does
 not keep one. An animation lands in review as an ordered set: `pick` shows
 the loop and accepts or rejects it whole. One asset per direction; declare
-another asset for another direction.
+another asset for another direction, or a [mirror](#mirrors) of this one
+for the direction that faces the other way.
 
 States and animations depend on their parent the way a revision does. The
 parent must be downloaded and current before the child is actionable;
@@ -618,6 +621,48 @@ PixelLab's own tools shows both) and run `pixelkiln adopt`: it records the
 character, writes every direction and frame that is not on disk, and costs
 nothing. A base can also be matched by the bytes of its south-facing file.
 See [`adopt`](CLI.md#adopt).
+
+## Mirrors
+
+Each direction of a loop is its own generation, and a sprite walking east
+is the sprite walking west flipped. A `mirror` asset is that flip, made
+locally from the source asset's downloaded files:
+
+```json
+"hero.walk.west": { "prompt": "", "animation": { "of": "hero", "template": "walk", "direction": "west" } },
+"hero.walk.east": { "mirror": "hero.walk.west" }
+```
+
+A full 8-direction set of one loop is then 5 generations (south, north,
+west, south-west, north-west) and 3 mirrors; a 4-direction set is 3 and 1.
+The mirror takes its shape from the source (a loop of the same character,
+facing the other way, at the same fps), needs no prompt, and costs
+nothing: `plan` lists it under the provider with a cost of 0 and `gen`
+flips it in the wave after the source lands. It has its own lock entry and
+files (`hero.walk.east-frame-00.png` onwards), so `pack`, the gallery, and
+an engine see an ordinary loop. Nothing is sent to the provider, and the
+account holds no east animation.
+
+The lock records a hash over the source's output hashes when the flip was
+made. A source that is regenerated, restored, or re-snapped makes its
+mirrors `stale`, and the next `gen` flips them again for free. A mirror
+whose files went missing is `stale` too; one that was hand-edited is
+`orphaned`, like generated art. A source that is not downloaded, current,
+and untouched blocks its mirrors.
+
+A loop facing south or north cannot be mirrored: the flip would be the same
+direction with its asymmetries swapped, not a new one. A single image or a
+frame set from any generator can be mirrored, and so can a base or state
+(every direction flipped and relabelled, so west becomes east). A tile set
+cannot; its edges carry meaning. Mirroring swaps handedness, so a character
+who holds a sword in the right hand holds it in the left when facing the
+mirrored way. Most games accept that; if yours does not, generate both
+sides. `adopt` skips mirrors, since there is nothing upstream to adopt.
+
+Engines that flip sprites at draw time (Godot's `flip_h`, Unity's
+`flipX`) do not need mirrored files at all. Declare only the directions
+you generate and flip in the engine; mirrors are for pipelines that want
+every direction on disk.
 
 ## Controlled revisions
 

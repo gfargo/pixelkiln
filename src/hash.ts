@@ -87,6 +87,9 @@ export function specHash(
             animation: spec.character.animation,
           }
         : undefined,
+      // A mirror's bytes come from its source's recorded outputs; the plan
+      // compares those directly, so only the choice of source is identity.
+      mirror: spec.mirror ? { of: spec.mirror.sourceAssetId } : undefined,
       revision: spec.revision
         ? {
             mode: spec.revision.mode,

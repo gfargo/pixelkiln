@@ -100,6 +100,7 @@ const PHASE_TONE = { queued: 'cool', submitting: 'cool', polling: 'cool', fetchi
 /** "state of mira", "loop of mira.chair_spin, east": where a character family member sits. */
 const familyLabel = (item) => {
   const c = item.character;
+  if (item.mirrorOfKey) return 'mirror of ' + item.mirrorOfKey.split('/').slice(1).join('/') + (c && c.direction ? ', ' + c.direction : '');
   if (!c || c.kind === 'base') return null;
   const parent = c.parentKey ? c.parentKey.split('/').slice(1).join('/') : null;
   if (c.kind === 'state') return parent ? 'state of ' + parent : 'state';
@@ -1946,6 +1947,19 @@ function renderDrawer() {
       }
       row(dl, family.length === 1 ? 'depends on this' : family.length + ' depend on this', list);
     }
+    body.append(s);
+  }
+
+  if (item.mirrorOfKey) {
+    const { s, dl } = section('Mirror');
+    row(dl, 'flipped from', keyLink(item, item.mirrorOfKey));
+    row(dl, 'cost', 'none; made locally from that asset\'s files');
+    body.append(s);
+  }
+  const mirrors = snap.items.filter((i) => i.mirrorOfKey === item.key && i.project === item.project);
+  if (mirrors.length) {
+    const { s, dl } = section(mirrors.length === 1 ? 'Mirror of this asset' : 'Mirrors of this asset');
+    for (const m of mirrors) row(dl, m.character && m.character.direction ? m.character.direction : 'flipped', keyLink(item, m.key));
     body.append(s);
   }
 

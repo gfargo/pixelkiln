@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import type { BalanceInfo, CostEstimate, JobState, OutputSource, Provider, RefreshContext, RemoteAsset, RemoteCharacter, RemoteCharacterDetail } from "../provider.ts"
-import type { Generator, ResolvedSpec, RevisionMode } from "../types.ts"
+import { CHARACTER_DIRECTIONS_4, CHARACTER_DIRECTIONS_8, type Generator, type ResolvedSpec, type RevisionMode } from "../types.ts"
 
 /**
  * An in-memory Provider for tests.
@@ -117,6 +117,24 @@ export class FakeProvider implements Provider {
     const objectId = job.objectId ?? `obj-${jobId}`
     job.objectId = objectId
     this.register(objectId, job.spec)
+    const character = job.spec.character
+    if (character) {
+      // A character lands as its direction set, a loop as its frames, the
+      // way the real adapter delivers them once review is done.
+      const roles = character.kind === "animation"
+        ? Array.from({ length: character.animation!.frames }, (_, i) => `frame-${String(i).padStart(2, "0")}`)
+        : character.directions === 4 ? CHARACTER_DIRECTIONS_4 : CHARACTER_DIRECTIONS_8
+      const sources: OutputSource[] = roles.map((role) => ({ url: `fake://${objectId}/${role}.png`, role }))
+      return {
+        status: "ready",
+        objectId,
+        sourceUrl: sources[0]!.url,
+        sources,
+        ...(character.kind === "animation"
+          ? { metadata: { frameSet: { fps: character.animation!.fps, count: roles.length } } }
+          : {}),
+      }
+    }
     const sourceUrl = `fake://${objectId}.png`
     return { status: "ready", objectId, sourceUrl, sources: [{ url: sourceUrl }] }
   }

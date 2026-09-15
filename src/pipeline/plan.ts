@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { sha256File } from "../hash.ts"
+import { mirrorCurrent } from "./mirror.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
@@ -153,11 +154,23 @@ export async function buildPlan(
         reason = "file on disk, no provenance recorded"
       } else {
         state = "missing"
-        reason = "not in lockfile"
+        reason = spec.mirror
+          ? `not made yet; flipped from ${spec.mirror.sourceAssetId} (no generation cost)`
+          : "not in lockfile"
       }
     } else if (entry.specHash !== spec.specHash) {
       state = "stale"
       reason = "prompt, size, or style changed"
+    } else if (spec.mirror && !mirrorCurrent(entry, lock.entries[lockKey(spec.styleId, spec.mirror.sourceAssetId)])) {
+      state = "stale"
+      reason = `mirror source ${spec.mirror.sourceAssetId} changed; flip it again (no generation cost)`
+    } else if (spec.mirror && entry.status === "downloaded" && entry.outputs.some((_output, index) =>
+      !existsSync(currentEntryOutputPath(entry, spec, index)))
+    ) {
+      // A mirror is a flip of files that are still here; missing members
+      // are made again rather than repaired from a provider.
+      state = "stale"
+      reason = "mirror output missing on disk; flip it again (no generation cost)"
     } else if (entry.status === "download-failed") {
       state = "recoverable"
       const force = entry.error?.includes("pass --force") ? " --force" : ""
@@ -211,6 +224,11 @@ export async function buildPlan(
       // is reported rather than silently overwritten.
       state = "orphaned"
       reason = "output modified since download"
+    } else if (spec.mirror && !postprocessCurrent(entry, spec)) {
+      // A mirror has no raw bytes of its own; the source is snapped or
+      // restored first and the mirror flipped from the result.
+      state = "stale"
+      reason = "palette enforcement changed; flip the source again once it is refreshed (no generation cost)"
     } else if (!postprocessCurrent(entry, spec)) {
       // The bytes are PixelKiln's and the provider work stands; only the
       // post-processing the manifest asks for changed. Re-applying it needs
@@ -234,15 +252,21 @@ export async function buildPlan(
   // --force is what puts a current parent and its child side by side, and
   // the child then waits for the next wave.
   const isActionable = (i: PlanItem) => i.state === "missing" || i.state === "stale" || i.state === "failed"
-  const actionableKeys = new Set(items.filter(isActionable).map((i) => i.key))
+  const stateOf = new Map(items.map((i) => [i.key, i.state]))
   for (const item of items) {
     if (!isActionable(item)) continue
-    const parent = item.spec.revision?.sourceSpec ?? item.spec.character?.parentSpec
+    const parent = item.spec.mirror?.sourceSpec ?? item.spec.revision?.sourceSpec ?? item.spec.character?.parentSpec
     if (!parent) continue
     const parentKey = lockKey(parent.styleId, parent.assetId)
-    if (actionableKeys.has(parentKey)) {
+    const parentState = stateOf.get(parentKey)
+    if (parentState && isActionable({ state: parentState } as PlanItem)) {
       item.state = "blocked"
       item.reason = `parent ${parentKey} is being generated in this run; this follows in the next wave`
+    } else if (item.spec.mirror && (parentState === "recoverable" || parentState === "in-flight")) {
+      // A mirror flips whatever bytes its source has now; wait for the
+      // fetch or poll that is about to change them.
+      item.state = "blocked"
+      item.reason = `mirror source ${parentKey} is ${parentState}; this follows in the next wave`
     }
   }
 
