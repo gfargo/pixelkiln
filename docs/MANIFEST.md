@@ -589,7 +589,9 @@ another asset for another direction.
 
 States and animations depend on their parent the way a revision does. The
 parent must be downloaded and current before the child is actionable;
-`plan` reports the child as `blocked` and names the parent until then. The
+`plan` reports the child as `blocked` and names the parent until then, and
+one `gen` runs the waves in order: bases, then states, then animations,
+under one budget. The
 child's identity includes the parent's generated south-facing file, so
 regenerating the parent makes every state and animation of it `stale`. A
 hand edit of the parent does not, because PixelLab draws the child from the

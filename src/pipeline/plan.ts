@@ -228,9 +228,27 @@ export async function buildPlan(
     items.push({ spec, key, state, reason, ...(quality ? { quality } : {}) })
   }
 
+  // A child whose parent is about to be regenerated in this same plan cannot
+  // go in the same batch: its inputs are the parent's bytes, and those are
+  // the ones being replaced. Readiness catches a missing or stale parent;
+  // --force is what puts a current parent and its child side by side, and
+  // the child then waits for the next wave.
+  const isActionable = (i: PlanItem) => i.state === "missing" || i.state === "stale" || i.state === "failed"
+  const actionableKeys = new Set(items.filter(isActionable).map((i) => i.key))
+  for (const item of items) {
+    if (!isActionable(item)) continue
+    const parent = item.spec.revision?.sourceSpec ?? item.spec.character?.parentSpec
+    if (!parent) continue
+    const parentKey = lockKey(parent.styleId, parent.assetId)
+    if (actionableKeys.has(parentKey)) {
+      item.state = "blocked"
+      item.reason = `parent ${parentKey} is being generated in this run; this follows in the next wave`
+    }
+  }
+
   // "orphaned" entries may be re-downloadable from a persisted object without
   // paying again; only genuinely new work is counted toward cost.
-  const actionable = items.filter((i) => i.state === "missing" || i.state === "stale" || i.state === "failed")
+  const actionable = items.filter(isActionable)
   const groupsByProvider = new Map<string, PlanGroup>()
   for (const item of actionable) {
     const provider = item.spec.provider

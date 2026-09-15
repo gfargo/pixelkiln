@@ -420,8 +420,9 @@ describe("the pipeline", () => {
     client.landAnimation(stateId, name, "east", 5)
     await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
     expect(p.lock.entries["cast/mira.fireman_spin"]!.status).toBe("review")
-    const again = await buildPlan(p.specs, p.lock, { force: true })
-    await submit(provider, p.loaded, again.actionable.filter((i) => i.key === "cast/mira.fireman_spin"), p.lock, p.lockPath, { spacingMs: 0 })
+    // Forced by hand: a forced plan defers a child whose parent is forced too.
+    const animationSpec = p.specs.find((s) => s.assetId === "mira.fireman_spin")!
+    await submit(provider, p.loaded, [{ spec: animationSpec, key: "cast/mira.fireman_spin", state: "missing", reason: "forced" }], p.lock, p.lockPath, { spacingMs: 0 })
     expect(client.calls.filter((c) => c.startsWith("delete:"))).toEqual([`delete:${stateId}:grp-${name}-east:east`])
   })
 
@@ -480,8 +481,8 @@ describe("the pipeline", () => {
     expect(again.status).toBe("review-set")
 
     // A re-roll deletes by the group id the poll recorded, not by name.
-    const forced = await buildPlan(p.specs, p.lock, { force: true })
-    await submit(provider, p.loaded, forced.actionable.filter((i) => i.key === "cast/mira.walk"), p.lock, p.lockPath, { spacingMs: 0 })
+    const walkSpec = p.specs.find((s) => s.assetId === "mira.walk")!
+    await submit(provider, p.loaded, [{ spec: walkSpec, key: "cast/mira.walk", state: "missing", reason: "forced" }], p.lock, p.lockPath, { spacingMs: 0 })
     expect(client.calls.filter((c) => c.startsWith("delete:"))).toEqual(["delete:char-1:grp-whatever-pixellab-called-it-south:south"])
   })
 

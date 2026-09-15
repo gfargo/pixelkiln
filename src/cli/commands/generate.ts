@@ -13,18 +13,74 @@ import { openProject, providerCache, providerModeFor, specsByRecordedProvider, b
 import { log, confirm, announceReviewReady, printPlan, printResumeActions } from "../io.ts"
 import type { Args } from "../args.ts"
 
+/**
+ * `gen` runs in waves. A wave is the whole lifecycle for everything the plan
+ * can act on now; once its downloads land, assets that were blocked on a
+ * parent (a character's states, then their animations; a revision of a
+ * fresh still) become actionable, and the next wave takes them, under what
+ * is left of the same budget. It stops when a wave finds nothing new, or
+ * when a wave submitted nothing, so a failure cannot loop.
+ */
 export async function runGenerate(args: Args): Promise<void> {
+  if (args.command !== "gen") {
+    await runLifecycle(args, 1, new Map())
+    return
+  }
+  const spent = new Map<string, number>()
+  for (let wave = 1; ; wave++) {
+    const again = await runLifecycle(args, wave, spent)
+    if (!again) return
+  }
+}
+
+/** Budgets with what earlier waves already committed taken off. */
+function remainingBudgets(args: Args, spent: Map<string, number>): Args {
+  if (!spent.size) return args
+  const total = [...spent.values()].reduce((sum, n) => sum + n, 0)
+  const providerBudgets: Record<string, number> = Object.create(null)
+  for (const [provider, ceiling] of Object.entries(args.providerBudgets)) {
+    providerBudgets[provider] = Math.max(0, ceiling - (spent.get(provider) ?? 0))
+  }
+  return {
+    ...args,
+    ...(args.budget === undefined ? {} : { budget: Math.max(0, args.budget - total) }),
+    providerBudgets,
+  }
+}
+
+async function runLifecycle(args: Args, wave: number, spent: Map<string, number>): Promise<boolean> {
   const { loaded, specs, lock } = await openProject(args)
-  const plan = await buildPlan(specs, lock, { force: args.force })
+  // --force means "again" for what is actionable now; a later wave acts on
+  // what the first one unblocked, and forcing that would regenerate it twice.
+  const plan = await buildPlan(specs, lock, { force: args.force && wave === 1 })
   const providerFor = providerCache(providerModeFor(args))
+  let submitted = 0
   if (args.command === "submit" || args.command === "gen") {
+    if (wave > 1) {
+      if (!plan.actionable.length) {
+        log(`\n  wave ${wave}: nothing else became actionable`)
+        return false
+      }
+      log(`\n  wave ${wave}: ${plan.actionable.length} asset(s) became actionable`)
+    }
     printPlan(plan)
     if (args.dryRun) {
       log(`\n  --dry-run: stopping before any spend.`)
-      return
+      return false
     }
     if (plan.actionable.length) {
-      const budgets = budgetsForPlan(plan, args)
+      let budgets: Map<string, number | undefined>
+      try {
+        budgets = budgetsForPlan(plan, remainingBudgets(args, spent))
+      } catch (err) {
+        // Earlier waves' work is saved; this one waits for a budget of its own.
+        if (wave > 1 && err instanceof BudgetError) {
+          log(`\n  stopping before wave ${wave}: ${err.message}`)
+          log(`  run pixelkiln gen again with a budget for the remaining work`)
+          return false
+        }
+        throw err
+      }
       const balances = new Map<string, BalanceInfo | null>()
       // Validate every ceiling and available balance before the first provider
       // can spend. A later group must never reveal that the whole run was
@@ -58,22 +114,26 @@ export async function runGenerate(args: Args): Promise<void> {
         }
         const ceiling = budgets.get(group.provider)
         if (ceiling !== undefined && group.cost > ceiling) {
-          throw new BudgetError(
-            `${group.provider} would spend ${formatCost(group.costUnit, group.cost)} but its ` +
-              `budget is ${formatCost(group.costUnit, ceiling)}.`,
-          )
+          const message = `${group.provider} would spend ${formatCost(group.costUnit, group.cost)} but ` +
+            (wave > 1 ? `only ${formatCost(group.costUnit, ceiling)} of the budget is left after ${wave - 1} wave(s).` : `its budget is ${formatCost(group.costUnit, ceiling)}.`)
+          if (wave > 1) {
+            log(`\n  stopping before wave ${wave}: ${message}`)
+            log(`  run pixelkiln gen again with a budget for the remaining work`)
+            return false
+          }
+          throw new BudgetError(message)
         }
       }
       const spendSummary = plan.groups
         .map((group) => `${group.provider} ${formatCost(group.costUnit, group.cost)}`)
         .join("; ")
       const ok = await confirm(
-        `  Spend ${spendSummary} on ${plan.actionable.length} asset(s)?`,
+        `  Spend ${spendSummary} on ${plan.actionable.length} asset(s)${wave > 1 ? ` (wave ${wave})` : ""}?`,
         args.yes,
       )
       if (!ok) {
         log(`  aborted`)
-        return
+        return false
       }
       log(`\n  submitting…`)
       for (const group of plan.groups) {
@@ -86,6 +146,8 @@ export async function runGenerate(args: Args): Promise<void> {
           `\n  ${group.provider}: submitted ${res.submitted}, failed ${res.failed}, ` +
             `estimated ${formatCost(res.unit, res.spent)}`,
         )
+        submitted += res.submitted
+        spent.set(group.provider, (spent.get(group.provider) ?? 0) + res.spent)
         try {
           const before = balances.get(group.provider)
           const after = before && groupProvider.balance ? await groupProvider.balance() : null
@@ -108,7 +170,7 @@ export async function runGenerate(args: Args): Promise<void> {
         if (res.failed) process.exitCode = 1
       }
     }
-    if (args.command === "submit") return
+    if (args.command === "submit") return false
   }
 
   if (args.command === "poll" || args.command === "gen") {
@@ -131,7 +193,7 @@ export async function runGenerate(args: Args): Promise<void> {
     if (total.failed || total.stillRunning) process.exitCode = 1
     if (args.command === "poll") {
       printResumeActions(specs, lock)
-      return
+      return false
     }
   }
 
@@ -157,7 +219,7 @@ export async function runGenerate(args: Args): Promise<void> {
     if (args.command === "gen" && total.skipped) process.exitCode = 1
     if (args.command === "pick") {
       printResumeActions(specs, lock)
-      return
+      return false
     }
   }
 
@@ -208,6 +270,10 @@ export async function runGenerate(args: Args): Promise<void> {
         log(`  Packaging stays blocked until each refined PNG has a current human approval.`)
       }
     }
-    return
+    // Another wave is worth a look only when this one put new art on disk
+    // and something in the manifest waits on a parent.
+    return args.command === "gen" && submitted > 0 && total.downloaded > 0 && !total.failed &&
+      specs.some((spec) => spec.character?.parentSpec || spec.revision)
   }
+  return false
 }
