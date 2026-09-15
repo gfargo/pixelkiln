@@ -368,10 +368,10 @@ export default function Home() {
                   <li><span>✓</span> Concept images and style anchors on pro, style images with chosen traits on pro-flash.</li>
                 </ul>
                 <div className="review-links">
-                  <TrackedLink className="text-link" id="cast_manifest_docs" section="characters" href="/docs/manifest#characters">
+                  <TrackedLink className="text-link" id="cast_manifest_docs" section="characters" href="/docs/characters">
                     Read the character reference
                   </TrackedLink>
-                  <TrackedLink className="text-link" id="cast_mirror_docs" section="characters" href="/docs/manifest#mirrors">
+                  <TrackedLink className="text-link" id="cast_mirror_docs" section="characters" href="/docs/characters#mirrors">
                     How mirrors work
                   </TrackedLink>
                 </div>

@@ -93,8 +93,102 @@ Useful options under `providerOptions.retrodiffusion` include:
 
 RD Pro and user still styles accept up to nine reference images. Advanced
 animation and tile modes have narrower input rules. PixelKiln validates those
-rules during planning. See the [manifest reference](./MANIFEST.md#experimental-retro-diffusion)
-for complete examples.
+rules during planning. See [Manifest fields](#manifest-fields) below for complete
+examples.
+
+## Manifest fields
+
+Retro Diffusion maps `map` and `pixflux` to still generation, `tiles` to its
+tileset family, and `animation` to GIF or PNG-spritesheet generation. Durable
+sources and lock outputs record `image/png` or `image/gif`, so recovery retains
+the correct extension and validates the correct structure.
+
+```jsonc
+{
+  "name": "my-game",
+  "provider": "retrodiffusion",
+  "styles": {
+    "base": {
+      "generator": "map",
+      "outDir": "assets/generated/base",
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__default",
+          "numImages": 4,
+          "removeBg": true
+        }
+      }
+    }
+  },
+  "assets": {
+    "anvil": { "prompt": "a compact blacksmith anvil" }
+  }
+}
+```
+
+`promptStyle` accepts a live Retro Diffusion still-style selector,
+`numImages` accepts 1–16 candidates, and `removeBg` overrides
+`noBackground`. The Retro Diffusion API accepts 16–512px output. Selected
+styles can impose smaller limits. RD Pro and user styles accept up to nine
+reference images. Costs are
+planned in USD and checked again with Retro Diffusion's free authoritative
+quote endpoint before the paid request is sent. Authenticated single-candidate
+RD Fast and RD Plus paths have passed from quote through validated output and
+recovery.
+Multi-candidate, tileset, GIF, and spritesheet paths remain mock-tested, so the
+adapter is still experimental.
+
+Additional Retro Diffusion options are:
+
+| Option | Meaning |
+|---|---|
+| `framesDuration` | Animation duration: `4`, `6`, `8`, `10`, `12`, or `16`. |
+| `returnSpritesheet` | Return a PNG spritesheet instead of an animated GIF. |
+| `extraPrompt` | Outside texture description for `rd_tile__tileset_advanced`. |
+| `tileX` / `tileY` | Make supported still styles seamless on either axis. |
+
+An animation style is declared explicitly:
+
+```jsonc
+{
+  "generator": "animation",
+  "size": 64,
+  "outDir": "assets/generated/animations",
+  "providerOptions": {
+    "retrodiffusion": {
+      "promptStyle": "rd_animation__any_animation",
+      "numImages": 1,
+      "framesDuration": 8,
+      "returnSpritesheet": false
+    }
+  }
+}
+```
+
+The default output is `<assetId>.gif`; `returnSpritesheet: true` produces
+`<assetId>.png`. Advanced animation styles require exactly one `styleImages`
+input. PixelKiln currently limits animation batches to one so selection never
+loses the output media type.
+
+For a Wang-style tileset sheet:
+
+```jsonc
+{
+  "generator": "tiles",
+  "tileSize": 32,
+  "outDir": "assets/generated/tiles",
+  "providerOptions": {
+    "retrodiffusion": {
+      "promptStyle": "rd_tile__tileset",
+      "numImages": 1
+    }
+  }
+}
+```
+
+`rd_tile__tileset_advanced` accepts `extraPrompt` and up to two style images;
+`rd_tile__tile_variation` requires one style image. Provider-specific size and
+input constraints are checked during the free planning phase.
 
 ## Current operational limits
 

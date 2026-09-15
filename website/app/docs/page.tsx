@@ -50,6 +50,20 @@ export default function DocsIndex() {
           <strong aria-hidden="true">↗</strong>
         </TrackedLink>
 
+        <nav className="docs-quick" aria-label="Common tasks">
+          <span>I want to</span>
+          {[
+            ["docs_quick_plan", "/docs/getting-started#everyday-workflow", "see what a run costs before spending"],
+            ["docs_quick_character", "/docs/characters", "draw a character in 8 directions, then its poses and loops"],
+            ["docs_quick_mirror", "/docs/characters#mirrors", "get the east-facing loop without paying for it"],
+            ["docs_quick_restore", "/docs/recovery#restore-missing-output", "rebuild missing files without regenerating"],
+            ["docs_quick_pack", "/docs/artifacts#pack", "build sprite sheets and SpriteFrames for the engine"],
+            ["docs_quick_ci", "/docs/quality#plan-gate", "block stale or unreviewed art in CI"],
+          ].map(([id, href, label]) => (
+            <TrackedLink key={id} id={id} section="docs_index" href={href}>{label}</TrackedLink>
+          ))}
+        </nav>
+
         <div className="docs-groups">
           {docGroups.map((group) => (
             <section className="docs-group" key={group}>

@@ -14,7 +14,7 @@ provider you are using. These Markdown files also render at
 | [Set up ComfyUI](./COMFYUI.md) | Bind local still, revision, and atomic frame-set workflows with an explicit quality boundary. |
 | [Set up Scenario](./SCENARIO.md) | Configure hosted models, two-part credentials, CU ceilings, and durable downloads. |
 | [CLI reference](./CLI.md) | Every command and flag, including `gallery`, `edit`, and `tools`; offline and provider requirements; JSON output; exit codes. |
-| [Manifest reference](./MANIFEST.md) | Every style and asset field, quality profiles, generator constraints, mounting, and schema validation. |
+| [Manifest reference](./MANIFEST.md) | Every shared style and asset field, palette enforcement, quality profiles, revisions, mounting, and schema validation. |
 | [Mixed-provider projects](./MIXED_PROVIDERS.md) | Route styles to different providers, set separate budget ceilings, and resume safely from one lockfile. |
 | [Agent workflows](./AGENTS.md) | Install the official skill and pair agent guidance with the deterministic CLI. |
 
@@ -22,7 +22,8 @@ provider you are using. These Markdown files also render at
 
 | Guide | Use it for |
 |---|---|
-| [Generators](./GENERATORS.md) | Choose between still, tile, hosted animation, and ComfyUI frame-set workflows. |
+| [Characters](./CHARACTERS.md) | A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, the four PixelLab engines, and what each costs. |
+| [Generators](./GENERATORS.md) | Choose between still, tile, character, hosted animation, and ComfyUI frame-set workflows. |
 | [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and native-grid recovery. |
 | [Controlled asset revisions](./REVISIONS.md) | Use image-to-image/inpaint parents, masks, approval gates, side-by-side review, and ComfyUI bindings. |
 | [Derived artifacts](./ARTIFACTS.md) | Refine, pack, mount, and export; provenance, approval gates, ownership, and crash recovery. |

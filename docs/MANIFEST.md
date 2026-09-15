@@ -54,16 +54,17 @@ not merely a label edit.
 | `sourceByStyle` | object | Per-style `source`, keyed by style id; wins over `source` for that style. Written by `pixelkiln edit` for a hand edit of an asset that is in several styles. |
 | `remoteId` | string | The provider's own id for art that already exists on the account, so `adopt` maps it without matching bytes: an object id, a character id, or `<character id>#<animation group id>`. Not part of the spec's identity. |
 | `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
-| `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](#characters). |
-| `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](#characters). |
-| `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](#mirrors). |
+| `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](./CHARACTERS.md). |
+| `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](./CHARACTERS.md). |
+| `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
 | `proportions` | preset or object | `character` styles: this base's proportions, over the style's. |
-| `reference` | string or object | `character` styles, bases: the character's own south-facing sprite (or `{ "south": ..., "east": ... }`), which PixelLab rotates instead of drawing from the prompt. See [Characters](#characters). |
+| `reference` | string or object | `character` styles, bases: the character's own south-facing sprite (or `{ "south": ..., "east": ... }`), which PixelLab rotates instead of drawing from the prompt. See [Characters](./CHARACTERS.md). |
 | `concept` | string | `character` styles, `pro` bases: a manifest-relative concept image (up to 1024px) the design is seeded from. |
 | `styleCharacter` | string | `character` styles, `pro` bases: this base's style anchor, over the style's. |
 | `providerInputs` | JSON scalar/sequence map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI accepts scalars and, for `frames`, one ordered 2–64 value sequence. Image bindings upload PNG/JPEG inputs. |
 | `styles` | string array, `[]` | Restrict the asset to named styles; empty means every style. |
 | `promptByStyle` | string map, `{}` | Replace only the asset prompt for a named style. |
+| `cell` | `[column,row]` | The grid cell this asset owns in a mounted sheet; see [stable-cell mounting](#stable-cell-mounting). |
 | `outputRole` | string | Select one structural output when a generator returns a set. |
 | `tags` | string array, `[]` | Asset tags added to provider objects where supported. |
 
@@ -101,7 +102,7 @@ constant across the set.
 | `tileView` | enum | `top-down`, `high top-down`, `low top-down`, or `side`. |
 | `tileFeature` | enum | Connectable `roads`, `tileset`, or `building` structural set. |
 | `outlineMode` | enum | `outline` or `segmentation`; segmentation avoids quilted ground seams. |
-| `mode` | `standard` | `character` only. `standard`, `v3`, `pro`, or `pro-flash`; see [Characters](#characters). |
+| `mode` | `standard` | `character` only. `standard`, `v3`, `pro`, or `pro-flash`; see [Characters](./CHARACTERS.md). |
 | `directions` | `8` | `character` only. `4` or `8`; every engine but `standard` draws 8. |
 | `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`; `custom` for `pro-flash`. |
 | `proportions` | | `character` only, `standard` humanoid bases. A preset (`default`, `chibi`, `cartoon`, `stylized`, `realistic_male`, `realistic_female`, `heroic`) or multipliers `{ headSize, armsLength, legsLength, shoulderWidth, hipWidth }`, each 0.5 to 2. An asset may override it. |
@@ -300,469 +301,30 @@ disagreement rejects the whole set. The schema rejects `tiles` and provider
 `animation`, whose output contracts differ. See
 [Quality gates](./QUALITY.md#manifest-quality-profile) for the release workflow.
 
-## Experimental Retro Diffusion
+## Provider-specific fields
 
-Retro Diffusion maps `map` and `pixflux` to still generation, `tiles` to its
-tileset family, and `animation` to GIF or PNG-spritesheet generation. Durable
-sources and lock outputs record `image/png` or `image/gif`, so recovery retains
-the correct extension and validates the correct structure.
+Each experimental provider adds style and asset fields of its own, under
+`providerOptions.<provider>` on the style and `providerInputs` on the asset.
+They are documented with the provider:
 
-```jsonc
-{
-  "name": "my-game",
-  "provider": "retrodiffusion",
-  "styles": {
-    "base": {
-      "generator": "map",
-      "outDir": "assets/generated/base",
-      "providerOptions": {
-        "retrodiffusion": {
-          "promptStyle": "rd_plus__default",
-          "numImages": 4,
-          "removeBg": true
-        }
-      }
-    }
-  },
-  "assets": {
-    "anvil": { "prompt": "a compact blacksmith anvil" }
-  }
-}
-```
-
-`promptStyle` accepts a live Retro Diffusion still-style selector,
-`numImages` accepts 1–16 candidates, and `removeBg` overrides
-`noBackground`. The Retro Diffusion API accepts 16–512px output. Selected
-styles can impose smaller limits. RD Pro and user styles accept up to nine
-reference images. Costs are
-planned in USD and checked again with Retro Diffusion's free authoritative
-quote endpoint before the paid request is sent. Authenticated single-candidate
-RD Fast and RD Plus paths have passed from quote through validated output and
-recovery.
-Multi-candidate, tileset, GIF, and spritesheet paths remain mock-tested, so the
-adapter is still experimental.
-
-Additional Retro Diffusion options are:
-
-| Option | Meaning |
-|---|---|
-| `framesDuration` | Animation duration: `4`, `6`, `8`, `10`, `12`, or `16`. |
-| `returnSpritesheet` | Return a PNG spritesheet instead of an animated GIF. |
-| `extraPrompt` | Outside texture description for `rd_tile__tileset_advanced`. |
-| `tileX` / `tileY` | Make supported still styles seamless on either axis. |
-
-An animation style is declared explicitly:
-
-```jsonc
-{
-  "generator": "animation",
-  "size": 64,
-  "outDir": "assets/generated/animations",
-  "providerOptions": {
-    "retrodiffusion": {
-      "promptStyle": "rd_animation__any_animation",
-      "numImages": 1,
-      "framesDuration": 8,
-      "returnSpritesheet": false
-    }
-  }
-}
-```
-
-The default output is `<assetId>.gif`; `returnSpritesheet: true` produces
-`<assetId>.png`. Advanced animation styles require exactly one `styleImages`
-input. PixelKiln currently limits animation batches to one so selection never
-loses the output media type.
-
-For a Wang-style tileset sheet:
-
-```jsonc
-{
-  "generator": "tiles",
-  "tileSize": 32,
-  "outDir": "assets/generated/tiles",
-  "providerOptions": {
-    "retrodiffusion": {
-      "promptStyle": "rd_tile__tileset",
-      "numImages": 1
-    }
-  }
-}
-```
-
-`rd_tile__tileset_advanced` accepts `extraPrompt` and up to two style images;
-`rd_tile__tile_variation` requires one style image. Provider-specific size and
-input constraints are checked during the free planning phase.
-
-## Experimental ComfyUI
-
-ComfyUI runs a committed API-format workflow on a self-hosted server. The
-workflow file is resolved relative to the manifest and its parsed content is
-part of the spec hash. Adapter success proves transport and output structure,
-not pixel-art quality. Use provider-neutral `pixelkiln refine` for native-grid,
-final-palette, and recorded audit checks. Prompt coverage and human 1× approval
-still require a person.
-
-```jsonc
-{
-  "name": "my-game",
-  "provider": "comfyui",
-  "styles": {
-    "local": {
-      "generator": "map",
-      "outDir": "assets/generated/local",
-      "seed": 31415,
-      "providerOptions": {
-        "comfyui": {
-          "workflowFile": "workflows/pixel-api.json",
-          "outputNodeId": "9",
-          "numImages": 4,
-          "bindings": {
-            "prompt": { "nodeId": "6", "input": "text" },
-            "width": { "nodeId": "5", "input": "width" },
-            "height": { "nodeId": "5", "input": "height" },
-            "batchSize": { "nodeId": "5", "input": "batch_size" },
-            "seed": { "nodeId": "3", "input": "seed" },
-            "composition": { "nodeId": "19", "input": "image" },
-            "controlStrength": { "nodeId": "20", "input": "strength" }
-          }
-        }
-      }
-    }
-  },
-  "assets": {
-    "mountain": {
-      "prompt": "a snowbound mountain pass",
-      "width": 768,
-      "height": 512,
-      "providerInputs": {
-        "composition": "controls/mountain-layout.png",
-        "controlStrength": 0.7
-      }
-    }
-  }
-}
-```
-
-Node IDs come from the exported workflow; they are not stable across unrelated
-workflows. Binding names beyond PixelKiln's built-ins are project-defined and
-an asset overrides one with a matching `providerInputs` value. A custom
-binding aimed at `LoadImage.image` or `LoadImageMask.image` treats its string as
-a manifest-relative PNG/JPEG, hashes it, and uploads it at submission. Other
-custom inputs accept a string, number, or boolean matching the workflow's
-placeholder type. Local paths never enter stable provenance.
-
-The current adapter supports `map` and ordered still-image `frames`, PNG output
-from one node, 1–16 `map` candidates, and dimensions from 16–4096px. A frame
-style uses `numImages: 1`; the varying input supplies 2–64 renders. It rejects
-manifest `styleImages` and `palette`;
-use custom image bindings for per-asset ControlNet or reference images, and keep
-shared model/LoRA/palette controls inside the workflow. See
-[Set up ComfyUI](COMFYUI.md) for the complete procedure, safe workflow, and
-quality limits. The 4096px adapter ceiling is not a recommended generation or
-native-art size.
-
-## Experimental Scenario
-
-Scenario uses hosted model IDs and requires a conservative Compute Unit ceiling
-for every style:
-
-```jsonc
-{
-  "provider": "scenario",
-  "styles": {
-    "environment": {
-      "generator": "map",
-      "size": 512,
-      "outDir": "assets/generated/environment",
-      "providerOptions": {
-        "scenario": {
-          "modelId": "model_bfl-flux-2-dev",
-          "projectId": "project_example",
-          "numOutputs": 4,
-          "maxComputeUnits": 60,
-          "parameters": {
-            "guidance": 4,
-            "numInferenceSteps": 28
-          }
-        }
-      }
-    }
-  },
-  "assets": {
-    "mountain-town": { "prompt": "a fortified mountain town" }
-  }
-}
-```
-
-| Option | Meaning |
-|---|---|
-| `modelId` | Required Scenario endpoint model ID. |
-| `maxComputeUnits` | Required positive per-asset offline ceiling and maximum accepted live quote. |
-| `numOutputs` | One to four PNG candidates; defaults to one. |
-| `projectId` | Optional Scenario ownership/routing project. |
-| `parameters` | Additional model-specific JSON inputs. PixelKiln-owned request fields cannot be overridden. |
-
-The current adapter supports `map`, dimensions from 128–2048px in multiples of
-16, optional seed, and no style-image uploads. Every paid request is preceded
-by an identical `dryRun=true` request. See [Set up Scenario](SCENARIO.md) for
-credentials, cost semantics, recovery, and the paid live-test boundary.
-
-## Asset fields
-
-| Field | Type/default | Meaning |
-|---|---|---|
-| `prompt` | string, required unless `mirror` | Subject-specific prompt. It may be empty only during existing-art onboarding. |
-| `category` | string | Human grouping metadata. |
-| `width` | integer 16–8192 | Per-asset width override. Each provider applies its own ceiling. |
-| `height` | integer 16–8192 | Per-asset height override. Each provider applies its own ceiling. |
-| `size` | integer 32–256 | Per-asset square size override. |
-| `file` | string | Filename/path override beneath the style output root. |
-| `styles` | string array, `[]` | If non-empty, generate this asset only in the named styles. |
-| `promptByStyle` | object, `{}` | Replace the asset prompt for specific style ids. |
-| `tags` | string array, `[]` | Asset tags combined with style tags. |
-| `cell` | `[column,row]` | Non-negative stable grid cell used by `mount`. |
-| `source` | string | Manifest-relative post-processed/hand-drawn source placed by `mount`, `pack`, and `export` instead of lock output. For a set of PNG outputs, a path that is not a file is a stem: each member is placed from `<stem>-<role>.png`, the rule generated outputs follow. A file that exists there is one image placed for the whole set, as before. |
-| `sourceByStyle` | object | The same, for one style only. A hand edit belongs to one generation, so an asset shared by styles keeps one edit per style. |
-| `revision` | object | Generate a new asset from another asset's current bytes. `source` and `revision` are mutually exclusive. |
-| `outputRole` | string | Select one member of a structural output set for mounting. |
-| `mirror` | string | Another asset of this style, flipped left to right. No prompt, no provider, no cost. See [Mirrors](#mirrors). |
-| `proportions` | preset or object | This base's body proportions, over the style's. `standard` humanoid bases only. |
-| `reference` | string or object | The character's own sprite(s) for PixelLab to rotate. Bases only. |
-| `concept` | string | A concept image a `pro` base is designed from. Bases only. |
-| `styleCharacter` | string | The character in this style a `pro` base takes its look from, over the style's. |
+- [Retro Diffusion](./RETRO_DIFFUSION.md#manifest-fields): still styles,
+  tilesets, and GIF or spritesheet animation.
+- [ComfyUI](./COMFYUI.md#manifest-fields): a committed workflow, its bindings,
+  revisions, and atomic frame sets.
+- [Scenario](./SCENARIO.md#manifest-fields): hosted model ids and Compute
+  Unit ceilings.
 
 ## Characters
 
-```json
-{
-  "styles": {
-    "cast": {
-      "generator": "character",
-      "outDir": "art/characters",
-      "view": "side",
-      "size": 64,
-      "mode": "standard",
-      "palette": ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"],
-      "enforcePalette": true
-    }
-  },
-  "assets": {
-    "mira": {
-      "prompt": "small young woman, dark curly hair in a bun, oversized hoodie"
-    },
-    "mira.chair_spin": {
-      "prompt": "one hand high on the pole, sitting in the air with knees up, spinning",
-      "state": { "of": "mira", "paletteFromReference": true }
-    },
-    "mira.fireman_spin": {
-      "prompt": "spinning around the pole, knees crossed",
-      "animation": { "of": "mira.chair_spin", "direction": "east", "frames": 8, "fps": 10 }
-    },
-    "mira.walk": {
-      "prompt": "",
-      "animation": { "of": "mira", "template": "walk", "direction": "south" }
-    }
-  }
-}
-```
-
-A `character` style holds three shapes of asset that share one PixelLab
-character.
-
-A base is a prompt, wrapped in the style's prefix and suffix like any other
-asset, that PixelLab draws facing 4 or 8 directions. `mode` picks the
-engine: `standard` (1 generation, the skeleton template, `outline`,
-`shading`, and `detail` as soft guidance, and `palette` sent as a colour
-reference), `v3` (2 to 9 by size, the highest quality, up to 256px),
-`pro` (20 to 40 by size), or `pro-flash` (6 to 17 by size: PixelLab's
-newest image model draws the south sprite and v3 rotates it; sizes are
-multiples of 4 up to 256, `template` may be `custom`, and a `reference`
-pays for the rotations only, 1 at 64px). `size` is the character's size;
-`view` is `low top-down` (the default), `high top-down`, or `side`;
-`template` picks the body. Each direction lands as
-`<asset>-<direction>.png`, south first.
-Standard mode draws on a canvas 28px larger than `size`, 14px of room on
-each side for animation (a 64px character comes back as 92px files, a
-104px one as 132px); the lock records the size asked for, and the files
-are what PixelLab drew.
-
-Three more knobs shape a `standard` base. `proportions` is a preset
-(`chibi`, `heroic`, and so on) or multipliers on the mannequin's head,
-arms, legs, shoulders, and hips; it lives on the style and any base may
-override it, and only the mannequin template has proportions to set.
-`textGuidanceScale` (1 to 20, PixelLab's default 8) is how closely the text
-is followed, and applies to template loops as well. `isometric` draws the
-base and every loop in isometric view. The v3 and pro engines take none of
-the three for a base; a v3 style may still set the last two for its loops.
-A `v3` base takes `enhancePrompt` instead, which has PixelLab expand the
-prompt into a fuller one before drawing.
-
-A base can also start from your own sprite. `reference` names a
-manifest-relative PNG or JPEG of the character facing south, and PixelLab
-draws the other directions from it, with the prompt as guidance:
-
-```json
-"mira": { "prompt": "small young woman, oversized hoodie", "reference": "refs/mira-south.png" }
-```
-
-`standard` uses each image as it is, centred on its larger canvas, and
-generates the rest, so the image must be the style's `size` exactly; it
-accepts one image per direction
-(`{ "south": ..., "east": ... }`), and a quadruped template needs south and
-east. `v3` rotates one south image of up to 256px (its `template` must
-match the body in the image). `pro` rotates one south image of up to 168px
-through its `rotate_character` method. The reference's bytes are part of
-the base's identity, so a redrawn file makes the base stale, and the file
-is read again at submit time and refused if it changed since `plan`.
-States, animations, and mirrors take their look from their parent and
-cannot carry a reference.
-
-The pro engine has two more ways in. `concept` on a base names a concept
-image (a painting, a photo, a sketch, up to 1024px) that seeds the design
-in place of the prompt alone (PixelLab's `create_from_concept`); the
-prompt still guides it. `styleCharacter`, on the style or a base, names a
-generated 8-direction character in the same style whose look the base
-follows (`style_character_id`); its south sprite becomes the style image
-unless a style image is also given. The anchor is a dependency like a
-loop's character: the base is `blocked` until the anchor is downloaded and
-current, `gen` runs it in the wave after the anchor lands, and a
-regenerated anchor makes every base drawn in its style `stale`. The anchor
-itself ignores the setting, so a style can name its own first character.
-PixelLab wants the base at least as large as the anchor's visible sprite
-and fails the job fast otherwise. A base rotating its own `reference`
-takes neither: the rotate method has one image slot and it is the
-character.
-
-Style images on a `character` style are a pro input: one image of up to
-168px that anchors the look of a `pro` base drawn from text or a concept
-(`create_with_style` and `create_from_concept` both take it), or one of
-up to 256px that a `pro-flash` base copies its look from, no larger than
-the character's `size` on either side (crop it to its subject), with
-`styleTraits` (`palette`, `outline`, `detail`, `shading`, each on by
-default) choosing which traits it lends. `standard` and `v3` have no such
-slot and refuse them; a base with a `reference` refuses them too, in
-either engine.
-
-A state is a text edit of an existing character, `state.of`, applied to
-every direction at once: a pose, an outfit, a held object. The prompt is
-the edit and goes to PixelLab as written, without the style's prefix and
-suffix, since the character already carries the look.
-`paletteFromReference` snaps the result to the parent's colours; `canvas`
-asks for a larger frame when the edit adds something big. A state costs 20
-to 40 by canvas and keeps the parent's directions. A state may be a state
-of another state.
-
-An animation is one loop of one character (`animation.of`, a base or a
-state) in one `direction`. With a `template` (PixelLab's `walk`,
-`breathing-idle`, `running-8-frames`, and so on) it costs 1 and the
-template decides the frame count; without one the prompt is the motion and
-PixelLab's v3 engine draws `frames` frames (4 to 16, even, default 8) for
-`ceil(size² × frames / 65536)` generations, one at 64px. `keepFirstFrame`
-(on by default) stores the resting pose as frame 0, so 8 frames land as 9
-files, `<asset>-frame-00.png` onwards. `fps` is recorded with the frames
-for the gallery, `pack`, and the Godot and Aseprite formats; PixelLab does
-not keep one. An animation lands in review as an ordered set: `pick` shows
-the loop and accepts or rejects it whole. One asset per direction; declare
-another asset for another direction, or a [mirror](#mirrors) of this one
-for the direction that faces the other way.
-
-A v3 loop can start and end where you say. `startFrame` is a
-manifest-relative image of the pose to begin from instead of the
-character's rotation; `endFrame` is a pose to reach, and with it the loop
-interpolates from the start frame to that image (both up to 256px, and the
-end frame the same size as the start frame or, without one, as the
-character's rotation, which `plan` checks once the parent is on disk; the
-frames can still come back on a taller canvas when the motion needs it, as
-a 92px crouch did at 92×104). `subject` replaces the character's own description for this loop when it
-would mislead the model (a state that took the armour off), and
-`enhancePrompt` lets PixelLab expand the action into a fuller motion
-description first. A template loop takes none of those; it takes
-`outline`, `shading`, and `detail` overrides instead, over the character's
-own. The style's `palette` goes to every loop as a colour reference, as it
-does to a `standard` base, and `enforcePalette` still snaps the frames
-afterwards. Pose images hash into the loop's identity and are read again
-at submit time, like a base's `reference`.
-
-```json
-"mira.bow": {
-  "prompt": "bowing deeply from the waist",
-  "animation": { "of": "mira", "direction": "south", "frames": 6, "endFrame": "poses/mira-bowed.png" }
-}
-```
-
-States and animations depend on their parent the way a revision does. The
-parent must be downloaded and current before the child is actionable;
-`plan` reports the child as `blocked` and names the parent until then, and
-one `gen` runs the waves in order: bases, then states, then animations,
-under one budget. The
-child's identity includes the parent's generated south-facing file, so
-regenerating the parent makes every state and animation of it `stale`. A
-hand edit of the parent does not, because PixelLab draws the child from the
-character it holds, not from local bytes.
-
-Regenerating an animation clears PixelKiln's own earlier take of that
-direction on the character first, since PixelLab skips a direction that
-already exists. The lock records the animation and group ids PixelLab
-assigned, and the delete goes by those (PixelLab keeps the name PixelKiln
-gives a loop only for text animations, not template ones). Nothing else on
-the character is touched, and a base or state is never deleted by
-PixelKiln.
-
-`enforcePalette` snaps every direction and every frame. `pack --style cast
---format godot` writes a `SpriteFrames` with each direction of a base or
-state as a still and each animation as a looping set at its fps;
-`--format aseprite` does the same with `frameTags`.
-
-Characters that already exist on the account come under the manifest with
-`adopt`. Declare the asset with `remoteId` (the character id, or
-`<character id>#<animation group id>` for a loop; `get_character` in
-PixelLab's own tools shows both) and run `pixelkiln adopt`: it records the
-character, writes every direction and frame that is not on disk, and costs
-nothing. A base can also be matched by the bytes of its south-facing file.
-See [`adopt`](CLI.md#adopt).
+A `character` style holds a base drawn facing 4 or 8 directions, states, and
+loops, with a `mirror` for the direction that faces the other way. The
+shapes, engines, references, and costs have their own page:
+[Characters](./CHARACTERS.md).
 
 ## Mirrors
 
-Each direction of a loop is its own generation, and a sprite walking east
-is the sprite walking west flipped. A `mirror` asset is that flip, made
-locally from the source asset's downloaded files:
-
-```json
-"hero.walk.west": { "prompt": "", "animation": { "of": "hero", "template": "walk", "direction": "west" } },
-"hero.walk.east": { "mirror": "hero.walk.west" }
-```
-
-A full 8-direction set of one loop is then 5 generations (south, north,
-west, south-west, north-west) and 3 mirrors; a 4-direction set is 3 and 1.
-The mirror takes its shape from the source (a loop of the same character,
-facing the other way, at the same fps), needs no prompt, and costs
-nothing: `plan` lists it under the provider with a cost of 0 and `gen`
-flips it in the wave after the source lands. It has its own lock entry and
-files (`hero.walk.east-frame-00.png` onwards), so `pack`, the gallery, and
-an engine see an ordinary loop. Nothing is sent to the provider, and the
-account holds no east animation.
-
-The lock records a hash over the source's output hashes when the flip was
-made. A source that is regenerated, restored, or re-snapped makes its
-mirrors `stale`, and the next `gen` flips them again for free. A mirror
-whose files went missing is `stale` too; one that was hand-edited is
-`orphaned`, like generated art. A source that is not downloaded, current,
-and untouched blocks its mirrors.
-
-A loop facing south or north cannot be mirrored: the flip would be the same
-direction with its asymmetries swapped, not a new one. A single image or a
-frame set from any generator can be mirrored, and so can a base or state
-(every direction flipped and relabelled, so west becomes east). A tile set
-cannot; its edges carry meaning. Mirroring swaps handedness, so a character
-who holds a sword in the right hand holds it in the left when facing the
-mirrored way. Most games accept that; if yours does not, generate both
-sides. `adopt` skips mirrors, since there is nothing upstream to adopt.
-
-Engines that flip sprites at draw time (Godot's `flip_h`, Unity's
-`flipX`) do not need mirrored files at all. Declare only the directions
-you generate and flip in the engine; mirrors are for pipelines that want
-every direction on disk.
+A `mirror` asset is another asset of the same style flipped left to right,
+made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors).
 
 ## Controlled revisions
 
