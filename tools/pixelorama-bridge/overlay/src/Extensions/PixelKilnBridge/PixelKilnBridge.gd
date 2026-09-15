@@ -76,6 +76,14 @@ var _frame_roles: Array = []
 func _ready() -> void:
 	if not OS.has_feature("web"):
 		return
+	# Pixelorama keeps an extension with nodes under suspicion until the app
+	# exits cleanly, and a closed tab never is a clean exit, so every later
+	# launch would report the bridge as faulty and try to quarantine a .pck
+	# that does not exist. An internal extension cannot be quarantined; clear
+	# the suspicion now that the node is up.
+	var handler := get_parent()
+	if handler != null and handler.has_method("clear_suspicion"):
+		handler.call("clear_suspicion", "PixelKilnBridge.pck")
 	JavaScriptBridge.eval(SHIM, true)
 	_disable_disk_shortcuts()
 	_remove_disk_menu_items()
