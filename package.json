@@ -34,6 +34,7 @@
     "test:quality": "tsx src/cli.ts quality check --from benchmarks/provider-hires/comfyui/pixelkiln.quality-baseline.json",
     "test:package": "node scripts/smoke-package.mjs",
     "test:gallery": "tsx scripts/smoke-gallery.ts",
+    "test:godot": "tsx scripts/check-godot.ts",
     "test:watch": "vitest",
     "schema": "tsx scripts/gen-schema.ts",
     "website:dev": "npm run dev --prefix website",

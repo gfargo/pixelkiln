@@ -46,6 +46,23 @@ jobs:
       - run: npm ci
       - run: CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser)" npm run test:gallery
 
+  # The SpriteFrames and TileSet PixelKiln writes, loaded by a headless
+  # Godot 4.7.2 and reported back: animation names, frame counts, speeds,
+  # loops, atlas tiles, terrain sets.
+  godot:
+    runs-on: ubuntu-latest
+    container:
+      image: docker://barichello/godot-ci:4.7.2
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Align npm version
+        run: npm install --global npm@11.19.1
+      - run: npm ci
+      - run: GODOT="$(command -v godot)" npm run test:godot
+
   website:
     runs-on: ubuntu-latest
     steps:
