@@ -333,6 +333,79 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="cast-section" id="characters">
+          <div className="shell">
+            <figure className="cast-strip" aria-label="One character facing eight directions">
+              <Image src="/sprites/characters/robot-8dir.png" alt="A round orange robot drawn facing south, south-west, west, north-west, north, north-east, east, and south-east" width={796} height={96} unoptimized />
+              <figcaption>Eight directions from one prompt. PixelLab pro-flash at 96px, generated while testing v0.46, then deleted from the account.</figcaption>
+            </figure>
+            <div className="cast-grid">
+              <div className="section-heading cast-copy">
+                <p className="eyebrow">Characters are a family, not a file</p>
+                <h2>Draw the base once.<br />Everything else follows it.</h2>
+                <p className="section-deck">
+                  A <code>character</code> style holds a base drawn facing 4 or 8
+                  directions, states that apply a pose or an outfit to every
+                  direction at once, and loops, one direction each. Every one is
+                  an asset with its own record and files, so <code>plan</code>{" "}
+                  prices the cast, one <code>gen</code> runs it in waves (bases,
+                  then states, then loops), and <code>pack --format godot</code>{" "}
+                  writes a SpriteFrames with every direction and every loop.
+                </p>
+                <p className="section-deck">
+                  Start from a prompt on any of PixelLab&apos;s four engines, or
+                  from your own south-facing sprite: <code>reference</code> hands
+                  it over and pro-flash rotates it for one generation at 64px.
+                  Regenerate the base and its states and loops go stale, never
+                  silently mismatched. Characters already on your account come
+                  under the manifest with <code>adopt</code>, and the gallery
+                  shows the family: states under their base, loops with their
+                  direction, mirrors with their source.
+                </p>
+                <ul className="check-list cast-list">
+                  <li><span>✓</span> A loop facing east is the west loop flipped. <code>mirror</code> makes it locally for nothing; eight directions of one walk cost 5, not 8.</li>
+                  <li><span>✓</span> Poses from a text edit, loops from a template or from text, with start and end poses you supply.</li>
+                  <li><span>✓</span> Concept images and style anchors on pro, style images with chosen traits on pro-flash.</li>
+                </ul>
+                <div className="review-links">
+                  <TrackedLink className="text-link" id="cast_manifest_docs" section="characters" href="/docs/manifest#characters">
+                    Read the character reference
+                  </TrackedLink>
+                  <TrackedLink className="text-link" id="cast_mirror_docs" section="characters" href="/docs/manifest#mirrors">
+                    How mirrors work
+                  </TrackedLink>
+                </div>
+              </div>
+              <div className="cast-visuals">
+                <div className="lock-visual cast-manifest" aria-label="A character family in the manifest">
+                  <div className="lock-label">pixelkiln.manifest.json</div>
+                  <pre><code>{`"cast": {
+  "generator": "character",
+  "mode": "pro-flash", "size": 64 },
+
+"hero": {
+  "prompt": "a knight in a teal cloak",
+  "reference": "refs/hero-south.png" },
+"hero.sit": {
+  "prompt": "sitting cross-legged",
+  "state": { "of": "hero" } },
+"hero.walk.west": {
+  "prompt": "",
+  "animation": { "of": "hero",
+    "template": "walk", "direction": "west" } },
+"hero.walk.east": { "mirror": "hero.walk.west" }`}</code></pre>
+                  <div className="lock-callout top"><span>◇</span> 1 generation to rotate</div>
+                  <div className="lock-callout bottom"><span>◇</span> 0 for the mirror</div>
+                </div>
+                <figure className="cast-loop" aria-label="A six-frame walk loop">
+                  <Image src="/sprites/characters/walk-loop.png" alt="Six frames of a walking character, south-facing" width={572} height={92} unoptimized />
+                  <figcaption>A template walk, six frames, one generation. Reviewed as one set in <code>pick</code>, packed as one looping animation.</figcaption>
+                </figure>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="provider-showcase-section shell" id="providers">
           <div className="section-heading split-heading provider-showcase-heading">
             <div>
@@ -673,6 +746,7 @@ export default function Home() {
               <div className="generator-row"><strong>pixflux</strong><span>Exact closed palettes</span><span><i style={{ width: "2.5%" }} /> 1 gen</span></div>
               <div className="generator-row"><strong>1dir</strong><span>References and candidate variety</span><span><i style={{ width: "72%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 20–40 gen</span></div>
+              <div className="generator-row"><strong>character</strong><span>A base in 8 directions, its poses, its loops</span><span><i style={{ width: "17.5%" }} /> 1–7 gen per base, 1 per loop, mirrors free</span></div>
               <div className="generator-row"><strong>animation</strong><span>Retro Diffusion GIFs and sprite sheets</span><span>USD quote</span></div>
               <div className="generator-row"><strong>frames</strong><span>Controlled ComfyUI still sequences</span><span>0 provider units</span></div>
             </div>

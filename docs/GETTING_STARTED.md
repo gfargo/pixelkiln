@@ -260,6 +260,30 @@ Repeated `--style`, `--only`, `--claims`, and `--output-role` flags accumulate;
 comma-separated values also work. Unknown flags are errors, so a misspelled
 filter cannot accidentally widen a paid run.
 
+## A character and its loops
+
+A `character` style holds a base drawn facing 4 or 8 directions, states (a
+pose, an outfit) applied to every direction at once, and loops, one
+direction each. Each is an asset with its own record and files:
+
+```json
+{
+  "styles": { "cast": { "generator": "character", "outDir": "art/cast", "size": 64, "mode": "pro-flash" } },
+  "assets": {
+    "hero": { "prompt": "a knight in a teal cloak", "reference": "refs/hero-south.png" },
+    "hero.walk.west": { "prompt": "", "animation": { "of": "hero", "template": "walk", "direction": "west" } },
+    "hero.walk.east": { "mirror": "hero.walk.west" }
+  }
+}
+```
+
+`pixelkiln plan` prices it (1 generation to rotate the sprite, 1 for the
+loop, 0 for the mirror) and one `pixelkiln gen` runs the waves: the base,
+then the loop, then the flip. `pixelkiln pack --style cast --format godot`
+writes a `SpriteFrames` with every direction as a still and both loops.
+Regenerate the base and everything under it goes `stale`. See
+[Characters](./MANIFEST.md#characters) and [Mirrors](./MANIFEST.md#mirrors).
+
 ## Automation
 
 Use machine-readable planning and auditing as build gates:

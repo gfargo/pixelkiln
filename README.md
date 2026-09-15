@@ -54,6 +54,7 @@ provenance and no long-lived npm token.
 | Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, candidate or atomic frame-set review, and a provenance gallery that can edit intent, generate under a budget, and compare records. |
 | Hand edits | Touch-ups in your own editor or a pinned in-browser Pixelorama, kept beside the generated art with the generation still the record; frame and tile sets member by member. |
 | Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
+| Characters | A base in 4 or 8 directions from a prompt or your own sprite (four PixelLab engines), poses and loops as dependent assets generated in waves, free mirrored directions, account adoption, and SpriteFrames export. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, resumable paid jobs, and per-asset generation history with free restores. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
@@ -390,9 +391,8 @@ package share one source. Policies: [Contributing](./CONTRIBUTING.md),
 
 ## Scope
 
-Salvaging characters, and PixelLab's portrait and outfit tools, are not
-implemented. Cross-project content-cache reuse and `workspace find`
-are deferred. See the open [roadmap issues](https://github.com/gfargo/pixelkiln/issues).
+Salvaging characters, PixelLab's portrait and outfit tools, cross-project
+cache reuse, and `workspace find` are not implemented; see the open [issues](https://github.com/gfargo/pixelkiln/issues).
 
 ## License
 

@@ -67,7 +67,7 @@ not a replacement:
 | PixelLab MCP | Agent-facing access to PixelLab generation capabilities. |
 | PixelKiln skill | Agent guidance for safe project-level operations. |
 | PixelKiln library/CLI | Budgets, state, provenance, review, recovery, audit, and packaging. |
-| PixelLab adapter | The current production and live-tested generation backend. |
+| PixelLab adapter | The current production and live-tested generation backend: stills, tiles, and the character family (four engines, states, loops, mirrors, adoption). |
 | Retro Diffusion adapter | Experimental backend; authenticated paid single-still lifecycle plus mocked advanced-workflow tests. |
 | ComfyUI adapter | Experimental self-hosted still, controlled-revision, and atomic frame-set backend; PixelKiln automates lineage and mechanical quality checks while a person retains visual approval. |
 | Scenario adapter | Experimental hosted still-image backend; BFL Flux 2 Dev quote, paid single/two-output generation, human review, and durable recovery live-tested. |
