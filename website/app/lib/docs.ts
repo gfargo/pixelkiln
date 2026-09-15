@@ -11,6 +11,11 @@ export type DocEntry = {
   description: string;
   file: string;
   group: DocGroup;
+  /**
+   * Render as a parent page with one child page per heading at this depth.
+   * The Markdown stays one file; see `doc-sections.ts`.
+   */
+  split?: 2 | 3;
 };
 
 export const docs: DocEntry[] = [
@@ -41,6 +46,7 @@ export const docs: DocEntry[] = [
     description: "Connect a self-hosted server for stills, revisions, and atomic frame sets, then apply its quality gate.",
     file: "docs/COMFYUI.md",
     group: "Providers",
+    split: 2,
   },
   {
     slug: "scenario",
@@ -55,6 +61,7 @@ export const docs: DocEntry[] = [
     description: "Every command and flag, including gallery, edit, history, tools, automation, and exit behavior.",
     file: "docs/CLI.md",
     group: "Reference",
+    split: 3,
   },
   {
     slug: "manifest",
@@ -62,6 +69,7 @@ export const docs: DocEntry[] = [
     description: "Styles, assets, quality profiles, mounting, and validation.",
     file: "docs/MANIFEST.md",
     group: "Reference",
+    split: 2,
   },
   {
     slug: "mixed-providers",
@@ -146,6 +154,7 @@ export const docs: DocEntry[] = [
     description: "Public TypeScript contracts for composing PixelKiln workflows.",
     file: "docs/LIBRARY.md",
     group: "Reference",
+    split: 2,
   },
   {
     slug: "tiles",
@@ -206,8 +215,15 @@ export async function readDoc(doc: DocEntry) {
   };
 }
 
-export function docHref(sourceFile: string, href?: string) {
-  if (!href || href.startsWith("#") || /^(?:https?:|mailto:)/.test(href)) return href;
+export type LinkResolver = (slug: string, anchor: string | undefined) => string;
+
+export function docHref(sourceFile: string, href?: string, resolve?: LinkResolver) {
+  if (!href || /^(?:https?:|mailto:)/.test(href)) return href;
+  if (href.startsWith("#")) {
+    // A same-page anchor on a split doc may live on a sibling page.
+    const self = docs.find((doc) => path.resolve(/* turbopackIgnore: true */ process.cwd(), "..", doc.file) === sourceFile);
+    return self && resolve ? resolve(self.slug, href.slice(1)) : href;
+  }
 
   const [filePart, anchor] = href.split("#", 2);
   const target = path.resolve(path.dirname(sourceFile), decodeURIComponent(filePart));
@@ -221,7 +237,7 @@ export function docHref(sourceFile: string, href?: string) {
     (doc) => path.resolve(repoRoot, doc.file) === target,
   );
 
-  if (match) return `/docs/${match.slug}${anchor ? `#${anchor}` : ""}`;
+  if (match) return resolve ? resolve(match.slug, anchor) : `/docs/${match.slug}${anchor ? `#${anchor}` : ""}`;
 
   const repoRelative = path.relative(repoRoot, target).split(path.sep).join("/");
   if (!repoRelative.startsWith("../")) {

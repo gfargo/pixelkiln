@@ -11,6 +11,7 @@ type Entry = {
   heading: string;
   path: string;
   id: string;
+  href: string;
   text: string;
 };
 
@@ -148,7 +149,7 @@ export function DocSearch() {
   const terms = useMemo(() => tokens(query), [query]);
 
   const go = useCallback((hit: Hit) => {
-    const href = `/docs/${hit.entry.slug}${hit.entry.id ? `#${hit.entry.id}` : ""}`;
+    const href = hit.entry.href;
     trackCta(`docs_search_${hit.entry.slug}`, "docs_search", href);
     hide();
     router.push(href);

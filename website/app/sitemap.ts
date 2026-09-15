@@ -1,8 +1,16 @@
 import type { MetadataRoute } from "next";
 import { docs } from "@/app/lib/docs";
+import { splitDoc } from "@/app/lib/doc-sections";
 import { siteUrl } from "@/app/lib/site";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const children: MetadataRoute.Sitemap = [];
+  for (const doc of docs) {
+    const split = await splitDoc(doc);
+    for (const child of split?.children ?? []) {
+      children.push({ url: `${siteUrl}/docs/${doc.slug}/${child.slug}`, changeFrequency: "weekly", priority: 0.6 });
+    }
+  }
   return [
     {
       url: siteUrl,
@@ -43,5 +51,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly" as const,
       priority: doc.group === "Start here" ? 0.8 : 0.7,
     })),
+    ...children,
   ];
 }

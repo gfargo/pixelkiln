@@ -314,17 +314,13 @@ They are documented with the provider:
 - [Scenario](./SCENARIO.md#manifest-fields): hosted model ids and Compute
   Unit ceilings.
 
-## Characters
+## Characters and mirrors
 
 A `character` style holds a base drawn facing 4 or 8 directions, states, and
-loops, with a `mirror` for the direction that faces the other way. The
-shapes, engines, references, and costs have their own page:
-[Characters](./CHARACTERS.md).
-
-## Mirrors
-
-A `mirror` asset is another asset of the same style flipped left to right,
-made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors).
+loops, with a `mirror` asset for the direction that faces the other way,
+made locally at no cost. The shapes, engines, references, and costs have
+their own page: [Characters](./CHARACTERS.md) and
+[Mirrors](./CHARACTERS.md#mirrors).
 
 ## Controlled revisions
 

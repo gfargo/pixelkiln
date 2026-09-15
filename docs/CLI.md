@@ -17,7 +17,7 @@ work. The experimental `comfyui` adapter runs committed API-format `map` and
 ordered still-frame workflows on a self-hosted server. The experimental `scenario` adapter runs
 hosted still models with Compute Unit preflight and durable asset recovery.
 
-## Which command
+Which command:
 
 | I want to | Run |
 |---|---|
@@ -419,6 +419,8 @@ pixelkiln gallery --style environment --port 4180 --no-open
 pixelkiln gallery --json > generations.json
 ```
 
+#### What it shows
+
 The gallery is lock-first. A lock entry the manifest no longer declares still
 appears, marked `undeclared`, so paid work is never hidden; a declared asset
 with no entry appears as a placeholder so the page also shows what has not
@@ -434,9 +436,13 @@ provider, and never writes anything. Stop it with Ctrl+C. See the
 [Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
 screenshot.
 
+#### `--json`: the snapshot as data
+
 `--json` prints the same snapshot to stdout without starting a server. It is
 the offline, machine-readable answer to "what has this project generated?" for
 scripts and agents; `--style` and `--only` narrow it the same way.
+
+#### `--edit`: change prompts and style fields
 
 `--edit` lets the page change *intent*: an asset's prompt (for every style or
 only the one being viewed), width, height, size, category, and tags; a style's
@@ -465,6 +471,8 @@ pixelkiln gallery --edit
 pixelkiln gallery --edit --workspace pixelkiln.workspace.json
 ```
 
+#### Restore and regenerate from a record
+
 An `orphaned` record, one whose file is gone or changed after download, offers
 **Restore** (the recorded bytes back from the cache or the provider, no cost)
 and, for a changed file, **Regenerate**; both replacements say what they
@@ -478,6 +486,8 @@ it differed, and a link to the object. **Restore this one** brings one back at
 no cost, the page's form of [`restore --generation`](#restore). Any `--budget`
 enables it, `0` included, and the current generation moves into the list so
 the restore can be undone.
+
+#### `--budget`: generate from the page
 
 `--budget <n|provider=n>` enables generation from the page under that session
 ceiling. It is the same `--budget` `gen` takes: one unkeyed amount when a run
@@ -496,6 +506,8 @@ printed. Candidate sets stop in `review`: **Review** slides the `pick` sheet
 out over the gallery, **Apply selections** writes the lockfile and downloads
 the chosen art, and unchosen rows stay in review exactly as with `pick`. A
 regeneration's sheet shows the current art beside the candidates.
+
+#### Compare records side by side
 
 **Compare** puts two to four records side by side at one shared zoom with
 their fields in rows (provider, generator, candidates, size, cost, prompt,
@@ -521,6 +533,8 @@ lets you change. Every asset in the style then becomes `stale`, and the header
 says how many. PixelLab's count follows the generator and size (`map` and
 `pixflux` return one image; a `1dir` style returns 4–64), so the header
 explains that instead of offering a number.
+
+#### Hand edits, in your editor or the browser
 
 With `--edit`, a record also gains **Edit by hand**, the page's form of
 [`pixelkiln edit`](#edit): it creates the edit file, declares it, and opens
@@ -559,6 +573,8 @@ on the same file. The editor page runs same-origin under its own
 content-security policy and never sees the gallery's session token; the page
 does the write. `--no-editor` hides all of it and serves none of its routes.
 
+#### Pull changes made in PixelLab's editor
+
 A PixelLab `map` or `1dir` record also links to its account object (**Open in
 pixellab ↗**), where PixelLab's own editor can change it; with `--budget`
 (any amount; `--budget 0` allows provider contact and no spend) the record
@@ -570,6 +586,8 @@ only if it changed upstream.
 pixelkiln gallery --edit --budget 80
 pixelkiln gallery --budget pixellab=40 --budget retrodiffusion=1.25 --workspace pixelkiln.workspace.json
 ```
+
+#### `--workspace`: every project in one gallery
 
 `--workspace <catalog>` shows every project the catalog registers in one
 gallery, the way `workspace status` reads them: no manifest is needed in the
