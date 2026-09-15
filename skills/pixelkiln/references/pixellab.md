@@ -29,6 +29,11 @@ the asset; standard wants it at the style's size, v3 up to 256px, pro up
 to 168px), and a standard humanoid base takes `proportions` (`chibi`,
 `heroic`, or multipliers) on the style or the asset.
 
+A v3 loop can start from a pose image (`startFrame`) or interpolate to one
+(`endFrame`), take a `subject` when the character's own description would
+mislead, and ask PixelLab to `enhancePrompt`; a template loop takes
+`outline`, `shading`, and `detail` overrides instead.
+
 A loop costs per direction, and a sprite facing east is the sprite facing
 west flipped. Declare the west loop and make the east one `{ "mirror":
 "hero.walk.west" }`: PixelKiln flips it locally for nothing, in the wave

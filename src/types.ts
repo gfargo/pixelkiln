@@ -312,11 +312,45 @@ export const CharacterAnimationSchema = z
     keepFirstFrame: z.boolean().default(true),
     /** `template` when a template is named, otherwise `v3`; `pro` for the sequential high-quality engine. */
     mode: CharacterAnimationModeSchema.optional(),
+    /**
+     * v3 only: a manifest-relative image of the pose to start from, instead
+     * of the character's rotation for this direction. Up to 256px.
+     */
+    startFrame: z.string().min(1).optional(),
+    /**
+     * v3 only: a pose to animate toward. The loop then interpolates from the
+     * start frame (the rotation, or `startFrame`) to this image, which must
+     * be the same size as the start frame.
+     */
+    endFrame: z.string().min(1).optional(),
+    /** What is being animated, when the character's own description would mislead the model. */
+    subject: z.string().min(1).optional(),
+    /** Template mode only: style hints for this loop, over the character's own. */
+    outline: z.string().min(1).optional(),
+    shading: z.string().min(1).optional(),
+    detail: z.string().min(1).optional(),
+    /** v3 text loops only: let PixelLab expand the action into a fuller motion description first. */
+    enhancePrompt: z.boolean().optional(),
   })
   .strict()
   .superRefine((animation, context) => {
     if (animation.frames !== undefined && animation.frames % 2 !== 0) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
+    }
+    const mode = animation.mode ?? (animation.template ? "template" : "v3")
+    for (const key of ["startFrame", "endFrame", "enhancePrompt"] as const) {
+      if (animation[key] !== undefined && mode !== "v3") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${key} is for v3 loops; a ${mode} loop ${mode === "template" ? "starts from the character's rotation and follows its template" : "takes neither"}`,
+          path: [key],
+        })
+      }
+    }
+    for (const key of ["outline", "shading", "detail"] as const) {
+      if (animation[key] !== undefined && mode !== "template") {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: `${key} overrides apply to template loops only`, path: [key] })
+      }
     }
     if (animation.template && animation.mode && animation.mode !== "template") {
       context.addIssue({
@@ -363,6 +397,8 @@ export interface ResolvedCharacter {
   textGuidanceScale?: number
   /** `standard` bases and every loop. */
   isometric?: boolean
+  /** `v3` bases. */
+  enhancePrompt?: boolean
   /** A base drawn by rotating the author's own sprite(s), keyed by the direction each shows. */
   reference?: Partial<Record<CharacterDirection, ResolvedReferenceImage>>
   /** For a state or animation: the parent asset in the same style. */
@@ -383,6 +419,15 @@ export interface ResolvedCharacter {
     frames: number
     fps: number
     keepFirstFrame: boolean
+    /** v3: the pose to start from, and the pose to reach. */
+    startFrame?: ResolvedReferenceImage
+    endFrame?: ResolvedReferenceImage
+    subject?: string
+    /** Template mode: this loop's style hints. */
+    outline?: string
+    shading?: string
+    detail?: string
+    enhancePrompt?: boolean
   }
 }
 
@@ -536,6 +581,8 @@ const StyleObjectSchema = z
     textGuidanceScale: z.number().min(1).max(20).optional(),
     /** `character` only. Draw `standard` bases and every loop in isometric view. */
     isometric: z.boolean().optional(),
+    /** `character` only, `v3` bases: let PixelLab expand the prompt into a fuller one before drawing. */
+    enhancePrompt: z.boolean().optional(),
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**

@@ -4,6 +4,7 @@ import os from "node:os"
 import path from "node:path"
 import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type PixelLabCharacter } from "../client.ts"
 import { sha256 } from "../hash.ts"
+import { imageMetadata } from "../media.ts"
 import { paletteSwatch } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
@@ -13,6 +14,7 @@ import {
   type CharacterDirection,
   type Generator,
   type ResolvedCharacter,
+  type ResolvedReferenceImage,
   type ResolvedSpec,
   type ResolvedStyleImage,
 } from "../types.ts"
@@ -237,6 +239,30 @@ export class PixelLabProvider implements Provider {
         throw new Error(`${label}: proportions apply to the mannequin template; ${character.template} is a quadruped`)
       }
     }
+    if (character.kind === "base" && character.enhancePrompt !== undefined && character.mode !== "v3") {
+      throw new Error(`${label}: enhancePrompt applies to v3 bases; the ${character.mode} engine does not take it`)
+    }
+    if (character.animation) {
+      const { startFrame, endFrame } = character.animation
+      for (const [name, image] of [["start frame", startFrame], ["end frame", endFrame]] as const) {
+        if (image && (image.width > 256 || image.height > 256)) {
+          throw new Error(`${label}: ${name} is ${image.width}x${image.height}; PixelLab v3 takes up to 256px`)
+        }
+      }
+      if (endFrame) {
+        // The end frame must match the start frame: the given one, or the
+        // parent's rotation when that is on disk to compare with.
+        const start = startFrame ?? (character.parentFile && existsSync(character.parentFile)
+          ? imageMetadata(readFileSync(character.parentFile))
+          : null)
+        if (start && (start.width !== endFrame.width || start.height !== endFrame.height)) {
+          throw new Error(
+            `${label}: end frame is ${endFrame.width}x${endFrame.height} but the ${startFrame ? "start frame" : "character's rotation"} ` +
+              `is ${start.width}x${start.height}; PixelLab interpolates between frames of one size`,
+          )
+        }
+      }
+    }
     if (character.reference) {
       const given = Object.keys(character.reference) as CharacterDirection[]
       if (!character.reference.south) throw new Error(`${label}: a reference needs a south-facing sprite`)
@@ -346,6 +372,7 @@ export class PixelLabProvider implements Provider {
         isometric: character.isometric,
         reference: character.reference ? readReference(spec, character.reference) : undefined,
         styleReference: styleImage ? { base64: styleImage.base64, format: styleImage.format } : undefined,
+        enhancePrompt: character.enhancePrompt,
       })
       return { jobId: res.character_id, metadata: { character: { kind: "base", characterId: res.character_id, mode: character.mode, directions: character.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -400,6 +427,14 @@ export class PixelLabProvider implements Provider {
       seed: spec.seed,
       textGuidanceScale: character.textGuidanceScale,
       isometric: character.isometric,
+      startFrame: animation.startFrame ? readPose(spec, "start frame", animation.startFrame) : undefined,
+      endFrame: animation.endFrame ? readPose(spec, "end frame", animation.endFrame) : undefined,
+      description: animation.subject,
+      outline: animation.outline,
+      shading: animation.shading,
+      detail: animation.detail,
+      enhancePrompt: animation.enhancePrompt,
+      paletteSwatchBase64: spec.palette.length ? paletteSwatch(spec.palette).toString("base64") : undefined,
     })
     const job: AnimationJob = { characterId: parentId, name, direction: animation.direction, jobIds: res.background_job_ids }
     return {
@@ -832,6 +867,15 @@ function readReference(spec: ResolvedSpec, reference: NonNullable<ResolvedCharac
     images[direction] = { base64: bytes.toString("base64"), format: image.format }
   }
   return images
+}
+
+/** A pose image for a v3 loop, read at submit time and refused if it moved since resolve. */
+function readPose(spec: ResolvedSpec, what: string, image: ResolvedReferenceImage): Base64Image {
+  const bytes = readFileSync(image.path)
+  if (sha256(bytes) !== image.sha256) {
+    throw new Error(`${spec.styleId}/${spec.assetId}: ${what} changed after the manifest was resolved: ${image.path}`)
+  }
+  return { base64: bytes.toString("base64"), format: image.format }
 }
 
 /** A character's directions as output sources, south first. */

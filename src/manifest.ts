@@ -20,13 +20,14 @@ import {
   type CharacterDirection,
   type Manifest,
   type ResolvedCharacter,
+  type ResolvedReferenceImage,
   type ResolvedSpec,
   type ResolvedStyleImage,
   type Style,
   type StyleInput,
 } from "./types.ts"
 import { sha256, sha256File, specHash } from "./hash.ts"
-import { MediaType } from "./media.ts"
+import { imageMetadata, MediaType } from "./media.ts"
 import { expectedOutputPath, memberPath } from "./outputs.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
@@ -721,46 +722,7 @@ export async function styleImagesBase64(loaded: LoadedManifest, styleId: string)
   return (await resolveStyleImages(loaded, styleId)).map((img) => img.base64)
 }
 
-/** Reads dimensions without decoding pixel data. */
-export function imageMetadata(
-  buf: Buffer,
-): Pick<ResolvedStyleImage, "width" | "height" | "format"> | null {
-  if (
-    buf.length >= 24 &&
-    buf.readUInt32BE(0) === 0x89504e47 &&
-    buf.readUInt32BE(4) === 0x0d0a1a0a &&
-    buf.toString("ascii", 12, 16) === "IHDR"
-  ) {
-    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), format: "png" }
-  }
-
-  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null
-  let offset = 2
-  while (offset + 3 < buf.length) {
-    if (buf[offset] !== 0xff) return null
-    while (buf[offset] === 0xff) offset++
-    const marker = buf[offset++]
-    if (marker == null || marker === 0xd9 || marker === 0xda) break
-    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue
-    if (offset + 2 > buf.length) return null
-    const length = buf.readUInt16BE(offset)
-    if (length < 2 || offset + length > buf.length) return null
-    const isStartOfFrame =
-      marker >= 0xc0 &&
-      marker <= 0xcf &&
-      ![0xc4, 0xc8, 0xcc].includes(marker)
-    if (isStartOfFrame) {
-      if (length < 7) return null
-      return {
-        width: buf.readUInt16BE(offset + 5),
-        height: buf.readUInt16BE(offset + 3),
-        format: "jpeg",
-      }
-    }
-    offset += length
-  }
-  return null
-}
+export { imageMetadata }
 
 /** The character-family shape of one asset, before its parent is known. */
 async function resolveCharacterShape(
@@ -780,6 +742,7 @@ async function resolveCharacterShape(
     ...(proportions !== undefined ? { proportions } : {}),
     ...(style.textGuidanceScale !== undefined ? { textGuidanceScale: style.textGuidanceScale } : {}),
     ...(style.isometric !== undefined ? { isometric: style.isometric } : {}),
+    ...(style.enhancePrompt !== undefined ? { enhancePrompt: style.enhancePrompt } : {}),
   }
   if (asset.reference) {
     // The author's own sprite, hashed so a redrawn reference makes the base
@@ -805,6 +768,10 @@ async function resolveCharacterShape(
   }
   if (asset.animation) {
     const animationMode = asset.animation.mode ?? (asset.animation.template ? "template" : "v3")
+    const pose = async (rel: string, what: string): Promise<ResolvedReferenceImage> => {
+      const image = await files.load(rel, what)
+      return { path: path.resolve(files.root, rel), sha256: image.hash, width: image.width, height: image.height, format: image.format }
+    }
     shape.animation = {
       mode: animationMode,
       ...(asset.animation.template ? { template: asset.animation.template } : {}),
@@ -812,6 +779,13 @@ async function resolveCharacterShape(
       frames: asset.animation.frames ?? 8,
       fps: asset.animation.fps,
       keepFirstFrame: asset.animation.keepFirstFrame,
+      ...(asset.animation.startFrame ? { startFrame: await pose(asset.animation.startFrame, "Animation start frame") } : {}),
+      ...(asset.animation.endFrame ? { endFrame: await pose(asset.animation.endFrame, "Animation end frame") } : {}),
+      ...(asset.animation.subject ? { subject: asset.animation.subject } : {}),
+      ...(asset.animation.outline ? { outline: asset.animation.outline } : {}),
+      ...(asset.animation.shading ? { shading: asset.animation.shading } : {}),
+      ...(asset.animation.detail ? { detail: asset.animation.detail } : {}),
+      ...(asset.animation.enhancePrompt !== undefined ? { enhancePrompt: asset.animation.enhancePrompt } : {}),
     }
   }
   return shape

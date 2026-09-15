@@ -206,6 +206,9 @@
                   "isometric": {
                     "type": "boolean"
                   },
+                  "enhancePrompt": {
+                    "type": "boolean"
+                  },
                   "seed": {
                     "type": "integer"
                   },
@@ -499,6 +502,9 @@
                   "isometric": {
                     "type": "boolean"
                   },
+                  "enhancePrompt": {
+                    "type": "boolean"
+                  },
                   "seed": {
                     "type": "integer"
                   },
@@ -788,6 +794,33 @@
                       "v3",
                       "pro"
                     ]
+                  },
+                  "startFrame": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "endFrame": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outline": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "shading": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "detail": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "enhancePrompt": {
+                    "type": "boolean"
                   }
                 },
                 "required": [

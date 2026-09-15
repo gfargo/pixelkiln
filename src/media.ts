@@ -97,3 +97,44 @@ function skipSubBlocks(bytes: Buffer, start: number): number {
 export function cacheFileName(hash: string, mediaType: MediaType = MediaType.PNG): string {
   return `${hash}${mediaExtension(mediaType)}`
 }
+
+/** Reads dimensions without decoding pixel data. */
+export function imageMetadata(
+  buf: Buffer,
+): { width: number; height: number; format: "png" | "jpeg" } | null {
+  if (
+    buf.length >= 24 &&
+    buf.readUInt32BE(0) === 0x89504e47 &&
+    buf.readUInt32BE(4) === 0x0d0a1a0a &&
+    buf.toString("ascii", 12, 16) === "IHDR"
+  ) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), format: "png" }
+  }
+
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null
+  let offset = 2
+  while (offset + 3 < buf.length) {
+    if (buf[offset] !== 0xff) return null
+    while (buf[offset] === 0xff) offset++
+    const marker = buf[offset++]
+    if (marker == null || marker === 0xd9 || marker === 0xda) break
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue
+    if (offset + 2 > buf.length) return null
+    const length = buf.readUInt16BE(offset)
+    if (length < 2 || offset + length > buf.length) return null
+    const isStartOfFrame =
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      ![0xc4, 0xc8, 0xcc].includes(marker)
+    if (isStartOfFrame) {
+      if (length < 7) return null
+      return {
+        width: buf.readUInt16BE(offset + 5),
+        height: buf.readUInt16BE(offset + 3),
+        format: "jpeg",
+      }
+    }
+    offset += length
+  }
+  return null
+}
