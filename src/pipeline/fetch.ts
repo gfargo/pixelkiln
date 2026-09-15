@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
-import type { Provider } from "../provider.ts"
+import type { OutputSource, Provider } from "../provider.ts"
 import { sha256, sha256File } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import {
@@ -120,13 +120,49 @@ export async function fetchAssets(
         result.skipped++
         continue
       }
-      const sources = entry.sourceUrls?.length
+      const recordedSources: OutputSource[] = entry.sourceUrls?.length
         ? entry.sourceUrls
         : entry.sourceUrl
           ? [{ url: entry.sourceUrl }]
           : opts.repair && entry.outputs.length
             ? entry.outputs.map((o) => ({ url: "", role: o.role, mediaType: o.mediaType }))
           : []
+      let sources = recordedSources
+      // A refresh asks for the object's current URLs when the provider's
+      // rotate; the recorded ones may name bytes a cache still holds.
+      let rotated = false
+      if (opts.refresh && entry.status === "downloaded" && entry.objectId && provider.refreshSources) {
+        let current: OutputSource[] | null | undefined
+        try {
+          current = await provider.refreshSources(entry.objectId, {
+            generator: entry.generator,
+            metadata: entry.providerMetadata?.[provider.id],
+            sources: recordedSources,
+          })
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          upsert(lock, key, { status: "download-failed", error: `download failed: ${message}` })
+          result.failed++
+          log(`  FAILED  ${key}: ${message}`)
+          await saveLock(lockPath, lock)
+          continue
+        }
+        if (current === null) {
+          upsert(lock, key, { status: "download-failed", error: `download failed: ${entry.objectId} no longer exists upstream` })
+          result.failed++
+          log(`  FAILED  ${key}: ${entry.objectId} no longer exists upstream`)
+          await saveLock(lockPath, lock)
+          continue
+        }
+        if (current) {
+          sources = current.map((source) => ({
+            ...source,
+            mediaType: source.mediaType ?? recordedSources.find((r) => r.role === source.role)?.mediaType,
+          }))
+          rotated = sources.length !== recordedSources.length
+            || sources.some((source, index) => source.url !== recordedSources[index]?.url || source.role !== recordedSources[index]?.role)
+        }
+      }
       if (!sources.length) {
         upsert(lock, key, {
           status: "download-failed",
@@ -289,7 +325,12 @@ export async function fetchAssets(
         }
         if (opts.refresh && !wrote) {
           // Every object is still what the record says; there is nothing to
-          // write and no reason to touch the entry's download time.
+          // write and no reason to touch the entry's download time. New URLs
+          // for the same bytes are still worth keeping.
+          if (rotated) {
+            const persistent = sources.filter((source) => shouldPersistSourceUrl(source.url))
+            upsert(lock, key, { sourceUrl: persistent[0]?.url ?? null, sourceUrls: persistent })
+          }
           result.unchanged = (result.unchanged ?? 0) + 1
           continue
         }
