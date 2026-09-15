@@ -1,3 +1,10 @@
+# [0.46.0](https://github.com/gfargo/pixelkiln/compare/v0.45.0...v0.46.0) (2026-09-15)
+
+
+### Features
+
+* **character:** pro-flash engine for bases ([#138](https://github.com/gfargo/pixelkiln/issues/138)) ([23b8914](https://github.com/gfargo/pixelkiln/commit/23b8914df6f9e08dbbb95c4e59530d42b1b17caa))
+
 # [0.45.0](https://github.com/gfargo/pixelkiln/compare/v0.44.0...v0.45.0) (2026-09-15)
 
 
