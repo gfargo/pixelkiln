@@ -172,6 +172,7 @@ regenerating the parent makes the child stale.
 | base, `mode: standard` | create-character-with-4/8-directions | 1 |
 | base, `mode: v3` | create-character-v3 | 1 + ceil(size² × 8 / 65536): 2 at 64px, 3 at 128px |
 | base, `mode: pro` | create-character-pro | 20–40 by canvas |
+| base, `mode: pro-flash` | create-character-pro-flash | image tier (5 to 96px, 6 to 208px, 9 above) + ceil(size² × 8 / 65536): 6 at 64px, 8 at 128px, 17 at 256px; rotations only from a `reference` |
 | state | create-character-state | 20–40 by canvas |
 | animation with a `template` | animate-character | 1 |
 | animation from text (v3) | animate-character | ceil(size² × frames / 65536): 1 at 64px, 2 at 128px |

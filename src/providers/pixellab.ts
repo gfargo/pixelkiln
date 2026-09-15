@@ -65,7 +65,8 @@ export function pixelLabObjectUrl(generator: Generator, objectId: string | null)
  * The cost PixelLab charges for one character-family asset, in generations.
  *
  * A standard base is a flat 1. A v3 base is Pixen's 1 plus the rotation
- * pass, `ceil(s*s*8 / 65536)`. Pro bases and every state are priced by
+ * pass, `ceil(s*s*8 / 65536)`; a pro-flash base is its image tier plus the
+ * same rotation pass. Pro bases and every state are priced by
  * canvas tier, 20 to 40, the same tiers as `1dir`; PixelLab resolves the
  * exact tier when the job runs and reserves against the floor, so this
  * reports the tier the canvas lands in. A template animation is 1 per
@@ -85,7 +86,27 @@ export function characterCost(spec: ResolvedSpec): number {
   if (character.kind === "state") return generationCost(spec.width, spec.height, "1dir")
   if (character.mode === "standard") return 1
   if (character.mode === "v3") return 1 + Math.max(1, Math.ceil((px * 8) / 65536))
+  if (character.mode === "pro-flash") {
+    // From a sprite, the canvas is the sprite's, padded square; only the rotations are billed.
+    const south = character.reference?.south
+    return south ? proFlashCharacterCost(south.width, south.height, true) : proFlashCharacterCost(spec.width, spec.height, false)
+  }
   return generationCost(spec.width, spec.height, "1dir")
+}
+
+/**
+ * Pro Flash prices the south image and the v3 rotations separately; the
+ * rotation pass is v3's formula on the square canvas the sprite is padded
+ * to, and the image is a size tier read from PixelLab's cost endpoint in
+ * September 2026 (5 up to 96px, 6 up to 208px, 9 beyond). A base drawn
+ * from the author's own sprite pays the rotations only.
+ */
+export function proFlashCharacterCost(width: number, height: number, fromReference: boolean): number {
+  const side = Math.max(32, Math.ceil(Math.max(width, height) / 4) * 4)
+  const rotations = Math.max(1, Math.ceil((side * side * 8) / 65536))
+  if (fromReference) return rotations
+  const image = side <= 96 ? 5 : side <= 208 ? 6 : 9
+  return image + rotations
 }
 
 /** The name PixelKiln gives an animation upstream, so a re-roll can find and replace it. */
@@ -94,6 +115,8 @@ export function characterAnimationName(spec: Pick<ResolvedSpec, "styleId" | "ass
 }
 
 const CHARACTER_TEMPLATES = ["mannequin", "bear", "cat", "dog", "horse", "lion"] as const
+/** Pro Flash also fits a skeleton to whatever the image shows. */
+const PRO_FLASH_TEMPLATES = [...CHARACTER_TEMPLATES, "custom"] as const
 
 interface AnimationJob {
   characterId: string
@@ -281,7 +304,7 @@ export class PixelLabProvider implements Provider {
       if (!character.reference.south) throw new Error(`${label}: a reference needs a south-facing sprite`)
       if (character.mode !== "standard") {
         if (given.length > 1) throw new Error(`${label}: PixelLab ${character.mode} rotates one south-facing reference; drop the other directions`)
-        const limit = character.mode === "v3" ? 256 : 168
+        const limit = character.mode === "pro" ? 168 : 256
         const south = character.reference.south
         if (south.width > limit || south.height > limit) {
           throw new Error(`${label}: reference is ${south.width}x${south.height}; PixelLab ${character.mode} takes up to ${limit}px`)
@@ -306,27 +329,35 @@ export class PixelLabProvider implements Provider {
       }
     }
     if (styleImages.length) {
-      if (character.mode !== "pro") {
+      if (character.mode !== "pro" && character.mode !== "pro-flash") {
         throw new Error(
           `PixelLab ${character.mode} characters take no style images; ` +
-            "give a base its own sprite with `reference`, or use mode pro for a style anchor",
+            "give a base its own sprite with `reference`, or use mode pro or pro-flash for a style anchor",
         )
       }
-      if (styleImages.length > 1) throw new Error("PixelLab pro characters take one style image")
+      if (styleImages.length > 1) throw new Error(`PixelLab ${character.mode} characters take one style image`)
       if (character.kind === "base" && character.reference) {
-        throw new Error(`${label}: a pro base rotating its own reference takes no style image`)
+        throw new Error(`${label}: a ${character.mode} base rotating its own reference takes no style image`)
       }
       const image = styleImages[0]!
-      if (image.width > 168 || image.height > 168) {
-        throw new Error(`PixelLab pro character style image is ${image.width}x${image.height}; the limit is 168px`)
+      const limit = character.mode === "pro" ? 168 : 256
+      if (image.width > limit || image.height > limit) {
+        throw new Error(`PixelLab ${character.mode} character style image is ${image.width}x${image.height}; the limit is ${limit}px`)
       }
     }
-    const maxSize = character.mode === "v3" ? 256 : 128
+    if (character.styleTraits && character.mode !== "pro-flash") {
+      throw new Error(`${label}: styleTraits choose what a pro-flash style image lends; the ${character.mode} engine does not take them`)
+    }
+    const maxSize = character.mode === "v3" || character.mode === "pro-flash" ? 256 : 128
     if (spec.width < 16 || spec.height < 16 || spec.width > maxSize || spec.height > maxSize) {
       throw new Error(`PixelLab ${character.mode} characters must be between 16 and ${maxSize} pixels`)
     }
-    if (!(CHARACTER_TEMPLATES as readonly string[]).includes(character.template)) {
-      throw new Error(`PixelLab character template must be one of: ${CHARACTER_TEMPLATES.join(", ")}`)
+    if (character.mode === "pro-flash" && character.kind === "base" && (spec.width % 4 || spec.height % 4)) {
+      throw new Error(`PixelLab pro-flash characters are sized in multiples of 4 pixels; ${spec.width}x${spec.height} is not`)
+    }
+    const templates: readonly string[] = character.mode === "pro-flash" ? PRO_FLASH_TEMPLATES : CHARACTER_TEMPLATES
+    if (!templates.includes(character.template)) {
+      throw new Error(`PixelLab ${character.mode} character template must be one of: ${templates.join(", ")}`)
     }
     const views = character.mode === "standard"
       ? ["low top-down", "high top-down", "side", "perspective", "oblique"]
@@ -388,6 +419,8 @@ export class PixelLabProvider implements Provider {
         enhancePrompt: character.enhancePrompt,
         concept: character.concept ? readPose(spec, "concept image", character.concept) : undefined,
         styleCharacterId: character.styleAnchor ? requireStyleObjectId(spec, context) : undefined,
+        styleReferenceSize: styleImage ? { width: styleImage.width, height: styleImage.height } : undefined,
+        styleTraits: character.styleTraits,
       })
       return { jobId: res.character_id, metadata: { character: { kind: "base", characterId: res.character_id, mode: character.mode, directions: character.directions, backgroundJobId: res.background_job_id } } }
     }

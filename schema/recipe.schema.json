@@ -212,7 +212,8 @@
               "enum": [
                 "standard",
                 "v3",
-                "pro"
+                "pro",
+                "pro-flash"
               ]
             },
             "directions": {
@@ -225,6 +226,24 @@
             "template": {
               "type": "string",
               "minLength": 1
+            },
+            "styleTraits": {
+              "type": "object",
+              "properties": {
+                "palette": {
+                  "type": "boolean"
+                },
+                "outline": {
+                  "type": "boolean"
+                },
+                "detail": {
+                  "type": "boolean"
+                },
+                "shading": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
             },
             "proportions": {
               "anyOf": [

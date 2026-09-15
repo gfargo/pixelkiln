@@ -97,6 +97,7 @@ export function specHash(
             textGuidanceScale: spec.character.textGuidanceScale,
             isometric: spec.character.isometric,
             enhancePrompt: spec.character.enhancePrompt,
+            styleTraits: spec.character.styleTraits,
             reference: spec.character.reference
               ? Object.fromEntries(Object.entries(spec.character.reference).map(([direction, image]) => [direction, image.sha256]))
               : undefined,

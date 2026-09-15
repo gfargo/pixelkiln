@@ -758,6 +758,7 @@ async function resolveCharacterShape(
     ...(style.textGuidanceScale !== undefined ? { textGuidanceScale: style.textGuidanceScale } : {}),
     ...(style.isometric !== undefined ? { isometric: style.isometric } : {}),
     ...(style.enhancePrompt !== undefined ? { enhancePrompt: style.enhancePrompt } : {}),
+    ...(style.styleTraits ? { styleTraits: style.styleTraits } : {}),
   }
   if (asset.concept) {
     const image = await files.load(asset.concept, "Concept image")

@@ -336,6 +336,30 @@ describe("character controls", () => {
     expect((await p.plan()).items.map((i) => `${i.key}=${i.state}`)).toEqual(["cast/hero=ok", "cast/rook=stale"])
   })
 
+  it("resolves a pro-flash base with a style image and its traits, and applies the engine's own limits", async () => {
+    await writeFile(path.join(dir, "style.png"), px(48, 30))
+    await writeFile(path.join(dir, "s64.png"), px(64, 30))
+    await writeFile(path.join(dir, "s300.png"), px(300, 30))
+    const refused = async (overrides: Parameters<typeof writeManifest>[0]) => resolveSpecs(await loadManifest(await writeManifest(overrides)))
+    const specs = await refused({ style: { mode: "pro-flash", template: "custom", styleImages: [{ path: "style.png" }], styleTraits: { palette: false } }, assets: { a: { prompt: "a" } } })
+    expect(specs[0]!.character).toMatchObject({ mode: "pro-flash", directions: 8, template: "custom", styleTraits: { palette: false } })
+    expect(specs[0]!.cost).toBe(6)
+    const fromSprite = await refused({ style: { mode: "pro-flash" }, assets: { b: { prompt: "b", reference: "s64.png" } } })
+    expect(fromSprite[0]!.cost).toBe(1)
+    // A style image is a style-wide input, so a base rotating its own sprite cannot sit under one.
+    await expect(refused({ style: { mode: "pro-flash", styleImages: [{ path: "style.png" }] }, assets: { b: { prompt: "b", reference: "s64.png" } } })).rejects.toThrow(/pro-flash base rotating its own reference takes no style image/)
+
+    await expect(refused({ style: { mode: "pro-flash", size: 66 }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/multiples of 4 pixels; 66x66 is not/)
+    await expect(refused({ style: { mode: "pro-flash", template: "dragon" }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/pro-flash character template must be one of: mannequin, bear, cat, dog, horse, lion, custom/)
+    await expect(refused({ style: { mode: "pro", template: "custom" }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/pro character template must be one of: mannequin, bear, cat, dog, horse, lion$/)
+    await expect(refused({ style: { mode: "pro-flash", styleTraits: { outline: false } }, assets: { a: { prompt: "a" } } })).resolves.toHaveLength(1)
+    await expect(refused({ style: { mode: "v3", styleTraits: { outline: false } }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/styleTraits choose what a pro-flash style image lends/)
+    await expect(refused({ style: { mode: "pro-flash" }, assets: { a: { prompt: "a", reference: "s300.png" } } })).rejects.toThrow(/reference is 300x300; PixelLab pro-flash takes up to 256px/)
+    await expect(refused({ style: { mode: "pro-flash", styleImages: [{ path: "s300.png" }] }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/style image is 300x300; the limit is 256px/)
+    await expect(refused({ style: { mode: "pro-flash", proportions: "chibi" }, assets: { a: { prompt: "a" } } })).rejects.toThrow(/proportions apply to standard bases; the pro-flash engine/)
+    await expect(refused({ style: { mode: "pro-flash", styleCharacter: "a" }, assets: { a: { prompt: "a" }, b: { prompt: "b" } } })).rejects.toThrow(/styleCharacter is a pro input; the pro-flash engine/)
+  })
+
   it("reads the reference at submit time and refuses one that changed since resolve", async () => {
     await writeFile(path.join(dir, "mira-south.png"), px(64, 30))
     const file = await writeManifest({ style: { proportions: "heroic" }, assets: { mira: { prompt: "mira", reference: "mira-south.png" } } })
@@ -356,6 +380,24 @@ describe("character controls", () => {
 describe("characterCost", () => {
   const spec = (character: Partial<ResolvedSpec["character"]>, size = 64) =>
     ({ width: size, height: size, character: { kind: "base", mode: "standard", directions: 8, template: "mannequin", ...character } } as unknown as ResolvedSpec)
+
+  it("prices pro-flash as its image tier plus v3's rotations, or the rotations alone from a sprite", () => {
+    const base = (size: number, extra: Record<string, unknown> = {}) => ({ width: size, height: size, character: { kind: "base", mode: "pro-flash", directions: 8, template: "mannequin", ...extra } }) as unknown as ResolvedSpec
+    expect(characterCost(base(64))).toBe(6)
+    expect(characterCost(base(96))).toBe(7)
+    expect(characterCost(base(128))).toBe(8)
+    expect(characterCost(base(160))).toBe(10)
+    expect(characterCost(base(256))).toBe(17)
+    // Read from PixelLab's cost endpoint in September 2026: 32 to 80 → 6, 96 → 7, 112 → 8, 192 → 11, 224 → 16.
+    expect(characterCost(base(32))).toBe(6)
+    expect(characterCost(base(112))).toBe(8)
+    expect(characterCost(base(192))).toBe(11)
+    expect(characterCost(base(224))).toBe(16)
+    const sprite = (size: number) => base(64, { reference: { south: { width: size, height: size } } })
+    expect(characterCost(sprite(64))).toBe(1)
+    expect(characterCost(sprite(96))).toBe(2)
+    expect(characterCost(sprite(18))).toBe(1)
+  })
 
   it("prices each shape and engine the way PixelLab charges", () => {
     expect(characterCost(spec({ mode: "standard" }))).toBe(1)
@@ -487,6 +529,22 @@ describe("the wire", () => {
     expect(calls[1]!.body).not.toHaveProperty("concept_image")
     expect(calls[2]!.body).toMatchObject({ method: "rotate_character", reference_image: { base64: "U09VVEg=" } })
     for (const key of ["concept_image", "style_character_id"]) expect(calls[2]!.body).not.toHaveProperty(key)
+  })
+
+  it("sends pro-flash its own shape: the sprite or a size, the style image with its size and traits, eight directions", async () => {
+    const client = new PixelLabClient("key")
+    const south = { base64: "U09VVEg=", format: "png" as const }
+    const style = { base64: "U1RZTEU=", format: "png" as const }
+    await client.createCharacter({ mode: "pro-flash", description: "a", size: 64, directions: 8, template: "custom", view: "side", seed: 3, styleReference: style, styleReferenceSize: { width: 48, height: 48 }, styleTraits: { palette: false, shading: true } })
+    await client.createCharacter({ mode: "pro-flash", description: "a", size: 64, directions: 8, template: "mannequin", reference: { south }, proportions: "chibi", enhancePrompt: true })
+    expect(calls[0]).toMatchObject({ path: "/v2/create-character-pro-flash", body: {
+      description: "a", image_size: { width: 64, height: 64 }, template_id: "custom", n_directions: 8, view: "side", seed: 3,
+      style_image: { image: { type: "base64", base64: "U1RZTEU=", format: "png" }, size: { width: 48, height: 48 } },
+      style_options: { color_palette: false, shading: true },
+    } })
+    expect(calls[0]!.body).not.toHaveProperty("first_frame")
+    expect(calls[1]!.body).toMatchObject({ first_frame: { type: "base64", base64: "U09VVEg=", format: "png" }, n_directions: 8 })
+    for (const key of ["image_size", "style_image", "style_options", "proportions", "enhance_prompt"]) expect(calls[1]!.body).not.toHaveProperty(key)
   })
 
   it("sends a state and an animation the way the API documents them", async () => {
