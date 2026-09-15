@@ -642,8 +642,9 @@ manifest-relative image of the pose to begin from instead of the
 character's rotation; `endFrame` is a pose to reach, and with it the loop
 interpolates from the start frame to that image (both up to 256px, and the
 end frame the same size as the start frame or, without one, as the
-character's rotation, which `plan` checks once the parent is on disk).
-`subject` replaces the character's own description for this loop when it
+character's rotation, which `plan` checks once the parent is on disk; the
+frames can still come back on a taller canvas when the motion needs it, as
+a 92px crouch did at 92×104). `subject` replaces the character's own description for this loop when it
 would mislead the model (a state that took the armour off), and
 `enhancePrompt` lets PixelLab expand the action into a fuller motion
 description first. A template loop takes none of those; it takes
