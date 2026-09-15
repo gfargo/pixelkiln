@@ -1,3 +1,10 @@
+# [0.39.0](https://github.com/gfargo/pixelkiln/compare/v0.38.0...v0.39.0) (2026-09-15)
+
+
+### Features
+
+* **pixellab:** character generator with bases, states, and animations as managed assets ([#125](https://github.com/gfargo/pixelkiln/issues/125)) ([1213094](https://github.com/gfargo/pixelkiln/commit/121309462dd3dd70042d52ea15f4108f088d3ebc)), closes [#124](https://github.com/gfargo/pixelkiln/issues/124)
+
 # [0.38.0](https://github.com/gfargo/pixelkiln/compare/v0.37.0...v0.38.0) (2026-09-14)
 
 
