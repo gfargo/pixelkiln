@@ -20,6 +20,7 @@ npm test
 npm run build
 npm run test:package
 npm run test:gallery
+npm run test:godot
 ```
 
 `test:gallery` serves a gallery over `FakeProvider` and drives it in headless

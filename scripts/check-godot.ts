@@ -1,0 +1,169 @@
+/**
+ * Open PixelKiln's Godot output in Godot.
+ *
+ * `pack --format godot` writes a SpriteFrames resource and `export --format
+ * godot` a TileSet, and the unit tests check the text of both against what
+ * Godot's own editor writes. This puts them in a Godot project and asks a
+ * headless Godot to load them and say what it sees: animation names, frame
+ * counts, speeds, loops, texture sizes, atlas tiles, terrain sets. The
+ * result is what a game would get, not what the writer meant.
+ *
+ * Needs a Godot 4 binary: set GODOT, or the macOS app bundle is used.
+ * Without one it skips, unless CI is set, in which case it fails.
+ */
+import { execFile } from "node:child_process"
+import { existsSync } from "node:fs"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import { promisify } from "node:util"
+import { packStyle } from "../src/pipeline/pack.ts"
+import { renderGodotSpriteFrames } from "../src/pipeline/sheet-formats.ts"
+import { exportTileset } from "../src/pipeline/tileset-export.ts"
+import { encodeRgbaPng } from "../src/png.ts"
+import type { Lock, LockEntry, ResolvedSpec } from "../src/types.ts"
+
+const execFileAsync = promisify(execFile)
+
+const godot = [process.env.GODOT, "/Applications/Godot.app/Contents/MacOS/Godot", "/usr/local/bin/godot", "/usr/bin/godot"]
+  .filter((candidate): candidate is string => Boolean(candidate))
+  .find((candidate) => existsSync(candidate))
+if (!godot) {
+  const message = "godot check: no Godot found; set GODOT to a Godot 4 binary"
+  if (process.env.CI) {
+    console.error(message)
+    process.exit(1)
+  }
+  console.log(`${message} (skipped)`)
+  process.exit(0)
+}
+
+const dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-godot-"))
+const art = path.join(dir, "art")
+await mkdir(art, { recursive: true })
+const px = (n: number, shade: number) => {
+  const rgba = Buffer.alloc(n * n * 4, shade)
+  for (let i = 3; i < rgba.length; i += 4) rgba[i] = 255
+  return encodeRgbaPng(n, n, rgba)
+}
+
+// A cast: a 4-direction base and a 6-frame loop, as pack would find them.
+const outputs: Record<string, LockEntry["outputs"]> = { hero: [], "hero.walk": [] }
+for (const direction of ["south", "west", "east", "north"]) {
+  await writeFile(path.join(art, `hero-${direction}.png`), px(16, 40))
+  outputs.hero!.push({ path: `art/hero-${direction}.png`, sha256: "x", role: direction })
+}
+for (let i = 0; i < 6; i++) {
+  await writeFile(path.join(art, `hero.walk-frame-0${i}.png`), px(16, 80 + i * 10))
+  outputs["hero.walk"]!.push({ path: `art/hero.walk-frame-0${i}.png`, sha256: "x", role: `frame-0${i}` })
+}
+const lock = { version: 2, entries: {
+  "cast/hero": { status: "downloaded", generator: "character", provider: "pixellab", outputs: outputs.hero },
+  "cast/hero.walk": { status: "downloaded", generator: "character", provider: "pixellab", outputs: outputs["hero.walk"], providerMetadata: { pixellab: { frameSet: { fps: 12, count: 6 } } } },
+} } as unknown as Lock
+const sheet = packStyle(lock, "cast", dir)
+await writeFile(path.join(dir, "cast-sheet.png"), sheet.png)
+await writeFile(path.join(dir, "cast-sheet.tres"), renderGodotSpriteFrames(sheet.atlas, { imageName: "cast-sheet.png" }))
+
+// A connectable tile set with the fixture's corner rules.
+const rules = JSON.parse(await readFile(path.resolve("test/fixtures/tileset/tile-rules.json"), "utf8"))
+const tiles: LockEntry["outputs"] = []
+for (let index = 0; index < 4; index++) {
+  const file = path.join(dir, `terrain-tile-0${index}.png`)
+  await writeFile(file, px(8, 60 + index * 30))
+  tiles.push({ path: file, sha256: String(index), role: `tile-0${index}` })
+}
+const tileset = exportTileset(
+  { outputs: tiles, provider: "pixellab", providerMetadata: { pixellab: { tileKind: "tileset", tileRules: rules } } } as LockEntry,
+  { root: dir, styleId: "ground", assetId: "terrain", generator: "tiles", outFile: path.join(dir, "terrain.png"), tileType: "square_topdown" } as ResolvedSpec,
+  { format: "godot", manifestDir: dir, imageName: "terrain-tileset.png", columns: 2 },
+)
+await writeFile(path.join(dir, "terrain-tileset.png"), tileset.png)
+await writeFile(path.join(dir, "terrain-tileset.tres"), tileset.document)
+
+await writeFile(path.join(dir, "project.godot"), `; Engine configuration file.
+config_version=5
+
+[application]
+config/name="pixelkiln-check"
+config/features=PackedStringArray("4.4")
+`)
+await writeFile(path.join(dir, "verify.gd"), `extends SceneTree
+
+func _init() -> void:
+	var report := {}
+	var frames := load("res://cast-sheet.tres") as SpriteFrames
+	if frames == null:
+		report["spriteframes"] = "failed to load"
+	else:
+		var names: Array = []
+		for name in frames.get_animation_names():
+			names.append(String(name))
+		names.sort()
+		report["animations"] = names
+		report["walk"] = {
+			"frames": frames.get_frame_count("hero.walk"),
+			"speed": frames.get_animation_speed("hero.walk"),
+			"loop": frames.get_animation_loop("hero.walk"),
+			"size": [frames.get_frame_texture("hero.walk", 0).get_width(), frames.get_frame_texture("hero.walk", 0).get_height()],
+		}
+		report["south"] = {
+			"frames": frames.get_frame_count("hero/south"),
+			"loop": frames.get_animation_loop("hero/south"),
+		}
+	var tileset := load("res://terrain-tileset.tres") as TileSet
+	if tileset == null:
+		report["tileset"] = "failed to load"
+	else:
+		var source := tileset.get_source(tileset.get_source_id(0)) as TileSetAtlasSource
+		var terrain_names: Array = []
+		var terrains := 0
+		if tileset.get_terrain_sets_count() > 0:
+			terrains = tileset.get_terrains_count(0)
+			for i in range(terrains):
+				terrain_names.append(tileset.get_terrain_name(0, i))
+		report["tileset"] = {
+			"sources": tileset.get_source_count(),
+			"tiles": source.get_tiles_count() if source != null else -1,
+			"tile_size": [tileset.tile_size.x, tileset.tile_size.y],
+			"terrain_sets": tileset.get_terrain_sets_count(),
+			"terrains": terrains,
+			"terrain_names": terrain_names,
+		}
+	print("PIXELKILN_REPORT " + JSON.stringify(report))
+	quit(0)
+`)
+
+const failures: string[] = []
+const check = (ok: unknown, what: string) => {
+  if (!ok) failures.push(what)
+  console.log(`  ${ok ? "ok  " : "FAIL"} ${what}`)
+}
+try {
+  // The import pass writes the .import sidecars a texture load needs.
+  await execFileAsync(godot, ["--headless", "--path", dir, "--import"], { timeout: 180_000 }).catch(() => {})
+  const { stdout, stderr } = await execFileAsync(godot, ["--headless", "--path", dir, "--script", "res://verify.gd"], { timeout: 120_000 })
+  const line = (stdout + stderr).split("\n").find((l) => l.startsWith("PIXELKILN_REPORT "))
+  if (!line) throw new Error(`no report from Godot:\n${stdout}\n${stderr}`)
+  const report = JSON.parse(line.slice("PIXELKILN_REPORT ".length))
+  console.log(`\ngodot ${(await execFileAsync(godot, ["--version"])).stdout.trim()} loaded the resources:`)
+  check(Array.isArray(report.animations), "SpriteFrames loads")
+  check(JSON.stringify(report.animations) === JSON.stringify(["hero.walk", "hero/east", "hero/north", "hero/south", "hero/west"]), `animations are the four directions and the loop (${JSON.stringify(report.animations)})`)
+  check(report.walk?.frames === 6, `the loop has 6 frames (${report.walk?.frames})`)
+  check(report.walk?.speed === 12, `the loop plays at 12 fps (${report.walk?.speed})`)
+  check(report.walk?.loop === true, "the loop loops")
+  check(JSON.stringify(report.walk?.size) === "[16,16]", `each frame is the 16px cell (${JSON.stringify(report.walk?.size)})`)
+  check(report.south?.frames === 1 && report.south?.loop === false, "a direction is a one-frame still")
+  check(typeof report.tileset === "object", "TileSet loads")
+  check(report.tileset?.sources === 1 && report.tileset?.tiles === 4, `one atlas source with 4 tiles (${report.tileset?.sources}, ${report.tileset?.tiles})`)
+  check(JSON.stringify(report.tileset?.tile_size) === "[8,8]", `tile size is 8px (${JSON.stringify(report.tileset?.tile_size)})`)
+  check(report.tileset?.terrain_sets === 1 && report.tileset?.terrains === 2, `one terrain set with two terrains (${report.tileset?.terrain_sets}, ${report.tileset?.terrains})`)
+  check(JSON.stringify(report.tileset?.terrain_names) === JSON.stringify(["grass", "water"]), `terrains are named from the rules (${JSON.stringify(report.tileset?.terrain_names)})`)
+} finally {
+  await rm(dir, { recursive: true, force: true })
+}
+if (failures.length) {
+  console.error(`\ngodot check failed: ${failures.length} check(s)`)
+  process.exit(1)
+}
+console.log("\ngodot check passed")

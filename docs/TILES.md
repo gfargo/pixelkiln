@@ -108,6 +108,11 @@ resolved manifest spec.
 The texture path is relative to the `.tres`, so the generated PNG and resource
 can move together inside a Godot project.
 
+Both this `TileSet` and the `SpriteFrames` that `pack --format godot` writes
+are loaded by a headless Godot 4.7.2 in CI (`npm run test:godot`), which
+reports the atlas tiles, terrain sets and names, animation names, frame
+counts, speeds, and loop flags it sees.
+
 ## Deliberate limits
 
 - Tiled and Godot exports require every image to match the atlas cell size.
