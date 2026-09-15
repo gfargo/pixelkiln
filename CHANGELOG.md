@@ -1,3 +1,11 @@
+# [0.40.0](https://github.com/gfargo/pixelkiln/compare/v0.39.0...v0.40.0) (2026-09-15)
+
+
+### Features
+
+* **adopt:** bring existing account characters under the manifest ([#127](https://github.com/gfargo/pixelkiln/issues/127)) ([ee2f130](https://github.com/gfargo/pixelkiln/commit/ee2f1300acde4b73bfa4bfbc40d8a7b8c1d69ce4))
+* **gen:** run dependency waves in one invocation under one budget ([#126](https://github.com/gfargo/pixelkiln/issues/126)) ([83f13ba](https://github.com/gfargo/pixelkiln/commit/83f13bad511c47c10cc9b999f008effd7777d67c))
+
 # [0.39.0](https://github.com/gfargo/pixelkiln/compare/v0.38.0...v0.39.0) (2026-09-15)
 
 
