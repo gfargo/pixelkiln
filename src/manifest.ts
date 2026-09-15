@@ -495,6 +495,7 @@ export async function resolveSpecs(
           : {}),
         tags,
         source: asset.sourceByStyle[styleId] ?? asset.source,
+        ...(asset.remoteId ? { remoteId: asset.remoteId } : {}),
         // Revision identity is attached after every dependency in this style
         // has a concrete output target. Finalization below computes the hash.
         specHash: "",

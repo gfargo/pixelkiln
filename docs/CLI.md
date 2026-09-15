@@ -258,6 +258,24 @@ copies recovered prompts into the manifest; `--tag` pushes project tags. Local
 retouches remain untracked rather than being regenerated or overwritten. Pass
 `--provider` when the manifest uses more than one provider.
 
+Character assets are adopted in the same run, from the account's characters.
+A base or state is matched by the `remoteId` the asset declares (the PixelLab
+character id) or, without one, by the bytes of its south-facing file
+(`<asset>-south.png`); an animation by `remoteId`
+(`<character id>#<animation group id>`), by the bytes of its first frame, or
+by the name PixelKiln gives loops it made itself. Unlike objects, the files
+are written when they are missing, every direction and frame, because they
+had to be downloaded to compare and a state's identity hashes its parent's
+south file; a file that is on disk and differs from the account is left
+alone and reported. Bases go first, then states, then animations. Characters
+on the account that no entry claims are listed at the end with their ids, so
+bringing one in is a matter of declaring the asset with that `remoteId` and
+running `adopt` again.
+
+```bash
+pixelkiln adopt --style cast
+```
+
 ### `accept`
 
 Re-baseline intact existing art after prompt/style prose changes. Artwork bytes

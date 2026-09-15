@@ -590,6 +590,10 @@
                 ],
                 "additionalProperties": false
               },
+              "remoteId": {
+                "type": "string",
+                "minLength": 1
+              },
               "state": {
                 "type": "object",
                 "properties": {

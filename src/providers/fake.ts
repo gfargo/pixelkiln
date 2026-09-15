@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import type { BalanceInfo, CostEstimate, JobState, Provider, RemoteAsset } from "../provider.ts"
+import type { BalanceInfo, CostEstimate, JobState, Provider, RemoteAsset, RemoteCharacter, RemoteCharacterDetail } from "../provider.ts"
 import type { Generator, ResolvedSpec, RevisionMode } from "../types.ts"
 
 /**
@@ -61,8 +61,11 @@ export class FakeProvider implements Provider {
     if (opts.supportsList !== false) this.list = this.listImpl.bind(this)
   }
 
+  /** Characters a test puts on the account for adoption; `fake://` URLs download like objects. */
+  readonly characters = new Map<string, RemoteCharacterDetail>()
+
   supports(generator: Generator): boolean {
-    return generator === "1dir" || generator === "map"
+    return generator === "1dir" || generator === "map" || generator === "character"
   }
 
   supportsRevision(_mode: RevisionMode): boolean {
@@ -168,6 +171,16 @@ export class FakeProvider implements Provider {
 
   private async *listImpl(): AsyncGenerator<RemoteAsset> {
     for (const asset of this.assets.values()) yield asset
+  }
+
+  async *listCharacters(): AsyncGenerator<RemoteCharacter> {
+    for (const { rotations: _r, animations: _a, ...character } of this.characters.values()) yield character
+  }
+
+  async getCharacter(id: string): Promise<RemoteCharacterDetail> {
+    const character = this.characters.get(id)
+    if (!character) throw new Error(`fake provider has no character ${id}`)
+    return character
   }
 
   async delete(assetId: string): Promise<void> {

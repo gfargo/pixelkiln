@@ -390,8 +390,8 @@ package share one source. Policies: [Contributing](./CONTRIBUTING.md),
 
 ## Scope
 
-Adopting and salvaging characters, and PixelLab's portrait and outfit tools,
-are not implemented. Cross-project content-cache reuse and `workspace find`
+Salvaging characters, and PixelLab's portrait and outfit tools, are not
+implemented. Cross-project content-cache reuse and `workspace find`
 are deferred. See the open [roadmap issues](https://github.com/gfargo/pixelkiln/issues).
 
 ## License

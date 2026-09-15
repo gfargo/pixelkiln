@@ -9,6 +9,7 @@ import { saveLock, upsert as upsertLock } from "../../lock.ts"
 import { lockKey } from "../../types.ts"
 import { pushTags } from "../../pipeline/fetch.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "../../pipeline/adopt.ts"
+import { adoptCharacters } from "../../pipeline/adopt-characters.ts"
 import {
   loadClaims,
   findOrphans,
@@ -35,12 +36,35 @@ export async function runBalance(args: Args): Promise<void> {
 }
 
 export async function runAdopt(args: Args): Promise<void> {
-  const { specs, lock, accountProvider } = await openAccountProject(args)
+  const { loaded, specs, lock, accountProvider } = await openAccountProject(args)
   const providerFor = providerCache("online")
   const provider = providerFor(accountProvider)
   log(`\n  Reconciling account objects against files already on disk…`)
-  const res = await adopt(provider, specs, lock, args.lock, { onProgress: log })
+  const res = await adopt(provider, specs.filter((spec) => spec.generator !== "character"), lock, args.lock, { onProgress: log })
   log(`\n  scanned ${res.scanned} remote object(s), adopted ${res.matched}`)
+  if (specs.some((spec) => spec.character) && provider.listCharacters) {
+    log(`\n  Reconciling account characters against the manifest's character assets…`)
+    const characters = await adoptCharacters(provider, specs, lock, args.lock, {
+      onProgress: log,
+      resolve: async () => (await resolveSpecs(loaded, { styles: args.styles, assets: args.assets }))
+        .filter((spec) => spec.provider === accountProvider),
+    })
+    log(`\n  scanned ${characters.scanned} character(s), adopted ${characters.matched}`)
+    if (characters.written.length) log(`  wrote ${characters.written.length} file(s) that were not on disk`)
+    for (const file of characters.differing) log(`  differs from the account, left alone: ${file}`)
+    if (characters.unmatched.length) {
+      log(`\n  character assets not matched (${characters.unmatched.length}):`)
+      for (const line of characters.unmatched.slice(0, 15)) log(`    ${line}`)
+    }
+    if (characters.remaining.length) {
+      log(`\n  characters on the account no entry claims (${characters.remaining.length}):`)
+      for (const c of characters.remaining.slice(0, 15)) {
+        log(`    ${c.id}  ${c.name}${c.stateName && c.stateName !== "Idle" ? ` / ${c.stateName}` : ""}  ${c.directions}dir ${c.width}x${c.height}  ${c.animationCount} animation(s)`)
+      }
+      if (characters.remaining.length > 15) log(`    … and ${characters.remaining.length - 15} more`)
+      log(`  Declare one as a character asset with "remoteId" and run adopt again to bring it in.`)
+    }
+  }
   if (res.ambiguous.length) {
     log(`\n  ambiguous (${res.ambiguous.length}):`)
     for (const a of res.ambiguous.slice(0, 10)) log(`    ${a}`)

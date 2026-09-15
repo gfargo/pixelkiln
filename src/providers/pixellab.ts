@@ -23,6 +23,8 @@ import type {
   Provider,
   RateLimit,
   RemoteAsset,
+  RemoteCharacter,
+  RemoteCharacterDetail,
   SubmitContext,
 } from "../provider.ts"
 
@@ -653,6 +655,52 @@ export class PixelLabProvider implements Provider {
 
   async delete(assetId: string): Promise<void> {
     await this.client.deleteObject(assetId)
+  }
+
+  async *listCharacters(): AsyncGenerator<RemoteCharacter> {
+    for await (const character of this.client.iterateCharacters(100)) {
+      yield remoteCharacter(character)
+    }
+  }
+
+  async getCharacter(id: string): Promise<RemoteCharacterDetail> {
+    const character = await this.client.getCharacter(id)
+    const order = character.directions === 4 ? CHARACTER_DIRECTIONS_4 : CHARACTER_DIRECTIONS_8
+    const rotations: OutputSource[] = []
+    for (const direction of order) {
+      const url = character.rotation_urls?.[direction]
+      if (url) rotations.push({ url, role: direction })
+    }
+    return {
+      ...remoteCharacter(character),
+      rotations,
+      animations: character.animations.flatMap((group) =>
+        group.directions.map((d) => ({
+          groupId: group.animation_group_id ?? null,
+          name: group.display_name ?? null,
+          type: group.animation_type,
+          direction: d.direction,
+          frames: d.frames,
+        }))),
+    }
+  }
+}
+
+function remoteCharacter(character: PixelLabCharacter): RemoteCharacter {
+  return {
+    id: character.id,
+    name: character.name,
+    stateName: character.state_name ?? null,
+    prompt: character.prompt,
+    groupId: character.group_id ?? null,
+    directions: character.directions,
+    width: character.size.width,
+    height: character.size.height,
+    createdAt: character.created_at,
+    previewUrl: character.preview_url ?? character.rotation_urls?.south ?? null,
+    tags: character.tags,
+    status: character.status,
+    animationCount: character.animation_count,
   }
 }
 

@@ -171,6 +171,41 @@ export interface RemoteAsset {
   status: string
 }
 
+/** A character on the account, as a listing reports it. */
+export interface RemoteCharacter {
+  id: string
+  /** Shared by every state in the group. */
+  name: string
+  /** This state's own name; `Idle` for a base. */
+  stateName: string | null
+  prompt: string
+  /** Groups a base with its states. */
+  groupId: string | null
+  directions: number
+  width: number
+  height: number
+  createdAt: string
+  /** The south-facing rotation. */
+  previewUrl: string | null
+  tags: string[]
+  status: string
+  animationCount: number
+}
+
+/** A character in full: every rotation and every animation direction it holds. */
+export interface RemoteCharacterDetail extends RemoteCharacter {
+  /** Rotations in output order, role = direction. */
+  rotations: OutputSource[]
+  animations: {
+    groupId: string | null
+    /** The name it was given, when the provider kept one. */
+    name: string | null
+    type: string
+    direction: string
+    frames: string[]
+  }[]
+}
+
 export interface BalanceInfo {
   unit: CostUnit
   remaining: number
@@ -316,6 +351,11 @@ export interface Provider {
 
   /** Irreversible. Only reached via `purge`, behind explicit confirmation. */
   delete?(assetId: string): Promise<void>
+
+  /** Characters the account holds, for adoption. Absent when the provider has no character family. */
+  listCharacters?(): AsyncGenerator<RemoteCharacter>
+  /** One character with its rotations and animations. */
+  getCharacter?(id: string): Promise<RemoteCharacterDetail>
 }
 
 export class UnsupportedCapabilityError extends PixelKilnError {
