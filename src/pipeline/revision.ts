@@ -25,8 +25,29 @@ export async function inspectRevisionReadiness(
 ): Promise<RevisionReadiness | null> {
   if (spec.mirror) return inspectMirror(spec, lock, new Set())
   if (spec.character?.parentSpec) return inspectCharacterParent(spec, lock, new Set())
+  if (spec.character?.styleAnchor) return inspectStyleAnchor(spec, lock, new Set())
   if (!spec.revision) return null
   return inspectRevision(spec, lock, new Set())
+}
+
+/**
+ * A pro base drawn in another character's style needs that character
+ * downloaded, current, untouched, and known to PixelLab; its south file is
+ * what this base's identity hashed at resolve time.
+ */
+async function inspectStyleAnchor(spec: ResolvedSpec, lock: Lock, seen: Set<string>): Promise<RevisionReadiness> {
+  const anchor = spec.character!.styleAnchor!
+  const label = `style anchor ${spec.styleId}/${anchor.assetId}`
+  const dependency = await inspectParent(anchor.spec, lock, seen)
+  if (!dependency.ready) return { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
+  if (!anchor.sha256 || !existsSync(anchor.file)) return { ready: false, reason: `${label} has no generated south-facing file yet` }
+  if ((await sha256File(anchor.file)) !== anchor.sha256) {
+    return { ready: false, reason: `${label} changed after the manifest was resolved` }
+  }
+  if (!lock.entries[lockKey(anchor.spec.styleId, anchor.spec.assetId)]?.objectId) {
+    return { ready: false, reason: `${label} has no PixelLab character id recorded` }
+  }
+  return { ready: true, reason: `${label} is current` }
 }
 
 /**
@@ -130,6 +151,10 @@ async function inspectParent(
   }
   if (spec.character?.parentSpec) {
     const inputs = await inspectCharacterParent(spec, lock, nextSeen)
+    if (!inputs.ready) return inputs
+  }
+  if (spec.character?.styleAnchor) {
+    const inputs = await inspectStyleAnchor(spec, lock, nextSeen)
     if (!inputs.ready) return inputs
   }
 

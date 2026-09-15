@@ -209,6 +209,10 @@
                   "enhancePrompt": {
                     "type": "boolean"
                   },
+                  "styleCharacter": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "seed": {
                     "type": "integer"
                   },
@@ -504,6 +508,10 @@
                   },
                   "enhancePrompt": {
                     "type": "boolean"
+                  },
+                  "styleCharacter": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "seed": {
                     "type": "integer"
@@ -901,6 +909,14 @@
                     }
                   }
                 ]
+              },
+              "concept": {
+                "type": "string",
+                "minLength": 1
+              },
+              "styleCharacter": {
+                "type": "string",
+                "minLength": 1
               },
               "mirror": {
                 "type": "string",

@@ -382,6 +382,15 @@ export interface ResolvedReferenceImage {
   format: "png" | "jpeg"
 }
 
+/** A pro base's style anchor: another character in the style, resolved so its identity and readiness can be checked. */
+export interface ResolvedStyleAnchor {
+  assetId: string
+  spec: ResolvedSpec
+  /** The anchor's south-facing generated file, and its hash when it exists. A change makes this spec stale. */
+  file: string
+  sha256: string | null
+}
+
 /** How a resolved spec describes its place in a character family. */
 export interface ResolvedCharacter {
   kind: "base" | "state" | "animation"
@@ -401,6 +410,10 @@ export interface ResolvedCharacter {
   enhancePrompt?: boolean
   /** A base drawn by rotating the author's own sprite(s), keyed by the direction each shows. */
   reference?: Partial<Record<CharacterDirection, ResolvedReferenceImage>>
+  /** `pro` bases: a concept image the design is seeded from. */
+  concept?: ResolvedReferenceImage
+  /** `pro` bases: the generated character in this style whose look this one follows. */
+  styleAnchor?: ResolvedStyleAnchor
   /** For a state or animation: the parent asset in the same style. */
   parentAssetId?: string
   parentSpec?: ResolvedSpec
@@ -583,6 +596,12 @@ const StyleObjectSchema = z
     isometric: z.boolean().optional(),
     /** `character` only, `v3` bases: let PixelLab expand the prompt into a fuller one before drawing. */
     enhancePrompt: z.boolean().optional(),
+    /**
+     * `character` only, `pro` bases: the asset id of a generated 8-direction
+     * character in this style whose look every base drawn from text or a
+     * concept follows. An asset may override it; the anchor itself ignores it.
+     */
+    styleCharacter: z.string().min(1).optional(),
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**
@@ -786,6 +805,15 @@ export const AssetSchema = z
      */
     reference: z.union([z.string().min(1), z.record(CharacterDirectionSchema, z.string().min(1))]).optional(),
     /**
+     * `character` styles, `pro` bases only: a manifest-relative concept
+     * image (a painting, a photo, a sketch; up to 1024px) that seeds the
+     * design instead of the prompt alone. A style image or `styleCharacter`
+     * may still anchor the look.
+     */
+    concept: z.string().min(1).optional(),
+    /** `character` styles, `pro` bases: this base's style anchor, over the style's. */
+    styleCharacter: z.string().min(1).optional(),
+    /**
      * Another asset of the same style flipped left to right, made locally
      * from that asset's downloaded files at no generation cost.
      *
@@ -868,6 +896,20 @@ export const AssetSchema = z
         code: z.ZodIssueCode.custom,
         message: "a reference sprite belongs on a base; a state, animation, or mirror takes its look from its parent",
         path: ["reference"],
+      })
+    }
+    if (asset.concept && (asset.state || asset.animation || asset.mirror)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "a concept image belongs on a base; a state, animation, or mirror takes its look from its parent",
+        path: ["concept"],
+      })
+    }
+    if (asset.concept && asset.reference) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "concept and reference are mutually exclusive: a concept seeds a new design, a reference is the sprite to rotate",
+        path: ["concept"],
       })
     }
     if (typeof asset.reference === "object" && !Object.keys(asset.reference).length) {

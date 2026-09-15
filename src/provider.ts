@@ -92,6 +92,8 @@ export interface SubmitContext {
    * the parent current before calling; the adapter only needs the id.
    */
   parentObjectId?: string
+  /** Provider-side id of the character a pro base anchors its style on, when the spec names one. */
+  styleObjectId?: string
   /**
    * Provider-owned details of the generation this submission replaces, when
    * the lockfile had one for the same asset, whatever its state. An adapter

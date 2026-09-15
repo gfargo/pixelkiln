@@ -263,6 +263,79 @@ describe("character controls", () => {
     expect(p.lock.entries["cast/mira.leap"]!.error).toMatch(/start frame changed after the manifest was resolved/)
   })
 
+  it("resolves a concept image and a style anchor for pro bases and refuses them elsewhere", async () => {
+    await writeFile(path.join(dir, "concept.png"), px(200, 30))
+    await writeFile(path.join(dir, "huge.png"), px(1100, 30))
+    await writeFile(path.join(dir, "s64.png"), px(64, 30))
+    const file = await writeManifest({
+      style: { mode: "pro", styleCharacter: "hero" },
+      assets: {
+        hero: { prompt: "a hero" },
+        rook: { prompt: "a rook" },
+        sage: { prompt: "a sage", concept: "concept.png", styleCharacter: "rook" },
+        "hero.sit": { prompt: "sitting", state: { of: "hero" } },
+      },
+    })
+    const specs = await resolveSpecs(await loadManifest(file))
+    const byId = new Map(specs.map((s) => [s.assetId, s]))
+    expect(byId.get("hero")!.character!.styleAnchor).toBeUndefined()
+    expect(byId.get("rook")!.character!.styleAnchor).toMatchObject({ assetId: "hero", sha256: null, file: path.join(dir, "art/characters", "hero-south.png") })
+    expect(byId.get("sage")!.character).toMatchObject({ styleAnchor: { assetId: "rook" }, concept: { width: 200, height: 200, format: "png" } })
+    expect(byId.get("hero.sit")!.character!.styleAnchor).toBeUndefined()
+    const before = byId.get("rook")!.specHash
+    // The anchor landing on disk is part of the dependent's identity.
+    const { mkdir } = await import("node:fs/promises")
+    await mkdir(path.join(dir, "art", "characters"), { recursive: true })
+    await writeFile(path.join(dir, "art", "characters", "hero-south.png"), px(92, 5))
+    const landed = await resolveSpecs(await loadManifest(file))
+    expect(landed.find((s) => s.assetId === "rook")!.specHash).not.toBe(before)
+    expect(landed.find((s) => s.assetId === "hero")!.specHash).toBe(byId.get("hero")!.specHash)
+
+    const refused = async (overrides: Parameters<typeof writeManifest>[0]) => resolveSpecs(await loadManifest(await writeManifest(overrides)))
+    await expect(refused({ style: { styleCharacter: "a" }, assets: { a: { prompt: "a" }, b: { prompt: "b" } } })).rejects.toThrow(/styleCharacter is a pro input; the standard engine/)
+    await expect(refused({ assets: { a: { prompt: "a", concept: "concept.png" } } })).rejects.toThrow(/concept image is a pro input/)
+    await expect(refused({ style: { mode: "pro" }, assets: { a: { prompt: "a", concept: "huge.png" } } })).rejects.toThrow(/concept image is 1100x1100; PixelLab pro takes up to 1024px/)
+    await expect(refused({ style: { mode: "pro" }, assets: { a: { prompt: "a" }, b: { prompt: "b", reference: "s64.png", styleCharacter: "a" } } })).rejects.toThrow(/rotating its own reference takes no styleCharacter/)
+    await expect(refused({ style: { mode: "pro" }, assets: { a: { prompt: "a" }, "a.walk": { prompt: "", animation: { of: "a", template: "walk" } }, b: { prompt: "b", styleCharacter: "a.walk" } } })).rejects.toThrow(/styleCharacter a.walk is not a character base or state/)
+    await expect(refused({ style: { mode: "pro" }, assets: { a: { prompt: "a", styleCharacter: "nobody" } } })).rejects.toThrow(/"nobody" is not available in style "cast"/)
+    await expect(refused({ assets: { a: { prompt: "a", concept: "concept.png", reference: "s64.png" } } })).rejects.toThrow(/concept and reference are mutually exclusive/)
+    await expect(refused({ assets: { a: { prompt: "a" }, b: { prompt: "b", state: { of: "a" }, concept: "concept.png" } } })).rejects.toThrow(/concept image belongs on a base/)
+  })
+
+  it("waits for the anchor, sends its character id, and goes stale when the anchor is redrawn", async () => {
+    const file = await writeManifest({ style: { mode: "pro", styleCharacter: "hero" }, assets: { hero: { prompt: "a hero" }, rook: { prompt: "a rook" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    let plan = await p.plan()
+    expect(plan.items.map((i) => `${i.key}=${i.state}`)).toEqual(["cast/hero=missing", "cast/rook=blocked"])
+    expect(plan.items[1]!.reason).toMatch(/style anchor cast\/hero is not ready: parent is not in the lockfile/)
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    plan = await p.plan()
+    expect(plan.items.map((i) => `${i.key}=${i.state}`)).toEqual(["cast/hero=ok", "cast/rook=missing"])
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(client.created[1]).toMatchObject({ description: expect.stringContaining("a rook"), styleCharacterId: "char-1" })
+    client.complete("char-2", 20)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject(file, { env: false })
+    expect((await p.plan()).items.map((i) => `${i.key}=${i.state}`)).toEqual(["cast/hero=ok", "cast/rook=ok"])
+
+    // A redrawn anchor changes the look the rook was drawn in.
+    const forced = await buildPlan(p.specs, p.lock, { force: true })
+    await submit(provider, p.loaded, forced.actionable.filter((i) => i.key === "cast/hero"), p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-3", 30)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject(file, { env: false })
+    expect((await p.plan()).items.map((i) => `${i.key}=${i.state}`)).toEqual(["cast/hero=ok", "cast/rook=stale"])
+  })
+
   it("reads the reference at submit time and refuses one that changed since resolve", async () => {
     await writeFile(path.join(dir, "mira-south.png"), px(64, 30))
     const file = await writeManifest({ style: { proportions: "heroic" }, assets: { mira: { prompt: "mira", reference: "mira-south.png" } } })
@@ -399,6 +472,21 @@ describe("the wire", () => {
     for (const key of ["custom_start_frame", "outline", "enhance_prompt"]) expect(calls[2]!.body).not.toHaveProperty(key)
     expect(calls[3]!.body).toMatchObject({ enhance_prompt: true })
     expect(calls[4]!.body).not.toHaveProperty("enhance_prompt")
+  })
+
+  it("sends pro's concept image and style anchor, and drops both when rotating a reference", async () => {
+    const client = new PixelLabClient("key")
+    const concept = { base64: "Q09OQ0VQVA==", format: "jpeg" as const }
+    const south = { base64: "U09VVEg=", format: "png" as const }
+    const style = { base64: "U1RZTEU=", format: "png" as const }
+    await client.createCharacter({ mode: "pro", description: "a", size: 64, directions: 8, template: "mannequin", concept, styleReference: style, styleCharacterId: "char-9" })
+    await client.createCharacter({ mode: "pro", description: "a", size: 64, directions: 8, template: "mannequin", styleCharacterId: "char-9" })
+    await client.createCharacter({ mode: "pro", description: "a", size: 64, directions: 8, template: "mannequin", reference: { south }, concept, styleCharacterId: "char-9" })
+    expect(calls[0]!.body).toMatchObject({ method: "create_from_concept", concept_image: { type: "base64", base64: "Q09OQ0VQVA==", format: "jpeg" }, reference_image: { base64: "U1RZTEU=" }, style_character_id: "char-9" })
+    expect(calls[1]!.body).toMatchObject({ method: "create_with_style", style_character_id: "char-9" })
+    expect(calls[1]!.body).not.toHaveProperty("concept_image")
+    expect(calls[2]!.body).toMatchObject({ method: "rotate_character", reference_image: { base64: "U09VVEg=" } })
+    for (const key of ["concept_image", "style_character_id"]) expect(calls[2]!.body).not.toHaveProperty(key)
   })
 
   it("sends a state and an animation the way the API documents them", async () => {
