@@ -559,6 +559,8 @@ export class PixelLabClient {
     isometric?: boolean
     reference?: Partial<Record<string, Base64Image>>
     styleReference?: Base64Image
+    /** v3 only. */
+    enhancePrompt?: boolean
   }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const imageSize = { width: args.size, height: args.size }
     const palette = args.paletteSwatchBase64
@@ -580,6 +582,7 @@ export class PixelLabClient {
         ...(args.detail ? { detail: args.detail } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
         ...(south ? { reference_image: encode(south) } : {}),
+        ...(args.enhancePrompt ? { enhance_prompt: true } : {}),
       }
     } else if (args.mode === "pro") {
       path = "/create-character-pro"
@@ -660,7 +663,20 @@ export class PixelLabClient {
     /** Template mode only. */
     textGuidanceScale?: number
     isometric?: boolean
+    /** v3 only: a pose to start from and a pose to reach. */
+    startFrame?: Base64Image
+    endFrame?: Base64Image
+    /** What is being animated, over the character's own description. */
+    description?: string
+    /** Template mode only. */
+    outline?: string
+    shading?: string
+    detail?: string
+    /** v3 only. */
+    enhancePrompt?: boolean
+    paletteSwatchBase64?: string
   }): Promise<{ background_job_ids: string[]; directions: string[]; usage?: PixelLabUsage | null }> {
+    const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
     const raw = await this.request<unknown>("/animate-character", {
       method: "POST",
       body: JSON.stringify({
@@ -670,10 +686,20 @@ export class PixelLabClient {
         directions: args.directions,
         ...(args.template ? { template_animation_id: args.template } : {}),
         ...(args.actionDescription ? { action_description: args.actionDescription } : {}),
+        ...(args.description ? { description: args.description } : {}),
         ...(args.mode === "v3" && args.frameCount ? { frame_count: args.frameCount } : {}),
         ...(args.mode === "v3" && args.keepFirstFrame === false ? { keep_first_frame: false } : {}),
+        ...(args.mode === "v3" && args.startFrame ? { custom_start_frame: encode(args.startFrame) } : {}),
+        ...(args.mode === "v3" && args.endFrame ? { end_frame: encode(args.endFrame) } : {}),
+        ...(args.mode === "v3" && args.enhancePrompt ? { enhance_prompt: true } : {}),
         ...(args.mode === "template" && args.textGuidanceScale !== undefined ? { text_guidance_scale: args.textGuidanceScale } : {}),
+        ...(args.mode === "template" && args.outline ? { outline: args.outline } : {}),
+        ...(args.mode === "template" && args.shading ? { shading: args.shading } : {}),
+        ...(args.mode === "template" && args.detail ? { detail: args.detail } : {}),
         ...(args.isometric !== undefined ? { isometric: args.isometric } : {}),
+        ...(args.paletteSwatchBase64
+          ? { color_image: { type: "base64", base64: args.paletteSwatchBase64, format: "png" }, force_colors: true }
+          : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
       }),
     })

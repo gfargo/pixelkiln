@@ -281,6 +281,9 @@
             "isometric": {
               "type": "boolean"
             },
+            "enhancePrompt": {
+              "type": "boolean"
+            },
             "seed": {
               "type": "integer"
             },

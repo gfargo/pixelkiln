@@ -84,11 +84,19 @@ export function specHash(
             parent: spec.character.parentAssetId,
             parentSha256: spec.character.parentSha256 ?? null,
             state: spec.character.state,
-            animation: spec.character.animation,
+            // Pose images enter as their hashes, never their paths.
+            animation: spec.character.animation
+              ? {
+                  ...spec.character.animation,
+                  startFrame: spec.character.animation.startFrame?.sha256,
+                  endFrame: spec.character.animation.endFrame?.sha256,
+                }
+              : undefined,
             // Absent keys keep the hashes of manifests that never set these.
             proportions: spec.character.proportions,
             textGuidanceScale: spec.character.textGuidanceScale,
             isometric: spec.character.isometric,
+            enhancePrompt: spec.character.enhancePrompt,
             reference: spec.character.reference
               ? Object.fromEntries(Object.entries(spec.character.reference).map(([direction, image]) => [direction, image.sha256]))
               : undefined,

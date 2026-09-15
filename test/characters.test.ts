@@ -161,7 +161,7 @@ describe("character controls", () => {
     const plain = await resolveSpecs(await loadManifest(await writeManifest({ style: { proportions: "chibi", textGuidanceScale: 12, isometric: true }, assets: { mira: { prompt: "mira" } } })))
     expect(plain[0]!.specHash).not.toBe(before)
     // Manifests that never set these keep the hashes they had before the
-    // controls existed (pinned from v0.42.0).
+    // controls existed (pinned against the published v0.43.0).
     const unset = await resolveSpecs(await loadManifest(await writeManifest({ assets: { mira: { prompt: "mira" } } })))
     expect(unset[0]!.specHash).toBe("8cbc9748fa2b75699f0aefb15743991d36ce9c9ca5230bc57f83e99813c6379b")
   })
@@ -191,6 +191,76 @@ describe("character controls", () => {
     // v3 with a reference and a quadruped standard base with both sprites resolve.
     await expect(refused({ style: { mode: "v3" }, assets: { a: { prompt: "a", reference: "s200.png" } } })).resolves.toHaveLength(1)
     await expect(refused({ style: { template: "cat" }, assets: { a: { prompt: "a", reference: { south: "s64.png", east: "s64.png" } } } })).resolves.toHaveLength(1)
+  })
+
+  it("resolves a loop's pose frames into its identity and refuses them where they cannot apply", async () => {
+    await writeFile(path.join(dir, "start.png"), px(92, 10))
+    await writeFile(path.join(dir, "end.png"), px(92, 20))
+    await writeFile(path.join(dir, "end64.png"), px(64, 20))
+    await writeFile(path.join(dir, "big.png"), px(300, 20))
+    const loop = (animation: Record<string, unknown>, style: Record<string, unknown> = {}) =>
+      writeManifest({ style, assets: { mira: { prompt: "mira" }, "mira.leap": { prompt: "leaping", animation: { of: "mira", ...animation } } } })
+    const specs = await resolveSpecs(await loadManifest(await loop({ startFrame: "start.png", endFrame: "end.png", subject: "a frog", enhancePrompt: true })))
+    const leap = specs.find((s) => s.assetId === "mira.leap")!
+    expect(leap.character!.animation).toMatchObject({
+      mode: "v3", subject: "a frog", enhancePrompt: true,
+      startFrame: { path: path.join(dir, "start.png"), width: 92, height: 92 },
+      endFrame: { path: path.join(dir, "end.png"), width: 92, height: 92 },
+    })
+    const before = leap.specHash
+    await writeFile(path.join(dir, "end.png"), px(92, 21))
+    const redrawn = await resolveSpecs(await loadManifest(await loop({ startFrame: "start.png", endFrame: "end.png", subject: "a frog", enhancePrompt: true })))
+    expect(redrawn.find((s) => s.assetId === "mira.leap")!.specHash).not.toBe(before)
+    // A loop without any of these keeps the hash it had before they existed (pinned against the published v0.43.0).
+    const plain = await resolveSpecs(await loadManifest(await loop({ template: "walk" })))
+    expect(plain.find((s) => s.assetId === "mira.leap")!.specHash).toBe("f9d73e753105691f1fdbff7a1f8fe911b820e93eeb23da7b81cd7bc2977e5d3d")
+
+    const refused = async (animation: Record<string, unknown>, style: Record<string, unknown> = {}) => resolveSpecs(await loadManifest(await loop(animation, style)))
+    await expect(refused({ template: "walk", startFrame: "start.png" })).rejects.toThrow(/startFrame is for v3 loops; a template loop starts from the character's rotation/)
+    await expect(refused({ mode: "pro", endFrame: "end.png" })).rejects.toThrow(/endFrame is for v3 loops; a pro loop takes neither/)
+    await expect(refused({ template: "walk", enhancePrompt: true })).rejects.toThrow(/enhancePrompt is for v3 loops/)
+    await expect(refused({ outline: "lineless" })).rejects.toThrow(/outline overrides apply to template loops only/)
+    await expect(refused({ startFrame: "start.png", endFrame: "end64.png" })).rejects.toThrow(/end frame is 64x64 but the start frame is 92x92/)
+    await expect(refused({ startFrame: "big.png" })).rejects.toThrow(/start frame is 300x300; PixelLab v3 takes up to 256px/)
+    await expect(refused({ endFrame: "missing.png" })).rejects.toThrow(/Animation end frame not found/)
+    await expect(refused({ template: "walk" }, { enhancePrompt: true })).rejects.toThrow(/enhancePrompt applies to v3 bases; the standard engine/)
+    // Without a start frame the end frame is checked against the parent's rotation once that is on disk.
+    await expect(refused({ endFrame: "end64.png" })).resolves.toHaveLength(2)
+    const { mkdir } = await import("node:fs/promises")
+    await mkdir(path.join(dir, "art", "characters"), { recursive: true })
+    await writeFile(path.join(dir, "art", "characters", "mira-south.png"), px(92, 5))
+    await expect(refused({ endFrame: "end64.png" })).rejects.toThrow(/end frame is 64x64 but the character's rotation is 92x92/)
+    await expect(refused({ endFrame: "end.png" })).resolves.toHaveLength(2)
+    await expect(refused({ template: "walk", outline: "lineless", shading: "flat shading", detail: "low detail", subject: "a frog" })).resolves.toHaveLength(2)
+  })
+
+  it("sends a loop's overrides through the adapter and refuses a pose that changed since resolve", async () => {
+    await writeFile(path.join(dir, "start.png"), px(92, 10))
+    const file = await writeManifest({
+      style: { palette: ["#000000", "#ffffff"] },
+      assets: { mira: { prompt: "mira" }, "mira.leap": { prompt: "leaping", animation: { of: "mira", startFrame: "start.png", subject: "a frog", enhancePrompt: true, frames: 6 } } },
+    })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(client.animated[0]).toMatchObject({
+      mode: "v3", frameCount: 6, description: "a frog", enhancePrompt: true,
+      startFrame: { base64: px(92, 10).toString("base64"), format: "png" },
+    })
+    expect(client.animated[0]!.paletteSwatchBase64).toEqual(expect.any(String))
+    expect(client.animated[0]!.endFrame).toBeUndefined()
+
+    await writeFile(path.join(dir, "start.png"), px(92, 11))
+    const leap = p.specs.find((s) => s.assetId === "mira.leap")!
+    const result = await submit(provider, p.loaded, [{ spec: leap, key: "cast/mira.leap", state: "missing", reason: "forced" }], p.lock, p.lockPath, { spacingMs: 0 })
+    expect(result.failed).toBe(1)
+    expect(p.lock.entries["cast/mira.leap"]!.error).toMatch(/start frame changed after the manifest was resolved/)
   })
 
   it("reads the reference at submit time and refuses one that changed since resolve", async () => {
@@ -310,6 +380,27 @@ describe("the wire", () => {
     expect(calls[7]!.body).not.toHaveProperty("text_guidance_scale")
   })
 
+  it("sends a loop's pose frames, subject, style hints, prompt enhancement, and palette where each mode takes them", async () => {
+    const client = new PixelLabClient("key")
+    const start = { base64: "U1RBUlQ=", format: "png" as const }
+    const end = { base64: "RU5E", format: "png" as const }
+    await client.animateCharacter({ characterId: "c", animationName: "n", actionDescription: "leap", mode: "v3", directions: ["south"], startFrame: start, endFrame: end, description: "a frog", enhancePrompt: true, outline: "lineless", paletteSwatchBase64: "AAA=" })
+    await client.animateCharacter({ characterId: "c", animationName: "n", template: "walk", mode: "template", directions: ["south"], outline: "lineless", shading: "flat shading", detail: "low detail", description: "a frog", startFrame: start, enhancePrompt: true })
+    await client.animateCharacter({ characterId: "c", animationName: "n", actionDescription: "leap", mode: "pro", directions: ["south"], startFrame: start, outline: "lineless", enhancePrompt: true })
+    await client.createCharacter({ mode: "v3", description: "a", size: 64, directions: 8, template: "mannequin", enhancePrompt: true })
+    await client.createCharacter({ mode: "standard", description: "a", size: 64, directions: 8, template: "mannequin", enhancePrompt: true })
+    expect(calls[0]!.body).toMatchObject({
+      custom_start_frame: { type: "base64", base64: "U1RBUlQ=", format: "png" }, end_frame: { type: "base64", base64: "RU5E", format: "png" },
+      description: "a frog", enhance_prompt: true, color_image: { base64: "AAA=" }, force_colors: true,
+    })
+    expect(calls[0]!.body).not.toHaveProperty("outline")
+    expect(calls[1]!.body).toMatchObject({ outline: "lineless", shading: "flat shading", detail: "low detail", description: "a frog" })
+    for (const key of ["custom_start_frame", "enhance_prompt"]) expect(calls[1]!.body).not.toHaveProperty(key)
+    for (const key of ["custom_start_frame", "outline", "enhance_prompt"]) expect(calls[2]!.body).not.toHaveProperty(key)
+    expect(calls[3]!.body).toMatchObject({ enhance_prompt: true })
+    expect(calls[4]!.body).not.toHaveProperty("enhance_prompt")
+  })
+
   it("sends a state and an animation the way the API documents them", async () => {
     const client = new PixelLabClient("key")
     await client.createCharacterState({ characterId: "char-1", editDescription: "sitting", stateName: "chair", paletteFromReference: true, canvas: { width: 80, height: 80 } })
@@ -337,6 +428,7 @@ function fakeClient() {
     pixels: new Map<string, Buffer>(),
     characters,
     created: [] as Record<string, unknown>[],
+    animated: [] as Record<string, unknown>[],
     async createCharacter(args: { directions: 4 | 8; description: string }) {
       const id = `char-${++counter}`
       client.calls.push(`create:${args.description}`)
@@ -356,6 +448,7 @@ function fakeClient() {
       const character = characters.get(args.characterId)
       if (!character) throw new PixelLabError("POST /animate-character → 404", 404, "")
       client.calls.push(`animate:${args.characterId}:${args.animationName}:${args.directions.join(",")}:${args.mode}`)
+      client.animated.push(args)
       const jobId = `anim-job-${++counter}`
       jobs.set(jobId, "processing")
       return { background_job_ids: [jobId], directions: args.directions }

@@ -105,6 +105,7 @@ constant across the set.
 | `proportions` | | `character` only, `standard` humanoid bases. A preset (`default`, `chibi`, `cartoon`, `stylized`, `realistic_male`, `realistic_female`, `heroic`) or multipliers `{ headSize, armsLength, legsLength, shoulderWidth, hipWidth }`, each 0.5 to 2. An asset may override it. |
 | `textGuidanceScale` | `8` | `character` only. How closely a `standard` base and a template loop follow their text, 1 to 20. |
 | `isometric` | `false` | `character` only. Draw `standard` bases and every loop in isometric view. |
+| `enhancePrompt` | `false` | `character` only, `v3` bases. Let PixelLab expand the prompt into a fuller one before drawing. |
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
@@ -584,6 +585,8 @@ override it, and only the mannequin template has proportions to set.
 is followed, and applies to template loops as well. `isometric` draws the
 base and every loop in isometric view. The v3 and pro engines take none of
 the three for a base; a v3 style may still set the last two for its loops.
+A `v3` base takes `enhancePrompt` instead, which has PixelLab expand the
+prompt into a fuller one before drawing.
 
 A base can also start from your own sprite. `reference` names a
 manifest-relative PNG or JPEG of the character facing south, and PixelLab
@@ -633,6 +636,30 @@ not keep one. An animation lands in review as an ordered set: `pick` shows
 the loop and accepts or rejects it whole. One asset per direction; declare
 another asset for another direction, or a [mirror](#mirrors) of this one
 for the direction that faces the other way.
+
+A v3 loop can start and end where you say. `startFrame` is a
+manifest-relative image of the pose to begin from instead of the
+character's rotation; `endFrame` is a pose to reach, and with it the loop
+interpolates from the start frame to that image (both up to 256px, and the
+end frame the same size as the start frame or, without one, as the
+character's rotation, which `plan` checks once the parent is on disk; the
+frames can still come back on a taller canvas when the motion needs it, as
+a 92px crouch did at 92×104). `subject` replaces the character's own description for this loop when it
+would mislead the model (a state that took the armour off), and
+`enhancePrompt` lets PixelLab expand the action into a fuller motion
+description first. A template loop takes none of those; it takes
+`outline`, `shading`, and `detail` overrides instead, over the character's
+own. The style's `palette` goes to every loop as a colour reference, as it
+does to a `standard` base, and `enforcePalette` still snaps the frames
+afterwards. Pose images hash into the loop's identity and are read again
+at submit time, like a base's `reference`.
+
+```json
+"mira.bow": {
+  "prompt": "bowing deeply from the waist",
+  "animation": { "of": "mira", "direction": "south", "frames": 6, "endFrame": "poses/mira-bowed.png" }
+}
+```
 
 States and animations depend on their parent the way a revision does. The
 parent must be downloaded and current before the child is actionable;
