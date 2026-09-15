@@ -1,3 +1,10 @@
+# [0.43.0](https://github.com/gfargo/pixelkiln/compare/v0.42.0...v0.43.0) (2026-09-15)
+
+
+### Features
+
+* **character:** proportions, guidance, isometric, and reference sprites for bases ([#133](https://github.com/gfargo/pixelkiln/issues/133)) ([42062ee](https://github.com/gfargo/pixelkiln/commit/42062ee3d991da5c1629dee9e01251ee9da3b598))
+
 # [0.42.0](https://github.com/gfargo/pixelkiln/compare/v0.41.0...v0.42.0) (2026-09-15)
 
 
