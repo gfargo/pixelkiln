@@ -250,7 +250,7 @@ export const MIRRORED_DIRECTION: Readonly<Record<CharacterDirection, CharacterDi
   "south-west": "south-east",
 }
 
-export const CharacterModeSchema = z.enum(["standard", "v3", "pro"])
+export const CharacterModeSchema = z.enum(["standard", "v3", "pro", "pro-flash"])
 export type CharacterMode = z.infer<typeof CharacterModeSchema>
 
 export const CHARACTER_PROPORTION_PRESETS = ["default", "chibi", "cartoon", "stylized", "realistic_male", "realistic_female", "heroic"] as const
@@ -408,6 +408,8 @@ export interface ResolvedCharacter {
   isometric?: boolean
   /** `v3` bases. */
   enhancePrompt?: boolean
+  /** `pro-flash` bases with a style image: the traits it lends. */
+  styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
   /** A base drawn by rotating the author's own sprite(s), keyed by the direction each shows. */
   reference?: Partial<Record<CharacterDirection, ResolvedReferenceImage>>
   /** `pro` bases: a concept image the design is seeded from. */
@@ -576,14 +578,30 @@ const StyleObjectSchema = z
     /**
      * `character` only. `standard` draws from a skeleton template for 1
      * generation; `v3` is the highest quality at 2 to 9 by size; `pro` is a
-     * reference-based engine at 20 to 40 by size. States inherit the
-     * parent's engine; animations choose their own.
+     * reference-based engine at 20 to 40 by size; `pro-flash` draws a
+     * south sprite with PixelLab's newest image model and rotates it with
+     * v3, 6 to 17 by size, or the rotations alone (1 at 64px) from a
+     * `reference`. States inherit the parent's engine; animations choose
+     * their own.
      */
     mode: CharacterModeSchema.optional(),
-    /** `character` only. Rotations per base or state. `v3` and `pro` always draw 8. */
+    /** `character` only. Rotations per base or state. Every engine but `standard` draws 8. */
     directions: z.union([z.literal(4), z.literal(8)]).optional(),
-    /** `character` only. Body template: `mannequin` (default) or a quadruped (`bear`, `cat`, `dog`, `horse`, `lion`). */
+    /** `character` only. Body template: `mannequin` (default), a quadruped (`bear`, `cat`, `dog`, `horse`, `lion`), or `custom` for `pro-flash`. */
     template: z.string().min(1).optional(),
+    /**
+     * `character` only, `pro-flash` bases with a style image: which traits
+     * the style image lends. Each defaults to true.
+     */
+    styleTraits: z
+      .object({
+        palette: z.boolean().optional(),
+        outline: z.boolean().optional(),
+        detail: z.boolean().optional(),
+        shading: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
     /** `character` only, `standard` humanoid bases. A preset or multipliers; an asset may override it. */
     proportions: CharacterProportionsSchema.optional(),
     /**

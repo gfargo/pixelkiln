@@ -101,14 +101,15 @@ constant across the set.
 | `tileView` | enum | `top-down`, `high top-down`, `low top-down`, or `side`. |
 | `tileFeature` | enum | Connectable `roads`, `tileset`, or `building` structural set. |
 | `outlineMode` | enum | `outline` or `segmentation`; segmentation avoids quilted ground seams. |
-| `mode` | `standard` | `character` only. `standard`, `v3`, or `pro`; see [Characters](#characters). |
-| `directions` | `8` | `character` only. `4` or `8`; `v3` and `pro` always draw 8. |
-| `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`. |
+| `mode` | `standard` | `character` only. `standard`, `v3`, `pro`, or `pro-flash`; see [Characters](#characters). |
+| `directions` | `8` | `character` only. `4` or `8`; every engine but `standard` draws 8. |
+| `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`; `custom` for `pro-flash`. |
 | `proportions` | | `character` only, `standard` humanoid bases. A preset (`default`, `chibi`, `cartoon`, `stylized`, `realistic_male`, `realistic_female`, `heroic`) or multipliers `{ headSize, armsLength, legsLength, shoulderWidth, hipWidth }`, each 0.5 to 2. An asset may override it. |
 | `textGuidanceScale` | `8` | `character` only. How closely a `standard` base and a template loop follow their text, 1 to 20. |
 | `isometric` | `false` | `character` only. Draw `standard` bases and every loop in isometric view. |
 | `enhancePrompt` | `false` | `character` only, `v3` bases. Let PixelLab expand the prompt into a fuller one before drawing. |
 | `styleCharacter` | | `character` only, `pro` bases. The asset id of a generated 8-direction character in this style whose look bases drawn from text or a concept follow. An asset may override it. |
+| `styleTraits` | all true | `character` only, `pro-flash` bases with a style image. `{ palette, outline, detail, shading }` booleans: which traits the style image lends. |
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
@@ -573,10 +574,14 @@ A base is a prompt, wrapped in the style's prefix and suffix like any other
 asset, that PixelLab draws facing 4 or 8 directions. `mode` picks the
 engine: `standard` (1 generation, the skeleton template, `outline`,
 `shading`, and `detail` as soft guidance, and `palette` sent as a colour
-reference), `v3` (2 to 9 by size, the highest quality, up to 256px), or
-`pro` (20 to 40 by size). `size` is the character's size; `view` is `low
-top-down` (the default), `high top-down`, or `side`; `template` picks the
-body. Each direction lands as `<asset>-<direction>.png`, south first.
+reference), `v3` (2 to 9 by size, the highest quality, up to 256px),
+`pro` (20 to 40 by size), or `pro-flash` (6 to 17 by size: PixelLab's
+newest image model draws the south sprite and v3 rotates it; sizes are
+multiples of 4 up to 256, `template` may be `custom`, and a `reference`
+pays for the rotations only, 1 at 64px). `size` is the character's size;
+`view` is `low top-down` (the default), `high top-down`, or `side`;
+`template` picks the body. Each direction lands as
+`<asset>-<direction>.png`, south first.
 Standard mode draws on a canvas 28px larger than `size`, 14px of room on
 each side for animation (a 64px character comes back as 92px files, a
 104px one as 132px); the lock records the size asked for, and the files
@@ -629,11 +634,15 @@ and fails the job fast otherwise. A base rotating its own `reference`
 takes neither: the rotate method has one image slot and it is the
 character.
 
-Style images on a `character` style are a pro-only input: one image of up
-to 168px that anchors the look of a `pro` base drawn from text or a
-concept (`create_with_style` and `create_from_concept` both take it).
-`standard` and `v3` have no such slot and refuse them; a pro base with a
-`reference` refuses them too.
+Style images on a `character` style are a pro input: one image of up to
+168px that anchors the look of a `pro` base drawn from text or a concept
+(`create_with_style` and `create_from_concept` both take it), or one of
+up to 256px that a `pro-flash` base copies its look from, no larger than
+the character's `size` on either side (crop it to its subject), with
+`styleTraits` (`palette`, `outline`, `detail`, `shading`, each on by
+default) choosing which traits it lends. `standard` and `v3` have no such
+slot and refuse them; a base with a `reference` refuses them too, in
+either engine.
 
 A state is a text edit of an existing character, `state.of`, applied to
 every direction at once: a pose, an outfit, a held object. The prompt is

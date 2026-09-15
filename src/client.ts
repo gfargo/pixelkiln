@@ -542,7 +542,7 @@ export class PixelLabClient {
    * anchor; the other engines have no such input.
    */
   async createCharacter(args: {
-    mode: "standard" | "v3" | "pro"
+    mode: "standard" | "v3" | "pro" | "pro-flash"
     description: string
     size: number
     directions: 4 | 8
@@ -565,6 +565,9 @@ export class PixelLabClient {
     concept?: Base64Image
     /** pro only: one of the account's 8-direction characters as the style anchor. */
     styleCharacterId?: string
+    /** pro-flash only: the style image's native size, and which traits it lends. */
+    styleReferenceSize?: { width: number; height: number }
+    styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
   }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const imageSize = { width: args.size, height: args.size }
     const palette = args.paletteSwatchBase64
@@ -587,6 +590,35 @@ export class PixelLabClient {
         ...(args.seed != null ? { seed: args.seed } : {}),
         ...(south ? { reference_image: encode(south) } : {}),
         ...(args.enhancePrompt ? { enhance_prompt: true } : {}),
+      }
+    } else if (args.mode === "pro-flash") {
+      // One call draws the south sprite (or takes the author's) and rotates
+      // it with v3. Style traits only mean something next to a style image.
+      path = "/create-character-pro-flash"
+      const traits = args.styleTraits
+      body = {
+        description: args.description,
+        template_id: args.template,
+        n_directions: 8,
+        // The author's sprite sets the canvas; a size only applies to text creation.
+        ...(south ? { first_frame: encode(south) } : { image_size: imageSize }),
+        ...(args.view ? { view: args.view } : {}),
+        ...(args.seed != null ? { seed: args.seed } : {}),
+        ...(args.styleReference && args.styleReferenceSize
+          ? {
+              style_image: { image: encode(args.styleReference), size: args.styleReferenceSize },
+              ...(traits
+                ? {
+                    style_options: {
+                      ...(traits.palette !== undefined ? { color_palette: traits.palette } : {}),
+                      ...(traits.outline !== undefined ? { outline: traits.outline } : {}),
+                      ...(traits.detail !== undefined ? { detail: traits.detail } : {}),
+                      ...(traits.shading !== undefined ? { shading: traits.shading } : {}),
+                    },
+                  }
+                : {}),
+            }
+          : {}),
       }
     } else if (args.mode === "pro") {
       path = "/create-character-pro"
