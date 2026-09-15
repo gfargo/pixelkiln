@@ -561,6 +561,10 @@ export class PixelLabClient {
     styleReference?: Base64Image
     /** v3 only. */
     enhancePrompt?: boolean
+    /** pro only: a concept image the design is seeded from. */
+    concept?: Base64Image
+    /** pro only: one of the account's 8-direction characters as the style anchor. */
+    styleCharacterId?: string
   }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const imageSize = { width: args.size, height: args.size }
     const palette = args.paletteSwatchBase64
@@ -586,15 +590,20 @@ export class PixelLabClient {
       }
     } else if (args.mode === "pro") {
       path = "/create-character-pro"
+      // Three ways in: rotate the author's sprite, grow a design from a
+      // concept image, or draw from text; the last two may anchor their
+      // look on a style image or one of the account's characters.
       body = {
         description: args.description,
         image_size: imageSize,
         template_id: args.template,
         no_background: args.noBackground ?? true,
-        method: south ? "rotate_character" : "create_with_style",
+        method: south ? "rotate_character" : args.concept ? "create_from_concept" : "create_with_style",
         ...(args.view ? { view: args.view } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
         ...(south ? { reference_image: encode(south) } : args.styleReference ? { reference_image: encode(args.styleReference) } : {}),
+        ...(!south && args.concept ? { concept_image: encode(args.concept) } : {}),
+        ...(!south && args.styleCharacterId ? { style_character_id: args.styleCharacterId } : {}),
       }
     } else {
       path = args.directions === 4 ? "/create-character-with-4-directions" : "/create-character-with-8-directions"

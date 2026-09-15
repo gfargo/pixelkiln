@@ -247,10 +247,13 @@ export async function submit(
       const parentEntry = spec.character?.parentSpec
         ? lock.entries[lockKey(spec.character.parentSpec.styleId, spec.character.parentSpec.assetId)]
         : undefined
+      const anchor = spec.character?.styleAnchor
+      const anchorEntry = anchor ? lock.entries[lockKey(anchor.spec.styleId, anchor.spec.assetId)] : undefined
       const replacedMetadata = previousEntry?.providerMetadata?.[provider.id]
       const { jobId, metadata } = await provider.submit(spec, refs, {
         ...(previousJobId ? { previousJobId } : {}),
         ...(parentEntry?.objectId ? { parentObjectId: parentEntry.objectId } : {}),
+        ...(anchorEntry?.objectId ? { styleObjectId: anchorEntry.objectId } : {}),
         ...(replacedMetadata ? { replacedMetadata } : {}),
         ...(previousMetadata ? { previousMetadata } : {}),
         checkpoint: async (checkpoint) => {

@@ -263,6 +263,19 @@ export class PixelLabProvider implements Provider {
         }
       }
     }
+    if (character.concept) {
+      if (character.mode !== "pro") throw new Error(`${label}: a concept image is a pro input; the ${character.mode} engine draws from text or a reference`)
+      if (character.concept.width > 1024 || character.concept.height > 1024) {
+        throw new Error(`${label}: concept image is ${character.concept.width}x${character.concept.height}; PixelLab pro takes up to 1024px`)
+      }
+    }
+    if (character.styleAnchor) {
+      if (character.mode !== "pro") throw new Error(`${label}: styleCharacter is a pro input; the ${character.mode} engine has no style anchor`)
+      if (character.reference) throw new Error(`${label}: a pro base rotating its own reference takes no styleCharacter`)
+      if (character.styleAnchor.spec.character?.directions !== 8) {
+        throw new Error(`${label}: styleCharacter ${character.styleAnchor.assetId} has ${character.styleAnchor.spec.character?.directions} directions; PixelLab wants an 8-direction anchor`)
+      }
+    }
     if (character.reference) {
       const given = Object.keys(character.reference) as CharacterDirection[]
       if (!character.reference.south) throw new Error(`${label}: a reference needs a south-facing sprite`)
@@ -373,6 +386,8 @@ export class PixelLabProvider implements Provider {
         reference: character.reference ? readReference(spec, character.reference) : undefined,
         styleReference: styleImage ? { base64: styleImage.base64, format: styleImage.format } : undefined,
         enhancePrompt: character.enhancePrompt,
+        concept: character.concept ? readPose(spec, "concept image", character.concept) : undefined,
+        styleCharacterId: character.styleAnchor ? requireStyleObjectId(spec, context) : undefined,
       })
       return { jobId: res.character_id, metadata: { character: { kind: "base", characterId: res.character_id, mode: character.mode, directions: character.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -869,7 +884,18 @@ function readReference(spec: ResolvedSpec, reference: NonNullable<ResolvedCharac
   return images
 }
 
-/** A pose image for a v3 loop, read at submit time and refused if it moved since resolve. */
+/** The anchor character's id, which the pipeline reads from the anchor's lock entry. */
+function requireStyleObjectId(spec: ResolvedSpec, context?: SubmitContext): string {
+  if (!context?.styleObjectId) {
+    throw new Error(
+      `${spec.styleId}/${spec.assetId} anchors its style on ${spec.character!.styleAnchor!.assetId}, ` +
+        "which has no PixelLab character id in the lockfile yet; generate the anchor first",
+    )
+  }
+  return context.styleObjectId
+}
+
+/** An image read at submit time and refused if it moved since resolve. */
 function readPose(spec: ResolvedSpec, what: string, image: ResolvedReferenceImage): Base64Image {
   const bytes = readFileSync(image.path)
   if (sha256(bytes) !== image.sha256) {

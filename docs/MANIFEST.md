@@ -59,6 +59,8 @@ not merely a label edit.
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](#mirrors). |
 | `proportions` | preset or object | `character` styles: this base's proportions, over the style's. |
 | `reference` | string or object | `character` styles, bases: the character's own south-facing sprite (or `{ "south": ..., "east": ... }`), which PixelLab rotates instead of drawing from the prompt. See [Characters](#characters). |
+| `concept` | string | `character` styles, `pro` bases: a manifest-relative concept image (up to 1024px) the design is seeded from. |
+| `styleCharacter` | string | `character` styles, `pro` bases: this base's style anchor, over the style's. |
 | `providerInputs` | JSON scalar/sequence map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI accepts scalars and, for `frames`, one ordered 2–64 value sequence. Image bindings upload PNG/JPEG inputs. |
 | `styles` | string array, `[]` | Restrict the asset to named styles; empty means every style. |
 | `promptByStyle` | string map, `{}` | Replace only the asset prompt for a named style. |
@@ -106,6 +108,7 @@ constant across the set.
 | `textGuidanceScale` | `8` | `character` only. How closely a `standard` base and a template loop follow their text, 1 to 20. |
 | `isometric` | `false` | `character` only. Draw `standard` bases and every loop in isometric view. |
 | `enhancePrompt` | `false` | `character` only, `v3` bases. Let PixelLab expand the prompt into a fuller one before drawing. |
+| `styleCharacter` | | `character` only, `pro` bases. The asset id of a generated 8-direction character in this style whose look bases drawn from text or a concept follow. An asset may override it. |
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
@@ -525,6 +528,8 @@ credentials, cost semantics, recovery, and the paid live-test boundary.
 | `mirror` | string | Another asset of this style, flipped left to right. No prompt, no provider, no cost. See [Mirrors](#mirrors). |
 | `proportions` | preset or object | This base's body proportions, over the style's. `standard` humanoid bases only. |
 | `reference` | string or object | The character's own sprite(s) for PixelLab to rotate. Bases only. |
+| `concept` | string | A concept image a `pro` base is designed from. Bases only. |
+| `styleCharacter` | string | The character in this style a `pro` base takes its look from, over the style's. |
 
 ## Characters
 
@@ -608,11 +613,27 @@ is read again at submit time and refused if it changed since `plan`.
 States, animations, and mirrors take their look from their parent and
 cannot carry a reference.
 
+The pro engine has two more ways in. `concept` on a base names a concept
+image (a painting, a photo, a sketch, up to 1024px) that seeds the design
+in place of the prompt alone (PixelLab's `create_from_concept`); the
+prompt still guides it. `styleCharacter`, on the style or a base, names a
+generated 8-direction character in the same style whose look the base
+follows (`style_character_id`); its south sprite becomes the style image
+unless a style image is also given. The anchor is a dependency like a
+loop's character: the base is `blocked` until the anchor is downloaded and
+current, `gen` runs it in the wave after the anchor lands, and a
+regenerated anchor makes every base drawn in its style `stale`. The anchor
+itself ignores the setting, so a style can name its own first character.
+PixelLab wants the base at least as large as the anchor's visible sprite
+and fails the job fast otherwise. A base rotating its own `reference`
+takes neither: the rotate method has one image slot and it is the
+character.
+
 Style images on a `character` style are a pro-only input: one image of up
-to 168px that anchors the look of a `pro` base drawn from text (PixelLab's
-`create_with_style`). `standard` and `v3` have no such slot and refuse
-them; a pro base with a `reference` refuses them too, since the rotate
-method has one image slot and it is the character.
+to 168px that anchors the look of a `pro` base drawn from text or a
+concept (`create_with_style` and `create_from_concept` both take it).
+`standard` and `v3` have no such slot and refuse them; a pro base with a
+`reference` refuses them too.
 
 A state is a text edit of an existing character, `state.of`, applied to
 every direction at once: a pose, an outfit, a held object. The prompt is

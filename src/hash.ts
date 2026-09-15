@@ -100,6 +100,10 @@ export function specHash(
             reference: spec.character.reference
               ? Object.fromEntries(Object.entries(spec.character.reference).map(([direction, image]) => [direction, image.sha256]))
               : undefined,
+            concept: spec.character.concept?.sha256,
+            styleAnchor: spec.character.styleAnchor
+              ? { of: spec.character.styleAnchor.assetId, sha256: spec.character.styleAnchor.sha256 }
+              : undefined,
           }
         : undefined,
       // A mirror's bytes come from its source's recorded outputs; the plan

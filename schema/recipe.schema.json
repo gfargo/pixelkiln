@@ -284,6 +284,10 @@
             "enhancePrompt": {
               "type": "boolean"
             },
+            "styleCharacter": {
+              "type": "string",
+              "minLength": 1
+            },
             "seed": {
               "type": "integer"
             },

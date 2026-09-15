@@ -552,6 +552,21 @@ export async function resolveSpecs(
         finalized.add(assetId)
         return resolved
       }
+      const anchorId = asset.styleCharacter ?? style.styleCharacter
+      if (resolved.character?.kind === "base" && anchorId && anchorId !== assetId) {
+        // The anchor is another character in the style whose look this
+        // base follows; its south file is hashed so a regenerated anchor
+        // makes the bases drawn in its style stale.
+        const anchorSpec = await finalize(anchorId)
+        if (!anchorSpec.character || anchorSpec.character.kind === "animation") {
+          throw new Error(`assets.${assetId}: styleCharacter ${anchorId} is not a character base or state`)
+        }
+        const file = memberPath(anchorSpec.outFile, "south", 0, anchorSpec.character.directions, MediaType.PNG)
+        resolved.character = {
+          ...resolved.character,
+          styleAnchor: { assetId: anchorId, spec: anchorSpec, file, sha256: existsSync(file) ? await sha256File(file) : null },
+        }
+      }
       const characterParent = asset.state?.of ?? asset.animation?.of
       if (resolved.character && characterParent) {
         // The parent is resolved first so its output path is final; its
@@ -743,6 +758,10 @@ async function resolveCharacterShape(
     ...(style.textGuidanceScale !== undefined ? { textGuidanceScale: style.textGuidanceScale } : {}),
     ...(style.isometric !== undefined ? { isometric: style.isometric } : {}),
     ...(style.enhancePrompt !== undefined ? { enhancePrompt: style.enhancePrompt } : {}),
+  }
+  if (asset.concept) {
+    const image = await files.load(asset.concept, "Concept image")
+    shape.concept = { path: path.resolve(files.root, asset.concept), sha256: image.hash, width: image.width, height: image.height, format: image.format }
   }
   if (asset.reference) {
     // The author's own sprite, hashed so a redrawn reference makes the base
