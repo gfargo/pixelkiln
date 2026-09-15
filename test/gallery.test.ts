@@ -233,6 +233,42 @@ describe("buildGallerySnapshot", () => {
     expect(snapshot.items.find((item) => item.key === "base/anvil")!.fps).toBeNull()
   })
 
+  it("places character states and loops under their parents and counts the family per style", async () => {
+    const { loaded, specs } = await project({
+      name: "cast",
+      styles: { cast: { generator: "character", outDir: "art", size: 64, mode: "v3" } },
+      assets: {
+        hero: { prompt: "a hero" },
+        "hero.sit": { prompt: "sitting", state: { of: "hero" } },
+        "hero.sit.spin": { prompt: "spinning", animation: { of: "hero.sit", direction: "east", mode: "pro" } },
+      },
+    })
+    const lock: Lock = { version: 2, entries: {} }
+    upsert(lock, lockKey("cast", "hero"), {
+      styleId: "cast", assetId: "hero", specHash: specs[0]!.specHash, generator: "character",
+      prompt: "a hero", width: 64, height: 64, status: "downloaded", provider: "pixellab", objectId: "char-hero",
+      outputs: [{ path: "art/hero-south.png", sha256: "0".repeat(64), role: "south" }],
+      providerMetadata: { pixellab: { character: { characterId: "char-hero", directions: 8 } } },
+      cost: 1, costUnit: "generations",
+    })
+    // A loop the manifest no longer declares still knows what it is from the record.
+    upsert(lock, lockKey("cast", "hero.wave"), {
+      styleId: "cast", assetId: "hero.wave", specHash: "d".repeat(64), generator: "character",
+      prompt: "waving", width: 64, height: 64, status: "downloaded", provider: "pixellab", objectId: "char-hero#grp-wave",
+      outputs: [0, 1].map((i) => ({ path: "art/hero.wave-frame-0" + i + ".png", sha256: "0".repeat(64), role: "frame-0" + i })),
+      providerMetadata: { pixellab: { frameSet: { fps: 8, count: 2 }, character: { kind: "animation", characterId: "char-hero", direction: "south" } } },
+      cost: 1, costUnit: "generations",
+    })
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
+    const by = (key: string) => snapshot.items.find((item) => item.key === key)!
+    expect(by("cast/hero").character).toEqual({ kind: "base", parentKey: null, mode: "v3", directions: 8, direction: null, characterId: "char-hero" })
+    expect(by("cast/hero.sit").character).toMatchObject({ kind: "state", parentKey: "cast/hero", mode: "v3", characterId: null })
+    expect(by("cast/hero.sit.spin").character).toMatchObject({ kind: "animation", parentKey: "cast/hero.sit", mode: "pro", direction: "east" })
+    expect(by("cast/hero.wave")).toMatchObject({ state: "undeclared", character: { kind: "animation", parentKey: null, characterId: "char-hero", direction: "south" } })
+    expect(snapshot.styles.find((style) => style.id === "cast")!.characters).toEqual({ bases: 1, states: 1, animations: 2 })
+    expect(by("cast/anvil")).toBeUndefined()
+  })
+
   it("shows untracked art on disk with no hash and no provenance", async () => {
     const { loaded, specs } = await project()
     const outFile = specs.find((spec) => spec.assetId === "anvil")!.outFile

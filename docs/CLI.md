@@ -401,9 +401,10 @@ lock entry is shown at integer zoom on a transparency checkerboard, grouped by
 style, with its provenance one click away: the prompt actually sent, provider
 and generator, dimensions, recorded cost, lock status and plan state, submit
 and download times, job and object ids, every output with its path, SHA-256,
-size, and on-disk status, revision lineage, the quality record (palette,
-native-grid detection, audit, named approval), the manifest asset as declared,
-and raw provider metadata.
+size, and on-disk status, revision lineage, a character's parent and the
+states and loops that hang off it, the quality record (palette, native-grid
+detection, audit, named approval), the manifest asset as declared, and raw
+provider metadata.
 
 ```bash
 pixelkiln gallery

@@ -182,7 +182,10 @@ canvas lands in. Every direction of a base or state is one file
 (`<asset>-south.png`, ...); an animation's frames are `<asset>-frame-00.png`
 onwards, with the resting pose as frame 0 unless `keepFirstFrame` is off.
 `enforcePalette` snaps all of them. `pack --format godot` writes each base
-direction as a still and each animation as a looping set. See
+direction as a still and each animation as a looping set. The gallery
+labels a state or loop with its parent ("state of hero", "loop of
+hero.sit, east"), links parent and children in the record, and counts the
+family in the style header ("3 characters, 4 states, 6 loops"). See
 [Characters](./MANIFEST.md#characters).
 
 ## Style variants

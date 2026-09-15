@@ -97,6 +97,14 @@ const ACTIVE_PHASES = new Set(['queued', 'submitting', 'polling', 'fetching', 'r
 const PHASE_TONE = { queued: 'cool', submitting: 'cool', polling: 'cool', fetching: 'cool', review: 'warn', done: 'ok', failed: 'bad' };
 // The job still working on this record, if any: what the drawer and its card
 // show while a regeneration, restore, or pull is in flight.
+/** "state of mira", "loop of mira.chair_spin, east": where a character family member sits. */
+const familyLabel = (item) => {
+  const c = item.character;
+  if (!c || c.kind === 'base') return null;
+  const parent = c.parentKey ? c.parentKey.split('/').slice(1).join('/') : null;
+  if (c.kind === 'state') return parent ? 'state of ' + parent : 'state';
+  return (parent ? 'loop of ' + parent : 'loop') + (c.direction ? ', ' + c.direction : '');
+};
 /** The style's palette rule as the manifest has it now, or null. */
 const paletteRuleOf = (item) => {
   const style = snap.styles.find((s) => s.id === item.styleId && s.project === item.project);
@@ -819,6 +827,8 @@ function card(item) {
   meta.append(st, el('span', null, item.width + '×' + item.height));
   if (item.cost) meta.append(el('span', null, fmtCost(item.costUnit, item.cost)));
   body.append(meta);
+  const family = familyLabel(item);
+  if (family) body.append(el('div', 'family', family));
   const cell = thumb(item);
   if (slot >= 0) cell.append(el('span', 'slot', String(slot + 1)));
   if (item.editStatus === 'edited' || item.editStatus === 'regenerated-since') {
@@ -899,6 +909,13 @@ function renderMain(items) {
         meta.append(sw);
       }
       if (s.quality) meta.append(el('span', null, 'quality profile'));
+      if (s.characters) {
+        const parts = [];
+        parts.push(s.characters.bases + (s.characters.bases === 1 ? ' character' : ' characters'));
+        if (s.characters.states) parts.push(s.characters.states + (s.characters.states === 1 ? ' state' : ' states'));
+        if (s.characters.animations) parts.push(s.characters.animations + (s.characters.animations === 1 ? ' loop' : ' loops'));
+        meta.append(el('span', null, parts.join(', ')));
+      }
       meta.append(el('span', null, sec.items.length + ' of ' + s.items + (s.items === 1 ? ' asset' : ' assets')));
       if (Object.keys(s.spendByUnit).length) meta.append(el('span', null, fmtSpend(s.spendByUnit)));
       head.append(meta);
@@ -1909,6 +1926,28 @@ function renderDrawer() {
   if (upstream) body.append(upstream);
   const versions = historySection(item);
   if (versions) body.append(versions);
+
+  if (item.character) {
+    const c = item.character;
+    const { s, dl } = section('Character');
+    row(dl, 'kind', c.kind === 'animation' ? 'animation' : c.kind === 'state' ? 'state (a pose or outfit of its parent)' : 'base');
+    if (c.parentKey) row(dl, 'parent', keyLink(item, c.parentKey));
+    row(dl, 'engine', c.mode);
+    if (c.kind === 'animation') row(dl, 'direction', c.direction || '—');
+    else row(dl, 'directions', String(c.directions));
+    if (c.characterId) row(dl, 'character id', c.characterId, { mono: true, copy: c.characterId });
+    const family = snap.items.filter((i) => i.character && i.character.parentKey === item.key && i.project === item.project);
+    if (family.length) {
+      const list = el('div');
+      for (const f of family) {
+        const line = el('div');
+        line.append(document.createTextNode((f.character.kind === 'state' ? 'state ' : 'loop ') + (f.character.direction ? f.character.direction + ' ' : '')), keyLink(item, f.key));
+        list.append(line);
+      }
+      row(dl, family.length === 1 ? 'depends on this' : family.length + ' depend on this', list);
+    }
+    body.append(s);
+  }
 
   if (item.revision || item.revisionParentKey) {
     const { s, dl } = section('Lineage');
