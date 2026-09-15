@@ -240,8 +240,9 @@ export async function fetchAssets(
               const superseded = (entry.supersededOutputs ?? []).find((output, oldIndex, all) =>
                 currentOutputPath(output, spec, oldIndex, all.length) === target,
               )
+              const outgoing = Boolean(superseded && currentHash === superseded.sha256)
               if (!opts.force) {
-                if (superseded && currentHash === superseded.sha256) {
+                if (outgoing) {
                   // A stale spec was intentionally regenerated, or an older
                   // generation is being brought back. The bytes on disk are
                   // still exactly the ones PixelKiln wrote, so replacing them
@@ -254,6 +255,20 @@ export async function fetchAssets(
                   throw new Error(
                     `refusing to overwrite untracked output ${target}; pass --force to replace it`,
                   )
+                }
+              }
+              if (outgoing && cacheDir) {
+                // This file holds the generation `historyAfterReplacing` just
+                // retired into `history`. Cache its bytes before they are
+                // overwritten below, or a later restore has nothing to show a
+                // thumbnail for and must re-download from upstream.
+                try {
+                  const oldBytes = await readFile(target)
+                  const oldMediaType = detectMediaType(oldBytes)
+                  if (oldMediaType) await cacheMedia(cacheDir, oldBytes, oldMediaType, currentHash)
+                } catch {
+                  // Best-effort: failing to cache the outgoing bytes must not
+                  // block the write already in progress.
                 }
               }
               log(
