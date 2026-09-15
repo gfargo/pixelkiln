@@ -189,13 +189,13 @@ onwards, with the resting pose as frame 0 unless `keepFirstFrame` is off.
 `enforcePalette` snaps all of them. Since each direction of a loop is its
 own generation, declare the east-facing loop as a `mirror` of the west one
 (and each diagonal as a mirror of the other) and PixelKiln flips it locally
-for nothing; see [Mirrors](./MANIFEST.md#mirrors). `pack --format godot`
+for nothing; see [Mirrors](./CHARACTERS.md#mirrors). `pack --format godot`
 writes each base direction as a still and each animation as a looping set.
 The gallery
 labels a state or loop with its parent ("state of hero", "loop of
 hero.sit, east"), links parent and children in the record, and counts the
 family in the style header ("3 characters, 4 states, 6 loops"). See
-[Characters](./MANIFEST.md#characters).
+[Characters](./CHARACTERS.md).
 
 ## Style variants
 

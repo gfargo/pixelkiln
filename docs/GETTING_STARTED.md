@@ -69,7 +69,7 @@ implemented. Authenticated single-candidate RD Fast and RD Plus stills have
 passed from quote through validated download, provenance, and cache.
 Multi-candidate, tileset, GIF, and spritesheet live runs remain, so PixelLab
 remains the production adapter. See
-[Manifest reference](MANIFEST.md#experimental-retro-diffusion) for
+[Manifest reference](RETRO_DIFFUSION.md#manifest-fields) for
 provider options and current limits, or
 [provider comparison](../PROVIDERS.md) for selection guidance.
 
@@ -282,7 +282,7 @@ loop, 0 for the mirror) and one `pixelkiln gen` runs the waves: the base,
 then the loop, then the flip. `pixelkiln pack --style cast --format godot`
 writes a `SpriteFrames` with every direction as a still and both loops.
 Regenerate the base and everything under it goes `stale`. See
-[Characters](./MANIFEST.md#characters) and [Mirrors](./MANIFEST.md#mirrors).
+[Characters](./CHARACTERS.md) and [Mirrors](./CHARACTERS.md#mirrors).
 
 ## Automation
 

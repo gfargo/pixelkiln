@@ -3,7 +3,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export type DocGroup = "Start here" | "Workflows" | "Internals" | "Policies";
+export type DocGroup = "Start here" | "Providers" | "Guides" | "Reference" | "Policies";
 
 export type DocEntry = {
   slug: string;
@@ -26,49 +26,49 @@ export const docs: DocEntry[] = [
     title: "Set up PixelLab",
     description: "Configure the production provider, choose a generator, and use its account workflows.",
     file: "docs/PIXELLAB.md",
-    group: "Start here",
+    group: "Providers",
   },
   {
     slug: "retro-diffusion",
     title: "Set up Retro Diffusion",
     description: "Configure the experimental provider, choose a style, and understand its tested boundary.",
     file: "docs/RETRO_DIFFUSION.md",
-    group: "Start here",
+    group: "Providers",
   },
   {
     slug: "comfyui",
     title: "Set up ComfyUI",
     description: "Connect a self-hosted server for stills, revisions, and atomic frame sets, then apply its quality gate.",
     file: "docs/COMFYUI.md",
-    group: "Start here",
+    group: "Providers",
   },
   {
     slug: "scenario",
     title: "Set up Scenario",
     description: "Configure hosted models, two-part credentials, CU preflight, and durable downloads.",
     file: "docs/SCENARIO.md",
-    group: "Start here",
+    group: "Providers",
   },
   {
     slug: "cli",
     title: "CLI reference",
     description: "Every command and flag, including gallery, edit, history, tools, automation, and exit behavior.",
     file: "docs/CLI.md",
-    group: "Start here",
+    group: "Reference",
   },
   {
     slug: "manifest",
     title: "Manifest reference",
     description: "Styles, assets, quality profiles, mounting, and validation.",
     file: "docs/MANIFEST.md",
-    group: "Start here",
+    group: "Reference",
   },
   {
     slug: "mixed-providers",
     title: "Mixed-provider projects",
     description: "Route styles across providers with separate budgets and safe recovery.",
     file: "docs/MIXED_PROVIDERS.md",
-    group: "Start here",
+    group: "Providers",
   },
   {
     slug: "agents",
@@ -78,88 +78,95 @@ export const docs: DocEntry[] = [
     group: "Start here",
   },
   {
+    slug: "characters",
+    title: "Characters",
+    description: "A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, and what each PixelLab engine costs.",
+    file: "docs/CHARACTERS.md",
+    group: "Guides",
+  },
+  {
     slug: "generators",
     title: "Generator selection",
     description: "Choose the right capability and understand measured costs.",
     file: "docs/GENERATORS.md",
-    group: "Workflows",
+    group: "Guides",
   },
   {
     slug: "provider-benchmark",
     title: "Environment provider benchmark",
     description: "Thirty provider outputs, including ComfyUI cleanup, native-grid limits, final-palette refinement, and measured quality findings.",
     file: "docs/PROVIDER_BENCHMARK.md",
-    group: "Workflows",
+    group: "Providers",
   },
   {
     slug: "recipes",
     title: "Versioned recipes",
     description: "Install and verify pinned workflows, model hashes, and quality contracts.",
     file: "docs/RECIPES.md",
-    group: "Workflows",
+    group: "Guides",
   },
   {
     slug: "revisions",
     title: "Controlled asset revisions",
     description: "Revise current art with hashed parents, masks, approval gates, and side-by-side review.",
     file: "docs/REVISIONS.md",
-    group: "Workflows",
+    group: "Guides",
   },
   {
     slug: "artifacts",
     title: "Derived artifacts",
     description: "Refine, pack, mount, export, hand-edit companions, approval provenance, and recovery.",
     file: "docs/ARTIFACTS.md",
-    group: "Workflows",
+    group: "Guides",
   },
   {
     slug: "recovery",
     title: "Recovery and account safety",
     description: "Restore, generation history, cache, adopt, salvage, claims, and confirmed purge.",
     file: "docs/RECOVERY.md",
-    group: "Workflows",
+    group: "Guides",
   },
   {
     slug: "quality",
     title: "Quality gates",
     description: "Manifest quality profiles, image baselines, human review, and CI contracts.",
     file: "docs/QUALITY.md",
-    group: "Workflows",
+    group: "Guides",
   },
   {
     slug: "architecture",
     title: "Architecture",
     description: "The state machine, provider boundary, output identity, hand edits, the pinned editor, and durable writes.",
     file: "docs/ARCHITECTURE.md",
-    group: "Internals",
+    group: "Reference",
   },
   {
     slug: "library",
     title: "Library API",
     description: "Public TypeScript contracts for composing PixelKiln workflows.",
     file: "docs/LIBRARY.md",
-    group: "Internals",
+    group: "Reference",
   },
   {
     slug: "tiles",
     title: "Tiles and engine exports",
     description: "Structural roles, generic output, Tiled Wang sets, and Godot terrains.",
     file: "docs/TILES.md",
-    group: "Internals",
+    group: "Guides",
   },
   {
     slug: "endpoints",
     title: "Measured endpoints",
     description: "Live-account PixelLab costs, payloads, limits, and open questions.",
     file: "docs/ENDPOINTS.md",
-    group: "Internals",
+    group: "Reference",
   },
   {
     slug: "provider-notes",
     title: "Provider comparison",
     description: "Compare PixelLab, Retro Diffusion, ComfyUI, and Scenario.",
     file: "PROVIDERS.md",
-    group: "Workflows",
+    group: "Providers",
   },
   {
     slug: "contributing",
@@ -184,7 +191,7 @@ export const docs: DocEntry[] = [
   },
 ];
 
-export const docGroups: DocGroup[] = ["Start here", "Workflows", "Internals", "Policies"];
+export const docGroups: DocGroup[] = ["Start here", "Providers", "Guides", "Reference", "Policies"];
 
 export function getDoc(slug: string) {
   return docs.find((doc) => doc.slug === slug);

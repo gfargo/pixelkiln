@@ -619,6 +619,74 @@ PixelKiln refuses missing nodes and inputs during the offline plan. It also
 clones the workflow before applying bindings, so one asset cannot mutate the
 next asset's request.
 
+## Manifest fields
+
+ComfyUI runs a committed API-format workflow on a self-hosted server. The
+workflow file is resolved relative to the manifest and its parsed content is
+part of the spec hash. Adapter success proves transport and output structure,
+not pixel-art quality. Use provider-neutral `pixelkiln refine` for native-grid,
+final-palette, and recorded audit checks. Prompt coverage and human 1× approval
+still require a person.
+
+```jsonc
+{
+  "name": "my-game",
+  "provider": "comfyui",
+  "styles": {
+    "local": {
+      "generator": "map",
+      "outDir": "assets/generated/local",
+      "seed": 31415,
+      "providerOptions": {
+        "comfyui": {
+          "workflowFile": "workflows/pixel-api.json",
+          "outputNodeId": "9",
+          "numImages": 4,
+          "bindings": {
+            "prompt": { "nodeId": "6", "input": "text" },
+            "width": { "nodeId": "5", "input": "width" },
+            "height": { "nodeId": "5", "input": "height" },
+            "batchSize": { "nodeId": "5", "input": "batch_size" },
+            "seed": { "nodeId": "3", "input": "seed" },
+            "composition": { "nodeId": "19", "input": "image" },
+            "controlStrength": { "nodeId": "20", "input": "strength" }
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "mountain": {
+      "prompt": "a snowbound mountain pass",
+      "width": 768,
+      "height": 512,
+      "providerInputs": {
+        "composition": "controls/mountain-layout.png",
+        "controlStrength": 0.7
+      }
+    }
+  }
+}
+```
+
+Node IDs come from the exported workflow; they are not stable across unrelated
+workflows. Binding names beyond PixelKiln's built-ins are project-defined and
+an asset overrides one with a matching `providerInputs` value. A custom
+binding aimed at `LoadImage.image` or `LoadImageMask.image` treats its string as
+a manifest-relative PNG/JPEG, hashes it, and uploads it at submission. Other
+custom inputs accept a string, number, or boolean matching the workflow's
+placeholder type. Local paths never enter stable provenance.
+
+The current adapter supports `map` and ordered still-image `frames`, PNG output
+from one node, 1–16 `map` candidates, and dimensions from 16–4096px. A frame
+style uses `numImages: 1`; the varying input supplies 2–64 renders. It rejects
+manifest `styleImages` and `palette`;
+use custom image bindings for per-asset ControlNet or reference images, and keep
+shared model/LoRA/palette controls inside the workflow. See
+[Set up ComfyUI](COMFYUI.md) for the complete procedure, safe workflow, and
+quality limits. The 4096px adapter ceiling is not a recommended generation or
+native-art size.
+
 ## Plan, generate, and review
 
 ```bash
