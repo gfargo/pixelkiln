@@ -558,9 +558,12 @@ asset, that PixelLab draws facing 4 or 8 directions. `mode` picks the
 engine: `standard` (1 generation, the skeleton template, `outline`,
 `shading`, and `detail` as soft guidance, and `palette` sent as a colour
 reference), `v3` (2 to 9 by size, the highest quality, up to 256px), or
-`pro` (20 to 40 by size). `size` is the square canvas; `view` is `low
+`pro` (20 to 40 by size). `size` is the character's size; `view` is `low
 top-down` (the default), `high top-down`, or `side`; `template` picks the
 body. Each direction lands as `<asset>-<direction>.png`, south first.
+Standard mode draws on a canvas about 40% larger than `size` to leave room
+for animation (a 64px character comes back as 92px files); the lock records
+the size asked for, and the files are what PixelLab drew.
 
 A state is a text edit of an existing character, `state.of`, applied to
 every direction at once: a pose, an outfit, a held object. The prompt is
@@ -593,10 +596,12 @@ hand edit of the parent does not, because PixelLab draws the child from the
 character it holds, not from local bytes.
 
 Regenerating an animation clears PixelKiln's own earlier take of that
-direction on the character first (animations are named
-`pixelkiln:<style>/<asset>` upstream), since PixelLab skips a direction that
-already exists. Nothing else on the character is touched, and a base or
-state is never deleted by PixelKiln.
+direction on the character first, since PixelLab skips a direction that
+already exists. The lock records the animation and group ids PixelLab
+assigned, and the delete goes by those (PixelLab keeps the name PixelKiln
+gives a loop only for text animations, not template ones). Nothing else on
+the character is touched, and a base or state is never deleted by
+PixelKiln.
 
 `enforcePalette` snaps every direction and every frame. `pack --style cast
 --format godot` writes a `SpriteFrames` with each direction of a base or

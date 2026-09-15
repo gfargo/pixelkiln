@@ -215,8 +215,11 @@ function fakeClient() {
   const characters = new Map<string, { id: string; status: string; directions: number; rotations: Record<string, string>; animations: { display_name: string; animation_type: string; animation_group_id: string; directions: { direction: string; frames: string[] }[] }[]; group_id: string | null; state_name: string | null }>()
   let counter = 0
   const jobs = new Map<string, string>()
+  const jobResponses = new Map<string, Record<string, unknown>>()
   const client = {
     calls: [] as string[],
+    /** Whether the character list carries the name PixelKiln gave an animation. */
+    listNames: true,
     tags: new Map<string, string[]>(),
     pixels: new Map<string, Buffer>(),
     characters,
@@ -247,7 +250,13 @@ function fakeClient() {
       if (!c) throw new PixelLabError(`GET /characters/${id} → 404`, 404, "")
       return { id, name: "n", prompt: "p", size: { width: 64, height: 64 }, directions: c.directions, created_at: "2026-01-01", animation_count: c.animations.length, template_id: "mannequin", status: c.status, rotation_urls: c.status === "completed" ? c.rotations : null, tags: [], group_id: c.group_id, state_name: c.state_name, animations: c.animations }
     },
-    async getBackgroundJob(id: string) { return { id, status: jobs.get(id) ?? "completed" } },
+    async getBackgroundJob(id: string) {
+      const status = jobs.get(id)
+      if (status === undefined) throw new PixelLabError(`GET /background-jobs/${id} → 404`, 404, "")
+      return { id, status, last_response: jobResponses.get(id) ?? null }
+    },
+    /** Test hook: PixelLab cleans finished jobs up; the animation list is what is left. */
+    forgetJobs() { jobs.clear(); jobResponses.clear() },
     async deleteCharacterAnimations(id: string, selector: { animationGroupId?: string }, direction?: string) {
       const c = characters.get(id)!
       client.calls.push(`delete:${id}:${selector.animationGroupId}:${direction}`)
@@ -281,8 +290,15 @@ function fakeClient() {
         client.pixels.set(url, px(8, 100 + i))
         return url
       })
-      c.animations.push({ display_name: name, animation_type: "custom-spinning", animation_group_id: `grp-${name}-${direction}`, directions: [{ direction, frames }] })
-      for (const [jobId] of jobs) jobs.set(jobId, "completed")
+      const animationId = `anim-${direction}-${count}`
+      const urls = frames.map((url) => url.replace("/anim/", `/animations/${animationId}/`))
+      for (const [i, url] of urls.entries()) client.pixels.set(url, client.pixels.get(frames[i]!)!)
+      // The job completes with the frames; the character lists the group without the name in fallback tests.
+      c.animations.push({ display_name: client.listNames ? name : null as unknown as string, animation_type: "walk", animation_group_id: `grp-${name}-${direction}`, directions: [{ direction, frames: urls }] })
+      for (const [jobId] of jobs) {
+        jobs.set(jobId, "completed")
+        jobResponses.set(jobId, { direction, frame_count: count, animation_id: animationId, character_id: id, storage_urls: { frames: urls } })
+      }
     },
     failJob() { for (const [jobId] of jobs) jobs.set(jobId, "failed") },
   }
@@ -433,6 +449,40 @@ describe("the pipeline", () => {
     client.failJob()
     await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
     expect(p.lock.entries["cast/mira.idle"]).toMatchObject({ status: "failed", error: expect.stringContaining("animation generation failed") })
+  })
+
+  it("finds a finished animation through its job even when the character list lost the name, and by id once the job is gone", async () => {
+    const file = await writeManifest({ assets: {
+      mira: { prompt: "small young woman, dark curly hair in a bun, oversized hoodie" },
+      "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", direction: "south", fps: 6 } },
+    } })
+    const client = fakeClient()
+    client.listNames = false
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "whatever-pixellab-called-it", "south", 6)
+
+    // The job says where the frames are; the group id comes from the URL match.
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    const entry = p.lock.entries["cast/mira.walk"]!
+    expect(entry.status).toBe("review")
+    expect(entry.providerMetadata.pixellab).toMatchObject({ frameSet: { fps: 6, count: 6 }, character: { animationId: "anim-south-6", animationGroupId: "grp-whatever-pixellab-called-it-south" } })
+
+    // With the job cleaned up, the recorded animation id still finds the frames.
+    client.forgetJobs()
+    const again = await provider.poll(entry.reviewObjectId!, "character", { spec: p.specs.find((s) => s.assetId === "mira.walk"), metadata: entry.providerMetadata.pixellab })
+    expect(again.status).toBe("review-set")
+
+    // A re-roll deletes by the group id the poll recorded, not by name.
+    const forced = await buildPlan(p.specs, p.lock, { force: true })
+    await submit(provider, p.loaded, forced.actionable.filter((i) => i.key === "cast/mira.walk"), p.lock, p.lockPath, { spacingMs: 0 })
+    expect(client.calls.filter((c) => c.startsWith("delete:"))).toEqual(["delete:char-1:grp-whatever-pixellab-called-it-south:south"])
   })
 
   it("snaps every direction to an enforced palette and keeps the raw bytes", async () => {

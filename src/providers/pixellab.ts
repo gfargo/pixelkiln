@@ -305,9 +305,20 @@ export class PixelLabProvider implements Provider {
     }
     const animation = character.animation!
     const name = characterAnimationName(spec)
+    // PixelLab skips a direction that already exists on the character, so an
+    // earlier take of this asset's direction goes first. It is found by the
+    // group id the last poll recorded, or by the name PixelKiln gave it, or by
+    // the animation id in its frame URLs; nothing else on the character is
+    // touched.
+    const replaced = (context?.replacedMetadata?.character ?? {}) as { animationGroupId?: string | null; animationId?: string | null }
     const existing = await this.client.getCharacter(parentId)
     for (const group of existing.animations) {
-      if (group.display_name !== name || !group.animation_group_id) continue
+      const ours = group.animation_group_id && (
+        group.animation_group_id === replaced.animationGroupId ||
+        group.display_name === name ||
+        (replaced.animationId && group.directions.some((d) => d.frames.some((url) => url.includes(`/animations/${replaced.animationId}/`))))
+      )
+      if (!ours || !group.animation_group_id) continue
       if (group.directions.some((d) => d.direction === animation.direction)) {
         await this.client.deleteCharacterAnimations(parentId, { animationGroupId: group.animation_group_id }, animation.direction)
       }
@@ -362,39 +373,64 @@ export class PixelLabProvider implements Provider {
     }
   }
 
+  /**
+   * The background job is the authoritative record of one direction: it
+   * completes with the frame URLs, the animation id, and the direction, and
+   * it reports a failure. The character's own animation list is the
+   * fallback once PixelLab has cleaned the job up, and the place the group
+   * id (what a later delete needs) is read from.
+   */
   private async pollCharacterAnimation(job: AnimationJob, context?: PollContext): Promise<JobState> {
-    const character = await this.client.getCharacter(job.characterId)
-    const found = findAnimation(character, job.name, job.direction)
-    if (found) {
-      const fps = context?.spec?.character?.animation?.fps ?? 8
-      const sources = found.frames.map((url, index) => ({ url, role: `frame-${String(index).padStart(2, "0")}` }))
-      return {
-        status: "review-set",
-        objectId: `${job.characterId}#${found.groupId ?? job.name}`,
-        frameUrls: found.frames,
-        sources,
-        fps,
-        metadata: {
-          frameSet: { fps, count: found.frames.length },
-          character: {
-            kind: "animation",
-            characterId: job.characterId,
-            animationGroupId: found.groupId,
-            animationName: job.name,
-            direction: job.direction,
-          },
+    const fps = context?.spec?.character?.animation?.fps ?? 8
+    const review = (frames: string[], animationId: string | null, groupId: string | null): JobState => ({
+      status: "review-set",
+      objectId: `${job.characterId}#${groupId ?? animationId ?? job.name}`,
+      frameUrls: frames,
+      sources: frames.map((url, index) => ({ url, role: `frame-${String(index).padStart(2, "0")}` })),
+      fps,
+      metadata: {
+        frameSet: { fps, count: frames.length },
+        character: {
+          kind: "animation",
+          characterId: job.characterId,
+          animationId,
+          animationGroupId: groupId,
+          animationName: job.name,
+          direction: job.direction,
         },
-      }
-    }
+      },
+    })
+
+    let cleanedUp = job.jobIds.length === 0
     for (const id of job.jobIds) {
       const status = await this.client.getBackgroundJob(id).catch((err: unknown) => {
-        // A finished job is cleaned up upstream; the animation itself is the record then.
         if (err instanceof PixelLabError && err.status === 404) return null
         throw err
       })
-      if (status?.status === "failed") return { status: "failed", error: "animation generation failed upstream" }
+      if (!status) {
+        cleanedUp = true
+        continue
+      }
+      if (status.status === "failed") return { status: "failed", error: "animation generation failed upstream" }
+      if (status.status !== "completed") return { status: "processing" }
+      const done = status.last_response ?? {}
+      const frames = (done.storage_urls as { frames?: unknown } | undefined)?.frames
+      const animationId = typeof done.animation_id === "string" ? done.animation_id : null
+      if (Array.isArray(frames) && frames.length && frames.every((f) => typeof f === "string")) {
+        const character = await this.client.getCharacter(job.characterId)
+        const group = findAnimation(character, job.name, job.direction, animationId)
+        return review(frames as string[], animationId, group?.groupId ?? null)
+      }
     }
-    return { status: "processing" }
+    // No job told us; the animation list is what is left, searched by name
+    // or by the animation id an earlier poll recorded.
+    const recorded = (context?.metadata?.character as { animationId?: string | null } | undefined)?.animationId ?? null
+    const character = await this.client.getCharacter(job.characterId)
+    const found = findAnimation(character, job.name, job.direction, recorded)
+    if (found) return review(found.frames, found.animationId, found.groupId)
+    return cleanedUp
+      ? { status: "failed", error: `animation job is gone upstream and no "${job.name}" ${job.direction} animation exists on the character` }
+      : { status: "processing" }
   }
 
   async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[], context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
@@ -647,16 +683,24 @@ function firstUrl(urls: Record<string, string | null> | null | undefined): strin
   return Object.values(urls).find((u): u is string => typeof u === "string") ?? null
 }
 
-/** One direction of one named animation on a character, if it has landed. */
+/**
+ * One direction of one animation on a character, if it has landed: by the
+ * name PixelKiln gave it, or by the animation id in its frame URLs.
+ */
 function findAnimation(
   character: PixelLabCharacter,
   name: string,
   direction: string,
-): { frames: string[]; groupId: string | null } | null {
+  animationId: string | null,
+): { frames: string[]; groupId: string | null; animationId: string | null } | null {
   for (const group of character.animations) {
-    if (group.display_name !== name && group.animation_type !== name) continue
     const match = group.directions.find((d) => d.direction === direction && d.frames.length > 0)
-    if (match) return { frames: match.frames, groupId: group.animation_group_id ?? null }
+    if (!match) continue
+    const byName = group.display_name === name || group.animation_type === name
+    const byId = animationId !== null && match.frames.some((url) => url.includes(`/animations/${animationId}/`))
+    if (!byName && !byId) continue
+    const fromUrl = /\/animations\/([^/]+)\//.exec(match.frames[0]!)?.[1] ?? null
+    return { frames: match.frames, groupId: group.animation_group_id ?? null, animationId: animationId ?? fromUrl }
   }
   return null
 }

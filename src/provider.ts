@@ -59,6 +59,8 @@ export interface PollContext {
   tileFeature?: string
   /** Current resolved intent, needed when output media depends on provider options. */
   spec?: ResolvedSpec
+  /** What the adapter recorded for this entry on earlier polls, under its own namespace. */
+  metadata?: ProviderMetadata
 }
 
 /** Provider-owned, JSON-serializable details needed by downstream exporters. */
@@ -90,6 +92,13 @@ export interface SubmitContext {
    * the parent current before calling; the adapter only needs the id.
    */
   parentObjectId?: string
+  /**
+   * Provider-owned details of the generation this submission replaces, when
+   * the lockfile had one for the same asset, whatever its state. An adapter
+   * that must clear upstream work before redoing it (a character animation
+   * PixelLab would otherwise skip) reads its ids from here.
+   */
+  replacedMetadata?: ProviderMetadata
 }
 
 export interface CandidateSelection {
