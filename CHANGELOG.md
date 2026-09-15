@@ -1,3 +1,16 @@
+# [0.45.0](https://github.com/gfargo/pixelkiln/compare/v0.44.0...v0.45.0) (2026-09-15)
+
+
+### Bug Fixes
+
+* **editor:** ship the pk.26 editor build, which no longer reports the bridge as faulty ([#137](https://github.com/gfargo/pixelkiln/issues/137)) ([fba6074](https://github.com/gfargo/pixelkiln/commit/fba607492136fc661820bcd32d85b0f93e2ed055))
+* **editor:** stop Pixelorama flagging the bridge as a faulty extension on every launch ([#135](https://github.com/gfargo/pixelkiln/issues/135)) ([523a01f](https://github.com/gfargo/pixelkiln/commit/523a01fedf9a10e6ed9718a8267aa72212e2e873))
+
+
+### Features
+
+* **character:** concept images and style anchors for pro bases ([#136](https://github.com/gfargo/pixelkiln/issues/136)) ([481f4fa](https://github.com/gfargo/pixelkiln/commit/481f4faf5848e570955beba5ad028c4d80173ce0))
+
 # [0.44.0](https://github.com/gfargo/pixelkiln/compare/v0.43.0...v0.44.0) (2026-09-15)
 
 
