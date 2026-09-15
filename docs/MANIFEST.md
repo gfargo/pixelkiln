@@ -571,9 +571,10 @@ reference), `v3` (2 to 9 by size, the highest quality, up to 256px), or
 `pro` (20 to 40 by size). `size` is the character's size; `view` is `low
 top-down` (the default), `high top-down`, or `side`; `template` picks the
 body. Each direction lands as `<asset>-<direction>.png`, south first.
-Standard mode draws on a canvas about 40% larger than `size` to leave room
-for animation (a 64px character comes back as 92px files); the lock records
-the size asked for, and the files are what PixelLab drew.
+Standard mode draws on a canvas 28px larger than `size`, 14px of room on
+each side for animation (a 64px character comes back as 92px files, a
+104px one as 132px); the lock records the size asked for, and the files
+are what PixelLab drew.
 
 Three more knobs shape a `standard` base. `proportions` is a preset
 (`chibi`, `heroic`, and so on) or multipliers on the mannequin's head,
@@ -592,8 +593,9 @@ draws the other directions from it, with the prompt as guidance:
 "mira": { "prompt": "small young woman, oversized hoodie", "reference": "refs/mira-south.png" }
 ```
 
-`standard` uses each image as it is and generates the rest, so the image
-must be the style's `size` exactly; it accepts one image per direction
+`standard` uses each image as it is, centred on its larger canvas, and
+generates the rest, so the image must be the style's `size` exactly; it
+accepts one image per direction
 (`{ "south": ..., "east": ... }`), and a quadruped template needs south and
 east. `v3` rotates one south image of up to 256px (its `template` must
 match the body in the image). `pro` rotates one south image of up to 168px
