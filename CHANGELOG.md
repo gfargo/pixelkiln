@@ -1,3 +1,10 @@
+## [0.46.1](https://github.com/gfargo/pixelkiln/compare/v0.46.0...v0.46.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **fetch:** cache the outgoing generation's bytes when replacing an asset ([#139](https://github.com/gfargo/pixelkiln/issues/139)) ([3e3e316](https://github.com/gfargo/pixelkiln/commit/3e3e3166925fb93e36be459a9f9a43f1f6a84ca6))
+
 # [0.46.0](https://github.com/gfargo/pixelkiln/compare/v0.45.0...v0.46.0) (2026-09-15)
 
 
