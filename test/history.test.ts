@@ -175,6 +175,25 @@ describe("restoring a previous generation", () => {
     expect(cached.sort()).toEqual([first.outputs[0]!.sha256 + ".png", second.outputs[0]!.sha256 + ".png"].sort())
     expect(existsSync(path.join(dir, ".pixelkiln/cache", first.outputs[0]!.sha256 + ".png"))).toBe(true)
   })
+
+  it("caches the outgoing generation from disk when the local cache never had it, e.g. a fresh worktree", async () => {
+    const { loaded, specs } = await project()
+    const provider = new FakeProvider({ candidates: 1 })
+    const lock: Lock = { version: 2, entries: {} }
+    const first = await generate(provider, loaded, specs, lock)
+
+    // The committed file and lockfile survive into a fresh checkout; the
+    // gitignored, derived-only content cache does not.
+    await rm(path.join(dir, ".pixelkiln/cache"), { recursive: true, force: true })
+
+    const second = await generate(provider, loaded, specs, lock, true)
+    const cached = await readdir(path.join(dir, ".pixelkiln/cache"))
+    expect(cached.sort()).toEqual([first.outputs[0]!.sha256 + ".png", second.outputs[0]!.sha256 + ".png"].sort())
+
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
+    const item = snapshot.items.find((i) => i.key === "base/anvil")!
+    expect(item.history).toEqual([expect.objectContaining({ cached: true })])
+  })
 })
 
 async function untilPhase(handlers: GalleryGenerateHandlers, id: string, phases: string[]): Promise<GenerateJob> {
