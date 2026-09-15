@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DocSearch } from "@/app/ui/doc-search";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
 export function KilnMark() {
@@ -31,14 +32,17 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
           GitHub
         </TrackedLink>
       </nav>
-      <TrackedLink
-        className="nav-cta"
-        id="nav_start_building"
-        section="header"
-        href="/docs/getting-started"
-      >
-        Start building
-      </TrackedLink>
+      <div className="header-actions">
+        <DocSearch />
+        <TrackedLink
+          className="nav-cta"
+          id="nav_start_building"
+          section="header"
+          href="/docs/getting-started"
+        >
+          Start building
+        </TrackedLink>
+      </div>
     </header>
   );
 }

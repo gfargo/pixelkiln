@@ -18,6 +18,7 @@ export type CtaSection =
   | "provider_showcase"
   | "docs_index"
   | "docs_sidebar"
+  | "docs_search"
   | "footer";
 
 export function trackCta(id: string, section: CtaSection, href: string) {
