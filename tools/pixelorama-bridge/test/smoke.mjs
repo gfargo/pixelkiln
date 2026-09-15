@@ -155,6 +155,25 @@ try {
   console.log("reference reopened:", JSON.stringify(refReopened))
   if (refReopened.source !== "pxo" || !refReopened.reference || refReopened.layers !== 1) fail("reference layer not restored once from the pxo: " + JSON.stringify(refReopened))
 
+  // Pixelorama writes extensions/Monitoring.ini while an extension with
+  // nodes is under suspicion and only clears it on a clean exit, which a
+  // browser tab never has. The bridge clears its own entry, so the file
+  // must be gone from the persisted user:// store; otherwise every later
+  // launch opens with "A Faulty extension was found in previous session".
+  const suspicion = await page.evaluate(async () => {
+    const db = await new Promise((resolve, reject) => { const r = indexedDB.open("/userfs"); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error) })
+    const keys = await new Promise((resolve, reject) => { const r = db.transaction("FILE_DATA", "readonly").objectStore("FILE_DATA").getAllKeys(); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error) })
+    db.close()
+    return keys.map(String).filter((k) => /Monitoring\.ini|give_in_bug_report/.test(k))
+  })
+  console.log("extension suspicion left in user://:", JSON.stringify(suspicion))
+  if (suspicion.length) fail("the bridge is still a crash suspect: " + suspicion.join(", "))
+  // A second launch after that "unclean" close still brings the bridge up.
+  await new Promise((r) => setTimeout(r, 6000))
+  await page.reload({ waitUntil: "domcontentloaded" })
+  await page.waitForFunction(() => window.__host.ready !== null, { timeout: 300_000, polling: 2000 })
+  console.log("ready again after reload:", JSON.stringify(await page.evaluate(() => window.__host.ready)))
+
   const errs = await page.evaluate(() => window.__host.errors)
   if (errs.length) fail("bridge errors: " + JSON.stringify(errs))
   if (errors.length) console.log("page errors:", errors.slice(0, 3))
