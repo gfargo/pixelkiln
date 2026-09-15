@@ -1,3 +1,11 @@
+# [0.41.0](https://github.com/gfargo/pixelkiln/compare/v0.40.0...v0.41.0) (2026-09-15)
+
+
+### Features
+
+* **fetch:** re-resolve character URLs on --refresh ([#130](https://github.com/gfargo/pixelkiln/issues/130)) ([c2eaa01](https://github.com/gfargo/pixelkiln/commit/c2eaa01f4bcca44d8523a8af6df446f68ebb15b5))
+* **gallery:** show character families ([#129](https://github.com/gfargo/pixelkiln/issues/129)) ([1cea753](https://github.com/gfargo/pixelkiln/commit/1cea753a23cb82bd6d0b9b8d2f644abdcfd5b2c7))
+
 # [0.40.0](https://github.com/gfargo/pixelkiln/compare/v0.39.0...v0.40.0) (2026-09-15)
 
 
