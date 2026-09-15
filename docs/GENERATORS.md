@@ -13,6 +13,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 20–40 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 20–40 generations | variations or complete set |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
+| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose, 1 per template loop | one set of directions, or one ordered loop |
 
 Start with `map` unless a required capability points elsewhere. Forty `map`
 re-rolls cost the same as one 64×64 `1dir` call.
@@ -155,6 +156,35 @@ system requests reduced motion and stops while it is offscreen. After approval,
 `asset/frame-XX` atlas ids. See
 [Set up ComfyUI](./COMFYUI.md#generate-an-ordered-frame-set).
 
+## `character`
+
+`character` is PixelLab's character family as managed assets: a base drawn
+facing 4 or 8 directions, states (a pose, an outfit) that PixelLab applies to
+every direction of an existing character, and animations, one loop of one
+character in one direction. The three share one PixelLab character. A state
+or animation depends on its parent the way a revision does: the parent must
+be downloaded and current before the child can be submitted, and
+regenerating the parent makes the child stale.
+
+| Asset | PixelLab call | Cost |
+|---|---:|---:|
+| base, `mode: standard` | create-character-with-4/8-directions | 1 |
+| base, `mode: v3` | create-character-v3 | 1 + ceil(size² × 8 / 65536): 2 at 64px, 3 at 128px |
+| base, `mode: pro` | create-character-pro | 20–40 by canvas |
+| state | create-character-state | 20–40 by canvas |
+| animation with a `template` | animate-character | 1 |
+| animation from text (v3) | animate-character | ceil(size² × frames / 65536): 1 at 64px, 2 at 128px |
+| animation, `mode: pro` | animate-character | 20–40 by canvas |
+
+The 20–40 tiers are PixelLab's; the tier is resolved from the canvas when
+the job runs and reserved against the floor, so `plan` reports the tier the
+canvas lands in. Every direction of a base or state is one file
+(`<asset>-south.png`, ...); an animation's frames are `<asset>-frame-00.png`
+onwards, with the resting pose as frame 0 unless `keepFirstFrame` is off.
+`enforcePalette` snaps all of them. `pack --format godot` writes each base
+direction as a still and each animation as a looping set. See
+[Characters](./MANIFEST.md#characters).
+
 ## Style variants
 
 Styles are namespaces. Add another style to re-derive the same asset ids into a
@@ -189,5 +219,6 @@ as a fresh one-generation image. Regenerate at the target dimensions when
 palette fidelity matters; background removal is the measured exception, a
 real de-fringe pass.
 
-Animated eight-direction characters and their ZIP/engine-resource export are
-outside the current library scope.
+PixelLab's portrait, outfit-transfer, lip-sync, and skeleton-driven
+animation endpoints are outside the current library scope; the character
+family itself is the `character` generator.

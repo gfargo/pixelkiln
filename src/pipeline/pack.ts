@@ -283,10 +283,15 @@ export function packStyle(
     }
     for (const output of selected) inputs.push({ id: output.id, path: output.absolutePath })
     if (entry.outputs.length > 1) {
-      const fps = entry.generator === "frames" ? frameSetFps(entry) ?? DEFAULT_FRAME_SET_FPS : null
+      // A ComfyUI frame set says so by generator; a PixelLab character
+      // animation says so by recording its rate. Directions of a character
+      // are members, like tiles.
+      const recordedFps = frameSetFps(entry)
+      const isFrames = entry.generator === "frames" || recordedFps !== null
+      const fps = isFrames ? recordedFps ?? DEFAULT_FRAME_SET_FPS : null
       sets.push({
         id,
-        kind: entry.generator === "frames" ? "frames" : "members",
+        kind: isFrames ? "frames" : "members",
         ...(fps ? { fps } : {}),
         frames: selected.map((output) => output.id),
       })

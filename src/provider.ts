@@ -84,6 +84,12 @@ export interface SubmitContext {
   previousJobId?: string
   /** Provider-owned details saved with the previous checkpoint. */
   previousMetadata?: ProviderMetadata
+  /**
+   * The provider-side id the lockfile recorded for this spec's parent asset,
+   * when it has one (a character state or animation). The pipeline proved
+   * the parent current before calling; the adapter only needs the id.
+   */
+  parentObjectId?: string
 }
 
 export interface CandidateSelection {
@@ -294,7 +300,7 @@ export interface Provider {
   checkConnection?(): Promise<void>
 
   /** Free-form labels on the remote asset. Absent if unsupported. */
-  setTags?(objectId: string, tags: string[]): Promise<void>
+  setTags?(objectId: string, tags: string[], generator?: Generator): Promise<void>
 
   /** Walk every asset on the account. Required by `adopt` and `salvage`. */
   list?(): AsyncGenerator<RemoteAsset>

@@ -39,7 +39,8 @@
                       "pixflux",
                       "tiles",
                       "animation",
-                      "frames"
+                      "frames",
+                      "character"
                     ],
                     "default": "map"
                   },
@@ -130,6 +131,25 @@
                   "noBackground": {
                     "type": "boolean",
                     "default": true
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "standard",
+                      "v3",
+                      "pro"
+                    ]
+                  },
+                  "directions": {
+                    "type": "number",
+                    "enum": [
+                      4,
+                      8
+                    ]
+                  },
+                  "template": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "seed": {
                     "type": "integer"
@@ -257,7 +277,8 @@
                       "pixflux",
                       "tiles",
                       "animation",
-                      "frames"
+                      "frames",
+                      "character"
                     ],
                     "default": "map"
                   },
@@ -348,6 +369,25 @@
                   "noBackground": {
                     "type": "boolean",
                     "default": true
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "standard",
+                      "v3",
+                      "pro"
+                    ]
+                  },
+                  "directions": {
+                    "type": "number",
+                    "enum": [
+                      4,
+                      8
+                    ]
+                  },
+                  "template": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "seed": {
                     "type": "integer"
@@ -547,6 +587,97 @@
                 "required": [
                   "mode",
                   "from"
+                ],
+                "additionalProperties": false
+              },
+              "state": {
+                "type": "object",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "paletteFromReference": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "canvas": {
+                    "type": "object",
+                    "properties": {
+                      "width": {
+                        "type": "integer",
+                        "minimum": 16,
+                        "maximum": 256
+                      },
+                      "height": {
+                        "type": "integer",
+                        "minimum": 16,
+                        "maximum": 256
+                      }
+                    },
+                    "required": [
+                      "width",
+                      "height"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "of"
+                ],
+                "additionalProperties": false
+              },
+              "animation": {
+                "type": "object",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "template": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "south",
+                      "south-east",
+                      "east",
+                      "north-east",
+                      "north",
+                      "north-west",
+                      "west",
+                      "south-west"
+                    ],
+                    "default": "south"
+                  },
+                  "frames": {
+                    "type": "integer",
+                    "minimum": 4,
+                    "maximum": 16
+                  },
+                  "fps": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60,
+                    "default": 8
+                  },
+                  "keepFirstFrame": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "template",
+                      "v3",
+                      "pro"
+                    ]
+                  }
+                },
+                "required": [
+                  "of"
                 ],
                 "additionalProperties": false
               },

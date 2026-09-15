@@ -401,7 +401,7 @@ export async function pushTags(
     if (entry.generator === "pixflux") continue
     if (!provider.setTags) return tagged // capability absent; nothing to do
     try {
-      await provider.setTags(entry.objectId, spec.tags)
+      await provider.setTags(entry.objectId, spec.tags, entry.generator)
       tagged++
     } catch (err) {
       log(`  tag failed ${key}: ${err instanceof Error ? err.message : String(err)}`)

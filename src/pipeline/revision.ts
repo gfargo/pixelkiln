@@ -11,7 +11,9 @@ export interface RevisionReadiness {
 }
 
 /**
- * Prove that a revision points at the current bytes of a current parent.
+ * Prove that a revision points at the current bytes of a current parent, or
+ * that a character state or animation has its parent character downloaded
+ * and current.
  *
  * This runs during planning and again immediately before submission. The
  * second check closes the gap where a source or mask changes after a plan was
@@ -21,8 +23,37 @@ export async function inspectRevisionReadiness(
   spec: ResolvedSpec,
   lock: Lock,
 ): Promise<RevisionReadiness | null> {
+  if (spec.character?.parentSpec) return inspectCharacterParent(spec, lock, new Set())
   if (!spec.revision) return null
   return inspectRevision(spec, lock, new Set())
+}
+
+/**
+ * A state or animation is drawn by PixelLab from the character it holds, so
+ * the parent must be downloaded, current, and untouched; its south-facing
+ * file is what the child's identity hashed at resolve time.
+ */
+async function inspectCharacterParent(
+  spec: ResolvedSpec,
+  lock: Lock,
+  seen: Set<string>,
+): Promise<RevisionReadiness> {
+  const character = spec.character!
+  const parentSpec = character.parentSpec!
+  const label = `${character.kind} parent ${spec.styleId}/${character.parentAssetId}`
+  const dependency = await inspectParent(parentSpec, lock, seen)
+  if (!dependency.ready) return { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
+  if (!character.parentSha256 || !character.parentFile || !existsSync(character.parentFile)) {
+    return { ready: false, reason: `${label} has no generated south-facing file yet` }
+  }
+  if ((await sha256File(character.parentFile)) !== character.parentSha256) {
+    return { ready: false, reason: `${label} changed after the manifest was resolved` }
+  }
+  const parentEntry = lock.entries[lockKey(parentSpec.styleId, parentSpec.assetId)]
+  if (!parentEntry?.objectId) {
+    return { ready: false, reason: `${label} has no PixelLab character id recorded` }
+  }
+  return { ready: true, reason: `${label} is current` }
 }
 
 async function inspectRevision(
@@ -76,6 +107,10 @@ async function inspectParent(
 
   if (spec.revision) {
     const inputs = await inspectRevision(spec, lock, nextSeen)
+    if (!inputs.ready) return inputs
+  }
+  if (spec.character?.parentSpec) {
+    const inputs = await inspectCharacterParent(spec, lock, nextSeen)
     if (!inputs.ready) return inputs
   }
 

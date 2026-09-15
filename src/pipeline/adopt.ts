@@ -176,7 +176,7 @@ export async function tagAdopted(
     if (!spec || !entry.objectId) continue
     if (!provider.setTags) return count // capability absent
     try {
-      await provider.setTags(entry.objectId, spec.tags)
+      await provider.setTags(entry.objectId, spec.tags, entry.generator)
       count++
     } catch (err) {
       log(`  tag failed ${key}: ${err instanceof Error ? err.message : String(err)}`)
