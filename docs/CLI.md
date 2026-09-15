@@ -24,7 +24,7 @@ hosted still models with Compute Unit preflight and durable asset recovery.
 | see what a run would do and cost, spending nothing | `pixelkiln plan` |
 | generate everything the manifest still needs | `pixelkiln gen --budget 40` |
 | hold every generated file to the style's palette | set `"enforcePalette": true` on the style, then `pixelkiln fetch` |
-| draw a character in 8 directions, then its poses and loops | a `character` style; `state` and `animation` assets; `pixelkiln gen` in that order |
+| draw a character in 8 directions, then its poses and loops | a `character` style with `state` and `animation` assets; one `pixelkiln gen` runs the waves |
 | generate one asset, or one style | `pixelkiln gen --only anvil --budget 2`, `pixelkiln gen --style neon --budget 20` |
 | finish a run that was interrupted | `pixelkiln plan`, then the `next:` command it prints (`poll`, `pick`, or `fetch`) |
 | choose among candidates the provider returned | `pixelkiln pick` |
@@ -110,6 +110,19 @@ pixelkiln gen --budget pixellab=12 --budget retrodiffusion=0.20 --budget comfyui
 ```
 
 PixelKiln validates the complete budget set before submitting the first group.
+
+`gen` runs in waves. A wave is the whole lifecycle for everything the plan
+can act on now. Once its downloads land, assets that were `blocked` on a
+parent (a character's states, then their animations; a revision of a still
+that was just made) become actionable, and the next wave takes them under
+what is left of the same budget, asking the same "Spend ...?" question each
+time unless `--yes`. It stops when a wave finds nothing new, when a wave
+submits nothing, or when the remaining budget cannot cover the next wave; in
+that last case the earlier waves' work is saved and the message says to run
+`gen` again with a budget for the rest. `--force` applies to the first wave
+only: a child whose parent is being regenerated waits for the parent's new
+bytes and then goes once, in its own wave.
+
 After downloading a style with `quality`, `gen` points to the offline refinement
 step. It does not run or approve that step on the user's behalf.
 
