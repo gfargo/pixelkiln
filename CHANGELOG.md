@@ -1,3 +1,10 @@
+# [0.42.0](https://github.com/gfargo/pixelkiln/compare/v0.41.0...v0.42.0) (2026-09-15)
+
+
+### Features
+
+* **manifest:** mirror assets flip a loop to face the other way for free ([#131](https://github.com/gfargo/pixelkiln/issues/131)) ([cba0ced](https://github.com/gfargo/pixelkiln/commit/cba0ced56e136339a3076d57b08dadb1f7e4f5a9))
+
 # [0.41.0](https://github.com/gfargo/pixelkiln/compare/v0.40.0...v0.41.0) (2026-09-15)
 
 
