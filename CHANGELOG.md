@@ -1,3 +1,10 @@
+# [0.44.0](https://github.com/gfargo/pixelkiln/compare/v0.43.0...v0.44.0) (2026-09-15)
+
+
+### Features
+
+* **character:** pose frames, subject, style hints, prompt enhancement, and palette for loops ([#134](https://github.com/gfargo/pixelkiln/issues/134)) ([1ae3086](https://github.com/gfargo/pixelkiln/commit/1ae3086b33a7c48ef8583af99f93063b527cdb2a))
+
 # [0.43.0](https://github.com/gfargo/pixelkiln/compare/v0.42.0...v0.43.0) (2026-09-15)
 
 
