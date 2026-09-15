@@ -22,6 +22,7 @@ import type {
   PollContext,
   Provider,
   RateLimit,
+  RefreshContext,
   RemoteAsset,
   RemoteCharacter,
   RemoteCharacterDetail,
@@ -349,12 +350,7 @@ export class PixelLabProvider implements Provider {
     const character = await this.client.getCharacter(jobId)
     if (character.status === "failed") return { status: "failed", error: "character generation failed upstream" }
     if (character.status !== "completed" || !character.rotation_urls) return { status: "processing" }
-    const order = character.directions === 4 ? CHARACTER_DIRECTIONS_4 : CHARACTER_DIRECTIONS_8
-    const sources: OutputSource[] = []
-    for (const direction of order) {
-      const url = character.rotation_urls[direction]
-      if (url) sources.push({ url, role: direction })
-    }
+    const sources = rotationSources(character)
     if (!sources.length) return { status: "failed", error: "character completed with no rotation images" }
     return {
       status: "ready",
@@ -684,6 +680,29 @@ export class PixelLabProvider implements Provider {
         }))),
     }
   }
+
+  /**
+   * A character's rotation and frame URLs carry its last edit time as a
+   * cache-buster, so the record's URLs can name bytes a cache still holds
+   * after an edit in PixelLab's editor. Objects keep stable URLs.
+   */
+  async refreshSources(objectId: string, context: RefreshContext): Promise<OutputSource[] | null | undefined> {
+    if (context.generator !== "character") return undefined
+    const [characterId, groupId] = objectId.split("#") as [string, string | undefined]
+    const character = await this.client.getCharacter(characterId).catch((err: unknown) => {
+      if (err instanceof PixelLabError && err.status === 404) return null
+      throw err
+    })
+    if (!character) return null
+    if (!groupId) return character.status === "completed" ? rotationSources(character) : undefined
+    const recorded = (context.metadata?.character ?? {}) as { direction?: string; animationName?: string; animationId?: string | null }
+    const direction = recorded.direction ?? "south"
+    const group = character.animations.find((g) => g.animation_group_id === groupId)
+    const frames = group?.directions.find((d) => d.direction === direction && d.frames.length)?.frames
+      ?? (recorded.animationName ? findAnimation(character, recorded.animationName, direction, recorded.animationId ?? null)?.frames : undefined)
+    if (!frames) return null
+    return frames.map((url, index) => ({ url, role: `frame-${String(index).padStart(2, "0")}` }))
+  }
 }
 
 function remoteCharacter(character: PixelLabCharacter): RemoteCharacter {
@@ -735,6 +754,17 @@ function firstUrl(urls: Record<string, string | null> | null | undefined): strin
  * One direction of one animation on a character, if it has landed: by the
  * name PixelKiln gave it, or by the animation id in its frame URLs.
  */
+/** A character's directions as output sources, south first. */
+function rotationSources(character: PixelLabCharacter): OutputSource[] {
+  const order = character.directions === 4 ? CHARACTER_DIRECTIONS_4 : CHARACTER_DIRECTIONS_8
+  const sources: OutputSource[] = []
+  for (const direction of order) {
+    const url = character.rotation_urls?.[direction]
+    if (url) sources.push({ url, role: direction })
+  }
+  return sources
+}
+
 function findAnimation(
   character: PixelLabCharacter,
   name: string,

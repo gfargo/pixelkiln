@@ -486,6 +486,35 @@ describe("the pipeline", () => {
     expect(client.calls.filter((c) => c.startsWith("delete:"))).toEqual(["delete:char-1:grp-whatever-pixellab-called-it-south:south"])
   })
 
+  it("re-resolves a character's rotation and frame URLs for fetch --refresh, and only those", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    await client.createCharacter({ directions: 4, description: "x" })
+    client.complete("char-1", 10)
+    await client.animateCharacter({ characterId: "char-1", animationName: "pixelkiln:cast/x.walk", directions: ["east"], mode: "v3" })
+    client.landAnimation("char-1", "pixelkiln:cast/x.walk", "east", 4)
+    const sources = [{ url: "https://cdn.test/char-1/south.png?t=1", role: "south" }]
+
+    const base = await provider.refreshSources("char-1", { generator: "character", sources })
+    expect(base!.map((s) => s.role)).toEqual(["south", "west", "east", "north"])
+    expect(base![0]!.url).toBe("https://cdn.test/char-1/south.png?t=10")
+
+    const byGroup = await provider.refreshSources("char-1#grp-pixelkiln:cast/x.walk-east", {
+      generator: "character", sources, metadata: { character: { direction: "east" } },
+    })
+    expect(byGroup!.map((s) => s.role)).toEqual(["frame-00", "frame-01", "frame-02", "frame-03"])
+    expect(byGroup![0]!.url).toMatch(/\/animations\/anim-east-4\/east\/0\.png$/)
+    // Without the group (an older record), the recorded name and id still find it.
+    const byName = await provider.refreshSources("char-1#anim-east-4", {
+      generator: "character", sources, metadata: { character: { direction: "east", animationName: "pixelkiln:cast/x.walk", animationId: "anim-east-4" } },
+    })
+    expect(byName).toHaveLength(4)
+
+    expect(await provider.refreshSources("char-1#grp-nope", { generator: "character", sources, metadata: { character: { direction: "east" } } })).toBeNull()
+    expect(await provider.refreshSources("char-gone", { generator: "character", sources })).toBeNull()
+    expect(await provider.refreshSources("obj-1", { generator: "map", sources })).toBeUndefined()
+  })
+
   it("snaps every direction to an enforced palette and keeps the raw bytes", async () => {
     const file = await writeManifest({ style: { palette: ["#000000", "#ffffff"], enforcePalette: true } })
     const client = fakeClient()

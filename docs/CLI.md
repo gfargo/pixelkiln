@@ -177,9 +177,13 @@ changed upstream, after editing it in the provider's own editor, for
 example. Unchanged objects are reported as such and left alone; a changed
 object replaces the local file only if that file still hashes to what
 PixelKiln wrote, so a local hand edit is never overwritten without `--force`.
-The lockfile then records the new bytes as this generation. Objects with no
-durable reference (PixelLab pixflux images, for one) are not eligible; use
-`pixelkiln edit` for those.
+The lockfile then records the new bytes as this generation. A character's
+rotations and frames are re-resolved from the character itself first, since
+PixelLab stamps their URLs with the last edit time and a cache can keep
+serving an old stamp; a character deleted upstream fails its entry instead
+of silently keeping the old bytes. Objects with no durable reference
+(PixelLab pixflux images, for one) are not eligible; use `pixelkiln edit`
+for those.
 
 When a style sets `enforcePalette`, `fetch` snaps each downloaded PNG to the
 style's palette before writing it and records the raw hash and the palette on

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import type { BalanceInfo, CostEstimate, JobState, Provider, RemoteAsset, RemoteCharacter, RemoteCharacterDetail } from "../provider.ts"
+import type { BalanceInfo, CostEstimate, JobState, OutputSource, Provider, RefreshContext, RemoteAsset, RemoteCharacter, RemoteCharacterDetail } from "../provider.ts"
 import type { Generator, ResolvedSpec, RevisionMode } from "../types.ts"
 
 /**
@@ -181,6 +181,19 @@ export class FakeProvider implements Provider {
     const character = this.characters.get(id)
     if (!character) throw new Error(`fake provider has no character ${id}`)
     return character
+  }
+
+  /** Characters answer with whatever the store holds now; other objects keep their URLs. */
+  async refreshSources(objectId: string, context: RefreshContext): Promise<OutputSource[] | null | undefined> {
+    if (context.generator !== "character") return undefined
+    const [characterId, groupId] = objectId.split("#") as [string, string | undefined]
+    const character = this.characters.get(characterId)
+    if (!character) return null
+    if (!groupId) return character.rotations
+    const direction = (context.metadata?.character as { direction?: string } | undefined)?.direction ?? "south"
+    const animation = character.animations.find((a) => a.groupId === groupId && a.direction === direction)
+    if (!animation) return null
+    return animation.frames.map((url, index) => ({ url, role: `frame-${String(index).padStart(2, "0")}` }))
   }
 
   async delete(assetId: string): Promise<void> {

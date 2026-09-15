@@ -356,6 +356,23 @@ export interface Provider {
   listCharacters?(): AsyncGenerator<RemoteCharacter>
   /** One character with its rotations and animations. */
   getCharacter?(id: string): Promise<RemoteCharacterDetail>
+
+  /**
+   * The object's source URLs as the service hands them out now, for
+   * `fetch --refresh` when recorded URLs go stale (PixelLab stamps a
+   * character's rotation URLs with its last edit time, and a cache may keep
+   * serving an old stamp's bytes). Resolve `null` when the object is gone
+   * upstream and `undefined` for objects whose recorded URLs stay good.
+   */
+  refreshSources?(objectId: string, context: RefreshContext): Promise<OutputSource[] | null | undefined>
+}
+
+export interface RefreshContext {
+  generator: Generator
+  /** What the adapter recorded for this entry, under its own namespace. */
+  metadata?: ProviderMetadata
+  /** The URLs the lockfile holds, in output order. */
+  sources: OutputSource[]
 }
 
 export class UnsupportedCapabilityError extends PixelKilnError {

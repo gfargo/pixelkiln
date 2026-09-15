@@ -289,6 +289,13 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
 - `pixflux`/`pixen`/`bitforge` results are **not account objects** at all.
   Bytes come back inline and are never listed. `adopt` and `salvage` cannot see
   them, and they cannot be tagged.
+- Character rotation and frame URLs live at a stable path under
+  `backblaze.pixellab.ai/file/pixellab-characters/...` but carry
+  `?t=<updated_at as epoch seconds>`, and the response is
+  `cache-control: public, max-age=31536000`. The path serves the current
+  bytes with any `t` (checked September 2026), but a cache between you and
+  the bucket may not, so `fetch --refresh` reads `GET /characters/{id}` for
+  the current stamp before comparing. Object URLs carry no stamp.
 
 ---
 

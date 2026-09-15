@@ -17,6 +17,9 @@ import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
 import { parseArgs } from "../src/cli/args.ts"
 import { normalizeLockOutputPaths } from "../src/outputs.ts"
 import { lockKey, type Lock } from "../src/types.ts"
+import { openProject } from "../src/project.ts"
+import { registerProvider } from "../src/providers/registry.ts"
+import { adoptCharacters } from "../src/pipeline/adopt-characters.ts"
 
 let dir: string
 let lockPath: string
@@ -111,6 +114,104 @@ describe("fetch --refresh", () => {
     const plain = await fetchAssets(provider, specs, lock, lockPath, { cacheDir: false })
     expect(plain).toEqual({ downloaded: 0, skipped: 0, failed: 0 })
     expect(parseArgs(["fetch", "--refresh", "--only", "anvil"])).toMatchObject({ command: "fetch", refresh: true })
+  })
+})
+
+/** A provider whose character URLs rotate the way PixelLab's do (`?t=<edit time>`). */
+class RotatingProvider extends FakeProvider {
+  /** When set, a rotated URL serves the same bytes as before: only the stamp moved. */
+  stableBytes = false
+  override async download(url: string): Promise<Buffer> {
+    return super.download(this.stableBytes ? url.replace(/\?t=\d+$/, "") : url)
+  }
+  /** Stamp every URL of a character (and one animation group, if named) with a new edit time. */
+  stamp(id: string, t: number, groupId?: string) {
+    const c = this.characters.get(id)!
+    const restamp = (url: string) => url.replace(/(\?t=\d+)?$/, `?t=${t}`)
+    c.rotations = c.rotations.map((r) => ({ ...r, url: restamp(r.url) }))
+    c.previewUrl = c.rotations[0]!.url
+    for (const a of c.animations) if (a.groupId === groupId) a.frames = a.frames.map(restamp)
+  }
+}
+
+const DIRS8 = ["south", "south-east", "east", "north-east", "north", "north-west", "west", "south-west"]
+
+let rotating: RotatingProvider
+registerProvider({ id: "fake", create: () => rotating })
+
+async function cast() {
+  const provider = (rotating = new RotatingProvider({ candidates: 1 }))
+  const rotations = (id: string) => DIRS8.map((direction) => ({ url: `fake://${id}/${direction}.png`, role: direction }))
+  provider.characters.set("char-hero", {
+    id: "char-hero", name: "hero", stateName: "Idle", prompt: "a hero", groupId: "grp-hero", directions: 8, width: 92, height: 92,
+    createdAt: "2026-09-01T00:00:00.000Z", previewUrl: "fake://char-hero/south.png", tags: [], status: "completed", animationCount: 1,
+    rotations: rotations("char-hero"),
+    animations: [{ groupId: "grp-walk", name: null, type: "walk", direction: "south", frames: [0, 1, 2, 3].map((i) => `fake://char-hero/animations/anim-1/south/${i}.png`) }],
+  })
+  const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+  await writeFile(manifestPath, JSON.stringify({
+    name: "cast",
+    provider: "fake",
+    styles: { cast: { generator: "character", outDir: "art", size: 64 } },
+    assets: {
+      hero: { prompt: "a hero", remoteId: "char-hero" },
+      "hero.walk": { prompt: "", animation: { of: "hero", template: "walk" }, remoteId: "char-hero#grp-walk" },
+    },
+  }))
+  const project = await openProject(manifestPath, { env: false })
+  const adopted = await adoptCharacters(provider, project.specs, project.lock, project.lockPath, { resolve: () => resolveSpecs(project.loaded), noCache: true })
+  expect(adopted).toMatchObject({ matched: 2, unmatched: [] })
+  const fresh = await openProject(manifestPath, { env: false })
+  return { provider, specs: fresh.specs, lock: fresh.lock }
+}
+
+describe("fetch --refresh for characters", () => {
+  it("asks for the character's current URLs and replaces every direction that changed", async () => {
+    const { provider, specs, lock } = await cast()
+    const south = path.join(dir, "art", "hero-south.png")
+    const before = await readFile(south)
+    const same = await fetchAssets(provider, specs, lock, lockPath, { refresh: true, cacheDir: false })
+    expect(same).toEqual({ downloaded: 0, skipped: 0, failed: 0, unchanged: 2 })
+
+    // Edited in PixelLab's editor: the rotations are re-rendered under a new stamp.
+    provider.stamp("char-hero", 2)
+    const changed = await fetchAssets(provider, specs, lock, lockPath, { refresh: true, cacheDir: false })
+    expect(changed).toEqual({ downloaded: 1, skipped: 0, failed: 0, unchanged: 1 })
+    expect(await readFile(south)).not.toEqual(before)
+    const entry = (await loadLock(lockPath)).entries["cast/hero"]!
+    expect(entry.sourceUrls!.map((s) => s.url)).toEqual(DIRS8.map((d) => `fake://char-hero/${d}.png?t=2`))
+    expect(entry.outputs.map((o) => o.role)).toEqual(DIRS8)
+    expect(entry.status).toBe("downloaded")
+  })
+
+  it("keeps a moved stamp for unchanged bytes without touching the download time", async () => {
+    const { provider, specs, lock } = await cast()
+    provider.stableBytes = true
+    const recordedAt = lock.entries["cast/hero"]!.downloadedAt
+    provider.stamp("char-hero", 3, "grp-walk")
+    const res = await fetchAssets(provider, specs, lock, lockPath, { refresh: true, cacheDir: false })
+    expect(res).toEqual({ downloaded: 0, skipped: 0, failed: 0, unchanged: 2 })
+    const saved = await loadLock(lockPath)
+    expect(saved.entries["cast/hero"]!.sourceUrls![0]!.url).toBe("fake://char-hero/south.png?t=3")
+    expect(saved.entries["cast/hero"]!.downloadedAt).toBe(recordedAt)
+    expect(saved.entries["cast/hero.walk"]!.sourceUrls!.map((s) => s.url)).toEqual([0, 1, 2, 3].map((i) => `fake://char-hero/animations/anim-1/south/${i}.png?t=3`))
+  })
+
+  it("refreshes an animation's frames by its group and fails an entry whose character is gone", async () => {
+    const { provider, specs, lock } = await cast()
+    const frame = path.join(dir, "art", "hero.walk-frame-02.png")
+    const before = await readFile(frame)
+    provider.stamp("char-hero", 4, "grp-walk")
+    provider.stableBytes = false
+    const res = await fetchAssets(provider, specs, lock, lockPath, { refresh: true, cacheDir: false })
+    expect(res).toEqual({ downloaded: 2, skipped: 0, failed: 0, unchanged: 0 })
+    expect(await readFile(frame)).not.toEqual(before)
+
+    provider.characters.delete("char-hero")
+    const gone = await fetchAssets(provider, specs, lock, lockPath, { refresh: true, cacheDir: false })
+    expect(gone).toEqual({ downloaded: 0, skipped: 0, failed: 2, unchanged: 0 })
+    expect(lock.entries["cast/hero"]).toMatchObject({ status: "download-failed", error: "download failed: char-hero no longer exists upstream" })
+    expect(lock.entries["cast/hero.walk"]!.error).toBe("download failed: char-hero#grp-walk no longer exists upstream")
   })
 })
 
