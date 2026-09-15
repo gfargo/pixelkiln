@@ -53,6 +53,8 @@ not merely a label edit.
 | `source` | string | Manifest-relative committed art used instead of generation. For a set of PNG outputs (a `frames` animation, a `tiles` set) a path that is not a file is the stem of a hand edit laid beside the generated members (`<stem>-<role>.png` each); the set still generates. Mutually exclusive with `revision`. |
 | `sourceByStyle` | object | Per-style `source`, keyed by style id; wins over `source` for that style. Written by `pixelkiln edit` for a hand edit of an asset that is in several styles. |
 | `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
+| `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](#characters). |
+| `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](#characters). |
 | `providerInputs` | JSON scalar/sequence map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI accepts scalars and, for `frames`, one ordered 2–64 value sequence. Image bindings upload PNG/JPEG inputs. |
 | `styles` | string array, `[]` | Restrict the asset to named styles; empty means every style. |
 | `promptByStyle` | string map, `{}` | Replace only the asset prompt for a named style. |
@@ -73,7 +75,7 @@ constant across the set.
 |---|---|---|
 | `extends` | style id | Optional parent style. The child inherits resolved settings but must declare its own `outDir`. |
 | `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
-| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, or provider-specific `animation`/`frames`. |
+| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `character`, or provider-specific `animation`/`frames`. |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
@@ -93,6 +95,9 @@ constant across the set.
 | `tileView` | enum | `top-down`, `high top-down`, `low top-down`, or `side`. |
 | `tileFeature` | enum | Connectable `roads`, `tileset`, or `building` structural set. |
 | `outlineMode` | enum | `outline` or `segmentation`; segmentation avoids quilted ground seams. |
+| `mode` | `standard` | `character` only. `standard`, `v3`, or `pro`; see [Characters](#characters). |
+| `directions` | `8` | `character` only. `4` or `8`; `v3` and `pro` always draw 8. |
+| `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`. |
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
@@ -509,6 +514,99 @@ credentials, cost semantics, recovery, and the paid live-test boundary.
 | `sourceByStyle` | object | The same, for one style only. A hand edit belongs to one generation, so an asset shared by styles keeps one edit per style. |
 | `revision` | object | Generate a new asset from another asset's current bytes. `source` and `revision` are mutually exclusive. |
 | `outputRole` | string | Select one member of a structural output set for mounting. |
+
+## Characters
+
+```json
+{
+  "styles": {
+    "cast": {
+      "generator": "character",
+      "outDir": "art/characters",
+      "view": "side",
+      "size": 64,
+      "mode": "standard",
+      "palette": ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"],
+      "enforcePalette": true
+    }
+  },
+  "assets": {
+    "mira": {
+      "prompt": "small young woman, dark curly hair in a bun, oversized hoodie"
+    },
+    "mira.chair_spin": {
+      "prompt": "one hand high on the pole, sitting in the air with knees up, spinning",
+      "state": { "of": "mira", "paletteFromReference": true }
+    },
+    "mira.fireman_spin": {
+      "prompt": "spinning around the pole, knees crossed",
+      "animation": { "of": "mira.chair_spin", "direction": "east", "frames": 8, "fps": 10 }
+    },
+    "mira.walk": {
+      "prompt": "",
+      "animation": { "of": "mira", "template": "walk", "direction": "south" }
+    }
+  }
+}
+```
+
+A `character` style holds three shapes of asset that share one PixelLab
+character.
+
+A base is a prompt, wrapped in the style's prefix and suffix like any other
+asset, that PixelLab draws facing 4 or 8 directions. `mode` picks the
+engine: `standard` (1 generation, the skeleton template, `outline`,
+`shading`, and `detail` as soft guidance, and `palette` sent as a colour
+reference), `v3` (2 to 9 by size, the highest quality, up to 256px), or
+`pro` (20 to 40 by size). `size` is the character's size; `view` is `low
+top-down` (the default), `high top-down`, or `side`; `template` picks the
+body. Each direction lands as `<asset>-<direction>.png`, south first.
+Standard mode draws on a canvas about 40% larger than `size` to leave room
+for animation (a 64px character comes back as 92px files); the lock records
+the size asked for, and the files are what PixelLab drew.
+
+A state is a text edit of an existing character, `state.of`, applied to
+every direction at once: a pose, an outfit, a held object. The prompt is
+the edit and goes to PixelLab as written, without the style's prefix and
+suffix, since the character already carries the look.
+`paletteFromReference` snaps the result to the parent's colours; `canvas`
+asks for a larger frame when the edit adds something big. A state costs 20
+to 40 by canvas and keeps the parent's directions. A state may be a state
+of another state.
+
+An animation is one loop of one character (`animation.of`, a base or a
+state) in one `direction`. With a `template` (PixelLab's `walk`,
+`breathing-idle`, `running-8-frames`, and so on) it costs 1 and the
+template decides the frame count; without one the prompt is the motion and
+PixelLab's v3 engine draws `frames` frames (4 to 16, even, default 8) for
+`ceil(size² × frames / 65536)` generations, one at 64px. `keepFirstFrame`
+(on by default) stores the resting pose as frame 0, so 8 frames land as 9
+files, `<asset>-frame-00.png` onwards. `fps` is recorded with the frames
+for the gallery, `pack`, and the Godot and Aseprite formats; PixelLab does
+not keep one. An animation lands in review as an ordered set: `pick` shows
+the loop and accepts or rejects it whole. One asset per direction; declare
+another asset for another direction.
+
+States and animations depend on their parent the way a revision does. The
+parent must be downloaded and current before the child is actionable;
+`plan` reports the child as `blocked` and names the parent until then. The
+child's identity includes the parent's generated south-facing file, so
+regenerating the parent makes every state and animation of it `stale`. A
+hand edit of the parent does not, because PixelLab draws the child from the
+character it holds, not from local bytes.
+
+Regenerating an animation clears PixelKiln's own earlier take of that
+direction on the character first, since PixelLab skips a direction that
+already exists. The lock records the animation and group ids PixelLab
+assigned, and the delete goes by those (PixelLab keeps the name PixelKiln
+gives a loop only for text animations, not template ones). Nothing else on
+the character is touched, and a base or state is never deleted by
+PixelKiln.
+
+`enforcePalette` snaps every direction and every frame. `pack --style cast
+--format godot` writes a `SpriteFrames` with each direction of a base or
+state as a still and each animation as a looping set at its fps;
+`--format aseprite` does the same with `frameTags`.
 
 ## Controlled revisions
 

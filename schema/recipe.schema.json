@@ -114,7 +114,8 @@
                 "pixflux",
                 "tiles",
                 "animation",
-                "frames"
+                "frames",
+                "character"
               ],
               "default": "map"
             },
@@ -205,6 +206,25 @@
             "noBackground": {
               "type": "boolean",
               "default": true
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "standard",
+                "v3",
+                "pro"
+              ]
+            },
+            "directions": {
+              "type": "number",
+              "enum": [
+                4,
+                8
+              ]
+            },
+            "template": {
+              "type": "string",
+              "minLength": 1
             },
             "seed": {
               "type": "integer"

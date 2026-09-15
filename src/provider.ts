@@ -59,6 +59,8 @@ export interface PollContext {
   tileFeature?: string
   /** Current resolved intent, needed when output media depends on provider options. */
   spec?: ResolvedSpec
+  /** What the adapter recorded for this entry on earlier polls, under its own namespace. */
+  metadata?: ProviderMetadata
 }
 
 /** Provider-owned, JSON-serializable details needed by downstream exporters. */
@@ -84,6 +86,19 @@ export interface SubmitContext {
   previousJobId?: string
   /** Provider-owned details saved with the previous checkpoint. */
   previousMetadata?: ProviderMetadata
+  /**
+   * The provider-side id the lockfile recorded for this spec's parent asset,
+   * when it has one (a character state or animation). The pipeline proved
+   * the parent current before calling; the adapter only needs the id.
+   */
+  parentObjectId?: string
+  /**
+   * Provider-owned details of the generation this submission replaces, when
+   * the lockfile had one for the same asset, whatever its state. An adapter
+   * that must clear upstream work before redoing it (a character animation
+   * PixelLab would otherwise skip) reads its ids from here.
+   */
+  replacedMetadata?: ProviderMetadata
 }
 
 export interface CandidateSelection {
@@ -294,7 +309,7 @@ export interface Provider {
   checkConnection?(): Promise<void>
 
   /** Free-form labels on the remote asset. Absent if unsupported. */
-  setTags?(objectId: string, tags: string[]): Promise<void>
+  setTags?(objectId: string, tags: string[], generator?: Generator): Promise<void>
 
   /** Walk every asset on the account. Required by `adopt` and `salvage`. */
   list?(): AsyncGenerator<RemoteAsset>

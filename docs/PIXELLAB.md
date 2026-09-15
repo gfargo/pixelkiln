@@ -116,6 +116,8 @@ packaging.
 
 ## What is outside this adapter
 
-PixelLab offers more than PixelKiln currently exposes. Character generation,
-multi-direction rotation, and animation are not part of this adapter. Use the
+PixelLab offers more than PixelKiln currently exposes. Portraits, outfit
+transfer, lip-sync, skeleton-driven animation, and Pro Flash are not part of
+this adapter. Characters, their states, and their animations are the
+`character` generator; see [Characters](./MANIFEST.md#characters). Use the
 [manifest reference](./MANIFEST.md) for the fields PixelKiln supports today.

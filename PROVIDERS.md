@@ -57,7 +57,7 @@ the providers offer directly.
 | Decision | PixelLab | Retro Diffusion |
 |---|---|---|
 | Best fit today | Existing PixelKiln projects, account reconciliation, and live-tested generation | Native pixel-art styles, USD budgets, animation, and alternate tileset workflows |
-| PixelKiln generators | `map`, `pixflux`, `1dir`, `tiles` | `map` and `pixflux` stills, `tiles`, `animation` |
+| PixelKiln generators | `map`, `pixflux`, `1dir`, `tiles`, `character` | `map` and `pixflux` stills, `tiles`, `animation` |
 | Output | PNG stills, candidates, and structural tile members | PNG stills/tiles/spritesheets or animated GIF |
 | Candidate review | Yes; count varies by generator and size | Yes for 1–16 still candidates; animations and tilesets currently use one result |
 | References | `1dir` and tile style modes | Up to nine for supported RD Pro/user still styles; constrained inputs for animation and tiles |
@@ -203,6 +203,9 @@ uses; they are not a conversion to dollars:
 | `pixflux` | 1 generation |
 | `1dir` | 20–40 generations |
 | `tiles` | 20–40 generations |
+| `character` base | 1 (standard), 2–9 (v3), 20–40 (pro) |
+| `character` state | 20–40 generations |
+| `character` animation | 1 (template), 1 at 64px from text, 20–40 (pro) |
 
 Retro Diffusion publishes USD formulas and fixed prices. Examples relevant to
 PixelKiln include RD Fast from about $0.015 per image, RD Plus from about $0.025,

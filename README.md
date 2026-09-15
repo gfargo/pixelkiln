@@ -255,6 +255,7 @@ Measured PixelLab economics vary by 40×:
 | Exact closed palette | `pixflux` | 1 generation |
 | Candidate variety/reference anchoring/future animation | `1dir` | 20–40 generations |
 | Independent or connectable ground tiles | `tiles` | 20–40 generations |
+| A character in 4 or 8 directions, its poses, its loops | `character` | 1 per base, 20–40 per pose, 1 per template loop |
 
 Start with the required capability, not the most expensive endpoint. Forty
 `map` re-rolls cost the same as one 64×64 `1dir` call; conversely, `map` cannot
@@ -389,10 +390,9 @@ package share one source. Policies: [Contributing](./CONTRIBUTING.md),
 
 ## Scope
 
-Animated eight-direction characters and their ZIP/engine-resource export are
-not implemented. Cross-project content-cache reuse and `workspace find` are
-deferred beyond the current workspace catalog. See the open
-[roadmap issues](https://github.com/gfargo/pixelkiln/issues).
+Adopting and salvaging characters, and PixelLab's portrait and outfit tools,
+are not implemented. Cross-project content-cache reuse and `workspace find`
+are deferred. See the open [roadmap issues](https://github.com/gfargo/pixelkiln/issues).
 
 ## License
 

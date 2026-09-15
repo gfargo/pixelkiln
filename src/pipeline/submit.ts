@@ -8,7 +8,7 @@ import {
 } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
-import type { Lock, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
+import { lockKey, type Lock, type ResolvedSpec, type ResolvedStyleImage } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
 import { requireRevisionReady } from "./revision.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
@@ -211,8 +211,14 @@ export async function submit(
       // generator. Keeping that policy here used to silently discard valid
       // references for non-PixelLab still providers.
       const refs = styleImages.get(spec.styleId) ?? []
+      const parentEntry = spec.character?.parentSpec
+        ? lock.entries[lockKey(spec.character.parentSpec.styleId, spec.character.parentSpec.assetId)]
+        : undefined
+      const replacedMetadata = previousEntry?.providerMetadata?.[provider.id]
       const { jobId, metadata } = await provider.submit(spec, refs, {
         ...(previousJobId ? { previousJobId } : {}),
+        ...(parentEntry?.objectId ? { parentObjectId: parentEntry.objectId } : {}),
+        ...(replacedMetadata ? { replacedMetadata } : {}),
         ...(previousMetadata ? { previousMetadata } : {}),
         checkpoint: async (checkpoint) => {
           if (!checkpoint.jobId) throw new Error("Provider checkpoint returned an empty job id")

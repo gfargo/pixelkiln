@@ -318,7 +318,8 @@ Listed so the gaps are known rather than assumed away:
 - the tileset family, with schema documented above and costs unmeasured
 - `create-isometric-tile`, `create-ui-asset`, `generate-font-pro`, all job-based,
   with response shapes not in the simple `{usage, image}` form
-- the character family (23 paths), out of pixelkiln's scope by design
+- the character family beyond what the `character` generator uses (portraits,
+  outfit transfer, lip-sync, skeleton animation, Pro Flash)
 
 ---
 

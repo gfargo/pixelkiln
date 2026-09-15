@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -210,6 +210,127 @@ export interface ResolvedQualityProfile {
   fps?: number
 }
 
+/**
+ * PixelLab characters: one `character` generator, three asset shapes that
+ * share a PixelLab character behind the scenes.
+ *
+ * A base character is a prompt; PixelLab draws it facing 4 or 8 directions.
+ * A state is a text edit of an existing character (a pose, an outfit) that
+ * PixelLab applies to every direction at once and stores as a sibling
+ * character. An animation is a short loop of one character in one
+ * direction. States and animations depend on their parent the way a
+ * revision does: the parent must be downloaded and current before the child
+ * can be submitted, and regenerating the parent makes the child stale.
+ */
+export const CharacterDirectionSchema = z.enum([
+  "south", "south-east", "east", "north-east", "north", "north-west", "west", "south-west",
+])
+export type CharacterDirection = z.infer<typeof CharacterDirectionSchema>
+
+/** Output order for a base or state: clockwise from south. */
+export const CHARACTER_DIRECTIONS_8: readonly CharacterDirection[] = [
+  "south", "south-east", "east", "north-east", "north", "north-west", "west", "south-west",
+]
+/** PixelLab's 4-direction set. South first, so the primary file is the same either way. */
+export const CHARACTER_DIRECTIONS_4: readonly CharacterDirection[] = ["south", "west", "east", "north"]
+
+export const CharacterModeSchema = z.enum(["standard", "v3", "pro"])
+export type CharacterMode = z.infer<typeof CharacterModeSchema>
+export const CharacterAnimationModeSchema = z.enum(["template", "v3", "pro"])
+export type CharacterAnimationMode = z.infer<typeof CharacterAnimationModeSchema>
+
+/** A pose or outfit of an existing character, applied to every direction. */
+export const CharacterStateSchema = z
+  .object({
+    /** The base character, or another state, in the same style. */
+    of: z.string().min(1),
+    /** Snap the edited rotations to the parent's colours. Off when the edit adds colours. */
+    paletteFromReference: z.boolean().default(false),
+    /** A larger canvas when the edit adds something big. Multiples of 4, no smaller than the parent. */
+    canvas: z
+      .object({
+        width: z.number().int().min(16).max(256),
+        height: z.number().int().min(16).max(256),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+export type CharacterState = z.infer<typeof CharacterStateSchema>
+
+/** A loop of one character in one direction. One asset per direction. */
+export const CharacterAnimationSchema = z
+  .object({
+    /** The character to animate: a base or a state in the same style. */
+    of: z.string().min(1),
+    /** A PixelLab template id (`walk`, `breathing-idle`, ...). Costs 1 generation; frame count is the template's. */
+    template: z.string().min(1).optional(),
+    /** Direction to animate. */
+    direction: CharacterDirectionSchema.default("south"),
+    /** Frames to generate without a template (v3). Even, 4 to 16. */
+    frames: z.number().int().min(4).max(16).optional(),
+    /** Playback rate recorded with the frames; PixelLab does not store one. */
+    fps: z.number().int().min(1).max(60).default(8),
+    /** v3 only: keep the resting pose as frame 0, so `frames` generated frames land as `frames + 1` files. */
+    keepFirstFrame: z.boolean().default(true),
+    /** `template` when a template is named, otherwise `v3`; `pro` for the sequential high-quality engine. */
+    mode: CharacterAnimationModeSchema.optional(),
+  })
+  .strict()
+  .superRefine((animation, context) => {
+    if (animation.frames !== undefined && animation.frames % 2 !== 0) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
+    }
+    if (animation.template && animation.mode && animation.mode !== "template") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `a template animation cannot use mode "${animation.mode}"`,
+        path: ["mode"],
+      })
+    }
+    if (animation.template && animation.frames !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "a template decides its own frame count; drop frames",
+        path: ["frames"],
+      })
+    }
+    if (!animation.template && animation.mode === "template") {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "template mode needs a template", path: ["template"] })
+    }
+  })
+export type CharacterAnimation = z.infer<typeof CharacterAnimationSchema>
+
+/** How a resolved spec describes its place in a character family. */
+export interface ResolvedCharacter {
+  kind: "base" | "state" | "animation"
+  /** Creation engine for a base; states inherit the parent's. */
+  mode: CharacterMode
+  /** Rotations a base or state has. */
+  directions: 4 | 8
+  /** PixelLab body template: `mannequin`, or a quadruped such as `cat`. */
+  template: string
+  /** For a state or animation: the parent asset in the same style. */
+  parentAssetId?: string
+  parentSpec?: ResolvedSpec
+  /** The parent's south-facing generated file, and its hash when it exists. A change makes this spec stale. */
+  parentFile?: string
+  parentSha256?: string | null
+  state?: {
+    paletteFromReference: boolean
+    canvas?: { width: number; height: number }
+  }
+  animation?: {
+    mode: CharacterAnimationMode
+    template?: string
+    direction: CharacterDirection
+    /** Frames asked for; a template ignores it. */
+    frames: number
+    fps: number
+    keepFirstFrame: boolean
+  }
+}
+
 /** A provider generation whose visual starting point is another manifest asset. */
 export const RevisionSchema = z
   .object({
@@ -339,6 +460,17 @@ const StyleObjectSchema = z
      * override it.
      */
     noBackground: z.boolean().default(true),
+    /**
+     * `character` only. `standard` draws from a skeleton template for 1
+     * generation; `v3` is the highest quality at 2 to 9 by size; `pro` is a
+     * reference-based engine at 20 to 40 by size. States inherit the
+     * parent's engine; animations choose their own.
+     */
+    mode: CharacterModeSchema.optional(),
+    /** `character` only. Rotations per base or state. `v3` and `pro` always draw 8. */
+    directions: z.union([z.literal(4), z.literal(8)]).optional(),
+    /** `character` only. Body template: `mannequin` (default) or a quadruped (`bear`, `cat`, `dog`, `horse`, `lion`). */
+    template: z.string().min(1).optional(),
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**
@@ -431,6 +563,23 @@ export const StyleSchema = StyleObjectSchema
         path: ["enforcePalette"],
       })
     }
+    if (style.generator !== "character") {
+      for (const field of ["mode", "directions", "template"] as const) {
+        if (style[field] !== undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${field} applies to the character generator only`,
+            path: [field],
+          })
+        }
+      }
+    } else if (style.mode && style.mode !== "standard" && style.directions === 4) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${style.mode} characters always have 8 directions`,
+        path: ["directions"],
+      })
+    }
   })
 
 /**
@@ -500,6 +649,10 @@ export const AssetSchema = z
     sourceByStyle: z.record(z.string().min(1)).default({}),
     /** Controlled generation derived from another asset in the same style. */
     revision: RevisionSchema.optional(),
+    /** `character` styles: this asset is a pose or outfit of another character asset. */
+    state: CharacterStateSchema.optional(),
+    /** `character` styles: this asset is a loop of another character asset in one direction. */
+    animation: CharacterAnimationSchema.optional(),
     /**
      * Generated output role to place in `cell` when this asset expands to
      * several files. Omit for ordinary single-output assets. A structural set
@@ -541,6 +694,14 @@ export const AssetSchema = z
         code: z.ZodIssueCode.custom,
         message: "source and revision are mutually exclusive",
         path: ["revision"],
+      })
+    }
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation"].filter(Boolean)
+    if (shapes.length > 1) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${shapes.join(" and ")} are mutually exclusive`,
+        path: [shapes[1] as string],
       })
     }
   })
@@ -821,6 +982,8 @@ export interface ResolvedSpec {
   quality?: ResolvedQualityProfile
   /** Provider generation derived from another current manifest asset. */
   revision?: ResolvedRevision
+  /** Set for every spec in a `character` style: base, state, or animation. */
+  character?: ResolvedCharacter
   /**
    * Manifest-relative path of committed art that stands in for generated
    * output; excluded from the spec hash. Set only when the asset declares

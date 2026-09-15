@@ -24,6 +24,7 @@ hosted still models with Compute Unit preflight and durable asset recovery.
 | see what a run would do and cost, spending nothing | `pixelkiln plan` |
 | generate everything the manifest still needs | `pixelkiln gen --budget 40` |
 | hold every generated file to the style's palette | set `"enforcePalette": true` on the style, then `pixelkiln fetch` |
+| draw a character in 8 directions, then its poses and loops | a `character` style; `state` and `animation` assets; `pixelkiln gen` in that order |
 | generate one asset, or one style | `pixelkiln gen --only anvil --budget 2`, `pixelkiln gen --style neon --budget 20` |
 | finish a run that was interrupted | `pixelkiln plan`, then the `next:` command it prints (`poll`, `pick`, or `fetch`) |
 | choose among candidates the provider returned | `pixelkiln pick` |

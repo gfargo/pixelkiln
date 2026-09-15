@@ -78,6 +78,7 @@ export async function poll(
         const state = await provider.poll(entry.jobId!, entry.generator, {
           tileFeature: entry.tileFeature ?? currentSpec?.tileFeature,
           spec: currentSpec,
+          metadata: entry.providerMetadata?.[provider.id],
         })
         if (state.status === "review" || state.status === "review-set") {
           upsert(lock, key, {

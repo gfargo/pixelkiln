@@ -144,6 +144,91 @@ const PixfluxResponseSchema = z
   .passthrough()
 const SelectFramesSchema = z.object({ created_object_ids: z.array(z.string()) }).passthrough()
 
+// Characters. Verified against the v2 OpenAPI document; a character is one
+// record with 4 or 8 rotation URLs once its job completes, and its
+// animations hang off it grouped by name and direction.
+const UsageSchema = z
+  .object({
+    type: z.string().optional(),
+    usd: z.number().nullable().optional(),
+    generations: z.number().nullable().optional(),
+  })
+  .passthrough()
+  .nullable()
+  .optional()
+const CharacterSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    character_id: z.string().min(1),
+    status: z.string().default("processing"),
+    usage: UsageSchema,
+  })
+  .passthrough()
+const AnimateSubmitSchema = z
+  .object({
+    background_job_ids: z.array(z.string()),
+    directions: z.array(z.string()),
+    status: z.string().default("processing"),
+    usage: UsageSchema,
+  })
+  .passthrough()
+const CharacterAnimationDirectionSchema = z
+  .object({
+    direction: z.string(),
+    frame_count: z.number().int().min(0),
+    frames: z.array(z.string()),
+  })
+  .passthrough()
+const CharacterAnimationSchema = z
+  .object({
+    animation_type: z.string(),
+    display_name: z.string().nullable().optional(),
+    animation_group_id: z.string().nullable().optional(),
+    directions: z.array(CharacterAnimationDirectionSchema),
+  })
+  .passthrough()
+const CharacterSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().default(""),
+    state_name: z.string().nullable().optional(),
+    prompt: z.string().default(""),
+    size: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }),
+    directions: z.number().int(),
+    created_at: z.string(),
+    updated_at: z.string().nullable().optional(),
+    animation_count: z.number().int().default(0),
+    template_id: z.string().default("mannequin"),
+    view: z.string().nullable().optional(),
+    status: z.string().default("completed"),
+    rotation_urls: z.record(z.string().nullable()).nullable().optional(),
+    tags: z.array(z.string()).default([]),
+    group_id: z.string().nullable().optional(),
+    animations: z.array(CharacterAnimationSchema).default([]),
+    preview_url: z.string().nullable().optional(),
+  })
+  .passthrough()
+const CharacterListSchema = z
+  .object({ characters: z.array(CharacterSchema), total: z.number().int().min(0) })
+  .passthrough()
+const BackgroundJobSchema = z
+  .object({
+    id: z.string(),
+    status: z.string(),
+    last_response: z.record(z.unknown()).nullable().optional(),
+  })
+  .passthrough()
+const DeleteAnimationsSchema = z
+  .object({ success: z.boolean(), deleted_count: z.number().int().default(0), error: z.string().nullable().optional() })
+  .passthrough()
+
+export type PixelLabCharacter = z.infer<typeof CharacterSchema>
+export type PixelLabCharacterAnimation = z.infer<typeof CharacterAnimationSchema>
+export interface PixelLabUsage {
+  generations?: number | null
+  usd?: number | null
+}
+
 function validateResponse<S extends z.ZodTypeAny>(
   schema: S,
   raw: unknown,
@@ -426,6 +511,185 @@ export class PixelLabClient {
   /** Free and synchronous. Replaces the full tag set, so include tags you want to keep. */
   setTags(objectId: string, tags: string[]): Promise<unknown> {
     return this.request(`/objects/${objectId}/tags`, { method: "PATCH", body: JSON.stringify({ tags }) })
+  }
+
+  /**
+   * A base character. Standard mode picks the 4- or 8-direction template
+   * endpoint; v3 and pro have their own and always draw 8. Every one answers
+   * at once with the character id and a background job.
+   */
+  async createCharacter(args: {
+    mode: "standard" | "v3" | "pro"
+    description: string
+    size: number
+    directions: 4 | 8
+    view?: string
+    template: string
+    outline?: string
+    shading?: string
+    detail?: string
+    seed?: number
+    noBackground?: boolean
+    paletteSwatchBase64?: string
+  }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
+    const imageSize = { width: args.size, height: args.size }
+    const palette = args.paletteSwatchBase64
+      ? { color_image: { type: "base64", base64: args.paletteSwatchBase64, format: "png" }, force_colors: true }
+      : {}
+    let path: string
+    let body: Record<string, unknown>
+    if (args.mode === "v3") {
+      path = "/create-character-v3"
+      body = {
+        description: args.description,
+        image_size: imageSize,
+        template_id: args.template,
+        no_background: args.noBackground ?? true,
+        ...(args.view ? { view: args.view } : {}),
+        ...(args.outline ? { outline: args.outline } : {}),
+        ...(args.detail ? { detail: args.detail } : {}),
+        ...(args.seed != null ? { seed: args.seed } : {}),
+      }
+    } else if (args.mode === "pro") {
+      path = "/create-character-pro"
+      body = {
+        description: args.description,
+        image_size: imageSize,
+        template_id: args.template,
+        no_background: args.noBackground ?? true,
+        ...(args.view ? { view: args.view } : {}),
+        ...(args.seed != null ? { seed: args.seed } : {}),
+      }
+    } else {
+      path = args.directions === 4 ? "/create-character-with-4-directions" : "/create-character-with-8-directions"
+      body = {
+        description: args.description,
+        image_size: imageSize,
+        template_id: args.template,
+        ...(args.view ? { view: args.view } : {}),
+        ...(args.outline ? { outline: args.outline } : {}),
+        ...(args.shading ? { shading: args.shading } : {}),
+        ...(args.detail ? { detail: args.detail } : {}),
+        ...(args.seed != null ? { seed: args.seed } : {}),
+        ...palette,
+      }
+    }
+    const raw = await this.request<unknown>(path, { method: "POST", body: JSON.stringify(body) })
+    return validateResponse(CharacterSubmitSchema, raw, path.slice(1))
+  }
+
+  /** A text edit of an existing character, applied to every direction and stored as a sibling. */
+  async createCharacterState(args: {
+    characterId: string
+    editDescription: string
+    stateName?: string
+    paletteFromReference?: boolean
+    canvas?: { width: number; height: number }
+    seed?: number
+    noBackground?: boolean
+  }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
+    const raw = await this.request<unknown>("/create-character-state", {
+      method: "POST",
+      body: JSON.stringify({
+        character_id: args.characterId,
+        edit_description: args.editDescription,
+        no_background: args.noBackground ?? true,
+        use_color_palette_from_reference: args.paletteFromReference ?? false,
+        ...(args.stateName ? { state_name: args.stateName } : {}),
+        ...(args.canvas ? { override_frame_size: args.canvas } : {}),
+        ...(args.seed != null ? { seed: args.seed } : {}),
+      }),
+    })
+    return validateResponse(CharacterSubmitSchema, raw, "create-character-state")
+  }
+
+  /**
+   * One animation of one character. Template mode costs a generation per
+   * direction and fixes the frame count; v3 draws `frameCount` frames from
+   * the action text; pro is the sequential engine. One job per direction.
+   */
+  async animateCharacter(args: {
+    characterId: string
+    animationName: string
+    actionDescription?: string
+    template?: string
+    mode: "template" | "v3" | "pro"
+    frameCount?: number
+    keepFirstFrame?: boolean
+    directions: string[]
+    seed?: number
+  }): Promise<{ background_job_ids: string[]; directions: string[]; usage?: PixelLabUsage | null }> {
+    const raw = await this.request<unknown>("/animate-character", {
+      method: "POST",
+      body: JSON.stringify({
+        character_id: args.characterId,
+        animation_name: args.animationName,
+        mode: args.mode,
+        directions: args.directions,
+        ...(args.template ? { template_animation_id: args.template } : {}),
+        ...(args.actionDescription ? { action_description: args.actionDescription } : {}),
+        ...(args.mode === "v3" && args.frameCount ? { frame_count: args.frameCount } : {}),
+        ...(args.mode === "v3" && args.keepFirstFrame === false ? { keep_first_frame: false } : {}),
+        ...(args.seed != null ? { seed: args.seed } : {}),
+      }),
+    })
+    return validateResponse(AnimateSubmitSchema, raw, "animate-character")
+  }
+
+  async getCharacter(characterId: string): Promise<PixelLabCharacter> {
+    const raw = await this.request<unknown>(`/characters/${encodeURIComponent(characterId)}`)
+    return validateResponse(CharacterSchema, raw, "characters/{id}")
+  }
+
+  async listCharacters(limit = 100, offset = 0): Promise<{ characters: PixelLabCharacter[]; total: number }> {
+    const raw = await this.request<unknown>(`/characters?limit=${limit}&offset=${offset}`)
+    return validateResponse(CharacterListSchema, raw, "characters")
+  }
+
+  async *iterateCharacters(pageSize = 100): AsyncGenerator<PixelLabCharacter> {
+    let offset = 0
+    for (;;) {
+      const page = await this.listCharacters(pageSize, offset)
+      for (const character of page.characters) yield character
+      offset += page.characters.length
+      if (page.characters.length === 0 || offset >= page.total) return
+    }
+  }
+
+  async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null }> {
+    const raw = await this.request<unknown>(`/background-jobs/${encodeURIComponent(jobId)}`)
+    return validateResponse(BackgroundJobSchema, raw, "background-jobs/{id}")
+  }
+
+  /** Remove one animation group from a character, or one direction of it. */
+  async deleteCharacterAnimations(
+    characterId: string,
+    selector: { animationGroupId: string } | { animationType: string },
+    direction?: string,
+  ): Promise<{ success: boolean; deleted_count: number }> {
+    const query = new URLSearchParams(
+      "animationGroupId" in selector
+        ? { animation_group_id: selector.animationGroupId }
+        : { animation_type: selector.animationType },
+    )
+    if (direction) query.set("direction", direction)
+    const raw = await this.request<unknown>(
+      `/characters/${encodeURIComponent(characterId)}/animations?${query.toString()}`,
+      { method: "DELETE" },
+    )
+    return validateResponse(DeleteAnimationsSchema, raw, "characters/{id}/animations")
+  }
+
+  /** Irreversible: the character, its states are separate records, and its animations. */
+  deleteCharacter(characterId: string): Promise<unknown> {
+    return this.request(`/characters/${encodeURIComponent(characterId)}`, { method: "DELETE" })
+  }
+
+  setCharacterTags(characterId: string, tags: string[]): Promise<unknown> {
+    return this.request(`/characters/${encodeURIComponent(characterId)}/tags`, {
+      method: "PATCH",
+      body: JSON.stringify({ tags }),
+    })
   }
 
   /** Storage URLs are public; no auth header, and sending one can break the CDN request. */

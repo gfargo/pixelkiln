@@ -97,7 +97,7 @@ export async function prepareReview(
     if (entry.status !== "review" || !entry.reviewObjectId) continue
     try {
       const spec = specByKey.get(key)
-      const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec })
+      const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec, metadata: entry.providerMetadata?.[provider.id] })
       if (
         (state.status !== "review" && state.status !== "review-set") ||
         (state.status === "review" ? !state.candidateUrls.length : !state.frameUrls.length)
@@ -175,7 +175,7 @@ export async function prepareReview(
 
         if (group.mode === "frame-set") {
           const spec = specByKey.get(key)
-          const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec })
+          const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec, metadata: entry.providerMetadata?.[provider.id] })
           if (state.status !== "review-set") {
             throw new Error(`Frame set ${key} is no longer ready for review`)
           }

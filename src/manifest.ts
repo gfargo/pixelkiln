@@ -13,15 +13,19 @@ import {
   tileVariationCount,
   tileFeatureOutputCount,
   tilesCost,
+  CHARACTER_DIRECTIONS_4,
+  CHARACTER_DIRECTIONS_8,
+  type Asset,
   type Manifest,
+  type ResolvedCharacter,
   type ResolvedSpec,
   type ResolvedStyleImage,
   type Style,
   type StyleInput,
 } from "./types.ts"
-import { sha256, specHash } from "./hash.ts"
+import { sha256, sha256File, specHash } from "./hash.ts"
 import { MediaType } from "./media.ts"
-import { expectedOutputPath } from "./outputs.ts"
+import { expectedOutputPath, memberPath } from "./outputs.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
 
@@ -78,31 +82,52 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
         unknownReferences.push(`assets.${assetId}.revision.from: an asset cannot revise itself`)
       }
     }
+    // A state's parent is a base or another state; an animation's parent is
+    // a base or a state. Nothing hangs off an animation.
+    for (const shape of ["state", "animation"] as const) {
+      const of = asset[shape]?.of
+      if (!of) continue
+      const parent = parsed.data.assets[of]
+      if (!parent) {
+        unknownReferences.push(`assets.${assetId}.${shape}.of: unknown asset "${of}"`)
+      } else if (of === assetId) {
+        unknownReferences.push(`assets.${assetId}.${shape}.of: an asset cannot be a ${shape} of itself`)
+      } else if (parent.animation) {
+        unknownReferences.push(`assets.${assetId}.${shape}.of: "${of}" is an animation and cannot be a parent`)
+      }
+    }
   }
   const visiting = new Set<string>()
   const visited = new Set<string>()
-  const visitRevision = (assetId: string, chain: string[]) => {
+  const visitParents = (assetId: string, chain: string[]) => {
     if (visited.has(assetId)) return
     if (visiting.has(assetId)) {
       const start = chain.indexOf(assetId)
+      const shape = parsed.data.assets[assetId]?.revision ? "revision" : parsed.data.assets[assetId]?.state ? "state" : "animation"
+      const field = shape === "revision" ? "revision.from" : `${shape}.of`
       unknownReferences.push(
-        `assets.${assetId}.revision.from: revision cycle ${[...chain.slice(start), assetId].join(" -> ")}`,
+        `assets.${assetId}.${field}: ${shape} cycle ${[...chain.slice(start), assetId].join(" -> ")}`,
       )
       return
     }
     visiting.add(assetId)
-    const parent = parsed.data.assets[assetId]?.revision?.from
+    const parent = parentAssetId(parsed.data.assets[assetId])
     if (parent && parent !== assetId && parsed.data.assets[parent]) {
-      visitRevision(parent, [...chain, assetId])
+      visitParents(parent, [...chain, assetId])
     }
     visiting.delete(assetId)
     visited.add(assetId)
   }
-  for (const assetId of Object.keys(parsed.data.assets)) visitRevision(assetId, [])
+  for (const assetId of Object.keys(parsed.data.assets)) visitParents(assetId, [])
   if (unknownReferences.length) {
     throw new ProjectError(`Manifest at ${abs} is invalid:\n${unknownReferences.map((i) => `  ${i}`).join("\n")}`)
   }
   return { manifest: parsed.data, root: path.dirname(abs), path: abs }
+}
+
+/** The asset this one is generated from, whichever shape declares it. */
+export function parentAssetId(asset: Asset | undefined): string | undefined {
+  return asset?.revision?.from ?? asset?.state?.of ?? asset?.animation?.of
 }
 
 function formatManifestIssues(issues: ZodIssue[]): string {
@@ -247,10 +272,10 @@ export async function resolveSpecs(
     : Object.keys(manifest.assets))
   const resolutionAssetIds = new Set(requestedAssetIds)
   for (const assetId of [...requestedAssetIds]) {
-    let current = manifest.assets[assetId]?.revision?.from
+    let current = parentAssetId(manifest.assets[assetId])
     while (current && !resolutionAssetIds.has(current)) {
       resolutionAssetIds.add(current)
-      current = manifest.assets[current]?.revision?.from
+      current = parentAssetId(manifest.assets[current])
     }
   }
 
@@ -349,19 +374,38 @@ export async function resolveSpecs(
           ? Math.max(...styleImageDimensions.map((img) => img.height))
           : (style.tileSize ?? 32)
         size = Math.max(width, height)
+      } else if (generator === "character") {
+        // Characters are square. A state may ask for a larger canvas.
+        size = asset.state?.canvas
+          ? Math.max(asset.state.canvas.width, asset.state.canvas.height)
+          : (asset.size ?? style.size ?? 64)
+        width = asset.state?.canvas?.width ?? size
+        height = asset.state?.canvas?.height ?? size
       } else {
         width = asset.width ?? style.size ?? 64
         height = asset.height ?? style.size ?? 64
         size = Math.max(width, height)
       }
 
+      if ((asset.state || asset.animation) && generator !== "character") {
+        throw new Error(
+          `assets.${assetId}: ${asset.state ? "state" : "animation"} needs a character style; ` +
+            `"${styleId}" generates ${generator}`,
+        )
+      }
+      const characterKind = asset.animation ? "animation" : asset.state ? "state" : "base"
+
       // A per-style override replaces the subject wording, not the style
-      // wrapping; prefix and suffix still apply.
+      // wrapping; prefix and suffix still apply. A state's edit and an
+      // animation's action describe a change to a character that already
+      // carries the look, so they go to the provider as written.
       const subject = asset.promptByStyle[styleId] ?? asset.prompt
-      const prompt = [style.promptPrefix, subject, style.promptSuffix]
-        .map((p) => p.trim())
-        .filter(Boolean)
-        .join(", ")
+      const prompt = generator === "character" && characterKind !== "base"
+        ? subject.trim()
+        : [style.promptPrefix, subject, style.promptSuffix]
+            .map((p) => p.trim())
+            .filter(Boolean)
+            .join(", ")
 
       const relFile = asset.file ?? path.join(asset.category ?? "", `${assetId}.png`)
       const outFile = path.resolve(root, style.outDir, relFile)
@@ -387,7 +431,7 @@ export async function resolveSpecs(
         width,
         height,
         size,
-        view: style.view ?? (generator === "1dir" ? "top-down" : "high top-down"),
+        view: style.view ?? (generator === "1dir" ? "top-down" : generator === "character" ? "low top-down" : "high top-down"),
         styleImagePaths: style.styleImages.map((s) => s.path),
         outline: style.outline,
         shading: style.shading,
@@ -401,6 +445,9 @@ export async function resolveSpecs(
         tileView: generator === "tiles" ? style.tileView : undefined,
         tileFeature: generator === "tiles" ? style.tileFeature : undefined,
         outlineMode: generator === "tiles" ? style.outlineMode : undefined,
+        ...(generator === "character"
+          ? { character: resolveCharacterShape(asset, style, characterKind) }
+          : {}),
         cost:
           generator === "tiles"
             ? tilesCost(tileSize, tileVariations)
@@ -466,6 +513,26 @@ export async function resolveSpecs(
       }
       if (finalized.has(assetId)) return resolved
       const asset = manifest.assets[assetId]!
+      const characterParent = asset.state?.of ?? asset.animation?.of
+      if (resolved.character && characterParent) {
+        // The parent is resolved first so its output path is final; its
+        // south-facing generated file is what the child's identity hashes.
+        // A hand edit beside it does not count: PixelLab draws the child from
+        // the character it holds, not from local bytes.
+        const parentSpec = await finalize(characterParent)
+        const parentDirections = parentSpec.character?.directions ?? 8
+        const parentFile = memberPath(parentSpec.outFile, "south", 0, parentDirections, MediaType.PNG)
+        resolved.character = {
+          ...resolved.character,
+          parentAssetId: characterParent,
+          parentSpec,
+          parentFile,
+          parentSha256: existsSync(parentFile) ? await sha256File(parentFile) : null,
+          // A state and its animations keep the engine and rotations of the base.
+          mode: resolved.character.kind === "base" ? resolved.character.mode : parentSpec.character?.mode ?? resolved.character.mode,
+          directions: resolved.character.kind === "base" ? resolved.character.directions : parentSpec.character?.directions ?? resolved.character.directions,
+        }
+      }
       if (asset.revision) {
         if (!activeProvider.supportsRevision?.(asset.revision.mode)) {
           throw new Error(
@@ -655,4 +722,39 @@ export function imageMetadata(
     offset += length
   }
   return null
+}
+
+/** The character-family shape of one asset, before its parent is known. */
+function resolveCharacterShape(asset: Asset, style: Style, kind: ResolvedCharacter["kind"]): ResolvedCharacter {
+  const mode = style.mode ?? "standard"
+  const directions: 4 | 8 = mode === "standard" ? (style.directions ?? 8) : 8
+  const shape: ResolvedCharacter = {
+    kind,
+    mode,
+    directions,
+    template: style.template ?? "mannequin",
+  }
+  if (asset.state) {
+    shape.state = {
+      paletteFromReference: asset.state.paletteFromReference,
+      ...(asset.state.canvas ? { canvas: asset.state.canvas } : {}),
+    }
+  }
+  if (asset.animation) {
+    const animationMode = asset.animation.mode ?? (asset.animation.template ? "template" : "v3")
+    shape.animation = {
+      mode: animationMode,
+      ...(asset.animation.template ? { template: asset.animation.template } : {}),
+      direction: asset.animation.direction,
+      frames: asset.animation.frames ?? 8,
+      fps: asset.animation.fps,
+      keepFirstFrame: asset.animation.keepFirstFrame,
+    }
+  }
+  return shape
+}
+
+/** The rotations a base or state writes, in output order. */
+export function characterDirections(directions: 4 | 8) {
+  return directions === 4 ? CHARACTER_DIRECTIONS_4 : CHARACTER_DIRECTIONS_8
 }
