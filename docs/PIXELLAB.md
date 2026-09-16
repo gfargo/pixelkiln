@@ -31,7 +31,7 @@ makes the choice clear:
     "props": {
       "generator": "map",
       "outDir": "assets/generated/props",
-      "promptSuffix": ", isolated pixel-art game asset"
+      "promptSuffix": "isolated pixel-art game asset"
     }
   },
   "assets": {

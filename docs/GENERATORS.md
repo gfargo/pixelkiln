@@ -208,8 +208,8 @@ separate output directory and separate lock keys:
   "neon": {
     "generator": "1dir",
     "size": 64,
-    "promptPrefix": "Neon-noir game icon: ",
-    "promptSuffix": ", magenta/cyan rim light, transparent background",
+    "promptPrefix": "neon-noir game icon",
+    "promptSuffix": "magenta/cyan rim light, transparent background",
     "styleImages": [{ "path": "art/style-refs/neon.png" }],
     "outDir": "art/neon"
   }

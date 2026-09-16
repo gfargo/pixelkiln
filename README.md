@@ -178,8 +178,8 @@ packaging layer.
   "styles": {
     "base": {
       "generator": "map",
-      "promptPrefix": "Pixel-art game prop: ",
-      "promptSuffix": ", isolated, transparent background",
+      "promptPrefix": "pixel-art game prop",
+      "promptSuffix": "isolated, transparent background",
       "outDir": "assets/generated/base",
       "tags": ["my-game"]
     }
