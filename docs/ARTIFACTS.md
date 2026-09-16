@@ -30,7 +30,14 @@ When a style declares `quality`, it instead requires every selected refinement
 record to be current and approved, then packs those derived PNGs. Frames sort by asset id for
 byte-stable layouts. Structural sets preserve provider order and qualify ids by
 role (`terrain/tile-03`). The grid cell is the largest source sprite; smaller
-frames retain their real dimensions at the cell's top-left.
+frames retain their real dimensions at the cell's top-left — except for a
+`character` style, whose frames are bottom-centred in the cell instead, so a
+base's rotations and a taller state or v3-interpolated animation frame (a
+crouch loop can come back on a canvas larger than the rotations; see
+`docs/ENDPOINTS.md`, "Characters, measured") share a floor rather than a
+top edge. `--format aseprite` records that offset as a genuine trim
+(`sourceSize` the cell, `spriteSourceSize` the frame's placement within it)
+so an engine reading the sheet lands every frame on the same floor too.
 
 All standard non-interlaced PNG color modes and bit depths are decoded and
 normalized to RGBA. Corrupt/interlaced inputs are reported as skipped. If no

@@ -30,6 +30,7 @@ export interface AtlasSet {
 export interface SheetAtlas {
   style: string
   sheet: { width: number; height: number }
+  cell: { width: number; height: number }
   frames: PackedFrame[]
   sets?: AtlasSet[]
 }
@@ -49,7 +50,10 @@ export interface SheetFormatOptions {
 /**
  * Aseprite's sheet JSON in its "hash" layout: frames keyed by name, in atlas
  * order, with `frameTags` spanning each set. A single sprite is one frame
- * with the default duration; a frame set's members carry `1000 / fps`.
+ * with the default duration; a frame set's members carry `1000 / fps`. A
+ * frame pack placed off the cell's top-left (a `character` style's
+ * bottom-centred pivot) is recorded as a genuine trim: `sourceSize` is the
+ * cell and `spriteSourceSize` is the frame's offset within it.
  */
 export function renderAsepriteSheet(atlas: SheetAtlas, opts: SheetFormatOptions): string {
   const index = new Map(atlas.frames.map((frame, i) => [frame.id, i]))
@@ -65,12 +69,17 @@ export function renderAsepriteSheet(atlas: SheetAtlas, opts: SheetFormatOptions)
   }
   const frames: Record<string, unknown> = {}
   for (const frame of atlas.frames) {
+    const offsetX = frame.offsetX ?? 0
+    const offsetY = frame.offsetY ?? 0
+    const pivoted = offsetX !== 0 || offsetY !== 0
     frames[frame.id] = {
       frame: { x: frame.x, y: frame.y, w: frame.width, h: frame.height },
       rotated: false,
-      trimmed: false,
-      spriteSourceSize: { x: 0, y: 0, w: frame.width, h: frame.height },
-      sourceSize: { w: frame.width, h: frame.height },
+      trimmed: pivoted,
+      spriteSourceSize: pivoted
+        ? { x: offsetX, y: offsetY, w: frame.width, h: frame.height }
+        : { x: 0, y: 0, w: frame.width, h: frame.height },
+      sourceSize: pivoted ? { w: atlas.cell.width, h: atlas.cell.height } : { w: frame.width, h: frame.height },
       duration: durations.get(frame.id) ?? ASEPRITE_DEFAULT_DURATION_MS,
     }
   }

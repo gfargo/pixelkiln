@@ -21,13 +21,25 @@ function sprite(size: number, r: number, g: number, b: number): Buffer {
   return encodeRgbaPng(size, size, rgba)
 }
 
-function lockWith(ids: string[], style = "s"): Lock {
+/** A solid, fully opaque rectangle, for testing frames of different width/height. */
+function rectSprite(width: number, height: number, r: number, g: number, b: number): Buffer {
+  const rgba = Buffer.alloc(width * height * 4)
+  for (let i = 0; i < width * height; i++) {
+    rgba[i * 4] = r
+    rgba[i * 4 + 1] = g
+    rgba[i * 4 + 2] = b
+    rgba[i * 4 + 3] = 255
+  }
+  return encodeRgbaPng(width, height, rgba)
+}
+
+function lockWith(ids: string[], style = "s", generator = "pixflux"): Lock {
   const entries: Record<string, any> = {}
   for (const id of ids) {
     entries[`${style}/${id}`] = {
       status: "downloaded",
       error: null,
-      generator: "pixflux",
+      generator,
       outputs: [{ path: `${id}.png`, sha256: "x" }],
       provider: "fake",
     }
@@ -110,6 +122,35 @@ describe("packStyle", () => {
       // The frame records the sprite's real size, not the cell's.
       expect(atlas.frames.find((f) => f.id === "small")!.width).toBe(8)
       expect(atlas.frames.find((f) => f.id === "big")!.width).toBe(16)
+      // Default layout: top-left, no offset recorded even for the odd one out.
+      expect(atlas.frames.find((f) => f.id === "small")!.offsetX).toBeUndefined()
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("bottom-centers a character style's frames so mismatched heights share a floor", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pk-pack-"))
+    try {
+      // A base's rotation (8x8) and a v3 loop frame returned on a taller
+      // canvas (8x10), the shape of issue #146's crouch loop.
+      await writeFile(path.join(dir, "rotation.png"), rectSprite(8, 8, 1, 2, 3))
+      await writeFile(path.join(dir, "crouch.png"), rectSprite(8, 10, 4, 5, 6))
+
+      const { atlas } = packStyle(lockWith(["crouch", "rotation"], "s", "character"), "s", dir, {
+        pivot: "bottom-center",
+      })
+      expect(atlas.cell).toEqual({ width: 8, height: 10 })
+
+      const rotation = atlas.frames.find((f) => f.id === "rotation")!
+      // Same width as the cell (no horizontal offset), bottom-aligned (10-8=2 down).
+      expect(rotation.offsetX).toBe(0)
+      expect(rotation.offsetY).toBe(2)
+
+      const crouch = atlas.frames.find((f) => f.id === "crouch")!
+      // Fills the cell exactly: no offset recorded at all.
+      expect(crouch.offsetX).toBeUndefined()
+      expect(crouch.offsetY).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -214,6 +255,36 @@ describe("packStyle", () => {
 })
 
 describe("packSprites", () => {
+  it("bottom-centers a sprite smaller than the cell in both dimensions under pivot: bottom-center", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pk-pivot-"))
+    try {
+      // A rotation-sized sprite (8x8) beside a wider, taller v3 loop frame (10x12).
+      await writeFile(path.join(dir, "south.png"), rectSprite(8, 8, 10, 20, 30))
+      await writeFile(path.join(dir, "crouch.png"), rectSprite(10, 12, 40, 50, 60))
+      const inputs = [
+        { id: "south", path: path.join(dir, "south.png") },
+        { id: "crouch", path: path.join(dir, "crouch.png") },
+      ]
+
+      const { atlas } = packSprites(inputs, { order: "input", pivot: "bottom-center" })
+      expect(atlas.cell).toEqual({ width: 10, height: 12 })
+
+      const south = atlas.frames.find((f) => f.id === "south")!
+      // Centred horizontally, floor((10-8)/2)=1; bottom-aligned, 12-8=4.
+      expect([south.x, south.y]).toEqual([1, 4])
+      expect([south.offsetX, south.offsetY]).toEqual([1, 4])
+
+      const crouch = atlas.frames.find((f) => f.id === "crouch")!
+      // Defines the cell, so it fills it exactly: placed at its cell's
+      // top-left with no offset recorded.
+      expect([crouch.x, crouch.y]).toEqual([10, 0])
+      expect(crouch.offsetX).toBeUndefined()
+      expect(crouch.offsetY).toBeUndefined()
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   it("rejects duplicate ids before touching any file", () => {
     // Nonexistent paths on purpose: a duplicate-id error must fire before any
     // decode is attempted, so this never reaches the filesystem at all.
