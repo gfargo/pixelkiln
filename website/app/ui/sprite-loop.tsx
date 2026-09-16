@@ -9,6 +9,7 @@ export function SpriteLoop({
   strip,
   width,
   frames,
+  start = 0,
   cell,
   stride,
   scale = 1,
@@ -18,7 +19,10 @@ export function SpriteLoop({
   strip: string;
   /** The strip's own width in source pixels, so it is scaled by an integer and never resampled. */
   width: number;
+  /** Cells to play. */
   frames: number;
+  /** First cell to play, so a strip's resting pose can sit out of the loop. */
+  start?: number;
   /** Cell edge in source pixels; cells are square. */
   cell: number;
   /** Distance from one cell's left edge to the next, source pixels. */
@@ -31,7 +35,8 @@ export function SpriteLoop({
   const style = {
     "--sprite": `url(${strip})`,
     "--cell": `${cell * scale}px`,
-    "--travel": `${-stride * frames * scale}px`,
+    "--from": `${-stride * start * scale}px`,
+    "--travel": `${-stride * (start + frames) * scale}px`,
     "--strip-width": `${width * scale}px`,
     "--frames": frames,
     "--seconds": `${seconds}s`,
