@@ -43,7 +43,7 @@ const routeSources = [
 ].map((file) => ({ file, source: readFileSync(path.join(websiteRoot, file), "utf8") }));
 const registeredSlugs = new Set(slugs);
 for (const { file, source } of routeSources) {
-  for (const match of source.matchAll(/href="\/docs\/([^"#?]+)[^\"]*"/g)) {
+  for (const match of source.matchAll(/href="\/docs\/([^"#?/]+)[^\"]*"/g)) {
     if (!registeredSlugs.has(match[1])) {
       failures.push(`${file} links to unregistered documentation route: /docs/${match[1]}`);
     }

@@ -269,7 +269,7 @@ export default function Home() {
                 <TrackedLink className="text-link" id="review_provider_benchmark" section="review" href="/docs/provider-benchmark">
                   See the environment benchmark
                 </TrackedLink>
-                <TrackedLink className="text-link" id="review_gallery_docs" section="review" href="/docs/cli#gallery">
+                <TrackedLink className="text-link" id="review_gallery_docs" section="review" href="/docs/cli/gallery">
                   Browse the gallery command
                 </TrackedLink>
                 <TrackedLink className="text-link" id="review_edit_docs" section="review" href="/docs/getting-started#touch-art-up-by-hand">

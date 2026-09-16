@@ -1,6 +1,7 @@
 import "server-only";
 
 import { docs, headingId, readDoc, type DocEntry } from "@/app/lib/docs";
+import { linkResolver } from "@/app/lib/doc-sections";
 
 /** One searchable section: a heading and the prose under it, with where it lives. */
 export type SearchEntry = {
@@ -13,6 +14,8 @@ export type SearchEntry = {
   path: string;
   /** Fragment on the doc page, or "" for the intro. */
   id: string;
+  /** Where the section lives on the site, child pages included. */
+  href: string;
   text: string;
 };
 
@@ -43,7 +46,7 @@ function sectionsOf(doc: DocEntry, content: string): SearchEntry[] {
 
   const flush = () => {
     const text = plainText(buffer.join("\n")).slice(0, TEXT_LIMIT);
-    if (text || id) entries.push({ slug: doc.slug, doc: doc.title, group: doc.group, heading, path, id, text });
+    if (text || id) entries.push({ slug: doc.slug, doc: doc.title, group: doc.group, heading, path, id, href: "", text });
     buffer = [];
   };
 
@@ -70,10 +73,13 @@ function sectionsOf(doc: DocEntry, content: string): SearchEntry[] {
 }
 
 export async function buildSearchIndex(): Promise<SearchEntry[]> {
+  const resolve = await linkResolver();
   const index: SearchEntry[] = [];
   for (const doc of docs) {
     const { content } = await readDoc(doc);
-    index.push(...sectionsOf(doc, content));
+    for (const entry of sectionsOf(doc, content)) {
+      index.push({ ...entry, href: resolve(doc.slug, entry.id || undefined) });
+    }
   }
   return index;
 }
