@@ -400,7 +400,7 @@ export default function Home() {
                   <div className="lock-callout top"><span>◇</span> 2 generations to rotate</div>
                   <div className="lock-callout bottom"><span>◇</span> 0 for the mirror</div>
                 </div>
-                <figure className="cast-loop" aria-label="Two loops of the robot">
+                <figure className="cast-loop" aria-label="Three loops of the robot">
                   <div className="cast-loop-row">
                     <div className="cast-loop-tile">
                       <SpriteLoop strip="/sprites/characters/walk-loop.png" width={1452} frames={12} start={1} cell={108} stride={112} scale={2} seconds={1} label="The robot walking, twelve frames at 12 frames per second" />
@@ -410,8 +410,12 @@ export default function Home() {
                       <SpriteLoop strip="/sprites/characters/jump-loop.png" width={1004} frames={9} start={0} cell={108} stride={112} scale={2} seconds={0.75} label="The robot jumping, eight frames and its resting pose at 12 frames per second" />
                       <span>jump · 8 frames · 12 fps</span>
                     </div>
+                    <div className="cast-loop-tile">
+                      <SpriteLoop strip="/sprites/characters/powerup-loop.png" width={1452} frames={12} start={1} cell={108} stride={112} scale={2} seconds={1} label="The robot charging up and releasing a flash, twelve frames at 12 frames per second" />
+                      <span>power up · 12 frames · 12 fps</span>
+                    </div>
                   </div>
-                  <Image src="/sprites/characters/walk-loop.png" alt="The robot's resting pose and twelve frames of it walking, south-facing" width={1452} height={108} unoptimized />
+                  <Image src="/sprites/characters/powerup-loop.png" alt="The robot's resting pose and twelve frames of it charging up and flashing, south-facing" width={1452} height={108} unoptimized />
                   <figcaption>The same robot, animated from a sentence each on the v3 engine: two generations per loop, the resting pose kept as frame 0. Each loop is reviewed as one set in <code>pick</code> and packed as one looping animation at the fps the manifest records.</figcaption>
                 </figure>
               </div>
