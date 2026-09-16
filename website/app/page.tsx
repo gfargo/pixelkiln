@@ -383,21 +383,21 @@ export default function Home() {
                 <div className="lock-visual cast-manifest" aria-label="A character family in the manifest">
                   <div className="lock-label">pixelkiln.manifest.json</div>
                   <pre><code>{`"cast": {
-  "generator": "character",
-  "mode": "pro-flash", "size": 64 },
+  "generator": "character", "mode": "pro-flash",
+  "template": "custom", "size": 96 },
 
-"hero": {
-  "prompt": "a knight in a teal cloak",
-  "reference": "refs/hero-south.png" },
-"hero.sit": {
-  "prompt": "sitting cross-legged",
-  "state": { "of": "hero" } },
-"hero.walk.west": {
-  "prompt": "",
-  "animation": { "of": "hero",
-    "template": "walk", "direction": "west" } },
-"hero.walk.east": { "mirror": "hero.walk.west" }`}</code></pre>
-                  <div className="lock-callout top"><span>◇</span> 1 generation to rotate</div>
+"bot": {
+  "prompt": "small round orange robot, one blue eye",
+  "reference": "refs/bot-south.png" },
+"bot.dented": {
+  "prompt": "shell dented, one arm hanging loose",
+  "state": { "of": "bot" } },
+"bot.walk.west": {
+  "prompt": "walking in place, short legs stepping",
+  "animation": { "of": "bot", "direction": "west",
+    "frames": 12, "fps": 12 } },
+"bot.walk.east": { "mirror": "bot.walk.west" }`}</code></pre>
+                  <div className="lock-callout top"><span>◇</span> 2 generations to rotate</div>
                   <div className="lock-callout bottom"><span>◇</span> 0 for the mirror</div>
                 </div>
                 <figure className="cast-loop" aria-label="Two loops of the robot">

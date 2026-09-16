@@ -10,7 +10,11 @@ reference](./MANIFEST.md) covers the fields every asset shares.
 
 ## The three shapes
 
-A cast in full, with a base, a state, and two loops:
+A cast in full, with a base, a state, and two loops. This is the robot on
+the [site](https://pixelkiln.griffen.codes/#characters), drawn the way the
+example says:
+
+![The robot facing south, south-west, west, north-west, north, north-east, east, and south-east](../website/public/sprites/characters/robot-8dir.png)
 
 ```json
 {
@@ -19,31 +23,38 @@ A cast in full, with a base, a state, and two loops:
       "generator": "character",
       "outDir": "art/characters",
       "view": "side",
-      "size": 64,
-      "mode": "standard",
-      "palette": ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"],
-      "enforcePalette": true
+      "size": 96,
+      "mode": "pro-flash",
+      "template": "custom"
     }
   },
   "assets": {
-    "mira": {
-      "prompt": "small young woman, dark curly hair in a bun, oversized hoodie"
+    "bot": {
+      "prompt": "small round orange robot with one blue eye, short jointed legs"
     },
-    "mira.chair_spin": {
-      "prompt": "one hand high on the pole, sitting in the air with knees up, spinning",
-      "state": { "of": "mira", "paletteFromReference": true }
+    "bot.dented": {
+      "prompt": "shell dented and scuffed, one arm hanging loose, eye dim",
+      "state": { "of": "bot", "paletteFromReference": true }
     },
-    "mira.fireman_spin": {
-      "prompt": "spinning around the pole, knees crossed",
-      "animation": { "of": "mira.chair_spin", "direction": "east", "frames": 8, "fps": 10 }
+    "bot.walk": {
+      "prompt": "walking forward in place, short legs stepping, body bobbing slightly",
+      "animation": { "of": "bot", "direction": "south", "frames": 12, "fps": 12 }
     },
-    "mira.walk": {
-      "prompt": "",
-      "animation": { "of": "mira", "template": "walk", "direction": "south" }
+    "bot.jump": {
+      "prompt": "crouching down, springing up into the air with legs tucked, landing with a small bounce",
+      "animation": { "of": "bot", "direction": "south", "frames": 8, "fps": 12 }
     }
   }
 }
 ```
+
+![The robot's resting pose and twelve frames of it walking](../website/public/sprites/characters/walk-loop.png)
+
+The robot is round, so its style names the `custom` skeleton template and
+its loops come from a sentence each on the v3 engine; a biped on the
+`mannequin` template could take a template loop instead
+(`"animation": { "of": "bot", "template": "walk" }`), one generation per
+direction. See [Animations](#animations).
 
 ### The base
 
@@ -84,8 +95,12 @@ manifest-relative PNG or JPEG of the character facing south, and PixelLab
 draws the other directions from it, with the prompt as guidance:
 
 ```json
-"mira": { "prompt": "small young woman, oversized hoodie", "reference": "refs/mira-south.png" }
+"bot": { "prompt": "small round orange robot with one blue eye", "reference": "refs/bot-south.png" }
 ```
+
+That is how the robot above was made the second time: its own south
+sprite handed back to pro-flash, which rotated it for 2 generations at 96px
+and left the south file pixel for pixel as it was.
 
 `standard` uses each image as it is, centred on its larger canvas, and
 generates the rest, so the image must be the style's `size` exactly; it
@@ -182,9 +197,9 @@ afterwards. Pose images hash into the loop's identity and are read again
 at submit time, like a base's `reference`.
 
 ```json
-"mira.bow": {
-  "prompt": "bowing deeply from the waist",
-  "animation": { "of": "mira", "direction": "south", "frames": 6, "endFrame": "poses/mira-bowed.png" }
+"bot.crouch": {
+  "prompt": "folding down onto its legs until it rests on the ground",
+  "animation": { "of": "bot", "direction": "south", "frames": 6, "endFrame": "poses/bot-crouched.png" }
 }
 ```
 
@@ -232,8 +247,11 @@ is the sprite walking west flipped. A `mirror` asset is that flip, made
 locally from the source asset's downloaded files:
 
 ```json
-"hero.walk.west": { "prompt": "", "animation": { "of": "hero", "template": "walk", "direction": "west" } },
-"hero.walk.east": { "mirror": "hero.walk.west" }
+"bot.walk.west": {
+  "prompt": "walking forward in place, short legs stepping, body bobbing slightly",
+  "animation": { "of": "bot", "direction": "west", "frames": 12, "fps": 12 }
+},
+"bot.walk.east": { "mirror": "bot.walk.west" }
 ```
 
 A full 8-direction set of one loop is then 5 generations (south, north,
@@ -242,7 +260,7 @@ The mirror takes its shape from the source (a loop of the same character,
 facing the other way, at the same fps), needs no prompt, and costs
 nothing: `plan` lists it under the provider with a cost of 0 and `gen`
 flips it in the wave after the source lands. It has its own lock entry and
-files (`hero.walk.east-frame-00.png` onwards), so `pack`, the gallery, and
+files (`bot.walk.east-frame-00.png` onwards), so `pack`, the gallery, and
 an engine see an ordinary loop. Nothing is sent to the provider, and the
 account holds no east animation.
 

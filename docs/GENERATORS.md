@@ -192,8 +192,8 @@ own generation, declare the east-facing loop as a `mirror` of the west one
 for nothing; see [Mirrors](./CHARACTERS.md#mirrors). `pack --format godot`
 writes each base direction as a still and each animation as a looping set.
 The gallery
-labels a state or loop with its parent ("state of hero", "loop of
-hero.sit, east"), links parent and children in the record, and counts the
+labels a state or loop with its parent ("state of bot", "loop of
+bot.dented, east"), links parent and children in the record, and counts the
 family in the style header ("3 characters, 4 states, 6 loops"). See
 [Characters](./CHARACTERS.md).
 
