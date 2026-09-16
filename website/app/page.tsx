@@ -3,6 +3,7 @@ import { absoluteUrl } from "@/app/lib/metadata";
 import { CopyCommand } from "@/app/ui/copy-command";
 import { JsonLd } from "@/app/ui/json-ld";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
+import { SpriteLoop } from "@/app/ui/sprite-loop";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
 export default function Home() {
@@ -336,8 +337,11 @@ export default function Home() {
         <section className="cast-section" id="characters">
           <div className="shell">
             <figure className="cast-strip" aria-label="One character facing eight directions">
-              <Image src="/sprites/characters/robot-8dir.png" alt="A round orange robot drawn facing south, south-west, west, north-west, north, north-east, east, and south-east" width={796} height={96} unoptimized />
-              <figcaption>Eight directions from one prompt. PixelLab pro-flash at 96px, generated while testing v0.46, then deleted from the account.</figcaption>
+              <div className="cast-strip-row">
+                <Image src="/sprites/characters/robot-8dir.png" alt="A round orange robot drawn facing south, south-west, west, north-west, north, north-east, east, and south-east" width={796} height={96} unoptimized />
+                <SpriteLoop strip="/sprites/characters/robot-8dir.png" width={796} frames={8} cell={96} stride={100} scale={2} seconds={2.4} label="The same robot turning through its eight directions" />
+              </div>
+              <figcaption>Eight directions from one prompt. PixelLab pro-flash at 96px, generated while testing v0.46, then deleted from the account. The larger one is the same eight files played in order.</figcaption>
             </figure>
             <div className="cast-grid">
               <div className="section-heading cast-copy">
@@ -398,8 +402,11 @@ export default function Home() {
                   <div className="lock-callout bottom"><span>◇</span> 0 for the mirror</div>
                 </div>
                 <figure className="cast-loop" aria-label="A six-frame walk loop">
-                  <Image src="/sprites/characters/walk-loop.png" alt="Six frames of a walking character, south-facing" width={572} height={92} unoptimized />
-                  <figcaption>A template walk, six frames, one generation. Reviewed as one set in <code>pick</code>, packed as one looping animation.</figcaption>
+                  <div className="cast-loop-row">
+                    <SpriteLoop strip="/sprites/characters/walk-loop.png" width={572} frames={6} cell={92} stride={96} scale={2} seconds={0.75} label="The walk loop playing at 8 frames per second" />
+                    <Image src="/sprites/characters/walk-loop.png" alt="Six frames of a walking character, south-facing" width={572} height={92} unoptimized />
+                  </div>
+                  <figcaption>A template walk, six frames, one generation, playing at the fps the manifest records. Reviewed as one set in <code>pick</code>, packed as one looping animation.</figcaption>
                 </figure>
               </div>
             </div>
