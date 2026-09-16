@@ -552,12 +552,12 @@ a { color: inherit; text-decoration: none; }
   background-image: var(--sprite);
   background-repeat: no-repeat;
   background-size: var(--strip-width) auto;
-  background-position: 0 100%;
+  background-position: var(--from, 0) 100%;
   image-rendering: pixelated;
   animation: sprite-loop var(--seconds) steps(var(--frames)) infinite;
 }
 @keyframes sprite-loop {
-  from { background-position: 0 100%; }
+  from { background-position: var(--from, 0) 100%; }
   to { background-position: var(--travel) 100%; }
 }
 .cast-strip-row { display: flex; align-items: flex-end; gap: 40px; }
