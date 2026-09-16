@@ -46,8 +46,11 @@ import type {
  * for a hand edit in its built-in editor, after which `pixelkiln fetch
  * --refresh` pulls the changed bytes back down. A `map` or `1dir` object has
  * a page at `/create-object/<id>`; a tile set at `/maps/tiles/<set id>` (a
- * chosen variation records `<set id>#<index>`, and the page is the set's).
- * pixflux returns an inline image and keeps no object to open.
+ * chosen variation records `<set id>#<index>`, and the page is the set's). A
+ * `character` object has a page at `/create-character/<character id>` (a
+ * state or animation records `<character id>#<group id>`, and the page is
+ * the character's, since neither has a page of its own). pixflux returns an
+ * inline image and keeps no object to open.
  */
 export function pixelLabObjectUrl(generator: Generator, objectId: string | null): string | null {
   if (!objectId) return null
@@ -57,6 +60,10 @@ export function pixelLabObjectUrl(generator: Generator, objectId: string | null)
   if (generator === "tiles") {
     const setId = objectId.split("#")[0]!
     return setId ? `https://www.pixellab.ai/maps/tiles/${encodeURIComponent(setId)}` : null
+  }
+  if (generator === "character") {
+    const characterId = objectId.split("#")[0]!
+    return characterId ? `https://www.pixellab.ai/create-character/${encodeURIComponent(characterId)}` : null
   }
   return null
 }
