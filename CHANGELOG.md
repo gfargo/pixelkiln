@@ -1,3 +1,21 @@
+# [0.47.0](https://github.com/gfargo/pixelkiln/compare/v0.46.1...v0.47.0) (2026-09-16)
+
+
+### Bug Fixes
+
+* **website:** drop the walk's resting pose from the loop and the robot strip's caption ([#154](https://github.com/gfargo/pixelkiln/issues/154)) ([96eb42a](https://github.com/gfargo/pixelkiln/commit/96eb42aa4f772ce1e58067b61046ddc1c0d94210))
+
+
+### Features
+
+* **gallery:** link a character to its page on pixellab.ai ([#159](https://github.com/gfargo/pixelkiln/issues/159)) ([36d29d7](https://github.com/gfargo/pixelkiln/commit/36d29d7a31c329cac5ec2a513fb5c317e99aaa73)), closes [#144](https://github.com/gfargo/pixelkiln/issues/144)
+* **website:** four robot moves in a carousel ([#158](https://github.com/gfargo/pixelkiln/issues/158)) ([8bfb5e1](https://github.com/gfargo/pixelkiln/commit/8bfb5e15f622647076a5ef7030dea920bb2d84c4))
+* **website:** long references render as a parent page with a page per section ([#151](https://github.com/gfargo/pixelkiln/issues/151)) ([a34180d](https://github.com/gfargo/pixelkiln/commit/a34180d53583d429aad7d3f5137b50eb288dd65c))
+* **website:** one robot, turning, walking, and jumping ([#155](https://github.com/gfargo/pixelkiln/issues/155)) ([1811b3d](https://github.com/gfargo/pixelkiln/commit/1811b3da7f33ede8b2c5fa0b95f4e5be83ccb0b3))
+* **website:** play the walk loop and the turning robot beside their strips ([#153](https://github.com/gfargo/pixelkiln/issues/153)) ([f956006](https://github.com/gfargo/pixelkiln/commit/f956006782295d39858f59096bc0084e94ed07c3))
+* **website:** search the docs with ⌘K ([#149](https://github.com/gfargo/pixelkiln/issues/149)) ([9264e93](https://github.com/gfargo/pixelkiln/commit/9264e93f3b5e8794ffb735d9bafe47a36ae2b634))
+* **website:** split the measured endpoints reference into a page per section ([#152](https://github.com/gfargo/pixelkiln/issues/152)) ([86ab8c0](https://github.com/gfargo/pixelkiln/commit/86ab8c06bc1526db8a73b1d280661501de99c88c))
+
 ## [0.46.1](https://github.com/gfargo/pixelkiln/compare/v0.46.0...v0.46.1) (2026-09-15)
 
 
