@@ -45,17 +45,19 @@ const summaryOf = (markdown: string) => {
     if (!line.trim()) { paragraphs.push([]); continue; }
     paragraphs[paragraphs.length - 1].push(line);
   }
-  const candidates = paragraphs
-    .map((lines) => lines.join(" "))
-    .filter((text) => text && !/^(#|\||[-*] |\d+\. |<|!\[)/.test(text))
-    .map((text) => text
-      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-      .replace(/[`*_]/g, "")
-      .replace(/\s+/g, " ")
-      .replace(/:$/, ".")
-      .trim());
+  const clean = (text: string) => text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[`*_]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/:$/, ".")
+    .trim();
+  const blocks = paragraphs.map((lines) => lines.join(" ")).filter((text) => text && !/^(#|\||<|!\[|-{3,}$)/.test(text));
+  const candidates = blocks.filter((text) => !/^([-*] |\d+\. )/.test(text)).map(clean);
   // A one-line note under a table says little; take the first real paragraph.
-  const prose = candidates.find((text) => text.length >= 60) ?? candidates.sort((a, b) => b.length - a.length)[0];
+  // A section that is all bullets gives its first bullet.
+  const prose = candidates.find((text) => text.length >= 60)
+    ?? candidates.sort((a, b) => b.length - a.length)[0]
+    ?? blocks.map((text) => clean(text.replace(/^([-*] |\d+\. )/, "")))[0];
   if (!prose) return "";
   const sentence = prose.match(/^.*?[.!?](\s|$)/)?.[0] ?? prose;
   return sentence.length > 180 ? `${sentence.slice(0, 177).trimEnd()}…` : sentence.trim();

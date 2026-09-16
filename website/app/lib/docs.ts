@@ -169,6 +169,7 @@ export const docs: DocEntry[] = [
     description: "Live-account PixelLab costs, payloads, limits, and open questions.",
     file: "docs/ENDPOINTS.md",
     group: "Reference",
+    split: 2,
   },
   {
     slug: "provider-notes",
