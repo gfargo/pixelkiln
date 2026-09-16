@@ -402,10 +402,10 @@ export default function Home() {
                 </div>
                 <figure className="cast-loop" aria-label="A six-frame walk loop">
                   <div className="cast-loop-row">
-                    <SpriteLoop strip="/sprites/characters/walk-loop.png" width={572} frames={5} start={1} cell={92} stride={96} scale={2} seconds={0.625} label="The walk loop playing at 8 frames per second" />
-                    <Image src="/sprites/characters/walk-loop.png" alt="Six frames of a walking character, south-facing" width={572} height={92} unoptimized />
+                    <SpriteLoop strip="/sprites/characters/walk-loop.png" width={1004} frames={8} start={1} cell={108} stride={112} scale={2} seconds={1} label="The robot's walk loop playing at 8 frames per second" />
+                    <Image src="/sprites/characters/walk-loop.png" alt="The robot's resting pose and eight frames of it walking, south-facing" width={1004} height={108} unoptimized />
                   </div>
-                  <figcaption>A template walk, one generation, playing at the fps the manifest records. Reviewed as one set in <code>pick</code>, packed as one looping animation.</figcaption>
+                  <figcaption>The same robot walking: eight frames from a sentence on the v3 engine, two generations, with its resting pose kept as frame 0. Reviewed as one set in <code>pick</code>, packed as one looping animation at the fps the manifest records.</figcaption>
                 </figure>
               </div>
             </div>
