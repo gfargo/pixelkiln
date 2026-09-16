@@ -268,11 +268,11 @@ direction each. Each is an asset with its own record and files:
 
 ```json
 {
-  "styles": { "cast": { "generator": "character", "outDir": "art/cast", "size": 64, "mode": "pro-flash" } },
+  "styles": { "cast": { "generator": "character", "outDir": "art/cast", "size": 64, "mode": "pro-flash", "template": "custom" } },
   "assets": {
-    "hero": { "prompt": "a knight in a teal cloak", "reference": "refs/hero-south.png" },
-    "hero.walk.west": { "prompt": "", "animation": { "of": "hero", "template": "walk", "direction": "west" } },
-    "hero.walk.east": { "mirror": "hero.walk.west" }
+    "bot": { "prompt": "small round orange robot with one blue eye", "reference": "refs/bot-south.png" },
+    "bot.walk.west": { "prompt": "walking forward in place, short legs stepping", "animation": { "of": "bot", "direction": "west", "frames": 12, "fps": 12 } },
+    "bot.walk.east": { "mirror": "bot.walk.west" }
   }
 }
 ```

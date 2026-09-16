@@ -13,8 +13,8 @@ directory. The canonical machine-readable contract is
   "styles": {
     "base": {
       "generator": "map",
-      "promptPrefix": "Pixel-art game prop: ",
-      "promptSuffix": ", isolated, transparent background",
+      "promptPrefix": "pixel-art game prop",
+      "promptSuffix": "isolated, transparent background",
       "outDir": "assets/generated/base"
     }
   },
@@ -36,6 +36,17 @@ Unknown properties are rejected at every level.
 | `history` | no | Replaced generations kept per asset in the lockfile, 0–100. Overrides the personal `PIXELKILN_HISTORY` default (5) for this project; `0` keeps none. See [`history`](CLI.md#history). |
 | `styles` | yes | Map of style id to inherited generation/output settings. |
 | `assets` | yes | Map of stable asset id to subject and per-asset overrides. |
+
+```jsonc
+{
+  "$schema": "./node_modules/pixelkiln/schema/manifest.schema.json",
+  "name": "my-game",          // tags every provider object pixelkiln:my-game
+  "provider": "pixellab",     // the default; a style may name another
+  "history": 3,               // keep three replaced generations per asset
+  "styles": { "base": { "generator": "map", "outDir": "assets/generated/base" } },
+  "assets": { "anvil": { "prompt": "a compact blacksmith anvil" } }
+}
+```
 
 A resolved unit of work is one `styleId/assetId`. Asset ids are stable lookup
 keys, atlas frame ids, and default filenames; changing one is a data migration,
@@ -76,6 +87,26 @@ Only a provider that declares a sequence contract may accept an array. ComfyUI
 uses the array named by `providerOptions.comfyui.frames.vary`; other inputs stay
 constant across the set.
 
+One asset using the fields most projects reach for:
+
+```jsonc
+{
+  "assets": {
+    "anvil": {
+      "prompt": "a compact blacksmith anvil",
+      "promptByStyle": { "mono": "a compact blacksmith anvil, dark iron" },
+      "width": 48,
+      "height": 32,
+      "category": "tools",             // assets/generated/base/tools/anvil.png
+      "tags": ["prop", "forge"],
+      "styles": ["base", "mono"],      // skip every other style
+      "cell": [2, 0],                  // its cell on a mounted sheet
+      "source": "edits/anvil.png"      // a hand edit stands in for the generated file
+    }
+  }
+}
+```
+
 ## Style fields
 
 | Field | Type/default | Meaning |
@@ -114,6 +145,36 @@ constant across the set.
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
+
+One style using the common fields, and a `pixflux` style with a locked
+palette:
+
+```jsonc
+{
+  "styles": {
+    "base": {
+      "generator": "map",
+      "outDir": "assets/generated/base",
+      "promptPrefix": "pixel-art game prop",
+      "promptSuffix": "isolated, transparent background",
+      "size": 64,
+      "view": "high top-down",
+      "outline": "selective outline",
+      "shading": "medium shading",
+      "detail": "medium detail",
+      "seed": 7,
+      "tags": ["props"]
+    },
+    "gb": {
+      "generator": "pixflux",
+      "outDir": "assets/generated/gb",
+      "palette": ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"],
+      "enforcePalette": true,
+      "noBackground": false
+    }
+  }
+}
+```
 
 ### Style inheritance
 
@@ -314,6 +375,32 @@ They are documented with the provider:
 - [Scenario](./SCENARIO.md#manifest-fields): hosted model ids and Compute
   Unit ceilings.
 
+Only the active provider's object is resolved and hashed, so one style can
+carry settings for more than one provider and switch between them by
+changing `provider` alone:
+
+```jsonc
+{
+  "provider": "pixellab",
+  "styles": {
+    "environment": {
+      "generator": "map",
+      "outDir": "assets/generated/environment",
+      "providerOptions": {
+        "retrodiffusion": { "promptStyle": "rd_plus__default", "numImages": 4 },
+        "comfyui": { "workflowFile": "workflows/still-api.json", "outputNodeId": "9" },
+        "scenario": { "modelId": "model_bfl-flux-2-dev", "maxComputeUnits": 60 }
+      }
+    }
+  },
+  "assets": { "keep": { "prompt": "a mountain keep at dusk" } }
+}
+```
+
+`providerInputs` on an asset is the same idea per asset, for providers that
+declare bindings (ComfyUI); a provider without them rejects a non-empty
+object rather than ignoring it.
+
 ## Characters and mirrors
 
 A `character` style holds a base drawn facing 4 or 8 directions, states, and
@@ -321,6 +408,35 @@ loops, with a `mirror` asset for the direction that faces the other way,
 made locally at no cost. The shapes, engines, references, and costs have
 their own page: [Characters](./CHARACTERS.md) and
 [Mirrors](./CHARACTERS.md#mirrors).
+
+```jsonc
+{
+  "styles": {
+    "cast": {
+      "generator": "character",
+      "outDir": "art/characters",
+      "mode": "pro-flash",         // standard, v3, pro, or pro-flash
+      "template": "custom",        // mannequin, a quadruped, or custom (pro-flash)
+      "size": 96
+    }
+  },
+  "assets": {
+    "bot": {
+      "prompt": "small round orange robot with one blue eye",
+      "reference": "refs/bot-south.png"      // rotate this sprite instead of drawing from text
+    },
+    "bot.dented": {
+      "prompt": "shell dented, one arm hanging loose",
+      "state": { "of": "bot", "paletteFromReference": true }
+    },
+    "bot.walk.west": {
+      "prompt": "walking in place, short legs stepping",
+      "animation": { "of": "bot", "direction": "west", "frames": 12, "fps": 12 }
+    },
+    "bot.walk.east": { "mirror": "bot.walk.west" }     // flipped locally, 0 generations
+  }
+}
+```
 
 ## Controlled revisions
 
@@ -366,7 +482,25 @@ reject the revision during offline resolution. See
 
 ## Prompt and override resolution
 
-For each participating style/asset pair:
+```jsonc
+{
+  "styles": {
+    "base": { "generator": "map", "outDir": "art/base", "promptPrefix": "pixel-art prop", "promptSuffix": "transparent background" },
+    "mono": { "extends": "base", "outDir": "art/mono", "promptSuffix": "one-bit, transparent background" }
+  },
+  "assets": {
+    "star": {
+      "prompt": "a golden star",
+      "promptByStyle": { "mono": "a five-pointed star" }   // colour words would fight the style
+    }
+  }
+}
+```
+
+Prefix, subject, and suffix are trimmed and joined with ", ": `base/star`
+is sent as "pixel-art prop, a golden star, transparent background" and
+`mono/star` as "pixel-art prop, a five-pointed star, one-bit, transparent
+background". For each participating style/asset pair:
 
 1. Resolve the style provider, falling back to the top-level default.
 2. Choose `promptByStyle[styleId]` when present, otherwise `prompt`.
@@ -422,6 +556,21 @@ set, otherwise `<outDir>/<assetId>.png`; `file` overrides it. Structural sets
 expand one asset into `outputs[]` with stable roles such as `tile-00` and
 filenames such as `terrain-tile-00.png`. Consumers should use roles rather than
 assuming array position. See [tiles](./TILES.md).
+
+```jsonc
+{
+  "styles": { "base": { "generator": "map", "outDir": "art/base" } },
+  "assets": {
+    "anvil": { "prompt": "an anvil" },                              // art/base/anvil.png
+    "hammer": { "prompt": "a hammer", "category": "tools" },        // art/base/tools/hammer.png
+    "sign": { "prompt": "a shop sign", "file": "ui/shop-sign.png" }  // art/base/ui/shop-sign.png
+  }
+}
+```
+
+A set keeps the same stem and adds the role: a character base `bot` in a
+style with `outDir: "art/cast"` lands as `art/cast/bot-south.png`,
+`bot-west.png`, and so on; a loop as `bot.walk-frame-00.png` onwards.
 
 ## Validation and editor setup
 
