@@ -142,6 +142,12 @@ of another state.
 
 ### Animations
 
+A template loop moves a skeleton, so it wants a body the skeleton fits: a
+biped on `mannequin`, or one of the quadruped templates. A character that
+is neither (a round robot, a slime) gets a walk from text on the v3
+engine instead; a template on it either fails upstream (`custom`
+template) or redraws the character as the biped it expected.
+
 An animation is one loop of one character (`animation.of`, a base or a
 state) in one `direction`. With a `template` (PixelLab's `walk`,
 `breathing-idle`, `running-8-frames`, and so on) it costs 1 and the

@@ -348,7 +348,14 @@ Listed so the gaps are known rather than assumed away:
   rough number.
 - `animate-character` with `custom_start_frame` and `end_frame` may return
   frames taller than the rotation (92 × 104 for a crouch). `enhance_prompt`
-  writes the expanded text into the animation's `animation_type`.
+  writes the expanded text into the animation's `animation_type`. A v3 text
+  loop on a 96px pro-flash base came back at 108 × 108.
+- Template loops need a skeleton template. On a pro-flash base with
+  `template_id: custom` a `walking-8-frames` job failed upstream at once; on
+  a round robot fitted to `mannequin` the same template returned a different,
+  humanoid character standing nearly still. A v3 text loop ("walking forward
+  in place, short legs stepping") kept the robot and walked. For anything
+  that is not a biped or one of the four quadrupeds, animate from text.
 - Request validation is strict: an unknown body field is a 422 listing every
   problem at once, which is a free way to check a body's shape.
 
