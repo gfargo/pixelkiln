@@ -228,7 +228,11 @@ PixelKiln.
 `enforcePalette` snaps every direction and every frame. `pack --style cast
 --format godot` writes a `SpriteFrames` with each direction of a base or
 state as a still and each animation as a looping set at its fps;
-`--format aseprite` does the same with `frameTags`.
+`--format aseprite` does the same with `frameTags`. A v3 loop's frames can
+come back on a canvas larger than the base's rotations (a crouch at 92×104
+against 92×92 rotations); `pack` bottom-centres a character style's frames
+instead of the default top-left, so every direction and state shares a floor
+in the atlas. See [Pack](ARTIFACTS.md#pack).
 
 ### Adopting a character from the account
 
