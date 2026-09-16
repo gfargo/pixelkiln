@@ -221,6 +221,8 @@ describe("upstream objects in the gallery", () => {
     expect(pixelLabObjectUrl("1dir", "a b")).toBe("https://www.pixellab.ai/create-object/a%20b")
     expect(pixelLabObjectUrl("tiles", "set-1")).toBe("https://www.pixellab.ai/maps/tiles/set-1")
     expect(pixelLabObjectUrl("tiles", "set-1#3")).toBe("https://www.pixellab.ai/maps/tiles/set-1")
+    expect(pixelLabObjectUrl("character", "char-1")).toBe("https://www.pixellab.ai/create-character/char-1")
+    expect(pixelLabObjectUrl("character", "char-1#group-2")).toBe("https://www.pixellab.ai/create-character/char-1")
     expect(pixelLabObjectUrl("pixflux", "abc")).toBeNull()
     expect(pixelLabObjectUrl("map", null)).toBeNull()
 
