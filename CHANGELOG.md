@@ -1,3 +1,10 @@
+## [0.47.1](https://github.com/gfargo/pixelkiln/compare/v0.47.0...v0.47.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **pack:** bottom-center a character style's frames of different sizes ([#160](https://github.com/gfargo/pixelkiln/issues/160)) ([82e99f4](https://github.com/gfargo/pixelkiln/commit/82e99f41eed3256bc004d82a7687d4877988b1d0)), closes [#146](https://github.com/gfargo/pixelkiln/issues/146)
+
 # [0.47.0](https://github.com/gfargo/pixelkiln/compare/v0.46.1...v0.47.0) (2026-09-16)
 
 
