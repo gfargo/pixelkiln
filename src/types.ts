@@ -316,6 +316,19 @@ export const CharacterPortraitSchema = z
   .strict()
 export type CharacterPortrait = z.infer<typeof CharacterPortraitSchema>
 
+/** Applies a reference outfit to an existing loop's frames (PixelLab's `transfer-outfit-v2`). */
+export const CharacterOutfitSchema = z
+  .object({
+    /** The loop (a character animation asset) to re-clothe, in the same style. */
+    of: z.string().min(1),
+    /** Manifest-relative image of the outfit to transfer. */
+    reference: z.string().min(1),
+    /** Extra guidance PixelLab passes through as written, e.g. view/direction hints. */
+    additionalInstructions: z.string().max(2000).optional(),
+  })
+  .strict()
+export type CharacterOutfit = z.infer<typeof CharacterOutfitSchema>
+
 /** A loop of one character in one direction. One asset per direction. */
 export const CharacterAnimationSchema = z
   .object({
@@ -414,7 +427,7 @@ export interface ResolvedStyleAnchor {
 
 /** How a resolved spec describes its place in a character family. */
 export interface ResolvedCharacter {
-  kind: "base" | "state" | "animation" | "portrait"
+  kind: "base" | "state" | "animation" | "portrait" | "outfit"
   /** Creation engine for a base; states inherit the parent's. */
   mode: CharacterMode
   /** Rotations a base or state has. */
@@ -449,6 +462,11 @@ export interface ResolvedCharacter {
   }
   portrait?: {
     size: CharacterPortraitSize
+  }
+  /** For an outfit: the reference image to transfer, and any extra guidance. */
+  outfit?: {
+    reference: ResolvedReferenceImage
+    additionalInstructions?: string
   }
   animation?: {
     mode: CharacterAnimationMode
@@ -835,6 +853,8 @@ export const AssetSchema = z
     animation: CharacterAnimationSchema.optional(),
     /** `character` styles: this asset is a bust portrait of another character asset's south sprite. */
     portrait: CharacterPortraitSchema.optional(),
+    /** `character` styles: this asset re-clothes an existing loop's frames with a reference outfit. */
+    outfit: CharacterOutfitSchema.optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
@@ -913,7 +933,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.portrait && "portrait"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.portrait && "portrait", asset.outfit && "outfit"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -928,24 +948,24 @@ export const AssetSchema = z
         path: ["mirror"],
       })
     }
-    if (asset.prompt === undefined && !asset.mirror && !asset.portrait) {
+    if (asset.prompt === undefined && !asset.mirror && !asset.portrait && !asset.outfit) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Required",
         path: ["prompt"],
       })
     }
-    if (asset.reference && (asset.state || asset.animation || asset.mirror || asset.portrait)) {
+    if (asset.reference && (asset.state || asset.animation || asset.mirror || asset.portrait || asset.outfit)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "a reference sprite belongs on a base; a state, animation, mirror, or portrait takes its look from its parent",
+        message: "a reference sprite belongs on a base; a state, animation, mirror, portrait, or outfit takes its look from its parent",
         path: ["reference"],
       })
     }
-    if (asset.concept && (asset.state || asset.animation || asset.mirror || asset.portrait)) {
+    if (asset.concept && (asset.state || asset.animation || asset.mirror || asset.portrait || asset.outfit)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "a concept image belongs on a base; a state, animation, mirror, or portrait takes its look from its parent",
+        message: "a concept image belongs on a base; a state, animation, mirror, portrait, or outfit takes its look from its parent",
         path: ["concept"],
       })
     }
@@ -1098,6 +1118,21 @@ export const LockEntrySchema = z.object({
     .object({
       sourceAssetId: z.string().min(1),
       sourceSha256: z.string().regex(/^[0-9a-f]{64}$/),
+    })
+    .strict()
+    .nullable()
+    .default(null),
+  /**
+   * For an outfit: the loop it re-clothed, a hash over that loop's output
+   * hashes when this was made, and the reference image's own hash. Tracked
+   * the way `mirror` is, not through `specHash`: manifest resolution has no
+   * lock to hash the parent's actual current frame bytes against.
+   */
+  outfit: z
+    .object({
+      sourceAssetId: z.string().min(1),
+      sourceSha256: z.string().regex(/^[0-9a-f]{64}$/),
+      referenceSha256: z.string().regex(/^[0-9a-f]{64}$/),
     })
     .strict()
     .nullable()

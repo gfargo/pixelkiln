@@ -186,7 +186,7 @@ export interface GalleryItem {
 }
 
 export interface GalleryCharacter {
-  kind: "base" | "state" | "animation" | "portrait"
+  kind: "base" | "state" | "animation" | "portrait" | "outfit"
   /** Lock key of the base or state this is drawn from; null for a base. */
   parentKey: string | null
   mode: string
@@ -216,7 +216,7 @@ export interface GalleryStyle {
   noBackground: boolean
   quality: boolean
   /** Family counts for a `character` style; null otherwise. */
-  characters: { bases: number; states: number; animations: number; portraits: number } | null
+  characters: { bases: number; states: number; animations: number; portraits: number; outfits: number } | null
   tags: string[]
   /** Parent style id when this style `extends` one. */
   extends: string | null
@@ -394,9 +394,13 @@ function describeCharacter(spec: ResolvedSpec | undefined, entry: LockEntry | un
     }
   }
   if (entry?.generator === "character") {
-    const kind = recorded?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-"))
-      ? "animation"
-      : recorded?.kind === "portrait" ? "portrait" : "base"
+    const kind = recorded?.kind === "portrait"
+      ? "portrait"
+      : recorded?.kind === "outfit"
+        ? "outfit"
+        : recorded?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-"))
+          ? "animation"
+          : "base"
     return {
       kind,
       parentKey: null,
@@ -856,6 +860,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
               states: styleItems.filter((item) => item.character?.kind === "state").length,
               animations: styleItems.filter((item) => item.character?.kind === "animation").length,
               portraits: styleItems.filter((item) => item.character?.kind === "portrait").length,
+              outfits: styleItems.filter((item) => item.character?.kind === "outfit").length,
             }
           : null,
         tags: style?.tags ?? [],
