@@ -1,3 +1,10 @@
+# [0.48.0](https://github.com/gfargo/pixelkiln/compare/v0.47.1...v0.48.0) (2026-09-17)
+
+
+### Features
+
+* **cost:** reconcile the submit-time estimate with what PixelLab billed ([#162](https://github.com/gfargo/pixelkiln/issues/162)) ([1bad693](https://github.com/gfargo/pixelkiln/commit/1bad69361ce949f60708639dfb18c931fafefc45)), closes [#143](https://github.com/gfargo/pixelkiln/issues/143)
+
 ## [0.47.1](https://github.com/gfargo/pixelkiln/compare/v0.47.0...v0.47.1) (2026-09-17)
 
 
