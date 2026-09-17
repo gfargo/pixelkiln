@@ -107,13 +107,19 @@ retain:
 - temporary `supersededOutputs[]` ownership hashes while a stale generation is
   being replaced;
 - provider-specific metadata under a provider-id namespace;
-- successful submission cost and cost unit;
+- successful submission cost and cost unit, as estimated before the work was
+  spent;
+- `billed`: what the provider actually charged, read from the completed job
+  rather than estimated at submit time; null until a poll reads one, and for
+  a generator or provider `poll` never reads it from at all. `gen`'s wave
+  budget still spends against the cost estimate above, since the real number
+  is only known after the fact;
 - `history[]`: the generations this entry replaced, newest first. Each keeps
-  its object and job ids, durable sources, output hashes, prompt, cost, and
-  when it was retired. `PIXELKILN_HISTORY` or the manifest's `history` caps
-  the list. A restore swaps a kept generation back in and moves the current
-  one onto the list, and the content cache keeps every kept generation's
-  bytes through a prune.
+  its object and job ids, durable sources, output hashes, prompt, cost,
+  billed amount, and when it was retired. `PIXELKILN_HISTORY` or the
+  manifest's `history` caps the list. A restore swaps a kept generation back
+  in and moves the current one onto the list, and the content cache keeps
+  every kept generation's bytes through a prune.
 
 Lock keys are `styleId/assetId`. Output paths use manifest-relative `/`
 separators so a clone or moved checkout remains valid. Legacy absolute v2 paths

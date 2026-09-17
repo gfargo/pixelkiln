@@ -216,6 +216,12 @@ const BackgroundJobSchema = z
     id: z.string(),
     status: z.string(),
     last_response: z.record(z.unknown()).nullable().optional(),
+    /**
+     * The billed amount, confirmed live for a `map` object and a standard
+     * character base (docs/ENDPOINTS.md, "Limits and billing"); duplicated at
+     * `last_response.billing_usage` on the jobs observed so far.
+     */
+    usage: UsageSchema,
   })
   .passthrough()
 const DeleteAnimationsSchema = z
@@ -225,6 +231,7 @@ const DeleteAnimationsSchema = z
 export type PixelLabCharacter = z.infer<typeof CharacterSchema>
 export type PixelLabCharacterAnimation = z.infer<typeof CharacterAnimationSchema>
 export interface PixelLabUsage {
+  type?: string | null
   generations?: number | null
   usd?: number | null
 }
@@ -331,7 +338,7 @@ export class PixelLabClient {
     view?: string
     styleImages?: ResolvedStyleImage[]
     itemDescriptions?: string[]
-  }): Promise<{ object_id: string; status: string; n_frames: number }> {
+  }): Promise<{ object_id: string; status: string; n_frames: number; background_job_id: string }> {
     const body: Record<string, unknown> = { description: args.description }
     if (args.styleImages?.length) {
       body.style_images = args.styleImages.map(({ base64, format }) => ({
@@ -367,7 +374,7 @@ export class PixelLabClient {
     shading?: string
     detail?: string
     seed?: number
-  }): Promise<{ object_id: string; status: string }> {
+  }): Promise<{ object_id: string; status: string; background_job_id: string }> {
     const body: Record<string, unknown> = {
       description: args.description,
       image_size: { width: args.width, height: args.height },
@@ -767,7 +774,7 @@ export class PixelLabClient {
     }
   }
 
-  async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null }> {
+  async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null; usage?: PixelLabUsage | null }> {
     const raw = await this.request<unknown>(`/background-jobs/${encodeURIComponent(jobId)}`)
     return validateResponse(BackgroundJobSchema, raw, "background-jobs/{id}")
   }

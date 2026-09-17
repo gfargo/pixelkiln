@@ -2,9 +2,16 @@
 import { createProvider } from "../../providers/registry.ts"
 import { lockKey } from "../../types.ts"
 import { historyLimit, revertGeneration } from "../../pipeline/history.ts"
+import { formatCost } from "../../provider.ts"
 import { openProject } from "../project.ts"
 import { log } from "../io.ts"
 import type { Args } from "../args.ts"
+
+/** ` (billed N)` when the provider's actual charge differs from the estimate; blank otherwise. */
+function billedNote(cost: number, costUnit: string, billed: { amount: number; unit: string } | null): string {
+  if (!billed || (billed.unit === costUnit && billed.amount === cost)) return ""
+  return `  (billed ${formatCost(billed.unit, billed.amount)})`
+}
 
 export async function runHistory(args: Args): Promise<void> {
   const { loaded, specs, lock } = await openProject(args)
@@ -16,7 +23,7 @@ export async function runHistory(args: Args): Promise<void> {
       limit,
       assets: selected.map(({ spec, entry }) => ({
         key: lockKey(spec.styleId, spec.assetId),
-        current: entry ? { objectId: entry.objectId, outputs: entry.outputs, downloadedAt: entry.downloadedAt, cost: entry.cost, costUnit: entry.costUnit } : null,
+        current: entry ? { objectId: entry.objectId, outputs: entry.outputs, downloadedAt: entry.downloadedAt, cost: entry.cost, costUnit: entry.costUnit, billed: entry.billed } : null,
         history: entry?.history ?? [],
       })),
     }, null, 2))
@@ -30,10 +37,10 @@ export async function runHistory(args: Args): Promise<void> {
     shown++
     const key = lockKey(spec.styleId, spec.assetId)
     log(`\n  ${key}`)
-    log(`    current  ${entry.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${entry.downloadedAt ?? ""}  ${entry.objectId ?? ""}`)
+    log(`    current  ${entry.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${entry.downloadedAt ?? ""}  ${entry.objectId ?? ""}${billedNote(entry.cost, entry.costUnit, entry.billed)}`)
     for (const [i, generation] of entry.history.entries()) {
       const changed = generation.prompt !== entry.prompt ? "  (different prompt)" : ""
-      log(`    #${String(i + 1).padEnd(2)}      ${generation.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${generation.downloadedAt ?? ""}  ${generation.objectId ?? ""}${changed}`)
+      log(`    #${String(i + 1).padEnd(2)}      ${generation.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${generation.downloadedAt ?? ""}  ${generation.objectId ?? ""}${changed}${billedNote(generation.cost, generation.costUnit, generation.billed)}`)
     }
   }
   if (!shown) log(`  no asset has a previous generation recorded${selected.length ? "" : " (nothing selected)"}`)

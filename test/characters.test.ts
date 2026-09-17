@@ -570,6 +570,11 @@ function fakeClient() {
   let counter = 0
   const jobs = new Map<string, string>()
   const jobResponses = new Map<string, Record<string, unknown>>()
+  // Separate from `jobs`/`jobResponses`: those two are iterated wholesale by
+  // `landAnimation` to complete every in-flight animation job, and a base or
+  // state's own background job must not be swept up in that.
+  const baseJobs = new Map<string, string>()
+  const baseJobUsage = new Map<string, Record<string, unknown>>()
   const client = {
     calls: [] as string[],
     /** Whether the character list carries the name PixelKiln gave an animation. */
@@ -584,6 +589,7 @@ function fakeClient() {
       client.calls.push(`create:${args.description}`)
       client.created.push(args)
       characters.set(id, { id, status: "pending", directions: args.directions, rotations: {}, animations: [], group_id: null, state_name: null })
+      baseJobs.set(`job-${id}`, "processing")
       return { character_id: id, background_job_id: `job-${id}` }
     },
     async createCharacterState(args: { characterId: string; editDescription: string }) {
@@ -592,6 +598,7 @@ function fakeClient() {
       const id = `char-${++counter}`
       client.calls.push(`state:${args.characterId}:${args.editDescription}`)
       characters.set(id, { id, status: "pending", directions: parent.directions, rotations: {}, animations: [], group_id: "grp", state_name: args.editDescription })
+      baseJobs.set(`job-${id}`, "processing")
       return { character_id: id, background_job_id: `job-${id}` }
     },
     async animateCharacter(args: { characterId: string; animationName: string; directions: string[]; mode: string }) {
@@ -609,12 +616,21 @@ function fakeClient() {
       return { id, name: "n", prompt: "p", size: { width: 64, height: 64 }, directions: c.directions, created_at: "2026-01-01", animation_count: c.animations.length, template_id: "mannequin", status: c.status, rotation_urls: c.status === "completed" ? c.rotations : null, tags: [], group_id: c.group_id, state_name: c.state_name, animations: c.animations }
     },
     async getBackgroundJob(id: string) {
+      if (baseJobs.has(id)) {
+        return { id, status: baseJobs.get(id)!, last_response: null, usage: baseJobUsage.get(id) ?? null }
+      }
       const status = jobs.get(id)
       if (status === undefined) throw new PixelLabError(`GET /background-jobs/${id} → 404`, 404, "")
-      return { id, status, last_response: jobResponses.get(id) ?? null }
+      const response = jobResponses.get(id) ?? null
+      // Real jobs duplicate `usage` at the top level and under
+      // `last_response.billing_usage`; the fake mirrors that so either
+      // reading path can be exercised.
+      return { id, status, last_response: response, usage: (response?.billing_usage as Record<string, unknown> | undefined) ?? null }
     },
     /** Test hook: PixelLab cleans finished jobs up; the animation list is what is left. */
-    forgetJobs() { jobs.clear(); jobResponses.clear() },
+    forgetJobs() { jobs.clear(); jobResponses.clear(); baseJobs.clear(); baseJobUsage.clear() },
+    /** Test hook: what a base or state's own background job reports as billed once it completes. */
+    setBaseUsage(characterId: string, usage: Record<string, unknown>) { baseJobUsage.set(`job-${characterId}`, usage) },
     async deleteCharacterAnimations(id: string, selector: { animationGroupId?: string }, direction?: string) {
       const c = characters.get(id)!
       client.calls.push(`delete:${id}:${selector.animationGroupId}:${direction}`)
@@ -639,9 +655,10 @@ function fakeClient() {
         client.pixels.set(url, px(8, shade + i))
       })
       c.status = "completed"
+      if (baseJobs.has(`job-${id}`)) baseJobs.set(`job-${id}`, "completed")
     },
     /** Test hook: land an animation with `count` frames for one direction. */
-    landAnimation(id: string, name: string, direction: string, count: number) {
+    landAnimation(id: string, name: string, direction: string, count: number, usage?: Record<string, unknown>) {
       const c = characters.get(id)!
       const frames = Array.from({ length: count }, (_, i) => {
         const url = `https://cdn.test/${id}/anim/${direction}/${i}.png`
@@ -655,7 +672,7 @@ function fakeClient() {
       c.animations.push({ display_name: client.listNames ? name : null as unknown as string, animation_type: "walk", animation_group_id: `grp-${name}-${direction}`, directions: [{ direction, frames: urls }] })
       for (const [jobId] of jobs) {
         jobs.set(jobId, "completed")
-        jobResponses.set(jobId, { direction, frame_count: count, animation_id: animationId, character_id: id, storage_urls: { frames: urls } })
+        jobResponses.set(jobId, { direction, frame_count: count, animation_id: animationId, character_id: id, storage_urls: { frames: urls }, ...(usage ? { billing_usage: usage } : {}) })
       }
     },
     failJob() { for (const [jobId] of jobs) jobs.set(jobId, "failed") },
@@ -888,6 +905,81 @@ describe("the pipeline", () => {
     expect(entry.postprocess?.palette?.colors).toEqual(["#000000", "#ffffff"])
     const south = await readFile(path.join(dir, "art", "characters", "mira-south.png"))
     expect(south.length).toBeGreaterThan(0)
+  })
+})
+
+describe("billed usage", () => {
+  it("records what a base's background job actually billed, next to the submit-time estimate", async () => {
+    const file = await writeManifest({ assets: { mira: { prompt: "small young woman" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(p.lock.entries["cast/mira"]!.cost).toBe(1)
+    client.complete("char-1", 10)
+    client.setBaseUsage("char-1", { type: "generations", generations: 2 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira"]).toMatchObject({ cost: 1, billed: { amount: 2, unit: "generations" } })
+  })
+
+  it("records a state's actual bill against its wider estimate tier", async () => {
+    const file = await writeManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    const plan = await p.plan()
+    expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.chair_spin"])
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(p.lock.entries["cast/mira.chair_spin"]!.cost).toBe(40)
+    client.complete("char-2", 30)
+    // The live example from issue #143: a 64px state estimated at 40 billed about 22.
+    client.setBaseUsage("char-2", { type: "generations", generations: 22 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.chair_spin"]).toMatchObject({ cost: 40, billed: { amount: 22, unit: "generations" } })
+  })
+
+  it("records an animation's actual bill from the same background job poll already reads for its frames", async () => {
+    const file = await writeManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-2", 30)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    const animCost = (await p.plan()).actionable[0]!.spec.cost
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-2", "pixelkiln:cast/mira.fireman_spin", "east", 8, { type: "generations", generations: animCost + 3 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    const entry = p.lock.entries["cast/mira.fireman_spin"]!
+    expect(entry.status).toBe("review")
+    expect(entry.billed).toEqual({ amount: animCost + 3, unit: "generations" })
+  })
+
+  it("records no billed amount once the background job record is gone, rather than guessing", async () => {
+    const file = await writeManifest({ assets: { mira: { prompt: "small young woman" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    client.forgetJobs()
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira"]).toMatchObject({ status: "selected", billed: null })
   })
 })
 

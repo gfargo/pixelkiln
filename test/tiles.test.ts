@@ -434,3 +434,73 @@ describe("pixflux background", () => {
     expect(spec.noBackground).toBe(false)
   })
 })
+
+describe("billed usage", () => {
+  // Confirmed live (docs/ENDPOINTS.md, "Limits and billing"): GET
+  // /background-jobs/{id} carries `usage` once a map object completes, at
+  // the top level. submit() now keeps that job id in metadata for poll to
+  // read back.
+  it("reads a map object's background job for what it actually billed", async () => {
+    const provider = new PixelLabProvider({
+      getMapObject: async () => ({ status: "completed", download_url: "https://x/o.png" }),
+      getBackgroundJob: async (id: string) => {
+        expect(id).toBe("bg-1")
+        return { id, status: "completed", usage: { type: "generations", generations: 1 } }
+      },
+    } as never)
+    const state = await provider.poll("job", "map", { metadata: { backgroundJobId: "bg-1" } })
+    expect(state).toMatchObject({ status: "ready", billed: { amount: 1, unit: "generations" } })
+  })
+
+  it("reads a 1dir object's background job the same way, on review and on ready", async () => {
+    const getBackgroundJob = async (id: string) => ({ id, status: "completed", usage: { type: "generations", generations: 21 } })
+    const reviewing = new PixelLabProvider({
+      getObject: async () => ({ id: "obj-1", status: "review", frame_urls: ["https://x/a.png"] }),
+      getBackgroundJob,
+    } as never)
+    expect(await reviewing.poll("job", "1dir", { metadata: { backgroundJobId: "bg-2" } })).toMatchObject({
+      status: "review",
+      billed: { amount: 21, unit: "generations" },
+    })
+
+    const ready = new PixelLabProvider({
+      getObject: async () => ({ id: "obj-1", status: "completed", rotation_urls: { south: "https://x/a.png" } }),
+      getBackgroundJob,
+    } as never)
+    expect(await ready.poll("job", "1dir", { metadata: { backgroundJobId: "bg-2" } })).toMatchObject({
+      status: "ready",
+      billed: { amount: 21, unit: "generations" },
+    })
+  })
+
+  it("reads a tiles job's background job for its actual bill, connectable or not", async () => {
+    const urls = { tile_0: "https://x/0.png" }
+    const getBackgroundJob = async (id: string) => ({ id, status: "completed", usage: { type: "generations", generations: 33 } })
+    const variations = new PixelLabProvider({ getTilesPro: async () => ({ storage_urls: urls, kind: "tiles" }), getBackgroundJob } as never)
+    expect(await variations.poll("job", "tiles", { metadata: { backgroundJobId: "bg-3" } })).toMatchObject({
+      status: "review",
+      billed: { amount: 33, unit: "generations" },
+    })
+
+    const connectable = new PixelLabProvider({ getTilesPro: async () => ({ storage_urls: urls, kind: "building" }), getBackgroundJob } as never)
+    expect(await connectable.poll("job", "tiles", { tileFeature: "building", metadata: { backgroundJobId: "bg-3" } })).toMatchObject({
+      status: "ready",
+      billed: { amount: 33, unit: "generations" },
+    })
+  })
+
+  it("reports no billed amount when no background job id was recorded, or its record is gone", async () => {
+    const noMetadata = new PixelLabProvider({
+      getMapObject: async () => ({ status: "completed", download_url: "https://x/o.png" }),
+    } as never)
+    expect(await noMetadata.poll("job", "map")).toMatchObject({ status: "ready", billed: null })
+
+    const goneJob = new PixelLabProvider({
+      getMapObject: async () => ({ status: "completed", download_url: "https://x/o.png" }),
+      getBackgroundJob: async () => {
+        throw new PixelLabError("gone", 404, "")
+      },
+    } as never)
+    expect(await goneJob.poll("job", "map", { metadata: { backgroundJobId: "bg-4" } })).toMatchObject({ status: "ready", billed: null })
+  })
+})

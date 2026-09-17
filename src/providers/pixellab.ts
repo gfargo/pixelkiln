@@ -2,7 +2,7 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { randomUUID } from "node:crypto"
 import os from "node:os"
 import path from "node:path"
-import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type PixelLabCharacter } from "../client.ts"
+import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type PixelLabCharacter, type PixelLabUsage } from "../client.ts"
 import { sha256 } from "../hash.ts"
 import { imageMetadata } from "../media.ts"
 import { paletteSwatch } from "../png.ts"
@@ -20,6 +20,7 @@ import {
 } from "../types.ts"
 import type {
   BalanceInfo,
+  BilledAmount,
   CostEstimate,
   JobState,
   OutputSource,
@@ -65,6 +66,25 @@ export function pixelLabObjectUrl(generator: Generator, objectId: string | null)
     const characterId = objectId.split("#")[0]!
     return characterId ? `https://www.pixellab.ai/create-character/${encodeURIComponent(characterId)}` : null
   }
+  return null
+}
+
+/**
+ * A completed background job's `usage`, as `billed` on the lock entry.
+ *
+ * Confirmed live (docs/ENDPOINTS.md, "Limits and billing") for a `map`
+ * object and a standard character base: `GET /background-jobs/{id}` carries
+ * `usage` once the job is `completed`, in the same `{type, generations|usd}`
+ * shape the synchronous endpoints already return inline. Absent, null, or an
+ * unrecognized `type` all mean "not known"; the submit-time `cost` estimate
+ * is what a wave budget still spends against.
+ */
+function billedFromUsage(usage: PixelLabUsage | null | undefined): BilledAmount | null {
+  if (!usage) return null
+  if (usage.type === "usd" || (usage.type === undefined && typeof usage.usd === "number")) {
+    return typeof usage.usd === "number" ? { amount: usage.usd, unit: "usd" } : null
+  }
+  if (typeof usage.generations === "number") return { amount: usage.generations, unit: "generations" }
   return null
 }
 
@@ -515,6 +535,7 @@ export class PixelLabProvider implements Provider {
     if (character.status !== "completed" || !character.rotation_urls) return { status: "processing" }
     const sources = rotationSources(character)
     if (!sources.length) return { status: "failed", error: "character completed with no rotation images" }
+    const backgroundJobId = (context?.metadata?.character as { backgroundJobId?: string } | undefined)?.backgroundJobId
     return {
       status: "ready",
       objectId: character.id,
@@ -531,6 +552,7 @@ export class PixelLabProvider implements Provider {
           updatedAt: character.updated_at ?? null,
         },
       },
+      billed: await this.billedForJob(backgroundJobId),
     }
   }
 
@@ -543,7 +565,7 @@ export class PixelLabProvider implements Provider {
    */
   private async pollCharacterAnimation(job: AnimationJob, context?: PollContext): Promise<JobState> {
     const fps = context?.spec?.character?.animation?.fps ?? 8
-    const review = (frames: string[], animationId: string | null, groupId: string | null): JobState => ({
+    const review = (frames: string[], animationId: string | null, groupId: string | null, billed: BilledAmount | null): JobState => ({
       status: "review-set",
       objectId: `${job.characterId}#${groupId ?? animationId ?? job.name}`,
       frameUrls: frames,
@@ -560,6 +582,7 @@ export class PixelLabProvider implements Provider {
           direction: job.direction,
         },
       },
+      billed,
     })
 
     let cleanedUp = job.jobIds.length === 0
@@ -580,7 +603,7 @@ export class PixelLabProvider implements Provider {
       if (Array.isArray(frames) && frames.length && frames.every((f) => typeof f === "string")) {
         const character = await this.client.getCharacter(job.characterId)
         const group = findAnimation(character, job.name, job.direction, animationId)
-        return review(frames as string[], animationId, group?.groupId ?? null)
+        return review(frames as string[], animationId, group?.groupId ?? null, billedFromUsage(status.usage))
       }
     }
     // No job told us; the animation list is what is left, searched by name
@@ -588,7 +611,7 @@ export class PixelLabProvider implements Provider {
     const recorded = (context?.metadata?.character as { animationId?: string | null } | undefined)?.animationId ?? null
     const character = await this.client.getCharacter(job.characterId)
     const found = findAnimation(character, job.name, job.direction, recorded)
-    if (found) return review(found.frames, found.animationId, found.groupId)
+    if (found) return review(found.frames, found.animationId, found.groupId, null)
     return cleanedUp
       ? { status: "failed", error: `animation job is gone upstream and no "${job.name}" ${job.direction} animation exists on the character` }
       : { status: "processing" }
@@ -627,7 +650,7 @@ export class PixelLabProvider implements Provider {
         // unlike 1dir's {type, base64, format} payload.
         styleImages: styleImages.map(({ base64, width, height }) => ({ base64, width, height })),
       })
-      return { jobId: res.tile_id }
+      return { jobId: res.tile_id, metadata: { backgroundJobId: res.background_job_id } }
     }
 
     if (spec.generator === "1dir") {
@@ -637,7 +660,7 @@ export class PixelLabProvider implements Provider {
         view: spec.view === "sidescroller" ? "sidescroller" : "top-down",
         styleImages,
       })
-      return { jobId: res.object_id }
+      return { jobId: res.object_id, metadata: { backgroundJobId: res.background_job_id } }
     }
     const res = await this.client.createMapObject({
       description: spec.prompt,
@@ -649,7 +672,23 @@ export class PixelLabProvider implements Provider {
       detail: spec.detail,
       seed: spec.seed,
     })
-    return { jobId: res.object_id }
+    return { jobId: res.object_id, metadata: { backgroundJobId: res.background_job_id } }
+  }
+
+  /**
+   * What a background job actually billed, once its own record is still
+   * around to ask; see `billedFromUsage`. A stale or already-cleaned-up job
+   * (a map object's record expires in hours; see `pollMap`) means "not
+   * known", not a failure worth surfacing.
+   */
+  private async billedForJob(backgroundJobId: string | null | undefined): Promise<BilledAmount | null> {
+    if (!backgroundJobId) return null
+    try {
+      const job = await this.client.getBackgroundJob(backgroundJobId)
+      return billedFromUsage(job.usage)
+    } catch {
+      return null
+    }
   }
 
   async poll(jobId: string, generator: Generator, context?: PollContext): Promise<JobState> {
@@ -666,17 +705,18 @@ export class PixelLabProvider implements Provider {
         error: "pixflux result is no longer cached locally; re-run submit for this asset",
       }
     }
-    if (generator === "map") return this.pollMap(jobId)
-    if (generator === "tiles") return this.pollTiles(jobId, Boolean(context?.tileFeature))
+    if (generator === "map") return this.pollMap(jobId, context)
+    if (generator === "tiles") return this.pollTiles(jobId, Boolean(context?.tileFeature), context)
     if (generator === "character") return this.pollCharacter(jobId, context)
 
+    const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
     const obj = await this.client.getObject(jobId)
     if (obj.status === "review") {
-      return { status: "review", candidateUrls: obj.frame_urls ?? [] }
+      return { status: "review", candidateUrls: obj.frame_urls ?? [], billed: await this.billedForJob(backgroundJobId) }
     }
     if (obj.status === "completed") {
       const url = firstUrl(obj.rotation_urls) ?? obj.preview_url ?? null
-      return { status: "ready", objectId: obj.id, sourceUrl: url, sources: url ? [{ url }] : [] }
+      return { status: "ready", objectId: obj.id, sourceUrl: url, sources: url ? [{ url }] : [], billed: await this.billedForJob(backgroundJobId) }
     }
     if (obj.status === "failed") return { status: "failed", error: "generation failed upstream" }
     return {
@@ -693,7 +733,8 @@ export class PixelLabProvider implements Provider {
    * `/objects` four months on, with `/map-objects` returning 404 for the same
    * id. So a 404 here is not evidence the work is lost.
    */
-  private async pollMap(jobId: string): Promise<JobState> {
+  private async pollMap(jobId: string, context?: PollContext): Promise<JobState> {
+    const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
     try {
       const obj = await this.client.getMapObject(jobId)
       if (obj.status === "completed" && obj.download_url) {
@@ -702,6 +743,7 @@ export class PixelLabProvider implements Provider {
           objectId: jobId,
           sourceUrl: obj.download_url,
           sources: [{ url: obj.download_url }],
+          billed: await this.billedForJob(backgroundJobId),
         }
       }
       if (obj.status === "failed") return { status: "failed", error: "generation failed upstream" }
@@ -713,7 +755,9 @@ export class PixelLabProvider implements Provider {
       const survivor = await this.client.getObject(jobId).catch(() => null)
       const url = firstUrl(survivor?.rotation_urls) ?? survivor?.preview_url ?? null
       if (survivor?.status === "completed" && url) {
-        return { status: "ready", objectId: survivor.id, sourceUrl: url, sources: [{ url }] }
+        // The job record is exactly what expired to produce this 404 path,
+        // so there is nothing left to ask for a billed amount.
+        return { status: "ready", objectId: survivor.id, sourceUrl: url, sources: [{ url }], billed: null }
       }
       return {
         status: "failed",
@@ -727,12 +771,14 @@ export class PixelLabProvider implements Provider {
    * `storage_urls` once finished. There is no `status` field to read and no
    * progress percentage on offer, so "processing" here carries no ETA.
    */
-  private async pollTiles(tileId: string, connectable: boolean): Promise<JobState> {
+  private async pollTiles(tileId: string, connectable: boolean, context?: PollContext): Promise<JobState> {
     try {
       const set = await this.client.getTilesPro(tileId)
       const tiles = tilesInIndexOrder(set.storage_urls)
       if (!tiles.length) return { status: "failed", error: "tiles job returned no storage urls" }
-      if (!connectable) return { status: "review", candidateUrls: tiles.map((tile) => tile.url) }
+      const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
+      const billed = await this.billedForJob(backgroundJobId)
+      if (!connectable) return { status: "review", candidateUrls: tiles.map((tile) => tile.url), billed }
       return {
         status: "ready",
         objectId: tileId,
@@ -745,6 +791,7 @@ export class PixelLabProvider implements Provider {
           tileKind: set.kind,
           ...(set.tile_rules ? { tileRules: set.tile_rules } : {}),
         },
+        billed,
       }
     } catch (err) {
       if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }

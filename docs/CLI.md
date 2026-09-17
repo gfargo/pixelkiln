@@ -77,7 +77,9 @@ stale, modified, or awaiting quality approval. Blocked work is not actionable
 and adds no cost. Single-provider JSON retains `cost` and `costUnit`; mixed
 plans set those legacy fields to `null` and expose the exact totals in `groups`.
 Revision items in JSON also include their mode, parent id/hash, optional mask
-hash, and strength.
+hash, and strength. An already-generated item's JSON also carries `cost`,
+`costUnit`, and `billed` when a poll read a billed amount that differs from
+the estimate; the wave budget below still spends against the estimate.
 
 ```bash
 pixelkiln plan
@@ -242,6 +244,13 @@ none); a manifest's top-level `history` overrides it for that project. The
 bytes of every kept generation survive `cache --prune`, and the provider
 objects were never deleted. Restore one with
 [`restore --generation`](#restore).
+
+A generation's text line shows `(billed …)` beside its `cost` estimate when
+`poll` read a different amount from the completed job (a PixelLab state or
+1dir estimate is a tier, not an exact figure, and the two can differ by a lot;
+see `docs/PIXELLAB.md`); `--json` always includes `billed`, null until a poll
+reads one. `gen`'s wave budget still spends against the estimate, since the
+real number is only known after the fact.
 
 The paid-work states have one safe next step:
 
