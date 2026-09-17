@@ -266,7 +266,7 @@ describe("buildGallerySnapshot", () => {
     expect(by("cast/hero.sit").character).toMatchObject({ generator: "character", kind: "state", parentKey: "cast/hero", mode: "v3", characterId: null })
     expect(by("cast/hero.sit.spin").character).toMatchObject({ generator: "character", kind: "animation", parentKey: "cast/hero.sit", mode: "pro", direction: "east" })
     expect(by("cast/hero.wave")).toMatchObject({ state: "undeclared", character: { generator: "character", kind: "animation", parentKey: null, characterId: "char-hero", direction: "south" } })
-    expect(snapshot.styles.find((style) => style.id === "cast")!.characters).toEqual({ bases: 1, states: 1, animations: 2, portraits: 0 })
+    expect(snapshot.styles.find((style) => style.id === "cast")!.characters).toEqual({ bases: 1, states: 1, animations: 2, portraits: 0, outfits: 0 })
     expect(by("cast/anvil")).toBeUndefined()
   })
 
@@ -293,7 +293,7 @@ describe("buildGallerySnapshot", () => {
     expect(by("props/chest").character).toEqual({ generator: "objectPro", kind: "base", parentKey: null, mode: "pro-flash", directions: 8, direction: null, characterId: "obj-chest" })
     expect(by("props/chest.open").character).toMatchObject({ generator: "objectPro", kind: "state", parentKey: "props/chest" })
     expect(by("props/chest.open.wobble").character).toMatchObject({ generator: "objectPro", kind: "animation", parentKey: "props/chest.open", mode: "v3", direction: "south" })
-    expect(snapshot.styles.find((style) => style.id === "props")!.characters).toEqual({ bases: 1, states: 1, animations: 1, portraits: 0 })
+    expect(snapshot.styles.find((style) => style.id === "props")!.characters).toEqual({ bases: 1, states: 1, animations: 1, portraits: 0, outfits: 0 })
   })
 
   it("shows untracked art on disk with no hash and no provenance", async () => {

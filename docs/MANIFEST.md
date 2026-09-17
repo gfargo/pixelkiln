@@ -437,7 +437,8 @@ their own page: [Characters](./CHARACTERS.md) and
       "animation": { "of": "bot", "direction": "west", "frames": 12, "fps": 12 }
     },
     "bot.walk.east": { "mirror": "bot.walk.west" },     // flipped locally, 0 generations
-    "bot.bust": { "portrait": { "of": "bot", "size": 64 } }   // no prompt; drawn from bot's pixels
+    "bot.bust": { "portrait": { "of": "bot", "size": 64 } },  // no prompt; drawn from bot's pixels
+    "bot.walk.west.armored": { "outfit": { "of": "bot.walk.west", "reference": "refs/armor.png" } }
   }
 }
 ```

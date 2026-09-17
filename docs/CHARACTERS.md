@@ -372,6 +372,35 @@ options, since the underlying endpoint takes a smaller set.
 The reverse tool, drawing a full character from a portrait image, is not
 implemented; see the open items in [`docs/ENDPOINTS.md`](ENDPOINTS.md).
 
+## Outfit transfer
+
+An `outfit` asset re-clothes an existing loop's frames with a reference
+outfit image, PixelLab's `transfer-outfit-v2`:
+
+```json
+"mira.walk.armored": {
+  "outfit": { "of": "mira.walk", "reference": "refs/armor.png" }
+}
+```
+
+`of` names the loop (an `animation` asset) to re-clothe; `reference` is a
+manifest-relative image of the outfit, 32 to 256px per side. An outfit takes
+no prompt (drawn from pixels, not text) and reads its source loop's own
+downloaded frames — 2 to 16 of them, PixelLab's own limit — rather than the
+character record, so it works even once the source's PixelLab job record
+has expired. It shares its source's width, height, and directions, and is
+priced and generated like a state or loop, not for free like a `mirror`:
+measured live at 20 generations for a 2-frame, 92×92 job (see
+[`docs/ENDPOINTS.md`](ENDPOINTS.md)), the floor of the same tier a state
+uses, not yet confirmed at other frame counts or canvases.
+
+An outfit blocks until its source loop is downloaded and current — the
+same rule a mirror's source follows, since both depend on a whole frame
+set rather than one file — and goes `stale` when the source is
+regenerated. It takes no `state`, `animation`, `portrait`, `reference`, or
+`concept` (those describe a different shape or belong on a base); a
+reference image change alone also makes it stale.
+
 ## Working with a cast
 
 - `pixelkiln plan` shows a state or loop as `blocked` until its parent is

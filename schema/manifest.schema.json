@@ -1413,6 +1413,28 @@
                 ],
                 "additionalProperties": false
               },
+              "outfit": {
+                "type": "object",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reference": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "additionalInstructions": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "of",
+                  "reference"
+                ],
+                "additionalProperties": false
+              },
               "proportions": {
                 "anyOf": [
                   {

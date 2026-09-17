@@ -582,11 +582,11 @@ Listed so the gaps are known rather than assumed away:
 - `generate-font-pro`, job-based, with a response shape not in the simple
   `{usage, image}` form (wrapped by `pixelkiln font`, but its cost is not
   yet measured)
-- the character family beyond what the `character` generator uses: outfit
-  transfer (`transfer-outfit-v2`), lip-sync, skeleton animation, and
-  `source_image_id` on Pro Flash. The four creation engines, states,
-  `animate-character`, and portraits are covered in full; see the September
-  2026 measurements below.
+- the character family beyond what the `character` generator uses: lip-sync,
+  skeleton animation, `portrait_to_character` (a full character from a bust),
+  and `source_image_id` on Pro Flash. The four creation engines, states,
+  `animate-character`, portraits, and outfit transfer are covered in full; see
+  the September 2026 measurements below.
 
 ## Characters, measured
 

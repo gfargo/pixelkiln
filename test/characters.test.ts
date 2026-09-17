@@ -14,6 +14,8 @@ import { packStyle } from "../src/pipeline/pack.ts"
 import { renderGodotSpriteFrames } from "../src/pipeline/sheet-formats.ts"
 import { openProject } from "../src/project.ts"
 import { encodeRgbaPng } from "../src/png.ts"
+import { upsert } from "../src/lock.ts"
+import { sha256File } from "../src/hash.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
 
 let dir: string
@@ -575,6 +577,8 @@ function fakeClient() {
   // state's own background job must not be swept up in that.
   const baseJobs = new Map<string, string>()
   const baseJobUsage = new Map<string, Record<string, unknown>>()
+  /** Custom `last_response` for a job whose only status source is getBackgroundJob (an outfit transfer). */
+  const baseJobResponse = new Map<string, Record<string, unknown>>()
   const portraitJobs = new Map<string, { status: string; downloadUrl?: string; width?: number; height?: number }>()
   const client = {
     calls: [] as string[],
@@ -618,7 +622,7 @@ function fakeClient() {
     },
     async getBackgroundJob(id: string) {
       if (baseJobs.has(id)) {
-        return { id, status: baseJobs.get(id)!, last_response: null, usage: baseJobUsage.get(id) ?? null }
+        return { id, status: baseJobs.get(id)!, last_response: baseJobResponse.get(id) ?? null, usage: baseJobUsage.get(id) ?? null }
       }
       const status = jobs.get(id)
       if (status === undefined) throw new PixelLabError(`GET /background-jobs/${id} → 404`, 404, "")
@@ -629,7 +633,7 @@ function fakeClient() {
       return { id, status, last_response: response, usage: (response?.billing_usage as Record<string, unknown> | undefined) ?? null }
     },
     /** Test hook: PixelLab cleans finished jobs up; the animation list is what is left. */
-    forgetJobs() { jobs.clear(); jobResponses.clear(); baseJobs.clear(); baseJobUsage.clear() },
+    forgetJobs() { jobs.clear(); jobResponses.clear(); baseJobs.clear(); baseJobUsage.clear(); baseJobResponse.clear() },
     /** Test hook: what a base or state's own background job reports as billed once it completes. */
     setBaseUsage(characterId: string, usage: Record<string, unknown>) { baseJobUsage.set(`job-${characterId}`, usage) },
     /** Test hook: what any background job (by its own id) reports as billed once it completes. */
@@ -653,6 +657,19 @@ function fakeClient() {
       client.portraitsSet.push({ characterId, base64: image.base64 })
       return { character_id: characterId, size: 16, url: `https://cdn.test/${characterId}/portrait.png`, usage: { type: "generations", generations: 0 } }
     },
+    async transferOutfitV2(args: { frames: unknown[] }) {
+      const jobId = `outfit-job-${++counter}`
+      client.calls.push(`outfit:${args.frames.length}`)
+      baseJobs.set(jobId, "processing")
+      return { background_job_id: jobId, status: "processing", usage: null }
+    },
+    /** Test hook: land an outfit job with `count` resulting frame images, inline as base64. */
+    completeOutfit(jobId: string, count: number) {
+      const images = Array.from({ length: count }, (_, i) => ({ type: "base64", base64: px(8, 60 + i).toString("base64"), width: 8, height: 8 }))
+      baseJobResponse.set(jobId, { quantized_images: images })
+      baseJobs.set(jobId, "completed")
+    },
+    failOutfitJob(jobId: string) { baseJobs.set(jobId, "failed") },
     /** Test hook: land a portrait job with a downloadable square image. */
     completePortrait(jobId: string, size: number) {
       const url = `https://cdn.test/portrait/${jobId}.png`
@@ -1043,7 +1060,7 @@ describe("portraits", () => {
     await expect(refused({ assets: {
       mira: { prompt: "a hero" },
       "mira.bust": { portrait: { of: "mira" }, reference: "refs/x.png" },
-    } })).rejects.toThrow(/a state, animation, mirror, or portrait takes its look from its parent/)
+    } })).rejects.toThrow(/a state, animation, mirror, portrait, or outfit takes its look from its parent/)
   })
 
   it("submits the parent's local south file, attaches the result to the parent's record once drawn, and records what it billed", async () => {
@@ -1121,6 +1138,198 @@ describe("portraits", () => {
     // fine for the standard-mode base but not for the portrait's own,
     // narrower view enum), so this fails before anything is generated.
     await expect(openProject(file, { env: false })).rejects.toThrow(/PixelLab portrait view must be one of/)
+  })
+})
+
+describe("outfit transfer", () => {
+  function armoredManifest(overrides: Record<string, unknown> = {}) {
+    return writeManifest({
+      assets: {
+        mira: { prompt: "small young woman" },
+        "mira.walk": { prompt: "walking forward", animation: { of: "mira", direction: "south", frames: 4, fps: 8 } },
+        "mira.walk.armored": { outfit: { of: "mira.walk", reference: "armor.png" } },
+        ...overrides,
+      },
+    })
+  }
+
+  /** A loop lands in "review", like any frame set; accept it into "selected" the way `pick` does. */
+  async function acceptReview(provider: PixelLabProvider, p: { lock: Lock; specs: ResolvedSpec[] }, key: string) {
+    const entry = p.lock.entries[key]!
+    const spec = p.specs.find((s) => lockKey(s.styleId, s.assetId) === key)
+    const state = await provider.poll(entry.reviewObjectId!, entry.generator, { spec, metadata: entry.providerMetadata?.pixellab })
+    if (state.status !== "review-set") throw new Error(`${key} is not ready for review`)
+    upsert(p.lock, key, { status: "selected", objectId: state.objectId, sourceUrl: state.sources[0]?.url ?? null, sourceUrls: state.sources })
+  }
+
+  it("resolves an outfit's shape from its source loop, with no prompt of its own", async () => {
+    await writeFile(path.join(dir, "armor.png"), px(32, 99))
+    const specs = await resolveSpecs(await loadManifest(await armoredManifest()))
+    const source = specs.find((s) => s.assetId === "mira.walk")!
+    const outfit = specs.find((s) => s.assetId === "mira.walk.armored")!
+    expect(outfit.character).toMatchObject({ kind: "outfit", parentAssetId: "mira.walk" })
+    expect(outfit.character!.outfit!.reference).toMatchObject({ width: 32, height: 32 })
+    expect(outfit.prompt).toBe("")
+    expect(outfit.width).toBe(source.width)
+    expect(outfit.height).toBe(source.height)
+    expect(outfit.generator).toBe("character")
+  })
+
+  it("refuses re-clothing a non-loop, and refuses combining outfit with a prompt shape", async () => {
+    await writeFile(path.join(dir, "armor.png"), px(32, 99))
+    const resolve = async (overrides: Record<string, unknown>) => resolveSpecs(await loadManifest(await writeManifest(overrides)))
+    await expect(resolve({
+      assets: {
+        mira: { prompt: "small young woman" },
+        "mira.walk": { prompt: "walking forward", animation: { of: "mira", direction: "south", frames: 4, fps: 8 } },
+        "mira.walk.armored": { outfit: { of: "mira", reference: "armor.png" } },
+      },
+    })).rejects.toThrow(/outfit "mira" is not a character loop/)
+    await expect(resolve({
+      assets: {
+        mira: { prompt: "a hero" },
+        "mira.walk": { prompt: "walking", animation: { of: "mira", direction: "south", frames: 4 } },
+        "mira.walk.armored": { prompt: "armored", outfit: { of: "mira.walk", reference: "armor.png" }, state: { of: "mira" } },
+      },
+    })).rejects.toThrow(/mutually exclusive/)
+  })
+
+  it("submits the source loop's downloaded frames and the reference image, and records what it billed", async () => {
+    await writeFile(path.join(dir, "armor.png"), px(32, 99))
+    const file = await armoredManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    const loopPlan = await p.plan()
+    expect(loopPlan.actionable.map((i) => i.key)).toEqual(["cast/mira.walk"])
+    await submit(provider, p.loaded, loopPlan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "pixelkiln:cast/mira.walk", "south", 4)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await acceptReview(provider, p, "cast/mira.walk")
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    const outfitPlan = await p.plan()
+    expect(outfitPlan.actionable.map((i) => i.key)).toEqual(["cast/mira.walk.armored"])
+    expect(outfitPlan.groups[0]!.cost).toBe(20)
+    await submit(provider, p.loaded, outfitPlan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(client.calls.at(-1)).toBe("outfit:4")
+    const jobId = p.lock.entries["cast/mira.walk.armored"]!.jobId!
+
+    client.completeOutfit(jobId, 4)
+    client.setJobUsage(jobId, { type: "generations", generations: 20 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.walk.armored"]).toMatchObject({
+      status: "selected",
+      billed: { amount: 20, unit: "generations" },
+    })
+
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const entry = p.lock.entries["cast/mira.walk.armored"]!
+    expect(entry.status).toBe("downloaded")
+    expect(entry.outputs.map((o) => o.role)).toEqual(["frame-00", "frame-01", "frame-02", "frame-03"])
+    expect(entry.outfit).toMatchObject({ sourceAssetId: "mira.walk" })
+  })
+
+  it("goes stale when the source loop is regenerated", async () => {
+    await writeFile(path.join(dir, "armor.png"), px(32, 99))
+    const file = await armoredManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "pixelkiln:cast/mira.walk", "south", 4)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await acceptReview(provider, p, "cast/mira.walk")
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const jobId = p.lock.entries["cast/mira.walk.armored"]!.jobId!
+    client.completeOutfit(jobId, 4)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const p2 = await openProject(file, { env: false })
+    expect((await p2.plan()).items.find((i) => i.key === "cast/mira.walk.armored")).toMatchObject({ state: "ok" })
+
+    // Simulate the loop being regenerated: new bytes land on disk and the
+    // lock is updated to match, without re-running the whole animation
+    // pipeline for it (a hand-modified file, caught separately, is not
+    // what this test is after).
+    const walkEntry = p2.lock.entries["cast/mira.walk"]!
+    const newOutputs = await Promise.all(walkEntry.outputs.map(async (o) => {
+      const abs = path.resolve(dir, o.path)
+      await writeFile(abs, px(8, 200))
+      return { ...o, sha256: await sha256File(abs) }
+    }))
+    upsert(p2.lock, "cast/mira.walk", { outputs: newOutputs })
+    const rePlan = await p2.plan()
+    expect(rePlan.items.find((i) => i.key === "cast/mira.walk.armored")).toMatchObject({
+      state: "stale",
+      reason: expect.stringContaining("outfit source mira.walk changed"),
+    })
+  })
+
+  it("refuses fewer than 2 source frames", async () => {
+    await writeFile(path.join(dir, "armor.png"), px(32, 99))
+    const file = await armoredManifest({ "mira.walk": { prompt: "walking", animation: { of: "mira", template: "walk", direction: "south" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "pixelkiln:cast/mira.walk", "south", 1)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await acceptReview(provider, p, "cast/mira.walk")
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    const result = await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(result.failed).toBe(1)
+    expect(p.lock.entries["cast/mira.walk.armored"]!.error).toMatch(/needs 2 to 16/)
+  })
+
+  it("fails cleanly when the outfit job fails upstream", async () => {
+    await writeFile(path.join(dir, "armor.png"), px(32, 99))
+    const file = await armoredManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "pixelkiln:cast/mira.walk", "south", 4)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await acceptReview(provider, p, "cast/mira.walk")
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const jobId = p.lock.entries["cast/mira.walk.armored"]!.jobId!
+    client.failOutfitJob(jobId)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.walk.armored"]).toMatchObject({ status: "failed", error: expect.stringContaining("outfit transfer failed") })
   })
 })
 

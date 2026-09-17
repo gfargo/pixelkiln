@@ -148,7 +148,7 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
 
 /** The asset this one is generated from, whichever shape declares it. */
 export function parentAssetId(asset: Asset | undefined): string | undefined {
-  return asset?.revision?.from ?? asset?.state?.of ?? asset?.animation?.of ?? asset?.portrait?.of
+  return asset?.revision?.from ?? asset?.state?.of ?? asset?.animation?.of ?? asset?.portrait?.of ?? asset?.outfit?.of
 }
 
 function formatManifestIssues(issues: ZodIssue[]): string {
@@ -445,8 +445,10 @@ export async function resolveSpecs(
             `"${styleId}" generates ${generator}`,
         )
       }
-      if (asset.portrait && generator !== "character") {
-        throw new Error(`assets.${assetId}: portrait needs a character style; "${styleId}" generates ${generator}`)
+      if ((asset.portrait || asset.outfit) && generator !== "character") {
+        throw new Error(
+          `assets.${assetId}: ${asset.portrait ? "portrait" : "outfit"} needs a character style; "${styleId}" generates ${generator}`,
+        )
       }
       if ((asset.pieces || asset.elements) && generator !== "uiAsset") {
         throw new Error(
@@ -758,6 +760,41 @@ export async function resolveSpecs(
           // A state and its animations keep the base's own rotation count.
           directions: resolved.objectPro.kind === "base" ? resolved.objectPro.directions : parentSpec.objectPro.directions,
         }
+      }
+      if (asset.outfit) {
+        // An outfit's dependency is the source loop's whole frame set, not a
+        // single south-facing file (the shared block above assumes one),
+        // so it is resolved on its own rather than through characterParent.
+        if (asset.outfit.of === assetId) throw new Error(`assets.${assetId}: an asset cannot re-clothe itself`)
+        const sourceSpec = await finalize(asset.outfit.of)
+        if (sourceSpec.character?.kind !== "animation") {
+          throw new Error(`assets.${assetId}: outfit "${asset.outfit.of}" is not a character loop`)
+        }
+        const referenceImage = await loadStyleImage(asset.outfit.reference, "Outfit reference image")
+        resolved.character = {
+          kind: "outfit",
+          mode: sourceSpec.character.mode,
+          directions: sourceSpec.character.directions,
+          template: sourceSpec.character.template,
+          parentAssetId: asset.outfit.of,
+          parentSpec: sourceSpec,
+          animation: sourceSpec.character.animation,
+          outfit: {
+            reference: {
+              path: path.resolve(root, asset.outfit.reference),
+              sha256: referenceImage.hash,
+              width: referenceImage.width,
+              height: referenceImage.height,
+              format: referenceImage.format,
+            },
+            ...(asset.outfit.additionalInstructions ? { additionalInstructions: asset.outfit.additionalInstructions } : {}),
+          },
+        }
+        resolved.generator = sourceSpec.generator
+        resolved.width = sourceSpec.width
+        resolved.height = sourceSpec.height
+        resolved.size = sourceSpec.size
+        resolved.prompt = ""
       }
       if (asset.revision) {
         if (!activeProvider.supportsRevision?.(asset.revision.mode)) {

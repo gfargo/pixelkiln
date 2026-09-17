@@ -402,6 +402,18 @@ const SetPortraitSchema = z
     usage: UsageSchema,
   })
   .passthrough()
+/**
+ * `usage` here is always null too (docs/ENDPOINTS.md); read
+ * `GET /background-jobs/{id}` for the real amount, the only place it
+ * appears — there is no `transfer-outfit-v2/{id}` status endpoint.
+ */
+const TransferOutfitSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    usage: UsageSchema,
+  })
+  .passthrough()
 const CharacterAnimationDirectionSchema = z
   .object({
     direction: z.string(),
@@ -1332,6 +1344,39 @@ export class PixelLabClient {
       body: JSON.stringify({ image: { type: "base64", base64: image.base64, format: image.format } }),
     })
     return validateResponse(SetPortraitSchema, raw, "characters/{id}/portrait")
+  }
+
+  /**
+   * Applies a reference outfit to 2–16 existing frames. Job-based like
+   * everything else here, but the completed job returns the result frames
+   * inline as base64 (`last_response.quantized_images`), not as storage
+   * URLs — the one PixelLab character tool that works this way. A live
+   * 2-frame, 92x92 job billed 20 generations (docs/ENDPOINTS.md).
+   */
+  async transferOutfitV2(args: {
+    referenceImage: Base64Image & { width: number; height: number }
+    frames: (Base64Image & { width: number; height: number })[]
+    imageSize: { width: number; height: number }
+    seed?: number
+    noBackground?: boolean
+    additionalInstructions?: string
+  }): Promise<{ background_job_id: string; status: string; usage?: PixelLabUsage | null }> {
+    const image = (img: Base64Image & { width: number; height: number }) => ({
+      image: { type: "base64", base64: img.base64, format: img.format },
+      size: { width: img.width, height: img.height },
+    })
+    const raw = await this.request<unknown>("/transfer-outfit-v2", {
+      method: "POST",
+      body: JSON.stringify({
+        reference_image: image(args.referenceImage),
+        frames: args.frames.map(image),
+        image_size: args.imageSize,
+        ...(args.seed != null ? { seed: args.seed } : {}),
+        ...(args.noBackground !== undefined ? { no_background: args.noBackground } : {}),
+        ...(args.additionalInstructions ? { additional_instructions: args.additionalInstructions } : {}),
+      }),
+    })
+    return validateResponse(TransferOutfitSubmitSchema, raw, "transfer-outfit-v2")
   }
 
   async getCharacter(characterId: string): Promise<PixelLabCharacter> {

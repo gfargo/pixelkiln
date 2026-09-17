@@ -189,7 +189,7 @@ export interface GalleryItem {
 export interface GalleryCharacter {
   /** Which family this belongs to: a skeleton-based `character`, or a skeleton-free `objectPro`. */
   generator: "character" | "objectPro"
-  kind: "base" | "state" | "animation" | "portrait"
+  kind: "base" | "state" | "animation" | "portrait" | "outfit"
   /** Lock key of the base or state this is drawn from; null for a base. */
   parentKey: string | null
   mode: string
@@ -219,7 +219,7 @@ export interface GalleryStyle {
   noBackground: boolean
   quality: boolean
   /** Family counts for a `character` style; null otherwise. */
-  characters: { bases: number; states: number; animations: number; portraits: number } | null
+  characters: { bases: number; states: number; animations: number; portraits: number; outfits: number } | null
   tags: string[]
   /** Parent style id when this style `extends` one. */
   extends: string | null
@@ -416,9 +416,13 @@ function describeCharacter(spec: ResolvedSpec | undefined, entry: LockEntry | un
     }
   }
   if (entry?.generator === "character") {
-    const kind = recordedCharacter?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-"))
-      ? "animation"
-      : recordedCharacter?.kind === "portrait" ? "portrait" : "base"
+    const kind = recordedCharacter?.kind === "portrait"
+      ? "portrait"
+      : recordedCharacter?.kind === "outfit"
+        ? "outfit"
+        : recordedCharacter?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-"))
+          ? "animation"
+          : "base"
     return {
       generator: "character",
       kind,
@@ -898,6 +902,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
               states: styleItems.filter((item) => item.character?.kind === "state").length,
               animations: styleItems.filter((item) => item.character?.kind === "animation").length,
               portraits: styleItems.filter((item) => item.character?.kind === "portrait").length,
+              outfits: styleItems.filter((item) => item.character?.kind === "outfit").length,
             }
           : null,
         tags: style?.tags ?? [],
