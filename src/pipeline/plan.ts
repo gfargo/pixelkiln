@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { sha256File } from "../hash.ts"
-import { mirrorCurrent } from "./mirror.ts"
+import { mirrorCurrent, mirrorSourceHash } from "./mirror.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
@@ -181,6 +181,15 @@ export async function buildPlan(
       // are made again rather than repaired from a provider.
       state = "stale"
       reason = "mirror output missing on disk; flip it again (no generation cost)"
+    } else if (
+      spec.character?.kind === "outfit" &&
+      entry.outfit?.sourceSha256 !== mirrorSourceHash(lock.entries[lockKey(spec.styleId, spec.character.parentAssetId!)] ?? { outputs: [] })
+    ) {
+      // The reference image's own bytes and the choice of parent are already
+      // caught by specHash above; only the parent's current output bytes
+      // need their own check, the same way a mirror's source does.
+      state = "stale"
+      reason = `outfit source ${spec.character.parentAssetId} changed; re-clothe the loop again`
     } else if (entry.status === "download-failed") {
       state = "recoverable"
       const force = entry.error?.includes("pass --force") ? " --force" : ""

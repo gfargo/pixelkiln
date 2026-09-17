@@ -265,7 +265,7 @@ describe("buildGallerySnapshot", () => {
     expect(by("cast/hero.sit").character).toMatchObject({ kind: "state", parentKey: "cast/hero", mode: "v3", characterId: null })
     expect(by("cast/hero.sit.spin").character).toMatchObject({ kind: "animation", parentKey: "cast/hero.sit", mode: "pro", direction: "east" })
     expect(by("cast/hero.wave")).toMatchObject({ state: "undeclared", character: { kind: "animation", parentKey: null, characterId: "char-hero", direction: "south" } })
-    expect(snapshot.styles.find((style) => style.id === "cast")!.characters).toEqual({ bases: 1, states: 1, animations: 2, portraits: 0 })
+    expect(snapshot.styles.find((style) => style.id === "cast")!.characters).toEqual({ bases: 1, states: 1, animations: 2, portraits: 0, outfits: 0 })
     expect(by("cast/anvil")).toBeUndefined()
   })
 

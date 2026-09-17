@@ -105,6 +105,17 @@ export function specHash(
             styleAnchor: spec.character.styleAnchor
               ? { of: spec.character.styleAnchor.assetId, sha256: spec.character.styleAnchor.sha256 }
               : undefined,
+            // The parent's own bytes come from its recorded outputs; the plan
+            // compares those directly (like a mirror), so only the choice of
+            // parent, the reference image's bytes, and any extra guidance
+            // are identity here.
+            outfit: spec.character.outfit
+              ? {
+                  of: spec.character.parentAssetId,
+                  reference: spec.character.outfit.reference.sha256,
+                  additionalInstructions: spec.character.outfit.additionalInstructions,
+                }
+              : undefined,
           }
         : undefined,
       // A mirror's bytes come from its source's recorded outputs; the plan
