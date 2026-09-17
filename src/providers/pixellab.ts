@@ -93,12 +93,14 @@ function billedFromUsage(usage: PixelLabUsage | null | undefined): BilledAmount 
  *
  * A standard base is a flat 1. A v3 base is Pixen's 1 plus the rotation
  * pass, `ceil(s*s*8 / 65536)`; a pro-flash base is its image tier plus the
- * same rotation pass. Pro bases and every state are priced by
+ * same rotation pass. Pro bases, every state, and a portrait are priced by
  * canvas tier, 20 to 40, the same tiers as `1dir`; PixelLab resolves the
  * exact tier when the job runs and reserves against the floor, so this
- * reports the tier the canvas lands in. A template animation is 1 per
- * direction; a v3 animation scales with canvas and frames,
- * `ceil(w*h*frames / 65536)`; a pro animation is the 20 to 40 tier.
+ * reports the tier the canvas lands in (a 16px portrait billed exactly the
+ * 20-generation floor live; docs/ENDPOINTS.md, "Characters, measured"). A
+ * template animation is 1 per direction; a v3 animation scales with canvas
+ * and frames, `ceil(w*h*frames / 65536)`; a pro animation is the 20 to 40
+ * tier.
  */
 export function characterCost(spec: ResolvedSpec): number {
   const character = spec.character
@@ -110,7 +112,7 @@ export function characterCost(spec: ResolvedSpec): number {
     if (animation.mode === "v3") return Math.max(1, Math.ceil((px * animation.frames) / 65536))
     return generationCost(spec.width, spec.height, "1dir")
   }
-  if (character.kind === "state") return generationCost(spec.width, spec.height, "1dir")
+  if (character.kind === "state" || character.kind === "portrait") return generationCost(spec.width, spec.height, "1dir")
   if (character.mode === "standard") return 1
   if (character.mode === "v3") return 1 + Math.max(1, Math.ceil((px * 8) / 65536))
   if (character.mode === "pro-flash") {
@@ -384,9 +386,13 @@ export class PixelLabProvider implements Provider {
     if (character.styleTraits && character.mode !== "pro-flash") {
       throw new Error(`${label}: styleTraits choose what a pro-flash style image lends; the ${character.mode} engine does not take them`)
     }
-    const maxSize = character.mode === "v3" || character.mode === "pro-flash" ? 256 : 128
-    if (spec.width < 16 || spec.height < 16 || spec.width > maxSize || spec.height > maxSize) {
-      throw new Error(`PixelLab ${character.mode} characters must be between 16 and ${maxSize} pixels`)
+    // A portrait's size is PixelLab's own fixed result_size enum (already
+    // enforced by the manifest schema), not the base engine's canvas limit.
+    if (character.kind !== "portrait") {
+      const maxSize = character.mode === "v3" || character.mode === "pro-flash" ? 256 : 128
+      if (spec.width < 16 || spec.height < 16 || spec.width > maxSize || spec.height > maxSize) {
+        throw new Error(`PixelLab ${character.mode} characters must be between 16 and ${maxSize} pixels`)
+      }
     }
     if (character.mode === "pro-flash" && character.kind === "base" && (spec.width % 4 || spec.height % 4)) {
       throw new Error(`PixelLab pro-flash characters are sized in multiples of 4 pixels; ${spec.width}x${spec.height} is not`)
@@ -395,11 +401,19 @@ export class PixelLabProvider implements Provider {
     if (!templates.includes(character.template)) {
       throw new Error(`PixelLab ${character.mode} character template must be one of: ${templates.join(", ")}`)
     }
-    const views = character.mode === "standard"
-      ? ["low top-down", "high top-down", "side", "perspective", "oblique"]
-      : ["low top-down", "high top-down", "side"]
+    // A portrait takes `portrait-character-pro`'s own view enum, a subset of
+    // the base engine's, regardless of the parent's mode.
+    const views = character.kind === "portrait"
+      ? ["low top-down", "high top-down", "side"]
+      : character.mode === "standard"
+        ? ["low top-down", "high top-down", "side", "perspective", "oblique"]
+        : ["low top-down", "high top-down", "side"]
     if (!views.includes(spec.view)) {
-      throw new Error(`PixelLab ${character.mode} character view must be one of: ${views.join(", ")}`)
+      throw new Error(
+        character.kind === "portrait"
+          ? `PixelLab portrait view must be one of: ${views.join(", ")}`
+          : `PixelLab ${character.mode} character view must be one of: ${views.join(", ")}`,
+      )
     }
     if (spec.view === "oblique" && character.directions !== 4) {
       throw new Error("PixelLab oblique characters are 4-direction only")
@@ -479,6 +493,26 @@ export class PixelLabProvider implements Provider {
       })
       return { jobId: res.character_id, metadata: { character: { kind: "state", characterId: res.character_id, parentCharacterId: parentId, mode: character.mode, directions: character.directions, backgroundJobId: res.background_job_id } } }
     }
+    if (character.kind === "portrait") {
+      // The parent's own local south file, not the character record: the
+      // endpoint converts an arbitrary image, unrelated to createCharacter.
+      const parentFile = character.parentFile!
+      const bytes = readFileSync(parentFile)
+      if (character.parentSha256 && sha256(bytes) !== character.parentSha256) {
+        throw new Error(`${spec.styleId}/${spec.assetId}: portrait source changed after the manifest was resolved: ${parentFile}`)
+      }
+      const res = await this.client.createPortraitCharacterPro({
+        direction: "character_to_portrait",
+        image: { base64: bytes.toString("base64"), format: "png" },
+        view: spec.view,
+        resultSize: character.portrait!.size,
+        seed: spec.seed,
+      })
+      return {
+        jobId: res.background_job_id,
+        metadata: { character: { kind: "portrait", parentCharacterId: parentId, backgroundJobId: res.background_job_id } },
+      }
+    }
     const animation = character.animation!
     const name = characterAnimationName(spec)
     // PixelLab skips a direction that already exists on the character, so an
@@ -530,6 +564,9 @@ export class PixelLabProvider implements Provider {
   private async pollCharacter(jobId: string, context?: PollContext): Promise<JobState> {
     const animation = decodeAnimationJob(jobId)
     if (animation) return this.pollCharacterAnimation(animation, context)
+    if ((context?.metadata?.character as { kind?: string } | undefined)?.kind === "portrait") {
+      return this.pollCharacterPortrait(jobId, context)
+    }
     const character = await this.client.getCharacter(jobId)
     if (character.status === "failed") return { status: "failed", error: "character generation failed upstream" }
     if (character.status !== "completed" || !character.rotation_urls) return { status: "processing" }
@@ -553,6 +590,37 @@ export class PixelLabProvider implements Provider {
         },
       },
       billed: await this.billedForJob(backgroundJobId),
+    }
+  }
+
+  /**
+   * `jobId` here is `portrait-character-pro`'s own background job id, not a
+   * character id: the endpoint converts an arbitrary image and never touches
+   * the character record. Once the portrait itself is drawn, this also
+   * attaches it to the parent's character record with `SetPortrait` — a
+   * separate, free call PixelLab does not make automatically (docs/PIXELLAB.md).
+   */
+  private async pollCharacterPortrait(jobId: string, context?: PollContext): Promise<JobState> {
+    const meta = context?.metadata?.character as { parentCharacterId?: string; backgroundJobId?: string } | undefined
+    try {
+      const job = await this.client.getPortraitCharacterJob(jobId)
+      if (job.status === "failed") return { status: "failed", error: "portrait generation failed upstream" }
+      if (job.status !== "completed" || !job.download_url) return { status: "processing" }
+      if (meta?.parentCharacterId) {
+        const bytes = await this.client.download(job.download_url)
+        await this.client.setCharacterPortrait(meta.parentCharacterId, { base64: bytes.toString("base64"), format: "png" })
+      }
+      return {
+        status: "ready",
+        objectId: jobId,
+        sourceUrl: job.download_url,
+        sources: [{ url: job.download_url }],
+        billed: await this.billedForJob(meta?.backgroundJobId),
+      }
+    } catch (err) {
+      // Like tiles and map objects, still drawing answers 423.
+      if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }
+      throw err
     }
   }
 

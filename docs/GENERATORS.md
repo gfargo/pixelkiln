@@ -161,9 +161,10 @@ system requests reduced motion and stops while it is offscreen. After approval,
 `character` is PixelLab's character family as managed assets: a base drawn
 facing 4 or 8 directions (from a prompt, or from your own south-facing
 sprite with `reference`), states (a pose, an outfit) that PixelLab applies
-to every direction of an existing character, and animations, one loop of
-one character in one direction. The three share one PixelLab character. A state
-or animation depends on its parent the way a revision does: the parent must
+to every direction of an existing character, animations, one loop of
+one character in one direction, and portraits, a bust made from the south
+sprite. The four share one PixelLab character. A state, animation, or
+portrait depends on its parent the way a revision does: the parent must
 be downloaded and current before the child can be submitted, and
 regenerating the parent makes the child stale.
 
@@ -177,6 +178,7 @@ regenerating the parent makes the child stale.
 | animation with a `template` | animate-character | 1 |
 | animation from text (v3) | animate-character | ceil(size² × frames / 65536): 1 at 64px, 2 at 128px |
 | animation, `mode: pro` | animate-character | 20–40 by canvas |
+| portrait | portrait-character-pro | 20–40 by `size` (16px billed exactly 20 live) |
 
 The 20–40 tiers are PixelLab's; the tier is resolved from the canvas when
 the job runs and reserved against the floor, so `plan` reports the tier the
