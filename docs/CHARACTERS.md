@@ -289,6 +289,38 @@ Engines that flip sprites at draw time (Godot's `flip_h`, Unity's
 you generate and flip in the engine; mirrors are for pipelines that want
 every direction on disk.
 
+## Portraits
+
+A `portrait` asset is a bust made from a base or state's south sprite, and
+attached to that character's own PixelLab record:
+
+```json
+"mira.bust": { "portrait": { "of": "mira", "size": 64 } }
+```
+
+`of` names the base or state to portray; `size` is one of PixelLab's fixed
+result sizes (16, 32, 48, 64, 128, or 160 — 128 and 160 render at 2K and cost
+more), independent of the style's own `size`. A portrait takes no prompt: it
+is drawn from the parent's pixels, not text, so it is priced and generated
+like a state, 20 to 40 generations by the size tier (a 16px portrait billed
+exactly 20, the floor, in a live test; see [`docs/ENDPOINTS.md`](ENDPOINTS.md)).
+It lands as `<asset>.png`, one file like a single-direction generator, and
+`pixelkiln fetch` also attaches it to the parent's character record upstream
+(a separate, free call PixelLab does not make on its own) — useful for
+PixelLab's own tools, since the API otherwise has no way to read a
+character's portrait back once set.
+
+A portrait blocks until its parent is downloaded and current, and goes
+`stale` when the parent is regenerated, exactly like a state. It takes no
+`reference` or `concept` (those belong on a base) and no `state` or
+`animation` (a portrait is not one of those, and the three are mutually
+exclusive). Its view comes from the style, but only `low top-down`, `high
+top-down`, or `side` are valid — narrower than a `standard` base's own
+options, since the underlying endpoint takes a smaller set.
+
+The reverse tool, drawing a full character from a portrait image, is not
+implemented; see the open items in [`docs/ENDPOINTS.md`](ENDPOINTS.md).
+
 ## Working with a cast
 
 - `pixelkiln plan` shows a state or loop as `blocked` until its parent is
