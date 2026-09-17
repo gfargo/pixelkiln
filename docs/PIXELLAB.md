@@ -108,12 +108,16 @@ new bytes as this generation. A `pixflux` image is returned inline and keeps no
 account object, so it cannot be edited upstream; use `pixelkiln edit` to touch
 it up locally.
 
-A character edited in PixelLab's character editor comes back the same way.
-Its rotation and frame URLs carry the last edit time (`?t=`), so a refresh
-asks `GET /characters/{id}` for the current URLs before comparing bytes
-rather than trusting the ones the lockfile recorded, and records the new
-URLs. A refreshed base makes its states and animations stale, because their
-identity hashes the base's south file; `pixelkiln gen` regenerates them.
+A character (a base, a state, or an animation) is an object too, at
+`https://www.pixellab.ai/create-character/<id>`; `pixelkiln gallery` links
+every character record there, since a state or animation records its base's
+id rather than a page of its own. A character edited in PixelLab's character
+editor comes back the same way. Its rotation and frame URLs carry the last
+edit time (`?t=`), so a refresh asks `GET /characters/{id}` for the current
+URLs before comparing bytes rather than trusting the ones the lockfile
+recorded, and records the new URLs. A refreshed base makes its states and
+animations stale, because their identity hashes the base's south file;
+`pixelkiln gen` regenerates them.
 
 PixelLab's official
 [MCP server](https://github.com/pixellab-code/pixellab-mcp) gives agents direct
