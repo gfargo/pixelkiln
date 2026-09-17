@@ -137,10 +137,16 @@ export interface ResolvedProviderInputs {
   identity?: unknown
 }
 
+/** What a provider actually billed for a completed job, next to the submit-time estimate. */
+export interface BilledAmount {
+  amount: number
+  unit: CostUnit
+}
+
 /** Terminal and non-terminal states a queued job can be observed in. */
 export type JobState =
   | { status: "processing"; progressPercent?: number | null; etaSeconds?: number | null }
-  | { status: "review"; candidateUrls: string[]; metadata?: ProviderMetadata }
+  | { status: "review"; candidateUrls: string[]; metadata?: ProviderMetadata; billed?: BilledAmount | null }
   | {
       status: "review-set"
       objectId: string
@@ -148,6 +154,7 @@ export type JobState =
       sources: OutputSource[]
       fps: number
       metadata?: ProviderMetadata
+      billed?: BilledAmount | null
     }
   | {
       status: "ready"
@@ -158,6 +165,8 @@ export type JobState =
       sources?: OutputSource[]
       /** Preserved under the provider's namespace in the lockfile. */
       metadata?: ProviderMetadata
+      /** What the provider actually billed, read on completion; null when unknown. */
+      billed?: BilledAmount | null
     }
   | { status: "failed"; error: string }
 

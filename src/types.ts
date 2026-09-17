@@ -1035,6 +1035,8 @@ export const LockHistoryEntrySchema = z.object({
   downloadedAt: z.string().nullable().default(null),
   cost: z.number().finite().nonnegative().default(0),
   costUnit: z.string().min(1).default("generations"),
+  /** What the provider actually billed, read from the completed job; null when never read. */
+  billed: z.object({ amount: z.number(), unit: z.string() }).nullable().default(null),
   provider: z.string().default("pixellab"),
   postprocess: PostprocessSchema.optional(),
   /** When the replacement was submitted. */
@@ -1148,6 +1150,14 @@ export const LockEntrySchema = z.object({
   cost: z.number().finite().nonnegative().default(0),
   /** Unit for `cost`. Defaults preserve pre-unit PixelLab lockfiles. */
   costUnit: z.string().min(1).default("generations"),
+  /**
+   * What the provider actually billed, read from the completed job rather
+   * than estimated at submit time. Null until a poll reads it, and for a
+   * provider or generator `poll` does not read it from at all; `cost` above
+   * is still what a wave budget spends against, since the real number is
+   * only known after the fact.
+   */
+  billed: z.object({ amount: z.number(), unit: z.string() }).nullable().default(null),
   /** Which provider produced this. Absent on entries written before providers. */
   provider: z.string().default("pixellab"),
 

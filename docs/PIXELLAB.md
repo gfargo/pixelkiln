@@ -85,7 +85,11 @@ channel before building a production batch. For a scenic background, use
 `pixflux` with `noBackground: false`.
 
 Read [Generator selection](./GENERATORS.md) for the full constraints and
-measured economics.
+measured economics. "20 to 40 generations" is a tier, not an exact figure:
+`poll` reads what a completed job actually billed and records it as `billed`
+beside the submit-time `cost` estimate a wave budget spends against;
+`pixelkiln history`, `plan --json`, and the gallery show both when they
+differ (docs/ENDPOINTS.md, "Limits and billing").
 
 ## Account workflows
 

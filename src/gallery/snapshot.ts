@@ -124,6 +124,8 @@ export interface GalleryItem {
   fps: number | null
   cost: number
   costUnit: string
+  /** What the provider actually billed, read from the completed job; null when never read. */
+  billed: { amount: number; unit: string } | null
   /** Offline estimate for the current spec; null for undeclared entries. */
   estimatedCost: number | null
   candidates: number | null
@@ -343,6 +345,7 @@ function describeHistory(media: Map<string, GalleryMedia>, entry: LockEntry, cac
       height: generation.height,
       cost: generation.cost,
       costUnit: generation.costUnit,
+      billed: generation.billed,
       submittedAt: generation.submittedAt,
       downloadedAt: generation.downloadedAt,
       retiredAt: generation.retiredAt,
@@ -535,6 +538,7 @@ export interface GalleryGeneration {
   height: number
   cost: number
   costUnit: string
+  billed: { amount: number; unit: string } | null
   submittedAt: string | null
   downloadedAt: string | null
   retiredAt: string
@@ -689,6 +693,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       fps: quality?.frameSet?.fps ?? metadataFps(entry) ?? spec.quality?.fps ?? null,
       cost: entry?.cost ?? 0,
       costUnit: entry?.costUnit ?? spec.costUnit,
+      billed: entry?.billed ?? null,
       estimatedCost: spec.cost,
       candidates: spec.candidates,
       submittedAt: entry?.submittedAt ?? null,
@@ -761,6 +766,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       fps: metadataFps(entry),
       cost: entry.cost,
       costUnit: entry.costUnit,
+      billed: entry.billed,
       estimatedCost: null,
       candidates: null,
       submittedAt: entry.submittedAt,

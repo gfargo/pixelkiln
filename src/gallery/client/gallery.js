@@ -1050,7 +1050,9 @@ function historySection(item) {
     else thumb.append(el('span', null, g.cached ? '' : 'not cached'));
     const facts = el('div', 'facts');
     const head = el('div');
-    head.append(el('b', null, '#' + g.index), document.createTextNode(' · ' + fmtWhen(g.downloadedAt || g.submittedAt) + ' · ' + fmtCost(g.costUnit, g.cost) +
+    const billedNote = g.billed && (g.billed.unit !== g.costUnit || g.billed.amount !== g.cost)
+      ? ' (billed ' + fmtCost(g.billed.unit, g.billed.amount) + ')' : '';
+    head.append(el('b', null, '#' + g.index), document.createTextNode(' · ' + fmtWhen(g.downloadedAt || g.submittedAt) + ' · ' + fmtCost(g.costUnit, g.cost) + billedNote +
       (g.outputs.length > 1 ? ' · ' + g.outputs.length + ' files' : '')));
     facts.append(head);
     const prompt = el('div', 'prompt' + (g.promptDiffers ? ' differs' : ''), (g.promptDiffers ? 'prompt: ' : 'same prompt: ') + g.prompt);
@@ -1876,6 +1878,9 @@ function renderDrawer() {
     if (item.currentPrompt) row(dl, 'prompt now', el('div', 'prompt state-warn', item.currentPrompt));
     row(dl, 'size', item.width + ' × ' + item.height + ' px');
     if (item.status) row(dl, 'cost', fmtCost(item.costUnit, item.cost));
+    if (item.billed && (item.billed.unit !== item.costUnit || item.billed.amount !== item.cost)) {
+      row(dl, 'billed', fmtCost(item.billed.unit, item.billed.amount));
+    }
     if (item.postprocess && item.postprocess.palette) {
       // What fetch did to the provider's bytes before writing them.
       const p = item.postprocess.palette;

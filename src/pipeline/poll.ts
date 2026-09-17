@@ -93,6 +93,7 @@ export async function poll(
                   },
                 }
               : entry.providerMetadata,
+            billed: state.billed ?? entry.billed,
           })
           result.review++
           log(
@@ -121,6 +122,7 @@ export async function poll(
                 }
               : entry.providerMetadata,
             error: null,
+            billed: state.billed ?? entry.billed,
           })
           result.completed++
           log(`  ready   ${key}`)

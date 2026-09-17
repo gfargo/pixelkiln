@@ -307,9 +307,19 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
   the balance by zero, so probing an unfamiliar parameter is free.
 - **Billing lags slightly.** A bitforge call read as cost 0 immediately after and
   1 a few seconds later. Trust the `usage` field in the response over an
-  immediate balance diff.
+  immediate balance diff. Confirmed again below: a standard character base's
+  balance read unchanged immediately after `getCharacter` reported it complete.
 - `usage` is returned inline by the synchronous endpoints:
   `{"type":"generations","generations":1}`.
+- **`GET /background-jobs/{id}` carries `usage` on a completed job, at the top
+  level and duplicated at `last_response.billing_usage`** (same shape, plus
+  `billing_charged: true` on the nested copy); confirmed live for a `map`
+  object (1 generation, matched a balance diff taken later) and a standard
+  character base (1 generation). The resource-level GET does not: neither
+  `GET /objects/{id}`/`GET /map-objects/{id}` nor `GET /characters/{id}`
+  carries `usage` once the job is gone, completed or not. `poll` reads the
+  object/character for the result but would need this same job id, still
+  polled separately today, to learn what it actually cost.
 
 ---
 

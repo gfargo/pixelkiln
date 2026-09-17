@@ -88,25 +88,34 @@ export async function runPlan(args: Args): Promise<void> {
         actionable: group.actionable.map((item) => item.key),
       })),
       actionable: plan.actionable.map((i) => i.key),
-      items: plan.items.map(({ key, state, reason, quality, spec }) => ({
-        key,
-        state,
-        reason,
-        ...(spec.revision
-          ? {
-              revision: {
-                mode: spec.revision.mode,
-                from: spec.revision.sourceAssetId,
-                sourceSha256: spec.revision.sourceSha256,
-                ...(spec.revision.maskSha256
-                  ? { maskSha256: spec.revision.maskSha256 }
-                  : {}),
-                ...(spec.revision.strength == null ? {} : { strength: spec.revision.strength }),
-              },
-            }
-          : {}),
-        ...(quality ? { quality: { state: quality.state, reason: quality.reason } } : {}),
-      })),
+      items: plan.items.map(({ key, state, reason, quality, spec }) => {
+        const entry = lock.entries[key]
+        const billedDiffers = entry?.billed &&
+          (entry.billed.unit !== entry.costUnit || entry.billed.amount !== entry.cost)
+        return {
+          key,
+          state,
+          reason,
+          ...(spec.revision
+            ? {
+                revision: {
+                  mode: spec.revision.mode,
+                  from: spec.revision.sourceAssetId,
+                  sourceSha256: spec.revision.sourceSha256,
+                  ...(spec.revision.maskSha256
+                    ? { maskSha256: spec.revision.maskSha256 }
+                    : {}),
+                  ...(spec.revision.strength == null ? {} : { strength: spec.revision.strength }),
+                },
+              }
+            : {}),
+          ...(quality ? { quality: { state: quality.state, reason: quality.reason } } : {}),
+          // The estimate a wave budget spent against; present alongside the
+          // provider's actual charge only when `poll` has read one and it
+          // differs, since that is the only time the gap is worth a look.
+          ...(billedDiffers ? { cost: entry!.cost, costUnit: entry!.costUnit, billed: entry!.billed } : {}),
+        }
+      }),
     }, null, 2))
   } else {
     printPlan(plan)
