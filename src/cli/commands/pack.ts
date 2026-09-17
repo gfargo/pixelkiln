@@ -62,19 +62,25 @@ export async function runPack(args: Args): Promise<void> {
   const styleIds = args.styles.length ? args.styles : Object.keys(loaded.manifest.styles)
 
   for (const styleId of styleIds) {
+    // A character's rotations, states, and animations are meant to stand on
+    // one floor; a v3 loop with an `endFrame` can come back taller than the
+    // rotations, so a character style's frames pivot bottom-centre instead
+    // of the default top-left (see `packSprites` in pipeline/pack.ts).
+    const style = loaded.manifest.styles[styleId]
+    const pivot = style?.generator === "character" ? "bottom-center" : "top-left"
     const packagingSpecs = await resolveSpecs(loaded, { styles: [styleId] })
     const qualitySources = await requireApprovedQualitySources(packagingSpecs, lock)
     const { png, atlas, skipped, sources } = packStyle(lock, styleId, manifestDir, {
       columns: args.columns,
       outputRoles: args.outputRoles,
       primaryOnly: args.primaryOnly,
+      pivot,
       sourceOverrides: qualitySources,
       sources: manifestSources(loaded.manifest, styleId),
     })
 
     // Default beside the style's own output tree, so sheets for different
     // styles cannot overwrite each other when --out is omitted.
-    const style = loaded.manifest.styles[styleId]
     const base = args.out
       ? path.resolve(args.out.replace(/\.(?:png|json|tres)$/i, ""))
       : path.resolve(manifestDir, style!.outDir, `${styleId}-sheet`)
@@ -107,6 +113,7 @@ export async function runPack(args: Args): Promise<void> {
         format,
         order: "id",
         outputRoles: [...args.outputRoles].sort(),
+        pivot,
         primaryOnly: args.primaryOnly,
         style: styleId,
       },

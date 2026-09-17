@@ -26,6 +26,13 @@ export interface PackedFrame {
   y: number
   width: number
   height: number
+  /**
+   * This frame's offset from its cell's top-left corner. Omitted (equivalent
+   * to zero) under the default top-left layout; set under `pivot:
+   * "bottom-center"` when the sprite is smaller than the cell.
+   */
+  offsetX?: number
+  offsetY?: number
 }
 
 export interface PackedSheet {
@@ -61,10 +68,22 @@ export interface PackedSheet {
  *
  * The cell is the largest sprite in the set. Assets can override width/height
  * individually, so assuming uniformity would silently clip the odd one out.
- * Smaller sprites are placed at the cell's top-left and their real dimensions
- * recorded, rather than being centred: centring would bake half-pixel offsets
- * into odd-sized differences, and a consumer that ignores the atlas and slices
- * on the cell grid still gets a correct, if padded, sprite.
+ * By default a smaller sprite is placed at the cell's top-left with its real
+ * dimensions recorded, rather than being centred: centring would bake
+ * asymmetric offsets into odd-sized differences, and a consumer that ignores
+ * the atlas and slices on the cell grid still gets a correct, if padded,
+ * sprite.
+ *
+ * `pivot: "bottom-center"` overrides that for a `character` style, whose
+ * members (a base's rotations, its states, its animations) are meant to
+ * stand on one floor. A v3 loop with an `endFrame` can return frames taller
+ * than the rotations (`docs/ENDPOINTS.md`, "Characters, measured"), and
+ * top-left placement would float the shorter frame above the taller one once
+ * an engine treats every cell the same height. Bottom-centring anchors feet
+ * instead of corners, at the same asymmetric-split cost on an odd-width
+ * difference. The offset from the cell's top-left is recorded per frame as
+ * `offsetX`/`offsetY` (omitted when zero), which `renderAsepriteSheet`
+ * reflects as a genuine trim.
  */
 export interface SpriteInput {
   /** The name this sprite is looked up by in the atlas. */
@@ -114,7 +133,7 @@ export function resolvePackInputs(raw: unknown, inputsFilePath: string): SpriteI
  */
 export function packSprites(
   inputs: SpriteInput[],
-  options: { columns?: number; order?: "id" | "input" } = {},
+  options: { columns?: number; order?: "id" | "input"; pivot?: "top-left" | "bottom-center" } = {},
 ): PackedSheet {
   if (!inputs.length) throw new Error("packSprites: no sprites given")
 
@@ -173,16 +192,28 @@ export function packSprites(
   // Zero-filled means fully transparent, which is what the gaps should be.
   const rgba = Buffer.alloc(sheetW * sheetH * 4)
   const frames: PackedFrame[] = []
+  const pivot = options.pivot ?? "top-left"
 
   sprites.forEach((sprite, i) => {
-    const ox = (i % columns) * cellW
-    const oy = Math.floor(i / columns) * cellH
+    const cellOx = (i % columns) * cellW
+    const cellOy = Math.floor(i / columns) * cellH
+    const offsetX = pivot === "bottom-center" ? Math.floor((cellW - sprite.width) / 2) : 0
+    const offsetY = pivot === "bottom-center" ? cellH - sprite.height : 0
+    const ox = cellOx + offsetX
+    const oy = cellOy + offsetY
     for (let y = 0; y < sprite.height; y++) {
       const src = y * sprite.width * 4
       const dst = ((oy + y) * sheetW + ox) * 4
       sprite.pixels.copy(rgba, dst, src, src + sprite.width * 4)
     }
-    frames.push({ id: sprite.id, x: ox, y: oy, width: sprite.width, height: sprite.height })
+    frames.push({
+      id: sprite.id,
+      x: ox,
+      y: oy,
+      width: sprite.width,
+      height: sprite.height,
+      ...(offsetX || offsetY ? { offsetX, offsetY } : {}),
+    })
   })
 
   return {
@@ -207,6 +238,8 @@ export function packStyle(
     columns?: number
     outputRoles?: string[]
     primaryOnly?: boolean
+    /** Forwarded to `packSprites` as is; the caller decides from the style's generator. */
+    pivot?: "top-left" | "bottom-center"
     /** Approved manifest quality outputs keyed by asset id or role-qualified frame id. */
     sourceOverrides?: Record<string, string>
     /**

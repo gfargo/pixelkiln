@@ -15,6 +15,7 @@ const execFileAsync = promisify(execFile)
 const atlas: SheetAtlas = {
   style: "hero",
   sheet: { width: 96, height: 64 },
+  cell: { width: 32, height: 32 },
   frames: [
     { id: "anvil", x: 0, y: 0, width: 32, height: 32 },
     { id: "dancer/frame-00", x: 32, y: 0, width: 32, height: 32 },
@@ -57,6 +58,26 @@ describe("Aseprite sheet JSON", () => {
 
   it("is byte-stable", () => {
     expect(renderAsepriteSheet(atlas, { imageName: "a.png" })).toBe(renderAsepriteSheet(atlas, { imageName: "a.png" }))
+  })
+
+  it("records a bottom-centred character frame as a genuine trim against the cell", () => {
+    // A crouch loop's rotation-sized frame (92x92), bottom-centred in a
+    // 92x104 cell by a v3 endFrame's taller canvas (issue #146).
+    const pivoted: SheetAtlas = {
+      style: "hero",
+      sheet: { width: 92, height: 104 },
+      cell: { width: 92, height: 104 },
+      frames: [{ id: "hero.crouch.south/frame-00", x: 0, y: 12, width: 92, height: 92, offsetX: 0, offsetY: 12 }],
+    }
+    const doc = JSON.parse(renderAsepriteSheet(pivoted, { imageName: "hero-sheet.png" }))
+    expect(doc.frames["hero.crouch.south/frame-00"]).toEqual({
+      frame: { x: 0, y: 12, w: 92, h: 92 },
+      rotated: false,
+      trimmed: true,
+      spriteSourceSize: { x: 0, y: 12, w: 92, h: 92 },
+      sourceSize: { w: 92, h: 104 },
+      duration: 100,
+    })
   })
 })
 
