@@ -447,6 +447,27 @@ export const CharacterStateSchema = z
   .strict()
 export type CharacterState = z.infer<typeof CharacterStateSchema>
 
+/** PixelLab's fixed `portrait-character-pro` result sizes; 128 and 160 render at 2K and cost more. */
+export const CharacterPortraitSizeSchema = z.union([
+  z.literal(16),
+  z.literal(32),
+  z.literal(48),
+  z.literal(64),
+  z.literal(128),
+  z.literal(160),
+])
+export type CharacterPortraitSize = z.infer<typeof CharacterPortraitSizeSchema>
+
+/** A bust portrait of an existing base or state's south sprite. */
+export const CharacterPortraitSchema = z
+  .object({
+    /** The base or state to portray, in the same style. */
+    of: z.string().min(1),
+    size: CharacterPortraitSizeSchema.default(64),
+  })
+  .strict()
+export type CharacterPortrait = z.infer<typeof CharacterPortraitSchema>
+
 /** A loop of one character in one direction. One asset per direction. */
 export const CharacterAnimationSchema = z
   .object({
@@ -562,7 +583,7 @@ export interface ResolvedStyleAnchor {
 
 /** How a resolved spec describes its place in a character family. */
 export interface ResolvedCharacter {
-  kind: "base" | "state" | "animation"
+  kind: "base" | "state" | "animation" | "portrait"
   /** Creation engine for a base; states inherit the parent's. */
   mode: CharacterMode
   /** Rotations a base or state has. */
@@ -594,6 +615,9 @@ export interface ResolvedCharacter {
   state?: {
     paletteFromReference: boolean
     canvas?: { width: number; height: number }
+  }
+  portrait?: {
+    size: CharacterPortraitSize
   }
   animation?: {
     mode: CharacterAnimationMode
@@ -1295,6 +1319,8 @@ export const AssetSchema = z
     pieces: z.array(UiPieceSchema).min(1).optional(),
     /** `uiAsset` styles: named, auto-positioned UI element scaffolds. Combine with `pieces`; omit both for a default full-canvas panel. */
     elements: z.array(UiElementSchema).min(1).optional(),
+    /** `character` styles: this asset is a bust portrait of another character asset's south sprite. */
+    portrait: CharacterPortraitSchema.optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
@@ -1375,7 +1401,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1390,24 +1416,24 @@ export const AssetSchema = z
         path: ["mirror"],
       })
     }
-    if (asset.prompt === undefined && !asset.mirror) {
+    if (asset.prompt === undefined && !asset.mirror && !asset.portrait) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Required",
         path: ["prompt"],
       })
     }
-    if (asset.reference && (asset.state || asset.animation || asset.mirror)) {
+    if (asset.reference && (asset.state || asset.animation || asset.mirror || asset.portrait)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "a reference sprite belongs on a base; a state, animation, or mirror takes its look from its parent",
+        message: "a reference sprite belongs on a base; a state, animation, mirror, or portrait takes its look from its parent",
         path: ["reference"],
       })
     }
-    if (asset.concept && (asset.state || asset.animation || asset.mirror)) {
+    if (asset.concept && (asset.state || asset.animation || asset.mirror || asset.portrait)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "a concept image belongs on a base; a state, animation, or mirror takes its look from its parent",
+        message: "a concept image belongs on a base; a state, animation, mirror, or portrait takes its look from its parent",
         path: ["concept"],
       })
     }

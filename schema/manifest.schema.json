@@ -1388,6 +1388,31 @@
                 },
                 "minItems": 1
               },
+              "portrait": {
+                "type": "object",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "size": {
+                    "type": "number",
+                    "enum": [
+                      16,
+                      32,
+                      48,
+                      64,
+                      128,
+                      160
+                    ],
+                    "default": 64
+                  }
+                },
+                "required": [
+                  "of"
+                ],
+                "additionalProperties": false
+              },
               "proportions": {
                 "anyOf": [
                   {

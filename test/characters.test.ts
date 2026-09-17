@@ -575,6 +575,7 @@ function fakeClient() {
   // state's own background job must not be swept up in that.
   const baseJobs = new Map<string, string>()
   const baseJobUsage = new Map<string, Record<string, unknown>>()
+  const portraitJobs = new Map<string, { status: string; downloadUrl?: string; width?: number; height?: number }>()
   const client = {
     calls: [] as string[],
     /** Whether the character list carries the name PixelKiln gave an animation. */
@@ -631,6 +632,35 @@ function fakeClient() {
     forgetJobs() { jobs.clear(); jobResponses.clear(); baseJobs.clear(); baseJobUsage.clear() },
     /** Test hook: what a base or state's own background job reports as billed once it completes. */
     setBaseUsage(characterId: string, usage: Record<string, unknown>) { baseJobUsage.set(`job-${characterId}`, usage) },
+    /** Test hook: what any background job (by its own id) reports as billed once it completes. */
+    setJobUsage(jobId: string, usage: Record<string, unknown>) { baseJobUsage.set(jobId, usage) },
+    portraitsSet: [] as { characterId: string; base64: string }[],
+    async createPortraitCharacterPro(args: { direction: string; image: { base64: string; format: string }; resultSize?: number }) {
+      const jobId = `portrait-job-${++counter}`
+      client.calls.push(`portrait:${args.direction}:${args.resultSize}`)
+      portraitJobs.set(jobId, { status: "processing" })
+      baseJobs.set(jobId, "processing")
+      return { background_job_id: jobId, status: "processing", usage: null }
+    },
+    async getPortraitCharacterJob(jobId: string) {
+      const job = portraitJobs.get(jobId)
+      if (!job) throw new PixelLabError(`GET /portrait-character-pro/${jobId} → 404`, 404, "")
+      if (job.status === "processing") throw new PixelLabError("locked", 423, "")
+      return { status: job.status, download_url: job.downloadUrl ?? null, width: job.width ?? null, height: job.height ?? null }
+    },
+    async setCharacterPortrait(characterId: string, image: { base64: string; format: string }) {
+      client.calls.push(`set-portrait:${characterId}`)
+      client.portraitsSet.push({ characterId, base64: image.base64 })
+      return { character_id: characterId, size: 16, url: `https://cdn.test/${characterId}/portrait.png`, usage: { type: "generations", generations: 0 } }
+    },
+    /** Test hook: land a portrait job with a downloadable square image. */
+    completePortrait(jobId: string, size: number) {
+      const url = `https://cdn.test/portrait/${jobId}.png`
+      client.pixels.set(url, px(size, 50))
+      portraitJobs.set(jobId, { status: "completed", downloadUrl: url, width: size, height: size })
+      baseJobs.set(jobId, "completed")
+    },
+    failPortraitJob(jobId: string) { portraitJobs.set(jobId, { status: "failed" }) },
     async deleteCharacterAnimations(id: string, selector: { animationGroupId?: string }, direction?: string) {
       const c = characters.get(id)!
       client.calls.push(`delete:${id}:${selector.animationGroupId}:${direction}`)
@@ -980,6 +1010,117 @@ describe("billed usage", () => {
     client.forgetJobs()
     await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
     expect(p.lock.entries["cast/mira"]).toMatchObject({ status: "selected", billed: null })
+  })
+})
+
+describe("portraits", () => {
+  it("resolves a portrait's shape and size, independent of the style's own size", async () => {
+    const file = await writeManifest({
+      assets: {
+        mira: { prompt: "small young woman" },
+        "mira.bust": { portrait: { of: "mira", size: 128 } },
+      },
+    })
+    const specs = await resolveSpecs(await loadManifest(file))
+    const bust = specs.find((s) => s.assetId === "mira.bust")!
+    expect(bust.character).toMatchObject({ kind: "portrait", portrait: { size: 128 }, parentAssetId: "mira" })
+    expect(bust.width).toBe(128)
+    expect(bust.height).toBe(128)
+    // No prompt is sent; the endpoint takes an image, not text.
+    expect(bust.prompt).toBe("")
+  })
+
+  it("refuses a prompt-less shape to combine with state, animation, or a reference/concept", async () => {
+    const refused = async (overrides: Parameters<typeof writeManifest>[0]) => resolveSpecs(await loadManifest(await writeManifest(overrides)))
+    await expect(refused({ assets: {
+      mira: { prompt: "a hero" },
+      "mira.dented": { prompt: "dented", state: { of: "mira" } },
+    }, extraStyles: {} })).resolves.toBeDefined() // sanity: state alone is fine
+    await expect(refused({ assets: {
+      mira: { prompt: "a hero" },
+      "mira.bust": { state: { of: "mira" }, portrait: { of: "mira" } },
+    } })).rejects.toThrow(/mutually exclusive/)
+    await expect(refused({ assets: {
+      mira: { prompt: "a hero" },
+      "mira.bust": { portrait: { of: "mira" }, reference: "refs/x.png" },
+    } })).rejects.toThrow(/a state, animation, mirror, or portrait takes its look from its parent/)
+  })
+
+  it("submits the parent's local south file, attaches the result to the parent's record once drawn, and records what it billed", async () => {
+    const file = await writeManifest({
+      assets: {
+        mira: { prompt: "small young woman" },
+        "mira.bust": { portrait: { of: "mira", size: 16 } },
+      },
+    })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    const plan = await p.plan()
+    expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.bust"])
+    expect(plan.groups[0]!.cost).toBe(20)
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(client.calls.at(-1)).toBe("portrait:character_to_portrait:16")
+    const jobId = p.lock.entries["cast/mira.bust"]!.jobId!
+
+    // Still drawing: 423 reads as processing, same as tiles and map objects.
+    expect(await poll(provider, p.lock, p.lockPath, { intervalMs: 0, timeoutMs: 0, specs: p.specs })).toMatchObject({ stillRunning: 1 })
+
+    client.completePortrait(jobId, 16)
+    client.setJobUsage(jobId, { type: "generations", generations: 20 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.bust"]).toMatchObject({ status: "selected", billed: { amount: 20, unit: "generations" } })
+    // SetPortrait attached it to the parent character, not to itself.
+    expect(client.portraitsSet).toEqual([{ characterId: "char-1", base64: expect.any(String) }])
+
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const bust = p.lock.entries["cast/mira.bust"]!
+    expect(bust.status).toBe("downloaded")
+    expect(path.basename(bust.outputs[0]!.path)).toBe("mira.bust.png")
+  })
+
+  it("fails cleanly when the portrait job fails upstream", async () => {
+    const file = await writeManifest({
+      assets: {
+        mira: { prompt: "small young woman" },
+        "mira.bust": { portrait: { of: "mira" } },
+      },
+    })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const jobId = p.lock.entries["cast/mira.bust"]!.jobId!
+    client.failPortraitJob(jobId)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.bust"]).toMatchObject({ status: "failed", error: expect.stringContaining("portrait generation failed") })
+    expect(client.portraitsSet).toEqual([])
+  })
+
+  it("refuses a portrait's view outside the endpoint's own enum, even on a standard base that allows more", async () => {
+    const file = await writeManifest({
+      style: { view: "oblique", directions: 4 },
+      assets: {
+        mira: { prompt: "small young woman" },
+        "mira.bust": { portrait: { of: "mira" } },
+      },
+    })
+    // Resolving specs validates every character shape up front (oblique is
+    // fine for the standard-mode base but not for the portrait's own,
+    // narrower view enum), so this fails before anything is generated.
+    await expect(openProject(file, { env: false })).rejects.toThrow(/PixelLab portrait view must be one of/)
   })
 })
 

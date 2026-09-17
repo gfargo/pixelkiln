@@ -148,7 +148,7 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
 
 /** The asset this one is generated from, whichever shape declares it. */
 export function parentAssetId(asset: Asset | undefined): string | undefined {
-  return asset?.revision?.from ?? asset?.state?.of ?? asset?.animation?.of
+  return asset?.revision?.from ?? asset?.state?.of ?? asset?.animation?.of ?? asset?.portrait?.of
 }
 
 function formatManifestIssues(issues: ZodIssue[]): string {
@@ -398,12 +398,16 @@ export async function resolveSpecs(
           : (style.tileSize ?? 32)
         size = Math.max(width, height)
       } else if (generator === "character") {
-        // Characters are square. A state may ask for a larger canvas.
-        size = asset.state?.canvas
-          ? Math.max(asset.state.canvas.width, asset.state.canvas.height)
-          : (asset.size ?? style.size ?? 64)
-        width = asset.state?.canvas?.width ?? size
-        height = asset.state?.canvas?.height ?? size
+        // Characters are square. A state may ask for a larger canvas; a
+        // portrait's size is PixelLab's own fixed result size, unrelated to
+        // the style's.
+        size = asset.portrait
+          ? asset.portrait.size
+          : asset.state?.canvas
+            ? Math.max(asset.state.canvas.width, asset.state.canvas.height)
+            : (asset.size ?? style.size ?? 64)
+        width = asset.portrait?.size ?? asset.state?.canvas?.width ?? size
+        height = asset.portrait?.size ?? asset.state?.canvas?.height ?? size
       } else if (generator === "terrain") {
         // Tiles are always square; asset-level map dimensions do not apply.
         size = style.terrainTileSize ?? 16
@@ -441,13 +445,16 @@ export async function resolveSpecs(
             `"${styleId}" generates ${generator}`,
         )
       }
+      if (asset.portrait && generator !== "character") {
+        throw new Error(`assets.${assetId}: portrait needs a character style; "${styleId}" generates ${generator}`)
+      }
       if ((asset.pieces || asset.elements) && generator !== "uiAsset") {
         throw new Error(
           `assets.${assetId}: ${asset.pieces ? "pieces" : "elements"} needs a uiAsset style; ` +
             `"${styleId}" generates ${generator}`,
         )
       }
-      const characterKind = asset.animation ? "animation" : asset.state ? "state" : "base"
+      const characterKind = asset.animation ? "animation" : asset.state ? "state" : asset.portrait ? "portrait" : "base"
 
       // A per-style override replaces the subject wording, not the style
       // wrapping; prefix and suffix still apply. A state's edit and an
@@ -562,7 +569,9 @@ export async function resolveSpecs(
         ...(generator === "character" && !asset.revision
           ? { character: await resolveCharacterShape(asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
-        ...(generator === "objectPro" && !asset.revision
+        // A portrait needs a character style (refused above), so an
+        // objectPro asset is only ever a base, state, or animation.
+        ...(generator === "objectPro" && !asset.revision && characterKind !== "portrait"
           ? { objectPro: await resolveObjectProShape(assetId, asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
         cost:
@@ -713,7 +722,7 @@ export async function resolveSpecs(
           styleAnchor: { assetId: anchorId, spec: anchorSpec, file, sha256: existsSync(file) ? await sha256File(file) : null },
         }
       }
-      const characterParent = asset.state?.of ?? asset.animation?.of
+      const characterParent = asset.state?.of ?? asset.animation?.of ?? asset.portrait?.of
       if (resolved.character && characterParent) {
         // The parent is resolved first so its output path is final; its
         // south-facing generated file is what the child's identity hashes.
@@ -1102,6 +1111,9 @@ async function resolveCharacterShape(
       paletteFromReference: asset.state.paletteFromReference,
       ...(asset.state.canvas ? { canvas: asset.state.canvas } : {}),
     }
+  }
+  if (asset.portrait) {
+    shape.portrait = { size: asset.portrait.size }
   }
   if (asset.animation) {
     const animationMode = asset.animation.mode ?? (asset.animation.template ? "template" : "v3")
