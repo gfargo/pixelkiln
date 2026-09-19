@@ -335,6 +335,17 @@ Listed so the gaps are known rather than assumed away:
   unconfirmed. The older `inpaint` and `edit-image` (non-v2/v3) endpoints are
   untouched by any of this. All four accept `color_image`, but given that
   `resize` accepts and ignores it, assume nothing until measured.
+- Everything else PixelLab's own tutorials demonstrate that this file has no
+  entry for at all — a standalone Interpolate tool that works on any image
+  (not just a `character` loop's `endFrame`), "pixel correction" (a
+  strength-slider cleanup pass distinct from `image-to-pixelart`), "reduce
+  colors" (palette-lock/quantize on an already-generated image, distinct from
+  PixelKiln's internal `quantize()`), "animation to animation" motion
+  transfer, skeleton-animation's rig/template-style controls, Object Creator,
+  UI-kit generation, and Map Workshop scene composition — is cataloged with
+  tutorial citations in
+  [references/pixellab-roadmap.md](../skills/pixelkiln/references/pixellab-roadmap.md)
+  rather than duplicated here, since none of it has been measured either.
 - `image-to-pixelart-pro` takes only `image` + `description`, no size fields.
   The non-Pro version is characterised above.
 - the tileset family, with schema documented above and costs unmeasured

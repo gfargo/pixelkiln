@@ -123,11 +123,31 @@ recorded, and records the new URLs. A refreshed base makes its states and
 animations stale, because their identity hashes the base's south file;
 `pixelkiln gen` regenerates them.
 
-PixelLab's official
-[MCP server](https://github.com/pixellab-code/pixellab-mcp) gives agents direct
-access to PixelLab generation tools. It complements PixelKiln: the MCP handles
-creation, while PixelKiln owns project state, budgets, review, recovery, and
-packaging.
+## Three ways to drive PixelLab, and why this one
+
+PixelLab is reachable three ways, and it is easy to conflate them when
+comparing notes with someone using a different one:
+
+- **PixelLab's Game Builder**, a hosted web IDE with its own chat agent and a
+  git-backed project. Good for prototyping a whole game in the browser; not
+  something PixelKiln talks to.
+- **PixelLab's official
+  [MCP server](https://github.com/pixellab-code/pixellab-mcp)**, for a
+  third-party coding agent (Claude Code, Cursor) to call PixelLab tools
+  directly mid-conversation. PixelLab's own tutorials are explicit that this
+  is a deliberately partial surface: "the API provides everything that the
+  MCP doesn't." Good for ad hoc, conversational generation; it has no concept
+  of a project's state, a budget, or what has already been paid for.
+  Complements PixelKiln rather than competing with it.
+- **PixelKiln**, calling PixelLab's REST API directly. This is why: a
+  manifest is a durable plan an agent can re-read and diff, `--budget` is an
+  enforced ceiling instead of trusting an agent's per-call judgement, and the
+  lockfile is what makes `plan`/`restore`/`audit` possible at all. It is also,
+  independently, ahead of PixelLab's own reference integration for at least
+  one concrete path: PixelLab's own Map Workshop → Godot export needs a
+  third-party community plugin and manual tile-size entry, where PixelKiln's
+  `pack --format godot` writes a native Godot 4 `TileSet` resource directly,
+  verified in CI against a real headless Godot.
 
 ## What is outside this adapter
 
@@ -138,6 +158,12 @@ generator, with all four creation engines (standard, v3, pro, pro-flash),
 reference sprites, concept images, style anchors, mirrors, and every
 `animate-character` control; see [Characters](./CHARACTERS.md). Masked
 inpainting and whole-image editing are the `revision` asset shape, not the
-`character` generator; see [Controlled asset revisions](./REVISIONS.md). Use
-the [manifest reference](./MANIFEST.md) for the fields PixelKiln supports
-today.
+`character` generator; see [Controlled asset revisions](./REVISIONS.md).
+Object Creator (generic 8-direction object rotation, object states and
+animation), UI element and RPG UI-kit generation, fonts, and Map Workshop
+scene composition (placing objects and characters into a map, in-scene
+inpainting, export) are separate PixelLab product surfaces this adapter does
+not model at all — including PixelKiln's own `map` generator, which is
+unrelated to PixelLab's "Map Workshop" despite the shared name: `map` returns
+one static prop in one generation, with no scene or canvas concept. Use the
+[manifest reference](./MANIFEST.md) for the fields PixelKiln supports today.

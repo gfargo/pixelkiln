@@ -114,7 +114,9 @@ An asset that declares `revision` against a PixelLab style calls `inpaint`
 (masked) or `image-to-image` (whole-image, no mask); `outpaint` is refused,
 since PixelLab has no canvas-expansion endpoint. Read `docs/REVISIONS.md`'s
 PixelLab section before using either — its cost is an estimate, not yet
-measured.
+measured. For what PixelLab can do that this adapter does not yet reach at
+all, read [pixellab-roadmap.md](./pixellab-roadmap.md) before proposing new
+work.
 
 For setup and current field constraints, use
 <https://pixelkiln.griffen.codes/docs/pixellab>. When working in the PixelKiln
