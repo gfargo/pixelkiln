@@ -784,15 +784,16 @@ export class PixelLabClient {
   /**
    * Masked inpaint, PixelLab's `/inpaint-v3` (the endpoint its own docs list
    * first in the Inpaint section, its convention for "reach for this by
-   * default"). Exercised live at its floor size (32x32): billed exactly the
-   * 20-generation estimate this adapter borrows from `1dir`, and returned
+   * default"). Exercised live at both ends of its size range: 32x32 (the
+   * floor) and 512x512 (the ceiling) billed exactly the 20- and
+   * 40-generation estimates this adapter's tiering predicts, both returning
    * `last_response.image` as a single `{type, base64, width, height}` —
    * the first shape `pollRevision` in pixellab.ts checks, so no change was
-   * needed there. `editImagesV2` below returns the same fields under
+   * needed either time. The middle (25-generation) tier is still
+   * unconfirmed. `editImagesV2` below returns the same fields under
    * `images`, plural and array-wrapped, not `image` — do not assume the two
    * endpoints share one response shape. See docs/ENDPOINTS.md and
-   * docs/REVISIONS.md for the full shape and what is still unconfirmed
-   * (larger canvases on either endpoint).
+   * docs/REVISIONS.md for the full shape and what is still unconfirmed.
    *
    * `crop_to_mask` defaults true upstream (confirmed in the schema): PixelLab
    * otherwise blends generated pixels outside the mask edge to "fit

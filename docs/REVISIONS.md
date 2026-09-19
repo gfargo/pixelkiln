@@ -183,12 +183,16 @@ way as every other PixelLab submission.
 - Both endpoints are confirmed at the smallest size: a live 32×32 masked
   `inpaint` and a live 32×32 `image-to-image` edit each billed **exactly 20
   generations**, matching the canvas-area tier this adapter borrows from
-  `1dir`/`create-tiles-pro`. Two data points at the floor tier are not a full
-  measurement — the 25 and 40 tiers at larger canvases are still
-  unconfirmed on either endpoint — but neither is a pure guess anymore.
-  PixelLab's own tutorial separately reports its Pro edit tool at roughly 40
-  generations for a typical (larger) edit, consistent with the same borrowed
-  tiering scaling up.
+  `1dir`/`create-tiles-pro`. `inpaint` is now also confirmed at its largest
+  size: a live 512×512 masked inpaint (the maximum the endpoint accepts)
+  billed **exactly 40 generations**, the top of the same tier. Floor and
+  ceiling both landing exactly on the borrowed tier is real (if still
+  partial) confidence in the whole 20/25/40 model for `inpaint`, not just a
+  guess anymore; the middle 25-generation tier and `image-to-image` at
+  anything above 32×32 remain unconfirmed. PixelLab's own tutorial
+  separately reports its Pro edit tool at roughly 40 generations for a
+  typical (larger) edit, consistent with `image-to-image` scaling the same
+  way `inpaint` measurably does.
 - A completed job's response shape is confirmed live for both, and **the two
   do not match**: `inpaint-v3`'s `last_response.image` is a single object,
   `{type: "base64", width, height, base64}`; `edit-images-v2`'s is

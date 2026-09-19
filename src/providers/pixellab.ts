@@ -234,10 +234,12 @@ export class PixelLabProvider implements Provider {
   estimate(spec: ResolvedSpec): CostEstimate {
     if (spec.revision) {
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
-      // like /generate-with-style-v2 and /generate-image-v2. Live 32x32 calls
-      // to both billed exactly the 20-generation floor this tiering predicts
-      // (docs/ENDPOINTS.md); the 25/40 tiers at larger canvases are still
-      // unmeasured on either. Reuse the same canvas-area tiering already
+      // like /generate-with-style-v2 and /generate-image-v2. Live calls
+      // confirm the tiering for inpaint-v3 at both ends: 32x32 billed
+      // exactly the 20-generation floor and 512x512 (its maximum) billed
+      // exactly the 40-generation ceiling (docs/ENDPOINTS.md). The middle
+      // 25-generation tier, and edit-images-v2 above its own 32x32 floor,
+      // are still unmeasured. Reuse the same canvas-area tiering already
       // measured for those Pro endpoints and for 1dir/tiles rather than
       // guess a number for what remains unconfirmed: per
       // generationCost's own contract, over-reading is the safe direction
