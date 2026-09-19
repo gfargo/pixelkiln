@@ -784,13 +784,12 @@ export class PixelLabClient {
   /**
    * Masked inpaint, PixelLab's `/inpaint-v3` (the endpoint its own docs list
    * first in the Inpaint section, its convention for "reach for this by
-   * default"). Unlike the rest of this client, this method's shape is taken
-   * from the OpenAPI spec, not exercised against a live account: the request
-   * side is exact (`InpaintV3Request`), but a completed job's `last_response`
-   * has no documented example for this endpoint (the spec's only worked
-   * example is a character job's shape). `pollRevision` in pixellab.ts reads
-   * it defensively and fails loudly on an unrecognized shape rather than
-   * guessing.
+   * default"). Exercised live at its floor size (32x32): billed exactly the
+   * 20-generation estimate this adapter borrows from `1dir`, and returned
+   * `last_response.image` as `{type, base64, width, height}` — the first
+   * shape `pollRevision` in pixellab.ts checks, so no change was needed
+   * there. See docs/ENDPOINTS.md and docs/REVISIONS.md for the full response
+   * shape and what is still unconfirmed (larger canvases, `editImagesV2`).
    *
    * `crop_to_mask` defaults true upstream (confirmed in the schema): PixelLab
    * otherwise blends generated pixels outside the mask edge to "fit
@@ -823,8 +822,10 @@ export class PixelLabClient {
   }
 
   /**
-   * Whole-image edit with no mask, PixelLab's `/edit-images-v2`. Same
-   * not-yet-live-verified caveat as `inpaintV3` above. `edit_images` takes an
+   * Whole-image edit with no mask, PixelLab's `/edit-images-v2`. Unlike
+   * `inpaintV3` above, this method has not been exercised against a live
+   * account: its request shape is taken from the OpenAPI spec, and a
+   * completed job's response shape is unconfirmed. `edit_images` takes an
    * array (the endpoint supports editing several images with one
    * instruction); pixelkiln's `revision` model is one parent per child, so
    * this always sends exactly one.
