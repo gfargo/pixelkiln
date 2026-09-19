@@ -47,6 +47,14 @@ composition — laying out a tile floor, placing characters and movable
 objects, inpainting sections in place, exporting the result) is a distinct
 PixelLab product surface this adapter does not model at all.
 
+A `map` or `pixflux` prompt for anything smaller than a standard prop
+(furniture, a hand-held item, a small decoration) tends to come back
+oversized relative to the scale implied by the rest of a scene by default.
+PixelLab's own tutorials hit this repeatedly and fixed it the same way every
+time: add an explicit size qualifier to the prompt ("a small wooden chair",
+not "a wooden chair"), rather than adjusting `size` after an oversized
+result comes back.
+
 A base can start from the author's own south-facing sprite (`reference` on
 the asset; standard wants it at the style's size, v3 up to 256px, pro up
 to 168px), and a standard humanoid base takes `proportions` (`chibi`,
@@ -72,6 +80,13 @@ files, not 6. Account for the `+1` when checking a loop's output count or
 estimating its budget; set it `false` only when the caller will supply its
 own first frame downstream.
 
+A named `template` loop (`walk`, `breathing-idle`, and similar) is trained
+mostly on characters with empty hands, and reliably struggles once a
+character holds an item — a weapon, a tool, anything gripped. For a
+held-item character, skip the template and write a custom v3 loop with an
+explicit prompt naming the held item and the motion (e.g. "knight holding a
+sword, walking loop") instead of expecting the template to carry it.
+
 A loop costs per direction, and a sprite facing one way is the sprite facing
 the opposite way flipped — this holds for the east/west pair and for both
 diagonal pairs, south-east/south-west and north-east/north-west. Declare the
@@ -81,6 +96,15 @@ north sit on the mirror line itself, so flipping either just relabels the
 same asset, not a new one — generate those two directly. Generate south,
 south-east, east, north-east, and north, then mirror the other three: eight
 directions of one loop are then 5 generations, not 8.
+
+A game whose camera is a fixed isometric angle typically never shows a
+character facing due south/east/north/west, only the four diagonals — in
+that case, declare `south-east`, `north-east`, `north-west`, and
+`south-west` only and skip the cardinal four entirely, rather than
+generating all 8 and mirroring the rest. `isometric` on the base (drawing
+every direction and loop in isometric perspective) is an independent choice
+from this and does not by itself require or imply fewer directions; it is
+the game's own camera that decides how many are worth generating.
 
 A loop that needs headroom for an effect — recoil, a muzzle flash, a
 projectile, anything that extends past the subject's silhouette — needs
@@ -92,6 +116,13 @@ rotates or drops the subject (a fall, a knockdown) wants 8 or more. A
 multi-stage action (windup, then attack, then recovery) is a chain of
 loops, not one long one: take the final frame of one loop as the next
 loop's `startFrame` and link them as separate manifest assets.
+
+A loop's `startFrame` (or the `state` it is seeded from) should already
+resemble the target action, not just be a valid pose of the character.
+PixelLab's own tutorials show this going wrong concretely: prompting "walk
+loop" from a mid-run pose forces the model to close the loop by running,
+then walking, then running again, a much harder transition than starting
+from a pose that already looks like the first step of a walk.
 
 Write the loop `prompt` (and any `subject` override) as a full descriptive
 sentence of the motion — pace, energy, what leads and what follows — rather

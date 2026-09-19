@@ -77,6 +77,16 @@ every cell edge; `segmentation` was the difference between a usable and
 unusable terrain set. Set it deliberately for any `tiles` style meant to read
 as continuous ground, never inherit the default.
 
+**"Pro" is a quality/cost tier that spans many PixelLab tool families, not a
+`character`-specific setting.** The table above already shows this
+structurally — `character` pro/pro-flash drop every text dial in favor of a
+style image — and PixelLab's own tutorials confirm the same pattern recurs
+outside characters: a Pro background-generation tier, a Pro inpaint/edit
+tier, and a Pro interpolate tier all exist, each swapping the cheaper
+tool's text controls for a stronger, slower, more expensive model. When
+scoping a new PixelLab-backed capability, expect a plain and a Pro variant
+by default, not just for characters.
+
 ## Reference-image size sets the *output's* scale, not just its content
 
 Already in [pixellab.md](./pixellab.md), repeated here because it is exactly

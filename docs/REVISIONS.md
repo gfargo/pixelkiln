@@ -172,12 +172,22 @@ way as every other PixelLab submission.
   / `sourceHeight`), not the child asset's declared `width`/`height`. Neither
   endpoint resizes; they edit the pixels that exist.
 - `/inpaint-v3` takes 32 to 512 pixels per side; a smaller or larger source
-  is refused before any request is sent.
-- Cost is **not yet measured**. Both endpoints are documented as PixelLab's
-  "Pro" tier, so pixelkiln prices them on the same canvas-area tiers already
-  measured for `1dir` and `create-tiles-pro` (20/25/40 generations) rather than
-  guess a number — the safe direction to be wrong in, per `generationCost`'s
-  own contract. Treat this as a placeholder until a live job's `usage` is read.
+  is refused before any request is sent. There is no chunking built in for a
+  source over that ceiling: PixelLab's own Aseprite-plugin tutorial hits the
+  same wall on a full-canvas edit and works around it by selecting and
+  submitting a sub-region instead of the whole image, one that still
+  includes some existing content (not just blank space) so the model has
+  context. A revision over 512px on a side needs the same treatment — a
+  separate, smaller revision asset targeting a sub-region — until this
+  adapter does that automatically.
+- Cost is **not yet measured** against a live account, but PixelLab's own
+  tutorial reports its `/edit-images-v2`-class "Pro" edit tool costing
+  roughly 40 generations for a typical edit, which lines up with (and is the
+  only outside corroboration for) the top of the canvas-area tiers already
+  measured for `1dir` and `create-tiles-pro` (20/25/40 generations) that
+  pixelkiln borrows here rather than guess a number — the safe direction to
+  be wrong in, per `generationCost`'s own contract. Treat both as a
+  placeholder until a live job's `usage` is read.
 - A completed job's exact response shape is not documented for either
   endpoint (the API's own worked example of that field is a character job's
   shape, not an edit or inpaint job's). `pollRevision` in
