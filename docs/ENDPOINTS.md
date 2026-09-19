@@ -335,8 +335,13 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
   carries through to the response even though pixelkiln always sends and
   reads exactly one. In both, the first field is the edited result and the
   quantized one an automatically color-reduced copy pixelkiln does not read.
-  Only the floor tier (20) is confirmed on either endpoint; the 25 and 40
-  tiers at larger canvases are not.
+  `inpaint-v3` is now also confirmed at the opposite end: a live 512×512
+  masked inpaint (the maximum the endpoint accepts) billed exactly 40
+  generations, the top of the same tier, response shape identical in
+  structure to the 32×32 case. Floor and ceiling both landing exactly on the
+  20/25/40 model this adapter already used for `1dir`/`create-tiles-pro` is
+  real confidence in that tiering for `inpaint`. The middle tier (25) and
+  `edit-images-v2` at anything above its own floor remain unconfirmed.
 
 ---
 
@@ -346,10 +351,11 @@ Listed so the gaps are known rather than assumed away:
 
 - `edit-images-v2` and `inpaint-v3` (the `revision` asset shape's
   `image-to-image` and `inpaint` modes; see
-  [Controlled asset revisions](./REVISIONS.md)) are now both confirmed at
-  their floor size only; see above. The 25 and 40 cost tiers at larger
-  canvases remain unconfirmed on both. The older `inpaint` and `edit-image`
-  (non-v2/v3) endpoints are untouched by any of this. All four accept
+  [Controlled asset revisions](./REVISIONS.md)) are confirmed at their floor
+  size; `inpaint-v3` is confirmed at its ceiling size too (see above). The
+  middle 25-generation tier is unconfirmed on both, and `edit-images-v2`'s
+  ceiling is unconfirmed. The older `inpaint` and `edit-image` (non-v2/v3)
+  endpoints are untouched by any of this. All four accept
   `color_image`, but given that
   `resize` accepts and ignores it, assume nothing until measured.
 - Everything else PixelLab's own tutorials demonstrate that this file has no
