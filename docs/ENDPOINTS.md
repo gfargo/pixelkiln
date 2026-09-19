@@ -320,17 +320,23 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
   carries `usage` once the job is gone, completed or not. `poll` reads the
   object/character for the result but would need this same job id, still
   polled separately today, to learn what it actually cost.
-- **`inpaint-v3` confirmed live at its floor size**: a 32×32 masked inpaint
-  (the minimum the endpoint accepts) billed exactly 20 generations, matching
-  a balance diff taken after. `last_response` is `{seed, type, image:
-  {type, base64, width, height}, action, progress, billing_usage,
-  generation_id, usage_cost_usd, billing_charged, generation_mode:
-  "inpainting_v3", quantized_image: {type, base64, width, height},
-  generation_started_at, original_image_n_colors, quantized_image_n_colors}`
-  — `image` is the edited result, `quantized_image` an automatically
-  color-reduced copy pixelkiln does not read. Only the floor tier (20) is
-  confirmed; the 25 and 40 tiers at larger canvases, and `edit-images-v2`
-  entirely, are not.
+- **`inpaint-v3` and `edit-images-v2` both confirmed live at their floor
+  size**: a 32×32 masked inpaint and a separate 32×32 whole-image edit each
+  billed exactly 20 generations, both matching a balance diff taken after.
+  `inpaint-v3`'s `last_response` is `{seed, type, image: {type, base64,
+  width, height}, action, progress, billing_usage, generation_id,
+  usage_cost_usd, billing_charged, generation_mode: "inpainting_v3",
+  quantized_image: {type, base64, width, height}, generation_started_at,
+  original_image_n_colors, quantized_image_n_colors}`. `edit-images-v2`'s is
+  the same shape except **plural and array-wrapped**: `images: [{type,
+  base64, width, height}]` and `quantized_images: [...]` in place of
+  `image`/`quantized_image`, and `generation_mode: "edit_images"` — the
+  request's own `edit_images` array (which supports several images per call)
+  carries through to the response even though pixelkiln always sends and
+  reads exactly one. In both, the first field is the edited result and the
+  quantized one an automatically color-reduced copy pixelkiln does not read.
+  Only the floor tier (20) is confirmed on either endpoint; the 25 and 40
+  tiers at larger canvases are not.
 
 ---
 
@@ -338,12 +344,13 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
 
 Listed so the gaps are known rather than assumed away:
 
-- `edit-images-v2` backs the `revision` asset shape's `image-to-image` mode
-  (see [Controlled asset revisions](./REVISIONS.md)) and remains completely
-  unmeasured — no job run, cost a borrowed estimate, response shape unknown.
-  `inpaint-v3` (the `inpaint` mode) is now confirmed at its floor size; see
-  above. The older `inpaint` and `edit-image` (non-v2/v3) endpoints are
-  untouched by any of this. All four accept `color_image`, but given that
+- `edit-images-v2` and `inpaint-v3` (the `revision` asset shape's
+  `image-to-image` and `inpaint` modes; see
+  [Controlled asset revisions](./REVISIONS.md)) are now both confirmed at
+  their floor size only; see above. The 25 and 40 cost tiers at larger
+  canvases remain unconfirmed on both. The older `inpaint` and `edit-image`
+  (non-v2/v3) endpoints are untouched by any of this. All four accept
+  `color_image`, but given that
   `resize` accepts and ignores it, assume nothing until measured.
 - Everything else PixelLab's own tutorials demonstrate that this file has no
   entry for at all — a standalone Interpolate tool that works on any image

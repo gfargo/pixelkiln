@@ -17,10 +17,11 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
 - **Masked inpainting and whole-image editing** — was the single largest gap
   found (routine in at least 6 of the 26 tutorials). Now the `revision` asset
   shape's `inpaint` and `image-to-image` modes; see `docs/REVISIONS.md`.
-  `inpaint` is confirmed live at its floor size (20 generations, response
-  shape matched on the first try); `image-to-image` and the larger cost
-  tiers remain unmeasured — see that doc's PixelLab section before relying
-  on either.
+  both `inpaint` and `image-to-image` are confirmed live at their floor size
+  (20 generations each, response shape matched on the first try for both —
+  though the two shapes differ, singular for one and array-wrapped for the
+  other); the 25/40 cost tiers at larger canvases remain unmeasured on
+  either — see that doc's PixelLab section before relying on them.
 - **`tiles` generator parameters** (`tileType`, `tileSize`, `tileView`,
   `tileFeature` including a building-kit construction set, `outlineMode`) —
   already implemented in code, was simply undocumented in

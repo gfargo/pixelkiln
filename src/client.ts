@@ -786,10 +786,13 @@ export class PixelLabClient {
    * first in the Inpaint section, its convention for "reach for this by
    * default"). Exercised live at its floor size (32x32): billed exactly the
    * 20-generation estimate this adapter borrows from `1dir`, and returned
-   * `last_response.image` as `{type, base64, width, height}` — the first
-   * shape `pollRevision` in pixellab.ts checks, so no change was needed
-   * there. See docs/ENDPOINTS.md and docs/REVISIONS.md for the full response
-   * shape and what is still unconfirmed (larger canvases, `editImagesV2`).
+   * `last_response.image` as a single `{type, base64, width, height}` —
+   * the first shape `pollRevision` in pixellab.ts checks, so no change was
+   * needed there. `editImagesV2` below returns the same fields under
+   * `images`, plural and array-wrapped, not `image` — do not assume the two
+   * endpoints share one response shape. See docs/ENDPOINTS.md and
+   * docs/REVISIONS.md for the full shape and what is still unconfirmed
+   * (larger canvases on either endpoint).
    *
    * `crop_to_mask` defaults true upstream (confirmed in the schema): PixelLab
    * otherwise blends generated pixels outside the mask edge to "fit
@@ -822,13 +825,15 @@ export class PixelLabClient {
   }
 
   /**
-   * Whole-image edit with no mask, PixelLab's `/edit-images-v2`. Unlike
-   * `inpaintV3` above, this method has not been exercised against a live
-   * account: its request shape is taken from the OpenAPI spec, and a
-   * completed job's response shape is unconfirmed. `edit_images` takes an
-   * array (the endpoint supports editing several images with one
+   * Whole-image edit with no mask, PixelLab's `/edit-images-v2`. `edit_images`
+   * takes an array (the endpoint supports editing several images with one
    * instruction); pixelkiln's `revision` model is one parent per child, so
-   * this always sends exactly one.
+   * this always sends exactly one. Exercised live at its floor size (32x32):
+   * billed exactly the 20-generation estimate this adapter borrows from
+   * `1dir`, matching `inpaintV3`'s floor exactly. The completed response is
+   * `last_response.images`, an *array* of `{type, base64, width, height}` —
+   * plural and array-wrapped, unlike `inpaintV3`'s singular `image` above,
+   * even though exactly one image is ever sent or expected here.
    */
   async editImagesV2(args: {
     description: string

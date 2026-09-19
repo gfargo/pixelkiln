@@ -234,12 +234,12 @@ export class PixelLabProvider implements Provider {
   estimate(spec: ResolvedSpec): CostEstimate {
     if (spec.revision) {
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
-      // like /generate-with-style-v2 and /generate-image-v2. A live 32x32
-      // inpaint-v3 call billed exactly the 20-generation floor this tiering
-      // predicts (docs/ENDPOINTS.md); the 25/40 tiers and edit-images-v2
-      // entirely are still unmeasured. Reuse the same canvas-area tiering
-      // already measured for those Pro endpoints and for 1dir/tiles rather
-      // than guess a number for what remains unconfirmed: per
+      // like /generate-with-style-v2 and /generate-image-v2. Live 32x32 calls
+      // to both billed exactly the 20-generation floor this tiering predicts
+      // (docs/ENDPOINTS.md); the 25/40 tiers at larger canvases are still
+      // unmeasured on either. Reuse the same canvas-area tiering already
+      // measured for those Pro endpoints and for 1dir/tiles rather than
+      // guess a number for what remains unconfirmed: per
       // generationCost's own contract, over-reading is the safe direction
       // for a `--budget` gate. The image actually sent is the parent's own
       // size, not the child's declared width/height, so size against that
@@ -831,15 +831,17 @@ export class PixelLabProvider implements Provider {
   /**
    * `/inpaint-v3` and `/edit-images-v2` both hand back a plain background
    * job with no resource of its own, polled generically at
-   * `GET /background-jobs/{id}`. Confirmed live for a completed `inpaint-v3`
-   * job: `last_response.image` is `{type: "base64", base64, width, height}`,
-   * matched by the `imageKeys` branch below on the first real response ever
-   * seen (docs/ENDPOINTS.md, docs/REVISIONS.md). `edit-images-v2`'s
-   * completed shape is still unconfirmed — this reads every image shape
-   * seen elsewhere in this client (a nested `{image: {base64, format}}`, a
-   * bare `{base64, format}`, or a hosted URL under a handful of plausible
-   * keys) and fails loudly, naming the keys it actually got, rather than
-   * guess wrong silently, for whatever that turns out to need.
+   * `GET /background-jobs/{id}`. Confirmed live for both, and the two do not
+   * match: a completed `inpaint-v3` job's `last_response.image` is a single
+   * `{type: "base64", base64, width, height}`, matched by the `imageKeys`
+   * branch below; a completed `edit-images-v2` job's is `last_response.images`,
+   * an *array* of that same shape, matched by the `done.images` branch below
+   * instead — exactly why both branches exist rather than just the first one
+   * (docs/ENDPOINTS.md, docs/REVISIONS.md). Beyond these two confirmed
+   * shapes, this also checks a nested `{image: {base64, format}}` and a
+   * hosted URL under a handful of plausible keys, and fails loudly, naming
+   * the keys it actually got, rather than guess wrong silently, for whatever
+   * shape still isn't covered.
    */
   private async pollRevision(jobId: string): Promise<JobState> {
     const job = await this.client.getBackgroundJob(jobId)
