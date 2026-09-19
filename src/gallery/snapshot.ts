@@ -351,7 +351,9 @@ function describeHistory(media: Map<string, GalleryMedia>, entry: LockEntry, cac
       retiredAt: generation.retiredAt,
       outputs,
       cached: outputs.length > 0 && outputs.every((output) => output.url !== null),
-      upstreamUrl: generation.provider === "pixellab" ? pixelLabObjectUrl(generation.generator, generation.objectId) : null,
+      // A revision's jobId is a plain background job id, not a PixelLab
+      // account object: there is no `/create-object` page to point at.
+      upstreamUrl: generation.provider === "pixellab" && !entry.revision ? pixelLabObjectUrl(generation.generator, generation.objectId) : null,
     }
   })
 }
@@ -728,7 +730,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       editChanged,
       editStatus,
       editMeta,
-      upstreamUrl: entry?.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
+      upstreamUrl: entry?.provider === "pixellab" && !spec.revision ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
       refreshable: Boolean(entry && entry.status === "downloaded" && entry.outputs.length && (entry.sourceUrls?.length || entry.sourceUrl)),
       history: entry ? describeHistory(media, entry, cacheDir) : [],
       tags: spec.tags,
@@ -793,7 +795,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       editChanged: [],
       editStatus: null,
       editMeta: null,
-      upstreamUrl: entry.provider === "pixellab" ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
+      upstreamUrl: entry.provider === "pixellab" && !entry.revision ? pixelLabObjectUrl(entry.generator, entry.objectId) : null,
       refreshable: false,
       history: describeHistory(media, entry, cacheDir),
       tags: [],

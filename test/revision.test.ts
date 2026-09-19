@@ -262,10 +262,10 @@ describe("asset revisions", () => {
   })
 
   it("rejects a provider or style that cannot satisfy the revision", async () => {
-    const loaded = await writeProject()
+    const loaded = await writeProject({ mode: "outpaint", from: "source" })
     loaded.manifest.provider = "pixellab"
     await expect(resolveSpecs(loaded, { assets: ["revised"] })).rejects.toThrow(
-      /Provider "pixellab" does not support image-to-image revisions/,
+      /Provider "pixellab" does not support outpaint revisions/,
     )
 
     const raw = JSON.parse(await readFile(manifestPath, "utf8"))

@@ -110,6 +110,12 @@ transparency claim, so inspect alpha on one representative result before a
 batch. Inspect scenic outputs for stray marks too: one untouched 384px attempt
 contained a generated signature-like glyph.
 
+An asset that declares `revision` against a PixelLab style calls `inpaint`
+(masked) or `image-to-image` (whole-image, no mask); `outpaint` is refused,
+since PixelLab has no canvas-expansion endpoint. Read `docs/REVISIONS.md`'s
+PixelLab section before using either — its cost is an estimate, not yet
+measured.
+
 For setup and current field constraints, use
 <https://pixelkiln.griffen.codes/docs/pixellab>. When working in the PixelKiln
 repository, `docs/PIXELLAB.md` and `docs/ENDPOINTS.md` are the canonical local

@@ -5,8 +5,9 @@ The parent may be committed art, a downloaded generation, or an approved
 quality output. PixelKiln hashes the exact parent and mask bytes, blocks stale
 dependencies before submission, and records the lineage in the lockfile.
 
-The manifest and pipeline are provider-neutral. The current ComfyUI adapter is
-the first implementation. PixelLab, Retro Diffusion, and Scenario reject
+The manifest and pipeline are provider-neutral. ComfyUI and PixelLab implement
+it; PixelLab covers `image-to-image` and `inpaint`, not `outpaint` (its API
+has no canvas-expansion endpoint). Retro Diffusion and Scenario reject
 revision work during offline resolution instead of silently starting a fresh
 text-to-image job.
 
@@ -155,6 +156,34 @@ is transport evidence, not a quality recommendation. Treat every result as a
 composition candidate and use the normal native-grid, palette, alpha, and human
 approval gate before shipping. See the
 [committed smoke](../benchmarks/provider-revisions/comfyui/README.md).
+
+## PixelLab
+
+PixelLab needs no bindings: `image-to-image` calls `/edit-images-v2`,
+`inpaint` calls `/inpaint-v3`, both as a plain background job polled the same
+way as every other PixelLab submission.
+
+- The mask convention is fixed, not graph-defined like ComfyUI's: white marks
+  the area to generate, black the area to preserve. There is no way to flip it.
+- `strength` has nowhere to go on `image-to-image`. PixelLab's edit endpoint
+  applies the instruction in full; declaring a strength fails the submission
+  rather than silently ignoring it.
+- The source image is sent at its own actual dimensions (`revision.sourceWidth`
+  / `sourceHeight`), not the child asset's declared `width`/`height`. Neither
+  endpoint resizes; they edit the pixels that exist.
+- `/inpaint-v3` takes 32 to 512 pixels per side; a smaller or larger source
+  is refused before any request is sent.
+- Cost is **not yet measured**. Both endpoints are documented as PixelLab's
+  "Pro" tier, so pixelkiln prices them on the same canvas-area tiers already
+  measured for `1dir` and `create-tiles-pro` (20/25/40 generations) rather than
+  guess a number — the safe direction to be wrong in, per `generationCost`'s
+  own contract. Treat this as a placeholder until a live job's `usage` is read.
+- A completed job's exact response shape is not documented for either
+  endpoint (the API's own worked example of that field is a character job's
+  shape, not an edit or inpaint job's). `pollRevision` in
+  `src/providers/pixellab.ts` reads it defensively and fails the job with a
+  named error rather than crash or guess wrong; if a live job's shape differs
+  from what it checks, that function is a one-line fix.
 
 ## Provenance and invalidation
 
