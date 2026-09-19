@@ -136,6 +136,8 @@ transfer, lip-sync, and skeleton-driven animation are not part of this
 adapter. Characters, their states, and their animations are the `character`
 generator, with all four creation engines (standard, v3, pro, pro-flash),
 reference sprites, concept images, style anchors, mirrors, and every
-`animate-character` control; see [Characters](./CHARACTERS.md). Use
+`animate-character` control; see [Characters](./CHARACTERS.md). Masked
+inpainting and whole-image editing are the `revision` asset shape, not the
+`character` generator; see [Controlled asset revisions](./REVISIONS.md). Use
 the [manifest reference](./MANIFEST.md) for the fields PixelKiln supports
 today.

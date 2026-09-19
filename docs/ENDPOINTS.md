@@ -327,9 +327,14 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
 
 Listed so the gaps are known rather than assumed away:
 
-- `inpaint`, `inpaint-v3`, `edit-image`, `edit-images-v2`, for targeted edits.
-  Both `inpaint` and `edit-image` accept `color_image`, but given that `resize`
-  accepts and ignores it, assume nothing until measured.
+- `inpaint-v3` and `edit-images-v2` back the `revision` asset shape's
+  `inpaint` and `image-to-image` modes as of this writing (see
+  [Controlled asset revisions](./REVISIONS.md)), but the wiring is built from
+  the OpenAPI spec, not a live account: no job has actually been run, so cost
+  is a borrowed estimate and a completed job's exact response shape is
+  unconfirmed. The older `inpaint` and `edit-image` (non-v2/v3) endpoints are
+  untouched by any of this. All four accept `color_image`, but given that
+  `resize` accepts and ignores it, assume nothing until measured.
 - `image-to-pixelart-pro` takes only `image` + `description`, no size fields.
   The non-Pro version is characterised above.
 - the tileset family, with schema documented above and costs unmeasured

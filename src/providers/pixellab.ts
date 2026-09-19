@@ -17,6 +17,7 @@ import {
   type ResolvedReferenceImage,
   type ResolvedSpec,
   type ResolvedStyleImage,
+  type RevisionMode,
 } from "../types.ts"
 import type {
   BalanceInfo,
@@ -199,6 +200,16 @@ export class PixelLabProvider implements Provider {
     )
   }
 
+  /**
+   * `inpaint` (`/inpaint-v3`, a mask) and `image-to-image` (`/edit-images-v2`,
+   * no mask) both exist on PixelLab. `outpaint` does not: there is no
+   * canvas-expansion endpoint in the API, matching docs/REVISIONS.md's note
+   * that no provider ships a tested outpaint path yet.
+   */
+  supportsRevision(mode: RevisionMode): boolean {
+    return mode === "inpaint" || mode === "image-to-image"
+  }
+
   /** PixelLab's own constraints: submissions must be >2s apart, and
    *  background jobs in flight are capped by subscription tier (Tier 1=8,
    *  Tier 2=10, Tier 3=20); 8 is the safe floor across every tier. */
@@ -221,6 +232,19 @@ export class PixelLabProvider implements Provider {
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {
+    if (spec.revision) {
+      // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
+      // like /generate-with-style-v2 and /generate-image-v2, and neither has
+      // a live-measured cost yet (client.ts). Reuse the same canvas-area
+      // tiering already measured for those Pro endpoints and for 1dir/tiles
+      // rather than guess a number: per generationCost's own contract,
+      // over-reading is the safe direction for a `--budget` gate. The image
+      // actually sent is the parent's own size, not the child's declared
+      // width/height, so size against that when it is known.
+      const width = spec.revision.sourceWidth ?? spec.width
+      const height = spec.revision.sourceHeight ?? spec.height
+      return { unit: "generations", amount: generationCost(width, height, "1dir"), candidates: 1 }
+    }
     // `tiles` prices and counts off the whole set, both of which the manifest
     // layer already worked out; see tilesCost / tileVariationCount.
     if (spec.generator === "tiles") {
@@ -237,6 +261,12 @@ export class PixelLabProvider implements Provider {
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
+    if (spec.revision?.mode === "inpaint") {
+      const { sourceWidth: width, sourceHeight: height } = spec.revision
+      if (width != null && height != null && (width < 32 || height < 32 || width > 512 || height > 512)) {
+        throw new Error(`PixelLab inpaint source is ${width}x${height}; the API takes 32 to 512 pixels per side`)
+      }
+    }
     if (spec.generator === "1dir" && (spec.width < 32 || spec.width > 256)) {
       throw new Error("PixelLab 1dir dimensions must be between 32 and 256 pixels")
     }
@@ -619,6 +649,7 @@ export class PixelLabProvider implements Provider {
 
   async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[], context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
     this.validate(spec, styleImages)
+    if (spec.revision) return this.submitRevision(spec)
     if (spec.generator === "character") return this.submitCharacter(spec, styleImages, context)
     if (spec.generator === "pixflux") {
       const swatch = spec.palette.length
@@ -676,6 +707,67 @@ export class PixelLabProvider implements Provider {
   }
 
   /**
+   * `inpaint` reads the mask as PixelLab's own convention: white marks the
+   * area to generate, black the area to preserve (`InpaintV3Request`'s own
+   * field description). Unlike ComfyUI's revision graph, there is no
+   * configurable side to this — document it as fixed rather than leave an
+   * agent to guess, the way docs/REVISIONS.md tells a ComfyUI author to test
+   * their own graph.
+   */
+  private async submitRevision(spec: ResolvedSpec): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
+    const revision = spec.revision!
+    if (!revision.sourceSha256 || !revision.sourceFormat || revision.sourceWidth == null || revision.sourceHeight == null) {
+      throw new Error(`${spec.styleId}/${spec.assetId}: revision source is not ready`)
+    }
+    const sourceBytes = readFileSync(revision.sourceFile)
+    if (sha256(sourceBytes) !== revision.sourceSha256) {
+      throw new Error(`${spec.styleId}/${spec.assetId}: revision source changed after the manifest was resolved`)
+    }
+    const image: Base64Image = { base64: sourceBytes.toString("base64"), format: revision.sourceFormat }
+    const width = revision.sourceWidth
+    const height = revision.sourceHeight
+
+    if (revision.mode === "inpaint") {
+      if (!revision.maskFile || !revision.maskSha256 || !revision.maskFormat) {
+        throw new Error(`${spec.styleId}/${spec.assetId}: revision mask is not ready`)
+      }
+      const maskBytes = readFileSync(revision.maskFile)
+      if (sha256(maskBytes) !== revision.maskSha256) {
+        throw new Error(`${spec.styleId}/${spec.assetId}: revision mask changed after the manifest was resolved`)
+      }
+      const res = await this.client.inpaintV3({
+        description: spec.prompt,
+        image,
+        width,
+        height,
+        maskImage: { base64: maskBytes.toString("base64"), format: revision.maskFormat },
+        noBackground: spec.noBackground,
+        seed: spec.seed,
+      })
+      return { jobId: res.background_job_id }
+    }
+
+    // image-to-image: PixelLab has no denoise-strength knob on this
+    // endpoint, so a declared `strength` has nowhere to go. Refuse rather
+    // than silently drop what the manifest asked for.
+    if (revision.strength != null) {
+      throw new Error(
+        `${spec.styleId}/${spec.assetId}: PixelLab image-to-image revisions take no strength; ` +
+          "edit-images-v2 always applies the full instruction",
+      )
+    }
+    const res = await this.client.editImagesV2({
+      description: spec.prompt,
+      image,
+      width,
+      height,
+      noBackground: spec.noBackground,
+      seed: spec.seed,
+    })
+    return { jobId: res.background_job_id }
+  }
+
+  /**
    * What a background job actually billed, once its own record is still
    * around to ask; see `billedFromUsage`. A stale or already-cleaned-up job
    * (a map object's record expires in hours; see `pollMap`) means "not
@@ -692,6 +784,13 @@ export class PixelLabProvider implements Provider {
   }
 
   async poll(jobId: string, generator: Generator, context?: PollContext): Promise<JobState> {
+    // A revision has no resource-specific status endpoint the way a map
+    // object, tile set, or character does: /inpaint-v3 and /edit-images-v2
+    // both hand back a plain background job, so jobId here already *is* the
+    // background_job_id. `generator` alone cannot tell a revision apart from
+    // an ordinary submission of the same base generator, which is why this
+    // checks the spec the pipeline threads through PollContext instead.
+    if (context?.spec?.revision) return this.pollRevision(jobId)
     if (generator === "pixflux") {
       const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
       if (existsSync(file)) {
@@ -723,6 +822,66 @@ export class PixelLabProvider implements Provider {
       status: "processing",
       progressPercent: obj.progress_percent ?? null,
       etaSeconds: obj.eta_seconds ?? null,
+    }
+  }
+
+  /**
+   * `/inpaint-v3` and `/edit-images-v2` both hand back a plain background
+   * job with no resource of its own, polled generically at
+   * `GET /background-jobs/{id}`. What a *completed* job's `last_response`
+   * actually contains is not documented for either endpoint: the OpenAPI
+   * spec's only worked example of that field is a character job's shape
+   * (`character_id`, `uploaded_directions`, ...), not an inpaint or edit
+   * job's. This reads every image shape seen elsewhere in this client
+   * (a nested `{image: {base64, format}}`, a bare `{base64, format}`, or a
+   * hosted URL under a handful of plausible keys) and fails loudly, naming
+   * the keys it actually got, rather than guess wrong silently. Fixing a
+   * real completed response into this list is a one-line change once one is
+   * seen live.
+   */
+  private async pollRevision(jobId: string): Promise<JobState> {
+    const job = await this.client.getBackgroundJob(jobId)
+    if (job.status === "failed") return { status: "failed", error: "revision job failed upstream" }
+    if (job.status !== "completed") return { status: "processing" }
+    const billed = billedFromUsage(job.usage)
+    const done = (job.last_response ?? {}) as Record<string, unknown>
+
+    const urlKeys = ["image_url", "download_url", "url", "output_url"]
+    for (const key of urlKeys) {
+      const url = done[key]
+      if (typeof url === "string" && url) {
+        return { status: "ready", objectId: jobId, sourceUrl: url, sources: [{ url }], billed }
+      }
+    }
+    const imageKeys = ["image", "output_image", "result_image", "edited_image"]
+    for (const key of imageKeys) {
+      const candidate = done[key]
+      const base64 = extractBase64(candidate)
+      if (base64) {
+        const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
+        writeFileSync(file, Buffer.from(base64, "base64"))
+        const sourceUrl = `file://${file}`
+        return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }], billed }
+      }
+    }
+    if (Array.isArray(done.images) && done.images.length) {
+      const base64 = extractBase64(done.images[0])
+      if (base64) {
+        const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
+        writeFileSync(file, Buffer.from(base64, "base64"))
+        const sourceUrl = `file://${file}`
+        return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }], billed }
+      }
+    }
+    // The pipeline's poll loop treats a thrown error as transient and
+    // retries it forever (nothing here would ever change): an unrecognized
+    // shape is not transient, so it must come back as `failed`, the same as
+    // every other unrecoverable poll outcome in this file.
+    return {
+      status: "failed",
+      error:
+        `Invalid PixelLab response for revision job ${jobId}: completed with no recognized image field ` +
+        `(got: ${Object.keys(done).join(", ") || "no keys"}); update pollRevision in src/providers/pixellab.ts with the real shape`,
     }
   }
 
@@ -958,6 +1117,20 @@ function tilesInIndexOrder(urls: Record<string, string>): Array<{ index: number;
 function firstUrl(urls: Record<string, string | null> | null | undefined): string | null {
   if (!urls) return null
   return Object.values(urls).find((u): u is string => typeof u === "string") ?? null
+}
+
+/**
+ * A base64 image payload in any shape seen elsewhere in this client: a bare
+ * string, `{base64}`, or a nested `{image: {base64}}`. See `pollRevision`.
+ */
+function extractBase64(value: unknown): string | null {
+  if (typeof value === "string" && value) return value
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>
+    if (typeof obj.base64 === "string" && obj.base64) return obj.base64
+    if (obj.image) return extractBase64(obj.image)
+  }
+  return null
 }
 
 /**

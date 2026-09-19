@@ -108,6 +108,13 @@ const TilesProSchema = z
     tile_rules: z.record(z.unknown()).nullable().optional(),
   })
   .passthrough()
+/** Shared by /inpaint-v3 and /edit-images-v2: both hand back a generic background job. */
+const RevisionJobSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+  })
+  .passthrough()
 const PixelLabObjectSchema = z
   .object({
     id: z.string().min(1),
@@ -772,6 +779,77 @@ export class PixelLabClient {
       offset += page.characters.length
       if (page.characters.length === 0 || offset >= page.total) return
     }
+  }
+
+  /**
+   * Masked inpaint, PixelLab's `/inpaint-v3` (the endpoint its own docs list
+   * first in the Inpaint section, its convention for "reach for this by
+   * default"). Unlike the rest of this client, this method's shape is taken
+   * from the OpenAPI spec, not exercised against a live account: the request
+   * side is exact (`InpaintV3Request`), but a completed job's `last_response`
+   * has no documented example for this endpoint (the spec's only worked
+   * example is a character job's shape). `pollRevision` in pixellab.ts reads
+   * it defensively and fails loudly on an unrecognized shape rather than
+   * guessing.
+   *
+   * `crop_to_mask` defaults true upstream (confirmed in the schema): PixelLab
+   * otherwise blends generated pixels outside the mask edge to "fit
+   * naturally," which is the opposite of what a mask boundary is for.
+   */
+  async inpaintV3(args: {
+    description: string
+    image: Base64Image
+    width: number
+    height: number
+    maskImage: Base64Image
+    noBackground?: boolean
+    cropToMask?: boolean
+    seed?: number
+  }): Promise<{ background_job_id: string; status: string }> {
+    const size = { width: args.width, height: args.height }
+    const body: Record<string, unknown> = {
+      description: args.description,
+      inpainting_image: { image: args.image, size },
+      mask_image: { image: args.maskImage, size },
+    }
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.cropToMask != null) body.crop_to_mask = args.cropToMask
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/inpaint-v3", { method: "POST", body: JSON.stringify(body) }),
+      "inpaint-v3",
+    )
+  }
+
+  /**
+   * Whole-image edit with no mask, PixelLab's `/edit-images-v2`. Same
+   * not-yet-live-verified caveat as `inpaintV3` above. `edit_images` takes an
+   * array (the endpoint supports editing several images with one
+   * instruction); pixelkiln's `revision` model is one parent per child, so
+   * this always sends exactly one.
+   */
+  async editImagesV2(args: {
+    description: string
+    image: Base64Image
+    width: number
+    height: number
+    noBackground?: boolean
+    seed?: number
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = {
+      method: "edit_with_text",
+      description: args.description,
+      edit_images: [{ image: args.image, width: args.width, height: args.height }],
+      image_size: { width: args.width, height: args.height },
+    }
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/edit-images-v2", { method: "POST", body: JSON.stringify(body) }),
+      "edit-images-v2",
+    )
   }
 
   async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null; usage?: PixelLabUsage | null }> {
