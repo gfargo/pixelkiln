@@ -234,13 +234,16 @@ export class PixelLabProvider implements Provider {
   estimate(spec: ResolvedSpec): CostEstimate {
     if (spec.revision) {
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
-      // like /generate-with-style-v2 and /generate-image-v2, and neither has
-      // a live-measured cost yet (client.ts). Reuse the same canvas-area
-      // tiering already measured for those Pro endpoints and for 1dir/tiles
-      // rather than guess a number: per generationCost's own contract,
-      // over-reading is the safe direction for a `--budget` gate. The image
-      // actually sent is the parent's own size, not the child's declared
-      // width/height, so size against that when it is known.
+      // like /generate-with-style-v2 and /generate-image-v2. A live 32x32
+      // inpaint-v3 call billed exactly the 20-generation floor this tiering
+      // predicts (docs/ENDPOINTS.md); the 25/40 tiers and edit-images-v2
+      // entirely are still unmeasured. Reuse the same canvas-area tiering
+      // already measured for those Pro endpoints and for 1dir/tiles rather
+      // than guess a number for what remains unconfirmed: per
+      // generationCost's own contract, over-reading is the safe direction
+      // for a `--budget` gate. The image actually sent is the parent's own
+      // size, not the child's declared width/height, so size against that
+      // when it is known.
       const width = spec.revision.sourceWidth ?? spec.width
       const height = spec.revision.sourceHeight ?? spec.height
       return { unit: "generations", amount: generationCost(width, height, "1dir"), candidates: 1 }
@@ -828,16 +831,15 @@ export class PixelLabProvider implements Provider {
   /**
    * `/inpaint-v3` and `/edit-images-v2` both hand back a plain background
    * job with no resource of its own, polled generically at
-   * `GET /background-jobs/{id}`. What a *completed* job's `last_response`
-   * actually contains is not documented for either endpoint: the OpenAPI
-   * spec's only worked example of that field is a character job's shape
-   * (`character_id`, `uploaded_directions`, ...), not an inpaint or edit
-   * job's. This reads every image shape seen elsewhere in this client
-   * (a nested `{image: {base64, format}}`, a bare `{base64, format}`, or a
-   * hosted URL under a handful of plausible keys) and fails loudly, naming
-   * the keys it actually got, rather than guess wrong silently. Fixing a
-   * real completed response into this list is a one-line change once one is
-   * seen live.
+   * `GET /background-jobs/{id}`. Confirmed live for a completed `inpaint-v3`
+   * job: `last_response.image` is `{type: "base64", base64, width, height}`,
+   * matched by the `imageKeys` branch below on the first real response ever
+   * seen (docs/ENDPOINTS.md, docs/REVISIONS.md). `edit-images-v2`'s
+   * completed shape is still unconfirmed — this reads every image shape
+   * seen elsewhere in this client (a nested `{image: {base64, format}}`, a
+   * bare `{base64, format}`, or a hosted URL under a handful of plausible
+   * keys) and fails loudly, naming the keys it actually got, rather than
+   * guess wrong silently, for whatever that turns out to need.
    */
   private async pollRevision(jobId: string): Promise<JobState> {
     const job = await this.client.getBackgroundJob(jobId)

@@ -320,6 +320,17 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
   carries `usage` once the job is gone, completed or not. `poll` reads the
   object/character for the result but would need this same job id, still
   polled separately today, to learn what it actually cost.
+- **`inpaint-v3` confirmed live at its floor size**: a 32×32 masked inpaint
+  (the minimum the endpoint accepts) billed exactly 20 generations, matching
+  a balance diff taken after. `last_response` is `{seed, type, image:
+  {type, base64, width, height}, action, progress, billing_usage,
+  generation_id, usage_cost_usd, billing_charged, generation_mode:
+  "inpainting_v3", quantized_image: {type, base64, width, height},
+  generation_started_at, original_image_n_colors, quantized_image_n_colors}`
+  — `image` is the edited result, `quantized_image` an automatically
+  color-reduced copy pixelkiln does not read. Only the floor tier (20) is
+  confirmed; the 25 and 40 tiers at larger canvases, and `edit-images-v2`
+  entirely, are not.
 
 ---
 
@@ -327,12 +338,11 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
 
 Listed so the gaps are known rather than assumed away:
 
-- `inpaint-v3` and `edit-images-v2` back the `revision` asset shape's
-  `inpaint` and `image-to-image` modes as of this writing (see
-  [Controlled asset revisions](./REVISIONS.md)), but the wiring is built from
-  the OpenAPI spec, not a live account: no job has actually been run, so cost
-  is a borrowed estimate and a completed job's exact response shape is
-  unconfirmed. The older `inpaint` and `edit-image` (non-v2/v3) endpoints are
+- `edit-images-v2` backs the `revision` asset shape's `image-to-image` mode
+  (see [Controlled asset revisions](./REVISIONS.md)) and remains completely
+  unmeasured — no job run, cost a borrowed estimate, response shape unknown.
+  `inpaint-v3` (the `inpaint` mode) is now confirmed at its floor size; see
+  above. The older `inpaint` and `edit-image` (non-v2/v3) endpoints are
   untouched by any of this. All four accept `color_image`, but given that
   `resize` accepts and ignores it, assume nothing until measured.
 - Everything else PixelLab's own tutorials demonstrate that this file has no

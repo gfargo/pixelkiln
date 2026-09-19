@@ -180,17 +180,25 @@ way as every other PixelLab submission.
   context. A revision over 512px on a side needs the same treatment — a
   separate, smaller revision asset targeting a sub-region — until this
   adapter does that automatically.
-- Cost is **not yet measured** against a live account, but PixelLab's own
-  tutorial reports its `/edit-images-v2`-class "Pro" edit tool costing
-  roughly 40 generations for a typical edit, which lines up with (and is the
-  only outside corroboration for) the top of the canvas-area tiers already
-  measured for `1dir` and `create-tiles-pro` (20/25/40 generations) that
-  pixelkiln borrows here rather than guess a number — the safe direction to
-  be wrong in, per `generationCost`'s own contract. Treat both as a
-  placeholder until a live job's `usage` is read.
-- A completed job's exact response shape is not documented for either
-  endpoint (the API's own worked example of that field is a character job's
-  shape, not an edit or inpaint job's). `pollRevision` in
+- `inpaint` cost is confirmed at the smallest size: a live 32×32 masked
+  inpaint (the minimum the endpoint accepts) billed **exactly 20
+  generations**, matching the canvas-area tier this adapter borrows from
+  `1dir`/`create-tiles-pro`. One data point at the floor tier is not a full
+  measurement — the 25 and 40 tiers at larger canvases are still
+  unconfirmed — but it is no longer a pure guess. `image-to-image`
+  (`/edit-images-v2`) remains **unmeasured**; PixelLab's own tutorial reports
+  its Pro edit tool at roughly 40 generations for a typical edit, consistent
+  with (not proof of) the same borrowed tiering at a larger canvas.
+- A completed `inpaint` job's response shape is now confirmed live:
+  `last_response.image` is `{type: "base64", width, height, base64}` — the
+  first shape `pollRevision` already checked, so it needed no change. The
+  same response also carries `billing_usage` (duplicating the top-level
+  `usage`, the same pattern already documented for map objects and character
+  bases below), `generation_mode: "inpainting_v3"`, a `seed`, and a
+  `quantized_image` in the identical `{type, width, height, base64}` shape —
+  an automatically color-reduced version of the result that pixelkiln does
+  not currently read or expose. `image-to-image`'s completed shape is still
+  unconfirmed. `pollRevision` in
   `src/providers/pixellab.ts` reads it defensively and fails the job with a
   named error rather than crash or guess wrong; if a live job's shape differs
   from what it checks, that function is a one-line fix.
