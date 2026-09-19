@@ -1,3 +1,10 @@
+# [0.49.0](https://github.com/gfargo/pixelkiln/compare/v0.48.0...v0.49.0) (2026-09-19)
+
+
+### Features
+
+* **pixellab:** wire masked inpainting and whole-image editing into revision support ([#166](https://github.com/gfargo/pixelkiln/issues/166)) ([17b2ecc](https://github.com/gfargo/pixelkiln/commit/17b2ecc26de87485b75672a62ade6d4141c21fcb))
+
 # [0.48.0](https://github.com/gfargo/pixelkiln/compare/v0.47.1...v0.48.0) (2026-09-17)
 
 
