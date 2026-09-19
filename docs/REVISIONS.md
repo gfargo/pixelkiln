@@ -180,28 +180,34 @@ way as every other PixelLab submission.
   context. A revision over 512px on a side needs the same treatment — a
   separate, smaller revision asset targeting a sub-region — until this
   adapter does that automatically.
-- `inpaint` cost is confirmed at the smallest size: a live 32×32 masked
-  inpaint (the minimum the endpoint accepts) billed **exactly 20
+- Both endpoints are confirmed at the smallest size: a live 32×32 masked
+  `inpaint` and a live 32×32 `image-to-image` edit each billed **exactly 20
   generations**, matching the canvas-area tier this adapter borrows from
-  `1dir`/`create-tiles-pro`. One data point at the floor tier is not a full
+  `1dir`/`create-tiles-pro`. Two data points at the floor tier are not a full
   measurement — the 25 and 40 tiers at larger canvases are still
-  unconfirmed — but it is no longer a pure guess. `image-to-image`
-  (`/edit-images-v2`) remains **unmeasured**; PixelLab's own tutorial reports
-  its Pro edit tool at roughly 40 generations for a typical edit, consistent
-  with (not proof of) the same borrowed tiering at a larger canvas.
-- A completed `inpaint` job's response shape is now confirmed live:
-  `last_response.image` is `{type: "base64", width, height, base64}` — the
-  first shape `pollRevision` already checked, so it needed no change. The
-  same response also carries `billing_usage` (duplicating the top-level
-  `usage`, the same pattern already documented for map objects and character
-  bases below), `generation_mode: "inpainting_v3"`, a `seed`, and a
-  `quantized_image` in the identical `{type, width, height, base64}` shape —
-  an automatically color-reduced version of the result that pixelkiln does
-  not currently read or expose. `image-to-image`'s completed shape is still
-  unconfirmed. `pollRevision` in
-  `src/providers/pixellab.ts` reads it defensively and fails the job with a
-  named error rather than crash or guess wrong; if a live job's shape differs
-  from what it checks, that function is a one-line fix.
+  unconfirmed on either endpoint — but neither is a pure guess anymore.
+  PixelLab's own tutorial separately reports its Pro edit tool at roughly 40
+  generations for a typical (larger) edit, consistent with the same borrowed
+  tiering scaling up.
+- A completed job's response shape is confirmed live for both, and **the two
+  do not match**: `inpaint-v3`'s `last_response.image` is a single object,
+  `{type: "base64", width, height, base64}`; `edit-images-v2`'s is
+  `last_response.images`, an *array* of that same object shape (`edit_images`
+  in the request is also an array — the endpoint supports editing several
+  images with one instruction, and the response shape mirrors that even
+  though pixelkiln always sends and expects exactly one). `pollRevision`
+  checks the singular `image` key first and only then falls back to an
+  `images` array, so both were matched correctly without any code change on
+  either live run. Both responses also carry `billing_usage` (duplicating
+  the top-level `usage`, the same pattern already documented for map objects
+  and character bases below), a `seed`, `generation_mode` (`"inpainting_v3"`
+  vs. `"edit_images"`), and an automatically color-reduced copy of the result
+  pixelkiln does not read (`quantized_image` singular for inpaint,
+  `quantized_images` plural for edit — the same singular/plural split as the
+  main result). `pollRevision` in
+  `src/providers/pixellab.ts` reads all of this defensively and fails the job
+  with a named error rather than crash or guess wrong, for whatever shape
+  still isn't covered.
 
 ## Provenance and invalidation
 
