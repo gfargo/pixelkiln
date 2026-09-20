@@ -337,11 +337,17 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
   quantized one an automatically color-reduced copy pixelkiln does not read.
   `inpaint-v3` is now also confirmed at the opposite end: a live 512×512
   masked inpaint (the maximum the endpoint accepts) billed exactly 40
-  generations, the top of the same tier, response shape identical in
-  structure to the 32×32 case. Floor and ceiling both landing exactly on the
-  20/25/40 model this adapter already used for `1dir`/`create-tiles-pro` is
-  real confidence in that tiering for `inpaint`. The middle tier (25) and
-  `edit-images-v2` at anything above its own floor remain unconfirmed.
+  generations, response shape identical in structure to the 32×32 case.
+  **But a third point disproves the borrowed tiering's middle boundary**: a
+  live 40×40 inpaint (1600px², squarely inside the 1024–2048px² band the
+  `1dir`/`create-tiles-pro` model prices at 25) billed **20**, the floor
+  tier again, not 25. Three points now read 1024px²→20, 1600px²→20,
+  262144px²→40: the real breakpoint between `inpaint-v3`'s 20- and
+  40-generation tiers sits somewhere above 1600px², not at 2048px². The `25`
+  value pixelkiln's `generationCost` returns in that band is a safe
+  overestimate (never billed less than predicted, in every point measured
+  so far) but a confirmed *inexact* one, not a measurement. `edit-images-v2`
+  beyond its own 32×32 floor remains completely unmeasured.
 
 ---
 
@@ -352,9 +358,11 @@ Listed so the gaps are known rather than assumed away:
 - `edit-images-v2` and `inpaint-v3` (the `revision` asset shape's
   `image-to-image` and `inpaint` modes; see
   [Controlled asset revisions](./REVISIONS.md)) are confirmed at their floor
-  size; `inpaint-v3` is confirmed at its ceiling size too (see above). The
-  middle 25-generation tier is unconfirmed on both, and `edit-images-v2`'s
-  ceiling is unconfirmed. The older `inpaint` and `edit-image` (non-v2/v3)
+  size; `inpaint-v3` is confirmed at its ceiling size too, and disproved the
+  borrowed tiering's middle boundary in the process (see above). Exactly
+  where `inpaint-v3`'s real 20→40 breakpoint sits is unconfirmed, and
+  `edit-images-v2` beyond its own floor is unmeasured entirely. The older
+  `inpaint` and `edit-image` (non-v2/v3)
   endpoints are untouched by any of this. All four accept
   `color_image`, but given that
   `resize` accepts and ignores it, assume nothing until measured.
