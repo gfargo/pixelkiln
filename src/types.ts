@@ -1389,6 +1389,14 @@ export interface ResolvedSpec {
   /** `tiles` generator only. See StyleSchema for what each one means. */
   tileSize?: number
   tileHeight?: number
+  /**
+   * `tiles` generator: author-set, from the style. `terrain` generator: always
+   * `"square_topdown"`, set internally (not an author-facing field on
+   * `terrain`) so exporters read the real tile shape instead of falling back
+   * to `tiles`' own "isometric" default, which does not apply to terrain's
+   * `/create-tileset` output (a rectangular vertex grid regardless of
+   * `terrainView`'s camera angle).
+   */
   tileType?: string
   tileView?: string
   tileViewAngle?: number

@@ -172,14 +172,27 @@ shape dependency.
 The texture path is relative to the `.tres`, so the generated PNG and resource
 can move together inside a Godot project.
 
+**`terrain`-generator tiles are always square, never isometric.**
+`/create-tileset` places tiles on a rectangular vertex grid (its own docs: "a
+map of W×H cells has (W+1)×(H+1) vertices" — standard square Wang-tiling
+math, with no shape parameter at all, unlike `create-tiles-pro`'s `tile_type`
+enum), and its raw output is fully opaque with no diamond alpha mask,
+confirmed against a downstream consumer's real generated tiles. `terrain`'s
+resolved spec always carries `tileType: "square_topdown"` for exactly this
+reason, so the exporter never falls back to `tiles`' own "isometric" default
+(the real API default for that generator, not terrain's) for a terrain
+asset. The isometric corner-name mapping above is real and does apply — to
+an isometric `tiles`-generator tileset (`tileFeature: "tileset"` with
+`tileType: "isometric"`), not to `terrain`.
+
 Both this `TileSet` and the `SpriteFrames` that `pack --format godot` writes
 are loaded by a headless Godot 4.7.2 in CI (`npm run test:godot`), which
 reports the atlas tiles, terrain sets and names, animation names, frame
-counts, speeds, and loop flags it sees, and — for both a square and an
-isometric terrain set — round-trips an actual peering bit through Godot's
-own `get_terrain_peering_bit()` rather than only checking tile/terrain-set
-counts. That last check is what would have caught this bug; the counts alone
-did not.
+counts, speeds, and loop flags it sees, and — for both a square terrain
+tileset and an isometric `tiles` tileset — round-trips an actual peering bit
+through Godot's own `get_terrain_peering_bit()` rather than only checking
+tile/terrain-set counts. That last check is what would have caught the
+isometric-corner-names bug; the counts alone did not.
 
 ## Deliberate limits
 

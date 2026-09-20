@@ -89,7 +89,10 @@ describe("export CLI command", () => {
     ]))
     const document = await readFile(`${out}.tres`, "utf8")
     expect(document).toMatch(/terrain_set_0\/mode = 1/)
-    // Isometric (the default tile shape): diamond-point corner names, not square ones.
-    expect(document).toMatch(/terrains_peering_bit\/bottom_corner = 0/)
+    // /create-tileset places tiles on a rectangular vertex grid (a standard
+    // square Wang tileset), not an isometric diamond: square corner names,
+    // and no tile_shape override (Godot's own default is already square).
+    expect(document).toMatch(/terrains_peering_bit\/bottom_right_corner = 0/)
+    expect(document).not.toMatch(/tile_shape = 1/)
   })
 })

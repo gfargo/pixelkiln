@@ -109,12 +109,15 @@ const terrainTileset = exportTileset(
 await writeFile(path.join(dir, "terrain2-tileset.png"), terrainTileset.png)
 await writeFile(path.join(dir, "terrain2-tileset.tres"), terrainTileset.document)
 
-// The same corner set again, but isometric (the terrain generator's actual
-// default tile shape). Godot's terrain peering-bit property names for a
-// diamond tile are NOT the square names above — see godotTerrainBits() in
-// tileset-export.ts — so this exercises that branch and, below, actually
-// round-trips a peering bit through Godot's own get_terrain_peering_bit()
-// rather than only checking tile/terrain-set counts.
+// The same corner set again, but isometric — `tiles`' own real API default
+// for `tileType`, not terrain's (`/create-tileset` always places tiles on a
+// rectangular vertex grid; terrain's resolved spec always carries
+// tileType: "square_topdown", never isometric — see manifest.ts). Godot's
+// terrain peering-bit property names for a diamond tile are NOT the square
+// names above — see godotTerrainBits() in tileset-export.ts — so this
+// exercises that branch for a `tiles`-shaped isometric corner set and, below,
+// actually round-trips a peering bit through Godot's own
+// get_terrain_peering_bit() rather than only checking tile/terrain-set counts.
 const isoTiles: LockEntry["outputs"] = []
 for (const [index, tile] of terrainCorners.entries()) {
   const file = path.join(dir, `terrain3-${tile.role}.png`)
@@ -125,10 +128,10 @@ const isoTileset = exportTileset(
   {
     outputs: isoTiles,
     provider: "pixellab",
-    generator: "terrain",
-    providerMetadata: { pixellab: { terrainTypes: ["grass", "water"], terrainTiles: terrainCorners } },
+    generator: "tiles",
+    providerMetadata: { pixellab: { tileKind: "tileset", tileRules: rules } },
   } as LockEntry,
-  { root: dir, styleId: "ground", assetId: "terrain3", generator: "terrain", outFile: path.join(dir, "terrain3.png"), tileType: "isometric" } as ResolvedSpec,
+  { root: dir, styleId: "ground", assetId: "terrain3", generator: "tiles", outFile: path.join(dir, "terrain3.png"), tileType: "isometric" } as ResolvedSpec,
   { format: "godot", manifestDir: dir, imageName: "terrain3-tileset.png", columns: 2 },
 )
 await writeFile(path.join(dir, "terrain3-tileset.png"), isoTileset.png)
@@ -204,6 +207,7 @@ func _init() -> void:
 			"terrains": terrain2_count,
 			"terrain_names": terrain2_names,
 			"peering_bit": terrain_source.get_tile_data(Vector2i(1, 0), 0).get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER) if terrain_source != null else -1,
+			"tile_shape": terrain_tileset.tile_shape,
 		}
 	var iso_tileset := load("res://terrain3-tileset.tres") as TileSet
 	if iso_tileset == null:
@@ -254,9 +258,10 @@ try {
   check(report.terrain_tileset?.terrain_sets === 1 && report.terrain_tileset?.terrains === 2, `terrain generator tileset has one terrain set with two terrains (${report.terrain_tileset?.terrain_sets}, ${report.terrain_tileset?.terrains})`)
   check(JSON.stringify(report.terrain_tileset?.terrain_names) === JSON.stringify(["grass", "water"]), `terrain generator terrains are named from corners/terrainTypes (${JSON.stringify(report.terrain_tileset?.terrain_names)})`)
   check(report.terrain_tileset?.peering_bit === 0, `terrain generator's corner metadata reaches the tile's terrain peering bit (${report.terrain_tileset?.peering_bit})`)
-  check(report.iso_tileset?.tile_shape === 1, `isometric terrain TileSet has tile_shape 1 (${report.iso_tileset?.tile_shape})`)
-  check(report.iso_tileset?.bottom_corner === 0, `isometric terrain's diamond-point peering bit round-trips through Godot (${report.iso_tileset?.bottom_corner})`)
-  check(report.iso_tileset?.square_bottom_right_corner_is_invalid === true, "isometric terrain does not also carry the square corner name Godot would reject")
+  check(report.terrain_tileset?.tile_shape === 0, `terrain generator's TileSet stays square, not isometric (${report.terrain_tileset?.tile_shape})`)
+  check(report.iso_tileset?.tile_shape === 1, `an isometric tiles-generator TileSet has tile_shape 1 (${report.iso_tileset?.tile_shape})`)
+  check(report.iso_tileset?.bottom_corner === 0, `isometric tileset's diamond-point peering bit round-trips through Godot (${report.iso_tileset?.bottom_corner})`)
+  check(report.iso_tileset?.square_bottom_right_corner_is_invalid === true, "isometric tileset does not also carry the square corner name Godot would reject")
 } finally {
   await rm(dir, { recursive: true, force: true })
 }
