@@ -239,10 +239,13 @@ export class PixelLabProvider implements Provider {
       // billed 20) and ceiling (512x512, billed 40) exactly, but disprove
       // its middle boundary: 40x40 (1600px²), 128x128 (16384px²), and
       // 256x256 (65536px²) all billed 20, not the 25 this tiering predicts
-      // for that whole band. The real 20->40 breakpoint for inpaint-v3 has
-      // been bisected to somewhere in (65536px², 262144px²], not at 2048px²
+      // for that whole band, while 384x384 (147456px²) already billed 40.
+      // The real 20->40 breakpoint for inpaint-v3 has been bisected to
+      // somewhere in (65536px², 147456px²], not at 2048px²
       // (docs/ENDPOINTS.md). The `25` this still returns below the real
-      // breakpoint is a confirmed-safe overestimate, not a measurement.
+      // breakpoint is a confirmed-safe overestimate, not a measurement;
+      // every size at or above 2048px² already falls into generationCost's
+      // own `else` branch (types.ts) and correctly returns 40 regardless.
       // edit-images-v2 above its own 32x32 floor is unmeasured entirely.
       // Reuse the same canvas-area tiering already measured for those Pro
       // endpoints and for 1dir/tiles rather than guess a number for what
