@@ -20,11 +20,13 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   Both are confirmed live at their floor size (20 generations each, response
   shape matched on the first try for both — though the two shapes differ,
   singular for one and array-wrapped for the other). `inpaint` is further
-  confirmed at its ceiling size too (512×512, exactly 40 generations), so
-  its floor and ceiling both land exactly on the borrowed 20/25/40 tiering.
-  The middle 25-generation tier, and `image-to-image` above its own floor,
-  remain unmeasured — see that doc's PixelLab section before relying on
-  them.
+  confirmed at its ceiling size too (512×512, exactly 40 generations) —
+  but a third `inpaint` point, 40×40 (1600px²), disproved the borrowed
+  20/25/40 tiering's middle boundary: it billed 20, not the 25 that tiering
+  predicts for that size. `inpaint`'s real 20→40 breakpoint sits somewhere
+  above 1600px², not at 2048px². `image-to-image` above its own floor
+  remains completely unmeasured — see that doc's PixelLab section before
+  relying on either endpoint's cost outside what's stated here.
 - **`tiles` generator parameters** (`tileType`, `tileSize`, `tileView`,
   `tileFeature` including a building-kit construction set, `outlineMode`) —
   already implemented in code, was simply undocumented in

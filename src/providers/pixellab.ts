@@ -234,14 +234,18 @@ export class PixelLabProvider implements Provider {
   estimate(spec: ResolvedSpec): CostEstimate {
     if (spec.revision) {
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
-      // like /generate-with-style-v2 and /generate-image-v2. Live calls
-      // confirm the tiering for inpaint-v3 at both ends: 32x32 billed
-      // exactly the 20-generation floor and 512x512 (its maximum) billed
-      // exactly the 40-generation ceiling (docs/ENDPOINTS.md). The middle
-      // 25-generation tier, and edit-images-v2 above its own 32x32 floor,
-      // are still unmeasured. Reuse the same canvas-area tiering already
-      // measured for those Pro endpoints and for 1dir/tiles rather than
-      // guess a number for what remains unconfirmed: per
+      // like /generate-with-style-v2 and /generate-image-v2. Live calls to
+      // inpaint-v3 confirm this borrowed tiering's floor (32x32, 1024px²,
+      // billed 20) and ceiling (512x512, billed 40) exactly, but disprove
+      // its middle boundary: 40x40 (1600px², inside the 1024-2048px² band
+      // this tiering prices at 25) also billed 20, not 25. The real 20->40
+      // breakpoint for inpaint-v3 sits somewhere above 1600px², not at
+      // 2048px² (docs/ENDPOINTS.md). The `25` this still returns in that
+      // band is a confirmed-safe overestimate, not a measurement.
+      // edit-images-v2 above its own 32x32 floor is unmeasured entirely.
+      // Reuse the same canvas-area tiering already measured for those Pro
+      // endpoints and for 1dir/tiles rather than guess a number for what
+      // remains unconfirmed: per
       // generationCost's own contract, over-reading is the safe direction
       // for a `--budget` gate. The image actually sent is the parent's own
       // size, not the child's declared width/height, so size against that
