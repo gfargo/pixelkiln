@@ -759,6 +759,7 @@ export default function Home() {
               <div className="generator-row"><strong>1dir</strong><span>References and candidate variety</span><span><i style={{ width: "72%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>terrain</strong><span>Two-terrain elevation tilesets</span><span><i style={{ width: "100%" }} /> 20–40 gen (unmeasured)</span></div>
+              <div className="generator-row"><strong>isometricTile</strong><span>A single elevation tile — a mesa, a cliff block</span><span>$0.02 (unmeasured)</span></div>
               <div className="generator-row"><strong>character</strong><span>A base in 8 directions, its poses, its loops</span><span><i style={{ width: "17.5%" }} /> 1–7 gen per base, 1 per loop, mirrors free</span></div>
               <div className="generator-row"><strong>animation</strong><span>Retro Diffusion GIFs and sprite sheets</span><span>USD quote</span></div>
               <div className="generator-row"><strong>frames</strong><span>Controlled ComfyUI still sequences</span><span>0 provider units</span></div>

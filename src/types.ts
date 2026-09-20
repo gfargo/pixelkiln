@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -168,6 +168,21 @@ export function tilesCost(tileSize: number, variations: number): number {
   if (px <= 1024) return 20
   if (px <= 2048) return 25
   return 40
+}
+
+/**
+ * Cost of one `/create-isometric-tile` call, in USD. Unlike every other
+ * PixelLab generator here, this endpoint reports (and, per its OpenAPI
+ * response examples, appears to bill) in real dollars rather than
+ * subscription generations — its `Usage` schema's own example is
+ * `{ type: "usd", usd: 0.02 }`. This constant is that example value, not a
+ * measurement against a live account: PixelLab does not document a pricing
+ * formula for this endpoint, and there is no evidence it varies by canvas
+ * size or tile size the way `tiles`/`terrain` do. Treat `plan`'s estimate
+ * for `isometricTile` accordingly until it is checked against real billing.
+ */
+export function isometricTileCost(): number {
+  return 0.02
 }
 
 /**
@@ -687,6 +702,20 @@ const StyleObjectSchema = z
     /** `terrain` generator only. Camera angle; the API default is `high
      *  top-down`. */
     terrainView: z.enum(["low top-down", "high top-down"]).optional(),
+    /**
+     * `isometricTile` generator only. `/create-isometric-tile`'s own tile
+     * grid size, distinct from `size` (the generation canvas, 16-64px — the
+     * API's own guidance is that sizes above 24px "often produce better
+     * quality results"). The API default is 16.
+     */
+    isometricTileSize: z.union([z.literal(16), z.literal(32)]).optional(),
+    /**
+     * `isometricTile` generator only. Vertical thickness, i.e. how much
+     * height/elevation variation the tile can represent on a map: `"thin
+     * tile"` (~15% of canvas height), `"thick tile"` (~25%), or `"block"`
+     * (~50%, the API default).
+     */
+    isometricTileShape: z.enum(["thin tile", "thick tile", "block"]).optional(),
     /**
      * `pixflux` only. Whether to strip the generated background.
      *
@@ -1423,4 +1452,7 @@ export interface ResolvedSpec {
   terrainRaggedness?: number
   terrainTransitionSize?: number
   terrainView?: string
+  /** `isometricTile` generator only. See StyleSchema for what each one means. */
+  isometricTileSize?: number
+  isometricTileShape?: string
 }

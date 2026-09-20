@@ -113,7 +113,7 @@ One asset using the fields most projects reach for:
 |---|---|---|
 | `extends` | style id | Optional parent style. The child inherits resolved settings but must declare its own `outDir`. |
 | `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
-| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `character`, or provider-specific `animation`/`frames`. |
+| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |

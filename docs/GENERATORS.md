@@ -201,6 +201,41 @@ bot.dented, east"), links parent and children in the record, and counts the
 family in the style header ("3 characters, 4 states, 6 loops"). See
 [Characters](./CHARACTERS.md).
 
+## `isometricTile`
+
+`isometricTile` wraps PixelLab's `/create-isometric-tile` — a different
+endpoint from both `tiles` (which also has its own `isometric` `tileType`
+for full connectable Wang/road/building sets) and `terrain` (`/create-tileset`,
+confirmed square-only, no isometric option at all). This one generates a
+single standalone isometric tile, no candidates, no connectable set.
+
+Use it when a per-tile height/elevation primitive is what's needed — a raised
+mesa, a cliff block, a standalone rock outcrop — rather than a connected
+ground set.
+
+- `isometricTileShape` controls vertical thickness: `"thin tile"` (~15% of
+  canvas height), `"thick tile"` (~25%), or `"block"` (~50%, the API
+  default). This is a more direct elevation control than anything in `tiles`
+  or `terrain`.
+- `isometricTileSize` is the API's own tile grid size, 16 or 32 (default 16)
+  — a separate concept from `size`, the generation canvas (16–64px; the
+  endpoint's own guidance is that sizes above 24px "often produce better
+  quality results").
+- `outline` defaults to `"lineless"` on this endpoint specifically, unlike
+  `tiles-pro`'s `"outline"` default — its own valid values are `"single
+  color outline"`, `"selective outline"`, or `"lineless"`.
+
+**Cost is unmeasured against a live account.** PixelLab's own OpenAPI
+response schema gives `{ type: "usd", usd: 0.02 }` as an example, billed in
+real dollars rather than subscription generations (`costUnit: "usd"`,
+unlike every other generator here) — not confirmed against a real charge, and
+there is no documented pricing formula or evidence it varies by size.
+
+Style images, `init_image`/`init_image_strength` (image-to-image), and
+`color_image` (native forced-palette) are not modeled yet — PixelKiln's own
+`palette`/`enforcePalette` post-processing works generically on the
+downloaded tile regardless, if a closed palette is what's actually needed.
+
 ## Style variants
 
 Styles are namespaces. Add another style to re-derive the same asset ids into a
