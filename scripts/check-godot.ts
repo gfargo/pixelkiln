@@ -81,6 +81,34 @@ const tileset = exportTileset(
 await writeFile(path.join(dir, "terrain-tileset.png"), tileset.png)
 await writeFile(path.join(dir, "terrain-tileset.tres"), tileset.document)
 
+// The `terrain` generator's own tileset shape: per-tile `corners` rather than
+// a `tileRules` bitmask map. Corners chosen to reproduce the same 0/1/8/15
+// masks as the fixture above, so it should load with the same terrain shape.
+const terrainCorners = [
+  { role: "tile-00-water", corners: { NW: "water", NE: "water", SW: "water", SE: "water" } },
+  { role: "tile-01-se", corners: { NW: "water", NE: "water", SW: "water", SE: "grass" } },
+  { role: "tile-02-nw", corners: { NW: "grass", NE: "water", SW: "water", SE: "water" } },
+  { role: "tile-03-grass", corners: { NW: "grass", NE: "grass", SW: "grass", SE: "grass" } },
+]
+const terrainTiles: LockEntry["outputs"] = []
+for (const [index, tile] of terrainCorners.entries()) {
+  const file = path.join(dir, `terrain2-${tile.role}.png`)
+  await writeFile(file, px(8, 60 + index * 30))
+  terrainTiles.push({ path: file, sha256: String(index), role: tile.role })
+}
+const terrainTileset = exportTileset(
+  {
+    outputs: terrainTiles,
+    provider: "pixellab",
+    generator: "terrain",
+    providerMetadata: { pixellab: { terrainTypes: ["grass", "water"], terrainTiles: terrainCorners } },
+  } as LockEntry,
+  { root: dir, styleId: "ground", assetId: "terrain2", generator: "terrain", outFile: path.join(dir, "terrain2.png"), tileType: "square_topdown" } as ResolvedSpec,
+  { format: "godot", manifestDir: dir, imageName: "terrain2-tileset.png", columns: 2 },
+)
+await writeFile(path.join(dir, "terrain2-tileset.png"), terrainTileset.png)
+await writeFile(path.join(dir, "terrain2-tileset.tres"), terrainTileset.document)
+
 await writeFile(path.join(dir, "project.godot"), `; Engine configuration file.
 config_version=5
 
@@ -130,6 +158,28 @@ func _init() -> void:
 			"terrains": terrains,
 			"terrain_names": terrain_names,
 		}
+	var terrain_tileset := load("res://terrain2-tileset.tres") as TileSet
+	if terrain_tileset == null:
+		report["terrain_tileset"] = "failed to load"
+	else:
+		var terrain_source := terrain_tileset.get_source(terrain_tileset.get_source_id(0)) as TileSetAtlasSource
+		var terrain2_names: Array = []
+		var terrain2_count := 0
+		if terrain_tileset.get_terrain_sets_count() > 0:
+			terrain2_count = terrain_tileset.get_terrains_count(0)
+			for i in range(terrain2_count):
+				terrain2_names.append(terrain_tileset.get_terrain_name(0, i))
+		# Atlas coord (1, 0) is generic tile id 1 ("tile-01-se": SE=grass, the
+		# rest water), which the exporter should have given peering bit 0 (the
+		# first-listed terrain, "grass") on its bottom-right corner.
+		report["terrain_tileset"] = {
+			"sources": terrain_tileset.get_source_count(),
+			"tiles": terrain_source.get_tiles_count() if terrain_source != null else -1,
+			"terrain_sets": terrain_tileset.get_terrain_sets_count(),
+			"terrains": terrain2_count,
+			"terrain_names": terrain2_names,
+			"peering_bit": terrain_source.get_tile_data(Vector2i(1, 0), 0).get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER) if terrain_source != null else -1,
+		}
 	print("PIXELKILN_REPORT " + JSON.stringify(report))
 	quit(0)
 `)
@@ -159,6 +209,11 @@ try {
   check(JSON.stringify(report.tileset?.tile_size) === "[8,8]", `tile size is 8px (${JSON.stringify(report.tileset?.tile_size)})`)
   check(report.tileset?.terrain_sets === 1 && report.tileset?.terrains === 2, `one terrain set with two terrains (${report.tileset?.terrain_sets}, ${report.tileset?.terrains})`)
   check(JSON.stringify(report.tileset?.terrain_names) === JSON.stringify(["grass", "water"]), `terrains are named from the rules (${JSON.stringify(report.tileset?.terrain_names)})`)
+  check(typeof report.terrain_tileset === "object", "terrain generator's TileSet loads")
+  check(report.terrain_tileset?.sources === 1 && report.terrain_tileset?.tiles === 4, `terrain generator tileset has one atlas source with 4 tiles (${report.terrain_tileset?.sources}, ${report.terrain_tileset?.tiles})`)
+  check(report.terrain_tileset?.terrain_sets === 1 && report.terrain_tileset?.terrains === 2, `terrain generator tileset has one terrain set with two terrains (${report.terrain_tileset?.terrain_sets}, ${report.terrain_tileset?.terrains})`)
+  check(JSON.stringify(report.terrain_tileset?.terrain_names) === JSON.stringify(["grass", "water"]), `terrain generator terrains are named from corners/terrainTypes (${JSON.stringify(report.terrain_tileset?.terrain_names)})`)
+  check(report.terrain_tileset?.peering_bit === 0, `terrain generator's corner metadata reaches the tile's terrain peering bit (${report.terrain_tileset?.peering_bit})`)
 } finally {
   await rm(dir, { recursive: true, force: true })
 }
