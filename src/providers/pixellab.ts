@@ -237,10 +237,10 @@ export class PixelLabProvider implements Provider {
       // like /generate-with-style-v2 and /generate-image-v2. Live calls to
       // inpaint-v3 confirm this borrowed tiering's floor (32x32, 1024px²,
       // billed 20) and ceiling (512x512, billed 40) exactly, but disprove
-      // its middle boundary: both 40x40 (1600px²) and 128x128 (16384px²,
-      // 16x further up) also billed 20, not the 25 this tiering predicts
+      // its middle boundary: 40x40 (1600px²), 128x128 (16384px²), and
+      // 256x256 (65536px²) all billed 20, not the 25 this tiering predicts
       // for that whole band. The real 20->40 breakpoint for inpaint-v3 has
-      // been bisected to somewhere in (16384px², 262144px²], not at 2048px²
+      // been bisected to somewhere in (65536px², 262144px²], not at 2048px²
       // (docs/ENDPOINTS.md). The `25` this still returns below the real
       // breakpoint is a confirmed-safe overestimate, not a measurement.
       // edit-images-v2 above its own 32x32 floor is unmeasured entirely.
