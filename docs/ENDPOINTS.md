@@ -338,22 +338,24 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
   `inpaint-v3` is now also confirmed at the opposite end: a live 512×512
   masked inpaint (the maximum the endpoint accepts) billed exactly 40
   generations, response shape identical in structure to the 32×32 case.
-  **Five more points, bisecting upward, disprove the borrowed tiering's
-  breakpoints entirely and reveal `inpaint-v3`'s real 20/25/40 structure**:
-  40×40 (1600px²), 128×128 (16384px²), and 256×256 (65536px²) all billed
-  **20** (the borrowed model predicts 25 for 1600px²); 320×320 (102400px²)
-  billed **25** — the middle tier is real, just starting far higher than
-  the borrowed model's 1024px²; 384×384 (147456px²) billed **40**. Seven
-  points now read 1024px²→20, 1600px²→20, 16384px²→20, 65536px²→20,
-  102400px²→25, 147456px²→40, 262144px²→40. Two breakpoints remain to
-  narrow: 20→25 sits somewhere in (65536px², 102400px²], and 25→40
-  somewhere in (102400px², 147456px²]. Every point at or above 2048px²
-  falls into `generationCost`'s `else` branch and returns 40 regardless:
-  correct for 384×384 and 512×512, but a full-tier overestimate for
-  320×320 (predicts 40, actually 25) — still safe (never bills more than
-  predicted), just a larger miss than the earlier single-tier gap.
-  `edit-images-v2` beyond its own 32×32 floor remains completely
-  unmeasured.
+  **Seven more points, bisecting from both sides, disprove the borrowed
+  tiering's breakpoints entirely and tightly bracket `inpaint-v3`'s real
+  20/25/40 structure**: 40×40 (1600px²), 128×128 (16384px²), and 256×256
+  (65536px²) all billed **20** (the borrowed model predicts 25 for
+  1600px²); 288×288 (82944px²) and 320×320 (102400px²) both billed **25**
+  — the middle tier is real, just starting far higher than the borrowed
+  model's 1024px²; 352×352 (123904px²) and 384×384 (147456px²) both billed
+  **40**. Nine points now read 1024px²→20, 1600px²→20, 16384px²→20,
+  65536px²→20, 82944px²→25, 102400px²→25, 123904px²→40, 147456px²→40,
+  262144px²→40. Both breakpoints are now tightly bracketed: 20→25 sits
+  somewhere in (65536px², 82944px²] — a 1.27x range — and 25→40 somewhere
+  in (102400px², 123904px²] — a 1.21x range. Every point at or above
+  2048px² falls into `generationCost`'s `else` branch and returns 40
+  regardless: correct for 352×352, 384×384, and 512×512, but a full-tier
+  overestimate for 288×288 and 320×320 (predicts 40, actually 25) — still
+  safe (never bills more than predicted), just a larger miss than the
+  earlier single-tier gap. `edit-images-v2` beyond its own 32×32 floor
+  remains completely unmeasured.
 
 ---
 
@@ -366,9 +368,11 @@ Listed so the gaps are known rather than assumed away:
   [Controlled asset revisions](./REVISIONS.md)) are confirmed at their floor
   and ceiling sizes; `inpaint-v3` is further confirmed to have a real
   middle (25-generation) tier, just far above where the borrowed tiering
-  places it (see above). Two breakpoints remain to narrow — 20→25 in
-  (65536px², 102400px²] and 25→40 in (102400px², 147456px²] — and
-  `edit-images-v2` beyond its own floor is unmeasured entirely. The older
+  places it, and bisection has tightly bracketed both real breakpoints
+  (see above): 20→25 in (65536px², 82944px²] and 25→40 in
+  (102400px², 123904px²]. Exactly where in either range is still
+  unconfirmed, and `edit-images-v2` beyond its own floor is unmeasured
+  entirely. The older
   `inpaint` and `edit-image` (non-v2/v3)
   endpoints are untouched by any of this. All four accept
   `color_image`, but given that

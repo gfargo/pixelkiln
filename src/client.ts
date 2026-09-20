@@ -784,16 +784,17 @@ export class PixelLabClient {
   /**
    * Masked inpaint, PixelLab's `/inpaint-v3` (the endpoint its own docs list
    * first in the Inpaint section, its convention for "reach for this by
-   * default"). Exercised live at seven sizes, all returning `last_response.
+   * default"). Exercised live at nine sizes, all returning `last_response.
    * image` as a single `{type, base64, width, height}` (the first shape
    * `pollRevision` in pixellab.ts checks, so no change was ever needed):
    * 32x32 (1024px², billed 20, this adapter's tiering floor) through
    * 256x256 (65536px²) all billed 20 (the tiering wrongly predicts 25 from
-   * 1024px² up, see estimate() in pixellab.ts); 320x320 (102400px²) billed
-   * 25 — the middle tier is real, just starting far higher than this
-   * tiering assumes; 384x384 (147456px²) and 512x512 (262144px², the
-   * tiering ceiling) both billed 40. Two breakpoints remain unlocated:
-   * 20->25 in (65536px², 102400px²], 25->40 in (102400px², 147456px²].
+   * 1024px² up, see estimate() in pixellab.ts); 288x288 (82944px²) and
+   * 320x320 (102400px²) billed 25 — the middle tier is real, just starting
+   * far higher than this tiering assumes; 352x352 (123904px²), 384x384
+   * (147456px²), and 512x512 (262144px², the tiering ceiling) all billed
+   * 40. Both breakpoints are now tightly bracketed: 20->25 in
+   * (65536px², 82944px²], 25->40 in (102400px², 123904px²].
    * `editImagesV2` below returns the same fields under `images`, plural
    * and array-wrapped, not `image` — do not assume the two endpoints share
    * one response shape. See docs/ENDPOINTS.md and docs/REVISIONS.md for

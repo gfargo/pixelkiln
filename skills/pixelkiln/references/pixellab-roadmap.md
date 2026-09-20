@@ -21,14 +21,15 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   shape matched on the first try for both — though the two shapes differ,
   singular for one and array-wrapped for the other). `inpaint` is further
   confirmed at its ceiling size too (512×512, exactly 40 generations), and
-  further confirmed to have a real middle (25-generation) tier — 320×320
-  (102400px²) billed 25 — just positioned far higher than the borrowed
-  1024px²/2048px² breakpoints assume: 40×40, 128×128, and 256×256 (up to
-  65536px²) still billed 20, not 25. Two breakpoints remain to narrow:
-  20→25 in (65536px², 102400px²], and 25→40 in (102400px², 147456px²].
-  `image-to-image` above its own floor remains completely unmeasured —
-  see that doc's PixelLab section before relying on either endpoint's cost
-  outside what's stated here.
+  further confirmed to have a real middle (25-generation) tier — 288×288
+  (82944px²) and 320×320 (102400px²) both billed 25 — just positioned far
+  higher than the borrowed 1024px²/2048px² breakpoints assume: 40×40,
+  128×128, and 256×256 (up to 65536px²) still billed 20, not 25, while
+  352×352 (123904px²) already billed 40. Both breakpoints are now tightly
+  bracketed: 20→25 in (65536px², 82944px²] (a 1.27x range), and 25→40 in
+  (102400px², 123904px²] (a 1.21x range). `image-to-image` above its own
+  floor remains completely unmeasured — see that doc's PixelLab section
+  before relying on either endpoint's cost outside what's stated here.
 - **`tiles` generator parameters** (`tileType`, `tileSize`, `tileView`,
   `tileFeature` including a building-kit construction set, `outlineMode`) —
   already implemented in code, was simply undocumented in
