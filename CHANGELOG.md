@@ -1,3 +1,10 @@
+## [0.53.4](https://github.com/gfargo/pixelkiln/compare/v0.53.3...v0.53.4) (2026-09-20)
+
+
+### Bug Fixes
+
+* **pixellab:** terrain-generator tiles are square, not isometric ([#196](https://github.com/gfargo/pixelkiln/issues/196)) ([fd44b11](https://github.com/gfargo/pixelkiln/commit/fd44b1149c75639464500cc08c06d3979c15b0f8))
+
 ## [0.53.3](https://github.com/gfargo/pixelkiln/compare/v0.53.2...v0.53.3) (2026-09-20)
 
 
