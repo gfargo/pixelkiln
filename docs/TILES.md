@@ -151,13 +151,35 @@ Four-corner masks use `TERRAIN_MODE_MATCH_CORNERS`; four-edge masks use
 bits on its atlas tile. Isometric and hex tile shapes are carried from the
 resolved manifest spec.
 
+**The peering-bit property names depend on tile shape, and Godot enforces
+it.** A square tile's corners are `top_left_corner`/`top_right_corner`/
+`bottom_left_corner`/`bottom_right_corner`; an isometric or oblique
+(diamond) tile's are the diamond-point names `top_corner`/`right_corner`/
+`bottom_corner`/`left_corner` — the square names are invalid on a diamond
+tile and Godot's own `is_valid_terrain_peering_bit()` rejects them outright,
+so writing the wrong set produces a `.tres` that looks plausible but carries
+no usable terrain data at all once loaded. The corner-mask → isometric-name
+mapping (mask bit 3/2/1/0 = NW/NE/SW/SE → `top_corner`/`right_corner`/
+`left_corner`/`bottom_corner`) is confirmed against a production, hand-verified
+isometric Wang set (a downstream consumer's `docs/terrain-tiles.md` §5: every
+tile rendered, its corners sampled, checked against its mask). Edge/side
+masks on an isometric or oblique tile are refused rather than guessed — the
+diagonal peering-bit direction for that case hasn't been verified the same
+way — so `--format godot` on an edge-ruled isometric tileset asks for
+`--format generic` or `--format tiled` instead, neither of which has this
+shape dependency.
+
 The texture path is relative to the `.tres`, so the generated PNG and resource
 can move together inside a Godot project.
 
 Both this `TileSet` and the `SpriteFrames` that `pack --format godot` writes
 are loaded by a headless Godot 4.7.2 in CI (`npm run test:godot`), which
 reports the atlas tiles, terrain sets and names, animation names, frame
-counts, speeds, and loop flags it sees.
+counts, speeds, and loop flags it sees, and — for both a square and an
+isometric terrain set — round-trips an actual peering bit through Godot's
+own `get_terrain_peering_bit()` rather than only checking tile/terrain-set
+counts. That last check is what would have caught this bug; the counts alone
+did not.
 
 ## Deliberate limits
 
@@ -171,4 +193,6 @@ counts, speeds, and loop flags it sees.
 - A `terrain` asset's `"transition"` corners collapse into a two-color mask
   (see above); the cliff-tier 25-tile set exports, but its middle transition
   ring is not distinguished from the two named terrains in Tiled/Godot.
+- Godot edge/side masks on an isometric or oblique tile remain generic- or
+  Tiled-only; see Godot 4 above.
 - Export never changes source PNGs or the lockfile.

@@ -109,6 +109,31 @@ const terrainTileset = exportTileset(
 await writeFile(path.join(dir, "terrain2-tileset.png"), terrainTileset.png)
 await writeFile(path.join(dir, "terrain2-tileset.tres"), terrainTileset.document)
 
+// The same corner set again, but isometric (the terrain generator's actual
+// default tile shape). Godot's terrain peering-bit property names for a
+// diamond tile are NOT the square names above — see godotTerrainBits() in
+// tileset-export.ts — so this exercises that branch and, below, actually
+// round-trips a peering bit through Godot's own get_terrain_peering_bit()
+// rather than only checking tile/terrain-set counts.
+const isoTiles: LockEntry["outputs"] = []
+for (const [index, tile] of terrainCorners.entries()) {
+  const file = path.join(dir, `terrain3-${tile.role}.png`)
+  await writeFile(file, px(8, 60 + index * 30))
+  isoTiles.push({ path: file, sha256: String(index), role: tile.role })
+}
+const isoTileset = exportTileset(
+  {
+    outputs: isoTiles,
+    provider: "pixellab",
+    generator: "terrain",
+    providerMetadata: { pixellab: { terrainTypes: ["grass", "water"], terrainTiles: terrainCorners } },
+  } as LockEntry,
+  { root: dir, styleId: "ground", assetId: "terrain3", generator: "terrain", outFile: path.join(dir, "terrain3.png"), tileType: "isometric" } as ResolvedSpec,
+  { format: "godot", manifestDir: dir, imageName: "terrain3-tileset.png", columns: 2 },
+)
+await writeFile(path.join(dir, "terrain3-tileset.png"), isoTileset.png)
+await writeFile(path.join(dir, "terrain3-tileset.tres"), isoTileset.document)
+
 await writeFile(path.join(dir, "project.godot"), `; Engine configuration file.
 config_version=5
 
@@ -180,6 +205,21 @@ func _init() -> void:
 			"terrain_names": terrain2_names,
 			"peering_bit": terrain_source.get_tile_data(Vector2i(1, 0), 0).get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER) if terrain_source != null else -1,
 		}
+	var iso_tileset := load("res://terrain3-tileset.tres") as TileSet
+	if iso_tileset == null:
+		report["iso_tileset"] = "failed to load"
+	else:
+		var iso_source := iso_tileset.get_source(iso_tileset.get_source_id(0)) as TileSetAtlasSource
+		var iso_tile_data := iso_source.get_tile_data(Vector2i(1, 0), 0)
+		# Same tile (mask 1, SE=grass) as terrain_tileset above, but isometric:
+		# the diamond-point name must round-trip, and the square name pixelkiln
+		# used to always emit must come back invalid (Godot rejects it outright
+		# for a non-square tile_shape), proving this isn't just emitting both.
+		report["iso_tileset"] = {
+			"tile_shape": iso_tileset.tile_shape,
+			"bottom_corner": iso_tile_data.get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_CORNER),
+			"square_bottom_right_corner_is_invalid": iso_tile_data.get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER) == -1,
+		}
 	print("PIXELKILN_REPORT " + JSON.stringify(report))
 	quit(0)
 `)
@@ -214,6 +254,9 @@ try {
   check(report.terrain_tileset?.terrain_sets === 1 && report.terrain_tileset?.terrains === 2, `terrain generator tileset has one terrain set with two terrains (${report.terrain_tileset?.terrain_sets}, ${report.terrain_tileset?.terrains})`)
   check(JSON.stringify(report.terrain_tileset?.terrain_names) === JSON.stringify(["grass", "water"]), `terrain generator terrains are named from corners/terrainTypes (${JSON.stringify(report.terrain_tileset?.terrain_names)})`)
   check(report.terrain_tileset?.peering_bit === 0, `terrain generator's corner metadata reaches the tile's terrain peering bit (${report.terrain_tileset?.peering_bit})`)
+  check(report.iso_tileset?.tile_shape === 1, `isometric terrain TileSet has tile_shape 1 (${report.iso_tileset?.tile_shape})`)
+  check(report.iso_tileset?.bottom_corner === 0, `isometric terrain's diamond-point peering bit round-trips through Godot (${report.iso_tileset?.bottom_corner})`)
+  check(report.iso_tileset?.square_bottom_right_corner_is_invalid === true, "isometric terrain does not also carry the square corner name Godot would reject")
 } finally {
   await rm(dir, { recursive: true, force: true })
 }

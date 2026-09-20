@@ -16,7 +16,7 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true })
 })
 
-async function setup() {
+async function setup(tileType = "square_topdown") {
   const rules = JSON.parse(await readFile(path.join(fixtures, "tile-rules.json"), "utf8"))
   const outputs: LockEntry["outputs"] = []
   for (let index = 0; index < 4; index++) {
@@ -37,7 +37,7 @@ async function setup() {
     assetId: "terrain",
     generator: "tiles",
     outFile: path.join(dir, "terrain.png"),
-    tileType: "square_topdown",
+    tileType,
   } as ResolvedSpec
   return { entry, spec, rules }
 }
@@ -47,7 +47,7 @@ async function setup() {
  * masks `tile-rules.json` gives directly — so the Tiled/Godot output can be
  * checked against the existing fixtures byte-for-byte.
  */
-async function setupTerrain() {
+async function setupTerrain(tileType = "square_topdown") {
   const terrainTiles = [
     { role: "tile-00-water", corners: { NW: "water", NE: "water", SW: "water", SE: "water" } },
     { role: "tile-01-se", corners: { NW: "water", NE: "water", SW: "water", SE: "grass" } },
@@ -77,7 +77,7 @@ async function setupTerrain() {
     assetId: "terrain",
     generator: "terrain",
     outFile: path.join(dir, "terrain.png"),
-    tileType: "square_topdown",
+    tileType,
   } as ResolvedSpec
   return { entry, spec, terrainTiles }
 }
@@ -173,6 +173,39 @@ describe("exportTileset", () => {
       format: "godot", manifestDir: dir, imageName: "terrain.png", columns: 2,
     })
     expect(result.document).toBe(await readFile(path.join(fixtures, "expected.tres"), "utf8"))
+  })
+
+  it("uses Godot's isometric diamond-point corner names, not the square ones", async () => {
+    const { entry, spec } = await setup("isometric")
+    const result = exportTileset(entry, spec, {
+      format: "godot", manifestDir: dir, imageName: "terrain.png", columns: 2,
+    })
+    expect(result.document).toMatch(/terrains_peering_bit\/top_corner/)
+    expect(result.document).toMatch(/terrains_peering_bit\/right_corner/)
+    expect(result.document).toMatch(/terrains_peering_bit\/bottom_corner/)
+    expect(result.document).toMatch(/terrains_peering_bit\/left_corner/)
+    expect(result.document).not.toMatch(/top_left_corner|top_right_corner|bottom_left_corner|bottom_right_corner/)
+    expect(result.document).toMatch(/tile_shape = 1/)
+  })
+
+  it("rejects edge/side adjacency on an isometric or oblique tile rather than guessing the diagonal", async () => {
+    const { entry, spec } = await setup("isometric")
+    entry.providerMetadata.pixellab!.tileRules = {
+      rule_type: "edge", arity: 4, terrains: ["path", "grass"], tiles: { tile_0: 0, tile_1: 1, tile_2: 8, tile_3: 15 },
+    }
+    expect(() => exportTileset(entry, spec, {
+      format: "godot", manifestDir: dir, imageName: "terrain.png",
+    })).toThrow(/edge\/side adjacency.*isometric.*generic.*tiled/)
+    // Tiled has no such shape dependency (its wangid layout doesn't change with tile geometry).
+    expect(() => exportTileset(entry, spec, {
+      format: "tiled", manifestDir: dir, imageName: "terrain.png",
+    })).not.toThrow()
+    // A square tile keeps working with the same edge rules.
+    const { entry: squareEntry, spec: squareSpec } = await setup("square_topdown")
+    squareEntry.providerMetadata.pixellab!.tileRules = entry.providerMetadata.pixellab!.tileRules
+    expect(() => exportTileset(squareEntry, squareSpec, {
+      format: "godot", manifestDir: dir, imageName: "terrain.png",
+    })).not.toThrow()
   })
 
   it("normalizes the terrain generator's corner metadata into a generic Wang atlas", async () => {
