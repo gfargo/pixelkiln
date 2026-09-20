@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -160,6 +160,38 @@ export function tilesCost(tileSize: number, variations: number): number {
   if (px <= 1024) return 20
   if (px <= 2048) return 25
   return 40
+}
+
+/**
+ * Tiles returned by one `/create-tileset` call: 16 for a standard Wang
+ * corner set, or 25 when `transitionSize` is exactly 1.0 (the cliff layout,
+ * which adds a third "transition" corner value). `shapeStyle` accepts any
+ * transitionSize and switches to an extended 32-tile layout above 0.5, which
+ * this adapter does not model; `validate()` rejects that combination rather
+ * than under-count it here.
+ */
+export function terrainTileCount(transitionSize: number | undefined): number {
+  return transitionSize === 1 ? 25 : 16
+}
+
+/**
+ * `/create-tileset` takes `lower_description` and `upper_description` (and
+ * an optional `transition_description`) as separate fields, unlike `tiles`'s
+ * single `description` that the API itself splits by number. So a `terrain`
+ * asset's prompt is parsed client-side using the same numbered convention
+ * `tiles` already asks for: "1). deep ocean water 2). golden sand 3). wet
+ * sand with foam". Returns null when fewer than two numbered groups are
+ * found, which the caller turns into a manifest-time error.
+ */
+export function parseTerrainDescriptions(
+  prompt: string,
+): { lower: string; upper: string; transition?: string } | null {
+  const parts = prompt
+    .split(/\d+\s*\)\s*\./)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  if (parts.length < 2) return null
+  return { lower: parts[0]!, upper: parts[1]!, transition: parts[2] }
 }
 
 const StyleImageSchema = z.object({
@@ -606,6 +638,48 @@ const StyleObjectSchema = z
      */
     outlineMode: z.enum(["outline", "segmentation"]).optional(),
     /**
+     * `terrain` generator only. Edge length of one tile in pixels. 16 or 32
+     * work in both modes; 64 needs `terrainMode: "pro"`. The API default is
+     * 16. See `parseTerrainDescriptions` for how an asset's `prompt` becomes
+     * the lower/upper/transition terrain descriptions this endpoint wants.
+     */
+    terrainTileSize: z.union([z.literal(16), z.literal(32), z.literal(64)]).optional(),
+    /**
+     * `terrain` generator only. `standard` is the classic Wang tileset
+     * pipeline; `pro` is a newer corner-pair pipeline with its own shape
+     * controls (`terrainSpreadX`, `terrainSlopeSize`, `terrainRaggedness`)
+     * in place of `terrainShapeStyle`. The API default is `standard`.
+     */
+    terrainMode: z.enum(["standard", "pro"]).optional(),
+    /**
+     * `terrain` generator only, `terrainMode: "standard"`. Procedural
+     * boundary geometry: `square` or `round`, 16px or 32px tiles only.
+     * Rejected together with `terrainMode: "pro"`, whose own shape controls
+     * are `terrainSpreadX`/`terrainSlopeSize`/`terrainRaggedness`.
+     */
+    terrainShapeStyle: z.enum(["square", "round"]).optional(),
+    /** `terrain` generator only, `terrainMode: "pro"`. Boundary spread
+     *  between terrains (0 = steep, 1 = gradual). API default 0.5. */
+    terrainSpreadX: z.number().min(0).max(1).optional(),
+    /** `terrain` generator only, `terrainMode: "pro"`. Slope on the N/W/E
+     *  sides as a fraction of wall height. API default 0. */
+    terrainSlopeSize: z.number().min(0).max(1).optional(),
+    /** `terrain` generator only, `terrainMode: "pro"`. Terrain boundary
+     *  noise (0 = smooth, 1 = rough). API default 0. */
+    terrainRaggedness: z.number().min(0).max(1).optional(),
+    /**
+     * `terrain` generator only. Visual height of the step between lower and
+     * upper terrain. Without `terrainShapeStyle`, only 0, 0.25, 0.5, or 1 are
+     * accepted (1 switches to the 25-tile cliff layout, where corners take a
+     * third "transition" value); with it, any value from 0 to 1 works, but
+     * above 0.5 switches to an extended 32-tile layout this adapter does not
+     * model. API default 0.
+     */
+    terrainTransitionSize: z.number().min(0).max(1).optional(),
+    /** `terrain` generator only. Camera angle; the API default is `high
+     *  top-down`. */
+    terrainView: z.enum(["low top-down", "high top-down"]).optional(),
+    /**
      * `pixflux` only. Whether to strip the generated background.
      *
      * Defaults to true, which is right for the sprites this tool was built
@@ -740,7 +814,7 @@ export const StyleSchema = StyleObjectSchema
     path: ["tileFeature"],
   })
   .superRefine((style, ctx) => {
-    if (style.quality && (style.generator === "tiles" || style.generator === "animation")) {
+    if (style.quality && (style.generator === "tiles" || style.generator === "terrain" || style.generator === "animation")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "quality profiles currently support single-image generators only",
@@ -1321,4 +1395,16 @@ export interface ResolvedSpec {
   buildingFloor2Description?: string
   buildingWallAngle?: number
   outlineMode?: string
+  /** `terrain` generator only. See StyleSchema for what each one means. */
+  terrainLowerDescription?: string
+  terrainUpperDescription?: string
+  terrainTransitionDescription?: string
+  terrainTileSize?: number
+  terrainMode?: string
+  terrainShapeStyle?: string
+  terrainSpreadX?: number
+  terrainSlopeSize?: number
+  terrainRaggedness?: number
+  terrainTransitionSize?: number
+  terrainView?: string
 }

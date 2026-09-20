@@ -153,6 +153,9 @@ and they are relevant to the disc-golf game. **Costs below are unmeasured.**
 
 `POST /tilesets` (top-down) and `/tilesets-sidescroller` are the current
 versions; `/create-tileset*` are the older aliases with identical schemas.
+The top-down family is wrapped by pixelkiln's `terrain` generator
+(skills/pixelkiln/references/pixellab.md); `/create-tileset-sidescroller` and
+the reference-image/`color_image` knobs below are not.
 
 They take `lower_description` + `upper_description` (+ optional
 `transition_description`). You describe two terrains and the transition between

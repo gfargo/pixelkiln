@@ -10,6 +10,8 @@ import {
   candidateCount,
   countNumberedDescriptions,
   generationCost,
+  parseTerrainDescriptions,
+  terrainTileCount,
   tileVariationCount,
   tileFeatureOutputCount,
   tilesCost,
@@ -384,6 +386,11 @@ export async function resolveSpecs(
           : (asset.size ?? style.size ?? 64)
         width = asset.state?.canvas?.width ?? size
         height = asset.state?.canvas?.height ?? size
+      } else if (generator === "terrain") {
+        // Tiles are always square; asset-level map dimensions do not apply.
+        size = style.terrainTileSize ?? 16
+        width = size
+        height = size
       } else {
         width = asset.width ?? style.size ?? 64
         height = asset.height ?? style.size ?? 64
@@ -403,12 +410,32 @@ export async function resolveSpecs(
       // animation's action describe a change to a character that already
       // carries the look, so they go to the provider as written.
       const subject = asset.promptByStyle[styleId] ?? asset.prompt ?? ""
-      const prompt = generator === "character" && characterKind !== "base"
-        ? subject.trim()
-        : [style.promptPrefix, subject, style.promptSuffix]
-            .map((p) => p.trim())
-            .filter(Boolean)
-            .join(", ")
+      let terrainLowerDescription: string | undefined
+      let terrainUpperDescription: string | undefined
+      let terrainTransitionDescription: string | undefined
+      let prompt: string
+      if (generator === "terrain") {
+        const parsed = parseTerrainDescriptions(subject)
+        if (!parsed) {
+          throw new Error(
+            `assets.${assetId}: terrain needs "1). <lower terrain> 2). <upper terrain>" in its ` +
+              `prompt, optionally followed by "3). <transition>"`,
+          )
+        }
+        const wrap = (text: string) =>
+          [style.promptPrefix, text, style.promptSuffix].map((p) => p.trim()).filter(Boolean).join(", ")
+        terrainLowerDescription = wrap(parsed.lower)
+        terrainUpperDescription = wrap(parsed.upper)
+        terrainTransitionDescription = parsed.transition ? wrap(parsed.transition) : undefined
+        prompt = subject.trim()
+      } else if (generator === "character" && characterKind !== "base") {
+        prompt = subject.trim()
+      } else {
+        prompt = [style.promptPrefix, subject, style.promptSuffix]
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .join(", ")
+      }
 
       const relFile = asset.file ?? path.join(asset.category ?? "", `${assetId}.png`)
       const outFile = path.resolve(root, style.outDir, relFile)
@@ -422,6 +449,9 @@ export async function resolveSpecs(
       const tileVariations =
         tileFeatureOutputCount(generator === "tiles" ? style.tileFeature : undefined) ??
         tileVariationCount(countNumberedDescriptions(prompt))
+      // A `/create-tileset` call is always a connectable set too: 16 tiles,
+      // or 25 at the cliff transitionSize.
+      const terrainTiles = generator === "terrain" ? terrainTileCount(style.terrainTransitionSize) : 0
 
       const base = {
         styleId,
@@ -459,20 +489,35 @@ export async function resolveSpecs(
         buildingFloor2Description: generator === "tiles" ? style.buildingFloor2Description : undefined,
         buildingWallAngle: generator === "tiles" ? style.buildingWallAngle : undefined,
         outlineMode: generator === "tiles" ? style.outlineMode : undefined,
+        terrainLowerDescription: generator === "terrain" ? terrainLowerDescription : undefined,
+        terrainUpperDescription: generator === "terrain" ? terrainUpperDescription : undefined,
+        terrainTransitionDescription: generator === "terrain" ? terrainTransitionDescription : undefined,
+        terrainTileSize: generator === "terrain" ? size : undefined,
+        terrainMode: generator === "terrain" ? style.terrainMode : undefined,
+        terrainShapeStyle: generator === "terrain" ? style.terrainShapeStyle : undefined,
+        terrainSpreadX: generator === "terrain" ? style.terrainSpreadX : undefined,
+        terrainSlopeSize: generator === "terrain" ? style.terrainSlopeSize : undefined,
+        terrainRaggedness: generator === "terrain" ? style.terrainRaggedness : undefined,
+        terrainTransitionSize: generator === "terrain" ? style.terrainTransitionSize : undefined,
+        terrainView: generator === "terrain" ? style.terrainView : undefined,
         ...(generator === "character"
           ? { character: await resolveCharacterShape(asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
         cost:
           generator === "tiles"
             ? tilesCost(tileSize, tileVariations)
-            : generationCost(width, height, generator),
+            : generator === "terrain"
+              ? tilesCost(size, terrainTiles)
+              : generationCost(width, height, generator),
         costUnit: "generations" as const,
         candidates:
           generator === "tiles"
             ? tileVariations
-            : generator === "1dir"
-              ? candidateCount(size)
-              : 1,
+            : generator === "terrain"
+              ? terrainTiles
+              : generator === "1dir"
+                ? candidateCount(size)
+                : 1,
       }
 
       const tags = [
@@ -534,7 +579,7 @@ export async function resolveSpecs(
         // source so the source's own dependencies are already settled.
         if (asset.mirror === assetId) throw new Error(`assets.${assetId}: an asset cannot mirror itself`)
         const sourceSpec = await finalize(asset.mirror)
-        if (sourceSpec.generator === "tiles") {
+        if (sourceSpec.generator === "tiles" || sourceSpec.generator === "terrain") {
           throw new Error(`assets.${assetId}: a tile set cannot be mirrored; its edges carry meaning`)
         }
         if (sourceSpec.character?.kind === "animation") {

@@ -196,6 +196,7 @@ export class PixelLabProvider implements Provider {
       generator === "map" ||
       generator === "pixflux" ||
       generator === "tiles" ||
+      generator === "terrain" ||
       generator === "character"
     )
   }
@@ -261,9 +262,11 @@ export class PixelLabProvider implements Provider {
       const height = spec.revision.sourceHeight ?? spec.height
       return { unit: "generations", amount: generationCost(width, height, "1dir"), candidates: 1 }
     }
-    // `tiles` prices and counts off the whole set, both of which the manifest
-    // layer already worked out; see tilesCost / tileVariationCount.
-    if (spec.generator === "tiles") {
+    // `tiles` and `terrain` both price and count off the whole set, both of
+    // which the manifest layer already worked out; see tilesCost /
+    // tileVariationCount / terrainTileCount. `/create-tileset`'s own cost is
+    // unmeasured, so this borrows the same canvas-tier model.
+    if (spec.generator === "tiles" || spec.generator === "terrain") {
       return { unit: "generations", amount: spec.cost, candidates: spec.candidates }
     }
     if (spec.generator === "character") {
@@ -304,9 +307,60 @@ export class PixelLabProvider implements Provider {
         "low detail", "medium detail", "high detail",
       ])
     }
+    if (spec.generator === "terrain") {
+      if (spec.outline) {
+        requirePixelLabOption("outline", spec.outline, [
+          "single color black outline", "single color outline", "selective outline", "lineless",
+        ])
+      }
+      if (spec.shading) {
+        requirePixelLabOption("shading", spec.shading, [
+          "flat shading", "basic shading", "medium shading", "detailed shading", "highly detailed shading",
+        ])
+      }
+      if (spec.detail) {
+        requirePixelLabOption("detail", spec.detail, ["low detail", "medium detail", "highly detailed"])
+      }
+      // Real API rejections, not soft defaults: shape_style is standard-only,
+      // and a 64px tile needs the pro pipeline.
+      if (spec.terrainShapeStyle && spec.terrainMode === "pro") {
+        throw new Error(
+          "PixelLab terrain: terrainShapeStyle is standard-mode only; pro's own shape controls " +
+            "are terrainSpreadX/terrainSlopeSize/terrainRaggedness",
+        )
+      }
+      if (spec.terrainTileSize === 64 && spec.terrainMode !== "pro") {
+        throw new Error('PixelLab terrain: a 64px tile needs terrainMode: "pro"')
+      }
+      if (
+        spec.terrainShapeStyle &&
+        spec.terrainTransitionSize != null &&
+        spec.terrainTransitionSize > 0.5
+      ) {
+        throw new Error(
+          "PixelLab terrain: terrainShapeStyle with terrainTransitionSize above 0.5 uses an " +
+            "extended 32-tile layout pixelkiln does not model; use 0, 0.25, or 0.5",
+        )
+      }
+      if (
+        !spec.terrainShapeStyle &&
+        spec.terrainTransitionSize != null &&
+        ![0, 0.25, 0.5, 1].includes(spec.terrainTransitionSize)
+      ) {
+        throw new Error(
+          "PixelLab terrain: terrainTransitionSize must be 0, 0.25, 0.5, or 1 unless terrainShapeStyle is set",
+        )
+      }
+    }
     if (spec.generator === "character") this.validateCharacter(spec, styleImages)
     if ((spec.generator === "map" || spec.generator === "pixflux") && styleImages.length) {
       throw new Error(`PixelLab ${spec.generator} does not support style images`)
+    }
+    if (spec.generator === "terrain" && styleImages.length) {
+      throw new Error(
+        "PixelLab terrain does not support style images yet; use color_image/reference " +
+          "images directly against /create-tileset if this becomes a real need",
+      )
     }
     for (const image of styleImages) {
       if (image.width > 256 || image.height > 256) {
@@ -711,6 +765,27 @@ export class PixelLabProvider implements Provider {
       return { jobId: res.tile_id, metadata: { backgroundJobId: res.background_job_id } }
     }
 
+    if (spec.generator === "terrain") {
+      const res = await this.client.createTileset({
+        lowerDescription: spec.terrainLowerDescription!,
+        upperDescription: spec.terrainUpperDescription!,
+        transitionDescription: spec.terrainTransitionDescription,
+        tileSize: spec.terrainTileSize,
+        mode: spec.terrainMode,
+        shapeStyle: spec.terrainShapeStyle,
+        spreadX: spec.terrainSpreadX,
+        slopeSize: spec.terrainSlopeSize,
+        raggedness: spec.terrainRaggedness,
+        transitionSize: spec.terrainTransitionSize,
+        view: spec.terrainView,
+        outline: spec.outline,
+        shading: spec.shading,
+        detail: spec.detail,
+        seed: spec.seed,
+      })
+      return { jobId: res.tileset_id, metadata: { backgroundJobId: res.background_job_id } }
+    }
+
     if (spec.generator === "1dir") {
       const res = await this.client.create1Direction({
         description: spec.prompt,
@@ -833,6 +908,7 @@ export class PixelLabProvider implements Provider {
     }
     if (generator === "map") return this.pollMap(jobId, context)
     if (generator === "tiles") return this.pollTiles(jobId, Boolean(context?.tileFeature), context)
+    if (generator === "terrain") return this.pollTerrain(jobId, context)
     if (generator === "character") return this.pollCharacter(jobId, context)
 
     const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
@@ -978,6 +1054,44 @@ export class PixelLabProvider implements Provider {
           tileKind: set.kind,
           ...(set.tile_rules ? { tileRules: set.tile_rules } : {}),
         },
+        billed,
+      }
+    } catch (err) {
+      if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }
+      throw err
+    }
+  }
+
+  /**
+   * `/create-tileset` reports progress the same way `tiles` does (423 while
+   * drawing, 200 once finished), but each tile's image comes back embedded
+   * as base64 rather than a `storage_urls` link, so it is decoded straight
+   * to a cache file the same way a revision result is (`pollRevision`). A
+   * terrain set is always a connectable Wang tileset, never independent
+   * candidates to review, so this goes straight to "ready" like a connectable
+   * `tiles` set does.
+   */
+  private async pollTerrain(tilesetId: string, context?: PollContext): Promise<JobState> {
+    try {
+      const { tileset, usage } = await this.client.getTileset(tilesetId)
+      const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
+      const billed = billedFromUsage(usage) ?? (await this.billedForJob(backgroundJobId))
+      const sources: OutputSource[] = []
+      const terrainTiles: Record<string, unknown>[] = []
+      for (const [index, tile] of tileset.tiles.entries()) {
+        const slug = tile.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "tile"
+        const role = `tile-${String(index).padStart(2, "0")}-${slug}`
+        const file = path.join(PixelLabProvider.cacheDir(), `${tilesetId}-${index}.png`)
+        writeFileSync(file, Buffer.from(tile.image.base64, "base64"))
+        sources.push({ url: `file://${file}`, role })
+        terrainTiles.push({ role, corners: tile.corners, pattern4x4: tile.pattern_4x4 })
+      }
+      return {
+        status: "ready",
+        objectId: tilesetId,
+        sourceUrl: sources[0]?.url ?? null,
+        sources,
+        metadata: { terrainTypes: tileset.terrain_types, terrainTiles },
         billed,
       }
     } catch (err) {

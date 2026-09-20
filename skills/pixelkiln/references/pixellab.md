@@ -22,6 +22,7 @@ providers, or before any PixelLab account operation.
 | `pixflux` | Closed palettes or full-bleed backgrounds | 1 generation |
 | `1dir` | Reference-guided work or several candidates | 20–40 generations |
 | `tiles` | Ground variations or connected structures | 20–40 generations |
+| `terrain` | A two-terrain Wang tileset for elevation (grass-to-water, floor-to-cliff) | Unmeasured; borrows the same 20–40 canvas tiers |
 | `character` | A character in 4 or 8 directions, its poses (`state`), and its loops (`animation`) | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose, 1 per template loop per direction |
 
 `tiles` is not limited to top-down ground: `tileType` selects the projection
@@ -66,6 +67,42 @@ than relying on the main prompt being split correctly (`buildingFloor2Descriptio
 defaults to the wall material when omitted); and `buildingWallAngle`
 (5–90 degrees, `square_topdown` only) sets the wall storey's own camera
 angle independent of the ground pitch.
+
+`terrain` wraps PixelLab's separate `/create-tileset` endpoint, for exactly
+the case `tiles`'s own `tileFeature: "tileset"` only approximates: two named
+terrain levels — `lower` (the base, e.g. water, grass, lava) and `upper`
+(the elevated one, e.g. sand, dirt, stone) — connected by a Wang corner set
+that tiles seamlessly. This is the shape for elevation tiers in a map: a
+coastline, a dungeon floor breaking into cracked stone, a cliff edge. Unlike
+every other generator, its content is not one `prompt` string: `/create-tileset`
+takes `lower_description` and `upper_description` as separate fields (plus
+an optional `transition_description`), so a `terrain` asset's `prompt` uses
+the same numbered convention `tiles` already asks for — `"1). deep ocean
+water 2). golden sandy beach 3). wet sand with foam"` — split client-side
+into the three fields before the call, with the style's `promptPrefix`/
+`promptSuffix` wrapped around each one individually rather than the whole
+string once.
+
+A set is always 16 tiles, or 25 when `terrainTransitionSize` is exactly 1
+(the "cliff" layout, where the visual step between levels is tallest and
+corners take a third "transition" value); it always resolves straight to a
+finished asset with one output file per tile, never a candidate sheet to
+pick from, the same as a connectable `tiles` set. `terrainTileSize` sets the
+tile edge (16 or 32 in both modes, 64 needs `terrainMode: "pro"`, default
+16). `terrainMode: "standard"` (the default) is the classic Wang pipeline,
+optionally with `terrainShapeStyle` (`square` or `round`) for a fixed
+procedural boundary; `terrainMode: "pro"` swaps that for its own shape
+controls — `terrainSpreadX` (0 = steep, 1 = gradual boundary), `terrainSlopeSize`
+(slope on three sides as a fraction of wall height), and `terrainRaggedness`
+(0 = smooth, 1 = rough boundary noise) — and rejects `terrainShapeStyle`
+outright. `terrainTransitionSize` (0, 0.25, 0.5, or 1 without `terrainShapeStyle`;
+any value 0–1 with it, though above 0.5 switches to an extended 32-tile
+layout pixelkiln does not yet model) controls how pronounced the elevation
+step looks. `terrainView` picks `low top-down` or `high top-down` (API
+default). The style's existing `outline`/`shading`/`detail` apply here too.
+Reference images, a forced palette, and the `pro` pipeline's own tunables
+beyond the three above (`tileStrength`, `tilesetAdherence`, and the rest)
+are not modeled yet; open an issue if a real project needs one of them.
 
 Do not confuse pixelkiln's `map` generator with PixelLab's own "Map
 Workshop": `map` returns one static prop, icon, or building in a single
