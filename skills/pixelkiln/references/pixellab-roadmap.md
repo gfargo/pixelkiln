@@ -20,16 +20,15 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   Both are confirmed live at their floor size (20 generations each, response
   shape matched on the first try for both — though the two shapes differ,
   singular for one and array-wrapped for the other). `inpaint` is further
-  confirmed at its ceiling size too (512×512, exactly 40 generations) —
-  but four more `inpaint` points, 40×40 (1600px²), 128×128 (16384px²), and
-  256×256 (65536px²), disproved the borrowed 20/25/40 tiering's middle
-  boundary: all three billed 20, not the 25 that tiering predicts across
-  that whole band, while 384×384 (147456px²) already billed 40. Bisection
-  has narrowed `inpaint`'s real 20→40 breakpoint to somewhere in
-  (65536px², 147456px²] — a 2.25x range, well above the borrowed model's
-  2048px². `image-to-image` above its own floor remains completely
-  unmeasured — see that doc's PixelLab section before relying on either
-  endpoint's cost outside what's stated here.
+  confirmed at its ceiling size too (512×512, exactly 40 generations), and
+  further confirmed to have a real middle (25-generation) tier — 320×320
+  (102400px²) billed 25 — just positioned far higher than the borrowed
+  1024px²/2048px² breakpoints assume: 40×40, 128×128, and 256×256 (up to
+  65536px²) still billed 20, not 25. Two breakpoints remain to narrow:
+  20→25 in (65536px², 102400px²], and 25→40 in (102400px², 147456px²].
+  `image-to-image` above its own floor remains completely unmeasured —
+  see that doc's PixelLab section before relying on either endpoint's cost
+  outside what's stated here.
 - **`tiles` generator parameters** (`tileType`, `tileSize`, `tileView`,
   `tileFeature` including a building-kit construction set, `outlineMode`) —
   already implemented in code, was simply undocumented in

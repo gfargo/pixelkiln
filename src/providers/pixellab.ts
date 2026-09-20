@@ -235,17 +235,18 @@ export class PixelLabProvider implements Provider {
     if (spec.revision) {
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
       // like /generate-with-style-v2 and /generate-image-v2. Live calls to
-      // inpaint-v3 confirm this borrowed tiering's floor (32x32, 1024px²,
-      // billed 20) and ceiling (512x512, billed 40) exactly, but disprove
-      // its middle boundary: 40x40 (1600px²), 128x128 (16384px²), and
-      // 256x256 (65536px²) all billed 20, not the 25 this tiering predicts
-      // for that whole band, while 384x384 (147456px²) already billed 40.
-      // The real 20->40 breakpoint for inpaint-v3 has been bisected to
-      // somewhere in (65536px², 147456px²], not at 2048px²
-      // (docs/ENDPOINTS.md). The `25` this still returns below the real
-      // breakpoint is a confirmed-safe overestimate, not a measurement;
-      // every size at or above 2048px² already falls into generationCost's
-      // own `else` branch (types.ts) and correctly returns 40 regardless.
+      // inpaint-v3 confirm its floor (32x32, 1024px², billed 20) and
+      // ceiling (512x512, billed 40) match this borrowed tiering exactly,
+      // and confirm a real middle (25-generation) tier exists -- 320x320
+      // (102400px²) billed 25 -- but at breakpoints nowhere near this
+      // tiering's 1024px²/2048px²: 40x40, 128x128, and 256x256 (up to
+      // 65536px²) all still billed 20, and 384x384 (147456px²) already
+      // billed 40. Two real breakpoints remain unlocated: 20->25 in
+      // (65536px², 102400px²], 25->40 in (102400px², 147456px²]
+      // (docs/ENDPOINTS.md). Below 2048px² this still returns 20 (correct
+      // everywhere measured); at or above 2048px² it always returns 40,
+      // which is wrong for 320x320 specifically (confirmed 25, not 40) --
+      // still a safe direction, just a bigger miss than a single tier.
       // edit-images-v2 above its own 32x32 floor is unmeasured entirely.
       // Reuse the same canvas-area tiering already measured for those Pro
       // endpoints and for 1dir/tiles rather than guess a number for what
