@@ -475,7 +475,14 @@ export async function resolveSpecs(
         noBackground: style.noBackground,
         tileSize: generator === "tiles" ? tileSize : undefined,
         tileHeight: generator === "tiles" ? style.tileHeight : undefined,
-        tileType: generator === "tiles" ? style.tileType : undefined,
+        // `/create-tileset` places tiles on a rectangular vertex grid (its own
+        // docs: "a map of W×H cells has (W+1)×(H+1) vertices"), the same
+        // square Wang-tiling math as `square_topdown` tiles-pro, regardless of
+        // `terrainView`'s camera-angle setting. `tileType` otherwise defaults
+        // to undefined and falls through to the exporter's own "isometric"
+        // fallback, which is `tiles`' own real API default, not terrain's —
+        // this is set explicitly so that fallback is never reached for terrain.
+        tileType: generator === "tiles" ? style.tileType : generator === "terrain" ? "square_topdown" : undefined,
         tileView: generator === "tiles" ? style.tileView : undefined,
         tileViewAngle: generator === "tiles" ? style.tileViewAngle : undefined,
         tileDepthRatio: generator === "tiles" ? style.tileDepthRatio : undefined,
