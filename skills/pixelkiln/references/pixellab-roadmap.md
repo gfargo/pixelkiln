@@ -21,12 +21,14 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   shape matched on the first try for both — though the two shapes differ,
   singular for one and array-wrapped for the other). `inpaint` is further
   confirmed at its ceiling size too (512×512, exactly 40 generations) —
-  but a third `inpaint` point, 40×40 (1600px²), disproved the borrowed
-  20/25/40 tiering's middle boundary: it billed 20, not the 25 that tiering
-  predicts for that size. `inpaint`'s real 20→40 breakpoint sits somewhere
-  above 1600px², not at 2048px². `image-to-image` above its own floor
-  remains completely unmeasured — see that doc's PixelLab section before
-  relying on either endpoint's cost outside what's stated here.
+  but two more `inpaint` points, 40×40 (1600px²) and 128×128 (16384px²),
+  disproved the borrowed 20/25/40 tiering's middle boundary: both billed
+  20, not the 25 that tiering predicts across that whole band. Bisection
+  has narrowed `inpaint`'s real 20→40 breakpoint to somewhere in
+  (16384px², 262144px²], well above the borrowed model's 2048px².
+  `image-to-image` above its own floor remains completely unmeasured — see
+  that doc's PixelLab section before relying on either endpoint's cost
+  outside what's stated here.
 - **`tiles` generator parameters** (`tileType`, `tileSize`, `tileView`,
   `tileFeature` including a building-kit construction set, `outlineMode`) —
   already implemented in code, was simply undocumented in

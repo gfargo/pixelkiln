@@ -338,16 +338,18 @@ once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
   `inpaint-v3` is now also confirmed at the opposite end: a live 512×512
   masked inpaint (the maximum the endpoint accepts) billed exactly 40
   generations, response shape identical in structure to the 32×32 case.
-  **But a third point disproves the borrowed tiering's middle boundary**: a
-  live 40×40 inpaint (1600px², squarely inside the 1024–2048px² band the
-  `1dir`/`create-tiles-pro` model prices at 25) billed **20**, the floor
-  tier again, not 25. Three points now read 1024px²→20, 1600px²→20,
-  262144px²→40: the real breakpoint between `inpaint-v3`'s 20- and
-  40-generation tiers sits somewhere above 1600px², not at 2048px². The `25`
-  value pixelkiln's `generationCost` returns in that band is a safe
-  overestimate (never billed less than predicted, in every point measured
-  so far) but a confirmed *inexact* one, not a measurement. `edit-images-v2`
-  beyond its own 32×32 floor remains completely unmeasured.
+  **But two more points, bisecting upward, disprove the borrowed tiering's
+  middle boundary and narrow the real one**: a live 40×40 inpaint (1600px²,
+  squarely inside the 1024–2048px² band the `1dir`/`create-tiles-pro` model
+  prices at 25) billed **20**, and a live 128×128 inpaint (16384px²,
+  16x further up) also billed **20**. Four points now read 1024px²→20,
+  1600px²→20, 16384px²→20, 262144px²→40: the real breakpoint between
+  `inpaint-v3`'s 20- and 40-generation tiers sits somewhere in
+  (16384px², 262144px²], not at 2048px². The `25` value pixelkiln's
+  `generationCost` returns below the real breakpoint is a safe overestimate
+  (never billed less than predicted, in every point measured so far) but a
+  confirmed *inexact* one, not a measurement. `edit-images-v2` beyond its
+  own 32×32 floor remains completely unmeasured.
 
 ---
 
@@ -359,8 +361,10 @@ Listed so the gaps are known rather than assumed away:
   `image-to-image` and `inpaint` modes; see
   [Controlled asset revisions](./REVISIONS.md)) are confirmed at their floor
   size; `inpaint-v3` is confirmed at its ceiling size too, and disproved the
-  borrowed tiering's middle boundary in the process (see above). Exactly
-  where `inpaint-v3`'s real 20→40 breakpoint sits is unconfirmed, and
+  borrowed tiering's middle boundary in the process (see above). Bisection
+  has narrowed `inpaint-v3`'s real 20→40 breakpoint to somewhere in
+  (16384px², 262144px²], but exactly where in that range is still
+  unconfirmed, and
   `edit-images-v2` beyond its own floor is unmeasured entirely. The older
   `inpaint` and `edit-image` (non-v2/v3)
   endpoints are untouched by any of this. All four accept
