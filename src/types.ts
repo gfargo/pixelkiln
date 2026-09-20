@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -128,6 +128,13 @@ export function candidateCount(size: number): number {
  *         request can produce, which is the honest direction to be wrong in
  *         for a `--budget` check.
  *
+ *   imagePro FLAT 40 generations, any size or aspect ratio, regardless of
+ *         canvas tier (docs/ENDPOINTS.md, "Single-image generators,
+ *         measured"). `/generate-image-v2`, the Pro image tier: unlike
+ *         `pixflux`, it reaches non-square canvases up to 792x688 and does
+ *         real style transfer, at a flat price rather than one that scales
+ *         with area the way `1dir`/`tiles` do.
+ *
  * So `1dir` buys candidate variety at 20-40x the price, and `map` buys
  * arbitrary (non-square) dimensions nearly free. For a single-result asset,
  * forty re-rolls of a map object cost the same as one 1dir call.
@@ -138,6 +145,7 @@ export function generationCost(
   generator: Generator = "map",
 ): number {
   if (generator === "map" || generator === "pixflux") return 1
+  if (generator === "imagePro") return 40
   const px = width * height
   if (px <= 1024) return 20
   if (px <= 2048) return 25
@@ -870,7 +878,7 @@ export const AssetSchema = z
     prompt: z.string().optional(),
     /** Subdirectory under the style's outDir. Optional. */
     category: z.string().optional(),
-    /** Overrides the style default. `map` generator only. */
+    /** Overrides the style default. `map`, `pixflux`, and `imagePro` only. */
     width: z.number().int().min(16).max(8192).optional(),
     height: z.number().int().min(16).max(8192).optional(),
     /** Overrides the style default. `1dir` generator only. */

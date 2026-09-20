@@ -197,6 +197,7 @@ export class PixelLabProvider implements Provider {
       generator === "pixflux" ||
       generator === "tiles" ||
       generator === "terrain" ||
+      generator === "imagePro" ||
       generator === "character"
     )
   }
@@ -275,7 +276,7 @@ export class PixelLabProvider implements Provider {
     return {
       unit: "generations",
       amount: generationCost(spec.width, spec.height, spec.generator),
-      candidates: spec.generator === "1dir" ? candidateCount(spec.size) : 1,
+      candidates: spec.generator === "1dir" || spec.generator === "imagePro" ? candidateCount(spec.size) : 1,
     }
   }
 
@@ -294,6 +295,15 @@ export class PixelLabProvider implements Provider {
       (spec.width < 16 || spec.height < 16 || spec.width > 400 || spec.height > 400)
     ) {
       throw new Error(`PixelLab ${spec.generator} dimensions must be between 16 and 400 pixels`)
+    }
+    if (
+      spec.generator === "imagePro" &&
+      (spec.width < 16 || spec.height < 16 || spec.width > 792 || spec.height > 688)
+    ) {
+      throw new Error(
+        `PixelLab imagePro is ${spec.width}x${spec.height}; the API takes 16 to 792 wide and ` +
+          "16 to 688 tall (the exact ceiling also depends on aspect ratio)",
+      )
     }
     if (spec.generator === "map") {
       requirePixelLabOption("view", spec.view, ["low top-down", "high top-down", "side"])
@@ -360,6 +370,12 @@ export class PixelLabProvider implements Provider {
       throw new Error(
         "PixelLab terrain does not support style images yet; use color_image/reference " +
           "images directly against /create-tileset if this becomes a real need",
+      )
+    }
+    if (spec.generator === "imagePro" && styleImages.length) {
+      throw new Error(
+        "PixelLab imagePro does not support style images yet; /generate-image-v2's own " +
+          "reference_images and style_image are not modeled here",
       )
     }
     for (const image of styleImages) {
@@ -786,6 +802,19 @@ export class PixelLabProvider implements Provider {
       return { jobId: res.tileset_id, metadata: { backgroundJobId: res.background_job_id } }
     }
 
+    if (spec.generator === "imagePro") {
+      const res = await this.client.createImagePro({
+        description: spec.prompt,
+        width: spec.width,
+        height: spec.height,
+        noBackground: spec.noBackground,
+        seed: spec.seed,
+      })
+      // Like a revision, jobId is the background_job_id itself: there is no
+      // separate resource id to poll, so pollImagePro polls it directly.
+      return { jobId: res.background_job_id }
+    }
+
     if (spec.generator === "1dir") {
       const res = await this.client.create1Direction({
         description: spec.prompt,
@@ -909,6 +938,7 @@ export class PixelLabProvider implements Provider {
     if (generator === "map") return this.pollMap(jobId, context)
     if (generator === "tiles") return this.pollTiles(jobId, Boolean(context?.tileFeature), context)
     if (generator === "terrain") return this.pollTerrain(jobId, context)
+    if (generator === "imagePro") return this.pollImagePro(jobId)
     if (generator === "character") return this.pollCharacter(jobId, context)
 
     const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
@@ -986,6 +1016,44 @@ export class PixelLabProvider implements Provider {
       error:
         `Invalid PixelLab response for revision job ${jobId}: completed with no recognized image field ` +
         `(got: ${Object.keys(done).join(", ") || "no keys"}); update pollRevision in src/providers/pixellab.ts with the real shape`,
+    }
+  }
+
+  /**
+   * `/generate-image-v2` hands back a plain background job, the same as a
+   * revision, but a completed one carries several candidate images to
+   * review rather than a single result: the Python client's own usage
+   * sample reads `response.images`, and `edit-images-v2` (a sibling Pro
+   * endpoint) confirmed live that its own array lands at
+   * `last_response.images` with each entry `extractBase64`-shaped, so this
+   * assumes the same field name and shape here. That assumption is
+   * UNVERIFIED for this specific endpoint — no live call has been made to
+   * it — so an unrecognized response still fails loudly rather than
+   * guessing, exactly like pollRevision.
+   */
+  private async pollImagePro(jobId: string): Promise<JobState> {
+    const job = await this.client.getBackgroundJob(jobId)
+    if (job.status === "failed") return { status: "failed", error: "imagePro job failed upstream" }
+    if (job.status !== "completed") return { status: "processing" }
+    const billed = billedFromUsage(job.usage)
+    const done = (job.last_response ?? {}) as Record<string, unknown>
+    if (Array.isArray(done.images) && done.images.length) {
+      const urls: string[] = []
+      for (const [index, candidate] of done.images.entries()) {
+        const base64 = extractBase64(candidate)
+        if (!base64) continue
+        const file = path.join(PixelLabProvider.cacheDir(), `${jobId}-${index}.png`)
+        writeFileSync(file, Buffer.from(base64, "base64"))
+        urls.push(`file://${file}`)
+      }
+      if (urls.length) return { status: "review", candidateUrls: urls, billed }
+    }
+    return {
+      status: "failed",
+      error:
+        `Invalid PixelLab response for imagePro job ${jobId}: completed with no recognized images array ` +
+        `(got: ${Object.keys(done).join(", ") || "no keys"}); this endpoint's completed shape has not been ` +
+        "exercised live yet -- update pollImagePro in src/providers/pixellab.ts with the real shape",
     }
   }
 
@@ -1114,6 +1182,14 @@ export class PixelLabProvider implements Provider {
       const url = tilesInIndexOrder(set.storage_urls)[index]?.url
       if (!url) throw new Error(`tiles job ${jobId} has no variation at index ${index}`)
       return { objectId: `${jobId}#${index}`, sourceUrl: url }
+    }
+    // imagePro's candidates were decoded to local files at poll time
+    // (pollImagePro); there is no PixelLab account object to promote, the
+    // same as pixflux never having one.
+    if (generator === "imagePro") {
+      const file = path.join(PixelLabProvider.cacheDir(), `${jobId}-${index}.png`)
+      if (!existsSync(file)) throw new Error(`imagePro job ${jobId} has no cached candidate at index ${index}`)
+      return { objectId: `${jobId}#${index}`, sourceUrl: `file://${file}` }
     }
     const promoted = await this.client.selectFrames(jobId, [index], commonTag)
     const objectId = promoted.created_object_ids?.[0]

@@ -1006,6 +1006,41 @@ export class PixelLabClient {
     )
   }
 
+  /**
+   * PixelLab's Pro image tier, `/generate-image-v2`: a flat 40 generations
+   * (docs/ENDPOINTS.md, "Single-image generators, measured") for real style
+   * transfer and non-square canvases up to 792x688, where `pixflux` is
+   * limited to 400x400 and no style reference. Like a revision, this hands
+   * back a plain background job with no resource of its own; unlike a
+   * revision, one call returns several candidate images to pick from (the
+   * same 4/16/64-by-size tiering as `1dir`), not a single result, and its
+   * completed shape has not been exercised live yet — `pollImagePro` in
+   * pixellab.ts fails loudly rather than guess if `last_response.images`
+   * turns out not to be the real field name.
+   *
+   * Reference images and a style image (`reference_images`, `style_image` +
+   * `style_options`) exist on this endpoint but are not modeled here yet.
+   */
+  async createImagePro(args: {
+    description: string
+    width: number
+    height: number
+    noBackground?: boolean
+    seed?: number
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = {
+      description: args.description,
+      image_size: { width: args.width, height: args.height },
+    }
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/generate-image-v2", { method: "POST", body: JSON.stringify(body) }),
+      "generate-image-v2",
+    )
+  }
+
   async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null; usage?: PixelLabUsage | null }> {
     const raw = await this.request<unknown>(`/background-jobs/${encodeURIComponent(jobId)}`)
     return validateResponse(BackgroundJobSchema, raw, "background-jobs/{id}")

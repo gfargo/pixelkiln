@@ -46,6 +46,14 @@ matters most for icon and prop work.
 64×64 icon therefore costs 40. Every other generator above is a flat 1–40
 regardless of size.
 
+`generate-image-v2` is wrapped by pixelkiln's `imagePro` generator
+(skills/pixelkiln/references/pixellab.md): non-square and larger canvases
+than `pixflux` allows, at the flat 40 above. Its `reference_images` and
+`style_image` are not modeled, and its completed job's response shape is
+inferred from `edit-images-v2`'s (also unmeasured for this endpoint
+specifically) rather than confirmed live — see `pollImagePro` in
+`src/providers/pixellab.ts`. `generate-with-style-v2` is not wrapped at all.
+
 ### What the measurements actually showed
 
 **`pixflux` is the workhorse.** 1 generation, returns the PNG inline, and its
