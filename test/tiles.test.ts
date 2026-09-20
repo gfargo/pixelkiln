@@ -112,6 +112,55 @@ describe("resolving a tiles spec", () => {
       /tileFeature/,
     )
   })
+
+  it("rejects a tileSize above the API's real 128px ceiling", async () => {
+    await expect(writeManifest({ generator: "tiles", tileSize: 256 })).rejects.toThrow(/tileSize/)
+  })
+
+  it("carries the oblique/isometric shape-control fields", async () => {
+    const loaded = await writeManifest({
+      generator: "tiles",
+      tileType: "oblique",
+      tileHeight: 64,
+      tileViewAngle: 30,
+      tileDepthRatio: 0.4,
+      tileFlatTopPx: 4,
+      obliqueLean: 0.5,
+    })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec.tileHeight).toBe(64)
+    expect(spec.tileViewAngle).toBe(30)
+    expect(spec.tileDepthRatio).toBe(0.4)
+    expect(spec.tileFlatTopPx).toBe(4)
+    expect(spec.obliqueLean).toBe(0.5)
+  })
+
+  it("carries the building-kit sub-parameters", async () => {
+    const loaded = await writeManifest({
+      generator: "tiles",
+      tileFeature: "building",
+      buildingWallTiles: 2,
+      buildingLayout: "materials",
+      buildingWallDescription: "stone brick walls",
+      buildingFloorDescription: "wooden plank floor",
+      buildingFloor2Description: "thatched roof",
+      buildingWallAngle: 45,
+    })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec.buildingWallTiles).toBe(2)
+    expect(spec.buildingLayout).toBe("materials")
+    expect(spec.buildingWallDescription).toBe("stone brick walls")
+    expect(spec.buildingFloorDescription).toBe("wooden plank floor")
+    expect(spec.buildingFloor2Description).toBe("thatched roof")
+    expect(spec.buildingWallAngle).toBe(45)
+  })
+
+  it("leaves the new tiles-pro fields off a non-tiles generator", async () => {
+    const loaded = await writeManifest({ generator: "map", outDir: "out" })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec.tileHeight).toBeUndefined()
+    expect(spec.buildingWallTiles).toBeUndefined()
+  })
 })
 
 describe("provider", () => {
@@ -169,6 +218,57 @@ describe("style images", () => {
     expect(sent?.styleImages).toHaveLength(1)
     expect(sent?.styleImages?.[0]).toMatchObject({ width: 32, height: 24 })
     expect(sent?.styleImages?.[0]?.base64).toBeTruthy()
+  })
+
+  it("passes the new tiles-pro fields through to the client call", async () => {
+    const loaded = await writeManifest({
+      generator: "tiles",
+      tileType: "oblique",
+      tileHeight: 64,
+      tileViewAngle: 30,
+      tileDepthRatio: 0.4,
+      tileFlatTopPx: 4,
+      obliqueLean: 0.5,
+      tileFeature: "building",
+      buildingWallTiles: 2,
+      buildingLayout: "materials",
+      buildingWallDescription: "stone brick walls",
+      buildingFloorDescription: "wooden plank floor",
+      buildingFloor2Description: "thatched roof",
+      buildingWallAngle: 45,
+    })
+    const specs = await resolveSpecs(loaded)
+    let sent: Record<string, unknown> | undefined
+    const provider = new PixelLabProvider({
+      createTilesPro: async (args: Record<string, unknown>) => {
+        sent = args
+        return { tile_id: "tiles-1", background_job_id: "bg-1", status: "processing" }
+      },
+    } as never)
+    const lock: Lock = { version: 2, entries: {} }
+
+    await submit(
+      provider,
+      loaded,
+      (await buildPlan(specs, lock)).actionable,
+      lock,
+      path.join(dir, "pixelkiln.lock.json"),
+      { spacingMs: 0 },
+    )
+
+    expect(sent).toMatchObject({
+      tileHeight: 64,
+      tileViewAngle: 30,
+      tileDepthRatio: 0.4,
+      tileFlatTopPx: 4,
+      obliqueLean: 0.5,
+      buildingWallTiles: 2,
+      buildingLayout: "materials",
+      buildingWallDescription: "stone brick walls",
+      buildingFloorDescription: "wooden plank floor",
+      buildingFloor2Description: "thatched roof",
+      buildingWallAngle: 45,
+    })
   })
 
   it("reads JPEG dimensions and preserves its request format", () => {

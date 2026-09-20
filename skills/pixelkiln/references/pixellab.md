@@ -26,19 +26,46 @@ providers, or before any PixelLab account operation.
 
 `tiles` is not limited to top-down ground: `tileType` selects the projection
 (`isometric` — the API default —, `oblique`, `hex`, `hex_pointy`, `octagon`,
-or `square_topdown`), `tileSize` sets one tile's edge in pixels (16–256), and
-`tileView` sets the camera (`top-down`, `high top-down`, `low top-down`, or
-`side`). `outlineMode` chooses `outline` (a dark border per tile — right for
-tiles meant to read as discrete objects) or `segmentation` (no border, so a
-ground set tiles seamlessly instead of quilting at every cell edge — this
-alone decided whether a measured terrain set was usable). `tileFeature` asks
-for a connectable set instead of independent variations: `roads` for an
+or `square_topdown`), `tileSize` sets one tile's edge in pixels (16–128 — the
+API's real ceiling; connectable sets via `tileFeature` have tighter per-shape
+ranges, and square top-down roads are exactly 32), and `tileView` sets the
+camera (`top-down`, `high top-down`, `low top-down`, or `side`). `outlineMode`
+chooses `outline` (a dark border per tile — right for tiles meant to read as
+discrete objects) or `segmentation` (no border, so a ground set tiles
+seamlessly instead of quilting at every cell edge — this alone decided
+whether a measured terrain set was usable). `tileFeature` asks for a
+connectable set instead of independent variations: `roads` for an
 18-configuration path set, `tileset` for a 16-tile Wang corner set — describe
 the transition itself in the prompt ("fairway grass to rough meadow"), not
 one terrain — or `building` for a floor/wall/doorway construction kit.
 Passing `styleImages` overrides `tileType`/`tileView` entirely and copies
 tile shape and size from the reference instead, the only way to land new
 tiles on an existing sheet's ground plane.
+
+A second layer of `tiles` parameters controls shape and depth directly,
+beyond the `tileView` presets: `tileHeight` sets a non-square tile's pixel
+height explicitly (16–256, e.g. 128 for a 64×128 tile) when the geometry
+computed from `tileType`/`tileView` isn't what's wanted; `tileViewAngle`
+(0–90 degrees) is a continuous camera angle that overrides `tileView`
+entirely (0 = side, 90 = top-down); `tileDepthRatio` (0–1) overrides the
+depth/thickness the view would otherwise imply; `tileFlatTopPx` (2 or 4,
+`isometric` only) picks the classic 2px diamond cap versus a modern 4px one;
+and `obliqueLean` (0–1, `oblique` type and building walls only) sets the
+shear per pixel of height — 0.5 is a classic ~27° cabinet lean, 1.0 the full
+45° diagonal `oblique` defaults to.
+
+`tileFeature: "building"` takes its own sub-parameters: `buildingWallTiles`
+(1–3, default 2) sets wall height in tiles; `buildingLayout` picks `grid`
+(paints each shaped piece individually — richer, and the default for
+`isometric`) or `materials` (paints flat swatches and renders pieces from
+them — more consistent, and the default for `square_topdown`/`oblique`);
+`buildingWallDescription`, `buildingFloorDescription`, and
+`buildingFloor2Description` (each up to 500 characters) name the wall
+material, floor material, and upper-storey/roof surface explicitly rather
+than relying on the main prompt being split correctly (`buildingFloor2Description`
+defaults to the wall material when omitted); and `buildingWallAngle`
+(5–90 degrees, `square_topdown` only) sets the wall storey's own camera
+angle independent of the ground pitch.
 
 Do not confuse pixelkiln's `map` generator with PixelLab's own "Map
 Workshop": `map` returns one static prop, icon, or building in a single
