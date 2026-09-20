@@ -1,3 +1,10 @@
+# [0.50.0](https://github.com/gfargo/pixelkiln/compare/v0.49.0...v0.50.0) (2026-09-20)
+
+
+### Features
+
+* **pixellab:** expose tiles-pro's shape and building-kit parameters ([#179](https://github.com/gfargo/pixelkiln/issues/179)) ([0c7dba9](https://github.com/gfargo/pixelkiln/commit/0c7dba99b0dbc47d7643fa85b81ee36a49a51f7c))
+
 # [0.49.0](https://github.com/gfargo/pixelkiln/compare/v0.48.0...v0.49.0) (2026-09-19)
 
 
