@@ -1,3 +1,10 @@
+# [0.53.0](https://github.com/gfargo/pixelkiln/compare/v0.52.0...v0.53.0) (2026-09-20)
+
+
+### Features
+
+* **gallery:** create image-to-image revisions from the drawer ([#182](https://github.com/gfargo/pixelkiln/issues/182)) ([77313b5](https://github.com/gfargo/pixelkiln/commit/77313b5d87705b77999970da9baed2837ecefae4))
+
 # [0.52.0](https://github.com/gfargo/pixelkiln/compare/v0.51.0...v0.52.0) (2026-09-20)
 
 
