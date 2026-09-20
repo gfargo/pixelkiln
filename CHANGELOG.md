@@ -1,3 +1,10 @@
+## [0.53.2](https://github.com/gfargo/pixelkiln/compare/v0.53.1...v0.53.2) (2026-09-20)
+
+
+### Bug Fixes
+
+* **cli:** let export/pack select terrain-generator tileset entries ([08a1894](https://github.com/gfargo/pixelkiln/commit/08a18942cdacd47b7b345ab212a96c13cf668031))
+
 ## [0.53.1](https://github.com/gfargo/pixelkiln/compare/v0.53.0...v0.53.1) (2026-09-20)
 
 
