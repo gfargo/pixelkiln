@@ -231,13 +231,13 @@ export async function runExport(args: Args): Promise<void> {
   const format = (args.format ?? "generic") as TilesetFormat
   const manifestDir = path.dirname(path.resolve(args.manifest))
   const selected = specs.filter((spec) => {
-    if (spec.generator !== "tiles") return false
+    if (spec.generator !== "tiles" && spec.generator !== "terrain") return false
     if (args.styles.length && !args.styles.includes(spec.styleId)) return false
     if (args.assets.length && !args.assets.includes(spec.assetId)) return false
     return Boolean(lock.entries[lockKey(spec.styleId, spec.assetId)])
   })
   if (!selected.length) {
-    throw new Error("No downloaded tiles entries match the requested --style/--only filters.")
+    throw new Error("No downloaded tiles/terrain entries match the requested --style/--only filters.")
   }
   if (args.out && selected.length > 1) {
     throw new Error("--out can name one tileset only; add --style/--only to select one asset.")
