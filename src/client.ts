@@ -57,6 +57,31 @@ export interface TilesPro {
   tile_rules?: Record<string, unknown> | null
 }
 
+/**
+ * A `/create-tileset` tile: unlike `TilesPro`, the image comes back embedded
+ * as base64 rather than a `storage_urls` link, and each tile carries the
+ * Wang-corner data (`corners`, `pattern_4x4`) a consumer needs to place it.
+ */
+export interface TilesetTile {
+  id: string
+  name: string
+  image: { base64: string; format: string }
+  corners: { NW: string; NE: string; SW: string; SE: string }
+  pattern_4x4: { row_0: number[]; row_1: number[]; row_2: number[]; row_3: number[] }
+}
+
+/**
+ * A completed tileset. Like tiles-pro, `GET /tilesets/{id}` has no `status`
+ * field: it answers 423 while still generating and 200 with this shape once
+ * done, so the HTTP code IS the status.
+ */
+export interface Tileset {
+  total_tiles: number
+  tile_size: { width: number; height: number }
+  terrain_types: string[]
+  tiles: TilesetTile[]
+}
+
 export interface MapObject {
   object_id: string
   status: string
@@ -94,6 +119,15 @@ const MapSubmitSchema = z
     status: z.string().default("processing"),
   })
   .passthrough()
+const UsageSchema = z
+  .object({
+    type: z.string().optional(),
+    usd: z.number().nullable().optional(),
+    generations: z.number().nullable().optional(),
+  })
+  .passthrough()
+  .nullable()
+  .optional()
 const TilesSubmitSchema = z
   .object({
     tile_id: z.string().min(1),
@@ -106,6 +140,44 @@ const TilesProSchema = z
     storage_urls: z.record(z.string()),
     kind: z.string().nullable().default(null),
     tile_rules: z.record(z.unknown()).nullable().optional(),
+  })
+  .passthrough()
+const TilesetSubmitSchema = z
+  .object({
+    tileset_id: z.string().min(1),
+    background_job_id: z.string().min(1),
+    status: z.literal("processing").default("processing"),
+  })
+  .passthrough()
+const TilesetTileSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string(),
+    image: z.object({ base64: z.string().min(1), format: z.string().default("png") }).passthrough(),
+    corners: z
+      .object({ NW: z.string(), NE: z.string(), SW: z.string(), SE: z.string() })
+      .passthrough(),
+    pattern_4x4: z
+      .object({
+        row_0: z.array(z.number()),
+        row_1: z.array(z.number()),
+        row_2: z.array(z.number()),
+        row_3: z.array(z.number()),
+      })
+      .passthrough(),
+  })
+  .passthrough()
+const TilesetGetSchema = z
+  .object({
+    tileset: z
+      .object({
+        total_tiles: z.number().int().min(1),
+        tile_size: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).passthrough(),
+        terrain_types: z.array(z.string()),
+        tiles: z.array(TilesetTileSchema).min(1),
+      })
+      .passthrough(),
+    usage: UsageSchema,
   })
   .passthrough()
 /** Shared by /inpaint-v3 and /edit-images-v2: both hand back a generic background job. */
@@ -154,15 +226,6 @@ const SelectFramesSchema = z.object({ created_object_ids: z.array(z.string()) })
 // Characters. Verified against the v2 OpenAPI document; a character is one
 // record with 4 or 8 rotation URLs once its job completes, and its
 // animations hang off it grouped by name and direction.
-const UsageSchema = z
-  .object({
-    type: z.string().optional(),
-    usd: z.number().nullable().optional(),
-    generations: z.number().nullable().optional(),
-  })
-  .passthrough()
-  .nullable()
-  .optional()
 const CharacterSubmitSchema = z
   .object({
     background_job_id: z.string().min(1),
@@ -464,6 +527,63 @@ export class PixelLabClient {
       await this.request<unknown>(`/tiles-pro/${tileId}`),
       "get tiles",
     )
+  }
+
+  /**
+   * `/create-tileset`: two named terrain levels (`lower`/`upper`) and the
+   * transition between them, laid out as a Wang corner set. Unlike
+   * `/create-tiles-pro`, the descriptions are separate fields the API itself
+   * places on the terrain vertex grid, not one prompt it splits by number.
+   */
+  async createTileset(args: {
+    lowerDescription: string
+    upperDescription: string
+    transitionDescription?: string
+    tileSize?: number
+    mode?: string
+    shapeStyle?: string
+    spreadX?: number
+    slopeSize?: number
+    raggedness?: number
+    transitionSize?: number
+    view?: string
+    outline?: string
+    shading?: string
+    detail?: string
+    seed?: number
+  }): Promise<{ tileset_id: string; background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = {
+      lower_description: args.lowerDescription,
+      upper_description: args.upperDescription,
+    }
+    if (args.transitionDescription) body.transition_description = args.transitionDescription
+    if (args.tileSize != null) body.tile_size = { width: args.tileSize, height: args.tileSize }
+    if (args.mode) body.mode = args.mode
+    if (args.shapeStyle) body.shape_style = args.shapeStyle
+    if (args.spreadX != null) body.spread_x = args.spreadX
+    if (args.slopeSize != null) body.slope_size = args.slopeSize
+    if (args.raggedness != null) body.raggedness = args.raggedness
+    if (args.transitionSize != null) body.transition_size = args.transitionSize
+    if (args.view) body.view = args.view
+    if (args.outline) body.outline = args.outline
+    if (args.shading) body.shading = args.shading
+    if (args.detail) body.detail = args.detail
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      TilesetSubmitSchema,
+      await this.request<unknown>("/create-tileset", { method: "POST", body: JSON.stringify(body) }),
+      "create tileset",
+    )
+  }
+
+  /** Throws PixelLabError(423) while the set is still drawing; see Tileset. */
+  async getTileset(tilesetId: string): Promise<{ tileset: Tileset; usage: PixelLabUsage | null }> {
+    const res = await validateResponse(
+      TilesetGetSchema,
+      await this.request<unknown>(`/tilesets/${tilesetId}`),
+      "get tileset",
+    )
+    return { tileset: res.tileset, usage: res.usage ?? null }
   }
 
   /**

@@ -37,6 +37,14 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
 - **Diagonal character mirroring** (southeast/southwest, northeast/northwest,
   not just east/west) — already implemented in code
   (`MIRRORED_DIRECTION` in `src/types.ts`), was undocumented. Not a gap.
+- **Two-terrain elevation tilesets** (`/create-tileset`, the top-down family)
+  — a real gap, not a docs fix: `tiles`'s own `tileFeature: "tileset"` draws
+  one terrain's edges, not two named, connected terrain levels with their own
+  transition prompt. Closed by the `terrain` generator; see
+  `pixellab.md`. Cost is unmeasured (borrows the same 20/25/40 canvas tiers
+  already confirmed for `tiles` and `1dir`); `/create-tileset-sidescroller`,
+  reference images, `color_image`, and the `pro` pipeline's own tunables
+  beyond `spreadX`/`slopeSize`/`raggedness` remain unmodeled.
 
 ## Generic (non-character) animation and interpolation
 

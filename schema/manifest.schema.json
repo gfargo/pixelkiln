@@ -40,7 +40,8 @@
                       "tiles",
                       "animation",
                       "frames",
-                      "character"
+                      "character",
+                      "terrain"
                     ],
                     "default": "map"
                   },
@@ -91,6 +92,11 @@
                   "tileSize": {
                     "type": "integer",
                     "minimum": 16,
+                    "maximum": 128
+                  },
+                  "tileHeight": {
+                    "type": "integer",
+                    "minimum": 16,
                     "maximum": 256
                   },
                   "tileType": {
@@ -113,6 +119,26 @@
                       "side"
                     ]
                   },
+                  "tileViewAngle": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 90
+                  },
+                  "tileDepthRatio": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "tileFlatTopPx": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 8
+                  },
+                  "obliqueLean": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
                   "tileFeature": {
                     "type": "string",
                     "enum": [
@@ -121,11 +147,92 @@
                       "building"
                     ]
                   },
+                  "buildingWallTiles": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  },
+                  "buildingLayout": {
+                    "type": "string",
+                    "enum": [
+                      "grid",
+                      "materials"
+                    ]
+                  },
+                  "buildingWallDescription": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "buildingFloorDescription": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "buildingFloor2Description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "buildingWallAngle": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 90
+                  },
                   "outlineMode": {
                     "type": "string",
                     "enum": [
                       "outline",
                       "segmentation"
+                    ]
+                  },
+                  "terrainTileSize": {
+                    "type": "number",
+                    "enum": [
+                      16,
+                      32,
+                      64
+                    ]
+                  },
+                  "terrainMode": {
+                    "type": "string",
+                    "enum": [
+                      "standard",
+                      "pro"
+                    ]
+                  },
+                  "terrainShapeStyle": {
+                    "type": "string",
+                    "enum": [
+                      "square",
+                      "round"
+                    ]
+                  },
+                  "terrainSpreadX": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainSlopeSize": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainRaggedness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainTransitionSize": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainView": {
+                    "type": "string",
+                    "enum": [
+                      "low top-down",
+                      "high top-down"
                     ]
                   },
                   "noBackground": {
@@ -359,7 +466,8 @@
                       "tiles",
                       "animation",
                       "frames",
-                      "character"
+                      "character",
+                      "terrain"
                     ],
                     "default": "map"
                   },
@@ -410,6 +518,11 @@
                   "tileSize": {
                     "type": "integer",
                     "minimum": 16,
+                    "maximum": 128
+                  },
+                  "tileHeight": {
+                    "type": "integer",
+                    "minimum": 16,
                     "maximum": 256
                   },
                   "tileType": {
@@ -432,6 +545,26 @@
                       "side"
                     ]
                   },
+                  "tileViewAngle": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 90
+                  },
+                  "tileDepthRatio": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "tileFlatTopPx": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 8
+                  },
+                  "obliqueLean": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
                   "tileFeature": {
                     "type": "string",
                     "enum": [
@@ -440,11 +573,92 @@
                       "building"
                     ]
                   },
+                  "buildingWallTiles": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  },
+                  "buildingLayout": {
+                    "type": "string",
+                    "enum": [
+                      "grid",
+                      "materials"
+                    ]
+                  },
+                  "buildingWallDescription": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "buildingFloorDescription": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "buildingFloor2Description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "buildingWallAngle": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 90
+                  },
                   "outlineMode": {
                     "type": "string",
                     "enum": [
                       "outline",
                       "segmentation"
+                    ]
+                  },
+                  "terrainTileSize": {
+                    "type": "number",
+                    "enum": [
+                      16,
+                      32,
+                      64
+                    ]
+                  },
+                  "terrainMode": {
+                    "type": "string",
+                    "enum": [
+                      "standard",
+                      "pro"
+                    ]
+                  },
+                  "terrainShapeStyle": {
+                    "type": "string",
+                    "enum": [
+                      "square",
+                      "round"
+                    ]
+                  },
+                  "terrainSpreadX": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainSlopeSize": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainRaggedness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainTransitionSize": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainView": {
+                    "type": "string",
+                    "enum": [
+                      "low top-down",
+                      "high top-down"
                     ]
                   },
                   "noBackground": {
