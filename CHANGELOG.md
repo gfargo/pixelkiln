@@ -1,3 +1,10 @@
+# [0.51.0](https://github.com/gfargo/pixelkiln/compare/v0.50.0...v0.51.0) (2026-09-20)
+
+
+### Features
+
+* **pixellab:** add a terrain generator wrapping /create-tileset ([#180](https://github.com/gfargo/pixelkiln/issues/180)) ([ed6af3d](https://github.com/gfargo/pixelkiln/commit/ed6af3db05b03195936b458a23e6f113e1e60412)), closes [#179](https://github.com/gfargo/pixelkiln/issues/179)
+
 # [0.50.0](https://github.com/gfargo/pixelkiln/compare/v0.49.0...v0.50.0) (2026-09-20)
 
 
