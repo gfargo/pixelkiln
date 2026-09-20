@@ -182,29 +182,27 @@ way as every other PixelLab submission.
   adapter does that automatically.
 - **`inpaint-v3` genuinely has a 20/25/40 three-tier structure, but not at
   the `1dir`/`create-tiles-pro` breakpoints (1024px², 2048px²) this adapter
-  borrows.** Seven live `inpaint` calls, bisecting toward the real
+  borrows.** Nine live `inpaint` calls, bisecting toward the real
   breakpoints: 32×32 (1024px²) through 256×256 (65536px²) — 1024px²,
-  1600px², 16384px², 65536px² — all billed **20**; 320×320 (102400px²)
-  billed **25**, the first confirmed use of the middle tier, at a size
-  16x past where the borrowed model starts charging 25; 384×384
-  (147456px²) and 512×512 (262144px², the ceiling) both billed **40**. Two
-  breakpoints remain to be narrowed: 20→25 sits somewhere in
-  (65536px², 102400px²], and 25→40 somewhere in (102400px², 147456px²].
-  Until narrowed further, `generationCost`'s existing 1024px²/2048px²
-  breakpoints are demonstrably wrong in both directions inside this
-  0–147456px² range: they charge 25 too early (any point in
-  (2048px², 65536px²] is really still 20) and cross to 40 too early too
-  (any point in (2048px², ~130000px²] that isn't yet confirmed 25 or 40
-  might really be 20 or 25). The `25` tier is real, not a fiction — just
-  positioned far higher than assumed. Every size at or above 2048px² falls
-  into `generationCost`'s `else` branch and returns 40 regardless: correct
-  for 384×384 and 512×512, but a full-tier overestimate for 320×320, whose
-  confirmed real cost is 25, not 40. Every miss measured so far, including
-  this one, is still in the safe direction (never bills more than
-  predicted), just larger than the single-tier gap found before this test.
-  `image-to-image` is separately confirmed only at its own 32×32 floor (20
-  generations); its curve above that, including whether it shares any of
-  `inpaint`'s breakpoints, is unmeasured.
+  1600px², 16384px², 65536px² — all billed **20**; 288×288 (82944px²) and
+  320×320 (102400px²) both billed **25**; 352×352 (123904px²), 384×384
+  (147456px²), and 512×512 (262144px², the ceiling) all billed **40**. Both
+  breakpoints are now tightly bracketed: 20→25 sits somewhere in
+  (65536px², 82944px²] — a 1.27x range — and 25→40 somewhere in
+  (102400px², 123904px²] — a 1.21x range. `generationCost`'s existing
+  1024px²/2048px² breakpoints are demonstrably wrong throughout this range:
+  they charge 25 far too early (anything in (2048px², 65536px²] is really
+  still 20) and reach 40 far too early too (anything in
+  (2048px², 102400px²] that is not yet confirmed 25 is really 20, not 40).
+  The `25` tier is real, not a fiction — just positioned far higher than
+  assumed. Every size at or above 2048px² falls into `generationCost`'s
+  `else` branch and returns 40 regardless: correct for 352×352, 384×384,
+  and 512×512, but a full-tier overestimate for 288×288 and 320×320, whose
+  confirmed real cost is 25, not 40. Every miss measured so far is still in
+  the safe direction (never bills more than predicted). `image-to-image`
+  is separately confirmed only at its own 32×32 floor (20 generations);
+  its curve above that, including whether it shares any of `inpaint`'s
+  breakpoints, is unmeasured.
   PixelLab's own tutorial reports its Pro edit tool at roughly 40 generations
   for a typical (larger) edit, consistent with `image-to-image` reaching the
   same ceiling `inpaint` measurably does, without saying where.

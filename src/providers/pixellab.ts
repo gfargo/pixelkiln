@@ -237,17 +237,19 @@ export class PixelLabProvider implements Provider {
       // like /generate-with-style-v2 and /generate-image-v2. Live calls to
       // inpaint-v3 confirm its floor (32x32, 1024px², billed 20) and
       // ceiling (512x512, billed 40) match this borrowed tiering exactly,
-      // and confirm a real middle (25-generation) tier exists -- 320x320
-      // (102400px²) billed 25 -- but at breakpoints nowhere near this
-      // tiering's 1024px²/2048px²: 40x40, 128x128, and 256x256 (up to
-      // 65536px²) all still billed 20, and 384x384 (147456px²) already
-      // billed 40. Two real breakpoints remain unlocated: 20->25 in
-      // (65536px², 102400px²], 25->40 in (102400px², 147456px²]
+      // and confirm a real middle (25-generation) tier exists -- 288x288
+      // (82944px²) and 320x320 (102400px²) both billed 25 -- but at
+      // breakpoints nowhere near this tiering's 1024px²/2048px²: 40x40,
+      // 128x128, and 256x256 (up to 65536px²) all still billed 20, and
+      // 352x352 (123904px²) and 384x384 (147456px²) already billed 40.
+      // Both real breakpoints are now tightly bracketed: 20->25 in
+      // (65536px², 82944px²], 25->40 in (102400px², 123904px²]
       // (docs/ENDPOINTS.md). Below 2048px² this still returns 20 (correct
       // everywhere measured); at or above 2048px² it always returns 40,
-      // which is wrong for 320x320 specifically (confirmed 25, not 40) --
-      // still a safe direction, just a bigger miss than a single tier.
-      // edit-images-v2 above its own 32x32 floor is unmeasured entirely.
+      // which is wrong for 288x288 and 320x320 specifically (confirmed 25,
+      // not 40) -- still a safe direction, just a bigger miss than a
+      // single tier. edit-images-v2 above its own 32x32 floor is
+      // unmeasured entirely.
       // Reuse the same canvas-area tiering already measured for those Pro
       // endpoints and for 1dir/tiles rather than guess a number for what
       // remains unconfirmed: per
