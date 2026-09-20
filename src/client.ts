@@ -784,19 +784,19 @@ export class PixelLabClient {
   /**
    * Masked inpaint, PixelLab's `/inpaint-v3` (the endpoint its own docs list
    * first in the Inpaint section, its convention for "reach for this by
-   * default"). Exercised live at five sizes, all returning `last_response.
+   * default"). Exercised live at six sizes, all returning `last_response.
    * image` as a single `{type, base64, width, height}` (the first shape
    * `pollRevision` in pixellab.ts checks, so no change was ever needed):
    * 32x32 (1024px², billed 20, this adapter's tiering floor), 40x40
    * (1600px²), 128x128 (16384px²), and 256x256 (65536px²), all three
    * billed 20 though the tiering predicts 25 for that whole band (wrong,
-   * see estimate() in pixellab.ts), and 512x512 (billed 40, the tiering
-   * ceiling). The real 20->40 breakpoint is bisected to somewhere in
-   * (65536px², 262144px²]. `editImagesV2` below returns the same fields
-   * under `images`, plural and array-wrapped, not `image` — do not assume
-   * the two endpoints share one response shape. See docs/ENDPOINTS.md and
-   * docs/REVISIONS.md for the full shape and cost picture, including what
-   * is still unconfirmed.
+   * see estimate() in pixellab.ts), and 384x384 (147456px²) and 512x512
+   * (262144px², the tiering ceiling), both billed 40. The real 20->40
+   * breakpoint is bisected to somewhere in (65536px², 147456px²].
+   * `editImagesV2` below returns the same fields under `images`, plural
+   * and array-wrapped, not `image` — do not assume the two endpoints share
+   * one response shape. See docs/ENDPOINTS.md and docs/REVISIONS.md for
+   * the full shape and cost picture, including what is still unconfirmed.
    *
    * `crop_to_mask` defaults true upstream (confirmed in the schema): PixelLab
    * otherwise blends generated pixels outside the mask edge to "fit
