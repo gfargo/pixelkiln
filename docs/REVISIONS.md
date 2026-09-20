@@ -182,18 +182,21 @@ way as every other PixelLab submission.
   adapter does that automatically.
 - **The borrowed `1dir`/`create-tiles-pro` tiering (20/25/40 by canvas area,
   breakpoints at 1024px² and 2048px²) does not describe `inpaint-v3`'s real
-  pricing, only bounds it from above.** Three live `inpaint` calls: 32×32
-  (1024px², the floor) billed 20; 512×512 (262144px², the ceiling) billed
-  40; but 40×40 (1600px², which the borrowed tiering's own 1024–2048px²
-  band predicts as 25) also billed **20, not 25**. The real breakpoint
-  between the 20- and 40-generation tiers for `inpaint-v3` sits somewhere
-  above 1600px², not at 2048px² — exactly where is unmeasured. The `25` tier
-  as currently coded in `generationCost` is not wrong to output (it never
-  underestimates a confirmed point), but it is confirmed *inexact*: at
-  1600px² pixelkiln's `plan`/`--budget` would reserve 25 generations against
-  work that actually bills 20. `image-to-image` is separately confirmed only
-  at its own 32×32 floor (also 20 generations); its curve above that,
-  including whether it shares `inpaint`'s higher breakpoint, is unmeasured.
+  pricing, only bounds it from above.** Four live `inpaint` calls, bisecting
+  toward the real breakpoint: 32×32 (1024px², the floor) billed 20; 40×40
+  (1600px², inside the borrowed tiering's 25-generation band) billed **20,
+  not 25**; 128×128 (16384px², bisecting further up) billed **20 again**;
+  512×512 (262144px², the ceiling) billed 40. The real breakpoint between
+  the 20- and 40-generation tiers for `inpaint-v3` sits somewhere in
+  (16384px², 262144px²] — narrower than the first finding, still open. The
+  `25` tier as currently coded in `generationCost` is not wrong to output
+  (it never underestimates a confirmed point), but it is confirmed
+  *inexact* everywhere measured so far below the real breakpoint: at both
+  1600px² and 16384px², pixelkiln's `plan`/`--budget` would reserve 25
+  generations against work that actually bills 20. `image-to-image` is
+  separately confirmed only at its own 32×32 floor (also 20 generations);
+  its curve above that, including whether it shares `inpaint`'s higher
+  breakpoint, is unmeasured.
   PixelLab's own tutorial reports its Pro edit tool at roughly 40 generations
   for a typical (larger) edit, consistent with `image-to-image` reaching the
   same ceiling `inpaint` measurably does, without saying where.
