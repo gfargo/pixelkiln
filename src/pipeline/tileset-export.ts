@@ -196,6 +196,15 @@ export function exportTileset(
       `${options.format} export cannot infer adjacency from outline/stamp-only rules; use --format generic`,
     )
   }
+  if (
+    options.format === "godot" && rules?.ruleType === "edge" &&
+    godotTileShape(spec.tileType ?? "isometric") !== 0
+  ) {
+    throw new Error(
+      "godot export does not yet map edge/side adjacency onto an isometric or oblique tile's " +
+        "diagonal peering bits safely; use --format generic or --format tiled",
+    )
+  }
 
   if (options.format === "tiled") {
     return {
@@ -303,6 +312,7 @@ function tiledWangId(rules: NormalizedTileRules, mask: number): number[] {
 
 function buildGodot(generic: GenericTileset, spec: ResolvedSpec): string {
   const rules = generic.rules
+  const shape = godotTileShape(spec.tileType ?? "isometric")
   const lines = [
     `[gd_resource type="TileSet" load_steps=3 format=3]`,
     "",
@@ -318,7 +328,7 @@ function buildGodot(generic: GenericTileset, spec: ResolvedSpec): string {
     const y = Math.floor(tile.id / generic.sheet.columns)
     lines.push(`${x}:${y}/0 = 0`)
     if (!rules || tile.bitmask === undefined || rules.ruleType === "outline") continue
-    const values = godotTerrainBits(rules, tile.bitmask)
+    const values = godotTerrainBits(rules, tile.bitmask, shape)
     lines.push(`${x}:${y}/0/terrain_set = 0`)
     lines.push(`${x}:${y}/0/terrain = ${dominantTerrain(values)}`)
     for (const [side, value] of Object.entries(values)) {
@@ -328,7 +338,6 @@ function buildGodot(generic: GenericTileset, spec: ResolvedSpec): string {
 
   lines.push("", "[resource]")
   lines.push(`tile_size = Vector2i(${generic.tile.width}, ${generic.tile.height})`)
-  const shape = godotTileShape(spec.tileType ?? "isometric")
   if (shape !== 0) lines.push(`tile_shape = ${shape}`)
   if (rules && rules.ruleType !== "outline") {
     lines.push(`terrain_set_0/mode = ${rules.ruleType === "corner" ? 1 : 2}`)
@@ -344,9 +353,28 @@ function buildGodot(generic: GenericTileset, spec: ResolvedSpec): string {
   return lines.join("\n")
 }
 
-function godotTerrainBits(rules: NormalizedTileRules, mask: number): Record<string, number> {
+/**
+ * Godot validates peering-bit property names against the TileSet's own
+ * `tile_shape` (`is_valid_terrain_peering_bit()`) and silently drops any
+ * that don't match: a square tile's `top_left_corner` etc. are rejected
+ * outright on an isometric/oblique (diamond) tile, which instead wants the
+ * diamond-point names `top_corner`/`right_corner`/`bottom_corner`/`left_corner`.
+ * Confirmed both experimentally (headless Godot 4.7.2 `is_valid_terrain_peering_bit`)
+ * and against a shipped, hand-verified isometric Wang set (disc-golf-game's
+ * docs/terrain-tiles.md §5: "Each of the 16 tiles was rendered, its four
+ * diamond corners sampled for light-vs-dark, and checked against its mask").
+ */
+function godotTerrainBits(rules: NormalizedTileRules, mask: number, shape: number): Record<string, number> {
   const terrain = (bit: number) => ((mask & (1 << bit)) !== 0 ? 0 : 1)
   if (rules.ruleType === "corner") {
+    if (shape === 1) {
+      return {
+        top_corner: terrain(3),
+        right_corner: terrain(2),
+        left_corner: terrain(1),
+        bottom_corner: terrain(0),
+      }
+    }
     return {
       top_left_corner: terrain(3),
       top_right_corner: terrain(2),
@@ -354,6 +382,9 @@ function godotTerrainBits(rules: NormalizedTileRules, mask: number): Record<stri
       bottom_right_corner: terrain(0),
     }
   }
+  // Isometric/oblique edge masks are refused before reaching here (see the
+  // "edge/side adjacency" guard in exportTileset()) since the diagonal
+  // peering-bit direction hasn't been verified the way the corner case has.
   return {
     top_side: terrain(0),
     right_side: terrain(1),

@@ -89,6 +89,7 @@ describe("export CLI command", () => {
     ]))
     const document = await readFile(`${out}.tres`, "utf8")
     expect(document).toMatch(/terrain_set_0\/mode = 1/)
-    expect(document).toMatch(/terrains_peering_bit\/bottom_right_corner = 0/)
+    // Isometric (the default tile shape): diamond-point corner names, not square ones.
+    expect(document).toMatch(/terrains_peering_bit\/bottom_corner = 0/)
   })
 })
