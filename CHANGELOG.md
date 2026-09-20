@@ -1,3 +1,10 @@
+## [0.53.3](https://github.com/gfargo/pixelkiln/compare/v0.53.2...v0.53.3) (2026-09-20)
+
+
+### Bug Fixes
+
+* **pixellab:** use Godot's isometric corner names for terrain peering bits ([5730d24](https://github.com/gfargo/pixelkiln/commit/5730d2499e7216c4a574b8b8fcca91316362ffc9))
+
 ## [0.53.2](https://github.com/gfargo/pixelkiln/compare/v0.53.1...v0.53.2) (2026-09-20)
 
 
