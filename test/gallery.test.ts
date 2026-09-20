@@ -652,6 +652,42 @@ describe("applyManifestEdit", () => {
     const specs = await resolveSpecs(await loadManifest(manifestPath))
     expect(specs.map((spec) => spec.assetId)).toContain("tongs")
   })
+
+  it("adds an image-to-image revision of an existing asset", async () => {
+    const { manifestPath } = await generated()
+    const result = await applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "anvil-worn", expectedSha256: await sha256File(manifestPath),
+      asset: { prompt: "a worn, rusted anvil", styles: ["base"], revision: { mode: "image-to-image", from: "anvil" } },
+    })
+    expect(result.changed).toBe(true)
+    const written = JSON.parse(await readFile(manifestPath, "utf8"))
+    expect(written.assets["anvil-worn"]).toEqual({
+      prompt: "a worn, rusted anvil",
+      styles: ["base"],
+      revision: { mode: "image-to-image", from: "anvil" },
+    })
+    const specs = await resolveSpecs(await loadManifest(manifestPath))
+    const revised = specs.find((spec) => spec.assetId === "anvil-worn")!
+    expect(revised.revision).toMatchObject({ mode: "image-to-image", sourceAssetId: "anvil" })
+  })
+
+  it("carries an explicit strength through", async () => {
+    const { manifestPath } = await generated()
+    await applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "anvil-worn", expectedSha256: await sha256File(manifestPath),
+      asset: { prompt: "a worn anvil", styles: ["base"], revision: { mode: "image-to-image", from: "anvil", strength: 0.4 } },
+    })
+    const written = JSON.parse(await readFile(manifestPath, "utf8"))
+    expect(written.assets["anvil-worn"].revision).toEqual({ mode: "image-to-image", from: "anvil", strength: 0.4 })
+  })
+
+  it("refuses a revision whose parent does not exist", async () => {
+    const { manifestPath } = await generated()
+    await expect(applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "anvil-worn", expectedSha256: await sha256File(manifestPath),
+      asset: { prompt: "a worn anvil", revision: { mode: "image-to-image", from: "nobody" } },
+    })).rejects.toThrow(/revision parent "nobody" is not declared/)
+  })
 })
 
 describe("applyManifestEdit for styles", () => {

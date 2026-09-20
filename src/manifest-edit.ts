@@ -41,6 +41,21 @@ const NewAssetSchema = z
     tags: z.array(z.string()).optional(),
     /** Restrict to these styles; empty or omitted means every style. */
     styles: z.array(z.string().min(1)).optional(),
+    /**
+     * A controlled regeneration of another asset in the same manifest,
+     * instead of a fresh generation. `inpaint` needs a mask upload the
+     * gallery does not offer yet, so only `image-to-image` can be created
+     * here; hand-edit the manifest for the other modes.
+     */
+    revision: z
+      .object({
+        mode: z.literal("image-to-image"),
+        /** Asset id of the parent this revises; must already exist. */
+        from: z.string().min(1),
+        strength: z.number().min(0).max(1).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 
@@ -262,6 +277,9 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
         }
       }
       asset.styles = styles
+    }
+    if (edit.asset.revision && !Object.hasOwn(raw.assets, edit.asset.revision.from)) {
+      throw new ManifestEditError(`revision parent "${edit.asset.revision.from}" is not declared by the manifest`)
     }
     raw.assets[edit.assetId] = asset
     return

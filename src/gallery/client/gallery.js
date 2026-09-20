@@ -111,6 +111,20 @@ const paletteRuleOf = (item) => {
   const style = snap.styles.find((s) => s.id === item.styleId && s.project === item.project);
   return style && style.enforcePalette && style.palette.length >= 2 ? style.palette : null;
 };
+/**
+ * Whether this item has usable pixels to revise: committed `source` art
+ * always qualifies, otherwise it needs a current, downloaded generation, or
+ * (for a quality-gated style) a current, human-approved refined output. This
+ * mirrors docs/REVISIONS.md's dependency gate closely enough to gate the
+ * button; the server's own plan is still the final word once the revision
+ * asset exists, and reports `blocked` with the real reason if this guess
+ * were ever wrong.
+ */
+const isRevisable = (item) => {
+  if (item.source) return true;
+  if (item.quality) return item.quality.review?.status === 'approved' && !!item.quality.check?.current;
+  return item.status === 'downloaded' && item.state === 'ok';
+};
 const activeJobFor = (item) => GEN.jobs.find((job) => ACTIVE_PHASES.has(job.phase) && job.project === item.project && job.keys.includes(item.key)) || null;
 const JOB_VERB = { generate: 'regenerating', resume: 'resuming', refresh: 'pulling upstream changes for', restore: 'restoring', revert: 'bringing back a previous generation of' };
 const PHASE_TEXT = { queued: 'queued', submitting: 'submitting to the provider', polling: 'waiting for the provider to finish', fetching: 'downloading the result', review: 'candidates are ready to review' };
@@ -1570,7 +1584,7 @@ function addAssetForm(style) {
   const form = el('form', 'edit');
   form.append(el('h3', null, 'New asset in ' + style.id));
   const id = el('input'); id.type = 'text'; id.placeholder = 'asset-id'; id.required = true; id.autocomplete = 'off';
-  id.pattern = '[^/\\]+';
+  id.pattern = '[^\\/\\\\]+';
   const prompt = el('textarea'); prompt.placeholder = 'What to generate. The style adds its prefix and suffix.'; prompt.required = true;
   const width = numberInput(null, 'style default'), height = numberInput(null, 'style default');
   const category = el('input'); category.type = 'text'; category.placeholder = 'optional subfolder';
@@ -1599,6 +1613,54 @@ function addAssetForm(style) {
       if (style.project) body.project = style.project;
       snap = await postEdit(body);
       const newId = (style.project ? style.project + ':' : '') + style.id + '/' + id.value.trim();
+      ui.editing = null;
+      ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
+      render();
+      if (snap.items.some((i) => i.id === newId)) openItem(newId);
+    } catch (err) {
+      save.disabled = false;
+      msg.className = 'msg bad';
+      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+    }
+  };
+  setTimeout(() => id.focus(), 0);
+  return form;
+}
+
+/**
+ * A new `image-to-image` revision of `item`, restricted to `item`'s own
+ * style (a revision's `from` resolves per style, and this button starts
+ * from one specific generation). `inpaint` needs a mask upload the gallery
+ * does not offer yet, so this form only ever creates `image-to-image`.
+ */
+function newRevisionForm(item) {
+  const pr = projectOf(item);
+  const form = el('form', 'edit');
+  form.append(el('h3', null, 'New revision of ' + item.assetId));
+  const id = el('input'); id.type = 'text'; id.placeholder = 'asset-id'; id.required = true; id.autocomplete = 'off';
+  id.pattern = '[^\\/\\\\]+';
+  const prompt = el('textarea'); prompt.placeholder = 'Edit instruction, e.g. "add snow on the roof".'; prompt.required = true;
+  const strength = el('input'); strength.type = 'number'; strength.min = '0'; strength.max = '1'; strength.step = '0.05'; strength.placeholder = 'provider default';
+  const row1 = el('div', 'row');
+  row1.append(field('new asset id', id), field('strength', strength, 'PixelLab rejects an explicit strength for image-to-image; leave this blank there.'));
+  form.append(row1, field('edit instruction', prompt, 'The style still adds its prefix and suffix.'));
+  const actions = el('div', 'actions');
+  const save = el('button', 'primary', 'Create revision'); save.type = 'submit';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; renderDrawer(); };
+  const msg = el('span', 'msg');
+  actions.append(save, cancel, msg);
+  form.append(actions);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
+    const revision = { mode: 'image-to-image', from: item.assetId };
+    if (strength.value.trim() !== '') revision.strength = Number(strength.value);
+    const asset = { prompt: prompt.value, styles: [item.styleId], revision };
+    try {
+      const body = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr.manifestSha256, asset };
+      if (item.project) body.project = item.project;
+      snap = await postEdit(body);
+      const newId = (item.project ? item.project + ':' : '') + item.styleId + '/' + id.value.trim();
       ui.editing = null;
       ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
       render();
@@ -1980,9 +2042,18 @@ function renderDrawer() {
     body.append(s);
   }
   const children = snap.items.filter((i) => i.revisionParentKey === item.key && i.project === item.project);
-  if (children.length) {
+  const reviseKey = 'revise:' + item.id;
+  const canRevise = canEdit && isRevisable(item);
+  if (children.length || canRevise) {
     const { s, dl } = section('Revisions from this asset');
     for (const c of children) row(dl, c.revision ? c.revision.mode : 'child', keyLink(item, c.key));
+    if (canRevise) {
+      const revise = el('button', ui.editing === reviseKey ? null : 'add', ui.editing === reviseKey ? 'Cancel' : '+ New revision');
+      revise.type = 'button';
+      revise.onclick = () => { ui.editing = ui.editing === reviseKey ? null : reviseKey; ui.notice = null; renderDrawer(); };
+      s.append(revise);
+      if (ui.editing === reviseKey) s.append(newRevisionForm(item));
+    }
     body.append(s);
   }
 

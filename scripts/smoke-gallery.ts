@@ -187,6 +187,29 @@ try {
   check(restored?.history.length === 1 && restored.history[0] === after?.sha, "the one it replaced is now #1 in history")
   check(/Brought back generation #1/.test(await notice()), "the record says which generation came back")
 
+  // Create an image-to-image revision of the completed anvil generation from
+  // its drawer, the gallery UI path onto `add-asset` with a `revision` field.
+  await page.goto(`${server.url}#base/anvil`, { waitUntil: "networkidle0" })
+  await page.waitForSelector(".drawer", { timeout: 5_000 })
+  const hasRevisionButton = () => page.evaluate(() =>
+    [...document.querySelectorAll(".drawer button")].some((b) => /New revision/.test(b.textContent ?? "")))
+  check(await hasRevisionButton(), "ok record offers + New revision")
+  await page.evaluate(() => ([...document.querySelectorAll(".drawer button")] as HTMLButtonElement[]).find((b) => /New revision/.test(b.textContent ?? ""))!.click())
+  await page.waitForSelector(".drawer form.edit", { timeout: 5_000 })
+  await page.evaluate(() => {
+    const form = document.querySelector(".drawer form.edit")!
+    const id = form.querySelector("input[placeholder=\"asset-id\"]") as HTMLInputElement
+    id.value = "anvil-worn"
+    const prompt = form.querySelector("textarea") as HTMLTextAreaElement
+    prompt.value = "add rust and wear"
+  })
+  await page.click(".drawer form.edit button[type=submit]")
+  await noticeMatches("Added to the manifest")
+  check(
+    await waitForItem("base/anvil-worn", 'item.revisionParentKey === "base/anvil" && item.asset?.revision?.mode === "image-to-image"'),
+    "revision asset created with its parent recorded",
+  )
+
   check(consoleErrors.length === 0, `no console errors or failed requests${consoleErrors.length ? `:\n    ${consoleErrors.join("\n    ")}` : ""}`)
 } finally {
   await browser.close()

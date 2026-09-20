@@ -51,6 +51,16 @@ change texture and lighting while retaining more of the source. Higher values
 permit larger changes and make silhouette drift more likely. Strength is an
 input to the provider workflow, not a cross-model quality guarantee.
 
+**From the gallery** (`pixelkiln gallery --edit`): open a completed or
+committed asset's drawer and use "+ New revision" under "Revisions from this
+asset" to create an `image-to-image` child of it — an edit instruction, an
+optional strength, and a new asset id are all it asks for. The button only
+appears once the parent has usable pixels (committed `source`, a current
+downloaded generation, or a current approved quality output); the plan still
+reports `blocked` with the real reason if that turns out wrong once the asset
+exists. `inpaint` needs a mask upload the gallery does not offer yet, so it
+still has to be added by hand.
+
 ## Inpainting
 
 An inpaint revision also declares a manifest-relative mask:
