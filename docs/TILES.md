@@ -81,6 +81,14 @@ pixelkiln export --style ground --only terrain --format tiled
 pixelkiln export --style ground --only terrain --format godot
 ```
 
+`export` selects downloaded `tiles` and `terrain` generator entries; anything
+else is not a tileset and does not match `--style`/`--only`. (Selecting only
+`tiles` was itself a bug once `terrain` shipped: `runExport()`'s own generator
+filter rejected every `terrain` asset before it ever reached `exportTileset()`,
+so the normalization above ran and was tested but nothing in the CLI could
+invoke it. Fixed in `src/cli/commands/pack.ts`; `test/export-cli.test.ts`
+exercises `runExport()` itself so this can't regress silently again.)
+
 `--format` defaults to `generic`. `--out dist/terrain` overrides the output
 base when exactly one entry is selected. `--columns` controls atlas columns.
 Without `--out`, files land in the style's `outDir` as
