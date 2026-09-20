@@ -1,3 +1,10 @@
+# [0.52.0](https://github.com/gfargo/pixelkiln/compare/v0.51.0...v0.52.0) (2026-09-20)
+
+
+### Features
+
+* **pixellab:** add an imagePro generator wrapping /generate-image-v2 ([#181](https://github.com/gfargo/pixelkiln/issues/181)) ([332e7b5](https://github.com/gfargo/pixelkiln/commit/332e7b584e0bb09eecaf8386e7d3c5b980f672ba))
+
 # [0.51.0](https://github.com/gfargo/pixelkiln/compare/v0.50.0...v0.51.0) (2026-09-20)
 
 
