@@ -41,7 +41,8 @@
                       "animation",
                       "frames",
                       "character",
-                      "terrain"
+                      "terrain",
+                      "imagePro"
                     ],
                     "default": "map"
                   },
@@ -467,7 +468,8 @@
                       "animation",
                       "frames",
                       "character",
-                      "terrain"
+                      "terrain",
+                      "imagePro"
                     ],
                     "default": "map"
                   },

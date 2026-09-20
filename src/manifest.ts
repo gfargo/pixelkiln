@@ -515,7 +515,7 @@ export async function resolveSpecs(
             ? tileVariations
             : generator === "terrain"
               ? terrainTiles
-              : generator === "1dir"
+              : generator === "1dir" || generator === "imagePro"
                 ? candidateCount(size)
                 : 1,
       }
