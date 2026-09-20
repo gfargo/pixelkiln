@@ -522,19 +522,39 @@ const StyleObjectSchema = z
     shading: z.string().optional(),
     detail: z.string().optional(),
     /**
-     * `tiles` generator only. Edge length of one tile, 16-256.
+     * `tiles` generator only. Edge length of one tile, 16-128 (the API's own
+     * range; connectable sets narrow it further per shape, e.g. square
+     * top-down roads are fixed at 32).
      *
      * Ignored when `styleImages` is set: style mode takes the tile's shape
      * and dimensions from the reference image, which is the whole reason to
      * use it against an existing sheet.
      */
-    tileSize: z.number().int().min(16).max(256).optional(),
+    tileSize: z.number().int().min(16).max(128).optional(),
+    /** `tiles` generator only. Height in pixels (16-256) for a non-square
+     *  tile (e.g. a tall building wall); omit to compute it from `tileType`
+     *  geometry and the view angle. */
+    tileHeight: z.number().int().min(16).max(256).optional(),
     /** `tiles` generator only. Defaults to the API's `isometric`. */
     tileType: z
       .enum(["hex", "hex_pointy", "isometric", "oblique", "octagon", "square_topdown"])
       .optional(),
     /** `tiles` generator only. Defaults to the API's `low top-down`. */
     tileView: z.enum(["top-down", "high top-down", "low top-down", "side"]).optional(),
+    /** `tiles` generator only. Continuous view angle in degrees (0 = side,
+     *  90 = top-down), overriding `tileView` when set. */
+    tileViewAngle: z.number().min(0).max(90).optional(),
+    /** `tiles` generator only. Tile depth/thickness as a ratio (0-1) of the
+     *  tile's height, overriding the default the API computes from the
+     *  view. This is the tutorials' "thickness" control. */
+    tileDepthRatio: z.number().min(0).max(1).optional(),
+    /** `tiles` generator only, `tileType: "isometric"`. Top/bottom cap
+     *  width in pixels: 2 for the classic look, 4 for a more modern one. */
+    tileFlatTopPx: z.number().int().min(2).max(8).optional(),
+    /** `tiles` generator only, `tileType: "oblique"` (ground tiles or
+     *  building walls). Horizontal shear per pixel of height (0-1); 0.5 is
+     *  a classic cabinet projection (~27°), 1.0 a full 45° diagonal. */
+    obliqueLean: z.number().min(0).max(1).optional(),
     /**
      * `tiles` generator only. Asks for a connectable set instead of
      * independent variations:
@@ -549,6 +569,28 @@ const StyleObjectSchema = z
      * is load-bearing; do not sort a connectable set by anything else.
      */
     tileFeature: z.enum(["roads", "tileset", "building"]).optional(),
+    /** `tileFeature: "building"` only. Wall height in tiles (1-3); the API
+     *  defaults to 2. */
+    buildingWallTiles: z.number().int().min(1).max(3).optional(),
+    /** `tileFeature: "building"` only. `"grid"` paints each shaped piece
+     *  individually (richer, the isometric default); `"materials"` paints
+     *  flat swatches and renders pieces from them (more consistent for
+     *  square top-down building kits). */
+    buildingLayout: z.enum(["grid", "materials"]).optional(),
+    /** `tileFeature: "building"` only. Wall material, e.g. "stone brick
+     *  walls" — more reliable than relying on the main `prompt` being split
+     *  into wall/floor parts. */
+    buildingWallDescription: z.string().min(1).max(500).optional(),
+    /** `tileFeature: "building"` only. Floor material, e.g. "wooden plank
+     *  floor". */
+    buildingFloorDescription: z.string().min(1).max(500).optional(),
+    /** `tileFeature: "building"` only. Upper-storey or roof surface;
+     *  defaults to the wall material when omitted. */
+    buildingFloor2Description: z.string().min(1).max(500).optional(),
+    /** `tileFeature: "building"` with `tileType: "square_topdown"` only.
+     *  Wall storey height as its own camera angle in degrees (5-90),
+     *  decoupled from the ground's pitch. */
+    buildingWallAngle: z.number().min(5).max(90).optional(),
     /**
      * `tiles` generator only. How tile edges are drawn.
      *
@@ -1264,8 +1306,19 @@ export interface ResolvedSpec {
   noBackground: boolean
   /** `tiles` generator only. See StyleSchema for what each one means. */
   tileSize?: number
+  tileHeight?: number
   tileType?: string
   tileView?: string
+  tileViewAngle?: number
+  tileDepthRatio?: number
+  tileFlatTopPx?: number
+  obliqueLean?: number
   tileFeature?: string
+  buildingWallTiles?: number
+  buildingLayout?: string
+  buildingWallDescription?: string
+  buildingFloorDescription?: string
+  buildingFloor2Description?: string
+  buildingWallAngle?: number
   outlineMode?: string
 }

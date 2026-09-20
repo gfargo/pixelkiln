@@ -413,18 +413,40 @@ export class PixelLabClient {
   async createTilesPro(args: {
     description: string
     tileSize?: number
+    tileHeight?: number
     tileType?: string
     tileView?: string
+    tileViewAngle?: number
+    tileDepthRatio?: number
+    tileFlatTopPx?: number
+    obliqueLean?: number
     tileFeature?: string
+    buildingWallTiles?: number
+    buildingLayout?: string
+    buildingWallDescription?: string
+    buildingFloorDescription?: string
+    buildingFloor2Description?: string
+    buildingWallAngle?: number
     outlineMode?: string
     seed?: number
     styleImages?: { base64: string; width: number; height: number }[]
   }): Promise<{ tile_id: string; background_job_id: string; status: string }> {
     const body: Record<string, unknown> = { description: args.description }
     if (args.tileSize != null) body.tile_size = args.tileSize
+    if (args.tileHeight != null) body.tile_height = args.tileHeight
     if (args.tileType) body.tile_type = args.tileType
     if (args.tileView) body.tile_view = args.tileView
+    if (args.tileViewAngle != null) body.tile_view_angle = args.tileViewAngle
+    if (args.tileDepthRatio != null) body.tile_depth_ratio = args.tileDepthRatio
+    if (args.tileFlatTopPx != null) body.tile_flat_top_px = args.tileFlatTopPx
+    if (args.obliqueLean != null) body.oblique_lean = args.obliqueLean
     if (args.tileFeature) body.tile_feature = args.tileFeature
+    if (args.buildingWallTiles != null) body.building_wall_tiles = args.buildingWallTiles
+    if (args.buildingLayout) body.building_layout = args.buildingLayout
+    if (args.buildingWallDescription) body.building_wall_description = args.buildingWallDescription
+    if (args.buildingFloorDescription) body.building_floor_description = args.buildingFloorDescription
+    if (args.buildingFloor2Description) body.building_floor2_description = args.buildingFloor2Description
+    if (args.buildingWallAngle != null) body.building_wall_angle = args.buildingWallAngle
     if (args.outlineMode) body.outline_mode = args.outlineMode
     if (args.seed != null) body.seed = args.seed
     if (args.styleImages?.length) body.style_images = args.styleImages
