@@ -1,3 +1,10 @@
+## [0.53.1](https://github.com/gfargo/pixelkiln/compare/v0.53.0...v0.53.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **pixellab:** normalize the terrain generator's Wang corners for tileset export ([e4bafea](https://github.com/gfargo/pixelkiln/commit/e4bafea86f575bb5776648db6ebb127e15a46fe1))
+
 # [0.53.0](https://github.com/gfargo/pixelkiln/compare/v0.52.0...v0.53.0) (2026-09-20)
 
 
