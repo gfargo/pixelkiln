@@ -94,6 +94,39 @@ export function normalizeTileRules(raw: unknown): NormalizedTileRules | null {
   }
 }
 
+/**
+ * The `terrain` generator's `/create-tileset` response has no `tileRules`
+ * object at all: each tile instead carries a `corners` map naming which of
+ * the two terrains occupies its NW/NE/SW/SE corner (`pollTerrain` in
+ * src/providers/pixellab.ts). This derives the same corner bitmask
+ * `normalizeTileRules` would have gotten directly from the provider, using
+ * docs/TILES.md's bit order (NW/NE/SW/SE = 3/2/1/0) with a set bit meaning
+ * "first terrain".
+ */
+export function normalizeTerrainTiles(metadata: unknown): NormalizedTileRules | null {
+  if (!isRecord(metadata) || !Array.isArray(metadata.terrainTiles)) return null
+  const terrains = Array.isArray(metadata.terrainTypes)
+    ? metadata.terrainTypes.filter((item): item is string => typeof item === "string")
+    : []
+  if (terrains.length < 2) return null
+
+  const masks: Record<number, number> = {}
+  metadata.terrainTiles.forEach((tile, index) => {
+    if (!isRecord(tile) || !isRecord(tile.corners)) return
+    const corners = tile.corners
+    const bit = (corner: string) => (corners[corner] === terrains[0] ? 1 : 0)
+    masks[index] = (bit("NW") << 3) | (bit("NE") << 2) | (bit("SW") << 1) | bit("SE")
+  })
+
+  return {
+    ruleType: "corner",
+    arity: 4,
+    terrains,
+    masks,
+    raw: metadata,
+  }
+}
+
 /** Build an atlas plus generic, Tiled TSJ, or Godot 4 TileSet metadata. */
 export function exportTileset(
   entry: LockEntry,
@@ -123,14 +156,16 @@ export function exportTileset(
 
   const metadata = entry.providerMetadata?.[entry.provider]
   const rawRules = isRecord(metadata) ? metadata.tileRules : undefined
-  const rules = normalizeTileRules(rawRules)
+  const terrainRules = normalizeTerrainTiles(metadata)
+  const rules = normalizeTileRules(rawRules) ?? terrainRules
+  const providerRules = isRecord(rawRules) ? rawRules : terrainRules ? metadata as Record<string, unknown> : null
   const frames = packed.atlas.frames
   const generic = buildGeneric(
     spec,
     options.imageName,
     packed.atlas,
     frames,
-    isRecord(rawRules) ? rawRules : null,
+    providerRules,
     rules,
   )
 
@@ -145,7 +180,7 @@ export function exportTileset(
   }
 
   assertUniformTiles(generic)
-  if ((rawRules !== undefined || entry.tileFeature) && !rules) {
+  if ((rawRules !== undefined || entry.tileFeature || entry.generator === "terrain") && !rules) {
     throw new Error(
       `${options.format} export needs recognized adjacency rules; use --format generic ` +
         `to retain this provider rule object without guessing`,

@@ -35,6 +35,44 @@ Provider keys can contain gaps when a set includes stamp-only images. Output
 roles therefore retain the original numeric key (`tile-07`) rather than being
 renumbered by array position.
 
+### The `terrain` generator's shape
+
+`terrain` (`/create-tileset`, [`docs/GENERATORS.md`](GENERATORS.md)) is a
+different PixelLab endpoint from `tiles`' `tileFeature: "tileset"` above, and
+its response carries no `tile_rules` bitmask at all. Instead each tile names
+which terrain occupies its four corners directly:
+
+```jsonc
+{
+  "providerMetadata": {
+    "pixellab": {
+      "terrainTypes": ["lower", "upper"],
+      "terrainTiles": [
+        { "role": "tile-00-none", "corners": { "NW": "upper", "NE": "upper", "SW": "upper", "SE": "upper" } },
+        { "role": "tile-01-nw-ne-sw-se", "corners": { "NW": "lower", "NE": "lower", "SW": "lower", "SE": "lower" } }
+      ]
+    }
+  }
+}
+```
+
+`normalizeTerrainTiles()` (`src/pipeline/tileset-export.ts`) turns this into
+the same `NormalizedTileRules` shape `tileRules` would have produced directly:
+`ruleType: "corner"`, `arity: 4`, `terrains` from `terrainTypes`, and a mask
+per tile built from its corners with the same NW/NE/SW/SE = 3/2/1/0 bit order
+described under Tiled below (a corner matching `terrains[0]` sets its bit).
+`exportTileset()` tries `tileRules` first and falls back to this shape, so
+Tiled and Godot export a terrain asset's real Wang placement data rather than
+a plain, rule-less atlas. A tile's role carries a name slug rather than a
+parseable numeric suffix (`tile-01-nw-ne-sw-se`, not `tile-01`), so its
+`sourceIndex` falls back to array position instead of being parsed from the
+role — correct here because `terrainTiles` and the output list are pushed in
+the same loop, but worth knowing if either is ever reordered independently.
+
+A tile whose corner is `"transition"` (the extra ring PixelLab adds at
+`terrainTransitionSize: 1`) has no bit of its own in a two-terrain corner
+mask; it is folded into whichever of `terrains[0]`/`terrains[1]` it isn't.
+
 ## Command
 
 ```bash
@@ -122,4 +160,7 @@ counts, speeds, and loop flags it sees.
 - `outline` and building-kit images absent from the rule map are stamp-only.
   Generic export retains them; engine exporters reject a rule family whose
   placement semantics would have to be invented.
+- A `terrain` asset's `"transition"` corners collapse into a two-color mask
+  (see above); the cliff-tier 25-tile set exports, but its middle transition
+  ring is not distinguished from the two named terrains in Tiled/Godot.
 - Export never changes source PNGs or the lockfile.
