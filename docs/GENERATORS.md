@@ -12,6 +12,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 20–40 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 20–40 generations | variations or complete set |
+| A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose, 1 per template loop | one set of directions, or one ordered loop |
 
@@ -200,6 +201,45 @@ labels a state or loop with its parent ("state of bot", "loop of
 bot.dented, east"), links parent and children in the record, and counts the
 family in the style header ("3 characters, 4 states, 6 loops"). See
 [Characters](./CHARACTERS.md).
+
+## `isometricTile`
+
+`isometricTile` wraps PixelLab's `/create-isometric-tile` — a different
+endpoint from both `tiles` (which also has its own `isometric` `tileType`
+for full connectable Wang/road/building sets) and `terrain` (`/create-tileset`,
+confirmed square-only, no isometric option at all). This one generates a
+single standalone isometric tile, no candidates, no connectable set.
+
+Use it when a per-tile height/elevation primitive is what's needed — a raised
+mesa, a cliff block, a standalone rock outcrop — rather than a connected
+ground set.
+
+- `isometricTileShape` controls vertical thickness: `"thin tile"` (~15% of
+  canvas height), `"thick tile"` (~25%), or `"block"` (~50%, the API
+  default). This is a more direct elevation control than anything in `tiles`
+  or `terrain`.
+- `isometricTileSize` is the API's own tile grid size, 16 or 32 (default 16)
+  — a separate concept from `size`, the generation canvas (16–64px; the
+  endpoint's own guidance is that sizes above 24px "often produce better
+  quality results").
+- `outline` defaults to `"lineless"` on this endpoint specifically, unlike
+  `tiles-pro`'s `"outline"` default — its own valid values are `"single
+  color outline"`, `"selective outline"`, or `"lineless"`.
+
+**Cost: 1 generation flat, measured.** PixelLab's own OpenAPI response schema
+example shows `{ type: "usd", usd: 0.02 }`, which reads as billing in real
+dollars — but a real call against a live subscription account billed exactly
+1 generation instead (`usage: { type: "generations", generations: 1 }`), and
+`costUnit` here is `"generations"` like every other generator. Only one
+size/tile-shape combination (32px canvas, `"block"`) has actually been
+measured; the endpoint's own docs give no size-tiering formula the way
+`1dir`/`tiles` do, so this assumes flat pricing across the 16–64px range
+rather than guessing a tier.
+
+Style images, `init_image`/`init_image_strength` (image-to-image), and
+`color_image` (native forced-palette) are not modeled yet — PixelKiln's own
+`palette`/`enforcePalette` post-processing works generically on the
+downloaded tile regardless, if a closed palette is what's actually needed.
 
 ## Style variants
 

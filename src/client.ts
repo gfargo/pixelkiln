@@ -180,6 +180,19 @@ const TilesetGetSchema = z
     usage: UsageSchema,
   })
   .passthrough()
+const IsometricTileSubmitSchema = z
+  .object({
+    tile_id: z.string().min(1),
+    background_job_id: z.string().min(1),
+    status: z.literal("processing").default("processing"),
+  })
+  .passthrough()
+const IsometricTileGetSchema = z
+  .object({
+    image: z.object({ base64: z.string().min(1), format: z.string().default("png") }).passthrough(),
+    usage: UsageSchema,
+  })
+  .passthrough()
 /** Shared by /inpaint-v3 and /edit-images-v2: both hand back a generic background job. */
 const RevisionJobSubmitSchema = z
   .object({
@@ -584,6 +597,47 @@ export class PixelLabClient {
       "get tileset",
     )
     return { tileset: res.tileset, usage: res.usage ?? null }
+  }
+
+  /** A single standalone isometric tile — no connectable set, no candidates. */
+  async createIsometricTile(args: {
+    description: string
+    imageWidth?: number
+    imageHeight?: number
+    tileSize?: number
+    tileShape?: string
+    outline?: string
+    shading?: string
+    detail?: string
+    seed?: number
+  }): Promise<{ tile_id: string; background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { description: args.description }
+    if (args.imageWidth != null && args.imageHeight != null) {
+      body.image_size = { width: args.imageWidth, height: args.imageHeight }
+    }
+    if (args.tileSize != null) body.isometric_tile_size = args.tileSize
+    if (args.tileShape) body.isometric_tile_shape = args.tileShape
+    if (args.outline) body.outline = args.outline
+    if (args.shading) body.shading = args.shading
+    if (args.detail) body.detail = args.detail
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      IsometricTileSubmitSchema,
+      await this.request<unknown>("/create-isometric-tile", { method: "POST", body: JSON.stringify(body) }),
+      "create isometric tile",
+    )
+  }
+
+  /** Throws PixelLabError(423) while the tile is still processing. */
+  async getIsometricTile(
+    tileId: string,
+  ): Promise<{ image: { base64: string; format: string }; usage: PixelLabUsage | null }> {
+    const res = await validateResponse(
+      IsometricTileGetSchema,
+      await this.request<unknown>(`/isometric-tiles/${tileId}`),
+      "get isometric tile",
+    )
+    return { image: res.image, usage: res.usage ?? null }
   }
 
   /**

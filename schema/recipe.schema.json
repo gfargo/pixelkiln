@@ -117,7 +117,8 @@
                 "frames",
                 "character",
                 "terrain",
-                "imagePro"
+                "imagePro",
+                "isometricTile"
               ],
               "default": "map"
             },
@@ -309,6 +310,21 @@
               "enum": [
                 "low top-down",
                 "high top-down"
+              ]
+            },
+            "isometricTileSize": {
+              "type": "number",
+              "enum": [
+                16,
+                32
+              ]
+            },
+            "isometricTileShape": {
+              "type": "string",
+              "enum": [
+                "thin tile",
+                "thick tile",
+                "block"
               ]
             },
             "noBackground": {

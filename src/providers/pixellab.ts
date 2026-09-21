@@ -198,7 +198,8 @@ export class PixelLabProvider implements Provider {
       generator === "tiles" ||
       generator === "terrain" ||
       generator === "imagePro" ||
-      generator === "character"
+      generator === "character" ||
+      generator === "isometricTile"
     )
   }
 
@@ -266,8 +267,9 @@ export class PixelLabProvider implements Provider {
     // `tiles` and `terrain` both price and count off the whole set, both of
     // which the manifest layer already worked out; see tilesCost /
     // tileVariationCount / terrainTileCount. `/create-tileset`'s own cost is
-    // unmeasured, so this borrows the same canvas-tier model.
-    if (spec.generator === "tiles" || spec.generator === "terrain") {
+    // unmeasured, so this borrows the same canvas-tier model. `isometricTile`
+    // is a real measured flat 1 generation; see isometricTileCost().
+    if (spec.generator === "tiles" || spec.generator === "terrain" || spec.generator === "isometricTile") {
       return { unit: "generations", amount: spec.cost, candidates: spec.candidates }
     }
     if (spec.generator === "character") {
@@ -306,30 +308,30 @@ export class PixelLabProvider implements Provider {
       )
     }
     if (spec.generator === "map") {
-      requirePixelLabOption("view", spec.view, ["low top-down", "high top-down", "side"])
-      requirePixelLabOption("outline", spec.outline, [
+      requirePixelLabOption("map", "view", spec.view, ["low top-down", "high top-down", "side"])
+      requirePixelLabOption("map", "outline", spec.outline, [
         "single color outline", "selective outline", "lineless",
       ])
-      requirePixelLabOption("shading", spec.shading, [
+      requirePixelLabOption("map", "shading", spec.shading, [
         "flat shading", "basic shading", "medium shading", "detailed shading",
       ])
-      requirePixelLabOption("detail", spec.detail, [
+      requirePixelLabOption("map", "detail", spec.detail, [
         "low detail", "medium detail", "high detail",
       ])
     }
     if (spec.generator === "terrain") {
       if (spec.outline) {
-        requirePixelLabOption("outline", spec.outline, [
+        requirePixelLabOption("terrain", "outline", spec.outline, [
           "single color black outline", "single color outline", "selective outline", "lineless",
         ])
       }
       if (spec.shading) {
-        requirePixelLabOption("shading", spec.shading, [
+        requirePixelLabOption("terrain", "shading", spec.shading, [
           "flat shading", "basic shading", "medium shading", "detailed shading", "highly detailed shading",
         ])
       }
       if (spec.detail) {
-        requirePixelLabOption("detail", spec.detail, ["low detail", "medium detail", "highly detailed"])
+        requirePixelLabOption("terrain", "detail", spec.detail, ["low detail", "medium detail", "highly detailed"])
       }
       // Real API rejections, not soft defaults: shape_style is standard-only,
       // and a 64px tile needs the pro pipeline.
@@ -362,6 +364,24 @@ export class PixelLabProvider implements Provider {
         )
       }
     }
+    if (spec.generator === "isometricTile") {
+      if (spec.outline) {
+        requirePixelLabOption("isometricTile", "outline", spec.outline, [
+          "single color outline", "selective outline", "lineless",
+        ])
+      }
+      if (spec.shading) {
+        requirePixelLabOption("isometricTile", "shading", spec.shading, [
+          "flat shading", "basic shading", "medium shading", "detailed shading", "highly detailed shading",
+        ])
+      }
+      if (spec.detail) {
+        requirePixelLabOption("isometricTile", "detail", spec.detail, ["low detail", "medium detail", "highly detailed"])
+      }
+      if (spec.width < 16 || spec.width > 64) {
+        throw new Error(`PixelLab isometricTile: size must be 16 to 64 pixels, got ${spec.width}`)
+      }
+    }
     if (spec.generator === "character") this.validateCharacter(spec, styleImages)
     if ((spec.generator === "map" || spec.generator === "pixflux") && styleImages.length) {
       throw new Error(`PixelLab ${spec.generator} does not support style images`)
@@ -376,6 +396,12 @@ export class PixelLabProvider implements Provider {
       throw new Error(
         "PixelLab imagePro does not support style images yet; /generate-image-v2's own " +
           "reference_images and style_image are not modeled here",
+      )
+    }
+    if (spec.generator === "isometricTile" && styleImages.length) {
+      throw new Error(
+        "PixelLab isometricTile does not support style images; /create-isometric-tile has no " +
+          "such field (its own init_image/color_image are not modeled here yet)",
       )
     }
     for (const image of styleImages) {
@@ -802,6 +828,21 @@ export class PixelLabProvider implements Provider {
       return { jobId: res.tileset_id, metadata: { backgroundJobId: res.background_job_id } }
     }
 
+    if (spec.generator === "isometricTile") {
+      const res = await this.client.createIsometricTile({
+        description: spec.prompt,
+        imageWidth: spec.width,
+        imageHeight: spec.height,
+        tileSize: spec.isometricTileSize,
+        tileShape: spec.isometricTileShape,
+        outline: spec.outline,
+        shading: spec.shading,
+        detail: spec.detail,
+        seed: spec.seed,
+      })
+      return { jobId: res.tile_id, metadata: { backgroundJobId: res.background_job_id } }
+    }
+
     if (spec.generator === "imagePro") {
       const res = await this.client.createImagePro({
         description: spec.prompt,
@@ -938,6 +979,7 @@ export class PixelLabProvider implements Provider {
     if (generator === "map") return this.pollMap(jobId, context)
     if (generator === "tiles") return this.pollTiles(jobId, Boolean(context?.tileFeature), context)
     if (generator === "terrain") return this.pollTerrain(jobId, context)
+    if (generator === "isometricTile") return this.pollIsometricTile(jobId, context)
     if (generator === "imagePro") return this.pollImagePro(jobId)
     if (generator === "character") return this.pollCharacter(jobId, context)
 
@@ -1168,6 +1210,32 @@ export class PixelLabProvider implements Provider {
     }
   }
 
+  /**
+   * `/create-isometric-tile` reports progress the same way `/create-tileset`
+   * does (423 while drawing, 200 once finished, no `status` field to poll),
+   * and its image also comes back embedded as base64 rather than a
+   * `storage_urls` link. One call is one tile with nothing to review, so
+   * this goes straight to "ready" like a connectable `tiles`/`terrain` set.
+   */
+  private async pollIsometricTile(tileId: string, context?: PollContext): Promise<JobState> {
+    try {
+      const { image, usage } = await this.client.getIsometricTile(tileId)
+      const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
+      const billed = billedFromUsage(usage) ?? (await this.billedForJob(backgroundJobId))
+      const file = path.join(PixelLabProvider.cacheDir(), `${tileId}.png`)
+      writeFileSync(file, Buffer.from(image.base64, "base64"))
+      return {
+        status: "ready",
+        objectId: tileId,
+        sourceUrl: `file://${file}`,
+        billed,
+      }
+    } catch (err) {
+      if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }
+      throw err
+    }
+  }
+
   async selectCandidate(
     jobId: string,
     index: number,
@@ -1311,12 +1379,13 @@ function remoteCharacter(character: PixelLabCharacter): RemoteCharacter {
 }
 
 function requirePixelLabOption(
+  generator: string,
   name: string,
   value: string | undefined,
   allowed: readonly string[],
 ): void {
   if (value != null && !allowed.includes(value)) {
-    throw new Error(`PixelLab map ${name} must be one of: ${allowed.join(", ")}`)
+    throw new Error(`PixelLab ${generator} ${name} must be one of: ${allowed.join(", ")}`)
   }
 }
 

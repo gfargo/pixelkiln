@@ -10,6 +10,7 @@ import {
   candidateCount,
   countNumberedDescriptions,
   generationCost,
+  isometricTileCost,
   parseTerrainDescriptions,
   terrainTileCount,
   tileVariationCount,
@@ -391,6 +392,12 @@ export async function resolveSpecs(
         size = style.terrainTileSize ?? 16
         width = size
         height = size
+      } else if (generator === "isometricTile") {
+        // Square generation canvas (`image_size`), independent of
+        // `isometricTileSize` (the API's own tile grid, 16 or 32).
+        size = asset.size ?? style.size ?? 32
+        width = size
+        height = size
       } else {
         width = asset.width ?? style.size ?? 64
         height = asset.height ?? style.size ?? 64
@@ -507,6 +514,8 @@ export async function resolveSpecs(
         terrainRaggedness: generator === "terrain" ? style.terrainRaggedness : undefined,
         terrainTransitionSize: generator === "terrain" ? style.terrainTransitionSize : undefined,
         terrainView: generator === "terrain" ? style.terrainView : undefined,
+        isometricTileSize: generator === "isometricTile" ? style.isometricTileSize : undefined,
+        isometricTileShape: generator === "isometricTile" ? style.isometricTileShape : undefined,
         ...(generator === "character"
           ? { character: await resolveCharacterShape(asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
@@ -515,7 +524,9 @@ export async function resolveSpecs(
             ? tilesCost(tileSize, tileVariations)
             : generator === "terrain"
               ? tilesCost(size, terrainTiles)
-              : generationCost(width, height, generator),
+              : generator === "isometricTile"
+                ? isometricTileCost()
+                : generationCost(width, height, generator),
         costUnit: "generations" as const,
         candidates:
           generator === "tiles"

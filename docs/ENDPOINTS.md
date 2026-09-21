@@ -237,6 +237,49 @@ Given that `color_image` is honoured on `pixflux` but silently ignored on
 `resize`, **verify the palette actually holds on a single tileset before
 committing to a set**.
 
+## Standalone isometric tile: schema documented, cost measured once
+
+`POST /create-isometric-tile` (+ `GET`/`DELETE /isometric-tiles/{tile_id}`) is
+a *third*, separate path to isometric content, distinct from both
+`create-tiles-pro`'s `tile_type: "isometric"` (a full Wang/connectable set)
+and the tileset family above (confirmed square-only, no isometric option at
+all). This one generates a single standalone tile — no candidates, no
+connectable set — and is wrapped by pixelkiln's `isometricTile` generator
+(docs/GENERATORS.md).
+
+`isometric_tile_shape` (`"thin tile"` ~15% canvas height, `"thick tile"`
+~25%, `"block"` ~50%, the default) is a direct thickness/elevation control,
+more granular than anything in `tiles`/`terrain`. `isometric_tile_size` (16
+or 32, default 16) is the API's own tile grid, a separate concept from
+`image_size` (the generation canvas, 16-64px each side; the endpoint's own
+description states "sizes above 24x24 often produce better quality
+results"). `outline` defaults to `"lineless"` here specifically — unlike
+`create-tiles-pro`'s `"outline"` default — with its own three-value enum
+(`"single color outline"`, `"selective outline"`, `"lineless"`); `shading`
+and `detail` reuse the same enums as the tileset family above.
+
+`GET /isometric-tiles/{tile_id}` carries no `status` field either: it answers
+**423 while still processing** and 200 with the image once done, matching the
+tileset family's own polling contract. Unlike every other job resource here,
+its response shape is `{ image: Base64Image, usage }` — the finished tile
+comes back embedded as base64, not a `storage_urls` link.
+
+**Its own OpenAPI response schema example is misleading on cost.** It shows
+`{ type: "usd", usd: 0.02 }`, which reads as billing in real dollars rather
+than subscription generations, unlike everything else in this file. A real
+call against a live subscription account (Tier 2, "generations" balance)
+billed exactly `{ type: "generations", generations: 1 }` instead — the
+documented shape never actually appeared. Measured at one size/shape
+combination only (32px canvas, `"block"`); the endpoint's own docs give no
+size-tiering formula the way `1dir`/`tiles` do, so pixelkiln's
+`isometricTileCost()` assumes flat 1-generation pricing across the whole
+16-64px range rather than guessing a tier.
+
+`init_image`/`init_image_strength` (image-to-image) and `color_image`
+(native forced-palette) both exist on this endpoint and are not modeled by
+pixelkiln yet — no `style_images` concept exists here at all, unlike
+`create-tiles-pro`.
+
 ---
 
 ## Recipes
@@ -402,8 +445,10 @@ Listed so the gaps are known rather than assumed away:
 - `image-to-pixelart-pro` takes only `image` + `description`, no size fields.
   The non-Pro version is characterised above.
 - the tileset family, with schema documented above and costs unmeasured
-- `create-isometric-tile`, `create-ui-asset`, `generate-font-pro`, all job-based,
-  with response shapes not in the simple `{usage, image}` form
+  (the standalone isometric tile endpoint alongside it now has one real
+  measured data point — see above)
+- `create-ui-asset`, `generate-font-pro`, both job-based, with response
+  shapes not in the simple `{usage, image}` form
 - the character family beyond what the `character` generator uses: portraits
   (`portrait-character-pro` both ways, `/characters/{id}/portrait`), outfit
   transfer (`transfer-outfit-v2`), lip-sync, skeleton animation, and
