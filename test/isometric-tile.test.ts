@@ -28,7 +28,7 @@ afterEach(async () => {
 })
 
 describe("resolving an isometricTile spec", () => {
-  it("carries the isometric-tile fields and a flat USD cost", async () => {
+  it("carries the isometric-tile fields and a flat generations cost", async () => {
     const loaded = await writeManifest({ isometricTileSize: 32, isometricTileShape: "thick tile" })
     const [spec] = await resolveSpecs(loaded)
 
@@ -40,7 +40,7 @@ describe("resolving an isometricTile spec", () => {
     expect(spec.height).toBe(32)
     expect(spec.candidates).toBe(1)
     expect(spec.cost).toBe(isometricTileCost())
-    expect(spec.costUnit).toBe("usd")
+    expect(spec.costUnit).toBe("generations")
   })
 
   it("defaults the canvas to 32px when neither asset nor style set a size", async () => {
@@ -73,9 +73,9 @@ describe("provider", () => {
     expect(provider.supports("isometricTile")).toBe(true)
   })
 
-  it("estimates an isometricTile spec in USD, never candidates beyond one", () => {
-    const spec = { generator: "isometricTile", width: 32, height: 32, size: 32, cost: 0.02, candidates: 1 } as ResolvedSpec
-    expect(provider.estimate(spec)).toEqual({ unit: "usd", amount: 0.02, candidates: 1 })
+  it("estimates an isometricTile spec in generations, never candidates beyond one", () => {
+    const spec = { generator: "isometricTile", width: 32, height: 32, size: 32, cost: 1, candidates: 1 } as ResolvedSpec
+    expect(provider.estimate(spec)).toEqual({ unit: "generations", amount: 1, candidates: 1 })
   })
 
   it("rejects a canvas outside 16-64 pixels", async () => {
@@ -129,10 +129,13 @@ describe("submit and poll", () => {
   })
 
   it("polls straight to ready with one source and no candidates to review", async () => {
+    // Real shape, from a live call against a subscription account: despite
+    // PixelLab's own OpenAPI example showing `{ type: "usd", usd: 0.02 }`,
+    // this endpoint billed 1 generation like every other one here.
     const provider = new PixelLabProvider({
       getIsometricTile: async () => ({
         image: { base64: Buffer.from("a").toString("base64"), format: "png" },
-        usage: { type: "usd", usd: 0.02 },
+        usage: { type: "generations", generations: 1 },
       }),
     } as never)
 
@@ -140,7 +143,7 @@ describe("submit and poll", () => {
     expect(state.status).toBe("ready")
     if (state.status !== "ready") return
     expect(state.sourceUrl).toMatch(/^file:\/\//)
-    expect(state.billed).toEqual({ amount: 0.02, unit: "usd" })
+    expect(state.billed).toEqual({ amount: 1, unit: "generations" })
   })
 
   it("reports processing while the API answers 423", async () => {

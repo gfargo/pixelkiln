@@ -527,7 +527,7 @@ export async function resolveSpecs(
               : generator === "isometricTile"
                 ? isometricTileCost()
                 : generationCost(width, height, generator),
-        costUnit: generator === "isometricTile" ? ("usd" as const) : ("generations" as const),
+        costUnit: "generations" as const,
         candidates:
           generator === "tiles"
             ? tileVariations

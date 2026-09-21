@@ -267,14 +267,10 @@ export class PixelLabProvider implements Provider {
     // `tiles` and `terrain` both price and count off the whole set, both of
     // which the manifest layer already worked out; see tilesCost /
     // tileVariationCount / terrainTileCount. `/create-tileset`'s own cost is
-    // unmeasured, so this borrows the same canvas-tier model.
-    if (spec.generator === "tiles" || spec.generator === "terrain") {
+    // unmeasured, so this borrows the same canvas-tier model. `isometricTile`
+    // is a real measured flat 1 generation; see isometricTileCost().
+    if (spec.generator === "tiles" || spec.generator === "terrain" || spec.generator === "isometricTile") {
       return { unit: "generations", amount: spec.cost, candidates: spec.candidates }
-    }
-    // `/create-isometric-tile` bills in USD rather than generations (its own
-    // Usage schema example); see isometricTileCost's own unmeasured caveat.
-    if (spec.generator === "isometricTile") {
-      return { unit: "usd", amount: spec.cost, candidates: 1 }
     }
     if (spec.generator === "character") {
       return { unit: "generations", amount: characterCost(spec), candidates: 1 }

@@ -12,6 +12,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 20–40 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 20–40 generations | variations or complete set |
+| A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose, 1 per template loop | one set of directions, or one ordered loop |
 
@@ -225,11 +226,15 @@ ground set.
   `tiles-pro`'s `"outline"` default — its own valid values are `"single
   color outline"`, `"selective outline"`, or `"lineless"`.
 
-**Cost is unmeasured against a live account.** PixelLab's own OpenAPI
-response schema gives `{ type: "usd", usd: 0.02 }` as an example, billed in
-real dollars rather than subscription generations (`costUnit: "usd"`,
-unlike every other generator here) — not confirmed against a real charge, and
-there is no documented pricing formula or evidence it varies by size.
+**Cost: 1 generation flat, measured.** PixelLab's own OpenAPI response schema
+example shows `{ type: "usd", usd: 0.02 }`, which reads as billing in real
+dollars — but a real call against a live subscription account billed exactly
+1 generation instead (`usage: { type: "generations", generations: 1 }`), and
+`costUnit` here is `"generations"` like every other generator. Only one
+size/tile-shape combination (32px canvas, `"block"`) has actually been
+measured; the endpoint's own docs give no size-tiering formula the way
+`1dir`/`tiles` do, so this assumes flat pricing across the 16–64px range
+rather than guessing a tier.
 
 Style images, `init_image`/`init_image_strength` (image-to-image), and
 `color_image` (native forced-palette) are not modeled yet — PixelKiln's own

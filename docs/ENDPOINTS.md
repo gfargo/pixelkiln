@@ -237,7 +237,7 @@ Given that `color_image` is honoured on `pixflux` but silently ignored on
 `resize`, **verify the palette actually holds on a single tileset before
 committing to a set**.
 
-## Standalone isometric tile: schema only, not yet measured
+## Standalone isometric tile: schema documented, cost measured once
 
 `POST /create-isometric-tile` (+ `GET`/`DELETE /isometric-tiles/{tile_id}`) is
 a *third*, separate path to isometric content, distinct from both
@@ -262,12 +262,18 @@ and `detail` reuse the same enums as the tileset family above.
 **423 while still processing** and 200 with the image once done, matching the
 tileset family's own polling contract. Unlike every other job resource here,
 its response shape is `{ image: Base64Image, usage }` — the finished tile
-comes back embedded as base64, not a `storage_urls` link — and its own
-`Usage` schema example is `{ type: "usd", usd: 0.02 }`, billed in real
-dollars rather than subscription generations. **Not confirmed against a real
-charge**, and PixelLab documents no pricing formula or evidence it varies by
-size; pixelkiln's `isometricTileCost()` treats that example value as the
-estimate until measured against a live account.
+comes back embedded as base64, not a `storage_urls` link.
+
+**Its own OpenAPI response schema example is misleading on cost.** It shows
+`{ type: "usd", usd: 0.02 }`, which reads as billing in real dollars rather
+than subscription generations, unlike everything else in this file. A real
+call against a live subscription account (Tier 2, "generations" balance)
+billed exactly `{ type: "generations", generations: 1 }` instead — the
+documented shape never actually appeared. Measured at one size/shape
+combination only (32px canvas, `"block"`); the endpoint's own docs give no
+size-tiering formula the way `1dir`/`tiles` do, so pixelkiln's
+`isometricTileCost()` assumes flat 1-generation pricing across the whole
+16-64px range rather than guessing a tier.
 
 `init_image`/`init_image_strength` (image-to-image) and `color_image`
 (native forced-palette) both exist on this endpoint and are not modeled by
@@ -438,8 +444,9 @@ Listed so the gaps are known rather than assumed away:
   rather than duplicated here, since none of it has been measured either.
 - `image-to-pixelart-pro` takes only `image` + `description`, no size fields.
   The non-Pro version is characterised above.
-- the tileset family and the standalone isometric tile endpoint, with schemas
-  documented above and costs unmeasured
+- the tileset family, with schema documented above and costs unmeasured
+  (the standalone isometric tile endpoint alongside it now has one real
+  measured data point — see above)
 - `create-ui-asset`, `generate-font-pro`, both job-based, with response
   shapes not in the simple `{usage, image}` form
 - the character family beyond what the `character` generator uses: portraits

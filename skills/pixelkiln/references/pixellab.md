@@ -141,11 +141,15 @@ generation canvas; the endpoint's own guidance is that sizes above 24px
 on this endpoint specifically (`tiles-pro`'s own default is `"outline"`),
 with its own three-value enum (`"single color outline"`, `"selective
 outline"`, `"lineless"`); `shading`/`detail` reuse the same enums `terrain`
-does. **Cost is unmeasured against a live account**: PixelLab's own OpenAPI
-response example is `{ type: "usd", usd: 0.02 }`, billed in real dollars
-rather than subscription generations (`costUnit: "usd"`, unlike every other
-generator here) — treat `isometricTileCost()` as that example value, not a
-confirmed price. Style images, `init_image`/`init_image_strength`
+does. **Cost: 1 generation flat, measured** — PixelLab's own OpenAPI response
+example shows `{ type: "usd", usd: 0.02 }`, which reads as real-dollar
+billing, but a real call against a live subscription account billed exactly
+1 generation instead (`usage: { type: "generations", generations: 1 }`);
+`costUnit` here is `"generations"` like every other generator, not `"usd"`.
+Only one size/shape combination (32px, `"block"`) has actually been
+measured, and the endpoint documents no size-tiering formula, so
+`isometricTileCost()` assumes flat pricing across the 16–64px range rather
+than guessing a tier. Style images, `init_image`/`init_image_strength`
 (image-to-image), and `color_image` (native forced-palette) exist on this
 endpoint and are not modeled yet; pixelkiln's own `palette`/`enforcePalette`
 post-processing already works generically on the downloaded tile if a

@@ -171,18 +171,20 @@ export function tilesCost(tileSize: number, variations: number): number {
 }
 
 /**
- * Cost of one `/create-isometric-tile` call, in USD. Unlike every other
- * PixelLab generator here, this endpoint reports (and, per its OpenAPI
- * response examples, appears to bill) in real dollars rather than
- * subscription generations — its `Usage` schema's own example is
- * `{ type: "usd", usd: 0.02 }`. This constant is that example value, not a
- * measurement against a live account: PixelLab does not document a pricing
- * formula for this endpoint, and there is no evidence it varies by canvas
- * size or tile size the way `tiles`/`terrain` do. Treat `plan`'s estimate
- * for `isometricTile` accordingly until it is checked against real billing.
+ * Cost of one `/create-isometric-tile` call, in generations. PixelLab's own
+ * OpenAPI response schema example is `{ type: "usd", usd: 0.02 }`, which
+ * reads as billing in real dollars rather than subscription generations —
+ * but a real call against a live subscription account (Tier 2, "generations"
+ * balance) billed exactly 1 generation, matching `usage: { type:
+ * "generations", generations: 1 }`, not the documented "usd" shape at all.
+ * Treated here the same as `map`/`pixflux`: flat 1 regardless of canvas or
+ * tile size. Only one size/shape combination (32px canvas, "block") has
+ * actually been measured; the API's own docs give no size-tiering formula
+ * for this endpoint the way they do for `1dir`/`tiles`, so this assumes flat
+ * pricing across the 16-64px range rather than guessing a tier.
  */
 export function isometricTileCost(): number {
-  return 0.02
+  return 1
 }
 
 /**
