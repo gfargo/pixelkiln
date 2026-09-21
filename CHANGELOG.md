@@ -1,3 +1,10 @@
+# [0.54.0](https://github.com/gfargo/pixelkiln/compare/v0.53.4...v0.54.0) (2026-09-21)
+
+
+### Features
+
+* **pixellab:** add isometricTile generator for /create-isometric-tile ([#198](https://github.com/gfargo/pixelkiln/issues/198)) ([68631bb](https://github.com/gfargo/pixelkiln/commit/68631bb10cf09364d38f1c2c9b87bdb3facd506d))
+
 ## [0.53.4](https://github.com/gfargo/pixelkiln/compare/v0.53.3...v0.53.4) (2026-09-20)
 
 
