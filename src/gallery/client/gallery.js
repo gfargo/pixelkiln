@@ -1675,6 +1675,144 @@ function newRevisionForm(item) {
   return form;
 }
 
+/**
+ * A new pose or outfit of `item`, an existing `character`/`objectPro` base
+ * or state — the same family, restricted to `item`'s own style. A larger
+ * canvas needs both width and height; leaving either blank keeps the
+ * parent's.
+ */
+function newStateForm(item) {
+  const pr = projectOf(item);
+  const form = el('form', 'edit');
+  form.append(el('h3', null, 'New state of ' + item.assetId));
+  const id = el('input'); id.type = 'text'; id.placeholder = 'asset-id'; id.required = true; id.autocomplete = 'off';
+  id.pattern = '[^\\/\\\\]+';
+  const prompt = el('textarea'); prompt.placeholder = 'What changes, e.g. "the chest lid open".'; prompt.required = true;
+  const paletteFromReference = el('input'); paletteFromReference.type = 'checkbox';
+  const paletteField = el('label', 'field check'); paletteField.append(paletteFromReference, el('span', null, 'snap colours to the parent'));
+  const width = numberInput(null, 'parent’s'), height = numberInput(null, 'parent’s');
+  const row1 = el('div', 'row');
+  row1.append(field('new asset id', id), field('canvas width', width), field('canvas height', height));
+  form.append(row1, field('what changes', prompt, 'The style still adds its prefix and suffix.'), paletteField);
+  const actions = el('div', 'actions');
+  const save = el('button', 'primary', 'Create state'); save.type = 'submit';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; renderDrawer(); };
+  const msg = el('span', 'msg');
+  actions.append(save, cancel, msg);
+  form.append(actions);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
+    const state = { of: item.assetId };
+    if (paletteFromReference.checked) state.paletteFromReference = true;
+    const w = numberOrNull(width), h = numberOrNull(height);
+    if (w !== null && h !== null) state.canvas = { width: w, height: h };
+    const asset = { prompt: prompt.value, styles: [item.styleId], state };
+    try {
+      const body = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr.manifestSha256, asset };
+      if (item.project) body.project = item.project;
+      snap = await postEdit(body);
+      const newId = (item.project ? item.project + ':' : '') + item.styleId + '/' + id.value.trim();
+      ui.editing = null;
+      ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
+      render();
+      if (snap.items.some((i) => i.id === newId)) openItem(newId);
+    } catch (err) {
+      save.disabled = false;
+      msg.className = 'msg bad';
+      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+    }
+  };
+  setTimeout(() => id.focus(), 0);
+  return form;
+}
+
+/**
+ * A new loop of `item`, an existing `character`/`objectPro` base or state.
+ * `objectPro` has no skeleton/template concept, so `template` and `subject`
+ * are only offered for a `character`; `startFrame`/`endFrame` and template
+ * `outline`/`shading`/`detail` hints need a manifest-relative image the
+ * gallery does not offer, so hand-edit the manifest for those.
+ */
+function newAnimationForm(item) {
+  const pr = projectOf(item);
+  const c = item.character;
+  const isCharacter = c.generator === 'character';
+  const form = el('form', 'edit');
+  form.append(el('h3', null, 'New animation of ' + item.assetId));
+  const id = el('input'); id.type = 'text'; id.placeholder = 'asset-id'; id.required = true; id.autocomplete = 'off';
+  id.pattern = '[^\\/\\\\]+';
+  const prompt = el('textarea'); prompt.placeholder = 'What the loop does, e.g. "a slow idle sway".'; prompt.required = true;
+  const mode = el('select');
+  if (isCharacter) mode.append(new Option('template', 'template'));
+  mode.append(new Option('v3 (text-described)', 'v3'), new Option('pro (sequential, high quality)', 'pro'));
+  mode.value = 'v3';
+  const template = el('input'); template.type = 'text'; template.placeholder = 'e.g. walk, breathing-idle';
+  const templateField = field('template id', template, 'A PixelLab template; costs 1 generation regardless of frame count.');
+  const frames = el('input'); frames.type = 'number'; frames.min = '4'; frames.max = '16'; frames.step = '2'; frames.placeholder = '8';
+  const fps = el('input'); fps.type = 'number'; fps.min = '1'; fps.max = '60'; fps.placeholder = '8';
+  const directionField = (() => {
+    if (c.directions === 1) return null;
+    const set = c.directions === 4 ? ['south', 'west', 'east', 'north'] : ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
+    const select = el('select');
+    for (const d of set) select.append(new Option(d, d));
+    return { select, wrap: field('direction', select) };
+  })();
+  const subject = isCharacter ? el('input') : null;
+  if (subject) { subject.type = 'text'; subject.placeholder = 'optional, when the prompt alone would mislead the model'; }
+  const row1 = el('div', 'row');
+  row1.append(field('new asset id', id), field('mode', mode));
+  if (directionField) row1.append(directionField.wrap);
+  form.append(row1, field('what it does', prompt, 'The style still adds its prefix and suffix.'));
+  if (isCharacter) form.append(templateField);
+  const row2 = el('div', 'row'); row2.append(field('frames', frames), field('fps', fps));
+  form.append(row2);
+  if (subject) form.append(field('subject override', subject));
+  const syncMode = () => {
+    const isTemplate = isCharacter && mode.value === 'template';
+    templateField.style.display = isTemplate ? '' : 'none';
+    row2.style.display = isTemplate ? 'none' : '';
+  };
+  if (isCharacter) { mode.onchange = syncMode; syncMode(); } else { templateField.style.display = 'none'; }
+  const actions = el('div', 'actions');
+  const save = el('button', 'primary', 'Create animation'); save.type = 'submit';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; renderDrawer(); };
+  const msg = el('span', 'msg');
+  actions.append(save, cancel, msg);
+  form.append(actions);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
+    const animation = { of: item.assetId };
+    if (directionField) animation.direction = directionField.select.value;
+    if (isCharacter && mode.value === 'template' && template.value.trim()) {
+      animation.template = template.value.trim();
+    } else {
+      animation.mode = mode.value;
+      if (frames.value.trim() !== '') animation.frames = Number(frames.value);
+      if (fps.value.trim() !== '') animation.fps = Number(fps.value);
+    }
+    if (subject && subject.value.trim()) animation.subject = subject.value.trim();
+    const asset = { prompt: prompt.value, styles: [item.styleId], animation };
+    try {
+      const body = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr.manifestSha256, asset };
+      if (item.project) body.project = item.project;
+      snap = await postEdit(body);
+      const newId = (item.project ? item.project + ':' : '') + item.styleId + '/' + id.value.trim();
+      ui.editing = null;
+      ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
+      render();
+      if (snap.items.some((i) => i.id === newId)) openItem(newId);
+    } catch (err) {
+      save.disabled = false;
+      msg.className = 'msg bad';
+      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+    }
+  };
+  setTimeout(() => id.focus(), 0);
+  return form;
+}
+
 function editForm(item) {
   const pr = projectOf(item);
   const a = item.asset;
@@ -2013,6 +2151,20 @@ function renderDrawer() {
         list.append(line);
       }
       row(dl, family.length === 1 ? 'depends on this' : family.length + ' depend on this', list);
+    }
+    // A loop cannot itself be posed or animated further; only a base or state can.
+    if (canEdit && c.kind !== 'animation') {
+      const stateKey = 'state:' + item.id, animKey = 'anim:' + item.id;
+      const addState = el('button', ui.editing === stateKey ? null : 'add', ui.editing === stateKey ? 'Cancel' : '+ New state');
+      addState.type = 'button';
+      addState.onclick = () => { ui.editing = ui.editing === stateKey ? null : stateKey; ui.notice = null; renderDrawer(); };
+      const addAnim = el('button', ui.editing === animKey ? null : 'add', ui.editing === animKey ? 'Cancel' : '+ New animation');
+      addAnim.type = 'button';
+      addAnim.onclick = () => { ui.editing = ui.editing === animKey ? null : animKey; ui.notice = null; renderDrawer(); };
+      const buttons = el('div', 'actions'); buttons.append(addState, addAnim);
+      s.append(buttons);
+      if (ui.editing === stateKey) s.append(newStateForm(item));
+      if (ui.editing === animKey) s.append(newAnimationForm(item));
     }
     body.append(s);
   }
