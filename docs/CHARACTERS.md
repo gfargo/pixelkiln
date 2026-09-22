@@ -310,7 +310,12 @@ every direction on disk.
   current URLs first.
 - `pixelkiln gallery` shows the family: states under their base, loops with
   their direction, mirrors with their source; see
-  [`gallery`](./CLI.md#gallery).
+  [`gallery`](./CLI.md#gallery). With `--edit`, a base or state's drawer
+  offers "+ New state" and "+ New animation" under **Character**, the same
+  manifest-only write "+ New revision" does — nothing is spent until the
+  new entry is generated, and `plan` reports it `blocked` until its parent
+  is downloaded, same as one added by hand. `objectPro` families get the
+  same two buttons; see [`objectPro`](./GENERATORS.md#objectpro).
 - `pack --format godot` and `--format aseprite` write each direction as a
   still and each loop as a looping set at its fps; see
   [engine formats](./ARTIFACTS.md).

@@ -236,6 +236,11 @@ ignored, since none of them reach the API for an object.
   the object endpoint has its own `replace_existing` flag, so PixelKiln
   always passes it rather than fetching the object first to find and delete
   a prior take (`character`'s own workaround for not having one).
+- `pixelkiln gallery --edit` shows an `objectPro` family the same way it
+  shows a cast — states under their base, loops with their direction — and
+  a base or state's drawer offers "+ New state" and "+ New animation",
+  restricted to the fields above (no `template`/`subject`, since neither
+  applies). See [Working with a cast](./CHARACTERS.md#working-with-a-cast).
 
 **Cost is not independently measured.** `objectProCost()` assumes
 `/create-object-pro-flash`/its state/its animation price identically to

@@ -3,6 +3,7 @@ import path from "node:path"
 import { z } from "zod"
 import { sha256 } from "./hash.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
+import { CharacterAnimationModeSchema, CharacterDirectionSchema } from "./types.ts"
 
 /**
  * The gallery's one write path: editing *intent* in the manifest. Nothing here
@@ -31,6 +32,38 @@ const AssetPatchSchema = z
   })
   .strict()
 
+/**
+ * A controlled state or animation of a `character`/`objectPro` base or
+ * state, restricted to the fields that need no file upload — the gallery has
+ * none. `startFrame`/`endFrame`, and template `outline`/`shading`/`detail`
+ * hints, need a manifest-relative image or are template-specific polish;
+ * hand-edit the manifest for those.
+ */
+const NewStateSchema = z
+  .object({
+    /** Asset id of the parent this states; must already exist. */
+    of: z.string().min(1),
+    paletteFromReference: z.boolean().optional(),
+    canvas: z.object({ width: z.number().int().min(16).max(256), height: z.number().int().min(16).max(256) }).strict().optional(),
+  })
+  .strict()
+
+const NewAnimationSchema = z
+  .object({
+    /** Asset id of the parent this animates; must already exist. */
+    of: z.string().min(1),
+    /** A PixelLab template id (`character` only; `objectPro` has no template concept). */
+    template: z.string().min(1).optional(),
+    direction: CharacterDirectionSchema.optional(),
+    frames: z.number().int().min(4).max(16).optional(),
+    fps: z.number().int().min(1).max(60).optional(),
+    mode: CharacterAnimationModeSchema.optional(),
+    /** What is being animated, when the parent's own description would mislead the model (`character` only). */
+    subject: z.string().min(1).optional(),
+    enhancePrompt: z.boolean().optional(),
+  })
+  .strict()
+
 const NewAssetSchema = z
   .object({
     prompt: z.string(),
@@ -56,8 +89,18 @@ const NewAssetSchema = z
       })
       .strict()
       .optional(),
+    /** A pose or outfit of an existing `character`/`objectPro` base or state. */
+    state: NewStateSchema.optional(),
+    /** A loop of an existing `character`/`objectPro` base or state. */
+    animation: NewAnimationSchema.optional(),
   })
   .strict()
+  .refine((asset) => !(asset.revision && (asset.state || asset.animation)), {
+    message: "an asset is a revision, a state, or an animation — not more than one",
+  })
+  .refine((asset) => !(asset.state && asset.animation), {
+    message: "an asset is a state or an animation — not both",
+  })
 
 /**
  * Which style-level provider option carries "how many candidates per
@@ -280,6 +323,12 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
     }
     if (edit.asset.revision && !Object.hasOwn(raw.assets, edit.asset.revision.from)) {
       throw new ManifestEditError(`revision parent "${edit.asset.revision.from}" is not declared by the manifest`)
+    }
+    if (edit.asset.state && !Object.hasOwn(raw.assets, edit.asset.state.of)) {
+      throw new ManifestEditError(`state parent "${edit.asset.state.of}" is not declared by the manifest`)
+    }
+    if (edit.asset.animation && !Object.hasOwn(raw.assets, edit.asset.animation.of)) {
+      throw new ManifestEditError(`animation parent "${edit.asset.animation.of}" is not declared by the manifest`)
     }
     raw.assets[edit.assetId] = asset
     return

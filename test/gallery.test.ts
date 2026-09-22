@@ -23,6 +23,7 @@ import {
   createGalleryEditHandler,
   ManifestDriftError,
   ManifestEditError,
+  ManifestEditSchema,
 } from "../src/gallery/edit.ts"
 import { sha256File } from "../src/hash.ts"
 import { createGenerateHandlers, type GalleryGenerateHandlers, type GenerateJob } from "../src/gallery/generate.ts"
@@ -261,12 +262,38 @@ describe("buildGallerySnapshot", () => {
     })
     const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
     const by = (key: string) => snapshot.items.find((item) => item.key === key)!
-    expect(by("cast/hero").character).toEqual({ kind: "base", parentKey: null, mode: "v3", directions: 8, direction: null, characterId: "char-hero" })
-    expect(by("cast/hero.sit").character).toMatchObject({ kind: "state", parentKey: "cast/hero", mode: "v3", characterId: null })
-    expect(by("cast/hero.sit.spin").character).toMatchObject({ kind: "animation", parentKey: "cast/hero.sit", mode: "pro", direction: "east" })
-    expect(by("cast/hero.wave")).toMatchObject({ state: "undeclared", character: { kind: "animation", parentKey: null, characterId: "char-hero", direction: "south" } })
+    expect(by("cast/hero").character).toEqual({ generator: "character", kind: "base", parentKey: null, mode: "v3", directions: 8, direction: null, characterId: "char-hero" })
+    expect(by("cast/hero.sit").character).toMatchObject({ generator: "character", kind: "state", parentKey: "cast/hero", mode: "v3", characterId: null })
+    expect(by("cast/hero.sit.spin").character).toMatchObject({ generator: "character", kind: "animation", parentKey: "cast/hero.sit", mode: "pro", direction: "east" })
+    expect(by("cast/hero.wave")).toMatchObject({ state: "undeclared", character: { generator: "character", kind: "animation", parentKey: null, characterId: "char-hero", direction: "south" } })
     expect(snapshot.styles.find((style) => style.id === "cast")!.characters).toEqual({ bases: 1, states: 1, animations: 2 })
     expect(by("cast/anvil")).toBeUndefined()
+  })
+
+  it("places objectPro states and loops under their parents the same way a character does", async () => {
+    const { loaded, specs } = await project({
+      name: "props",
+      styles: { props: { generator: "objectPro", outDir: "art", size: 64 } },
+      assets: {
+        chest: { prompt: "a treasure chest" },
+        "chest.open": { prompt: "lid open", state: { of: "chest" } },
+        "chest.open.wobble": { prompt: "wobbling", animation: { of: "chest.open", direction: "south", mode: "v3" } },
+      },
+    })
+    const lock: Lock = { version: 2, entries: {} }
+    upsert(lock, lockKey("props", "chest"), {
+      styleId: "props", assetId: "chest", specHash: specs[0]!.specHash, generator: "objectPro",
+      prompt: "a treasure chest", width: 64, height: 64, status: "downloaded", provider: "pixellab", objectId: "obj-chest",
+      outputs: [{ path: "art/chest-south.png", sha256: "0".repeat(64), role: "south" }],
+      providerMetadata: { pixellab: { objectPro: { kind: "base", objectId: "obj-chest", directions: 8 } } },
+      cost: 6, costUnit: "generations",
+    })
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock, lockPath })
+    const by = (key: string) => snapshot.items.find((item) => item.key === key)!
+    expect(by("props/chest").character).toEqual({ generator: "objectPro", kind: "base", parentKey: null, mode: "pro-flash", directions: 8, direction: null, characterId: "obj-chest" })
+    expect(by("props/chest.open").character).toMatchObject({ generator: "objectPro", kind: "state", parentKey: "props/chest" })
+    expect(by("props/chest.open.wobble").character).toMatchObject({ generator: "objectPro", kind: "animation", parentKey: "props/chest.open", mode: "v3", direction: "south" })
+    expect(snapshot.styles.find((style) => style.id === "props")!.characters).toEqual({ bases: 1, states: 1, animations: 1 })
   })
 
   it("shows untracked art on disk with no hash and no provenance", async () => {
@@ -687,6 +714,62 @@ describe("applyManifestEdit", () => {
       action: "add-asset", assetId: "anvil-worn", expectedSha256: await sha256File(manifestPath),
       asset: { prompt: "a worn anvil", revision: { mode: "image-to-image", from: "nobody" } },
     })).rejects.toThrow(/revision parent "nobody" is not declared/)
+  })
+
+  it("adds a new state or animation of an existing character/objectPro asset", async () => {
+    const { manifestPath } = await project({
+      name: "cast",
+      styles: { cast: { generator: "character", outDir: "art", size: 64, mode: "v3" } },
+      assets: { hero: { prompt: "a hero" } },
+    })
+    const one = await applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "hero.sit", expectedSha256: await sha256File(manifestPath),
+      asset: { prompt: "sitting", styles: ["cast"], state: { of: "hero", paletteFromReference: true } },
+    })
+    expect(one.changed).toBe(true)
+    expect(JSON.parse(await readFile(manifestPath, "utf8")).assets["hero.sit"]).toEqual({
+      prompt: "sitting", styles: ["cast"], state: { of: "hero", paletteFromReference: true },
+    })
+    const two = await applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "hero.sit.spin", expectedSha256: one.sha256,
+      asset: { prompt: "spinning", styles: ["cast"], animation: { of: "hero.sit", direction: "east", mode: "pro" } },
+    })
+    expect(JSON.parse(await readFile(manifestPath, "utf8")).assets["hero.sit.spin"]).toEqual({
+      prompt: "spinning", styles: ["cast"], animation: { of: "hero.sit", direction: "east", mode: "pro" },
+    })
+    const specs = await resolveSpecs(await loadManifest(manifestPath))
+    expect(specs.find((spec) => spec.assetId === "hero.sit")!.character).toMatchObject({ kind: "state", parentAssetId: "hero" })
+    expect(specs.find((spec) => spec.assetId === "hero.sit.spin")!.character).toMatchObject({ kind: "animation", parentAssetId: "hero.sit" })
+    void two
+  })
+
+  it("refuses a state or animation whose parent does not exist", async () => {
+    const { manifestPath } = await project({
+      name: "cast",
+      styles: { cast: { generator: "character", outDir: "art", size: 64, mode: "v3" } },
+      assets: { hero: { prompt: "a hero" } },
+    })
+    await expect(applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "hero.sit", expectedSha256: await sha256File(manifestPath),
+      asset: { prompt: "sitting", state: { of: "nobody" } },
+    })).rejects.toThrow(/state parent "nobody" is not declared/)
+    await expect(applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "hero.spin", expectedSha256: await sha256File(manifestPath),
+      asset: { prompt: "spinning", animation: { of: "nobody" } },
+    })).rejects.toThrow(/animation parent "nobody" is not declared/)
+  })
+
+  it("refuses a new asset that mixes revision, state, and animation at the schema level", async () => {
+    const stateAndAnimation = ManifestEditSchema.safeParse({
+      action: "add-asset", assetId: "hero.sit", expectedSha256: "0".repeat(64),
+      asset: { prompt: "sitting", state: { of: "hero" }, animation: { of: "hero" } },
+    })
+    expect(stateAndAnimation.success).toBe(false)
+    const revisionAndState = ManifestEditSchema.safeParse({
+      action: "add-asset", assetId: "hero.sit", expectedSha256: "0".repeat(64),
+      asset: { prompt: "sitting", revision: { mode: "image-to-image", from: "hero" }, state: { of: "hero" } },
+    })
+    expect(revisionAndState.success).toBe(false)
   })
 })
 

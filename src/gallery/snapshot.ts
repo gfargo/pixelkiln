@@ -186,6 +186,8 @@ export interface GalleryItem {
 }
 
 export interface GalleryCharacter {
+  /** Which family this belongs to: a skeleton-based `character`, or a skeleton-free `objectPro`. */
+  generator: "character" | "objectPro"
   kind: "base" | "state" | "animation"
   /** Lock key of the base or state this is drawn from; null for a base. */
   parentKey: string | null
@@ -193,7 +195,7 @@ export interface GalleryCharacter {
   directions: number
   /** Animations only. */
   direction: string | null
-  /** Provider-side character id (an animation's is its character's). */
+  /** Provider-side character/object id (an animation's is its parent's). */
   characterId: string | null
 }
 
@@ -377,33 +379,63 @@ async function samePixels(a: string, b: string): Promise<boolean> {
 const metadataFps = (entry: LockEntry | undefined): number | null => (entry ? frameSetFps(entry) : null)
 
 /**
- * What the page needs to draw a character family: from the manifest when the
- * asset is declared, else from what the adapter recorded on the entry.
+ * What the page needs to draw a character or objectPro family: from the
+ * manifest when the asset is declared, else from what the adapter recorded
+ * on the entry.
  */
 function describeCharacter(spec: ResolvedSpec | undefined, entry: LockEntry | undefined): GalleryCharacter | null {
-  const recorded = entry?.providerMetadata?.[entry.provider]?.character as
+  const recordedCharacter = entry?.providerMetadata?.[entry.provider]?.character as
     | { kind?: string; characterId?: string; direction?: string; directions?: number; mode?: string }
     | undefined
   if (spec?.character) {
     const character = spec.character
     return {
+      generator: "character",
       kind: character.kind,
       parentKey: character.parentAssetId ? lockKey(spec.styleId, character.parentAssetId) : null,
       mode: character.kind === "animation" ? character.animation!.mode : character.mode,
       directions: character.directions,
       direction: character.animation?.direction ?? null,
-      characterId: recorded?.characterId ?? entry?.objectId?.split("#")[0] ?? null,
+      characterId: recordedCharacter?.characterId ?? entry?.objectId?.split("#")[0] ?? null,
+    }
+  }
+  if (spec?.objectPro) {
+    const objectPro = spec.objectPro
+    return {
+      generator: "objectPro",
+      kind: objectPro.kind,
+      parentKey: objectPro.parentAssetId ? lockKey(spec.styleId, objectPro.parentAssetId) : null,
+      mode: objectPro.kind === "animation" ? objectPro.animation!.mode : "pro-flash",
+      directions: objectPro.directions,
+      direction: objectPro.animation?.direction ?? null,
+      characterId: entry?.objectId?.split("#")[0] ?? null,
     }
   }
   if (entry?.generator === "character") {
-    const kind = recorded?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-")) ? "animation" : "base"
+    const kind = recordedCharacter?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-")) ? "animation" : "base"
     return {
+      generator: "character",
       kind,
       parentKey: null,
-      mode: recorded?.mode ?? "standard",
-      directions: recorded?.directions ?? entry.outputs.length,
-      direction: recorded?.direction ?? null,
-      characterId: recorded?.characterId ?? entry.objectId?.split("#")[0] ?? null,
+      mode: recordedCharacter?.mode ?? "standard",
+      directions: recordedCharacter?.directions ?? entry.outputs.length,
+      direction: recordedCharacter?.direction ?? null,
+      characterId: recordedCharacter?.characterId ?? entry.objectId?.split("#")[0] ?? null,
+    }
+  }
+  if (entry?.generator === "objectPro") {
+    const recordedObject = entry.providerMetadata?.[entry.provider]?.objectPro as
+      | { kind?: string; direction?: string; directions?: number }
+      | undefined
+    const kind = recordedObject?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-")) ? "animation" : "base"
+    return {
+      generator: "objectPro",
+      kind,
+      parentKey: null,
+      mode: "pro-flash",
+      directions: recordedObject?.directions ?? entry.outputs.length,
+      direction: recordedObject?.direction ?? null,
+      characterId: entry.objectId?.split("#")[0] ?? null,
     }
   }
   return null
@@ -850,7 +882,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         view: style?.view ?? null,
         noBackground: style?.noBackground ?? true,
         quality: Boolean(style?.quality),
-        characters: style?.generator === "character"
+        characters: style?.generator === "character" || style?.generator === "objectPro"
           ? {
               bases: styleItems.filter((item) => item.character?.kind === "base").length,
               states: styleItems.filter((item) => item.character?.kind === "state").length,
