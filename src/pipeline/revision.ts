@@ -26,6 +26,7 @@ export async function inspectRevisionReadiness(
   if (spec.mirror) return inspectMirror(spec, lock, new Set())
   if (spec.character?.parentSpec) return inspectCharacterParent(spec, lock, new Set())
   if (spec.character?.styleAnchor) return inspectStyleAnchor(spec, lock, new Set())
+  if (spec.objectPro?.parentSpec) return inspectObjectProParent(spec, lock, new Set())
   if (!spec.revision) return null
   return inspectRevision(spec, lock, new Set())
 }
@@ -88,6 +89,30 @@ async function inspectCharacterParent(
   const parentEntry = lock.entries[lockKey(parentSpec.styleId, parentSpec.assetId)]
   if (!parentEntry?.objectId) {
     return { ready: false, reason: `${label} has no PixelLab character id recorded` }
+  }
+  return { ready: true, reason: `${label} is current` }
+}
+
+/** Same shape as `inspectCharacterParent`, for objectPro's own family. */
+async function inspectObjectProParent(
+  spec: ResolvedSpec,
+  lock: Lock,
+  seen: Set<string>,
+): Promise<RevisionReadiness> {
+  const object = spec.objectPro!
+  const parentSpec = object.parentSpec!
+  const label = `${object.kind} parent ${spec.styleId}/${object.parentAssetId}`
+  const dependency = await inspectParent(parentSpec, lock, seen)
+  if (!dependency.ready) return { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
+  if (!object.parentSha256 || !object.parentFile || !existsSync(object.parentFile)) {
+    return { ready: false, reason: `${label} has no generated south-facing file yet` }
+  }
+  if ((await sha256File(object.parentFile)) !== object.parentSha256) {
+    return { ready: false, reason: `${label} changed after the manifest was resolved` }
+  }
+  const parentEntry = lock.entries[lockKey(parentSpec.styleId, parentSpec.assetId)]
+  if (!parentEntry?.objectId) {
+    return { ready: false, reason: `${label} has no PixelLab object id recorded` }
   }
   return { ready: true, reason: `${label} is current` }
 }
@@ -155,6 +180,10 @@ async function inspectParent(
   }
   if (spec.character?.styleAnchor) {
     const inputs = await inspectStyleAnchor(spec, lock, nextSeen)
+    if (!inputs.ready) return inputs
+  }
+  if (spec.objectPro?.parentSpec) {
+    const inputs = await inspectObjectProParent(spec, lock, nextSeen)
     if (!inputs.ready) return inputs
   }
 

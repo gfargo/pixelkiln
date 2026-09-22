@@ -244,9 +244,8 @@ export async function submit(
       // generator. Keeping that policy here used to silently discard valid
       // references for non-PixelLab still providers.
       const refs = styleImages.get(spec.styleId) ?? []
-      const parentEntry = spec.character?.parentSpec
-        ? lock.entries[lockKey(spec.character.parentSpec.styleId, spec.character.parentSpec.assetId)]
-        : undefined
+      const parentSpec = spec.character?.parentSpec ?? spec.objectPro?.parentSpec
+      const parentEntry = parentSpec ? lock.entries[lockKey(parentSpec.styleId, parentSpec.assetId)] : undefined
       const anchor = spec.character?.styleAnchor
       const anchorEntry = anchor ? lock.entries[lockKey(anchor.spec.styleId, anchor.spec.assetId)] : undefined
       const replacedMetadata = previousEntry?.providerMetadata?.[provider.id]

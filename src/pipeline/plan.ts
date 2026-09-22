@@ -43,6 +43,7 @@ function dependencies(spec: ResolvedSpec): ResolvedSpec[] {
     spec.revision?.sourceSpec,
     spec.character?.parentSpec,
     spec.character?.styleAnchor?.spec,
+    spec.objectPro?.parentSpec,
   ].filter((parent): parent is ResolvedSpec => Boolean(parent))
 }
 

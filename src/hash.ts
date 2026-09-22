@@ -109,6 +109,27 @@ export function specHash(
               : undefined,
           }
         : undefined,
+      // An objectPro family: same shape as character above, minus the
+      // fields it has none of (mode/template/proportions/isometric/concept/
+      // styleAnchor) — see ResolvedObjectPro.
+      objectPro: spec.objectPro
+        ? {
+            kind: spec.objectPro.kind,
+            directions: spec.objectPro.directions,
+            parent: spec.objectPro.parentAssetId,
+            parentSha256: spec.objectPro.parentSha256 ?? null,
+            state: spec.objectPro.state,
+            animation: spec.objectPro.animation
+              ? {
+                  ...spec.objectPro.animation,
+                  startFrame: spec.objectPro.animation.startFrame?.sha256,
+                  endFrame: spec.objectPro.animation.endFrame?.sha256,
+                }
+              : undefined,
+            styleTraits: spec.objectPro.styleTraits,
+            reference: spec.objectPro.reference?.sha256,
+          }
+        : undefined,
       // A mirror's bytes come from its source's recorded outputs; the plan
       // compares those directly, so only the choice of source is identity.
       mirror: spec.mirror ? { of: spec.mirror.sourceAssetId } : undefined,

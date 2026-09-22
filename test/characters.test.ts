@@ -127,7 +127,7 @@ describe("manifest resolution", () => {
     await bad({ a: { prompt: "x" } }, /mode applies to the character generator only/, { generator: "map", mode: "v3" })
     // A state in a map style has nothing to be a state of.
     await writeManifest({ assets: { a: { prompt: "x" }, b: { prompt: "y", state: { of: "a" } } }, extraStyles: { props: { generator: "map", outDir: "props" } } })
-    await expect(loadManifest(manifestPath()).then((l) => resolveSpecs(l, { styles: ["props"] }))).rejects.toThrow(/state needs a character style/)
+    await expect(loadManifest(manifestPath()).then((l) => resolveSpecs(l, { styles: ["props"] }))).rejects.toThrow(/state needs a character or objectPro style/)
   })
 })
 

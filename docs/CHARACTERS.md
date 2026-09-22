@@ -8,6 +8,12 @@ runs it in waves, and `pack` writes every direction and loop for the engine.
 This page is the reference for the manifest shapes; the [manifest
 reference](./MANIFEST.md) covers the fields every asset shares.
 
+A prop, creature, or vehicle with no skeleton to fit — a floating rune, a
+treasure chest, a turret — wants `objectPro` instead: the same base/state/
+animation shapes and `asset.state`/`asset.animation` authoring described
+here, minus everything template/skeleton-specific. See
+[GENERATORS.md](./GENERATORS.md#objectpro).
+
 ## The three shapes
 
 A cast in full, with a base, a state, and two loops. This is the robot on

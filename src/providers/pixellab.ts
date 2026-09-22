@@ -2,7 +2,7 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { randomUUID } from "node:crypto"
 import os from "node:os"
 import path from "node:path"
-import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type PixelLabCharacter, type PixelLabUsage } from "../client.ts"
+import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type PixelLabCharacter, type PixelLabObject, type PixelLabUsage } from "../client.ts"
 import { sha256 } from "../hash.ts"
 import { imageMetadata } from "../media.ts"
 import { paletteSwatch } from "../png.ts"
@@ -142,6 +142,42 @@ export function characterAnimationName(spec: Pick<ResolvedSpec, "styleId" | "ass
   return `pixelkiln:${spec.styleId}/${spec.assetId}`
 }
 
+/** Same name PixelKiln gives an objectPro animation upstream, so a re-roll can find it. */
+export function objectAnimationName(spec: Pick<ResolvedSpec, "styleId" | "assetId">): string {
+  return `pixelkiln:${spec.styleId}/${spec.assetId}`
+}
+
+/**
+ * `/create-object-pro-flash`'s own image/rotation pricing has not been
+ * measured against a live account -- this assumes it is identical to
+ * `proFlashCharacterCost`'s measured formula (the request bodies are
+ * near-identical, minus `template_id`), parameterized by `directions` (1 or
+ * 8) rather than character's fixed 8, since a 1-direction object only pays
+ * for one rotation.
+ */
+export function proFlashObjectCost(width: number, height: number, directions: 1 | 8, fromReference: boolean): number {
+  const side = Math.max(32, Math.ceil(Math.max(width, height) / 4) * 4)
+  const rotations = Math.max(1, Math.ceil((side * side * directions) / 65536))
+  if (fromReference) return rotations
+  const image = side <= 96 ? 5 : side <= 208 ? 6 : 9
+  return image + rotations
+}
+
+/** Same shape as `characterCost`, minus the modes/template concept objects have none of. */
+export function objectProCost(spec: ResolvedSpec): number {
+  const object = spec.objectPro
+  if (!object) return generationCost(spec.width, spec.height, "1dir")
+  const px = spec.width * spec.height
+  if (object.kind === "animation") {
+    const animation = object.animation!
+    if (animation.mode === "pro") return generationCost(spec.width, spec.height, "1dir")
+    return Math.max(1, Math.ceil((px * animation.frames) / 65536))
+  }
+  if (object.kind === "state") return generationCost(spec.width, spec.height, "1dir")
+  const south = object.reference
+  return south ? proFlashObjectCost(south.width, south.height, object.directions, true) : proFlashObjectCost(spec.width, spec.height, object.directions, false)
+}
+
 const CHARACTER_TEMPLATES = ["mannequin", "bear", "cat", "dog", "horse", "lion"] as const
 /** Pro Flash also fits a skeleton to whatever the image shows. */
 const PRO_FLASH_TEMPLATES = [...CHARACTER_TEMPLATES, "custom"] as const
@@ -164,6 +200,36 @@ function decodeAnimationJob(jobId: string): AnimationJob | null {
     const value = JSON.parse(Buffer.from(jobId.slice("character-animation:".length), "base64url").toString("utf8"))
     if (typeof value?.characterId === "string" && typeof value.name === "string" && typeof value.direction === "string") {
       return { characterId: value.characterId, name: value.name, direction: value.direction, jobIds: Array.isArray(value.jobIds) ? value.jobIds : [] }
+    }
+  } catch {
+    // fall through
+  }
+  return null
+}
+
+/**
+ * One direction's animation job. Unlike `AnimationJob`, `jobId` is a single
+ * nullable id, not an array: `/objects/{id}/animations` always returns
+ * exactly one `DirectionSubmission` per requested direction, and it can be
+ * null outright when that submission came back `rate_limited`.
+ */
+interface ObjectAnimationJob {
+  objectId: string
+  name: string
+  direction: string
+  jobId: string | null
+}
+
+function encodeObjectAnimationJob(job: ObjectAnimationJob): string {
+  return `object-animation:${Buffer.from(JSON.stringify(job)).toString("base64url")}`
+}
+
+function decodeObjectAnimationJob(jobId: string): ObjectAnimationJob | null {
+  if (!jobId.startsWith("object-animation:")) return null
+  try {
+    const value = JSON.parse(Buffer.from(jobId.slice("object-animation:".length), "base64url").toString("utf8"))
+    if (typeof value?.objectId === "string" && typeof value.name === "string" && typeof value.direction === "string") {
+      return { objectId: value.objectId, name: value.name, direction: value.direction, jobId: typeof value.jobId === "string" ? value.jobId : null }
     }
   } catch {
     // fall through
@@ -199,7 +265,8 @@ export class PixelLabProvider implements Provider {
       generator === "terrain" ||
       generator === "imagePro" ||
       generator === "character" ||
-      generator === "isometricTile"
+      generator === "isometricTile" ||
+      generator === "objectPro"
     )
   }
 
@@ -274,6 +341,9 @@ export class PixelLabProvider implements Provider {
     }
     if (spec.generator === "character") {
       return { unit: "generations", amount: characterCost(spec), candidates: 1 }
+    }
+    if (spec.generator === "objectPro") {
+      return { unit: "generations", amount: objectProCost(spec), candidates: 1 }
     }
     return {
       unit: "generations",
@@ -383,6 +453,7 @@ export class PixelLabProvider implements Provider {
       }
     }
     if (spec.generator === "character") this.validateCharacter(spec, styleImages)
+    if (spec.generator === "objectPro") this.validateObjectPro(spec, styleImages)
     if ((spec.generator === "map" || spec.generator === "pixflux") && styleImages.length) {
       throw new Error(`PixelLab ${spec.generator} does not support style images`)
     }
@@ -563,6 +634,67 @@ export class PixelLabProvider implements Provider {
     }
   }
 
+  private validateObjectPro(spec: ResolvedSpec, styleImages: ResolvedStyleImage[] = []): void {
+    const object = spec.objectPro
+    if (!object) throw new Error(`${spec.styleId}/${spec.assetId} has no objectPro shape`)
+    const label = `${spec.styleId}/${spec.assetId}`
+    if (object.kind === "base" && object.reference && styleImages.length) {
+      throw new Error(`${label}: a base rotating its own reference sprite takes no style image`)
+    }
+    if (object.reference && (object.reference.width > 256 || object.reference.height > 256)) {
+      throw new Error(`${label}: reference is ${object.reference.width}x${object.reference.height}; PixelLab objectPro takes up to 256px`)
+    }
+    if (styleImages.length) {
+      if (styleImages.length > 1) throw new Error(`PixelLab objectPro takes one style image`)
+      const image = styleImages[0]!
+      if (image.width > 256 || image.height > 256) {
+        throw new Error(`PixelLab objectPro style image is ${image.width}x${image.height}; the limit is 256px`)
+      }
+      // Pro Flash lays the style image on the canvas it draws, same as character pro-flash.
+      if (image.width > spec.width || image.height > spec.height) {
+        throw new Error(
+          `PixelLab objectPro style image is ${image.width}x${image.height} but the object is ${spec.width}x${spec.height}; ` +
+            "crop the image to its subject or raise the style's size",
+        )
+      }
+    }
+    if (object.kind === "base" && (spec.width < 16 || spec.height < 16 || spec.width > 256 || spec.height > 256)) {
+      throw new Error(`PixelLab objectPro bases must be between 16 and 256 pixels`)
+    }
+    if (object.kind === "base" && (spec.width % 4 || spec.height % 4)) {
+      throw new Error(`PixelLab objectPro bases are sized in multiples of 4 pixels; ${spec.width}x${spec.height} is not`)
+    }
+    if (object.kind !== "base" && !object.parentAssetId) {
+      throw new Error(`${spec.styleId}/${spec.assetId} is a ${object.kind} with no parent`)
+    }
+    if (object.animation) {
+      const allowed = object.directions === 1 ? (["south"] as const) : CHARACTER_DIRECTIONS_8
+      if (!allowed.includes(object.animation.direction as never)) {
+        throw new Error(
+          `${label} animates "${object.animation.direction}", but its object has ${object.directions} direction${object.directions === 1 ? "" : "s"}: ${allowed.join(", ")}`,
+        )
+      }
+      if (!spec.prompt.trim()) {
+        throw new Error(`${label} needs a prompt describing the motion`)
+      }
+      const { startFrame, endFrame } = object.animation
+      for (const [name, image] of [["start frame", startFrame], ["end frame", endFrame]] as const) {
+        if (image && (image.width > 256 || image.height > 256)) {
+          throw new Error(`${label}: ${name} is ${image.width}x${image.height}; PixelLab v3 takes up to 256px`)
+        }
+      }
+      if (endFrame) {
+        const start = startFrame ?? (object.parentFile && existsSync(object.parentFile) ? imageMetadata(readFileSync(object.parentFile)) : null)
+        if (start && (start.width !== endFrame.width || start.height !== endFrame.height)) {
+          throw new Error(
+            `${label}: end frame is ${endFrame.width}x${endFrame.height} but the ${startFrame ? "start frame" : "object's rotation"} ` +
+              `is ${start.width}x${start.height}; PixelLab interpolates between frames of one size`,
+          )
+        }
+      }
+    }
+  }
+
   /**
    * A base is one request that answers with the character id; a state is
    * the same with the parent's id; an animation names itself after the
@@ -669,6 +801,80 @@ export class PixelLabProvider implements Provider {
     }
   }
 
+  /**
+   * Same shape as `submitCharacter`, minus the mode branching (objectPro has
+   * exactly one base-creation path) and minus the client-side "find and
+   * delete the prior take" dance for animation: `/objects/{id}/animations`
+   * has its own `replace_existing` flag, so this always passes it rather
+   * than fetching the object first to check.
+   */
+  private async submitObjectPro(spec: ResolvedSpec, styleImages: ResolvedStyleImage[], context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
+    const object = spec.objectPro!
+    if (object.kind === "base") {
+      const styleImage = styleImages[0]
+      const res = await this.client.createObjectProFlash({
+        description: spec.prompt,
+        directions: object.directions,
+        size: spec.width,
+        view: spec.view,
+        seed: spec.seed,
+        reference: object.reference ? readPose(spec, "reference sprite", object.reference) : undefined,
+        styleReference: styleImage ? { base64: styleImage.base64, format: styleImage.format } : undefined,
+        styleReferenceSize: styleImage ? { width: styleImage.width, height: styleImage.height } : undefined,
+        styleTraits: object.styleTraits,
+      })
+      return { jobId: res.object_id, metadata: { objectPro: { kind: "base", objectId: res.object_id, directions: object.directions, backgroundJobId: res.background_job_id } } }
+    }
+    const parentId = context?.parentObjectId
+    if (!parentId) {
+      throw new Error(
+        `${spec.styleId}/${spec.assetId} is a ${object.kind} of ${object.parentAssetId}, ` +
+          "which has no PixelLab object id in the lockfile yet; generate the parent first",
+      )
+    }
+    if (object.kind === "state") {
+      const res = await this.client.createObjectProState({
+        objectId: parentId,
+        editDescription: spec.prompt,
+        stateName: spec.assetId.slice(0, 50),
+        seed: spec.seed,
+      })
+      return { jobId: res.object_id, metadata: { objectPro: { kind: "state", objectId: res.object_id, parentObjectId: parentId, directions: object.directions, backgroundJobId: res.background_job_id } } }
+    }
+    const animation = object.animation!
+    const name = objectAnimationName(spec)
+    const res = await this.client.animateObject({
+      objectId: parentId,
+      directions: object.directions,
+      direction: animation.direction,
+      animationDescription: spec.prompt.trim() || undefined,
+      displayName: name,
+      mode: animation.mode === "pro" ? "pro" : "v3",
+      frameCount: animation.frames,
+      keepFirstFrame: animation.keepFirstFrame,
+      startFrame: animation.startFrame ? readPose(spec, "start frame", animation.startFrame) : undefined,
+      endFrame: animation.endFrame ? readPose(spec, "end frame", animation.endFrame) : undefined,
+      enhancePrompt: animation.enhancePrompt,
+      replaceExisting: true,
+    })
+    const submission = res.submissions.find((s) => s.direction === animation.direction) ?? res.submissions[0]
+    const job: ObjectAnimationJob = { objectId: parentId, name, direction: animation.direction, jobId: submission?.background_job_id ?? null }
+    return {
+      jobId: encodeObjectAnimationJob(job),
+      metadata: {
+        objectPro: {
+          kind: "animation",
+          objectId: parentId,
+          animationName: name,
+          direction: animation.direction,
+          mode: animation.mode,
+          animationGroupId: res.animation_group_id,
+          animationId: submission?.animation_id ?? null,
+        },
+      },
+    }
+  }
+
   private async pollCharacter(jobId: string, context?: PollContext): Promise<JobState> {
     const animation = decodeAnimationJob(jobId)
     if (animation) return this.pollCharacterAnimation(animation, context)
@@ -759,10 +965,99 @@ export class PixelLabProvider implements Provider {
       : { status: "processing" }
   }
 
+  private async pollObjectPro(jobId: string, context?: PollContext): Promise<JobState> {
+    const animation = decodeObjectAnimationJob(jobId)
+    if (animation) return this.pollObjectProAnimation(animation, context)
+    const object = await this.client.getObject(jobId)
+    if (object.status === "failed") return { status: "failed", error: "object generation failed upstream" }
+    if (object.status !== "completed" || !object.rotation_urls) return { status: "processing" }
+    const sources = objectRotationSources(object)
+    if (!sources.length) return { status: "failed", error: "object completed with no rotation images" }
+    const backgroundJobId = (context?.metadata?.objectPro as { backgroundJobId?: string } | undefined)?.backgroundJobId
+    return {
+      status: "ready",
+      objectId: object.id,
+      sourceUrl: sources[0]!.url,
+      sources,
+      metadata: {
+        objectPro: {
+          objectId: object.id,
+          groupId: object.group_id ?? null,
+          name: object.name,
+          stateName: object.state_name ?? null,
+          directions: object.directions,
+          size: object.size,
+        },
+      },
+      billed: await this.billedForJob(backgroundJobId),
+    }
+  }
+
+  /**
+   * Same resilience shape as `pollCharacterAnimation`: the background job is
+   * the authoritative record while it lasts, the object's own `animations`
+   * list (matched by the `pixelkiln:` display name this asset submitted, or
+   * a recorded animation id) is the fallback once PixelLab cleans the job
+   * up. Never declares failure from absence alone -- a `rate_limited`
+   * `DirectionSubmission` has no background job id at all, so this keeps
+   * reporting "processing" rather than guessing a job that never existed
+   * has failed.
+   */
+  private async pollObjectProAnimation(job: ObjectAnimationJob, context?: PollContext): Promise<JobState> {
+    const fps = context?.spec?.objectPro?.animation?.fps ?? 8
+    const review = (frames: string[], animationId: string | null, groupId: string | null, billed: BilledAmount | null): JobState => ({
+      status: "review-set",
+      objectId: `${job.objectId}#${groupId ?? animationId ?? job.name}`,
+      frameUrls: frames,
+      sources: frames.map((url, index) => ({ url, role: `frame-${String(index).padStart(2, "0")}` })),
+      fps,
+      metadata: {
+        frameSet: { fps, count: frames.length },
+        objectPro: {
+          kind: "animation",
+          objectId: job.objectId,
+          animationId,
+          animationGroupId: groupId,
+          animationName: job.name,
+          direction: job.direction,
+        },
+      },
+      billed,
+    })
+
+    if (job.jobId) {
+      const status = await this.client.getBackgroundJob(job.jobId).catch((err: unknown) => {
+        if (err instanceof PixelLabError && err.status === 404) return null
+        throw err
+      })
+      if (status) {
+        if (status.status === "failed") return { status: "failed", error: "animation generation failed upstream" }
+        if (status.status !== "completed") return { status: "processing" }
+        const done = status.last_response ?? {}
+        const frames = (done.storage_urls as { frames?: unknown } | undefined)?.frames
+        const animationId = typeof done.animation_id === "string" ? done.animation_id : null
+        if (Array.isArray(frames) && frames.length && frames.every((f) => typeof f === "string")) {
+          const object = await this.client.getObject(job.objectId)
+          const group = findObjectAnimation(object, job.name, job.direction, animationId)
+          return review(frames as string[], animationId, group?.groupId ?? null, billedFromUsage(status.usage))
+        }
+      }
+    }
+    // No job told us, or none was ever assigned (rate-limited at submit
+    // time): the animation list is what is left, searched by name or by the
+    // animation id an earlier poll recorded.
+    const recorded = (context?.metadata?.objectPro as { animationId?: string | null } | undefined)?.animationId ?? null
+    const object = await this.client.getObject(job.objectId)
+    const found = findObjectAnimation(object, job.name, job.direction, recorded)
+    if (found) return review(found.frames, found.animationId, found.groupId, null)
+    return { status: "processing" }
+  }
+
   async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[], context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
     this.validate(spec, styleImages)
     if (spec.revision) return this.submitRevision(spec)
     if (spec.generator === "character") return this.submitCharacter(spec, styleImages, context)
+    if (spec.generator === "objectPro") return this.submitObjectPro(spec, styleImages, context)
     if (spec.generator === "pixflux") {
       const swatch = spec.palette.length
         ? paletteSwatch(spec.palette).toString("base64")
@@ -982,6 +1277,7 @@ export class PixelLabProvider implements Provider {
     if (generator === "isometricTile") return this.pollIsometricTile(jobId, context)
     if (generator === "imagePro") return this.pollImagePro(jobId)
     if (generator === "character") return this.pollCharacter(jobId, context)
+    if (generator === "objectPro") return this.pollObjectPro(jobId, context)
 
     const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
     const obj = await this.client.getObject(jobId)
@@ -1485,6 +1781,42 @@ function findAnimation(
     if (!byName && !byId) continue
     const fromUrl = /\/animations\/([^/]+)\//.exec(match.frames[0]!)?.[1] ?? null
     return { frames: match.frames, groupId: group.animation_group_id ?? null, animationId: animationId ?? fromUrl }
+  }
+  return null
+}
+
+/** An object's directions as output sources, south first. */
+function objectRotationSources(object: PixelLabObject): OutputSource[] {
+  const order = object.directions === 1 ? (["south"] as const) : CHARACTER_DIRECTIONS_8
+  const sources: OutputSource[] = []
+  for (const direction of order) {
+    const url = object.rotation_urls?.[direction]
+    if (url) sources.push({ url, role: direction })
+  }
+  return sources
+}
+
+/**
+ * Same matching rule as `findAnimation`, adapted for `ObjectAnimationGroup`'s
+ * shape: frame URLs sit under each direction's `storage_urls.frames` rather
+ * than a flat `frames` array, and there is no legacy `animation_type` to
+ * also match by (only `display_name`, always set here to `objectAnimationName`).
+ */
+function findObjectAnimation(
+  object: PixelLabObject,
+  name: string,
+  direction: string,
+  animationId: string | null,
+): { frames: string[]; groupId: string | null; animationId: string | null } | null {
+  for (const group of object.animations) {
+    const match = group.directions.find((d) => d.direction === direction)
+    const frames = match ? (match.storage_urls as { frames?: unknown }).frames : undefined
+    if (!match || !Array.isArray(frames) || !frames.length || !frames.every((f) => typeof f === "string")) continue
+    const byName = group.display_name === name
+    const byId = animationId !== null && frames.some((url) => url.includes(`/animations/${animationId}/`))
+    if (!byName && !byId) continue
+    const fromUrl = /\/animations\/([^/]+)\//.exec(frames[0]!)?.[1] ?? null
+    return { frames, groupId: group.animation_group_id, animationId: animationId ?? fromUrl }
   }
   return null
 }

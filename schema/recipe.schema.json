@@ -118,7 +118,8 @@
                 "character",
                 "terrain",
                 "imagePro",
-                "isometricTile"
+                "isometricTile",
+                "objectPro"
               ],
               "default": "map"
             },
@@ -325,6 +326,13 @@
                 "thin tile",
                 "thick tile",
                 "block"
+              ]
+            },
+            "objectDirections": {
+              "type": "number",
+              "enum": [
+                1,
+                8
               ]
             },
             "noBackground": {

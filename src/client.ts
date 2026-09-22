@@ -29,6 +29,8 @@ export interface Balance {
 export interface PixelLabObject {
   id: string
   name: string | null
+  /** Set for a `POST /objects/{id}/states` result; null for a base. */
+  state_name?: string | null
   prompt: string
   size: { width: number; height: number }
   directions: number
@@ -42,6 +44,18 @@ export interface PixelLabObject {
   status: string | null
   progress_percent?: number | null
   eta_seconds?: number | null
+  /** Set once `/objects/{id}/animations` has ever completed on this object. */
+  group_id?: string | null
+  animations: ObjectAnimationGroup[]
+}
+
+/** One `POST /objects/{id}/animations` result, grouped across its directions. */
+export interface ObjectAnimationGroup {
+  animation_group_id: string
+  display_name: string | null
+  description: string
+  frame_count: number
+  directions: { direction: string; storage_urls: Record<string, unknown>; created_at: string }[]
 }
 
 /**
@@ -200,10 +214,30 @@ const RevisionJobSubmitSchema = z
     status: z.string().default("processing"),
   })
   .passthrough()
+const ObjectAnimationGroupSchema = z
+  .object({
+    animation_group_id: z.string().min(1),
+    display_name: z.string().nullable().default(null),
+    description: z.string().default(""),
+    frame_count: z.number().int().default(0),
+    directions: z
+      .array(
+        z
+          .object({
+            direction: z.string(),
+            storage_urls: z.record(z.unknown()).default({}),
+            created_at: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+  })
+  .passthrough()
 const PixelLabObjectSchema = z
   .object({
     id: z.string().min(1),
     name: z.string().nullable().default(null),
+    state_name: z.string().nullable().optional(),
     prompt: z.string().default(""),
     size: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }),
     directions: z.number().default(0),
@@ -216,6 +250,8 @@ const PixelLabObjectSchema = z
     status: z.string().nullable().default(null),
     progress_percent: z.number().nullable().optional(),
     eta_seconds: z.number().nullable().optional(),
+    group_id: z.string().nullable().optional(),
+    animations: z.array(ObjectAnimationGroupSchema).default([]),
   })
   .passthrough()
 const MapObjectSchema = z
@@ -252,6 +288,40 @@ const AnimateSubmitSchema = z
     background_job_ids: z.array(z.string()),
     directions: z.array(z.string()),
     status: z.string().default("processing"),
+    usage: UsageSchema,
+  })
+  .passthrough()
+const ObjectProSubmitSchema = z
+  .object({
+    object_id: z.string().min(1),
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    usage: UsageSchema,
+  })
+  .passthrough()
+/**
+ * Unlike `/animate-character` (whose real request/response shape does not
+ * match its own OpenAPI schema — see `animateCharacter`), `/objects/{id}/animations`
+ * matches its documented shape exactly: one `DirectionSubmission` per
+ * requested direction, each with its own background job id.
+ */
+const DirectionSubmissionSchema = z
+  .object({
+    direction: z.string(),
+    status: z.string(),
+    background_job_id: z.string().nullable().default(null),
+    animation_id: z.string().nullable().default(null),
+  })
+  .passthrough()
+const AnimateObjectSubmitSchema = z
+  .object({
+    animation_group_id: z.string().min(1),
+    object_id: z.string().min(1),
+    mode: z.string(),
+    frame_count: z.number().int(),
+    display_name: z.string().nullable().default(null),
+    description: z.string().default(""),
+    submissions: z.array(DirectionSubmissionSchema),
     usage: UsageSchema,
   })
   .passthrough()
@@ -681,6 +751,112 @@ export class PixelLabClient {
       await this.request<unknown>(`/objects/${objectId}`),
       "get object",
     )
+  }
+
+  /**
+   * A standalone object with no skeleton, one call draws the south sprite
+   * (or takes the author's) and rotates it with v3 — the character
+   * pro-flash pattern, minus `template_id` (objects have no skeleton) and
+   * with a real `n_directions` choice (1 or 8, character pro-flash is
+   * always 8). Async only: `/create-object-pro-flash` has no sync response.
+   */
+  async createObjectProFlash(args: {
+    description: string
+    directions: 1 | 8
+    size: number
+    view?: string
+    seed?: number
+    reference?: Base64Image
+    styleReference?: Base64Image
+    styleReferenceSize?: { width: number; height: number }
+    styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
+  }): Promise<{ object_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
+    const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
+    const traits = args.styleTraits
+    const body: Record<string, unknown> = {
+      description: args.description,
+      n_directions: args.directions,
+      ...(args.reference ? { first_frame: encode(args.reference) } : { image_size: { width: args.size, height: args.size } }),
+      ...(args.view ? { view: args.view } : {}),
+      ...(args.seed != null ? { seed: args.seed } : {}),
+      ...(args.styleReference && args.styleReferenceSize
+        ? {
+            style_image: { image: encode(args.styleReference), size: args.styleReferenceSize },
+            ...(traits
+              ? {
+                  style_options: {
+                    ...(traits.palette !== undefined ? { color_palette: traits.palette } : {}),
+                    ...(traits.outline !== undefined ? { outline: traits.outline } : {}),
+                    ...(traits.detail !== undefined ? { detail: traits.detail } : {}),
+                    ...(traits.shading !== undefined ? { shading: traits.shading } : {}),
+                  },
+                }
+              : {}),
+          }
+        : {}),
+    }
+    return validateResponse(
+      ObjectProSubmitSchema,
+      await this.request<unknown>("/create-object-pro-flash", { method: "POST", body: JSON.stringify(body) }),
+      "create-object-pro-flash",
+    )
+  }
+
+  /** A text edit of an existing object, applied to its whole rotation set and stored as a sibling. Always inherits the parent's exact canvas — no size override exists on this endpoint. */
+  async createObjectProState(args: { objectId: string; editDescription: string; stateName?: string; seed?: number }): Promise<{ object_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
+    const raw = await this.request<unknown>(`/objects/${encodeURIComponent(args.objectId)}/states`, {
+      method: "POST",
+      body: JSON.stringify({
+        edit_description: args.editDescription,
+        ...(args.stateName ? { state_name: args.stateName } : {}),
+        ...(args.seed != null ? { seed: args.seed } : {}),
+      }),
+    })
+    return validateResponse(ObjectProSubmitSchema, raw, "create object state")
+  }
+
+  /**
+   * One direction of one object's animation. Unlike character animation,
+   * this endpoint's own `replace_existing` flag regenerates an
+   * already-animated direction directly (character has no such flag and
+   * pixelkiln instead deletes the prior take itself before resubmitting;
+   * see `submitCharacter`). A 1-direction object must not receive
+   * `directions` at all -- the API 400s if it does.
+   */
+  async animateObject(args: {
+    objectId: string
+    directions: 1 | 8
+    direction: string
+    animationDescription?: string
+    animationGroupId?: string
+    displayName?: string
+    mode: "v3" | "pro"
+    frameCount?: number
+    keepFirstFrame?: boolean
+    startFrame?: Base64Image
+    endFrame?: Base64Image
+    enhancePrompt?: boolean
+    replaceExisting?: boolean
+  }): Promise<{ animation_group_id: string; object_id: string; mode: string; frame_count: number; submissions: { direction: string; status: string; background_job_id: string | null; animation_id: string | null }[]; usage?: PixelLabUsage | null }> {
+    const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
+    const body: Record<string, unknown> = {
+      mode: args.mode,
+      ...(args.directions === 8 ? { directions: [args.direction] } : {}),
+      ...(args.animationDescription ? { animation_description: args.animationDescription } : {}),
+      ...(args.animationGroupId ? { animation_group_id: args.animationGroupId } : {}),
+      ...(args.displayName ? { display_name: args.displayName } : {}),
+      ...(args.frameCount != null ? { frame_count: args.frameCount } : {}),
+      ...(args.keepFirstFrame === false ? { keep_first_frame: false } : {}),
+      ...(args.startFrame ? { custom_start_frame: encode(args.startFrame) } : {}),
+      ...(args.endFrame ? { end_frame: encode(args.endFrame) } : {}),
+      ...(args.enhancePrompt ? { enhance_prompt: true } : {}),
+      ...(args.replaceExisting ? { replace_existing: true } : {}),
+    }
+    const raw = await this.request<unknown>(`/objects/${encodeURIComponent(args.objectId)}/animations`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    })
+    return validateResponse(AnimateObjectSubmitSchema, raw, "animate object")
   }
 
   async getMapObject(objectId: string): Promise<MapObject> {
