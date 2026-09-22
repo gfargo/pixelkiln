@@ -1,3 +1,10 @@
+# [0.55.0](https://github.com/gfargo/pixelkiln/compare/v0.54.0...v0.55.0) (2026-09-22)
+
+
+### Features
+
+* **pixellab:** add objectPro generator for PixelLab's object entity ([16e9e26](https://github.com/gfargo/pixelkiln/commit/16e9e26cc3bdb10b2ad299e12e00e5b91423c90f)), closes [#198](https://github.com/gfargo/pixelkiln/issues/198)
+
 # [0.54.0](https://github.com/gfargo/pixelkiln/compare/v0.53.4...v0.54.0) (2026-09-21)
 
 
