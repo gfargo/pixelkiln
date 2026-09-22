@@ -1,3 +1,10 @@
+# [0.56.0](https://github.com/gfargo/pixelkiln/compare/v0.55.0...v0.56.0) (2026-09-22)
+
+
+### Features
+
+* **gallery:** add "+ New state"/"+ New animation" to a character/objectPro family ([828dc4e](https://github.com/gfargo/pixelkiln/commit/828dc4e8eb20953a609cc341af8ae29ab57df871))
+
 # [0.55.0](https://github.com/gfargo/pixelkiln/compare/v0.54.0...v0.55.0) (2026-09-22)
 
 
