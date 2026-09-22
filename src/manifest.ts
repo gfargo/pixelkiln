@@ -23,6 +23,7 @@ import {
   type CharacterDirection,
   type Manifest,
   type ResolvedCharacter,
+  type ResolvedObjectPro,
   type ResolvedReferenceImage,
   type ResolvedSpec,
   type ResolvedStyleImage,
@@ -398,15 +399,21 @@ export async function resolveSpecs(
         size = asset.size ?? style.size ?? 32
         width = size
         height = size
+      } else if (generator === "objectPro") {
+        // Objects are square like characters; a state has no canvas override
+        // of its own (the API always inherits the parent's exact size).
+        size = asset.size ?? style.size ?? 64
+        width = size
+        height = size
       } else {
         width = asset.width ?? style.size ?? 64
         height = asset.height ?? style.size ?? 64
         size = Math.max(width, height)
       }
 
-      if ((asset.state || asset.animation) && generator !== "character") {
+      if ((asset.state || asset.animation) && generator !== "character" && generator !== "objectPro") {
         throw new Error(
-          `assets.${assetId}: ${asset.state ? "state" : "animation"} needs a character style; ` +
+          `assets.${assetId}: ${asset.state ? "state" : "animation"} needs a character or objectPro style; ` +
             `"${styleId}" generates ${generator}`,
         )
       }
@@ -435,7 +442,7 @@ export async function resolveSpecs(
         terrainUpperDescription = wrap(parsed.upper)
         terrainTransitionDescription = parsed.transition ? wrap(parsed.transition) : undefined
         prompt = subject.trim()
-      } else if (generator === "character" && characterKind !== "base") {
+      } else if ((generator === "character" || generator === "objectPro") && characterKind !== "base") {
         prompt = subject.trim()
       } else {
         prompt = [style.promptPrefix, subject, style.promptSuffix]
@@ -518,6 +525,9 @@ export async function resolveSpecs(
         isometricTileShape: generator === "isometricTile" ? style.isometricTileShape : undefined,
         ...(generator === "character"
           ? { character: await resolveCharacterShape(asset, style, characterKind, { root, load: loadStyleImage }) }
+          : {}),
+        ...(generator === "objectPro"
+          ? { objectPro: await resolveObjectProShape(assetId, asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
         cost:
           generator === "tiles"
@@ -613,6 +623,19 @@ export async function resolveSpecs(
         } else if (sourceSpec.character) {
           resolved.character = { ...sourceSpec.character }
         }
+        if (sourceSpec.objectPro?.kind === "animation") {
+          const facing = sourceSpec.objectPro.animation!.direction
+          const mirrored = MIRRORED_DIRECTION[facing]
+          if (mirrored === facing) {
+            throw new Error(
+              `assets.${assetId}: mirroring ${asset.mirror} gives another ${facing}-facing loop; ` +
+                "mirror a loop facing east, west, or a diagonal",
+            )
+          }
+          resolved.objectPro = { ...sourceSpec.objectPro, animation: { ...sourceSpec.objectPro.animation!, direction: mirrored } }
+        } else if (sourceSpec.objectPro) {
+          resolved.objectPro = { ...sourceSpec.objectPro }
+        }
         resolved.mirror = { sourceAssetId: asset.mirror, sourceSpec }
         resolved.generator = sourceSpec.generator
         resolved.width = sourceSpec.width
@@ -659,6 +682,23 @@ export async function resolveSpecs(
           // A state and its animations keep the engine and rotations of the base.
           mode: resolved.character.kind === "base" ? resolved.character.mode : parentSpec.character?.mode ?? resolved.character.mode,
           directions: resolved.character.kind === "base" ? resolved.character.directions : parentSpec.character?.directions ?? resolved.character.directions,
+        }
+      }
+      if (resolved.objectPro && characterParent) {
+        const parentSpec = await finalize(characterParent)
+        if (!parentSpec.objectPro) {
+          throw new Error(`assets.${assetId}: ${characterParent} is not an objectPro asset`)
+        }
+        const parentDirections = parentSpec.objectPro.directions
+        const parentFile = memberPath(parentSpec.outFile, "south", 0, parentDirections, MediaType.PNG)
+        resolved.objectPro = {
+          ...resolved.objectPro,
+          parentAssetId: characterParent,
+          parentSpec,
+          parentFile,
+          parentSha256: existsSync(parentFile) ? await sha256File(parentFile) : null,
+          // A state and its animations keep the base's own rotation count.
+          directions: resolved.objectPro.kind === "base" ? resolved.objectPro.directions : parentSpec.objectPro.directions,
         }
       }
       if (asset.revision) {
@@ -879,6 +919,80 @@ async function resolveCharacterShape(
       ...(asset.animation.outline ? { outline: asset.animation.outline } : {}),
       ...(asset.animation.shading ? { shading: asset.animation.shading } : {}),
       ...(asset.animation.detail ? { detail: asset.animation.detail } : {}),
+      ...(asset.animation.enhancePrompt !== undefined ? { enhancePrompt: asset.animation.enhancePrompt } : {}),
+    }
+  }
+  return shape
+}
+
+/**
+ * `objectPro` reuses `AssetSchema.state`/`.animation`'s character-shaped
+ * schema (an object's state/animation authoring surface is a strict subset
+ * of a character's), so this mirrors `resolveCharacterShape` but drops what
+ * has no object equivalent: no `mode`/`template`/`proportions`/`isometric`/
+ * `concept`/`styleAnchor`, since `/create-object-pro-flash` is the only base
+ * path and objects have no skeleton. A `template`/`subject`/`outline`/
+ * `shading`/`detail` set on an object's `animation` is rejected here rather
+ * than silently dropped, since none of them reach the API for an object.
+ */
+async function resolveObjectProShape(
+  assetId: string,
+  asset: Asset,
+  style: Style,
+  kind: ResolvedObjectPro["kind"],
+  files: { root: string; load: (rel: string, what: string) => Promise<{ hash: string; width: number; height: number; format: "png" | "jpeg" }> },
+): Promise<ResolvedObjectPro> {
+  const directions: 1 | 8 = style.objectDirections ?? 8
+  const shape: ResolvedObjectPro = {
+    kind,
+    directions,
+    ...(style.styleTraits ? { styleTraits: style.styleTraits } : {}),
+  }
+  if (asset.reference) {
+    // Objects rotate from one south-facing frame; other directions in a
+    // reference map (a character convention) do not apply and are ignored.
+    const south = typeof asset.reference === "string" ? asset.reference : asset.reference.south
+    if (south) {
+      const image = await files.load(south, "Reference sprite")
+      shape.reference = { path: path.resolve(files.root, south), sha256: image.hash, width: image.width, height: image.height, format: image.format }
+    }
+  }
+  if (asset.state) {
+    shape.state = {
+      paletteFromReference: asset.state.paletteFromReference,
+      ...(asset.state.canvas ? { canvas: asset.state.canvas } : {}),
+    }
+  }
+  if (asset.animation) {
+    for (const [field, value] of Object.entries({
+      template: asset.animation.template,
+      subject: asset.animation.subject,
+      outline: asset.animation.outline,
+      shading: asset.animation.shading,
+      detail: asset.animation.detail,
+    })) {
+      if (value !== undefined) {
+        throw new Error(
+          `assets.${assetId}: objectPro has no skeleton/template concept, so animation.${field} does not apply; ` +
+            "describe the motion in the asset's own prompt instead",
+        )
+      }
+    }
+    if (asset.animation.mode === "template") {
+      throw new Error(`assets.${assetId}: objectPro animations have no "template" mode; use "v3" or "pro"`)
+    }
+    const pose = async (rel: string, what: string): Promise<ResolvedReferenceImage> => {
+      const image = await files.load(rel, what)
+      return { path: path.resolve(files.root, rel), sha256: image.hash, width: image.width, height: image.height, format: image.format }
+    }
+    shape.animation = {
+      mode: asset.animation.mode ?? "v3",
+      direction: asset.animation.direction,
+      frames: asset.animation.frames ?? 8,
+      fps: asset.animation.fps,
+      keepFirstFrame: asset.animation.keepFirstFrame,
+      ...(asset.animation.startFrame ? { startFrame: await pose(asset.animation.startFrame, "Animation start frame") } : {}),
+      ...(asset.animation.endFrame ? { endFrame: await pose(asset.animation.endFrame, "Animation end frame") } : {}),
       ...(asset.animation.enhancePrompt !== undefined ? { enhancePrompt: asset.animation.enhancePrompt } : {}),
     }
   }

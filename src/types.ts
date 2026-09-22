@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -503,6 +503,35 @@ export interface ResolvedCharacter {
   }
 }
 
+/**
+ * The resolved shape of an `objectPro` asset: PixelLab's non-skeleton
+ * `/create-object-pro-flash` entity family. Deliberately reuses
+ * `CharacterState`/`CharacterAnimation`'s authoring schema (`AssetSchema.state`/
+ * `.animation`) rather than inventing a parallel one, since an object's state
+ * is a strict subset of a character's (no `paletteFromReference`/`canvas`
+ * equivalent on the API) and its animation drops only the template/skeleton
+ * concept objects have none of — `template`/`subject`/`outline`/`shading`/
+ * `detail` on an `objectPro` animation are rejected at resolution time
+ * instead of silently ignored.
+ */
+export interface ResolvedObjectPro {
+  kind: "base" | "state" | "animation"
+  /** Rotations a base or state has: 1, or the full 8. */
+  directions: 1 | 8
+  /** A base drawn by rotating the author's own south-facing sprite instead of the prompt. */
+  reference?: ResolvedReferenceImage
+  /** A style-image base only: the traits it lends. */
+  styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
+  /** For a state or animation: the parent asset in the same style. */
+  parentAssetId?: string
+  parentSpec?: ResolvedSpec
+  /** The parent's south-facing generated file, and its hash when it exists. A change makes this spec stale. */
+  parentFile?: string
+  parentSha256?: string | null
+  state?: NonNullable<ResolvedCharacter["state"]>
+  animation?: NonNullable<ResolvedCharacter["animation"]>
+}
+
 /** A provider generation whose visual starting point is another manifest asset. */
 export const RevisionSchema = z
   .object({
@@ -718,6 +747,14 @@ const StyleObjectSchema = z
      * (~50%, the API default).
      */
     isometricTileShape: z.enum(["thin tile", "thick tile", "block"]).optional(),
+    /**
+     * `objectPro` generator only. Rotations captured for a base: 1 (the API
+     * still draws and stores a single facing) or the full 8. The API default
+     * is 8. Unlike `character`, `objectPro` has no skeleton/template modes
+     * and so no `mode`/`template` fields of its own — `/create-object-pro-flash`
+     * is the only base-creation path.
+     */
+    objectDirections: z.union([z.literal(1), z.literal(8)]).optional(),
     /**
      * `pixflux` only. Whether to strip the generated background.
      *
@@ -955,25 +992,41 @@ export const AssetSchema = z
     revision: RevisionSchema.optional(),
     /**
      * The provider's own id for art that already exists on the account, so
-     * `adopt` can map it without matching bytes: an object id, a character
-     * id, or `<character id>#<animation group id>` for a character animation.
-     * Not part of the spec's identity.
+     * `adopt` can map it without matching bytes: an object id (an
+     * `objectPro` base and state included, since they share PixelLab's
+     * `/objects` identity space), a character id, or `<id>#<animation group
+     * id>` for a character or `objectPro` animation. Not part of the spec's
+     * identity.
      */
     remoteId: z.string().min(1).optional(),
-    /** `character` styles: this asset is a pose or outfit of another character asset. */
+    /**
+     * `character` or `objectPro` styles: this asset is a pose or edit of
+     * another asset in the same family. `objectPro` ignores
+     * `paletteFromReference`/`canvas` — the API has no equivalent, and
+     * always inherits the parent's exact canvas.
+     */
     state: CharacterStateSchema.optional(),
-    /** `character` styles: this asset is a loop of another character asset in one direction. */
+    /**
+     * `character` or `objectPro` styles: this asset is a loop of another
+     * asset in the same family, in one direction. `objectPro` has no
+     * skeleton/template concept, so `template`/`subject`/`outline`/
+     * `shading`/`detail` are rejected on an `objectPro` animation rather
+     * than silently ignored — describe the motion in the asset's own
+     * `prompt` instead.
+     */
     animation: CharacterAnimationSchema.optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
-     * `character` styles, bases only: the character's own sprite, which
-     * PixelLab rotates into the other directions instead of drawing from
-     * the prompt. A manifest-relative PNG or JPEG of the south-facing
-     * sprite, or an object keyed by direction (`{ "south": ..., "east":
-     * ... }`); quadrupeds in `standard` mode need south and east, and only
-     * `standard` takes more than south. `standard` wants each image at the
-     * style's size; v3 accepts up to 256px, pro up to 168px. The prompt
+     * `character` or `objectPro` styles, bases only: the subject's own
+     * sprite, which PixelLab rotates into the other directions instead of
+     * drawing from the prompt. A manifest-relative PNG or JPEG of the
+     * south-facing sprite, or an object keyed by direction (`{ "south":
+     * ..., "east": ... }`); quadrupeds in `standard` character mode need
+     * south and east, and only `standard` takes more than south. `objectPro`
+     * only ever reads the south image, since `/create-object-pro-flash`
+     * rotates from one frame. `standard` wants each image at the style's
+     * size; v3 accepts up to 256px, pro up to 168px. The prompt
      * still guides the result.
      */
     reference: z.union([z.string().min(1), z.record(CharacterDirectionSchema, z.string().min(1))]).optional(),
@@ -1392,6 +1445,8 @@ export interface ResolvedSpec {
   revision?: ResolvedRevision
   /** Set for every spec in a `character` style: base, state, or animation. */
   character?: ResolvedCharacter
+  /** Set for every spec in an `objectPro` style: base, state, or animation. */
+  objectPro?: ResolvedObjectPro
   /** A local left-to-right flip of another asset in this style; costs nothing. */
   mirror?: ResolvedMirror
   /** Provider-side id declared for adoption; excluded from the spec hash. */

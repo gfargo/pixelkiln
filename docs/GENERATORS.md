@@ -202,6 +202,55 @@ bot.dented, east"), links parent and children in the record, and counts the
 family in the style header ("3 characters, 4 states, 6 loops"). See
 [Characters](./CHARACTERS.md).
 
+## `objectPro`
+
+`objectPro` wraps PixelLab's `/create-object-pro-flash` — the same base
+→ state → animation family as `character`, for PixelLab's separate,
+skeleton-free "object" entity. Use it for a prop, creature, or vehicle that
+needs a pose (`state`) or a directional loop (`animation`) but has no
+humanoid/quadruped rig to fit: a floating rune, a treasure chest, a turret,
+anything `character`'s template concept does not describe.
+
+It reuses `character`'s own authoring shapes — `asset.state`/`asset.animation`
+are the identical fields, and a `mirror` flips an animation's direction the
+same way. Everything `character`'s templates/proportions/skeleton bring is
+simply absent: no `mode`, `template`, `proportions`, `isometric`, `concept`,
+or `styleCharacter` — `/create-object-pro-flash` is the only base-creation
+path, and setting `animation.template`/`subject`/`outline`/`shading`/`detail`
+on an `objectPro` animation is rejected at resolve time rather than silently
+ignored, since none of them reach the API for an object.
+
+- `objectDirections` (1 or 8, default 8, style-level) is the rotation count —
+  a real choice `character` does not offer (character pro-flash is always 8).
+  A 1-direction object's `animation.direction` must be `south`; anything else
+  is rejected, since the endpoint 400s if `directions` is even sent for a
+  1-direction object.
+- `reference` (asset-level, base only) rotates the author's own south-facing
+  sprite instead of drawing from the prompt, same as `character`'s reference
+  — but only ever reads the south image, since one frame is all
+  `/create-object-pro-flash` takes.
+- A style image anchors the look the same way `character` pro-flash's does,
+  including `styleTraits` (which of the image's palette/outline/detail/shading
+  to carry over).
+- Regenerating an already-animated direction is simpler than `character`'s:
+  the object endpoint has its own `replace_existing` flag, so PixelKiln
+  always passes it rather than fetching the object first to find and delete
+  a prior take (`character`'s own workaround for not having one).
+
+**Cost is not independently measured.** `objectProCost()` assumes
+`/create-object-pro-flash`/its state/its animation price identically to
+`character`'s own measured pro-flash formula (`proFlashCharacterCost`),
+since the request bodies are near-identical minus `template_id` — treat it
+as a working assumption, not a confirmed number, until checked against a
+live account.
+
+Adoption (`pixelkiln adopt`) has not been extended for `objectPro`'s own
+`<object id>#<animation group id>` remote-id scheme yet, unlike `character`'s
+dedicated adoption path — a base may already be adoptable through the
+generic object-matching pixelkiln already does for `1dir`/`map`, since a
+pro-flash object shares that same `/objects` identity space, but this is
+untested.
+
 ## `isometricTile`
 
 `isometricTile` wraps PixelLab's `/create-isometric-tile` — a different

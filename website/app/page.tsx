@@ -761,6 +761,7 @@ export default function Home() {
               <div className="generator-row"><strong>terrain</strong><span>Two-terrain elevation tilesets</span><span><i style={{ width: "100%" }} /> 20–40 gen (unmeasured)</span></div>
               <div className="generator-row"><strong>isometricTile</strong><span>A single elevation tile — a mesa, a cliff block</span><span><i style={{ width: "2.5%" }} /> 1 gen</span></div>
               <div className="generator-row"><strong>character</strong><span>A base in 8 directions, its poses, its loops</span><span><i style={{ width: "17.5%" }} /> 1–7 gen per base, 1 per loop, mirrors free</span></div>
+              <div className="generator-row"><strong>objectPro</strong><span>A skeleton-free prop&apos;s base, poses, and loops</span><span><i style={{ width: "17.5%" }} /> 1–7 gen per base, 1 per loop (unmeasured)</span></div>
               <div className="generator-row"><strong>animation</strong><span>Retro Diffusion GIFs and sprite sheets</span><span>USD quote</span></div>
               <div className="generator-row"><strong>frames</strong><span>Controlled ComfyUI still sequences</span><span>0 provider units</span></div>
             </div>
