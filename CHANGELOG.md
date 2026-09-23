@@ -1,3 +1,10 @@
+# [0.57.0](https://github.com/gfargo/pixelkiln/compare/v0.56.0...v0.57.0) (2026-09-23)
+
+
+### Features
+
+* **pixellab:** add reduce-colors and correct-pixelart revision modes ([d16bb5e](https://github.com/gfargo/pixelkiln/commit/d16bb5eb3014862c09e100770792ffc0d6d789b7))
+
 # [0.56.0](https://github.com/gfargo/pixelkiln/compare/v0.55.0...v0.56.0) (2026-09-22)
 
 
