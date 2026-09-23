@@ -303,20 +303,21 @@ file under a fresh id immediately, exactly like `pixflux` does, and `poll`
 just confirms the file is still there rather than asking PixelLab anything
 further — there is nothing to ask.
 
-- **Cost is unmeasured against a live account, and the two available sources
-  disagree.** The live OpenAPI schema's own response examples are
-  dollar-denominated (`usage: {type: "usd", usd: 0.005}` for `reduce-colors`,
-  `0.01` for `correct-pixelart`), but this codebase has repeatedly found that
-  pattern does not predict real subscription billing (`isometricTile`,
-  `objectPro` both bill in generations despite a `usd`-labeled schema
-  example). PixelLab's own MCP tool descriptions for both instead claim a
-  flat **0.1 generations** regardless of image size, which is what
-  `estimate()` borrows as a placeholder. Whichever it is, the live response's
-  own `usage` field is read and recorded as `billed` the moment a real call
-  is made (`context.metadata.revisionUsage`, since there is no later
-  background job to ask the way `billedForJob` asks for every other adapter
-  call) — so once this is exercised live even once, the recorded `billed`
-  amount is real; only the pre-spend `estimate()` figure is a guess.
+- **Cost is confirmed live: a flat 0.1 generations for both, on a 32×32
+  source, on a Tier 2 subscription account.** The live OpenAPI schema's own
+  response examples are dollar-denominated (`usage: {type: "usd", usd:
+  0.005}` for `reduce-colors`, `0.01` for `correct-pixelart`), and — exactly
+  as this codebase has repeatedly found for other endpoints (`isometricTile`,
+  `objectPro`) — that example does not predict real subscription billing.
+  The account's balance moved by exactly 0.1 generations for each call
+  (`pixellab balance change: 0.1000000000003638 generations consumed`,
+  floating-point noise aside), matching PixelLab's own MCP tool descriptions
+  rather than the OpenAPI example. Only confirmed at this one size so far;
+  whether it stays flat at larger canvases (unlike `inpaint`'s canvas-tiered
+  cost) is not yet known. The live response's own `usage` field is read and
+  recorded as `billed` on every call regardless
+  (`context.metadata.revisionUsage`, since there is no later background job
+  to ask the way `billedForJob` asks for every other adapter call).
 - `reduce-colors`'s total size limit is 512×512 worth of pixels (262144px²);
   `correct-pixelart`'s is 1024 pixels per side. Both are checked before a
   request is sent, the same as `inpaint`'s 32–512px floor/ceiling.
@@ -326,13 +327,12 @@ further — there is nothing to ask.
   transform the source. Both take at most 256 pixels per side; `animate`
   additionally caps at 16 frames (`animate-pixminimax` allows up to 40). See
   [Animation and interpolation](#animation-and-interpolation) above for the
-  full field list, the frame-set output shape, and the same
-  cost-is-unmeasured caveat as the Cleanup tier.
-- Neither endpoint is exercised against a live account yet — the request and
-  response shapes here come from PixelLab's own live OpenAPI document
-  (`https://api.pixellab.ai/v2/openapi.json`), not an observed call, unlike
-  the rest of this client's stated practice. Treat the exact field names as
-  provisional until a real call confirms them.
+  full field list, the frame-set output shape, and its own (still unmeasured)
+  cost caveat — unlike the Cleanup tier above, neither `animate` nor
+  `animate-pixminimax` has been exercised against a live account yet, and the
+  request/response shapes come from PixelLab's live OpenAPI document, not an
+  observed call. Treat the exact field names as provisional until a real
+  call confirms them.
 
 - The mask convention is fixed, not graph-defined like ComfyUI's: white marks
   the area to generate, black the area to preserve. There is no way to flip it.

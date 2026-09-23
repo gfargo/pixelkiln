@@ -304,10 +304,12 @@ review, not a single image — the one revision mode shape that isn't "one
 image in, one image out." Neither animate endpoint's completed-job response
 shape has ever been observed; `pollAnimateRevision` guesses defensively
 rather than assume one. Read `docs/REVISIONS.md`'s PixelLab section before
-using any of these — cost is an estimate for all six, and everything past
-`inpaint`/`image-to-image` is schema-only (taken from PixelLab's live
-OpenAPI document, never exercised against a real account). For a style aimed
-at a specific look (a retro/console feel or a
+using any of these. `reduce-colors`/`correct-pixelart` cost is **confirmed
+live**: a flat 0.1 generations each (not the schema's dollar-denominated
+example), at least at a 32×32 source — `animate`/`animate-pixminimax` remain
+schema-only and unexercised, taken from PixelLab's live OpenAPI document
+rather than an observed call. For a style aimed at a specific look (a
+retro/console feel or a
 high-fidelity showcase asset) rather than a default, read
 [pixellab-fidelity.md](./pixellab-fidelity.md) before choosing `size`,
 `detail`, `shading`, or `outline`. For what PixelLab can do that this adapter

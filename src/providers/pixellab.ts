@@ -312,15 +312,16 @@ export class PixelLabProvider implements Provider {
 
   estimate(spec: ResolvedSpec): CostEstimate {
     if (spec.revision?.mode === "reduce-colors" || spec.revision?.mode === "correct-pixelart") {
-      // Unmeasured against a live account. The OpenAPI response schema's own
-      // example is dollar-denominated (`usage: {type: "usd", usd: 0.005}`
-      // for reduce-colors, `0.01` for correct-pixelart), which this codebase
-      // has repeatedly found does not predict real subscription billing
-      // (isometricTile, objectPro); PixelLab's own MCP tool descriptions for
-      // both instead claim a flat 0.1 generations regardless of image size,
-      // which is what this borrows. Treat this as a placeholder pending a
-      // real measured call, the same as every other unmeasured cost in this
-      // adapter.
+      // Confirmed live: a flat 0.1 generations for both, on a 32x32 source,
+      // on a Tier 2 subscription account (docs/REVISIONS.md). The OpenAPI
+      // response schema's own example is dollar-denominated (`usage:
+      // {type: "usd", usd: 0.005}` for reduce-colors, `0.01` for
+      // correct-pixelart), which this codebase has repeatedly found does not
+      // predict real subscription billing (isometricTile, objectPro) — the
+      // real account balance moved by exactly 0.1 generations per call
+      // instead, matching PixelLab's own MCP tool descriptions. Only
+      // confirmed at this one size; whether it stays flat at larger canvases
+      // is unknown.
       return { unit: "generations", amount: 0.1, candidates: 1 }
     }
     if (spec.revision?.mode === "animate" || spec.revision?.mode === "animate-pixminimax") {

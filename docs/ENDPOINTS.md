@@ -154,6 +154,27 @@ prevent that.
 
 ---
 
+## Cleanup tier, measured
+
+`/reduce-colors` and `/correct-pixelart` are a separate tier from the five
+utilities above (PixelLab's own OpenAPI tag: `Cleanup`), synchronous, and
+**confirmed at a flat 0.1 generations each** on a 32×32 source, live against a
+Tier 2 subscription account (`pixellab balance change: 0.1000000000003638
+generations consumed`, floating-point noise aside — same for both calls). The
+OpenAPI schema's own response examples are dollar-denominated (`usage:
+{type: "usd", usd: 0.005}` for `reduce-colors`, `0.01` for `correct-pixelart`)
+and, as with `isometricTile` and `objectPro`, that did not predict real
+billing; PixelLab's own MCP tool descriptions claiming a flat 0.1 generations
+were the correct source instead. Wired up as the `revision` asset shape's
+`reduce-colors`/`correct-pixelart` modes; see [Controlled asset
+revisions](./REVISIONS.md#cleanup-reduce-colors-and-correct-pixelart). Only
+confirmed at this one size — whether it stays flat at larger canvases (unlike
+`inpaint`'s canvas-tiered cost) is not yet known, and multi-frame batch input
+(both endpoints are built to quantize/clean several frames in one call) is
+unmeasured and unmodeled.
+
+---
+
 ## Tilesets: schema only, not yet measured
 
 Called out separately because these are the most capable endpoints for level art
@@ -431,16 +452,6 @@ Listed so the gaps are known rather than assumed away:
   endpoints are untouched by any of this. All four accept
   `color_image`, but given that
   `resize` accepts and ignores it, assume nothing until measured.
-- `/reduce-colors` and `/correct-pixelart` — PixelLab's "Cleanup" tier,
-  distinct from the five utilities measured above — are now wired up as the
-  `revision` asset shape's `reduce-colors` and `correct-pixelart` modes; see
-  [Controlled asset revisions](./REVISIONS.md#cleanup-reduce-colors-and-correct-pixelart).
-  Both endpoints are schema-only here: the request/response shapes come from
-  PixelLab's live OpenAPI document, not an observed call, and cost is
-  unmeasured (the schema's own dollar-denominated `usage` example has
-  repeatedly not predicted real subscription billing elsewhere in this file
-  — see `isometricTile`, `objectPro` — so treat the 0.1-generation figure
-  PixelLab's own MCP tool descriptions claim as a placeholder too).
 - `/animate-with-text-v3` and `/animate-pixminimax` — animating any loose
   image from a text description, no `character`/`objectPro` resource
   required — are now wired up as the `revision` asset shape's `animate` and
