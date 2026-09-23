@@ -1288,14 +1288,15 @@ export class PixelLabClient {
   /**
    * `/reduce-colors`, PixelLab's "Cleanup" tier: quantize one image onto a
    * smaller palette, synchronously — no `background_job_id`, the result
-   * comes back in this same response, like `createImagePixflux`. Verified
-   * against the live OpenAPI schema, not exercised against a live account:
-   * the schema's own response example is `usage: {type: "usd", usd: 0.02}`,
-   * which — going by this codebase's own repeated experience with PixelLab's
-   * documented-vs-billed cost mismatches (`isometricTile`, `objectPro`) —
-   * should not be trusted over a real call. `numColors` and `paletteImage`
-   * are mutually exclusive upstream; the manifest schema already enforces
-   * that before this is ever called.
+   * comes back in this same response, like `createImagePixflux`. The
+   * schema's own response example is dollar-denominated (`usage: {type:
+   * "usd", usd: 0.02}`), which — matching this codebase's repeated
+   * experience with PixelLab's documented-vs-billed cost mismatches
+   * (`isometricTile`, `objectPro`) — did not hold: confirmed live against a
+   * Tier 2 account at exactly 0.1 generations for a 32x32 source
+   * (docs/REVISIONS.md). `numColors` and `paletteImage` are mutually
+   * exclusive upstream; the manifest schema already enforces that before
+   * this is ever called.
    */
   async reduceColors(args: {
     image: Base64Image
@@ -1325,8 +1326,9 @@ export class PixelLabClient {
   /**
    * `/correct-pixelart`, PixelLab's "Cleanup" tier: sharpen edges and drop
    * stray pixels without resizing, synchronously — same shape as
-   * `reduceColors` above, no background job. Cost is likewise unverified
-   * against a live account (schema example: `usage: {type: "usd", usd: 0.02}`).
+   * `reduceColors` above, no background job. Cost is likewise confirmed
+   * live at 0.1 generations for a 32x32 source, not the schema's own
+   * dollar-denominated example (`usage: {type: "usd", usd: 0.02}`).
    */
   async correctPixelart(args: { image: Base64Image; strength?: number }): Promise<{ png: Buffer; usage: unknown }> {
     const body: Record<string, unknown> = { images: [args.image] }

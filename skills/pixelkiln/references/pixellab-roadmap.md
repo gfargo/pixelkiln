@@ -97,12 +97,14 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   repeatedly across this batch's character/animation tutorials as a
   near-mandatory cleanup step. Closed by the `revision` asset shape's
   `correct-pixelart` and `reduce-colors` modes; see
-  `pixellab.md` and `docs/REVISIONS.md`. **Neither endpoint's cost is
-  measured against a live account**: both are schema-only here, taken from
-  PixelLab's live OpenAPI document rather than an observed call, and the
-  schema's own dollar-denominated `usage` example is exactly the kind of
-  claim this catalog has repeatedly found wrong once measured
-  (`isometricTile`, `objectPro`). **Batch/multi-frame input remains
+  `pixellab.md` and `docs/REVISIONS.md`. **Cost confirmed live**: a flat 0.1
+  generations for each, on a 32×32 source, live against a Tier 2
+  subscription account — the schema's own dollar-denominated `usage` example
+  (`usd: 0.005`/`0.01`) did not predict this, exactly the kind of claim this
+  catalog has repeatedly found wrong once measured (`isometricTile`,
+  `objectPro`); PixelLab's own MCP tool descriptions claiming 0.1 generations
+  were the correct source instead. Only confirmed at this one size — whether
+  it holds at larger canvases is unconfirmed. **Batch/multi-frame input remains
   unmodeled**: both endpoints are built to take several frames in one call so
   an animation or a character's eight directions share one consistent
   palette/cleanup pass, which is the actual differentiator the tutorials
