@@ -1,3 +1,10 @@
+# [0.58.0](https://github.com/gfargo/pixelkiln/compare/v0.57.0...v0.58.0) (2026-09-23)
+
+
+### Features
+
+* **pixellab:** add animate and animate-pixminimax revision modes ([8140940](https://github.com/gfargo/pixelkiln/commit/8140940554435506b0af934d734251ba57fb793b))
+
 # [0.57.0](https://github.com/gfargo/pixelkiln/compare/v0.56.0...v0.57.0) (2026-09-23)
 
 
