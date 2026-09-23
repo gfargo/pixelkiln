@@ -5,9 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { PixelLabClient } from "../src/client.ts"
 import { PixelLabProvider } from "../src/providers/pixellab.ts"
+import { FakeProvider } from "../src/providers/fake.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
+import { prepareReview } from "../src/pick/server.ts"
+import { upsert } from "../src/lock.ts"
 import { lockKey, type Lock } from "../src/types.ts"
 
 let dir: string
@@ -256,5 +259,34 @@ describe("PixelLab provider: batch submit and poll", () => {
     const potion = specs.find((s) => s.assetId === "potion")!
     const provider = new PixelLabProvider(new PixelLabClient("key"))
     await expect(provider.submit(potion, [])).rejects.toThrow(/a batch member cannot submit on its own/)
+  })
+})
+
+describe("pick review: recommendedIndex", () => {
+  it("marks a member's declared slot, and leaves a plain asset unmarked", async () => {
+    const manifest = {
+      name: "itest",
+      styles: { base: { generator: "1dir", size: 64, outDir: "out" } },
+      assets: { anvil: { prompt: "an anvil" } },
+    }
+    await writeFile(manifestPath, JSON.stringify(manifest))
+    const loaded = await loadManifest(manifestPath)
+    const specs = await resolveSpecs(loaded)
+    const provider = new FakeProvider({ candidates: 4 })
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, { spacingMs: 0 })
+    await poll(provider, lock, lockPath, { intervalMs: 0 })
+    const key = lockKey("base", "anvil")
+    expect(lock.entries[key]!.status).toBe("review")
+
+    // A plain (non-batch) asset in review has no declared slot.
+    const plain = await prepareReview(provider, lock, { specs })
+    expect(plain!.groups[0]!.recommendedIndex).toBeUndefined()
+
+    // A batch member's declared index shows up as its recommendedIndex.
+    upsert(lock, key, { batch: { role: "member", leaderAssetId: "chest", index: 2 } })
+    const withBatch = await prepareReview(provider, lock, { specs })
+    expect(withBatch!.groups[0]!.recommendedIndex).toBe(2)
   })
 })

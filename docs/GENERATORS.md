@@ -112,7 +112,10 @@ existing batch later means declaring a new one, not editing the old.
 Review works exactly like any other `1dir` asset, once per sibling: each
 lands in `pixelkiln pick` independently (all sharing the same, real candidate
 set), and picking a different index for each is what actually turns N
-generated frames into N separate, kept assets.
+generated frames into N separate, kept assets. A member's row starts already
+scrolled to, and marked **DECLARED**, at its own declared index — a hint
+from the confirmed slot order below, not a forced choice; any candidate in
+the set can still be picked for any sibling.
 
 **Confirmed live** against a Tier 2 account: a 32px, 3-item batch (a chest
 leader plus a potion and a key member) billed exactly 20 generations — the
