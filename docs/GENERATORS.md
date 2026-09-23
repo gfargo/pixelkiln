@@ -114,13 +114,15 @@ lands in `pixelkiln pick` independently (all sharing the same, real candidate
 set), and picking a different index for each is what actually turns N
 generated frames into N separate, kept assets.
 
-**Unverified against a live account**: whether `item_descriptions[0]`
-overrides slot 0 or `description` does (PixelLab's own docs describe slots
-*beyond* the supplied list falling back to `description`, without settling
-which owns slot 0) — pixelkiln sends the leader's own prompt as both,
-so either reading produces the right result. `estimate()` prices the batch
-call by the ordinary `1dir` canvas-area table above, unconfirmed to still
-apply once `item_descriptions` is in play.
+**Confirmed live** against a Tier 2 account: a 32px, 3-item batch (a chest
+leader plus a potion and a key member) billed exactly 20 generations — the
+ordinary `1dir` floor tier, unaffected by `item_descriptions` — and
+`item_descriptions[0]` does own candidate slot 0: frame 0 came back as the
+chest, frame 1 as the potion, frame 2 as the key, in exactly the declared
+order. The remaining candidates (61 of 64, at this size) are the model's
+ordinary per-slot variety, not repeats of any one description — free bonus
+material, not additional declared items. Only confirmed at this one size;
+whether the cost table's higher tiers hold unchanged is still unconfirmed.
 
 ## `pixflux`
 

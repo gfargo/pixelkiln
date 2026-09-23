@@ -146,12 +146,15 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   This is the one closed item in this catalog that isn't a new
   generator/revision-mode wrapper around a fresh endpoint — it's new
   manifest/pipeline plumbing (one submitted job, several independent lock
-  entries) for a capability the client already halfway had. **Unverified
-  against a live account**: whether `item_descriptions[0]` overrides the
-  first candidate slot or `description` does (pixelkiln sends the same text
-  as both, so either reading works), and whether `1dir`'s existing
-  canvas-area cost table still applies unchanged once `item_descriptions` is
-  populated.
+  entries) for a capability the client already halfway had. **Confirmed
+  live** on a Tier 2 account: a 32px chest+potion+key batch billed exactly
+  20 generations (the ordinary `1dir` floor tier, unaffected by
+  `item_descriptions`), and `item_descriptions[0]` does own candidate slot
+  0 — the returned frames 0/1/2 were exactly the chest, potion, and key in
+  declared order, with the rest of the 64 candidates being the model's
+  ordinary variety rather than repeats. Only confirmed at this one size;
+  the cost table's higher tiers remain unconfirmed under
+  `item_descriptions`.
 
 ## UI elements and RPG UI kits
 

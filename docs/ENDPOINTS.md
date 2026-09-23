@@ -359,9 +359,13 @@ objects; `select-frames`'s own `indices` field is already plural — several
 candidates, not just one, promote to separate permanent objects in a single
 call. Wired up as the `1dir` asset shape's `batch` field; see
 [`1dir`](./GENERATORS.md#batch-several-distinct-objects-for-one-calls-cost).
-Unverified against a live account: whether `item_descriptions[0]` overrides
-the first slot or `description` does, and whether the canvas-area cost table
-above still applies unchanged once `item_descriptions` is populated.
+**Confirmed live**: a 32px, 3-description call billed exactly 20 generations
+(the ordinary floor tier above, unaffected by `item_descriptions`), and
+`item_descriptions[0]` owns candidate slot 0 — a `["a wooden treasure
+chest", "a red potion...", "a rusty key..."]` call returned exactly a chest
+at frame 0, a potion at frame 1, a key at frame 2. Only confirmed at this
+one size; the higher cost tiers are still unconfirmed under
+`item_descriptions`.
 
 ---
 

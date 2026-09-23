@@ -1241,11 +1241,11 @@ export class PixelLabProvider implements Provider {
         view: spec.view === "sidescroller" ? "sidescroller" : "top-down",
         styleImages,
         // The leader's own subject is item_descriptions[0], so `description`
-        // matches it exactly: PixelLab's docs say slots beyond the supplied
-        // list fall back to `description`, but do not fully specify whether
-        // item_descriptions[0] itself overrides slot 0 or description does —
-        // sending the same text either way makes both readings correct.
-        // Unverified against a live account.
+        // matches it exactly. Confirmed live: item_descriptions[0] owns
+        // candidate slot 0 (a 3-item batch returned exactly the declared
+        // items at frames 0/1/2, in order; docs/GENERATORS.md#1dir), so
+        // sending the same text as `description` too is redundant but
+        // harmless, not a hedge against ambiguity.
         itemDescriptions: spec.batch?.role === "leader" ? spec.batch.itemDescriptions : undefined,
       })
       return { jobId: res.object_id, metadata: { backgroundJobId: res.background_job_id } }

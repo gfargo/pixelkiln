@@ -118,11 +118,13 @@ the *whole group's* ordered descriptions, so adding, removing, or editing
 any one member marks every sibling stale together: PixelLab has no endpoint
 to add one more item to an already-submitted batch, so a batch's membership
 has to be decided before it's generated, not grown incrementally.
-**Unverified against a live account**: whether `item_descriptions[0]`
-overrides the first candidate slot or `description` does (pixelkiln sends
-the same text as both, so either reading is correct), and whether the
-existing canvas-area cost table still holds once `item_descriptions` is
-populated. See `docs/GENERATORS.md#batch-several-distinct-objects-for-one-calls-cost`.
+**Confirmed live** on a Tier 2 account: a 32px chest+potion+key batch billed
+exactly 20 generations (the ordinary floor tier, unaffected by
+`item_descriptions`), and `item_descriptions[0]` does own candidate slot 0 —
+frame 0/1/2 came back as the chest/potion/key in exactly the declared order,
+the rest of the 64 candidates being the model's ordinary per-slot variety,
+not repeats. Only confirmed at this one size; the higher cost tiers are
+unconfirmed. See `docs/GENERATORS.md#batch-several-distinct-objects-for-one-calls-cost`.
 
 `imagePro` wraps PixelLab's Pro image tier, `/generate-image-v2` — the
 `pixflux`-adjacent gap named in `pixellab-roadmap.md`: real style transfer
