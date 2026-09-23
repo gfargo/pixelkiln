@@ -210,6 +210,10 @@ export async function submit(
             sourceSha256: spec.revision.sourceSha256!,
             ...(spec.revision.maskSha256 ? { maskSha256: spec.revision.maskSha256 } : {}),
             ...(spec.revision.strength == null ? {} : { strength: spec.revision.strength }),
+            ...(spec.revision.numColors == null ? {} : { numColors: spec.revision.numColors }),
+            ...(spec.revision.paletteImageSha256 ? { paletteImageSha256: spec.revision.paletteImageSha256 } : {}),
+            ...(spec.revision.dithering ? { dithering: spec.revision.dithering } : {}),
+            ...(spec.revision.ditheringStrength == null ? {} : { ditheringStrength: spec.revision.ditheringStrength }),
           }
         : null,
       status: "pending",

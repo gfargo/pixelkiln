@@ -993,7 +993,9 @@
                     "enum": [
                       "image-to-image",
                       "inpaint",
-                      "outpaint"
+                      "outpaint",
+                      "reduce-colors",
+                      "correct-pixelart"
                     ]
                   },
                   "from": {
@@ -1008,6 +1010,29 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 1
+                  },
+                  "numColors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 256
+                  },
+                  "paletteImage": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dithering": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "2x2",
+                      "4x4",
+                      "8x8"
+                    ]
+                  },
+                  "ditheringStrength": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10
                   }
                 },
                 "required": [

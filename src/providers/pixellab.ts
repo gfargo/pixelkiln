@@ -272,12 +272,15 @@ export class PixelLabProvider implements Provider {
 
   /**
    * `inpaint` (`/inpaint-v3`, a mask) and `image-to-image` (`/edit-images-v2`,
-   * no mask) both exist on PixelLab. `outpaint` does not: there is no
+   * no mask) both exist on PixelLab, and so do `reduce-colors`
+   * (`/reduce-colors`) and `correct-pixelart` (`/correct-pixelart`) — PixelLab's
+   * "Cleanup" tier, a mechanical post-process on the source's own pixels
+   * rather than a described edit. `outpaint` does not: there is no
    * canvas-expansion endpoint in the API, matching docs/REVISIONS.md's note
    * that no provider ships a tested outpaint path yet.
    */
   supportsRevision(mode: RevisionMode): boolean {
-    return mode === "inpaint" || mode === "image-to-image"
+    return mode === "inpaint" || mode === "image-to-image" || mode === "reduce-colors" || mode === "correct-pixelart"
   }
 
   /** PixelLab's own constraints: submissions must be >2s apart, and
@@ -302,6 +305,18 @@ export class PixelLabProvider implements Provider {
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {
+    if (spec.revision?.mode === "reduce-colors" || spec.revision?.mode === "correct-pixelart") {
+      // Unmeasured against a live account. The OpenAPI response schema's own
+      // example is dollar-denominated (`usage: {type: "usd", usd: 0.005}`
+      // for reduce-colors, `0.01` for correct-pixelart), which this codebase
+      // has repeatedly found does not predict real subscription billing
+      // (isometricTile, objectPro); PixelLab's own MCP tool descriptions for
+      // both instead claim a flat 0.1 generations regardless of image size,
+      // which is what this borrows. Treat this as a placeholder pending a
+      // real measured call, the same as every other unmeasured cost in this
+      // adapter.
+      return { unit: "generations", amount: 0.1, candidates: 1 }
+    }
     if (spec.revision) {
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
       // like /generate-with-style-v2 and /generate-image-v2. Live calls to
@@ -357,6 +372,21 @@ export class PixelLabProvider implements Provider {
       const { sourceWidth: width, sourceHeight: height } = spec.revision
       if (width != null && height != null && (width < 32 || height < 32 || width > 512 || height > 512)) {
         throw new Error(`PixelLab inpaint source is ${width}x${height}; the API takes 32 to 512 pixels per side`)
+      }
+    }
+    if (spec.revision?.mode === "reduce-colors") {
+      const { sourceWidth: width, sourceHeight: height } = spec.revision
+      if (width != null && height != null && width * height > 512 * 512) {
+        throw new Error(
+          `PixelLab reduce-colors source is ${width}x${height} (${width * height}px²); ` +
+            "the API takes at most 512x512 worth of pixels per call",
+        )
+      }
+    }
+    if (spec.revision?.mode === "correct-pixelart") {
+      const { sourceWidth: width, sourceHeight: height } = spec.revision
+      if (width != null && height != null && (width > 1024 || height > 1024)) {
+        throw new Error(`PixelLab correct-pixelart source is ${width}x${height}; the API takes at most 1024 pixels per side`)
       }
     }
     if (spec.generator === "1dir" && (spec.width < 32 || spec.width > 256)) {
@@ -1214,6 +1244,43 @@ export class PixelLabProvider implements Provider {
       return { jobId: res.background_job_id }
     }
 
+    // reduce-colors and correct-pixelart are PixelLab's "Cleanup" tier: both
+    // are ordinary synchronous REST calls with no background_job_id, exactly
+    // like pixflux's own /create-image-pixflux — the result is already in
+    // hand when this function returns, so it is cached locally under a fresh
+    // id the same way pixflux's is, and `poll()` below just checks the file
+    // exists. `spec.prompt` describes nothing to either endpoint (there is no
+    // text instruction here); it stays a manifest-only label.
+    if (revision.mode === "reduce-colors") {
+      let paletteImage: Base64Image | undefined
+      if (revision.paletteImageFile) {
+        if (!revision.paletteImageSha256 || !revision.paletteImageFormat) {
+          throw new Error(`${spec.styleId}/${spec.assetId}: revision palette image is not ready`)
+        }
+        const paletteBytes = readFileSync(revision.paletteImageFile)
+        if (sha256(paletteBytes) !== revision.paletteImageSha256) {
+          throw new Error(`${spec.styleId}/${spec.assetId}: revision palette image changed after the manifest was resolved`)
+        }
+        paletteImage = { base64: paletteBytes.toString("base64"), format: revision.paletteImageFormat }
+      }
+      const res = await this.client.reduceColors({
+        image,
+        numColors: revision.numColors,
+        paletteImage,
+        dithering: revision.dithering,
+        ditheringStrength: revision.ditheringStrength,
+      })
+      const jobId = randomUUID()
+      writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}.png`), res.png)
+      return { jobId, metadata: { revisionUsage: res.usage } }
+    }
+    if (revision.mode === "correct-pixelart") {
+      const res = await this.client.correctPixelart({ image, strength: revision.strength })
+      const jobId = randomUUID()
+      writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}.png`), res.png)
+      return { jobId, metadata: { revisionUsage: res.usage } }
+    }
+
     // image-to-image: PixelLab has no denoise-strength knob on this
     // endpoint, so a declared `strength` has nowhere to go. Refuse rather
     // than silently drop what the manifest asked for.
@@ -1257,6 +1324,10 @@ export class PixelLabProvider implements Provider {
     // background_job_id. `generator` alone cannot tell a revision apart from
     // an ordinary submission of the same base generator, which is why this
     // checks the spec the pipeline threads through PollContext instead.
+    const revisionMode = context?.spec?.revision?.mode
+    if (revisionMode === "reduce-colors" || revisionMode === "correct-pixelart") {
+      return this.pollCachedRevision(jobId, context)
+    }
     if (context?.spec?.revision) return this.pollRevision(jobId)
     if (generator === "pixflux") {
       const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
@@ -1294,6 +1365,28 @@ export class PixelLabProvider implements Provider {
       progressPercent: obj.progress_percent ?? null,
       etaSeconds: obj.eta_seconds ?? null,
     }
+  }
+
+  /**
+   * `reduce-colors` and `correct-pixelart` results are already on disk by
+   * the time `poll` is first called — `submitRevision` wrote them
+   * synchronously, the same way `pixflux`'s poll branch above checks its own
+   * cache file rather than a provider resource. The billed amount, if any,
+   * travels through `context.metadata.revisionUsage` since there is no
+   * background job to ask afterwards the way `billedForJob` does for async
+   * work.
+   */
+  private async pollCachedRevision(jobId: string, context?: PollContext): Promise<JobState> {
+    const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
+    if (!existsSync(file)) {
+      return {
+        status: "failed",
+        error: "revision result is no longer cached locally; re-run submit for this asset",
+      }
+    }
+    const sourceUrl = `file://${file}`
+    const usage = context?.metadata?.revisionUsage as PixelLabUsage | undefined
+    return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }], billed: billedFromUsage(usage) }
   }
 
   /**

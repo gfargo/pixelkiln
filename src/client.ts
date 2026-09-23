@@ -270,6 +270,20 @@ const ObjectListSchema = z
 const PixfluxResponseSchema = z
   .object({ image: z.object({ base64: z.string().min(1) }).passthrough(), usage: z.unknown().optional() })
   .passthrough()
+const ReduceColorsResponseSchema = z
+  .object({
+    images: z.array(z.object({ base64: z.string().min(1) }).passthrough()).min(1),
+    palette: z.object({ base64: z.string().min(1) }).passthrough(),
+    n_colors: z.number().int(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
+const CorrectPixelartResponseSchema = z
+  .object({
+    images: z.array(z.object({ base64: z.string().min(1) }).passthrough()).min(1),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
 const SelectFramesSchema = z.object({ created_object_ids: z.array(z.string()) }).passthrough()
 
 // Characters. Verified against the v2 OpenAPI document; a character is one
@@ -1269,6 +1283,60 @@ export class PixelLabClient {
       await this.request<unknown>("/generate-image-v2", { method: "POST", body: JSON.stringify(body) }),
       "generate-image-v2",
     )
+  }
+
+  /**
+   * `/reduce-colors`, PixelLab's "Cleanup" tier: quantize one image onto a
+   * smaller palette, synchronously — no `background_job_id`, the result
+   * comes back in this same response, like `createImagePixflux`. Verified
+   * against the live OpenAPI schema, not exercised against a live account:
+   * the schema's own response example is `usage: {type: "usd", usd: 0.02}`,
+   * which — going by this codebase's own repeated experience with PixelLab's
+   * documented-vs-billed cost mismatches (`isometricTile`, `objectPro`) —
+   * should not be trusted over a real call. `numColors` and `paletteImage`
+   * are mutually exclusive upstream; the manifest schema already enforces
+   * that before this is ever called.
+   */
+  async reduceColors(args: {
+    image: Base64Image
+    numColors?: number
+    paletteImage?: Base64Image
+    dithering?: "none" | "2x2" | "4x4" | "8x8"
+    ditheringStrength?: number
+  }): Promise<{ png: Buffer; paletteStripPng: Buffer; nColors: number; usage: unknown }> {
+    const body: Record<string, unknown> = { images: [args.image] }
+    if (args.numColors != null) body.num_colors = args.numColors
+    if (args.paletteImage) body.palette_image = args.paletteImage
+    if (args.dithering) body.dithering = args.dithering
+    if (args.ditheringStrength != null) body.dithering_strength = args.ditheringStrength
+    const res = validateResponse(
+      ReduceColorsResponseSchema,
+      await this.request<unknown>("/reduce-colors", { method: "POST", body: JSON.stringify(body) }),
+      "reduce-colors",
+    )
+    return {
+      png: Buffer.from(res.images[0]!.base64, "base64"),
+      paletteStripPng: Buffer.from(res.palette.base64, "base64"),
+      nColors: res.n_colors,
+      usage: res.usage,
+    }
+  }
+
+  /**
+   * `/correct-pixelart`, PixelLab's "Cleanup" tier: sharpen edges and drop
+   * stray pixels without resizing, synchronously — same shape as
+   * `reduceColors` above, no background job. Cost is likewise unverified
+   * against a live account (schema example: `usage: {type: "usd", usd: 0.02}`).
+   */
+  async correctPixelart(args: { image: Base64Image; strength?: number }): Promise<{ png: Buffer; usage: unknown }> {
+    const body: Record<string, unknown> = { images: [args.image] }
+    if (args.strength != null) body.strength = args.strength
+    const res = validateResponse(
+      CorrectPixelartResponseSchema,
+      await this.request<unknown>("/correct-pixelart", { method: "POST", body: JSON.stringify(body) }),
+      "correct-pixelart",
+    )
+    return { png: Buffer.from(res.images[0]!.base64, "base64"), usage: res.usage }
   }
 
   async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null; usage?: PixelLabUsage | null }> {

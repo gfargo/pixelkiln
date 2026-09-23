@@ -39,7 +39,7 @@ export type Generator = z.infer<typeof GeneratorSchema>
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
 export type GridConfidence = z.infer<typeof GridConfidenceSchema>
 
-export const RevisionModeSchema = z.enum(["image-to-image", "inpaint", "outpaint"])
+export const RevisionModeSchema = z.enum(["image-to-image", "inpaint", "outpaint", "reduce-colors", "correct-pixelart"])
 export type RevisionMode = z.infer<typeof RevisionModeSchema>
 
 /** A decoded style reference ready for a provider-specific request body. */
@@ -533,6 +533,9 @@ export interface ResolvedObjectPro {
 }
 
 /** A provider generation whose visual starting point is another manifest asset. */
+export const RevisionDitheringSchema = z.enum(["none", "2x2", "4x4", "8x8"])
+export type RevisionDithering = z.infer<typeof RevisionDitheringSchema>
+
 export const RevisionSchema = z
   .object({
     /** What kind of controlled change the provider workflow performs. */
@@ -543,6 +546,14 @@ export const RevisionSchema = z
     mask: z.string().min(1).optional(),
     /** Provider-neutral edit strength. The active adapter must bind it explicitly. */
     strength: z.number().min(0).max(1).optional(),
+    /** `reduce-colors` only: target color count. Mutually exclusive with `paletteImage`. */
+    numColors: z.number().int().min(2).max(256).optional(),
+    /** `reduce-colors` only: manifest-relative image whose colors become the palette. Mutually exclusive with `numColors`. */
+    paletteImage: z.string().min(1).optional(),
+    /** `reduce-colors` only: ordered dithering matrix size. */
+    dithering: RevisionDitheringSchema.optional(),
+    /** `reduce-colors` only: dithering intensity; ignored when `dithering` is "none" or unset. */
+    ditheringStrength: z.number().min(0).max(10).optional(),
   })
   .strict()
   .superRefine((revision, context) => {
@@ -558,6 +569,29 @@ export const RevisionSchema = z
         code: z.ZodIssueCode.custom,
         message: `${revision.mode} revisions do not accept a mask`,
         path: ["mask"],
+      })
+    }
+    if (revision.numColors !== undefined && revision.paletteImage !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "numColors and paletteImage are mutually exclusive",
+        path: ["numColors"],
+      })
+    }
+    for (const field of ["numColors", "paletteImage", "dithering", "ditheringStrength"] as const) {
+      if (revision[field] !== undefined && revision.mode !== "reduce-colors") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${field} applies to reduce-colors revisions only`,
+          path: [field],
+        })
+      }
+    }
+    if (revision.strength !== undefined && revision.mode === "reduce-colors") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "reduce-colors revisions do not take a strength; use dithering/ditheringStrength",
+        path: ["strength"],
       })
     }
   })
@@ -583,6 +617,14 @@ export interface ResolvedRevision {
   maskHeight?: number | null
   maskFormat?: "png" | "jpeg" | null
   strength?: number
+  numColors?: number
+  paletteImageFile?: string
+  paletteImageSha256?: string | null
+  paletteImageWidth?: number | null
+  paletteImageHeight?: number | null
+  paletteImageFormat?: "png" | "jpeg" | null
+  dithering?: RevisionDithering
+  ditheringStrength?: number
 }
 
 const StyleObjectSchema = z
@@ -1271,6 +1313,10 @@ export const LockEntrySchema = z.object({
       sourceSha256: z.string().regex(/^[0-9a-f]{64}$/),
       maskSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       strength: z.number().min(0).max(1).optional(),
+      numColors: z.number().int().min(2).max(256).optional(),
+      paletteImageSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+      dithering: RevisionDitheringSchema.optional(),
+      ditheringStrength: z.number().min(0).max(10).optional(),
     })
     .strict()
     .nullable()

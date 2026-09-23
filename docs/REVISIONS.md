@@ -6,10 +6,10 @@ quality output. PixelKiln hashes the exact parent and mask bytes, blocks stale
 dependencies before submission, and records the lineage in the lockfile.
 
 The manifest and pipeline are provider-neutral. ComfyUI and PixelLab implement
-it; PixelLab covers `image-to-image` and `inpaint`, not `outpaint` (its API
-has no canvas-expansion endpoint). Retro Diffusion and Scenario reject
-revision work during offline resolution instead of silently starting a fresh
-text-to-image job.
+it; PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`, and
+`correct-pixelart`, not `outpaint` (its API has no canvas-expansion endpoint).
+Retro Diffusion and Scenario reject revision work during offline resolution
+instead of silently starting a fresh text-to-image job.
 
 ## Image-to-image
 
@@ -85,6 +85,64 @@ child spec hash.
 `outpaint` is also part of the provider contract. It does not accept a separate
 mask in the manifest; the workflow owns canvas expansion and masking. PixelKiln
 does not ship a tested outpaint recipe yet.
+
+## Cleanup: reduce-colors and correct-pixelart
+
+Two more revision modes exist for cleaning up an existing asset's own pixels
+mechanically, rather than describing an edit: no prompt is sent to the
+provider for either (the asset's `prompt` stays a manifest-only label,
+searchable in the gallery like any other asset's).
+
+`reduce-colors` quantizes the source onto a smaller palette, either an
+explicit count or lifted from a reference image:
+
+```jsonc
+{
+  "revision": {
+    "mode": "reduce-colors",
+    "from": "hero-walk-east",
+    "numColors": 16,
+    "dithering": "4x4",
+    "ditheringStrength": 6
+  }
+}
+```
+
+`numColors` (2–256) and `paletteImage` (a manifest-relative image whose colors
+become the palette, lifted the same way a mask is) are mutually exclusive;
+omit both to let PixelLab auto-detect a palette size. Unlike a mask,
+`paletteImage` has no size relationship to the source — it only lends colors —
+so it can be any shape. `dithering` (`none`, `2x2`, `4x4`, `8x8`) and
+`ditheringStrength` (0–10) apply only to `reduce-colors`; setting them, or
+`strength`, on the wrong mode is rejected at manifest load, same as a mask on
+`image-to-image`.
+
+`correct-pixelart` sharpens edges and drops stray/anti-aliased pixels without
+resizing — the reprocessing case
+[`image-to-pixelart`'s own docs](./ENDPOINTS.md) explicitly exclude ("for
+photographs and 3-D renders, not for reprocessing" pixel art):
+
+```jsonc
+{
+  "revision": {
+    "mode": "correct-pixelart",
+    "from": "hero-walk-east",
+    "strength": 0.1
+  }
+}
+```
+
+`strength` (0–1, PixelLab's own default 0.1) is how far the model may move
+from the source; start low and only raise it for real repair.
+
+Neither mode supports the source being a frame set (a character animation, an
+`objectPro` loop) yet — each processes exactly one image per revision, the
+same as `image-to-image`. PixelLab's own `/reduce-colors` and
+`/correct-pixelart` endpoints are built to take several frames in one call
+specifically so an animation's frames (or a character's eight directions)
+share one consistent palette/cleanup pass instead of drifting frame by frame;
+pixelkiln does not expose that yet — revise each frame as its own asset for
+now, and expect some frame-to-frame drift from doing so independently.
 
 ## Dependency gate
 
@@ -171,7 +229,37 @@ approval gate before shipping. See the
 
 PixelLab needs no bindings: `image-to-image` calls `/edit-images-v2`,
 `inpaint` calls `/inpaint-v3`, both as a plain background job polled the same
-way as every other PixelLab submission.
+way as every other PixelLab submission. `reduce-colors` calls `/reduce-colors`
+and `correct-pixelart` calls `/correct-pixelart` — PixelLab's "Cleanup" tier —
+and neither is a background job at all: both endpoints answer synchronously,
+the whole result already in the POST response, the same as `pixflux`'s own
+`/create-image-pixflux`. `submitRevision` caches the decoded PNG to a local
+file under a fresh id immediately, exactly like `pixflux` does, and `poll`
+just confirms the file is still there rather than asking PixelLab anything
+further — there is nothing to ask.
+
+- **Cost is unmeasured against a live account, and the two available sources
+  disagree.** The live OpenAPI schema's own response examples are
+  dollar-denominated (`usage: {type: "usd", usd: 0.005}` for `reduce-colors`,
+  `0.01` for `correct-pixelart`), but this codebase has repeatedly found that
+  pattern does not predict real subscription billing (`isometricTile`,
+  `objectPro` both bill in generations despite a `usd`-labeled schema
+  example). PixelLab's own MCP tool descriptions for both instead claim a
+  flat **0.1 generations** regardless of image size, which is what
+  `estimate()` borrows as a placeholder. Whichever it is, the live response's
+  own `usage` field is read and recorded as `billed` the moment a real call
+  is made (`context.metadata.revisionUsage`, since there is no later
+  background job to ask the way `billedForJob` asks for every other adapter
+  call) — so once this is exercised live even once, the recorded `billed`
+  amount is real; only the pre-spend `estimate()` figure is a guess.
+- `reduce-colors`'s total size limit is 512×512 worth of pixels (262144px²);
+  `correct-pixelart`'s is 1024 pixels per side. Both are checked before a
+  request is sent, the same as `inpaint`'s 32–512px floor/ceiling.
+- Neither endpoint is exercised against a live account yet — the request and
+  response shapes here come from PixelLab's own live OpenAPI document
+  (`https://api.pixellab.ai/v2/openapi.json`), not an observed call, unlike
+  the rest of this client's stated practice. Treat the exact field names as
+  provisional until a real call confirms them.
 
 - The mask convention is fixed, not graph-defined like ComfyUI's: white marks
   the area to generate, black the area to preserve. There is no way to flip it.
@@ -239,11 +327,13 @@ way as every other PixelLab submission.
 ## Provenance and invalidation
 
 The lock entry records revision mode, parent id, parent hash, optional mask
-hash, and strength. ComfyUI provider metadata also retains the same lineage
-beside the workflow hash.
+hash, strength, and — for `reduce-colors` — `numColors`, the palette image's
+hash, and the dithering settings. ComfyUI provider metadata also retains the
+same lineage beside the workflow hash.
 
-Changing the prompt, workflow, mode, strength, parent bytes, or mask bytes makes
-the child stale. Moving an unchanged parent or mask file does not. When a child
+Changing the prompt, workflow, mode, strength, parent bytes, mask bytes, color
+count, palette image bytes, or dithering settings makes the child stale.
+Moving an unchanged parent, mask, or palette image file does not. When a child
 has a quality profile, the new raw output hash also invalidates its old quality
 record, so a revised image cannot inherit approval from an earlier generation.
 

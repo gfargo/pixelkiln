@@ -87,6 +87,27 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   a real assumption pending a live check, not a confirmed number the way
   `isometricTile`'s now is. Batch "pack" generation (N distinct objects from
   one call) remains unmodeled — see above.
+- **Pixel correction** (`/correct-pixelart`, a dedicated cleanup pass distinct
+  from `image-to-pixelart` — the latter is documented, docs/ENDPOINTS.md, as
+  being "for photographs and 3-D renders, not for reprocessing" pixel art)
+  and **reduce colors** (`/reduce-colors`, palette-lock/quantize with an
+  explicit color count or a lifted palette image, distinct from PixelKiln's
+  internal `quantize()`, which only runs inside the `refine`/quality-gate
+  pipeline against a manifest-declared palette) — both demonstrated
+  repeatedly across this batch's character/animation tutorials as a
+  near-mandatory cleanup step. Closed by the `revision` asset shape's
+  `correct-pixelart` and `reduce-colors` modes; see
+  `pixellab.md` and `docs/REVISIONS.md`. **Neither endpoint's cost is
+  measured against a live account**: both are schema-only here, taken from
+  PixelLab's live OpenAPI document rather than an observed call, and the
+  schema's own dollar-denominated `usage` example is exactly the kind of
+  claim this catalog has repeatedly found wrong once measured
+  (`isometricTile`, `objectPro`). **Batch/multi-frame input remains
+  unmodeled**: both endpoints are built to take several frames in one call so
+  an animation or a character's eight directions share one consistent
+  palette/cleanup pass, which is the actual differentiator the tutorials
+  demonstrate — PixelKiln only ever sends one frame per revision today, the
+  same limit `image-to-image`/`inpaint` already have.
 
 ## Generic (non-character) animation and interpolation
 
@@ -178,27 +199,6 @@ Already flagged as explicitly out of scope in docs/PIXELLAB.md
 ("skeleton-driven animation"); animation-to-animation is new information not
 previously catalogued anywhere.
 
-## Pixel correction
-
-A dedicated cleanup pass distinct from `image-to-pixelart`: takes an
-already-generated image and a strength slider, reduces noise/color
-complexity while preserving detail at low strength. Demonstrated in "How to
-Make Animated Pixel Art Scenes with PixelLab," used specifically because
-`image-to-pixelart` is documented (docs/ENDPOINTS.md) as being "for
-photographs and 3-D renders, not for reprocessing" pixel art — this tool is
-built for exactly the reprocessing case that warning excludes.
-
-## Reduce colors
-
-Palette-lock/quantize on an already-generated image or animation: pick a
-target color count or supply an exact palette image, "process all frames" of
-an animation in one pass, with a dithering option. Used as a near-mandatory
-last step in nearly every character/animation tutorial in this batch (e.g.,
-"How To Create Isometric Animals," "How to Create Destructible Environments
-in Seconds," "How to Make Animated Pixel Art Scenes"). This is distinct from
-PixelKiln's internal `quantize()`, which is used only inside the
-`refine`/quality-gate pipeline against a manifest-declared palette, not
-exposed as a general ad hoc post-generation cleanup step.
 
 ## Not PixelLab gaps at all — different products, no action implied
 

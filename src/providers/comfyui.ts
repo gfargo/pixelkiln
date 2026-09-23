@@ -442,6 +442,13 @@ export class ComfyUIProvider implements Provider {
       if (spec.revision.strength != null && !options.bindings.strength) {
         throw new Error("ComfyUI revision strength requires bindings.strength")
       }
+      if (spec.revision.numColors != null || spec.revision.paletteImageFile || spec.revision.dithering) {
+        throw new Error(
+          "ComfyUI has no binding for numColors/paletteImage/dithering — those are PixelLab's " +
+            "/reduce-colors parameters. A reduce-colors revision on ComfyUI is whatever your own " +
+            "workflow does with bindings.sourceImage; write that behavior into the graph directly.",
+        )
+      }
       if (
         (!options.bindings.width || !options.bindings.height) &&
         spec.revision.sourceWidth != null &&
