@@ -25,6 +25,14 @@ export interface SheetGroup {
     width: number
     height: number
   }
+  /**
+   * A batch member's declared slot in the shared candidate set (confirmed
+   * live: `item_descriptions[i]` reliably lands at candidate index `i`; see
+   * docs/GENERATORS.md#1dir). Starts the row already scrolled to and
+   * labelled at that candidate instead of the ordinary index-0 default —
+   * still just a starting point, not an auto-pick.
+   */
+  recommendedIndex?: number
 }
 
 const escapeHtml = (s: string) =>
@@ -142,6 +150,9 @@ export function renderSheet(groups: SheetGroup[], options: RenderSheetOptions = 
   .cand.active { border-color:var(--dim); box-shadow:0 0 0 2px color-mix(in srgb, var(--dim) 20%, transparent); }
   .cand.sel { border-color:var(--ok); box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
   .cand.set-frame { cursor:pointer; }
+  .cand.recommended:not(.sel) { border-color:var(--accent); }
+  .cand.recommended .badge { position:absolute; top:-1px; left:-1px; font-size:9.5px; font-weight:650;
+    text-transform:uppercase; letter-spacing:.03em; color:var(--bg); background:var(--accent); padding:1px 5px; }
   .cand img { image-rendering:pixelated; display:block;
     background-image:
       linear-gradient(45deg,#0000 25%,#7f7f7f22 25%,#7f7f7f22 75%,#0000 75%),
@@ -299,14 +310,17 @@ GROUPS.forEach((g, gi) => {
       }).observe(loop);
     }
   }
+  const recommended = g.recommendedIndex ?? 0;
   g.frameUrls.forEach((url, i) => {
     const c = document.createElement('button');
     c.type = 'button';
-    c.className = 'cand' + (g.mode === 'frame-set' ? ' set-frame' : '');
+    c.className = 'cand' + (g.mode === 'frame-set' ? ' set-frame' : '') +
+      (g.recommendedIndex != null && i === recommended ? ' recommended' : '');
     c.tabIndex = -1;
-    c.setAttribute('aria-label', g.mode === 'frame-set'
+    c.setAttribute('aria-label', (g.mode === 'frame-set'
       ? 'Accept ordered frame set from frame ' + (i + 1)
-      : 'Choose candidate ' + (i + 1) + ' of ' + g.frameUrls.length);
+      : 'Choose candidate ' + (i + 1) + ' of ' + g.frameUrls.length) +
+      (g.recommendedIndex != null && i === recommended ? ' (this asset’s declared slot)' : ''));
 
     const preview = document.createElement('img');
     preview.className = 'preview';
@@ -319,6 +333,12 @@ GROUPS.forEach((g, gi) => {
     index.textContent = (g.frameLabels?.[i] || String(i + 1)) + ' · ' +
       g.width + '×' + g.height + ' · ' + scaleLabel;
     c.append(preview, index);
+    if (g.recommendedIndex != null && i === recommended) {
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = 'declared';
+      c.append(badge);
+    }
     if (displayScale > 1 && largestSide <= 96) {
       const actual = document.createElement('img');
       actual.className = 'actual';
@@ -343,6 +363,7 @@ GROUPS.forEach((g, gi) => {
   });
   frames.dataset.active = '0';
   frames.querySelector('.cand')?.classList.add('active');
+  if (recommended > 0) activate(recommended, frames);
   root.appendChild(el);
 });
 

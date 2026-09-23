@@ -149,6 +149,10 @@ export async function prepareReview(
         ...(current && currentRoute
           ? { current: { url: currentRoute, width: current.width, height: current.height } }
           : {}),
+        // A batch member's declared slot in the shared candidate set — the
+        // leader's own slot 0 is already the sheet's ordinary default, so
+        // only a member (whose slot is 1+) needs to say so explicitly.
+        ...(entry.batch?.index != null ? { recommendedIndex: entry.batch.index } : {}),
       })
     } catch (err) {
       log(`  could not load candidates for ${key}: ${err instanceof Error ? err.message : String(err)}`)
