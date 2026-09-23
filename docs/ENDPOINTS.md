@@ -431,12 +431,19 @@ Listed so the gaps are known rather than assumed away:
   endpoints are untouched by any of this. All four accept
   `color_image`, but given that
   `resize` accepts and ignores it, assume nothing until measured.
+- `/reduce-colors` and `/correct-pixelart` — PixelLab's "Cleanup" tier,
+  distinct from the five utilities measured above — are now wired up as the
+  `revision` asset shape's `reduce-colors` and `correct-pixelart` modes; see
+  [Controlled asset revisions](./REVISIONS.md#cleanup-reduce-colors-and-correct-pixelart).
+  Both endpoints are schema-only here: the request/response shapes come from
+  PixelLab's live OpenAPI document, not an observed call, and cost is
+  unmeasured (the schema's own dollar-denominated `usage` example has
+  repeatedly not predicted real subscription billing elsewhere in this file
+  — see `isometricTile`, `objectPro` — so treat the 0.1-generation figure
+  PixelLab's own MCP tool descriptions claim as a placeholder too).
 - Everything else PixelLab's own tutorials demonstrate that this file has no
   entry for at all — a standalone Interpolate tool that works on any image
-  (not just a `character` loop's `endFrame`), "pixel correction" (a
-  strength-slider cleanup pass distinct from `image-to-pixelart`), "reduce
-  colors" (palette-lock/quantize on an already-generated image, distinct from
-  PixelKiln's internal `quantize()`), "animation to animation" motion
+  (not just a `character` loop's `endFrame`), "animation to animation" motion
   transfer, skeleton-animation's rig/template-style controls, Object Creator,
   UI-kit generation, and Map Workshop scene composition — is cataloged with
   tutorial citations in

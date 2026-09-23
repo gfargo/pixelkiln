@@ -1,3 +1,5 @@
+import type { RevisionMode } from "../types.ts"
+
 export interface SheetGroup {
   key: string
   assetId: string
@@ -11,7 +13,7 @@ export interface SheetGroup {
   frameLabels?: string[]
   fps?: number
   revision?: {
-    mode: "image-to-image" | "inpaint" | "outpaint"
+    mode: RevisionMode
     sourceAssetId: string
     sourceUrl: string
     width: number

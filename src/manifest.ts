@@ -726,6 +726,15 @@ export async function resolveSpecs(
               `source ${asset.revision.from} is ${sourceImage.width}x${sourceImage.height}`,
           )
         }
+        // A palette reference has no spatial relationship to the source — it
+        // only lends colors — so unlike a mask its dimensions are never
+        // checked against the source.
+        const paletteImageFile = asset.revision.paletteImage
+          ? path.resolve(root, asset.revision.paletteImage)
+          : undefined
+        const paletteImage = paletteImageFile
+          ? await optionalRevisionImage(paletteImageFile, "revision palette image", "png")
+          : null
         resolved.revision = {
           mode: asset.revision.mode,
           sourceAssetId: asset.revision.from,
@@ -745,6 +754,18 @@ export async function resolveSpecs(
               }
             : {}),
           ...(asset.revision.strength == null ? {} : { strength: asset.revision.strength }),
+          ...(asset.revision.numColors == null ? {} : { numColors: asset.revision.numColors }),
+          ...(paletteImageFile
+            ? {
+                paletteImageFile,
+                paletteImageSha256: paletteImage?.hash ?? null,
+                paletteImageWidth: paletteImage?.width ?? null,
+                paletteImageHeight: paletteImage?.height ?? null,
+                paletteImageFormat: paletteImage?.format ?? null,
+              }
+            : {}),
+          ...(asset.revision.dithering ? { dithering: asset.revision.dithering } : {}),
+          ...(asset.revision.ditheringStrength == null ? {} : { ditheringStrength: asset.revision.ditheringStrength }),
         }
       }
       resolved.specHash = specHash(

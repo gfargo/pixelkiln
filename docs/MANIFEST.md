@@ -463,10 +463,14 @@ their own page: [Characters](./CHARACTERS.md) and
 
 | Revision field | Type | Meaning |
 |---|---|---|
-| `mode` | enum, required | `image-to-image`, `inpaint`, or `outpaint`. The selected provider must opt into the mode. |
+| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, or `correct-pixelart`. The selected provider must opt into the mode. |
 | `from` | asset id, required | Parent asset in the same style. Self-references, unknown ids, and cycles are rejected. |
 | `mask` | string | Manifest-relative PNG required for `inpaint`; rejected for the other modes. Its dimensions must match an available source. |
-| `strength` | number 0–1 | Workflow edit/denoise strength. Interpretation is provider- and model-specific. |
+| `strength` | number 0–1 | Workflow edit/denoise strength (`image-to-image`, `correct-pixelart`); rejected for `reduce-colors`. Interpretation is provider- and model-specific. |
+| `numColors` | integer 2–256 | `reduce-colors` only. Target palette size; mutually exclusive with `paletteImage`. |
+| `paletteImage` | string | `reduce-colors` only. Manifest-relative image whose colors become the palette; unlike `mask`, no size relationship to the source is required. |
+| `dithering` | enum | `reduce-colors` only. `none` (default), `2x2`, `4x4`, or `8x8`. |
+| `ditheringStrength` | number 0–10 | `reduce-colors` only. Ignored when `dithering` is `none`. |
 
 The parent may use committed `source`, downloaded generated output, or a
 current approved quality output. Parent and mask hashes participate in the

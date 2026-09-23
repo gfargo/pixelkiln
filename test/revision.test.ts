@@ -185,6 +185,44 @@ describe("asset revisions", () => {
     )
   })
 
+  it("validates reduce-colors' own fields and resolves a palette image with no size match to the source", async () => {
+    await expect(writeProject({ mode: "reduce-colors", from: "source", numColors: 16, paletteImage: "palette.png" }))
+      .rejects.toThrow(/numColors and paletteImage are mutually exclusive/)
+    await expect(writeProject({ mode: "reduce-colors", from: "source", strength: 0.4 }))
+      .rejects.toThrow(/reduce-colors revisions do not take a strength/)
+    await expect(writeProject({ mode: "image-to-image", from: "source", numColors: 16 }))
+      .rejects.toThrow(/numColors applies to reduce-colors revisions only/)
+    await expect(writeProject({ mode: "correct-pixelart", from: "source", dithering: "4x4" }))
+      .rejects.toThrow(/dithering applies to reduce-colors revisions only/)
+
+    // A palette reference is a color source only — a different shape than the
+    // asset it's revising is fine, unlike a mask.
+    await writeFile(path.join(dir, "palette.png"), png(200, 4, 1))
+    const loaded = await writeProject({
+      mode: "reduce-colors",
+      from: "source",
+      paletteImage: "palette.png",
+      dithering: "4x4",
+      ditheringStrength: 3,
+    })
+    const first = await resolveChild(loaded)
+    expect(first.revision).toMatchObject({
+      mode: "reduce-colors",
+      paletteImageSha256: sha256(png(200, 4, 1)),
+      paletteImageWidth: 4,
+      paletteImageHeight: 1,
+      paletteImageFormat: "png",
+      dithering: "4x4",
+      ditheringStrength: 3,
+    })
+
+    const withNumColors = await resolveChild(
+      await writeProject({ mode: "reduce-colors", from: "source", numColors: 8 }),
+    )
+    expect(withNumColors.revision).toMatchObject({ mode: "reduce-colors", numColors: 8 })
+    expect(withNumColors.specHash).not.toBe(first.specHash)
+  })
+
   it("blocks a child until its generated parent is current", async () => {
     const loaded = await writeProject(undefined, { source: false })
     const firstChild = await resolveChild(loaded)

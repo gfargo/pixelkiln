@@ -140,6 +140,10 @@ export function specHash(
             sourceSha256: spec.revision.sourceSha256,
             maskSha256: spec.revision.maskSha256,
             strength: spec.revision.strength,
+            numColors: spec.revision.numColors,
+            paletteImageSha256: spec.revision.paletteImageSha256,
+            dithering: spec.revision.dithering,
+            ditheringStrength: spec.revision.ditheringStrength,
           }
         : undefined,
     }),
