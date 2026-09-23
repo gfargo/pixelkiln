@@ -17,11 +17,25 @@ Read this reference when an asset declares `revision`.
   are mutually exclusive; a `paletteImage` has no size relationship to the
   parent, unlike a mask. Neither mode's cost is measured against a live
   PixelLab account; treat the estimate as a placeholder.
+- `animate` and `animate-pixminimax` DO send the asset's `prompt`, as the
+  motion description, and produce an ordered **frame set** — the one
+  revision shape that lands in candidate review (`pixelkiln pick`) rather
+  than going straight to downloadable output, same as a character loop.
+  `lastFrame` pins where the motion ends (any manifest-relative image,
+  including another asset's own generated output — that's how to chain one
+  animation's final frame into the next). `animate` caps at 16 frames;
+  `animate-pixminimax` (beta, tier 1+) allows up to 40 and adds `direction`.
+  Neither endpoint's cost or completed-response shape is measured against a
+  live account.
 - Both PixelLab and ComfyUI can back a `revision`, not just ComfyUI.
   PixelLab's `reduce-colors`/`correct-pixelart` calls its own
   `/reduce-colors`/`/correct-pixelart` endpoints synchronously (no background
   job); everything else in this file about the dependency gate, hashing, and
-  candidate review applies identically regardless of provider.
+  candidate review applies identically regardless of provider. ComfyUI
+  cannot back `animate`/`animate-pixminimax` at all (`supportsRevision`
+  refuses both) — its revision path always writes a single output image, and
+  an animation is a frame set; that's a structural gap, not a missing
+  binding.
 - A filtered child resolves its parents for safety but does not generate them.
   Generate, fetch, refine, and approve the parent explicitly, then re-plan.
 - PixelKiln rechecks parent and mask bytes immediately before submission. A
@@ -31,8 +45,8 @@ Read this reference when an asset declares `revision`.
 - `pixelkiln gallery --edit` can create an `image-to-image` revision directly
   from a parent's drawer ("+ New revision" under "Revisions from this
   asset"), once the parent has usable pixels; it does not offer `inpaint`
-  (needs a mask upload), `outpaint`, `reduce-colors`, or `correct-pixelart`
-  yet, so add those by hand.
+  (needs a mask upload), `outpaint`, `reduce-colors`, `correct-pixelart`,
+  `animate`, or `animate-pixminimax` yet, so add those by hand.
 - ComfyUI needs explicit bindings for a revision: its workflow needs
   `sourceImage`; inpaint also needs `maskImage`; declared strength needs a
   `strength` binding. It has no binding for `numColors`/`paletteImage`/

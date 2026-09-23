@@ -441,11 +441,22 @@ Listed so the gaps are known rather than assumed away:
   repeatedly not predicted real subscription billing elsewhere in this file
   — see `isometricTile`, `objectPro` — so treat the 0.1-generation figure
   PixelLab's own MCP tool descriptions claim as a placeholder too).
+- `/animate-with-text-v3` and `/animate-pixminimax` — animating any loose
+  image from a text description, no `character`/`objectPro` resource
+  required — are now wired up as the `revision` asset shape's `animate` and
+  `animate-pixminimax` modes; see
+  [Animation and interpolation](./REVISIONS.md#animation-and-interpolation).
+  Both are schema-only for the *request* (live OpenAPI document, not an
+  observed call); the *completed job* response shape is a genuine unknown —
+  no usage example exists for either endpoint at all, only the generic
+  background-job one — so `pollAnimateRevision` checks several plausible
+  field names defensively rather than assume one. Cost borrows `character`'s
+  own measured v3-loop formula as a placeholder, for the same reason
+  `objectPro` borrowed `character` pro-flash's.
 - Everything else PixelLab's own tutorials demonstrate that this file has no
-  entry for at all — a standalone Interpolate tool that works on any image
-  (not just a `character` loop's `endFrame`), "animation to animation" motion
-  transfer, skeleton-animation's rig/template-style controls, Object Creator,
-  UI-kit generation, and Map Workshop scene composition — is cataloged with
+  entry for at all — "animation to animation" motion transfer,
+  skeleton-animation's rig/template-style controls, Object Creator, UI-kit
+  generation, and Map Workshop scene composition — is cataloged with
   tutorial citations in
   [references/pixellab-roadmap.md](../skills/pixelkiln/references/pixellab-roadmap.md)
   rather than duplicated here, since none of it has been measured either.

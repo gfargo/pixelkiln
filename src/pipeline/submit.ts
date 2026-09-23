@@ -214,6 +214,11 @@ export async function submit(
             ...(spec.revision.paletteImageSha256 ? { paletteImageSha256: spec.revision.paletteImageSha256 } : {}),
             ...(spec.revision.dithering ? { dithering: spec.revision.dithering } : {}),
             ...(spec.revision.ditheringStrength == null ? {} : { ditheringStrength: spec.revision.ditheringStrength }),
+            ...(spec.revision.frames == null ? {} : { frames: spec.revision.frames }),
+            ...(spec.revision.fps == null ? {} : { fps: spec.revision.fps }),
+            ...(spec.revision.lastFrameSha256 ? { lastFrameSha256: spec.revision.lastFrameSha256 } : {}),
+            ...(spec.revision.direction ? { direction: spec.revision.direction } : {}),
+            ...(spec.revision.enhancePrompt == null ? {} : { enhancePrompt: spec.revision.enhancePrompt }),
           }
         : null,
       status: "pending",

@@ -17,12 +17,14 @@ function png(shade = 20, width = 32, height = 32): Buffer {
 }
 
 describe("PixelLab: supportsRevision", () => {
-  it("supports inpaint, image-to-image, reduce-colors, and correct-pixelart, not outpaint", () => {
+  it("supports inpaint, image-to-image, reduce-colors, correct-pixelart, animate, and animate-pixminimax, not outpaint", () => {
     const provider = PixelLabProvider.forOffline()
     expect(provider.supportsRevision("inpaint")).toBe(true)
     expect(provider.supportsRevision("image-to-image")).toBe(true)
     expect(provider.supportsRevision("reduce-colors")).toBe(true)
     expect(provider.supportsRevision("correct-pixelart")).toBe(true)
+    expect(provider.supportsRevision("animate")).toBe(true)
+    expect(provider.supportsRevision("animate-pixminimax")).toBe(true)
     expect(provider.supportsRevision("outpaint")).toBe(false)
   })
 })
@@ -142,6 +144,73 @@ describe("PixelLabClient: the Cleanup-tier wire", () => {
   })
 
   afterEach(() => vi.unstubAllGlobals())
+})
+
+describe("PixelLabClient: the animate wire", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("sends animate-with-text-v3 with first_frame and action, omitting last_frame when unset", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ background_job_id: "job-1", status: "processing" }), { status: 202 })))
+    const client = new PixelLabClient("key")
+    await client.animateWithTextV3({
+      firstFrame: { base64: "RklGU1Q=", format: "png" },
+      action: "walking forward",
+      frameCount: 8,
+      seed: 42,
+      noBackground: true,
+    })
+    const call = vi.mocked(fetch).mock.calls[0]!
+    expect(new URL(String(call[0])).pathname).toBe("/v2/animate-with-text-v3")
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      first_frame: { base64: "RklGU1Q=", format: "png" },
+      action: "walking forward",
+      frame_count: 8,
+      seed: 42,
+      no_background: true,
+    })
+  })
+
+  it("sends animate-with-text-v3 with last_frame and enhance_prompt when set", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ background_job_id: "job-1", status: "processing" }), { status: 202 })))
+    const client = new PixelLabClient("key")
+    await client.animateWithTextV3({
+      firstFrame: { base64: "Rg==", format: "png" },
+      lastFrame: { base64: "TA==", format: "png" },
+      action: "chest lid closing",
+      enhancePrompt: true,
+    })
+    const call = vi.mocked(fetch).mock.calls[0]!
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      first_frame: { base64: "Rg==", format: "png" },
+      last_frame: { base64: "TA==", format: "png" },
+      action: "chest lid closing",
+      enhance_prompt: true,
+    })
+  })
+
+  it("sends animate-pixminimax with description and direction", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ background_job_id: "job-2", status: "processing" }), { status: 202 })))
+    const client = new PixelLabClient("key")
+    await client.animatePixminimax({
+      firstFrame: { base64: "Rg==", format: "png" },
+      description: "sword slash",
+      frameCount: 12,
+      direction: "east",
+      enhancePrompt: true,
+    })
+    const call = vi.mocked(fetch).mock.calls[0]!
+    expect(new URL(String(call[0])).pathname).toBe("/v2/animate-pixminimax")
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      first_frame: { base64: "Rg==", format: "png" },
+      description: "sword slash",
+      frame_count: 12,
+      direction: "east",
+      enhance_prompt: true,
+    })
+  })
 })
 
 describe("PixelLab provider: revision submit and poll", () => {
@@ -358,5 +427,154 @@ describe("PixelLab provider: revision submit and poll", () => {
       status: "failed",
       error: expect.stringContaining("revision result is no longer cached locally"),
     })
+  })
+
+  it("submits an animate revision as a real background job and downloads every returned frame", async () => {
+    const loaded = await writeProject({ mode: "animate", from: "source", frames: 4 })
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const plan = await buildPlan([child!], lock)
+
+    const frames = [0, 1, 2, 3].map((i) => png(20 + i * 10, 32, 32))
+    let submitBody: Record<string, unknown> | null = null
+    let polls = 0
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      const url = new URL(String(input))
+      if (url.pathname === "/v2/animate-with-text-v3") {
+        submitBody = init?.body ? JSON.parse(String(init.body)) : null
+        return new Response(JSON.stringify({ background_job_id: "anim-1", status: "processing" }), { status: 202 })
+      }
+      if (url.pathname === "/v2/background-jobs/anim-1") {
+        polls += 1
+        const status = polls < 2 ? "processing" : "completed"
+        const body = status === "processing"
+          ? { id: "anim-1", status, created_at: "now" }
+          : {
+              id: "anim-1", status, created_at: "now",
+              last_response: { frame_urls: frames.map((f) => ({ base64: f.toString("base64") })) },
+              usage: { type: "generations", generations: 2 },
+            }
+        return new Response(JSON.stringify(body), { status: 200 })
+      }
+      throw new Error(`unexpected request: ${init?.method ?? "GET"} ${url.pathname}`)
+    }))
+
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    expect(submitBody).toMatchObject({ action: "add snow", frame_count: 4 })
+
+    // Like a character/objectPro loop, an animate revision lands in review
+    // for a human accept/reject step rather than auto-selecting.
+    const polled = await poll(provider, lock, lockPath, { intervalMs: 0, specs: [child!] })
+    expect(polled.review).toBe(1)
+    const entry = lock.entries["base/revised"]!
+    expect(entry.status).toBe("review")
+    expect(entry.providerMetadata.pixellab).toMatchObject({ frameSet: { fps: 8, count: 4 } })
+
+    const state = await provider.poll(entry.reviewObjectId!, entry.generator, { spec: child })
+    expect(state).toMatchObject({ status: "review-set", fps: 8, billed: { amount: 2, unit: "generations" } })
+    const reviewed = state as { frameUrls: string[]; sources: { url: string; role?: string }[] }
+    expect(reviewed.sources.map((s) => s.role)).toEqual(["frame-00", "frame-01", "frame-02", "frame-03"])
+    // Each source URL is a local file:// cache of the decoded base64 frame,
+    // the same way pollRevision's single-image case already caches one.
+    for (const [i, source] of reviewed.sources.entries()) {
+      expect(source.url).toMatch(/^file:\/\//)
+      const written = await import("node:fs/promises").then((fs) => fs.readFile(source.url.replace("file://", "")))
+      expect(written.equals(frames[i]!)).toBe(true)
+    }
+  })
+
+  it("reads hosted frame URLs directly off animate-pixminimax without caching locally", async () => {
+    const loaded = await writeProject({ mode: "animate-pixminimax", from: "source", direction: "east" })
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const plan = await buildPlan([child!], lock)
+
+    const hostedUrls = ["https://cdn.pixellab.ai/f0.png", "https://cdn.pixellab.ai/f1.png"]
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const url = new URL(String(input))
+      if (url.pathname === "/v2/animate-pixminimax") {
+        return new Response(JSON.stringify({ background_job_id: "anim-2", status: "processing" }), { status: 202 })
+      }
+      return new Response(JSON.stringify({
+        id: "anim-2", status: "completed", created_at: "now",
+        last_response: { frame_urls: hostedUrls },
+      }), { status: 200 })
+    }))
+
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs: [child!] })
+    const entry = lock.entries["base/revised"]!
+    const state = await provider.poll(entry.reviewObjectId!, entry.generator, { spec: child })
+    expect((state as { sources: { url: string }[] }).sources.map((s) => s.url)).toEqual(hostedUrls)
+  })
+
+  it("fails clearly when an animate job completes with no recognizable frame list", async () => {
+    const loaded = await writeProject({ mode: "animate", from: "source" })
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const plan = await buildPlan([child!], lock)
+
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const url = new URL(String(input))
+      if (url.pathname === "/v2/animate-with-text-v3") {
+        return new Response(JSON.stringify({ background_job_id: "anim-3", status: "processing" }), { status: 202 })
+      }
+      return new Response(JSON.stringify({
+        id: "anim-3", status: "completed", created_at: "now",
+        last_response: { totally_unexpected_field: true },
+      }), { status: 200 })
+    }))
+
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    const result = await poll(provider, lock, lockPath, { intervalMs: 0, specs: [child!] })
+    expect(result.failed).toBe(1)
+    expect(lock.entries["base/revised"]).toMatchObject({
+      status: "failed",
+      error: expect.stringMatching(/Invalid PixelLab response for animate job anim-3.*totally_unexpected_field/),
+    })
+  })
+
+  it("estimates animate cost on character's own v3-loop formula, plus enhancePrompt's documented surcharge", async () => {
+    const loaded = await writeProject({ mode: "animate", from: "source", frames: 8 })
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    // 32*32*8 / 65536 = 0.125, ceil'd to 1.
+    expect(child!.cost).toBe(1)
+
+    const enhanced = await resolveSpecs(
+      await writeProject({ mode: "animate-pixminimax", from: "source", frames: 8, enhancePrompt: true }),
+      { assets: ["revised"] },
+    )
+    expect(enhanced[0]!.cost).toBe(1.05)
+  })
+
+  it("rejects animate/animate-pixminimax sources over 256px per side and animate frame counts over 16", async () => {
+    const bigDir = await mkdtemp(path.join(tmpdir(), "pixelkiln-pixellab-revision-big-"))
+    try {
+      await writeFile(path.join(bigDir, "source.png"), png(20, 300, 300))
+      await writeFile(path.join(bigDir, "pixelkiln.manifest.json"), JSON.stringify({
+        name: "big", provider: "pixellab",
+        styles: { base: { generator: "map", size: 300, outDir: "art" } },
+        assets: {
+          source: { prompt: "a big tower", source: "source.png" },
+          revised: { prompt: "add snow", width: 300, height: 300, revision: { mode: "animate", from: "source" } },
+        },
+      }))
+      const bigLoaded = await loadManifest(path.join(bigDir, "pixelkiln.manifest.json"))
+      // resolveSpecs validates against the live-registered "pixellab"
+      // provider as part of resolution, so the size limit is enforced here
+      // rather than needing a separate `.validate()` call.
+      await expect(resolveSpecs(bigLoaded, { assets: ["revised"] })).rejects.toThrow(/PixelLab animate source is 300x300/)
+    } finally {
+      await rm(bigDir, { recursive: true, force: true })
+    }
+
+    await expect(resolveSpecs(await writeProject({ mode: "animate", from: "source", frames: 40 }), { assets: ["revised"] }))
+      .rejects.toThrow(/PixelLab animate takes 4 to 16 frames/)
   })
 })

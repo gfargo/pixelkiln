@@ -39,7 +39,9 @@ export type Generator = z.infer<typeof GeneratorSchema>
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
 export type GridConfidence = z.infer<typeof GridConfidenceSchema>
 
-export const RevisionModeSchema = z.enum(["image-to-image", "inpaint", "outpaint", "reduce-colors", "correct-pixelart"])
+export const RevisionModeSchema = z.enum([
+  "image-to-image", "inpaint", "outpaint", "reduce-colors", "correct-pixelart", "animate", "animate-pixminimax",
+])
 export type RevisionMode = z.infer<typeof RevisionModeSchema>
 
 /** A decoded style reference ready for a provider-specific request body. */
@@ -554,6 +556,20 @@ export const RevisionSchema = z
     dithering: RevisionDitheringSchema.optional(),
     /** `reduce-colors` only: dithering intensity; ignored when `dithering` is "none" or unset. */
     ditheringStrength: z.number().min(0).max(10).optional(),
+    /**
+     * `animate`/`animate-pixminimax` only: frames to generate, even, 4 to 40
+     * (the provider-specific ceiling — 16 for `animate` — is enforced at
+     * the provider layer, since it differs by mode).
+     */
+    frames: z.number().int().min(4).max(40).optional(),
+    /** `animate`/`animate-pixminimax` only: playback rate recorded with the frames; PixelLab does not store one. */
+    fps: z.number().int().min(1).max(60).optional(),
+    /** `animate`/`animate-pixminimax` only: manifest-relative image pinning where the motion ends (interpolation instead of open-ended animation). */
+    lastFrame: z.string().min(1).optional(),
+    /** `animate-pixminimax` only: facing direction, used only alongside `enhancePrompt` to hold the sprite's facing. */
+    direction: CharacterDirectionSchema.optional(),
+    /** `animate`/`animate-pixminimax` only: let PixelLab expand the action into a fuller motion description first. */
+    enhancePrompt: z.boolean().optional(),
   })
   .strict()
   .superRefine((revision, context) => {
@@ -594,6 +610,32 @@ export const RevisionSchema = z
         path: ["strength"],
       })
     }
+    if (revision.strength !== undefined && (revision.mode === "animate" || revision.mode === "animate-pixminimax")) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${revision.mode} revisions do not take a strength; use enhancePrompt`,
+        path: ["strength"],
+      })
+    }
+    for (const field of ["frames", "fps", "lastFrame", "enhancePrompt"] as const) {
+      if (revision[field] !== undefined && revision.mode !== "animate" && revision.mode !== "animate-pixminimax") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${field} applies to animate/animate-pixminimax revisions only`,
+          path: [field],
+        })
+      }
+    }
+    if (revision.direction !== undefined && revision.mode !== "animate-pixminimax") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "direction applies to animate-pixminimax revisions only",
+        path: ["direction"],
+      })
+    }
+    if (revision.frames !== undefined && revision.frames % 2 !== 0) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
+    }
   })
 
 export type Revision = z.infer<typeof RevisionSchema>
@@ -625,6 +667,15 @@ export interface ResolvedRevision {
   paletteImageFormat?: "png" | "jpeg" | null
   dithering?: RevisionDithering
   ditheringStrength?: number
+  frames?: number
+  fps?: number
+  lastFrameFile?: string
+  lastFrameSha256?: string | null
+  lastFrameWidth?: number | null
+  lastFrameHeight?: number | null
+  lastFrameFormat?: "png" | "jpeg" | null
+  direction?: CharacterDirection
+  enhancePrompt?: boolean
 }
 
 const StyleObjectSchema = z
@@ -1317,6 +1368,11 @@ export const LockEntrySchema = z.object({
       paletteImageSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       dithering: RevisionDitheringSchema.optional(),
       ditheringStrength: z.number().min(0).max(10).optional(),
+      frames: z.number().int().min(4).max(40).optional(),
+      fps: z.number().int().min(1).max(60).optional(),
+      lastFrameSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+      direction: CharacterDirectionSchema.optional(),
+      enhancePrompt: z.boolean().optional(),
     })
     .strict()
     .nullable()

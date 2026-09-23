@@ -108,20 +108,27 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   palette/cleanup pass, which is the actual differentiator the tutorials
   demonstrate — PixelKiln only ever sends one frame per revision today, the
   same limit `image-to-image`/`inpaint` already have.
-
-## Generic (non-character) animation and interpolation
-
-PixelLab's **Interpolate** and **Animate with text** tools work on *any*
-image — a standalone object, a full scene, a portrait — not just a
-`character` asset. Demonstrated animating a treasure chest opening, a
-campfire's flames, a tree catching fire, a two-character combat scene, a
-day/night background transition, and chaining a sequence by feeding one
-animation's final frame back in as the next one's reference (repeatedly, in
-"Animate with Text," "Generate Pixel Animations," "New PixelLab Tool: Animate
-Between 2 Frames," and "How to Make Animated Pixel Art Scenes with
-PixelLab"). Pixelkiln's only interpolation concept is the `character` v3
-loop's `startFrame`/`endFrame`, scoped strictly inside a `character` asset —
-there is no way to animate a `map`, `pixflux`, or `tiles` output at all.
+- **Generic (non-character) animation and interpolation** (`/animate-with-text-v3`,
+  `/animate-pixminimax`) — PixelLab's **Animate with text** tools work on
+  *any* image, not just a `character`/`objectPro` asset. Demonstrated
+  animating a treasure chest opening, a campfire's flames, a tree catching
+  fire, a two-character combat scene, a day/night background transition, and
+  chaining a sequence by feeding one animation's final frame back in as the
+  next one's reference (repeatedly, in "Animate with Text," "Generate Pixel
+  Animations," "New PixelLab Tool: Animate Between 2 Frames," and "How to
+  Make Animated Pixel Art Scenes with PixelLab"). Closed by the `revision`
+  asset shape's `animate` and `animate-pixminimax` modes; see
+  `pixellab.md`. `lastFrame` covers both the "pin an ending pose" and the
+  "chain from a prior animation's final frame" cases — it is just a
+  manifest-relative image, which can be any earlier asset's own generated
+  output file. **Neither endpoint's cost or completed-response shape is
+  measured against a live account** — cost borrows `character`'s own
+  measured v3-loop formula, and the frame list is extracted defensively from
+  several plausible field names rather than one confirmed shape, the way
+  `pollRevision` already handles `image-to-image`/`inpaint`. The dedicated
+  **Interpolate** endpoint (`/interpolation-v2`, a separate "Pro" two-keyframe
+  tool distinct from `last_frame` pinning on the animate endpoints above)
+  remains unwrapped — a narrower, real gap, not yet investigated.
 
 ## Object Creator: batch generation only
 

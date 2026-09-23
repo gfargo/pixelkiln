@@ -144,6 +144,11 @@ export function specHash(
             paletteImageSha256: spec.revision.paletteImageSha256,
             dithering: spec.revision.dithering,
             ditheringStrength: spec.revision.ditheringStrength,
+            frames: spec.revision.frames,
+            fps: spec.revision.fps,
+            lastFrameSha256: spec.revision.lastFrameSha256,
+            direction: spec.revision.direction,
+            enhancePrompt: spec.revision.enhancePrompt,
           }
         : undefined,
     }),

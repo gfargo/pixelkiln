@@ -6,10 +6,13 @@ quality output. PixelKiln hashes the exact parent and mask bytes, blocks stale
 dependencies before submission, and records the lineage in the lockfile.
 
 The manifest and pipeline are provider-neutral. ComfyUI and PixelLab implement
-it; PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`, and
-`correct-pixelart`, not `outpaint` (its API has no canvas-expansion endpoint).
-Retro Diffusion and Scenario reject revision work during offline resolution
-instead of silently starting a fresh text-to-image job.
+it; PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
+`correct-pixelart`, `animate`, and `animate-pixminimax`, not `outpaint` (its
+API has no canvas-expansion endpoint). ComfyUI covers every mode generically
+except `animate`/`animate-pixminimax`, which need an ordered frame set its
+revision path cannot produce. Retro Diffusion and Scenario reject revision
+work during offline resolution instead of silently starting a fresh
+text-to-image job.
 
 ## Image-to-image
 
@@ -144,6 +147,68 @@ share one consistent palette/cleanup pass instead of drifting frame by frame;
 pixelkiln does not expose that yet — revise each frame as its own asset for
 now, and expect some frame-to-frame drift from doing so independently.
 
+## Animation and interpolation
+
+Two more modes animate any existing asset from a text description — a prop, a
+scene, a portrait, not just a `character`/`objectPro` family member. Neither
+needs a PixelLab character or object resource; both read the source's own
+pixels the same way `image-to-image` does:
+
+```jsonc
+{
+  "assets": {
+    "chest-open-wobble": {
+      "prompt": "the open chest wobbling gently",
+      "revision": {
+        "mode": "animate",
+        "from": "chest-open",
+        "frames": 8,
+        "fps": 8
+      }
+    }
+  }
+}
+```
+
+`animate` calls `/animate-with-text-v3` (4–16 frames, even). `animate-pixminimax`
+calls `/animate-pixminimax` — PixelLab's MiniMax-powered engine, beta and
+gated to a tier 1 subscription or higher — for 4 to 40 frames and two extra
+knobs: `direction` (the sprite's facing, used only alongside `enhancePrompt`
+to aim motion the right way on screen) and the same `enhancePrompt`. Both
+reject a declared `strength` (there is no denoise knob here, same as
+`image-to-image`) and both send the asset's own `prompt` as the motion
+description — `action` for `animate`, `description` for `animate-pixminimax`.
+
+`lastFrame` pins where the motion ends — a manifest-relative image the same
+size as the source — turning an open-ended animation into an interpolation
+between two known poses, PixelLab's own "Animate Between 2 Frames" tool.
+Unlike a mask, no size relationship to the source is required at the manifest
+layer; PixelLab's own API is where a mismatch is caught.
+
+The result is an **ordered frame set**, not a single image — the source's own
+`frames` PNGs, `<asset>-frame-00.png` onward, exactly the naming a `character`
+loop already uses. Like any generative animation, it lands in **candidate
+review** first (`pixelkiln pick`), not straight to downloadable output; there
+is no per-candidate choice to make (it is one ordered set, previewed as a
+loop), just accept or reject the whole thing.
+
+**Neither endpoint's completed-job response shape has been exercised against
+a live account.** The request fields above come from PixelLab's live OpenAPI
+document; the shape of a *finished* job (which key holds the frame list, and
+whether it's hosted URLs or inline base64) is an informed guess checked
+against several plausible shapes (see `pollAnimateRevision` in
+`src/providers/pixellab.ts`), the same defensive posture `pollRevision`
+already takes for `image-to-image`/`inpaint`. Cost is likewise unmeasured:
+`estimate()` borrows `character`'s own measured v3-loop formula
+(`ceil(width × height × frames / 65536)`, since the request shapes are
+near-identical) as a placeholder, plus `enhancePrompt`'s own documented
++0.05-generation surcharge, which is a real schema number rather than a guess.
+
+ComfyUI does not support either mode: its revision path always writes a
+single output image, and an animation is a frame set — a structural gap
+rather than a missing binding, so `supportsRevision` refuses it up front
+rather than failing partway through submission.
+
 ## Dependency gate
 
 `pixelkiln plan` reports a revision as `blocked` when its parent is not safe to
@@ -255,6 +320,14 @@ further — there is nothing to ask.
 - `reduce-colors`'s total size limit is 512×512 worth of pixels (262144px²);
   `correct-pixelart`'s is 1024 pixels per side. Both are checked before a
   request is sent, the same as `inpaint`'s 32–512px floor/ceiling.
+- `animate` calls `/animate-with-text-v3`, `animate-pixminimax` calls
+  `/animate-pixminimax` — both real async background jobs, unlike the two
+  Cleanup-tier modes above, since they generate new frames rather than
+  transform the source. Both take at most 256 pixels per side; `animate`
+  additionally caps at 16 frames (`animate-pixminimax` allows up to 40). See
+  [Animation and interpolation](#animation-and-interpolation) above for the
+  full field list, the frame-set output shape, and the same
+  cost-is-unmeasured caveat as the Cleanup tier.
 - Neither endpoint is exercised against a live account yet — the request and
   response shapes here come from PixelLab's own live OpenAPI document
   (`https://api.pixellab.ai/v2/openapi.json`), not an observed call, unlike
@@ -328,12 +401,15 @@ further — there is nothing to ask.
 
 The lock entry records revision mode, parent id, parent hash, optional mask
 hash, strength, and — for `reduce-colors` — `numColors`, the palette image's
-hash, and the dithering settings. ComfyUI provider metadata also retains the
-same lineage beside the workflow hash.
+hash, and the dithering settings, or — for `animate`/`animate-pixminimax` —
+`frames`, `fps`, the last frame's hash, `direction`, and `enhancePrompt`.
+ComfyUI provider metadata also retains the same lineage beside the workflow
+hash.
 
 Changing the prompt, workflow, mode, strength, parent bytes, mask bytes, color
-count, palette image bytes, or dithering settings makes the child stale.
-Moving an unchanged parent, mask, or palette image file does not. When a child
+count, palette image bytes, dithering settings, frame count, last frame
+bytes, direction, or enhancePrompt makes the child stale. Moving an unchanged
+parent, mask, palette image, or last frame file does not. When a child
 has a quality profile, the new raw output hash also invalidates its old quality
 record, so a revised image cannot inherit approval from an earlier generation.
 

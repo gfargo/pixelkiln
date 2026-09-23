@@ -1339,6 +1339,69 @@ export class PixelLabClient {
     return { png: Buffer.from(res.images[0]!.base64, "base64"), usage: res.usage }
   }
 
+  /**
+   * `/animate-with-text-v3`: animate a loose image from a text description,
+   * no PixelLab character/object resource required — unlike `animateCharacter`
+   * / `animateObject`, `firstFrame` is whatever bytes the caller has on hand.
+   * A plain background job, like every other PixelLab async submission;
+   * unlike `inpaintV3`/`editImagesV2`, its completed shape has not been
+   * exercised against a live account (request/response fields here come from
+   * the live OpenAPI document, not an observed call — `pollAnimateRevision`
+   * in pixellab.ts checks several plausible field names for the frame list
+   * defensively, the same as `pollRevision` already does for image edits).
+   */
+  async animateWithTextV3(args: {
+    firstFrame: Base64Image
+    lastFrame?: Base64Image
+    action: string
+    frameCount?: number
+    seed?: number
+    noBackground?: boolean
+    enhancePrompt?: boolean
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { first_frame: args.firstFrame, action: args.action }
+    if (args.lastFrame) body.last_frame = args.lastFrame
+    if (args.frameCount != null) body.frame_count = args.frameCount
+    if (args.seed != null) body.seed = args.seed
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.enhancePrompt != null) body.enhance_prompt = args.enhancePrompt
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/animate-with-text-v3", { method: "POST", body: JSON.stringify(body) }),
+      "animate-with-text-v3",
+    )
+  }
+
+  /**
+   * `/animate-pixminimax`, beta (tier 1 subscription or higher): PixMiniMax's
+   * richer take on the same idea — `direction` and `enhancePrompt` steer
+   * facing for aimed motions. Same unverified-completed-shape caveat as
+   * `animateWithTextV3` above.
+   */
+  async animatePixminimax(args: {
+    firstFrame: Base64Image
+    lastFrame?: Base64Image
+    description: string
+    frameCount?: number
+    seed?: number
+    noBackground?: boolean
+    enhancePrompt?: boolean
+    direction?: string
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { first_frame: args.firstFrame, description: args.description }
+    if (args.lastFrame) body.last_frame = args.lastFrame
+    if (args.frameCount != null) body.frame_count = args.frameCount
+    if (args.seed != null) body.seed = args.seed
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.enhancePrompt != null) body.enhance_prompt = args.enhancePrompt
+    if (args.direction) body.direction = args.direction
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/animate-pixminimax", { method: "POST", body: JSON.stringify(body) }),
+      "animate-pixminimax",
+    )
+  }
+
   async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null; usage?: PixelLabUsage | null }> {
     const raw = await this.request<unknown>(`/background-jobs/${encodeURIComponent(jobId)}`)
     return validateResponse(BackgroundJobSchema, raw, "background-jobs/{id}")
