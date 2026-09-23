@@ -1,3 +1,11 @@
+# [0.59.0](https://github.com/gfargo/pixelkiln/compare/v0.58.0...v0.59.0) (2026-09-23)
+
+
+### Features
+
+* **gallery:** highlight a batch member's declared slot in pick review ([0ca8cae](https://github.com/gfargo/pixelkiln/commit/0ca8cae1806acf3bdfdf8ba8fe7de25fdeda54cc))
+* **pixellab:** add 1dir batch generation (item_descriptions) ([3365603](https://github.com/gfargo/pixelkiln/commit/336560300f146718ce516ceaacfa7674da5f5da8))
+
 # [0.58.0](https://github.com/gfargo/pixelkiln/compare/v0.57.0...v0.58.0) (2026-09-23)
 
 
