@@ -7,6 +7,7 @@ import { sha256 } from "../src/hash.ts"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { loadLock } from "../src/lock.ts"
 import { createProvider, providerFactory } from "../src/providers/registry.ts"
+import { ComfyUIProvider } from "../src/providers/comfyui.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { poll } from "../src/pipeline/poll.ts"
@@ -30,6 +31,19 @@ afterEach(async () => {
   if (oldBaseUrl == null) delete process.env.COMFYUI_BASE_URL
   else process.env.COMFYUI_BASE_URL = oldBaseUrl
   await rm(dir, { recursive: true, force: true })
+})
+
+describe("ComfyUI: supportsRevision", () => {
+  it("supports every revision mode generically except animate/animate-pixminimax, which need a frame set", () => {
+    const provider = new ComfyUIProvider()
+    expect(provider.supportsRevision("image-to-image")).toBe(true)
+    expect(provider.supportsRevision("inpaint")).toBe(true)
+    expect(provider.supportsRevision("outpaint")).toBe(true)
+    expect(provider.supportsRevision("reduce-colors")).toBe(true)
+    expect(provider.supportsRevision("correct-pixelart")).toBe(true)
+    expect(provider.supportsRevision("animate")).toBe(false)
+    expect(provider.supportsRevision("animate-pixminimax")).toBe(false)
+  })
 })
 
 function workflow(steps = 20) {

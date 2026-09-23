@@ -275,12 +275,18 @@ export class PixelLabProvider implements Provider {
    * no mask) both exist on PixelLab, and so do `reduce-colors`
    * (`/reduce-colors`) and `correct-pixelart` (`/correct-pixelart`) — PixelLab's
    * "Cleanup" tier, a mechanical post-process on the source's own pixels
-   * rather than a described edit. `outpaint` does not: there is no
-   * canvas-expansion endpoint in the API, matching docs/REVISIONS.md's note
-   * that no provider ships a tested outpaint path yet.
+   * rather than a described edit — and `animate`/`animate-pixminimax`
+   * (`/animate-with-text-v3`, `/animate-pixminimax`), which animate any loose
+   * image from a text description with no character/object resource
+   * required. `outpaint` does not: there is no canvas-expansion endpoint in
+   * the API, matching docs/REVISIONS.md's note that no provider ships a
+   * tested outpaint path yet.
    */
   supportsRevision(mode: RevisionMode): boolean {
-    return mode === "inpaint" || mode === "image-to-image" || mode === "reduce-colors" || mode === "correct-pixelart"
+    return (
+      mode === "inpaint" || mode === "image-to-image" || mode === "reduce-colors" || mode === "correct-pixelart" ||
+      mode === "animate" || mode === "animate-pixminimax"
+    )
   }
 
   /** PixelLab's own constraints: submissions must be >2s apart, and
@@ -316,6 +322,22 @@ export class PixelLabProvider implements Provider {
       // real measured call, the same as every other unmeasured cost in this
       // adapter.
       return { unit: "generations", amount: 0.1, candidates: 1 }
+    }
+    if (spec.revision?.mode === "animate" || spec.revision?.mode === "animate-pixminimax") {
+      // Unmeasured against a live account; no usage example exists for
+      // either endpoint at all (only a generic background-job example).
+      // `/animate-with-text-v3`'s request shape is near-identical to
+      // `character`'s own v3 text loop (first_frame/action/frame_count/
+      // seed/no_background/enhance_prompt), so this borrows that measured
+      // formula — `ceil(width*height*frames / 65536)` — as a placeholder,
+      // same reasoning `objectPro` used to borrow `character` pro-flash's
+      // cost. `enhance_prompt` costs its own documented +0.05 generations,
+      // which is a real number from the schema, not a guess.
+      const width = spec.revision.sourceWidth ?? spec.width
+      const height = spec.revision.sourceHeight ?? spec.height
+      const frames = spec.revision.frames ?? 8
+      const base = Math.max(1, Math.ceil((width * height * frames) / 65536))
+      return { unit: "generations", amount: spec.revision.enhancePrompt ? base + 0.05 : base, candidates: 1 }
     }
     if (spec.revision) {
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
@@ -387,6 +409,23 @@ export class PixelLabProvider implements Provider {
       const { sourceWidth: width, sourceHeight: height } = spec.revision
       if (width != null && height != null && (width > 1024 || height > 1024)) {
         throw new Error(`PixelLab correct-pixelart source is ${width}x${height}; the API takes at most 1024 pixels per side`)
+      }
+    }
+    if (spec.revision?.mode === "animate" || spec.revision?.mode === "animate-pixminimax") {
+      const { sourceWidth: width, sourceHeight: height, mode, frames, lastFrameWidth, lastFrameHeight } = spec.revision
+      if (width != null && height != null && (width > 256 || height > 256)) {
+        throw new Error(`PixelLab ${mode} source is ${width}x${height}; the API takes at most 256 pixels per side`)
+      }
+      if (mode === "animate" && frames != null && frames > 16) {
+        throw new Error(`PixelLab animate takes 4 to 16 frames; ${frames} is too many (use animate-pixminimax for up to 40)`)
+      }
+      if (
+        lastFrameWidth != null && lastFrameHeight != null && width != null && height != null &&
+        (lastFrameWidth !== width || lastFrameHeight !== height)
+      ) {
+        throw new Error(
+          `PixelLab ${mode} lastFrame is ${lastFrameWidth}x${lastFrameHeight}; source is ${width}x${height} — they must match`,
+        )
       }
     }
     if (spec.generator === "1dir" && (spec.width < 32 || spec.width > 256)) {
@@ -1281,6 +1320,47 @@ export class PixelLabProvider implements Provider {
       return { jobId, metadata: { revisionUsage: res.usage } }
     }
 
+    // animate and animate-pixminimax are real async jobs, unlike the two
+    // Cleanup-tier modes above — PixelLab generates new frames rather than
+    // transforming the source in place, so this is a plain background job
+    // like inpaint/image-to-image, not a locally-cached synchronous result.
+    if (revision.mode === "animate" || revision.mode === "animate-pixminimax") {
+      let lastFrame: Base64Image | undefined
+      if (revision.lastFrameFile) {
+        if (!revision.lastFrameSha256 || !revision.lastFrameFormat) {
+          throw new Error(`${spec.styleId}/${spec.assetId}: revision last frame is not ready`)
+        }
+        const lastFrameBytes = readFileSync(revision.lastFrameFile)
+        if (sha256(lastFrameBytes) !== revision.lastFrameSha256) {
+          throw new Error(`${spec.styleId}/${spec.assetId}: revision last frame changed after the manifest was resolved`)
+        }
+        lastFrame = { base64: lastFrameBytes.toString("base64"), format: revision.lastFrameFormat }
+      }
+      if (revision.mode === "animate") {
+        const res = await this.client.animateWithTextV3({
+          firstFrame: image,
+          lastFrame,
+          action: spec.prompt,
+          frameCount: revision.frames,
+          seed: spec.seed,
+          noBackground: spec.noBackground,
+          enhancePrompt: revision.enhancePrompt,
+        })
+        return { jobId: res.background_job_id }
+      }
+      const res = await this.client.animatePixminimax({
+        firstFrame: image,
+        lastFrame,
+        description: spec.prompt,
+        frameCount: revision.frames,
+        seed: spec.seed,
+        noBackground: spec.noBackground,
+        enhancePrompt: revision.enhancePrompt,
+        direction: revision.direction,
+      })
+      return { jobId: res.background_job_id }
+    }
+
     // image-to-image: PixelLab has no denoise-strength knob on this
     // endpoint, so a declared `strength` has nowhere to go. Refuse rather
     // than silently drop what the manifest asked for.
@@ -1327,6 +1407,9 @@ export class PixelLabProvider implements Provider {
     const revisionMode = context?.spec?.revision?.mode
     if (revisionMode === "reduce-colors" || revisionMode === "correct-pixelart") {
       return this.pollCachedRevision(jobId, context)
+    }
+    if (revisionMode === "animate" || revisionMode === "animate-pixminimax") {
+      return this.pollAnimateRevision(jobId, context)
     }
     if (context?.spec?.revision) return this.pollRevision(jobId)
     if (generator === "pixflux") {
@@ -1387,6 +1470,76 @@ export class PixelLabProvider implements Provider {
     const sourceUrl = `file://${file}`
     const usage = context?.metadata?.revisionUsage as PixelLabUsage | undefined
     return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }], billed: billedFromUsage(usage) }
+  }
+
+  /**
+   * `animate`/`animate-pixminimax` revisions: a plain background job, like
+   * `pollRevision` above, but completing with an ORDERED FRAME LIST instead
+   * of a single image — the same `review-set` shape `pollCharacterAnimation`
+   * returns, minus any character/object resource to look the result up on
+   * (there is none; this operates on a loose image). Unlike every other
+   * PixelLab call this adapter makes, the completed shape for
+   * `/animate-with-text-v3`/`/animate-pixminimax` has never been exercised
+   * against a live account — the checks below are an informed guess (hosted
+   * URLs under a plausible key name, the same `storage_urls.frames` shape
+   * character animations use, or inline base64 per frame, decoded to a local
+   * cache file the same way `pollRevision`'s single-image case already is)
+   * rather than an observed shape, and fail loudly, naming the keys actually
+   * received, for whatever the real shape turns out to be.
+   */
+  private async pollAnimateRevision(jobId: string, context?: PollContext): Promise<JobState> {
+    const job = await this.client.getBackgroundJob(jobId)
+    if (job.status === "failed") return { status: "failed", error: "animation job failed upstream" }
+    if (job.status !== "completed") return { status: "processing" }
+    const billed = billedFromUsage(job.usage)
+    const done = (job.last_response ?? {}) as Record<string, unknown>
+    const fps = context?.spec?.revision?.fps ?? 8
+
+    const review = (frameUrls: string[]): JobState => ({
+      status: "review-set",
+      objectId: jobId,
+      frameUrls,
+      sources: frameUrls.map((url, index) => ({ url, role: `frame-${String(index).padStart(2, "0")}` })),
+      fps,
+      metadata: { frameSet: { fps, count: frameUrls.length } },
+      billed,
+    })
+
+    for (const key of ["frame_urls", "frames", "images"]) {
+      const list = done[key]
+      if (!Array.isArray(list) || !list.length) continue
+      const urls: string[] = []
+      for (const [index, item] of list.entries()) {
+        if (typeof item === "string" && item) {
+          urls.push(item)
+          continue
+        }
+        const url = (item as Record<string, unknown> | undefined)?.url
+        if (typeof url === "string" && url) {
+          urls.push(url)
+          continue
+        }
+        const base64 = extractBase64(item)
+        if (base64) {
+          const file = path.join(PixelLabProvider.cacheDir(), `${jobId}-${index}.png`)
+          writeFileSync(file, Buffer.from(base64, "base64"))
+          urls.push(`file://${file}`)
+          continue
+        }
+        break
+      }
+      if (urls.length === list.length) return review(urls)
+    }
+    const storageFrames = (done.storage_urls as { frames?: unknown } | undefined)?.frames
+    if (Array.isArray(storageFrames) && storageFrames.length && storageFrames.every((f) => typeof f === "string")) {
+      return review(storageFrames as string[])
+    }
+    return {
+      status: "failed",
+      error:
+        `Invalid PixelLab response for animate job ${jobId}: completed with no recognized frame list ` +
+        `(got: ${Object.keys(done).join(", ") || "no keys"}); update pollAnimateRevision in src/providers/pixellab.ts with the real shape`,
+    }
   }
 
   /**

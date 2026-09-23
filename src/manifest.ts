@@ -735,6 +735,15 @@ export async function resolveSpecs(
         const paletteImage = paletteImageFile
           ? await optionalRevisionImage(paletteImageFile, "revision palette image", "png")
           : null
+        // Same treatment as the palette image: a pinned ending frame is just
+        // another image PixelLab reads, with no size relationship enforced
+        // against the source the way a mask has.
+        const lastFrameFile = asset.revision.lastFrame
+          ? path.resolve(root, asset.revision.lastFrame)
+          : undefined
+        const lastFrame = lastFrameFile
+          ? await optionalRevisionImage(lastFrameFile, "revision last frame")
+          : null
         resolved.revision = {
           mode: asset.revision.mode,
           sourceAssetId: asset.revision.from,
@@ -766,6 +775,19 @@ export async function resolveSpecs(
             : {}),
           ...(asset.revision.dithering ? { dithering: asset.revision.dithering } : {}),
           ...(asset.revision.ditheringStrength == null ? {} : { ditheringStrength: asset.revision.ditheringStrength }),
+          ...(asset.revision.frames == null ? {} : { frames: asset.revision.frames }),
+          ...(asset.revision.fps == null ? {} : { fps: asset.revision.fps }),
+          ...(lastFrameFile
+            ? {
+                lastFrameFile,
+                lastFrameSha256: lastFrame?.hash ?? null,
+                lastFrameWidth: lastFrame?.width ?? null,
+                lastFrameHeight: lastFrame?.height ?? null,
+                lastFrameFormat: lastFrame?.format ?? null,
+              }
+            : {}),
+          ...(asset.revision.direction ? { direction: asset.revision.direction } : {}),
+          ...(asset.revision.enhancePrompt == null ? {} : { enhancePrompt: asset.revision.enhancePrompt }),
         }
       }
       resolved.specHash = specHash(

@@ -995,7 +995,9 @@
                       "inpaint",
                       "outpaint",
                       "reduce-colors",
-                      "correct-pixelart"
+                      "correct-pixelart",
+                      "animate",
+                      "animate-pixminimax"
                     ]
                   },
                   "from": {
@@ -1033,6 +1035,36 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 10
+                  },
+                  "frames": {
+                    "type": "integer",
+                    "minimum": 4,
+                    "maximum": 40
+                  },
+                  "fps": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
+                  },
+                  "lastFrame": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "south",
+                      "south-east",
+                      "east",
+                      "north-east",
+                      "north",
+                      "north-west",
+                      "west",
+                      "south-west"
+                    ]
+                  },
+                  "enhancePrompt": {
+                    "type": "boolean"
                   }
                 },
                 "required": [

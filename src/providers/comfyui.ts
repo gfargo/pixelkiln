@@ -369,8 +369,16 @@ export class ComfyUIProvider implements Provider {
     return generator === "map" || generator === "frames"
   }
 
-  supportsRevision(_mode: RevisionMode): boolean {
-    return true
+  /**
+   * Everything else resolves generically to whatever the user's own
+   * workflow does with `bindings.sourceImage`. `animate`/`animate-pixminimax`
+   * are the one exception: they produce an ordered frame set, and this
+   * adapter's revision path always writes a single output image (see
+   * `submit`/`fetch` below) — a real structural gap, not a missing binding,
+   * so it is rejected here rather than only failing once `validate` runs.
+   */
+  supportsRevision(mode: RevisionMode): boolean {
+    return mode !== "animate" && mode !== "animate-pixminimax"
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {

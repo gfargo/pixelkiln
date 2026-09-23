@@ -223,6 +223,49 @@ describe("asset revisions", () => {
     expect(withNumColors.specHash).not.toBe(first.specHash)
   })
 
+  it("validates animate/animate-pixminimax's own fields and resolves a pinned last frame", async () => {
+    await expect(writeProject({ mode: "animate", from: "source", numColors: 8 }))
+      .rejects.toThrow(/numColors applies to reduce-colors revisions only/)
+    await expect(writeProject({ mode: "animate", from: "source", strength: 0.3 }))
+      .rejects.toThrow(/animate revisions do not take a strength; use enhancePrompt/)
+    await expect(writeProject({ mode: "image-to-image", from: "source", frames: 8 }))
+      .rejects.toThrow(/frames applies to animate\/animate-pixminimax revisions only/)
+    await expect(writeProject({ mode: "animate", from: "source", direction: "south" }))
+      .rejects.toThrow(/direction applies to animate-pixminimax revisions only/)
+    await expect(writeProject({ mode: "animate", from: "source", frames: 5 }))
+      .rejects.toThrow(/frames must be even/)
+
+    // A pinned ending frame is just another image, like a palette reference —
+    // no size relationship to the source is enforced at the manifest layer
+    // (PixelLab's own API requires a match; that's a provider-level check).
+    await writeFile(path.join(dir, "end.png"), png(30, 5, 5))
+    const loaded = await writeProject({
+      mode: "animate-pixminimax",
+      from: "source",
+      lastFrame: "end.png",
+      frames: 12,
+      fps: 12,
+      direction: "east",
+      enhancePrompt: true,
+    })
+    const first = await resolveChild(loaded)
+    expect(first.revision).toMatchObject({
+      mode: "animate-pixminimax",
+      lastFrameSha256: sha256(png(30, 5, 5)),
+      lastFrameWidth: 5,
+      lastFrameHeight: 5,
+      lastFrameFormat: "png",
+      frames: 12,
+      fps: 12,
+      direction: "east",
+      enhancePrompt: true,
+    })
+
+    await writeFile(path.join(dir, "end.png"), png(31, 5, 5))
+    const changed = await resolveChild(await loadManifest(manifestPath))
+    expect(changed.specHash).not.toBe(first.specHash)
+  })
+
   it("blocks a child until its generated parent is current", async () => {
     const loaded = await writeProject(undefined, { source: false })
     const firstChild = await resolveChild(loaded)
