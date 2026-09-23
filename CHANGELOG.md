@@ -1,3 +1,10 @@
+# [0.60.0](https://github.com/gfargo/pixelkiln/compare/v0.59.0...v0.60.0) (2026-09-23)
+
+
+### Features
+
+* **pixellab:** add uiAsset generator for UI panels ([e3f23ce](https://github.com/gfargo/pixelkiln/commit/e3f23ceb292b8053a92bc3cd2aeb835a6148a843))
+
 # [0.59.0](https://github.com/gfargo/pixelkiln/compare/v0.58.0...v0.59.0) (2026-09-23)
 
 
