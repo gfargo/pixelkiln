@@ -1195,6 +1195,24 @@
                 ],
                 "additionalProperties": false
               },
+              "batch": {
+                "type": "object",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "index": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "of",
+                  "index"
+                ],
+                "additionalProperties": false
+              },
               "proportions": {
                 "anyOf": [
                   {

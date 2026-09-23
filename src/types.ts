@@ -335,6 +335,23 @@ export type CharacterProportions = z.infer<typeof CharacterProportionsSchema>
 export const CharacterAnimationModeSchema = z.enum(["template", "v3", "pro"])
 export type CharacterAnimationMode = z.infer<typeof CharacterAnimationModeSchema>
 
+/**
+ * A member of a `1dir` batch: `/create-1-direction-object`'s
+ * `item_descriptions` field asks for several *distinct* described objects
+ * in one call instead of several candidates of the same one. The leader is
+ * an ordinary `1dir` asset (its own `prompt` is `item_descriptions[0]`);
+ * each member names the leader and its 1-based slot in the batch.
+ */
+export const AssetBatchSchema = z
+  .object({
+    /** The batch leader: another `1dir` asset in the same style. */
+    of: z.string().min(1),
+    /** 1-based slot in the batch (the leader is implicitly slot 0). Unique and contiguous among siblings. */
+    index: z.number().int().min(1),
+  })
+  .strict()
+export type AssetBatch = z.infer<typeof AssetBatchSchema>
+
 /** A pose or outfit of an existing character, applied to every direction. */
 export const CharacterStateSchema = z
   .object({
@@ -1108,6 +1125,12 @@ export const AssetSchema = z
      * `prompt` instead.
      */
     animation: CharacterAnimationSchema.optional(),
+    /**
+     * `1dir` styles only: this asset rides along on another `1dir` asset's
+     * batch submission instead of generating on its own. See
+     * `AssetBatchSchema`.
+     */
+    batch: AssetBatchSchema.optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
@@ -1188,7 +1211,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1386,6 +1409,16 @@ export const LockEntrySchema = z.object({
     .strict()
     .nullable()
     .default(null),
+  /** For a `1dir` batch member: which leader and slot it rode along on. */
+  batch: z
+    .object({
+      role: z.enum(["leader", "member"]),
+      leaderAssetId: z.string().min(1).optional(),
+      index: z.number().int().min(1).optional(),
+    })
+    .strict()
+    .nullable()
+    .default(null),
 
   /**
    * Output hashes owned by the previous generation while its replacement is
@@ -1521,6 +1554,27 @@ export interface ResolvedMirror {
   sourceSpec: ResolvedSpec
 }
 
+/**
+ * A `1dir` batch, leader or member. `itemDescriptions` is the full ordered
+ * list (the leader's own prompt at index 0, then each member's prompt at
+ * its declared `index`) and is identical across the whole group — every
+ * member's identity depends on the group's full membership, so adding,
+ * removing, or editing any one member's prompt marks every sibling stale
+ * together, matching PixelLab having no way to add an item to an
+ * already-submitted batch.
+ */
+export interface ResolvedBatch {
+  role: "leader" | "member"
+  itemDescriptions: string[]
+  /** Member only: this asset's 1-based slot into `itemDescriptions`. */
+  index?: number
+  /** Member only: the leader asset id and its full resolved intent. */
+  leaderAssetId?: string
+  leaderSpec?: ResolvedSpec
+  /** Leader only: every member's asset id, in `index` order. */
+  memberAssetIds?: string[]
+}
+
 /** A manifest entry resolved against its style, everything needed to generate. */
 export interface ResolvedSpec {
   /** Absolute directory containing the manifest; excluded from the spec hash. */
@@ -1551,6 +1605,8 @@ export interface ResolvedSpec {
   objectPro?: ResolvedObjectPro
   /** A local left-to-right flip of another asset in this style; costs nothing. */
   mirror?: ResolvedMirror
+  /** Set for a `1dir` asset that hosts or rides along on a batch submission. */
+  batch?: ResolvedBatch
   /** Provider-side id declared for adoption; excluded from the spec hash. */
   remoteId?: string
   /**

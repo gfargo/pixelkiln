@@ -311,6 +311,12 @@ export class PixelLabProvider implements Provider {
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {
+    if (spec.batch?.role === "member") {
+      // The leader's single submission already covers every member; a
+      // member reports zero so `--budget` never double-counts one call's
+      // cost across N lock entries.
+      return { unit: "generations", amount: 0, candidates: 1 }
+    }
     if (spec.revision?.mode === "reduce-colors" || spec.revision?.mode === "correct-pixelart") {
       // Confirmed live: a flat 0.1 generations for both, on a 32x32 source,
       // on a Tier 2 subscription account (docs/REVISIONS.md). The OpenAPI
@@ -1222,11 +1228,25 @@ export class PixelLabProvider implements Provider {
     }
 
     if (spec.generator === "1dir") {
+      // A batch member never submits on its own — the pipeline (submit.ts)
+      // fans the leader's single job out to every member's lock entry
+      // directly. Reaching this with a member spec would double-submit the
+      // whole batch, so refuse loudly rather than silently duplicate spend.
+      if (spec.batch?.role === "member") {
+        throw new Error(`${spec.styleId}/${spec.assetId}: a batch member cannot submit on its own`)
+      }
       const res = await this.client.create1Direction({
         description: spec.prompt,
         size: spec.size,
         view: spec.view === "sidescroller" ? "sidescroller" : "top-down",
         styleImages,
+        // The leader's own subject is item_descriptions[0], so `description`
+        // matches it exactly: PixelLab's docs say slots beyond the supplied
+        // list fall back to `description`, but do not fully specify whether
+        // item_descriptions[0] itself overrides slot 0 or description does —
+        // sending the same text either way makes both readings correct.
+        // Unverified against a live account.
+        itemDescriptions: spec.batch?.role === "leader" ? spec.batch.itemDescriptions : undefined,
       })
       return { jobId: res.object_id, metadata: { backgroundJobId: res.background_job_id } }
     }

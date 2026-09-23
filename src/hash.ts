@@ -133,6 +133,11 @@ export function specHash(
       // A mirror's bytes come from its source's recorded outputs; the plan
       // compares those directly, so only the choice of source is identity.
       mirror: spec.mirror ? { of: spec.mirror.sourceAssetId } : undefined,
+      // The whole group's ordered descriptions, not just this asset's own —
+      // any sibling's prompt changing, or a member being added or removed,
+      // must mark every member stale together, since they all ride on one
+      // submitted job with no way to amend it after the fact.
+      batch: spec.batch ? { role: spec.batch.role, itemDescriptions: spec.batch.itemDescriptions, index: spec.batch.index } : undefined,
       revision: spec.revision
         ? {
             mode: spec.revision.mode,

@@ -590,6 +590,19 @@ export async function resolveSpecs(
       styleSpecs.set(assetId, resolved)
     }
 
+    // A leader declares nothing of its own; it is elected purely by being
+    // named as `batch.of` by at least one sibling. Precomputed once so
+    // `finalize` can answer "am I a leader" with a lookup instead of an
+    // O(assets) scan on every call.
+    const batchMembersByLeader = new Map<string, { id: string; index: number }[]>()
+    for (const id of styleSpecs.keys()) {
+      const batch = manifest.assets[id]!.batch
+      if (!batch) continue
+      const members = batchMembersByLeader.get(batch.of) ?? []
+      members.push({ id, index: batch.index })
+      batchMembersByLeader.set(batch.of, members)
+    }
+
     const finalized = new Set<string>()
     const finalize = async (assetId: string): Promise<ResolvedSpec> => {
       const resolved = styleSpecs.get(assetId)
@@ -788,6 +801,62 @@ export async function resolveSpecs(
             : {}),
           ...(asset.revision.direction ? { direction: asset.revision.direction } : {}),
           ...(asset.revision.enhancePrompt == null ? {} : { enhancePrompt: asset.revision.enhancePrompt }),
+        }
+      }
+      if (asset.batch) {
+        // A member rides along on its leader's single submission; the
+        // leader resolves the whole group's item_descriptions (below), and
+        // this just records which slot is its own.
+        if (asset.batch.of === assetId) throw new Error(`assets.${assetId}: a batch cannot name itself as its own leader`)
+        const leaderSpec = await finalize(asset.batch.of)
+        if (!leaderSpec.batch || leaderSpec.batch.role !== "leader") {
+          throw new Error(`assets.${assetId}: ${asset.batch.of} is not a 1dir batch leader`)
+        }
+        if (resolved.size !== leaderSpec.size) {
+          throw new Error(
+            `assets.${assetId}: batch members share the leader's canvas size; ` +
+              `${asset.batch.of} is ${leaderSpec.size}px, this is ${resolved.size}px`,
+          )
+        }
+        resolved.batch = {
+          role: "member",
+          itemDescriptions: leaderSpec.batch.itemDescriptions,
+          index: asset.batch.index,
+          leaderAssetId: asset.batch.of,
+          leaderSpec,
+        }
+      } else {
+        const members = batchMembersByLeader.get(assetId)
+        if (members) {
+          if (style.generator !== "1dir") {
+            throw new Error(`assets.${assetId}: only a 1dir asset can lead a batch`)
+          }
+          const sorted = [...members].sort((a, b) => a.index - b.index)
+          const seen = new Set<number>()
+          for (const { index } of sorted) {
+            if (seen.has(index)) throw new Error(`assets.${assetId}: two batch members both claim index ${index}`)
+            seen.add(index)
+          }
+          const expectedIndices = sorted.map((_, i) => i + 1).join(",")
+          if (sorted.map((m) => m.index).join(",") !== expectedIndices) {
+            throw new Error(
+              `assets.${assetId}: batch member indices must be 1..${sorted.length} with no gaps; ` +
+                `got ${sorted.map((m) => m.index).join(",")}`,
+            )
+          }
+          const total = 1 + sorted.length
+          const limit = candidateCount(resolved.size)
+          if (total > limit) {
+            throw new Error(
+              `assets.${assetId}: a ${resolved.size}px batch holds at most ${limit} items ` +
+                `(1 leader + ${limit - 1} members); this one declares ${total}`,
+            )
+          }
+          resolved.batch = {
+            role: "leader",
+            itemDescriptions: [resolved.prompt, ...sorted.map(({ id }) => styleSpecs.get(id)!.prompt)],
+            memberAssetIds: sorted.map((m) => m.id),
+          }
         }
       }
       resolved.specHash = specHash(

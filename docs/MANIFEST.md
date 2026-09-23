@@ -68,6 +68,7 @@ not merely a label edit.
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](./CHARACTERS.md). |
 | `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](./CHARACTERS.md). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
+| `batch` | object | `1dir` styles: rides along on another `1dir` asset's `item_descriptions` submission instead of generating on its own — `{ "of": "<leader asset id>", "index": <1-based slot> }`. See [`1dir`](./GENERATORS.md#1dir). |
 | `proportions` | preset or object | `character` styles: this base's proportions, over the style's. |
 | `reference` | string or object | `character` styles, bases: the character's own south-facing sprite (or `{ "south": ..., "east": ... }`), which PixelLab rotates instead of drawing from the prompt. See [Characters](./CHARACTERS.md). |
 | `concept` | string | `character` styles, `pro` bases: a manifest-relative concept image (up to 1024px) the design is seeded from. |

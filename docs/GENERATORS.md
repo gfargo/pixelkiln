@@ -69,6 +69,59 @@ editing a reference intentionally invalidates every spec using it.
 Candidate scoring is deterministic RGB palette-distance arithmetic. No LLM
 selects the artwork; the local contact sheet exists for human judgment.
 
+### Batch: several distinct objects for one call's cost
+
+`1dir`'s own candidate mechanic (the table above) normally returns several
+variations of *one* prompt to choose from. PixelLab's
+`/create-1-direction-object` also accepts `item_descriptions`: instead of N
+variations of one thing, N *different* described things, for the exact same
+canvas-tiered price — a loot table's worth of icons for the cost of one call.
+
+One asset is the batch leader (an ordinary `1dir` asset; its own `prompt` is
+implicitly slot 0), and its siblings claim the remaining slots:
+
+```jsonc
+{
+  "assets": {
+    "chest": { "prompt": "a treasure chest" },
+    "potion": { "prompt": "a health potion", "batch": { "of": "chest", "index": 1 } },
+    "key": { "prompt": "a rusty key", "batch": { "of": "chest", "index": 2 } }
+  }
+}
+```
+
+`index` is 1-based, unique, and contiguous among siblings (the leader is
+implicitly 0); the total (1 + members) cannot exceed the size's own candidate
+count from the table above (16 at ≤85px, for example). Every member must
+share the leader's exact canvas size — they are one API call, one size.
+
+**Only the leader spends.** Its `estimate()` prices the whole call, same as a
+standalone `1dir` asset of that size; every member reports zero cost, so
+`--budget` never double-counts one call across N lock entries. Submitting
+fans the leader's one job out to every member's own lock entry directly —
+members never call the provider a second time.
+
+**Every sibling's identity depends on the whole group.** The spec hash
+includes the full ordered list of descriptions, not just an asset's own
+prompt, so changing any one member's text — or adding or removing a member —
+marks every sibling stale together. This isn't a choice pixelkiln made:
+PixelLab has no endpoint to add one more item to an already-submitted batch,
+so a batch's membership needs deciding before it's generated. Growing an
+existing batch later means declaring a new one, not editing the old.
+
+Review works exactly like any other `1dir` asset, once per sibling: each
+lands in `pixelkiln pick` independently (all sharing the same, real candidate
+set), and picking a different index for each is what actually turns N
+generated frames into N separate, kept assets.
+
+**Unverified against a live account**: whether `item_descriptions[0]`
+overrides slot 0 or `description` does (PixelLab's own docs describe slots
+*beyond* the supplied list falling back to `description`, without settling
+which owns slot 0) — pixelkiln sends the leader's own prompt as both,
+so either reading produces the right result. `estimate()` prices the batch
+call by the ordinary `1dir` canvas-area table above, unconfirmed to still
+apply once `item_descriptions` is in play.
+
 ## `pixflux`
 
 `pixflux` costs one generation, returns inline without polling, and supports a

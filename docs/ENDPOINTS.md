@@ -352,6 +352,17 @@ Cost is per call, so the candidates are free. Counterintuitively, generating
 *smaller* yields *more* candidates for *less*. But "pick from 16" is poor value
 once a 1-generation re-roll exists: forty re-rolls cost one `1dir` call.
 
+**`item_descriptions` turns those same candidate slots into distinct items,
+still free.** Instead of N variations of one prompt, `create-1-direction-object`
+takes a per-slot description list and returns N *different* described
+objects; `select-frames`'s own `indices` field is already plural — several
+candidates, not just one, promote to separate permanent objects in a single
+call. Wired up as the `1dir` asset shape's `batch` field; see
+[`1dir`](./GENERATORS.md#batch-several-distinct-objects-for-one-calls-cost).
+Unverified against a live account: whether `item_descriptions[0]` overrides
+the first slot or `description` does, and whether the canvas-area cost table
+above still applies unchanged once `item_descriptions` is populated.
+
 ---
 
 ## Object lifecycle

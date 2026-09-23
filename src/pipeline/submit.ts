@@ -98,6 +98,11 @@ export async function submit(
     styleImages.set(styleId, await resolveStyleImages(loaded, styleId))
   }
 
+  // A batch member never calls provider.submit() itself — its leader's one
+  // call already covers it. Looked up by lock key so the leader's own
+  // iteration (in either order) can find and write every sibling's entry.
+  const byKey = new Map(items.map((item) => [item.key, item]))
+
   let submitted = 0
   let failed = 0
   let spent = 0
@@ -135,8 +140,76 @@ export async function submit(
     }
   }
 
+  /**
+   * A batch leader's one submission covers every member too — this writes
+   * each member's own lock entry directly from the leader's just-recorded
+   * result, without a second `provider.submit()` call. Every member must be
+   * in this same submission batch as its leader; there is no way to add one
+   * more item to an already-submitted job, so a partial batch is refused
+   * rather than left half-written.
+   */
+  function writeBatchMembers(leaderSpec: ResolvedSpec, leaderKey: string, error: string | null): void {
+    if (leaderSpec.batch?.role !== "leader") return
+    const leaderEntry = lock.entries[leaderKey]!
+    for (const memberAssetId of leaderSpec.batch.memberAssetIds ?? []) {
+      const memberKey = lockKey(leaderSpec.styleId, memberAssetId)
+      const memberItem = byKey.get(memberKey)
+      if (!memberItem) {
+        throw new Error(
+          `${leaderKey}: batch member "${memberAssetId}" must be submitted in the same run as its leader; ` +
+            "run without --only, or include every sibling",
+        )
+      }
+      const memberSpec = memberItem.spec
+      const memberEstimate = estimates.get(memberKey)!
+      const previousMemberEntry = lock.entries[memberKey]
+      const memberSubmittedAt = leaderEntry.submittedAt ?? new Date().toISOString()
+      upsert(lock, memberKey, {
+        styleId: memberSpec.styleId,
+        assetId: memberSpec.assetId,
+        specHash: memberSpec.specHash,
+        generator: memberSpec.generator,
+        prompt: memberSpec.prompt,
+        width: memberSpec.width,
+        height: memberSpec.height,
+        batch: { role: "member", leaderAssetId: leaderSpec.assetId, index: memberSpec.batch!.index },
+        status: error ? "failed" : "processing",
+        error,
+        jobId: error ? null : leaderEntry.jobId,
+        submissionComplete: error ? undefined : true,
+        reviewObjectId: error ? null : leaderEntry.reviewObjectId,
+        objectId: null,
+        candidateIndex: null,
+        outputs: [],
+        supersededOutputs: previousMemberEntry?.outputs.length
+          ? previousMemberEntry.outputs
+          : previousMemberEntry?.supersededOutputs ?? [],
+        providerMetadata: leaderEntry.providerMetadata,
+        sourceUrl: null,
+        sourceUrls: [],
+        submittedAt: memberSubmittedAt,
+        history: historyAfterReplacing(previousMemberEntry, historyLimit(loaded.manifest), memberSubmittedAt),
+        cost: memberEstimate.amount,
+        costUnit: memberEstimate.unit,
+        provider: provider.id,
+        downloadedAt: null,
+      })
+      if (error) failed++
+      else {
+        submitted++
+        spent += memberEstimate.amount
+        log(`  ${memberKey} → ${leaderEntry.jobId}  (rides on ${leaderKey}'s batch)`)
+      }
+    }
+  }
+
   for (const { spec, key } of items) {
     const estimate = estimates.get(key)!
+    if (spec.batch?.role === "member") {
+      // Written by its leader's own iteration below (whichever order this
+      // loop reaches them in), from the leader's single submitted job.
+      continue
+    }
     if (spec.mirror) {
       try {
         await requireRevisionReady(spec, lock)
@@ -173,6 +246,20 @@ export async function submit(
     // Planning already checked this dependency, but inputs can change while a
     // long batch waits for a provider slot. Recheck at the spending boundary.
     await requireRevisionReady(spec, lock)
+
+    // A batch leader's one call must cover every member, or none of it
+    // should spend: checked before submit() runs, not after, so an
+    // incomplete batch never pays for a job some of its own members can't
+    // be written from.
+    if (spec.batch?.role === "leader") {
+      const missing = (spec.batch.memberAssetIds ?? []).filter((id) => !byKey.has(lockKey(spec.styleId, id)))
+      if (missing.length) {
+        throw new Error(
+          `${key}: batch member(s) ${missing.join(", ")} must be submitted in the same run as this leader; ` +
+            "run without --only, or include every sibling",
+        )
+      }
+    }
 
     const previousEntry = lock.entries[key]
     const resumesCheckpoint = Boolean(
@@ -307,6 +394,7 @@ export async function submit(
       inFlight.set(jobId, spec)
       submitted++
       spent += estimate.amount
+      writeBatchMembers(spec, key, null)
       log(
         `  ${key} → ${jobId}  (${spec.width}x${spec.height}` +
           (estimate.candidates > 1
@@ -324,6 +412,7 @@ export async function submit(
         inFlight.set(entry.jobId, spec)
         submitted++
         spent += estimate.amount
+        writeBatchMembers(spec, key, null)
         log(`  ${key} → ${entry.jobId}  (recovered from completed checkpoint)`)
       } else {
         failed++
@@ -334,6 +423,7 @@ export async function submit(
           error: message,
           cost: entry.jobId ? estimate.amount : 0,
         })
+        writeBatchMembers(spec, key, message)
         log(`  FAILED ${key}: ${message}`)
       }
     }

@@ -105,6 +105,25 @@ Reference images, a forced palette, and the `pro` pipeline's own tunables
 beyond the three above (`tileStrength`, `tilesetAdherence`, and the rest)
 are not modeled yet; open an issue if a real project needs one of them.
 
+`1dir`'s own candidate mechanic (the size-tiered table above) normally
+returns N variations of one prompt. `/create-1-direction-object` also takes
+`item_descriptions`: N *distinct* described objects for the same canvas-tiered
+price instead. An asset's `batch: { of: "<leader>", index: N }` field claims
+a slot in another `1dir` asset's submission (the leader's own `prompt` is
+implicitly slot 0); only the leader's `estimate()` prices the call, members
+report zero so `--budget` never double-counts one call, and submitting fans
+the leader's one job out to every member's own lock entry directly — a
+member never calls the provider itself. Every sibling's spec hash includes
+the *whole group's* ordered descriptions, so adding, removing, or editing
+any one member marks every sibling stale together: PixelLab has no endpoint
+to add one more item to an already-submitted batch, so a batch's membership
+has to be decided before it's generated, not grown incrementally.
+**Unverified against a live account**: whether `item_descriptions[0]`
+overrides the first candidate slot or `description` does (pixelkiln sends
+the same text as both, so either reading is correct), and whether the
+existing canvas-area cost table still holds once `item_descriptions` is
+populated. See `docs/GENERATORS.md#batch-several-distinct-objects-for-one-calls-cost`.
+
 `imagePro` wraps PixelLab's Pro image tier, `/generate-image-v2` — the
 `pixflux`-adjacent gap named in `pixellab-roadmap.md`: real style transfer
 and non-square or larger canvases (16–792 wide, 16–688 tall; the exact

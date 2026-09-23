@@ -131,14 +131,27 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   **Interpolate** endpoint (`/interpolation-v2`, a separate "Pro" two-keyframe
   tool distinct from `last_frame` pinning on the animate endpoints above)
   remains unwrapped — a narrower, real gap, not yet investigated.
-
-## Object Creator: batch generation only
-
-Object Creator's "pack" generation — one prompt or style reference → N
-distinct objects in one call, each with an optional per-item text override —
-remains unmodeled. Demonstrated in "Object Creator" and used throughout
-"GBA-Style Sprites" and "Build a Game with AI." The rest of Object Creator
-(8-direction rotation, states, pro/v3 animation) is closed; see below.
+- **Object Creator's "pack" generation** (one call → N *distinct* objects,
+  each with its own per-item description, instead of N variations of one
+  prompt) — demonstrated in "Object Creator" and used throughout
+  "GBA-Style Sprites" and "Build a Game with AI." Turned out not to be a
+  separate endpoint at all: `/create-1-direction-object`'s own
+  `item_descriptions` field and `select-frames`'s already-plural `indices`
+  field are the exact mechanism, on the same endpoint `1dir` already wraps —
+  `client.ts`'s `create1Direction` even already sent `item_descriptions`
+  before this pass, just never populated from anywhere in the manifest.
+  Closed by the `1dir` asset shape's `batch` field (one leader, siblings
+  claim slots via `{of, index}`); see `pixellab.md` and
+  `docs/GENERATORS.md#batch-several-distinct-objects-for-one-calls-cost`.
+  This is the one closed item in this catalog that isn't a new
+  generator/revision-mode wrapper around a fresh endpoint — it's new
+  manifest/pipeline plumbing (one submitted job, several independent lock
+  entries) for a capability the client already halfway had. **Unverified
+  against a live account**: whether `item_descriptions[0]` overrides the
+  first candidate slot or `description` does (pixelkiln sends the same text
+  as both, so either reading works), and whether `1dir`'s existing
+  canvas-area cost table still applies unchanged once `item_descriptions` is
+  populated.
 
 ## UI elements and RPG UI kits
 
