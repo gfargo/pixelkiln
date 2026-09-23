@@ -266,7 +266,8 @@ export class PixelLabProvider implements Provider {
       generator === "imagePro" ||
       generator === "character" ||
       generator === "isometricTile" ||
-      generator === "objectPro"
+      generator === "objectPro" ||
+      generator === "uiAsset"
     )
   }
 
@@ -451,6 +452,16 @@ export class PixelLabProvider implements Provider {
       throw new Error(
         `PixelLab imagePro is ${spec.width}x${spec.height}; the API takes 16 to 792 wide and ` +
           "16 to 688 tall (the exact ceiling also depends on aspect ratio)",
+      )
+    }
+    if (
+      spec.generator === "uiAsset" &&
+      (spec.width < 192 || spec.height < 192 || spec.width > 688 || spec.height > 688)
+    ) {
+      throw new Error(
+        `PixelLab uiAsset is ${spec.width}x${spec.height}; the API takes 192 to 688 pixels per side ` +
+          "(the exact ceiling also depends on aspect ratio — square tops out at 512, 16:9 at 688x384, " +
+          "9:16 at 384x688, 4:3 at 600x448, 3:4 at 448x600)",
       )
     }
     if (spec.generator === "map") {
@@ -1134,6 +1145,21 @@ export class PixelLabProvider implements Provider {
     if (spec.revision) return this.submitRevision(spec)
     if (spec.generator === "character") return this.submitCharacter(spec, styleImages, context)
     if (spec.generator === "objectPro") return this.submitObjectPro(spec, styleImages, context)
+    if (spec.generator === "uiAsset") {
+      const res = await this.client.createUiAsset({
+        description: spec.prompt,
+        width: spec.width,
+        height: spec.height,
+        pieces: spec.uiPieces,
+        elements: spec.uiElements,
+        styleImage: styleImages[0] ? { base64: styleImages[0].base64, format: styleImages[0].format } : undefined,
+        colorPalette: spec.uiColorPalette,
+        noBackground: spec.noBackground,
+        seed: spec.seed,
+      })
+      return { jobId: res.ui_asset_id, metadata: { backgroundJobId: res.background_job_id } }
+    }
+
     if (spec.generator === "pixflux") {
       const swatch = spec.palette.length
         ? paletteSwatch(spec.palette).toString("base64")
@@ -1453,6 +1479,7 @@ export class PixelLabProvider implements Provider {
     if (generator === "imagePro") return this.pollImagePro(jobId)
     if (generator === "character") return this.pollCharacter(jobId, context)
     if (generator === "objectPro") return this.pollObjectPro(jobId, context)
+    if (generator === "uiAsset") return this.pollUiAsset(jobId, context)
 
     const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
     const obj = await this.client.getObject(jobId)
@@ -1796,6 +1823,30 @@ export class PixelLabProvider implements Provider {
     } catch (err) {
       if (err instanceof PixelLabError && err.status === 423) return { status: "processing" }
       throw err
+    }
+  }
+
+  /**
+   * `/ui-assets/{id}` reports progress with its own `status` field
+   * ("processing"/"completed"/"failed") rather than a 423, and its result is
+   * one flat composited image at a hosted `image_url` — no per-piece
+   * sub-images, no nine-slice metadata, confirmed absent from the response
+   * schema. There is nothing to review: one job is one ready image, like
+   * `isometricTile`.
+   */
+  private async pollUiAsset(uiAssetId: string, context?: PollContext): Promise<JobState> {
+    const asset = await this.client.getUiAsset(uiAssetId)
+    if (asset.status === "failed") return { status: "failed", error: "UI asset generation failed upstream" }
+    if (asset.status !== "completed" || !asset.imageUrl) {
+      return { status: "processing", progressPercent: asset.progressPercent, etaSeconds: asset.etaSeconds }
+    }
+    const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
+    return {
+      status: "ready",
+      objectId: uiAssetId,
+      sourceUrl: asset.imageUrl,
+      sources: [{ url: asset.imageUrl }],
+      billed: await this.billedForJob(backgroundJobId),
     }
   }
 

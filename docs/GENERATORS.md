@@ -15,6 +15,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose, 1 per template loop | one set of directions, or one ordered loop |
+| UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 
 Start with `map` unless a required capability points elsewhere. Forty `map`
 re-rolls cost the same as one 64×64 `1dir` call.
@@ -352,6 +353,51 @@ Style images, `init_image`/`init_image_strength` (image-to-image), and
 `color_image` (native forced-palette) are not modeled yet — PixelKiln's own
 `palette`/`enforcePalette` post-processing works generically on the
 downloaded tile regardless, if a closed palette is what's actually needed.
+
+## `uiAsset`
+
+`uiAsset` wraps PixelLab's `/create-ui-asset` — panels, buttons, health bars,
+and other UI chrome, composited as one flat image. It is non-square capable
+like `imagePro`: `width`/`height` default to 256×256 but can be set per asset,
+subject to the endpoint's own aspect-gated size tiers (square up to 512×512,
+16:9 up to 688×384, 9:16 up to 384×688, 4:3 up to 600×448, 3:4 up to 448×600;
+`pixelkiln` refuses anything under 192 or over 688 per side and leaves the
+exact aspect ceiling to the API).
+
+Two asset-level fields, usable together or alone:
+
+- `pieces`: an array of exact shape regions (`rounded_rect`, `circle`, or
+  `polygon`, each with a unique `id` and optional `label`) positioned on a
+  virtual 0–512 coordinate canvas, independent of the actual output size.
+- `elements`: named, auto-positioned scaffolds — `button`, `icon_button`,
+  `toolbar`, `tab`, `panel`, `window`, `health_bar`, `avatar`, `triangle`,
+  `pentagon`, `hexagon`, `octagon`.
+
+Omit both for a plain full-canvas panel from the prompt alone. A style-level
+`uiColorPalette` string (e.g. `"brown and gold"`) is a free-text prompt hint
+sent as `color_palette` — a different, PixelLab-side concept from
+PixelKiln's own hex-array `palette`/`enforcePalette` (local quantization),
+which still applies to the downloaded image afterward if an exact palette is
+needed.
+
+**No cropping, no nine-slice, no states.** `GET /ui-assets/{id}` returns one
+composited image with no per-piece sub-image or bounding-box data, confirmed
+absent from the response schema regardless of how many `pieces`/`elements`
+were requested — despite `pieces`' own precise coordinates, PixelLab does not
+hand back a way to split them out again. A themed variant of an existing
+panel (an empty vs. full health bar, say) needs no new mechanism: it is a
+plain `revision` (image-to-image) of the base panel, which already carries
+this for every other generator.
+
+**Cost: confirmed live at one data point — 20 generations for a 256x192
+canvas**, the low end of the `create_ui_asset` MCP tool's "20–40
+generations" claim. PixelKiln still estimates with the same canvas-tier
+formula as `1dir`/`tiles`, which predicts the 40 ceiling for every valid
+`uiAsset` size (its 192px floor is already past that formula's top tier) —
+the measured call proves the formula wrong here, since it billed the floor
+price at an area well above where `1dir`/`tiles` would bill the ceiling.
+Left as an over-read for `--budget` until a second size is measured; see
+[ENDPOINTS.md](./ENDPOINTS.md) for the full writeup.
 
 ## Style variants
 

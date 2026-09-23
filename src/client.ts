@@ -1,4 +1,4 @@
-import type { CharacterProportions, ResolvedStyleImage } from "./types.ts"
+import type { CharacterProportions, ResolvedStyleImage, UiElement, UiPiece } from "./types.ts"
 import { z } from "zod"
 import { ProviderError } from "./errors.ts"
 import { fetchWithRetry, type RetryingFetch } from "./http.ts"
@@ -205,6 +205,23 @@ const IsometricTileGetSchema = z
   .object({
     image: z.object({ base64: z.string().min(1), format: z.string().default("png") }).passthrough(),
     usage: UsageSchema,
+  })
+  .passthrough()
+const UiAssetSubmitSchema = z
+  .object({
+    ui_asset_id: z.string().min(1),
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    usage: UsageSchema,
+  })
+  .passthrough()
+const UiAssetGetSchema = z
+  .object({
+    id: z.string().min(1),
+    status: z.string().nullable().default(null),
+    image_url: z.string().nullable().optional(),
+    progress_percent: z.number().nullable().optional(),
+    eta_seconds: z.number().nullable().optional(),
   })
   .passthrough()
 /** Shared by /inpaint-v3 and /edit-images-v2: both hand back a generic background job. */
@@ -722,6 +739,65 @@ export class PixelLabClient {
       "get isometric tile",
     )
     return { image: res.image, usage: res.usage ?? null }
+  }
+
+  /**
+   * `/create-ui-asset`: one composited panel image from a shape template —
+   * `pieces` (precise rect/circle/polygon regions on a virtual 0–512
+   * editor canvas) and/or named `elements` (auto-positioned scaffolds:
+   * button, icon_button, toolbar, tab, panel, window, health_bar, avatar,
+   * triangle, pentagon, hexagon, octagon), or neither for a default
+   * full-canvas rounded-rect panel. Unlike every other generator here, the
+   * result is one flat image with no per-piece sub-regions or nine-slice
+   * metadata returned — cropping a `pieces` layout into separate files
+   * would be pixelkiln's own local work, not modeled yet.
+   */
+  async createUiAsset(args: {
+    description: string
+    width: number
+    height: number
+    pieces?: UiPiece[]
+    elements?: UiElement[]
+    styleImage?: Base64Image
+    colorPalette?: string
+    noBackground?: boolean
+    seed?: number
+  }): Promise<{ ui_asset_id: string; background_job_id: string; usage: unknown }> {
+    const body: Record<string, unknown> = {
+      description: args.description,
+      image_size: { width: args.width, height: args.height },
+    }
+    if (args.pieces?.length) body.pieces = args.pieces
+    if (args.elements?.length) body.elements = args.elements
+    if (args.styleImage) body.style_image = args.styleImage
+    if (args.colorPalette) body.color_palette = args.colorPalette
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.seed != null) body.seed = args.seed
+    const res = await validateResponse(
+      UiAssetSubmitSchema,
+      await this.request<unknown>("/create-ui-asset", { method: "POST", body: JSON.stringify(body) }),
+      "create ui asset",
+    )
+    return { ui_asset_id: res.ui_asset_id, background_job_id: res.background_job_id, usage: res.usage }
+  }
+
+  async getUiAsset(uiAssetId: string): Promise<{
+    status: string | null
+    imageUrl: string | null
+    progressPercent: number | null
+    etaSeconds: number | null
+  }> {
+    const res = await validateResponse(
+      UiAssetGetSchema,
+      await this.request<unknown>(`/ui-assets/${encodeURIComponent(uiAssetId)}`),
+      "get ui asset",
+    )
+    return {
+      status: res.status,
+      imageUrl: res.image_url ?? null,
+      progressPercent: res.progress_percent ?? null,
+      etaSeconds: res.eta_seconds ?? null,
+    }
   }
 
   /**

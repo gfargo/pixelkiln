@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro", "uiAsset"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -136,6 +136,20 @@ export function candidateCount(size: number): number {
  *         `pixflux`, it reaches non-square canvases up to 792x688 and does
  *         real style transfer, at a flat price rather than one that scales
  *         with area the way `1dir`/`tiles` do.
+ *
+ *   uiAsset Confirmed live at one data point, and it disproved the borrowed
+ *         formula: a real 256x192 (49152px²) call billed exactly 20
+ *         generations (balance 4979.8 → 4959.8), the low end of the
+ *         `create_ui_asset` MCP tool's "20-40 generations" claim. No
+ *         dedicated branch exists here, so it still falls through to the
+ *         same canvas-tier formula as `1dir`/`tiles` below, which — given
+ *         uiAsset's 192px-per-side floor (36864px²) already past the
+ *         2048px² top tier — always predicts the 40 ceiling. That
+ *         prediction is now known wrong: 49152px² sits well above where
+ *         `1dir`/`tiles` would bill 40, yet this billed the floor price.
+ *         Left unpatched from one data point, which keeps `--budget` an
+ *         over-read rather than a guess in the other direction, but a real
+ *         call likely costs about half of what this reports.
  *
  * So `1dir` buys candidate variety at 20-40x the price, and `map` buys
  * arbitrary (non-square) dimensions nearly free. For a single-result asset,
@@ -334,6 +348,62 @@ export const CharacterProportionsSchema = z.union([
 export type CharacterProportions = z.infer<typeof CharacterProportionsSchema>
 export const CharacterAnimationModeSchema = z.enum(["template", "v3", "pro"])
 export type CharacterAnimationMode = z.infer<typeof CharacterAnimationModeSchema>
+
+/**
+ * A `uiAsset` panel's shape template: precise, labelled regions on a virtual
+ * editor canvas (longer side 0–512, shorter side scaled to the output
+ * aspect — the coordinate space, not the output pixel size) that
+ * `/create-ui-asset` composites into one panel image. Omit entirely for a
+ * default full-canvas rounded-rect panel.
+ */
+export const UiPieceSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      id: z.string().min(1),
+      kind: z.literal("rounded_rect"),
+      label: z.string().optional(),
+      x: z.number(),
+      y: z.number(),
+      w: z.number(),
+      h: z.number(),
+      radius: z.number().min(0).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().min(1),
+      kind: z.literal("circle"),
+      label: z.string().optional(),
+      x: z.number(),
+      y: z.number(),
+      r: z.number(),
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().min(1),
+      kind: z.literal("polygon"),
+      label: z.string().optional(),
+      x: z.number(),
+      y: z.number(),
+      r: z.number(),
+      sides: z.number().int().min(3),
+      phase: z.number().optional(),
+    })
+    .strict(),
+])
+export type UiPiece = z.infer<typeof UiPieceSchema>
+
+/**
+ * A `uiAsset` panel's named element scaffolds — auto-positioned, no
+ * coordinates needed. Combine with `pieces` for a mix of precise and named
+ * shapes; omit both for a default full-canvas panel.
+ */
+export const UiElementSchema = z.enum([
+  "button", "icon_button", "toolbar", "tab", "panel", "window",
+  "health_bar", "avatar", "triangle", "pentagon", "hexagon", "octagon",
+])
+export type UiElement = z.infer<typeof UiElementSchema>
 
 /**
  * A member of a `1dir` batch: `/create-1-direction-object`'s
@@ -816,6 +886,12 @@ const StyleObjectSchema = z
      */
     terrainMode: z.enum(["standard", "pro"]).optional(),
     /**
+     * `uiAsset` generator only. A natural-language palette hint sent as-is
+     * (e.g. "brown and gold"), distinct from `palette`'s hex-color array —
+     * this is a prompt-level steer, not a local quantization target.
+     */
+    uiColorPalette: z.string().max(200).optional(),
+    /**
      * `terrain` generator only, `terrainMode: "standard"`. Procedural
      * boundary geometry: `square` or `round`, 16px or 32px tiles only.
      * Rejected together with `terrainMode: "pro"`, whose own shape controls
@@ -1131,6 +1207,10 @@ export const AssetSchema = z
      * `AssetBatchSchema`.
      */
     batch: AssetBatchSchema.optional(),
+    /** `uiAsset` styles: precise shape regions the panel is composited from. Combine with `elements`; omit both for a default full-canvas panel. */
+    pieces: z.array(UiPieceSchema).min(1).optional(),
+    /** `uiAsset` styles: named, auto-positioned UI element scaffolds. Combine with `pieces`; omit both for a default full-canvas panel. */
+    elements: z.array(UiElementSchema).min(1).optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
@@ -1624,6 +1704,12 @@ export interface ResolvedSpec {
   shading?: string
   detail?: string
   seed?: number
+  /** `uiAsset` generator only. See `UiPieceSchema`. */
+  uiPieces?: UiPiece[]
+  /** `uiAsset` generator only. See `UiElementSchema`. */
+  uiElements?: UiElement[]
+  /** `uiAsset` generator only. Natural-language palette hint, distinct from `palette`'s hex array. */
+  uiColorPalette?: string
   /** Forced palette hex values; empty unless the style sets one. */
   palette: string[]
   /** Snap downloaded art to `palette`; excluded from the spec hash. */

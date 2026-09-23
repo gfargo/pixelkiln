@@ -405,6 +405,13 @@ export async function resolveSpecs(
         size = asset.size ?? style.size ?? 64
         width = size
         height = size
+      } else if (generator === "uiAsset") {
+        // Non-square capable, like imagePro, but 64 (the shared default
+        // below) is under the API's own 192px floor — default to 256
+        // instead, matching /create-ui-asset's own default.
+        width = asset.width ?? style.size ?? 256
+        height = asset.height ?? style.size ?? 256
+        size = Math.max(width, height)
       } else {
         width = asset.width ?? style.size ?? 64
         height = asset.height ?? style.size ?? 64
@@ -414,6 +421,12 @@ export async function resolveSpecs(
       if ((asset.state || asset.animation) && generator !== "character" && generator !== "objectPro") {
         throw new Error(
           `assets.${assetId}: ${asset.state ? "state" : "animation"} needs a character or objectPro style; ` +
+            `"${styleId}" generates ${generator}`,
+        )
+      }
+      if ((asset.pieces || asset.elements) && generator !== "uiAsset") {
+        throw new Error(
+          `assets.${assetId}: ${asset.pieces ? "pieces" : "elements"} needs a uiAsset style; ` +
             `"${styleId}" generates ${generator}`,
         )
       }
@@ -484,6 +497,9 @@ export async function resolveSpecs(
         shading: style.shading,
         detail: style.detail,
         seed: style.seed,
+        uiPieces: generator === "uiAsset" ? asset.pieces : undefined,
+        uiElements: generator === "uiAsset" ? asset.elements : undefined,
+        uiColorPalette: generator === "uiAsset" ? style.uiColorPalette : undefined,
         palette: style.palette,
         enforcePalette: style.enforcePalette,
         noBackground: style.noBackground,
