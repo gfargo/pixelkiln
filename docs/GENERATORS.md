@@ -15,7 +15,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose, 1 per template loop | one set of directions, or one ordered loop |
-| UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20–40 generations (unverified) | 1 composited image |
+| UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 
 Start with `map` unless a required capability points elsewhere. Forty `map`
 re-rolls cost the same as one 64×64 `1dir` call.
@@ -389,11 +389,15 @@ panel (an empty vs. full health bar, say) needs no new mechanism: it is a
 plain `revision` (image-to-image) of the base panel, which already carries
 this for every other generator.
 
-**Cost: unverified against a live account.** The `create_ui_asset` MCP tool
-description states "20–40 generations"; PixelKiln estimates it with the same
-canvas-tier formula as `1dir`/`tiles`, which — given this generator's 192px
-floor — always lands at the 40 ceiling. See [ENDPOINTS.md](./ENDPOINTS.md)
-for the full writeup.
+**Cost: confirmed live at one data point — 20 generations for a 256x192
+canvas**, the low end of the `create_ui_asset` MCP tool's "20–40
+generations" claim. PixelKiln still estimates with the same canvas-tier
+formula as `1dir`/`tiles`, which predicts the 40 ceiling for every valid
+`uiAsset` size (its 192px floor is already past that formula's top tier) —
+the measured call proves the formula wrong here, since it billed the floor
+price at an area well above where `1dir`/`tiles` would bill the ceiling.
+Left as an over-read for `--budget` until a second size is measured; see
+[ENDPOINTS.md](./ENDPOINTS.md) for the full writeup.
 
 ## Style variants
 

@@ -345,15 +345,22 @@ vs. full health bar) still costs nothing extra to build: pixelkiln's existing
 `revision` mechanism (image-to-image on any generator's output) already does
 exactly that.
 
-**Cost is unverified against a live account.** The `create_ui_asset` MCP tool
-description states "20-40 generations"; no PixelLab documentation or usage
-example confirms a formula. pixelkiln's `generationCost()` has no dedicated
-branch for `uiAsset` and falls through to the same canvas-tier formula as
+**Cost: confirmed live at one data point, and it overturned the borrowed
+formula.** A real 256x192 (49152px²) call against a Tier 2 subscription
+account billed exactly **20 generations** (balance 4979.8 → 4959.8), matching
+the low end of the `create_ui_asset` MCP tool description's "20-40
+generations" claim. pixelkiln's `generationCost()` has no dedicated branch
+for `uiAsset` and falls through to the same canvas-tier formula as
 `1dir`/`tiles`, which — given `uiAsset`'s 192px-per-side floor (already
-36864px², past the 2048px² top tier) — always resolves to the 40-generation
-ceiling. That is the safe over-read direction for `--budget`, consistent with
-how `tiles`/`terrain` are estimated elsewhere in this file, but a real call
-may bill less.
+36864px², past that formula's own 2048px² top tier) — always predicts the
+40-generation ceiling. The measured call proves that formula wrong for this
+generator: 49152px² sits well above the borrowed top tier yet billed the
+*floor* price, not the ceiling, so `uiAsset` pricing does not follow
+`1dir`/`tiles`' area-based tiers at all. Left unchanged rather than patched
+from one data point — over-reading stays the safe direction for `--budget`,
+the same policy `tiles`/`terrain` estimates use elsewhere in this file — but
+budget a real call at roughly half the number `pixelkiln plan` prints until a
+second size is measured.
 
 ---
 
@@ -540,7 +547,8 @@ Listed so the gaps are known rather than assumed away:
   [references/pixellab-roadmap.md](../skills/pixelkiln/references/pixellab-roadmap.md)
   rather than duplicated here, since none of it has been measured either.
   UI-kit generation is covered above (`create-ui-asset` is now wrapped as the
-  `uiAsset` generator, cost still unverified).
+  `uiAsset` generator; cost confirmed live at one data point, 20 generations
+  for a 256x192 canvas).
 - `image-to-pixelart-pro` takes only `image` + `description`, no size fields.
   The non-Pro version is characterised above.
 - the tileset family, with schema documented above and costs unmeasured

@@ -137,14 +137,19 @@ export function candidateCount(size: number): number {
  *         real style transfer, at a flat price rather than one that scales
  *         with area the way `1dir`/`tiles` do.
  *
- *   uiAsset UNVERIFIED against a live account. The `create_ui_asset` MCP tool
- *         description states "20-40 generations"; no dedicated branch exists
- *         here, so it falls through to the same canvas-tier formula as
- *         `1dir`/`tiles` below. Its 192px-per-side floor (36864px²) already
- *         clears the 2048px² top tier, so this always resolves to the 40
- *         ceiling — never the 20 or 25 floor a smaller `1dir`/`tiles` canvas
- *         would hit. That is the safe over-read direction for `--budget`,
- *         but it means a real uiAsset call may bill less than estimated here.
+ *   uiAsset Confirmed live at one data point, and it disproved the borrowed
+ *         formula: a real 256x192 (49152px²) call billed exactly 20
+ *         generations (balance 4979.8 → 4959.8), the low end of the
+ *         `create_ui_asset` MCP tool's "20-40 generations" claim. No
+ *         dedicated branch exists here, so it still falls through to the
+ *         same canvas-tier formula as `1dir`/`tiles` below, which — given
+ *         uiAsset's 192px-per-side floor (36864px²) already past the
+ *         2048px² top tier — always predicts the 40 ceiling. That
+ *         prediction is now known wrong: 49152px² sits well above where
+ *         `1dir`/`tiles` would bill 40, yet this billed the floor price.
+ *         Left unpatched from one data point, which keeps `--budget` an
+ *         over-read rather than a guess in the other direction, but a real
+ *         call likely costs about half of what this reports.
  *
  * So `1dir` buys candidate variety at 20-40x the price, and `map` buys
  * arbitrary (non-square) dimensions nearly free. For a single-result asset,

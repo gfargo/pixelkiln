@@ -25,7 +25,7 @@ providers, or before any PixelLab account operation.
 | `terrain` | A two-terrain Wang tileset for elevation (grass-to-water, floor-to-cliff) | Unmeasured; borrows the same 20–40 canvas tiers |
 | `imagePro` | A larger or non-square background/scene, or real style transfer | **40 generations flat**, any size |
 | `character` | A character in 4 or 8 directions, its poses (`state`), and its loops (`animation`) | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose, 1 per template loop per direction |
-| `uiAsset` | A UI panel, button, health bar, or other chrome, from precise `pieces` and/or named `elements` | Unmeasured; borrows the same 20–40 canvas tiers, always resolves to 40 given the 192px floor |
+| `uiAsset` | A UI panel, button, health bar, or other chrome, from precise `pieces` and/or named `elements` | **20 generations, measured once** (256×192); the borrowed canvas-tier estimate still predicts 40 |
 
 `tiles` is not limited to top-down ground: `tileType` selects the projection
 (`isometric` — the API default —, `oblique`, `hex`, `hex_pointy`, `octagon`,
@@ -236,11 +236,16 @@ though the request's own coordinates would make it possible in principle. A
 themed variant of an existing panel (an empty vs. full health bar) needs no
 dedicated "state" mechanism — it is a plain `revision` (image-to-image) of
 the base panel, the same mechanism every other generator already has.
-**Cost is unverified against a live account**: the `create_ui_asset` MCP
-tool description states "20–40 generations"; no dedicated cost branch
-exists, so it falls through to the same canvas-tier formula `1dir`/`tiles`
-use, which — given this generator's 192px floor — always resolves to the 40
-ceiling, never the 20 or 25 floor a smaller `1dir`/`tiles` canvas could hit.
+**Cost: confirmed live at one data point.** A real 256×192 call against a
+Tier 2 account billed exactly 20 generations (balance 4979.8 → 4959.8),
+matching the low end of the `create_ui_asset` MCP tool's "20–40 generations"
+claim. No dedicated cost branch exists, so pixelkiln still estimates it with
+the same canvas-tier formula `1dir`/`tiles` use — which predicts the 40
+ceiling for every valid `uiAsset` size, since the 192px floor already clears
+that formula's own top tier. The measured call disproves the formula for
+this generator (it billed the floor price at an area where `1dir`/`tiles`
+would bill the ceiling), but the estimate is left as-is, an intentional
+over-read for `--budget`, until a second size is measured.
 
 Do not confuse pixelkiln's `map` generator with PixelLab's own "Map
 Workshop": `map` returns one static prop, icon, or building in a single
