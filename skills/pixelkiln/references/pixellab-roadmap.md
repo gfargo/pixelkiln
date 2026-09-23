@@ -155,21 +155,37 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   ordinary variety rather than repeats. Only confirmed at this one size;
   the cost table's higher tiers remain unconfirmed under
   `item_descriptions`.
-
-## UI elements and RPG UI kits
-
-A dedicated UI tool: lay out multiple elements on a canvas, generate a whole
-themed sheet from one prompt, split into individual assets, apply nine-slice
-to scalable frames, add prompted "states" (an empty vs. full health bar), and
-a separate style-reference-driven batch mode for icon sets (paste one image,
-prompt a comma-list of distinct items, get back N stylistically matched
-icons in one call). Demonstrated in "Create an RPG UI Set" and "Easiest way
-to create pixel art UI." No pixelkiln analogue at all. If ever built, the
-"states" mechanic should reuse `character`'s existing `state` vocabulary
-(prompt-driven variation of a base asset) rather than invent new terms — the
-UX is functionally identical. The batch icon-from-style-reference pattern
-also doesn't fit `map` (one icon, one generation) or `1dir` (candidates of
-one subject, not N different subjects) — it would need its own shape.
+- **UI elements and RPG UI kits** (`/create-ui-asset`, laying out `pieces`
+  and named `elements` on a panel canvas) — demonstrated in "Create an RPG UI
+  Set" and "Easiest way to create pixel art UI." Investigated directly
+  against the live OpenAPI document rather than the tutorials' own framing,
+  which turned out to overstate the surface: a search across "ui-asset",
+  "element", "split", and "template" paths found **only one creation
+  endpoint** (`/create-ui-asset`, + `GET`/`DELETE /ui-assets/{id}`) — no
+  separate batch-icon endpoint, no states endpoint, no nine-slice endpoint,
+  despite the tutorials describing all three. Closed by the `uiAsset`
+  generator (plain panel generation only); see `pixellab.md` and
+  `docs/GENERATORS.md#uiasset`. **Splitting into individual elements and
+  nine-slice are not buildable at all**: `GET /ui-assets/{id}` returns one
+  flat composited image with no per-piece sub-image or bounding-box data in
+  its response schema, regardless of how many `pieces` the request declared.
+  The `delete_ui_asset` MCP tool's own description ("a UI panel and, for a
+  template, its split elements + their states") hints PixelLab's internal
+  product model has a real split/states concept somewhere, but nothing in
+  the public REST surface reaches it. **"States" needed no new mechanism**:
+  a themed panel variant (an empty vs. full health bar) is just a plain
+  `revision` (image-to-image) of the base panel, the same mechanism every
+  other generator already has, so `character`'s dedicated `state` vocabulary
+  was not reused or ported. The style-reference-driven icon-batch mode from
+  the tutorials is a separate, still-unclosed gap — it does not fit this
+  endpoint (one flat panel, not N distinct icons) any better than it fit
+  `map`/`1dir`; the `1dir` `batch` field above is the closest existing
+  analogue but was built for a different endpoint's `item_descriptions`, not
+  this one. **Cost is unverified against a live account**: the
+  `create_ui_asset` MCP tool description states "20-40 generations"; no
+  dedicated cost branch exists, so `uiAsset` falls through to the same
+  canvas-tier formula `1dir`/`tiles` use, which — given this generator's
+  192px floor — always resolves to the 40 ceiling.
 
 ## Fonts
 

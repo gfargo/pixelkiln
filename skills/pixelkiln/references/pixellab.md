@@ -25,6 +25,7 @@ providers, or before any PixelLab account operation.
 | `terrain` | A two-terrain Wang tileset for elevation (grass-to-water, floor-to-cliff) | Unmeasured; borrows the same 20–40 canvas tiers |
 | `imagePro` | A larger or non-square background/scene, or real style transfer | **40 generations flat**, any size |
 | `character` | A character in 4 or 8 directions, its poses (`state`), and its loops (`animation`) | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose, 1 per template loop per direction |
+| `uiAsset` | A UI panel, button, health bar, or other chrome, from precise `pieces` and/or named `elements` | Unmeasured; borrows the same 20–40 canvas tiers, always resolves to 40 given the 192px floor |
 
 `tiles` is not limited to top-down ground: `tileType` selects the projection
 (`isometric` — the API default —, `oblique`, `hex`, `hex_pointy`, `octagon`,
@@ -208,6 +209,38 @@ than guessing a tier. Style images, `init_image`/`init_image_strength`
 endpoint and are not modeled yet; pixelkiln's own `palette`/`enforcePalette`
 post-processing already works generically on the downloaded tile if a
 closed palette is what's actually needed.
+
+`uiAsset` wraps `/create-ui-asset`, the **only** callable endpoint a broad
+OpenAPI path search ("ui-asset", "element", "split", "template") turned up
+for UI generation — no separate batch-icon endpoint, no states endpoint, no
+nine-slice endpoint, whatever the tutorials or the `delete_ui_asset` MCP
+tool's own description ("a UI panel and, for a template, its split elements
++ their states") might suggest about PixelLab's internal product model.
+`width`/`height` default to 256×256 and are otherwise non-square capable
+like `imagePro`, subject to the endpoint's own aspect-gated tiers (square up
+to 512×512, 16:9 up to 688×384, 9:16 up to 384×688, 4:3 up to 600×448, 3:4 up
+to 448×600); pixelkiln itself only enforces the loose 192–688px-per-side
+floor/ceiling and leaves the exact aspect ceiling to the API. An asset's
+`pieces` (exact `rounded_rect`/`circle`/`polygon` regions on a virtual 0–512
+canvas, each with a unique `id`) and `elements` (named auto-positioned
+scaffolds — `button`, `icon_button`, `toolbar`, `tab`, `panel`, `window`,
+`health_bar`, `avatar`, `triangle`, `pentagon`, `hexagon`, `octagon`) combine
+freely; omit both for a plain full-canvas panel. A style's `uiColorPalette`
+string (e.g. `"brown and gold"`) is a free-text prompt-level hint sent as
+`color_palette` — distinct from pixelkiln's own hex-array `palette`, which
+still applies as local quantization afterward. **The result is always one
+flat composited image**: `GET /ui-assets/{id}`'s response schema carries no
+per-piece sub-image or bounding-box data at all, confirmed absent regardless
+of how many `pieces` were requested, so there is nothing to crop apart even
+though the request's own coordinates would make it possible in principle. A
+themed variant of an existing panel (an empty vs. full health bar) needs no
+dedicated "state" mechanism — it is a plain `revision` (image-to-image) of
+the base panel, the same mechanism every other generator already has.
+**Cost is unverified against a live account**: the `create_ui_asset` MCP
+tool description states "20–40 generations"; no dedicated cost branch
+exists, so it falls through to the same canvas-tier formula `1dir`/`tiles`
+use, which — given this generator's 192px floor — always resolves to the 40
+ceiling, never the 20 or 25 floor a smaller `1dir`/`tiles` canvas could hit.
 
 Do not confuse pixelkiln's `map` generator with PixelLab's own "Map
 Workshop": `map` returns one static prop, icon, or building in a single

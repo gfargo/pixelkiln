@@ -303,6 +303,60 @@ pixelkiln yet — no `style_images` concept exists here at all, unlike
 
 ---
 
+## UI panels: one endpoint, schema documented, cost unverified
+
+`POST /create-ui-asset` (+ `GET`/`DELETE /ui-assets/{id}`, `GET /ui-assets`)
+is wrapped by pixelkiln's `uiAsset` generator (docs/GENERATORS.md). A broad
+search of the live OpenAPI document for "ui-asset", "element", "split", and
+"template" paths found **only these three callable endpoints** — no separate
+batch-icon endpoint, no states endpoint, no nine-slice endpoint, contrary to
+tutorial-based descriptions elsewhere.
+
+Request fields: `description`, `image_size` (`{width, height}`, 192-688px per
+axis, aspect-gated rather than a free rectangle — square tops out at
+512x512, 16:9 at 688x384, 9:16 at 384x688, 4:3 at 600x448, 3:4 at 448x600; a
+combination outside these five tiers is rejected or silently resolved to a
+different tier's ceiling), `pieces` (an array of `rounded_rect`/`circle`/
+`polygon` shapes, each with a unique `id` and optional `label`, positioned on
+a virtual 0-512 coordinate canvas independent of `image_size`), `elements`
+(named auto-positioned scaffolds — `button`, `icon_button`, `toolbar`, `tab`,
+`panel`, `window`, `health_bar`, `avatar`, `triangle`, `pentagon`, `hexagon`,
+`octagon`), `style_image` (a single `Base64Image`, unlike most generators'
+plural `style_images`), `color_palette` (a free-text prompt-level hint, e.g.
+"brown and gold" — pixelkiln's own hex-array `palette` field is a different,
+local-quantization concept and is deliberately not sent here), `no_background`,
+`seed`.
+
+`POST /create-ui-asset` responds `{ui_asset_id, background_job_id, status,
+usage}`. `GET /ui-assets/{id}` responds `{id, prompt, size, image_url
+(nullable), status ("processing"|"completed"|"failed"), progress_percent,
+eta_seconds}` — **one flat composited image**, confirmed by the schema to
+carry no per-piece sub-images, no bounding-box data, and no nine-slice
+metadata at all, regardless of how many `pieces`/`elements` the request
+listed.
+
+The `delete_ui_asset` MCP tool's own description says it removes "a UI panel
+(and, for a template, its split elements + their states)", which hints
+PixelLab's internal product model has a real split/states concept somewhere.
+Nothing found in the public REST surface reaches it — "states" and "splitting
+into individual elements" are not buildable from any endpoint listed here,
+whatever the product does internally. A themed panel variant (e.g. an empty
+vs. full health bar) still costs nothing extra to build: pixelkiln's existing
+`revision` mechanism (image-to-image on any generator's output) already does
+exactly that.
+
+**Cost is unverified against a live account.** The `create_ui_asset` MCP tool
+description states "20-40 generations"; no PixelLab documentation or usage
+example confirms a formula. pixelkiln's `generationCost()` has no dedicated
+branch for `uiAsset` and falls through to the same canvas-tier formula as
+`1dir`/`tiles`, which — given `uiAsset`'s 192px-per-side floor (already
+36864px², past the 2048px² top tier) — always resolves to the 40-generation
+ceiling. That is the safe over-read direction for `--budget`, consistent with
+how `tiles`/`terrain` are estimated elsewhere in this file, but a real call
+may bill less.
+
+---
+
 ## Recipes
 
 **Lock a palette.** Use `pixflux` with a `color_image` swatch. Build the swatch
@@ -481,18 +535,19 @@ Listed so the gaps are known rather than assumed away:
   `objectPro` borrowed `character` pro-flash's.
 - Everything else PixelLab's own tutorials demonstrate that this file has no
   entry for at all — "animation to animation" motion transfer,
-  skeleton-animation's rig/template-style controls, Object Creator, UI-kit
-  generation, and Map Workshop scene composition — is cataloged with
-  tutorial citations in
+  skeleton-animation's rig/template-style controls, Object Creator, and Map
+  Workshop scene composition — is cataloged with tutorial citations in
   [references/pixellab-roadmap.md](../skills/pixelkiln/references/pixellab-roadmap.md)
   rather than duplicated here, since none of it has been measured either.
+  UI-kit generation is covered above (`create-ui-asset` is now wrapped as the
+  `uiAsset` generator, cost still unverified).
 - `image-to-pixelart-pro` takes only `image` + `description`, no size fields.
   The non-Pro version is characterised above.
 - the tileset family, with schema documented above and costs unmeasured
   (the standalone isometric tile endpoint alongside it now has one real
   measured data point — see above)
-- `create-ui-asset`, `generate-font-pro`, both job-based, with response
-  shapes not in the simple `{usage, image}` form
+- `generate-font-pro`, job-based, with a response shape not in the simple
+  `{usage, image}` form
 - the character family beyond what the `character` generator uses: portraits
   (`portrait-character-pro` both ways, `/characters/{id}/portrait`), outfit
   transfer (`transfer-outfit-v2`), lip-sync, skeleton animation, and

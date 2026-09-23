@@ -69,6 +69,8 @@ not merely a label edit.
 | `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](./CHARACTERS.md). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
 | `batch` | object | `1dir` styles: rides along on another `1dir` asset's `item_descriptions` submission instead of generating on its own — `{ "of": "<leader asset id>", "index": <1-based slot> }`. See [`1dir`](./GENERATORS.md#1dir). |
+| `pieces` | array | `uiAsset` styles: exact shape regions (`rounded_rect`/`circle`/`polygon`) the panel is composited from, each with a unique `id`. See [`uiAsset`](./GENERATORS.md#uiasset). |
+| `elements` | string array | `uiAsset` styles: named, auto-positioned UI scaffolds (`button`, `health_bar`, `window`, ...). Combine with `pieces`; omit both for a plain full-canvas panel. See [`uiAsset`](./GENERATORS.md#uiasset). |
 | `proportions` | preset or object | `character` styles: this base's proportions, over the style's. |
 | `reference` | string or object | `character` styles, bases: the character's own south-facing sprite (or `{ "south": ..., "east": ... }`), which PixelLab rotates instead of drawing from the prompt. See [Characters](./CHARACTERS.md). |
 | `concept` | string | `character` styles, `pro` bases: a manifest-relative concept image (up to 1024px) the design is seeded from. |
@@ -114,7 +116,7 @@ One asset using the fields most projects reach for:
 |---|---|---|
 | `extends` | style id | Optional parent style. The child inherits resolved settings but must declare its own `outDir`. |
 | `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
-| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, `objectPro`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
+| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, `objectPro`, `uiAsset`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
