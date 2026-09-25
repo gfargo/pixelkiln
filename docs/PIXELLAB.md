@@ -139,6 +139,11 @@ comparing notes with someone using a different one:
   MCP doesn't." Good for ad hoc, conversational generation; it has no concept
   of a project's state, a budget, or what has already been paid for.
   Complements PixelKiln rather than competing with it.
+- **PixelLab's editor plugins for Aseprite and Pixelorama**, which bring
+  PixelLab's create/edit/inpaint/animate/interpolate/reduce-colors tools into
+  an existing pixel-art editor's own canvas and layers. Good for a human
+  artist iterating by hand inside a familiar tool; like Game Builder, not
+  something PixelKiln talks to — no manifest, no budget, no lockfile.
 - **PixelKiln**, calling PixelLab's REST API directly. This is why: a
   manifest is a durable plan an agent can re-read and diff, `--budget` is an
   enforced ceiling instead of trusting an agent's per-call judgement, and the

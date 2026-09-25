@@ -294,6 +294,22 @@ held-item character, skip the template and write a custom v3 loop with an
 explicit prompt naming the held item and the motion (e.g. "knight holding a
 sword, walking loop") instead of expecting the template to carry it.
 
+PixelLab's own tutorials describe a recent quality jump for named templates
+("Skeleton V3"): the same idle/walking/running/full-sprint-style templates
+existed before, but PixelLab did not recommend relying on them because
+result quality was inconsistent; with the updated model backing them, it now
+does — "the movement is much more usable... much more stable." Prefer a
+named template over a custom v3 loop by default for a body it fits, rather
+than defaulting to a custom loop out of habit; the held-item caveat above is
+the one case that still argues for skipping the template.
+
+A pose-only `state` edit (a walk mid-step, a hurt pose) can turn the
+character sideways or away from the camera by default, even on a prompt that
+never mentions rotating — PixelLab's own tutorial hits this on a plain
+"mid-walk state" prompt. State the facing explicitly (e.g. add "front-facing"
+to the prompt) rather than assuming the parent's own camera angle carries
+over automatically.
+
 A loop costs per direction, and a sprite facing one way is the sprite facing
 the opposite way flipped — this holds for the east/west pair and for both
 diagonal pairs, south-east/south-west and north-east/north-west. Declare the
@@ -367,7 +383,28 @@ using any of these. `reduce-colors`/`correct-pixelart` cost is **confirmed
 live**: a flat 0.1 generations each (not the schema's dollar-denominated
 example), at least at a 32×32 source — `animate`/`animate-pixminimax` remain
 schema-only and unexercised, taken from PixelLab's live OpenAPI document
-rather than an observed call. For a style aimed at a specific look (a
+rather than an observed call.
+
+`animate-pixminimax`'s `direction` + `enhancePrompt` combination has a
+measured-in-practice gotcha, not just a schema quirk: PixelLab's own tutorial
+states plainly that `enhancePrompt` can expand the motion description with
+camera-relative language ("towards the camera") that fights the requested
+world-facing `direction`, and the failure is direction-specific — cardinal
+directions came out fine, an off-cardinal one (north-east) did not. When a
+multi-directional PixMiniMax animation goes wrong at one or two directions
+but not others, suspect the enhanced prompt's own wording before the model or
+the `direction` value. The same tutorial states outright that PixMiniMax
+"allows up to 40 frames," a second, independent (though still not
+live-billed) confirmation of the ceiling above.
+
+PixelLab ships a further image-generation tier beyond what this adapter
+models: "Pro Flash" for plain image create/edit/inpaint, the same
+`gpt-image-2.5-flare` model `character`/`objectPro` pro-flash already use,
+now exposed for images with no character or object involved — see
+[pixellab-roadmap.md](./pixellab-roadmap.md) for the confirmed shape and
+cost.
+
+For a style aimed at a specific look (a
 retro/console feel or a
 high-fidelity showcase asset) rather than a default, read
 [pixellab-fidelity.md](./pixellab-fidelity.md) before choosing `size`,
