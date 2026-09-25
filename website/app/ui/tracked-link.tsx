@@ -44,7 +44,14 @@ export function TrackedLink({
 
   if (external) {
     return (
-      <a href={href} className={className} onClick={onClick} {...rest}>
+      <a
+        href={href}
+        className={className}
+        onClick={onClick}
+        target="_blank"
+        rel="noopener noreferrer"
+        {...rest}
+      >
         {children}
       </a>
     );
