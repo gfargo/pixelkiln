@@ -45,7 +45,6 @@ provider you are using. These Markdown files also render at
 
 - [Contributing](../CONTRIBUTING.md)
 - [Security](../SECURITY.md)
-- [Naming decision](../NAMING.md)
 
 The Markdown in this directory is the canonical documentation and ships in the
 npm package. The Next.js app in `website/` renders this source directly into
