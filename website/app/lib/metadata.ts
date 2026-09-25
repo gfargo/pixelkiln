@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { alt as opengraphImageAlt } from "@/app/opengraph-image";
 import { siteUrl } from "@/app/lib/site";
 
 type PageMetadata = {
@@ -12,7 +13,7 @@ const socialImage = {
   url: "/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "PixelKiln plans generation costs, records review, and tracks the hash of every pixel-art file.",
+  alt: opengraphImageAlt,
 };
 
 export function absoluteUrl(path: string) {
