@@ -27,7 +27,12 @@ Read this reference when an asset declares `revision`.
   animation's final frame into the next). `animate` caps at 16 frames;
   `animate-pixminimax` (beta, tier 1+) allows up to 40 and adds `direction`.
   Neither endpoint's cost or completed-response shape is measured against a
-  live account.
+  live account. `direction` + `enhancePrompt` together have a real gotcha:
+  the enhanced prompt can add camera-relative language that fights the
+  requested world-facing `direction`, breaking an off-cardinal direction
+  while cardinal ones in the same batch generate fine — suspect the enhanced
+  prompt's wording, not the model, when only some directions of a
+  multi-directional set come out wrong.
 - Both PixelLab and ComfyUI can back a `revision`, not just ComfyUI.
   PixelLab's `reduce-colors`/`correct-pixelart` calls its own
   `/reduce-colors`/`/correct-pixelart` endpoints synchronously (no background

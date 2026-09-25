@@ -185,6 +185,18 @@ between two known poses, PixelLab's own "Animate Between 2 Frames" tool.
 Unlike a mask, no size relationship to the source is required at the manifest
 layer; PixelLab's own API is where a mismatch is caught.
 
+`direction` + `enhancePrompt` together have a real gotcha, demonstrated by
+PixelLab's own tutorial rather than inferred from the schema: `enhancePrompt`
+can expand the motion description with camera-relative language ("towards
+the camera") that fights the requested world-facing `direction`. The failure
+is direction-specific — cardinal directions generated fine in the same batch
+an off-cardinal one (north-east) did not — so a multi-directional
+`animate-pixminimax` set that breaks at one or two directions but not others
+is more likely the enhanced prompt's own wording than the model or the
+`direction` value itself. The same tutorial states PixMiniMax "allows up to
+40 frames," a second, independent (though still not live-billed)
+confirmation of the 40-frame ceiling below.
+
 The result is an **ordered frame set**, not a single image — the source's own
 `frames` PNGs, `<asset>-frame-00.png` onward, exactly the naming a `character`
 loop already uses. Like any generative animation, it lands in **candidate

@@ -159,7 +159,10 @@ suffix, since the character already carries the look.
 `paletteFromReference` snaps the result to the parent's colours; `canvas`
 asks for a larger frame when the edit adds something big. A state costs 20
 to 40 by canvas and keeps the parent's directions. A state may be a state
-of another state.
+of another state. A pose-only state edit (a mid-walk step, a hurt pose) can
+turn the character sideways or away from camera by default even when the
+prompt never mentions rotating; state the facing explicitly (e.g. add
+"front-facing") rather than assume the parent's camera angle carries over.
 
 ### Animations
 
@@ -167,7 +170,10 @@ A template loop moves a skeleton, so it wants a body the skeleton fits: a
 biped on `mannequin`, or one of the quadruped templates. A character that
 is neither (a round robot, a slime) gets a walk from text on the v3
 engine instead; a template on it either fails upstream (`custom`
-template) or redraws the character as the biped it expected.
+template) or redraws the character as the biped it expected. PixelLab's
+"Skeleton V3" model update markedly improved template-loop reliability;
+where earlier guidance favored a custom v3 loop over trusting a template,
+a named template is now the reasonable default for a body it fits.
 
 An animation is one loop of one character (`animation.of`, a base or a
 state) in one `direction`. With a `template` (PixelLab's `walk`,
