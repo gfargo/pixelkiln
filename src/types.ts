@@ -475,6 +475,31 @@ export const CharacterPortraitSchema = z
   .strict()
 export type CharacterPortrait = z.infer<typeof CharacterPortraitSchema>
 
+/**
+ * `map` assets only: draw the object in the style of an existing scene
+ * (PixelLab's `/map-objects` style matching). `image` is the scene; the
+ * placement says which part of it the object is generated into. An oval or
+ * a rectangle is PixelLab's own auto-generated region, sized as a fraction
+ * of the scene; a mask is a manifest-relative PNG the size of the scene,
+ * white where the object goes and black where the scene is kept as context.
+ * Omitting `placement` means `{ "oval": 0.3 }`, PixelLab's own default.
+ */
+export const MapScenePlacementSchema = z.union([
+  z.object({ oval: z.number().min(0.05).max(0.95) }).strict(),
+  z.object({ rectangle: z.number().min(0.05).max(0.95) }).strict(),
+  z.object({ mask: z.string().min(1) }).strict(),
+])
+export type MapScenePlacement = z.infer<typeof MapScenePlacementSchema>
+
+export const MapSceneSchema = z
+  .object({
+    /** Manifest-relative PNG of the scene. Any earlier asset's output file works. */
+    image: z.string().min(1),
+    placement: MapScenePlacementSchema.default({ oval: 0.3 }),
+  })
+  .strict()
+export type MapScene = z.infer<typeof MapSceneSchema>
+
 /** Applies a reference outfit to an existing loop's frames (PixelLab's `transfer-outfit-v2`). */
 export const CharacterOutfitSchema = z
   .object({
@@ -1416,6 +1441,8 @@ export const AssetSchema = z
     portrait: CharacterPortraitSchema.optional(),
     /** `character` styles: this asset re-clothes an existing loop's frames with a reference outfit. */
     outfit: CharacterOutfitSchema.optional(),
+    /** `map` styles only: draw this object in the style of a scene image. See `MapSceneSchema`. */
+    scene: MapSceneSchema.optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
@@ -1496,7 +1523,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1855,6 +1882,21 @@ export function lockKey(styleId: string, assetId: string): string {
   return `${styleId}/${assetId}`
 }
 
+/**
+ * A `map` object drawn into a scene. Hashes are null until the file exists,
+ * the way a revision's not-yet-drawn source is: `plan` still works, and the
+ * asset is blocked until the scene (and any mask) is on disk.
+ */
+export interface ResolvedMapScene {
+  file: string
+  sha256: string | null
+  width: number | null
+  height: number | null
+  placement:
+    | { type: "oval" | "rectangle"; fraction: number }
+    | { type: "mask"; file: string; sha256: string | null; width: number | null; height: number | null }
+}
+
 export interface ResolvedMirror {
   sourceAssetId: string
   sourceSpec: ResolvedSpec
@@ -1913,6 +1955,8 @@ export interface ResolvedSpec {
   mirror?: ResolvedMirror
   /** Set for a `1dir` asset that hosts or rides along on a batch submission. */
   batch?: ResolvedBatch
+  /** `map` only: the scene this object is drawn into, in that scene's style. */
+  scene?: ResolvedMapScene
   /** Provider-side id declared for adoption; excluded from the spec hash. */
   remoteId?: string
   /**

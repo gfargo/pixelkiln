@@ -32,6 +32,7 @@ export async function inspectRevisionReadiness(
   if (spec.character?.parentSpec) return inspectCharacterParent(spec, lock, new Set())
   if (spec.character?.styleAnchor) return inspectStyleAnchor(spec, lock, new Set())
   if (spec.objectPro?.parentSpec) return inspectObjectProParent(spec, lock, new Set())
+  if (spec.scene) return inspectScene(spec)
   if (!spec.revision) return null
   return inspectRevision(spec, lock, new Set())
 }
@@ -54,6 +55,22 @@ async function inspectStyleAnchor(spec: ResolvedSpec, lock: Lock, seen: Set<stri
     return { ready: false, reason: `${label} has no PixelLab character id recorded` }
   }
   return { ready: true, reason: `${label} is current` }
+}
+
+/**
+ * A map object drawn into a scene sends the scene (and a mask placement's
+ * mask) as it was hashed at resolve time. The scene is often another
+ * asset's output, so a missing file is "not yet", not an error.
+ */
+async function inspectScene(spec: ResolvedSpec): Promise<RevisionReadiness> {
+  const scene = spec.scene!
+  const files = [{ label: "scene image", file: scene.file, sha256: scene.sha256 }]
+  if (scene.placement.type === "mask") files.push({ label: "scene mask", file: scene.placement.file, sha256: scene.placement.sha256 })
+  for (const { label, file, sha256 } of files) {
+    if (!sha256 || !existsSync(file)) return { ready: false, reason: `${label} does not exist yet: ${file}` }
+    if ((await sha256File(file)) !== sha256) return { ready: false, reason: `${label} changed after the manifest was resolved` }
+  }
+  return { ready: true, reason: "scene is current" }
 }
 
 /**

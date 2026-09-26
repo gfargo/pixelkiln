@@ -175,5 +175,8 @@ scene composition (placing objects and characters into a map, in-scene
 inpainting, export) is a separate PixelLab product surface this adapter does
 not model at all — including PixelKiln's own `map` generator, which is
 unrelated to PixelLab's "Map Workshop" despite the shared name: `map` returns
-one static prop in one generation, with no scene or canvas concept. Use the
+one static prop in one generation. The one piece of style matching the public
+`/map-objects` endpoint takes, drawing an object into an existing scene image,
+is a `map` asset's `scene` field; see
+[Drawing into a scene](./GENERATORS.md#drawing-into-a-scene). Use the
 [manifest reference](./MANIFEST.md) for the fields PixelKiln supports today.
