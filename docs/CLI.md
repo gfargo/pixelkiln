@@ -860,6 +860,62 @@ pixelkiln export --style ground --only terrain --format tiled --columns 8
 
 See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
 
+## PixelLab utilities
+
+Two commands call PixelLab on loose files rather than manifest assets. Neither
+reads the manifest or touches the lockfile; both load `PIXELLAB_API_KEY` from
+the environment or a `.env.local`/`.env` beside `--manifest` or in the working
+directory, the same as every other command.
+
+### `unzoom`
+
+```bash
+pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png
+```
+
+Shrinks an upscaled piece of pixel art (a 32x32 sprite saved at 512x512, every
+art pixel a 16x16 block) back onto its native grid with PixelLab's `/unzoom`.
+Run it on outside art before listing it in `styleImages` or as a
+`reference`: PixelLab's own API guide names upscaled reference art as the most
+common cause of disappointing output from every endpoint that takes one.
+
+- `--out` defaults to `<input>.unzoomed.png` beside the input, and the input
+  is never overwritten. An existing `--out` is replaced only with `--force`.
+- `--quantize <n>`: `0` (default) auto-detects a palette, `-1` keeps every
+  color the downsample produces, `2`-`256` quantizes to exactly that many.
+- The input must be at least 256x256 (the grid detector needs room) and at
+  most 2048x2048 worth of pixels; both are checked before anything is sent.
+- **The result is opaque**: PixelLab composites transparency onto white before
+  it detects the grid, so a cut-out sprite needs its background removed again.
+- `--json` prints the detected zoom factor and both sizes; `--dry-run` sends
+  nothing.
+
+### `font`
+
+```bash
+pixelkiln font --description "warm orange arcade font" --weight Bold --glyph-px 16 --out fonts/arcade
+```
+
+Generates a pixel font with PixelLab's `/generate-font-pro` and writes two
+files: `<out>.ttf`, ready to load in an engine, and `<out>.png`, the 80-glyph
+atlas (A-Z, a-z, 0-9, and common game-UI punctuation). A trailing `.ttf` or
+`.png` on `--out` is treated as part of the base, so `--out fonts/arcade.ttf`
+writes the same two files.
+
+- `--weight` is `Bold` or `Regular` (default); `--glyph-px` is the native glyph
+  size, `8`, `16` (default), `32`, or `64`; `--name` sets the font family name
+  (PixelLab otherwise uses the description plus the weight).
+- Costs PixelLab's documented 25 generations, not yet confirmed against a
+  live bill. The command prints that and asks first; `--yes` skips the
+  question, `--budget <n>` refuses when `n` is below it, and `--dry-run` sends
+  nothing.
+- It waits for the job (PixelLab documents 30-80 s) and then downloads both
+  files. Existing files are replaced only with `--force`.
+
+A font is deliberately not a manifest generator: it has no style suffix to
+share, no prompt-per-asset, no candidates to pick, and its main output is not
+an image, so there is nothing for the lockfile's provenance model to hold.
+
 ## Utility commands
 
 ### `help`
@@ -894,13 +950,13 @@ Print the package version. `-v` is an alias.
 | `--provider <id>` | balance/adopt/salvage/purge/workspace add | Select the account provider for a mixed manifest, or set the workspace catalog's default provider hint. |
 | `--account <label>` | workspace add | Free-form account label, e.g. distinguishing sandboxes. |
 | `--all` | salvage dry run | List every unclaimed object rather than the first 30. |
-| `--from <path>` | init/refine/quality check | Existing source tree for init; source PNG or quality record for one-file refine mode; baseline for quality check. Omit it to use manifest `style.quality`. |
+| `--from <path>` | init/refine/quality check/unzoom | Existing source tree for init; source PNG or quality record for one-file refine mode; baseline for quality check; the upscaled image for unzoom. Omit it to use manifest `style.quality`. |
 | `--exclude <names>` | init | Directory/name fragments to exclude; repeatable. |
 | `--generator <name>` | init | Generator assigned to the scaffolded style. |
-| `--name <name>` | init | Project name for the scaffolded manifest. |
+| `--name <name>` | init/font | Project name for the scaffolded manifest, or the generated font's family name. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--port <n>` | pick/salvage/gallery | Local review or gallery server port; otherwise chooses a free port. |
-| `--out <path>` | pack/export/refine/recipe install/quality snapshot | Output base override, final native PNG for path-mode refine, exact recipe destination, or quality baseline path. Export requires one selected tileset. |
+| `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed PNG, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
 | `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, or `godot` (TileSet). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
@@ -918,6 +974,10 @@ Print the package version. `-v` is an alias.
 | `--reviewer <name>` | refine approve | Human reviewer stored in the quality companion. |
 | `--note <text>` | refine approve | Optional review note stored in the quality companion. |
 | `--model-root <path>` | recipe verify | ComfyUI `models` directory. Enables streamed hash checks for every external model declared by the recipe. |
+| `--quantize <n>` | unzoom | `0` auto-detects a palette (default), `-1` keeps every color, `2`-`256` quantizes to exactly that many. |
+| `--description <text>` | font | The font's style, e.g. `"warm orange arcade font"`. |
+| `--weight <w>` | font | `Bold` or `Regular` (default). |
+| `--glyph-px <n>` | font | Native glyph size: `8`, `16` (default), `32`, or `64`. |
 | `--generation <n\|hash>` | restore | Bring a replaced generation back: `1` is the most recently replaced, or a prefix of one of its output hashes. One asset at a time. |
 
 ## Exit and output contract
