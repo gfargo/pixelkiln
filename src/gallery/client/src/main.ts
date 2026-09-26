@@ -7,10 +7,12 @@ import { pollEditor } from "./editor.ts"
 import { familyState } from "./family.ts"
 import { enableNotifications, pollJobs } from "./jobs.ts"
 import { setPlayLoops } from "./motion.ts"
+import { setSelecting } from "./selection.ts"
 import { closeEditorSheet } from "./sheet.ts"
 
 loadPrefs();
 $('refresh').onclick = refresh;
+$('select').onclick = () => setSelecting(!ui.selecting);
 $('playloops').checked = ui.playLoops;
 $('playloops').onchange = (e) => { setPlayLoops(e.target.checked); savePrefs(); };
 $('backdrop-slot').replaceWith(backdropControl());
@@ -48,7 +50,8 @@ document.addEventListener('keydown', (e) => {
     if (typing && document.activeElement?.id === 'q') { (document.activeElement as HTMLElement).blur(); return; }
     if (S.SHEET) { e.preventDefault(); closeEditorSheet(); return; }
     if ($('dialog-host').childNodes.length) { e.preventDefault(); $('dialog-host').textContent = ''; return; }
-    if (ui.open) { e.preventDefault(); closeItem(); }
+    if (ui.open) { e.preventDefault(); closeItem(); return; }
+    if (ui.selecting) { e.preventDefault(); setSelecting(false); }
     return;
   }
   if (ui.open && !typing && !$('dialog-host').childNodes.length) {

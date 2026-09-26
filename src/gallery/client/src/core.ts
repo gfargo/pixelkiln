@@ -54,6 +54,10 @@ export interface UiState {
   /** Drawer frame-set playback: frames per second chosen by hand (null: the set's own), and onion skin. */
   fps: number | null
   onion: boolean
+  /** Select mode: a click picks a card instead of opening it. */
+  selecting: boolean
+  /** Record ids picked in select mode. */
+  selected: Set<string>
 }
 
 export const ui: UiState = {
@@ -71,6 +75,8 @@ export const ui: UiState = {
   notify: false,
   fps: null,
   onion: false,
+  selecting: false,
+  selected: new Set(),
 };
 
 // ---- per-viewer preferences ------------------------------------------------
