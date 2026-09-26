@@ -25,6 +25,7 @@ import {
   type ResolvedCharacter,
   type ResolvedObjectPro,
   type ResolvedReferenceImage,
+  type ResolvedRevisionMember,
   type ResolvedSpec,
   type ResolvedStyleImage,
   type Style,
@@ -420,10 +421,11 @@ export async function resolveSpecs(
         size = asset.size ?? style.size ?? 64
         width = size
         height = size
-      } else if (generator === "uiAsset") {
+      } else if (generator === "uiAsset" || generator === "uiElement") {
         // Non-square capable, like imagePro, but 64 (the shared default
-        // below) is under the API's own 192px floor — default to 256
-        // instead, matching /create-ui-asset's own default.
+        // below) is under uiAsset's own 192px floor — default to 256
+        // instead, matching both /create-ui-asset's and /generate-ui-v2's
+        // own default.
         width = asset.width ?? style.size ?? 256
         height = asset.height ?? style.size ?? 256
         size = Math.max(width, height)
@@ -514,7 +516,7 @@ export async function resolveSpecs(
         seed: style.seed,
         uiPieces: generator === "uiAsset" ? asset.pieces : undefined,
         uiElements: generator === "uiAsset" ? asset.elements : undefined,
-        uiColorPalette: generator === "uiAsset" ? style.uiColorPalette : undefined,
+        uiColorPalette: generator === "uiAsset" || generator === "uiElement" ? style.uiColorPalette : undefined,
         palette: style.palette,
         enforcePalette: style.enforcePalette,
         noBackground: style.noBackground,
@@ -554,10 +556,13 @@ export async function resolveSpecs(
         terrainView: generator === "terrain" ? style.terrainView : undefined,
         isometricTileSize: generator === "isometricTile" ? style.isometricTileSize : undefined,
         isometricTileShape: generator === "isometricTile" ? style.isometricTileShape : undefined,
-        ...(generator === "character"
+        // A revision in a character or objectPro style is a provider edit of
+        // its parent's pixels, not a new character: giving it a base shape
+        // would have packing, the gallery, and adoption treat it as one.
+        ...(generator === "character" && !asset.revision
           ? { character: await resolveCharacterShape(asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
-        ...(generator === "objectPro"
+        ...(generator === "objectPro" && !asset.revision
           ? { objectPro: await resolveObjectProShape(assetId, asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
         cost:
@@ -752,9 +757,18 @@ export async function resolveSpecs(
           )
         }
         const sourceSpec = await finalize(asset.revision.from)
-        const sourceFile = sourceSpec.quality?.outFile ??
+        const sourceStem = sourceSpec.quality?.outFile ??
           (sourceSpec.source ? path.resolve(root, sourceSpec.source) : sourceSpec.outFile)
-        const sourceImage = await optionalRevisionImage(sourceFile, "revision source")
+        // A parent drawn as a set (a character's directions, an animation's
+        // frames) has no file at its own path, only `<stem>-<role>.png`
+        // members; those are read as the source instead, all of them.
+        const sourceMembers = await revisionSourceMembers(sourceStem, `revision source ${asset.revision.from}`)
+        const sourceFile = sourceMembers?.[0]?.file ?? sourceStem
+        const sourceImage = sourceMembers
+          ? { ...sourceMembers[0]!, hash: sha256(JSON.stringify(sourceMembers.map((member) => member.sha256))) }
+          : await optionalRevisionImage(sourceFile, "revision source")
+        const sourceFps = sourceSpec.character?.animation?.fps ?? sourceSpec.objectPro?.animation?.fps ??
+          sourceSpec.revision?.fps ?? sourceSpec.revision?.sourceFps
         const maskFile = asset.revision.mask
           ? path.resolve(root, asset.revision.mask)
           : undefined
@@ -797,6 +811,8 @@ export async function resolveSpecs(
           sourceHeight: sourceImage?.height ?? null,
           sourceFormat: sourceImage?.format ?? null,
           sourceSpec,
+          ...(sourceMembers ? { sourceMembers } : {}),
+          ...(sourceMembers && sourceFps != null ? { sourceFps } : {}),
           ...(maskFile
             ? {
                 maskFile,
@@ -966,6 +982,50 @@ async function optionalRevisionImage(
     throw new Error(`${label} must be ${requiredFormat.toUpperCase()}: ${file}`)
   }
   return { hash: sha256(bytes), ...metadata }
+}
+
+/**
+ * The member files of a revision parent that was written as a set, or null
+ * when the parent is one file (or nothing is on disk yet). Generated sets
+ * follow `memberPath`'s `<stem>-<role>.png` rule, and only two role
+ * vocabularies are read: a full 8- or 4-direction rotation, clockwise from
+ * south the way a character or object records it, or `frame-00` upward
+ * until the first gap. Readiness later checks these against the parent's
+ * own lock entry, so a leftover file from an older, longer generation is
+ * caught there rather than silently sent.
+ */
+async function revisionSourceMembers(stem: string, label: string): Promise<ResolvedRevisionMember[] | null> {
+  if (existsSync(stem)) return null
+  const at = (role: string) => memberPath(stem, role, 0, 2, MediaType.PNG)
+  let roles: string[] = []
+  for (const set of [CHARACTER_DIRECTIONS_8, CHARACTER_DIRECTIONS_4]) {
+    if (set.every((direction) => existsSync(at(direction)))) {
+      roles = [...set]
+      break
+    }
+  }
+  if (!roles.length) {
+    for (let index = 0; existsSync(at(`frame-${String(index).padStart(2, "0")}`)); index++) {
+      roles.push(`frame-${String(index).padStart(2, "0")}`)
+    }
+  }
+  if (!roles.length) return null
+  const members: ResolvedRevisionMember[] = []
+  for (const role of roles) {
+    const file = at(role)
+    const image = await optionalRevisionImage(file, `${label} (${role})`)
+    if (!image) return null
+    members.push({ role, file, sha256: image.hash, width: image.width, height: image.height, format: image.format })
+  }
+  const first = members[0]!
+  const odd = members.find((member) => member.width !== first.width || member.height !== first.height)
+  if (odd) {
+    throw new Error(
+      `${label} is a set whose members differ in size (${first.role} is ${first.width}x${first.height}, ` +
+        `${odd.role} is ${odd.width}x${odd.height}); a revision reads every member as one same-size batch`,
+    )
+  }
+  return members
 }
 
 /** Reference image bytes and measured dimensions, in manifest order. */

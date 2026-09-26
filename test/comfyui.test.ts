@@ -43,6 +43,8 @@ describe("ComfyUI: supportsRevision", () => {
     expect(provider.supportsRevision("correct-pixelart")).toBe(true)
     expect(provider.supportsRevision("animate")).toBe(false)
     expect(provider.supportsRevision("animate-pixminimax")).toBe(false)
+    expect(provider.supportsRevision("interpolate")).toBe(false)
+    expect(provider.supportsRevision("edit-animation")).toBe(false)
   })
 })
 

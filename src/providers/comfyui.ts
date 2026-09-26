@@ -19,7 +19,7 @@ import type {
   ResolvedProviderOptions,
   SubmitContext,
 } from "../provider.ts"
-import type { Generator, ResolvedSpec, ResolvedStyleImage, RevisionMode } from "../types.ts"
+import { FRAME_SET_REVISION_MODES, type Generator, type ResolvedSpec, type ResolvedStyleImage, type RevisionMode } from "../types.ts"
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:8188"
 
@@ -371,14 +371,15 @@ export class ComfyUIProvider implements Provider {
 
   /**
    * Everything else resolves generically to whatever the user's own
-   * workflow does with `bindings.sourceImage`. `animate`/`animate-pixminimax`
-   * are the one exception: they produce an ordered frame set, and this
-   * adapter's revision path always writes a single output image (see
-   * `submit`/`fetch` below) — a real structural gap, not a missing binding,
-   * so it is rejected here rather than only failing once `validate` runs.
+   * workflow does with `bindings.sourceImage`. The frame-set modes
+   * (`animate`, `animate-pixminimax`, `interpolate`, `edit-animation`) are
+   * the exception: they produce an ordered frame set, and this adapter's
+   * revision path always writes a single output image (see `submit`/`fetch`
+   * below) — a real structural gap, not a missing binding, so they are
+   * rejected here rather than only failing once `validate` runs.
    */
   supportsRevision(mode: RevisionMode): boolean {
-    return mode !== "animate" && mode !== "animate-pixminimax"
+    return !FRAME_SET_REVISION_MODES.includes(mode)
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {
@@ -441,6 +442,12 @@ export class ComfyUIProvider implements Provider {
       throw new Error("ComfyUI providerOptions.frames requires generator: frames")
     }
     if (spec.revision) {
+      if (spec.revision.sourceMembers) {
+        throw new Error(
+          `ComfyUI revisions read one source image; ${spec.revision.sourceAssetId} is a ` +
+            `${spec.revision.sourceMembers.length}-member set (directions or frames)`,
+        )
+      }
       if (!options.bindings.sourceImage) {
         throw new Error("ComfyUI revisions require bindings.sourceImage")
       }

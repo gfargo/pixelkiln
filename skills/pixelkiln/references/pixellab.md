@@ -26,6 +26,7 @@ providers, or before any PixelLab account operation.
 | `imagePro` | A larger or non-square background/scene, or real style transfer | **40 generations flat**, any size |
 | `character` | A character in 4 or 8 directions, its poses (`state`), and its loops (`animation`) | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose, 1 per template loop per direction |
 | `uiAsset` | A UI panel, button, health bar, or other chrome, from precise `pieces` and/or named `elements` | **20 generations, measured once** (256×192); the borrowed canvas-tier estimate still predicts 40 |
+| `uiElement` | One UI element (button, slot, bar, dialogue box) from the prompt, 16px and up, with an optional concept image | 20–40 generations, **unmeasured** |
 
 `tiles` is not limited to top-down ground: `tileType` selects the projection
 (`isometric` — the API default —, `oblique`, `hex`, `hex_pointy`, `octagon`,
@@ -210,12 +211,13 @@ endpoint and are not modeled yet; pixelkiln's own `palette`/`enforcePalette`
 post-processing already works generically on the downloaded tile if a
 closed palette is what's actually needed.
 
-`uiAsset` wraps `/create-ui-asset`, the **only** callable endpoint a broad
-OpenAPI path search ("ui-asset", "element", "split", "template") turned up
-for UI generation — no separate batch-icon endpoint, no states endpoint, no
-nine-slice endpoint, whatever the tutorials or the `delete_ui_asset` MCP
-tool's own description ("a UI panel and, for a template, its split elements
-+ their states") might suggest about PixelLab's internal product model.
+`uiAsset` wraps `/create-ui-asset`, the panel-layout UI endpoint. An earlier
+OpenAPI path search ("ui-asset", "element", "split", "template") missed the
+second UI endpoint, `/generate-ui-v2`, now wrapped as `uiElement` (below);
+there is still no batch-icon, states, or nine-slice endpoint, whatever the
+tutorials or the `delete_ui_asset` MCP tool's own description ("a UI panel
+and, for a template, its split elements + their states") might suggest
+about PixelLab's internal product model.
 `width`/`height` default to 256×256 and are otherwise non-square capable
 like `imagePro`, subject to the endpoint's own aspect-gated tiers (square up
 to 512×512, 16:9 up to 688×384, 9:16 up to 384×688, 4:3 up to 600×448, 3:4 up
@@ -246,6 +248,15 @@ that formula's own top tier. The measured call disproves the formula for
 this generator (it billed the floor price at an area where `1dir`/`tiles`
 would bill the ceiling), but the estimate is left as-is, an intentional
 over-read for `--budget`, until a second size is measured.
+
+`uiElement` wraps `/generate-ui-v2` ("Generate UI (Pro)"): one element from
+the prompt, no `pieces`/`elements` layout, sizes from 16×16 (up to 792 wide,
+688 tall, aspect-gated upstream). A style's one `styleImages` entry becomes
+the `concept_image` (design guidance); `uiColorPalette` is sent as
+`color_palette`. Reach for it over `uiAsset` for icons, slots, and small
+widgets under `uiAsset`'s 192px floor. Unmeasured: the plan borrows the
+20/25/40 canvas tiers, and the completed job's shape has not been observed
+live.
 
 Do not confuse pixelkiln's `map` generator with PixelLab's own "Map
 Workshop": `map` returns one static prop, icon, or building in a single
@@ -369,7 +380,9 @@ An asset that declares `revision` against a PixelLab style calls `inpaint`
 (palette quantize, `/reduce-colors`), `correct-pixelart` (edge/noise
 cleanup, `/correct-pixelart`), `animate` (`/animate-with-text-v3`), or
 `animate-pixminimax` (`/animate-pixminimax`, beta, tier 1 subscription or
-higher); `outpaint` is refused, since PixelLab has no canvas-expansion
+higher), `interpolate` (`/interpolation-v2`, in-betweens from the parent to
+a required `lastFrame` keyframe), or `edit-animation` (`/edit-animation-v2`,
+one edit across a whole frame set); `outpaint` is refused, since PixelLab has no canvas-expansion
 endpoint. `reduce-colors`/`correct-pixelart` send no prompt to PixelLab at
 all — they are mechanical, not described — and complete synchronously with
 no background job, unlike every other PixelLab call this adapter makes.
@@ -379,7 +392,10 @@ review, not a single image — the one revision mode shape that isn't "one
 image in, one image out." Neither animate endpoint's completed-job response
 shape has ever been observed; `pollAnimateRevision` guesses defensively
 rather than assume one. Read `docs/REVISIONS.md`'s PixelLab section before
-using any of these. `reduce-colors`/`correct-pixelart` cost is **confirmed
+using any of these. A parent written as a set (a character's directions, an
+animation's frames) goes to `reduce-colors`, `correct-pixelart`, and
+`edit-animation` whole, in one call, so every member shares one palette or
+edit; the other modes refuse a set parent. `reduce-colors`/`correct-pixelart` cost is **confirmed
 live**: a flat 0.1 generations each (not the schema's dollar-denominated
 example), at least at a 32×32 source — `animate`/`animate-pixminimax` remain
 schema-only and unexercised, taken from PixelLab's live OpenAPI document
