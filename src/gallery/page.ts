@@ -117,6 +117,7 @@ ${css}</style>
       <option value="none">Group: none</option>
     </select>
     <span id="editing" class="editing" hidden title="This gallery can write the manifest. It never contacts a provider.">editing</span>
+    <button id="studio" type="button" hidden title="Draft a new character: its style, base, loops, and portrait, priced as you go">+ New character</button>
     <button id="refresh" type="button" title="Re-read the manifest, lockfile, and disk">Refresh</button>
     <label class="chip" title="Refresh every 5 seconds while this tab is visible"><input id="auto" type="checkbox"> auto</label>
   </div>

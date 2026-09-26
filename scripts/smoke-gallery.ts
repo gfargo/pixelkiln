@@ -18,7 +18,7 @@ import { existsSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { createGalleryEditHandler } from "../src/gallery/edit.ts"
+import { createGalleryEditHandler, createGalleryPriceHandler } from "../src/gallery/edit.ts"
 import { createGenerateHandlers } from "../src/gallery/generate.ts"
 import { createGallerySkeletonHandlers } from "../src/gallery/skeleton.ts"
 import { encodeRgbaPng } from "../src/png.ts"
@@ -303,6 +303,68 @@ try {
     check(drafted.frames[0]!.find((j) => j.label === "LEFT LEG")!.x > 0.7, "dragging in the create form writes the JSON")
   } finally {
     await poseServer.close()
+  }
+
+  // The character studio: draft a character with its own sprite and loops,
+  // see it priced, then create and generate it; the job's waves take the
+  // base first and everything drawn from it after.
+  const studioDir = path.join(dir, "studio-project")
+  await mkdir(studioDir, { recursive: true })
+  const studioManifest = path.join(studioDir, "pixelkiln.manifest.json")
+  await writeFile(studioManifest, JSON.stringify({
+    name: "studio-smoke",
+    provider: "pixellab",
+    styles: { props: { outDir: "out/props" } },
+    assets: { crate: { prompt: "a crate", width: 32, height: 32, styles: ["props"] } },
+  }, null, 2))
+  const spritePath = path.join(studioDir, "sprite.png")
+  await writeFile(spritePath, encodeRgbaPng(64, 64, Buffer.alloc(64 * 64 * 4, 150)))
+  const studioProvider = new FakeProvider({ candidates: 1 })
+  const loadStudio = () => openProject(studioManifest, { env: false })
+  const reloadStudio = async () => buildGallerySnapshot(await loadStudio())
+  const studioServer = await serveGallery({
+    load: reloadStudio,
+    open: false,
+    onProgress: quiet,
+    edit: createGalleryEditHandler({ manifestFor: () => studioManifest, loadProject: loadStudio, reload: reloadStudio, onProgress: quiet }),
+    price: createGalleryPriceHandler({ manifestFor: () => studioManifest }),
+    generate: createGenerateHandlers({
+      loadProject: loadStudio,
+      providerFor: () => studioProvider,
+      // The fake bills a flat 40 a submission where PixelLab's own estimate is
+      // far lower, so the ceiling here covers the fake's figure, not plan's.
+      budget: { amount: 1000, byProvider: {} },
+      reload: reloadStudio,
+      pollIntervalMs: 50,
+      submitSpacingMs: 0,
+      onProgress: quiet,
+    }),
+  })
+  try {
+    await page.goto(studioServer.url, { waitUntil: "networkidle0" })
+    await page.click("#studio")
+    await page.waitForSelector(".studio-form", { timeout: 5_000 })
+    await page.type(".studio-form input[placeholder='e.g. mira']", "mira")
+    await page.type(".studio-form textarea", "a young knight in silver armour")
+    const file = await page.$(".studio-form input[type=file]")
+    await (file as unknown as { uploadFile: (p: string) => Promise<void> }).uploadFile(spritePath)
+    await page.waitForFunction(() => /Total:/.test(document.querySelector(".studio-price")?.textContent ?? ""), { timeout: 10_000 })
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    const quote = await page.$eval(".studio-price", (n) => n.textContent ?? "")
+    check(/characters\/mira1 generation/.test(quote), "the studio prices a base drawn from its own sprite as its rotations")
+    check(/characters\/mira\.walk\.eastfree \(mirrored\)/.test(quote) && /Total: 17 generations/.test(quote), "loops are priced per direction, mirrors free, with a total")
+    await page.evaluate(() => (document.querySelector(".studio-form .actions button.primary") as HTMLButtonElement).click())
+    let finished: { phase: string; counts: { submitted: number } } | undefined
+    for (let i = 0; i < 150 && !finished; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      const jobs = (await (await fetch(new URL("/api/jobs", studioServer.url))).json()) as { jobs: { phase: string; counts: { submitted: number } }[] }
+      if (jobs.jobs[0] && ["done", "failed"].includes(jobs.jobs[0].phase)) finished = jobs.jobs[0]
+    }
+    check(finished?.phase === "done" && finished.counts.submitted === 6, "Create & generate draws the base, then its loops and mirror, in waves")
+    const written = JSON.parse(await readFile(studioManifest, "utf8")) as { styles: Record<string, unknown>; assets: Record<string, unknown> }
+    check(Boolean(written.styles.characters) && Object.keys(written.assets).join(",") === "crate,mira,mira.walk,mira.idle", "the studio saved the style, base, and loops in one write")
+  } finally {
+    await studioServer.close()
   }
 
   check(consoleErrors.length === 0, `no console errors or failed requests${consoleErrors.length ? `:\n    ${consoleErrors.join("\n    ")}` : ""}`)

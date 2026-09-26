@@ -525,7 +525,10 @@ job strip under the filters; each job keeps the log lines the CLI would have
 printed. Candidate sets stop in `review`: **Review** slides the `pick` sheet
 out over the gallery, **Apply selections** writes the lockfile and downloads
 the chosen art, and unchosen rows stay in review exactly as with `pick`. A
-regeneration's sheet shows the current art beside the candidates.
+regeneration's sheet shows the current art beside the candidates. A job
+runs in waves, as `gen` does: when a wave lands, anything the job was asked
+for that was waiting on it (a character's loops, a revision of the base)
+goes next, under what is left of the session budget.
 
 #### `--estimate-limit`: skeleton estimates from the page
 
