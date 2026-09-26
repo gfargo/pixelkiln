@@ -18,7 +18,7 @@ function png(shade = 20, width = 32, height = 32): Buffer {
 }
 
 describe("PixelLab: supportsRevision", () => {
-  it("supports inpaint, image-to-image, reduce-colors, correct-pixelart, animate, animate-pixminimax, and animate-skeleton, not outpaint", () => {
+  it("supports every revision mode but outpaint", () => {
     const provider = PixelLabProvider.forOffline()
     expect(provider.supportsRevision("inpaint")).toBe(true)
     expect(provider.supportsRevision("image-to-image")).toBe(true)
@@ -27,6 +27,8 @@ describe("PixelLab: supportsRevision", () => {
     expect(provider.supportsRevision("animate")).toBe(true)
     expect(provider.supportsRevision("animate-pixminimax")).toBe(true)
     expect(provider.supportsRevision("animate-skeleton")).toBe(true)
+    expect(provider.supportsRevision("interpolate")).toBe(true)
+    expect(provider.supportsRevision("edit-animation")).toBe(true)
     expect(provider.supportsRevision("outpaint")).toBe(false)
   })
 })

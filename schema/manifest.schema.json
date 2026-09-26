@@ -45,7 +45,8 @@
                       "imagePro",
                       "isometricTile",
                       "objectPro",
-                      "uiAsset"
+                      "uiAsset",
+                      "uiElement"
                     ],
                     "default": "map"
                   },
@@ -501,7 +502,8 @@
                       "imagePro",
                       "isometricTile",
                       "objectPro",
-                      "uiAsset"
+                      "uiAsset",
+                      "uiElement"
                     ],
                     "default": "map"
                   },
@@ -1008,7 +1010,9 @@
                       "correct-pixelart",
                       "animate",
                       "animate-pixminimax",
-                      "animate-skeleton"
+                      "animate-skeleton",
+                      "interpolate",
+                      "edit-animation"
                     ]
                   },
                   "from": {

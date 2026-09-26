@@ -12,6 +12,7 @@ import { runAccept, runCache, runPrune } from "./commands/housekeeping.ts"
 import { runInit } from "./commands/init.ts"
 import { runAudit, runDoctor, runPlan, runStatus } from "./commands/inspect.ts"
 import { runExport, runMount, runPack } from "./commands/pack.ts"
+import { runFont, runUnzoom } from "./commands/pixellab-utils.ts"
 import { runQuality } from "./commands/quality.ts"
 import { runRecipe } from "./commands/recipe.ts"
 import { runRefine } from "./commands/refine.ts"
@@ -82,6 +83,8 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   recipe: runRecipe,
   workspace: runWorkspace,
   "estimate-skeleton": runEstimateSkeleton,
+  unzoom: runUnzoom,
+  font: runFont,
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {

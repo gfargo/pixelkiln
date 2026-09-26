@@ -165,11 +165,14 @@ control; see [Characters](./CHARACTERS.md). Masked inpainting, whole-image
 editing, and skeleton-driven animation (posing a reference image
 frame-by-frame from a supplied keypoint skeleton, not a text description) are
 the `revision` asset shape, not the `character` generator; see
-[Controlled asset revisions](./REVISIONS.md).
-Object Creator (generic 8-direction object rotation, object states and
-animation), UI element and RPG UI-kit generation, fonts, and Map Workshop
+[Controlled asset revisions](./REVISIONS.md). The same revision shape
+animates, interpolates, recolors, and cleans up any asset, a whole character
+or loop at once where the endpoint takes a set. Object Creator is the
+`objectPro` generator, UI panels and elements are `uiAsset` and `uiElement`,
+and fonts and unzooming reference art are the standalone `pixelkiln font` and
+`pixelkiln unzoom` commands. Map Workshop
 scene composition (placing objects and characters into a map, in-scene
-inpainting, export) are separate PixelLab product surfaces this adapter does
+inpainting, export) is a separate PixelLab product surface this adapter does
 not model at all — including PixelKiln's own `map` generator, which is
 unrelated to PixelLab's "Map Workshop" despite the shared name: `map` returns
 one static prop in one generation, with no scene or canvas concept. Use the

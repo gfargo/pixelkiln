@@ -302,6 +302,26 @@ const CorrectPixelartResponseSchema = z
     usage: z.unknown().optional(),
   })
   .passthrough()
+const UnzoomResponseSchema = z
+  .object({
+    image: z.object({ base64: z.string().min(1) }).passthrough(),
+    original_size: z.object({ width: z.number().int(), height: z.number().int() }).passthrough(),
+    unzoomed_size: z.object({ width: z.number().int(), height: z.number().int() }).passthrough(),
+    zoom_factor_detected: z.number(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
+/** `GET /generate-font-pro/{job_id}`: the download URLs appear only once `status` is `completed`. */
+const FontJobSchema = z
+  .object({
+    job_id: z.string().min(1),
+    status: z.string(),
+    glyph_px: z.number().int().nullable().optional(),
+    download_atlas_url: z.string().nullable().optional(),
+    download_ttf_url: z.string().nullable().optional(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
 const SelectFramesSchema = z.object({ created_object_ids: z.array(z.string()) }).passthrough()
 
 /**
@@ -449,6 +469,24 @@ function validateResponse<S extends z.ZodTypeAny>(
     .map((i) => `${i.path.join(".") || "response"}: ${i.message}`)
     .join("; ")
   throw new Error(`Invalid PixelLab response for ${operation}: ${issues}`)
+}
+
+/**
+ * The Cleanup-tier endpoints take `images`, a list of same-size frames
+ * processed together; a caller passes either one `image` or the list.
+ */
+function cleanupImages(args: { image?: Base64Image; images?: Base64Image[] }, operation: string): Base64Image[] {
+  const images = args.images ?? (args.image ? [args.image] : [])
+  if (!images.length) throw new Error(`${operation} needs at least one image`)
+  return images
+}
+
+/** One result per frame sent, in the same order; anything else is a shape this code does not understand. */
+function cleanupResults(images: { base64: string }[], sent: number, operation: string): Buffer[] {
+  if (images.length !== sent) {
+    throw new Error(`Invalid PixelLab response for ${operation}: sent ${sent} image(s), got ${images.length} back`)
+  }
+  return images.map((image) => Buffer.from(image.base64, "base64"))
 }
 
 export class PixelLabError extends ProviderError {
@@ -1379,26 +1417,69 @@ export class PixelLabClient {
   }
 
   /**
-   * `/reduce-colors`, PixelLab's "Cleanup" tier: quantize one image onto a
-   * smaller palette, synchronously — no `background_job_id`, the result
-   * comes back in this same response, like `createImagePixflux`. The
-   * schema's own response example is dollar-denominated (`usage: {type:
-   * "usd", usd: 0.02}`), which — matching this codebase's repeated
-   * experience with PixelLab's documented-vs-billed cost mismatches
-   * (`isometricTile`, `objectPro`) — did not hold: confirmed live against a
-   * Tier 2 account at exactly 0.1 generations for a 32x32 source
-   * (docs/REVISIONS.md). `numColors` and `paletteImage` are mutually
-   * exclusive upstream; the manifest schema already enforces that before
-   * this is ever called.
+   * `/generate-ui-v2` ("Generate UI (Pro)"): one UI element (a button, a
+   * health bar, an inventory slot, a dialogue box) from a description,
+   * guided by an optional concept image and a natural-language color
+   * palette. A plain background job; unlike `/create-ui-asset` there is no
+   * piece/element layout, and sizes start at 16px instead of 192. Its
+   * completed shape has not been exercised live; `pollUiElement` reads it
+   * defensively.
+   */
+  async generateUiV2(args: {
+    description: string
+    width: number
+    height: number
+    conceptImage?: { image: Base64Image; width: number; height: number }
+    colorPalette?: string
+    noBackground?: boolean
+    seed?: number
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = {
+      description: args.description,
+      image_size: { width: args.width, height: args.height },
+    }
+    if (args.conceptImage) {
+      body.concept_image = {
+        image: args.conceptImage.image,
+        size: { width: args.conceptImage.width, height: args.conceptImage.height },
+      }
+    }
+    if (args.colorPalette) body.color_palette = args.colorPalette
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/generate-ui-v2", { method: "POST", body: JSON.stringify(body) }),
+      "generate-ui-v2",
+    )
+  }
+
+  /**
+   * `/reduce-colors`, PixelLab's "Cleanup" tier: quantize one image, or
+   * several same-size frames together onto ONE shared palette, synchronously
+   * — no `background_job_id`, the result comes back in this same response,
+   * like `createImagePixflux`. Passing every frame of an animation (or every
+   * direction of a character) in one call is the endpoint's whole point:
+   * frames quantized separately drift onto different palettes. The schema's
+   * own response example is dollar-denominated (`usage: {type: "usd", usd:
+   * 0.02}`), which — matching this codebase's repeated experience with
+   * PixelLab's documented-vs-billed cost mismatches (`isometricTile`,
+   * `objectPro`) — did not hold: confirmed live against a Tier 2 account at
+   * exactly 0.1 generations for a 32x32 source (docs/REVISIONS.md).
+   * `numColors` and `paletteImage` are mutually exclusive upstream; the
+   * manifest schema already enforces that before this is ever called.
    */
   async reduceColors(args: {
-    image: Base64Image
+    /** One image, or `images` for a frame set quantized together. */
+    image?: Base64Image
+    images?: Base64Image[]
     numColors?: number
     paletteImage?: Base64Image
     dithering?: "none" | "2x2" | "4x4" | "8x8"
     ditheringStrength?: number
-  }): Promise<{ png: Buffer; paletteStripPng: Buffer; nColors: number; usage: unknown }> {
-    const body: Record<string, unknown> = { images: [args.image] }
+  }): Promise<{ png: Buffer; pngs: Buffer[]; paletteStripPng: Buffer; nColors: number; usage: unknown }> {
+    const images = cleanupImages(args, "reduce-colors")
+    const body: Record<string, unknown> = { images }
     if (args.numColors != null) body.num_colors = args.numColors
     if (args.paletteImage) body.palette_image = args.paletteImage
     if (args.dithering) body.dithering = args.dithering
@@ -1408,8 +1489,10 @@ export class PixelLabClient {
       await this.request<unknown>("/reduce-colors", { method: "POST", body: JSON.stringify(body) }),
       "reduce-colors",
     )
+    const pngs = cleanupResults(res.images, images.length, "reduce-colors")
     return {
-      png: Buffer.from(res.images[0]!.base64, "base64"),
+      png: pngs[0]!,
+      pngs,
       paletteStripPng: Buffer.from(res.palette.base64, "base64"),
       nColors: res.n_colors,
       usage: res.usage,
@@ -1419,19 +1502,153 @@ export class PixelLabClient {
   /**
    * `/correct-pixelart`, PixelLab's "Cleanup" tier: sharpen edges and drop
    * stray pixels without resizing, synchronously — same shape as
-   * `reduceColors` above, no background job. Cost is likewise confirmed
-   * live at 0.1 generations for a 32x32 source, not the schema's own
+   * `reduceColors` above, no background job, and likewise corrects several
+   * same-size frames together when given `images`. Cost is confirmed live
+   * at 0.1 generations for a 32x32 source, not the schema's own
    * dollar-denominated example (`usage: {type: "usd", usd: 0.02}`).
    */
-  async correctPixelart(args: { image: Base64Image; strength?: number }): Promise<{ png: Buffer; usage: unknown }> {
-    const body: Record<string, unknown> = { images: [args.image] }
+  async correctPixelart(args: {
+    image?: Base64Image
+    images?: Base64Image[]
+    strength?: number
+  }): Promise<{ png: Buffer; pngs: Buffer[]; usage: unknown }> {
+    const images = cleanupImages(args, "correct-pixelart")
+    const body: Record<string, unknown> = { images }
     if (args.strength != null) body.strength = args.strength
     const res = validateResponse(
       CorrectPixelartResponseSchema,
       await this.request<unknown>("/correct-pixelart", { method: "POST", body: JSON.stringify(body) }),
       "correct-pixelart",
     )
-    return { png: Buffer.from(res.images[0]!.base64, "base64"), usage: res.usage }
+    const pngs = cleanupResults(res.images, images.length, "correct-pixelart")
+    return { png: pngs[0]!, pngs, usage: res.usage }
+  }
+
+  /**
+   * `/unzoom`: recover native-resolution pixel art from an upscaled image (a
+   * 32x32 sprite saved at 512x512). Synchronous like the Cleanup tier.
+   * PixelLab's own API overview names this "the most common cause of
+   * disappointing output": run it on outside artwork before it becomes a
+   * style or reference image. The input must be at least 256x256 and at
+   * most 2048x2048 in area, and the result is opaque — transparency is
+   * composited onto white before the grid is detected. `quantize` is 0 to
+   * auto-detect a palette, -1 to keep every color, or 2-256 for exactly
+   * that many.
+   */
+  async unzoom(args: { image: Base64Image; quantize?: number }): Promise<{
+    png: Buffer
+    originalSize: { width: number; height: number }
+    unzoomedSize: { width: number; height: number }
+    zoomFactor: number
+    usage: unknown
+  }> {
+    const body: Record<string, unknown> = { image: args.image }
+    if (args.quantize != null) body.quantize = args.quantize
+    const res = validateResponse(
+      UnzoomResponseSchema,
+      await this.request<unknown>("/unzoom", { method: "POST", body: JSON.stringify(body) }),
+      "unzoom",
+    )
+    return {
+      png: Buffer.from(res.image.base64, "base64"),
+      originalSize: { width: res.original_size.width, height: res.original_size.height },
+      unzoomedSize: { width: res.unzoomed_size.width, height: res.unzoomed_size.height },
+      zoomFactor: res.zoom_factor_detected,
+      usage: res.usage,
+    }
+  }
+
+  /**
+   * `/interpolation-v2` ("Interpolate (Pro)"): generate the in-between
+   * frames from one keyframe to another, guided by a short `action`. Unlike
+   * `last_frame` on `/animate-with-text-v3`, both ends are required and the
+   * frame count is the model's own choice (its docs say "typically 4-8").
+   * Output frames are 16 to 128 pixels per side. A plain background job;
+   * its completed shape is read defensively by `pollAnimateRevision`.
+   */
+  async interpolationV2(args: {
+    startImage: Base64Image
+    endImage: Base64Image
+    width: number
+    height: number
+    action: string
+    seed?: number
+    noBackground?: boolean
+  }): Promise<{ background_job_id: string; status: string }> {
+    const size = { width: args.width, height: args.height }
+    const body: Record<string, unknown> = {
+      start_image: { image: args.startImage, size },
+      end_image: { image: args.endImage, size },
+      action: args.action,
+      image_size: size,
+    }
+    if (args.seed != null) body.seed = args.seed
+    if (args.noBackground != null) body.no_background = args.noBackground
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/interpolation-v2", { method: "POST", body: JSON.stringify(body) }),
+      "interpolation-v2",
+    )
+  }
+
+  /**
+   * `/edit-animation-v2` ("Edit animation (Pro)"): apply one text edit
+   * across every frame of an existing animation at once, so the change
+   * stays consistent frame to frame. 2 to 16 frames, but the real ceiling
+   * shrinks with frame size because every frame is packed into one grid:
+   * 16 at up to 64px, 9 at 65-80px, 4 at 81-256px.
+   */
+  async editAnimationV2(args: {
+    frames: Base64Image[]
+    width: number
+    height: number
+    description: string
+    seed?: number
+    noBackground?: boolean
+  }): Promise<{ background_job_id: string; status: string }> {
+    const size = { width: args.width, height: args.height }
+    const body: Record<string, unknown> = {
+      description: args.description,
+      frames: args.frames.map((image) => ({ image, size })),
+      image_size: size,
+    }
+    if (args.seed != null) body.seed = args.seed
+    if (args.noBackground != null) body.no_background = args.noBackground
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/edit-animation-v2", { method: "POST", body: JSON.stringify(body) }),
+      "edit-animation-v2",
+    )
+  }
+
+  /**
+   * `/generate-font-pro`: an 80-glyph pixel font (A-Z, a-z, 0-9, common
+   * game-UI punctuation) from a style description, delivered as a glyph
+   * atlas PNG plus a ready-to-use `.ttf`. Documented at 25 subscription
+   * generations. Poll with `getFontJob`.
+   */
+  async generateFontPro(args: {
+    description: string
+    weight: "Bold" | "Regular"
+    glyphPx?: 8 | 16 | 32 | 64
+    seed?: number
+    fontName?: string
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { description: args.description, weight: args.weight }
+    if (args.glyphPx != null) body.glyph_px = args.glyphPx
+    if (args.seed != null) body.seed = args.seed
+    if (args.fontName) body.font_name = args.fontName
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/generate-font-pro", { method: "POST", body: JSON.stringify(body) }),
+      "generate-font-pro",
+    )
+  }
+
+  /** `GET /generate-font-pro/{job_id}`: status, then no-auth atlas and `.ttf` URLs once completed. */
+  async getFontJob(jobId: string): Promise<z.output<typeof FontJobSchema>> {
+    const raw = await this.request<unknown>(`/generate-font-pro/${encodeURIComponent(jobId)}`)
+    return validateResponse(FontJobSchema, raw, "generate-font-pro/{job_id}")
   }
 
   /**

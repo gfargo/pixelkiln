@@ -169,9 +169,22 @@ were the correct source instead. Wired up as the `revision` asset shape's
 `reduce-colors`/`correct-pixelart` modes; see [Controlled asset
 revisions](./REVISIONS.md#cleanup-reduce-colors-and-correct-pixelart). Only
 confirmed at this one size — whether it stays flat at larger canvases (unlike
-`inpaint`'s canvas-tiered cost) is not yet known, and multi-frame batch input
-(both endpoints are built to quantize/clean several frames in one call) is
-unmeasured and unmodeled.
+`inpaint`'s canvas-tiered cost) is not yet known. Multi-frame input (both
+endpoints quantize/clean several same-size frames in one call, onto one
+shared palette) is now modeled: a revision whose parent is a set sends every
+member together; see [Revising a whole set at
+once](./REVISIONS.md#revising-a-whole-set-at-once). Its price per call is
+unmeasured.
+
+`/unzoom` (same `Cleanup` tag, also synchronous) recovers native-resolution
+pixel art from an upscaled image: at least 256×256 in, at most 2048×2048 in
+area, and the result is opaque (transparency is composited onto white before
+grid detection). PixelLab's own API overview tells integrators to run it on
+any user-supplied reference art first. Wired up as `pixelkiln unzoom`, a
+standalone command on a loose file rather than a revision mode, since the
+art it is for (a reference pulled from outside) is not a manifest asset; see
+[the CLI reference](./CLI.md#unzoom). Cost unmeasured; PixelLab's MCP tool
+description claims 0.1 generations, the same as the rest of the tier.
 
 ---
 
@@ -533,13 +546,25 @@ Listed so the gaps are known rather than assumed away:
   required — are now wired up as the `revision` asset shape's `animate` and
   `animate-pixminimax` modes; see
   [Animation and interpolation](./REVISIONS.md#animation-and-interpolation).
-  Both are schema-only for the *request* (live OpenAPI document, not an
+  `/interpolation-v2` ("Interpolate (Pro)", in-betweens from one keyframe to
+  another) and `/edit-animation-v2` ("Edit animation (Pro)", one text edit
+  across every frame of a set) are wired the same way, as the `interpolate`
+  and `edit-animation` modes; see
+  [Interpolate between two keyframes](./REVISIONS.md#interpolate-between-two-keyframes).
+  All four are schema-only for the *request* (live OpenAPI document, not an
   observed call); the *completed job* response shape is a genuine unknown —
   no usage example exists for either endpoint at all, only the generic
   background-job one — so `pollAnimateRevision` checks several plausible
   field names defensively rather than assume one. Cost borrows `character`'s
   own measured v3-loop formula as a placeholder, for the same reason
-  `objectPro` borrowed `character` pro-flash's.
+  `objectPro` borrowed `character` pro-flash's; `interpolate` and
+  `edit-animation` borrow the 20/25/40 Pro canvas tiers instead, since
+  neither schema carries a usage example.
+- `/generate-font-pro` (+ `GET /generate-font-pro/{job_id}`) — an 80-glyph
+  atlas PNG plus a `.ttf` from a style description, `weight`
+  (`Bold`/`Regular`), and `glyph_px` (8/16/32/64). Documented at 25
+  generations, unmeasured. Wired up as `pixelkiln font`, outside the
+  manifest; see [the CLI reference](./CLI.md#font).
 - Everything else PixelLab's own tutorials demonstrate that this file has no
   entry for at all — "animation to animation" motion transfer,
   skeleton-animation's rig/template-style controls, Object Creator, and Map
@@ -555,7 +580,8 @@ Listed so the gaps are known rather than assumed away:
   (the standalone isometric tile endpoint alongside it now has one real
   measured data point — see above)
 - `generate-font-pro`, job-based, with a response shape not in the simple
-  `{usage, image}` form
+  `{usage, image}` form (wrapped by `pixelkiln font`, but its cost is not
+  yet measured)
 - the character family beyond what the `character` generator uses: portraits
   (`portrait-character-pro` both ways, `/characters/{id}/portrait`), outfit
   transfer (`transfer-outfit-v2`), lip-sync, skeleton animation, and

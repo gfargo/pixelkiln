@@ -120,7 +120,8 @@
                 "imagePro",
                 "isometricTile",
                 "objectPro",
-                "uiAsset"
+                "uiAsset",
+                "uiElement"
               ],
               "default": "map"
             },
