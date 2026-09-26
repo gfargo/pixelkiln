@@ -442,6 +442,12 @@ export class ComfyUIProvider implements Provider {
       throw new Error("ComfyUI providerOptions.frames requires generator: frames")
     }
     if (spec.revision) {
+      if (spec.revision.engine) {
+        throw new Error(
+          `ComfyUI has no "${spec.revision.engine}" revision engine; that selects PixelLab's Pro Flash edit/inpaint ` +
+            "endpoints. Drop engine to run the revision through this style's own workflow.",
+        )
+      }
       if (spec.revision.sourceMembers) {
         throw new Error(
           `ComfyUI revisions read one source image; ${spec.revision.sourceAssetId} is a ` +

@@ -399,6 +399,19 @@ approval gate before shipping. See the
 
 ## PixelLab
 
+`"engine": "pro-flash"` on an `image-to-image` or `inpaint` revision sends it to
+PixelLab's Pro Flash tier instead: `/edit-image-pro-flash` (a text edit at the
+source's own size; the canvas never grows) or `/inpaint-image-pro-flash`
+(replaces only the mask's white pixels and keeps the rest exactly). It is the
+same model the `imageProFlash` generator and the `pro-flash` character engine
+use, priced on the same provisional Pro Flash tier (5 generations up to 96px,
+6 up to 208px, 9 beyond) instead of the 20–40 of the default Pro endpoints.
+Sources must be 32 to 256px per side in multiples of 4; `strength` is refused,
+since neither endpoint has one. The finished job is read the same way as the
+default endpoints'. PixelLab also offers reference-image edits, a
+`context_image` around an inpaint, and inpaint output layers; none is modeled
+yet.
+
 PixelLab needs no bindings: `image-to-image` calls `/edit-images-v2`,
 `inpaint` calls `/inpaint-v3`, both as a plain background job polled the same
 way as every other PixelLab submission. `reduce-colors` calls `/reduce-colors`

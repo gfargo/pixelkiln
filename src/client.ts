@@ -301,6 +301,17 @@ const CorrectPixelartResponseSchema = z
     usage: z.unknown().optional(),
   })
   .passthrough()
+/** Every Pro Flash image endpoint answers with the same job shape; `source_image_id` is the durable id a later character or object can reuse. */
+const ProFlashImageSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    image_id: z.string().min(1),
+    source_image_id: z.string().min(1),
+    status: z.string().default("processing"),
+    estimated_generations: z.number().nullable().optional(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
 const UnzoomResponseSchema = z
   .object({
     image: z.object({ base64: z.string().min(1) }).passthrough(),
@@ -936,13 +947,17 @@ export class PixelLabClient {
     styleReference?: Base64Image
     styleReferenceSize?: { width: number; height: number }
     styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
+    /** An owned image already holding the reference's exact pixels, sent instead of uploading them. */
+    sourceImageId?: string
   }): Promise<{ object_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
     const traits = args.styleTraits
     const body: Record<string, unknown> = {
       description: args.description,
       n_directions: args.directions,
-      ...(args.reference ? { first_frame: encode(args.reference) } : { image_size: { width: args.size, height: args.size } }),
+      ...(args.sourceImageId
+        ? { source_image_id: args.sourceImageId }
+        : args.reference ? { first_frame: encode(args.reference) } : { image_size: { width: args.size, height: args.size } }),
       ...(args.view ? { view: args.view } : {}),
       ...(args.seed != null ? { seed: args.seed } : {}),
       ...(args.styleReference && args.styleReferenceSize
@@ -1120,6 +1135,8 @@ export class PixelLabClient {
     /** pro-flash only: the style image's native size, and which traits it lends. */
     styleReferenceSize?: { width: number; height: number }
     styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
+    /** pro-flash only: an owned image already holding the south sprite's exact pixels, sent instead of uploading them. */
+    sourceImageId?: string
   }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const imageSize = { width: args.size, height: args.size }
     const palette = args.paletteSwatchBase64
@@ -1152,8 +1169,11 @@ export class PixelLabClient {
         description: args.description,
         template_id: args.template,
         n_directions: 8,
-        // The author's sprite sets the canvas; a size only applies to text creation.
-        ...(south ? { first_frame: encode(south) } : { image_size: imageSize }),
+        // The author's sprite sets the canvas; a size only applies to text
+        // creation. An owned copy of the same sprite is referenced by id.
+        ...(args.sourceImageId
+          ? { source_image_id: args.sourceImageId }
+          : south ? { first_frame: encode(south) } : { image_size: imageSize }),
         ...(args.view ? { view: args.view } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
         ...(args.styleReference && args.styleReferenceSize
@@ -1514,6 +1534,88 @@ export class PixelLabClient {
       RevisionJobSubmitSchema,
       await this.request<unknown>("/generate-image-v2", { method: "POST", body: JSON.stringify(body) }),
       "generate-image-v2",
+    )
+  }
+
+  /**
+   * `/create-image-pro-flash`: one native pixel-art image from a
+   * description, optionally styled after a style image with per-trait
+   * toggles, on the same Pro Flash model `character`/`objectPro` use for
+   * their `pro-flash` engine. Sizes run 16 to 256 per side in multiples of 4.
+   * A plain background job; `pollRevision`'s generic reader takes the
+   * finished image. The response's `source_image_id` is what a Pro Flash
+   * character or object can reuse instead of an upload.
+   */
+  async createImageProFlash(args: {
+    description: string
+    width: number
+    height: number
+    noBackground?: boolean
+    seed?: number
+    styleImage?: { image: Base64Image; width: number; height: number }
+    styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
+  }): Promise<z.output<typeof ProFlashImageSubmitSchema>> {
+    const body: Record<string, unknown> = {
+      description: args.description,
+      image_size: { width: args.width, height: args.height },
+    }
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.seed != null) body.seed = args.seed
+    if (args.styleImage) {
+      body.style_image = { image: args.styleImage.image, size: { width: args.styleImage.width, height: args.styleImage.height } }
+      const traits = args.styleTraits
+      if (traits) {
+        body.style_options = {
+          ...(traits.palette !== undefined ? { color_palette: traits.palette } : {}),
+          ...(traits.outline !== undefined ? { outline: traits.outline } : {}),
+          ...(traits.detail !== undefined ? { detail: traits.detail } : {}),
+          ...(traits.shading !== undefined ? { shading: traits.shading } : {}),
+        }
+      }
+    }
+    return validateResponse(
+      ProFlashImageSubmitSchema,
+      await this.request<unknown>("/create-image-pro-flash", { method: "POST", body: JSON.stringify(body) }),
+      "create-image-pro-flash",
+    )
+  }
+
+  /** `/edit-image-pro-flash`, text method: edit one image at its own size. The canvas never grows or resizes. */
+  async editImageProFlash(args: {
+    image: Base64Image
+    description: string
+    noBackground?: boolean
+    seed?: number
+  }): Promise<z.output<typeof ProFlashImageSubmitSchema>> {
+    const body: Record<string, unknown> = { image: args.image, method: "text", description: args.description }
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      ProFlashImageSubmitSchema,
+      await this.request<unknown>("/edit-image-pro-flash", { method: "POST", body: JSON.stringify(body) }),
+      "edit-image-pro-flash",
+    )
+  }
+
+  /**
+   * `/inpaint-image-pro-flash`: replace only the white pixels of a same-size
+   * black/white mask, keeping everything else exactly. `Modify current
+   * layer` (the endpoint's default) returns the full composite.
+   */
+  async inpaintImageProFlash(args: {
+    image: Base64Image
+    maskImage: Base64Image
+    description: string
+    noBackground?: boolean
+    seed?: number
+  }): Promise<z.output<typeof ProFlashImageSubmitSchema>> {
+    const body: Record<string, unknown> = { image: args.image, mask_image: args.maskImage, description: args.description }
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      ProFlashImageSubmitSchema,
+      await this.request<unknown>("/inpaint-image-pro-flash", { method: "POST", body: JSON.stringify(body) }),
+      "inpaint-image-pro-flash",
     )
   }
 

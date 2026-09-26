@@ -116,7 +116,7 @@ One asset using the fields most projects reach for:
 |---|---|---|
 | `extends` | style id | Optional parent style. The child inherits resolved settings but must declare its own `outDir`. |
 | `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
-| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, `objectPro`, `uiAsset`, `uiElement`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
+| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, `objectPro`, `uiAsset`, `uiElement`, `imageProFlash`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
@@ -144,7 +144,7 @@ One asset using the fields most projects reach for:
 | `isometric` | `false` | `character` only. Draw `standard` bases and every loop in isometric view. |
 | `enhancePrompt` | `false` | `character` only, `v3` bases. Let PixelLab expand the prompt into a fuller one before drawing. |
 | `styleCharacter` | | `character` only, `pro` bases. The asset id of a generated 8-direction character in this style whose look bases drawn from text or a concept follow. An asset may override it. |
-| `styleTraits` | all true | `character` only, `pro-flash` bases with a style image. `{ palette, outline, detail, shading }` booleans: which traits the style image lends. |
+| `styleTraits` | all true | `character` `pro-flash` bases and `imageProFlash` styles, with a style image. `{ palette, outline, detail, shading }` booleans: which traits the style image lends. |
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
@@ -481,6 +481,7 @@ their own page: [Characters](./CHARACTERS.md) and
 | `lastFrame` | string | `animate`/`animate-pixminimax`: manifest-relative image pinning where the motion ends, turning an open-ended animation into an interpolation. `interpolate`: required, the ending keyframe (the parent is the start); it must match the parent's size. |
 | `direction` | enum | `animate-pixminimax` only. The sprite's facing, used only alongside `enhancePrompt`. |
 | `enhancePrompt` | boolean | `animate`/`animate-pixminimax` only. Lets the provider expand the prompt into a fuller motion description first, for an extra documented +0.05-generation surcharge. |
+| `engine` | enum | `image-to-image`/`inpaint` only. `pro-flash` draws the edit with PixelLab's Pro Flash edit or inpaint endpoint instead of the default Pro one: 5–9 generations instead of 20–40, 32 to 256px per side in multiples of 4, no `strength`. Omit for the default. |
 
 The parent may use committed `source`, downloaded generated output, or a
 current approved quality output. Parent and mask hashes participate in the

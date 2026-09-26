@@ -17,6 +17,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose, 1 per template loop | one set of directions, or one ordered loop |
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 | One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 20–40 generations (unmeasured) | 1 image |
+| A styled still on the Pro Flash model, or the south sprite a Pro Flash character will rotate | `imageProFlash` | 5–9 generations (PixelLab's provisional quote) | 1 image |
 
 Start with `map` unless a required capability points elsewhere. Forty `map`
 re-rolls cost the same as one 64×64 `1dir` call.
@@ -403,6 +404,49 @@ the measured call proves the formula wrong here, since it billed the floor
 price at an area well above where `1dir`/`tiles` would bill the ceiling.
 Left as an over-read for `--budget` until a second size is measured; see
 [ENDPOINTS.md](./ENDPOINTS.md) for the full writeup.
+
+## `imageProFlash`
+
+`imageProFlash` wraps PixelLab's `/create-image-pro-flash`: one native
+pixel-art image on the Pro Flash model, the same model the `character` and
+`objectPro` `pro-flash` engines draw with, as a plain still. It sits between
+`pixflux`/`map` (1 generation, no style reference) and `imagePro` (a flat 40):
+
+```jsonc
+{
+  "styles": {
+    "stills": {
+      "generator": "imageProFlash",
+      "styleImages": [{ "path": "refs/house-style.png" }],
+      "styleTraits": { "palette": true, "outline": true, "detail": false, "shading": true },
+      "outDir": "art/stills"
+    }
+  },
+  "assets": {
+    "knight": { "prompt": "a knight in blue armor, facing the viewer", "width": 64, "height": 64 }
+  }
+}
+```
+
+- Sizes run 16 to 256 per side in multiples of 4, and can be non-square.
+  PixelLab's native sizes (24, 32, 32×48, 64, 96×64, 96) are its most
+  reliable; other sizes are its "custom (beta)" range.
+- One `styleImages` entry is the style image, and `styleTraits` choose what
+  it lends (palette, outline, detail, shading; each on by default), the same
+  switches a `pro-flash` character base takes. Traits without a style image
+  are refused.
+- One call returns one image, recorded straight away. The lock also records
+  PixelLab's `image_id` and `source_image_id` for it: a Pro Flash `character`
+  or `objectPro` base whose `reference` is this image's downloaded file
+  reuses it by that id instead of uploading the same pixels again (see
+  [Characters](./CHARACTERS.md#starting-from-your-own-sprite)).
+- **Cost:** 5 generations up to 96px on the longer side, 6 up to 208px, 9
+  beyond, from PixelLab's own `/pro-flash/cost` quotes, which PixelLab calls
+  provisional. The billed amount on the finished job is what the lock keeps.
+
+The same model also edits and inpaints: `"engine": "pro-flash"` on an
+`image-to-image` or `inpaint` revision; see
+[Controlled asset revisions](./REVISIONS.md#pixellab).
 
 ## `uiElement`
 

@@ -46,7 +46,8 @@
                       "isometricTile",
                       "objectPro",
                       "uiAsset",
-                      "uiElement"
+                      "uiElement",
+                      "imageProFlash"
                     ],
                     "default": "map"
                   },
@@ -503,7 +504,8 @@
                       "isometricTile",
                       "objectPro",
                       "uiAsset",
-                      "uiElement"
+                      "uiElement",
+                      "imageProFlash"
                     ],
                     "default": "map"
                   },
@@ -1079,6 +1081,12 @@
                   },
                   "enhancePrompt": {
                     "type": "boolean"
+                  },
+                  "engine": {
+                    "type": "string",
+                    "enum": [
+                      "pro-flash"
+                    ]
                   }
                 },
                 "required": [

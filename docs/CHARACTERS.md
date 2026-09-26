@@ -120,6 +120,16 @@ is read again at submit time and refused if it changed since `plan`.
 States, animations, and mirrors take their look from their parent and
 cannot carry a reference.
 
+A `pro-flash` base's reference can be an image PixelKiln drew with the
+[`imageProFlash`](./GENERATORS.md#imageproflash) generator: point `reference`
+at that asset's downloaded file. When the file is byte-for-byte the output of
+an `imageProFlash` lock entry, submit sends PixelLab that image's
+`source_image_id` instead of uploading the same pixels, and the character is
+drawn from the exact image PixelLab already holds. The price is the same
+either way (the rotations only); the difference is that nothing is
+re-encoded. Generate and fetch the still before planning the character, so
+the file exists. An `objectPro` base's reference is handled the same way.
+
 ### Concept images and style anchors (pro)
 
 The pro engine has two more ways in. `concept` on a base names a concept
