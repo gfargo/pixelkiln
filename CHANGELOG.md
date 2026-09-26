@@ -1,3 +1,10 @@
+# [0.67.0](https://github.com/gfargo/pixelkiln/compare/v0.66.0...v0.67.0) (2026-09-26)
+
+
+### Features
+
+* **pixellab:** add animate-skeleton revision mode and estimate-skeleton ([bb2d1b5](https://github.com/gfargo/pixelkiln/commit/bb2d1b57337dce6eddae9f164758e86ce1b3b61d))
+
 # [0.66.0](https://github.com/gfargo/pixelkiln/compare/v0.65.0...v0.66.0) (2026-09-26)
 
 
