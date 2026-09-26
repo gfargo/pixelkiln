@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { mkdtemp, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -27,6 +27,12 @@ import { createGalleryEditHandler } from "../src/gallery/edit.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { renderGallery } from "../src/gallery/page.ts"
 import { lockKey, primaryOutput, type Lock } from "../src/types.ts"
+
+/** The gallery client as written: its typed modules, read for what they say rather than as bundled. */
+const clientSource = () => readdirSync(new URL("../src/gallery/client/src/", import.meta.url))
+  .filter((f) => f.endsWith(".ts"))
+  .map((f) => readFileSync(new URL(`../src/gallery/client/src/${f}`, import.meta.url), "utf8"))
+  .join("\n")
 
 let dir: string
 let lockPath: string
@@ -273,7 +279,9 @@ describe("POST /api/edit save-edit", () => {
 
   it("renders the sheet's host side into the page", () => {
     const snapshot = { items: [], styles: [], totals: { entries: 0 }, project: { name: "x", manifest: "m", lock: "l" } } as never
-    const page = renderGallery(snapshot, { editable: true, editor: true, session: "0".repeat(32) })
+    const rendered = renderGallery(snapshot, { editable: true, editor: true, session: "0".repeat(32) })
+    expect(rendered).toContain("pixelkiln:open")
+    const page = clientSource()
     for (const type of ["pixelkiln:open", "pixelkiln:request-save", "pixelkiln:ready", "pixelkiln:opened", "pixelkiln:dirty", "pixelkiln:save", "pixelkiln:error"]) {
       expect(page).toContain(`'${type}'`)
     }
@@ -286,6 +294,6 @@ describe("POST /api/edit save-edit", () => {
     expect(page).toContain("' restored'")
     expect(page).toContain("Discard unsaved changes in the editor?")
     expect(page).toContain("beforeunload")
-    expect(page).toContain("e.source === SHEET.frame.contentWindow")
+    expect(page).toContain("e.source === S.SHEET.frame.contentWindow")
   })
 })

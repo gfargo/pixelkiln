@@ -1,18 +1,18 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["node"],
     "strict": true,
-    "noUncheckedIndexedAccess": true,
+    "noImplicitAny": false,
+    "useUnknownInCatchVariables": false,
+    "noUnusedLocals": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/gallery/client/src"]
+  "include": ["*.ts"]
 }

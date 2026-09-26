@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { bundleGalleryClient } from "./client-bundle.ts"
 import type { GallerySnapshot } from "./snapshot.ts"
 
 /**
@@ -30,21 +31,22 @@ export interface RenderGalleryOptions {
 }
 
 /**
- * The page's stylesheet and client script are real files beside this module
- * (`client/gallery.css`, `client/gallery.js`), read once per process and
- * inlined into the HTML. They used to live inside this template literal,
- * where a backtick or an unescaped `\n` broke the emitted script silently;
- * as files they parse, lint, and open in a browser as themselves. The build
- * copies them next to the bundle, so the same relative URL resolves in
- * source, in tests, and in `dist/`.
+ * The page's stylesheet and client script are real files beside this module,
+ * read once per process and inlined into the HTML. They used to live inside
+ * this template literal, where a backtick or an unescaped `\n` broke the
+ * emitted script silently. The script is written as typed modules in
+ * `client/src/`: `dist/` carries them prebuilt as `client/gallery.js`, and a
+ * source checkout bundles them on first use (see client-bundle.ts), so the
+ * same relative URL resolves in source, in tests, and in `dist/`.
  */
 const CLIENT_DIR = new URL("./client/", import.meta.url)
 let client: { css: string; js: string } | undefined
 
 function clientAssets(): { css: string; js: string } {
+  const prebuilt = new URL("gallery.js", CLIENT_DIR)
   client ??= {
     css: readFileSync(new URL("gallery.css", CLIENT_DIR), "utf8"),
-    js: readFileSync(new URL("gallery.js", CLIENT_DIR), "utf8"),
+    js: existsSync(prebuilt) ? readFileSync(prebuilt, "utf8") : bundleGalleryClient(),
   }
   return client
 }

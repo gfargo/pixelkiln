@@ -93,11 +93,12 @@ const server = await serveGallery({
   }),
 })
 
-// The page's script declares these at top level, where a function evaluated
-// in the page sees them as bare names (a lexical binding is not a property
-// of globalThis).
-declare const snap: { items: { id: string; state: string; outputs: { sha256: string }[]; history: { index: number; outputs: { sha256: string }[] }[] }[] }
-declare const ui: { notice: { text: string } | null }
+// The page's state lives inside its bundle; main.ts exposes it on
+// `window.__pixelkiln` for exactly this kind of test.
+declare const __pixelkiln: {
+  S: { snap: { items: { id: string; state: string; outputs: { sha256: string }[]; history: { index: number; outputs: { sha256: string }[] }[] }[] } }
+  ui: { notice: { text: string } | null }
+}
 
 const failures: string[] = []
 const check = (ok: unknown, what: string) => {
@@ -124,17 +125,17 @@ try {
   await page.goto(server.url, { waitUntil: "networkidle0" })
 
   const item = (id: string) => page.evaluate((key) => {
-    const found = snap.items.find((x) => x.id === key)
+    const found = __pixelkiln.S.snap.items.find((x) => x.id === key)
     return found ? { state: found.state, sha: found.outputs[0]?.sha256 ?? null, history: found.history.map((g) => g.outputs[0]?.sha256 ?? null) } : null
   }, id)
   const drawerButtons = () => page.evaluate(() => [...document.querySelectorAll(".drawer .gen button")].map((b) => b.textContent ?? ""))
-  const notice = () => page.evaluate(() => ui.notice?.text ?? "")
-  const noticeMatches = (pattern: string) => page.waitForFunction((re: string) => new RegExp(re).test(ui.notice?.text ?? ""), { timeout: 30_000, polling: 200 }, pattern)
+  const notice = () => page.evaluate(() => __pixelkiln.ui.notice?.text ?? "")
+  const noticeMatches = (pattern: string) => page.waitForFunction((re: string) => new RegExp(re).test(__pixelkiln.ui.notice?.text ?? ""), { timeout: 30_000, polling: 200 }, pattern)
   // The notice lands before the snapshot refresh that follows it, so wait for
   // the record itself to show the result.
   const waitForItem = (id: string, test: string) => page.waitForFunction(
     (key: string, src: string) => {
-      const found = snap.items.find((x) => x.id === key)
+      const found = __pixelkiln.S.snap.items.find((x) => x.id === key)
       return Boolean(found) && new Function("item", `return ${src}`)(found)
     },
     { timeout: 30_000, polling: 200 },

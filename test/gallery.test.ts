@@ -15,6 +15,7 @@ import { sha256 } from "../src/hash.ts"
 import { lockKey, type Lock } from "../src/types.ts"
 import { buildGallerySnapshot, buildWorkspaceGallerySnapshot, galleryMediaId } from "../src/gallery/snapshot.ts"
 import { renderGallery } from "../src/gallery/page.ts"
+import { bundleGalleryClient } from "../src/gallery/client-bundle.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { parseArgs } from "../src/cli/args.ts"
 import { announceGalleryReady } from "../src/cli/io.ts"
@@ -483,12 +484,14 @@ describe("renderGallery", () => {
   })
 
   it("keeps the inlined client files free of anything that would close their tags", () => {
-    const dir = new URL("../src/gallery/client/", import.meta.url)
-    const js = readFileSync(new URL("gallery.js", dir), "utf8")
-    const css = readFileSync(new URL("gallery.css", dir), "utf8")
+    // The script is inlined as a value, so a `${` in it is harmless; only
+    // something that ends the <script> or <style> element early is not.
+    const js = bundleGalleryClient()
+    const css = readFileSync(new URL("../src/gallery/client/gallery.css", import.meta.url), "utf8")
     expect(js).not.toMatch(/<\/script/i)
     expect(css).not.toMatch(/<\/style/i)
-    expect(js).not.toContain("${")
+    // One classic script: the page declares INITIAL and friends ahead of it.
+    expect(js).not.toMatch(/^\s*(import|export)\s/m)
   })
 })
 
@@ -1199,7 +1202,7 @@ describe("gallery CLI surface", () => {
   it("shows a record and its card what a job is doing to it", () => {
     const snapshot = { items: [], styles: [], totals: { entries: 0 }, project: { name: "x", manifest: "m", lock: "l" } } as never
     const page = renderGallery(snapshot, { generation: true, session: "0".repeat(32) })
-    expect(page).toContain("const activeJobFor = (item) =>")
+    expect(page).toMatch(/\bactiveJobFor = \(item\) =>/)
     expect(page).toContain("function jobStrip(item, job)")
     expect(page).toContain("if (job) body.append(jobStrip(item, job));")
     expect(page).toContain("busy-badge")
