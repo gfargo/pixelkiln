@@ -93,6 +93,16 @@ export function parseSkeletonSet(json: unknown, file: string): SkeletonSet {
   return result.data
 }
 
+/** `/estimate-skeleton`'s own documented sizes: square, 16 to 256. */
+export const ESTIMATE_SKELETON_SIZES = [16, 32, 64, 128, 256] as const
+
+/** Why `/estimate-skeleton` would refuse an image this size, or null when it takes it. */
+export function estimateSkeletonSizeProblem(width: number, height: number): string | null {
+  return width === height && (ESTIMATE_SKELETON_SIZES as readonly number[]).includes(width)
+    ? null
+    : `${width}x${height}; estimate-skeleton takes a square image of ${ESTIMATE_SKELETON_SIZES.join(", ")} pixels`
+}
+
 /** Frames `estimate-skeleton` scaffolds by default: a short cycle to edit. */
 export const DEFAULT_SCAFFOLD_FRAMES = 4
 

@@ -18,13 +18,16 @@ import { clientFromEnv } from "../../client.ts"
 import { loadManifest, resolveSpecs } from "../../manifest.ts"
 import { imageMetadata } from "../../media.ts"
 import { decodePng } from "../../png.ts"
-import { DEFAULT_SCAFFOLD_FRAMES, parseSkeletonSet, scaffoldSkeletonSet, type SkeletonSet } from "../../skeleton.ts"
+import {
+  DEFAULT_SCAFFOLD_FRAMES,
+  estimateSkeletonSizeProblem,
+  parseSkeletonSet,
+  scaffoldSkeletonSet,
+  type SkeletonSet,
+} from "../../skeleton.ts"
 import { renderSkeletonSheet } from "../../skeleton-preview.ts"
 import { log } from "../io.ts"
 import type { Args } from "../args.ts"
-
-/** `/estimate-skeleton`'s own documented sizes: square, 16 to 256. */
-export const ESTIMATE_SKELETON_SIZES = [16, 32, 64, 128, 256] as const
 
 export async function runEstimateSkeleton(args: Args): Promise<void> {
   const image = args.target
@@ -44,12 +47,8 @@ export async function runEstimateSkeleton(args: Args): Promise<void> {
   const bytes = await readFile(path.resolve(image))
   const metadata = imageMetadata(bytes)
   if (!metadata) throw new UsageError(`${image} is not a readable PNG or JPEG`)
-  if (metadata.width !== metadata.height || !(ESTIMATE_SKELETON_SIZES as readonly number[]).includes(metadata.width)) {
-    throw new UsageError(
-      `${image} is ${metadata.width}x${metadata.height}; estimate-skeleton takes a square image of ` +
-        `${ESTIMATE_SKELETON_SIZES.join(", ")} pixels`,
-    )
-  }
+  const sizeProblem = estimateSkeletonSizeProblem(metadata.width, metadata.height)
+  if (sizeProblem) throw new UsageError(`${image} is ${sizeProblem}`)
 
   const client = clientFromEnv()
   const res = await client.estimateSkeleton({

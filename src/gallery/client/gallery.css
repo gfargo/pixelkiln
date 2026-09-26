@@ -321,3 +321,8 @@ form.edit .pal { margin-top:4px; }
   .drawer { animation: slide .16s ease-out; }
   @keyframes slide { from { transform: translateX(16px); opacity:.6; } to { transform:none; opacity:1; } }
 }
+.poses { display:flex; gap:6px; overflow-x:auto; padding:10px 0 4px; }
+.poses figure { margin:0; flex:none; display:grid; gap:3px; justify-items:center; }
+.poses svg.pose { width:112px; height:112px; background:var(--panel-deep); border:1px solid var(--line); image-rendering:pixelated; }
+.poses figcaption { font:10.5px/1 var(--mono); color:var(--dim); }
+textarea.mono { font-family:var(--mono); font-size:11.5px; }

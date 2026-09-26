@@ -78,17 +78,32 @@ const NewAssetSchema = z
     /**
      * A controlled regeneration of another asset in the same manifest,
      * instead of a fresh generation. `inpaint` needs a mask upload the
-     * gallery does not offer yet, so only `image-to-image` can be created
-     * here; hand-edit the manifest for the other modes.
+     * gallery does not offer yet, so only `image-to-image` and
+     * `animate-skeleton` (whose keypoints file the gallery writes first) can
+     * be created here; hand-edit the manifest for the other modes.
      */
     revision: z
-      .object({
-        mode: z.literal("image-to-image"),
-        /** Asset id of the parent this revises; must already exist. */
-        from: z.string().min(1),
-        strength: z.number().min(0).max(1).optional(),
-      })
-      .strict()
+      .discriminatedUnion("mode", [
+        z
+          .object({
+            mode: z.literal("image-to-image"),
+            /** Asset id of the parent this revises; must already exist. */
+            from: z.string().min(1),
+            strength: z.number().min(0).max(1).optional(),
+          })
+          .strict(),
+        z
+          .object({
+            mode: z.literal("animate-skeleton"),
+            from: z.string().min(1),
+            /** Manifest-relative; checked when the manifest is loaded, like every revision input. */
+            keypointsFile: z.string().min(1),
+            direction: CharacterDirectionSchema,
+            description: z.string().min(1).optional(),
+            skeletonTemplate: z.string().min(1).optional(),
+          })
+          .strict(),
+      ])
       .optional(),
     /** A pose or outfit of an existing `character`/`objectPro` base or state. */
     state: NewStateSchema.optional(),
