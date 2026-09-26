@@ -192,13 +192,6 @@ export const docs: DocEntry[] = [
     file: "SECURITY.md",
     group: "Policies",
   },
-  {
-    slug: "naming",
-    title: "Naming decision",
-    description: "Why the project is called PixelKiln.",
-    file: "NAMING.md",
-    group: "Policies",
-  },
 ];
 
 export const docGroups: DocGroup[] = ["Start here", "Providers", "Guides", "Reference", "Policies"];

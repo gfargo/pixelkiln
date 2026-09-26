@@ -29,7 +29,7 @@ for (const file of canonical) {
   if (!files.includes(file)) failures.push(`unpublished canonical guide: ${file}`);
 }
 
-for (const file of ["CONTRIBUTING.md", "SECURITY.md", "PROVIDERS.md", "NAMING.md"]) {
+for (const file of ["CONTRIBUTING.md", "SECURITY.md", "PROVIDERS.md"]) {
   if (!files.includes(file)) failures.push(`unpublished project guide: ${file}`);
 }
 
