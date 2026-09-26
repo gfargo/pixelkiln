@@ -1,3 +1,10 @@
+# [0.69.0](https://github.com/gfargo/pixelkiln/compare/v0.68.1...v0.69.0) (2026-09-26)
+
+
+### Features
+
+* **skeleton:** usable estimate-skeleton output, joint validation, and skeleton-preview ([476b218](https://github.com/gfargo/pixelkiln/commit/476b218a03922e9c44367ff394433e43e04ec285))
+
 ## [0.68.1](https://github.com/gfargo/pixelkiln/compare/v0.68.0...v0.68.1) (2026-09-26)
 
 # [0.68.0](https://github.com/gfargo/pixelkiln/compare/v0.67.0...v0.68.0) (2026-09-26)
