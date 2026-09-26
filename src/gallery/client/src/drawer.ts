@@ -1,5 +1,5 @@
 import { renderTray, toggleCompare } from "./compare.ts"
-import { $, S, STATE_TONE, displayScale, el, fmtBytes, fmtCost, fmtWhen, isFrameSet, projectOf, ui } from "./core.ts"
+import { $, S, STATE_TONE, displayScale, el, fmtBytes, fmtCost, fmtWhen, formRegion, isFrameSet, projectOf, ui } from "./core.ts"
 import { editForm, newAnimationForm, newStateForm } from "./family-forms.ts"
 import { newRevisionForm } from "./forms.ts"
 import { generateActions, historySection, jobStrip, renderHeader, renderMain, upstreamSection, visibleItems } from "./grid.ts"
@@ -126,6 +126,15 @@ export function renderPreview(item, host) {
     host.append(strip);
   }
 }
+
+/** How the drawer names each member of a character or object family. */
+const CHARACTER_KIND = {
+  base: 'base',
+  state: 'state (a pose or outfit of its parent)',
+  animation: 'animation',
+  portrait: 'portrait (a bust of its parent)',
+  outfit: 'outfit (its parent loop, re-clothed)',
+};
 
 export function renderDrawer() {
   const host = $('drawer-host');
@@ -256,7 +265,7 @@ export function renderDrawer() {
   if (item.character) {
     const c = item.character;
     const { s, dl } = section('Character');
-    row(dl, 'kind', c.kind === 'animation' ? 'animation' : c.kind === 'state' ? 'state (a pose or outfit of its parent)' : 'base');
+    row(dl, 'kind', CHARACTER_KIND[c.kind] || c.kind);
     if (c.parentKey) row(dl, 'parent', keyLink(item, c.parentKey));
     row(dl, 'engine', c.mode);
     if (c.kind === 'animation') row(dl, 'direction', c.direction || '—');
@@ -272,8 +281,9 @@ export function renderDrawer() {
       }
       row(dl, family.length === 1 ? 'depends on this' : family.length + ' depend on this', list);
     }
-    // A loop cannot itself be posed or animated further; only a base or state can.
-    if (canEdit && c.kind !== 'animation') {
+    // Only a base or a state can be posed or animated further; a loop,
+    // portrait, or outfit is an end product of its parent.
+    if (canEdit && (c.kind === 'base' || c.kind === 'state')) {
       const stateKey = 'state:' + item.id, animKey = 'anim:' + item.id;
       const addState = el('button', ui.editing === stateKey ? null : 'add', ui.editing === stateKey ? 'Cancel' : '+ New state');
       addState.type = 'button';
@@ -504,5 +514,19 @@ export function render() {
   renderHeader();
   renderMain(visibleItems());
   renderDrawer();
+  renderTray();
+}
+
+/**
+ * A redraw nobody asked for: a job landing, auto-refresh, the editor's
+ * status. Everything but the part holding an open form is redrawn; that
+ * part catches up when the form is saved or closed, which renders in full.
+ */
+export function renderQuietly() {
+  const region = formRegion();
+  writeUrlState();
+  renderHeader();
+  if (region !== 'main') renderMain(visibleItems());
+  if (region !== 'drawer') renderDrawer();
   renderTray();
 }

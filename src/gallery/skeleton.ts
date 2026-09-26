@@ -57,9 +57,25 @@ export const SkeletonAnimationRequestSchema = z
 
 type EstimateClient = Pick<PixelLabClient, "estimateSkeleton">
 
-export interface GallerySkeletonHandlers {
-  estimate(body: unknown): Promise<{ set: SkeletonSet; source: string }>
+/**
+ * Estimates this gallery session has made, against its cap, and what
+ * PixelLab reported billing for them, in whatever unit each response named.
+ * Kept apart from the generation budget: PixelLab documents this endpoint in
+ * dollars, and dollars do not convert to generations.
+ */
+export interface SkeletonEstimateSession {
+  used: number
+  limit: number
+  spent: Record<string, number>
 }
+
+export interface GallerySkeletonHandlers {
+  estimate(body: unknown): Promise<{ set: SkeletonSet; source: string; session: SkeletonEstimateSession }>
+  status(): SkeletonEstimateSession
+}
+
+/** Estimates a gallery session may make unless `--estimate-limit` says otherwise. */
+export const DEFAULT_ESTIMATE_LIMIT = 10
 
 /** The one image an asset shows: its hand edit, its refined output, or its generated file. */
 export function skeletonSourceFile(spec: ResolvedSpec): string {
@@ -72,10 +88,17 @@ export function createGallerySkeletonHandlers(opts: {
   loadProject: (project?: string) => Promise<GalleryProjectContext>
   /** Test hook; defaults to the environment's PixelLab key, loaded with the project. */
   client?: () => EstimateClient
+  /** Estimates this session may make; a stuck page or a repeated click cannot run past it. */
+  limit?: number
   onProgress?: (msg: string) => void
 }): GallerySkeletonHandlers {
   const log = opts.onProgress ?? (() => {})
+  const limit = opts.limit ?? DEFAULT_ESTIMATE_LIMIT
+  let used = 0
+  const spent: Record<string, number> = {}
+  const status = (): SkeletonEstimateSession => ({ used, limit, spent: { ...spent } })
   return {
+    status,
     async estimate(body) {
       const parsed = SkeletonEstimateRequestSchema.safeParse(body)
       if (!parsed.success) throw new ManifestEditError(`invalid estimate request: ${parsed.error.issues[0]?.message}`)
@@ -91,15 +114,36 @@ export function createGallerySkeletonHandlers(opts: {
       if (!metadata) throw new ManifestEditError(`${path.basename(file)} is not a readable PNG or JPEG`)
       const problem = estimateSkeletonSizeProblem(metadata.width, metadata.height)
       if (problem) throw new ManifestEditError(`${key} is ${problem}`)
+      if (used >= limit) {
+        throw Object.assign(
+          new Error(`this gallery has made its ${limit} skeleton estimate${limit === 1 ? "" : "s"}; restart it with --estimate-limit to allow more`),
+          { status: 429 },
+        )
+      }
       const client = (opts.client ?? clientFromEnv)()
+      // Counted before the call: a request that fails after reaching
+      // PixelLab may still have been billed.
+      used++
       const res = await client.estimateSkeleton({ image: { base64: bytes.toString("base64"), format: metadata.format } })
-      log(`  estimated a skeleton for ${key} (PixelLab estimate-skeleton, not budgeted)`)
+      const billed = billedAmount(res.usage)
+      if (billed) spent[billed.unit] = (spent[billed.unit] ?? 0) + billed.amount
+      log(`  estimated a skeleton for ${key} (PixelLab estimate-skeleton, ${used}/${limit} this session${billed ? `, billed ${billed.amount} ${billed.unit}` : ""})`)
       return {
         set: scaffoldSkeletonSet(res.keypoints, request.frames ?? DEFAULT_SCAFFOLD_FRAMES),
         source: path.relative(ctx.loaded.root, file).split(path.sep).join("/"),
+        session: status(),
       }
     },
   }
+}
+
+/** What a PixelLab `usage` object says was billed, in its own unit; null when it says nothing usable. */
+function billedAmount(usage: unknown): { unit: string; amount: number } | null {
+  if (!usage || typeof usage !== "object") return null
+  const { type } = usage as { type?: unknown }
+  if (type !== "usd" && type !== "generations") return null
+  const amount = (usage as Record<string, unknown>)[type]
+  return typeof amount === "number" && Number.isFinite(amount) ? { unit: type, amount } : null
 }
 
 /**

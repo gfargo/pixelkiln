@@ -1,5 +1,6 @@
+import { addAssetAndOpen, showSaveError } from "./form-kit.ts"
 import { S, el, field, fmtCost, numberInput, numberOrNull, postEdit, projectOf, splitTags, ui } from "./core.ts"
-import { openItem, render, renderDrawer } from "./drawer.ts"
+import { render, renderDrawer } from "./drawer.ts"
 
 /**
  * A new pose or outfit of `item`, an existing `character`/`objectPro` base
@@ -37,16 +38,9 @@ export function newStateForm(item) {
     try {
       const body: any = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };
       if (item.project) body.project = item.project;
-      S.snap = await postEdit(body);
-      const newId = (item.project ? item.project + ':' : '') + item.styleId + '/' + id.value.trim();
-      ui.editing = null;
-      ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
-      render();
-      if (S.snap.items.some((i) => i.id === newId)) openItem(newId);
+      await addAssetAndOpen(body, { project: item.project, styleId: item.styleId }, 'Added to the manifest.');
     } catch (err) {
-      save.disabled = false;
-      msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+      showSaveError(msg, save, err);
     }
   };
   setTimeout(() => id.focus(), 0);
@@ -97,6 +91,8 @@ export function newAnimationForm(item) {
   const syncMode = () => {
     const isTemplate = isCharacter && mode.value === 'template';
     templateField.style.display = isTemplate ? '' : 'none';
+    // A template loop is named by its template; without one the server refuses it.
+    template.required = isTemplate;
     row2.style.display = isTemplate ? 'none' : '';
   };
   if (isCharacter) { mode.onchange = syncMode; syncMode(); } else { templateField.style.display = 'none'; }
@@ -123,16 +119,9 @@ export function newAnimationForm(item) {
     try {
       const body: any = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };
       if (item.project) body.project = item.project;
-      S.snap = await postEdit(body);
-      const newId = (item.project ? item.project + ':' : '') + item.styleId + '/' + id.value.trim();
-      ui.editing = null;
-      ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
-      render();
-      if (S.snap.items.some((i) => i.id === newId)) openItem(newId);
+      await addAssetAndOpen(body, { project: item.project, styleId: item.styleId }, 'Added to the manifest.');
     } catch (err) {
-      save.disabled = false;
-      msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+      showSaveError(msg, save, err);
     }
   };
   setTimeout(() => id.focus(), 0);
@@ -204,9 +193,7 @@ export function editForm(item) {
       };
       render();
     } catch (err) {
-      save.disabled = false;
-      msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+      showSaveError(msg, save, err);
     }
   };
   setTimeout(() => prompt.focus(), 0);

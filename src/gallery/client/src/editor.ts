@@ -1,6 +1,6 @@
 import { refresh } from "./refresh.ts"
 
-import { $, S, el, fmtCost, ui } from "./core.ts"
+import { $, S, el, fmtCost, formRegion, ui } from "./core.ts"
 import { renderDrawer } from "./drawer.ts"
 import { paletteRuleOf, pollJobs, postGenerate, remainingBudget, renderJobs } from "./jobs.ts"
 import { onEditorMessage } from "./sheet.ts"
@@ -24,7 +24,7 @@ export async function pollEditor() {
   renderTools();
   clearTimeout(edTimer ?? undefined);
   if (S.ED.installing) edTimer = setTimeout(pollEditor, 1000);
-  else if (ui.open) renderDrawer();
+  else if (ui.open && formRegion() !== 'drawer') renderDrawer();
 }
 export async function installEditor() {
   try {

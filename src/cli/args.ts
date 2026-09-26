@@ -85,6 +85,8 @@ export interface Args {
   glyphPx?: number
   /** estimate-skeleton: frames to scaffold after the estimated pose, 3-15. */
   frames?: number
+  /** gallery: skeleton estimates the session may make. */
+  estimateLimit?: number
 }
 
 const VALUE_FLAGS = [
@@ -94,7 +96,7 @@ const VALUE_FLAGS = [
   "--provider", "--account", "--palette", "--fixer-python", "--fixer-revision", "--min-grid-confidence",
   "--reviewer", "--note",
   "--model-root", "--generation",
-  "--quantize", "--description", "--weight", "--glyph-px", "--frames",
+  "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -415,5 +417,6 @@ export function parseArgs(argv: string[]): Args {
     weight: get("--weight"),
     glyphPx: numberOption("--glyph-px", { min: 8, max: 64, integer: true }),
     frames: numberOption("--frames", { min: 3, max: 15, integer: true }),
+    estimateLimit: numberOption("--estimate-limit", { min: 0, max: 1000, integer: true }),
   }
 }

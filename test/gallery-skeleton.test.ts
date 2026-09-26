@@ -168,3 +168,36 @@ describe("estimating a skeleton from the gallery", () => {
     }
   })
 })
+
+describe("the session's estimate cap", () => {
+  it("counts every call, totals what PixelLab billed in its own unit, and stops at the limit", async () => {
+    const usage = [{ type: "usd", usd: 0.02 }, { type: "usd", usd: 0.02 }, { type: "generations", generations: 1 }]
+    const estimateSkeleton = vi.fn(async () => ({ keypoints: pose, usage: usage.shift() ?? null }))
+    const handlers = createGallerySkeletonHandlers({ loadProject: context, client: () => ({ estimateSkeleton }), limit: 3 })
+    expect(handlers.status()).toEqual({ used: 0, limit: 3, spent: {} })
+    await handlers.estimate({ styleId: "chars", assetId: "hero" })
+    await handlers.estimate({ styleId: "chars", assetId: "hero" })
+    const third = await handlers.estimate({ styleId: "chars", assetId: "hero" })
+    expect(third.session).toEqual({ used: 3, limit: 3, spent: { usd: 0.04, generations: 1 } })
+    await expect(handlers.estimate({ styleId: "chars", assetId: "hero" })).rejects.toMatchObject({
+      status: 429,
+      message: expect.stringMatching(/made its 3 skeleton estimates; restart it with --estimate-limit/),
+    })
+    expect(estimateSkeleton).toHaveBeenCalledTimes(3)
+    // A refused size is not a call, so it does not count.
+    const fresh = createGallerySkeletonHandlers({ loadProject: context, client: () => ({ estimateSkeleton }), limit: 1 })
+    await expect(fresh.estimate({ styleId: "chars", assetId: "banner" })).rejects.toThrow(/square image/)
+    expect(fresh.status().used).toBe(0)
+  })
+
+  it("reports the count at GET /api/skeleton", async () => {
+    const handlers = createGallerySkeletonHandlers({ loadProject: context, client: () => ({ estimateSkeleton: async () => ({ keypoints: pose, usage: null }) }) })
+    const server = await serveGallery({ open: false, load: reload, skeleton: handlers })
+    try {
+      const res = await fetch(new URL("/api/skeleton", server.url))
+      expect(await res.json()).toEqual({ used: 0, limit: 10, spent: {} })
+    } finally {
+      await server.close()
+    }
+  })
+})

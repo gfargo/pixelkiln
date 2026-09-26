@@ -1,5 +1,6 @@
+import { addAssetAndOpen, showSaveError } from "./form-kit.ts"
 import { S, el, field, fmtCost, numberInput, numberOrNull, postEdit, projectOf, ui } from "./core.ts"
-import { openItem, render, renderDrawer } from "./drawer.ts"
+import { render, renderDrawer } from "./drawer.ts"
 
 // ---- editing (only when the server minted a session) ---------------------
 
@@ -155,9 +156,7 @@ export function styleForm(style) {
           : 'Saved. Recorded in the manifest; no request changed.' };
       render();
     } catch (err) {
-      save.disabled = false;
-      msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+      showSaveError(msg, save, err);
     }
   };
   setTimeout(() => prefix.focus(), 0);
@@ -197,16 +196,9 @@ export function addAssetForm(style) {
     try {
       const body: any = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };
       if (style.project) body.project = style.project;
-      S.snap = await postEdit(body);
-      const newId = (style.project ? style.project + ':' : '') + style.id + '/' + id.value.trim();
-      ui.editing = null;
-      ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
-      render();
-      if (S.snap.items.some((i) => i.id === newId)) openItem(newId);
+      await addAssetAndOpen(body, { project: style.project, styleId: style.id }, 'Added to the manifest.');
     } catch (err) {
-      save.disabled = false;
-      msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+      showSaveError(msg, save, err);
     }
   };
   setTimeout(() => id.focus(), 0);
@@ -245,16 +237,9 @@ export function newRevisionForm(item) {
     try {
       const body: any = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };
       if (item.project) body.project = item.project;
-      S.snap = await postEdit(body);
-      const newId = (item.project ? item.project + ':' : '') + item.styleId + '/' + id.value.trim();
-      ui.editing = null;
-      ui.notice = { id: newId, text: 'Added to the manifest. Nothing is generated until you run pixelkiln gen.' };
-      render();
-      if (S.snap.items.some((i) => i.id === newId)) openItem(newId);
+      await addAssetAndOpen(body, { project: item.project, styleId: item.styleId }, 'Added to the manifest.');
     } catch (err) {
-      save.disabled = false;
-      msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+      showSaveError(msg, save, err);
     }
   };
   setTimeout(() => id.focus(), 0);

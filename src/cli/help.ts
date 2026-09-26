@@ -109,6 +109,7 @@ Options
   --no-open           Do not auto-open the browser (pick, salvage, gallery) or editor (edit)
   --edit              gallery: allow manifest edits from the page (never spends)
   --no-editor         gallery: do not offer or serve the in-browser editor
+  --estimate-limit <n> gallery: PixelLab skeleton estimates the page may make (default 10)
   --tag               Also push tags upstream after fetch
   --refresh           fetch: re-download and replace files whose object changed
                       upstream (e.g. edited in PixelLab's editor); no generation

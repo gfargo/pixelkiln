@@ -548,6 +548,26 @@ describe("serveGallery", () => {
     await expect(fetch(server.url)).rejects.toThrow()
   })
 
+  it("serves the page under a content security policy that admits only its own nonce-marked script and styles", async () => {
+    const { loaded, specs, lock } = await generated()
+    const server = await serveGallery({ open: false, load: () => buildGallerySnapshot({ loaded, specs, lock, lockPath }) })
+    try {
+      const res = await fetch(server.url)
+      const policy = res.headers.get("content-security-policy")!
+      const nonce = /script-src 'nonce-([^']+)'/.exec(policy)![1]!
+      expect(policy).toContain(`style-src 'nonce-${nonce}'`)
+      expect(policy).toContain("frame-ancestors 'none'")
+      const html = await res.text()
+      expect(html).toContain(`<script nonce="${nonce}">`)
+      expect(html).toContain(`<style nonce="${nonce}">`)
+      // A fresh nonce per page load.
+      const again = (await fetch(server.url)).headers.get("content-security-policy")!
+      expect(again).not.toContain(nonce)
+    } finally {
+      await server.close()
+    }
+  })
+
   it("reflects a refresh: work finished after startup appears without a restart", async () => {
     const { loaded, specs, manifestPath } = await project()
     const server = await serveGallery({

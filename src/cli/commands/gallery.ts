@@ -52,7 +52,7 @@ interface GalleryProjectAccess {
 async function serveUntilStopped(
   initial: GalleryBuild,
   reload: () => Promise<GalleryBuild>,
-  args: Pick<Args, "port" | "noOpen" | "edit" | "noEditor" | "budget" | "providerBudgets">,
+  args: Pick<Args, "port" | "noOpen" | "edit" | "noEditor" | "budget" | "providerBudgets" | "estimateLimit">,
   access: GalleryProjectAccess,
 ): Promise<void> {
   let first = true
@@ -109,7 +109,7 @@ async function serveUntilStopped(
       ? { generate: createGenerateHandlers({ loadProject, providerFor, budget, reload, onProgress: log }) }
       : {}),
     // Estimating acts on the author's behalf and feeds a manifest edit, so it follows the write gate.
-    ...(args.edit ? { skeleton: createGallerySkeletonHandlers({ loadProject, onProgress: log }) } : {}),
+    ...(args.edit ? { skeleton: createGallerySkeletonHandlers({ loadProject, limit: args.estimateLimit, onProgress: log }) } : {}),
     // The editor exists to write hand edits back, so it follows the write gate.
     ...(args.edit && !args.noEditor ? { editor: createGalleryEditorHandlers({ onProgress: log }) } : {}),
   })

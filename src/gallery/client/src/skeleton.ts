@@ -1,5 +1,6 @@
-import { S, el, field, postEdit, projectOf, ui } from "./core.ts"
-import { openItem, render, renderDrawer } from "./drawer.ts"
+import { addAssetAndOpen, showSaveError } from "./form-kit.ts"
+import { el, field, fmtCost, projectOf, ui } from "./core.ts"
+import { renderDrawer } from "./drawer.ts"
 
 // ---- skeleton animation ----------------------------------------------------
 
@@ -77,6 +78,12 @@ export function skeletonProblem(set) {
   return null;
 }
 
+/** "2 of 10 estimates used this session, billed $0.04": spend in whatever unit PixelLab reported. */
+const sessionLine = (s: { used: number; limit: number; spent: Record<string, number> }) => {
+  const billed = Object.entries(s.spent).map(([unit, n]) => fmtCost(unit, Math.round(n * 100) / 100)).join(' + ');
+  return s.used + ' of ' + s.limit + ' estimates used this session' + (billed ? ', billed ' + billed : '') + '.';
+};
+
 /** Why PixelLab's estimate would refuse this sprite, or null. */
 export const estimateProblem = (item) => item.width === item.height && [16, 32, 64, 128, 256].includes(item.width)
   ? null
@@ -117,7 +124,18 @@ export function skeletonAnimationForm(item) {
   const estimateNote = el('small', 'state-dim');
   const problem = estimateProblem(item);
   estimate.disabled = !!problem;
-  estimateNote.textContent = problem || 'One PixelLab estimate-skeleton call on your account, outside the gallery budget (PixelLab documents about $0.02). The estimate becomes the starting pose and four frames to edit.';
+  const baseNote = 'One PixelLab estimate-skeleton call on your account, kept apart from the generation budget (PixelLab documents about $0.02). The estimate becomes the starting pose and four frames to edit.';
+  let session: { used: number; limit: number; spent: Record<string, number> } | null = null;
+  const showSession = () => {
+    if (problem) { estimateNote.textContent = problem; return; }
+    estimateNote.textContent = baseNote + (session ? ' ' + sessionLine(session) : '');
+    if (session && session.used >= session.limit) estimate.disabled = true;
+  };
+  showSession();
+  fetch('/api/skeleton', { cache: 'no-store' })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((s) => { if (s) { session = s; showSession(); } })
+    .catch(() => {});
   const estimateRow = el('div', 'actions'); estimateRow.append(estimate, estimateNote);
   const status = el('div', 'msg');
   const preview = el('div');
@@ -146,7 +164,7 @@ export function skeletonAnimationForm(item) {
   source.onchange = sync;
   json.oninput = showPoses;
   estimate.onclick = async () => {
-    if (!confirm('Ask PixelLab to estimate a skeleton for ' + item.assetId + '? This is one paid call on your account, outside the gallery budget.')) return;
+    if (!confirm('Ask PixelLab to estimate a skeleton for ' + item.assetId + '? This is one paid call on your account, kept apart from the generation budget.' + (session ? ' ' + sessionLine(session) : ''))) return;
     estimate.disabled = true; status.className = 'msg'; status.textContent = 'estimating…';
     try {
       const body: any = { styleId: item.styleId, assetId: item.assetId };
@@ -160,6 +178,8 @@ export function skeletonAnimationForm(item) {
       const out = await res.json();
       json.value = JSON.stringify(out.set, null, 2);
       showPoses();
+      session = out.session;
+      showSession();
       status.className = 'msg'; status.textContent = 'Estimated from ' + out.source + '. Move the frames into the motion, then save.';
     } catch (err) {
       status.className = 'msg bad'; status.textContent = err.message;
@@ -186,16 +206,9 @@ export function skeletonAnimationForm(item) {
     if (source.value !== 'file') { body.set = set; if (overwrite.checked) body.overwrite = true; }
     if (item.project) body.project = item.project;
     try {
-      S.snap = await postEdit(body);
-      const newId = (item.project ? item.project + ':' : '') + item.styleId + '/' + body.assetId;
-      ui.editing = null;
-      ui.notice = { id: newId, text: 'Added to the manifest with ' + body.keypointsFile + '. Nothing is generated until you run pixelkiln gen.' };
-      render();
-      if (S.snap.items.some((i) => i.id === newId)) openItem(newId);
+      await addAssetAndOpen(body, { project: item.project, styleId: item.styleId }, 'Added to the manifest with ' + body.keypointsFile + '.');
     } catch (err) {
-      save.disabled = false;
-      msg.className = 'msg bad';
-      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+      showSaveError(msg, save, err);
     }
   };
   sync();
