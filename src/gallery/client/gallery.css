@@ -326,3 +326,18 @@ form.edit .pal { margin-top:4px; }
 .poses svg.pose { width:112px; height:112px; background:var(--panel-deep); border:1px solid var(--line); image-rendering:pixelated; }
 .poses figcaption { font:10.5px/1 var(--mono); color:var(--dim); }
 textarea.mono { font-family:var(--mono); font-size:11.5px; }
+.pose-editor { display:grid; grid-template-columns:minmax(200px, 320px) 1fr; gap:12px; align-items:start; margin-top:10px; }
+.pose-stage svg.stage { width:100%; aspect-ratio:1; background:var(--panel-deep); border:1px solid var(--line); image-rendering:pixelated; touch-action:none; display:block; }
+.pose-stage svg.stage:focus { outline:1px solid var(--accent); }
+.pose-stage .joint { cursor:grab; }
+.pose-stage .joint:active { cursor:grabbing; }
+.pose-side { display:grid; gap:8px; align-content:start; }
+.pose-tools { display:flex; flex-wrap:wrap; gap:6px; }
+.pose-tools button { font:11.5px/1 var(--mono); padding:6px 8px; }
+.pose-status { font:11.5px/1.45 var(--mono); color:var(--dim); }
+.pose-strip { grid-column:1 / -1; }
+.pose-strip button { flex:none; padding:3px; display:grid; gap:3px; justify-items:center; }
+.pose-strip button.on { border-color:var(--accent); }
+.pose-strip svg.pose { width:64px; height:64px; }
+.pose-strip span { font:10.5px/1 var(--mono); color:var(--dim); }
+@media (max-width: 640px) { .pose-editor { grid-template-columns:1fr; } }

@@ -194,6 +194,8 @@ export interface GallerySkeleton {
   keypointsFile: string
   /** The parsed file; null until it exists. A malformed file fails the whole resolve, as in `plan`. */
   set: SkeletonSet | null
+  /** The file's bytes as resolved; a save from the page must quote it, so a concurrent edit is refused. */
+  sha256: string | null
 }
 
 export interface GalleryCharacter {
@@ -778,6 +780,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         ? {
             keypointsFile: portableOutputPath(spec.revision.keypointsFile, root),
             set: spec.revision.skeleton ?? null,
+            sha256: spec.revision.keypointsSha256 ?? null,
           }
         : null,
       character: describeCharacter(spec, entry),

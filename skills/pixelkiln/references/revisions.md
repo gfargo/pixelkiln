@@ -86,8 +86,9 @@ Read this reference when an asset declares `revision`.
   asset"), once the parent has usable pixels. On a single PixelLab sprite,
   "+ Skeleton animation" creates an `animate-skeleton` revision: poses from a
   project file, pasted JSON, or "Estimate poses" (one confirmed, un-budgeted
-  PixelLab call), previewed over the sprite, written into the project on
-  save. It does not offer `inpaint` (needs a mask upload), `outpaint`,
+  PixelLab call), edited in a drag-to-edit pose editor over the sprite,
+  written into the project on save. "Edit poses" on an existing
+  `animate-skeleton` record reopens the editor on its keypoints file. It does not offer `inpaint` (needs a mask upload), `outpaint`,
   `reduce-colors`, `correct-pixelart`, `animate`, `animate-pixminimax`,
   `interpolate`, or `edit-animation` yet, so add those by hand.
 - Before an outside image becomes a `styleImages` or `reference` path,

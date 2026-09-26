@@ -72,11 +72,19 @@ in the project, from pasted JSON, or from "Estimate poses", which runs
 PixelLab's `estimate-skeleton` on the sprite (a direct call on your account,
 confirmed first and kept apart from the generation budget; at most
 `--estimate-limit` per session, default 10; square 16–256px sprites only) and
-fills in the starting pose and four frames to edit. Every change to the JSON redraws the
-poses over the sprite. Saving writes the keypoints file inside the project
+fills in the starting pose and four frames to edit. The poses open in a
+drag-to-edit pose editor: the sprite with the pose being edited over it and
+the previous pose faint underneath, a frame strip, and tools to copy the
+previous pose, mirror a pose left to right, add or remove frames (3 to 15),
+play the motion, and undo. Arrow keys nudge the selected joint and `,`/`.`
+step frames. Dragging rewrites the JSON beside it, and editing the JSON
+redraws the editor. Saving writes the keypoints file inside the project
 (never over an existing file unless asked, and removed again if the manifest
 refuses the asset) and adds the revision. An `animate-skeleton` record's
-Lineage section draws its poses over its parent the same way.
+Lineage section draws its poses over its parent the same way, and "Edit
+poses" opens the same editor on its keypoints file. Saving rewrites the file
+only if it still holds what the page loaded (an edit made elsewhere since is
+refused, not overwritten), and the animation is stale until generated again.
 
 ## Inpainting
 

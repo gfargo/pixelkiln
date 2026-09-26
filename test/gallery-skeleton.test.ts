@@ -84,7 +84,7 @@ describe("creating a skeleton animation from the gallery", () => {
       },
     })
     const item = build.snapshot.items.find((candidate) => candidate.key === "chars/hero-swing")!
-    expect(item.skeleton).toEqual({ keypointsFile: "poses/hero-swing.json", set: poses })
+    expect(item.skeleton).toMatchObject({ keypointsFile: "poses/hero-swing.json", set: poses, sha256: expect.stringMatching(/^[0-9a-f]{64}$/) })
     expect(item.revisionParentKey).toBe("chars/hero")
     expect(build.snapshot.items.find((candidate) => candidate.key === "chars/hero")!.skeleton).toBeNull()
   })
@@ -199,5 +199,32 @@ describe("the session's estimate cap", () => {
     } finally {
       await server.close()
     }
+  })
+})
+
+describe("saving poses edited in the gallery", () => {
+  it("rewrites the keypoints file the manifest names, refusing a concurrent edit or a non-skeleton asset", async () => {
+    const edit = createGalleryEditHandler({ manifestFor: () => manifestPath, loadProject: context, reload })
+    await edit(await request())
+    const file = path.join(dir, "poses", "hero-swing.json")
+    const { sha256File: hashOf } = await import("../src/hash.ts")
+    const loaded = await hashOf(file)
+    const raised = scaffoldSkeletonSet(pose.map((j) => (j.label === "RIGHT ARM" ? { ...j, y: 0.1 } : j)), 4)
+    const save = (extra: Record<string, unknown> = {}) => edit({
+      action: "update-skeleton-keypoints", styleId: "chars", assetId: "hero-swing", expectedSha256: loaded, set: raised, ...extra,
+    })
+
+    const build = await save()
+    expect(JSON.parse(await readFile(file, "utf8"))).toEqual(raised)
+    const item = build.snapshot.items.find((candidate) => candidate.key === "chars/hero-swing")!
+    expect(item.skeleton).toMatchObject({ set: raised, sha256: await hashOf(file) })
+
+    // The page still quotes the old hash: someone else's edit is not overwritten.
+    await writeFile(file, JSON.stringify(poses))
+    await expect(save()).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/changed on disk since this page loaded it/) })
+    expect(JSON.parse(await readFile(file, "utf8"))).toEqual(poses)
+
+    await expect(save({ assetId: "hero", expectedSha256: await hashOf(file) })).rejects.toThrow(/not an animate-skeleton revision/)
+    await expect(save({ set: { ...raised, frames: [pose] } })).rejects.toThrow(/invalid pose edit: set\.frames/)
   })
 })

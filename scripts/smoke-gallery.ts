@@ -15,11 +15,14 @@
  * is used. Without one it skips, unless CI is set, in which case it fails.
  */
 import { existsSync } from "node:fs"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { createGalleryEditHandler } from "../src/gallery/edit.ts"
 import { createGenerateHandlers } from "../src/gallery/generate.ts"
+import { createGallerySkeletonHandlers } from "../src/gallery/skeleton.ts"
+import { encodeRgbaPng } from "../src/png.ts"
+import { SKELETON_LABELS, scaffoldSkeletonSet } from "../src/skeleton.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
@@ -222,6 +225,85 @@ try {
     await waitForItem("base/anvil-worn", (item) => item.revisionParentKey === "base/anvil" && item.asset?.revision?.mode === "image-to-image"),
     "revision asset created with its parent recorded",
   )
+
+  // The pose editor, on a PixelLab project resolved offline: drag a joint on
+  // an existing skeleton animation and save it, then estimate poses for a
+  // new one (the estimate client is stubbed) and drag in the create form.
+  const poseDir = path.join(dir, "poses-project")
+  await mkdir(path.join(poseDir, "art"), { recursive: true })
+  await mkdir(path.join(poseDir, "poses"))
+  await writeFile(path.join(poseDir, "art", "hero.png"), encodeRgbaPng(64, 64, Buffer.alloc(64 * 64 * 4, 120)))
+  const standing = SKELETON_LABELS.map((label, i) => ({
+    label,
+    x: label.startsWith("RIGHT") ? 0.35 : label.startsWith("LEFT") ? 0.65 : 0.5,
+    y: Math.min(0.95, 0.1 + i * 0.045),
+    z_index: 1,
+  }))
+  const posesFile = path.join(poseDir, "poses", "hero-wave.json")
+  await writeFile(posesFile, JSON.stringify(scaffoldSkeletonSet(standing, 3)))
+  const poseManifest = path.join(poseDir, "pixelkiln.manifest.json")
+  await writeFile(poseManifest, JSON.stringify({
+    name: "pose-smoke",
+    provider: "pixellab",
+    styles: { chars: { outDir: "out" } },
+    assets: {
+      hero: { prompt: "a knight", width: 64, height: 64, source: "art/hero.png" },
+      "hero-wave": { prompt: "waving", revision: { mode: "animate-skeleton", from: "hero", keypointsFile: "poses/hero-wave.json", direction: "south" } },
+    },
+  }, null, 2))
+  const loadPoses = () => openProject(poseManifest, { env: false })
+  const reloadPoses = async () => buildGallerySnapshot(await loadPoses())
+  const poseServer = await serveGallery({
+    load: reloadPoses,
+    open: false,
+    onProgress: quiet,
+    edit: createGalleryEditHandler({ manifestFor: () => poseManifest, loadProject: loadPoses, reload: reloadPoses, onProgress: quiet }),
+    skeleton: createGallerySkeletonHandlers({ loadProject: loadPoses, client: () => ({ estimateSkeleton: async () => ({ keypoints: standing, usage: null }) }) }),
+  })
+  try {
+    page.on("dialog", (dialog) => { void dialog.accept() })
+    const pressButton = (scope: string, text: string) => page.evaluate((sel, label) => {
+      const b = ([...document.querySelectorAll(sel)] as HTMLButtonElement[]).find((x) => x.textContent === label)
+      b?.click()
+      return Boolean(b)
+    }, scope, text)
+    /** Drags a named joint on the editor's stage by (dx, dy) screen pixels, the way a person does. */
+    const dragJoint = async (label: string, dx: number, dy: number) => {
+      const handle = await page.evaluateHandle((name) => {
+        const hit = [...document.querySelectorAll(".pose-stage circle.joint")].find((c) => c.querySelector("title")?.textContent === name)!
+        hit.scrollIntoView({ block: "center" })
+        return hit
+      }, label)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      const box = (await handle.asElement()!.boundingBox())!
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 6 })
+      await page.mouse.up()
+    }
+    await page.goto(`${poseServer.url}#chars/hero-wave`, { waitUntil: "networkidle0" })
+    check(await page.$(".drawer .poses svg.pose") !== null, "a skeleton animation shows its poses")
+    check(await pressButton(".drawer button", "Edit poses"), "a skeleton animation offers Edit poses")
+    await page.waitForSelector(".pose-editor svg.stage", { timeout: 5_000 })
+    await dragJoint("RIGHT ARM", -30, -40)
+    await pressButton(".drawer form.edit button", "Save poses")
+    await noticeMatches("Poses saved")
+    const saved = JSON.parse(await readFile(posesFile, "utf8")) as { frames: { label: string; y: number }[][] }
+    const arm = saved.frames[0]!.find((j) => j.label === "RIGHT ARM")!
+    const was = standing.find((j) => j.label === "RIGHT ARM")!
+    check(arm.y < was.y - 0.05, "dragging a joint and saving rewrites the keypoints file")
+
+    await page.goto(`${poseServer.url}#chars/hero`, { waitUntil: "networkidle0" })
+    check(await pressButton(".drawer button", "+ Skeleton animation"), "a sprite offers + Skeleton animation")
+    await page.waitForSelector("form.edit", { timeout: 5_000 })
+    await pressButton("form.edit button", "Estimate poses")
+    await page.waitForSelector("form.edit .pose-editor svg.stage", { timeout: 5_000 })
+    await dragJoint("LEFT LEG", 25, 0)
+    const drafted = JSON.parse(await page.$eval("form.edit textarea", (t) => (t as HTMLTextAreaElement).value)) as { frames: { label: string; x: number }[][] }
+    check(drafted.frames[0]!.find((j) => j.label === "LEFT LEG")!.x > 0.7, "dragging in the create form writes the JSON")
+  } finally {
+    await poseServer.close()
+  }
 
   check(consoleErrors.length === 0, `no console errors or failed requests${consoleErrors.length ? `:\n    ${consoleErrors.join("\n    ")}` : ""}`)
 } finally {
