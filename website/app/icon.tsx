@@ -6,7 +6,7 @@ export const size = { width: 64, height: 64 };
 export const contentType = "image/png";
 
 const markDataUrl = `data:image/png;base64,${readFileSync(
-  join(process.cwd(), "public/brand/kiln-mark-v2.png"),
+  join(process.cwd(), "public/brand/kiln-mark-v3.png"),
 ).toString("base64")}`;
 
 export default function Icon() {
@@ -23,13 +23,7 @@ export default function Icon() {
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={markDataUrl}
-          width={64}
-          height={64}
-          alt=""
-          style={{ imageRendering: "pixelated" }}
-        />
+        <img src={markDataUrl} width={64} height={64} alt="" />
       </div>
     ),
     size,

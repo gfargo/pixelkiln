@@ -8,7 +8,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const markDataUrl = `data:image/png;base64,${readFileSync(
-  join(process.cwd(), "public/brand/kiln-mark-v2.png"),
+  join(process.cwd(), "public/brand/kiln-mark-v3.png"),
 ).toString("base64")}`;
 
 const candidates = [
@@ -20,13 +20,7 @@ const candidates = [
 function KilnMark() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={markDataUrl}
-      width={32}
-      height={32}
-      alt=""
-      style={{ imageRendering: "pixelated" }}
-    />
+    <img src={markDataUrl} width={36} height={36} alt="" />
   );
 }
 
