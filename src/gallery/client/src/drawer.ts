@@ -180,6 +180,69 @@ export function drawerFrames(): { step: (n: number) => void; toggle: () => void 
   return host ? (host as any).__frames ?? null : null;
 }
 
+type DrawerTab = 'overview' | 'files' | 'history' | 'details';
+const TAB_LABEL: Record<DrawerTab, string> = { overview: 'Overview', files: 'Files', history: 'History', details: 'Details' };
+/** Forms that live in the Overview tab: an open one keeps that tab showing. */
+const OVERVIEW_FORMS = /^(state|anim|poses|revise|skeleton):/;
+
+/**
+ * The drawer's record, below the preview and its actions, in tabs: what it
+ * is and how it relates (Overview), the files (Files), earlier generations
+ * (History), and the provenance a reviewer rarely needs (Details). The tab
+ * sticks as records are stepped through; one with nothing in it is not shown.
+ */
+function drawerTabs(item, panels: Record<DrawerTab, HTMLElement>) {
+  const wrap = el('div', 'dtabs');
+  const available = (Object.keys(panels) as DrawerTab[]).filter((name) => panels[name].childNodes.length);
+  if (ui.editing && OVERVIEW_FORMS.test(ui.editing)) ui.drawerTab = 'overview';
+  const current: DrawerTab = available.includes(ui.drawerTab as DrawerTab) ? ui.drawerTab as DrawerTab : 'overview';
+  const list = el('div', 'tablist');
+  list.setAttribute('role', 'tablist');
+  const count: Partial<Record<DrawerTab, number>> = {
+    files: item.outputs.length,
+    history: item.history.length,
+  };
+  const buttons: HTMLButtonElement[] = [];
+  for (const name of available) {
+    const b = el('button', name === current ? 'on' : null, TAB_LABEL[name] + (count[name] ? ' ' + count[name] : ''));
+    b.type = 'button';
+    b.id = 'dtab-' + name;
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(name === current));
+    b.setAttribute('aria-controls', 'dpanel-' + name);
+    b.tabIndex = name === current ? 0 : -1;
+    b.onclick = () => { ui.drawerTab = name; show(name); };
+    b.onkeydown = (e) => {
+      const at = available.indexOf(name);
+      const next = e.key === 'ArrowRight' ? available[(at + 1) % available.length] : e.key === 'ArrowLeft' ? available[(at - 1 + available.length) % available.length] : null;
+      if (!next) return;
+      e.preventDefault(); e.stopPropagation();
+      ui.drawerTab = next; show(next);
+      buttons[available.indexOf(next)].focus();
+    };
+    buttons.push(b);
+    list.append(b);
+  }
+  const show = (name: DrawerTab) => {
+    for (const [i, b] of buttons.entries()) {
+      const on = available[i] === name;
+      b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1;
+    }
+    for (const n of available) panels[n].hidden = n !== name;
+  };
+  wrap.append(list);
+  for (const name of available) {
+    const panel = panels[name];
+    panel.className = 'tabpanel';
+    panel.id = 'dpanel-' + name;
+    panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-labelledby', 'dtab-' + name);
+    wrap.append(panel);
+  }
+  show(current);
+  return wrap;
+}
+
 /** How the drawer names each member of a character or object family. */
 const CHARACTER_KIND = {
   base: 'base',
@@ -250,12 +313,13 @@ export function renderDrawer() {
   // stale or superseded failure needs its own line.
   if (item.error && !item.reason.includes(item.error)) body.append(stateNode('failed', item.error));
 
+  const tab = { overview: el('div'), files: el('div'), history: el('div'), details: el('div') };
+  let pane = tab.overview;
   // Generation: what was sent and what it cost.
   {
     const { s, dl } = section('Generation');
     row(dl, 'provider', item.provider);
     row(dl, 'generator', item.generator + (item.tileFeature ? ' · ' + item.tileFeature : ''));
-    row(dl, 'lock status', item.status || 'none (nothing submitted)');
     const pr = el('div', 'prompt', item.prompt); row(dl, item.status ? 'prompt sent' : 'prompt', pr);
     if (item.currentPrompt) row(dl, 'prompt now', el('div', 'prompt state-warn', item.currentPrompt));
     row(dl, 'size', item.width + ' × ' + item.height + ' px');
@@ -277,14 +341,21 @@ export function renderDrawer() {
         (item.candidates && item.candidates > 1 ? ' for ' + item.candidates + ' candidates' : ''));
     }
     if (item.candidateIndex !== null) row(dl, 'candidate', '#' + (item.candidateIndex + 1) + ' chosen in review');
+    pane.append(s);
+  }
+  {
+    // The provider-side record: when, and under which ids.
+    const { s, dl } = section('Provider record');
+    row(dl, 'lock status', item.status || 'none (nothing submitted)');
     row(dl, 'submitted', fmtWhen(item.submittedAt));
     row(dl, 'downloaded', fmtWhen(item.downloadedAt));
     row(dl, 'job id', item.jobId, { mono: true, copy: item.jobId });
     row(dl, 'object id', item.objectId, { mono: true, copy: item.objectId });
     row(dl, 'review object', item.reviewObjectId, { mono: true, copy: item.reviewObjectId });
-    body.append(s);
+    tab.details.append(s);
   }
 
+  pane = tab.files;
   // Outputs: every file with its hash and whether it is really there.
   {
     const s = el('section', 'meta');
@@ -305,16 +376,17 @@ export function renderDrawer() {
       box.append(dl);
       s.append(box);
     }
-    body.append(s);
+    pane.append(s);
   }
 
   const hand = handEditSection(item);
-  if (hand) body.append(hand);
+  if (hand) pane.append(hand);
   const upstream = upstreamSection(item);
-  if (upstream) body.append(upstream);
+  if (upstream) pane.append(upstream);
   const versions = historySection(item);
-  if (versions) body.append(versions);
+  if (versions) tab.history.append(versions);
 
+  pane = tab.overview;
   if (item.character) {
     const c = item.character;
     const { s, dl } = section('Character');
@@ -358,20 +430,20 @@ export function renderDrawer() {
       if (ui.editing === stateKey) s.append(newStateForm(item));
       if (ui.editing === animKey) s.append(newAnimationForm(item));
     }
-    body.append(s);
+    pane.append(s);
   }
 
   if (item.mirrorOfKey) {
     const { s, dl } = section('Mirror');
     row(dl, 'flipped from', keyLink(item, item.mirrorOfKey));
     row(dl, 'cost', 'none; made locally from that asset\'s files');
-    body.append(s);
+    pane.append(s);
   }
   const mirrors = S.snap.items.filter((i) => i.mirrorOfKey === item.key && i.project === item.project);
   if (mirrors.length) {
     const { s, dl } = section(mirrors.length === 1 ? 'Mirror of this asset' : 'Mirrors of this asset');
     for (const m of mirrors) row(dl, m.character && m.character.direction ? m.character.direction : 'flipped', keyLink(item, m.key));
-    body.append(s);
+    pane.append(s);
   }
 
   if (item.revision || item.revisionParentKey) {
@@ -403,7 +475,7 @@ export function renderDrawer() {
         row(dl, 'poses', el('span', 'state-warn', 'the keypoints file does not exist yet'));
       }
     }
-    body.append(s);
+    pane.append(s);
   }
   const children = S.snap.items.filter((i) => i.revisionParentKey === item.key && i.project === item.project);
   const reviseKey = 'revise:' + item.id;
@@ -428,9 +500,10 @@ export function renderDrawer() {
       if (ui.editing === reviseKey) s.append(newRevisionForm(item));
       if (ui.editing === skeletonKey) s.append(skeletonAnimationForm(item));
     }
-    body.append(s);
+    pane.append(s);
   }
 
+  pane = tab.details;
   if (item.quality) {
     const q = item.quality;
     const { s, dl } = section('Quality');
@@ -461,7 +534,7 @@ export function renderDrawer() {
     row(dl, 'output', q.output, { mono: true });
     row(dl, 'record', q.record + (q.recordExists ? '' : ' (not written yet)'), { mono: true });
     if (q.check && !q.check.safe) row(dl, 'check', el('div', 'state-warn', q.check.reasons.join('\n')));
-    body.append(s);
+    pane.append(s);
     if (q.outputs.some((o) => o.url)) {
       const strip = el('div', 'members');
       for (const o of q.outputs.filter((o) => o.url)) {
@@ -489,7 +562,7 @@ export function renderDrawer() {
     row(dl, 'category', item.category);
     row(dl, 'tags', item.tags && item.tags.length ? item.tags.join(', ') : null);
     row(dl, 'source art', item.source, { mono: true });
-    body.append(s);
+    pane.append(s);
   }
 
   if (item.asset) {
@@ -497,12 +570,13 @@ export function renderDrawer() {
     // empty add nothing but noise to a record.
     const declared = Object.fromEntries(Object.entries(item.asset).filter(([, v]) =>
       !(Array.isArray(v) && !v.length) && !(v && typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)));
-    body.append(jsonDetails('Manifest asset', declared));
+    pane.append(jsonDetails('Manifest asset', declared));
   }
   if (item.providerMetadata && Object.keys(item.providerMetadata).length) {
-    body.append(jsonDetails('Provider metadata', item.providerMetadata));
+    pane.append(jsonDetails('Provider metadata', item.providerMetadata));
   }
 
+  body.append(drawerTabs(item, tab));
   drawer.append(head, body);
   host.append(scrim, drawer);
   close.focus({ preventScroll: true });
