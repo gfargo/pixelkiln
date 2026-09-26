@@ -44,15 +44,8 @@ a { color: inherit; text-decoration: none; }
 .kiln-mark {
   width: 26px;
   height: 26px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  transform: rotate(45deg) scale(0.74);
+  image-rendering: pixelated;
 }
-.kiln-mark span { background: var(--ember); }
-.kiln-mark span:nth-child(1), .kiln-mark span:nth-child(3),
-.kiln-mark span:nth-child(7), .kiln-mark span:nth-child(9) { opacity: 0; }
-.kiln-mark span:nth-child(5) { background: var(--cream); }
 .site-header nav {
   display: flex;
   align-items: center;

@@ -4,11 +4,14 @@ import { TrackedLink } from "@/app/ui/tracked-link";
 
 export function KilnMark() {
   return (
-    <span className="kiln-mark" aria-hidden="true">
-      {Array.from({ length: 9 }, (_, index) => (
-        <span key={index} />
-      ))}
-    </span>
+    <img
+      className="kiln-mark"
+      src="/brand/kiln-mark.png"
+      alt=""
+      aria-hidden="true"
+      width={26}
+      height={26}
+    />
   );
 }
 

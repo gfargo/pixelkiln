@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 export const alt =
@@ -5,13 +7,9 @@ export const alt =
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const markCells = [
-  { left: 11, top: 0, color: "#ff6b35" },
-  { left: 0, top: 11, color: "#ff6b35" },
-  { left: 11, top: 11, color: "#f3ead6" },
-  { left: 22, top: 11, color: "#ff6b35" },
-  { left: 11, top: 22, color: "#ff6b35" },
-];
+const markDataUrl = `data:image/png;base64,${readFileSync(
+  join(process.cwd(), "public/brand/kiln-mark.png"),
+).toString("base64")}`;
 
 const candidates = [
   { label: "01", accent: "#ff6b35", selected: false },
@@ -21,30 +19,14 @@ const candidates = [
 
 function KilnMark() {
   return (
-    <div
-      style={{
-        width: 30,
-        height: 30,
-        display: "flex",
-        position: "relative",
-        transform: "rotate(45deg)",
-      }}
-    >
-      {markCells.map((cell) => (
-        <div
-          key={`${cell.left}-${cell.top}`}
-          style={{
-            position: "absolute",
-            left: cell.left,
-            top: cell.top,
-            width: 8,
-            height: 8,
-            display: "flex",
-            background: cell.color,
-          }}
-        />
-      ))}
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={markDataUrl}
+      width={36}
+      height={36}
+      alt=""
+      style={{ imageRendering: "pixelated" }}
+    />
   );
 }
 
