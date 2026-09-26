@@ -1,3 +1,11 @@
+# [0.65.0](https://github.com/gfargo/pixelkiln/compare/v0.64.0...v0.65.0) (2026-09-26)
+
+
+### Features
+
+* **character:** a portrait asset from a base or state's south sprite ([#163](https://github.com/gfargo/pixelkiln/issues/163)) ([73f7c56](https://github.com/gfargo/pixelkiln/commit/73f7c566f9e7bc86f8baf741f3b61d6390800cac)), closes [#143](https://github.com/gfargo/pixelkiln/issues/143) [#143](https://github.com/gfargo/pixelkiln/issues/143) [#140](https://github.com/gfargo/pixelkiln/issues/140)
+* **character:** outfit transfer onto a loop's frames ([#164](https://github.com/gfargo/pixelkiln/issues/164)) ([e1d05d2](https://github.com/gfargo/pixelkiln/commit/e1d05d226f34918f677a94a2c1cc254c72e918c6)), closes [#141](https://github.com/gfargo/pixelkiln/issues/141)
+
 # [0.64.0](https://github.com/gfargo/pixelkiln/compare/v0.63.0...v0.64.0) (2026-09-26)
 
 
