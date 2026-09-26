@@ -1,3 +1,10 @@
+# [0.80.0](https://github.com/gfargo/pixelkiln/compare/v0.79.0...v0.80.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** split the drawer's record into tabs ([482db47](https://github.com/gfargo/pixelkiln/commit/482db47170404f856e95f399a4c729c11d3b24d5))
+
 # [0.79.0](https://github.com/gfargo/pixelkiln/compare/v0.78.0...v0.79.0) (2026-09-26)
 
 
