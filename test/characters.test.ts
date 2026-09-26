@@ -383,6 +383,33 @@ describe("character controls", () => {
   })
 })
 
+describe("skeleton-v3 loops", () => {
+  it("pose a template, so they need one and take none of the frame or style controls", async () => {
+    const { CharacterAnimationSchema } = await import("../src/types.ts")
+    const issues = (animation: Record<string, unknown>) => {
+      const result = CharacterAnimationSchema.safeParse({ of: "mira", ...animation })
+      return result.success ? [] : result.error.issues.map((issue) => issue.message)
+    }
+    expect(issues({ template: "walk", mode: "skeleton-v3" })).toEqual([])
+    expect(issues({ mode: "skeleton-v3" })).toEqual(["skeleton-v3 mode needs a template"])
+    expect(issues({ template: "walk", mode: "skeleton-v3", frames: 8 })).toEqual(["a template decides its own frame count; drop frames"])
+    expect(issues({ template: "walk", mode: "skeleton-v3", outline: "lineless" })).toEqual(["outline overrides apply to template loops only"])
+    expect(issues({ template: "walk", mode: "v3" })[0]).toMatch(/use "template" or "skeleton-v3"/)
+  })
+
+  it("resolve with no prompt of their own, priced at the top of PixelLab's range", async () => {
+    const loaded = await loadManifest(await writeManifest({
+      assets: {
+        mira: { prompt: "a knight" },
+        "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", mode: "skeleton-v3", direction: "east" } },
+      },
+    }))
+    const walk = (await resolveSpecs(loaded)).find((spec) => spec.assetId === "mira.walk")!
+    expect(walk.character?.animation).toMatchObject({ mode: "skeleton-v3", template: "walk", direction: "east" })
+    expect(walk.cost).toBe(4)
+  })
+})
+
 describe("characterCost", () => {
   const spec = (character: Partial<ResolvedSpec["character"]>, size = 64) =>
     ({ width: size, height: size, character: { kind: "base", mode: "standard", directions: 8, template: "mannequin", ...character } } as unknown as ResolvedSpec)
@@ -413,9 +440,11 @@ describe("characterCost", () => {
     expect(characterCost(spec({ mode: "pro" }, 32))).toBe(20)
     expect(characterCost(spec({ kind: "state" }, 64))).toBe(40)
     expect(characterCost(spec({ kind: "state" }, 32))).toBe(20)
-    const anim = (mode: "template" | "v3" | "pro", size: number, frames = 8) =>
+    const anim = (mode: "template" | "skeleton-v3" | "v3" | "pro", size: number, frames = 8) =>
       spec({ kind: "animation", animation: { mode, direction: "east", frames, fps: 8, keepFirstFrame: true } }, size)
     expect(characterCost(anim("template", 128))).toBe(1)
+    // PixelLab documents 2-4 per direction by the template's length; plan budgets the top.
+    expect(characterCost(anim("skeleton-v3", 128))).toBe(4)
     expect(characterCost(anim("v3", 64))).toBe(1)
     expect(characterCost(anim("v3", 128))).toBe(2)
     expect(characterCost(anim("v3", 160, 16))).toBe(7)
@@ -444,6 +473,9 @@ describe("the wire", () => {
       calls.push({ path: url.pathname + url.search, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : null })
       if (url.pathname.endsWith("/animations") && init?.method === "DELETE") return answer({ success: true, deleted_count: 1 })
       if (url.pathname === "/v2/animate-character") return answer({ background_job_ids: ["job-e"], directions: ["east"] })
+      if (url.pathname === "/v2/characters/animations" && init?.method === "POST") {
+        return answer({ background_job_ids: ["job-s"], directions: ["east"], animation_group_id: "group-1" })
+      }
       return answer({ character_id: "char-1", background_job_id: "job-1", status: "processing" })
     }))
   })
@@ -551,6 +583,24 @@ describe("the wire", () => {
     expect(calls[0]!.body).not.toHaveProperty("first_frame")
     expect(calls[1]!.body).toMatchObject({ first_frame: { type: "base64", base64: "U09VVEg=", format: "png" }, n_directions: 8 })
     for (const key of ["image_size", "style_image", "style_options", "proportions", "enhance_prompt"]) expect(calls[1]!.body).not.toHaveProperty(key)
+  })
+
+  it("sends a skeleton-v3 loop to /characters/animations with its template, and nothing template-only", async () => {
+    const res = await new PixelLabClient("key").animateCharacter({
+      characterId: "char-1",
+      animationName: "walk",
+      template: "walk",
+      mode: "skeleton-v3",
+      directions: ["east"],
+      textGuidanceScale: 9,
+      outline: "lineless",
+    })
+    expect(res.background_job_ids).toEqual(["job-s"])
+    expect(calls[0]).toMatchObject({ path: "/v2/characters/animations", method: "POST" })
+    expect(calls[0]!.body).toMatchObject({ character_id: "char-1", mode: "skeleton-v3", template_animation_id: "walk", directions: ["east"] })
+    expect(calls[0]!.body).not.toHaveProperty("text_guidance_scale")
+    expect(calls[0]!.body).not.toHaveProperty("outline")
+    expect(calls[0]!.body).not.toHaveProperty("frame_count")
   })
 
   it("sends a state and an animation the way the API documents them", async () => {

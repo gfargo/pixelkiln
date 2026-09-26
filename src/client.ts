@@ -1294,15 +1294,22 @@ export class PixelLabClient {
 
   /**
    * One animation of one character. Template mode costs a generation per
-   * direction and fixes the frame count; v3 draws `frameCount` frames from
-   * the action text; pro is the sequential engine. One job per direction.
+   * direction and fixes the frame count; skeleton-v3 poses the same template
+   * with the skeleton video model (2-4 generations per direction); v3 draws
+   * `frameCount` frames from the action text; pro is the sequential engine.
+   * One job per direction.
+   *
+   * Every mode but skeleton-v3 goes to `/animate-character`, the path whose
+   * shapes were measured live. skeleton-v3 is documented only on
+   * `/characters/animations`, which takes the same request and answers with
+   * the same job list (plus an `animation_group_id`).
    */
   async animateCharacter(args: {
     characterId: string
     animationName: string
     actionDescription?: string
     template?: string
-    mode: "template" | "v3" | "pro"
+    mode: "template" | "skeleton-v3" | "v3" | "pro"
     frameCount?: number
     keepFirstFrame?: boolean
     directions: string[]
@@ -1324,7 +1331,8 @@ export class PixelLabClient {
     paletteSwatchBase64?: string
   }): Promise<{ background_job_ids: string[]; directions: string[]; usage?: PixelLabUsage | null }> {
     const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
-    const raw = await this.request<unknown>("/animate-character", {
+    const endpoint = args.mode === "skeleton-v3" ? "/characters/animations" : "/animate-character"
+    const raw = await this.request<unknown>(endpoint, {
       method: "POST",
       body: JSON.stringify({
         character_id: args.characterId,
@@ -1350,7 +1358,7 @@ export class PixelLabClient {
         ...(args.seed != null ? { seed: args.seed } : {}),
       }),
     })
-    return validateResponse(AnimateSubmitSchema, raw, "animate-character")
+    return validateResponse(AnimateSubmitSchema, raw, endpoint.slice(1))
   }
 
   /**

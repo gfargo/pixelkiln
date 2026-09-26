@@ -111,6 +111,9 @@ export function characterCost(spec: ResolvedSpec): number {
   if (character.kind === "animation") {
     const animation = character.animation!
     if (animation.mode === "template") return 1
+    // PixelLab documents 2-4 by the template's frame count, which is not
+    // known offline; the top of the range keeps --budget a ceiling.
+    if (animation.mode === "skeleton-v3") return 4
     if (animation.mode === "v3") return Math.max(1, Math.ceil((px * animation.frames) / 65536))
     return generationCost(spec.width, spec.height, "1dir")
   }
@@ -922,7 +925,7 @@ export class PixelLabProvider implements Provider {
             `but its character has ${character.directions} directions: ${allowed.join(", ")}`,
         )
       }
-      if (character.animation.mode !== "template" && !spec.prompt.trim()) {
+      if (character.animation.mode !== "template" && character.animation.mode !== "skeleton-v3" && !spec.prompt.trim()) {
         throw new Error(`${spec.styleId}/${spec.assetId} needs a prompt describing the motion, or a template`)
       }
     }

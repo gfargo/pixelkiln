@@ -22,6 +22,12 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
 
 ## Already closed since this catalog's research began
 
+- **Skeleton-v3 template loops** — `/characters/animations`'
+  `mode: "skeleton-v3"` poses a template with the skeleton video model
+  (2 to 4 generations and 3 to 5 minutes per direction, beta, Tier 1 and
+  up). Now a character loop's `mode: "skeleton-v3"`; see
+  `docs/CHARACTERS.md`. Not yet billed live.
+
 - **Masked inpainting and whole-image editing** — was the single largest gap
   found (routine in at least 6 of the 26 tutorials). Now the `revision` asset
   shape's `inpaint` and `image-to-image` modes; see `docs/REVISIONS.md`.

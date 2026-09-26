@@ -26,7 +26,7 @@ providers, or before any PixelLab account operation.
 | `tiles` | Ground variations or connected structures | 20–40 generations |
 | `terrain` | A two-terrain Wang tileset for elevation (grass-to-water, floor-to-cliff) | Unmeasured; borrows the same 20–40 canvas tiers |
 | `imagePro` | A larger or non-square background/scene, or real style transfer | **40 generations flat**, any size |
-| `character` | A character in 4 or 8 directions, its poses (`state`), its loops (`animation`), bust `portrait`s, and `outfit` transfers onto a loop | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose or portrait, 1 per template loop per direction, 20 per outfit (measured once) |
+| `character` | A character in 4 or 8 directions, its poses (`state`), its loops (`animation`), bust `portrait`s, and `outfit` transfers onto a loop | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose or portrait, 1 per template loop per direction (2–4 as `skeleton-v3`), 20 per outfit (measured once) |
 | `objectPro` | A prop, creature, or vehicle that needs rotations, states, or loops but has no character rig | 6 per base at 64px (1 from a `reference`), **unmeasured**; assumed to match `character` pro-flash |
 | `isometricTile` | One standalone isometric tile (a raised mesa, a cliff block), 16–64px | **1 generation, measured once** (32px `block`) |
 | `uiAsset` | A UI panel, button, health bar, or other chrome, from precise `pieces` and/or named `elements` | **20 generations, measured once** (256×192); the borrowed canvas-tier estimate still predicts 40 |
@@ -317,6 +317,13 @@ when set) becomes frame 0 for free, so a requested `frames: 6` delivers 7
 files, not 6. Account for the `+1` when checking a loop's output count or
 estimating its budget; set it `false` only when the caller will supply its
 own first frame downstream.
+
+`"mode": "skeleton-v3"` with a `template` poses that template onto the
+character with PixelLab's skeleton video model instead of redrawing each
+frame: the steadiest template loop, 2 to 4 generations and 3 to 5 minutes
+per direction (plan budgets 4), beta, Tier 1 plans and up. Prefer it over a
+plain template loop when identity drift matters and the account qualifies;
+plain `template` stays the 1-generation option.
 
 A named `template` loop (`walk`, `breathing-idle`, and similar) is trained
 mostly on characters with empty hands, and reliably struggles once a
