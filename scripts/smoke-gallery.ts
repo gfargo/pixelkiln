@@ -416,6 +416,26 @@ try {
       return seen.size
     })
     check(frames > 1, "loops play in the grid")
+
+    // An empty direction takes a new loop from its "+": priced first, then one write.
+    const walkRow = () => page.evaluate(() => {
+      const row = [...document.querySelectorAll(".family-sheet table.lg tbody tr")].find((r) => r.querySelector("th b")?.textContent === "walk")!
+      return { cells: row.querySelectorAll(".lg-cell").length, mirrors: row.querySelectorAll(".lg-mirror").length, adds: row.querySelectorAll(".lg-add").length }
+    })
+    const before = await walkRow()
+    await page.evaluate(() => {
+      const row = [...document.querySelectorAll(".family-sheet table.lg tbody tr")].find((r) => r.querySelector("th b")?.textContent === "walk")!
+      ;(row.querySelector('.lg-add[title$="south-east"]') as HTMLButtonElement).click()
+    })
+    await page.waitForFunction(() => /total/.test(document.querySelector(".gap-panel .gap-price")?.textContent ?? ""), { timeout: 10_000 })
+    const gapText = await page.$eval(".gap-panel", (n) => n.textContent ?? "")
+    check(/south-west comes with it as a free mirror/.test(gapText) && /walk\.south-east 4 generations · mira\.walk\.south-west free/.test(gapText), `the gap panel prices the new direction and its free mirror (${gapText})`)
+    await page.evaluate(() => ([...document.querySelectorAll(".gap-panel .actions button")] as HTMLButtonElement[]).find((b) => b.textContent === "Add")!.click())
+    await page.waitForFunction(() => !document.querySelector(".gap-panel"), { timeout: 10_000 })
+    const after = await walkRow()
+    const walkDirections = (JSON.parse(await readFile(studioManifest, "utf8")) as { assets: Record<string, { animation?: { directions?: string[] } }> }).assets["mira.walk"]?.animation?.directions
+    check(after.cells === before.cells + 2 && after.mirrors === before.mirrors + 1 && walkDirections?.join(",") === "south,south-east,north,west",
+      `adding south-east draws it and mirrors south-west (${JSON.stringify({ before, after, walkDirections })})`)
     await page.keyboard.press("Escape")
     check(await page.evaluate(() => __pixelkiln.family() === null || !document.querySelector(".family-sheet")), "Escape closes the family view")
 
@@ -461,13 +481,15 @@ try {
       cards: [...g.querySelectorAll(".card")].map((c) => (c as HTMLElement).dataset.key),
     })))
     const mira = families.find((f) => f.head === "mira")
-    check(mira?.cards.join(",") === "characters/mira,characters/mira.idle.south,characters/mira.walk.south,characters/mira.walk.east,characters/mira.walk.north,characters/mira.walk.west",
+    check(mira?.cards.join(",") === "characters/mira,characters/mira.idle.south,characters/mira.walk.south,characters/mira.walk.south-east,characters/mira.walk.east,characters/mira.walk.north,characters/mira.walk.west,characters/mira.walk.south-west",
       `grouping by family puts the base first and each loop around the compass (${JSON.stringify(families)})`)
 
     // Select several, act on them together: priced actions, and one tag write.
     await page.click("#select")
-    await page.click('.card[data-key="props/crate"]')
-    await page.click('.card[data-key="characters/mira.idle.south"]')
+    // Clicked in the page: the sticky selection bar can sit over a card low on the screen.
+    for (const key of ["props/crate", "characters/mira.idle.south"]) {
+      await page.evaluate((k) => (document.querySelector(`.card[data-key="${k}"]`) as HTMLButtonElement).click(), key)
+    }
     const selbar = await page.$eval("#selbar", (n) => n.textContent ?? "")
     check(/2 selected/.test(selbar) && /Generate 1 · 1 generation/.test(selbar) && /Regenerate 1 · /.test(selbar), `the selection bar prices what it would do (${selbar})`)
     check(await page.evaluate(() => !document.querySelector(".drawer")), "a click in select mode picks a card instead of opening it")

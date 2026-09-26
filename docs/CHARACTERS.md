@@ -460,6 +460,18 @@ reference image change alone also makes it stale.
     parent's matching rotation, dimmed.
   - Portraits and outfits sit in a strip underneath. Clicking any cell
     opens its drawer.
+  - With `--edit`, an empty direction the parent can face shows a **+**
+    that adds that direction to the loop. The panel prices the change
+    before anything is written:
+    - A loop written with `animation.directions` gains the direction in
+      its list, and the direction's flip comes free as a mirror when the
+      loop doesn't have it yet.
+    - A loop written out per direction gains an asset: a free mirror of its
+      flip when that is drawn, or a copy of a drawn sibling facing the new
+      way.
+
+    **Add** saves the change. With `--budget`, **Add & generate** also
+    starts the job.
   - With `--budget`, **Generate** starts one job for every member that is
     missing, stale, or failed.
 - **The character studio.** With `--edit`, "+ New character" in the

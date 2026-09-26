@@ -1,6 +1,7 @@
-import { $, S, STATE_TONE, backdropControl, displayScale, el, fmtCost } from "./core.ts"
-import { openItem } from "./drawer.ts"
+import { $, S, STATE_TONE, backdropControl, displayScale, el, fmtCost, postEdit, projectOf } from "./core.ts"
+import { openItem, render } from "./drawer.ts"
 import { generateDialog } from "./editor.ts"
+import { pollJobs, postGenerate, remainingBudget } from "./jobs.ts"
 
 /**
  * The family view: one character (or objectPro object) with everything drawn
@@ -45,6 +46,8 @@ interface FamilyState {
   /** Cells and headers per direction, so turning the table highlights its column without a rebuild. */
   columns: Map<string, HTMLElement[]>
   turn: ((direction: string) => void) | null
+  /** The empty loop cell whose "+" is open: its row and direction. */
+  gap: { row: string; direction: string } | null
 }
 
 let F: FamilyState | null = null;
@@ -106,6 +109,7 @@ export function openFamily(item) {
     anims: [],
     columns: new Map(),
     turn: null,
+    gap: null,
   };
   renderFamily();
 }
@@ -363,7 +367,16 @@ function loopGrid(root, members, order) {
       const td = el('td');
       column(d, td);
       const item = cells.find((l) => l.character.direction === d);
-      td.append(item ? loopCell(item, parent, d) : el('span', 'lg-none', '·'));
+      if (item) td.append(loopCell(item, parent, d));
+      else if (fillable(root, parent, cells, d)) {
+        const open = F!.gap && F!.gap.row === k && F!.gap.direction === d;
+        const add = el('button', 'lg-add' + (open ? ' on' : ''), '+');
+        add.type = 'button';
+        add.title = 'Add ' + name + ' facing ' + d;
+        add.setAttribute('aria-label', add.title);
+        add.onclick = () => { F!.gap = open ? null : { row: k, direction: d }; F!.drawn = null; renderFamily(); };
+        td.append(add);
+      } else td.append(el('span', 'lg-none', '·'));
       tr.append(td);
     }
     tbody.append(tr);
@@ -372,8 +385,164 @@ function loopGrid(root, members, order) {
   const scroller = el('div', 'lg-scroll');
   scroller.append(table);
   wrap.append(scroller);
+  const gap = F!.gap && rows.get(F!.gap.row);
+  if (gap) {
+    wrap.append(gapPanel(root, gap, F!.gap!.direction));
+  } else F!.gap = null;
   wrap.append(el('small', 'state-dim', 'Every loop plays on one clock. ⇋ marks a mirror, flipped locally at no cost. A dimmed cell is the parent\'s rotation, standing in until that loop is generated.'));
   return wrap;
+}
+
+// ---- filling a gap -------------------------------------------------------------
+
+const MIRRORED: Record<string, string> = {
+  south: 'south', north: 'north', east: 'west', west: 'east',
+  'south-east': 'south-west', 'south-west': 'south-east', 'north-east': 'north-west', 'north-west': 'north-east',
+};
+/** Fields an explicit loop's copy may carry into the manifest edit (the rest need a hand edit). */
+const ANIMATION_FIELDS = ['of', 'template', 'frames', 'fps', 'mode', 'subject', 'enhancePrompt'];
+
+/** An empty cell can take a new direction: editing is on, the parent turns that way, and the row has a drawn loop to copy. */
+function fillable(root, parent, cells, direction: string) {
+  if (!EDITABLE || !projectOf(root)?.manifestSha256) return false;
+  if (!turnOrder(parent).includes(direction)) return false;
+  return cells.some((l) => !l.mirrorOfKey && l.declaredAs && l.asset);
+}
+
+interface GapOption { id: string; label: string; note: string; edit: any }
+
+/**
+ * The ways to fill a gap. A loop written with `animation.directions` gains
+ * the direction in its list (and, when its flip is not there yet, that
+ * flip as a free mirror). A loop written out per direction gains an asset:
+ * a mirror of its flip when that is drawn, or a copy of a drawn sibling
+ * facing the new way.
+ */
+function gapOptions(cells, direction: string): GapOption[] {
+  const drawn = cells.filter((l) => !l.mirrorOfKey);
+  const sample = drawn[0];
+  const name = loopName(sample);
+  const shorthand = sample.declaredAs !== sample.assetId ? sample.declaredAs : null;
+  const flip = MIRRORED[direction];
+  const options: GapOption[] = [];
+  if (shorthand) {
+    const now = drawn.map((l) => l.character.direction);
+    const next = COMPASS.filter((d) => d === direction || now.includes(d));
+    const freeFlip = flip !== direction && !cells.some((l) => l.character.direction === flip);
+    options.push({
+      id: 'draw',
+      label: 'Draw it',
+      note: 'adds ' + direction + ' to ' + shorthand + '\'s directions' + (freeFlip ? '; ' + flip + ' comes with it as a free mirror' : ''),
+      edit: { action: 'patch-asset', assetId: shorthand, patch: { loopDirections: next } },
+    });
+    return options;
+  }
+  const newId = name + '.' + direction;
+  const flipped = drawn.find((l) => l.character.direction === flip && flip !== direction);
+  if (flipped) {
+    const mirror: any = { mirror: flipped.declaredAs };
+    if (flipped.asset?.styles) mirror.styles = flipped.asset.styles;
+    options.push({ id: 'mirror', label: 'Mirror ' + flip, note: 'flips ' + flipped.assetId + ' locally; free', edit: { action: 'add-asset', assetId: newId, asset: mirror } });
+  }
+  const base = sample.asset || {};
+  const animation: any = { direction };
+  for (const key of ANIMATION_FIELDS) if (base.animation && base.animation[key] !== undefined) animation[key] = base.animation[key];
+  const asset: any = { animation };
+  for (const key of ['prompt', 'styles', 'tags', 'category']) if (base[key] !== undefined) asset[key] = base[key];
+  options.push({ id: 'draw', label: 'Draw it', note: 'a copy of ' + sample.assetId + ' facing ' + direction, edit: { action: 'add-asset', assetId: newId, asset } });
+  return options;
+}
+
+function gapPanel(root, cells, direction: string) {
+  const panel = el('div', 'gap-panel');
+  const name = loopName(cells[0]);
+  panel.append(el('h4', null, 'Add ' + (name.startsWith(root.assetId + '.') ? name.slice(root.assetId.length + 1) : name) + ' facing ' + direction));
+  const options = gapOptions(cells, direction);
+  let chosen = options[0];
+  const list = el('div', 'gap-options');
+  const priceLine = el('div', 'gap-price state-dim', 'pricing…');
+  const msg = el('div', 'msg');
+  for (const option of options) {
+    const label = el('label', 'field check');
+    const radio = el('input'); radio.type = 'radio'; radio.name = 'gap-option'; radio.checked = option === chosen;
+    radio.onchange = () => { chosen = option; price(); };
+    label.append(radio, el('b', null, ' ' + option.label), el('span', 'state-dim', ' — ' + option.note));
+    list.append(label);
+  }
+  const actions = el('div', 'actions');
+  const add = el('button', null, 'Add'); add.type = 'button';
+  const addGen = el('button', 'primary', 'Add & generate'); addGen.type = 'button';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button';
+  cancel.onclick = () => { F!.gap = null; F!.drawn = null; renderFamily(); };
+  actions.append(add);
+  if (GENERATION) actions.append(addGen);
+  actions.append(cancel);
+  panel.append(list, priceLine, actions, msg);
+
+  const pr = projectOf(root);
+  const request = () => {
+    const body: any = { ...chosen.edit, expectedSha256: pr!.manifestSha256 };
+    if (root.project) body.project = root.project;
+    return body;
+  };
+  let quote: any = null;
+  let seq = 0;
+  async function price() {
+    const mine = ++seq;
+    quote = null;
+    priceLine.textContent = 'pricing…';
+    add.disabled = addGen.disabled = true;
+    try {
+      const res = await fetch('/api/price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Pixelkiln-Session': SESSION ?? '' },
+        body: JSON.stringify(request()),
+      });
+      if (mine !== seq) return;
+      if (!res.ok) throw new Error(await res.text());
+      quote = await res.json();
+      const rows = quote.items.map((i) => i.key.split('/').slice(1).join('/') + ' ' + (i.cost ? fmtCost(i.costUnit, i.cost) : 'free'));
+      const totals = Object.entries(quote.totals as Record<string, number>).filter(([, n]) => n);
+      priceLine.textContent = (rows.length ? rows.join(' · ') : 'nothing new') + ' — total ' + (totals.map(([u, n]) => fmtCost(u, Math.round(n * 100) / 100)).join(' + ') || 'free');
+      const over = totals.some(([unit, n]) => {
+        const provider = quote.items.find((i) => i.costUnit === unit)?.provider;
+        const left = provider ? remainingBudget(provider) : null;
+        return left !== null && n > left;
+      });
+      add.disabled = !quote.items.length;
+      addGen.disabled = !quote.items.length || over;
+      addGen.textContent = 'Add & generate' + (totals.length ? ' · ' + totals.map(([u, n]) => fmtCost(u, Math.round(n * 100) / 100)).join(' + ') : '');
+      if (over) addGen.title = 'More than the session budget has left';
+    } catch (err) {
+      if (mine !== seq) return;
+      priceLine.className = 'gap-price msg bad';
+      priceLine.textContent = err.message;
+    }
+  }
+  const save = async (generate: boolean) => {
+    if (!quote) return;
+    const keys = quote.items.map((i) => i.key);
+    add.disabled = addGen.disabled = true;
+    msg.className = 'msg'; msg.textContent = 'saving…';
+    try {
+      S.snap = await postEdit(request());
+      if (generate) {
+        await postGenerate({ keys, ...(root.project ? { project: root.project } : {}) });
+        pollJobs();
+      }
+      F!.gap = null;
+      F!.drawn = null;
+      render();
+    } catch (err) {
+      msg.className = 'msg bad';
+      msg.textContent = err.status === 409 ? 'The manifest changed on disk; refresh and try again.' : err.message;
+      add.disabled = addGen.disabled = false;
+    }
+  };
+  add.onclick = () => save(false);
+  addGen.onclick = () => save(true);
+  price();
+  return panel;
 }
 
 function column(direction: string, node: HTMLElement) {
