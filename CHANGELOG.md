@@ -1,3 +1,10 @@
+# [0.71.0](https://github.com/gfargo/pixelkiln/compare/v0.70.1...v0.71.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** drag-to-edit pose editor for skeleton animations ([3b5b739](https://github.com/gfargo/pixelkiln/commit/3b5b739ac0faaa9d7a2303438321d5fc09875495))
+
 ## [0.70.1](https://github.com/gfargo/pixelkiln/compare/v0.70.0...v0.70.1) (2026-09-26)
 
 
