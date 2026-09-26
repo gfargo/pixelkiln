@@ -73,6 +73,20 @@ wire contracts.
   image. Any `website` scope is also refused a release by `releaseRules` in
   `.releaserc.json`, so a slip is caught rather than published, but the right
   subject keeps the changelog honest.
+- **A change under `skills/pixelkiln/` always releases, whatever the commit
+  type says.** That directory is what the public `gfargo/skills` tap mirrors
+  on every new release tag (see [Releases](#releases)), so a `docs:`-typed
+  commit touching it — accurate framing for a human reader, since it reads as
+  documentation — would otherwise cut no release at all under the default
+  rules, and the tap would never see the change. `analyzeCommits` runs a
+  second plugin (`scripts/release-plugins/skill-release-analyzer.mjs`)
+  alongside `@semantic-release/commit-analyzer` that inspects each commit's
+  actual changed files and forces at least a patch release whenever one
+  touches `skills/pixelkiln/`, regardless of type or scope. It only ever
+  raises the release semantic-release would otherwise cut, never lowers or
+  blocks one, so there is no commit-subject convention to remember here —
+  just don't remove the plugin from `.releaserc.json` (`test:release` fails
+  if it is missing).
 - Add regression coverage for bug fixes and behavior coverage for new public
   options or exports.
 - Update README/help text and focused docs in the same change as user-facing
@@ -169,5 +183,7 @@ A failed release opens an issue labelled `semantic-release`, which the next
 successful run closes. That label must exist in the repository or the reporting
 step itself fails with a validation error and hides the original failure.
 
-See the website scoping rule under [change guidelines](#change-guidelines) for
-the one commit convention that changes whether a release happens at all.
+See the website scoping rule and the `skills/pixelkiln/` release-forcing
+plugin under [change guidelines](#change-guidelines) for the two things that
+change whether a release happens at all, independent of the conventional
+commit type on its own.

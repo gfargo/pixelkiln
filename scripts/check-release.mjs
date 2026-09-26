@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 
 const workflow = readFileSync(".github/workflows/release.yml", "utf8")
 const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8")
@@ -38,8 +38,12 @@ for (const plugin of [
   "@semantic-release/npm",
   "@semantic-release/github",
   "@semantic-release/git",
+  "./scripts/release-plugins/skill-release-analyzer.mjs",
 ]) {
   if (!pluginNames.includes(plugin)) failures.push(`Semantic Release is missing ${plugin}`)
+}
+if (!existsSync("scripts/release-plugins/skill-release-analyzer.mjs")) {
+  failures.push("skill-release-analyzer.mjs is registered in .releaserc.json but missing from disk")
 }
 
 if (pkg.repository?.url !== "git+https://github.com/gfargo/pixelkiln.git") {
