@@ -1,3 +1,10 @@
+# [0.79.0](https://github.com/gfargo/pixelkiln/compare/v0.78.0...v0.79.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** fill a loop's missing directions from the family view ([ca392dc](https://github.com/gfargo/pixelkiln/commit/ca392dc6cebbc059080162eb9d6b9091b03375d7))
+
 # [0.78.0](https://github.com/gfargo/pixelkiln/compare/v0.77.0...v0.78.0) (2026-09-26)
 
 
