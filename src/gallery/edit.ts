@@ -8,6 +8,7 @@ import {
 import { detachHandEdit, MAX_HAND_EDIT_BYTES, openInEditor, saveHandEdit, startHandEdit } from "../pipeline/hand-edit.ts"
 import { lockKey } from "../types.ts"
 import type { GalleryProjectContext } from "./generate.ts"
+import { createSkeletonAnimation, SkeletonAnimationRequestSchema } from "./skeleton.ts"
 import type { GalleryBuild } from "./snapshot.ts"
 
 /** Standard base64, sized so a decoded payload cannot exceed the edit limit. */
@@ -117,6 +118,24 @@ export function createGalleryEditHandler(
         if (result.changed) log(`  hand edit detached: ${request.styleId}/${request.assetId} (file kept)`)
       }
       return opts.reload()
+    }
+    const skeleton = SkeletonAnimationRequestSchema.safeParse(body)
+    if (skeleton.success) {
+      let manifestPath: string
+      try {
+        manifestPath = await opts.manifestFor(skeleton.data.project)
+      } catch (error) {
+        throw new ManifestEditError(error instanceof Error ? error.message : String(error))
+      }
+      await createSkeletonAnimation(manifestPath, skeleton.data)
+      log(`  manifest edited: added skeleton animation ${skeleton.data.assetId} (${skeleton.data.keypointsFile})`)
+      return opts.reload()
+    }
+    if ((body as { action?: unknown } | null)?.action === "create-skeleton-animation") {
+      throw new ManifestEditError(
+        "invalid skeleton animation: " +
+          skeleton.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
+      )
     }
     const parsed = ManifestEditSchema.safeParse(body)
     if (!parsed.success) {

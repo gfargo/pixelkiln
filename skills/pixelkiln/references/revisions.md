@@ -83,10 +83,13 @@ Read this reference when an asset declares `revision`.
   silhouette or layout drift before post-processing.
 - `pixelkiln gallery --edit` can create an `image-to-image` revision directly
   from a parent's drawer ("+ New revision" under "Revisions from this
-  asset"), once the parent has usable pixels; it does not offer `inpaint`
-  (needs a mask upload), `outpaint`, `reduce-colors`, `correct-pixelart`,
-  `animate`, `animate-pixminimax`, `animate-skeleton`, `interpolate`, or
-  `edit-animation` yet, so add those by hand.
+  asset"), once the parent has usable pixels. On a single PixelLab sprite,
+  "+ Skeleton animation" creates an `animate-skeleton` revision: poses from a
+  project file, pasted JSON, or "Estimate poses" (one confirmed, un-budgeted
+  PixelLab call), previewed over the sprite, written into the project on
+  save. It does not offer `inpaint` (needs a mask upload), `outpaint`,
+  `reduce-colors`, `correct-pixelart`, `animate`, `animate-pixminimax`,
+  `interpolate`, or `edit-animation` yet, so add those by hand.
 - Before an outside image becomes a `styleImages` or `reference` path,
   suggest `pixelkiln unzoom --from <file>`: upscaled pixel art (every art
   pixel a block of screen pixels) degrades every reference-taking PixelLab

@@ -66,6 +66,17 @@ reports `blocked` with the real reason if that turns out wrong once the asset
 exists. `inpaint` needs a mask upload the gallery does not offer yet, so it
 still has to be added by hand.
 
+"+ Skeleton animation", beside it on a single PixelLab sprite, creates an
+`animate-skeleton` child instead. The poses come from a keypoints file already
+in the project, from pasted JSON, or from "Estimate poses", which runs
+PixelLab's `estimate-skeleton` on the sprite (a direct, un-budgeted call on
+your account, confirmed first; square 16–256px sprites only) and fills in the
+starting pose and four frames to edit. Every change to the JSON redraws the
+poses over the sprite. Saving writes the keypoints file inside the project
+(never over an existing file unless asked, and removed again if the manifest
+refuses the asset) and adds the revision. An `animate-skeleton` record's
+Lineage section draws its poses over its parent the same way.
+
 ## Inpainting
 
 An inpaint revision also declares a manifest-relative mask:

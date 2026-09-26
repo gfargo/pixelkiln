@@ -18,6 +18,7 @@ import { handEditProjectPath, readHandEditCompanion } from "../pipeline/hand-edi
 import { historyLimit } from "../pipeline/history.ts"
 import { expandAssetFilter } from "../loop-directions.ts"
 import { pixelLabObjectUrl } from "../providers/pixellab.ts"
+import type { SkeletonSet } from "../skeleton.ts"
 
 /**
  * A read-only view of everything the project has generated, built from the
@@ -144,6 +145,8 @@ export interface GalleryItem {
   revisionParentKey: string | null
   /** Lock key of the asset this one is a left-to-right flip of, when it is a mirror. */
   mirrorOfKey: string | null
+  /** An `animate-skeleton` revision's poses, drawn over its parent by the page. */
+  skeleton: GallerySkeleton | null
   /** A character family member: what it is, whose it is, and what PixelLab holds for it. */
   character: GalleryCharacter | null
   outputs: GalleryOutput[]
@@ -184,6 +187,13 @@ export interface GalleryItem {
   history: GalleryGeneration[]
   tags: string[]
   category: string | null
+}
+
+export interface GallerySkeleton {
+  /** Manifest-relative keypoints file. */
+  keypointsFile: string
+  /** The parsed file; null until it exists. A malformed file fails the whole resolve, as in `plan`. */
+  set: SkeletonSet | null
 }
 
 export interface GalleryCharacter {
@@ -764,6 +774,12 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         : entry?.mirror
           ? lockKey(spec.styleId, entry.mirror.sourceAssetId)
           : null,
+      skeleton: spec.revision?.mode === "animate-skeleton" && spec.revision.keypointsFile
+        ? {
+            keypointsFile: portableOutputPath(spec.revision.keypointsFile, root),
+            set: spec.revision.skeleton ?? null,
+          }
+        : null,
       character: describeCharacter(spec, entry),
       outputs,
       quality,
@@ -829,6 +845,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       revision: entry.revision,
       revisionParentKey: entry.revision ? lockKey(entry.styleId, entry.revision.sourceAssetId) : null,
       mirrorOfKey: entry.mirror ? lockKey(entry.styleId, entry.mirror.sourceAssetId) : null,
+      skeleton: null,
       character: describeCharacter(undefined, entry),
       outputs,
       quality: null,

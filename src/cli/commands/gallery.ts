@@ -15,6 +15,7 @@ import {
 } from "../../gallery/snapshot.ts"
 import { serveGallery } from "../../gallery/server.ts"
 import { createGalleryEditHandler } from "../../gallery/edit.ts"
+import { createGallerySkeletonHandlers } from "../../gallery/skeleton.ts"
 import { createGenerateHandlers, type GalleryProjectContext } from "../../gallery/generate.ts"
 import { createGalleryEditorHandlers } from "../../gallery/editor.ts"
 import { loadWorkspace, resolveProject } from "../../workspace.ts"
@@ -107,6 +108,8 @@ async function serveUntilStopped(
     ...(budget
       ? { generate: createGenerateHandlers({ loadProject, providerFor, budget, reload, onProgress: log }) }
       : {}),
+    // Estimating acts on the author's behalf and feeds a manifest edit, so it follows the write gate.
+    ...(args.edit ? { skeleton: createGallerySkeletonHandlers({ loadProject, onProgress: log }) } : {}),
     // The editor exists to write hand edits back, so it follows the write gate.
     ...(args.edit && !args.noEditor ? { editor: createGalleryEditorHandlers({ onProgress: log }) } : {}),
   })

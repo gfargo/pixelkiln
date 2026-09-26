@@ -1677,6 +1677,208 @@ function newRevisionForm(item) {
   return form;
 }
 
+// ---- skeleton animation ----------------------------------------------------
+
+/** PixelLab's 18-joint body, as src/skeleton.ts draws it: right orange, left blue. */
+const SKELETON_BONES = [
+  ['NOSE', 'NECK'],
+  ['NECK', 'RIGHT SHOULDER'], ['RIGHT SHOULDER', 'RIGHT ELBOW'], ['RIGHT ELBOW', 'RIGHT ARM'],
+  ['NECK', 'LEFT SHOULDER'], ['LEFT SHOULDER', 'LEFT ELBOW'], ['LEFT ELBOW', 'LEFT ARM'],
+  ['NECK', 'RIGHT HIP'], ['RIGHT HIP', 'RIGHT KNEE'], ['RIGHT KNEE', 'RIGHT LEG'],
+  ['NECK', 'LEFT HIP'], ['LEFT HIP', 'LEFT KNEE'], ['LEFT KNEE', 'LEFT LEG'],
+  ['NOSE', 'RIGHT EYE'], ['RIGHT EYE', 'RIGHT EAR'], ['NOSE', 'LEFT EYE'], ['LEFT EYE', 'LEFT EAR'],
+];
+const SKELETON_LABELS = [...new Set(SKELETON_BONES.flat())];
+const boneColor = (label) => label.startsWith('RIGHT') ? '#ff8c28' : label.startsWith('LEFT') ? '#3c96ff' : '#f0f0f0';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs) => {
+  const n = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+  return n;
+};
+
+/** One pose over the sprite, in a unit square: coordinates are fractions, as PixelLab's are. */
+function poseSvg(pose, imageUrl, dim) {
+  const svg = svgEl('svg', { viewBox: '0 0 1 1', class: 'pose' });
+  if (imageUrl) svg.append(svgEl('image', { href: imageUrl, x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: 'none', opacity: dim ? 0.45 : 1 }));
+  const at = new Map(pose.map((j) => [j.label, j]));
+  for (const outline of [true, false]) {
+    for (const [a, b] of SKELETON_BONES) {
+      const p = at.get(a), q = at.get(b);
+      if (!p || !q) continue;
+      svg.append(svgEl('line', { x1: p.x, y1: p.y, x2: q.x, y2: q.y, stroke: outline ? '#000' : boneColor(b), 'stroke-width': outline ? 0.03 : 0.015, 'stroke-linecap': 'round' }));
+    }
+    for (const j of pose) {
+      const title = outline ? null : svgEl('title', {});
+      if (title) title.textContent = j.label + ' (' + j.x.toFixed(2) + ', ' + j.y.toFixed(2) + ')';
+      const dot = svgEl('circle', { cx: j.x, cy: j.y, r: outline ? 0.025 : 0.016, fill: outline ? '#000' : boneColor(j.label) });
+      if (title) dot.append(title);
+      svg.append(dot);
+    }
+  }
+  return svg;
+}
+
+/** Every pose of a keypoints set: the starting pose over the full sprite, then each frame. */
+function poseStrip(set, imageUrl) {
+  const strip = el('div', 'poses');
+  [set.firstFrameKeypoints, ...set.frames].forEach((pose, i) => {
+    const cell = el('figure');
+    cell.append(poseSvg(pose, imageUrl, i > 0), el('figcaption', null, i === 0 ? 'start' : 'frame ' + i));
+    strip.append(cell);
+  });
+  return strip;
+}
+
+/** The image a record shows: its hand edit when it has one, else its first output. */
+const displayUrl = (item) => (item && ((item.edit && item.edit.url) || (item.outputs[0] && item.outputs[0].url))) || null;
+
+/** What is wrong with pasted poses, or null; the server validates again before writing. */
+function skeletonProblem(set) {
+  if (!set || typeof set !== 'object' || !Array.isArray(set.firstFrameKeypoints) || !Array.isArray(set.frames)) {
+    return 'expected { "firstFrameKeypoints": [...], "frames": [[...], ...] }';
+  }
+  if (set.frames.length < 3 || set.frames.length > 15) return 'frames must hold 3 to 15 poses, not ' + set.frames.length;
+  for (const [i, pose] of [set.firstFrameKeypoints, ...set.frames].entries()) {
+    const where = i === 0 ? 'the starting pose' : 'frame ' + i;
+    if (!Array.isArray(pose) || pose.length !== 18) return where + ' needs all 18 joints';
+    const seen = new Set();
+    for (const j of pose) {
+      if (!SKELETON_LABELS.includes(j && j.label)) return where + ': "' + (j && j.label) + '" is not one of PixelLab\'s 18 joints';
+      if (seen.has(j.label)) return where + ': "' + j.label + '" appears twice';
+      seen.add(j.label);
+      if (!(j.x >= 0 && j.x <= 1 && j.y >= 0 && j.y <= 1)) return where + ': ' + j.label + ' must sit inside the image (x and y 0 to 1)';
+    }
+  }
+  return null;
+}
+
+/** Why PixelLab's estimate would refuse this sprite, or null. */
+const estimateProblem = (item) => item.width === item.height && [16, 32, 64, 128, 256].includes(item.width)
+  ? null
+  : 'estimates need a square 16, 32, 64, 128, or 256 px sprite; this one is ' + item.width + '×' + item.height;
+
+/**
+ * A new `animate-skeleton` revision of `item`, a single PixelLab sprite. The
+ * poses come from a keypoints file already in the project, from pasted JSON,
+ * or from PixelLab's estimate of the sprite itself (a direct call the page
+ * asks about first); pasted and estimated poses are written to the project
+ * before the asset is added, and previewed over the sprite as they change.
+ */
+function skeletonAnimationForm(item) {
+  const pr = projectOf(item);
+  const form = el('form', 'edit');
+  form.append(el('h3', null, 'New skeleton animation of ' + item.assetId));
+  const id = el('input'); id.type = 'text'; id.placeholder = 'asset-id'; id.required = true; id.autocomplete = 'off';
+  id.pattern = '[^\\/\\\\]+';
+  const prompt = el('input'); prompt.type = 'text'; prompt.placeholder = 'e.g. swinging the sword downward'; prompt.required = true;
+  const direction = el('select');
+  for (const d of ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west']) direction.append(new Option(d, d));
+  const description = el('input'); description.type = 'text'; description.placeholder = 'optional: colours, clothing, held items';
+  const row1 = el('div', 'row');
+  row1.append(field('new asset id', id), field('facing', direction, 'Which way the sprite faces.'));
+  form.append(row1, field('motion', prompt, 'A short label for the movement; sent as PixelLab\'s action.'), field('looks like', description));
+
+  const source = el('select');
+  source.append(new Option('estimate from this sprite', 'estimate'), new Option('paste poses', 'paste'), new Option('use a file in the project', 'file'));
+  const file = el('input'); file.type = 'text'; file.required = true;
+  let fileTouched = false;
+  file.oninput = () => { fileTouched = true; };
+  id.oninput = () => { if (!fileTouched) file.value = id.value.trim() ? 'poses/' + id.value.trim() + '.json' : ''; };
+  const overwrite = el('input'); overwrite.type = 'checkbox';
+  const overwriteField = el('label', 'field check'); overwriteField.append(overwrite, el('span', null, 'replace the file if it exists'));
+  const json = el('textarea'); json.className = 'mono'; json.rows = 8; json.spellcheck = false;
+  json.placeholder = '{ "firstFrameKeypoints": [18 joints], "frames": [[18 joints], ...3 to 15] }';
+  const estimate = el('button', null, 'Estimate poses'); estimate.type = 'button';
+  const estimateNote = el('small', 'state-dim');
+  const problem = estimateProblem(item);
+  estimate.disabled = !!problem;
+  estimateNote.textContent = problem || 'One PixelLab estimate-skeleton call on your account, outside the gallery budget (PixelLab documents about $0.02). The estimate becomes the starting pose and four frames to edit.';
+  const estimateRow = el('div', 'actions'); estimateRow.append(estimate, estimateNote);
+  const status = el('div', 'msg');
+  const preview = el('div');
+  const row2 = el('div', 'row');
+  row2.append(field('poses from', source), field('keypoints file', file, 'Inside the project. The manifest records this path.'));
+  form.append(row2, estimateRow, field('poses (JSON)', json, 'Move joints frame by frame; x and y are fractions of the sprite.'), overwriteField, status, preview);
+
+  const imageUrl = displayUrl(item);
+  let set = null;
+  const showPoses = () => {
+    preview.textContent = '';
+    status.className = 'msg'; status.textContent = '';
+    if (source.value === 'file' || !json.value.trim()) { set = null; return; }
+    try { set = JSON.parse(json.value); } catch (e) { set = null; status.className = 'msg bad'; status.textContent = 'not valid JSON: ' + e.message; return; }
+    const bad = skeletonProblem(set);
+    if (bad) { status.className = 'msg bad'; status.textContent = bad; set = null; return; }
+    preview.append(poseStrip(set, imageUrl));
+  };
+  const sync = () => {
+    const pasting = source.value !== 'file';
+    estimateRow.hidden = source.value !== 'estimate';
+    json.parentElement.hidden = !pasting;
+    overwriteField.hidden = !pasting;
+    showPoses();
+  };
+  source.onchange = sync;
+  json.oninput = showPoses;
+  estimate.onclick = async () => {
+    if (!confirm('Ask PixelLab to estimate a skeleton for ' + item.assetId + '? This is one paid call on your account, outside the gallery budget.')) return;
+    estimate.disabled = true; status.className = 'msg'; status.textContent = 'estimating…';
+    try {
+      const body = { styleId: item.styleId, assetId: item.assetId };
+      if (item.project) body.project = item.project;
+      const res = await fetch('/api/skeleton/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Pixelkiln-Session': SESSION },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const out = await res.json();
+      json.value = JSON.stringify(out.set, null, 2);
+      showPoses();
+      status.className = 'msg'; status.textContent = 'Estimated from ' + out.source + '. Move the frames into the motion, then save.';
+    } catch (err) {
+      status.className = 'msg bad'; status.textContent = err.message;
+    } finally {
+      estimate.disabled = false;
+    }
+  };
+
+  const actions = el('div', 'actions');
+  const save = el('button', 'primary', 'Create skeleton animation'); save.type = 'submit';
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; renderDrawer(); };
+  const msg = el('span', 'msg');
+  actions.append(save, cancel, msg);
+  form.append(actions);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    if (source.value !== 'file' && !set) { msg.className = 'msg bad'; msg.textContent = 'Add poses first: estimate them or paste a keypoints file.'; return; }
+    save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
+    const body = {
+      action: 'create-skeleton-animation', expectedSha256: pr.manifestSha256, styleId: item.styleId, from: item.assetId,
+      assetId: id.value.trim(), prompt: prompt.value.trim(), direction: direction.value, keypointsFile: file.value.trim(),
+    };
+    if (description.value.trim()) body.description = description.value.trim();
+    if (source.value !== 'file') { body.set = set; if (overwrite.checked) body.overwrite = true; }
+    if (item.project) body.project = item.project;
+    try {
+      snap = await postEdit(body);
+      const newId = (item.project ? item.project + ':' : '') + item.styleId + '/' + body.assetId;
+      ui.editing = null;
+      ui.notice = { id: newId, text: 'Added to the manifest with ' + body.keypointsFile + '. Nothing is generated until you run pixelkiln gen.' };
+      render();
+      if (snap.items.some((i) => i.id === newId)) openItem(newId);
+    } catch (err) {
+      save.disabled = false;
+      msg.className = 'msg bad';
+      msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : '');
+    }
+  };
+  sync();
+  setTimeout(() => id.focus(), 0);
+  return form;
+}
+
 /**
  * A new pose or outfit of `item`, an existing `character`/`objectPro` base
  * or state — the same family, restricted to `item`'s own style. A larger
@@ -2193,6 +2395,16 @@ function renderDrawer() {
       if (item.revision.maskSha256) row(dl, 'mask sha256', item.revision.maskSha256.slice(0, 16) + '…', { mono: true, copy: item.revision.maskSha256 });
       if (item.revision.strength !== undefined) row(dl, 'strength', item.revision.strength);
     }
+    if (item.skeleton) {
+      row(dl, 'keypoints', item.skeleton.keypointsFile, { mono: true });
+      if (item.skeleton.set) {
+        const parent = snap.items.find((i) => i.key === item.revisionParentKey && i.project === item.project);
+        s.append(poseStrip(item.skeleton.set, displayUrl(parent)));
+        s.append(el('small', 'state-dim', 'The starting pose must match the sprite; each frame is drawn over a dimmed copy. `pixelkiln skeleton-preview ' + item.assetId + '` writes the same sheet as a PNG.'));
+      } else {
+        row(dl, 'poses', el('span', 'state-warn', 'the keypoints file does not exist yet'));
+      }
+    }
     body.append(s);
   }
   const children = snap.items.filter((i) => i.revisionParentKey === item.key && i.project === item.project);
@@ -2205,8 +2417,18 @@ function renderDrawer() {
       const revise = el('button', ui.editing === reviseKey ? null : 'add', ui.editing === reviseKey ? 'Cancel' : '+ New revision');
       revise.type = 'button';
       revise.onclick = () => { ui.editing = ui.editing === reviseKey ? null : reviseKey; ui.notice = null; renderDrawer(); };
-      s.append(revise);
+      const buttons = el('div', 'actions'); buttons.append(revise);
+      // animate-skeleton poses one PixelLab sprite; a set of directions or frames is not one.
+      const skeletonKey = 'skeleton:' + item.id;
+      if (item.provider === 'pixellab' && item.outputs.length === 1) {
+        const animate = el('button', ui.editing === skeletonKey ? null : 'add', ui.editing === skeletonKey ? 'Cancel' : '+ Skeleton animation');
+        animate.type = 'button';
+        animate.onclick = () => { ui.editing = ui.editing === skeletonKey ? null : skeletonKey; ui.notice = null; renderDrawer(); };
+        buttons.append(animate);
+      }
+      s.append(buttons);
       if (ui.editing === reviseKey) s.append(newRevisionForm(item));
+      if (ui.editing === skeletonKey) s.append(skeletonAnimationForm(item));
     }
     body.append(s);
   }
