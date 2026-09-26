@@ -1,3 +1,11 @@
+# [0.78.0](https://github.com/gfargo/pixelkiln/compare/v0.77.0...v0.78.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** group the grid by family, and select several records to act on together ([75fd9df](https://github.com/gfargo/pixelkiln/commit/75fd9dfcd402a281d259e81a0598f342b3a7ca6e))
+* **website:** enlarge kiln mark in OpenGraph card header ([#232](https://github.com/gfargo/pixelkiln/issues/232)) ([f52d4ef](https://github.com/gfargo/pixelkiln/commit/f52d4ef85b40de5231b0a52eebe4dc566cff79dc))
+
 # [0.77.0](https://github.com/gfargo/pixelkiln/compare/v0.76.0...v0.77.0) (2026-09-26)
 
 
