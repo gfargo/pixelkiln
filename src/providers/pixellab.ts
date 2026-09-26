@@ -2,7 +2,7 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { randomUUID } from "node:crypto"
 import os from "node:os"
 import path from "node:path"
-import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type PixelLabCharacter, type PixelLabObject, type PixelLabUsage } from "../client.ts"
+import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type ProFlashCostOperation, type PixelLabCharacter, type PixelLabObject, type PixelLabUsage } from "../client.ts"
 import { sha256 } from "../hash.ts"
 import { imageMetadata } from "../media.ts"
 import { paletteSwatch } from "../png.ts"
@@ -167,6 +167,96 @@ export function proFlashCharacterCost(width: number, height: number, fromReferen
 export function proFlashImageCost(width: number, height: number): number {
   const side = Math.max(width, height)
   return side <= 96 ? 5 : side <= 208 ? 6 : 9
+}
+
+/** What `/pro-flash/cost` is asked for one spec, and which part of its answer the spec pays. */
+export interface ProFlashQuoteQuery {
+  operation: ProFlashCostOperation
+  width: number
+  height: number
+  nDirections?: number
+  /** A base drawn from the author's own sprite pays the rotations alone. */
+  part: "total" | "rotations"
+}
+
+/**
+ * The Pro Flash quote a spec is priced by, or null for a spec PixelLab does
+ * not draw on its Pro Flash model. Follows the same paths the offline
+ * estimate does: `imageProFlash` stills, pro-flash edits and inpaints, and
+ * pro-flash character and objectPro bases. A mirror is made locally and
+ * never quoted.
+ */
+export function proFlashQuoteQuery(spec: ResolvedSpec): ProFlashQuoteQuery | null {
+  if (spec.provider !== "pixellab" || spec.mirror) return null
+  if (spec.revision) {
+    if (spec.revision.engine !== "pro-flash") return null
+    return {
+      operation: spec.revision.mode === "inpaint" ? "inpaint" : "edit",
+      width: spec.revision.sourceWidth ?? spec.width,
+      height: spec.revision.sourceHeight ?? spec.height,
+      part: "total",
+    }
+  }
+  if (spec.generator === "imageProFlash") return { operation: "create", width: spec.width, height: spec.height, part: "total" }
+  const character = spec.character
+  if (spec.generator === "character" && character?.kind === "base" && character.mode === "pro-flash") {
+    const south = character.reference?.south
+    return south
+      ? { operation: "character", width: south.width, height: south.height, nDirections: 8, part: "rotations" }
+      : { operation: "character", width: spec.width, height: spec.height, nDirections: 8, part: "total" }
+  }
+  const object = spec.objectPro
+  if (spec.generator === "objectPro" && object?.kind === "base") {
+    const south = object.reference
+    return south
+      ? { operation: "object", width: south.width, height: south.height, nDirections: object.directions, part: "rotations" }
+      : { operation: "object", width: spec.width, height: spec.height, nDirections: object.directions, part: "total" }
+  }
+  return null
+}
+
+/**
+ * Live Pro Flash prices for specs, from PixelLab's free cost endpoint. Each
+ * distinct question is asked once per `ttlMs` (a draft is re-priced on
+ * every keystroke), and a failed answer is forgotten so the next try asks
+ * again. Returns null for a spec that has no Pro Flash quote.
+ */
+export function createProFlashQuoter(
+  client: Pick<PixelLabClient, "proFlashCost">,
+  opts: { ttlMs?: number; timeoutMs?: number; now?: () => number } = {},
+): (spec: ResolvedSpec) => Promise<number | null> {
+  const ttl = opts.ttlMs ?? 10 * 60_000
+  const timeoutMs = opts.timeoutMs ?? 5_000
+  const now = opts.now ?? Date.now
+  const cache = new Map<string, { at: number; answer: ReturnType<PixelLabClient["proFlashCost"]> }>()
+  return async (spec) => {
+    const query = proFlashQuoteQuery(spec)
+    if (!query) return null
+    const key = `${query.operation}:${query.width}x${query.height}:${query.nDirections ?? ""}`
+    let hit = cache.get(key)
+    if (!hit || now() - hit.at > ttl) {
+      // A price is a courtesy to the form; never let a slow answer hold it up.
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const answer = Promise.race([
+        client.proFlashCost({
+          operation: query.operation,
+          width: query.width,
+          height: query.height,
+          ...(query.nDirections !== undefined ? { nDirections: query.nDirections } : {}),
+        }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`PixelLab's Pro Flash quote did not answer within ${timeoutMs / 1000}s`)), timeoutMs)
+        }),
+      ]).finally(() => clearTimeout(timer))
+      hit = { at: now(), answer }
+      cache.set(key, hit)
+      answer.catch(() => { if (cache.get(key) === hit) cache.delete(key) })
+    }
+    const quote = await hit.answer
+    if (query.part === "total") return quote.total
+    if (quote.rotations === null) throw new Error("PixelLab's Pro Flash quote gave no rotations figure for a base drawn from a sprite")
+    return quote.rotations
+  }
 }
 
 /** The name PixelKiln gives an animation upstream, so a re-roll can find and replace it. */

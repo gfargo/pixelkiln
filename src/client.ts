@@ -538,6 +538,42 @@ function cleanupResults(images: { base64: string }[], sent: number, operation: s
   return images.map((image) => Buffer.from(image.base64, "base64"))
 }
 
+export type ProFlashCostOperation = "create" | "edit" | "inpaint" | "character" | "object"
+
+/** One `/pro-flash/cost` answer, in generations. */
+export interface ProFlashQuote {
+  /** The first image: the drawn south sprite, or the edit or inpaint itself. */
+  image: number | null
+  /** The v3 rotation pass, for a character or object; what a base from a reference pays alone. */
+  rotations: number | null
+  total: number
+}
+
+/**
+ * Reads a `/pro-flash/cost` body. Measured answers carry `image` and
+ * `rotations`; a `total`, `generations`, or `*_generations` spelling is
+ * accepted too, and a nested `usage`/`cost` object is looked through.
+ */
+export function parseProFlashQuote(raw: unknown): ProFlashQuote {
+  const body = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}
+  const nested = [body, body.usage, body.cost, body.estimate].filter((v): v is Record<string, unknown> => Boolean(v) && typeof v === "object")
+  const pick = (...names: string[]): number | null => {
+    for (const obj of nested) {
+      for (const name of names) {
+        const value = obj[name]
+        if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value
+      }
+    }
+    return null
+  }
+  const image = pick("image", "image_generations", "first_image", "first_image_generations")
+  const rotations = pick("rotations", "rotation", "rotations_generations", "rotation_generations")
+  const total = pick("total", "total_generations", "generations")
+  if (total !== null) return { image, rotations, total }
+  if (image !== null || rotations !== null) return { image, rotations, total: (image ?? 0) + (rotations ?? 0) }
+  throw new Error(`GET /pro-flash/cost returned no price: ${JSON.stringify(raw).slice(0, 200)}`)
+}
+
 export class PixelLabError extends ProviderError {
   constructor(
     message: string,
@@ -610,6 +646,26 @@ export class PixelLabClient {
       total: raw.subscription?.total ?? 0,
       plan: raw.subscription?.plan ?? "unknown",
     }
+  }
+
+  /**
+   * `GET /pro-flash/cost`: PixelLab's own quote for one Pro Flash job, split
+   * into the first image and the v3 rotations. Free, and provisional by
+   * PixelLab's own description; the billed amount on the finished job is
+   * the real one. The response schema is undocumented (`{}` in the spec),
+   * so this reads it leniently: a total if one is given, else the sum of
+   * the parts, and refuses an answer with no number in it.
+   */
+  async proFlashCost(args: {
+    operation: ProFlashCostOperation
+    width: number
+    height: number
+    /** Character and object quotes only; PixelLab's default is 8. */
+    nDirections?: number
+  }): Promise<ProFlashQuote> {
+    const query = new URLSearchParams({ operation: args.operation, width: String(args.width), height: String(args.height) })
+    if (args.nDirections !== undefined) query.set("n_directions", String(args.nDirections))
+    return parseProFlashQuote(await this.request<unknown>(`/pro-flash/cost?${query}`))
   }
 
   /**

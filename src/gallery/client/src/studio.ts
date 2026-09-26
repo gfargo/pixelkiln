@@ -297,10 +297,21 @@ export function openStudio() {
     const table = el('div', 'studio-price-rows');
     for (const i of mine) {
       const row = el('div');
-      row.append(el('span', 'mono', i.key), el('span', null, i.cost ? fmtCost(i.costUnit, i.cost) : 'free (mirrored)'));
+      const cost = el('span', null, i.cost ? fmtCost(i.costUnit, i.cost) : i.quote === 'live' ? 'free' : 'free (mirrored)');
+      if (i.quote === 'live') {
+        const tag = el('span', 'quote-live', 'live');
+        tag.title = 'PixelLab\'s own Pro Flash quote; the offline estimate was ' + fmtCost(i.costUnit, i.estimate);
+        cost.append(' ', tag);
+      }
+      row.append(el('span', 'mono', i.key), cost);
       table.append(row);
     }
     priceBox.append(table);
+    if (mine.some((i) => i.quote === 'live')) {
+      priceBox.append(el('small', 'state-dim', 'Rows marked live are PixelLab\'s current Pro Flash quote, which it calls provisional; the lock records what the finished job billed.'));
+    } else if (price.quoteError) {
+      priceBox.append(el('small', 'state-dim', 'Pro Flash is priced offline: PixelLab\'s quote could not be had (' + price.quoteError + ').'));
+    }
     const totals: Record<string, number> = {};
     for (const i of mine) totals[i.costUnit] = (totals[i.costUnit] || 0) + i.cost;
     priceBox.append(el('div', 'studio-total', 'Total: ' + (Object.entries(totals).map(([u, n]) => fmtCost(u, n)).join(' + ') || 'free')));

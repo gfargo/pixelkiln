@@ -357,3 +357,4 @@ textarea.mono { font-family:var(--mono); font-size:11.5px; }
 .studio-price-rows > div { display:flex; justify-content:space-between; gap:12px; border-bottom:1px dotted var(--line); padding:2px 0; }
 .studio-price-rows .mono { font-family:var(--mono); color:var(--dim); }
 .studio-total { font:650 12.5px/1.4 var(--mono); }
+.quote-live { font:600 9.5px/1 var(--mono); color:var(--bg); background:var(--cool); padding:2px 4px; text-transform:uppercase; letter-spacing:.04em; vertical-align:1px; cursor:help; }

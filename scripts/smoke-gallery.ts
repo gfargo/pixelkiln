@@ -30,6 +30,7 @@ import { poll } from "../src/pipeline/poll.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import { openProject } from "../src/project.ts"
 import { FakeProvider } from "../src/providers/fake.ts"
+import { createProFlashQuoter } from "../src/providers/pixellab.ts"
 
 const CHROME_CANDIDATES = [
   process.env.CHROME,
@@ -327,7 +328,11 @@ try {
     open: false,
     onProgress: quiet,
     edit: createGalleryEditHandler({ manifestFor: () => studioManifest, loadProject: loadStudio, reload: reloadStudio, onProgress: quiet }),
-    price: createGalleryPriceHandler({ manifestFor: () => studioManifest }),
+    // PixelLab's quote endpoint stands in here: every Pro Flash question is answered 6 + 2.
+    price: createGalleryPriceHandler({
+      manifestFor: () => studioManifest,
+      quoteFor: async () => createProFlashQuoter({ proFlashCost: async () => ({ image: 6, rotations: 2, total: 8 }) }),
+    }),
     generate: createGenerateHandlers({
       loadProject: loadStudio,
       providerFor: () => studioProvider,
@@ -346,6 +351,18 @@ try {
     await page.waitForSelector(".studio-form", { timeout: 5_000 })
     await page.type(".studio-form input[placeholder='e.g. mira']", "mira")
     await page.type(".studio-form textarea", "a young knight in silver armour")
+    // Pro Flash is priced by PixelLab's own quote, marked live.
+    const setEngine = (engine: string) => page.evaluate((value) => {
+      const select = [...document.querySelectorAll(".studio-form select")].find((s) => [...(s as HTMLSelectElement).options].some((o) => o.value === "pro-flash")) as HTMLSelectElement
+      select.value = value
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+    }, engine)
+    await setEngine("pro-flash")
+    await page.waitForSelector(".studio-price .quote-live", { timeout: 10_000 })
+    const live = await page.$eval(".studio-price", (n) => n.textContent ?? "")
+    check(/characters\/mira8 generations live/.test(live) && /provisional/.test(live), "a Pro Flash base is priced by PixelLab's live quote")
+    await setEngine("v3")
+    await page.waitForFunction(() => !document.querySelector(".studio-price .quote-live") && /Total:/.test(document.querySelector(".studio-price")?.textContent ?? ""), { timeout: 10_000 })
     const file = await page.$(".studio-form input[type=file]")
     await (file as unknown as { uploadFile: (p: string) => Promise<void> }).uploadFile(spritePath)
     await page.waitForFunction(() => /Total:/.test(document.querySelector(".studio-price")?.textContent ?? ""), { timeout: 10_000 })
