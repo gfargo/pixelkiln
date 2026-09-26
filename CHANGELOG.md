@@ -1,3 +1,10 @@
+## [0.70.1](https://github.com/gfargo/pixelkiln/compare/v0.70.0...v0.70.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **gallery:** keep open forms across refreshes, add a page CSP, cap skeleton estimates ([a10b753](https://github.com/gfargo/pixelkiln/commit/a10b753afbb1474da7ecaabc376ba1d36cf056da))
+
 # [0.70.0](https://github.com/gfargo/pixelkiln/compare/v0.69.0...v0.70.0) (2026-09-26)
 
 

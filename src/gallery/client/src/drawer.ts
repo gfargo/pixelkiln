@@ -5,7 +5,7 @@ import { newRevisionForm } from "./forms.ts"
 import { generateActions, historySection, jobStrip, renderHeader, renderMain, upstreamSection, visibleItems } from "./grid.ts"
 import { handEditSection } from "./hand-edit.ts"
 import { activeJobFor, isRevisable } from "./jobs.ts"
-import { displayUrl, poseStrip, skeletonAnimationForm } from "./skeleton.ts"
+import { displayUrl, poseStrip, skeletonAnimationForm, skeletonPoseForm } from "./skeleton.ts"
 
 // ---- detail drawer -------------------------------------------------------
 
@@ -325,8 +325,18 @@ export function renderDrawer() {
       row(dl, 'keypoints', item.skeleton.keypointsFile, { mono: true });
       if (item.skeleton.set) {
         const parent = S.snap.items.find((i) => i.key === item.revisionParentKey && i.project === item.project);
-        s.append(poseStrip(item.skeleton.set, displayUrl(parent)));
-        s.append(el('small', 'state-dim', 'The starting pose must match the sprite; each frame is drawn over a dimmed copy. `pixelkiln skeleton-preview ' + item.assetId + '` writes the same sheet as a PNG.'));
+        const posesKey = 'poses:' + item.id;
+        if (ui.editing === posesKey) {
+          s.append(skeletonPoseForm(item, displayUrl(parent)));
+        } else {
+          s.append(poseStrip(item.skeleton.set, displayUrl(parent)));
+          s.append(el('small', 'state-dim', 'The starting pose must match the sprite; each frame is drawn over a dimmed copy. `pixelkiln skeleton-preview ' + item.assetId + '` writes the same sheet as a PNG.'));
+          if (canEdit && item.skeleton.sha256) {
+            const b = el('button', 'add', 'Edit poses'); b.type = 'button';
+            b.onclick = () => { ui.editing = posesKey; ui.notice = null; renderDrawer(); };
+            s.append(b);
+          }
+        }
       } else {
         row(dl, 'poses', el('span', 'state-warn', 'the keypoints file does not exist yet'));
       }

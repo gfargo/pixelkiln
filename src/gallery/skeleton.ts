@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { z } from "zod"
 import { clientFromEnv, type PixelLabClient } from "../client.ts"
+import { sha256 } from "../hash.ts"
 import { applyManifestEdit, ManifestEditError } from "../manifest-edit.ts"
 import { imageMetadata } from "../media.ts"
 import {
@@ -52,6 +53,19 @@ export const SkeletonAnimationRequestSchema = z
     set: SkeletonSetSchema.optional(),
     /** Replace an existing `keypointsFile` with `set`. */
     overwrite: z.boolean().optional(),
+  })
+  .strict()
+
+/** New poses for an existing `animate-skeleton` revision's keypoints file, from the page's pose editor. */
+export const SkeletonKeypointsUpdateSchema = z
+  .object({
+    action: z.literal("update-skeleton-keypoints"),
+    project: z.string().min(1).optional(),
+    styleId: z.string().min(1),
+    assetId: z.string().min(1),
+    /** The file's SHA-256 when the page loaded it; anything else on disk is a concurrent edit. */
+    expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
+    set: SkeletonSetSchema,
   })
   .strict()
 
@@ -200,4 +214,36 @@ export async function createSkeletonAnimation(
     }
     throw error
   }
+}
+
+/**
+ * Rewrites an `animate-skeleton` revision's keypoints file with the poses
+ * the page edited. The file is found from the manifest, never from the
+ * request, and must still hold the bytes the page loaded: a hand edit or a
+ * second tab since then is refused rather than overwritten. The new bytes
+ * change the revision's identity, so `plan` shows it stale until it is
+ * generated again.
+ */
+export async function updateSkeletonKeypoints(
+  ctx: GalleryProjectContext,
+  request: z.infer<typeof SkeletonKeypointsUpdateSchema>,
+): Promise<string> {
+  const key = lockKey(request.styleId, request.assetId)
+  const spec = ctx.specs.find((candidate) => lockKey(candidate.styleId, candidate.assetId) === key)
+  if (!spec) throw new ManifestEditError(`"${key}" is not declared by the manifest`)
+  const file = spec.revision?.mode === "animate-skeleton" ? spec.revision.keypointsFile : undefined
+  if (!file) throw new ManifestEditError(`${key} is not an animate-skeleton revision`)
+  const relative = path.relative(ctx.loaded.root, file)
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new ManifestEditError(`${key}'s keypoints file is outside the project; edit it by hand`)
+  }
+  const current = existsSync(file) ? sha256(await readFile(file)) : null
+  if (current !== request.expectedSha256) {
+    throw Object.assign(
+      new Error(`${relative.split(path.sep).join("/")} changed on disk since this page loaded it; press Refresh and edit again`),
+      { status: 409 },
+    )
+  }
+  await writeFile(file, JSON.stringify(request.set, null, 2) + "\n")
+  return relative.split(path.sep).join("/")
 }
