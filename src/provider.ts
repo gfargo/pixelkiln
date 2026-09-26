@@ -367,6 +367,12 @@ export interface Provider {
   listCharacters?(): AsyncGenerator<RemoteCharacter>
   /** One character with its rotations and animations. */
   getCharacter?(id: string): Promise<RemoteCharacterDetail>
+  /**
+   * Irreversible: the character and its animations. A state is its own
+   * character record and is deleted on its own. Only reached via `purge`,
+   * behind explicit confirmation.
+   */
+  deleteCharacter?(id: string): Promise<void>
 
   /**
    * The object's source URLs as the service hands them out now, for

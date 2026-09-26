@@ -94,7 +94,8 @@ ceilings copied from each plan group.
 Use the staged `submit` → `poll` → `pick` → `fetch` commands when resuming or
 debugging one phase. Use the plan's printed stage for paid work and `restore`
 for missing downloaded bytes, `adopt` for exact matches
-already in the provider account, and `salvage` for reviewed unclaimed objects.
+already in the provider account, and `salvage` for reviewed unclaimed objects
+and characters.
 Use `pack`, `mount`, or `export` only for the artifact format the project needs.
 Prefer a manifest quality profile when a whole style shares the final-art rule.
 Use `refine --from` only for a one-off candidate outside that contract, after

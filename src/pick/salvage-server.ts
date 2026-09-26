@@ -9,6 +9,7 @@ import { shouldPersistSourceUrl } from "../source-url.ts"
 import { lockKey, type Lock, type Manifest } from "../types.ts"
 import {
   applyTags,
+  characterSalvageAssets,
   idFromPrompt,
   SALVAGED_SPEC_HASH,
   type Orphan,
@@ -24,6 +25,12 @@ export interface SalvageResult {
   kept: number
   discarded: number
   failed: number
+  /**
+   * Manifest assets written for imported character groups. They have no
+   * lock entries yet: the caller adopts them (`adoptCharacters`) once the
+   * manifest is saved, which downloads every rotation and frame.
+   */
+  characterAssetIds?: string[]
 }
 
 /**
@@ -31,8 +38,10 @@ export interface SalvageResult {
  *
  * `import` is the only action that touches local state: it downloads the image,
  * writes a manifest asset and a lock entry, so a recovered sprite becomes a
- * first-class tracked asset rather than a loose file. `keep` and `discard` only
- * write tags upstream; no object is ever deleted here.
+ * first-class tracked asset rather than a loose file. A character group's
+ * import writes its base, states, and loops as manifest assets only; the
+ * caller adopts them. `keep` and `discard` only write tags upstream (on every
+ * member of a character group); nothing is ever deleted here.
  */
 export async function runSalvage(
   provider: Provider,
@@ -54,6 +63,9 @@ export async function runSalvage(
   })
   const byId = new Map(orphans.map((o) => [o.id, o]))
   const existingTags = new Map(orphans.map((o) => [o.id, o.tags]))
+  const characterMembers = new Map(
+    orphans.flatMap((o) => (o.kind === "character" && o.members ? [[o.id, o.members] as const] : [])),
+  )
 
   return serveReviewPage<SalvageResult>({
     html,
@@ -70,12 +82,36 @@ export async function runSalvage(
       const result: SalvageResult = { imported: 0, kept: 0, discarded: 0, failed: 0 }
       const taken = new Set(Object.keys(ctx.manifest.assets))
       const importedAssetIds: string[] = []
+      const characterAssetIds: string[] = []
 
       for (const decision of decisions) {
         const orphan = byId.get(decision.id)
         if (!orphan) continue
 
-        if (decision.action === "import") {
+        if (decision.action === "import" && orphan.kind === "character") {
+          try {
+            if (!provider.getCharacter) throw new Error(`provider ${provider.id} cannot read characters`)
+            const details = []
+            for (const member of orphan.members ?? [{ id: orphan.id }]) details.push(await provider.getCharacter(member.id))
+            const style = ctx.manifest.styles[ctx.styleId]
+            const { assets, skipped } = characterSalvageAssets(details, {
+              styleId: ctx.styleId,
+              styleSize: style?.size,
+              taken,
+            })
+            for (const [assetId, asset] of Object.entries(assets)) {
+              ctx.manifest.assets[assetId] = asset as Manifest["assets"][string]
+              importedAssetIds.push(assetId)
+              characterAssetIds.push(assetId)
+            }
+            for (const line of skipped) log(`  not imported: ${line}`)
+            result.imported++
+            log(`  imported character ${orphan.id} as ${Object.keys(assets).length} asset(s)`)
+          } catch (err) {
+            result.failed++
+            log(`  import failed ${orphan.id}: ${err instanceof Error ? err.message : String(err)}`)
+          }
+        } else if (decision.action === "import") {
           try {
             const buf = await provider.download(orphan.previewUrl)
             if (!buf.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error("not a PNG")
@@ -147,7 +183,7 @@ export async function runSalvage(
         }
       }
 
-      await applyTags(provider, decisions, existingTags, { onProgress: log })
+      await applyTags(provider, decisions, existingTags, { onProgress: log, characters: characterMembers })
 
       // Persist the manifest additions and the lock together. Only the
       // newly imported entries are written back; re-merging the whole
@@ -159,6 +195,7 @@ export async function runSalvage(
       await writeFile(ctx.manifestPath, JSON.stringify(raw, null, 2) + "\n")
       await saveLock(ctx.lockPath, ctx.lock)
 
+      if (characterAssetIds.length) result.characterAssetIds = characterAssetIds
       return result
     },
   })

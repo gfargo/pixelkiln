@@ -178,6 +178,8 @@ export class FakeProvider implements Provider {
     this.tags.set(objectId, [...tags])
     const asset = this.assets.get(objectId)
     if (asset) asset.tags = [...tags]
+    const character = this.characters.get(objectId.split("#")[0]!)
+    if (character) character.tags = [...tags]
   }
 
   /**
@@ -217,6 +219,11 @@ export class FakeProvider implements Provider {
   async delete(assetId: string): Promise<void> {
     this.deleted.push(assetId)
     this.assets.delete(assetId)
+  }
+
+  async deleteCharacter(id: string): Promise<void> {
+    this.deleted.push(id)
+    this.characters.delete(id)
   }
 
   /** Seed a pre-existing remote asset, for adopt / salvage tests. */
