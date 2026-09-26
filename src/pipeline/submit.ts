@@ -7,12 +7,13 @@ import {
   type Provider,
 } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
+import { currentEntryOutputPath } from "../outputs.ts"
 import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
 import { lockKey, type Lock, type ResolvedSpec, type ResolvedStyleImage } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
 import { requireRevisionReady } from "./revision.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
-import { deriveMirror } from "./mirror.ts"
+import { deriveMirror, mirrorSourceHash } from "./mirror.ts"
 
 /**
  * Two distinct limits, easy to conflate:
@@ -280,6 +281,13 @@ export async function submit(
     // The generation being replaced is kept, not forgotten, so it can come back.
     const history = historyAfterReplacing(previousEntry, historyLimit(loaded.manifest), submittedAt ?? new Date().toISOString())
 
+    // An outfit tracks staleness against its source's actual output bytes
+    // the way a mirror does, not through specHash: resolving the manifest
+    // has no lock to hash the parent's current frames against.
+    const outfitParentEntry = spec.character?.kind === "outfit" && spec.character.parentSpec
+      ? lock.entries[lockKey(spec.character.parentSpec.styleId, spec.character.parentSpec.assetId)]
+      : undefined
+
     // Record intent before spending, so an interrupted run stays diagnosable.
     upsert(lock, key, {
       styleId: spec.styleId,
@@ -309,6 +317,13 @@ export async function submit(
             ...(spec.revision.keypointsSha256 ? { keypointsSha256: spec.revision.keypointsSha256 } : {}),
             ...(spec.revision.skeletonTemplate ? { skeletonTemplate: spec.revision.skeletonTemplate } : {}),
             ...(spec.revision.description ? { description: spec.revision.description } : {}),
+          }
+        : null,
+      outfit: spec.character?.kind === "outfit" && outfitParentEntry
+        ? {
+            sourceAssetId: spec.character.parentAssetId!,
+            sourceSha256: mirrorSourceHash(outfitParentEntry),
+            referenceSha256: spec.character.outfit!.reference.sha256,
           }
         : null,
       status: "pending",
@@ -348,10 +363,17 @@ export async function submit(
       const anchor = spec.character?.styleAnchor
       const anchorEntry = anchor ? lock.entries[lockKey(anchor.spec.styleId, anchor.spec.assetId)] : undefined
       const replacedMetadata = previousEntry?.providerMetadata?.[provider.id]
+      const parentOutputs = spec.character?.kind === "outfit" && parentEntry
+        ? parentEntry.outputs.map((output, index) => ({
+            path: currentEntryOutputPath(parentEntry, spec.character!.parentSpec!, index),
+            role: output.role,
+          }))
+        : undefined
       const { jobId, metadata } = await provider.submit(spec, refs, {
         ...(previousJobId ? { previousJobId } : {}),
         ...(parentEntry?.objectId ? { parentObjectId: parentEntry.objectId } : {}),
         ...(anchorEntry?.objectId ? { styleObjectId: anchorEntry.objectId } : {}),
+        ...(parentOutputs ? { parentOutputs } : {}),
         ...(replacedMetadata ? { replacedMetadata } : {}),
         ...(previousMetadata ? { previousMetadata } : {}),
         checkpoint: async (checkpoint) => {

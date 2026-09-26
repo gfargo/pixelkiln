@@ -448,6 +448,40 @@ export const CharacterStateSchema = z
   .strict()
 export type CharacterState = z.infer<typeof CharacterStateSchema>
 
+/** PixelLab's fixed `portrait-character-pro` result sizes; 128 and 160 render at 2K and cost more. */
+export const CharacterPortraitSizeSchema = z.union([
+  z.literal(16),
+  z.literal(32),
+  z.literal(48),
+  z.literal(64),
+  z.literal(128),
+  z.literal(160),
+])
+export type CharacterPortraitSize = z.infer<typeof CharacterPortraitSizeSchema>
+
+/** A bust portrait of an existing base or state's south sprite. */
+export const CharacterPortraitSchema = z
+  .object({
+    /** The base or state to portray, in the same style. */
+    of: z.string().min(1),
+    size: CharacterPortraitSizeSchema.default(64),
+  })
+  .strict()
+export type CharacterPortrait = z.infer<typeof CharacterPortraitSchema>
+
+/** Applies a reference outfit to an existing loop's frames (PixelLab's `transfer-outfit-v2`). */
+export const CharacterOutfitSchema = z
+  .object({
+    /** The loop (a character animation asset) to re-clothe, in the same style. */
+    of: z.string().min(1),
+    /** Manifest-relative image of the outfit to transfer. */
+    reference: z.string().min(1),
+    /** Extra guidance PixelLab passes through as written, e.g. view/direction hints. */
+    additionalInstructions: z.string().max(2000).optional(),
+  })
+  .strict()
+export type CharacterOutfit = z.infer<typeof CharacterOutfitSchema>
+
 /** A loop of one character in one direction. One asset per direction. */
 export const CharacterAnimationSchema = z
   .object({
@@ -457,6 +491,14 @@ export const CharacterAnimationSchema = z
     template: z.string().min(1).optional(),
     /** Direction to animate. */
     direction: CharacterDirectionSchema.default("south"),
+    /**
+     * Shorthand for one loop in several directions, instead of `direction`.
+     * Expanded when the manifest loads into one loop per named direction
+     * (`<id>.<direction>`) plus a mirror for each direction whose flip is
+     * not named, exactly as if each had been written out. See
+     * `src/loop-directions.ts`.
+     */
+    directions: z.array(CharacterDirectionSchema).min(1).optional(),
     /** Frames to generate without a template (v3). Even, 4 to 16. */
     frames: z.number().int().min(4).max(16).optional(),
     /** Playback rate recorded with the frames; PixelLab does not store one. */
@@ -487,6 +529,15 @@ export const CharacterAnimationSchema = z
   })
   .strict()
   .superRefine((animation, context) => {
+    if (animation.directions !== undefined) {
+      // Only reachable when a manifest is validated without being loaded
+      // (loading expands the shorthand before validation ever sees it).
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "directions is expanded when the manifest loads; validate the loaded manifest, not the raw file",
+        path: ["directions"],
+      })
+    }
     if (animation.frames !== undefined && animation.frames % 2 !== 0) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
     }
@@ -546,7 +597,7 @@ export interface ResolvedStyleAnchor {
 
 /** How a resolved spec describes its place in a character family. */
 export interface ResolvedCharacter {
-  kind: "base" | "state" | "animation"
+  kind: "base" | "state" | "animation" | "portrait" | "outfit"
   /** Creation engine for a base; states inherit the parent's. */
   mode: CharacterMode
   /** Rotations a base or state has. */
@@ -578,6 +629,14 @@ export interface ResolvedCharacter {
   state?: {
     paletteFromReference: boolean
     canvas?: { width: number; height: number }
+  }
+  portrait?: {
+    size: CharacterPortraitSize
+  }
+  /** For an outfit: the reference image to transfer, and any extra guidance. */
+  outfit?: {
+    reference: ResolvedReferenceImage
+    additionalInstructions?: string
   }
   animation?: {
     mode: CharacterAnimationMode
@@ -1332,6 +1391,10 @@ export const AssetSchema = z
     pieces: z.array(UiPieceSchema).min(1).optional(),
     /** `uiAsset` styles: named, auto-positioned UI element scaffolds. Combine with `pieces`; omit both for a default full-canvas panel. */
     elements: z.array(UiElementSchema).min(1).optional(),
+    /** `character` styles: this asset is a bust portrait of another character asset's south sprite. */
+    portrait: CharacterPortraitSchema.optional(),
+    /** `character` styles: this asset re-clothes an existing loop's frames with a reference outfit. */
+    outfit: CharacterOutfitSchema.optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
@@ -1412,7 +1475,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1427,24 +1490,24 @@ export const AssetSchema = z
         path: ["mirror"],
       })
     }
-    if (asset.prompt === undefined && !asset.mirror) {
+    if (asset.prompt === undefined && !asset.mirror && !asset.portrait && !asset.outfit) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Required",
         path: ["prompt"],
       })
     }
-    if (asset.reference && (asset.state || asset.animation || asset.mirror)) {
+    if (asset.reference && (asset.state || asset.animation || asset.mirror || asset.portrait || asset.outfit)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "a reference sprite belongs on a base; a state, animation, or mirror takes its look from its parent",
+        message: "a reference sprite belongs on a base; a state, animation, mirror, portrait, or outfit takes its look from its parent",
         path: ["reference"],
       })
     }
-    if (asset.concept && (asset.state || asset.animation || asset.mirror)) {
+    if (asset.concept && (asset.state || asset.animation || asset.mirror || asset.portrait || asset.outfit)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "a concept image belongs on a base; a state, animation, or mirror takes its look from its parent",
+        message: "a concept image belongs on a base; a state, animation, mirror, portrait, or outfit takes its look from its parent",
         path: ["concept"],
       })
     }
@@ -1621,6 +1684,21 @@ export const LockEntrySchema = z.object({
       role: z.enum(["leader", "member"]),
       leaderAssetId: z.string().min(1).optional(),
       index: z.number().int().min(1).optional(),
+    })
+    .strict()
+    .nullable()
+    .default(null),
+  /**
+   * For an outfit: the loop it re-clothed, a hash over that loop's output
+   * hashes when this was made, and the reference image's own hash. Tracked
+   * the way `mirror` is, not through `specHash`: manifest resolution has no
+   * lock to hash the parent's actual current frame bytes against.
+   */
+  outfit: z
+    .object({
+      sourceAssetId: z.string().min(1),
+      sourceSha256: z.string().regex(/^[0-9a-f]{64}$/),
+      referenceSha256: z.string().regex(/^[0-9a-f]{64}$/),
     })
     .strict()
     .nullable()

@@ -296,10 +296,110 @@ who holds a sword in the right hand holds it in the left when facing the
 mirrored way. Most games accept that; if yours does not, generate both
 sides. `adopt` skips mirrors, since there is nothing upstream to adopt.
 
+### One loop, several directions
+
+Writing each direction out is five near-identical loops and three mirrors
+for a full walk. `directions` on an animation says the same thing once:
+
+```json
+"bot.walk": {
+  "prompt": "walking forward in place, short legs stepping, body bobbing slightly",
+  "animation": { "of": "bot", "frames": 12, "fps": 12, "directions": ["south", "west", "north", "south-west", "north-west"] }
+}
+```
+
+When the manifest loads, this becomes exactly the assets it stands for: one
+loop per named direction (`bot.walk.south`, `bot.walk.west`, ...), each with
+every field of the shorthand and its own `direction`, plus a mirror for each
+direction whose flip is not named (`bot.walk.east` mirrors `bot.walk.west`,
+`bot.walk.south-east` mirrors `bot.walk.south-west`, `bot.walk.north-east`
+mirrors `bot.walk.north-west`). Eight directions for five generations. Name
+both sides of a pair (`["west", "east"]`) to generate both instead of
+mirroring, which is the fix for a character whose handedness matters. The
+mirrors carry the shorthand's `category`, `tags`, and `styles`.
+
+- The expanded ids are ordinary assets: `plan`, the gallery, the lockfile,
+  and `pack` all see `bot.walk.west` and `bot.walk.east`, never `bot.walk`.
+  Rewriting the shorthand into explicit assets by hand changes no identity
+  and regenerates nothing.
+- `--only bot.walk` selects the whole family; `--only bot.walk.west` one
+  member of it.
+- `direction` and `directions` are mutually exclusive, and fields that name
+  one output (`file`, `cell`, `remoteId`, `source`, `sourceByStyle`,
+  `outputRole`) are refused on a shorthand, since every direction would
+  claim them. An expanded id that is already declared is an error, not an
+  override.
+- The gallery's `--edit` changes the shorthand, not one direction: editing
+  `bot.walk.west` there is refused with a pointer to `bot.walk`. A revision,
+  state, or new loop can still name an expanded asset as its parent. To
+  change one direction alone, write it out as its own asset and drop it
+  from `directions`.
+
 Engines that flip sprites at draw time (Godot's `flip_h`, Unity's
 `flipX`) do not need mirrored files at all. Declare only the directions
 you generate and flip in the engine; mirrors are for pipelines that want
 every direction on disk.
+
+## Portraits
+
+A `portrait` asset is a bust made from a base or state's south sprite, and
+attached to that character's own PixelLab record:
+
+```json
+"mira.bust": { "portrait": { "of": "mira", "size": 64 } }
+```
+
+`of` names the base or state to portray; `size` is one of PixelLab's fixed
+result sizes (16, 32, 48, 64, 128, or 160 — 128 and 160 render at 2K and cost
+more), independent of the style's own `size`. A portrait takes no prompt: it
+is drawn from the parent's pixels, not text, so it is priced and generated
+like a state, 20 to 40 generations by the size tier (a 16px portrait billed
+exactly 20, the floor, in a live test; see [`docs/ENDPOINTS.md`](ENDPOINTS.md)).
+It lands as `<asset>.png`, one file like a single-direction generator, and
+`pixelkiln fetch` also attaches it to the parent's character record upstream
+(a separate, free call PixelLab does not make on its own) — useful for
+PixelLab's own tools, since the API otherwise has no way to read a
+character's portrait back once set.
+
+A portrait blocks until its parent is downloaded and current, and goes
+`stale` when the parent is regenerated, exactly like a state. It takes no
+`reference` or `concept` (those belong on a base) and no `state` or
+`animation` (a portrait is not one of those, and the three are mutually
+exclusive). Its view comes from the style, but only `low top-down`, `high
+top-down`, or `side` are valid — narrower than a `standard` base's own
+options, since the underlying endpoint takes a smaller set.
+
+The reverse tool, drawing a full character from a portrait image, is not
+implemented; see the open items in [`docs/ENDPOINTS.md`](ENDPOINTS.md).
+
+## Outfit transfer
+
+An `outfit` asset re-clothes an existing loop's frames with a reference
+outfit image, PixelLab's `transfer-outfit-v2`:
+
+```json
+"mira.walk.armored": {
+  "outfit": { "of": "mira.walk", "reference": "refs/armor.png" }
+}
+```
+
+`of` names the loop (an `animation` asset) to re-clothe; `reference` is a
+manifest-relative image of the outfit, 32 to 256px per side. An outfit takes
+no prompt (drawn from pixels, not text) and reads its source loop's own
+downloaded frames — 2 to 16 of them, PixelLab's own limit — rather than the
+character record, so it works even once the source's PixelLab job record
+has expired. It shares its source's width, height, and directions, and is
+priced and generated like a state or loop, not for free like a `mirror`:
+measured live at 20 generations for a 2-frame, 92×92 job (see
+[`docs/ENDPOINTS.md`](ENDPOINTS.md)), the floor of the same tier a state
+uses, not yet confirmed at other frame counts or canvases.
+
+An outfit blocks until its source loop is downloaded and current — the
+same rule a mirror's source follows, since both depend on a whole frame
+set rather than one file — and goes `stale` when the source is
+regenerated. It takes no `state`, `animation`, `portrait`, `reference`, or
+`concept` (those describe a different shape or belong on a base); a
+reference image change alone also makes it stale.
 
 ## Working with a cast
 

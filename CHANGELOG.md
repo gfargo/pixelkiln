@@ -1,3 +1,33 @@
+# [0.65.0](https://github.com/gfargo/pixelkiln/compare/v0.64.0...v0.65.0) (2026-09-26)
+
+
+### Features
+
+* **character:** a portrait asset from a base or state's south sprite ([#163](https://github.com/gfargo/pixelkiln/issues/163)) ([73f7c56](https://github.com/gfargo/pixelkiln/commit/73f7c566f9e7bc86f8baf741f3b61d6390800cac)), closes [#143](https://github.com/gfargo/pixelkiln/issues/143) [#143](https://github.com/gfargo/pixelkiln/issues/143) [#140](https://github.com/gfargo/pixelkiln/issues/140)
+* **character:** outfit transfer onto a loop's frames ([#164](https://github.com/gfargo/pixelkiln/issues/164)) ([e1d05d2](https://github.com/gfargo/pixelkiln/commit/e1d05d226f34918f677a94a2c1cc254c72e918c6)), closes [#141](https://github.com/gfargo/pixelkiln/issues/141)
+
+# [0.64.0](https://github.com/gfargo/pixelkiln/compare/v0.63.0...v0.64.0) (2026-09-26)
+
+
+### Features
+
+* **salvage:** salvage and purge characters ([e90175f](https://github.com/gfargo/pixelkiln/commit/e90175ffa885ba367c7c7d42ba3823ed70b8ce67)), closes [#142](https://github.com/gfargo/pixelkiln/issues/142)
+
+# [0.63.0](https://github.com/gfargo/pixelkiln/compare/v0.62.0...v0.63.0) (2026-09-26)
+
+
+### Features
+
+* **manifest:** declare one loop for several directions ([da5e1b0](https://github.com/gfargo/pixelkiln/commit/da5e1b0254fa201a0b13fb2861c2b8d6101c41e1)), closes [#147](https://github.com/gfargo/pixelkiln/issues/147)
+
+# [0.62.0](https://github.com/gfargo/pixelkiln/compare/v0.61.0...v0.62.0) (2026-09-26)
+
+
+### Features
+
+* **pixellab:** add unzoom and font commands ([60e380a](https://github.com/gfargo/pixelkiln/commit/60e380a6c1ee5162fe81404d6a5938e33039b214)), closes [#186](https://github.com/gfargo/pixelkiln/issues/186) [#191](https://github.com/gfargo/pixelkiln/issues/191)
+* **pixellab:** revise whole sets, add interpolate/edit-animation and uiElement ([1609f77](https://github.com/gfargo/pixelkiln/commit/1609f7724fa1cee5e236447fb4d0a6cc9c9a59e0)), closes [#185](https://github.com/gfargo/pixelkiln/issues/185) [#186](https://github.com/gfargo/pixelkiln/issues/186) [#187](https://github.com/gfargo/pixelkiln/issues/187) [#188](https://github.com/gfargo/pixelkiln/issues/188) [#190](https://github.com/gfargo/pixelkiln/issues/190)
+
 # [0.61.0](https://github.com/gfargo/pixelkiln/compare/v0.60.1...v0.61.0) (2026-09-26)
 
 

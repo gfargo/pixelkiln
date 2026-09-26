@@ -411,7 +411,8 @@ result into a `SkeletonSetSchema` file) — worth scoping once the base
   `agent_inspect`/`agent_feedback`/`agent_help`) manage a *separate* PixelLab
   product — "deploy your own agent," confirmed directly from the live tool
   schemas — unrelated to game-asset generation. Nothing to build here.
-- Portraits, outfit transfer, and lip-sync/vocal-animation/talking-gif are
-  already named as out of scope in docs/PIXELLAB.md. Portrait and
-  outfit-transfer support exist on an internal branch stack not yet merged;
-  lip-sync and vocal animation have no in-flight work.
+- Lip-sync/vocal-animation/talking-gif are named as out of scope in
+  docs/PIXELLAB.md, with no in-flight work. Portraits (`portrait`) and outfit
+  transfer (`outfit`) are character asset kinds; see docs/CHARACTERS.md. They
+  were built and live-measured in September 2026 on a stacked branch that
+  never reached `main`, and were ported onto it later.

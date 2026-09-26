@@ -95,6 +95,13 @@ export interface SubmitContext {
   /** Provider-side id of the character a pro base anchors its style on, when the spec names one. */
   styleObjectId?: string
   /**
+   * The parent's own downloaded output files, in lock order, for a spec
+   * whose provider work reads bytes rather than a remote id (an outfit
+   * re-clothing a loop's frames). The pipeline proved the parent current
+   * before calling.
+   */
+  parentOutputs?: { path: string; role?: string }[]
+  /**
    * Provider-owned details of the generation this submission replaces, when
    * the lockfile had one for the same asset, whatever its state. An adapter
    * that must clear upstream work before redoing it (a character animation
@@ -367,6 +374,12 @@ export interface Provider {
   listCharacters?(): AsyncGenerator<RemoteCharacter>
   /** One character with its rotations and animations. */
   getCharacter?(id: string): Promise<RemoteCharacterDetail>
+  /**
+   * Irreversible: the character and its animations. A state is its own
+   * character record and is deleted on its own. Only reached via `purge`,
+   * behind explicit confirmation.
+   */
+  deleteCharacter?(id: string): Promise<void>
 
   /**
    * The object's source URLs as the service hands them out now, for

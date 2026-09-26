@@ -582,12 +582,11 @@ Listed so the gaps are known rather than assumed away:
 - `generate-font-pro`, job-based, with a response shape not in the simple
   `{usage, image}` form (wrapped by `pixelkiln font`, but its cost is not
   yet measured)
-- the character family beyond what the `character` generator uses: portraits
-  (`portrait-character-pro` both ways, `/characters/{id}/portrait`), outfit
-  transfer (`transfer-outfit-v2`), lip-sync, skeleton animation, and
-  `source_image_id` on Pro Flash. The four creation engines, states, and
-  `animate-character` are covered in full; see the September 2026 measurements
-  below.
+- the character family beyond what the `character` generator uses: lip-sync,
+  skeleton animation, `portrait_to_character` (a full character from a bust),
+  and `source_image_id` on Pro Flash. The four creation engines, states,
+  `animate-character`, portraits, and outfit transfer are covered in full; see
+  the September 2026 measurements below.
 
 ## Characters, measured
 
@@ -615,6 +614,27 @@ Listed so the gaps are known rather than assumed away:
   that is not a biped or one of the four quadrupeds, animate from text.
 - Request validation is strict: an unknown body field is a 422 listing every
   problem at once, which is a free way to check a body's shape.
+- **`portrait-character-pro`** (`direction: character_to_portrait`, a full-body
+  sprite in, a bust out) is job-based: `POST` returns `background_job_id`,
+  `GET /portrait-character-pro/{job_id}` answers 423 while drawing and, once
+  `status: "completed"`, a `download_url` (its own `usage` is always `null`;
+  read the billed amount from `GET /background-jobs/{background_job_id}`
+  instead, same as every other job here). Not the couple-generations
+  "conversion" the name suggests: the smallest `result_size` (16px) billed
+  **20 generations**, the same order of magnitude as a state or `1dir`.
+  `POST /characters/{id}/portrait` (attaching a portrait image to a character
+  record) is a separate, synchronous, **free** call (`usage.generations: 0`);
+  its response is the only place the stored portrait's URL appears; the
+  character's own `GET /characters/{id}` never gains a portrait field, so
+  PixelKiln has to remember the URL itself. `character_to_portrait` and
+  `SetPortrait` are two independent calls with no automatic link between them.
+- **`transfer-outfit-v2`** (a reference outfit image plus 2–16 existing
+  frames back wearing it) is job-based the same way, polled through
+  `GET /background-jobs/{id}` only (no dedicated status endpoint). A 2-frame,
+  92×92 job billed **20 generations** — again a real generation cost, not a
+  cheap frame edit. The completed job returns the result frames inline as
+  base64 in `last_response.quantized_images`, not as storage URLs like every
+  other multi-frame result here.
 
 ---
 

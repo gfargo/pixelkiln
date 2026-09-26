@@ -929,6 +929,8 @@ function renderMain(items) {
         parts.push(s.characters.bases + (s.characters.bases === 1 ? ' character' : ' characters'));
         if (s.characters.states) parts.push(s.characters.states + (s.characters.states === 1 ? ' state' : ' states'));
         if (s.characters.animations) parts.push(s.characters.animations + (s.characters.animations === 1 ? ' loop' : ' loops'));
+        if (s.characters.portraits) parts.push(s.characters.portraits + (s.characters.portraits === 1 ? ' portrait' : ' portraits'));
+        if (s.characters.outfits) parts.push(s.characters.outfits + (s.characters.outfits === 1 ? ' outfit' : ' outfits'));
         meta.append(el('span', null, parts.join(', ')));
       }
       meta.append(el('span', null, sec.items.length + ' of ' + s.items + (s.items === 1 ? ' asset' : ' assets')));

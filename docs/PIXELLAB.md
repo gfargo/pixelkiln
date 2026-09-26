@@ -157,15 +157,15 @@ comparing notes with someone using a different one:
 ## What is outside this adapter
 
 PixelLab offers more than PixelKiln currently exposes. Lip-sync and vocal
-animation are not part of this adapter. Characters, their states, and their
-animations are the `character` generator, with all four creation engines
-(standard, v3, pro, pro-flash), reference sprites, concept images, style
-anchors, mirrors, portraits, outfit transfer, and every `animate-character`
-control; see [Characters](./CHARACTERS.md). Masked inpainting, whole-image
-editing, and skeleton-driven animation (posing a reference image
-frame-by-frame from a supplied keypoint skeleton, not a text description) are
-the `revision` asset shape, not the `character` generator; see
-[Controlled asset revisions](./REVISIONS.md). The same revision shape
+animation are not part of this adapter. Characters, their states, their
+animations, their portraits, and outfit transfer onto their loops are the
+`character` generator, with all four creation engines (standard, v3, pro,
+pro-flash), reference sprites, concept images, style anchors, mirrors, and
+every `animate-character` control; see [Characters](./CHARACTERS.md). Masked
+inpainting, whole-image editing, and skeleton-driven animation (posing a
+reference image frame-by-frame from a supplied keypoint skeleton, not a text
+description) are the `revision` asset shape, not the `character` generator;
+see [Controlled asset revisions](./REVISIONS.md). The same revision shape
 animates, interpolates, recolors, and cleans up any asset, a whole character
 or loop at once where the endpoint takes a set. Object Creator is the
 `objectPro` generator, UI panels and elements are `uiAsset` and `uiElement`,

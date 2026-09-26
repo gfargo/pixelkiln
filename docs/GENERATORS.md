@@ -221,12 +221,14 @@ system requests reduced motion and stops while it is offscreen. After approval,
 
 `character` is PixelLab's character family as managed assets: a base drawn
 facing 4 or 8 directions (from a prompt, or from your own south-facing
-sprite with `reference`), states (a pose, an outfit) that PixelLab applies
-to every direction of an existing character, and animations, one loop of
-one character in one direction. The three share one PixelLab character. A state
-or animation depends on its parent the way a revision does: the parent must
-be downloaded and current before the child can be submitted, and
-regenerating the parent makes the child stale.
+sprite with `reference`), states (a pose or a text-edited outfit) that
+PixelLab applies to every direction of an existing character, animations,
+one loop of one character in one direction, portraits, a bust made from
+the south sprite, and outfit transfers, an existing loop's frames
+re-clothed from a reference image instead of text. A state, animation,
+portrait, or outfit depends on its parent the way a revision does: the
+parent must be downloaded and current before the child can be submitted,
+and regenerating the parent makes the child stale.
 
 | Asset | PixelLab call | Cost |
 |---|---:|---:|
@@ -238,6 +240,8 @@ regenerating the parent makes the child stale.
 | animation with a `template` | animate-character | 1 |
 | animation from text (v3) | animate-character | ceil(size² × frames / 65536): 1 at 64px, 2 at 128px |
 | animation, `mode: pro` | animate-character | 20–40 by canvas |
+| portrait | portrait-character-pro | 20–40 by `size` (16px billed exactly 20 live) |
+| outfit | transfer-outfit-v2 | 20 (a 2-frame, 92×92 job billed exactly this live; not yet measured at other frame counts or canvases) |
 
 The 20–40 tiers are PixelLab's; the tier is resolved from the canvas when
 the job runs and reserved against the floor, so `plan` reports the tier the

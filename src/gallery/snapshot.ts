@@ -16,6 +16,7 @@ import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
 import { handEditProjectPath, readHandEditCompanion } from "../pipeline/hand-edit.ts"
 import { historyLimit } from "../pipeline/history.ts"
+import { expandAssetFilter } from "../loop-directions.ts"
 import { pixelLabObjectUrl } from "../providers/pixellab.ts"
 
 /**
@@ -188,7 +189,7 @@ export interface GalleryItem {
 export interface GalleryCharacter {
   /** Which family this belongs to: a skeleton-based `character`, or a skeleton-free `objectPro`. */
   generator: "character" | "objectPro"
-  kind: "base" | "state" | "animation"
+  kind: "base" | "state" | "animation" | "portrait" | "outfit"
   /** Lock key of the base or state this is drawn from; null for a base. */
   parentKey: string | null
   mode: string
@@ -218,7 +219,7 @@ export interface GalleryStyle {
   noBackground: boolean
   quality: boolean
   /** Family counts for a `character` style; null otherwise. */
-  characters: { bases: number; states: number; animations: number } | null
+  characters: { bases: number; states: number; animations: number; portraits: number; outfits: number } | null
   tags: string[]
   /** Parent style id when this style `extends` one. */
   extends: string | null
@@ -415,7 +416,13 @@ function describeCharacter(spec: ResolvedSpec | undefined, entry: LockEntry | un
     }
   }
   if (entry?.generator === "character") {
-    const kind = recordedCharacter?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-")) ? "animation" : "base"
+    const kind = recordedCharacter?.kind === "portrait"
+      ? "portrait"
+      : recordedCharacter?.kind === "outfit"
+        ? "outfit"
+        : recordedCharacter?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-"))
+          ? "animation"
+          : "base"
     return {
       generator: "character",
       kind,
@@ -603,6 +610,10 @@ type RawStyleShape = { extends?: unknown } & Record<string, unknown>
 
 export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<GalleryBuild> {
   const { loaded, specs, lock } = opts
+  // A loop shorthand's id stands for its whole expanded family.
+  const filter = opts.filter?.assets?.length
+    ? { ...opts.filter, assets: expandAssetFilter(opts.filter.assets, loaded.loopFamilies) }
+    : opts.filter
   const root = loaded.root
   const media = new Map<string, GalleryMedia>()
   const plan = await buildPlan(specs, lock)
@@ -777,7 +788,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
   for (const [key, entry] of Object.entries(lock.entries)) {
     if (shown.has(key)) continue
     if (isDeclared(loaded, entry.styleId, entry.assetId)) continue // merely filtered out
-    if (!matchesFilter(opts.filter, entry.styleId, entry.assetId)) continue
+    if (!matchesFilter(filter, entry.styleId, entry.assetId)) continue
     const outputs = await Promise.all(
       entry.outputs.map((output) =>
         describeOutput(media, root, resolveOutputPath(output.path, root), output),
@@ -890,6 +901,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
               bases: styleItems.filter((item) => item.character?.kind === "base").length,
               states: styleItems.filter((item) => item.character?.kind === "state").length,
               animations: styleItems.filter((item) => item.character?.kind === "animation").length,
+              portraits: styleItems.filter((item) => item.character?.kind === "portrait").length,
+              outfits: styleItems.filter((item) => item.character?.kind === "outfit").length,
             }
           : null,
         tags: style?.tags ?? [],
@@ -978,7 +991,7 @@ export async function buildWorkspaceGallerySnapshot(
     try {
       const loaded = await loadManifest(manifestPath)
       const styleFilter = filter.styles.filter((id) => loaded.manifest.styles[id])
-      const assetFilter = filter.assets.filter((id) => loaded.manifest.assets[id])
+      const assetFilter = expandAssetFilter(filter.assets, loaded.loopFamilies).filter((id) => loaded.manifest.assets[id])
       const excluded =
         (filter.styles.length > 0 && styleFilter.length === 0) ||
         (filter.assets.length > 0 && assetFilter.length === 0)
