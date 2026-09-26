@@ -527,6 +527,7 @@ export async function resolveSpecs(
         uiPieces: generator === "uiAsset" ? asset.pieces : undefined,
         uiElements: generator === "uiAsset" ? asset.elements : undefined,
         uiColorPalette: generator === "uiAsset" || generator === "uiElement" ? style.uiColorPalette : undefined,
+        ...(generator === "imageProFlash" && style.styleTraits ? { styleTraits: style.styleTraits } : {}),
         palette: style.palette,
         enforcePalette: style.enforcePalette,
         noBackground: style.noBackground,
@@ -913,6 +914,7 @@ export async function resolveSpecs(
             : {}),
           ...(asset.revision.skeletonTemplate ? { skeletonTemplate: asset.revision.skeletonTemplate } : {}),
           ...(asset.revision.description ? { description: asset.revision.description } : {}),
+          ...(asset.revision.engine ? { engine: asset.revision.engine } : {}),
         }
       }
       if (asset.batch) {

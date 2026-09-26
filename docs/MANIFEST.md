@@ -116,7 +116,7 @@ One asset using the fields most projects reach for:
 |---|---|---|
 | `extends` | style id | Optional parent style. The child inherits resolved settings but must declare its own `outDir`. |
 | `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
-| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, `objectPro`, `uiAsset`, `uiElement`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
+| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, `objectPro`, `uiAsset`, `uiElement`, `imageProFlash`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
@@ -144,7 +144,7 @@ One asset using the fields most projects reach for:
 | `isometric` | `false` | `character` only. Draw `standard` bases and every loop in isometric view. |
 | `enhancePrompt` | `false` | `character` only, `v3` bases. Let PixelLab expand the prompt into a fuller one before drawing. |
 | `styleCharacter` | | `character` only, `pro` bases. The asset id of a generated 8-direction character in this style whose look bases drawn from text or a concept follow. An asset may override it. |
-| `styleTraits` | all true | `character` only, `pro-flash` bases with a style image. `{ palette, outline, detail, shading }` booleans: which traits the style image lends. |
+| `styleTraits` | all true | `character` `pro-flash` bases and `imageProFlash` styles, with a style image. `{ palette, outline, detail, shading }` booleans: which traits the style image lends. |
 | `mount` | object | Stable-cell sheet placement; documented below. |
 | `quality` | object | Optional native-grid, final-palette, and human-approval contract; documented below. |
 | `tags` | string array, `[]` | Tags inherited by every generated provider object in the style. |
@@ -484,6 +484,7 @@ their own page: [Characters](./CHARACTERS.md) and
 | `keypointsFile` | string, required for `animate-skeleton` | Manifest-relative JSON file (`src/skeleton.ts`'s `SkeletonSetSchema`): the pose the source is already in, plus 3–15 per-frame poses. See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation). |
 | `skeletonTemplate` | string | `animate-skeleton` only. Body a joint's missing `depth` is taken from: `mannequin` (default), `bear`, `cat`, `dog`, `horse`, or `lion`. |
 | `description` | string | `animate-skeleton` only. What the subject *looks like* (colours, clothing, held items) — the asset's own `prompt` is sent as the motion's short label instead. |
+| `engine` | enum | `image-to-image`/`inpaint` only. `pro-flash` draws the edit with PixelLab's Pro Flash edit or inpaint endpoint instead of the default Pro one: 5–9 generations instead of 20–40, 32 to 256px per side in multiples of 4, no `strength`. Omit for the default. |
 
 The parent may use committed `source`, downloaded generated output, or a
 current approved quality output. Parent and mask hashes participate in the

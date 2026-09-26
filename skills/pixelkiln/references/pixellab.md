@@ -27,6 +27,7 @@ providers, or before any PixelLab account operation.
 | `character` | A character in 4 or 8 directions, its poses (`state`), and its loops (`animation`) | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose, 1 per template loop per direction |
 | `uiAsset` | A UI panel, button, health bar, or other chrome, from precise `pieces` and/or named `elements` | **20 generations, measured once** (256×192); the borrowed canvas-tier estimate still predicts 40 |
 | `uiElement` | One UI element (button, slot, bar, dialogue box) from the prompt, 16px and up, with an optional concept image | 20–40 generations, **unmeasured** |
+| `imageProFlash` | A styled still on the Pro Flash model (style image + `styleTraits`), 16–256px in multiples of 4; also the natural source for a Pro Flash character's south sprite | 5–9 generations, PixelLab's provisional quote |
 
 `tiles` is not limited to top-down ground: `tileType` selects the projection
 (`isometric` — the API default —, `oblique`, `hex`, `hex_pointy`, `octagon`,
@@ -257,6 +258,15 @@ the `concept_image` (design guidance); `uiColorPalette` is sent as
 widgets under `uiAsset`'s 192px floor. Unmeasured: the plan borrows the
 20/25/40 canvas tiers, and the completed job's shape has not been observed
 live.
+
+`imageProFlash` wraps `/create-image-pro-flash`, the Pro Flash model as a plain
+still: priced 5 up to 96px, 6 up to 208px, 9 beyond (PixelLab's own
+provisional `/pro-flash/cost` quotes). Its lock entry keeps PixelLab's
+`source_image_id`; a Pro Flash character or object base whose `reference` is
+byte-for-byte that still's file is sent the id instead of the upload (same
+price, no re-encode). The same model edits and inpaints through a revision's
+`"engine": "pro-flash"` (`image-to-image`/`inpaint` only, 32–256px in multiples
+of 4, no `strength`), at the Pro Flash tier instead of the Pro endpoints' 20–40.
 
 Do not confuse pixelkiln's `map` generator with PixelLab's own "Map
 Workshop": `map` returns one static prop, icon, or building in a single

@@ -317,6 +317,7 @@ export async function submit(
             ...(spec.revision.keypointsSha256 ? { keypointsSha256: spec.revision.keypointsSha256 } : {}),
             ...(spec.revision.skeletonTemplate ? { skeletonTemplate: spec.revision.skeletonTemplate } : {}),
             ...(spec.revision.description ? { description: spec.revision.description } : {}),
+            ...(spec.revision.engine ? { engine: spec.revision.engine } : {}),
           }
         : null,
       outfit: spec.character?.kind === "outfit" && outfitParentEntry
@@ -369,8 +370,10 @@ export async function submit(
             role: output.role,
           }))
         : undefined
+      const referenceSourceImageId = ownedReferenceImageId(spec, lock, provider.id)
       const { jobId, metadata } = await provider.submit(spec, refs, {
         ...(previousJobId ? { previousJobId } : {}),
+        ...(referenceSourceImageId ? { referenceSourceImageId } : {}),
         ...(parentEntry?.objectId ? { parentObjectId: parentEntry.objectId } : {}),
         ...(anchorEntry?.objectId ? { styleObjectId: anchorEntry.objectId } : {}),
         ...(parentOutputs ? { parentOutputs } : {}),
@@ -456,4 +459,28 @@ export async function submit(
   }
 
   return { submitted, failed, spent, unit }
+}
+
+/**
+ * A Pro Flash character or object base drawn from a `reference` sprite that
+ * is, byte for byte, the downloaded output of an `imageProFlash` asset:
+ * PixelLab already holds that image, and its `source_image_id` lets the base
+ * reuse it instead of uploading the same pixels again. Found by hash, so the
+ * reference can be any path to those bytes; the still's own lock entry is the
+ * authority on the id. The price is the same either way (rotations only).
+ */
+function ownedReferenceImageId(spec: ResolvedSpec, lock: Lock, providerId: string): string | undefined {
+  const sha256 = spec.character?.kind === "base" && spec.character.mode === "pro-flash"
+    ? spec.character.reference?.south?.sha256
+    : spec.objectPro?.kind === "base"
+      ? spec.objectPro.reference?.sha256
+      : undefined
+  if (!sha256) return undefined
+  for (const entry of Object.values(lock.entries)) {
+    if (entry.provider !== providerId || entry.generator !== "imageProFlash" || entry.status !== "downloaded") continue
+    if (entry.outputs.length !== 1 || entry.outputs[0]!.sha256 !== sha256) continue
+    const recorded = entry.providerMetadata?.[providerId]?.imageProFlash as { sourceImageId?: unknown } | undefined
+    if (typeof recorded?.sourceImageId === "string" && recorded.sourceImageId) return recorded.sourceImageId
+  }
+  return undefined
 }

@@ -34,7 +34,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro", "uiAsset", "uiElement"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro", "uiAsset", "uiElement", "imageProFlash"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -152,6 +152,12 @@ export function candidateCount(size: number): number {
  *         Left unpatched from one data point, which keeps `--budget` an
  *         over-read rather than a guess in the other direction, but a real
  *         call likely costs about half of what this reports.
+ *
+ *   imageProFlash PixelLab's Pro Flash image tier, read from its own cost
+ *         endpoint (`/pro-flash/cost`, provisional quotes, not a bill): 5
+ *         generations up to 96px on the longer side, 6 up to 208px, 9
+ *         beyond. Priced by the adapter, not by this table; see
+ *         `proFlashImageCost` in providers/pixellab.ts.
  *
  *   uiElement UNVERIFIED. `/generate-ui-v2` ("Generate UI (Pro)") carries no
  *         usage example in its schema and has not been called live. It falls
@@ -751,9 +757,23 @@ export const RevisionSchema = z
      * `animate`/`animate-pixminimax` already use.
      */
     description: z.string().min(1).optional(),
+    /**
+     * `image-to-image`/`inpaint` only: which provider engine draws the
+     * edit. `pro-flash` selects PixelLab's Pro Flash edit and inpaint tier
+     * (`/edit-image-pro-flash`, `/inpaint-image-pro-flash`) instead of the
+     * default Pro endpoints; omit it for the default.
+     */
+    engine: z.enum(["pro-flash"]).optional(),
   })
   .strict()
   .superRefine((revision, context) => {
+    if (revision.engine !== undefined && revision.mode !== "image-to-image" && revision.mode !== "inpaint") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "engine applies to image-to-image and inpaint revisions only",
+        path: ["engine"],
+      })
+    }
     if (revision.mode === "inpaint" && !revision.mask) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -943,6 +963,7 @@ export interface ResolvedRevision {
   skeleton?: SkeletonSet | null
   skeletonTemplate?: string
   description?: string
+  engine?: "pro-flash"
 }
 
 const StyleObjectSchema = z
@@ -1148,8 +1169,8 @@ const StyleObjectSchema = z
     /** `character` only. Body template: `mannequin` (default), a quadruped (`bear`, `cat`, `dog`, `horse`, `lion`), or `custom` for `pro-flash`. */
     template: z.string().min(1).optional(),
     /**
-     * `character` only, `pro-flash` bases with a style image: which traits
-     * the style image lends. Each defaults to true.
+     * `character` `pro-flash` bases and `imageProFlash` styles, with a
+     * style image: which traits the style image lends. Each defaults to true.
      */
     styleTraits: z
       .object({
@@ -1665,6 +1686,7 @@ export const LockEntrySchema = z.object({
       keypointsSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       skeletonTemplate: z.string().min(1).optional(),
       description: z.string().min(1).optional(),
+      engine: z.enum(["pro-flash"]).optional(),
     })
     .strict()
     .nullable()
@@ -1914,6 +1936,8 @@ export interface ResolvedSpec {
   uiElements?: UiElement[]
   /** `uiAsset`/`uiElement` generators only. Natural-language palette hint, distinct from `palette`'s hex array. */
   uiColorPalette?: string
+  /** `imageProFlash` generator only: which traits the style image lends. */
+  styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
   /** Forced palette hex values; empty unless the style sets one. */
   palette: string[]
   /** Snap downloaded art to `palette`; excluded from the spec hash. */

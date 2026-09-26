@@ -121,7 +121,8 @@
                 "isometricTile",
                 "objectPro",
                 "uiAsset",
-                "uiElement"
+                "uiElement",
+                "imageProFlash"
               ],
               "default": "map"
             },

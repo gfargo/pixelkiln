@@ -144,8 +144,19 @@ export function proFlashCharacterCost(width: number, height: number, fromReferen
   const side = Math.max(32, Math.ceil(Math.max(width, height) / 4) * 4)
   const rotations = Math.max(1, Math.ceil((side * side * 8) / 65536))
   if (fromReference) return rotations
-  const image = side <= 96 ? 5 : side <= 208 ? 6 : 9
-  return image + rotations
+  return proFlashImageCost(side, side) + rotations
+}
+
+/**
+ * One Pro Flash image (create, edit, or inpaint), by its longer side: 5
+ * generations up to 96px, 6 up to 208px, 9 beyond. Read from PixelLab's own
+ * `/pro-flash/cost` quotes in September 2026 (32 and 64px create quoted 5,
+ * 256px 9, a 128px inpaint 6), which PixelLab itself calls provisional; the
+ * billed amount on a finished job is what the lock records.
+ */
+export function proFlashImageCost(width: number, height: number): number {
+  const side = Math.max(width, height)
+  return side <= 96 ? 5 : side <= 208 ? 6 : 9
 }
 
 /** The name PixelKiln gives an animation upstream, so a re-roll can find and replace it. */
@@ -300,7 +311,8 @@ export class PixelLabProvider implements Provider {
       generator === "isometricTile" ||
       generator === "objectPro" ||
       generator === "uiAsset" ||
-      generator === "uiElement"
+      generator === "uiElement" ||
+      generator === "imageProFlash"
     )
   }
 
@@ -417,6 +429,13 @@ export class PixelLabProvider implements Provider {
       const base = Math.max(1, Math.ceil((width * height * frames) / 65536))
       return { unit: "generations", amount: spec.revision.enhancePrompt ? base + 0.05 : base, candidates: 1 }
     }
+    if (spec.revision?.engine === "pro-flash") {
+      return {
+        unit: "generations",
+        amount: proFlashImageCost(spec.revision.sourceWidth ?? spec.width, spec.revision.sourceHeight ?? spec.height),
+        candidates: 1,
+      }
+    }
     if (spec.revision) {
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
       // like /generate-with-style-v2 and /generate-image-v2. Live calls to
@@ -460,6 +479,9 @@ export class PixelLabProvider implements Provider {
     if (spec.generator === "objectPro") {
       return { unit: "generations", amount: objectProCost(spec), candidates: 1 }
     }
+    if (spec.generator === "imageProFlash") {
+      return { unit: "generations", amount: proFlashImageCost(spec.width, spec.height), candidates: 1 }
+    }
     return {
       unit: "generations",
       amount: generationCost(spec.width, spec.height, spec.generator),
@@ -476,7 +498,17 @@ export class PixelLabProvider implements Provider {
           "source, or use reduce-colors, correct-pixelart, or edit-animation, which take the whole set",
       )
     }
-    if (spec.revision?.mode === "inpaint") {
+    if (spec.revision?.engine === "pro-flash") {
+      const { sourceWidth: width, sourceHeight: height, mode } = spec.revision
+      if (width != null && height != null && (width < 32 || height < 32 || width > 256 || height > 256 || width % 4 || height % 4)) {
+        throw new Error(
+          `PixelLab pro-flash ${mode} source is ${width}x${height}; the API takes 32 to 256 pixels per side, in multiples of 4`,
+        )
+      }
+      if (spec.revision.strength != null) {
+        throw new Error(`PixelLab pro-flash ${mode} takes no strength; the edit applies in full`)
+      }
+    } else if (spec.revision?.mode === "inpaint") {
       const { sourceWidth: width, sourceHeight: height } = spec.revision
       if (width != null && height != null && (width < 32 || height < 32 || width > 512 || height > 512)) {
         throw new Error(`PixelLab inpaint source is ${width}x${height}; the API takes 32 to 512 pixels per side`)
@@ -592,6 +624,19 @@ export class PixelLabProvider implements Provider {
           "(the exact ceiling also depends on aspect ratio — square tops out at 512, 16:9 at 688x384, " +
           "9:16 at 384x688, 4:3 at 600x448, 3:4 at 448x600)",
       )
+    }
+    if (spec.generator === "imageProFlash") {
+      if (spec.width < 16 || spec.height < 16 || spec.width > 256 || spec.height > 256 || spec.width % 4 || spec.height % 4) {
+        throw new Error(
+          `PixelLab imageProFlash is ${spec.width}x${spec.height}; the API takes 16 to 256 pixels per side, in multiples of 4`,
+        )
+      }
+      if (styleImages.length > 1) {
+        throw new Error("PixelLab imageProFlash takes one style image; list at most one styleImages entry")
+      }
+      if (spec.styleTraits && !styleImages.length) {
+        throw new Error("PixelLab imageProFlash: styleTraits choose what a style image lends; add a styleImages entry or drop them")
+      }
     }
     if (
       spec.generator === "uiElement" &&
@@ -977,6 +1022,7 @@ export class PixelLabProvider implements Provider {
         styleCharacterId: character.styleAnchor ? requireStyleObjectId(spec, context) : undefined,
         styleReferenceSize: styleImage ? { width: styleImage.width, height: styleImage.height } : undefined,
         styleTraits: character.styleTraits,
+        sourceImageId: character.mode === "pro-flash" ? context?.referenceSourceImageId : undefined,
       })
       return { jobId: res.character_id, metadata: { character: { kind: "base", characterId: res.character_id, mode: character.mode, directions: character.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -1128,6 +1174,7 @@ export class PixelLabProvider implements Provider {
         styleReference: styleImage ? { base64: styleImage.base64, format: styleImage.format } : undefined,
         styleReferenceSize: styleImage ? { width: styleImage.width, height: styleImage.height } : undefined,
         styleTraits: object.styleTraits,
+        sourceImageId: context?.referenceSourceImageId,
       })
       return { jobId: res.object_id, metadata: { objectPro: { kind: "base", objectId: res.object_id, directions: object.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -1447,6 +1494,21 @@ export class PixelLabProvider implements Provider {
       })
       return { jobId: res.ui_asset_id, metadata: { backgroundJobId: res.background_job_id } }
     }
+    if (spec.generator === "imageProFlash") {
+      const style = styleImages[0]
+      const res = await this.client.createImageProFlash({
+        description: spec.prompt,
+        width: spec.width,
+        height: spec.height,
+        noBackground: spec.noBackground,
+        seed: spec.seed,
+        styleImage: style
+          ? { image: { base64: style.base64, format: style.format }, width: style.width, height: style.height }
+          : undefined,
+        styleTraits: spec.styleTraits,
+      })
+      return { jobId: res.background_job_id, metadata: { imageProFlash: proFlashRecord(res) } }
+    }
     if (spec.generator === "uiElement") {
       const concept = styleImages[0]
       const res = await this.client.generateUiV2({
@@ -1620,6 +1682,35 @@ export class PixelLabProvider implements Provider {
     const width = revision.sourceWidth
     const height = revision.sourceHeight
     const roles = revision.sourceMembers?.map((member) => member.role)
+
+    // Pro Flash edit and inpaint: the same model the character/object
+    // pro-flash engine uses, at a fraction of the Pro endpoints' price.
+    if (revision.engine === "pro-flash") {
+      if (revision.mode === "inpaint") {
+        if (!revision.maskFile || !revision.maskSha256 || !revision.maskFormat) {
+          throw new Error(`${spec.styleId}/${spec.assetId}: revision mask is not ready`)
+        }
+        const maskBytes = readFileSync(revision.maskFile)
+        if (sha256(maskBytes) !== revision.maskSha256) {
+          throw new Error(`${spec.styleId}/${spec.assetId}: revision mask changed after the manifest was resolved`)
+        }
+        const res = await this.client.inpaintImageProFlash({
+          image,
+          maskImage: { base64: maskBytes.toString("base64"), format: revision.maskFormat },
+          description: spec.prompt,
+          noBackground: spec.noBackground,
+          seed: spec.seed,
+        })
+        return { jobId: res.background_job_id, metadata: { imageProFlash: proFlashRecord(res) } }
+      }
+      const res = await this.client.editImageProFlash({
+        image,
+        description: spec.prompt,
+        noBackground: spec.noBackground,
+        seed: spec.seed,
+      })
+      return { jobId: res.background_job_id, metadata: { imageProFlash: proFlashRecord(res) } }
+    }
 
     if (revision.mode === "inpaint") {
       if (!revision.maskFile || !revision.maskSha256 || !revision.maskFormat) {
@@ -1854,6 +1945,10 @@ export class PixelLabProvider implements Provider {
       return this.pollAnimateRevision(jobId, context)
     }
     if (context?.spec?.revision) return this.pollRevision(jobId)
+    // A Pro Flash image is a plain background job completing with one
+    // image, the same as an image-to-image revision; its ids were recorded
+    // at submit.
+    if (generator === "imageProFlash") return this.pollRevision(jobId)
     if (generator === "pixflux") {
       const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
       if (existsSync(file)) {
@@ -2537,6 +2632,15 @@ function readPose(spec: ResolvedSpec, what: string, image: ResolvedReferenceImag
 }
 
 /** A character's directions as output sources, south first. */
+/** What a Pro Flash image submission tells us to keep: its ids, and PixelLab's own provisional estimate. */
+function proFlashRecord(res: { image_id: string; source_image_id: string; estimated_generations?: number | null }): Record<string, unknown> {
+  return {
+    imageId: res.image_id,
+    sourceImageId: res.source_image_id,
+    ...(res.estimated_generations != null ? { estimatedGenerations: res.estimated_generations } : {}),
+  }
+}
+
 /**
  * `/edit-animation-v2` packs every frame into one fixed-size grid, so the
  * frame ceiling falls as frames grow: its own docs give 16 (a 4x4 grid) up
