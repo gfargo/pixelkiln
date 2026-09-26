@@ -1,3 +1,10 @@
+# [0.63.0](https://github.com/gfargo/pixelkiln/compare/v0.62.0...v0.63.0) (2026-09-26)
+
+
+### Features
+
+* **manifest:** declare one loop for several directions ([da5e1b0](https://github.com/gfargo/pixelkiln/commit/da5e1b0254fa201a0b13fb2861c2b8d6101c41e1)), closes [#147](https://github.com/gfargo/pixelkiln/issues/147)
+
 # [0.62.0](https://github.com/gfargo/pixelkiln/compare/v0.61.0...v0.62.0) (2026-09-26)
 
 
