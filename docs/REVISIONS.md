@@ -344,10 +344,16 @@ inline pixels. It must match the shape `src/skeleton.ts`'s `SkeletonSetSchema`
 validates: `{"firstFrameKeypoints": [...18 joints], "frames": [[...18
 joints], ...3 to 15 of them]}`, each joint `{"label": "RIGHT KNEE", "x": 0.52,
 "y": 0.71, "z_index": 9, "depth": 4}` (`depth` optional — PixelLab fills it
-from `skeletonTemplate`, default `mannequin`, when omitted). Bootstrap this
-file with `pixelkiln estimate-skeleton <image> --out poses/hero-swing.json`
-(see [CLI reference](./CLI.md#estimate-skeleton)) rather than hand-typing 18
-joints from scratch, then hand-tweak individual joints for in-between frames.
+from `skeletonTemplate`, default `mannequin`, when omitted). `label` is one
+of PixelLab's 18 joints (`NOSE`, `NECK`, `RIGHT`/`LEFT` `SHOULDER`, `ELBOW`,
+`ARM` for the wrist, `HIP`, `KNEE`, `LEG` for the ankle, `EYE`, `EAR`), each
+exactly once per pose; a misspelled or repeated joint fails when the manifest
+loads. Bootstrap this file with
+`pixelkiln estimate-skeleton <image> --out poses/hero-swing.json` (see
+[CLI reference](./CLI.md#estimate-skeleton)), which writes the estimated pose
+and four copies of it as frames, then move joints frame by frame. Check each
+edit with `pixelkiln skeleton-preview hero-swing`, which draws every pose
+over the source image, locally and for free.
 
 `direction` is **required** for this mode (unlike `animate-pixminimax`,
 where it is optional). `frames`/`fps`/`lastFrame`/`enhancePrompt` are all

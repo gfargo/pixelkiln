@@ -2009,7 +2009,7 @@ export class PixelLabClient {
    * account (see `EstimateSkeletonResponseSchema`'s own caveat).
    */
   async estimateSkeleton(args: { image: Base64Image }): Promise<{ keypoints: SkeletonKeypoint[]; usage: unknown }> {
-    const body: Record<string, unknown> = { image: args.image }
+    const body: Record<string, unknown> = { image: { type: "base64", base64: args.image.base64, format: args.image.format } }
     const res = validateResponse(
       EstimateSkeletonResponseSchema,
       await this.request<unknown>("/estimate-skeleton", { method: "POST", body: JSON.stringify(body) }),

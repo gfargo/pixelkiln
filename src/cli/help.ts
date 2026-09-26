@@ -36,11 +36,16 @@ Commands
             first. Local art is untouched.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
-  estimate-skeleton <image> [--out <file>]
-            PixelLab only: derive an 18-joint skeleton from an image, direct
-            and un-budgeted (like balance, not a generation). Prints the
-            keypoints JSON, or writes it with --out — the way to bootstrap
-            an animate-skeleton revision's keypointsFile.
+  estimate-skeleton <image> [--out <file>] [--frames <n>] [--force]
+            PixelLab only: derive an 18-joint skeleton from a square 16-256px
+            image, direct and un-budgeted (like balance, not a generation).
+            Prints, or writes with --out, a ready keypoints file for an
+            animate-skeleton revision: the estimated pose plus --frames copies
+            (default 4) to edit. --out refuses to replace a file without --force.
+  skeleton-preview <keypoints.json | asset> [--from <image>] [--out <file>]
+            Draw every pose of a keypoints file over its source image as one
+            PNG, locally and free. Given an animate-skeleton asset id, reads
+            its keypointsFile and source from the manifest.
   status    Summarise the lockfile.
   edit      Hand-edit an asset in your own editor: copies the generated PNG to
             <outDir>/edits/, declares it as the asset's source, and opens it.
