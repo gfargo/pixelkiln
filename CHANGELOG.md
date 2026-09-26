@@ -1,3 +1,10 @@
+# [0.76.0](https://github.com/gfargo/pixelkiln/compare/v0.75.0...v0.76.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** price Pro Flash from PixelLab's live quote ([359dce7](https://github.com/gfargo/pixelkiln/commit/359dce7743628713d3d6237d65e21832d8c93658))
+
 # [0.75.0](https://github.com/gfargo/pixelkiln/compare/v0.74.0...v0.75.0) (2026-09-26)
 
 
