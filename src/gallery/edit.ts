@@ -8,7 +8,12 @@ import {
 import { detachHandEdit, MAX_HAND_EDIT_BYTES, openInEditor, saveHandEdit, startHandEdit } from "../pipeline/hand-edit.ts"
 import { lockKey } from "../types.ts"
 import type { GalleryProjectContext } from "./generate.ts"
-import { createSkeletonAnimation, SkeletonAnimationRequestSchema } from "./skeleton.ts"
+import {
+  createSkeletonAnimation,
+  SkeletonAnimationRequestSchema,
+  SkeletonKeypointsUpdateSchema,
+  updateSkeletonKeypoints,
+} from "./skeleton.ts"
 import type { GalleryBuild } from "./snapshot.ts"
 
 /** Standard base64, sized so a decoded payload cannot exceed the edit limit. */
@@ -118,6 +123,19 @@ export function createGalleryEditHandler(
         if (result.changed) log(`  hand edit detached: ${request.styleId}/${request.assetId} (file kept)`)
       }
       return opts.reload()
+    }
+    const poses = SkeletonKeypointsUpdateSchema.safeParse(body)
+    if (poses.success) {
+      if (!opts.loadProject) throw new ManifestEditError("pose edits are not available in this gallery")
+      const written = await updateSkeletonKeypoints(await opts.loadProject(poses.data.project), poses.data)
+      log(`  poses saved: ${written} (${poses.data.styleId}/${poses.data.assetId} is stale until generated again)`)
+      return opts.reload()
+    }
+    if ((body as { action?: unknown } | null)?.action === "update-skeleton-keypoints") {
+      throw new ManifestEditError(
+        "invalid pose edit: " +
+          poses.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
+      )
     }
     const skeleton = SkeletonAnimationRequestSchema.safeParse(body)
     if (skeleton.success) {

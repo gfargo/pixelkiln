@@ -1,6 +1,7 @@
-import { addAssetAndOpen, showSaveError } from "./form-kit.ts"
-import { el, field, fmtCost, projectOf, ui } from "./core.ts"
-import { renderDrawer } from "./drawer.ts"
+import { poseEditor } from "./pose-editor.ts"
+import { addAssetAndOpen, nextStep, showSaveError } from "./form-kit.ts"
+import { S, el, field, fmtCost, postEdit, projectOf, ui } from "./core.ts"
+import { render, renderDrawer } from "./drawer.ts"
 
 // ---- skeleton animation ----------------------------------------------------
 
@@ -141,10 +142,10 @@ export function skeletonAnimationForm(item) {
   const preview = el('div');
   const row2 = el('div', 'row');
   row2.append(field('poses from', source), field('keypoints file', file, 'Inside the project. The manifest records this path.'));
-  form.append(row2, estimateRow, field('poses (JSON)', json, 'Move joints frame by frame; x and y are fractions of the sprite.'), overwriteField, status, preview);
+  form.append(row2, estimateRow, field('poses (JSON)', json, 'Drag joints in the editor below, or edit the JSON; x and y are fractions of the sprite.'), overwriteField, status, preview);
 
   const imageUrl = displayUrl(item);
-  let set = null;
+  let set: any = null;
   const showPoses = () => {
     preview.textContent = '';
     status.className = 'msg'; status.textContent = '';
@@ -152,7 +153,8 @@ export function skeletonAnimationForm(item) {
     try { set = JSON.parse(json.value); } catch (e) { set = null; status.className = 'msg bad'; status.textContent = 'not valid JSON: ' + e.message; return; }
     const bad = skeletonProblem(set);
     if (bad) { status.className = 'msg bad'; status.textContent = bad; set = null; return; }
-    preview.append(poseStrip(set, imageUrl));
+    // Dragging writes the JSON back, so pasted text and the editor stay one file.
+    preview.append(poseEditor(set, imageUrl, (next) => { set = next; json.value = JSON.stringify(next, null, 2); }));
   };
   const sync = () => {
     const pasting = source.value !== 'file';
@@ -213,5 +215,47 @@ export function skeletonAnimationForm(item) {
   };
   sync();
   setTimeout(() => id.focus(), 0);
+  return form;
+}
+
+/**
+ * The pose editor on an existing `animate-skeleton` record: edits a copy of
+ * its keypoints file and saves it back, quoting the file's hash so an edit
+ * made elsewhere since the page loaded is refused, not overwritten.
+ */
+export function skeletonPoseForm(item, parentUrl) {
+  const form = el('form', 'edit');
+  form.append(el('h3', null, 'Edit poses of ' + item.assetId));
+  let draft = item.skeleton.set;
+  let dirty = false;
+  const msg = el('span', 'msg');
+  const save = el('button', 'primary', 'Save poses'); save.type = 'submit'; save.disabled = true;
+  form.append(poseEditor(draft, parentUrl, (next) => {
+    draft = next; dirty = true; save.disabled = false;
+    msg.className = 'msg'; msg.textContent = 'unsaved';
+  }));
+  form.append(el('small', 'state-dim', 'Saving rewrites ' + item.skeleton.keypointsFile + '; the animation is then stale until it is generated again.'));
+  const cancel = el('button', null, 'Cancel'); cancel.type = 'button';
+  cancel.onclick = () => {
+    if (dirty && !confirm('Discard the pose changes?')) return;
+    ui.editing = null; renderDrawer();
+  };
+  const actions = el('div', 'actions');
+  actions.append(save, cancel, msg);
+  form.append(actions);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
+    const body: any = { action: 'update-skeleton-keypoints', styleId: item.styleId, assetId: item.assetId, expectedSha256: item.skeleton.sha256, set: draft };
+    if (item.project) body.project = item.project;
+    try {
+      S.snap = await postEdit(body);
+      ui.editing = null;
+      ui.notice = { id: item.id, text: 'Poses saved to ' + item.skeleton.keypointsFile + '. ' + nextStep().replace('it', 'the animation') };
+      render();
+    } catch (err) {
+      showSaveError(msg, save, err);
+    }
+  };
   return form;
 }
