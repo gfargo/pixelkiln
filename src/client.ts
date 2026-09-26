@@ -1400,6 +1400,44 @@ export class PixelLabClient {
   }
 
   /**
+   * `/generate-ui-v2` ("Generate UI (Pro)"): one UI element (a button, a
+   * health bar, an inventory slot, a dialogue box) from a description,
+   * guided by an optional concept image and a natural-language color
+   * palette. A plain background job; unlike `/create-ui-asset` there is no
+   * piece/element layout, and sizes start at 16px instead of 192. Its
+   * completed shape has not been exercised live; `pollUiElement` reads it
+   * defensively.
+   */
+  async generateUiV2(args: {
+    description: string
+    width: number
+    height: number
+    conceptImage?: { image: Base64Image; width: number; height: number }
+    colorPalette?: string
+    noBackground?: boolean
+    seed?: number
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = {
+      description: args.description,
+      image_size: { width: args.width, height: args.height },
+    }
+    if (args.conceptImage) {
+      body.concept_image = {
+        image: args.conceptImage.image,
+        size: { width: args.conceptImage.width, height: args.conceptImage.height },
+      }
+    }
+    if (args.colorPalette) body.color_palette = args.colorPalette
+    if (args.noBackground != null) body.no_background = args.noBackground
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/generate-ui-v2", { method: "POST", body: JSON.stringify(body) }),
+      "generate-ui-v2",
+    )
+  }
+
+  /**
    * `/reduce-colors`, PixelLab's "Cleanup" tier: quantize one image, or
    * several same-size frames together onto ONE shared palette, synchronously
    * — no `background_job_id`, the result comes back in this same response,

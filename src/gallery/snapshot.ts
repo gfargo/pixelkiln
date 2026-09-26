@@ -387,6 +387,9 @@ function describeCharacter(spec: ResolvedSpec | undefined, entry: LockEntry | un
   const recordedCharacter = entry?.providerMetadata?.[entry.provider]?.character as
     | { kind?: string; characterId?: string; direction?: string; directions?: number; mode?: string }
     | undefined
+  // A revision in a character style edits its parent's pixels; it is not a
+  // character of its own, even though its lock entry shares the generator.
+  if (spec?.revision) return null
   if (spec?.character) {
     const character = spec.character
     return {

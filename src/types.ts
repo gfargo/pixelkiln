@@ -33,7 +33,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro", "uiAsset"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro", "uiAsset", "uiElement"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -41,6 +41,7 @@ export type GridConfidence = z.infer<typeof GridConfidenceSchema>
 
 export const RevisionModeSchema = z.enum([
   "image-to-image", "inpaint", "outpaint", "reduce-colors", "correct-pixelart", "animate", "animate-pixminimax",
+  "interpolate", "edit-animation",
 ])
 export type RevisionMode = z.infer<typeof RevisionModeSchema>
 
@@ -150,6 +151,11 @@ export function candidateCount(size: number): number {
  *         Left unpatched from one data point, which keeps `--budget` an
  *         over-read rather than a guess in the other direction, but a real
  *         call likely costs about half of what this reports.
+ *
+ *   uiElement UNVERIFIED. `/generate-ui-v2` ("Generate UI (Pro)") carries no
+ *         usage example in its schema and has not been called live. It falls
+ *         through to the same canvas tiers as `1dir`/`tiles`, the safe
+ *         over-read for a Pro endpoint.
  *
  * So `1dir` buys candidate variety at 20-40x the price, and `map` buys
  * arbitrary (non-square) dimensions nearly free. For a single-result asset,
@@ -649,9 +655,13 @@ export const RevisionSchema = z
      * the provider layer, since it differs by mode).
      */
     frames: z.number().int().min(4).max(40).optional(),
-    /** `animate`/`animate-pixminimax` only: playback rate recorded with the frames; PixelLab does not store one. */
+    /** `animate`/`animate-pixminimax`/`interpolate`/`edit-animation` only: playback rate recorded with the frames; PixelLab does not store one. */
     fps: z.number().int().min(1).max(60).optional(),
-    /** `animate`/`animate-pixminimax` only: manifest-relative image pinning where the motion ends (interpolation instead of open-ended animation). */
+    /**
+     * `animate`/`animate-pixminimax`: manifest-relative image pinning where
+     * the motion ends (interpolation instead of open-ended animation).
+     * `interpolate`: required, the ending keyframe; the parent is the start.
+     */
     lastFrame: z.string().min(1).optional(),
     /** `animate-pixminimax` only: facing direction, used only alongside `enhancePrompt` to hold the sprite's facing. */
     direction: CharacterDirectionSchema.optional(),
@@ -697,14 +707,18 @@ export const RevisionSchema = z
         path: ["strength"],
       })
     }
-    if (revision.strength !== undefined && (revision.mode === "animate" || revision.mode === "animate-pixminimax")) {
+    const generative = revision.mode === "animate" || revision.mode === "animate-pixminimax" ||
+      revision.mode === "interpolate" || revision.mode === "edit-animation"
+    if (revision.strength !== undefined && generative) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `${revision.mode} revisions do not take a strength; use enhancePrompt`,
+        message: revision.mode === "animate" || revision.mode === "animate-pixminimax"
+          ? `${revision.mode} revisions do not take a strength; use enhancePrompt`
+          : `${revision.mode} revisions do not take a strength`,
         path: ["strength"],
       })
     }
-    for (const field of ["frames", "fps", "lastFrame", "enhancePrompt"] as const) {
+    for (const field of ["frames", "enhancePrompt"] as const) {
       if (revision[field] !== undefined && revision.mode !== "animate" && revision.mode !== "animate-pixminimax") {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -712,6 +726,27 @@ export const RevisionSchema = z
           path: [field],
         })
       }
+    }
+    if (revision.lastFrame !== undefined && revision.mode !== "animate" && revision.mode !== "animate-pixminimax" && revision.mode !== "interpolate") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "lastFrame applies to animate/animate-pixminimax/interpolate revisions only",
+        path: ["lastFrame"],
+      })
+    }
+    if (revision.mode === "interpolate" && revision.lastFrame === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "interpolate revisions require lastFrame: the ending keyframe to interpolate toward",
+        path: ["lastFrame"],
+      })
+    }
+    if (revision.fps !== undefined && !generative) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "fps applies to animate/animate-pixminimax/interpolate/edit-animation revisions only",
+        path: ["fps"],
+      })
     }
     if (revision.direction !== undefined && revision.mode !== "animate-pixminimax") {
       context.addIssue({
@@ -727,6 +762,28 @@ export const RevisionSchema = z
 
 export type Revision = z.infer<typeof RevisionSchema>
 
+/** Modes whose output is an ordered frame set rather than one image. */
+export const FRAME_SET_REVISION_MODES: readonly RevisionMode[] = ["animate", "animate-pixminimax", "interpolate", "edit-animation"]
+
+/**
+ * Modes that can read a whole member set from their parent (a character's
+ * directions, an animation's frames) in one call, rather than one image.
+ * `edit-animation` needs one; the two Cleanup-tier modes process a set
+ * together so every member lands on one shared palette or cleanup pass.
+ */
+export const MEMBER_SET_REVISION_MODES: readonly RevisionMode[] = ["reduce-colors", "correct-pixelart", "edit-animation"]
+
+/** One file of a revision parent that is a member set rather than a single image. */
+export interface ResolvedRevisionMember {
+  /** The output role it was written under: a direction or `frame-NN`. */
+  role: string
+  file: string
+  sha256: string
+  width: number
+  height: number
+  format: "png" | "jpeg"
+}
+
 /** Resolved immutable inputs supplied to a revision-capable provider. */
 export interface ResolvedRevision {
   mode: RevisionMode
@@ -740,6 +797,16 @@ export interface ResolvedRevision {
   sourceFormat: "png" | "jpeg" | null
   /** Full parent intent used to prove the dependency is current before spending. */
   sourceSpec: ResolvedSpec
+  /**
+   * Present when the parent is a member set (`<stem>-south.png`, ...,
+   * or `<stem>-frame-00.png`, ...) instead of one file. `sourceFile` and
+   * the size fields then describe the first member, and `sourceSha256`
+   * is a hash over every member's hash in order, the same formula a
+   * mirror records over its source's outputs.
+   */
+  sourceMembers?: ResolvedRevisionMember[]
+  /** A frame-set parent's playback rate, carried onto a set-to-set revision's frames. */
+  sourceFps?: number
   maskFile?: string
   maskSha256?: string | null
   maskWidth?: number | null
@@ -886,7 +953,7 @@ const StyleObjectSchema = z
      */
     terrainMode: z.enum(["standard", "pro"]).optional(),
     /**
-     * `uiAsset` generator only. A natural-language palette hint sent as-is
+     * `uiAsset` and `uiElement` generators only. A natural-language palette hint sent as-is
      * (e.g. "brown and gold"), distinct from `palette`'s hex-color array —
      * this is a prompt-level steer, not a local quantization target.
      */
@@ -1708,7 +1775,7 @@ export interface ResolvedSpec {
   uiPieces?: UiPiece[]
   /** `uiAsset` generator only. See `UiElementSchema`. */
   uiElements?: UiElement[]
-  /** `uiAsset` generator only. Natural-language palette hint, distinct from `palette`'s hex array. */
+  /** `uiAsset`/`uiElement` generators only. Natural-language palette hint, distinct from `palette`'s hex array. */
   uiColorPalette?: string
   /** Forced palette hex values; empty unless the style sets one. */
   palette: string[]

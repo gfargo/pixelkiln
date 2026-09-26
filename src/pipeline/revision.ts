@@ -132,11 +132,16 @@ async function inspectRevision(
     }
   }
 
-  if (!revision.sourceSha256 || !existsSync(revision.sourceFile)) {
-    return { ready: false, reason: `revision source is missing: ${revision.sourceFile}` }
-  }
-  if ((await sha256File(revision.sourceFile)) !== revision.sourceSha256) {
-    return { ready: false, reason: "revision source changed after the manifest was resolved" }
+  if (revision.sourceMembers) {
+    const members = await inspectSourceMembers(spec, lock)
+    if (!members.ready) return members
+  } else {
+    if (!revision.sourceSha256 || !existsSync(revision.sourceFile)) {
+      return { ready: false, reason: `revision source is missing: ${revision.sourceFile}` }
+    }
+    if ((await sha256File(revision.sourceFile)) !== revision.sourceSha256) {
+      return { ready: false, reason: "revision source changed after the manifest was resolved" }
+    }
   }
 
   if (revision.maskFile) {
@@ -148,7 +153,51 @@ async function inspectRevision(
     }
   }
 
+  // A pinned ending frame is often another asset's generated output (the
+  // chained-animation and interpolate-between-key-poses cases), so it can
+  // be as not-yet-there as the source itself.
+  if (revision.lastFrameFile) {
+    if (!revision.lastFrameSha256 || !existsSync(revision.lastFrameFile)) {
+      return { ready: false, reason: `revision last frame is missing: ${revision.lastFrameFile}` }
+    }
+    if ((await sha256File(revision.lastFrameFile)) !== revision.lastFrameSha256) {
+      return { ready: false, reason: "revision last frame changed after the manifest was resolved" }
+    }
+  }
+
   return { ready: true, reason: "revision inputs are current" }
+}
+
+/**
+ * A member-set source was found on disk by file name at resolve time; the
+ * parent's own lock entry is the authority on which files make up the set
+ * now. A leftover `-frame-11.png` from an older, longer generation, or a
+ * set with a member missing, would otherwise be sent as if it belonged.
+ */
+async function inspectSourceMembers(spec: ResolvedSpec, lock: Lock): Promise<RevisionReadiness> {
+  const revision = spec.revision!
+  const members = revision.sourceMembers!
+  for (const member of members) {
+    if (!existsSync(member.file)) return { ready: false, reason: `revision source member is missing: ${member.file}` }
+    if ((await sha256File(member.file)) !== member.sha256) {
+      return { ready: false, reason: `revision source member changed after the manifest was resolved: ${member.file}` }
+    }
+  }
+  const parent = revision.sourceSpec
+  if (parent.source) return { ready: true, reason: "declared source set is present" }
+  const entry = lock.entries[lockKey(parent.styleId, parent.assetId)]
+  if (!entry) return { ready: false, reason: "revision source is not in the lockfile" }
+  const recorded = entry.outputs.map((_, index) => path.resolve(currentEntryOutputPath(entry, parent, index))).sort()
+  const found = members.map((member) => path.resolve(member.file)).sort()
+  if (recorded.length !== found.length || recorded.some((file, index) => file !== found[index])) {
+    return {
+      ready: false,
+      reason:
+        `revision source ${parent.assetId} records ${recorded.length} output(s) but ${found.length} member file(s) ` +
+        "were found beside it; remove files left over from an earlier generation, or re-fetch the parent",
+    }
+  }
+  return { ready: true, reason: "revision source set is current" }
 }
 
 export async function requireRevisionReady(spec: ResolvedSpec, lock: Lock): Promise<void> {

@@ -9,6 +9,7 @@ import { paletteSwatch } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
   CHARACTER_DIRECTIONS_8,
+  MEMBER_SET_REVISION_MODES,
   candidateCount,
   generationCost,
   type CharacterDirection,
@@ -267,7 +268,8 @@ export class PixelLabProvider implements Provider {
       generator === "character" ||
       generator === "isometricTile" ||
       generator === "objectPro" ||
-      generator === "uiAsset"
+      generator === "uiAsset" ||
+      generator === "uiElement"
     )
   }
 
@@ -279,14 +281,17 @@ export class PixelLabProvider implements Provider {
    * rather than a described edit — and `animate`/`animate-pixminimax`
    * (`/animate-with-text-v3`, `/animate-pixminimax`), which animate any loose
    * image from a text description with no character/object resource
-   * required. `outpaint` does not: there is no canvas-expansion endpoint in
-   * the API, matching docs/REVISIONS.md's note that no provider ships a
-   * tested outpaint path yet.
+   * required — and `interpolate` (`/interpolation-v2`, the in-betweens
+   * from one keyframe to another) and `edit-animation`
+   * (`/edit-animation-v2`, one text edit applied across a whole frame set).
+   * `outpaint` does not: there is no canvas-expansion endpoint in the API,
+   * matching docs/REVISIONS.md's note that no provider ships a tested
+   * outpaint path yet.
    */
   supportsRevision(mode: RevisionMode): boolean {
     return (
       mode === "inpaint" || mode === "image-to-image" || mode === "reduce-colors" || mode === "correct-pixelart" ||
-      mode === "animate" || mode === "animate-pixminimax"
+      mode === "animate" || mode === "animate-pixminimax" || mode === "interpolate" || mode === "edit-animation"
     )
   }
 
@@ -327,9 +332,24 @@ export class PixelLabProvider implements Provider {
       // predict real subscription billing (isometricTile, objectPro) — the
       // real account balance moved by exactly 0.1 generations per call
       // instead, matching PixelLab's own MCP tool descriptions. Only
-      // confirmed at this one size; whether it stays flat at larger canvases
-      // is unknown.
+      // confirmed at this one size, and only for one image per call; whether
+      // it stays flat at larger canvases, or for a whole member set sent
+      // together (still one call), is unknown.
       return { unit: "generations", amount: 0.1, candidates: 1 }
+    }
+    if (spec.revision?.mode === "interpolate" || spec.revision?.mode === "edit-animation") {
+      // Both are documented "(Pro)" endpoints with no usage example in the
+      // schema and no live measurement yet. Borrow the same canvas-area
+      // tiering every other unmeasured Pro edit here uses — over-reading is
+      // the safe direction for `--budget`. edit-animation packs every frame
+      // into one square-ish grid before editing (its own docs), so the canvas
+      // it prices against is that grid, not one frame.
+      const width = spec.revision.sourceWidth ?? spec.width
+      const height = spec.revision.sourceHeight ?? spec.height
+      const side = spec.revision.mode === "edit-animation"
+        ? Math.ceil(Math.sqrt(Math.max(1, spec.revision.sourceMembers?.length ?? 1)))
+        : 1
+      return { unit: "generations", amount: generationCost(width * side, height * side, "1dir"), candidates: 1 }
     }
     if (spec.revision?.mode === "animate" || spec.revision?.mode === "animate-pixminimax") {
       // Unmeasured against a live account; no usage example exists for
@@ -398,6 +418,14 @@ export class PixelLabProvider implements Provider {
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
+    const members = spec.revision?.sourceMembers
+    if (spec.revision && members && !MEMBER_SET_REVISION_MODES.includes(spec.revision.mode)) {
+      throw new Error(
+        `PixelLab ${spec.revision.mode} reads one source image; ${spec.revision.sourceAssetId} is a ` +
+          `${members.length}-member set (${members[0]!.role}, ...). Revise one member through a declared ` +
+          "source, or use reduce-colors, correct-pixelart, or edit-animation, which take the whole set",
+      )
+    }
     if (spec.revision?.mode === "inpaint") {
       const { sourceWidth: width, sourceHeight: height } = spec.revision
       if (width != null && height != null && (width < 32 || height < 32 || width > 512 || height > 512)) {
@@ -406,10 +434,11 @@ export class PixelLabProvider implements Provider {
     }
     if (spec.revision?.mode === "reduce-colors") {
       const { sourceWidth: width, sourceHeight: height } = spec.revision
-      if (width != null && height != null && width * height > 512 * 512) {
+      const count = members?.length ?? 1
+      if (width != null && height != null && width * height * count > 512 * 512) {
         throw new Error(
-          `PixelLab reduce-colors source is ${width}x${height} (${width * height}px²); ` +
-            "the API takes at most 512x512 worth of pixels per call",
+          `PixelLab reduce-colors source is ${count > 1 ? `${count} frames of ` : ""}${width}x${height} ` +
+            `(${width * height * count}px² in all); the API takes at most 512x512 worth of pixels per call`,
         )
       }
     }
@@ -434,6 +463,41 @@ export class PixelLabProvider implements Provider {
         throw new Error(
           `PixelLab ${mode} lastFrame is ${lastFrameWidth}x${lastFrameHeight}; source is ${width}x${height} — they must match`,
         )
+      }
+    }
+    if (spec.revision?.mode === "interpolate") {
+      const { sourceWidth: width, sourceHeight: height, lastFrameWidth, lastFrameHeight } = spec.revision
+      if (width != null && height != null && (width < 16 || height < 16 || width > 128 || height > 128)) {
+        throw new Error(`PixelLab interpolate keyframes are ${width}x${height}; the API takes 16 to 128 pixels per side`)
+      }
+      if (
+        lastFrameWidth != null && lastFrameHeight != null && width != null && height != null &&
+        (lastFrameWidth !== width || lastFrameHeight !== height)
+      ) {
+        throw new Error(
+          `PixelLab interpolate lastFrame is ${lastFrameWidth}x${lastFrameHeight}; the start keyframe is ${width}x${height} — they must match`,
+        )
+      }
+    }
+    if (spec.revision?.mode === "edit-animation") {
+      const { sourceWidth: width, sourceHeight: height, sourceAssetId } = spec.revision
+      if (width != null && height != null) {
+        if (!members || members.length < 2) {
+          throw new Error(
+            `PixelLab edit-animation needs a frame set to edit; ${sourceAssetId} is a single image ` +
+              "(revise an animation, a character's directions, or another frame-set revision)",
+          )
+        }
+        if (width < 16 || height < 16 || width > 256 || height > 256) {
+          throw new Error(`PixelLab edit-animation frames are ${width}x${height}; the API takes 16 to 256 pixels per side`)
+        }
+        const ceiling = editAnimationFrameCeiling(width, height)
+        if (members.length > ceiling) {
+          throw new Error(
+            `PixelLab edit-animation takes at most ${ceiling} frames at ${width}x${height} (every frame is packed ` +
+              `into one grid); ${sourceAssetId} has ${members.length}`,
+          )
+        }
       }
     }
     if (spec.generator === "1dir" && (spec.width < 32 || spec.width > 256)) {
@@ -463,6 +527,18 @@ export class PixelLabProvider implements Provider {
           "(the exact ceiling also depends on aspect ratio — square tops out at 512, 16:9 at 688x384, " +
           "9:16 at 384x688, 4:3 at 600x448, 3:4 at 448x600)",
       )
+    }
+    if (
+      spec.generator === "uiElement" &&
+      (spec.width < 16 || spec.height < 16 || spec.width > 792 || spec.height > 688)
+    ) {
+      throw new Error(
+        `PixelLab uiElement is ${spec.width}x${spec.height}; the API takes 16 to 792 wide and 16 to 688 tall ` +
+          "(the exact ceiling depends on aspect ratio — square tops out at 512, 16:9 at 688x384)",
+      )
+    }
+    if (spec.generator === "uiElement" && styleImages.length > 1) {
+      throw new Error("PixelLab uiElement takes one concept image; list at most one styleImages entry")
     }
     if (spec.generator === "map") {
       requirePixelLabOption("map", "view", spec.view, ["low top-down", "high top-down", "side"])
@@ -539,8 +615,8 @@ export class PixelLabProvider implements Provider {
         throw new Error(`PixelLab isometricTile: size must be 16 to 64 pixels, got ${spec.width}`)
       }
     }
-    if (spec.generator === "character") this.validateCharacter(spec, styleImages)
-    if (spec.generator === "objectPro") this.validateObjectPro(spec, styleImages)
+    if (spec.generator === "character" && !spec.revision) this.validateCharacter(spec, styleImages)
+    if (spec.generator === "objectPro" && !spec.revision) this.validateObjectPro(spec, styleImages)
     if ((spec.generator === "map" || spec.generator === "pixflux") && styleImages.length) {
       throw new Error(`PixelLab ${spec.generator} does not support style images`)
     }
@@ -1159,6 +1235,21 @@ export class PixelLabProvider implements Provider {
       })
       return { jobId: res.ui_asset_id, metadata: { backgroundJobId: res.background_job_id } }
     }
+    if (spec.generator === "uiElement") {
+      const concept = styleImages[0]
+      const res = await this.client.generateUiV2({
+        description: spec.prompt,
+        width: spec.width,
+        height: spec.height,
+        conceptImage: concept
+          ? { image: { base64: concept.base64, format: concept.format }, width: concept.width, height: concept.height }
+          : undefined,
+        colorPalette: spec.uiColorPalette,
+        noBackground: spec.noBackground,
+        seed: spec.seed,
+      })
+      return { jobId: res.background_job_id }
+    }
 
     if (spec.generator === "pixflux") {
       const swatch = spec.palette.length
@@ -1302,13 +1393,21 @@ export class PixelLabProvider implements Provider {
     if (!revision.sourceSha256 || !revision.sourceFormat || revision.sourceWidth == null || revision.sourceHeight == null) {
       throw new Error(`${spec.styleId}/${spec.assetId}: revision source is not ready`)
     }
-    const sourceBytes = readFileSync(revision.sourceFile)
-    if (sha256(sourceBytes) !== revision.sourceSha256) {
-      throw new Error(`${spec.styleId}/${spec.assetId}: revision source changed after the manifest was resolved`)
-    }
-    const image: Base64Image = { base64: sourceBytes.toString("base64"), format: revision.sourceFormat }
+    // A member-set source sends every member, in role order; a single
+    // source sends its one file. Either way each file's bytes are proven to
+    // be what the spec's identity hashed before any of them is spent on.
+    const sourceFiles = revision.sourceMembers ?? [{ file: revision.sourceFile, sha256: revision.sourceSha256, format: revision.sourceFormat }]
+    const images: Base64Image[] = sourceFiles.map((member) => {
+      const bytes = readFileSync(member.file)
+      if (sha256(bytes) !== member.sha256) {
+        throw new Error(`${spec.styleId}/${spec.assetId}: revision source changed after the manifest was resolved`)
+      }
+      return { base64: bytes.toString("base64"), format: member.format }
+    })
+    const image = images[0]!
     const width = revision.sourceWidth
     const height = revision.sourceHeight
+    const roles = revision.sourceMembers?.map((member) => member.role)
 
     if (revision.mode === "inpaint") {
       if (!revision.maskFile || !revision.maskSha256 || !revision.maskFormat) {
@@ -1350,21 +1449,45 @@ export class PixelLabProvider implements Provider {
         paletteImage = { base64: paletteBytes.toString("base64"), format: revision.paletteImageFormat }
       }
       const res = await this.client.reduceColors({
-        image,
+        images,
         numColors: revision.numColors,
         paletteImage,
         dithering: revision.dithering,
         ditheringStrength: revision.ditheringStrength,
       })
-      const jobId = randomUUID()
-      writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}.png`), res.png)
-      return { jobId, metadata: { revisionUsage: res.usage } }
+      return this.cacheCleanupResult(res.pngs, res.usage, roles, revision.sourceFps)
     }
     if (revision.mode === "correct-pixelart") {
-      const res = await this.client.correctPixelart({ image, strength: revision.strength })
-      const jobId = randomUUID()
-      writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}.png`), res.png)
-      return { jobId, metadata: { revisionUsage: res.usage } }
+      const res = await this.client.correctPixelart({ images, strength: revision.strength })
+      return this.cacheCleanupResult(res.pngs, res.usage, roles, revision.sourceFps)
+    }
+
+    // interpolate and edit-animation are background jobs that complete with
+    // a frame list, like animate below, and land in the same review.
+    if (revision.mode === "interpolate") {
+      const lastFrame = this.readLastFrame(spec)
+      if (!lastFrame) throw new Error(`${spec.styleId}/${spec.assetId}: interpolate needs lastFrame, the ending keyframe`)
+      const res = await this.client.interpolationV2({
+        startImage: image,
+        endImage: lastFrame,
+        width,
+        height,
+        action: spec.prompt,
+        seed: spec.seed,
+        noBackground: spec.noBackground,
+      })
+      return { jobId: res.background_job_id }
+    }
+    if (revision.mode === "edit-animation") {
+      const res = await this.client.editAnimationV2({
+        frames: images,
+        width,
+        height,
+        description: spec.prompt,
+        seed: spec.seed,
+        noBackground: spec.noBackground,
+      })
+      return { jobId: res.background_job_id }
     }
 
     // animate and animate-pixminimax are real async jobs, unlike the two
@@ -1372,17 +1495,7 @@ export class PixelLabProvider implements Provider {
     // transforming the source in place, so this is a plain background job
     // like inpaint/image-to-image, not a locally-cached synchronous result.
     if (revision.mode === "animate" || revision.mode === "animate-pixminimax") {
-      let lastFrame: Base64Image | undefined
-      if (revision.lastFrameFile) {
-        if (!revision.lastFrameSha256 || !revision.lastFrameFormat) {
-          throw new Error(`${spec.styleId}/${spec.assetId}: revision last frame is not ready`)
-        }
-        const lastFrameBytes = readFileSync(revision.lastFrameFile)
-        if (sha256(lastFrameBytes) !== revision.lastFrameSha256) {
-          throw new Error(`${spec.styleId}/${spec.assetId}: revision last frame changed after the manifest was resolved`)
-        }
-        lastFrame = { base64: lastFrameBytes.toString("base64"), format: revision.lastFrameFormat }
-      }
+      const lastFrame = this.readLastFrame(spec)
       if (revision.mode === "animate") {
         const res = await this.client.animateWithTextV3({
           firstFrame: image,
@@ -1428,6 +1541,43 @@ export class PixelLabProvider implements Provider {
     return { jobId: res.background_job_id }
   }
 
+  /** A revision's pinned ending frame, proven to be the bytes the spec hashed; undefined when none is declared. */
+  private readLastFrame(spec: ResolvedSpec): Base64Image | undefined {
+    const revision = spec.revision!
+    if (!revision.lastFrameFile) return undefined
+    if (!revision.lastFrameSha256 || !revision.lastFrameFormat) {
+      throw new Error(`${spec.styleId}/${spec.assetId}: revision last frame is not ready`)
+    }
+    const bytes = readFileSync(revision.lastFrameFile)
+    if (sha256(bytes) !== revision.lastFrameSha256) {
+      throw new Error(`${spec.styleId}/${spec.assetId}: revision last frame changed after the manifest was resolved`)
+    }
+    return { base64: bytes.toString("base64"), format: revision.lastFrameFormat }
+  }
+
+  /**
+   * Park a synchronous Cleanup-tier result the way pixflux parks its own:
+   * one `<id>.png` for a single image, or `<id>-<n>.png` per member with the
+   * member roles recorded so `pollCachedRevision` hands them back under the
+   * same names the parent's set used.
+   */
+  private cacheCleanupResult(
+    pngs: Buffer[],
+    usage: unknown,
+    roles: string[] | undefined,
+    fps: number | undefined,
+  ): { jobId: string; metadata: Record<string, unknown> } {
+    const jobId = randomUUID()
+    if (!roles) {
+      writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}.png`), pngs[0]!)
+      return { jobId, metadata: { revisionUsage: usage } }
+    }
+    for (const [index, png] of pngs.entries()) {
+      writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}-${index}.png`), png)
+    }
+    return { jobId, metadata: { revisionUsage: usage, revisionMembers: roles, ...(fps != null ? { revisionFps: fps } : {}) } }
+  }
+
   /**
    * What a background job actually billed, once its own record is still
    * around to ask; see `billedFromUsage`. A stale or already-cleaned-up job
@@ -1455,7 +1605,10 @@ export class PixelLabProvider implements Provider {
     if (revisionMode === "reduce-colors" || revisionMode === "correct-pixelart") {
       return this.pollCachedRevision(jobId, context)
     }
-    if (revisionMode === "animate" || revisionMode === "animate-pixminimax") {
+    if (
+      revisionMode === "animate" || revisionMode === "animate-pixminimax" ||
+      revisionMode === "interpolate" || revisionMode === "edit-animation"
+    ) {
       return this.pollAnimateRevision(jobId, context)
     }
     if (context?.spec?.revision) return this.pollRevision(jobId)
@@ -1480,6 +1633,7 @@ export class PixelLabProvider implements Provider {
     if (generator === "character") return this.pollCharacter(jobId, context)
     if (generator === "objectPro") return this.pollObjectPro(jobId, context)
     if (generator === "uiAsset") return this.pollUiAsset(jobId, context)
+    if (generator === "uiElement") return this.pollUiElement(jobId)
 
     const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
     const obj = await this.client.getObject(jobId)
@@ -1508,15 +1662,34 @@ export class PixelLabProvider implements Provider {
    * work.
    */
   private async pollCachedRevision(jobId: string, context?: PollContext): Promise<JobState> {
-    const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
-    if (!existsSync(file)) {
+    const usage = context?.metadata?.revisionUsage as PixelLabUsage | undefined
+    const roles = context?.metadata?.revisionMembers
+    const gone: JobState = {
+      status: "failed",
+      error: "revision result is no longer cached locally; re-run submit for this asset",
+    }
+    if (Array.isArray(roles) && roles.length) {
+      const sources = roles.map((role, index) => ({
+        url: `file://${path.join(PixelLabProvider.cacheDir(), `${jobId}-${index}.png`)}`,
+        role: String(role),
+      }))
+      if (sources.some((source) => !existsSync(source.url.slice("file://".length)))) return gone
+      // A frame set keeps its playback rate so pack and the gallery still
+      // treat the cleaned frames as the loop they came from.
+      const fps = context?.metadata?.revisionFps
+      const frames = sources.every((source) => source.role.startsWith("frame-"))
       return {
-        status: "failed",
-        error: "revision result is no longer cached locally; re-run submit for this asset",
+        status: "ready",
+        objectId: jobId,
+        sourceUrl: sources[0]!.url,
+        sources,
+        ...(frames && typeof fps === "number" ? { metadata: { frameSet: { fps, count: sources.length } } } : {}),
+        billed: billedFromUsage(usage),
       }
     }
+    const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
+    if (!existsSync(file)) return gone
     const sourceUrl = `file://${file}`
-    const usage = context?.metadata?.revisionUsage as PixelLabUsage | undefined
     return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }], billed: billedFromUsage(usage) }
   }
 
@@ -1541,17 +1714,27 @@ export class PixelLabProvider implements Provider {
     if (job.status !== "completed") return { status: "processing" }
     const billed = billedFromUsage(job.usage)
     const done = (job.last_response ?? {}) as Record<string, unknown>
-    const fps = context?.spec?.revision?.fps ?? 8
+    const revision = context?.spec?.revision
+    const fps = revision?.fps ?? revision?.sourceFps ?? 8
+    // edit-animation hands back the set it was given, edited: when the count
+    // matches, its members keep the parent's own roles (a character's
+    // directions stay directions), otherwise they are numbered frames.
+    const memberRoles = revision?.mode === "edit-animation" ? revision.sourceMembers?.map((member) => member.role) : undefined
 
-    const review = (frameUrls: string[]): JobState => ({
-      status: "review-set",
-      objectId: jobId,
-      frameUrls,
-      sources: frameUrls.map((url, index) => ({ url, role: `frame-${String(index).padStart(2, "0")}` })),
-      fps,
-      metadata: { frameSet: { fps, count: frameUrls.length } },
-      billed,
-    })
+    const review = (frameUrls: string[]): JobState => {
+      const roles = memberRoles?.length === frameUrls.length
+        ? memberRoles
+        : frameUrls.map((_, index) => `frame-${String(index).padStart(2, "0")}`)
+      return {
+        status: "review-set",
+        objectId: jobId,
+        frameUrls,
+        sources: frameUrls.map((url, index) => ({ url, role: roles[index]! })),
+        fps,
+        metadata: roles.every((role) => role.startsWith("frame-")) ? { frameSet: { fps, count: frameUrls.length } } : {},
+        billed,
+      }
+    }
 
     for (const key of ["frame_urls", "frames", "images"]) {
       const list = done[key]
@@ -1585,7 +1768,7 @@ export class PixelLabProvider implements Provider {
     return {
       status: "failed",
       error:
-        `Invalid PixelLab response for animate job ${jobId}: completed with no recognized frame list ` +
+        `Invalid PixelLab response for ${revision?.mode ?? "animate"} job ${jobId}: completed with no recognized frame list ` +
         `(got: ${Object.keys(done).join(", ") || "no keys"}); update pollAnimateRevision in src/providers/pixellab.ts with the real shape`,
     }
   }
@@ -1686,6 +1869,39 @@ export class PixelLabProvider implements Provider {
         `Invalid PixelLab response for imagePro job ${jobId}: completed with no recognized images array ` +
         `(got: ${Object.keys(done).join(", ") || "no keys"}); this endpoint's completed shape has not been ` +
         "exercised live yet -- update pollImagePro in src/providers/pixellab.ts with the real shape",
+    }
+  }
+
+  /**
+   * `/generate-ui-v2` completes a plain background job whose
+   * `last_response.images` (per its own docs and Python client) holds the
+   * result. One image is the expected case and goes straight to selected;
+   * should the endpoint ever return several, they go to review like
+   * imagePro's candidates, decoded to the same local cache. The shape has
+   * not been observed live, so anything else fails naming the keys received.
+   */
+  private async pollUiElement(jobId: string): Promise<JobState> {
+    const job = await this.client.getBackgroundJob(jobId)
+    if (job.status === "failed") return { status: "failed", error: "UI element job failed upstream" }
+    if (job.status !== "completed") return { status: "processing" }
+    const billed = billedFromUsage(job.usage)
+    const done = (job.last_response ?? {}) as Record<string, unknown>
+    const images = Array.isArray(done.images) ? done.images : done.image ? [done.image] : []
+    const urls: string[] = []
+    for (const [index, candidate] of images.entries()) {
+      const base64 = extractBase64(candidate)
+      if (!base64) continue
+      const file = path.join(PixelLabProvider.cacheDir(), `${jobId}-${index}.png`)
+      writeFileSync(file, Buffer.from(base64, "base64"))
+      urls.push(`file://${file}`)
+    }
+    if (urls.length === 1) return { status: "ready", objectId: jobId, sourceUrl: urls[0]!, sources: [{ url: urls[0]! }], billed }
+    if (urls.length > 1) return { status: "review", candidateUrls: urls, billed }
+    return {
+      status: "failed",
+      error:
+        `Invalid PixelLab response for uiElement job ${jobId}: completed with no recognized image ` +
+        `(got: ${Object.keys(done).join(", ") || "no keys"}); update pollUiElement in src/providers/pixellab.ts with the real shape`,
     }
   }
 
@@ -1868,9 +2084,9 @@ export class PixelLabProvider implements Provider {
     // imagePro's candidates were decoded to local files at poll time
     // (pollImagePro); there is no PixelLab account object to promote, the
     // same as pixflux never having one.
-    if (generator === "imagePro") {
+    if (generator === "imagePro" || generator === "uiElement") {
       const file = path.join(PixelLabProvider.cacheDir(), `${jobId}-${index}.png`)
-      if (!existsSync(file)) throw new Error(`imagePro job ${jobId} has no cached candidate at index ${index}`)
+      if (!existsSync(file)) throw new Error(`${generator} job ${jobId} has no cached candidate at index ${index}`)
       return { objectId: `${jobId}#${index}`, sourceUrl: `file://${file}` }
     }
     const promoted = await this.client.selectFrames(jobId, [index], commonTag)
@@ -2075,6 +2291,18 @@ function readPose(spec: ResolvedSpec, what: string, image: ResolvedReferenceImag
 }
 
 /** A character's directions as output sources, south first. */
+/**
+ * `/edit-animation-v2` packs every frame into one fixed-size grid, so the
+ * frame ceiling falls as frames grow: its own docs give 16 (a 4x4 grid) up
+ * to 64px, 9 (3x3) up to 80px, and 4 (2x2) up to 256px.
+ */
+export function editAnimationFrameCeiling(width: number, height: number): number {
+  const side = Math.max(width, height)
+  if (side <= 64) return 16
+  if (side <= 80) return 9
+  return 4
+}
+
 function rotationSources(character: PixelLabCharacter): OutputSource[] {
   const order = character.directions === 4 ? CHARACTER_DIRECTIONS_4 : CHARACTER_DIRECTIONS_8
   const sources: OutputSource[] = []
