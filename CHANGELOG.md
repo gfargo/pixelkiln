@@ -1,3 +1,10 @@
+# [0.66.0](https://github.com/gfargo/pixelkiln/compare/v0.65.0...v0.66.0) (2026-09-26)
+
+
+### Features
+
+* **pixellab:** Pro Flash stills, edits, and owned-image reuse ([0623835](https://github.com/gfargo/pixelkiln/commit/0623835d650a32c1a2ea19959f95806afbee49e4)), closes [#145](https://github.com/gfargo/pixelkiln/issues/145) [#145](https://github.com/gfargo/pixelkiln/issues/145)
+
 # [0.65.0](https://github.com/gfargo/pixelkiln/compare/v0.64.0...v0.65.0) (2026-09-26)
 
 
