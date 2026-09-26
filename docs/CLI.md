@@ -458,6 +458,19 @@ provider, and never writes anything. Stop it with Ctrl+C. See the
 [Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
 screenshot.
 
+A record's drawer keeps the preview, its state, and its actions at the
+top. The rest of the record is split into tabs:
+
+- **Overview:** the generation, the character family, mirrors, lineage and
+  revisions, and the forms that add to them.
+- **Files:** outputs, hand edits, and upstream edits.
+- **History:** earlier generations, which can be brought back.
+- **Details:** the provider record (job and object ids, times), the quality
+  record, identity, and the raw manifest asset and provider metadata.
+
+The tab in view stays as you step through records, and ← and → move
+between tabs once one has focus.
+
 #### Looking at sprites
 
 - **Loops on the grid:** a loop's card plays while the pointer is over it.

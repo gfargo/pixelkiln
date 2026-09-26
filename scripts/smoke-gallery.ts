@@ -164,6 +164,24 @@ try {
   await page.goto(`${server.url}#base/hammer`, { waitUntil: "networkidle0" })
   await page.waitForSelector(".drawer", { timeout: 5_000 })
   check((await drawerButtons()).some((label) => label.startsWith("Generate")), "missing record offers Generate")
+
+  // The record below the actions is in tabs, and the tab in view sticks as records are stepped through.
+  const tabs = () => page.evaluate(() => ({
+    names: [...document.querySelectorAll(".drawer .tablist [role=tab]")].map((t) => t.textContent),
+    on: document.querySelector(".drawer .tablist [aria-selected=true]")?.textContent ?? null,
+    visible: [...document.querySelectorAll(".drawer .tabpanel")].filter((p) => !(p as HTMLElement).hidden).map((p) => p.id),
+  }))
+  const opened = await tabs()
+  check(opened.on === "Overview" && opened.names.includes("Details") && opened.visible.join() === "dpanel-overview", `a record opens on its Overview tab (${JSON.stringify(opened)})`)
+  await page.click("#dtab-details")
+  check((await page.$eval("#dpanel-details", (n) => n.textContent ?? "")).includes("Provider record"), "Details holds the provider record")
+  await page.click('.drawer .nav button[title^="Previous"]')
+  await page.waitForFunction(() => document.querySelector(".drawer .aid")?.textContent === "anvil", { timeout: 5_000 })
+  check((await tabs()).on === "Details", "the tab in view sticks when stepping to the next record")
+  await page.click("#dtab-overview")
+  await page.goto(`${server.url}#base/hammer`, { waitUntil: "networkidle0" })
+  await page.reload({ waitUntil: "networkidle0" })
+  await page.waitForSelector(".drawer", { timeout: 5_000 })
   await page.evaluate(() => ([...document.querySelectorAll(".drawer .gen button")] as HTMLButtonElement[]).find((b) => b.textContent?.startsWith("Generate"))!.click())
   await submitDialog()
   await page.waitForSelector(".card .busy-badge", { timeout: 10_000 }).then(() => check(true, "card shows a busy badge while generating"), () => check(false, "card shows a busy badge while generating"))
