@@ -370,6 +370,7 @@ export default function Home() {
                   <li><span>✓</span> A loop facing east is the west loop flipped. <code>mirror</code> makes it locally for nothing; eight directions of one walk cost 5, not 8.</li>
                   <li><span>✓</span> Poses from a text edit, loops from a template or from text, with start and end poses you supply.</li>
                   <li><span>✓</span> Concept images and style anchors on pro, style images with chosen traits on pro-flash.</li>
+                  <li><span>✓</span> Bust portraits and outfit transfer onto a loop, and one <code>directions</code> list that declares a loop and mirrors the rest.</li>
                 </ul>
                 <div className="review-links">
                   <TrackedLink className="text-link" id="cast_manifest_docs" section="characters" href="/docs/characters">
@@ -431,8 +432,10 @@ export default function Home() {
               environment benchmark. A manifest <code>style.quality</code> profile
               can apply the same offline palette and approval gate after any
               supported single-image provider or an atomic ComfyUI frame set.
-              ComfyUI is also the first adapter for controlled revisions. It
-              hashes the parent and mask bytes before a workflow can run.
+              ComfyUI and PixelLab both back controlled revisions, and
+              PixelLab adds palette cleanup, animation, and interpolation of an
+              existing asset. PixelKiln hashes the parent and mask bytes before
+              any revision runs.
             </p>
           </div>
 
@@ -762,6 +765,9 @@ export default function Home() {
               <div className="generator-row"><strong>isometricTile</strong><span>A single elevation tile — a mesa, a cliff block</span><span><i style={{ width: "2.5%" }} /> 1 gen</span></div>
               <div className="generator-row"><strong>character</strong><span>A base in 8 directions, its poses, its loops</span><span><i style={{ width: "17.5%" }} /> 1–7 gen per base, 1 per loop, mirrors free</span></div>
               <div className="generator-row"><strong>objectPro</strong><span>A skeleton-free prop&apos;s base, poses, and loops</span><span><i style={{ width: "17.5%" }} /> 1–7 gen per base, 1 per loop (unmeasured)</span></div>
+              <div className="generator-row"><strong>imageProFlash</strong><span>Styled stills on the Pro Flash model, 16–256px</span><span><i style={{ width: "22.5%" }} /> 5–9 gen (quoted)</span></div>
+              <div className="generator-row"><strong>uiAsset</strong><span>UI panels, buttons, and bars from pieces and elements</span><span><i style={{ width: "50%" }} /> 20 gen (measured once)</span></div>
+              <div className="generator-row"><strong>uiElement</strong><span>One UI element from a description, 16px and up</span><span><i style={{ width: "100%" }} /> 20–40 gen (unmeasured)</span></div>
               <div className="generator-row"><strong>animation</strong><span>Retro Diffusion GIFs and sprite sheets</span><span>USD quote</span></div>
               <div className="generator-row"><strong>frames</strong><span>Controlled ComfyUI still sequences</span><span>0 provider units</span></div>
             </div>

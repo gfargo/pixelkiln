@@ -264,7 +264,10 @@ Characters that already exist on the account come under the manifest with
 PixelLab's own tools shows both) and run `pixelkiln adopt`: it records the
 character, writes every direction and frame that is not on disk, and costs
 nothing. A base can also be matched by the bytes of its south-facing file.
-See [`adopt`](CLI.md#adopt).
+See [`adopt`](CLI.md#adopt). Characters no lockfile claims go through
+`pixelkiln salvage`, one card per base with its states and loops, and a
+character tagged for discard is deleted by `pixelkiln purge`; see
+[Recovery](RECOVERY.md#characters).
 
 ## Mirrors
 

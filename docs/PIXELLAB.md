@@ -71,6 +71,14 @@ unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles
 | `pixflux` | You need a closed palette or a full-bleed background | 1 generation |
 | `1dir` | You need references or several candidates for human review | 20 to 40 generations |
 | `tiles` | You need ground variations or a connected structural set | 20 to 40 generations |
+| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff) | 20 to 40 generations (unmeasured) |
+| `isometricTile` | You need one standalone isometric tile, 16 to 64px | 1 generation (measured once) |
+| `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall | 40 generations |
+| `imageProFlash` | You need a still on the Pro Flash model, optionally styled from one image, 16 to 256px | 5 to 9 generations (provisional quote) |
+| `character` | You need a character in 4 or 8 directions, with states, loops, portraits, or outfits | See [Characters](./CHARACTERS.md) |
+| `objectPro` | You need a prop or creature with rotations, states, or loops but no character rig | about 6 at 64px (unmeasured) |
+| `uiAsset` | You need a UI panel composited from pieces and named elements, 192px and up | 20 generations (measured once) |
+| `uiElement` | You need one UI element from a description, 16px and up | 20 to 40 generations (unmeasured) |
 
 `map` accepts these values:
 
@@ -123,9 +131,9 @@ recorded, and records the new URLs. A refreshed base makes its states and
 animations stale, because their identity hashes the base's south file;
 `pixelkiln gen` regenerates them.
 
-## Three ways to drive PixelLab, and why this one
+## Four ways to drive PixelLab, and why this one
 
-PixelLab is reachable three ways, and it is easy to conflate them when
+PixelLab is reachable four ways, and it is easy to conflate them when
 comparing notes with someone using a different one:
 
 - **PixelLab's Game Builder**, a hosted web IDE with its own chat agent and a
@@ -167,7 +175,10 @@ reference image frame-by-frame from a supplied keypoint skeleton, not a text
 description) are the `revision` asset shape, not the `character` generator;
 see [Controlled asset revisions](./REVISIONS.md). The same revision shape
 animates, interpolates, recolors, and cleans up any asset, a whole character
-or loop at once where the endpoint takes a set. Object Creator is the
+or loop at once where the endpoint takes a set; `pixelkiln estimate-skeleton`
+starts a skeleton file from an image. Pro Flash stills are the
+`imageProFlash` generator, and Pro Flash edit and inpaint are a revision's
+`"engine": "pro-flash"`. Object Creator is the
 `objectPro` generator, UI panels and elements are `uiAsset` and `uiElement`,
 and fonts and unzooming reference art are the standalone `pixelkiln font` and
 `pixelkiln unzoom` commands. Map Workshop

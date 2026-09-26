@@ -57,19 +57,20 @@ the providers offer directly.
 | Decision | PixelLab | Retro Diffusion |
 |---|---|---|
 | Best fit today | Existing PixelKiln projects, account reconciliation, and live-tested generation | Native pixel-art styles, USD budgets, animation, and alternate tileset workflows |
-| PixelKiln generators | `map`, `pixflux`, `1dir`, `tiles`, `character` | `map` and `pixflux` stills, `tiles`, `animation` |
-| Output | PNG stills, candidates, and structural tile members | PNG stills/tiles/spritesheets or animated GIF |
+| PixelKiln generators | `map`, `pixflux`, `1dir`, `imagePro`, `imageProFlash`, `tiles`, `terrain`, `isometricTile`, `character`, `objectPro`, `uiAsset`, `uiElement` | `map` and `pixflux` stills, `tiles`, `animation` |
+| Output | PNG stills, candidates, structural tile members, and ordered frame sets | PNG stills/tiles/spritesheets or animated GIF |
 | Candidate review | Yes; count varies by generator and size | Yes for 1–16 still candidates; animations and tilesets currently use one result |
-| References | `1dir` and tile style modes | Up to nine for supported RD Pro/user still styles; constrained inputs for animation and tiles |
+| References | `1dir` and tile style modes; a character or `objectPro` reference sprite; a `pro` character concept image; one `imageProFlash` style image; one `uiElement` concept image | Up to nine for supported RD Pro/user still styles; constrained inputs for animation and tiles |
 | Cost model | Subscription generations | Prepaid USD balance |
 | Cost safety | Offline estimate plus hard generation budget | Offline estimate, hard USD budget, then a free authoritative quote before submission |
 | Account lifecycle | Balance, list, adopt, salvage, tag, and confirmed purge | Balance only in the current adapter |
 | Live confidence | Full paid generation workflows exercised | RD Fast and RD Plus single-candidate stills exercised end to end; multi-candidate, tileset, GIF, and spritesheet runs pending |
 
 Choose PixelLab when mature account-object recovery and reconciliation matter,
-or when the measured one-generation `map`/`pixflux` routes fit the work. Choose
-Retro Diffusion when a native animation or spritesheet is required, an RD style
-is the desired look, or a USD quote is easier to budget. For a production batch,
+when the measured one-generation `map`/`pixflux` routes fit the work, or when an
+animation belongs to a character, an object, or an existing image. Choose
+Retro Diffusion when a GIF or spritesheet from one prompt fits, an RD style is
+the desired look, or a USD quote is easier to budget. For a production batch,
 run one representative asset through the selected provider before expanding the
 scope.
 
@@ -96,9 +97,12 @@ the same graph and still differ because their checkpoint bytes, custom nodes,
 or sampler settings differ. Commit the workflow and record the model stack used
 to test it.
 
-The revision manifest and dependency gate are provider-neutral, but ComfyUI is
-the only built-in adapter that currently opts in. PixelLab, Retro Diffusion,
-and Scenario reject revision assets offline. See
+The revision manifest and dependency gate are provider-neutral. ComfyUI and
+PixelLab opt in; Retro Diffusion and Scenario reject revision assets offline.
+PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
+`correct-pixelart`, `animate`, `animate-pixminimax`, `animate-skeleton`,
+`interpolate`, and `edit-animation`, but not `outpaint`. ComfyUI covers the
+single-image modes through its workflow bindings. See
 [Controlled asset revisions](./docs/REVISIONS.md) before using the bundled
 square image-to-image graph.
 
@@ -131,7 +135,7 @@ background. That distinction matters more than raw canvas size.
 | Asset type | PixelLab | Retro Diffusion | ComfyUI | Scenario |
 |---|---|---|---|---|
 | Isolated house, building, mountain, or landmark | Start with `map`: arbitrary dimensions up to 400×400 and a measured one-generation cost. Live benchmark outputs had opaque backgrounds, so plan for cleanup. Use `1dir` only when references or candidate variety justify 20–40 generations and a square canvas. | Start with `rd_plus__topdown_asset`, `rd_plus__isometric_asset`, or `rd_tile__scene_object`, depending on perspective. `rd_tile__scene_object` is intended for 64–384px objects placed on tile maps. | Choose a checkpoint or LoRA trained for the intended perspective, then keep background removal or segmentation in the workflow. For the tested Pixel Art XL stack, target 48–128px native components even though the adapter accepts larger working canvases. | The live BFL smoke produced a readable 512px keep, but it was opaque and used 19,619 colors. Use that profile for concepts or refinement input, not a finished limited-palette asset. A project-specific model may improve consistency but needs its own smoke. |
-| Full scenic background | Use `pixflux` with `noBackground: false` when an exact palette matters, or `map` for a simple scene. Current PixelKiln routes top out at 400×400. | `rd_plus__environment` targets one-point-perspective scenes; `rd_plus__topdown_map` targets 3/4 top-down maps. These styles support up to 384×384. | Use composition controls only to establish the scene. Recover and review native components, then compose them at 1× with one grid and palette. A large model canvas is not a large native pixel-art canvas. | The BFL profile accepts canvases up to 2048px, but no Scenario scenic brief has passed the shared benchmark. Treat that as model-canvas capacity, not native pixel resolution. Start with one 512px concept before raising size or steps. |
+| Full scenic background | Use `pixflux` with `noBackground: false` when an exact palette matters, or `map` for a simple scene; both top out at 400×400. `imagePro` reaches 792 wide or 688 tall for a flat 40 generations. | `rd_plus__environment` targets one-point-perspective scenes; `rd_plus__topdown_map` targets 3/4 top-down maps. These styles support up to 384×384. | Use composition controls only to establish the scene. Recover and review native components, then compose them at 1× with one grid and palette. A large model canvas is not a large native pixel-art canvas. | The BFL profile accepts canvases up to 2048px, but no Scenario scenic brief has passed the shared benchmark. Treat that as model-canvas capacity, not native pixel resolution. Start with one 512px concept before raising size or steps. |
 | Style consistency across a set | `1dir` accepts a style reference and returns size-dependent candidates, but it is more expensive and capped at the square-object range. | RD Pro accepts up to nine references and has stronger prompt following, but its common styles top out at 256×256 and cost $0.18 per image. Environment-specific RD Plus styles trade references for a larger 384px canvas. | LoRAs, reference adapters, ControlNet, and shared latent settings can live in the committed workflow. Reproducibility also depends on external model and custom-node versions. | Scenario's project models and LoRAs are the main reason to use it for a set. PixelKiln can pin the model ID and parameters, but its first live run covers only the public BFL profile. |
 | Very large final scene | Generate reusable objects, terrain, and background layers separately; assemble them deterministically and integer-upscale the result. | Use the same layered approach. The API has a 512px overall ceiling, but the useful environment and scene-object styles currently cap at 384px. | The graph can tile, upscale, or composite beyond hosted-provider limits, but memory and seam quality become workflow concerns. Prefer reusable layers unless the scene truly needs one render. | Scenario can request a larger raster from a compatible model, but the same rule applies: generate reusable layers at their useful native detail, compose at 1×, and integer-upscale only the final scene. |
 
@@ -194,18 +198,29 @@ not share one runtime.
 The services use different billing units, so PixelKiln never adds their costs
 together.
 
-PixelLab figures below are measurements from the endpoints PixelKiln currently
-uses; they are not a conversion to dollars:
+PixelLab figures below come from the endpoints PixelKiln currently uses. Rows
+marked unmeasured or quoted are `plan` estimates, not bills. None is a
+conversion to dollars:
 
-| PixelLab route | Measured cost |
+| PixelLab route | Cost |
 |---|---:|
 | `map` | 1 generation |
 | `pixflux` | 1 generation |
 | `1dir` | 20–40 generations |
+| `imagePro` | 40 generations |
+| `imageProFlash` | 5–9 generations (provisional quote) |
 | `tiles` | 20–40 generations |
-| `character` base | 1 (standard), 2–9 (v3), 20–40 (pro) |
-| `character` state | 20–40 generations |
+| `terrain` | 20–40 generations (unmeasured) |
+| `isometricTile` | 1 generation (measured once) |
+| `character` base | 1 (standard), 2–9 (v3), 20–40 (pro), 6–17 (pro-flash; rotations only from a reference) |
+| `character` state or portrait | 20–40 generations |
 | `character` animation | 1 (template), 1 at 64px from text, 20–40 (pro) |
+| `character` outfit | 20 generations (one 2-frame, 92×92 job) |
+| `objectPro` base | 6 at 64px (unmeasured) |
+| `uiAsset` | 20 generations (measured once, at 256×192) |
+| `uiElement` | 20–40 generations (unmeasured) |
+| `image-to-image` / `inpaint` revision | 20–40 generations; 5–9 with `engine: "pro-flash"` (provisional quote) |
+| `reduce-colors` / `correct-pixelart` revision | 0.1 generations (measured at 32×32) |
 
 Retro Diffusion publishes USD formulas and fixed prices. Examples relevant to
 PixelKiln include RD Fast from about $0.015 per image, RD Plus from about $0.025,

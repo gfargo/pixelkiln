@@ -56,7 +56,7 @@ not merely a label edit.
 
 | Field | Type/default | Meaning |
 |---|---|---|
-| `prompt` | string, required unless `mirror` | The subject wording wrapped by the selected style's prompt prefix and suffix. |
+| `prompt` | string, required unless `mirror`, `portrait`, or `outfit` | The subject wording wrapped by the selected style's prompt prefix and suffix. |
 | `width` / `height` | integer 16–8192 | Per-asset dimensions for generators that accept rectangular output. Provider limits may be lower. |
 | `size` | integer 16–8192 | Per-asset square size where the generator uses one dimension. |
 | `file` | string | Output path below the style's `outDir`; defaults to `<category>/<assetId>.png`. |
@@ -64,9 +64,11 @@ not merely a label edit.
 | `source` | string | Manifest-relative committed art used instead of generation. For a set of PNG outputs (a `frames` animation, a `tiles` set) a path that is not a file is the stem of a hand edit laid beside the generated members (`<stem>-<role>.png` each); the set still generates. Mutually exclusive with `revision`. |
 | `sourceByStyle` | object | Per-style `source`, keyed by style id; wins over `source` for that style. Written by `pixelkiln edit` for a hand edit of an asset that is in several styles. |
 | `remoteId` | string | The provider's own id for art that already exists on the account, so `adopt` maps it without matching bytes: an object id, a character id, or `<character id>#<animation group id>`. Not part of the spec's identity. |
-| `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
+| `revision` | object | Controlled dependency on another asset: `image-to-image`, `inpaint`, or `outpaint`; on PixelLab also `reduce-colors`, `correct-pixelart`, the animate modes (`animate`, `animate-pixminimax`, `animate-skeleton`), `interpolate`, and `edit-animation`. `engine: "pro-flash"` selects PixelLab's Pro Flash tier for `image-to-image`/`inpaint`. See [controlled revisions](REVISIONS.md). |
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](./CHARACTERS.md). |
 | `animation` | object | `character` styles: a loop of another character asset in one direction. `directions` (a list, instead of `direction`) declares the loop for several directions at once and fills the unnamed flips with mirrors; see [One loop, several directions](./CHARACTERS.md#one-loop-several-directions). |
+| `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
+| `outfit` | object | `character` styles: an existing loop's frames re-clothed from an outfit image, `{ "of": "<loop asset>", "reference": "<image>" }`, with optional `additionalInstructions`. See [Outfit transfer](./CHARACTERS.md#outfit-transfer). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
 | `batch` | object | `1dir` styles: rides along on another `1dir` asset's `item_descriptions` submission instead of generating on its own — `{ "of": "<leader asset id>", "index": <1-based slot> }`. See [`1dir`](./GENERATORS.md#1dir). |
 | `pieces` | array | `uiAsset` styles: exact shape regions (`rounded_rect`/`circle`/`polygon`) the panel is composited from, each with a unique `id`. See [`uiAsset`](./GENERATORS.md#uiasset). |

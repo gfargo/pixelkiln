@@ -4,9 +4,11 @@
 pixelkiln <command> [options]
 ```
 
-Unknown commands, positional arguments, and flags are errors. Repeated
-`--style`, `--only`, `--claims`, and `--output-role` values accumulate; comma-
-separated values work too. This strict parsing prevents a misspelled filter
+Unknown commands, positional arguments, and flags are errors. The only
+positional words accepted are a command's own subcommands (`refine approve`,
+`workspace add <manifest>`, and the like) and `estimate-skeleton`'s one image
+path. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
+accumulate; comma-separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
 The manifest's top-level `provider` is the default; each style may select a
@@ -27,6 +29,8 @@ Which command:
 | draw a character in 8 directions, then its poses and loops | a `character` style with `state` and `animation` assets; one `pixelkiln gen` runs the waves |
 | rotate your own sprite into 8 directions | `"reference": "refs/bot-south.png"` on the base; `mode: pro-flash` does it for 1 generation at 64px |
 | get the east-facing loop without paying for it | `"bot.walk.east": { "mirror": "bot.walk.west" }` |
+| declare one loop for several directions, mirroring the rest | `"animation": { "of": "bot", "directions": ["south", "west", "north"] }`; `--only bot.walk` selects the whole family |
+| make a bust portrait, or re-clothe a loop from an outfit image | `"portrait": { "of": "mira", "size": 64 }`, `"outfit": { "of": "mira.walk", "reference": "refs/armor.png" }` |
 | generate one asset, or one style | `pixelkiln gen --only anvil --budget 2`, `pixelkiln gen --style neon --budget 20` |
 | finish a run that was interrupted | `pixelkiln plan`, then the `next:` command it prints (`poll`, `pick`, or `fetch`) |
 | choose among candidates the provider returned | `pixelkiln pick` |
@@ -48,6 +52,9 @@ Which command:
 | drop lock entries the manifest no longer declares | `pixelkiln prune` |
 | check the project before committing or in CI | `pixelkiln doctor`, `pixelkiln plan --check` |
 | see the account balance | `pixelkiln balance` |
+| shrink upscaled outside art to its native grid before using it as a reference | `pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png` |
+| generate a pixel font (`.ttf` plus glyph atlas) | `pixelkiln font --description "warm orange arcade font" --out fonts/arcade` |
+| start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
 | work across several projects | `pixelkiln workspace add ../other/pixelkiln.manifest.json`, then `--workspace` on `gallery` and `salvage` |
 
 Every command takes `--manifest <file>` when the manifest is not in the
@@ -343,23 +350,6 @@ or download artwork.
 Show one provider's remaining balance and cost unit. A mixed manifest requires
 `--provider`; a single-provider manifest infers it. Reports a capability error
 when an installed provider, such as local ComfyUI, has no balance endpoint.
-
-### `estimate-skeleton`
-
-```bash
-pixelkiln estimate-skeleton <image> [--out keypoints.json]
-```
-
-PixelLab only. Derives an 18-joint skeleton from an image via
-`/estimate-skeleton` and prints the keypoints JSON, or writes it with `--out`.
-Same category as `balance`: a direct, un-budgeted account call outside the
-manifest/plan/lock pipeline — no manifest is read beyond locating
-`.env.local`, and nothing is written to a lockfile. This is how to bootstrap
-an `animate-skeleton` revision's `keypointsFile` (see
-[Controlled asset revisions](./REVISIONS.md#skeleton-driven-animation)):
-estimate once, sanity-check the result, hand-tweak a few joints for
-in-between frames, rather than hand-authoring 18 joints of
-`{label, x, y, z_index}` from scratch.
 
 ### `status`
 
@@ -882,10 +872,10 @@ See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
 
 ## PixelLab utilities
 
-Two commands call PixelLab on loose files rather than manifest assets. Neither
-reads the manifest or touches the lockfile; both load `PIXELLAB_API_KEY` from
-the environment or a `.env.local`/`.env` beside `--manifest` or in the working
-directory, the same as every other command.
+Three commands call PixelLab on loose files rather than manifest assets. None
+reads the manifest or touches the lockfile; all three load `PIXELLAB_API_KEY`
+from the environment or a `.env.local`/`.env` beside `--manifest` or in the
+working directory, the same as every other command.
 
 ### `unzoom`
 
@@ -936,6 +926,23 @@ A font is deliberately not a manifest generator: it has no style suffix to
 share, no prompt-per-asset, no candidates to pick, and its main output is not
 an image, so there is nothing for the lockfile's provenance model to hold.
 
+### `estimate-skeleton`
+
+```bash
+pixelkiln estimate-skeleton <image> [--out keypoints.json]
+```
+
+PixelLab only. Derives an 18-joint skeleton from an image via
+`/estimate-skeleton` and prints the keypoints JSON, or writes it with `--out`.
+Same category as `balance`: a direct, un-budgeted account call outside the
+manifest/plan/lock pipeline — no manifest is read beyond locating
+`.env.local`, and nothing is written to a lockfile. This is how to bootstrap
+an `animate-skeleton` revision's `keypointsFile` (see
+[Controlled asset revisions](./REVISIONS.md#skeleton-driven-animation)):
+estimate once, sanity-check the result, hand-tweak a few joints for
+in-between frames, rather than hand-authoring 18 joints of
+`{label, x, y, z_index}` from scratch.
+
 ## Utility commands
 
 ### `help`
@@ -953,7 +960,7 @@ Print the package version. `-v` is an alias.
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
-| `--only id1,id2` | most workflows | Restrict asset ids; repeatable. |
+| `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |
 | `--budget <n\|provider=n>` | submit/gen/gallery | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
