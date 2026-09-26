@@ -60,7 +60,7 @@ select { background:var(--panel-deep); border:1px solid var(--line); padding:6px
 main { width:min(100%,var(--content)); margin:0 auto; border-inline:1px solid var(--line);
   min-height:60vh; }
 .style { border-bottom:1px solid var(--line); padding:20px 22px 24px; }
-.project { border-bottom:1px solid var(--line-strong); background:var(--panel); padding:14px 22px; }
+section.project { border-bottom:1px solid var(--line-strong); background:var(--panel); padding:14px 22px; }
 .phead { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
 .phead h2 { margin:0; font:700 15px/1.2 var(--mono); }
 .phead h2::before { content:'◆'; color:var(--accent); margin-right:8px; font-size:10px; }

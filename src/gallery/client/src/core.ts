@@ -58,6 +58,15 @@ export const ui: UiState = {
   logs: new Set(),
   settled: new Set(),
 };
+/**
+ * Where the open form sits, if one is open: its fields live only in the
+ * DOM, so redrawing that part of the page would discard what was typed.
+ * Style, add-asset, and candidate forms sit in the grid; every other form
+ * belongs to the open record's drawer.
+ */
+export const formRegion = (): 'main' | 'drawer' | null =>
+  !ui.editing ? null : /^(new|style|cand):/.test(ui.editing) ? 'main' : 'drawer';
+
 /** An element the page's HTML is known to contain (see page.ts). */
 export const $ = (id: string): any => document.getElementById(id);
 export const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string | null, text?: unknown): HTMLElementTagNameMap[K] => {

@@ -1,5 +1,5 @@
 import { $, S } from "./core.ts"
-import { render } from "./drawer.ts"
+import { renderQuietly } from "./drawer.ts"
 
 // ---- refresh --------------------------------------------------------------
 
@@ -14,7 +14,8 @@ export async function refresh() {
     if (!res.ok) throw new Error(await res.text());
     S.snap = await res.json();
     $('note').textContent = '';
-    render();
+    // Refresh is often automatic or mid-job; never discard a form in progress.
+    renderQuietly();
   } catch (err) {
     $('note').textContent = ' Refresh failed: ' + err.message + '. Is pixelkiln gallery still running?';
   } finally {

@@ -1,6 +1,6 @@
 import { refresh } from "./refresh.ts"
 
-import { $, S, el, ui } from "./core.ts"
+import { $, S, el, formRegion, ui } from "./core.ts"
 import { renderDrawer } from "./drawer.ts"
 import { openReview } from "./editor.ts"
 import { card, renderHeader } from "./grid.ts"
@@ -91,7 +91,7 @@ export async function pollJobs() {
   if (changed) refresh();
   else {
     // A job in flight: keep the open record's strip and the card badges honest without a full re-render.
-    if (ui.open && !$('dialog-host').childNodes.length) renderDrawer();
+    if (ui.open && !$('dialog-host').childNodes.length && formRegion() !== 'drawer') renderDrawer();
     for (const c of document.querySelectorAll('.card')) {
       const item = S.snap.items.find((i) => i.id === (c as HTMLElement).dataset.key);
       const job = item && activeJobFor(item);

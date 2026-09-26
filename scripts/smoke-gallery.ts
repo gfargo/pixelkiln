@@ -133,15 +133,17 @@ try {
   const noticeMatches = (pattern: string) => page.waitForFunction((re: string) => new RegExp(re).test(__pixelkiln.ui.notice?.text ?? ""), { timeout: 30_000, polling: 200 }, pattern)
   // The notice lands before the snapshot refresh that follows it, so wait for
   // the record itself to show the result.
-  const waitForItem = (id: string, test: string) => page.waitForFunction(
-    (key: string, src: string) => {
-      const found = __pixelkiln.S.snap.items.find((x) => x.id === key)
-      return Boolean(found) && new Function("item", `return ${src}`)(found)
-    },
-    { timeout: 30_000, polling: 200 },
-    id,
-    test,
-  ).then(() => true, () => false)
+  // Polled from here rather than with waitForFunction: the page's content
+  // security policy refuses the string evaluation that polling relies on.
+  const waitForItem = async (id: string, test: (item: any) => boolean) => {
+    const deadline = Date.now() + 30_000
+    while (Date.now() < deadline) {
+      const found = await page.evaluate((key) => __pixelkiln.S.snap.items.find((x) => x.id === key) ?? null, id)
+      if (found && test(found)) return true
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    }
+    return false
+  }
   const submitDialog = async () => {
     await page.waitForSelector(".dialog form button[type=submit]", { timeout: 5_000 })
     await page.click(".dialog form button[type=submit]")
@@ -161,7 +163,7 @@ try {
   await submitDialog()
   await page.waitForSelector(".card .busy-badge", { timeout: 10_000 }).then(() => check(true, "card shows a busy badge while generating"), () => check(false, "card shows a busy badge while generating"))
   await noticeMatches("Regenerated|Done")
-  check(await waitForItem("base/hammer", 'item.state === "ok"'), "hammer is ok after generating")
+  check(await waitForItem("base/hammer", (item) => item.state === "ok"), "hammer is ok after generating")
   check((await page.$$(".card .busy-badge")).length === 0, "badge clears when the job lands")
 
   // Regenerate the existing one: the replaced generation is kept and listed.
@@ -172,7 +174,7 @@ try {
   await page.evaluate(() => ([...document.querySelectorAll(".drawer .gen button")] as HTMLButtonElement[]).find((b) => b.textContent?.startsWith("Regenerate"))!.click())
   await submitDialog()
   await noticeMatches("Regenerated")
-  await waitForItem("base/anvil", `item.outputs[0].sha256 !== ${JSON.stringify(before?.sha)}`)
+  await waitForItem("base/anvil", (item) => item.outputs[0]?.sha256 !== before?.sha)
   const after = await item("base/anvil")
   check(after?.state === "ok" && after.sha !== before?.sha, "regeneration produced a new current generation")
   check(after?.history.length === 1 && after.history[0] === before?.sha, "the replaced generation is #1 in history")
@@ -182,7 +184,7 @@ try {
   await page.evaluate(() => ([...document.querySelectorAll(".drawer .version button")] as HTMLButtonElement[]).find((b) => /Restore this one/.test(b.textContent ?? ""))!.click())
   await submitDialog()
   await noticeMatches("Brought back")
-  await waitForItem("base/anvil", `item.outputs[0].sha256 === ${JSON.stringify(before?.sha)}`)
+  await waitForItem("base/anvil", (item) => item.outputs[0]?.sha256 === before?.sha)
   const restored = await item("base/anvil")
   check(restored?.sha === before?.sha, "restore made the earlier generation current again")
   check(restored?.history.length === 1 && restored.history[0] === after?.sha, "the one it replaced is now #1 in history")
@@ -204,10 +206,20 @@ try {
     const prompt = form.querySelector("textarea") as HTMLTextAreaElement
     prompt.value = "add rust and wear"
   })
+  // A refresh while the form is open (the auto-refresh timer, a job landing)
+  // must not throw away what was typed.
+  // (Clicked in the page: with the drawer open its scrim covers the header,
+  // and a pointer click there closes the drawer instead.)
+  await page.evaluate(() => (document.getElementById("refresh") as HTMLButtonElement).click())
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  check(
+    await page.evaluate(() => (document.querySelector(".drawer form.edit textarea") as HTMLTextAreaElement | null)?.value === "add rust and wear"),
+    "an open form survives a refresh",
+  )
   await page.click(".drawer form.edit button[type=submit]")
   await noticeMatches("Added to the manifest")
   check(
-    await waitForItem("base/anvil-worn", 'item.revisionParentKey === "base/anvil" && item.asset?.revision?.mode === "image-to-image"'),
+    await waitForItem("base/anvil-worn", (item) => item.revisionParentKey === "base/anvil" && item.asset?.revision?.mode === "image-to-image"),
     "revision asset created with its parent recorded",
   )
 

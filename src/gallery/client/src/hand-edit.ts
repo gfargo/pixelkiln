@@ -1,3 +1,4 @@
+import { showSaveError } from "./form-kit.ts"
 import { S, displayScale, el, fmtWhen, isFrameSet, postEdit, projectOf, ui } from "./core.ts"
 import { render, row } from "./drawer.ts"
 import { installEditor } from "./editor.ts"
@@ -81,7 +82,7 @@ export function handEditSection(item) {
       b.onclick = async () => {
         b.disabled = true; msg.className = 'msg'; msg.textContent = '…';
         try { await postHandEdit(item, action, extra); ui.notice = { id: item.id, text: done }; render(); }
-        catch (err) { b.disabled = false; msg.className = 'msg bad'; msg.textContent = err.message + (err.status === 409 ? ' Press Refresh.' : ''); }
+        catch (err) { showSaveError(msg, b, err); }
       };
       acts.append(b);
     };

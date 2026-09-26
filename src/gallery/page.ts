@@ -28,6 +28,32 @@ export interface RenderGalleryOptions {
   generation?: boolean
   /** The in-browser editor can be installed and served (`--edit` without `--no-editor`). */
   editor?: boolean
+  /**
+   * Marks the page's one inline script and stylesheet for a
+   * `galleryContentSecurityPolicy(nonce)` header, so nothing else inline can run.
+   */
+  nonce?: string
+}
+
+/**
+ * The policy the gallery serves its page under. Its own script and styles
+ * run by nonce; media, the review sheet, and the editor all come from this
+ * server; nothing may frame it or post a form anywhere. A prompt or path
+ * that ever reached the DOM as markup could still not run.
+ */
+export function galleryContentSecurityPolicy(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'nonce-${nonce}'`,
+    `style-src 'nonce-${nonce}'`,
+    "img-src 'self' data: blob:",
+    "frame-src 'self'",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join("; ")
 }
 
 /**
@@ -61,6 +87,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   const editor = JSON.stringify(Boolean(opts.editor && opts.session))
   const title = `${snapshot.project?.name ?? "workspace"} | pixelkiln`
   const { css, js } = clientAssets()
+  const nonce = opts.nonce ? ` nonce="${escapeHtml(opts.nonce)}"` : ""
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -68,7 +95,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <link rel="icon" href="data:,">
-<style>
+<style${nonce}>
 ${css}</style>
 </head>
 <body>
@@ -110,7 +137,7 @@ ${css}</style>
 <div id="drawer-host"></div>
 <div id="dialog-host"></div>
 <datalist id="view-options"><option value="low top-down"><option value="high top-down"><option value="side"><option value="sidescroller"></datalist>
-<script>
+<script${nonce}>
 const INITIAL = ${data};
 const SESSION = ${session};
 const EDITABLE = ${editable};

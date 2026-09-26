@@ -527,6 +527,17 @@ out over the gallery, **Apply selections** writes the lockfile and downloads
 the chosen art, and unchosen rows stay in review exactly as with `pick`. A
 regeneration's sheet shows the current art beside the candidates.
 
+#### `--estimate-limit`: skeleton estimates from the page
+
+With `--edit`, a single PixelLab sprite's "+ Skeleton animation" form can ask
+PixelLab to estimate its skeleton (see
+[Controlled asset revisions](./REVISIONS.md)). Each estimate is a direct call
+on your account that PixelLab documents in dollars, so it is kept apart from
+the generation budget rather than converted into it. A session may make
+`--estimate-limit <n>` of them (default 10; `0` turns the button off). The form
+shows how many are used and what PixelLab reported billing for them, and asks
+before each one.
+
 #### Compare records side by side
 
 **Compare** puts two to four records side by side at one shared zoom with
