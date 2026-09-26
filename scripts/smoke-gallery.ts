@@ -102,6 +102,7 @@ const server = await serveGallery({
 declare const __pixelkiln: {
   S: { snap: { items: { id: string; state: string; outputs: { sha256: string }[]; history: { index: number; outputs: { sha256: string }[] }[] }[] } }
   ui: { notice: { text: string } | null }
+  family: () => { rootId: string; source: string; direction: string; playing: boolean; anims: number } | null
 }
 
 const failures: string[] = []
@@ -380,6 +381,43 @@ try {
     check(finished?.phase === "done" && finished.counts.submitted === 6, "Create & generate draws the base, then its loops and mirror, in waves")
     const written = JSON.parse(await readFile(studioManifest, "utf8")) as { styles: Record<string, unknown>; assets: Record<string, unknown> }
     check(Boolean(written.styles.characters) && Object.keys(written.assets).join(",") === "crate,mira,mira.walk,mira.idle", "the studio saved the style, base, and loops in one write")
+
+    // The family view: the base turns through its rotations, and every loop
+    // plays by direction on one clock.
+    // Only the hash changes, so goto alone would keep the pre-generation snapshot.
+    await page.goto(`${studioServer.url}#characters/mira.walk.west`, { waitUntil: "networkidle0" })
+    await page.reload({ waitUntil: "networkidle0" })
+    await page.waitForSelector(".drawer", { timeout: 5_000 })
+    await page.evaluate(() => ([...document.querySelectorAll(".drawer button")] as HTMLButtonElement[]).find((b) => b.textContent?.startsWith("Family view"))!.click())
+    await page.waitForSelector(".family-sheet .tt-stage img", { timeout: 5_000 })
+    const opened = await page.evaluate(() => __pixelkiln.family())
+    check(opened?.rootId === "characters/mira" && opened.direction === "west", "the family view opens on the base, turned to the loop's direction")
+    const grid = await page.evaluate(() => ({
+      rows: [...document.querySelectorAll(".family-sheet table.lg tbody tr")].map((r) => r.querySelector("th b")?.textContent),
+      cells: document.querySelectorAll(".family-sheet .lg-cell").length,
+      mirrors: document.querySelectorAll(".family-sheet .lg-mirror").length,
+      columns: document.querySelectorAll(".family-sheet thead .lg-dir").length,
+    }))
+    check([...grid.rows].sort().join(",") === "idle,walk" && grid.columns === 8 && grid.mirrors === 1, `the loop grid has a row per loop and a column per direction (${JSON.stringify(grid)})`)
+    const stage = (await page.$(".family-sheet .tt-stage"))!
+    const box = (await stage.boundingBox())!
+    await page.mouse.move(box.x + 40, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + 40 + 60, box.y + box.height / 2, { steps: 6 })
+    await page.mouse.up()
+    const turned = await page.evaluate(() => __pixelkiln.family()?.direction)
+    check(turned === "south", `dragging right turns the turntable two steps, west to south (${turned})`)
+    const column = await page.evaluate(() => [...document.querySelectorAll(".family-sheet thead th.col-on")].map((t) => t.textContent).join(","))
+    check(column === "S", "the loop grid highlights the turntable's direction")
+    const frames = await page.evaluate(async () => {
+      const img = document.querySelector(".family-sheet .lg-cell img") as HTMLImageElement
+      const seen = new Set<string>()
+      for (let i = 0; i < 12; i++) { seen.add(img.src); await new Promise((r) => setTimeout(r, 60)) }
+      return seen.size
+    })
+    check(frames > 1, "loops play in the grid")
+    await page.keyboard.press("Escape")
+    check(await page.evaluate(() => __pixelkiln.family() === null || !document.querySelector(".family-sheet")), "Escape closes the family view")
   } finally {
     await studioServer.close()
   }

@@ -358,3 +358,53 @@ textarea.mono { font-family:var(--mono); font-size:11.5px; }
 .studio-price-rows .mono { font-family:var(--mono); color:var(--dim); }
 .studio-total { font:650 12.5px/1.4 var(--mono); }
 .quote-live { font:600 9.5px/1 var(--mono); color:var(--bg); background:var(--cool); padding:2px 4px; text-transform:uppercase; letter-spacing:.04em; vertical-align:1px; cursor:help; }
+
+/* ---- family view: turntable and loop grid ---- */
+.sheet.family-sheet { width:min(1180px, 96vw); overflow-y:auto; align-content:start; }
+.sheet.family-sheet .rbar b { font:650 12.5px/1.4 var(--mono); color:var(--text); }
+.family-tally { display:inline-flex; flex-wrap:wrap; gap:10px; margin-left:auto; }
+.family-tally .st { display:inline-flex; align-items:center; gap:5px; font:11.5px/1 var(--mono); color:var(--dim); }
+.family-body { padding:16px 18px 24px; display:grid; gap:20px; min-width:0; align-content:start; }
+.family-body h3 { margin:0; font:650 12.5px/1 var(--mono); color:var(--accent-soft); }
+.family-tabs { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px; }
+.family-tabs button { font:11.5px/1 var(--mono); padding:6px 9px; }
+.family-tabs button.on, .tt-rose button.on, .tt-controls button.on { border-color:var(--accent); color:var(--accent-soft); }
+.tt-row { display:flex; flex-wrap:wrap; gap:18px; align-items:center; }
+.tt-stage { width:288px; height:288px; display:grid; place-items:center; background:var(--panel-deep);
+  background-image:var(--checker); background-size:16px 16px; background-position:0 0, 8px 8px;
+  border:1px solid var(--line); cursor:ew-resize; touch-action:none; user-select:none; }
+.tt-stage:focus-visible { outline:2px solid var(--accent-soft); }
+.tt-stage img { image-rendering:pixelated; pointer-events:none; -webkit-user-drag:none; }
+.tt-empty { color:var(--dim); font:11.5px/1.45 var(--mono); padding:18px; text-align:center; }
+.tt-side { display:grid; gap:10px; justify-items:start; }
+.tt-rose { display:grid; grid-template-columns:repeat(3, 38px); grid-auto-rows:32px; gap:3px; }
+.tt-rose button { padding:0; font:11px/1 var(--mono); }
+.tt-hub { display:block; width:6px; height:6px; margin:auto; background:var(--accent); }
+.tt-controls { display:flex; gap:6px; }
+.tt-label { font:11.5px/1 var(--mono); color:var(--dim); }
+.lg-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.lg-head h3 { margin-right:auto; }
+.lg-head button, .lg-head select { font:11.5px/1 var(--mono); padding:5px 8px; background:var(--panel-deep); }
+.lg-scroll { overflow-x:auto; }
+table.lg { border-collapse:collapse; }
+table.lg th, table.lg td { padding:3px; text-align:center; vertical-align:middle; }
+table.lg th.lg-name { text-align:left; padding-right:12px; white-space:nowrap; }
+table.lg th.lg-name b { display:block; font-size:12px; }
+table.lg th.lg-name small { color:var(--dim); font-size:11px; }
+.lg-dir { font:11px/1 var(--mono); padding:4px 0; width:100%; border-color:transparent; color:var(--dim); }
+.col-on .lg-dir { color:var(--accent-soft); border-color:var(--accent); }
+td.col-on { background:rgba(255,107,53,.08); }
+.lg-cell { position:relative; width:76px; height:76px; padding:0; display:grid; place-items:center;
+  background:var(--panel-deep); background-image:var(--checker); background-size:12px 12px; background-position:0 0, 6px 6px;
+  border:1px solid var(--line); border-bottom:2px solid var(--dim); }
+.lg-cell img { max-width:68px; max-height:68px; image-rendering:pixelated; }
+.lg-cell.tone-ok { border-bottom-color:var(--ok); } .lg-cell.tone-warn { border-bottom-color:var(--warn); }
+.lg-cell.tone-bad { border-bottom-color:var(--bad); } .lg-cell.tone-cool { border-bottom-color:var(--cool); }
+.lg-cell.ghost img { opacity:.28; filter:grayscale(1); }
+.lg-mirror { position:absolute; top:2px; right:4px; font:11px/1 var(--mono); color:var(--cool); }
+.lg-state { position:absolute; left:3px; bottom:3px; font:9.5px/1 var(--mono); color:var(--text); background:rgba(16,15,12,.8); padding:2px 3px; }
+.lg-none { color:var(--line-strong); }
+.fx-strip { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+.fx-strip figure { margin:0; display:grid; gap:4px; justify-items:center; }
+.fx-strip figcaption { font-size:10.5px; color:var(--dim); }
+@media (max-width: 640px) { .tt-stage { width:220px; height:220px; } .lg-cell { width:56px; height:56px; } .lg-cell img { max-width:50px; max-height:50px; } }

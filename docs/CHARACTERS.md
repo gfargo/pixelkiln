@@ -448,6 +448,20 @@ reference image change alone also makes it stale.
   new entry is generated, and `plan` reports it `blocked` until its parent
   is downloaded, same as one added by hand. `objectPro` families get the
   same two buttons; see [`objectPro`](./GENERATORS.md#objectpro).
+- **The family view.** Any family member's drawer has a **Family view**
+  button under **Character**. It opens one sheet for the whole family:
+  - A turntable shows the base, or any of its states, one rotation at a
+    time. Drag the sprite sideways, use ← and →, pick a point on the compass,
+    or let it spin.
+  - A grid below has one row per loop and one column per direction. Every
+    loop plays on one clock, and the column the turntable faces is
+    highlighted.
+  - Mirrors are marked ⇋. A loop that hasn't been generated shows its
+    parent's matching rotation, dimmed.
+  - Portraits and outfits sit in a strip underneath. Clicking any cell
+    opens its drawer.
+  - With `--budget`, **Generate** starts one job for every member that is
+    missing, stale, or failed.
 - **The character studio.** With `--edit`, "+ New character" in the
   gallery's header drafts a whole character in one sheet: a new character
   style (engine, size, directions, body, view, folder) or an existing one,

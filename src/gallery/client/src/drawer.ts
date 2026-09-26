@@ -1,6 +1,7 @@
 import { renderTray, toggleCompare } from "./compare.ts"
 import { $, S, STATE_TONE, displayScale, el, fmtBytes, fmtCost, fmtWhen, formRegion, isFrameSet, projectOf, ui } from "./core.ts"
 import { editForm, newAnimationForm, newStateForm } from "./family-forms.ts"
+import { familyMembers, familyRoot, openFamily, refreshFamily } from "./family.ts"
 import { newRevisionForm } from "./forms.ts"
 import { generateActions, historySection, jobStrip, renderHeader, renderMain, upstreamSection, visibleItems } from "./grid.ts"
 import { handEditSection } from "./hand-edit.ts"
@@ -271,6 +272,15 @@ export function renderDrawer() {
     if (c.kind === 'animation') row(dl, 'direction', c.direction || '—');
     else row(dl, 'directions', String(c.directions));
     if (c.characterId) row(dl, 'character id', c.characterId, { mono: true, copy: c.characterId });
+    const root = familyRoot(item);
+    const size = root ? familyMembers(root).length : 0;
+    if (root && size > 1) {
+      const fam = el('button', 'add', 'Family view · ' + size);
+      fam.type = 'button';
+      fam.title = 'Turn ' + root.assetId + ' through its rotations and play every loop by direction';
+      fam.onclick = () => openFamily(item);
+      row(dl, 'family', fam);
+    }
     const family = S.snap.items.filter((i) => i.character && i.character.parentKey === item.key && i.project === item.project);
     if (family.length) {
       const list = el('div');
@@ -525,6 +535,7 @@ export function render() {
   renderMain(visibleItems());
   renderDrawer();
   renderTray();
+  refreshFamily();
 }
 
 /**
@@ -539,4 +550,5 @@ export function renderQuietly() {
   if (region !== 'main') renderMain(visibleItems());
   if (region !== 'drawer') renderDrawer();
   renderTray();
+  refreshFamily();
 }

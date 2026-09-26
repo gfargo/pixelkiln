@@ -429,7 +429,9 @@ style, with its provenance one click away: the prompt actually sent, provider
 and generator, dimensions, recorded cost, lock status and plan state, submit
 and download times, job and object ids, every output with its path, SHA-256,
 size, and on-disk status, revision lineage, a character's parent and the
-states and loops that hang off it, the quality record (palette, native-grid
+states and loops that hang off it (with a family view that turns the base
+through its rotations and plays every loop by direction; see
+[Characters](./CHARACTERS.md#working-with-a-cast)), the quality record (palette, native-grid
 detection, audit, named approval), the manifest asset as declared, and raw
 provider metadata.
 
