@@ -38,6 +38,11 @@ const AssetPatchSchema = z
     height: z.number().int().nullable().optional(),
     size: z.number().int().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    /**
+     * A loop shorthand's `animation.directions`, replaced whole: each named
+     * direction is drawn, and each one's flip comes free as a mirror.
+     */
+    loopDirections: z.array(CharacterDirectionSchema).min(1).optional(),
   })
   .strict()
 
@@ -497,6 +502,13 @@ function applyEdit(raw: RawManifest, edit: SingleEdit | ManifestEdit): void {
   if (patch.tags !== undefined) {
     if (patch.tags.length) asset.tags = patch.tags
     else delete asset.tags
+  }
+  if (patch.loopDirections) {
+    const animation = asset.animation as Record<string, unknown> | undefined
+    if (!animation || !Array.isArray(animation.directions)) {
+      throw new ManifestEditError(`asset "${edit.assetId}" is not a loop declared with animation.directions`)
+    }
+    asset.animation = { ...animation, directions: patch.loopDirections }
   }
 }
 

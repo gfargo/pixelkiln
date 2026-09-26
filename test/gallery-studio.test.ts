@@ -88,6 +88,23 @@ describe("batch edits", () => {
   })
 })
 
+describe("adding a direction to a loop", () => {
+  it("rewrites a shorthand's directions, and refuses a loop written out per direction", async () => {
+    const edit = createGalleryEditHandler({ manifestFor: () => manifestPath, reload })
+    await edit({ action: "upload-image", path: "refs/mira.png", base64: sprite() })
+    await edit({ action: "batch", expectedSha256: await expected(), edits: newCharacter() })
+    const priced = await priceManifestEdit(manifestPath, {
+      action: "patch-asset", assetId: "mira.walk", expectedSha256: await expected(), patch: { loopDirections: ["south", "south-east", "west", "north"] },
+    })
+    // South-east is drawn and south-west comes free; the loops already there are unchanged.
+    expect(priced.items.map((i) => [i.key, i.cost])).toEqual([["cast/mira.walk.south-east", 4], ["cast/mira.walk.south-west", 0]])
+    const build = await edit({ action: "patch-asset", assetId: "mira.walk", expectedSha256: await expected(), patch: { loopDirections: ["south", "south-east", "west", "north"] } })
+    expect(build.snapshot.items.find((i) => i.key === "cast/mira.walk.south-west")?.mirrorOfKey).toBe("cast/mira.walk.south-east")
+    await expect(edit({ action: "patch-asset", assetId: "mira.bust", expectedSha256: await expected(), patch: { loopDirections: ["south"] } }))
+      .rejects.toThrow(/not a loop declared with animation.directions/)
+  })
+})
+
 describe("pricing an unsaved edit", () => {
   it("quotes every new asset the way plan would, summed by unit, and writes nothing", async () => {
     await writeFile(path.join(dir, "refs.png"), Buffer.from(sprite(), "base64"))
