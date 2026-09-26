@@ -1,3 +1,15 @@
+# [0.75.0](https://github.com/gfargo/pixelkiln/compare/v0.74.0...v0.75.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **gallery:** keep the family clock from indexing a frame before it started ([d1fc710](https://github.com/gfargo/pixelkiln/commit/d1fc710baaa688973f6e916df3a477dd2ba8f538))
+
+
+### Features
+
+* **gallery:** a family view with a turntable and a loop grid ([7c87992](https://github.com/gfargo/pixelkiln/commit/7c87992a4b37421e8e8e8f27f38479577d721df9))
+
 # [0.74.0](https://github.com/gfargo/pixelkiln/compare/v0.73.0...v0.74.0) (2026-09-26)
 
 
