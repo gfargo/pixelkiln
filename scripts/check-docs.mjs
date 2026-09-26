@@ -15,7 +15,7 @@ function markdownFiles(directory) {
 }
 
 const markdown = [
-  ...["README.md", "CONTRIBUTING.md", "SECURITY.md", "PROVIDERS.md", "NAMING.md"]
+  ...["README.md", "CONTRIBUTING.md", "SECURITY.md", "PROVIDERS.md"]
     .map((file) => path.join(root, file))
     .filter(existsSync),
   ...markdownFiles(path.join(root, "docs")),
