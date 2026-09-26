@@ -1,3 +1,10 @@
+# [0.73.0](https://github.com/gfargo/pixelkiln/compare/v0.72.0...v0.73.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** server side of the character studio: new styles, batches, pricing, uploads ([4302e52](https://github.com/gfargo/pixelkiln/commit/4302e52331cb91a5a06b18002143c85a9fa3d40f))
+
 # [0.72.0](https://github.com/gfargo/pixelkiln/compare/v0.71.0...v0.72.0) (2026-09-26)
 
 
