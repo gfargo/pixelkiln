@@ -50,7 +50,11 @@ Read this reference when an asset declares `revision`.
   poses. It needs `direction`; `prompt` names the motion and the optional
   `description` says what the subject looks like. Bootstrap the file with
   `pixelkiln estimate-skeleton <image> --out <file>` (a direct call, outside
-  any budget, like `balance`), then edit the frame poses by hand. Plan cost
+  any budget, like `balance`; square 16–256px images only), which writes the
+  estimated pose plus `--frames` copies (default 4) to edit. Joint labels are
+  PixelLab's 18 names, each once per pose. After every edit, run
+  `pixelkiln skeleton-preview <asset>` (local, free) and look at the sheet:
+  the starting pose must match the sprite, or every frame degrades silently. Plan cost
   interpolates PixelLab's documented anchors (3 frames = 2, 8 = 3, 15 = 4);
   like the other animate modes it lands in candidate review and is
   unmeasured live.

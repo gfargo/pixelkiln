@@ -6,8 +6,8 @@ pixelkiln <command> [options]
 
 Unknown commands, positional arguments, and flags are errors. The only
 positional words accepted are a command's own subcommands (`refine approve`,
-`workspace add <manifest>`, and the like) and `estimate-skeleton`'s one image
-path. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
+`workspace add <manifest>`, and the like), `estimate-skeleton`'s one image
+path, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
 accumulate; comma-separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
@@ -55,6 +55,7 @@ Which command:
 | shrink upscaled outside art to its native grid before using it as a reference | `pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png` |
 | generate a pixel font (`.ttf` plus glyph atlas) | `pixelkiln font --description "warm orange arcade font" --out fonts/arcade` |
 | start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
+| see a keypoints file's poses over the source before paying | `pixelkiln skeleton-preview hero-swing` |
 | work across several projects | `pixelkiln workspace add ../other/pixelkiln.manifest.json`, then `--workspace` on `gallery` and `salvage` |
 
 Every command takes `--manifest <file>` when the manifest is not in the
@@ -875,7 +876,8 @@ See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
 Three commands call PixelLab on loose files rather than manifest assets. None
 reads the manifest or touches the lockfile; all three load `PIXELLAB_API_KEY`
 from the environment or a `.env.local`/`.env` beside `--manifest` or in the
-working directory, the same as every other command.
+working directory, the same as every other command. A fourth,
+`skeleton-preview`, is their local companion and calls nothing.
 
 ### `unzoom`
 
@@ -929,19 +931,44 @@ an image, so there is nothing for the lockfile's provenance model to hold.
 ### `estimate-skeleton`
 
 ```bash
-pixelkiln estimate-skeleton <image> [--out keypoints.json]
+pixelkiln estimate-skeleton <image> [--out keypoints.json] [--frames 4] [--force]
 ```
 
 PixelLab only. Derives an 18-joint skeleton from an image via
-`/estimate-skeleton` and prints the keypoints JSON, or writes it with `--out`.
-Same category as `balance`: a direct, un-budgeted account call outside the
-manifest/plan/lock pipeline — no manifest is read beyond locating
-`.env.local`, and nothing is written to a lockfile. This is how to bootstrap
-an `animate-skeleton` revision's `keypointsFile` (see
-[Controlled asset revisions](./REVISIONS.md#skeleton-driven-animation)):
-estimate once, sanity-check the result, hand-tweak a few joints for
-in-between frames, rather than hand-authoring 18 joints of
-`{label, x, y, z_index}` from scratch.
+`/estimate-skeleton`. The image must be square at 16, 32, 64, 128, or 256
+pixels, the sizes the endpoint takes; anything else is refused before the
+call. Same category as `balance`: a direct, un-budgeted account call outside
+the manifest/plan/lock pipeline — no manifest is read beyond locating
+`.env.local`, and nothing is written to a lockfile.
+
+The output is a whole keypoints file, the shape an `animate-skeleton`
+revision's `keypointsFile` must be (see
+[Controlled asset revisions](./REVISIONS.md#skeleton-driven-animation)): the
+estimated pose as `firstFrameKeypoints`, and `--frames` copies of it (3–15,
+default 4) as the frames to move into the motion. It prints, or writes to
+`--out`; `--out` refuses to replace an existing file, which is usually hand
+edits, unless `--force` is given.
+
+### `skeleton-preview`
+
+```bash
+pixelkiln skeleton-preview <keypoints.json> [--from image.png] [--out sheet.png]
+pixelkiln skeleton-preview <asset> [--style <id>] [--out sheet.png]
+```
+
+Draws every pose of a keypoints file over its source image as one PNG, the
+starting pose first at full strength and each frame after it over a dimmed
+copy. Right-side bones are orange, left-side blue, the head and spine white.
+Local and free: nothing is sent anywhere. Given an `animate-skeleton` asset
+id, it reads the revision's `keypointsFile` and source image from the
+manifest; given a file, `--from` names the image (without one, poses are drawn
+on a plain ground). The sheet is written beside the keypoints file as
+`<name>.preview.png` unless `--out` says otherwise. A file that does not parse
+fails with the same message `plan` would give.
+
+Use it after `estimate-skeleton` and after every hand edit: PixelKiln cannot
+check that the starting pose matches what the image shows, and a mismatch
+degrades every generated frame without an error.
 
 ## Utility commands
 
@@ -958,6 +985,7 @@ Print the package version. `-v` is an alias.
 | Option | Applies to | Meaning |
 |---|---|---|
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
+| `--frames <n>` | `estimate-skeleton` | Frames to scaffold after the estimated pose, 3–15; default 4. |
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |

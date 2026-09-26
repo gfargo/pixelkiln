@@ -55,7 +55,7 @@ provenance and no long-lived npm token.
 | Hand edits | Touch-ups in your own editor or a pinned in-browser Pixelorama, kept beside the generated art with the generation still the record; frame and tile sets member by member. |
 | Controlled inputs | Hashed revision lineage (image-to-image and inpaint; on PixelLab also palette reduction, pixel cleanup, animation, skeleton posing, interpolation, and animation edits), fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
 | Characters | A base in 4 or 8 directions from a prompt or your own sprite (four PixelLab engines), poses, loops, portraits, and outfit transfers as dependent assets generated in waves, free mirrored directions (one `directions` list declares a loop and mirrors the rest), account adoption and salvage, and SpriteFrames export. |
-| PixelLab utilities | `unzoom` returns upscaled reference art to its native grid, `font` generates a `.ttf` and glyph atlas, and `estimate-skeleton` starts a keypoints file for skeleton animation. |
+| PixelLab utilities | `unzoom` returns upscaled reference art to its native grid, `font` generates a `.ttf` and glyph atlas, `estimate-skeleton` starts a keypoints file for skeleton animation, and `skeleton-preview` draws its poses over the sprite for free. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, resumable paid jobs, and per-asset generation history with free restores. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |

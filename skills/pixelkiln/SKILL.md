@@ -111,8 +111,8 @@ Read only the reference needed for the current decision:
 
 - For PixelLab configuration, generators (including `uiElement` for single UI
   pieces and `imageProFlash` for styled stills), costs, alpha behavior,
-  account operations, or the `unzoom`, `font`, and `estimate-skeleton`
-  utilities, read [references/pixellab.md](references/pixellab.md). For a
+  account operations, or the `unzoom`, `font`, `estimate-skeleton`, and
+  `skeleton-preview` utilities, read [references/pixellab.md](references/pixellab.md). For a
   PixelLab style aimed at a specific resolution or fidelity tier (retro,
   high-detail, or matching an existing set's look), read
   [references/pixellab-fidelity.md](references/pixellab-fidelity.md) first.

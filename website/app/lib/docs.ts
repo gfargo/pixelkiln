@@ -58,7 +58,7 @@ export const docs: DocEntry[] = [
   {
     slug: "cli",
     title: "CLI reference",
-    description: "Every command and flag, including gallery, edit, history, tools, the PixelLab unzoom, font, and estimate-skeleton utilities, automation, and exit behavior.",
+    description: "Every command and flag, including gallery, edit, history, tools, the PixelLab unzoom, font, estimate-skeleton, and skeleton-preview utilities, automation, and exit behavior.",
     file: "docs/CLI.md",
     group: "Reference",
     split: 3,

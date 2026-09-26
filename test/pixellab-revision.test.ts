@@ -11,6 +11,7 @@ import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { encodeRgbaPng } from "../src/png.ts"
+import { SKELETON_LABELS } from "../src/skeleton.ts"
 import type { Lock } from "../src/types.ts"
 
 function png(shade = 20, width = 32, height = 32): Buffer {
@@ -268,14 +269,14 @@ describe("PixelLabClient: the animate wire", () => {
   })
 
   it("sends estimate-skeleton with image and parses keypoints back", async () => {
-    const responseKeypoints = Array.from({ length: 18 }, (_, i) => keypoint(`JOINT_${i}`))
+    const responseKeypoints = Array.from({ length: 18 }, (_, i) => keypoint(SKELETON_LABELS[i]!))
     vi.stubGlobal("fetch", vi.fn(async () =>
       new Response(JSON.stringify({ keypoints: responseKeypoints, usage: { type: "generations", generations: 0.1 } }), { status: 200 })))
     const client = new PixelLabClient("key")
     const res = await client.estimateSkeleton({ image: { base64: "Rg==", format: "png" } })
     const call = vi.mocked(fetch).mock.calls[0]!
     expect(new URL(String(call[0])).pathname).toBe("/v2/estimate-skeleton")
-    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({ image: { base64: "Rg==", format: "png" } })
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({ image: { type: "base64", base64: "Rg==", format: "png" } })
     expect(res.keypoints).toEqual(responseKeypoints)
   })
 })
@@ -660,7 +661,7 @@ describe("PixelLab provider: animate-skeleton", () => {
   })
 
   const joint = (label: string) => ({ label, x: 0.5, y: 0.5, z_index: 1 })
-  const frame = () => Array.from({ length: 18 }, (_, i) => joint(`JOINT_${i}`))
+  const frame = () => Array.from({ length: 18 }, (_, i) => joint(SKELETON_LABELS[i]!))
   const skeletonSet = (frameCount: number) => ({
     firstFrameKeypoints: frame(),
     frames: Array.from({ length: frameCount }, () => frame()),

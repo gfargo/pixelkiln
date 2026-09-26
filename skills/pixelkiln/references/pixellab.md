@@ -460,7 +460,8 @@ pixel art to its native grid; run it before outside art becomes a
 cost unmeasured). `pixelkiln font --description <text> --out <base>` writes a
 `.ttf` and an 80-glyph atlas for PixelLab's documented 25 generations, and
 asks first. `pixelkiln estimate-skeleton <image> --out <file>` starts an
-`animate-skeleton` keypoints file. See `docs/CLI.md`, "PixelLab utilities".
+`animate-skeleton` keypoints file, and `pixelkiln skeleton-preview <asset>`
+draws its poses over the source for free. See `docs/CLI.md`, "PixelLab utilities".
 
 For a style aimed at a specific look (a
 retro/console feel or a

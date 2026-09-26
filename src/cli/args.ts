@@ -83,6 +83,8 @@ export interface Args {
   weight?: string
   /** font: native glyph size, 8/16/32/64. */
   glyphPx?: number
+  /** estimate-skeleton: frames to scaffold after the estimated pose, 3-15. */
+  frames?: number
 }
 
 const VALUE_FLAGS = [
@@ -92,7 +94,7 @@ const VALUE_FLAGS = [
   "--provider", "--account", "--palette", "--fixer-python", "--fixer-revision", "--min-grid-confidence",
   "--reviewer", "--note",
   "--model-root", "--generation",
-  "--quantize", "--description", "--weight", "--glyph-px",
+  "--quantize", "--description", "--weight", "--glyph-px", "--frames",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -103,7 +105,7 @@ export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
-  "unzoom", "font", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "font", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -205,6 +207,12 @@ export function parseArgs(argv: string[]): Args {
   } else if (command === "estimate-skeleton") {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (target === undefined) throw new UsageError("estimate-skeleton needs an image path")
+    rest = rest.slice(1)
+  } else if (command === "skeleton-preview") {
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (target === undefined) {
+      throw new UsageError("skeleton-preview needs a keypoints file or an animate-skeleton asset id")
+    }
     rest = rest.slice(1)
   } else if (command === "refine") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "run" : rest[0]
@@ -406,5 +414,6 @@ export function parseArgs(argv: string[]): Args {
     description: get("--description"),
     weight: get("--weight"),
     glyphPx: numberOption("--glyph-px", { min: 8, max: 64, integer: true }),
+    frames: numberOption("--frames", { min: 3, max: 15, integer: true }),
   }
 }
