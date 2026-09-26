@@ -2,10 +2,11 @@ import { randomBytes } from "node:crypto"
 import { createServer, type IncomingMessage, type Server } from "node:http"
 import { readFile } from "node:fs/promises"
 import { openExternal } from "../open.ts"
-import { renderGallery } from "./page.ts"
+import { galleryContentSecurityPolicy, renderGallery } from "./page.ts"
 import type { GalleryBuild, GalleryMedia } from "./snapshot.ts"
 import type { GalleryGenerateHandlers } from "./generate.ts"
 import type { GalleryEditorHandlers } from "./editor.ts"
+import type { GallerySkeletonHandlers } from "./skeleton.ts"
 
 /**
  * The gallery's HTTP surface. Unlike the review server this is long-lived:
@@ -53,6 +54,14 @@ export interface GalleryServerOptions {
    * `/editor/<release>/<file>` routes that serve the pinned editor build.
    */
   editor?: GalleryEditorHandlers
+  /**
+   * Enable `POST /api/price`: an unsaved edit priced offline, nothing
+   * written. Follows the write gate because it reads the manifest the way
+   * a save would.
+   */
+  price?: (body: unknown) => Promise<unknown>
+  /** Enable `POST /api/skeleton/estimate` (a direct PixelLab call the page confirms first) and `GET /api/skeleton`, its session count. */
+  skeleton?: GallerySkeletonHandlers
 }
 
 export interface GalleryServer {
@@ -102,7 +111,7 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryServer> {
   const log = opts.onProgress ?? (() => {})
-  const session = opts.edit || opts.generate || opts.editor ? randomBytes(16).toString("hex") : null
+  const session = opts.edit || opts.generate || opts.editor || opts.skeleton || opts.price ? randomBytes(16).toString("hex") : null
   let media: ReadonlyMap<string, GalleryMedia> = new Map()
   let loading: Promise<GalleryBuild> | null = null
   /** Local files each open review sheet may load, keyed by job. */
@@ -187,6 +196,28 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
       }
       return
     }
+    if (req.method === "POST" && url.pathname === "/api/price") {
+      if (!opts.price || !session) return fail(405, "pricing an edit needs the gallery started with --edit")
+      try {
+        const body = await guardedBody("price requests")
+        if (body === undefined) return
+        json(200, await opts.price(body))
+      } catch (err) {
+        reportError("price", err)
+      }
+      return
+    }
+    if (req.method === "POST" && url.pathname === "/api/skeleton/estimate") {
+      if (!opts.skeleton || !session) return fail(405, "skeleton estimates need the gallery started with --edit")
+      try {
+        const body = await guardedBody("skeleton estimates")
+        if (body === undefined) return
+        json(200, await opts.skeleton.estimate(body))
+      } catch (err) {
+        reportError("skeleton estimate", err)
+      }
+      return
+    }
     if (req.method === "POST" && url.pathname === "/api/editor/install") {
       if (!opts.editor || !session) return fail(405, "the in-browser editor is off for this gallery")
       try {
@@ -257,6 +288,10 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
       }
     }
     if (req.method !== "GET" && req.method !== "HEAD") return fail(405, "the gallery is read-only")
+    if (url.pathname === "/api/skeleton") {
+      if (!opts.skeleton) return fail(404, "skeleton estimates need the gallery started with --edit")
+      return json(200, opts.skeleton.status())
+    }
     if (url.pathname === "/api/jobs") {
       if (!opts.generate) return fail(404, "generation is off")
       return json(200, opts.generate.status())
@@ -291,12 +326,15 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
     try {
       if (url.pathname === "/") {
         const { snapshot } = await load()
+        const nonce = randomBytes(16).toString("base64")
         res.writeHead(200, {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "no-store",
           "X-Content-Type-Options": "nosniff",
+          "Content-Security-Policy": galleryContentSecurityPolicy(nonce),
         })
         res.end(renderGallery(snapshot, {
+          nonce,
           ...(session ? { session } : {}),
           editable: Boolean(opts.edit),
           generation: Boolean(opts.generate),

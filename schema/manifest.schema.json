@@ -1210,6 +1210,7 @@
                     "type": "string",
                     "enum": [
                       "template",
+                      "skeleton-v3",
                       "v3",
                       "pro"
                     ]

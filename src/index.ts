@@ -89,7 +89,7 @@ export {
   type GalleryStyle,
   type HandEditStatus,
 } from "./gallery/snapshot.ts"
-export { renderGallery, type RenderGalleryOptions } from "./gallery/page.ts"
+export { galleryContentSecurityPolicy, renderGallery, type RenderGalleryOptions } from "./gallery/page.ts"
 export {
   detachHandEdit,
   HAND_EDIT_DIR,

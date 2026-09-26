@@ -6,8 +6,8 @@ pixelkiln <command> [options]
 
 Unknown commands, positional arguments, and flags are errors. The only
 positional words accepted are a command's own subcommands (`refine approve`,
-`workspace add <manifest>`, and the like) and `estimate-skeleton`'s one image
-path. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
+`workspace add <manifest>`, and the like), `estimate-skeleton`'s one image
+path, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
 accumulate; comma-separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
@@ -55,6 +55,7 @@ Which command:
 | shrink upscaled outside art to its native grid before using it as a reference | `pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png` |
 | generate a pixel font (`.ttf` plus glyph atlas) | `pixelkiln font --description "warm orange arcade font" --out fonts/arcade` |
 | start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
+| see a keypoints file's poses over the source before paying | `pixelkiln skeleton-preview hero-swing` |
 | work across several projects | `pixelkiln workspace add ../other/pixelkiln.manifest.json`, then `--workspace` on `gallery` and `salvage` |
 
 Every command takes `--manifest <file>` when the manifest is not in the
@@ -428,7 +429,9 @@ style, with its provenance one click away: the prompt actually sent, provider
 and generator, dimensions, recorded cost, lock status and plan state, submit
 and download times, job and object ids, every output with its path, SHA-256,
 size, and on-disk status, revision lineage, a character's parent and the
-states and loops that hang off it, the quality record (palette, native-grid
+states and loops that hang off it (with a family view that turns the base
+through its rotations and plays every loop by direction; see
+[Characters](./CHARACTERS.md#working-with-a-cast)), the quality record (palette, native-grid
 detection, audit, named approval), the manifest asset as declared, and raw
 provider metadata.
 
@@ -454,6 +457,60 @@ localhost, serves only the files the current snapshot names, never contacts a
 provider, and never writes anything. Stop it with Ctrl+C. See the
 [Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
 screenshot.
+
+A record's drawer keeps the preview, its state, and its actions at the
+top. The rest of the record is split into tabs:
+
+- **Overview:** the generation, the character family, mirrors, lineage and
+  revisions, and the forms that add to them.
+- **Files:** outputs, hand edits, and upstream edits.
+- **History:** earlier generations, which can be brought back.
+- **Details:** the provider record (job and object ids, times), the quality
+  record, identity, and the raw manifest asset and provider metadata.
+
+The tab in view stays as you step through records, and ← and → move
+between tabs once one has focus.
+
+#### Looking at sprites
+
+- **Loops on the grid:** a loop's card plays while the pointer is over it.
+  **play loops** in the header plays every loop in view at once.
+- **Backdrop:** the swatches in the header, and beside the zoom controls,
+  set what every sprite sits on. The choices are a transparency grid, dark,
+  light, or any colour you pick, so art can be judged against the game's own
+  background.
+- **Frame player:** a loop's record has one, with:
+  - ◀ and ▶, or <kbd>,</kbd> and <kbd>.</kbd>, to step a frame at a time;
+  - <kbd>space</kbd> to play or pause;
+  - a scrubber to drag through the frames;
+  - a speed setting, with the loop's own fps marked;
+  - **onion skin**, which shows the previous frame faintly under the
+    current one.
+- **Notifications:** with `--budget`, **notify** raises a system
+  notification when a job finishes, or stops for review, while the tab is in
+  the background.
+
+The page keeps these choices in the browser's local storage, per viewer.
+
+#### Families and selections
+
+- **Group: by family** gives each character or `objectPro` object its own
+  row inside its style. The base comes first, then its states, then each loop
+  around the compass, then portraits and outfits. The row header counts the
+  family's members by state and has buttons for the family view and, with
+  `--budget`, for generating whatever is missing, stale or failed.
+- **Select**, or ctrl/⌘-click on any card, switches to picking cards instead
+  of opening them. The bar at the bottom acts on the selection:
+  - **Generate** runs whatever is missing, stale or failed, as one job;
+  - **Regenerate** replaces whatever is up to date;
+  - **Compare** opens up to four of them side by side;
+  - with `--edit`, **Add tag** and **Remove tag** change one tag on every
+    selected asset in a single manifest write.
+
+  Each action shows its count, and Generate and Regenerate show their
+  price. A loop split with `animation.directions` is tagged on its
+  shorthand. "Select all" appears on each style or family, and
+  <kbd>Esc</kbd> leaves select mode.
 
 #### `--json`: the snapshot as data
 
@@ -524,7 +581,21 @@ job strip under the filters; each job keeps the log lines the CLI would have
 printed. Candidate sets stop in `review`: **Review** slides the `pick` sheet
 out over the gallery, **Apply selections** writes the lockfile and downloads
 the chosen art, and unchosen rows stay in review exactly as with `pick`. A
-regeneration's sheet shows the current art beside the candidates.
+regeneration's sheet shows the current art beside the candidates. A job
+runs in waves, as `gen` does: when a wave lands, anything the job was asked
+for that was waiting on it (a character's loops, a revision of the base)
+goes next, under what is left of the session budget.
+
+#### `--estimate-limit`: skeleton estimates from the page
+
+With `--edit`, a single PixelLab sprite's "+ Skeleton animation" form can ask
+PixelLab to estimate its skeleton (see
+[Controlled asset revisions](./REVISIONS.md)). Each estimate is a direct call
+on your account that PixelLab documents in dollars, so it is kept apart from
+the generation budget rather than converted into it. A session may make
+`--estimate-limit <n>` of them (default 10; `0` turns the button off). The form
+shows how many are used and what PixelLab reported billing for them, and asks
+before each one.
 
 #### Compare records side by side
 
@@ -875,7 +946,8 @@ See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
 Three commands call PixelLab on loose files rather than manifest assets. None
 reads the manifest or touches the lockfile; all three load `PIXELLAB_API_KEY`
 from the environment or a `.env.local`/`.env` beside `--manifest` or in the
-working directory, the same as every other command.
+working directory, the same as every other command. A fourth,
+`skeleton-preview`, is their local companion and calls nothing.
 
 ### `unzoom`
 
@@ -929,19 +1001,44 @@ an image, so there is nothing for the lockfile's provenance model to hold.
 ### `estimate-skeleton`
 
 ```bash
-pixelkiln estimate-skeleton <image> [--out keypoints.json]
+pixelkiln estimate-skeleton <image> [--out keypoints.json] [--frames 4] [--force]
 ```
 
 PixelLab only. Derives an 18-joint skeleton from an image via
-`/estimate-skeleton` and prints the keypoints JSON, or writes it with `--out`.
-Same category as `balance`: a direct, un-budgeted account call outside the
-manifest/plan/lock pipeline — no manifest is read beyond locating
-`.env.local`, and nothing is written to a lockfile. This is how to bootstrap
-an `animate-skeleton` revision's `keypointsFile` (see
-[Controlled asset revisions](./REVISIONS.md#skeleton-driven-animation)):
-estimate once, sanity-check the result, hand-tweak a few joints for
-in-between frames, rather than hand-authoring 18 joints of
-`{label, x, y, z_index}` from scratch.
+`/estimate-skeleton`. The image must be square at 16, 32, 64, 128, or 256
+pixels, the sizes the endpoint takes; anything else is refused before the
+call. Same category as `balance`: a direct, un-budgeted account call outside
+the manifest/plan/lock pipeline — no manifest is read beyond locating
+`.env.local`, and nothing is written to a lockfile.
+
+The output is a whole keypoints file, the shape an `animate-skeleton`
+revision's `keypointsFile` must be (see
+[Controlled asset revisions](./REVISIONS.md#skeleton-driven-animation)): the
+estimated pose as `firstFrameKeypoints`, and `--frames` copies of it (3–15,
+default 4) as the frames to move into the motion. It prints, or writes to
+`--out`; `--out` refuses to replace an existing file, which is usually hand
+edits, unless `--force` is given.
+
+### `skeleton-preview`
+
+```bash
+pixelkiln skeleton-preview <keypoints.json> [--from image.png] [--out sheet.png]
+pixelkiln skeleton-preview <asset> [--style <id>] [--out sheet.png]
+```
+
+Draws every pose of a keypoints file over its source image as one PNG, the
+starting pose first at full strength and each frame after it over a dimmed
+copy. Right-side bones are orange, left-side blue, the head and spine white.
+Local and free: nothing is sent anywhere. Given an `animate-skeleton` asset
+id, it reads the revision's `keypointsFile` and source image from the
+manifest; given a file, `--from` names the image (without one, poses are drawn
+on a plain ground). The sheet is written beside the keypoints file as
+`<name>.preview.png` unless `--out` says otherwise. A file that does not parse
+fails with the same message `plan` would give.
+
+Use it after `estimate-skeleton` and after every hand edit: PixelKiln cannot
+check that the starting pose matches what the image shows, and a mismatch
+degrades every generated frame without an error.
 
 ## Utility commands
 
@@ -958,6 +1055,7 @@ Print the package version. `-v` is an alias.
 | Option | Applies to | Meaning |
 |---|---|---|
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
+| `--frames <n>` | `estimate-skeleton` | Frames to scaffold after the estimated pose, 3–15; default 4. |
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |

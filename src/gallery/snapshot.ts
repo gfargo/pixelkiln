@@ -16,8 +16,9 @@ import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
 import { handEditProjectPath, readHandEditCompanion } from "../pipeline/hand-edit.ts"
 import { historyLimit } from "../pipeline/history.ts"
-import { expandAssetFilter } from "../loop-directions.ts"
+import { expandAssetFilter, loopShorthandOf } from "../loop-directions.ts"
 import { pixelLabObjectUrl } from "../providers/pixellab.ts"
+import type { SkeletonSet } from "../skeleton.ts"
 
 /**
  * A read-only view of everything the project has generated, built from the
@@ -144,6 +145,8 @@ export interface GalleryItem {
   revisionParentKey: string | null
   /** Lock key of the asset this one is a left-to-right flip of, when it is a mirror. */
   mirrorOfKey: string | null
+  /** An `animate-skeleton` revision's poses, drawn over its parent by the page. */
+  skeleton: GallerySkeleton | null
   /** A character family member: what it is, whose it is, and what PixelLab holds for it. */
   character: GalleryCharacter | null
   outputs: GalleryOutput[]
@@ -151,6 +154,12 @@ export interface GalleryItem {
   providerMetadata: Record<string, unknown>
   /** Post-processing recorded on the entry: the palette its files were snapped to, if any. */
   postprocess: Postprocess | null
+  /**
+   * The manifest id an edit to this asset goes to: its own id, or the loop
+   * shorthand (`animation.directions`) it was expanded from; null when the
+   * manifest no longer declares it.
+   */
+  declaredAs: string | null
   /** Manifest asset as declared, for the "intent" side of the record. */
   asset: Asset | null
   /** Manifest-relative committed art placed instead of generated output. */
@@ -184,6 +193,15 @@ export interface GalleryItem {
   history: GalleryGeneration[]
   tags: string[]
   category: string | null
+}
+
+export interface GallerySkeleton {
+  /** Manifest-relative keypoints file. */
+  keypointsFile: string
+  /** The parsed file; null until it exists. A malformed file fails the whole resolve, as in `plan`. */
+  set: SkeletonSet | null
+  /** The file's bytes as resolved; a save from the page must quote it, so a concurrent edit is refused. */
+  sha256: string | null
 }
 
 export interface GalleryCharacter {
@@ -728,6 +746,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       styleId: spec.styleId,
       assetId: spec.assetId,
       declared: true,
+      declaredAs: loopShorthandOf(spec.assetId, loaded.loopFamilies) ?? spec.assetId,
       state: planItem.state,
       reason: planItem.reason,
       status: entry?.status ?? null,
@@ -764,6 +783,13 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         : entry?.mirror
           ? lockKey(spec.styleId, entry.mirror.sourceAssetId)
           : null,
+      skeleton: spec.revision?.mode === "animate-skeleton" && spec.revision.keypointsFile
+        ? {
+            keypointsFile: portableOutputPath(spec.revision.keypointsFile, root),
+            set: spec.revision.skeleton ?? null,
+            sha256: spec.revision.keypointsSha256 ?? null,
+          }
+        : null,
       character: describeCharacter(spec, entry),
       outputs,
       quality,
@@ -801,6 +827,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       styleId: entry.styleId,
       assetId: entry.assetId,
       declared: false,
+      declaredAs: null,
       state: "undeclared",
       reason: "not declared by the current manifest; `pixelkiln prune` removes the entry",
       status: entry.status,
@@ -829,6 +856,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       revision: entry.revision,
       revisionParentKey: entry.revision ? lockKey(entry.styleId, entry.revision.sourceAssetId) : null,
       mirrorOfKey: entry.mirror ? lockKey(entry.styleId, entry.mirror.sourceAssetId) : null,
+      skeleton: null,
       character: describeCharacter(undefined, entry),
       outputs,
       quality: null,

@@ -15,6 +15,7 @@ import { sha256 } from "../src/hash.ts"
 import { lockKey, type Lock } from "../src/types.ts"
 import { buildGallerySnapshot, buildWorkspaceGallerySnapshot, galleryMediaId } from "../src/gallery/snapshot.ts"
 import { renderGallery } from "../src/gallery/page.ts"
+import { bundleGalleryClient } from "../src/gallery/client-bundle.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { parseArgs } from "../src/cli/args.ts"
 import { announceGalleryReady } from "../src/cli/io.ts"
@@ -483,12 +484,14 @@ describe("renderGallery", () => {
   })
 
   it("keeps the inlined client files free of anything that would close their tags", () => {
-    const dir = new URL("../src/gallery/client/", import.meta.url)
-    const js = readFileSync(new URL("gallery.js", dir), "utf8")
-    const css = readFileSync(new URL("gallery.css", dir), "utf8")
+    // The script is inlined as a value, so a `${` in it is harmless; only
+    // something that ends the <script> or <style> element early is not.
+    const js = bundleGalleryClient()
+    const css = readFileSync(new URL("../src/gallery/client/gallery.css", import.meta.url), "utf8")
     expect(js).not.toMatch(/<\/script/i)
     expect(css).not.toMatch(/<\/style/i)
-    expect(js).not.toContain("${")
+    // One classic script: the page declares INITIAL and friends ahead of it.
+    expect(js).not.toMatch(/^\s*(import|export)\s/m)
   })
 })
 
@@ -543,6 +546,26 @@ describe("serveGallery", () => {
       await server.close()
     }
     await expect(fetch(server.url)).rejects.toThrow()
+  })
+
+  it("serves the page under a content security policy that admits only its own nonce-marked script and styles", async () => {
+    const { loaded, specs, lock } = await generated()
+    const server = await serveGallery({ open: false, load: () => buildGallerySnapshot({ loaded, specs, lock, lockPath }) })
+    try {
+      const res = await fetch(server.url)
+      const policy = res.headers.get("content-security-policy")!
+      const nonce = /script-src 'nonce-([^']+)'/.exec(policy)![1]!
+      expect(policy).toContain(`style-src 'nonce-${nonce}'`)
+      expect(policy).toContain("frame-ancestors 'none'")
+      const html = await res.text()
+      expect(html).toContain(`<script nonce="${nonce}">`)
+      expect(html).toContain(`<style nonce="${nonce}">`)
+      // A fresh nonce per page load.
+      const again = (await fetch(server.url)).headers.get("content-security-policy")!
+      expect(again).not.toContain(nonce)
+    } finally {
+      await server.close()
+    }
   })
 
   it("reflects a refresh: work finished after startup appears without a restart", async () => {
@@ -1004,6 +1027,42 @@ describe("createGenerateHandlers", () => {
     await expect(handlers.start({ keys: ["base/anvil"], force: true })).rejects.toThrow(/only 0 generations/)
   })
 
+  it("generates in waves: a child blocked on its parent follows once the parent lands, within the budget", async () => {
+    const { manifestPath } = await project({
+      name: "gallery-test",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: {
+        anvil: { prompt: "an anvil", width: 32, height: 32 },
+        "anvil-worn": { prompt: "add rust", revision: { mode: "image-to-image", from: "anvil" } },
+      },
+    })
+    const provider = new FakeProvider({ candidates: 1 })
+    // The anvil is 1 generation and its revision 20 (PixelLab's image-to-image estimate).
+    const handlers = generateHandlers(manifestPath, provider, { amount: 21, byProvider: {} })
+    const job = await handlers.start({ keys: ["base/anvil", "base/anvil-worn"] })
+    const done = await untilPhase(handlers, job.id, ["done", "failed", "review"])
+    expect(done.error).toBeNull()
+    expect(done).toMatchObject({ phase: "done", counts: { submitted: 2, failed: 0, downloaded: 2 } })
+    expect(done.messages.join("\n")).toMatch(/wave 2: 1 asset\(s\) whose parents are now on disk/)
+    const lock = await loadLock(lockPath)
+    expect(lock.entries["base/anvil-worn"]).toMatchObject({ status: "downloaded" })
+
+    // A second wave that would outspend what is left stops rather than failing the job.
+    const { manifestPath: tight } = await project({
+      name: "gallery-test",
+      styles: { base: { generator: "map", outDir: "out2" } },
+      assets: {
+        tongs: { prompt: "tongs", width: 32, height: 32 },
+        "tongs-worn": { prompt: "add rust", revision: { mode: "image-to-image", from: "tongs" } },
+      },
+    })
+    const lean = generateHandlers(tight, new FakeProvider({ candidates: 1 }), { amount: 10, byProvider: {} })
+    const first = await lean.start({ keys: ["base/tongs", "base/tongs-worn"] })
+    const stopped = await untilPhase(lean, first.id, ["done", "failed", "review"])
+    expect(stopped).toMatchObject({ phase: "done", counts: { submitted: 1 } })
+    expect(stopped.messages.join("\n")).toMatch(/wave 2 would spend 20 generations on pixellab but only 9 generations .* stopping here/)
+  })
+
   it("refuses unknown keys, keys another job holds, and providers with no budget", async () => {
     const { manifestPath } = await project()
     const provider = new FakeProvider({ candidates: 1, processingPolls: 50 })
@@ -1199,7 +1258,7 @@ describe("gallery CLI surface", () => {
   it("shows a record and its card what a job is doing to it", () => {
     const snapshot = { items: [], styles: [], totals: { entries: 0 }, project: { name: "x", manifest: "m", lock: "l" } } as never
     const page = renderGallery(snapshot, { generation: true, session: "0".repeat(32) })
-    expect(page).toContain("const activeJobFor = (item) =>")
+    expect(page).toMatch(/\bactiveJobFor = \(item\) =>/)
     expect(page).toContain("function jobStrip(item, job)")
     expect(page).toContain("if (job) body.append(jobStrip(item, job));")
     expect(page).toContain("busy-badge")

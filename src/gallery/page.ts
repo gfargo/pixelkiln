@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { bundleGalleryClient } from "./client-bundle.ts"
 import type { GallerySnapshot } from "./snapshot.ts"
 
 /**
@@ -27,24 +28,51 @@ export interface RenderGalleryOptions {
   generation?: boolean
   /** The in-browser editor can be installed and served (`--edit` without `--no-editor`). */
   editor?: boolean
+  /**
+   * Marks the page's one inline script and stylesheet for a
+   * `galleryContentSecurityPolicy(nonce)` header, so nothing else inline can run.
+   */
+  nonce?: string
 }
 
 /**
- * The page's stylesheet and client script are real files beside this module
- * (`client/gallery.css`, `client/gallery.js`), read once per process and
- * inlined into the HTML. They used to live inside this template literal,
- * where a backtick or an unescaped `\n` broke the emitted script silently;
- * as files they parse, lint, and open in a browser as themselves. The build
- * copies them next to the bundle, so the same relative URL resolves in
- * source, in tests, and in `dist/`.
+ * The policy the gallery serves its page under. Its own script and styles
+ * run by nonce; media, the review sheet, and the editor all come from this
+ * server; nothing may frame it or post a form anywhere. A prompt or path
+ * that ever reached the DOM as markup could still not run.
+ */
+export function galleryContentSecurityPolicy(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'nonce-${nonce}'`,
+    `style-src 'nonce-${nonce}'`,
+    "img-src 'self' data: blob:",
+    "frame-src 'self'",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join("; ")
+}
+
+/**
+ * The page's stylesheet and client script are real files beside this module,
+ * read once per process and inlined into the HTML. They used to live inside
+ * this template literal, where a backtick or an unescaped `\n` broke the
+ * emitted script silently. The script is written as typed modules in
+ * `client/src/`: `dist/` carries them prebuilt as `client/gallery.js`, and a
+ * source checkout bundles them on first use (see client-bundle.ts), so the
+ * same relative URL resolves in source, in tests, and in `dist/`.
  */
 const CLIENT_DIR = new URL("./client/", import.meta.url)
 let client: { css: string; js: string } | undefined
 
 function clientAssets(): { css: string; js: string } {
+  const prebuilt = new URL("gallery.js", CLIENT_DIR)
   client ??= {
     css: readFileSync(new URL("gallery.css", CLIENT_DIR), "utf8"),
-    js: readFileSync(new URL("gallery.js", CLIENT_DIR), "utf8"),
+    js: existsSync(prebuilt) ? readFileSync(prebuilt, "utf8") : bundleGalleryClient(),
   }
   return client
 }
@@ -59,6 +87,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
   const editor = JSON.stringify(Boolean(opts.editor && opts.session))
   const title = `${snapshot.project?.name ?? "workspace"} | pixelkiln`
   const { css, js } = clientAssets()
+  const nonce = opts.nonce ? ` nonce="${escapeHtml(opts.nonce)}"` : ""
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -66,7 +95,7 @@ export function renderGallery(snapshot: GallerySnapshot, opts: RenderGalleryOpti
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <link rel="icon" href="data:,">
-<style>
+<style${nonce}>
 ${css}</style>
 </head>
 <body>
@@ -85,11 +114,17 @@ ${css}</style>
     </select>
     <select id="group" aria-label="Group">
       <option value="style">Group: by style</option>
+      <option value="family">Group: by family</option>
       <option value="none">Group: none</option>
     </select>
     <span id="editing" class="editing" hidden title="This gallery can write the manifest. It never contacts a provider.">editing</span>
+    <button id="select" type="button" title="Pick several records to generate, regenerate, compare, or tag together (or ctrl/⌘-click a card)">Select</button>
+    <button id="studio" type="button" hidden title="Draft a new character: its style, base, loops, and portrait, priced as you go">+ New character</button>
     <button id="refresh" type="button" title="Re-read the manifest, lockfile, and disk">Refresh</button>
     <label class="chip" title="Refresh every 5 seconds while this tab is visible"><input id="auto" type="checkbox"> auto</label>
+    <label class="chip" title="Play every loop on the grid; without this, a loop plays while the pointer is over it"><input id="playloops" type="checkbox"> play loops</label>
+    <span id="backdrop-slot"></span>
+    <label class="chip" id="notify-chip" hidden title="A system notification when a job finishes while this tab is in the background"><input id="notify" type="checkbox"> notify</label>
   </div>
   <div class="totals" id="totals"></div>
   <div class="chips" id="chips"></div>
@@ -97,9 +132,10 @@ ${css}</style>
   <div id="tools"></div>
 </header>
 <main id="root"></main>
+<div id="selbar" class="selbar" hidden></div>
 <footer>
   Click a sprite for its full record; <kbd>shift</kbd>-click adds it to a side-by-side comparison. <kbd>←</kbd>/<kbd>→</kbd> step through the visible set while a record
-  is open, <kbd>Esc</kbd> closes it, and <kbd>/</kbd> jumps to search. This page reads the manifest, lockfile,
+  is open, <kbd>,</kbd>/<kbd>.</kbd> step a loop's frames and <kbd>space</kbd> plays it, <kbd>Esc</kbd> closes it, and <kbd>/</kbd> jumps to search. This page reads the manifest, lockfile,
   and disk only. It never contacts a provider<span id="foot-edit"> and never writes anything</span><span id="foot-editing" hidden>.
   Editing is on: saving rewrites the manifest and nothing else</span><span id="foot-gen" hidden>.
   Generation is on under the session budget shown above; every run is the same submit, poll, and fetch as <code>pixelkiln gen</code></span>.
@@ -108,7 +144,7 @@ ${css}</style>
 <div id="drawer-host"></div>
 <div id="dialog-host"></div>
 <datalist id="view-options"><option value="low top-down"><option value="high top-down"><option value="side"><option value="sidescroller"></datalist>
-<script>
+<script${nonce}>
 const INITIAL = ${data};
 const SESSION = ${session};
 const EDITABLE = ${editable};

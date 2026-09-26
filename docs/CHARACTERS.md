@@ -199,6 +199,19 @@ the loop and accepts or rejects it whole. One asset per direction; declare
 another asset for another direction, or a [mirror](#mirrors) of this one
 for the direction that faces the other way.
 
+`mode: "skeleton-v3"` takes the same `template` and poses it onto the
+character with PixelLab's skeleton video model, which moves the character
+rather than redrawing it every frame: steadier identity and colours than a
+plain template loop, at 2 to 4 generations and 3 to 5 minutes per
+direction (plan budgets 4). It is beta and needs a Tier 1 PixelLab plan or
+higher, and it is sent to `/characters/animations`, the endpoint that
+documents it; every other mode keeps using `/animate-character`. Like a
+template loop it takes no `frames` and needs no prompt of its own.
+
+```jsonc
+"mira.walk": { "animation": { "of": "mira", "template": "walk", "mode": "skeleton-v3", "directions": ["south", "west", "north"] } }
+```
+
 ### Pose frames and other loop controls
 
 A v3 loop can start and end where you say. `startFrame` is a
@@ -435,6 +448,47 @@ reference image change alone also makes it stale.
   new entry is generated, and `plan` reports it `blocked` until its parent
   is downloaded, same as one added by hand. `objectPro` families get the
   same two buttons; see [`objectPro`](./GENERATORS.md#objectpro).
+- **The family view.** Any family member's drawer has a **Family view**
+  button under **Character**. It opens one sheet for the whole family:
+  - A turntable shows the base, or any of its states, one rotation at a
+    time. Drag the sprite sideways, use ← and →, pick a point on the compass,
+    or let it spin.
+  - A grid below has one row per loop and one column per direction. Every
+    loop plays on one clock, and the column the turntable faces is
+    highlighted.
+  - Mirrors are marked ⇋. A loop that hasn't been generated shows its
+    parent's matching rotation, dimmed.
+  - Portraits and outfits sit in a strip underneath. Clicking any cell
+    opens its drawer.
+  - With `--edit`, an empty direction the parent can face shows a **+**
+    that adds that direction to the loop. The panel prices the change
+    before anything is written:
+    - A loop written with `animation.directions` gains the direction in
+      its list, and the direction's flip comes free as a mirror when the
+      loop doesn't have it yet.
+    - A loop written out per direction gains an asset: a free mirror of its
+      flip when that is drawn, or a copy of a drawn sibling facing the new
+      way.
+
+    **Add** saves the change. With `--budget`, **Add & generate** also
+    starts the job.
+  - With `--budget`, **Generate** starts one job for every member that is
+    missing, stale, or failed.
+- **The character studio.** With `--edit`, "+ New character" in the
+  gallery's header drafts a whole character in one sheet: a new character
+  style (engine, size, directions, body, view, folder) or an existing one,
+  the base with an optional sprite of your own (uploaded into `refs/`, so
+  only the rotations are billed), any number of loops (each a template
+  posed by `skeleton-v3` by default, or a plain template, v3, or pro loop,
+  in the directions you tick, mirrors added free), and a portrait. The
+  sheet prices the draft live, the way `plan` would. Pro Flash bases are
+  priced by PixelLab's own quote (`/pro-flash/cost`, a free call) when the
+  project has a key; those rows are marked live, and the offline estimate
+  stands if the quote can't be had. The sheet also warns when a new
+  style would take in existing assets that name no styles. **Create**
+  saves everything in one validated write; with `--budget`, **Create &
+  generate** also starts one job for all of it, which generates the base
+  first and the loops and portrait as soon as it lands.
 - `pack --format godot` and `--format aseprite` write each direction as a
   still and each loop as a looping set at its fps; see
   [engine formats](./ARTIFACTS.md).

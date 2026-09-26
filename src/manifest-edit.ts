@@ -4,7 +4,15 @@ import { z } from "zod"
 import { sha256 } from "./hash.ts"
 import { expandLoopDirections, loopShorthandOf } from "./loop-directions.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
-import { CharacterAnimationModeSchema, CharacterDirectionSchema } from "./types.ts"
+import type { ResolvedSpec } from "./types.ts"
+import {
+  CharacterAnimationModeSchema,
+  CharacterDirectionSchema,
+  CharacterModeSchema,
+  CharacterOutfitSchema,
+  CharacterPortraitSchema,
+  CharacterProportionsSchema,
+} from "./types.ts"
 
 /**
  * The gallery's one write path: editing *intent* in the manifest. Nothing here
@@ -30,6 +38,11 @@ const AssetPatchSchema = z
     height: z.number().int().nullable().optional(),
     size: z.number().int().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    /**
+     * A loop shorthand's `animation.directions`, replaced whole: each named
+     * direction is drawn, and each one's flip comes free as a mirror.
+     */
+    loopDirections: z.array(CharacterDirectionSchema).min(1).optional(),
   })
   .strict()
 
@@ -58,6 +71,8 @@ const NewAnimationSchema = z
     direction: CharacterDirectionSchema.optional(),
     frames: z.number().int().min(4).max(16).optional(),
     fps: z.number().int().min(1).max(60).optional(),
+    /** One loop per named direction, plus free mirrors; expanded when the manifest loads. */
+    directions: z.array(CharacterDirectionSchema).min(1).optional(),
     mode: CharacterAnimationModeSchema.optional(),
     /** What is being animated, when the parent's own description would mislead the model (`character` only). */
     subject: z.string().min(1).optional(),
@@ -67,7 +82,8 @@ const NewAnimationSchema = z
 
 const NewAssetSchema = z
   .object({
-    prompt: z.string(),
+    /** A portrait, an outfit, or a mirror has none of its own; the loader says where one is needed. */
+    prompt: z.string().optional(),
     category: z.string().optional(),
     width: z.number().int().optional(),
     height: z.number().int().optional(),
@@ -78,22 +94,54 @@ const NewAssetSchema = z
     /**
      * A controlled regeneration of another asset in the same manifest,
      * instead of a fresh generation. `inpaint` needs a mask upload the
-     * gallery does not offer yet, so only `image-to-image` can be created
-     * here; hand-edit the manifest for the other modes.
+     * gallery does not offer yet, so only `image-to-image` and
+     * `animate-skeleton` (whose keypoints file the gallery writes first) can
+     * be created here; hand-edit the manifest for the other modes.
      */
     revision: z
-      .object({
-        mode: z.literal("image-to-image"),
-        /** Asset id of the parent this revises; must already exist. */
-        from: z.string().min(1),
-        strength: z.number().min(0).max(1).optional(),
-      })
-      .strict()
+      .discriminatedUnion("mode", [
+        z
+          .object({
+            mode: z.literal("image-to-image"),
+            /** Asset id of the parent this revises; must already exist. */
+            from: z.string().min(1),
+            strength: z.number().min(0).max(1).optional(),
+          })
+          .strict(),
+        z
+          .object({
+            mode: z.literal("animate-skeleton"),
+            from: z.string().min(1),
+            /** Manifest-relative; checked when the manifest is loaded, like every revision input. */
+            keypointsFile: z.string().min(1),
+            direction: CharacterDirectionSchema,
+            description: z.string().min(1).optional(),
+            skeletonTemplate: z.string().min(1).optional(),
+          })
+          .strict(),
+      ])
       .optional(),
     /** A pose or outfit of an existing `character`/`objectPro` base or state. */
     state: NewStateSchema.optional(),
     /** A loop of an existing `character`/`objectPro` base or state. */
     animation: NewAnimationSchema.optional(),
+    /** A bust of an existing character. */
+    portrait: CharacterPortraitSchema.optional(),
+    /** An existing loop re-clothed from a reference image (uploaded first). */
+    outfit: CharacterOutfitSchema.optional(),
+    /** Another asset of the same style, flipped; free. */
+    mirror: z.string().min(1).optional(),
+    /**
+     * `character`/`objectPro` bases: the subject's own sprite (uploaded
+     * first), or one per direction, which PixelLab rotates instead of drawing.
+     */
+    reference: z.union([z.string().min(1), z.record(CharacterDirectionSchema, z.string().min(1))]).optional(),
+    /** `character` pro bases: a concept image that seeds the design. */
+    concept: z.string().min(1).optional(),
+    /** `character` pro bases: another character in the style whose look this one follows. */
+    styleCharacter: z.string().min(1).optional(),
+    /** `character` standard humanoid bases: this character's proportions, over the style's. */
+    proportions: CharacterProportionsSchema.optional(),
   })
   .strict()
   .refine((asset) => !(asset.revision && (asset.state || asset.animation)), {
@@ -114,71 +162,125 @@ export const CANDIDATE_OPTION: Record<string, string> = {
   scenario: "numOutputs",
 }
 
+/**
+ * A new `character` or `objectPro` style, the shape the gallery's character
+ * studio creates. Everything else about a style is written by hand; the
+ * loader validates the result like any other manifest before it lands.
+ */
+const NewStyleSchema = z
+  .object({
+    generator: z.enum(["character", "objectPro"]),
+    /** Where the style's art is written, inside the project. */
+    outDir: z.string().min(1).refine((dir) => !dir.split(/[\\/]/).includes("..") && !/^([a-z]:)?[\\/]/i.test(dir), {
+      message: "outDir must be a path inside the project",
+    }),
+    size: z.number().int().min(16).max(256).optional(),
+    mode: CharacterModeSchema.optional(),
+    directions: z.union([z.literal(4), z.literal(8)]).optional(),
+    template: z.string().min(1).optional(),
+    view: z.string().min(1).max(64).optional(),
+    proportions: CharacterProportionsSchema.optional(),
+    isometric: z.boolean().optional(),
+    textGuidanceScale: z.number().min(1).max(20).optional(),
+    enhancePrompt: z.boolean().optional(),
+    promptPrefix: z.string().optional(),
+    promptSuffix: z.string().optional(),
+    palette: z.array(z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour")).max(256).optional(),
+  })
+  .strict()
+
+// Each edit's own fields; a request wraps one in `project` and
+// `expectedSha256`, and a batch carries several under one envelope.
+const PatchAssetEdit = z
+  .object({
+    action: z.literal("patch-asset"),
+    assetId: z.string().min(1),
+    patch: AssetPatchSchema,
+  })
+  .strict()
+const AddAssetEdit = z
+  .object({
+    action: z.literal("add-asset"),
+    assetId: z.string().min(1).regex(/^[^/\\]+$/, "asset ids cannot contain slashes"),
+    asset: NewAssetSchema,
+  })
+  .strict()
+const SetSourceEdit = z
+  .object({
+    action: z.literal("set-source"),
+    assetId: z.string().min(1),
+    styleId: z.string().min(1),
+    /** Manifest-relative path of the art that stands in for this asset in this style. */
+    source: z.string().min(1),
+  })
+  .strict()
+const ClearSourceEdit = z
+  .object({
+    action: z.literal("clear-source"),
+    assetId: z.string().min(1),
+    styleId: z.string().min(1),
+  })
+  .strict()
+const PatchStyleEdit = z
+  .object({
+    action: z.literal("patch-style"),
+    styleId: z.string().min(1),
+    patch: z
+      .object({
+        /** Candidates per generation, written to the provider's own option. */
+        candidates: z.number().int().min(1).max(64).optional(),
+        /** Empty clears the style's own value (inherit, or the default). */
+        promptPrefix: z.string().optional(),
+        promptSuffix: z.string().optional(),
+        /** `#rrggbb` values; null or empty clears the style's own palette. */
+        palette: z.array(z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour")).max(256).nullable().optional(),
+        /** Snap downloaded art to the palette; false clears the style's own value. */
+        enforcePalette: z.boolean().optional(),
+        /** Provider view name (PixelLab: low top-down, high top-down, side); empty clears. */
+        view: z.string().max(64).nullable().optional(),
+        /** pixflux only; null clears the style's own value. */
+        noBackground: z.boolean().nullable().optional(),
+      })
+      .strict()
+      .refine((patch) => Object.keys(patch).length > 0, { message: "nothing to change" }),
+  })
+  .strict()
+const AddStyleEdit = z
+  .object({
+    action: z.literal("add-style"),
+    styleId: z.string().min(1).regex(/^[^/\\:]+$/, "style ids cannot contain slashes or colons"),
+    style: NewStyleSchema,
+  })
+  .strict()
+
+const Envelope = {
+  /** Workspace project id; omitted for a single-project gallery. */
+  project: z.string().min(1).optional(),
+  /** Manifest bytes the page last saw; a mismatch refuses the write. */
+  expectedSha256: HexSha,
+}
+
+const SingleEdit = z.discriminatedUnion("action", [PatchAssetEdit, AddAssetEdit, SetSourceEdit, ClearSourceEdit, PatchStyleEdit, AddStyleEdit])
+type SingleEdit = z.infer<typeof SingleEdit>
+
 export const ManifestEditSchema = z.discriminatedUnion("action", [
+  PatchAssetEdit.extend(Envelope),
+  AddAssetEdit.extend(Envelope),
+  SetSourceEdit.extend(Envelope),
+  ClearSourceEdit.extend(Envelope),
+  PatchStyleEdit.extend(Envelope),
+  AddStyleEdit.extend(Envelope),
+  /**
+   * Several edits as one write: a new character's style, base, and loops
+   * land together or not at all, validated once as the finished manifest.
+   * Each edit sees the ones before it, so a base can name a style the same
+   * batch adds.
+   */
   z
     .object({
-      action: z.literal("patch-asset"),
-      /** Workspace project id; omitted for a single-project gallery. */
-      project: z.string().min(1).optional(),
-      assetId: z.string().min(1),
-      /** Manifest bytes the page last saw; a mismatch refuses the write. */
-      expectedSha256: HexSha,
-      patch: AssetPatchSchema,
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal("add-asset"),
-      project: z.string().min(1).optional(),
-      assetId: z.string().min(1).regex(/^[^/\\]+$/, "asset ids cannot contain slashes"),
-      expectedSha256: HexSha,
-      asset: NewAssetSchema,
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal("set-source"),
-      project: z.string().min(1).optional(),
-      assetId: z.string().min(1),
-      styleId: z.string().min(1),
-      /** Manifest-relative path of the art that stands in for this asset in this style. */
-      source: z.string().min(1),
-      expectedSha256: HexSha,
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal("clear-source"),
-      project: z.string().min(1).optional(),
-      assetId: z.string().min(1),
-      styleId: z.string().min(1),
-      expectedSha256: HexSha,
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal("patch-style"),
-      project: z.string().min(1).optional(),
-      styleId: z.string().min(1),
-      expectedSha256: HexSha,
-      patch: z
-        .object({
-          /** Candidates per generation, written to the provider's own option. */
-          candidates: z.number().int().min(1).max(64).optional(),
-          /** Empty clears the style's own value (inherit, or the default). */
-          promptPrefix: z.string().optional(),
-          promptSuffix: z.string().optional(),
-          /** `#rrggbb` values; null or empty clears the style's own palette. */
-          palette: z.array(z.string().regex(/^#?[0-9a-f]{6}$/i, "expected a six-digit hex colour")).max(256).nullable().optional(),
-          /** Snap downloaded art to the palette; false clears the style's own value. */
-          enforcePalette: z.boolean().optional(),
-          /** Provider view name (PixelLab: low top-down, high top-down, side); empty clears. */
-          view: z.string().max(64).nullable().optional(),
-          /** pixflux only; null clears the style's own value. */
-          noBackground: z.boolean().nullable().optional(),
-        })
-        .strict()
-        .refine((patch) => Object.keys(patch).length > 0, { message: "nothing to change" }),
+      action: z.literal("batch"),
+      ...Envelope,
+      edits: z.array(SingleEdit).min(1).max(64),
     })
     .strict(),
 ])
@@ -267,8 +369,20 @@ function undeclaredAsset(raw: RawManifest, assetId: string): ManifestEditError {
   )
 }
 
-function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
+function applyEdit(raw: RawManifest, edit: SingleEdit | ManifestEdit): void {
   raw.assets ??= {}
+  if (edit.action === "batch") {
+    for (const each of edit.edits) applyEdit(raw, each)
+    return
+  }
+  if (edit.action === "add-style") {
+    raw.styles ??= {}
+    if (Object.hasOwn(raw.styles, edit.styleId)) throw new ManifestEditError(`style "${edit.styleId}" already exists`)
+    const style: RawStyle = { ...edit.style }
+    if (edit.style.palette) style.palette = edit.style.palette.map((color) => "#" + color.replace(/^#/, "").toLowerCase())
+    raw.styles[edit.styleId] = style
+    return
+  }
   if (edit.action === "set-source" || edit.action === "clear-source") {
     const asset = Object.hasOwn(raw.assets, edit.assetId) ? raw.assets[edit.assetId] : undefined
     if (!asset) throw undeclaredAsset(raw, edit.assetId)
@@ -353,6 +467,15 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
     if (edit.asset.animation && !declaredAssets(raw).has(edit.asset.animation.of)) {
       throw new ManifestEditError(`animation parent "${edit.asset.animation.of}" is not declared by the manifest`)
     }
+    for (const [what, parent] of [
+      ["portrait", edit.asset.portrait?.of],
+      ["outfit", edit.asset.outfit?.of],
+      ["mirror", edit.asset.mirror],
+    ] as const) {
+      if (parent && !declaredAssets(raw).has(parent)) {
+        throw new ManifestEditError(`${what} source "${parent}" is not declared by the manifest`)
+      }
+    }
     raw.assets[edit.assetId] = asset
     return
   }
@@ -380,21 +503,30 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
     if (patch.tags.length) asset.tags = patch.tags
     else delete asset.tags
   }
+  if (patch.loopDirections) {
+    const animation = asset.animation as Record<string, unknown> | undefined
+    if (!animation || !Array.isArray(animation.directions)) {
+      throw new ManifestEditError(`asset "${edit.assetId}" is not a loop declared with animation.directions`)
+    }
+    asset.animation = { ...animation, directions: patch.loopDirections }
+  }
 }
 
 /**
- * Apply one edit to the manifest on disk. The write is refused when the file
- * no longer matches what the page saw, and rolled back when the edited
- * manifest fails to load or resolve; an invalid manifest never lands.
+ * The edited manifest, written beside the real one and resolved through the
+ * real loader so relative style images, workflows, and sources resolve
+ * exactly as they will after a rename. `use` sees the candidate path and its
+ * resolved specs; the candidate is always removed afterwards.
  */
-export async function applyManifestEdit(
+async function withCandidate<T>(
   manifestPath: string,
   edit: ManifestEdit,
-): Promise<ManifestEditResult> {
+  use: (candidate: { absolute: string; original: string; next: string; tmp: string; specs: ResolvedSpec[] }) => Promise<T>,
+  unchanged: (absolute: string, original: string) => T,
+): Promise<T> {
   const absolute = path.resolve(manifestPath)
   const original = await readFile(absolute, "utf8")
-  const before = sha256(original)
-  if (before !== edit.expectedSha256) throw new ManifestDriftError(absolute)
+  if (sha256(original) !== edit.expectedSha256) throw new ManifestDriftError(absolute)
 
   let raw: RawManifest
   try {
@@ -406,27 +538,131 @@ export async function applyManifestEdit(
   }
   applyEdit(raw, edit)
   const next = serializeLike(original, raw)
-  if (next === original) return { manifestPath: absolute, sha256: before, changed: false }
+  if (next === original) return unchanged(absolute, original)
 
-  // Validate the candidate through the real loader beside the destination so
-  // relative style images, workflows, and sources resolve exactly as they will
-  // after the rename. Only a manifest that loads and resolves replaces the file.
   const tmp = path.join(
     path.dirname(absolute),
     `.${path.basename(absolute)}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`,
   )
   try {
     await writeFile(tmp, next)
+    let specs: ResolvedSpec[]
     try {
-      const loaded = await loadManifest(tmp)
-      await resolveSpecs(loaded)
+      specs = await resolveSpecs(await loadManifest(tmp))
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw new ManifestEditError(message.replace(tmp, absolute))
     }
-    await rename(tmp, absolute)
+    return await use({ absolute, original, next, tmp, specs })
   } finally {
     await rm(tmp, { force: true })
   }
-  return { manifestPath: absolute, sha256: sha256(next), changed: true }
+}
+
+/**
+ * Apply one edit to the manifest on disk. The write is refused when the file
+ * no longer matches what the page saw, and rolled back when the edited
+ * manifest fails to load or resolve; an invalid manifest never lands.
+ */
+export async function applyManifestEdit(
+  manifestPath: string,
+  edit: ManifestEdit,
+): Promise<ManifestEditResult> {
+  return withCandidate<ManifestEditResult>(
+    manifestPath,
+    edit,
+    async ({ absolute, next, tmp }) => {
+      await rename(tmp, absolute)
+      return { manifestPath: absolute, sha256: sha256(next), changed: true }
+    },
+    (absolute, original) => ({ manifestPath: absolute, sha256: sha256(original), changed: false }),
+  )
+}
+
+/** What an edit would cost to generate, before it is saved. */
+export interface ManifestEditPrice {
+  /** Every asset the edit adds or changes, with the estimate plan would quote. */
+  items: Array<{
+    key: string
+    styleId: string
+    assetId: string
+    change: "new" | "changed"
+    /** Whose budget the cost comes out of. */
+    provider: string
+    cost: number
+    costUnit: string
+    candidates: number
+    /** "live" when `cost` is the provider's own quote rather than the offline estimate. */
+    quote?: "live"
+    /** The offline estimate a live quote replaced. */
+    estimate?: number
+  }>
+  /** Summed by unit: generations and dollars do not add. */
+  totals: Record<string, number>
+  /** Why a live quote was wanted but not had; the offline estimate stands for those items. */
+  quoteError?: string
+}
+
+export interface PriceManifestEditOptions {
+  /**
+   * A live price for a spec, from the provider itself; null when it has no
+   * quote for this kind of spec. A throw keeps the offline estimate and is
+   * reported as `quoteError`.
+   */
+  quote?: (spec: ResolvedSpec) => Promise<number | null>
+}
+
+/**
+ * Prices an edit without writing it: the same candidate manifest
+ * `applyManifestEdit` would validate, resolved offline, compared with the
+ * manifest as it stands. Anything new or whose identity changes is what a
+ * `gen` after saving would spend on. The same drift check applies, so a
+ * price is never quoted against a manifest the page no longer shows.
+ */
+export async function priceManifestEdit(
+  manifestPath: string,
+  edit: ManifestEdit,
+  opts: PriceManifestEditOptions = {},
+): Promise<ManifestEditPrice> {
+  return withCandidate<ManifestEditPrice>(
+    manifestPath,
+    edit,
+    async ({ absolute, specs }) => {
+      const before = new Map((await resolveSpecs(await loadManifest(absolute))).map((spec) => [`${spec.styleId}/${spec.assetId}`, spec.specHash]))
+      const priced = specs.filter((spec) => before.get(`${spec.styleId}/${spec.assetId}`) !== spec.specHash)
+      // Quotes are asked for together; one that fails leaves its item on the
+      // offline estimate, and the first reason is passed on.
+      let quoteError: string | undefined
+      const live = await Promise.all(priced.map(async (spec) => {
+        if (!opts.quote) return null
+        try {
+          return await opts.quote(spec)
+        } catch (error) {
+          quoteError ??= error instanceof Error ? error.message : String(error)
+          return null
+        }
+      }))
+      const items: ManifestEditPrice["items"] = []
+      const totals: Record<string, number> = {}
+      priced.forEach((spec, index) => {
+        const key = `${spec.styleId}/${spec.assetId}`
+        const quoted = live[index]
+        const cost = quoted ?? spec.cost
+        items.push({
+          key,
+          styleId: spec.styleId,
+          assetId: spec.assetId,
+          change: before.has(key) ? "changed" : "new",
+          provider: spec.provider,
+          cost,
+          costUnit: spec.costUnit,
+          candidates: spec.candidates,
+          ...(quoted !== null && quoted !== undefined ? { quote: "live" as const, estimate: spec.cost } : {}),
+        })
+        totals[spec.costUnit] = (totals[spec.costUnit] ?? 0) + cost
+      })
+      return quoteError ? { items, totals, quoteError } : { items, totals }
+    },
+    () => ({ items: [], totals: {} }),
+  )
 }

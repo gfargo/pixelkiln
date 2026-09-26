@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { SkeletonFrameSchema, SkeletonKeypointSchema, SkeletonSetSchema, parseSkeletonSet } from "../src/skeleton.ts"
+import { SKELETON_LABELS, SkeletonFrameSchema, SkeletonKeypointSchema, SkeletonSetSchema, parseSkeletonSet, scaffoldSkeletonSet } from "../src/skeleton.ts"
 
 const joint = (overrides: Partial<{ label: string; x: number; y: number; z_index: number; depth: number }> = {}) => ({
   label: "RIGHT KNEE",
@@ -8,7 +8,7 @@ const joint = (overrides: Partial<{ label: string; x: number; y: number; z_index
   z_index: 9,
   ...overrides,
 })
-const frame = (n = 18) => Array.from({ length: n }, (_, i) => joint({ label: `JOINT_${i}` }))
+const frame = (n = 18) => Array.from({ length: n }, (_, i) => joint({ label: SKELETON_LABELS[i]! }))
 
 describe("SkeletonKeypointSchema", () => {
   it("accepts a joint matching PixelLab's own documented example, depth omitted", () => {
@@ -24,8 +24,10 @@ describe("SkeletonKeypointSchema", () => {
     expect(SkeletonKeypointSchema.safeParse(joint({ y: -0.1 })).success).toBe(false)
   })
 
-  it("rejects an empty label", () => {
+  it("rejects an empty label, or one that is not one of PixelLab's 18 joints", () => {
     expect(SkeletonKeypointSchema.safeParse(joint({ label: "" })).success).toBe(false)
+    expect(SkeletonKeypointSchema.safeParse(joint({ label: "RIGHT KNE" })).success).toBe(false)
+    expect(SKELETON_LABELS).toHaveLength(18)
   })
 
   it("rejects unknown fields", () => {
@@ -71,5 +73,25 @@ describe("parseSkeletonSet", () => {
   it("throws for JSON that isn't even an object", () => {
     expect(() => parseSkeletonSet("not an object", "poses.json"))
       .toThrow(/revision keypoints file poses\.json does not match the expected shape/)
+  })
+})
+
+describe("SkeletonFrameSchema: each joint once", () => {
+  it("rejects a frame naming one joint twice", () => {
+    const twice = frame()
+    twice[17] = joint({ label: "NOSE" })
+    const result = SkeletonFrameSchema.safeParse(twice)
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toBe('"NOSE" appears twice')
+  })
+})
+
+describe("scaffoldSkeletonSet", () => {
+  it("starts every frame as an independent copy of the estimated pose", () => {
+    const set = scaffoldSkeletonSet(frame(), 3)
+    expect(SkeletonSetSchema.safeParse(set).success).toBe(true)
+    set.frames[0]![0]!.x = 0.9
+    expect(set.frames[1]![0]!.x).toBe(0.52)
+    expect(set.firstFrameKeypoints[0]!.x).toBe(0.52)
   })
 })

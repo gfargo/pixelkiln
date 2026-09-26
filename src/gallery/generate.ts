@@ -275,6 +275,86 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
     job.finishedAt = now().toISOString()
   }
 
+  async function submitGroups(job: GenerateJob, ctx: GalleryProjectContext, groups: PlanGroup[]) {
+    job.phase = "submitting"
+    for (const group of groups) {
+      const provider = opts.providerFor(job.project ?? undefined, group.provider)
+      const ceiling = remainingFor(group, groups.length, opts.budget, spent)
+      // Same preflight as `gen`: a known balance must cover the estimate,
+      // in the same unit, before the first request is made.
+      if (provider.balance) {
+        const balance = await provider.balance()
+        say(job, `balance: ${formatCost(balance.unit, balance.remaining)} remaining (${group.provider})`)
+        if (balance.unit !== group.costUnit) {
+          throw new Error(
+            `Provider ${group.provider} estimate unit ${group.costUnit} does not match balance unit ${balance.unit}.`,
+          )
+        }
+        if (balance.unit !== "free" && group.cost > balance.remaining) {
+          throw new Error(
+            `${group.provider} needs ${formatCost(balance.unit, group.cost)} but only ` +
+              `${formatCost(balance.unit, balance.remaining)} remain.`,
+          )
+        }
+      }
+      const res = await submit(provider, ctx.loaded, group.actionable, ctx.lock, ctx.lockPath, {
+        budget: ceiling,
+        onProgress: (line) => say(job, line),
+        spacingMs: opts.submitSpacingMs,
+      })
+      spent[group.provider] = (spent[group.provider] ?? 0) + res.spent
+      units[group.provider] = res.unit
+      job.spent[group.provider] = (job.spent[group.provider] ?? 0) + res.spent
+      job.counts.submitted += res.submitted
+      job.counts.failed += res.failed
+      say(job, `${group.provider}: submitted ${res.submitted}, failed ${res.failed}, estimated ${formatCost(res.unit, res.spent)}`)
+    }
+  }
+
+  /**
+   * `gen`'s waves, for a job: a child (a state, a loop, a revision) is
+   * blocked until its parent is downloaded, so once a wave lands the project
+   * is re-resolved (a child's identity hashes its parent's files) and the
+   * keys this job was asked for are planned again. Whatever became
+   * actionable is the next wave, under what is left of the session budget.
+   * It stops when a wave finds nothing new, submitted nothing, left work in
+   * review, or would outspend the budget; `force` applies to the first wave
+   * only, as it does for `gen`.
+   */
+  async function generateInWaves(job: GenerateJob, ctx: GalleryProjectContext, specs: ResolvedSpec[], groups: PlanGroup[]) {
+    for (let wave = 1; ; wave++) {
+      const submittedBefore = job.counts.submitted
+      await submitGroups(job, ctx, groups)
+      await settle(job, ctx, specs)
+      if (job.phase !== "done" || job.counts.submitted === submittedBefore) return
+      // Held at "queued" while the next wave is planned, so the page never
+      // sees the job finished between waves; put back if none follows.
+      const finishedAt = job.finishedAt
+      const finish = () => { job.phase = "done"; job.finishedAt = finishedAt }
+      job.phase = "queued"
+      job.finishedAt = null
+      const next = await opts.loadProject(job.project ?? undefined)
+      const byKey = new Map(next.specs.map((spec) => [lockKey(spec.styleId, spec.assetId), spec]))
+      const nextSpecs = job.keys.map((key) => byKey.get(key)).filter((spec): spec is ResolvedSpec => Boolean(spec))
+      const plan = await buildPlan(nextSpecs, next.lock)
+      if (!plan.actionable.length) return finish()
+      for (const group of plan.groups) {
+        const remaining = remainingFor(group, plan.groups.length, opts.budget, spent)
+        if (group.cost > remaining) {
+          say(job, `wave ${wave + 1} would spend ${formatCost(group.costUnit, group.cost)} on ${group.provider} but only ` +
+            `${formatCost(group.costUnit, remaining)} of this session's budget remain; stopping here`)
+          return finish()
+        }
+      }
+      say(job, `wave ${wave + 1}: ${plan.actionable.length} asset(s) whose parents are now on disk: ` +
+        plan.groups.map((g) => `${g.provider} ${formatCost(g.costUnit, g.cost)}`).join("; "))
+      contexts.set(job.id, next)
+      ctx = next
+      specs = nextSpecs
+      groups = plan.groups
+    }
+  }
+
   async function run(job: GenerateJob, ctx: GalleryProjectContext, specs: ResolvedSpec[], groups: PlanGroup[]) {
     try {
       if (job.mode === "refresh") {
@@ -302,39 +382,8 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
         return
       }
       if (job.mode === "generate") {
-        job.phase = "submitting"
-        for (const group of groups) {
-          const provider = opts.providerFor(job.project ?? undefined, group.provider)
-          const ceiling = remainingFor(group, groups.length, opts.budget, spent)
-          // Same preflight as `gen`: a known balance must cover the estimate,
-          // in the same unit, before the first request is made.
-          if (provider.balance) {
-            const balance = await provider.balance()
-            say(job, `balance: ${formatCost(balance.unit, balance.remaining)} remaining (${group.provider})`)
-            if (balance.unit !== group.costUnit) {
-              throw new Error(
-                `Provider ${group.provider} estimate unit ${group.costUnit} does not match balance unit ${balance.unit}.`,
-              )
-            }
-            if (balance.unit !== "free" && group.cost > balance.remaining) {
-              throw new Error(
-                `${group.provider} needs ${formatCost(balance.unit, group.cost)} but only ` +
-                  `${formatCost(balance.unit, balance.remaining)} remain.`,
-              )
-            }
-          }
-          const res = await submit(provider, ctx.loaded, group.actionable, ctx.lock, ctx.lockPath, {
-            budget: ceiling,
-            onProgress: (line) => say(job, line),
-            spacingMs: opts.submitSpacingMs,
-          })
-          spent[group.provider] = (spent[group.provider] ?? 0) + res.spent
-          units[group.provider] = res.unit
-          job.spent[group.provider] = (job.spent[group.provider] ?? 0) + res.spent
-          job.counts.submitted += res.submitted
-          job.counts.failed += res.failed
-          say(job, `${group.provider}: submitted ${res.submitted}, failed ${res.failed}, estimated ${formatCost(res.unit, res.spent)}`)
-        }
+        await generateInWaves(job, ctx, specs, groups)
+        return
       }
       await settle(job, ctx, specs)
     } catch (error) {

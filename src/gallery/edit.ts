@@ -4,10 +4,20 @@ import {
   applyManifestEdit,
   ManifestEditError,
   ManifestEditSchema,
+  priceManifestEdit,
+  type ManifestEdit,
+  type ManifestEditPrice,
 } from "../manifest-edit.ts"
 import { detachHandEdit, MAX_HAND_EDIT_BYTES, openInEditor, saveHandEdit, startHandEdit } from "../pipeline/hand-edit.ts"
-import { lockKey } from "../types.ts"
+import { lockKey, type ResolvedSpec } from "../types.ts"
 import type { GalleryProjectContext } from "./generate.ts"
+import { saveProjectImage, UploadImageSchema } from "./upload.ts"
+import {
+  createSkeletonAnimation,
+  SkeletonAnimationRequestSchema,
+  SkeletonKeypointsUpdateSchema,
+  updateSkeletonKeypoints,
+} from "./skeleton.ts"
 import type { GalleryBuild } from "./snapshot.ts"
 
 /** Standard base64, sized so a decoded payload cannot exceed the edit limit. */
@@ -118,6 +128,52 @@ export function createGalleryEditHandler(
       }
       return opts.reload()
     }
+    const upload = UploadImageSchema.safeParse(body)
+    if (upload.success) {
+      let manifestPath: string
+      try {
+        manifestPath = await opts.manifestFor(upload.data.project)
+      } catch (error) {
+        throw new ManifestEditError(error instanceof Error ? error.message : String(error))
+      }
+      const written = await saveProjectImage(path.dirname(path.resolve(manifestPath)), upload.data)
+      log(`  image added: ${written}`)
+      return opts.reload()
+    }
+    if ((body as { action?: unknown } | null)?.action === "upload-image") {
+      throw new ManifestEditError("invalid upload: " + upload.error.issues.slice(0, 2).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "))
+    }
+    const poses = SkeletonKeypointsUpdateSchema.safeParse(body)
+    if (poses.success) {
+      if (!opts.loadProject) throw new ManifestEditError("pose edits are not available in this gallery")
+      const written = await updateSkeletonKeypoints(await opts.loadProject(poses.data.project), poses.data)
+      log(`  poses saved: ${written} (${poses.data.styleId}/${poses.data.assetId} is stale until generated again)`)
+      return opts.reload()
+    }
+    if ((body as { action?: unknown } | null)?.action === "update-skeleton-keypoints") {
+      throw new ManifestEditError(
+        "invalid pose edit: " +
+          poses.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
+      )
+    }
+    const skeleton = SkeletonAnimationRequestSchema.safeParse(body)
+    if (skeleton.success) {
+      let manifestPath: string
+      try {
+        manifestPath = await opts.manifestFor(skeleton.data.project)
+      } catch (error) {
+        throw new ManifestEditError(error instanceof Error ? error.message : String(error))
+      }
+      await createSkeletonAnimation(manifestPath, skeleton.data)
+      log(`  manifest edited: added skeleton animation ${skeleton.data.assetId} (${skeleton.data.keypointsFile})`)
+      return opts.reload()
+    }
+    if ((body as { action?: unknown } | null)?.action === "create-skeleton-animation") {
+      throw new ManifestEditError(
+        "invalid skeleton animation: " +
+          skeleton.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
+      )
+    }
     const parsed = ManifestEditSchema.safeParse(body)
     if (!parsed.success) {
       throw new ManifestEditError(
@@ -135,12 +191,60 @@ export function createGalleryEditHandler(
     if (result.changed) {
       const relative = path.relative(process.cwd(), result.manifestPath)
       const shown = !relative || relative.startsWith("..") ? result.manifestPath : relative
-      const subject = parsed.data.action === "patch-style" ? `style ${parsed.data.styleId}`
-        : parsed.data.action === "set-source" || parsed.data.action === "clear-source"
-          ? `${parsed.data.styleId}/${parsed.data.assetId} source`
-          : parsed.data.assetId
-      log(`  manifest edited: ${parsed.data.action === "add-asset" ? "added" : "changed"} ${subject} in ${shown}`)
+      log(`  manifest edited: ${describeEdit(parsed.data)} in ${shown}`)
     }
     return opts.reload()
+  }
+}
+
+/** One line for the terminal: what a saved edit did. */
+function describeEdit(edit: ManifestEdit | Extract<ManifestEdit, { action: "batch" }>["edits"][number]): string {
+  switch (edit.action) {
+    case "batch": return `${edit.edits.length} changes (${edit.edits.map(describeEdit).join("; ")})`
+    case "add-style": return `added style ${edit.styleId}`
+    case "patch-style": return `changed style ${edit.styleId}`
+    case "set-source":
+    case "clear-source": return `changed ${edit.styleId}/${edit.assetId} source`
+    case "add-asset": return `added ${edit.assetId}`
+    case "patch-asset": return `changed ${edit.assetId}`
+  }
+}
+
+/**
+ * The page's "what would this cost" question for an unsaved form: the same
+ * validation a save runs, resolved offline and compared with the manifest
+ * as it stands. Nothing is written.
+ */
+export function createGalleryPriceHandler(opts: {
+  manifestFor: (project?: string) => string | Promise<string>
+  /**
+   * The live quoter for a project's specs (PixelLab's Pro Flash cost
+   * endpoint), or null when the project has no key for it. Anything it
+   * declines or fails to quote keeps the offline estimate.
+   */
+  quoteFor?: (project?: string) => Promise<((spec: ResolvedSpec) => Promise<number | null>) | null>
+}): (body: unknown) => Promise<ManifestEditPrice> {
+  return async (body) => {
+    const parsed = ManifestEditSchema.safeParse(body)
+    if (!parsed.success) {
+      throw new ManifestEditError(
+        "invalid edit: " + parsed.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
+      )
+    }
+    let manifestPath: string
+    try {
+      manifestPath = await opts.manifestFor(parsed.data.project)
+    } catch (error) {
+      throw new ManifestEditError(error instanceof Error ? error.message : String(error))
+    }
+    let quote: ((spec: ResolvedSpec) => Promise<number | null>) | null = null
+    let quoteError: string | undefined
+    try {
+      quote = opts.quoteFor ? await opts.quoteFor(parsed.data.project) : null
+    } catch (error) {
+      quoteError = error instanceof Error ? error.message : String(error)
+    }
+    const price = await priceManifestEdit(manifestPath, parsed.data, quote ? { quote } : {})
+    return quoteError && !price.quoteError ? { ...price, quoteError } : price
   }
 }

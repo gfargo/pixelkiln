@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { existsSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -21,6 +21,12 @@ import { createGalleryEditHandler } from "../src/gallery/edit.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { renderGallery } from "../src/gallery/page.ts"
 import { lockKey, type Lock } from "../src/types.ts"
+
+/** The gallery client as written: its typed modules, read for what they say rather than as bundled. */
+const clientSource = () => readdirSync(new URL("../src/gallery/client/src/", import.meta.url))
+  .filter((f) => f.endsWith(".ts"))
+  .map((f) => readFileSync(new URL(`../src/gallery/client/src/${f}`, import.meta.url), "utf8"))
+  .join("\n")
 
 let dir: string
 let lockPath: string
@@ -249,8 +255,10 @@ describe("saving a frame set from the browser", () => {
 
   it("is sent to the editor as frames and shown per member", () => {
     const snapshot = { items: [], styles: [], totals: { entries: 0 }, project: { name: "x", manifest: "m", lock: "l" } } as never
-    const page = renderGallery(snapshot, { editable: true, editor: true, session: "0".repeat(32) })
-    expect(page).toContain("message.frames = pngs.map((png, i) => ({ role: SHEET.roles[i], png }))")
+    const rendered = renderGallery(snapshot, { editable: true, editor: true, session: "0".repeat(32) })
+    expect(rendered).toContain("pixelkiln:open")
+    const page = clientSource()
+    expect(page).toContain("message.frames = pngs.map((png, i) => ({ role: S.SHEET.roles[i], png }))")
     expect(page).toContain("body.frames.push({ role: f.role === undefined ? null : f.role, png: await toBase64(f.png) })")
     expect(page).toContain("cannot open sets")
     expect(page).toContain("Hand edit (' + item.edits.length + ' ' + memberNoun(item, item.edits.length) + ')")

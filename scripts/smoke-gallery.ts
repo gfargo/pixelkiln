@@ -15,11 +15,14 @@
  * is used. Without one it skips, unless CI is set, in which case it fails.
  */
 import { existsSync } from "node:fs"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { createGalleryEditHandler } from "../src/gallery/edit.ts"
+import { createGalleryEditHandler, createGalleryPriceHandler } from "../src/gallery/edit.ts"
 import { createGenerateHandlers } from "../src/gallery/generate.ts"
+import { createGallerySkeletonHandlers } from "../src/gallery/skeleton.ts"
+import { encodeRgbaPng } from "../src/png.ts"
+import { SKELETON_LABELS, scaffoldSkeletonSet } from "../src/skeleton.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
@@ -27,6 +30,7 @@ import { poll } from "../src/pipeline/poll.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import { openProject } from "../src/project.ts"
 import { FakeProvider } from "../src/providers/fake.ts"
+import { createProFlashQuoter } from "../src/providers/pixellab.ts"
 
 const CHROME_CANDIDATES = [
   process.env.CHROME,
@@ -93,11 +97,13 @@ const server = await serveGallery({
   }),
 })
 
-// The page's script declares these at top level, where a function evaluated
-// in the page sees them as bare names (a lexical binding is not a property
-// of globalThis).
-declare const snap: { items: { id: string; state: string; outputs: { sha256: string }[]; history: { index: number; outputs: { sha256: string }[] }[] }[] }
-declare const ui: { notice: { text: string } | null }
+// The page's state lives inside its bundle; main.ts exposes it on
+// `window.__pixelkiln` for exactly this kind of test.
+declare const __pixelkiln: {
+  S: { snap: { items: { id: string; state: string; outputs: { sha256: string }[]; history: { index: number; outputs: { sha256: string }[] }[] }[] } }
+  ui: { notice: { text: string } | null; notify: boolean }
+  family: () => { rootId: string; source: string; direction: string; playing: boolean; anims: number } | null
+}
 
 const failures: string[] = []
 const check = (ok: unknown, what: string) => {
@@ -124,23 +130,25 @@ try {
   await page.goto(server.url, { waitUntil: "networkidle0" })
 
   const item = (id: string) => page.evaluate((key) => {
-    const found = snap.items.find((x) => x.id === key)
+    const found = __pixelkiln.S.snap.items.find((x) => x.id === key)
     return found ? { state: found.state, sha: found.outputs[0]?.sha256 ?? null, history: found.history.map((g) => g.outputs[0]?.sha256 ?? null) } : null
   }, id)
   const drawerButtons = () => page.evaluate(() => [...document.querySelectorAll(".drawer .gen button")].map((b) => b.textContent ?? ""))
-  const notice = () => page.evaluate(() => ui.notice?.text ?? "")
-  const noticeMatches = (pattern: string) => page.waitForFunction((re: string) => new RegExp(re).test(ui.notice?.text ?? ""), { timeout: 30_000, polling: 200 }, pattern)
+  const notice = () => page.evaluate(() => __pixelkiln.ui.notice?.text ?? "")
+  const noticeMatches = (pattern: string) => page.waitForFunction((re: string) => new RegExp(re).test(__pixelkiln.ui.notice?.text ?? ""), { timeout: 30_000, polling: 200 }, pattern)
   // The notice lands before the snapshot refresh that follows it, so wait for
   // the record itself to show the result.
-  const waitForItem = (id: string, test: string) => page.waitForFunction(
-    (key: string, src: string) => {
-      const found = snap.items.find((x) => x.id === key)
-      return Boolean(found) && new Function("item", `return ${src}`)(found)
-    },
-    { timeout: 30_000, polling: 200 },
-    id,
-    test,
-  ).then(() => true, () => false)
+  // Polled from here rather than with waitForFunction: the page's content
+  // security policy refuses the string evaluation that polling relies on.
+  const waitForItem = async (id: string, test: (item: any) => boolean) => {
+    const deadline = Date.now() + 30_000
+    while (Date.now() < deadline) {
+      const found = await page.evaluate((key) => __pixelkiln.S.snap.items.find((x) => x.id === key) ?? null, id)
+      if (found && test(found)) return true
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    }
+    return false
+  }
   const submitDialog = async () => {
     await page.waitForSelector(".dialog form button[type=submit]", { timeout: 5_000 })
     await page.click(".dialog form button[type=submit]")
@@ -156,11 +164,29 @@ try {
   await page.goto(`${server.url}#base/hammer`, { waitUntil: "networkidle0" })
   await page.waitForSelector(".drawer", { timeout: 5_000 })
   check((await drawerButtons()).some((label) => label.startsWith("Generate")), "missing record offers Generate")
+
+  // The record below the actions is in tabs, and the tab in view sticks as records are stepped through.
+  const tabs = () => page.evaluate(() => ({
+    names: [...document.querySelectorAll(".drawer .tablist [role=tab]")].map((t) => t.textContent),
+    on: document.querySelector(".drawer .tablist [aria-selected=true]")?.textContent ?? null,
+    visible: [...document.querySelectorAll(".drawer .tabpanel")].filter((p) => !(p as HTMLElement).hidden).map((p) => p.id),
+  }))
+  const opened = await tabs()
+  check(opened.on === "Overview" && opened.names.includes("Details") && opened.visible.join() === "dpanel-overview", `a record opens on its Overview tab (${JSON.stringify(opened)})`)
+  await page.click("#dtab-details")
+  check((await page.$eval("#dpanel-details", (n) => n.textContent ?? "")).includes("Provider record"), "Details holds the provider record")
+  await page.click('.drawer .nav button[title^="Previous"]')
+  await page.waitForFunction(() => document.querySelector(".drawer .aid")?.textContent === "anvil", { timeout: 5_000 })
+  check((await tabs()).on === "Details", "the tab in view sticks when stepping to the next record")
+  await page.click("#dtab-overview")
+  await page.goto(`${server.url}#base/hammer`, { waitUntil: "networkidle0" })
+  await page.reload({ waitUntil: "networkidle0" })
+  await page.waitForSelector(".drawer", { timeout: 5_000 })
   await page.evaluate(() => ([...document.querySelectorAll(".drawer .gen button")] as HTMLButtonElement[]).find((b) => b.textContent?.startsWith("Generate"))!.click())
   await submitDialog()
   await page.waitForSelector(".card .busy-badge", { timeout: 10_000 }).then(() => check(true, "card shows a busy badge while generating"), () => check(false, "card shows a busy badge while generating"))
   await noticeMatches("Regenerated|Done")
-  check(await waitForItem("base/hammer", 'item.state === "ok"'), "hammer is ok after generating")
+  check(await waitForItem("base/hammer", (item) => item.state === "ok"), "hammer is ok after generating")
   check((await page.$$(".card .busy-badge")).length === 0, "badge clears when the job lands")
 
   // Regenerate the existing one: the replaced generation is kept and listed.
@@ -171,7 +197,7 @@ try {
   await page.evaluate(() => ([...document.querySelectorAll(".drawer .gen button")] as HTMLButtonElement[]).find((b) => b.textContent?.startsWith("Regenerate"))!.click())
   await submitDialog()
   await noticeMatches("Regenerated")
-  await waitForItem("base/anvil", `item.outputs[0].sha256 !== ${JSON.stringify(before?.sha)}`)
+  await waitForItem("base/anvil", (item) => item.outputs[0]?.sha256 !== before?.sha)
   const after = await item("base/anvil")
   check(after?.state === "ok" && after.sha !== before?.sha, "regeneration produced a new current generation")
   check(after?.history.length === 1 && after.history[0] === before?.sha, "the replaced generation is #1 in history")
@@ -181,7 +207,7 @@ try {
   await page.evaluate(() => ([...document.querySelectorAll(".drawer .version button")] as HTMLButtonElement[]).find((b) => /Restore this one/.test(b.textContent ?? ""))!.click())
   await submitDialog()
   await noticeMatches("Brought back")
-  await waitForItem("base/anvil", `item.outputs[0].sha256 === ${JSON.stringify(before?.sha)}`)
+  await waitForItem("base/anvil", (item) => item.outputs[0]?.sha256 === before?.sha)
   const restored = await item("base/anvil")
   check(restored?.sha === before?.sha, "restore made the earlier generation current again")
   check(restored?.history.length === 1 && restored.history[0] === after?.sha, "the one it replaced is now #1 in history")
@@ -203,12 +229,328 @@ try {
     const prompt = form.querySelector("textarea") as HTMLTextAreaElement
     prompt.value = "add rust and wear"
   })
+  // A refresh while the form is open (the auto-refresh timer, a job landing)
+  // must not throw away what was typed.
+  // (Clicked in the page: with the drawer open its scrim covers the header,
+  // and a pointer click there closes the drawer instead.)
+  await page.evaluate(() => (document.getElementById("refresh") as HTMLButtonElement).click())
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  check(
+    await page.evaluate(() => (document.querySelector(".drawer form.edit textarea") as HTMLTextAreaElement | null)?.value === "add rust and wear"),
+    "an open form survives a refresh",
+  )
   await page.click(".drawer form.edit button[type=submit]")
   await noticeMatches("Added to the manifest")
   check(
-    await waitForItem("base/anvil-worn", 'item.revisionParentKey === "base/anvil" && item.asset?.revision?.mode === "image-to-image"'),
+    await waitForItem("base/anvil-worn", (item) => item.revisionParentKey === "base/anvil" && item.asset?.revision?.mode === "image-to-image"),
     "revision asset created with its parent recorded",
   )
+
+  // The pose editor, on a PixelLab project resolved offline: drag a joint on
+  // an existing skeleton animation and save it, then estimate poses for a
+  // new one (the estimate client is stubbed) and drag in the create form.
+  const poseDir = path.join(dir, "poses-project")
+  await mkdir(path.join(poseDir, "art"), { recursive: true })
+  await mkdir(path.join(poseDir, "poses"))
+  await writeFile(path.join(poseDir, "art", "hero.png"), encodeRgbaPng(64, 64, Buffer.alloc(64 * 64 * 4, 120)))
+  const standing = SKELETON_LABELS.map((label, i) => ({
+    label,
+    x: label.startsWith("RIGHT") ? 0.35 : label.startsWith("LEFT") ? 0.65 : 0.5,
+    y: Math.min(0.95, 0.1 + i * 0.045),
+    z_index: 1,
+  }))
+  const posesFile = path.join(poseDir, "poses", "hero-wave.json")
+  await writeFile(posesFile, JSON.stringify(scaffoldSkeletonSet(standing, 3)))
+  const poseManifest = path.join(poseDir, "pixelkiln.manifest.json")
+  await writeFile(poseManifest, JSON.stringify({
+    name: "pose-smoke",
+    provider: "pixellab",
+    styles: { chars: { outDir: "out" } },
+    assets: {
+      hero: { prompt: "a knight", width: 64, height: 64, source: "art/hero.png" },
+      "hero-wave": { prompt: "waving", revision: { mode: "animate-skeleton", from: "hero", keypointsFile: "poses/hero-wave.json", direction: "south" } },
+    },
+  }, null, 2))
+  const loadPoses = () => openProject(poseManifest, { env: false })
+  const reloadPoses = async () => buildGallerySnapshot(await loadPoses())
+  const poseServer = await serveGallery({
+    load: reloadPoses,
+    open: false,
+    onProgress: quiet,
+    edit: createGalleryEditHandler({ manifestFor: () => poseManifest, loadProject: loadPoses, reload: reloadPoses, onProgress: quiet }),
+    skeleton: createGallerySkeletonHandlers({ loadProject: loadPoses, client: () => ({ estimateSkeleton: async () => ({ keypoints: standing, usage: null }) }) }),
+  })
+  try {
+    page.on("dialog", (dialog) => { void dialog.accept() })
+    const pressButton = (scope: string, text: string) => page.evaluate((sel, label) => {
+      const b = ([...document.querySelectorAll(sel)] as HTMLButtonElement[]).find((x) => x.textContent === label)
+      b?.click()
+      return Boolean(b)
+    }, scope, text)
+    /** Drags a named joint on the editor's stage by (dx, dy) screen pixels, the way a person does. */
+    const dragJoint = async (label: string, dx: number, dy: number) => {
+      const handle = await page.evaluateHandle((name) => {
+        const hit = [...document.querySelectorAll(".pose-stage circle.joint")].find((c) => c.querySelector("title")?.textContent === name)!
+        hit.scrollIntoView({ block: "center" })
+        return hit
+      }, label)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      const box = (await handle.asElement()!.boundingBox())!
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 6 })
+      await page.mouse.up()
+    }
+    await page.goto(`${poseServer.url}#chars/hero-wave`, { waitUntil: "networkidle0" })
+    check(await page.$(".drawer .poses svg.pose") !== null, "a skeleton animation shows its poses")
+    check(await pressButton(".drawer button", "Edit poses"), "a skeleton animation offers Edit poses")
+    await page.waitForSelector(".pose-editor svg.stage", { timeout: 5_000 })
+    await dragJoint("RIGHT ARM", -30, -40)
+    await pressButton(".drawer form.edit button", "Save poses")
+    await noticeMatches("Poses saved")
+    const saved = JSON.parse(await readFile(posesFile, "utf8")) as { frames: { label: string; y: number }[][] }
+    const arm = saved.frames[0]!.find((j) => j.label === "RIGHT ARM")!
+    const was = standing.find((j) => j.label === "RIGHT ARM")!
+    check(arm.y < was.y - 0.05, "dragging a joint and saving rewrites the keypoints file")
+
+    await page.goto(`${poseServer.url}#chars/hero`, { waitUntil: "networkidle0" })
+    check(await pressButton(".drawer button", "+ Skeleton animation"), "a sprite offers + Skeleton animation")
+    await page.waitForSelector("form.edit", { timeout: 5_000 })
+    await pressButton("form.edit button", "Estimate poses")
+    await page.waitForSelector("form.edit .pose-editor svg.stage", { timeout: 5_000 })
+    await dragJoint("LEFT LEG", 25, 0)
+    const drafted = JSON.parse(await page.$eval("form.edit textarea", (t) => (t as HTMLTextAreaElement).value)) as { frames: { label: string; x: number }[][] }
+    check(drafted.frames[0]!.find((j) => j.label === "LEFT LEG")!.x > 0.7, "dragging in the create form writes the JSON")
+  } finally {
+    await poseServer.close()
+  }
+
+  // The character studio: draft a character with its own sprite and loops,
+  // see it priced, then create and generate it; the job's waves take the
+  // base first and everything drawn from it after.
+  const studioDir = path.join(dir, "studio-project")
+  await mkdir(studioDir, { recursive: true })
+  const studioManifest = path.join(studioDir, "pixelkiln.manifest.json")
+  await writeFile(studioManifest, JSON.stringify({
+    name: "studio-smoke",
+    provider: "pixellab",
+    styles: { props: { outDir: "out/props" } },
+    assets: { crate: { prompt: "a crate", width: 32, height: 32, styles: ["props"] } },
+  }, null, 2))
+  const spritePath = path.join(studioDir, "sprite.png")
+  await writeFile(spritePath, encodeRgbaPng(64, 64, Buffer.alloc(64 * 64 * 4, 150)))
+  const studioProvider = new FakeProvider({ candidates: 1 })
+  const loadStudio = () => openProject(studioManifest, { env: false })
+  const reloadStudio = async () => buildGallerySnapshot(await loadStudio())
+  const studioServer = await serveGallery({
+    load: reloadStudio,
+    open: false,
+    onProgress: quiet,
+    edit: createGalleryEditHandler({ manifestFor: () => studioManifest, loadProject: loadStudio, reload: reloadStudio, onProgress: quiet }),
+    // PixelLab's quote endpoint stands in here: every Pro Flash question is answered 6 + 2.
+    price: createGalleryPriceHandler({
+      manifestFor: () => studioManifest,
+      quoteFor: async () => createProFlashQuoter({ proFlashCost: async () => ({ image: 6, rotations: 2, total: 8 }) }),
+    }),
+    generate: createGenerateHandlers({
+      loadProject: loadStudio,
+      providerFor: () => studioProvider,
+      // The fake bills a flat 40 a submission where PixelLab's own estimate is
+      // far lower, so the ceiling here covers the fake's figure, not plan's.
+      budget: { amount: 1000, byProvider: {} },
+      reload: reloadStudio,
+      pollIntervalMs: 50,
+      submitSpacingMs: 0,
+      onProgress: quiet,
+    }),
+  })
+  try {
+    await page.goto(studioServer.url, { waitUntil: "networkidle0" })
+    await page.click("#studio")
+    await page.waitForSelector(".studio-form", { timeout: 5_000 })
+    await page.type(".studio-form input[placeholder='e.g. mira']", "mira")
+    await page.type(".studio-form textarea", "a young knight in silver armour")
+    // Pro Flash is priced by PixelLab's own quote, marked live.
+    const setEngine = (engine: string) => page.evaluate((value) => {
+      const select = [...document.querySelectorAll(".studio-form select")].find((s) => [...(s as HTMLSelectElement).options].some((o) => o.value === "pro-flash")) as HTMLSelectElement
+      select.value = value
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+    }, engine)
+    await setEngine("pro-flash")
+    await page.waitForSelector(".studio-price .quote-live", { timeout: 10_000 })
+    const live = await page.$eval(".studio-price", (n) => n.textContent ?? "")
+    check(/characters\/mira8 generations live/.test(live) && /provisional/.test(live), "a Pro Flash base is priced by PixelLab's live quote")
+    await setEngine("v3")
+    await page.waitForFunction(() => !document.querySelector(".studio-price .quote-live") && /Total:/.test(document.querySelector(".studio-price")?.textContent ?? ""), { timeout: 10_000 })
+    const file = await page.$(".studio-form input[type=file]")
+    await (file as unknown as { uploadFile: (p: string) => Promise<void> }).uploadFile(spritePath)
+    await page.waitForFunction(() => /Total:/.test(document.querySelector(".studio-price")?.textContent ?? ""), { timeout: 10_000 })
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    const quote = await page.$eval(".studio-price", (n) => n.textContent ?? "")
+    check(/characters\/mira1 generation/.test(quote), "the studio prices a base drawn from its own sprite as its rotations")
+    check(/characters\/mira\.walk\.eastfree \(mirrored\)/.test(quote) && /Total: 17 generations/.test(quote), "loops are priced per direction, mirrors free, with a total")
+    await page.evaluate(() => (document.querySelector(".studio-form .actions button.primary") as HTMLButtonElement).click())
+    let finished: { phase: string; counts: { submitted: number } } | undefined
+    for (let i = 0; i < 150 && !finished; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      const jobs = (await (await fetch(new URL("/api/jobs", studioServer.url))).json()) as { jobs: { phase: string; counts: { submitted: number } }[] }
+      if (jobs.jobs[0] && ["done", "failed"].includes(jobs.jobs[0].phase)) finished = jobs.jobs[0]
+    }
+    check(finished?.phase === "done" && finished.counts.submitted === 6, "Create & generate draws the base, then its loops and mirror, in waves")
+    const written = JSON.parse(await readFile(studioManifest, "utf8")) as { styles: Record<string, unknown>; assets: Record<string, unknown> }
+    check(Boolean(written.styles.characters) && Object.keys(written.assets).join(",") === "crate,mira,mira.walk,mira.idle", "the studio saved the style, base, and loops in one write")
+
+    // The family view: the base turns through its rotations, and every loop
+    // plays by direction on one clock.
+    // Only the hash changes, so goto alone would keep the pre-generation snapshot.
+    await page.goto(`${studioServer.url}#characters/mira.walk.west`, { waitUntil: "networkidle0" })
+    await page.reload({ waitUntil: "networkidle0" })
+    await page.waitForSelector(".drawer", { timeout: 5_000 })
+    await page.evaluate(() => ([...document.querySelectorAll(".drawer button")] as HTMLButtonElement[]).find((b) => b.textContent?.startsWith("Family view"))!.click())
+    await page.waitForSelector(".family-sheet .tt-stage img", { timeout: 5_000 })
+    const opened = await page.evaluate(() => __pixelkiln.family())
+    check(opened?.rootId === "characters/mira" && opened.direction === "west", "the family view opens on the base, turned to the loop's direction")
+    const grid = await page.evaluate(() => ({
+      rows: [...document.querySelectorAll(".family-sheet table.lg tbody tr")].map((r) => r.querySelector("th b")?.textContent),
+      cells: document.querySelectorAll(".family-sheet .lg-cell").length,
+      mirrors: document.querySelectorAll(".family-sheet .lg-mirror").length,
+      columns: document.querySelectorAll(".family-sheet thead .lg-dir").length,
+    }))
+    check([...grid.rows].sort().join(",") === "idle,walk" && grid.columns === 8 && grid.mirrors === 1, `the loop grid has a row per loop and a column per direction (${JSON.stringify(grid)})`)
+    const stage = (await page.$(".family-sheet .tt-stage"))!
+    const box = (await stage.boundingBox())!
+    await page.mouse.move(box.x + 40, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + 40 + 60, box.y + box.height / 2, { steps: 6 })
+    await page.mouse.up()
+    const turned = await page.evaluate(() => __pixelkiln.family()?.direction)
+    check(turned === "south", `dragging right turns the turntable two steps, west to south (${turned})`)
+    const column = await page.evaluate(() => [...document.querySelectorAll(".family-sheet thead th.col-on")].map((t) => t.textContent).join(","))
+    check(column === "S", "the loop grid highlights the turntable's direction")
+    const frames = await page.evaluate(async () => {
+      const img = document.querySelector(".family-sheet .lg-cell img") as HTMLImageElement
+      const seen = new Set<string>()
+      for (let i = 0; i < 12; i++) { seen.add(img.src); await new Promise((r) => setTimeout(r, 60)) }
+      return seen.size
+    })
+    check(frames > 1, "loops play in the grid")
+
+    // An empty direction takes a new loop from its "+": priced first, then one write.
+    const walkRow = () => page.evaluate(() => {
+      const row = [...document.querySelectorAll(".family-sheet table.lg tbody tr")].find((r) => r.querySelector("th b")?.textContent === "walk")!
+      return { cells: row.querySelectorAll(".lg-cell").length, mirrors: row.querySelectorAll(".lg-mirror").length, adds: row.querySelectorAll(".lg-add").length }
+    })
+    const before = await walkRow()
+    await page.evaluate(() => {
+      const row = [...document.querySelectorAll(".family-sheet table.lg tbody tr")].find((r) => r.querySelector("th b")?.textContent === "walk")!
+      ;(row.querySelector('.lg-add[title$="south-east"]') as HTMLButtonElement).click()
+    })
+    await page.waitForFunction(() => /total/.test(document.querySelector(".gap-panel .gap-price")?.textContent ?? ""), { timeout: 10_000 })
+    const gapText = await page.$eval(".gap-panel", (n) => n.textContent ?? "")
+    check(/south-west comes with it as a free mirror/.test(gapText) && /walk\.south-east 4 generations · mira\.walk\.south-west free/.test(gapText), `the gap panel prices the new direction and its free mirror (${gapText})`)
+    await page.evaluate(() => ([...document.querySelectorAll(".gap-panel .actions button")] as HTMLButtonElement[]).find((b) => b.textContent === "Add")!.click())
+    await page.waitForFunction(() => !document.querySelector(".gap-panel"), { timeout: 10_000 })
+    const after = await walkRow()
+    const walkDirections = (JSON.parse(await readFile(studioManifest, "utf8")) as { assets: Record<string, { animation?: { directions?: string[] } }> }).assets["mira.walk"]?.animation?.directions
+    check(after.cells === before.cells + 2 && after.mirrors === before.mirrors + 1 && walkDirections?.join(",") === "south,south-east,north,west",
+      `adding south-east draws it and mirrors south-west (${JSON.stringify({ before, after, walkDirections })})`)
+    await page.keyboard.press("Escape")
+    check(await page.evaluate(() => __pixelkiln.family() === null || !document.querySelector(".family-sheet")), "Escape closes the family view")
+
+    // Loops on the grid play under the pointer, or all at once with "play loops".
+    await page.goto(studioServer.url, { waitUntil: "networkidle0" })
+    const srcsOf = (selector: string) => page.evaluate(async (sel) => {
+      const img = document.querySelector(sel) as HTMLImageElement
+      const seen = new Set<string>()
+      for (let i = 0; i < 12; i++) { seen.add(img.src); await new Promise((r) => setTimeout(r, 60)) }
+      return seen.size
+    }, selector)
+    const walkThumb = '.card[data-key="characters/mira.walk.west"] .cell > img'
+    check(await srcsOf(walkThumb) === 1, "a loop on the grid is still until the pointer is over it")
+    await page.hover('.card[data-key="characters/mira.walk.west"]')
+    check(await srcsOf(walkThumb) > 1, "a loop plays while the pointer is over its card")
+    await page.mouse.move(2, 2)
+    await page.click("#playloops")
+    check(await srcsOf('.card[data-key="characters/mira.idle.south"] .cell > img') > 1, "play loops plays every loop without hovering")
+    await page.click("#playloops")
+
+    // The backdrop: one choice for every place a sprite is shown, kept across reloads.
+    await page.click("header .backdrop .bd-light")
+    await page.reload({ waitUntil: "networkidle0" })
+    const backdrop = await page.evaluate(() => [document.body.dataset.backdrop, getComputedStyle(document.querySelector(".cell")!).backgroundColor])
+    check(backdrop[0] === "light" && backdrop[1] === "rgb(239, 233, 220)", `the light backdrop sticks and colours the cards (${backdrop.join(", ")})`)
+    await page.click("header .backdrop .bd-checker")
+
+    // The drawer's frame player: step with , and ., onion skin under the frame.
+    await page.goto(`${studioServer.url}#characters/mira.walk.west`, { waitUntil: "networkidle0" })
+    await page.reload({ waitUntil: "networkidle0" })
+    await page.waitForSelector(".frames-bar", { timeout: 5_000 })
+    await page.keyboard.press(".")
+    await page.keyboard.press(".")
+    check(await page.$eval(".frames-bar .count", (n) => n.textContent) === "3 / 8", "the frame player steps with the . key")
+    await page.click(".frames-bar .chip input")
+    check(await page.evaluate(() => !(document.querySelector(".preview img.onion") as HTMLImageElement).hidden), "onion skin shows the previous frame")
+    await page.click(".frames-bar .chip input")
+
+    // Group by family: a character's members share one row with its own actions.
+    await page.goto(`${studioServer.url}?group=family`, { waitUntil: "networkidle0" })
+    const families = await page.evaluate(() => [...document.querySelectorAll(".fam-group")].map((g) => ({
+      head: g.querySelector(".fam-head b")?.textContent ?? null,
+      cards: [...g.querySelectorAll(".card")].map((c) => (c as HTMLElement).dataset.key),
+    })))
+    const mira = families.find((f) => f.head === "mira")
+    check(mira?.cards.join(",") === "characters/mira,characters/mira.idle.south,characters/mira.walk.south,characters/mira.walk.south-east,characters/mira.walk.east,characters/mira.walk.north,characters/mira.walk.west,characters/mira.walk.south-west",
+      `grouping by family puts the base first and each loop around the compass (${JSON.stringify(families)})`)
+
+    // Select several, act on them together: priced actions, and one tag write.
+    await page.click("#select")
+    // Clicked in the page: the sticky selection bar can sit over a card low on the screen.
+    for (const key of ["props/crate", "characters/mira.idle.south"]) {
+      await page.evaluate((k) => (document.querySelector(`.card[data-key="${k}"]`) as HTMLButtonElement).click(), key)
+    }
+    const selbar = await page.$eval("#selbar", (n) => n.textContent ?? "")
+    check(/2 selected/.test(selbar) && /Generate 1 · 1 generation/.test(selbar) && /Regenerate 1 · /.test(selbar), `the selection bar prices what it would do (${selbar})`)
+    check(await page.evaluate(() => !document.querySelector(".drawer")), "a click in select mode picks a card instead of opening it")
+    await page.type("#selbar .tagbox input", "hero")
+    await page.click("#selbar .tagbox button")
+    await page.waitForFunction(() => /Tagged 2 assets/.test(document.getElementById("selmsg")?.textContent ?? ""), { timeout: 5_000 })
+    const tagged = JSON.parse(await readFile(studioManifest, "utf8")) as { assets: Record<string, { tags?: string[] }> }
+    check(tagged.assets.crate?.tags?.includes("hero") === true && tagged.assets["mira.idle"]?.tags?.includes("hero") === true,
+      "tagging writes each asset once, a split loop on its shorthand")
+    await page.keyboard.press("Escape")
+    check(await page.evaluate(() => (document.getElementById("selbar") as HTMLElement).hidden && !document.querySelector(".card .sel")), "Escape leaves select mode")
+
+    // A job that finishes while the tab is in the background raises a system
+    // notification, once the viewer has turned them on. The browser's
+    // Notification and document.hidden are stood in for.
+    // As plain script text: tsx would wrap a class here in a helper the page lacks.
+    await page.evaluateOnNewDocument(`
+      window.__notes = [];
+      window.__hidden = false;
+      function Stub(title, opts) { window.__notes.push({ title: title, body: opts && opts.body }); }
+      Stub.permission = "granted";
+      Stub.requestPermission = function () { return Promise.resolve("granted"); };
+      Stub.prototype.close = function () {};
+      window.Notification = Stub;
+      Object.defineProperty(document, "hidden", { get: function () { return window.__hidden; }, configurable: true });
+    `)
+    await page.goto(`${studioServer.url}#characters/mira.idle.south`, { waitUntil: "networkidle0" })
+    await page.reload({ waitUntil: "networkidle0" })
+    // The open drawer's scrim sits over the header, so click the box itself.
+    await page.evaluate(() => (document.getElementById("notify") as HTMLInputElement).click())
+    await page.waitForFunction(() => __pixelkiln.ui.notify, { timeout: 5_000 })
+    await page.evaluate(() => ([...document.querySelectorAll(".drawer .gen button")] as HTMLButtonElement[]).find((b) => b.textContent?.startsWith("Regenerate"))!.click())
+    await submitDialog()
+    await page.evaluate(() => { (window as unknown as { __hidden: boolean }).__hidden = true })
+    let notes: { title: string; body?: string }[] = []
+    for (let i = 0; i < 75 && !notes.length; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      notes = await page.evaluate(() => (window as unknown as { __notes: { title: string; body?: string }[] }).__notes)
+    }
+    check(notes.length === 1 && /^Generated characters\/mira\.idle\.south$/.test(notes[0]!.body ?? ""), `a job finishing in a background tab raises a notification (${JSON.stringify(notes)})`)
+  } finally {
+    await studioServer.close()
+  }
 
   check(consoleErrors.length === 0, `no console errors or failed requests${consoleErrors.length ? `:\n    ${consoleErrors.join("\n    ")}` : ""}`)
 } finally {

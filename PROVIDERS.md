@@ -214,7 +214,7 @@ conversion to dollars:
 | `isometricTile` | 1 generation (measured once) |
 | `character` base | 1 (standard), 2–9 (v3), 20–40 (pro), 6–17 (pro-flash; rotations only from a reference) |
 | `character` state or portrait | 20–40 generations |
-| `character` animation | 1 (template), 1 at 64px from text, 20–40 (pro) |
+| `character` animation | 1 (template), 2–4 (`skeleton-v3`, budgeted at 4), 1 at 64px from text, 20–40 (pro) |
 | `character` outfit | 20 generations (one 2-frame, 92×92 job) |
 | `objectPro` base | 6 at 64px (unmeasured) |
 | `uiAsset` | 20 generations (measured once, at 256×192) |

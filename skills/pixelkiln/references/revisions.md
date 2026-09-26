@@ -50,7 +50,11 @@ Read this reference when an asset declares `revision`.
   poses. It needs `direction`; `prompt` names the motion and the optional
   `description` says what the subject looks like. Bootstrap the file with
   `pixelkiln estimate-skeleton <image> --out <file>` (a direct call, outside
-  any budget, like `balance`), then edit the frame poses by hand. Plan cost
+  any budget, like `balance`; square 16–256px images only), which writes the
+  estimated pose plus `--frames` copies (default 4) to edit. Joint labels are
+  PixelLab's 18 names, each once per pose. After every edit, run
+  `pixelkiln skeleton-preview <asset>` (local, free) and look at the sheet:
+  the starting pose must match the sprite, or every frame degrades silently. Plan cost
   interpolates PixelLab's documented anchors (3 frames = 2, 8 = 3, 15 = 4);
   like the other animate modes it lands in candidate review and is
   unmeasured live.
@@ -79,10 +83,14 @@ Read this reference when an asset declares `revision`.
   silhouette or layout drift before post-processing.
 - `pixelkiln gallery --edit` can create an `image-to-image` revision directly
   from a parent's drawer ("+ New revision" under "Revisions from this
-  asset"), once the parent has usable pixels; it does not offer `inpaint`
-  (needs a mask upload), `outpaint`, `reduce-colors`, `correct-pixelart`,
-  `animate`, `animate-pixminimax`, `animate-skeleton`, `interpolate`, or
-  `edit-animation` yet, so add those by hand.
+  asset"), once the parent has usable pixels. On a single PixelLab sprite,
+  "+ Skeleton animation" creates an `animate-skeleton` revision: poses from a
+  project file, pasted JSON, or "Estimate poses" (one confirmed, un-budgeted
+  PixelLab call), edited in a drag-to-edit pose editor over the sprite,
+  written into the project on save. "Edit poses" on an existing
+  `animate-skeleton` record reopens the editor on its keypoints file. It does not offer `inpaint` (needs a mask upload), `outpaint`,
+  `reduce-colors`, `correct-pixelart`, `animate`, `animate-pixminimax`,
+  `interpolate`, or `edit-animation` yet, so add those by hand.
 - Before an outside image becomes a `styleImages` or `reference` path,
   suggest `pixelkiln unzoom --from <file>`: upscaled pixel art (every art
   pixel a block of screen pixels) degrades every reference-taking PixelLab

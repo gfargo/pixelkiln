@@ -66,6 +66,26 @@ reports `blocked` with the real reason if that turns out wrong once the asset
 exists. `inpaint` needs a mask upload the gallery does not offer yet, so it
 still has to be added by hand.
 
+"+ Skeleton animation", beside it on a single PixelLab sprite, creates an
+`animate-skeleton` child instead. The poses come from a keypoints file already
+in the project, from pasted JSON, or from "Estimate poses", which runs
+PixelLab's `estimate-skeleton` on the sprite (a direct call on your account,
+confirmed first and kept apart from the generation budget; at most
+`--estimate-limit` per session, default 10; square 16–256px sprites only) and
+fills in the starting pose and four frames to edit. The poses open in a
+drag-to-edit pose editor: the sprite with the pose being edited over it and
+the previous pose faint underneath, a frame strip, and tools to copy the
+previous pose, mirror a pose left to right, add or remove frames (3 to 15),
+play the motion, and undo. Arrow keys nudge the selected joint and `,`/`.`
+step frames. Dragging rewrites the JSON beside it, and editing the JSON
+redraws the editor. Saving writes the keypoints file inside the project
+(never over an existing file unless asked, and removed again if the manifest
+refuses the asset) and adds the revision. An `animate-skeleton` record's
+Lineage section draws its poses over its parent the same way, and "Edit
+poses" opens the same editor on its keypoints file. Saving rewrites the file
+only if it still holds what the page loaded (an edit made elsewhere since is
+refused, not overwritten), and the animation is stale until generated again.
+
 ## Inpainting
 
 An inpaint revision also declares a manifest-relative mask:
@@ -344,10 +364,16 @@ inline pixels. It must match the shape `src/skeleton.ts`'s `SkeletonSetSchema`
 validates: `{"firstFrameKeypoints": [...18 joints], "frames": [[...18
 joints], ...3 to 15 of them]}`, each joint `{"label": "RIGHT KNEE", "x": 0.52,
 "y": 0.71, "z_index": 9, "depth": 4}` (`depth` optional — PixelLab fills it
-from `skeletonTemplate`, default `mannequin`, when omitted). Bootstrap this
-file with `pixelkiln estimate-skeleton <image> --out poses/hero-swing.json`
-(see [CLI reference](./CLI.md#estimate-skeleton)) rather than hand-typing 18
-joints from scratch, then hand-tweak individual joints for in-between frames.
+from `skeletonTemplate`, default `mannequin`, when omitted). `label` is one
+of PixelLab's 18 joints (`NOSE`, `NECK`, `RIGHT`/`LEFT` `SHOULDER`, `ELBOW`,
+`ARM` for the wrist, `HIP`, `KNEE`, `LEG` for the ankle, `EYE`, `EAR`), each
+exactly once per pose; a misspelled or repeated joint fails when the manifest
+loads. Bootstrap this file with
+`pixelkiln estimate-skeleton <image> --out poses/hero-swing.json` (see
+[CLI reference](./CLI.md#estimate-skeleton)), which writes the estimated pose
+and four copies of it as frames, then move joints frame by frame. Check each
+edit with `pixelkiln skeleton-preview hero-swing`, which draws every pose
+over the source image, locally and for free.
 
 `direction` is **required** for this mode (unlike `animate-pixminimax`,
 where it is optional). `frames`/`fps`/`lastFrame`/`enhancePrompt` are all

@@ -538,6 +538,42 @@ function cleanupResults(images: { base64: string }[], sent: number, operation: s
   return images.map((image) => Buffer.from(image.base64, "base64"))
 }
 
+export type ProFlashCostOperation = "create" | "edit" | "inpaint" | "character" | "object"
+
+/** One `/pro-flash/cost` answer, in generations. */
+export interface ProFlashQuote {
+  /** The first image: the drawn south sprite, or the edit or inpaint itself. */
+  image: number | null
+  /** The v3 rotation pass, for a character or object; what a base from a reference pays alone. */
+  rotations: number | null
+  total: number
+}
+
+/**
+ * Reads a `/pro-flash/cost` body. Measured answers carry `image` and
+ * `rotations`; a `total`, `generations`, or `*_generations` spelling is
+ * accepted too, and a nested `usage`/`cost` object is looked through.
+ */
+export function parseProFlashQuote(raw: unknown): ProFlashQuote {
+  const body = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}
+  const nested = [body, body.usage, body.cost, body.estimate].filter((v): v is Record<string, unknown> => Boolean(v) && typeof v === "object")
+  const pick = (...names: string[]): number | null => {
+    for (const obj of nested) {
+      for (const name of names) {
+        const value = obj[name]
+        if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value
+      }
+    }
+    return null
+  }
+  const image = pick("image", "image_generations", "first_image", "first_image_generations")
+  const rotations = pick("rotations", "rotation", "rotations_generations", "rotation_generations")
+  const total = pick("total", "total_generations", "generations")
+  if (total !== null) return { image, rotations, total }
+  if (image !== null || rotations !== null) return { image, rotations, total: (image ?? 0) + (rotations ?? 0) }
+  throw new Error(`GET /pro-flash/cost returned no price: ${JSON.stringify(raw).slice(0, 200)}`)
+}
+
 export class PixelLabError extends ProviderError {
   constructor(
     message: string,
@@ -610,6 +646,26 @@ export class PixelLabClient {
       total: raw.subscription?.total ?? 0,
       plan: raw.subscription?.plan ?? "unknown",
     }
+  }
+
+  /**
+   * `GET /pro-flash/cost`: PixelLab's own quote for one Pro Flash job, split
+   * into the first image and the v3 rotations. Free, and provisional by
+   * PixelLab's own description; the billed amount on the finished job is
+   * the real one. The response schema is undocumented (`{}` in the spec),
+   * so this reads it leniently: a total if one is given, else the sum of
+   * the parts, and refuses an answer with no number in it.
+   */
+  async proFlashCost(args: {
+    operation: ProFlashCostOperation
+    width: number
+    height: number
+    /** Character and object quotes only; PixelLab's default is 8. */
+    nDirections?: number
+  }): Promise<ProFlashQuote> {
+    const query = new URLSearchParams({ operation: args.operation, width: String(args.width), height: String(args.height) })
+    if (args.nDirections !== undefined) query.set("n_directions", String(args.nDirections))
+    return parseProFlashQuote(await this.request<unknown>(`/pro-flash/cost?${query}`))
   }
 
   /**
@@ -1294,15 +1350,22 @@ export class PixelLabClient {
 
   /**
    * One animation of one character. Template mode costs a generation per
-   * direction and fixes the frame count; v3 draws `frameCount` frames from
-   * the action text; pro is the sequential engine. One job per direction.
+   * direction and fixes the frame count; skeleton-v3 poses the same template
+   * with the skeleton video model (2-4 generations per direction); v3 draws
+   * `frameCount` frames from the action text; pro is the sequential engine.
+   * One job per direction.
+   *
+   * Every mode but skeleton-v3 goes to `/animate-character`, the path whose
+   * shapes were measured live. skeleton-v3 is documented only on
+   * `/characters/animations`, which takes the same request and answers with
+   * the same job list (plus an `animation_group_id`).
    */
   async animateCharacter(args: {
     characterId: string
     animationName: string
     actionDescription?: string
     template?: string
-    mode: "template" | "v3" | "pro"
+    mode: "template" | "skeleton-v3" | "v3" | "pro"
     frameCount?: number
     keepFirstFrame?: boolean
     directions: string[]
@@ -1324,7 +1387,8 @@ export class PixelLabClient {
     paletteSwatchBase64?: string
   }): Promise<{ background_job_ids: string[]; directions: string[]; usage?: PixelLabUsage | null }> {
     const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
-    const raw = await this.request<unknown>("/animate-character", {
+    const endpoint = args.mode === "skeleton-v3" ? "/characters/animations" : "/animate-character"
+    const raw = await this.request<unknown>(endpoint, {
       method: "POST",
       body: JSON.stringify({
         character_id: args.characterId,
@@ -1350,7 +1414,7 @@ export class PixelLabClient {
         ...(args.seed != null ? { seed: args.seed } : {}),
       }),
     })
-    return validateResponse(AnimateSubmitSchema, raw, "animate-character")
+    return validateResponse(AnimateSubmitSchema, raw, endpoint.slice(1))
   }
 
   /**
@@ -2009,7 +2073,7 @@ export class PixelLabClient {
    * account (see `EstimateSkeletonResponseSchema`'s own caveat).
    */
   async estimateSkeleton(args: { image: Base64Image }): Promise<{ keypoints: SkeletonKeypoint[]; usage: unknown }> {
-    const body: Record<string, unknown> = { image: args.image }
+    const body: Record<string, unknown> = { image: { type: "base64", base64: args.image.base64, format: args.image.format } }
     const res = validateResponse(
       EstimateSkeletonResponseSchema,
       await this.request<unknown>("/estimate-skeleton", { method: "POST", body: JSON.stringify(body) }),

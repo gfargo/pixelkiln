@@ -1,3 +1,112 @@
+# [0.80.0](https://github.com/gfargo/pixelkiln/compare/v0.79.0...v0.80.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** split the drawer's record into tabs ([482db47](https://github.com/gfargo/pixelkiln/commit/482db47170404f856e95f399a4c729c11d3b24d5))
+
+# [0.79.0](https://github.com/gfargo/pixelkiln/compare/v0.78.0...v0.79.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** fill a loop's missing directions from the family view ([ca392dc](https://github.com/gfargo/pixelkiln/commit/ca392dc6cebbc059080162eb9d6b9091b03375d7))
+
+# [0.78.0](https://github.com/gfargo/pixelkiln/compare/v0.77.0...v0.78.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** group the grid by family, and select several records to act on together ([75fd9df](https://github.com/gfargo/pixelkiln/commit/75fd9dfcd402a281d259e81a0598f342b3a7ca6e))
+* **website:** enlarge kiln mark in OpenGraph card header ([#232](https://github.com/gfargo/pixelkiln/issues/232)) ([f52d4ef](https://github.com/gfargo/pixelkiln/commit/f52d4ef85b40de5231b0a52eebe4dc566cff79dc))
+
+# [0.77.0](https://github.com/gfargo/pixelkiln/compare/v0.76.0...v0.77.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **website:** enlarge the kiln logo mark in the header ([cc49f91](https://github.com/gfargo/pixelkiln/commit/cc49f91c0c7819ff19343f92ce11915ea11c2816))
+* **website:** fix blurry kiln mark by matching asset and display sizes ([65a237d](https://github.com/gfargo/pixelkiln/commit/65a237d677ca48aa6765b34e34992fd2b7ec0b08))
+* **website:** flatten kiln mark to a true pixel-art palette ([277523d](https://github.com/gfargo/pixelkiln/commit/277523dc1f7720b5ba9a71a0a24c74a6c2bf845d))
+* **website:** recenter kiln mark artwork within its canvas ([ce903d2](https://github.com/gfargo/pixelkiln/commit/ce903d2329d5708afefd8a81108aed993eae43ed))
+* **website:** rename kiln mark asset to bust the stale CDN/browser cache ([b2637dc](https://github.com/gfargo/pixelkiln/commit/b2637dcec79942f25c921462356ad25ccca5b513))
+* **website:** use the original artwork with normal image scaling ([440f35c](https://github.com/gfargo/pixelkiln/commit/440f35cbccdd3184f531335fee32ea7fbceb56a0))
+
+
+### Features
+
+* **gallery:** loops that play on the grid, a backdrop picker, a frame player, and job notifications ([957fd6f](https://github.com/gfargo/pixelkiln/commit/957fd6fc68b924e9b2dd1fe6783cec7cdfea1116))
+* **website:** replace kiln logo mark and trim OG/meta description lengths ([97aad0e](https://github.com/gfargo/pixelkiln/commit/97aad0e86ca4724a1cc547be675c82c2611bbc71))
+* **website:** swap in the full-detail kiln mark, size up in header/footer ([c763bfd](https://github.com/gfargo/pixelkiln/commit/c763bfdd1d835de179a106e0a29bd93698364ba3))
+
+# [0.76.0](https://github.com/gfargo/pixelkiln/compare/v0.75.0...v0.76.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** price Pro Flash from PixelLab's live quote ([359dce7](https://github.com/gfargo/pixelkiln/commit/359dce7743628713d3d6237d65e21832d8c93658))
+
+# [0.75.0](https://github.com/gfargo/pixelkiln/compare/v0.74.0...v0.75.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **gallery:** keep the family clock from indexing a frame before it started ([d1fc710](https://github.com/gfargo/pixelkiln/commit/d1fc710baaa688973f6e916df3a477dd2ba8f538))
+
+
+### Features
+
+* **gallery:** a family view with a turntable and a loop grid ([7c87992](https://github.com/gfargo/pixelkiln/commit/7c87992a4b37421e8e8e8f27f38479577d721df9))
+
+# [0.74.0](https://github.com/gfargo/pixelkiln/compare/v0.73.0...v0.74.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** the character studio, and generation jobs that run in waves ([81d90f4](https://github.com/gfargo/pixelkiln/commit/81d90f4b283f1266f57f7d4dd04cf3b307e38e68))
+
+# [0.73.0](https://github.com/gfargo/pixelkiln/compare/v0.72.0...v0.73.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** server side of the character studio: new styles, batches, pricing, uploads ([4302e52](https://github.com/gfargo/pixelkiln/commit/4302e52331cb91a5a06b18002143c85a9fa3d40f))
+
+# [0.72.0](https://github.com/gfargo/pixelkiln/compare/v0.71.0...v0.72.0) (2026-09-26)
+
+
+### Features
+
+* **characters:** skeleton-v3 template loops ([f20d066](https://github.com/gfargo/pixelkiln/commit/f20d066b89d94ce346168eea6bacb0c8770224f2))
+
+# [0.71.0](https://github.com/gfargo/pixelkiln/compare/v0.70.1...v0.71.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** drag-to-edit pose editor for skeleton animations ([3b5b739](https://github.com/gfargo/pixelkiln/commit/3b5b739ac0faaa9d7a2303438321d5fc09875495))
+
+## [0.70.1](https://github.com/gfargo/pixelkiln/compare/v0.70.0...v0.70.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **gallery:** keep open forms across refreshes, add a page CSP, cap skeleton estimates ([a10b753](https://github.com/gfargo/pixelkiln/commit/a10b753afbb1474da7ecaabc376ba1d36cf056da))
+
+# [0.70.0](https://github.com/gfargo/pixelkiln/compare/v0.69.0...v0.70.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** create skeleton animations and see their poses from the gallery ([c3b6de3](https://github.com/gfargo/pixelkiln/commit/c3b6de38f2761f514bb6e6025c1c084584cb4a9e))
+
+# [0.69.0](https://github.com/gfargo/pixelkiln/compare/v0.68.1...v0.69.0) (2026-09-26)
+
+
+### Features
+
+* **skeleton:** usable estimate-skeleton output, joint validation, and skeleton-preview ([476b218](https://github.com/gfargo/pixelkiln/commit/476b218a03922e9c44367ff394433e43e04ec285))
+
 ## [0.68.1](https://github.com/gfargo/pixelkiln/compare/v0.68.0...v0.68.1) (2026-09-26)
 
 # [0.68.0](https://github.com/gfargo/pixelkiln/compare/v0.67.0...v0.68.0) (2026-09-26)

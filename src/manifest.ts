@@ -1318,8 +1318,8 @@ async function resolveObjectProShape(
         )
       }
     }
-    if (asset.animation.mode === "template") {
-      throw new Error(`assets.${assetId}: objectPro animations have no "template" mode; use "v3" or "pro"`)
+    if (asset.animation.mode === "template" || asset.animation.mode === "skeleton-v3") {
+      throw new Error(`assets.${assetId}: objectPro animations have no "${asset.animation.mode}" mode; use "v3" or "pro"`)
     }
     const pose = async (rel: string, what: string): Promise<ResolvedReferenceImage> => {
       const image = await files.load(rel, what)

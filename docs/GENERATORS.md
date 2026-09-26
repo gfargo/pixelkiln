@@ -17,7 +17,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 40 generations flat | 1–64 by size |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | Animated GIF or spritesheet from Retro Diffusion | `animation` | $0.07–$0.25 per animation (published price) | 1 GIF or PNG sheet |
-| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose or portrait, 1 per template loop, 20 per outfit (measured once) | one set of directions, one ordered loop, or one portrait |
+| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose or portrait, 1 per template loop (2–4 as `skeleton-v3`), 20 per outfit (measured once) | one set of directions, one ordered loop, or one portrait |
 | A prop, creature, or vehicle with rotations, states, or loops but no character rig | `objectPro` | about 6 per base at 64px (unmeasured) | one set of directions, or one ordered loop |
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 | One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 20–40 generations (unmeasured) | 1 image |
@@ -274,7 +274,7 @@ and regenerating the parent makes the child stale.
 | Asset | PixelLab call | Cost |
 |---|---:|---:|
 | base, `mode: standard` | create-character-with-4/8-directions | 1 |
-| base, `mode: v3` | create-character-v3 | 1 + ceil(size² × 8 / 65536): 2 at 64px, 3 at 128px |
+| base, `mode: v3` | create-character-v3 | 1 + ceil(size² × 8 / 65536): 2 at 64px, 3 at 128px; from a `reference`, the rotations alone on its canvas: 1 at 64px |
 | base, `mode: pro` | create-character-pro | 20–40 by canvas |
 | base, `mode: pro-flash` | create-character-pro-flash | image tier (5 to 96px, 6 to 208px, 9 above) + ceil(size² × 8 / 65536): 6 at 64px, 8 at 128px, 17 at 256px; rotations only from a `reference` |
 | state | create-character-state | 20–40 by canvas |
@@ -483,6 +483,9 @@ pixel-art image on the Pro Flash model, the same model the `character` and
 - **Cost:** 5 generations up to 96px on the longer side, 6 up to 208px, 9
   beyond, from PixelLab's own `/pro-flash/cost` quotes, which PixelLab calls
   provisional. The billed amount on the finished job is what the lock keeps.
+  `plan` and `gen` use these tiers offline. The gallery's price quote
+  (`--edit`) asks the endpoint itself when the project has a
+  `PIXELLAB_API_KEY`, and marks those rows live.
 
 The same model also edits and inpaints: `"engine": "pro-flash"` on an
 `image-to-image` or `inpaint` revision; see

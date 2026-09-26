@@ -14,7 +14,8 @@ import {
   type GalleryBuild,
 } from "../../gallery/snapshot.ts"
 import { serveGallery } from "../../gallery/server.ts"
-import { createGalleryEditHandler } from "../../gallery/edit.ts"
+import { createGalleryEditHandler, createGalleryPriceHandler } from "../../gallery/edit.ts"
+import { createGallerySkeletonHandlers } from "../../gallery/skeleton.ts"
 import { createGenerateHandlers, type GalleryProjectContext } from "../../gallery/generate.ts"
 import { createGalleryEditorHandlers } from "../../gallery/editor.ts"
 import { loadWorkspace, resolveProject } from "../../workspace.ts"
@@ -22,6 +23,9 @@ import type { Provider } from "../../provider.ts"
 import { openProject } from "../project.ts"
 import { openProject as openLibraryProject } from "../../project.ts"
 import { log, announceGalleryReady } from "../io.ts"
+import { PixelLabClient } from "../../client.ts"
+import { createProFlashQuoter } from "../../providers/pixellab.ts"
+import type { ResolvedSpec } from "../../types.ts"
 import type { Args } from "../args.ts"
 
 function sessionBudget(args: Pick<Args, "budget" | "providerBudgets">) {
@@ -51,7 +55,7 @@ interface GalleryProjectAccess {
 async function serveUntilStopped(
   initial: GalleryBuild,
   reload: () => Promise<GalleryBuild>,
-  args: Pick<Args, "port" | "noOpen" | "edit" | "noEditor" | "budget" | "providerBudgets">,
+  args: Pick<Args, "port" | "noOpen" | "edit" | "noEditor" | "budget" | "providerBudgets" | "estimateLimit">,
   access: GalleryProjectAccess,
 ): Promise<void> {
   let first = true
@@ -70,7 +74,10 @@ async function serveUntilStopped(
   }
   const loadProject = async (project?: string) => {
     const ctx = await access.loadProject(project)
-    const dir = path.dirname(ctx.loaded.path)
+    loadProjectEnv(path.dirname(ctx.loaded.path))
+    return ctx
+  }
+  const loadProjectEnv = (dir: string) => {
     // Env loading never overrides, so a second project whose files name a
     // credential this process already holds with another value would run on
     // the first project's account. Refuse that instead of guessing.
@@ -85,7 +92,20 @@ async function serveUntilStopped(
       }
     }
     loadEnvFiles(dir)
-    return ctx
+  }
+  // Live Pro Flash quotes come from PixelLab's free cost endpoint, on the
+  // project's own key; without a key the page keeps the offline estimate.
+  const quoters = new Map<string, (spec: ResolvedSpec) => Promise<number | null>>()
+  const quoteFor = async (project?: string) => {
+    loadProjectEnv(path.dirname(path.resolve(await access.manifestFor(project))))
+    const key = process.env.PIXELLAB_API_KEY
+    if (!key) return null
+    let quoter = quoters.get(key)
+    if (!quoter) {
+      quoter = createProFlashQuoter(new PixelLabClient(key))
+      quoters.set(key, quoter)
+    }
+    return quoter
   }
   const server = await serveGallery({
     load: () => {
@@ -107,6 +127,9 @@ async function serveUntilStopped(
     ...(budget
       ? { generate: createGenerateHandlers({ loadProject, providerFor, budget, reload, onProgress: log }) }
       : {}),
+    ...(args.edit ? { price: createGalleryPriceHandler({ manifestFor: access.manifestFor, quoteFor }) } : {}),
+    // Estimating acts on the author's behalf and feeds a manifest edit, so it follows the write gate.
+    ...(args.edit ? { skeleton: createGallerySkeletonHandlers({ loadProject, limit: args.estimateLimit, onProgress: log }) } : {}),
     // The editor exists to write hand edits back, so it follows the write gate.
     ...(args.edit && !args.noEditor ? { editor: createGalleryEditorHandlers({ onProgress: log }) } : {}),
   })
