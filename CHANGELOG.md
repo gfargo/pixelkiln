@@ -1,3 +1,11 @@
+# [0.62.0](https://github.com/gfargo/pixelkiln/compare/v0.61.0...v0.62.0) (2026-09-26)
+
+
+### Features
+
+* **pixellab:** add unzoom and font commands ([60e380a](https://github.com/gfargo/pixelkiln/commit/60e380a6c1ee5162fe81404d6a5938e33039b214)), closes [#186](https://github.com/gfargo/pixelkiln/issues/186) [#191](https://github.com/gfargo/pixelkiln/issues/191)
+* **pixellab:** revise whole sets, add interpolate/edit-animation and uiElement ([1609f77](https://github.com/gfargo/pixelkiln/commit/1609f7724fa1cee5e236447fb4d0a6cc9c9a59e0)), closes [#185](https://github.com/gfargo/pixelkiln/issues/185) [#186](https://github.com/gfargo/pixelkiln/issues/186) [#187](https://github.com/gfargo/pixelkiln/issues/187) [#188](https://github.com/gfargo/pixelkiln/issues/188) [#190](https://github.com/gfargo/pixelkiln/issues/190)
+
 # [0.61.0](https://github.com/gfargo/pixelkiln/compare/v0.60.1...v0.61.0) (2026-09-26)
 
 
