@@ -8,7 +8,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const markDataUrl = `data:image/png;base64,${readFileSync(
-  join(process.cwd(), "public/brand/kiln-mark.png"),
+  join(process.cwd(), "public/brand/kiln-mark-v2.png"),
 ).toString("base64")}`;
 
 const candidates = [

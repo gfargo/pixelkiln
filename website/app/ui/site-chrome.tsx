@@ -6,7 +6,7 @@ export function KilnMark() {
   return (
     <img
       className="kiln-mark"
-      src="/brand/kiln-mark.png"
+      src="/brand/kiln-mark-v2.png"
       alt=""
       aria-hidden="true"
       width={64}
