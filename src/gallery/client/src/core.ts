@@ -58,6 +58,8 @@ export interface UiState {
   selecting: boolean
   /** Record ids picked in select mode. */
   selected: Set<string>
+  /** The drawer tab in view; it sticks as records are stepped through. */
+  drawerTab: string
 }
 
 export const ui: UiState = {
@@ -77,12 +79,13 @@ export const ui: UiState = {
   onion: false,
   selecting: false,
   selected: new Set(),
+  drawerTab: 'overview',
 };
 
 // ---- per-viewer preferences ------------------------------------------------
 // Conveniences only: a private window or blocked storage just starts from the defaults.
 const PREFS_KEY = 'pixelkiln.gallery.prefs';
-const PREF_NAMES = ['playLoops', 'backdrop', 'notify', 'onion'] as const;
+const PREF_NAMES = ['playLoops', 'backdrop', 'notify', 'onion', 'drawerTab'] as const;
 export function loadPrefs() {
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
