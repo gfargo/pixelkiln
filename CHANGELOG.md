@@ -1,3 +1,10 @@
+# [0.72.0](https://github.com/gfargo/pixelkiln/compare/v0.71.0...v0.72.0) (2026-09-26)
+
+
+### Features
+
+* **characters:** skeleton-v3 template loops ([f20d066](https://github.com/gfargo/pixelkiln/commit/f20d066b89d94ce346168eea6bacb0c8770224f2))
+
 # [0.71.0](https://github.com/gfargo/pixelkiln/compare/v0.70.1...v0.71.0) (2026-09-26)
 
 
