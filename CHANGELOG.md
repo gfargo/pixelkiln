@@ -1,3 +1,10 @@
+# [0.61.0](https://github.com/gfargo/pixelkiln/compare/v0.60.1...v0.61.0) (2026-09-26)
+
+
+### Features
+
+* **release:** force a release whenever skills/pixelkiln/ changes ([1c97e78](https://github.com/gfargo/pixelkiln/commit/1c97e7882c27de96ed7a52b2a221db90fe184d8c))
+
 ## [0.60.1](https://github.com/gfargo/pixelkiln/compare/v0.60.0...v0.60.1) (2026-09-26)
 
 
