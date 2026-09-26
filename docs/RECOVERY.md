@@ -128,6 +128,37 @@ array to stdout and human diagnostics to stderr for piping into `jq`.
 Imported ids are derived from prompts and land under `_salvaged/`; review and
 rename them before treating them as stable application ids.
 
+### Characters
+
+Characters are account records of their own, outside the object listing, and
+salvage reviews them too. A base and the states made from it share a group
+upstream, so each unclaimed group is one card: the base's south rotation, with
+a line counting its directions, states, and loops. A group is unclaimed when
+none of its characters is in any supplied lockfile. A group with some members
+claimed (a project uses the base, say, but not a state) is left out and
+reported, since discarding the rest would delete states of a character in use;
+declare those states and run `pixelkiln adopt` instead.
+
+Groups go to the manifest's `character` styles, never to other styles: the
+only character style when there is one, otherwise the style whose prompt
+prefix or suffix the base's prompt carries. `--style <character style>` takes
+every unclaimed group. A manifest with no character style reports the groups
+and triages none of them. Account objects likewise never route to a character
+style, where an import would become a character base with nothing upstream.
+
+| Verdict | Effect on a character group |
+|---|---|
+| import | Add a base asset, one asset per state, and one loop asset per animation direction to the manifest, each with a `remoteId`, then adopt them: every rotation and frame is downloaded and gets a lock entry. |
+| keep | Add `pixelkiln:keep` to the base and every state. |
+| discard | Add `pixelkiln:discard` to the base and every state; does not delete. |
+
+An imported base is named from the character's name, its states
+`<base>_<state name>`, and its loops `<parent>.<animation>.<direction>`. A loop
+PixelLab recorded without an animation group id cannot be adopted by
+`remoteId` and is left out, with a line saying so. A base whose size differs
+from the style's gets its own `size`; a 4-direction character imported into an
+8-direction style keeps its four rotations.
+
 ## Shared workspace catalog
 
 For a single project, its own lockfile is the whole claim set. On a shared
@@ -190,9 +221,11 @@ pixelkiln purge
 pixelkiln purge --yes
 ```
 
-Only objects already tagged `pixelkiln:discard` are eligible. The command lists
-targets, asks interactively, and refuses non-interactive deletion without
-`--yes`. A shared account should be fully adopted/salvaged before purge.
+Only objects and characters already tagged `pixelkiln:discard` are eligible.
+The command lists targets, asks interactively, and refuses non-interactive
+deletion without `--yes`. A shared account should be fully adopted/salvaged
+before purge. A deleted character takes its animations with it; each state is
+its own record upstream, tagged and deleted on its own.
 
 ## Accept intentional spec prose changes
 

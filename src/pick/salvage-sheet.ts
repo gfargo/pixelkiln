@@ -26,7 +26,7 @@ export interface SalvageSheetContext {
  * and header now name the style the page is actually scoped to.
  */
 export function renderSalvageSheet(orphans: Orphan[], ctx?: SalvageSheetContext): string {
-  const safe = orphans.map((o) => ({ ...o, prompt: escapeHtml(o.prompt) }))
+  const safe = orphans.map((o) => ({ ...o, prompt: escapeHtml(o.prompt), ...(o.note ? { note: escapeHtml(o.note) } : {}) }))
   const data = JSON.stringify(safe).replace(/<\//g, "<\\/")
   const styleId = ctx ? escapeHtml(ctx.styleId) : null
   const importDir = ctx ? escapeHtml(ctx.importDir) : null
@@ -117,6 +117,7 @@ ITEMS.forEach((o, i) => {
   el.innerHTML =
     '<div class="thumb"><img src="' + o.previewUrl + '" loading="lazy"></div>' +
     '<div class="meta">' + o.width + '×' + o.height + ' · ' + o.createdAt.slice(0,10) + '</div>' +
+    (o.note ? '<div class="meta">' + o.note + '</div>' : '') +
     '<div class="prompt">' + o.prompt + '</div>' +
     '<div class="acts">' +
       '<button data-a="import">import</button>' +

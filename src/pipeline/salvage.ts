@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { requireList, type Provider, type RemoteAsset } from "../provider.ts"
+import { requireList, type Provider, type RemoteAsset, type RemoteCharacter, type RemoteCharacterDetail } from "../provider.ts"
 import { loadManifest } from "../manifest.ts"
 import { parseLock, type Lock, type Manifest } from "../types.ts"
 
@@ -53,6 +53,12 @@ export async function loadClaims(
       add(entry.objectId)
       add(entry.reviewObjectId)
       add(entry.jobId)
+      // A character loop records `<character>#<group>`, a chosen tile
+      // variation `<set>#<index>`; the part before `#` is an account object
+      // in its own right, and the entry claims it too.
+      for (const id of [entry.objectId, entry.jobId]) {
+        if (id?.includes("#")) add(id.split("#")[0]!)
+      }
     }
   }
   return claimed
@@ -66,6 +72,15 @@ export interface Orphan {
   createdAt: string
   previewUrl: string
   tags: string[]
+  /**
+   * `character` for a character group (a base and its states), triaged as
+   * one card; absent for an ordinary account object.
+   */
+  kind?: "character"
+  /** One line the triage sheet shows under the size, e.g. a character's direction/state/loop counts. */
+  note?: string
+  /** A character group's every character id, base first, with its current tags; a decision applies to all of them. */
+  members?: { id: string; tags: string[] }[]
 }
 
 export async function findOrphans(
@@ -98,6 +113,192 @@ export async function findOrphans(
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
   return { orphans, total: all.length }
+}
+
+export interface CharacterOrphanScan {
+  /** One per unclaimed group: the base's id, prompt, and south rotation, plus every member. */
+  orphans: Orphan[]
+  /** Characters listed on the account. */
+  total: number
+  /** Groups with some members claimed and some not; left to `adopt`, never offered for discard. */
+  partlyClaimed: number
+}
+
+/**
+ * Characters the account holds that no known lockfile claims, grouped the
+ * way PixelLab groups them: a base and the states made from it share a
+ * `groupId`, and one decision covers the whole group. A group with any member
+ * claimed is left out entirely, since discarding the rest would delete
+ * states of a character a project still uses; `adopt` is the way to bring
+ * those unclaimed states in.
+ */
+export async function findOrphanCharacters(
+  provider: Provider,
+  claimed: Set<string>,
+  opts: { onProgress?: (msg: string) => void } = {},
+): Promise<CharacterOrphanScan> {
+  const log = opts.onProgress ?? (() => {})
+  if (!provider.listCharacters) return { orphans: [], total: 0, partlyClaimed: 0 }
+  const all: RemoteCharacter[] = []
+  for await (const character of provider.listCharacters()) all.push(character)
+  log(`  scanned ${all.length} character(s) on the account`)
+
+  const isClaimed = (id: string) => claimed.has(id) || claimed.has(providerClaimId(provider.id, id))
+  const groups = new Map<string, RemoteCharacter[]>()
+  for (const character of all) {
+    const key = character.groupId ?? character.id
+    groups.set(key, [...(groups.get(key) ?? []), character])
+  }
+  let partlyClaimed = 0
+  const orphans: Orphan[] = []
+  for (const members of groups.values()) {
+    const unclaimed = members.filter((character) => !isClaimed(character.id))
+    if (!unclaimed.length) continue
+    if (unclaimed.length < members.length) {
+      partlyClaimed++
+      continue
+    }
+    const ordered = [...members].sort((a, b) =>
+      Number(isState(a)) - Number(isState(b)) || a.createdAt.localeCompare(b.createdAt))
+    const base = ordered[0]!
+    if (base.status !== "completed" || !base.previewUrl) continue
+    const states = ordered.length - 1
+    const loops = ordered.reduce((sum, character) => sum + character.animationCount, 0)
+    orphans.push({
+      id: base.id,
+      prompt: base.prompt || base.name || "(no prompt recorded)",
+      width: base.width,
+      height: base.height,
+      createdAt: base.createdAt,
+      previewUrl: base.previewUrl,
+      tags: base.tags ?? [],
+      kind: "character",
+      note:
+        `character · ${base.directions} directions · ${states} state${states === 1 ? "" : "s"} · ` +
+        `${loops} loop${loops === 1 ? "" : "s"}`,
+      members: ordered.map((character) => ({ id: character.id, tags: character.tags ?? [] })),
+    })
+  }
+  orphans.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return { orphans, total: all.length, partlyClaimed }
+}
+
+/** A state carries its own name; a base is unnamed or PixelLab's `Idle`. */
+function isState(character: Pick<RemoteCharacter, "stateName">): boolean {
+  return Boolean(character.stateName && character.stateName !== "Idle")
+}
+
+/** Styles that draw PixelLab characters, the only place a character group can be imported. */
+export function characterStyleIds(manifest: Manifest): string[] {
+  return Object.keys(manifest.styles).filter((id) => manifest.styles[id]!.generator === "character")
+}
+
+/**
+ * The manifest as object salvage should see it: without character styles.
+ * An account object imported into a character style would become a
+ * character base with a committed file and nothing upstream to adopt.
+ */
+export function withoutCharacterStyles(manifest: Manifest): Manifest {
+  const characters = new Set(characterStyleIds(manifest))
+  return {
+    ...manifest,
+    styles: Object.fromEntries(Object.entries(manifest.styles).filter(([id]) => !characters.has(id))),
+  }
+}
+
+/**
+ * Which character style each unclaimed character group goes to: the only
+ * one when there is one, otherwise the style whose prompt prefix or suffix
+ * the base's prompt carries. A manifest with no character style routes
+ * nothing; the caller says so rather than guessing.
+ */
+export function routeCharacterOrphans(
+  orphans: Orphan[],
+  manifest: Manifest,
+): { matched: Map<string, Orphan[]>; unmatched: Orphan[] } {
+  const styleIds = characterStyleIds(manifest)
+  const matched = new Map<string, Orphan[]>()
+  const unmatched: Orphan[] = []
+  const only: Manifest = { ...manifest, styles: Object.fromEntries(styleIds.map((id) => [id, manifest.styles[id]!])) }
+  for (const orphan of orphans) {
+    const styleId = styleIds.length === 1 ? styleIds[0]! : styleIds.length ? matchStyleByPattern(orphan.prompt, only) : null
+    if (!styleId) {
+      unmatched.push(orphan)
+      continue
+    }
+    matched.set(styleId, [...(matched.get(styleId) ?? []), orphan])
+  }
+  return { matched, unmatched }
+}
+
+/** A raw manifest asset, as written back to the file. */
+export type SalvagedAsset = Record<string, unknown>
+
+/**
+ * The manifest assets a salvaged character group becomes: a base, one asset
+ * per state, and one loop per animation direction, each carrying the
+ * `remoteId` that `adoptCharacters` maps it by. Nothing is written to the
+ * lockfile here; adoption does that, downloading every rotation and frame
+ * the same way it does for a hand-declared character.
+ *
+ * A loop PixelLab recorded with no animation group id is left out: adoption
+ * matches a loop by `<character>#<group>`, and without the group there is
+ * nothing to match. `skipped` names them so the caller can say so.
+ */
+export function characterSalvageAssets(
+  characters: RemoteCharacterDetail[],
+  ctx: { styleId: string; styleSize?: number; taken: Set<string> },
+): { assets: Record<string, SalvagedAsset>; skipped: string[] } {
+  const ordered = [...characters].sort((a, b) =>
+    Number(isState(a)) - Number(isState(b)) || a.createdAt.localeCompare(b.createdAt))
+  const base = ordered[0]!
+  const common = { styles: [ctx.styleId], tags: ["salvaged"] }
+  const assets: Record<string, SalvagedAsset> = {}
+  const skipped: string[] = []
+  const baseId = idFromPrompt(base.name || base.prompt, ctx.taken)
+  const size = base.width === base.height && base.width >= 32 && base.width <= 256 && base.width !== ctx.styleSize
+    ? { size: base.width }
+    : {}
+  assets[baseId] = { prompt: base.prompt || base.name || baseId, remoteId: base.id, ...size, ...common }
+
+  const assetIdOf = new Map<string, string>([[base.id, baseId]])
+  for (const state of ordered.slice(1)) {
+    const stateId = uniqueId(`${baseId}_${slug(state.stateName ?? "state")}`, ctx.taken)
+    assetIdOf.set(state.id, stateId)
+    assets[stateId] = { prompt: state.prompt || state.stateName || stateId, state: { of: baseId }, remoteId: state.id, ...common }
+  }
+
+  for (const character of ordered) {
+    const parentId = assetIdOf.get(character.id)!
+    for (const animation of character.animations) {
+      if (!animation.frames.length) continue
+      const label = animation.name || animation.type
+      if (!animation.groupId) {
+        skipped.push(`${parentId}: "${label}" ${animation.direction} loop has no animation group id to adopt it by`)
+        continue
+      }
+      const loopId = uniqueId(`${parentId}.${slug(label)}.${animation.direction}`, ctx.taken)
+      assets[loopId] = {
+        prompt: label,
+        animation: { of: parentId, direction: animation.direction },
+        remoteId: `${character.id}#${animation.groupId}`,
+        ...common,
+      }
+    }
+  }
+  return { assets, skipped }
+}
+
+function slug(text: string): string {
+  return text.toLowerCase().replace(/^pixelkiln:.*\//, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "loop"
+}
+
+function uniqueId(base: string, taken: Set<string>): string {
+  let id = base
+  let n = 2
+  while (taken.has(id)) id = `${base}_${n++}`
+  taken.add(id)
+  return id
 }
 
 /**
@@ -317,27 +518,37 @@ export async function applyTags(
   provider: Provider,
   decisions: SalvageDecision[],
   existing: Map<string, string[]>,
-  opts: { onProgress?: (msg: string) => void } = {},
+  opts: {
+    onProgress?: (msg: string) => void
+    /** Character groups by their card id: the member ids and current tags a decision applies to. */
+    characters?: Map<string, { id: string; tags: string[] }[]>
+  } = {},
 ): Promise<{ tagged: number; failed: number }> {
   const log = opts.onProgress ?? (() => {})
   let tagged = 0
   let failed = 0
 
   for (const { id, action } of decisions) {
-    const current = (existing.get(id) ?? []).filter(
-      (t) => t !== "pixelkiln:keep" && t !== "pixelkiln:discard" && t !== "pixelkiln:imported",
-    )
-    const decisionTag = `pixelkiln:${action === "import" ? "imported" : action}`
-    // PixelLab caps tags at 20. Preserve the decision tag even when the object
-    // already has 20 unrelated tags; it is the durable record of this action.
-    const next = [...current.slice(0, 19), decisionTag]
-    if (!provider.setTags) return { tagged, failed }
-    try {
-      await provider.setTags(id, next)
-      tagged++
-    } catch (err) {
-      failed++
-      log(`  tag failed ${id}: ${err instanceof Error ? err.message : String(err)}`)
+    // A character group's decision is every member's: each state is its own
+    // record upstream, and `purge` deletes by tag, one record at a time.
+    const group = opts.characters?.get(id)
+    const targets = group ?? [{ id, tags: existing.get(id) ?? [] }]
+    for (const target of targets) {
+      const current = target.tags.filter(
+        (t) => t !== "pixelkiln:keep" && t !== "pixelkiln:discard" && t !== "pixelkiln:imported",
+      )
+      const decisionTag = `pixelkiln:${action === "import" ? "imported" : action}`
+      // PixelLab caps tags at 20. Preserve the decision tag even when the object
+      // already has 20 unrelated tags; it is the durable record of this action.
+      const next = [...current.slice(0, 19), decisionTag]
+      if (!provider.setTags) return { tagged, failed }
+      try {
+        await provider.setTags(target.id, next, group ? "character" : undefined)
+        tagged++
+      } catch (err) {
+        failed++
+        log(`  tag failed ${target.id}: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
   }
   return { tagged, failed }
