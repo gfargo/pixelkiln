@@ -391,8 +391,8 @@ package share one source. Policies: [Contributing](./CONTRIBUTING.md),
 
 ## Scope
 
-Salvaging characters, cross-project cache reuse, and `workspace find` are not
-implemented; see the open [issues](https://github.com/gfargo/pixelkiln/issues).
+Cross-project cache reuse and `workspace find` are not implemented; see the
+open [issues](https://github.com/gfargo/pixelkiln/issues).
 
 ## License
 

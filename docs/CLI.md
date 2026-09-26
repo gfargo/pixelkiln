@@ -304,12 +304,15 @@ Review remote objects that no supplied lockfile claims. On shared accounts, pass
 every other project lock via repeatable `--claims`; sibling manifests are used
 to exclude objects matching another project's styles. `--dry-run --json`
 provides a scriptable inventory. Import, keep, and discard are review decisions;
-discard only tags an object. Pass `--provider` when the manifest uses more than
-one provider.
+discard only tags an object. Unclaimed characters are reviewed too, one card per
+base and its states, in the manifest's `character` styles; importing one writes
+its base, states, and loops and adopts them (see
+[Recovery](./RECOVERY.md#characters)). Pass `--provider` when the manifest uses
+more than one provider.
 
 ### `purge`
 
-Delete provider objects previously tagged `pixelkiln:discard`. It is separate
+Delete provider objects and characters previously tagged `pixelkiln:discard`. It is separate
 from salvage, lists targets, asks for confirmation, and refuses non-interactive
 deletion without `--yes`. Use `--dry-run` first. Pass `--provider` when the
 manifest uses more than one provider.

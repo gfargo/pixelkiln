@@ -2298,6 +2298,10 @@ export class PixelLabProvider implements Provider {
     await this.client.deleteObject(assetId)
   }
 
+  async deleteCharacter(id: string): Promise<void> {
+    await this.client.deleteCharacter(id)
+  }
+
   async *listCharacters(): AsyncGenerator<RemoteCharacter> {
     for await (const character of this.client.iterateCharacters(100)) {
       yield remoteCharacter(character)

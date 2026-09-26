@@ -13,8 +13,12 @@ import { adoptCharacters } from "../../pipeline/adopt-characters.ts"
 import {
   loadClaims,
   findOrphans,
+  findOrphanCharacters,
+  characterStyleIds,
   groupOrphansByStyle,
   loadSiblingManifests,
+  routeCharacterOrphans,
+  withoutCharacterStyles,
   SALVAGED_SPEC_HASH,
 } from "../../pipeline/salvage.ts"
 import { resolveProject, type WorkspaceProject } from "../../workspace.ts"
@@ -178,7 +182,19 @@ export async function runSalvage(args: Args): Promise<void> {
   const claimed = await loadClaims(lockPaths, { provider: provider.id })
   const { orphans, total } = await findOrphans(provider, claimed, { onProgress: diag })
   diag(`  ${claimed.size} claimed · ${orphans.length} unclaimed of ${total}`)
-  if (!orphans.length) {
+  // Characters are their own account records, outside the object listing.
+  const characterScan = await findOrphanCharacters(provider, claimed, { onProgress: diag })
+  const characterOrphans = characterScan.orphans
+  if (characterScan.total) {
+    diag(`  ${characterOrphans.length} unclaimed character group(s) of ${characterScan.total} character(s)`)
+  }
+  if (characterScan.partlyClaimed) {
+    diag(
+      `  ${characterScan.partlyClaimed} character group(s) are partly claimed (a base or state some project uses);\n` +
+        `  they are left out here. Declare their other states and run \`pixelkiln adopt\` instead.`,
+    )
+  }
+  if (!orphans.length && !characterOrphans.length) {
     if (jsonMode) log("[]")
     else log(`\n  nothing to triage`)
     return
@@ -196,10 +212,13 @@ export async function runSalvage(args: Args): Promise<void> {
 
   // Which style each orphan's prompt was most likely generated from, so a
   // shared account's orphan pool doesn't get triaged as one undifferentiated
-  // blob under whichever style happens to be first in the manifest.
-  const { matched, unmatched, elsewhere } = groupOrphansByStyle(orphans, accountManifest, siblings)
-  const multiStyle = Object.keys(accountManifest.styles).length > 1
-  if (multiStyle) {
+  // blob under whichever style happens to be first in the manifest. Objects
+  // never route to a character style: imported there, one would become a
+  // character base with nothing upstream to adopt.
+  const objectManifest = withoutCharacterStyles(accountManifest)
+  const { matched, unmatched, elsewhere } = groupOrphansByStyle(orphans, objectManifest, siblings)
+  const multiStyle = Object.keys(objectManifest.styles).length > 1
+  if (multiStyle && orphans.length) {
     diag(`\n  by style (matched against each style's prompt prefix/suffix):`)
     for (const [id, list] of matched) diag(`    ${id.padEnd(24)} ${list.length}`)
     if (unmatched.length) diag(`    ${"(no style match)".padEnd(24)} ${unmatched.length}`)
@@ -217,17 +236,34 @@ export async function runSalvage(args: Args): Promise<void> {
         `  out of the sessions below; force them into one style with --style <id>.`,
     )
   }
+  const characterRoutes = routeCharacterOrphans(characterOrphans, accountManifest)
+  if (characterOrphans.length && !characterStyleIds(accountManifest).length) {
+    diag(
+      `\n  ${characterOrphans.length} unclaimed character group(s), but this manifest has no character style\n` +
+        `  to import them into. Add a style with "generator": "character" to triage them.`,
+    )
+  } else if (characterRoutes.unmatched.length) {
+    diag(
+      `\n  ${characterRoutes.unmatched.length} character group(s) don't match any character style's pattern;\n` +
+        `  force them into one with --style <character style id>.`,
+    )
+  }
 
   if (args.dryRun) {
+    const listed = [...orphans, ...characterOrphans]
     if (args.json) {
-      log(JSON.stringify(orphans, null, 2))
+      log(JSON.stringify(listed, null, 2))
     } else {
-      const shown = args.all ? orphans : orphans.slice(0, 30)
+      const shown = args.all ? listed : listed.slice(0, 30)
       for (const o of shown) {
-        log(`    ${o.id}  ${o.width}x${o.height}  ${o.createdAt.slice(0, 10)}  ${o.prompt.slice(0, 50)}`)
+        log(
+          `    ${o.id}  ${o.width}x${o.height}  ${o.createdAt.slice(0, 10)}  ` +
+            (o.kind === "character" ? `[${o.note}]  ` : "") +
+            o.prompt.slice(0, 50),
+        )
       }
-      if (!args.all && orphans.length > 30) {
-        log(`    … and ${orphans.length - 30} more (--all for the full list, --json for machine-readable)`)
+      if (!args.all && listed.length > 30) {
+        log(`    … and ${listed.length - 30} more (--all for the full list, --json for machine-readable)`)
       }
     }
     diag(`\n  --dry-run: nothing changed.`)
@@ -253,6 +289,17 @@ export async function runSalvage(args: Args): Promise<void> {
     if (n) log(`  baselined ${n} imported asset(s) against the manifest`)
   }
 
+  // An imported character group is only manifest assets until adoption maps
+  // them onto the account by remoteId and downloads every rotation and frame.
+  const adoptImported = async (assetIds: string[]) => {
+    const resolve = async () =>
+      (await resolveSpecs(await loadManifest(args.manifest), { assets: assetIds }))
+        .filter((spec) => spec.provider === provider.id)
+    const adopted = await adoptCharacters(provider, await resolve(), lock, args.lock, { onProgress: log, resolve })
+    log(`  adopted ${adopted.matched} of ${assetIds.length} imported character asset(s)`)
+    for (const line of adopted.unmatched) log(`    not adopted: ${line}`)
+  }
+
   const runOne = async (styleId: string, list: typeof orphans) => {
     const style = accountManifest.styles[styleId]!
     const res = await runSalvageServer(
@@ -273,15 +320,24 @@ export async function runSalvage(args: Args): Promise<void> {
         (res.failed ? ` · failed ${res.failed}` : ""),
     )
     if (res.imported > 0) await rebaseline()
+    if (res.characterAssetIds?.length) await adoptImported(res.characterAssetIds)
     return res
   }
 
   // An explicit --style bypasses grouping entirely and runs one session
   // across every unclaimed object, same as before grouping existed, for
   // when the auto-match misses a real candidate and a human already knows
-  // where it belongs.
+  // where it belongs. A character style takes every unclaimed character
+  // group instead, and no objects.
   if (args.styles.length) {
-    const res = await runOne(args.styles[0]!, orphans)
+    const styleId = args.styles[0]!
+    const isCharacterStyle = characterStyleIds(accountManifest).includes(styleId)
+    const list = isCharacterStyle ? characterOrphans : orphans
+    if (!list.length) {
+      log(`\n  nothing unclaimed to triage into ${styleId}`)
+      return
+    }
+    const res = await runOne(styleId, list)
     if (res.discarded) {
       log(`\n  Nothing was deleted. To actually remove the discarded objects:`)
       log(`    pixelkiln purge\n`)
@@ -289,15 +345,16 @@ export async function runSalvage(args: Args): Promise<void> {
     return
   }
 
-  if (!matched.size) {
+  const sessions = [...matched, ...characterRoutes.matched]
+  if (!sessions.length) {
     log(`\n  nothing matched a known style; nothing to triage`)
     return
   }
 
-  log(`\n  ${matched.size} session(s), one style at a time:`)
+  log(`\n  ${sessions.length} session(s), one style at a time:`)
   let totalDiscarded = 0
-  for (const [styleId, list] of matched) {
-    log(`\n  ${styleId} (${list.length})`)
+  for (const [styleId, list] of sessions) {
+    log(`\n  ${styleId} (${list.length}${list[0]?.kind === "character" ? " character group(s)" : ""})`)
     const res = await runOne(styleId, list)
     totalDiscarded += res.discarded
   }
@@ -311,18 +368,34 @@ export async function runPurge(args: Args): Promise<void> {
   const { accountProvider } = await openAccountProject(args)
   const providerFor = providerCache("online")
   const provider = providerFor(accountProvider)
-  const doomed: { id: string; prompt: string }[] = []
+  const doomed: { id: string; prompt: string; kind: "object" | "character" }[] = []
   for await (const obj of requireList(provider)()) {
     if (obj.tags.includes("pixelkiln:discard")) {
-      doomed.push({ id: obj.id, prompt: obj.prompt })
+      doomed.push({ id: obj.id, prompt: obj.prompt, kind: "object" })
+    }
+  }
+  // Characters are separate records upstream; salvage tags every member of
+  // a discarded group (base and each state), so each is deleted on its own.
+  if (provider.listCharacters && provider.deleteCharacter) {
+    for await (const character of provider.listCharacters()) {
+      if (character.tags.includes("pixelkiln:discard")) {
+        const label = character.stateName && character.stateName !== "Idle" ? ` (${character.stateName})` : ""
+        doomed.push({ id: character.id, prompt: `${character.prompt || character.name}${label}`, kind: "character" })
+      }
     }
   }
   if (!doomed.length) {
     log(`  nothing tagged pixelkiln:discard; run \`pixelkiln salvage\` first`)
     return
   }
-  log(`\n  ${doomed.length} object(s) tagged for discard:`)
-  for (const d of doomed.slice(0, 20)) log(`    ${d.id}  ${d.prompt.slice(0, 60)}`)
+  const characters = doomed.filter((d) => d.kind === "character").length
+  const objects = doomed.length - characters
+  const counted = [
+    objects ? `${objects} object(s)` : "",
+    characters ? `${characters} character(s)` : "",
+  ].filter(Boolean).join(" and ")
+  log(`\n  ${counted} tagged for discard:`)
+  for (const d of doomed.slice(0, 20)) log(`    ${d.id}  ${d.kind === "character" ? "[character] " : ""}${d.prompt.slice(0, 60)}`)
   if (doomed.length > 20) log(`    … and ${doomed.length - 20} more`)
 
   if (args.dryRun) {
@@ -332,7 +405,8 @@ export async function runPurge(args: Args): Promise<void> {
   log(`\n  This permanently deletes them from your ${provider.id} account.`)
   log(`  Any local files already downloaded are untouched, but the objects`)
   log(`  and their URLs are gone and cannot be re-downloaded.`)
-  if (!(await confirm(`  Delete ${doomed.length} object(s)?`, args.yes))) {
+  if (characters) log(`  A deleted character takes its animations with it.`)
+  if (!(await confirm(`  Delete ${counted}?`, args.yes))) {
     log(`  aborted`)
     return
   }
@@ -341,7 +415,8 @@ export async function runPurge(args: Args): Promise<void> {
   let failed = 0
   for (const d of doomed) {
     try {
-      await requireDelete(provider)(d.id)
+      if (d.kind === "character") await provider.deleteCharacter!(d.id)
+      else await requireDelete(provider)(d.id)
       deleted++
     } catch (err) {
       failed++
