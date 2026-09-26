@@ -1550,7 +1550,9 @@ export const AssetSchema = z
         path: ["mirror"],
       })
     }
-    if (asset.prompt === undefined && !asset.mirror && !asset.portrait && !asset.outfit) {
+    // A template loop is described by its template; v3 and pro loops still
+    // need the motion in words, which the provider checks.
+    if (asset.prompt === undefined && !asset.mirror && !asset.portrait && !asset.outfit && !asset.animation?.template) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Required",

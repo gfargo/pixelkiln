@@ -274,7 +274,7 @@ and regenerating the parent makes the child stale.
 | Asset | PixelLab call | Cost |
 |---|---:|---:|
 | base, `mode: standard` | create-character-with-4/8-directions | 1 |
-| base, `mode: v3` | create-character-v3 | 1 + ceil(size² × 8 / 65536): 2 at 64px, 3 at 128px |
+| base, `mode: v3` | create-character-v3 | 1 + ceil(size² × 8 / 65536): 2 at 64px, 3 at 128px; from a `reference`, the rotations alone on its canvas: 1 at 64px |
 | base, `mode: pro` | create-character-pro | 20–40 by canvas |
 | base, `mode: pro-flash` | create-character-pro-flash | image tier (5 to 96px, 6 to 208px, 9 above) + ceil(size² × 8 / 65536): 6 at 64px, 8 at 128px, 17 at 256px; rotations only from a `reference` |
 | state | create-character-state | 20–40 by canvas |
