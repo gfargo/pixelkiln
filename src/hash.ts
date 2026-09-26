@@ -78,6 +78,15 @@ export function specHash(
       uiPieces: spec.uiPieces,
       uiElements: spec.uiElements,
       uiColorPalette: spec.uiColorPalette,
+      // Scene and mask enter as their bytes' hashes, never their paths.
+      scene: spec.scene
+        ? {
+            image: spec.scene.sha256,
+            placement: spec.scene.placement.type === "mask"
+              ? { type: "mask", mask: spec.scene.placement.sha256 }
+              : spec.scene.placement,
+          }
+        : undefined,
       styleTraits: spec.styleTraits,
       styleImages: styleImageHashes,
       // A character family: the engine and rotations of a base, the parent's

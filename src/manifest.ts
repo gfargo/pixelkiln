@@ -21,8 +21,11 @@ import {
   MIRRORED_DIRECTION,
   type Asset,
   type CharacterDirection,
+  type Generator,
   type Manifest,
+  type MapScene,
   type ResolvedCharacter,
+  type ResolvedMapScene,
   type ResolvedObjectPro,
   type ResolvedReferenceImage,
   type ResolvedRevisionMember,
@@ -239,6 +242,7 @@ export async function resolveSpecs(
       Provider,
       | "supports"
       | "supportsRevision"
+      | "supportsMapScene"
       | "estimate"
       | "validate"
       | "resolveOptions"
@@ -256,6 +260,7 @@ export async function resolveSpecs(
     Provider,
     | "supports"
     | "supportsRevision"
+    | "supportsMapScene"
     | "estimate"
     | "validate"
     | "resolveOptions"
@@ -973,6 +978,7 @@ export async function resolveSpecs(
           }
         }
       }
+      if (asset.scene) resolved.scene = await resolveMapScene(root, styleId, assetId, resolved.generator, asset.scene, activeProvider)
       resolved.specHash = specHash(
         resolved,
         styleImageHashes,
@@ -1034,6 +1040,47 @@ export async function resolveSpecs(
 function pngPath(file: string): string {
   const extension = path.extname(file)
   return extension ? `${file.slice(0, -extension.length)}.png` : `${file}.png`
+}
+
+/**
+ * A `map` object's scene and placement. Like a revision's inputs, either
+ * file may not exist yet (the scene is often another asset's output): the
+ * hashes stay null and readiness blocks submission until both are on disk.
+ */
+async function resolveMapScene(
+  root: string,
+  styleId: string,
+  assetId: string,
+  generator: Generator,
+  scene: MapScene,
+  provider: Pick<Provider, "id" | "supportsMapScene">,
+): Promise<ResolvedMapScene> {
+  if (generator !== "map") {
+    throw new Error(`assets.${assetId}.scene: only a map object can be drawn into a scene; style "${styleId}" uses "${generator}"`)
+  }
+  if (!provider.supportsMapScene) {
+    throw new Error(`assets.${assetId}.scene: provider "${provider.id}" cannot draw into a scene; PixelLab's /map-objects can`)
+  }
+  const file = path.resolve(root, scene.image)
+  const image = await optionalRevisionImage(file, "scene image", "png")
+  const base = { file, sha256: image?.hash ?? null, width: image?.width ?? null, height: image?.height ?? null }
+  const placement = scene.placement
+  if ("mask" in placement) {
+    const maskFile = path.resolve(root, placement.mask)
+    const mask = await optionalRevisionImage(maskFile, "scene mask", "png")
+    if (image && mask && (image.width !== mask.width || image.height !== mask.height)) {
+      throw new Error(
+        `assets.${assetId}.scene: the mask is ${mask.width}x${mask.height}; the scene ${scene.image} is ${image.width}x${image.height}`,
+      )
+    }
+    return {
+      ...base,
+      placement: { type: "mask", file: maskFile, sha256: mask?.hash ?? null, width: mask?.width ?? null, height: mask?.height ?? null },
+    }
+  }
+  return "oval" in placement
+    ? { ...base, placement: { type: "oval", fraction: placement.oval } }
+    : { ...base, placement: { type: "rectangle", fraction: placement.rectangle } }
 }
 
 async function optionalRevisionImage(

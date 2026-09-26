@@ -1,3 +1,10 @@
+# [0.68.0](https://github.com/gfargo/pixelkiln/compare/v0.67.0...v0.68.0) (2026-09-26)
+
+
+### Features
+
+* **map:** draw a map object into a scene, in its style ([#216](https://github.com/gfargo/pixelkiln/issues/216)) ([e1fc0a5](https://github.com/gfargo/pixelkiln/commit/e1fc0a55fe7f0aaf29edfdbebb3b10b738d88f99))
+
 # [0.67.0](https://github.com/gfargo/pixelkiln/compare/v0.66.0...v0.67.0) (2026-09-26)
 
 

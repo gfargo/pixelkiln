@@ -316,6 +316,9 @@ export class PixelLabProvider implements Provider {
     )
   }
 
+  /** `/map-objects` style matching: `background_image` plus `inpainting`. */
+  readonly supportsMapScene = true
+
   /**
    * `inpaint` (`/inpaint-v3`, a mask) and `image-to-image` (`/edit-images-v2`,
    * no mask) both exist on PixelLab, and so do `reduce-colors`
@@ -1650,6 +1653,7 @@ export class PixelLabProvider implements Provider {
       shading: spec.shading,
       detail: spec.detail,
       seed: spec.seed,
+      scene: spec.scene ? mapScenePayload(spec) : undefined,
     })
     return { jobId: res.object_id, metadata: { backgroundJobId: res.background_job_id } }
   }
@@ -2715,4 +2719,27 @@ function findObjectAnimation(
     return { frames, groupId: group.animation_group_id, animationId: animationId ?? fromUrl }
   }
   return null
+}
+
+/**
+ * Reads the scene (and a mask placement's mask) as the spec hashed them.
+ * Readiness already blocks a missing or changed file; this re-check is the
+ * same last guard a revision source gets before bytes are spent on.
+ */
+function mapScenePayload(spec: ResolvedSpec): NonNullable<Parameters<PixelLabClient["createMapObject"]>[0]["scene"]> {
+  const scene = spec.scene!
+  const read = (file: string, hash: string | null, label: string): Base64Image => {
+    const bytes = readFileSync(file)
+    if (!hash || sha256(bytes) !== hash) {
+      throw new Error(`${spec.styleId}/${spec.assetId}: ${label} changed after the manifest was resolved`)
+    }
+    return { base64: bytes.toString("base64"), format: "png" }
+  }
+  const placement = scene.placement
+  return {
+    image: read(scene.file, scene.sha256, "scene image"),
+    placement: placement.type === "mask"
+      ? { type: "mask", mask: read(placement.file, placement.sha256, "scene mask") }
+      : placement,
+  }
 }

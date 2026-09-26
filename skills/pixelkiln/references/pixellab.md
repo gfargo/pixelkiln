@@ -274,7 +274,13 @@ of 4, no `strength`), at the Pro Flash tier instead of the Pro endpoints' 20–4
 
 Do not confuse pixelkiln's `map` generator with PixelLab's own "Map
 Workshop": `map` returns one static prop, icon, or building in a single
-generation with no scene, canvas, or placement concept. Map Workshop (scene
+generation. Its one scene concept is optional: a `map` asset's `scene` (`{
+"image": "floor.png", "placement": { "oval": 0.3 } }`, or `rectangle`, or a
+`mask` PNG the scene's size) draws the object into that picture, in its style,
+still for one generation. The scene can be another asset's output; the object
+is blocked until it exists and goes stale when it is redrawn. Whether the
+result is the object alone or composited, and where an oval sits, are
+unverified; look at the first result before a batch. Map Workshop (scene
 composition — laying out a tile floor, placing characters and movable
 objects, inpainting sections in place, exporting the result) is a distinct
 PixelLab product surface this adapter does not model at all.

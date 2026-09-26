@@ -662,6 +662,15 @@ export class PixelLabClient {
     shading?: string
     detail?: string
     seed?: number
+    /**
+     * Style matching: the scene the object should match, and where in it
+     * the object is drawn. PixelLab requires the scene whenever inpainting
+     * is sent, so the two travel together.
+     */
+    scene?: {
+      image: Base64Image
+      placement: { type: "oval" | "rectangle"; fraction: number } | { type: "mask"; mask: Base64Image }
+    }
   }): Promise<{ object_id: string; status: string; background_job_id: string }> {
     const body: Record<string, unknown> = {
       description: args.description,
@@ -672,6 +681,14 @@ export class PixelLabClient {
     if (args.shading) body.shading = args.shading
     if (args.detail) body.detail = args.detail
     if (args.seed != null) body.seed = args.seed
+    if (args.scene) {
+      const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
+      const placement = args.scene.placement
+      body.background_image = encode(args.scene.image)
+      body.inpainting = placement.type === "mask"
+        ? { type: "mask", mask_image: encode(placement.mask) }
+        : { type: placement.type, fraction: placement.fraction }
+    }
     return validateResponse(
       MapSubmitSchema,
       await this.request<unknown>("/map-objects", { method: "POST", body: JSON.stringify(body) }),
