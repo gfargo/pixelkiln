@@ -1,3 +1,10 @@
+# [0.74.0](https://github.com/gfargo/pixelkiln/compare/v0.73.0...v0.74.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** the character studio, and generation jobs that run in waves ([81d90f4](https://github.com/gfargo/pixelkiln/commit/81d90f4b283f1266f57f7d4dd04cf3b307e38e68))
+
 # [0.73.0](https://github.com/gfargo/pixelkiln/compare/v0.72.0...v0.73.0) (2026-09-26)
 
 
