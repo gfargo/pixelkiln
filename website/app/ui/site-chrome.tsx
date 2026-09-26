@@ -9,8 +9,8 @@ export function KilnMark() {
       src="/brand/kiln-mark.png"
       alt=""
       aria-hidden="true"
-      width={26}
-      height={26}
+      width={40}
+      height={40}
     />
   );
 }
