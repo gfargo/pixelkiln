@@ -1,3 +1,5 @@
+## [0.68.1](https://github.com/gfargo/pixelkiln/compare/v0.68.0...v0.68.1) (2026-09-26)
+
 # [0.68.0](https://github.com/gfargo/pixelkiln/compare/v0.67.0...v0.68.0) (2026-09-26)
 
 
