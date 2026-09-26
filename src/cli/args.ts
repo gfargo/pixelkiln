@@ -93,7 +93,8 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "help", "--help", "-h", "--version", "-v",
+  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
+  "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -192,6 +193,10 @@ export function parseArgs(argv: string[]): Args {
       }
       rest = rest.slice(1)
     }
+  } else if (command === "estimate-skeleton") {
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (target === undefined) throw new UsageError("estimate-skeleton needs an image path")
+    rest = rest.slice(1)
   } else if (command === "refine") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "run" : rest[0]
     if (!(REFINE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {

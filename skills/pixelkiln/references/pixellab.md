@@ -367,23 +367,37 @@ contained a generated signature-like glyph.
 An asset that declares `revision` against a PixelLab style calls `inpaint`
 (masked), `image-to-image` (whole-image, no mask), `reduce-colors`
 (palette quantize, `/reduce-colors`), `correct-pixelart` (edge/noise
-cleanup, `/correct-pixelart`), `animate` (`/animate-with-text-v3`), or
+cleanup, `/correct-pixelart`), `animate` (`/animate-with-text-v3`),
 `animate-pixminimax` (`/animate-pixminimax`, beta, tier 1 subscription or
-higher); `outpaint` is refused, since PixelLab has no canvas-expansion
+higher), or `animate-skeleton` (`/animate-with-skeleton-v3`, also beta/tier
+1+ — poses the source frame-by-frame from a supplied 18-joint skeleton per
+frame, via a committed `keypointsFile` rather than a text motion
+description); `outpaint` is refused, since PixelLab has no canvas-expansion
 endpoint. `reduce-colors`/`correct-pixelart` send no prompt to PixelLab at
 all — they are mechanical, not described — and complete synchronously with
 no background job, unlike every other PixelLab call this adapter makes.
-`animate`/`animate-pixminimax` DO send the asset's own prompt, as the motion
-description, and produce an ordered **frame set** landing in candidate
+`animate`/`animate-pixminimax`/`animate-skeleton` DO send the asset's own
+prompt, as the motion description (`animate-skeleton` calls it `action`,
+alongside a separate optional `description` field for appearance — the
+skeleton carries the motion, the text only names it and what the subject
+looks like), and produce an ordered **frame set** landing in candidate
 review, not a single image — the one revision mode shape that isn't "one
-image in, one image out." Neither animate endpoint's completed-job response
-shape has ever been observed; `pollAnimateRevision` guesses defensively
-rather than assume one. Read `docs/REVISIONS.md`'s PixelLab section before
-using any of these. `reduce-colors`/`correct-pixelart` cost is **confirmed
-live**: a flat 0.1 generations each (not the schema's dollar-denominated
-example), at least at a 32×32 source — `animate`/`animate-pixminimax` remain
-schema-only and unexercised, taken from PixelLab's live OpenAPI document
-rather than an observed call.
+image in, one image out." None of the three animate endpoints' completed-job
+response shape has ever been observed; `pollAnimateRevision` guesses
+defensively rather than assume one. Read `docs/REVISIONS.md`'s PixelLab
+section before using any of these. `reduce-colors`/`correct-pixelart` cost is
+**confirmed live**: a flat 0.1 generations each (not the schema's
+dollar-denominated example), at least at a 32×32 source — `animate`/
+`animate-pixminimax`/`animate-skeleton` remain schema-only and unexercised.
+`animate-skeleton`'s request field names come from the live
+`animate_with_skeleton_v3` MCP tool schema, a more authoritative source than
+the OpenAPI document the other two are taken from, but still not an observed
+call. `estimate-skeleton` (auto-derive a reference image's own keypoints) is
+wrapped too, but deliberately as a standalone `pixelkiln estimate-skeleton`
+CLI command, never inside `submitRevision` — see
+[pixellab-roadmap.md](./pixellab-roadmap.md)'s now-closed skeleton-driven-
+animation entry for why composing two never-tested-live endpoints in one
+submission was rejected.
 
 `animate-pixminimax`'s `direction` + `enhancePrompt` combination has a
 measured-in-practice gotcha, not just a schema quirk: PixelLab's own tutorial

@@ -34,7 +34,7 @@ afterEach(async () => {
 })
 
 describe("ComfyUI: supportsRevision", () => {
-  it("supports every revision mode generically except animate/animate-pixminimax, which need a frame set", () => {
+  it("supports every revision mode generically except animate/animate-pixminimax/animate-skeleton, which need a frame set", () => {
     const provider = new ComfyUIProvider()
     expect(provider.supportsRevision("image-to-image")).toBe(true)
     expect(provider.supportsRevision("inpaint")).toBe(true)
@@ -43,6 +43,7 @@ describe("ComfyUI: supportsRevision", () => {
     expect(provider.supportsRevision("correct-pixelart")).toBe(true)
     expect(provider.supportsRevision("animate")).toBe(false)
     expect(provider.supportsRevision("animate-pixminimax")).toBe(false)
+    expect(provider.supportsRevision("animate-skeleton")).toBe(false)
   })
 })
 

@@ -466,7 +466,7 @@ their own page: [Characters](./CHARACTERS.md) and
 
 | Revision field | Type | Meaning |
 |---|---|---|
-| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, `correct-pixelart`, `animate`, or `animate-pixminimax`. The selected provider must opt into the mode. |
+| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, `correct-pixelart`, `animate`, `animate-pixminimax`, or `animate-skeleton`. The selected provider must opt into the mode. |
 | `from` | asset id, required | Parent asset in the same style. Self-references, unknown ids, and cycles are rejected. |
 | `mask` | string | Manifest-relative PNG required for `inpaint`; rejected for the other modes. Its dimensions must match an available source. |
 | `strength` | number 0–1 | Workflow edit/denoise strength (`image-to-image`, `correct-pixelart`); rejected for `reduce-colors`, `animate`, and `animate-pixminimax`. Interpretation is provider- and model-specific. |
@@ -474,11 +474,14 @@ their own page: [Characters](./CHARACTERS.md) and
 | `paletteImage` | string | `reduce-colors` only. Manifest-relative image whose colors become the palette; unlike `mask`, no size relationship to the source is required. |
 | `dithering` | enum | `reduce-colors` only. `none` (default), `2x2`, `4x4`, or `8x8`. |
 | `ditheringStrength` | number 0–10 | `reduce-colors` only. Ignored when `dithering` is `none`. |
-| `frames` | integer 4–40, even | `animate`/`animate-pixminimax` only. `animate` caps at 16; `animate-pixminimax` allows up to 40. |
+| `frames` | integer 4–40, even | `animate`/`animate-pixminimax` only. `animate` caps at 16; `animate-pixminimax` allows up to 40. Rejected for `animate-skeleton`, whose frame count comes from `keypointsFile` instead. |
 | `fps` | integer 1–60 | `animate`/`animate-pixminimax` only. Playback rate recorded with the frames; the provider does not store one. |
 | `lastFrame` | string | `animate`/`animate-pixminimax` only. Manifest-relative image pinning where the motion ends, turning an open-ended animation into an interpolation. |
-| `direction` | enum | `animate-pixminimax` only. The sprite's facing, used only alongside `enhancePrompt`. |
+| `direction` | enum | `animate-pixminimax`/`animate-skeleton`. Optional (alongside `enhancePrompt`) for the former; **required** for the latter. |
 | `enhancePrompt` | boolean | `animate`/`animate-pixminimax` only. Lets the provider expand the prompt into a fuller motion description first, for an extra documented +0.05-generation surcharge. |
+| `keypointsFile` | string, required for `animate-skeleton` | Manifest-relative JSON file (`src/skeleton.ts`'s `SkeletonSetSchema`): the pose the source is already in, plus 3–15 per-frame poses. See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation). |
+| `skeletonTemplate` | string | `animate-skeleton` only. Body a joint's missing `depth` is taken from: `mannequin` (default), `bear`, `cat`, `dog`, `horse`, or `lion`. |
+| `description` | string | `animate-skeleton` only. What the subject *looks like* (colours, clothing, held items) — the asset's own `prompt` is sent as the motion's short label instead. |
 
 The parent may use committed `source`, downloaded generated output, or a
 current approved quality output. Parent and mask hashes participate in the

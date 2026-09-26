@@ -15,6 +15,7 @@ import { runExport, runMount, runPack } from "./commands/pack.ts"
 import { runQuality } from "./commands/quality.ts"
 import { runRecipe } from "./commands/recipe.ts"
 import { runRefine } from "./commands/refine.ts"
+import { runEstimateSkeleton } from "./commands/skeleton.ts"
 import { runTools } from "./commands/tools.ts"
 import { runWorkspace } from "./commands/workspace.ts"
 
@@ -80,6 +81,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   refine: runRefine,
   recipe: runRecipe,
   workspace: runWorkspace,
+  "estimate-skeleton": runEstimateSkeleton,
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {

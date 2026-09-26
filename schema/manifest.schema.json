@@ -1007,7 +1007,8 @@
                       "reduce-colors",
                       "correct-pixelart",
                       "animate",
-                      "animate-pixminimax"
+                      "animate-pixminimax",
+                      "animate-skeleton"
                     ]
                   },
                   "from": {
@@ -1075,6 +1076,18 @@
                   },
                   "enhancePrompt": {
                     "type": "boolean"
+                  },
+                  "keypointsFile": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "skeletonTemplate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [

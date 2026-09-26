@@ -341,6 +341,23 @@ Show one provider's remaining balance and cost unit. A mixed manifest requires
 `--provider`; a single-provider manifest infers it. Reports a capability error
 when an installed provider, such as local ComfyUI, has no balance endpoint.
 
+### `estimate-skeleton`
+
+```bash
+pixelkiln estimate-skeleton <image> [--out keypoints.json]
+```
+
+PixelLab only. Derives an 18-joint skeleton from an image via
+`/estimate-skeleton` and prints the keypoints JSON, or writes it with `--out`.
+Same category as `balance`: a direct, un-budgeted account call outside the
+manifest/plan/lock pipeline — no manifest is read beyond locating
+`.env.local`, and nothing is written to a lockfile. This is how to bootstrap
+an `animate-skeleton` revision's `keypointsFile` (see
+[Controlled asset revisions](./REVISIONS.md#skeleton-driven-animation)):
+estimate once, sanity-check the result, hand-tweak a few joints for
+in-between frames, rather than hand-authoring 18 joints of
+`{label, x, y, z_index}` from scratch.
+
 ### `status`
 
 Summarize lock entries by state and successful submission spend by cost unit.

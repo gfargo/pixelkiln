@@ -1,4 +1,5 @@
 import path from "node:path"
+import { existsSync } from "node:fs"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -17,7 +18,7 @@ function png(shade = 20, width = 32, height = 32): Buffer {
 }
 
 describe("PixelLab: supportsRevision", () => {
-  it("supports inpaint, image-to-image, reduce-colors, correct-pixelart, animate, and animate-pixminimax, not outpaint", () => {
+  it("supports inpaint, image-to-image, reduce-colors, correct-pixelart, animate, animate-pixminimax, and animate-skeleton, not outpaint", () => {
     const provider = PixelLabProvider.forOffline()
     expect(provider.supportsRevision("inpaint")).toBe(true)
     expect(provider.supportsRevision("image-to-image")).toBe(true)
@@ -25,6 +26,7 @@ describe("PixelLab: supportsRevision", () => {
     expect(provider.supportsRevision("correct-pixelart")).toBe(true)
     expect(provider.supportsRevision("animate")).toBe(true)
     expect(provider.supportsRevision("animate-pixminimax")).toBe(true)
+    expect(provider.supportsRevision("animate-skeleton")).toBe(true)
     expect(provider.supportsRevision("outpaint")).toBe(false)
   })
 })
@@ -210,6 +212,69 @@ describe("PixelLabClient: the animate wire", () => {
       direction: "east",
       enhance_prompt: true,
     })
+  })
+
+  const keypoint = (label: string) => ({ label, x: 0.5, y: 0.5, z_index: 1 })
+
+  it("sends animate-with-skeleton-v3 with first_frame_keypoints, keypoints, and direction, omitting unset optionals", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ background_job_id: "job-3", status: "processing" }), { status: 202 })))
+    const client = new PixelLabClient("key")
+    await client.animateWithSkeletonV3({
+      firstFrame: { base64: "Rg==", format: "png" },
+      firstFrameKeypoints: [keypoint("NOSE")],
+      keypoints: [[keypoint("NOSE")], [keypoint("NOSE")]],
+      direction: "south",
+    })
+    const call = vi.mocked(fetch).mock.calls[0]!
+    expect(new URL(String(call[0])).pathname).toBe("/v2/animate-with-skeleton-v3")
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      first_frame: { base64: "Rg==", format: "png" },
+      first_frame_keypoints: [keypoint("NOSE")],
+      keypoints: [[keypoint("NOSE")], [keypoint("NOSE")]],
+      direction: "south",
+    })
+  })
+
+  it("sends animate-with-skeleton-v3 with template_id, action, and description when set", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ background_job_id: "job-4", status: "processing" }), { status: 202 })))
+    const client = new PixelLabClient("key")
+    await client.animateWithSkeletonV3({
+      firstFrame: { base64: "Rg==", format: "png" },
+      firstFrameKeypoints: [keypoint("NOSE")],
+      keypoints: [[keypoint("NOSE")]],
+      direction: "east",
+      templateId: "bear",
+      action: "walk",
+      description: "a blue bear",
+      seed: 3,
+      noBackground: false,
+    })
+    const call = vi.mocked(fetch).mock.calls[0]!
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      first_frame: { base64: "Rg==", format: "png" },
+      first_frame_keypoints: [keypoint("NOSE")],
+      keypoints: [[keypoint("NOSE")]],
+      direction: "east",
+      template_id: "bear",
+      action: "walk",
+      description: "a blue bear",
+      seed: 3,
+      no_background: false,
+    })
+  })
+
+  it("sends estimate-skeleton with image and parses keypoints back", async () => {
+    const responseKeypoints = Array.from({ length: 18 }, (_, i) => keypoint(`JOINT_${i}`))
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ keypoints: responseKeypoints, usage: { type: "generations", generations: 0.1 } }), { status: 200 })))
+    const client = new PixelLabClient("key")
+    const res = await client.estimateSkeleton({ image: { base64: "Rg==", format: "png" } })
+    const call = vi.mocked(fetch).mock.calls[0]!
+    expect(new URL(String(call[0])).pathname).toBe("/v2/estimate-skeleton")
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({ image: { base64: "Rg==", format: "png" } })
+    expect(res.keypoints).toEqual(responseKeypoints)
   })
 })
 
@@ -576,5 +641,211 @@ describe("PixelLab provider: revision submit and poll", () => {
 
     await expect(resolveSpecs(await writeProject({ mode: "animate", from: "source", frames: 40 }), { assets: ["revised"] }))
       .rejects.toThrow(/PixelLab animate takes 4 to 16 frames/)
+  })
+})
+
+describe("PixelLab provider: animate-skeleton", () => {
+  let dir: string
+  let manifestPath: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-pixellab-skeleton-"))
+    manifestPath = path.join(dir, "pixelkiln.manifest.json")
+  })
+  afterEach(async () => {
+    vi.unstubAllGlobals()
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  const joint = (label: string) => ({ label, x: 0.5, y: 0.5, z_index: 1 })
+  const frame = () => Array.from({ length: 18 }, (_, i) => joint(`JOINT_${i}`))
+  const skeletonSet = (frameCount: number) => ({
+    firstFrameKeypoints: frame(),
+    frames: Array.from({ length: frameCount }, () => frame()),
+  })
+
+  async function writeProject(
+    revisionExtra: Record<string, unknown>,
+    opts: { keypointsFile?: string | false; frameCount?: number } = {},
+  ) {
+    await writeFile(path.join(dir, "source.png"), png())
+    const keypointsFile = opts.keypointsFile === false ? undefined : (opts.keypointsFile ?? "poses.json")
+    // Always start clean: a prior call in the same test (different
+    // frameCount) may have left a stale poses.json on disk, which would
+    // silently satisfy a "not yet authored" case that expects none to exist.
+    if (keypointsFile && existsSync(path.join(dir, keypointsFile))) {
+      await rm(path.join(dir, keypointsFile))
+    }
+    if (keypointsFile && opts.frameCount !== undefined) {
+      await writeFile(path.join(dir, keypointsFile), JSON.stringify(skeletonSet(opts.frameCount)))
+    }
+    await writeFile(manifestPath, JSON.stringify({
+      name: "pixellab-skeleton-test",
+      provider: "pixellab",
+      styles: { base: { generator: "map", size: 32, outDir: "art" } },
+      assets: {
+        source: { prompt: "a stone tower", source: "source.png" },
+        revised: {
+          prompt: "swinging the sword",
+          width: 32,
+          height: 32,
+          revision: { mode: "animate-skeleton", from: "source", direction: "south", ...(keypointsFile ? { keypointsFile } : {}), ...revisionExtra },
+        },
+      },
+    }))
+    return loadManifest(manifestPath)
+  }
+
+  it("requires keypointsFile and direction; rejects fields that belong to other modes", async () => {
+    await expect(writeProject({}, { keypointsFile: false })).rejects.toThrow(/require keypointsFile/)
+    await expect(
+      loadManifest(await (async () => {
+        await writeFile(path.join(dir, "source.png"), png())
+        await writeFile(manifestPath, JSON.stringify({
+          name: "t", provider: "pixellab",
+          styles: { base: { generator: "map", size: 32, outDir: "art" } },
+          assets: {
+            source: { prompt: "a stone tower", source: "source.png" },
+            revised: { prompt: "x", width: 32, height: 32, revision: { mode: "animate-skeleton", from: "source", keypointsFile: "poses.json" } },
+          },
+        }))
+        return manifestPath
+      })()),
+    ).rejects.toThrow(/require a direction/)
+  })
+
+  it("rejects keypointsFile/skeletonTemplate/description/direction on a mode other than animate-skeleton", async () => {
+    await writeFile(path.join(dir, "source.png"), png())
+    await writeFile(manifestPath, JSON.stringify({
+      name: "t", provider: "pixellab",
+      styles: { base: { generator: "map", size: 32, outDir: "art" } },
+      assets: {
+        source: { prompt: "a stone tower", source: "source.png" },
+        revised: { prompt: "x", width: 32, height: 32, revision: { mode: "image-to-image", from: "source", keypointsFile: "poses.json" } },
+      },
+    }))
+    await expect(loadManifest(manifestPath)).rejects.toThrow(/keypointsFile applies to animate-skeleton revisions only/)
+  })
+
+  it("resolves frames from the keypoints file, not a manifest number, and keeps planning offline before the file exists", async () => {
+    // Declared but not yet authored: plan must still work, same as a
+    // not-yet-drawn mask never blocking planning.
+    const notReady = await writeProject({}, { keypointsFile: "poses.json", frameCount: undefined })
+    const [pending] = await resolveSpecs(notReady, { assets: ["revised"] })
+    expect(pending!.revision!.keypointsFile).toBeDefined()
+    expect(pending!.revision!.skeleton).toBeNull()
+    expect(pending!.revision!.frames).toBeUndefined()
+
+    const ready = await writeProject({}, { keypointsFile: "poses.json", frameCount: 3 })
+    const [child] = await resolveSpecs(ready, { assets: ["revised"] })
+    expect(child!.revision!.frames).toBe(3)
+    expect(child!.revision!.keypointsSha256).toMatch(/^[0-9a-f]{64}$/)
+    expect(child!.revision!.skeleton!.frames).toHaveLength(3)
+  })
+
+  it("throws naming the file when the keypoints file is malformed", async () => {
+    await writeFile(path.join(dir, "source.png"), png())
+    await writeFile(path.join(dir, "poses.json"), JSON.stringify({ firstFrameKeypoints: frame(), frames: [frame(), frame()] })) // only 2, needs 3-15
+    await writeFile(manifestPath, JSON.stringify({
+      name: "t", provider: "pixellab",
+      styles: { base: { generator: "map", size: 32, outDir: "art" } },
+      assets: {
+        source: { prompt: "a stone tower", source: "source.png" },
+        revised: { prompt: "x", width: 32, height: 32, revision: { mode: "animate-skeleton", from: "source", direction: "south", keypointsFile: "poses.json" } },
+      },
+    }))
+    const loaded = await loadManifest(manifestPath)
+    await expect(resolveSpecs(loaded, { assets: ["revised"] })).rejects.toThrow(/poses\.json does not match the expected shape/)
+  })
+
+  it("estimates cost on PixelLab's own documented anchors, interpolating between them, and defaults to the 8-frame anchor before the file exists", async () => {
+    expect((await resolveSpecs(await writeProject({}, { keypointsFile: "poses.json", frameCount: 3 }), { assets: ["revised"] }))[0]!.cost).toBe(2)
+    expect((await resolveSpecs(await writeProject({}, { keypointsFile: "poses.json", frameCount: 8 }), { assets: ["revised"] }))[0]!.cost).toBe(3)
+    expect((await resolveSpecs(await writeProject({}, { keypointsFile: "poses.json", frameCount: 15 }), { assets: ["revised"] }))[0]!.cost).toBe(4)
+    // Not yet authored: falls back to the 8-frame anchor, same "assume a
+    // mid-size default" convention animate's own frames ?? 8 already uses.
+    expect((await resolveSpecs(await writeProject({}, { keypointsFile: "poses.json", frameCount: undefined }), { assets: ["revised"] }))[0]!.cost).toBe(3)
+  })
+
+  it("submits an animate-skeleton revision as a background job, never calling estimate-skeleton", async () => {
+    const loaded = await writeProject({}, { keypointsFile: "poses.json", frameCount: 3 })
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const plan = await buildPlan([child!], lock)
+
+    const frames = [0, 1, 2].map((i) => png(20 + i * 10, 32, 32))
+    let submitBody: Record<string, unknown> | null = null
+    let polls = 0
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      const url = new URL(String(input))
+      if (url.pathname === "/v2/estimate-skeleton") {
+        throw new Error("estimate-skeleton must never be called from submitRevision")
+      }
+      if (url.pathname === "/v2/animate-with-skeleton-v3") {
+        submitBody = init?.body ? JSON.parse(String(init.body)) : null
+        return new Response(JSON.stringify({ background_job_id: "skel-1", status: "processing" }), { status: 202 })
+      }
+      if (url.pathname === "/v2/background-jobs/skel-1") {
+        polls += 1
+        const status = polls < 2 ? "processing" : "completed"
+        const body = status === "processing"
+          ? { id: "skel-1", status, created_at: "now" }
+          : { id: "skel-1", status, created_at: "now", last_response: { images: frames.map((f) => ({ base64: f.toString("base64") })) } }
+        return new Response(JSON.stringify(body), { status: 200 })
+      }
+      throw new Error(`unexpected request: ${init?.method ?? "GET"} ${url.pathname}`)
+    }))
+
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    expect(submitBody).toMatchObject({ direction: "south" })
+    expect((submitBody as Record<string, unknown>).first_frame_keypoints).toHaveLength(18)
+    expect((submitBody as Record<string, unknown>).keypoints).toHaveLength(3)
+
+    // Like animate/animate-pixminimax, an ordered frame set lands in review
+    // for a human accept/reject step rather than auto-selecting.
+    const polled = await poll(provider, lock, lockPath, { intervalMs: 0, specs: [child!] })
+    expect(polled.review).toBe(1)
+    expect(lock.entries["base/revised"]).toMatchObject({ status: "review" })
+  })
+
+  it("refuses to submit when the keypoints file is not ready, and detects drift since resolve", async () => {
+    const loaded = await writeProject({}, { keypointsFile: "poses.json", frameCount: undefined })
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const plan = await buildPlan([child!], lock)
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 202 })))
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    const result = await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    expect(result.failed).toBe(1)
+    expect(lock.entries["base/revised"]).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining("revision keypoints are not ready"),
+    })
+  })
+
+  it("rejects a source over 256px per side", async () => {
+    const bigDir = await mkdtemp(path.join(tmpdir(), "pixelkiln-pixellab-skeleton-big-"))
+    try {
+      await writeFile(path.join(bigDir, "source.png"), png(20, 300, 300))
+      await writeFile(path.join(bigDir, "poses.json"), JSON.stringify(skeletonSet(3)))
+      await writeFile(path.join(bigDir, "pixelkiln.manifest.json"), JSON.stringify({
+        name: "big", provider: "pixellab",
+        styles: { base: { generator: "map", size: 300, outDir: "art" } },
+        assets: {
+          source: { prompt: "a big tower", source: "source.png" },
+          revised: {
+            prompt: "swing", width: 300, height: 300,
+            revision: { mode: "animate-skeleton", from: "source", direction: "south", keypointsFile: "poses.json" },
+          },
+        },
+      }))
+      const bigLoaded = await loadManifest(path.join(bigDir, "pixelkiln.manifest.json"))
+      await expect(resolveSpecs(bigLoaded, { assets: ["revised"] })).rejects.toThrow(/PixelLab animate-skeleton source is 300x300/)
+    } finally {
+      await rm(bigDir, { recursive: true, force: true })
+    }
   })
 })

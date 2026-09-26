@@ -156,14 +156,16 @@ comparing notes with someone using a different one:
 
 ## What is outside this adapter
 
-PixelLab offers more than PixelKiln currently exposes. Portraits, outfit
-transfer, lip-sync, and skeleton-driven animation are not part of this
-adapter. Characters, their states, and their animations are the `character`
-generator, with all four creation engines (standard, v3, pro, pro-flash),
-reference sprites, concept images, style anchors, mirrors, and every
-`animate-character` control; see [Characters](./CHARACTERS.md). Masked
-inpainting and whole-image editing are the `revision` asset shape, not the
-`character` generator; see [Controlled asset revisions](./REVISIONS.md).
+PixelLab offers more than PixelKiln currently exposes. Lip-sync and vocal
+animation are not part of this adapter. Characters, their states, and their
+animations are the `character` generator, with all four creation engines
+(standard, v3, pro, pro-flash), reference sprites, concept images, style
+anchors, mirrors, portraits, outfit transfer, and every `animate-character`
+control; see [Characters](./CHARACTERS.md). Masked inpainting, whole-image
+editing, and skeleton-driven animation (posing a reference image
+frame-by-frame from a supplied keypoint skeleton, not a text description) are
+the `revision` asset shape, not the `character` generator; see
+[Controlled asset revisions](./REVISIONS.md).
 Object Creator (generic 8-direction object rotation, object states and
 animation), UI element and RPG UI-kit generation, fonts, and Map Workshop
 scene composition (placing objects and characters into a map, in-scene

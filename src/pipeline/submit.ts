@@ -306,6 +306,9 @@ export async function submit(
             ...(spec.revision.lastFrameSha256 ? { lastFrameSha256: spec.revision.lastFrameSha256 } : {}),
             ...(spec.revision.direction ? { direction: spec.revision.direction } : {}),
             ...(spec.revision.enhancePrompt == null ? {} : { enhancePrompt: spec.revision.enhancePrompt }),
+            ...(spec.revision.keypointsSha256 ? { keypointsSha256: spec.revision.keypointsSha256 } : {}),
+            ...(spec.revision.skeletonTemplate ? { skeletonTemplate: spec.revision.skeletonTemplate } : {}),
+            ...(spec.revision.description ? { description: spec.revision.description } : {}),
           }
         : null,
       status: "pending",

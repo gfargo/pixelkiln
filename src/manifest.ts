@@ -35,6 +35,7 @@ import { imageMetadata, MediaType } from "./media.ts"
 import { expectedOutputPath, memberPath } from "./outputs.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
+import { parseSkeletonSet, type SkeletonSet } from "./skeleton.ts"
 
 export interface LoadedManifest {
   manifest: Manifest
@@ -773,6 +774,10 @@ export async function resolveSpecs(
         const lastFrame = lastFrameFile
           ? await optionalRevisionImage(lastFrameFile, "revision last frame")
           : null
+        const keypointsFile = asset.revision.keypointsFile
+          ? path.resolve(root, asset.revision.keypointsFile)
+          : undefined
+        const keypoints = keypointsFile ? await optionalSkeletonSet(keypointsFile) : null
         resolved.revision = {
           mode: asset.revision.mode,
           sourceAssetId: asset.revision.from,
@@ -817,6 +822,20 @@ export async function resolveSpecs(
             : {}),
           ...(asset.revision.direction ? { direction: asset.revision.direction } : {}),
           ...(asset.revision.enhancePrompt == null ? {} : { enhancePrompt: asset.revision.enhancePrompt }),
+          ...(keypointsFile
+            ? {
+                keypointsFile,
+                keypointsSha256: keypoints?.hash ?? null,
+                skeleton: keypoints?.skeleton ?? null,
+                // The manifest's own `frames` field stays rejected for this
+                // mode (superRefine, types.ts) — the real frame count comes
+                // from the keypoints file once it exists, not a manifest
+                // number, so plan can only know it once authored.
+                ...(keypoints ? { frames: keypoints.skeleton.frames.length } : {}),
+              }
+            : {}),
+          ...(asset.revision.skeletonTemplate ? { skeletonTemplate: asset.revision.skeletonTemplate } : {}),
+          ...(asset.revision.description ? { description: asset.revision.description } : {}),
         }
       }
       if (asset.batch) {
@@ -951,6 +970,26 @@ async function optionalRevisionImage(
     throw new Error(`${label} must be ${requiredFormat.toUpperCase()}: ${file}`)
   }
   return { hash: sha256(bytes), ...metadata }
+}
+
+/**
+ * `animate-skeleton` only. Null keeps `plan` working before the keypoints
+ * file exists, the same way a not-yet-drawn mask does not block planning
+ * (`optionalRevisionImage` above). `parseSkeletonSet` throws naming the file
+ * on bad JSON or a schema mismatch — that failure is allowed to propagate,
+ * since an existing-but-malformed file is a real authoring error, not an
+ * "not ready yet" state.
+ */
+async function optionalSkeletonSet(file: string): Promise<{ hash: string; skeleton: SkeletonSet } | null> {
+  if (!existsSync(file)) return null
+  const bytes = await readFile(file)
+  let json: unknown
+  try {
+    json = JSON.parse(bytes.toString("utf8"))
+  } catch (error) {
+    throw new Error(`revision keypoints file ${file} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  return { hash: sha256(bytes), skeleton: parseSkeletonSet(json, file) }
 }
 
 /** Reference image bytes and measured dimensions, in manifest order. */

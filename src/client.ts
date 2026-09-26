@@ -1,7 +1,8 @@
-import type { CharacterProportions, ResolvedStyleImage, UiElement, UiPiece } from "./types.ts"
+import type { CharacterDirection, CharacterProportions, ResolvedStyleImage, UiElement, UiPiece } from "./types.ts"
 import { z } from "zod"
 import { ProviderError } from "./errors.ts"
 import { fetchWithRetry, type RetryingFetch } from "./http.ts"
+import { SkeletonKeypointSchema, type SkeletonKeypoint } from "./skeleton.ts"
 
 /**
  * PixelLab REST client.
@@ -302,6 +303,22 @@ const CorrectPixelartResponseSchema = z
   })
   .passthrough()
 const SelectFramesSchema = z.object({ created_object_ids: z.array(z.string()) }).passthrough()
+
+/**
+ * `/estimate-skeleton`'s response: unlike every other PixelLab call this
+ * client makes, request/response field names here are not confirmed against
+ * an authoritative source (no MCP tool wraps this endpoint to cross-check
+ * against, unlike `animate-with-skeleton-v3` below). Synchronous — returns
+ * keypoints directly, no `background_job_id` — per the issue's own "one-call
+ * round trip" framing, but this specific claim is unverified against a live
+ * account. Treat this schema as provisional until a real call confirms it.
+ */
+const EstimateSkeletonResponseSchema = z
+  .object({
+    keypoints: z.array(SkeletonKeypointSchema).length(18),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
 
 // Characters. Verified against the v2 OpenAPI document; a character is one
 // record with 4 or 8 rotation URLs once its job completes, and its
@@ -1478,6 +1495,73 @@ export class PixelLabClient {
       await this.request<unknown>("/animate-pixminimax", { method: "POST", body: JSON.stringify(body) }),
       "animate-pixminimax",
     )
+  }
+
+  /**
+   * `/animate-with-skeleton-v3`, beta (tier 1 subscription or higher): poses
+   * one reference image frame-by-frame from a supplied skeleton per frame,
+   * rather than a text motion description. Confirmed against the live
+   * `animate_with_skeleton_v3` MCP tool schema (the same authoritative
+   * source this codebase already treats as ground truth for the
+   * character/object family) — `action`/`description` are both real,
+   * optional wire fields, contrary to an initial guess that this endpoint
+   * took no text input at all; `direction`/`keypoints`/`firstFrameKeypoints`
+   * are required. The example keypoint from that same tool schema,
+   * `{"label": "RIGHT KNEE", "x": 0.52, "y": 0.71, "z_index": 9}`, is what
+   * `SkeletonKeypointSchema` (`src/skeleton.ts`) models. Same
+   * unverified-completed-shape caveat as `animateWithTextV3`/
+   * `animatePixminimax` above — this endpoint has never been called against
+   * a live account by this codebase.
+   */
+  async animateWithSkeletonV3(args: {
+    firstFrame: Base64Image
+    firstFrameKeypoints: SkeletonKeypoint[]
+    keypoints: SkeletonKeypoint[][]
+    direction: CharacterDirection
+    templateId?: string
+    action?: string
+    description?: string
+    seed?: number
+    noBackground?: boolean
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = {
+      first_frame: args.firstFrame,
+      first_frame_keypoints: args.firstFrameKeypoints,
+      keypoints: args.keypoints,
+      direction: args.direction,
+    }
+    if (args.templateId) body.template_id = args.templateId
+    if (args.action) body.action = args.action
+    if (args.description) body.description = args.description
+    if (args.seed != null) body.seed = args.seed
+    if (args.noBackground != null) body.no_background = args.noBackground
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/animate-with-skeleton-v3", { method: "POST", body: JSON.stringify(body) }),
+      "animate-with-skeleton-v3",
+    )
+  }
+
+  /**
+   * `/estimate-skeleton`: auto-derives a reference image's own 18-joint
+   * keypoints, directly usable as `animateWithSkeletonV3`'s
+   * `firstFrameKeypoints` (or, run against a candidate pose image, as one
+   * entry of its `keypoints` sequence). Not called anywhere in this
+   * codebase's own submit/poll pipeline — deliberately kept outside it (see
+   * `runEstimateSkeleton` in `src/cli/commands`) so the only PixelLab
+   * endpoint composed into `animate-with-skeleton-v3`'s submission is that
+   * one endpoint itself, not two unverified calls chained together.
+   * Synchronous per this endpoint's own framing; unverified against a live
+   * account (see `EstimateSkeletonResponseSchema`'s own caveat).
+   */
+  async estimateSkeleton(args: { image: Base64Image }): Promise<{ keypoints: SkeletonKeypoint[]; usage: unknown }> {
+    const body: Record<string, unknown> = { image: args.image }
+    const res = validateResponse(
+      EstimateSkeletonResponseSchema,
+      await this.request<unknown>("/estimate-skeleton", { method: "POST", body: JSON.stringify(body) }),
+      "estimate-skeleton",
+    )
+    return { keypoints: res.keypoints, usage: res.usage }
   }
 
   async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null; usage?: PixelLabUsage | null }> {

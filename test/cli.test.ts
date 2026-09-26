@@ -117,6 +117,13 @@ describe("parseArgs", () => {
     expect(parseArgs(["plan", "--check", "--json"])).toMatchObject({ check: true, json: true })
   })
 
+  it("parses estimate-skeleton's positional image and --out", () => {
+    expect(parseArgs(["estimate-skeleton", "pose.png"])).toMatchObject({ command: "estimate-skeleton", target: "pose.png" })
+    expect(parseArgs(["estimate-skeleton", "pose.png", "--out", "keypoints.json"]).out).toBe("keypoints.json")
+    expect(() => parseArgs(["estimate-skeleton"])).toThrow(/estimate-skeleton needs an image path/)
+    expect(() => parseArgs(["estimate-skeleton", "--out", "keypoints.json"])).toThrow(/estimate-skeleton needs an image path/)
+  })
+
   it("defaults --all and --json to false", () => {
     const args = parseArgs(["salvage", "--dry-run"])
     expect(args.all).toBe(false)

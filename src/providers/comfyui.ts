@@ -371,14 +371,15 @@ export class ComfyUIProvider implements Provider {
 
   /**
    * Everything else resolves generically to whatever the user's own
-   * workflow does with `bindings.sourceImage`. `animate`/`animate-pixminimax`
-   * are the one exception: they produce an ordered frame set, and this
-   * adapter's revision path always writes a single output image (see
-   * `submit`/`fetch` below) — a real structural gap, not a missing binding,
-   * so it is rejected here rather than only failing once `validate` runs.
+   * workflow does with `bindings.sourceImage`. `animate`/`animate-pixminimax`/
+   * `animate-skeleton` are the exceptions: they produce an ordered frame set,
+   * and this adapter's revision path always writes a single output image
+   * (see `submit`/`fetch` below) — a real structural gap, not a missing
+   * binding, so it is rejected here rather than only failing once `validate`
+   * runs.
    */
   supportsRevision(mode: RevisionMode): boolean {
-    return mode !== "animate" && mode !== "animate-pixminimax"
+    return mode !== "animate" && mode !== "animate-pixminimax" && mode !== "animate-skeleton"
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {

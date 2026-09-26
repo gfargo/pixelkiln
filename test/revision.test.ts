@@ -231,7 +231,7 @@ describe("asset revisions", () => {
     await expect(writeProject({ mode: "image-to-image", from: "source", frames: 8 }))
       .rejects.toThrow(/frames applies to animate\/animate-pixminimax revisions only/)
     await expect(writeProject({ mode: "animate", from: "source", direction: "south" }))
-      .rejects.toThrow(/direction applies to animate-pixminimax revisions only/)
+      .rejects.toThrow(/direction applies to animate-pixminimax\/animate-skeleton revisions only/)
     await expect(writeProject({ mode: "animate", from: "source", frames: 5 }))
       .rejects.toThrow(/frames must be even/)
 
