@@ -439,7 +439,8 @@ function tick(now: number) {
   if (!F) return;
   if (!F.panel || !F.panel.isConnected) { stopFamily(); return; }
   if (F.playing) {
-    const seconds = ((now - F.t0) / 1000) * F.speed;
+    // A frame's timestamp can fall a moment before the clock was (re)started.
+    const seconds = Math.max(0, ((now - F.t0) / 1000) * F.speed);
     for (const a of F.anims) {
       const i = Math.floor(seconds * a.fps) % a.urls.length;
       if (i !== a.index) { a.index = i; a.img.src = a.urls[i]; }
