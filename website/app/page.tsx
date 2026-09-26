@@ -763,8 +763,8 @@ export default function Home() {
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>terrain</strong><span>Two-terrain elevation tilesets</span><span><i style={{ width: "100%" }} /> 20–40 gen (unmeasured)</span></div>
               <div className="generator-row"><strong>isometricTile</strong><span>A single elevation tile — a mesa, a cliff block</span><span><i style={{ width: "2.5%" }} /> 1 gen</span></div>
-              <div className="generator-row"><strong>character</strong><span>A base in 8 directions, its poses, its loops</span><span><i style={{ width: "17.5%" }} /> 1–7 gen per base, 1 per loop, mirrors free</span></div>
-              <div className="generator-row"><strong>objectPro</strong><span>A skeleton-free prop&apos;s base, poses, and loops</span><span><i style={{ width: "17.5%" }} /> 1–7 gen per base, 1 per loop (unmeasured)</span></div>
+              <div className="generator-row"><strong>character</strong><span>A base in 8 directions, its poses, its loops</span><span><i style={{ width: "17.5%" }} /> 1–40 gen per base by engine, 1 per template loop, mirrors free</span></div>
+              <div className="generator-row"><strong>objectPro</strong><span>A skeleton-free prop&apos;s base, poses, and loops</span><span><i style={{ width: "17.5%" }} /> about 6 gen per base at 64px, 1 per loop (unmeasured)</span></div>
               <div className="generator-row"><strong>imageProFlash</strong><span>Styled stills on the Pro Flash model, 16–256px</span><span><i style={{ width: "22.5%" }} /> 5–9 gen (quoted)</span></div>
               <div className="generator-row"><strong>uiAsset</strong><span>UI panels, buttons, and bars from pieces and elements</span><span><i style={{ width: "50%" }} /> 20 gen (measured once)</span></div>
               <div className="generator-row"><strong>uiElement</strong><span>One UI element from a description, 16px and up</span><span><i style={{ width: "100%" }} /> 20–40 gen (unmeasured)</span></div>
