@@ -456,6 +456,14 @@ export const CharacterAnimationSchema = z
     template: z.string().min(1).optional(),
     /** Direction to animate. */
     direction: CharacterDirectionSchema.default("south"),
+    /**
+     * Shorthand for one loop in several directions, instead of `direction`.
+     * Expanded when the manifest loads into one loop per named direction
+     * (`<id>.<direction>`) plus a mirror for each direction whose flip is
+     * not named, exactly as if each had been written out. See
+     * `src/loop-directions.ts`.
+     */
+    directions: z.array(CharacterDirectionSchema).min(1).optional(),
     /** Frames to generate without a template (v3). Even, 4 to 16. */
     frames: z.number().int().min(4).max(16).optional(),
     /** Playback rate recorded with the frames; PixelLab does not store one. */
@@ -486,6 +494,15 @@ export const CharacterAnimationSchema = z
   })
   .strict()
   .superRefine((animation, context) => {
+    if (animation.directions !== undefined) {
+      // Only reachable when a manifest is validated without being loaded
+      // (loading expands the shorthand before validation ever sees it).
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "directions is expanded when the manifest loads; validate the loaded manifest, not the raw file",
+        path: ["directions"],
+      })
+    }
     if (animation.frames !== undefined && animation.frames % 2 !== 0) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
     }

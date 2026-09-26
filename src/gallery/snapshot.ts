@@ -16,6 +16,7 @@ import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
 import { handEditProjectPath, readHandEditCompanion } from "../pipeline/hand-edit.ts"
 import { historyLimit } from "../pipeline/history.ts"
+import { expandAssetFilter } from "../loop-directions.ts"
 import { pixelLabObjectUrl } from "../providers/pixellab.ts"
 
 /**
@@ -603,6 +604,10 @@ type RawStyleShape = { extends?: unknown } & Record<string, unknown>
 
 export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<GalleryBuild> {
   const { loaded, specs, lock } = opts
+  // A loop shorthand's id stands for its whole expanded family.
+  const filter = opts.filter?.assets?.length
+    ? { ...opts.filter, assets: expandAssetFilter(opts.filter.assets, loaded.loopFamilies) }
+    : opts.filter
   const root = loaded.root
   const media = new Map<string, GalleryMedia>()
   const plan = await buildPlan(specs, lock)
@@ -777,7 +782,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
   for (const [key, entry] of Object.entries(lock.entries)) {
     if (shown.has(key)) continue
     if (isDeclared(loaded, entry.styleId, entry.assetId)) continue // merely filtered out
-    if (!matchesFilter(opts.filter, entry.styleId, entry.assetId)) continue
+    if (!matchesFilter(filter, entry.styleId, entry.assetId)) continue
     const outputs = await Promise.all(
       entry.outputs.map((output) =>
         describeOutput(media, root, resolveOutputPath(output.path, root), output),
@@ -978,7 +983,7 @@ export async function buildWorkspaceGallerySnapshot(
     try {
       const loaded = await loadManifest(manifestPath)
       const styleFilter = filter.styles.filter((id) => loaded.manifest.styles[id])
-      const assetFilter = filter.assets.filter((id) => loaded.manifest.assets[id])
+      const assetFilter = expandAssetFilter(filter.assets, loaded.loopFamilies).filter((id) => loaded.manifest.assets[id])
       const excluded =
         (filter.styles.length > 0 && styleFilter.length === 0) ||
         (filter.assets.length > 0 && assetFilter.length === 0)

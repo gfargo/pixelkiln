@@ -296,6 +296,45 @@ who holds a sword in the right hand holds it in the left when facing the
 mirrored way. Most games accept that; if yours does not, generate both
 sides. `adopt` skips mirrors, since there is nothing upstream to adopt.
 
+### One loop, several directions
+
+Writing each direction out is five near-identical loops and three mirrors
+for a full walk. `directions` on an animation says the same thing once:
+
+```json
+"bot.walk": {
+  "prompt": "walking forward in place, short legs stepping, body bobbing slightly",
+  "animation": { "of": "bot", "frames": 12, "fps": 12, "directions": ["south", "west", "north", "south-west", "north-west"] }
+}
+```
+
+When the manifest loads, this becomes exactly the assets it stands for: one
+loop per named direction (`bot.walk.south`, `bot.walk.west`, ...), each with
+every field of the shorthand and its own `direction`, plus a mirror for each
+direction whose flip is not named (`bot.walk.east` mirrors `bot.walk.west`,
+`bot.walk.south-east` mirrors `bot.walk.south-west`, `bot.walk.north-east`
+mirrors `bot.walk.north-west`). Eight directions for five generations. Name
+both sides of a pair (`["west", "east"]`) to generate both instead of
+mirroring, which is the fix for a character whose handedness matters. The
+mirrors carry the shorthand's `category`, `tags`, and `styles`.
+
+- The expanded ids are ordinary assets: `plan`, the gallery, the lockfile,
+  and `pack` all see `bot.walk.west` and `bot.walk.east`, never `bot.walk`.
+  Rewriting the shorthand into explicit assets by hand changes no identity
+  and regenerates nothing.
+- `--only bot.walk` selects the whole family; `--only bot.walk.west` one
+  member of it.
+- `direction` and `directions` are mutually exclusive, and fields that name
+  one output (`file`, `cell`, `remoteId`, `source`, `sourceByStyle`,
+  `outputRole`) are refused on a shorthand, since every direction would
+  claim them. An expanded id that is already declared is an error, not an
+  override.
+- The gallery's `--edit` changes the shorthand, not one direction: editing
+  `bot.walk.west` there is refused with a pointer to `bot.walk`. A revision,
+  state, or new loop can still name an expanded asset as its parent. To
+  change one direction alone, write it out as its own asset and drop it
+  from `directions`.
+
 Engines that flip sprites at draw time (Godot's `flip_h`, Unity's
 `flipX`) do not need mirrored files at all. Declare only the directions
 you generate and flip in the engine; mirrors are for pipelines that want

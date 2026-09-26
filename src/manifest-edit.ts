@@ -2,6 +2,7 @@ import { readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { z } from "zod"
 import { sha256 } from "./hash.ts"
+import { expandLoopDirections, loopShorthandOf } from "./loop-directions.ts"
 import { loadManifest, resolveSpecs } from "./manifest.ts"
 import { CharacterAnimationModeSchema, CharacterDirectionSchema } from "./types.ts"
 
@@ -244,11 +245,33 @@ function assetStyles(raw: RawManifest, asset: RawAsset): string[] {
   return own.length ? own : Object.keys(raw.styles ?? {})
 }
 
+/**
+ * Every asset id the manifest declares once loaded, including those an
+ * `animation.directions` shorthand expands into: a new revision of
+ * `hero.walk.south` names a real parent even though the file only says
+ * `hero.walk`.
+ */
+function declaredAssets(raw: RawManifest): Set<string> {
+  const expanded = expandLoopDirections(raw).raw as RawManifest
+  return new Set(Object.keys(expanded.assets ?? {}))
+}
+
+/** Editing an expanded loop in place would have nowhere to go in the file; say where it came from. */
+function undeclaredAsset(raw: RawManifest, assetId: string): ManifestEditError {
+  const shorthand = loopShorthandOf(assetId, expandLoopDirections(raw).families)
+  return new ManifestEditError(
+    shorthand
+      ? `asset "${assetId}" is expanded from "${shorthand}"'s animation.directions; edit "${shorthand}" (it applies to every ` +
+          "direction), or write this direction out as its own asset to change it alone"
+      : `asset "${assetId}" is not declared by the manifest`,
+  )
+}
+
 function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
   raw.assets ??= {}
   if (edit.action === "set-source" || edit.action === "clear-source") {
     const asset = Object.hasOwn(raw.assets, edit.assetId) ? raw.assets[edit.assetId] : undefined
-    if (!asset) throw new ManifestEditError(`asset "${edit.assetId}" is not declared by the manifest`)
+    if (!asset) throw undeclaredAsset(raw, edit.assetId)
     if (!raw.styles || !Object.hasOwn(raw.styles, edit.styleId)) {
       throw new ManifestEditError(`unknown style "${edit.styleId}"`)
     }
@@ -307,7 +330,7 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
     return
   }
   if (edit.action === "add-asset") {
-    if (Object.hasOwn(raw.assets, edit.assetId)) {
+    if (declaredAssets(raw).has(edit.assetId)) {
       throw new ManifestEditError(`asset "${edit.assetId}" already exists`)
     }
     const { styles, tags, ...rest } = edit.asset
@@ -321,13 +344,13 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
       }
       asset.styles = styles
     }
-    if (edit.asset.revision && !Object.hasOwn(raw.assets, edit.asset.revision.from)) {
+    if (edit.asset.revision && !declaredAssets(raw).has(edit.asset.revision.from)) {
       throw new ManifestEditError(`revision parent "${edit.asset.revision.from}" is not declared by the manifest`)
     }
-    if (edit.asset.state && !Object.hasOwn(raw.assets, edit.asset.state.of)) {
+    if (edit.asset.state && !declaredAssets(raw).has(edit.asset.state.of)) {
       throw new ManifestEditError(`state parent "${edit.asset.state.of}" is not declared by the manifest`)
     }
-    if (edit.asset.animation && !Object.hasOwn(raw.assets, edit.asset.animation.of)) {
+    if (edit.asset.animation && !declaredAssets(raw).has(edit.asset.animation.of)) {
       throw new ManifestEditError(`animation parent "${edit.asset.animation.of}" is not declared by the manifest`)
     }
     raw.assets[edit.assetId] = asset
@@ -335,7 +358,7 @@ function applyEdit(raw: RawManifest, edit: ManifestEdit): void {
   }
 
   const asset = Object.hasOwn(raw.assets, edit.assetId) ? raw.assets[edit.assetId] : undefined
-  if (!asset) throw new ManifestEditError(`asset "${edit.assetId}" is not declared by the manifest`)
+  if (!asset) throw undeclaredAsset(raw, edit.assetId)
   const { patch } = edit
   if (patch.prompt !== undefined) asset.prompt = patch.prompt
   if (patch.promptForStyle) {
