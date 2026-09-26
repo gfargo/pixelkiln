@@ -9,7 +9,7 @@ import {
   type ManifestEditPrice,
 } from "../manifest-edit.ts"
 import { detachHandEdit, MAX_HAND_EDIT_BYTES, openInEditor, saveHandEdit, startHandEdit } from "../pipeline/hand-edit.ts"
-import { lockKey } from "../types.ts"
+import { lockKey, type ResolvedSpec } from "../types.ts"
 import type { GalleryProjectContext } from "./generate.ts"
 import { saveProjectImage, UploadImageSchema } from "./upload.ts"
 import {
@@ -217,6 +217,12 @@ function describeEdit(edit: ManifestEdit | Extract<ManifestEdit, { action: "batc
  */
 export function createGalleryPriceHandler(opts: {
   manifestFor: (project?: string) => string | Promise<string>
+  /**
+   * The live quoter for a project's specs (PixelLab's Pro Flash cost
+   * endpoint), or null when the project has no key for it. Anything it
+   * declines or fails to quote keeps the offline estimate.
+   */
+  quoteFor?: (project?: string) => Promise<((spec: ResolvedSpec) => Promise<number | null>) | null>
 }): (body: unknown) => Promise<ManifestEditPrice> {
   return async (body) => {
     const parsed = ManifestEditSchema.safeParse(body)
@@ -231,6 +237,14 @@ export function createGalleryPriceHandler(opts: {
     } catch (error) {
       throw new ManifestEditError(error instanceof Error ? error.message : String(error))
     }
-    return priceManifestEdit(manifestPath, parsed.data)
+    let quote: ((spec: ResolvedSpec) => Promise<number | null>) | null = null
+    let quoteError: string | undefined
+    try {
+      quote = opts.quoteFor ? await opts.quoteFor(parsed.data.project) : null
+    } catch (error) {
+      quoteError = error instanceof Error ? error.message : String(error)
+    }
+    const price = await priceManifestEdit(manifestPath, parsed.data, quote ? { quote } : {})
+    return quoteError && !price.quoteError ? { ...price, quoteError } : price
   }
 }

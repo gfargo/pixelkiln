@@ -483,6 +483,9 @@ pixel-art image on the Pro Flash model, the same model the `character` and
 - **Cost:** 5 generations up to 96px on the longer side, 6 up to 208px, 9
   beyond, from PixelLab's own `/pro-flash/cost` quotes, which PixelLab calls
   provisional. The billed amount on the finished job is what the lock keeps.
+  `plan` and `gen` use these tiers offline. The gallery's price quote
+  (`--edit`) asks the endpoint itself when the project has a
+  `PIXELLAB_API_KEY`, and marks those rows live.
 
 The same model also edits and inpaints: `"engine": "pro-flash"` on an
 `image-to-image` or `inpaint` revision; see

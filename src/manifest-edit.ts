@@ -580,9 +580,24 @@ export interface ManifestEditPrice {
     cost: number
     costUnit: string
     candidates: number
+    /** "live" when `cost` is the provider's own quote rather than the offline estimate. */
+    quote?: "live"
+    /** The offline estimate a live quote replaced. */
+    estimate?: number
   }>
   /** Summed by unit: generations and dollars do not add. */
   totals: Record<string, number>
+  /** Why a live quote was wanted but not had; the offline estimate stands for those items. */
+  quoteError?: string
+}
+
+export interface PriceManifestEditOptions {
+  /**
+   * A live price for a spec, from the provider itself; null when it has no
+   * quote for this kind of spec. A throw keeps the offline estimate and is
+   * reported as `quoteError`.
+   */
+  quote?: (spec: ResolvedSpec) => Promise<number | null>
 }
 
 /**
@@ -592,31 +607,49 @@ export interface ManifestEditPrice {
  * `gen` after saving would spend on. The same drift check applies, so a
  * price is never quoted against a manifest the page no longer shows.
  */
-export async function priceManifestEdit(manifestPath: string, edit: ManifestEdit): Promise<ManifestEditPrice> {
+export async function priceManifestEdit(
+  manifestPath: string,
+  edit: ManifestEdit,
+  opts: PriceManifestEditOptions = {},
+): Promise<ManifestEditPrice> {
   return withCandidate<ManifestEditPrice>(
     manifestPath,
     edit,
     async ({ absolute, specs }) => {
       const before = new Map((await resolveSpecs(await loadManifest(absolute))).map((spec) => [`${spec.styleId}/${spec.assetId}`, spec.specHash]))
+      const priced = specs.filter((spec) => before.get(`${spec.styleId}/${spec.assetId}`) !== spec.specHash)
+      // Quotes are asked for together; one that fails leaves its item on the
+      // offline estimate, and the first reason is passed on.
+      let quoteError: string | undefined
+      const live = await Promise.all(priced.map(async (spec) => {
+        if (!opts.quote) return null
+        try {
+          return await opts.quote(spec)
+        } catch (error) {
+          quoteError ??= error instanceof Error ? error.message : String(error)
+          return null
+        }
+      }))
       const items: ManifestEditPrice["items"] = []
       const totals: Record<string, number> = {}
-      for (const spec of specs) {
+      priced.forEach((spec, index) => {
         const key = `${spec.styleId}/${spec.assetId}`
-        const was = before.get(key)
-        if (was === spec.specHash) continue
+        const quoted = live[index]
+        const cost = quoted ?? spec.cost
         items.push({
           key,
           styleId: spec.styleId,
           assetId: spec.assetId,
-          change: was === undefined ? "new" : "changed",
+          change: before.has(key) ? "changed" : "new",
           provider: spec.provider,
-          cost: spec.cost,
+          cost,
           costUnit: spec.costUnit,
           candidates: spec.candidates,
+          ...(quoted !== null && quoted !== undefined ? { quote: "live" as const, estimate: spec.cost } : {}),
         })
-        totals[spec.costUnit] = (totals[spec.costUnit] ?? 0) + spec.cost
-      }
-      return { items, totals }
+        totals[spec.costUnit] = (totals[spec.costUnit] ?? 0) + cost
+      })
+      return quoteError ? { items, totals, quoteError } : { items, totals }
     },
     () => ({ items: [], totals: {} }),
   )

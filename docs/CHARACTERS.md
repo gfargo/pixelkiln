@@ -469,8 +469,11 @@ reference image change alone also makes it stale.
   only the rotations are billed), any number of loops (each a template
   posed by `skeleton-v3` by default, or a plain template, v3, or pro loop,
   in the directions you tick, mirrors added free), and a portrait. The
-  sheet prices the draft live, the way `plan` would, and warns when a new
-  style would also take in existing assets that name no styles. **Create**
+  sheet prices the draft live, the way `plan` would. Pro Flash bases are
+  priced by PixelLab's own quote (`/pro-flash/cost`, a free call) when the
+  project has a key; those rows are marked live, and the offline estimate
+  stands if the quote can't be had. The sheet also warns when a new
+  style would take in existing assets that name no styles. **Create**
   saves everything in one validated write; with `--budget`, **Create &
   generate** also starts one job for all of it, which generates the base
   first and the loops and portrait as soon as it lands.
