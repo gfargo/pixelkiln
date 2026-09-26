@@ -1,3 +1,10 @@
+# [0.70.0](https://github.com/gfargo/pixelkiln/compare/v0.69.0...v0.70.0) (2026-09-26)
+
+
+### Features
+
+* **gallery:** create skeleton animations and see their poses from the gallery ([c3b6de3](https://github.com/gfargo/pixelkiln/commit/c3b6de38f2761f514bb6e6025c1c084584cb4a9e))
+
 # [0.69.0](https://github.com/gfargo/pixelkiln/compare/v0.68.1...v0.69.0) (2026-09-26)
 
 
