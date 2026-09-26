@@ -64,11 +64,20 @@ export function newAnimationForm(item) {
   id.pattern = '[^\\/\\\\]+';
   const prompt = el('textarea'); prompt.placeholder = 'What the loop does, e.g. "a slow idle sway".'; prompt.required = true;
   const mode = el('select');
-  if (isCharacter) mode.append(new Option('template', 'template'));
+  if (isCharacter) {
+    mode.append(
+      new Option('skeleton-v3 (a template, posed by the skeleton model; steadiest)', 'skeleton-v3'),
+      new Option('template (a template, redrawn; 1 generation)', 'template'),
+    );
+  }
   mode.append(new Option('v3 (text-described)', 'v3'), new Option('pro (sequential, high quality)', 'pro'));
-  mode.value = 'v3';
+  mode.value = isCharacter ? 'skeleton-v3' : 'v3';
   const template = el('input'); template.type = 'text'; template.placeholder = 'e.g. walk, breathing-idle';
-  const templateField = field('template id', template, 'A PixelLab template; costs 1 generation regardless of frame count.');
+  const templateHint = {
+    'skeleton-v3': 'A PixelLab template posed onto the character by the skeleton model, which moves it instead of redrawing it: steadier identity and colours. 2 to 4 generations and 3 to 5 minutes per direction; beta, Tier 1 plans and up.',
+    template: 'A PixelLab template, redrawn frame by frame; 1 generation regardless of frame count.',
+  };
+  const templateField = field('template id', template, templateHint.template);
   const frames = el('input'); frames.type = 'number'; frames.min = '4'; frames.max = '16'; frames.step = '2'; frames.placeholder = '8';
   const fps = el('input'); fps.type = 'number'; fps.min = '1'; fps.max = '60'; fps.placeholder = '8';
   const directionField = (() => {
@@ -89,10 +98,13 @@ export function newAnimationForm(item) {
   form.append(row2);
   if (subject) form.append(field('subject override', subject));
   const syncMode = () => {
-    const isTemplate = isCharacter && mode.value === 'template';
+    const isTemplate = isCharacter && (mode.value === 'template' || mode.value === 'skeleton-v3');
     templateField.style.display = isTemplate ? '' : 'none';
+    if (isTemplate) templateField.querySelector('small')!.textContent = templateHint[mode.value];
     // A template loop is named by its template; without one the server refuses it.
     template.required = isTemplate;
+    // The template says what happens; the text only has to for v3 and pro.
+    prompt.required = !isTemplate;
     row2.style.display = isTemplate ? 'none' : '';
   };
   if (isCharacter) { mode.onchange = syncMode; syncMode(); } else { templateField.style.display = 'none'; }
@@ -107,8 +119,9 @@ export function newAnimationForm(item) {
     save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
     const animation: any = { of: item.assetId };
     if (directionField) animation.direction = directionField.select.value;
-    if (isCharacter && mode.value === 'template' && template.value.trim()) {
+    if (isCharacter && (mode.value === 'template' || mode.value === 'skeleton-v3') && template.value.trim()) {
       animation.template = template.value.trim();
+      if (mode.value === 'skeleton-v3') animation.mode = 'skeleton-v3';
     } else {
       animation.mode = mode.value;
       if (frames.value.trim() !== '') animation.frames = Number(frames.value);

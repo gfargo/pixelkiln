@@ -359,7 +359,15 @@ export const CharacterProportionsSchema = z.union([
     .strict(),
 ])
 export type CharacterProportions = z.infer<typeof CharacterProportionsSchema>
-export const CharacterAnimationModeSchema = z.enum(["template", "v3", "pro"])
+/**
+ * `template`: a PixelLab template drawn frame by frame, 1 generation.
+ * `skeleton-v3`: the same template posed onto the character by PixelLab's
+ * skeleton video model, which moves the character instead of redrawing it,
+ * for steadier identity and colours (2-4 generations and 3-5 minutes per
+ * direction; beta, Tier 1 subscriptions and up).
+ * `v3`: frames drawn from the action text. `pro`: the sequential engine.
+ */
+export const CharacterAnimationModeSchema = z.enum(["template", "skeleton-v3", "v3", "pro"])
 export type CharacterAnimationMode = z.infer<typeof CharacterAnimationModeSchema>
 
 /**
@@ -536,7 +544,11 @@ export const CharacterAnimationSchema = z
     fps: z.number().int().min(1).max(60).default(8),
     /** v3 only: keep the resting pose as frame 0, so `frames` generated frames land as `frames + 1` files. */
     keepFirstFrame: z.boolean().default(true),
-    /** `template` when a template is named, otherwise `v3`; `pro` for the sequential high-quality engine. */
+    /**
+     * `template` when a template is named, otherwise `v3`; `skeleton-v3`
+     * poses a template with PixelLab's skeleton model instead; `pro` for the
+     * sequential high-quality engine.
+     */
     mode: CharacterAnimationModeSchema.optional(),
     /**
      * v3 only: a manifest-relative image of the pose to start from, instead
@@ -577,7 +589,7 @@ export const CharacterAnimationSchema = z
       if (animation[key] !== undefined && mode !== "v3") {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `${key} is for v3 loops; a ${mode} loop ${mode === "template" ? "starts from the character's rotation and follows its template" : "takes neither"}`,
+          message: `${key} is for v3 loops; a ${mode} loop ${mode === "template" || mode === "skeleton-v3" ? "starts from the character's rotation and follows its template" : "takes neither"}`,
           path: [key],
         })
       }
@@ -587,10 +599,10 @@ export const CharacterAnimationSchema = z
         context.addIssue({ code: z.ZodIssueCode.custom, message: `${key} overrides apply to template loops only`, path: [key] })
       }
     }
-    if (animation.template && animation.mode && animation.mode !== "template") {
+    if (animation.template && animation.mode && animation.mode !== "template" && animation.mode !== "skeleton-v3") {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `a template animation cannot use mode "${animation.mode}"`,
+        message: `a template animation cannot use mode "${animation.mode}"; use "template" or "skeleton-v3"`,
         path: ["mode"],
       })
     }
@@ -601,8 +613,8 @@ export const CharacterAnimationSchema = z
         path: ["frames"],
       })
     }
-    if (!animation.template && animation.mode === "template") {
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "template mode needs a template", path: ["template"] })
+    if (!animation.template && (animation.mode === "template" || animation.mode === "skeleton-v3")) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: `${animation.mode} mode needs a template`, path: ["template"] })
     }
   })
 export type CharacterAnimation = z.infer<typeof CharacterAnimationSchema>

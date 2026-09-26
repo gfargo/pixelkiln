@@ -17,7 +17,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 40 generations flat | 1–64 by size |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | Animated GIF or spritesheet from Retro Diffusion | `animation` | $0.07–$0.25 per animation (published price) | 1 GIF or PNG sheet |
-| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose or portrait, 1 per template loop, 20 per outfit (measured once) | one set of directions, one ordered loop, or one portrait |
+| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose or portrait, 1 per template loop (2–4 as `skeleton-v3`), 20 per outfit (measured once) | one set of directions, one ordered loop, or one portrait |
 | A prop, creature, or vehicle with rotations, states, or loops but no character rig | `objectPro` | about 6 per base at 64px (unmeasured) | one set of directions, or one ordered loop |
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 | One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 20–40 generations (unmeasured) | 1 image |

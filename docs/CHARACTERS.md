@@ -199,6 +199,19 @@ the loop and accepts or rejects it whole. One asset per direction; declare
 another asset for another direction, or a [mirror](#mirrors) of this one
 for the direction that faces the other way.
 
+`mode: "skeleton-v3"` takes the same `template` and poses it onto the
+character with PixelLab's skeleton video model, which moves the character
+rather than redrawing it every frame: steadier identity and colours than a
+plain template loop, at 2 to 4 generations and 3 to 5 minutes per
+direction (plan budgets 4). It is beta and needs a Tier 1 PixelLab plan or
+higher, and it is sent to `/characters/animations`, the endpoint that
+documents it; every other mode keeps using `/animate-character`. Like a
+template loop it takes no `frames` and needs no prompt of its own.
+
+```jsonc
+"mira.walk": { "animation": { "of": "mira", "template": "walk", "mode": "skeleton-v3", "directions": ["south", "west", "north"] } }
+```
+
 ### Pose frames and other loop controls
 
 A v3 loop can start and end where you say. `startFrame` is a
