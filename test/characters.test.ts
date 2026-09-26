@@ -435,6 +435,9 @@ describe("characterCost", () => {
   it("prices each shape and engine the way PixelLab charges", () => {
     expect(characterCost(spec({ mode: "standard" }))).toBe(1)
     expect(characterCost(spec({ mode: "v3" }, 64))).toBe(2)
+    // From the author's own sprite v3 draws nothing, so only the rotations are billed, on the sprite's canvas.
+    expect(characterCost(spec({ mode: "v3", reference: { south: { width: 64, height: 64 } } } as never, 64))).toBe(1)
+    expect(characterCost(spec({ mode: "v3", reference: { south: { width: 128, height: 128 } } } as never, 64))).toBe(2)
     expect(characterCost(spec({ mode: "v3" }, 128))).toBe(3)
     expect(characterCost(spec({ mode: "pro" }, 64))).toBe(40)
     expect(characterCost(spec({ mode: "pro" }, 32))).toBe(20)

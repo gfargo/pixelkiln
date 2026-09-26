@@ -127,7 +127,14 @@ export function characterCost(spec: ResolvedSpec): number {
     return 20
   }
   if (character.mode === "standard") return 1
-  if (character.mode === "v3") return 1 + Math.max(1, Math.ceil((px * 8) / 65536))
+  if (character.mode === "v3") {
+    // PixelLab's documented pricing: from text, the drawn south sprite (1)
+    // plus the rotations; from the author's own sprite, the rotations alone,
+    // on that sprite's canvas.
+    const south = character.reference?.south
+    if (south) return Math.max(1, Math.ceil((south.width * south.height * 8) / 65536))
+    return 1 + Math.max(1, Math.ceil((px * 8) / 65536))
+  }
   if (character.mode === "pro-flash") {
     // From a sprite, the canvas is the sprite's, padded square; only the rotations are billed.
     const south = character.reference?.south

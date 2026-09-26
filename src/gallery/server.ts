@@ -54,6 +54,12 @@ export interface GalleryServerOptions {
    * `/editor/<release>/<file>` routes that serve the pinned editor build.
    */
   editor?: GalleryEditorHandlers
+  /**
+   * Enable `POST /api/price`: an unsaved edit priced offline, nothing
+   * written. Follows the write gate because it reads the manifest the way
+   * a save would.
+   */
+  price?: (body: unknown) => Promise<unknown>
   /** Enable `POST /api/skeleton/estimate` (a direct PixelLab call the page confirms first) and `GET /api/skeleton`, its session count. */
   skeleton?: GallerySkeletonHandlers
 }
@@ -105,7 +111,7 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryServer> {
   const log = opts.onProgress ?? (() => {})
-  const session = opts.edit || opts.generate || opts.editor || opts.skeleton ? randomBytes(16).toString("hex") : null
+  const session = opts.edit || opts.generate || opts.editor || opts.skeleton || opts.price ? randomBytes(16).toString("hex") : null
   let media: ReadonlyMap<string, GalleryMedia> = new Map()
   let loading: Promise<GalleryBuild> | null = null
   /** Local files each open review sheet may load, keyed by job. */
@@ -187,6 +193,17 @@ export async function serveGallery(opts: GalleryServerOptions): Promise<GalleryS
         json(202, await opts.generate.start(body))
       } catch (err) {
         reportError("generate", err)
+      }
+      return
+    }
+    if (req.method === "POST" && url.pathname === "/api/price") {
+      if (!opts.price || !session) return fail(405, "pricing an edit needs the gallery started with --edit")
+      try {
+        const body = await guardedBody("price requests")
+        if (body === undefined) return
+        json(200, await opts.price(body))
+      } catch (err) {
+        reportError("price", err)
       }
       return
     }

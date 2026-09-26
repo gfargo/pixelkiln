@@ -56,7 +56,7 @@ not merely a label edit.
 
 | Field | Type/default | Meaning |
 |---|---|---|
-| `prompt` | string, required unless `mirror`, `portrait`, or `outfit` | The subject wording wrapped by the selected style's prompt prefix and suffix. |
+| `prompt` | string, required unless `mirror`, `portrait`, `outfit`, or a template loop (`animation.template`) | The subject wording wrapped by the selected style's prompt prefix and suffix. A template loop is described by its template; a v3 or pro loop still needs the motion in words. |
 | `width` / `height` | integer 16–8192 | Per-asset dimensions for generators that accept rectangular output. Provider limits may be lower. |
 | `size` | integer 16–8192 | Per-asset square size where the generator uses one dimension. |
 | `file` | string | Output path below the style's `outDir`; defaults to `<category>/<assetId>.png`. |
