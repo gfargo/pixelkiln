@@ -12,7 +12,9 @@ providers, or before any PixelLab account operation.
 - Cost unit: subscription generations. Copy the exact `pixelkiln plan` total
   into `--budget`; do not translate it into dollars.
 - Account operations: balance, adopt, salvage, tag, and separately confirmed
-  purge are supported. Read `docs/RECOVERY.md` before using them.
+  purge are supported, for characters as well as objects (salvage reviews a
+  base with its states and loops as one group). Read `docs/RECOVERY.md`
+  before using them.
 
 ## Generator choice
 
@@ -24,7 +26,9 @@ providers, or before any PixelLab account operation.
 | `tiles` | Ground variations or connected structures | 20–40 generations |
 | `terrain` | A two-terrain Wang tileset for elevation (grass-to-water, floor-to-cliff) | Unmeasured; borrows the same 20–40 canvas tiers |
 | `imagePro` | A larger or non-square background/scene, or real style transfer | **40 generations flat**, any size |
-| `character` | A character in 4 or 8 directions, its poses (`state`), and its loops (`animation`) | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose, 1 per template loop per direction |
+| `character` | A character in 4 or 8 directions, its poses (`state`), its loops (`animation`), bust `portrait`s, and `outfit` transfers onto a loop | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose or portrait, 1 per template loop per direction, 20 per outfit (measured once) |
+| `objectPro` | A prop, creature, or vehicle that needs rotations, states, or loops but has no character rig | 6 per base at 64px (1 from a `reference`), **unmeasured**; assumed to match `character` pro-flash |
+| `isometricTile` | One standalone isometric tile (a raised mesa, a cliff block), 16–64px | **1 generation, measured once** (32px `block`) |
 | `uiAsset` | A UI panel, button, health bar, or other chrome, from precise `pieces` and/or named `elements` | **20 generations, measured once** (256×192); the borrowed canvas-tier estimate still predicts 40 |
 | `uiElement` | One UI element (button, slot, bar, dialogue box) from the prompt, 16px and up, with an optional concept image | 20–40 generations, **unmeasured** |
 | `imageProFlash` | A styled still on the Pro Flash model (style image + `styleTraits`), 16–256px in multiples of 4; also the natural source for a Pro Flash character's south sprite | 5–9 generations, PixelLab's provisional quote |
@@ -172,9 +176,9 @@ not independently measured** — `objectProCost()` assumes it prices
 identically to `character` pro-flash's own measured formula
 (`proFlashCharacterCost`), since the request bodies are near-identical minus
 `template_id`; treat it as a working assumption pending a live check.
-Batch "pack" generation (PixelLab's Object Creator can make N distinct
-objects from one call) and `objectPro`'s own place in `pixelkiln adopt` are
-not modeled yet. `pixelkiln gallery --edit` offers "+ New state" and
+`objectPro`'s own place in `pixelkiln adopt` is not modeled yet. (N distinct
+objects from one call, PixelLab's Object Creator "pack", is the `1dir`
+`batch` field above.) `pixelkiln gallery --edit` offers "+ New state" and
 "+ New animation" on a `character` or `objectPro` base/state's drawer, same
 family, same manifest-only write "+ New revision" does — it writes the
 `asset.state`/`asset.animation` fields above (minus `startFrame`/`endFrame`
@@ -444,12 +448,19 @@ the `direction` value. The same tutorial states outright that PixMiniMax
 "allows up to 40 frames," a second, independent (though still not
 live-billed) confirmation of the ceiling above.
 
-PixelLab ships a further image-generation tier beyond what this adapter
-models: "Pro Flash" for plain image create/edit/inpaint, the same
-`gpt-image-2.5-flare` model `character`/`objectPro` pro-flash already use,
-now exposed for images with no character or object involved — see
-[pixellab-roadmap.md](./pixellab-roadmap.md) for the confirmed shape and
-cost.
+Parts of Pro Flash image editing are still outside this adapter: `edit`'s
+reference-image method, palette correction, inpaint's output-method choice,
+and inpainting with surrounding `context_image`. See
+[pixellab-roadmap.md](./pixellab-roadmap.md) for the confirmed shape.
+
+Three commands call PixelLab on loose files, outside the manifest and
+lockfile. `pixelkiln unzoom --from <file> --out <file>` returns upscaled
+pixel art to its native grid; run it before outside art becomes a
+`reference` or `styleImages` entry (input at least 256×256, result opaque,
+cost unmeasured). `pixelkiln font --description <text> --out <base>` writes a
+`.ttf` and an 80-glyph atlas for PixelLab's documented 25 generations, and
+asks first. `pixelkiln estimate-skeleton <image> --out <file>` starts an
+`animate-skeleton` keypoints file. See `docs/CLI.md`, "PixelLab utilities".
 
 For a style aimed at a specific look (a
 retro/console feel or a

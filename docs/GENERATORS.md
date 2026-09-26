@@ -12,15 +12,24 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 20–40 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 20–40 generations | variations or complete set |
+| Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | 20–40 generations (unmeasured) | 16 or 25 tiles |
 | A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
+| Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 40 generations flat | 1–64 by size |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
-| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose, 1 per template loop | one set of directions, or one ordered loop |
+| Animated GIF or spritesheet from Retro Diffusion | `animation` | $0.07–$0.25 per animation (published price) | 1 GIF or PNG sheet |
+| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose or portrait, 1 per template loop, 20 per outfit (measured once) | one set of directions, one ordered loop, or one portrait |
+| A prop, creature, or vehicle with rotations, states, or loops but no character rig | `objectPro` | about 6 per base at 64px (unmeasured) | one set of directions, or one ordered loop |
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 | One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 20–40 generations (unmeasured) | 1 image |
 | A styled still on the Pro Flash model, or the south sprite a Pro Flash character will rotate | `imageProFlash` | 5–9 generations (PixelLab's provisional quote) | 1 image |
 
 Start with `map` unless a required capability points elsewhere. Forty `map`
 re-rolls cost the same as one 64×64 `1dir` call.
+
+`terrain` and `imagePro` have no section below: their fields and limits are in
+the [PixelLab skill reference](../skills/pixelkiln/references/pixellab.md), and
+a `terrain` set's export shape is in [Tiles](./TILES.md). Retro Diffusion
+`animation` styles are in [Set up Retro Diffusion](./RETRO_DIFFUSION.md).
 
 ## `map`
 

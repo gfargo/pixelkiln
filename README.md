@@ -53,8 +53,9 @@ provenance and no long-lived npm token.
 | Plan and budget | Offline manifest/lock/disk diff, provider-grouped estimates, keyed mixed-provider budget ceilings, JSON/CI gate. |
 | Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, candidate or atomic frame-set review, and a provenance gallery that can edit intent, generate under a budget, and compare records. |
 | Hand edits | Touch-ups in your own editor or a pinned in-browser Pixelorama, kept beside the generated art with the generation still the record; frame and tile sets member by member. |
-| Controlled inputs | Hashed image-to-image/inpaint lineage, fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
-| Characters | A base in 4 or 8 directions from a prompt or your own sprite (four PixelLab engines), poses and loops as dependent assets generated in waves, free mirrored directions, account adoption, and SpriteFrames export. |
+| Controlled inputs | Hashed revision lineage (image-to-image and inpaint; on PixelLab also palette reduction, pixel cleanup, animation, skeleton posing, interpolation, and animation edits), fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
+| Characters | A base in 4 or 8 directions from a prompt or your own sprite (four PixelLab engines), poses, loops, portraits, and outfit transfers as dependent assets generated in waves, free mirrored directions (one `directions` list declares a loop and mirrors the rest), account adoption and salvage, and SpriteFrames export. |
+| PixelLab utilities | `unzoom` returns upscaled reference art to its native grid, `font` generates a `.ttf` and glyph atlas, and `estimate-skeleton` starts a keypoints file for skeleton animation. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, resumable paid jobs, and per-asset generation history with free restores. |
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
@@ -258,18 +259,17 @@ Measured PixelLab economics vary by 40×:
 | Independent or connectable ground tiles | `tiles` | 20–40 generations |
 | A character in 4 or 8 directions, its poses, its loops | `character` | 1 per base, 20–40 per pose, 1 per template loop per direction; a `mirror` of a loop is free |
 
-Start with the required capability, not the most expensive endpoint. Forty
-`map` re-rolls cost the same as one 64×64 `1dir` call; conversely, `map` cannot
-replace a hard palette or reference-image constraint. See
-[Generator selection](./docs/GENERATORS.md) and the
-[measured endpoint reference](./docs/ENDPOINTS.md).
+Start with the required capability, not the most expensive endpoint. Forty `map`
+re-rolls cost the same as one 64×64 `1dir` call; conversely, `map` cannot replace a
+hard palette or reference-image constraint. PixelLab has seven more generators
+(`imagePro`, `imageProFlash`, `terrain`, `isometricTile`, `objectPro`, `uiAsset`,
+`uiElement`); see [Generator selection](./docs/GENERATORS.md) and the [measured endpoint reference](./docs/ENDPOINTS.md).
 
-Generator names describe PixelKiln workflows; their exact capabilities and
-prices depend on the selected provider. Retro Diffusion also supports the
-provider-specific `animation` generator. ComfyUI supports `map` plus atomic
-still-image `frames` through an operator-supplied workflow. Scenario supports `map`
-with a required offline CU ceiling and a live quote before each paid call.
-Compare the adapters in the [provider comparison](./PROVIDERS.md).
+Generator names describe PixelKiln workflows; their exact capabilities and prices
+depend on the selected provider. Retro Diffusion also supports the provider-specific
+`animation` generator. ComfyUI supports `map` plus atomic still-image `frames` through
+an operator-supplied workflow. Scenario supports `map` with a required offline CU
+ceiling and a live quote before each paid call. Compare the adapters in the [provider comparison](./PROVIDERS.md).
 
 ## Derived artifacts
 
@@ -368,12 +368,13 @@ verification. See [Library API](./docs/LIBRARY.md).
 | [Set up ComfyUI](./docs/COMFYUI.md) | Self-hosted stills, revisions, ordered frame sets, per-asset inputs, and quality limits. |
 | [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, review, and durable downloads. |
 | [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
-| [Controlled revisions](./docs/REVISIONS.md) | Image-to-image/inpaint parents, masks, fail-closed readiness, provenance, and ComfyUI bindings. |
+| [Controlled revisions](./docs/REVISIONS.md) | Image-to-image, inpaint, palette cleanup, animation, and interpolation from a parent; masks, fail-closed readiness, provenance, and ComfyUI bindings. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
 | [Manifest reference](./docs/MANIFEST.md) | Style/asset fields, quality profiles, and generator constraints. |
 | [Mixed-provider projects](./docs/MIXED_PROVIDERS.md) | Per-style routing, provider-keyed budgets, recovery, and account commands. |
 | [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
 | [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
+| [Characters](./docs/CHARACTERS.md) | Bases, states, loops, mirrors, portraits, outfits, the `directions` shorthand, and per-engine costs. |
 | [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Thirty provider outputs plus native-grid and final-palette results comparing large scenes, transparency, palette size, and file readiness. |
 | [Derived artifacts](./docs/ARTIFACTS.md) | Refine, pack, mount, export, provenance, ownership, transactions, and recovery. |
 | [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
@@ -384,10 +385,9 @@ verification. See [Library API](./docs/LIBRARY.md).
 | [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
 | [Provider comparison](./PROVIDERS.md) | Provider selection, costs, supported workflows, confidence, and limitations. |
 
-The [public documentation site](https://pixelkiln.griffen.codes/docs) is built from
-these Markdown files by [`website/`](./website/README.md), so the site and the
-package share one source. Policies: [Contributing](./CONTRIBUTING.md),
-[Security](./SECURITY.md), [provider comparison](./PROVIDERS.md).
+The [public documentation site](https://pixelkiln.griffen.codes/docs) is built from these Markdown
+files by [`website/`](./website/README.md), so the site and the package share one source.
+Policies: [Contributing](./CONTRIBUTING.md), [Security](./SECURITY.md).
 
 ## Scope
 

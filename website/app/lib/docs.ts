@@ -58,7 +58,7 @@ export const docs: DocEntry[] = [
   {
     slug: "cli",
     title: "CLI reference",
-    description: "Every command and flag, including gallery, edit, history, tools, automation, and exit behavior.",
+    description: "Every command and flag, including gallery, edit, history, tools, the PixelLab unzoom, font, and estimate-skeleton utilities, automation, and exit behavior.",
     file: "docs/CLI.md",
     group: "Reference",
     split: 3,
@@ -88,7 +88,7 @@ export const docs: DocEntry[] = [
   {
     slug: "characters",
     title: "Characters",
-    description: "A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, and what each PixelLab engine costs.",
+    description: "A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, portraits, outfit transfer, and what each PixelLab engine costs.",
     file: "docs/CHARACTERS.md",
     group: "Guides",
   },
@@ -116,7 +116,7 @@ export const docs: DocEntry[] = [
   {
     slug: "revisions",
     title: "Controlled asset revisions",
-    description: "Revise current art with hashed parents, masks, approval gates, and side-by-side review.",
+    description: "Revise current art with hashed parents, masks, approval gates, and side-by-side review, including PixelLab palette cleanup, animation, and interpolation.",
     file: "docs/REVISIONS.md",
     group: "Guides",
   },
