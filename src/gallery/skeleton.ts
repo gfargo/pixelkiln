@@ -14,7 +14,6 @@ import {
 } from "../skeleton.ts"
 import { CharacterDirectionSchema, lockKey, type ResolvedSpec } from "../types.ts"
 import type { GalleryProjectContext } from "./generate.ts"
-import type { GalleryBuild } from "./snapshot.ts"
 
 /**
  * The gallery's skeleton-animation path: estimate a skeleton for a sprite,
