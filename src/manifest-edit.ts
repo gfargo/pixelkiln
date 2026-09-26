@@ -575,6 +575,8 @@ export interface ManifestEditPrice {
     styleId: string
     assetId: string
     change: "new" | "changed"
+    /** Whose budget the cost comes out of. */
+    provider: string
     cost: number
     costUnit: string
     candidates: number
@@ -607,6 +609,7 @@ export async function priceManifestEdit(manifestPath: string, edit: ManifestEdit
           styleId: spec.styleId,
           assetId: spec.assetId,
           change: was === undefined ? "new" : "changed",
+          provider: spec.provider,
           cost: spec.cost,
           costUnit: spec.costUnit,
           candidates: spec.candidates,

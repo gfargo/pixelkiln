@@ -1027,6 +1027,42 @@ describe("createGenerateHandlers", () => {
     await expect(handlers.start({ keys: ["base/anvil"], force: true })).rejects.toThrow(/only 0 generations/)
   })
 
+  it("generates in waves: a child blocked on its parent follows once the parent lands, within the budget", async () => {
+    const { manifestPath } = await project({
+      name: "gallery-test",
+      styles: { base: { generator: "map", outDir: "out" } },
+      assets: {
+        anvil: { prompt: "an anvil", width: 32, height: 32 },
+        "anvil-worn": { prompt: "add rust", revision: { mode: "image-to-image", from: "anvil" } },
+      },
+    })
+    const provider = new FakeProvider({ candidates: 1 })
+    // The anvil is 1 generation and its revision 20 (PixelLab's image-to-image estimate).
+    const handlers = generateHandlers(manifestPath, provider, { amount: 21, byProvider: {} })
+    const job = await handlers.start({ keys: ["base/anvil", "base/anvil-worn"] })
+    const done = await untilPhase(handlers, job.id, ["done", "failed", "review"])
+    expect(done.error).toBeNull()
+    expect(done).toMatchObject({ phase: "done", counts: { submitted: 2, failed: 0, downloaded: 2 } })
+    expect(done.messages.join("\n")).toMatch(/wave 2: 1 asset\(s\) whose parents are now on disk/)
+    const lock = await loadLock(lockPath)
+    expect(lock.entries["base/anvil-worn"]).toMatchObject({ status: "downloaded" })
+
+    // A second wave that would outspend what is left stops rather than failing the job.
+    const { manifestPath: tight } = await project({
+      name: "gallery-test",
+      styles: { base: { generator: "map", outDir: "out2" } },
+      assets: {
+        tongs: { prompt: "tongs", width: 32, height: 32 },
+        "tongs-worn": { prompt: "add rust", revision: { mode: "image-to-image", from: "tongs" } },
+      },
+    })
+    const lean = generateHandlers(tight, new FakeProvider({ candidates: 1 }), { amount: 10, byProvider: {} })
+    const first = await lean.start({ keys: ["base/tongs", "base/tongs-worn"] })
+    const stopped = await untilPhase(lean, first.id, ["done", "failed", "review"])
+    expect(stopped).toMatchObject({ phase: "done", counts: { submitted: 1 } })
+    expect(stopped.messages.join("\n")).toMatch(/wave 2 would spend 20 generations on pixellab but only 9 generations .* stopping here/)
+  })
+
   it("refuses unknown keys, keys another job holds, and providers with no budget", async () => {
     const { manifestPath } = await project()
     const provider = new FakeProvider({ candidates: 1, processingPolls: 50 })

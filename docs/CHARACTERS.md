@@ -448,6 +448,18 @@ reference image change alone also makes it stale.
   new entry is generated, and `plan` reports it `blocked` until its parent
   is downloaded, same as one added by hand. `objectPro` families get the
   same two buttons; see [`objectPro`](./GENERATORS.md#objectpro).
+- **The character studio.** With `--edit`, "+ New character" in the
+  gallery's header drafts a whole character in one sheet: a new character
+  style (engine, size, directions, body, view, folder) or an existing one,
+  the base with an optional sprite of your own (uploaded into `refs/`, so
+  only the rotations are billed), any number of loops (each a template
+  posed by `skeleton-v3` by default, or a plain template, v3, or pro loop,
+  in the directions you tick, mirrors added free), and a portrait. The
+  sheet prices the draft live, the way `plan` would, and warns when a new
+  style would also take in existing assets that name no styles. **Create**
+  saves everything in one validated write; with `--budget`, **Create &
+  generate** also starts one job for all of it, which generates the base
+  first and the loops and portrait as soon as it lands.
 - `pack --format godot` and `--format aseprite` write each direction as a
   still and each loop as a looping set at its fps; see
   [engine formats](./ARTIFACTS.md).

@@ -1,4 +1,5 @@
 import { refresh } from "./refresh.ts"
+import { openStudio } from "./studio.ts"
 import { openCompare } from "./compare.ts"
 import { $, S, ui } from "./core.ts"
 import { closeItem, keyFromHash, readUrlState, render, step, stopPlayback } from "./drawer.ts"
@@ -7,6 +8,8 @@ import { pollJobs } from "./jobs.ts"
 import { closeEditorSheet } from "./sheet.ts"
 
 $('refresh').onclick = refresh;
+$('studio').hidden = !EDITABLE;
+$('studio').onclick = openStudio;
 let autoTimer: ReturnType<typeof setTimeout> | null = null;
 $('auto').onchange = (e) => {
   if (autoTimer) clearInterval(autoTimer ?? undefined);
