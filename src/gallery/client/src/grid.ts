@@ -4,6 +4,7 @@ import { openItem, render, renderDrawer, row } from "./drawer.ts"
 import { budgetLine, generateDialog, openReview } from "./editor.ts"
 import { addAssetForm, styleForm } from "./forms.ts"
 import { JOB_VERB, PHASE_TEXT, activeJobFor, familyLabel, paletteRuleOf } from "./jobs.ts"
+import { pruneLoops, registerLoop } from "./motion.ts"
 
 export function visibleItems() {
   const q = ui.q.trim().toLowerCase();
@@ -189,12 +190,17 @@ export function card(item) {
   }
   c.append(cell, body);
   c.onclick = (e) => { if (e.shiftKey) toggleCompare(item.id); else openItem(item.id); };
+  // A loop plays under the pointer (or always, with "play loops" on).
+  const still = cell.querySelector(':scope > img') as HTMLImageElement | null;
+  const shown = item.edit && item.editStatus === 'edited' && item.edits.every((e) => e.url) ? item.edits : item.outputs.filter((o) => o.url);
+  if (still && isFrameSet(item) && shown.length > 1) registerLoop(still, shown.map((o) => o.url), item.fps || 12, c);
   return c;
 }
 
 export function renderMain(items) {
   const root = $('root');
   root.textContent = '';
+  pruneLoops();
   if (!S.snap.items.length) {
     const e = el('div', 'empty');
     e.append(el('p', null, 'Nothing has been generated for this project yet.'));

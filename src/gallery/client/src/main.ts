@@ -1,14 +1,28 @@
 import { refresh } from "./refresh.ts"
 import { openStudio } from "./studio.ts"
 import { openCompare } from "./compare.ts"
-import { $, S, ui } from "./core.ts"
-import { closeItem, keyFromHash, readUrlState, render, step, stopPlayback } from "./drawer.ts"
+import { $, S, backdropControl, loadPrefs, savePrefs, ui } from "./core.ts"
+import { closeItem, drawerFrames, keyFromHash, readUrlState, render, step, stopPlayback } from "./drawer.ts"
 import { pollEditor } from "./editor.ts"
 import { familyState } from "./family.ts"
-import { pollJobs } from "./jobs.ts"
+import { enableNotifications, pollJobs } from "./jobs.ts"
+import { setPlayLoops } from "./motion.ts"
 import { closeEditorSheet } from "./sheet.ts"
 
+loadPrefs();
 $('refresh').onclick = refresh;
+$('playloops').checked = ui.playLoops;
+$('playloops').onchange = (e) => { setPlayLoops(e.target.checked); savePrefs(); };
+$('backdrop-slot').replaceWith(backdropControl());
+// Notifications only mean something while jobs can run from this page.
+$('notify-chip').hidden = !GENERATION || typeof Notification === 'undefined';
+$('notify').checked = ui.notify && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+$('notify').onchange = async (e) => {
+  const on = e.target.checked && await enableNotifications();
+  e.target.checked = on;
+  ui.notify = on;
+  savePrefs();
+};
 $('studio').hidden = !EDITABLE;
 $('studio').onclick = openStudio;
 let autoTimer: ReturnType<typeof setTimeout> | null = null;
@@ -37,9 +51,12 @@ document.addEventListener('keydown', (e) => {
     if (ui.open) { e.preventDefault(); closeItem(); }
     return;
   }
-  if (ui.open && !typing) {
+  if (ui.open && !typing && !$('dialog-host').childNodes.length) {
     if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+    const frames = drawerFrames();
+    if (frames && (e.key === ',' || e.key === '.')) { e.preventDefault(); frames.step(e.key === ',' ? -1 : 1); }
+    else if (frames && e.key === ' ' && !/^(BUTTON|A)$/.test(document.activeElement?.tagName || '')) { e.preventDefault(); frames.toggle(); }
   }
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopPlayback(); });

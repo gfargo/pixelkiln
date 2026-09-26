@@ -458,6 +458,27 @@ provider, and never writes anything. Stop it with Ctrl+C. See the
 [Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
 screenshot.
 
+#### Looking at sprites
+
+- **Loops on the grid:** a loop's card plays while the pointer is over it.
+  **play loops** in the header plays every loop in view at once.
+- **Backdrop:** the swatches in the header, and beside the zoom controls,
+  set what every sprite sits on. The choices are a transparency grid, dark,
+  light, or any colour you pick, so art can be judged against the game's own
+  background.
+- **Frame player:** a loop's record has one, with:
+  - ◀ and ▶, or <kbd>,</kbd> and <kbd>.</kbd>, to step a frame at a time;
+  - <kbd>space</kbd> to play or pause;
+  - a scrubber to drag through the frames;
+  - a speed setting, with the loop's own fps marked;
+  - **onion skin**, which shows the previous frame faintly under the
+    current one.
+- **Notifications:** with `--budget`, **notify** raises a system
+  notification when a job finishes, or stops for review, while the tab is in
+  the background.
+
+The page keeps these choices in the browser's local storage, per viewer.
+
 #### `--json`: the snapshot as data
 
 `--json` prints the same snapshot to stdout without starting a server. It is

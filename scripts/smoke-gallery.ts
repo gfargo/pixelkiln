@@ -101,7 +101,7 @@ const server = await serveGallery({
 // `window.__pixelkiln` for exactly this kind of test.
 declare const __pixelkiln: {
   S: { snap: { items: { id: string; state: string; outputs: { sha256: string }[]; history: { index: number; outputs: { sha256: string }[] }[] }[] } }
-  ui: { notice: { text: string } | null }
+  ui: { notice: { text: string } | null; notify: boolean }
   family: () => { rootId: string; source: string; direction: string; playing: boolean; anims: number } | null
 }
 
@@ -418,6 +418,70 @@ try {
     check(frames > 1, "loops play in the grid")
     await page.keyboard.press("Escape")
     check(await page.evaluate(() => __pixelkiln.family() === null || !document.querySelector(".family-sheet")), "Escape closes the family view")
+
+    // Loops on the grid play under the pointer, or all at once with "play loops".
+    await page.goto(studioServer.url, { waitUntil: "networkidle0" })
+    const srcsOf = (selector: string) => page.evaluate(async (sel) => {
+      const img = document.querySelector(sel) as HTMLImageElement
+      const seen = new Set<string>()
+      for (let i = 0; i < 12; i++) { seen.add(img.src); await new Promise((r) => setTimeout(r, 60)) }
+      return seen.size
+    }, selector)
+    const walkThumb = '.card[data-key="characters/mira.walk.west"] .cell > img'
+    check(await srcsOf(walkThumb) === 1, "a loop on the grid is still until the pointer is over it")
+    await page.hover('.card[data-key="characters/mira.walk.west"]')
+    check(await srcsOf(walkThumb) > 1, "a loop plays while the pointer is over its card")
+    await page.mouse.move(2, 2)
+    await page.click("#playloops")
+    check(await srcsOf('.card[data-key="characters/mira.idle.south"] .cell > img') > 1, "play loops plays every loop without hovering")
+    await page.click("#playloops")
+
+    // The backdrop: one choice for every place a sprite is shown, kept across reloads.
+    await page.click("header .backdrop .bd-light")
+    await page.reload({ waitUntil: "networkidle0" })
+    const backdrop = await page.evaluate(() => [document.body.dataset.backdrop, getComputedStyle(document.querySelector(".cell")!).backgroundColor])
+    check(backdrop[0] === "light" && backdrop[1] === "rgb(239, 233, 220)", `the light backdrop sticks and colours the cards (${backdrop.join(", ")})`)
+    await page.click("header .backdrop .bd-checker")
+
+    // The drawer's frame player: step with , and ., onion skin under the frame.
+    await page.goto(`${studioServer.url}#characters/mira.walk.west`, { waitUntil: "networkidle0" })
+    await page.reload({ waitUntil: "networkidle0" })
+    await page.waitForSelector(".frames-bar", { timeout: 5_000 })
+    await page.keyboard.press(".")
+    await page.keyboard.press(".")
+    check(await page.$eval(".frames-bar .count", (n) => n.textContent) === "3 / 8", "the frame player steps with the . key")
+    await page.click(".frames-bar .chip input")
+    check(await page.evaluate(() => !(document.querySelector(".preview img.onion") as HTMLImageElement).hidden), "onion skin shows the previous frame")
+    await page.click(".frames-bar .chip input")
+
+    // A job that finishes while the tab is in the background raises a system
+    // notification, once the viewer has turned them on. The browser's
+    // Notification and document.hidden are stood in for.
+    // As plain script text: tsx would wrap a class here in a helper the page lacks.
+    await page.evaluateOnNewDocument(`
+      window.__notes = [];
+      window.__hidden = false;
+      function Stub(title, opts) { window.__notes.push({ title: title, body: opts && opts.body }); }
+      Stub.permission = "granted";
+      Stub.requestPermission = function () { return Promise.resolve("granted"); };
+      Stub.prototype.close = function () {};
+      window.Notification = Stub;
+      Object.defineProperty(document, "hidden", { get: function () { return window.__hidden; }, configurable: true });
+    `)
+    await page.goto(`${studioServer.url}#characters/mira.idle.south`, { waitUntil: "networkidle0" })
+    await page.reload({ waitUntil: "networkidle0" })
+    // The open drawer's scrim sits over the header, so click the box itself.
+    await page.evaluate(() => (document.getElementById("notify") as HTMLInputElement).click())
+    await page.waitForFunction(() => __pixelkiln.ui.notify, { timeout: 5_000 })
+    await page.evaluate(() => ([...document.querySelectorAll(".drawer .gen button")] as HTMLButtonElement[]).find((b) => b.textContent?.startsWith("Regenerate"))!.click())
+    await submitDialog()
+    await page.evaluate(() => { (window as unknown as { __hidden: boolean }).__hidden = true })
+    let notes: { title: string; body?: string }[] = []
+    for (let i = 0; i < 75 && !notes.length; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      notes = await page.evaluate(() => (window as unknown as { __notes: { title: string; body?: string }[] }).__notes)
+    }
+    check(notes.length === 1 && /^Generated characters\/mira\.idle\.south$/.test(notes[0]!.body ?? ""), `a job finishing in a background tab raises a notification (${JSON.stringify(notes)})`)
   } finally {
     await studioServer.close()
   }
