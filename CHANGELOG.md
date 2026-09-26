@@ -1,3 +1,22 @@
+# [0.77.0](https://github.com/gfargo/pixelkiln/compare/v0.76.0...v0.77.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **website:** enlarge the kiln logo mark in the header ([cc49f91](https://github.com/gfargo/pixelkiln/commit/cc49f91c0c7819ff19343f92ce11915ea11c2816))
+* **website:** fix blurry kiln mark by matching asset and display sizes ([65a237d](https://github.com/gfargo/pixelkiln/commit/65a237d677ca48aa6765b34e34992fd2b7ec0b08))
+* **website:** flatten kiln mark to a true pixel-art palette ([277523d](https://github.com/gfargo/pixelkiln/commit/277523dc1f7720b5ba9a71a0a24c74a6c2bf845d))
+* **website:** recenter kiln mark artwork within its canvas ([ce903d2](https://github.com/gfargo/pixelkiln/commit/ce903d2329d5708afefd8a81108aed993eae43ed))
+* **website:** rename kiln mark asset to bust the stale CDN/browser cache ([b2637dc](https://github.com/gfargo/pixelkiln/commit/b2637dcec79942f25c921462356ad25ccca5b513))
+* **website:** use the original artwork with normal image scaling ([440f35c](https://github.com/gfargo/pixelkiln/commit/440f35cbccdd3184f531335fee32ea7fbceb56a0))
+
+
+### Features
+
+* **gallery:** loops that play on the grid, a backdrop picker, a frame player, and job notifications ([957fd6f](https://github.com/gfargo/pixelkiln/commit/957fd6fc68b924e9b2dd1fe6783cec7cdfea1116))
+* **website:** replace kiln logo mark and trim OG/meta description lengths ([97aad0e](https://github.com/gfargo/pixelkiln/commit/97aad0e86ca4724a1cc547be675c82c2611bbc71))
+* **website:** swap in the full-detail kiln mark, size up in header/footer ([c763bfd](https://github.com/gfargo/pixelkiln/commit/c763bfdd1d835de179a106e0a29bd93698364ba3))
+
 # [0.76.0](https://github.com/gfargo/pixelkiln/compare/v0.75.0...v0.76.0) (2026-09-26)
 
 
