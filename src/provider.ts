@@ -325,6 +325,9 @@ export interface Provider {
   /** True only when the adapter can bind and submit this controlled edit mode. */
   supportsRevision?(mode: RevisionMode): boolean
 
+  /** True only when the adapter can draw a `map` object into a scene (`asset.scene`). */
+  readonly supportsMapScene?: boolean
+
   /** Never performs I/O; `plan` must stay free and offline. */
   estimate(spec: ResolvedSpec): CostEstimate
 

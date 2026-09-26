@@ -68,6 +68,8 @@ export class FakeProvider implements Provider {
     return generator === "1dir" || generator === "map" || generator === "character"
   }
 
+  readonly supportsMapScene = true
+
   supportsRevision(_mode: RevisionMode): boolean {
     return true
   }

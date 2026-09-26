@@ -1456,6 +1456,67 @@
                 ],
                 "additionalProperties": false
               },
+              "scene": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "placement": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "oval": {
+                            "type": "number",
+                            "minimum": 0.05,
+                            "maximum": 0.95
+                          }
+                        },
+                        "required": [
+                          "oval"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "rectangle": {
+                            "type": "number",
+                            "minimum": 0.05,
+                            "maximum": 0.95
+                          }
+                        },
+                        "required": [
+                          "rectangle"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "mask": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "mask"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ],
+                    "default": {
+                      "oval": 0.3
+                    }
+                  }
+                },
+                "required": [
+                  "image"
+                ],
+                "additionalProperties": false
+              },
               "proportions": {
                 "anyOf": [
                   {

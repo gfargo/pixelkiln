@@ -43,6 +43,37 @@ attempts in the [environment provider benchmark](./PROVIDER_BENCHMARK.md) were
 opaque. `map` has no `noBackground` control in PixelKiln. Check alpha before
 assuming the file can be placed directly over a map.
 
+### Drawing into a scene
+
+A `map` asset can declare a `scene`: an existing picture of the place the
+object belongs in (a floor, a room, a level). PixelLab draws the object into
+that scene and in its style, which is the one way to match a specific map's
+look without a style image. The price is still one generation.
+
+```jsonc
+"barrel": {
+  "prompt": "a small wooden barrel",
+  "width": 64, "height": 64,
+  "scene": { "image": "maps/tavern-floor.png", "placement": { "oval": 0.3 } }
+}
+```
+
+- `scene.image` is a manifest-relative PNG. It can be another asset's output;
+  until that file exists, `plan` shows this asset as blocked. Its bytes are
+  part of the spec's identity, so a redrawn scene makes the object stale.
+- `scene.placement` is where the object goes: `{ "oval": f }` or
+  `{ "rectangle": f }`, a region PixelLab generates covering `f` (0.05–0.95)
+  of the scene, or `{ "mask": "path.png" }`, a PNG the size of the scene,
+  white where the object goes and black for context. The default is
+  `{ "oval": 0.3 }`, PixelLab's own.
+- PixelLab only. Other providers refuse `scene` when the manifest is resolved.
+
+Unverified until a real call is billed: whether the scene has to match the
+object's `width`/`height` or can be a larger picture; where an oval or a
+rectangle sits, since the API takes no position (presumably centered); and
+whether the result is the object alone or the object composited into the
+scene. Check the first result before drawing a batch.
+
 ## `1dir`
 
 `1dir` is the single-facing sibling of PixelLab's rotatable/animated object

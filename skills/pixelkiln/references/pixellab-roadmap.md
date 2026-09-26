@@ -372,8 +372,11 @@ describing only the new terrain, and export the whole map (tilesets, full
 composite, and every object as separate files). Demonstrated at length in
 "Create Interior Maps," "PixelLab Map Workshop Tutorial," "How to Create
 Destructible Environments in Seconds," and "Create a Full Side Scroller
-Level." Zero pixelkiln analogue — and see pixellab.md for the naming
-collision with pixelkiln's own unrelated `map` generator.
+Level." Zero pixelkiln analogue for the scene editor itself — and see
+pixellab.md for the naming collision with pixelkiln's own unrelated `map`
+generator. The one part the public API exposes, `/map-objects` style matching
+(`background_image` + `inpainting`), is closed: a `map` asset's `scene` field
+(issue #216).
 
 One concrete, recurring gotcha worth carrying into any future implementation:
 default/generic object prompts in Map Workshop reliably come out oversized
