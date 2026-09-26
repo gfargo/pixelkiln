@@ -20,7 +20,7 @@ const candidates = [
 function KilnMark() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={markDataUrl} width={36} height={36} alt="" />
+    <img src={markDataUrl} width={48} height={48} alt="" />
   );
 }
 
@@ -127,11 +127,11 @@ export default function OpenGraphImage() {
     >
       <div
         style={{
-          height: 54,
+          height: 64,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingBottom: 22,
+          paddingBottom: 14,
           borderBottom: "1px solid #4a4539",
         }}
       >
