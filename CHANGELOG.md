@@ -1,3 +1,10 @@
+# [0.64.0](https://github.com/gfargo/pixelkiln/compare/v0.63.0...v0.64.0) (2026-09-26)
+
+
+### Features
+
+* **salvage:** salvage and purge characters ([e90175f](https://github.com/gfargo/pixelkiln/commit/e90175ffa885ba367c7c7d42ba3823ed70b8ce67)), closes [#142](https://github.com/gfargo/pixelkiln/issues/142)
+
 # [0.63.0](https://github.com/gfargo/pixelkiln/compare/v0.62.0...v0.63.0) (2026-09-26)
 
 
