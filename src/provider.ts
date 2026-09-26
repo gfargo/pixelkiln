@@ -95,6 +95,13 @@ export interface SubmitContext {
   /** Provider-side id of the character a pro base anchors its style on, when the spec names one. */
   styleObjectId?: string
   /**
+   * The parent's own downloaded output files, in lock order, for a spec
+   * whose provider work reads bytes rather than a remote id (an outfit
+   * re-clothing a loop's frames). The pipeline proved the parent current
+   * before calling.
+   */
+  parentOutputs?: { path: string; role?: string }[]
+  /**
    * Provider-owned details of the generation this submission replaces, when
    * the lockfile had one for the same asset, whatever its state. An adapter
    * that must clear upstream work before redoing it (a character animation

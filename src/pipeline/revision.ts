@@ -24,6 +24,11 @@ export async function inspectRevisionReadiness(
   lock: Lock,
 ): Promise<RevisionReadiness | null> {
   if (spec.mirror) return inspectMirror(spec, lock, new Set())
+  // An outfit's dependency is its source loop's whole frame set, checked
+  // the way a mirror's is; `character.parentSpec` is also set (so the
+  // family shares parentAssetId plumbing), but there is no single
+  // south-facing file for inspectCharacterParent to look for.
+  if (spec.character?.kind === "outfit") return inspectOutfit(spec, lock, new Set())
   if (spec.character?.parentSpec) return inspectCharacterParent(spec, lock, new Set())
   if (spec.character?.styleAnchor) return inspectStyleAnchor(spec, lock, new Set())
   if (spec.objectPro?.parentSpec) return inspectObjectProParent(spec, lock, new Set())
@@ -63,6 +68,26 @@ async function inspectMirror(spec: ResolvedSpec, lock: Lock, seen: Set<string>):
   return dependency.ready
     ? { ready: true, reason: `${label} is current` }
     : { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
+}
+
+/**
+ * An outfit re-clothes its source loop's whole downloaded frame set (like a
+ * mirror's dependency, not a single south-facing file) and needs its own
+ * reference image current too.
+ */
+async function inspectOutfit(spec: ResolvedSpec, lock: Lock, seen: Set<string>): Promise<RevisionReadiness> {
+  const character = spec.character!
+  const outfit = character.outfit!
+  const label = `outfit source ${spec.styleId}/${character.parentAssetId}`
+  const dependency = await inspectParent(character.parentSpec!, lock, seen)
+  if (!dependency.ready) return { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
+  if (!existsSync(outfit.reference.path)) {
+    return { ready: false, reason: `outfit reference is missing: ${outfit.reference.path}` }
+  }
+  if ((await sha256File(outfit.reference.path)) !== outfit.reference.sha256) {
+    return { ready: false, reason: "outfit reference changed after the manifest was resolved" }
+  }
+  return { ready: true, reason: `${label} is current` }
 }
 
 /**
@@ -223,7 +248,10 @@ async function inspectParent(
     const inputs = await inspectRevision(spec, lock, nextSeen)
     if (!inputs.ready) return inputs
   }
-  if (spec.character?.parentSpec) {
+  if (spec.character?.kind === "outfit") {
+    const inputs = await inspectOutfit(spec, lock, nextSeen)
+    if (!inputs.ready) return inputs
+  } else if (spec.character?.parentSpec) {
     const inputs = await inspectCharacterParent(spec, lock, nextSeen)
     if (!inputs.ready) return inputs
   }

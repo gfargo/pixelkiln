@@ -391,8 +391,8 @@ package share one source. Policies: [Contributing](./CONTRIBUTING.md),
 
 ## Scope
 
-PixelLab's portrait and outfit tools, cross-project cache reuse, and
-`workspace find` are not implemented; see the open [issues](https://github.com/gfargo/pixelkiln/issues).
+Cross-project cache reuse and `workspace find` are not implemented; see the
+open [issues](https://github.com/gfargo/pixelkiln/issues).
 
 ## License
 

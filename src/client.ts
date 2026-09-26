@@ -376,6 +376,44 @@ const AnimateObjectSubmitSchema = z
     usage: UsageSchema,
   })
   .passthrough()
+/** `usage` on this submit response is always null (docs/ENDPOINTS.md, "Characters, measured"); read `GET /background-jobs/{id}` for the real amount. */
+const PortraitSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    usage: UsageSchema,
+  })
+  .passthrough()
+/** `GET /portrait-character-pro/{job_id}`; `usage` here is always null too, same reason. */
+const PortraitJobSchema = z
+  .object({
+    status: z.string(),
+    download_url: z.string().nullable().optional(),
+    width: z.number().int().nullable().optional(),
+    height: z.number().int().nullable().optional(),
+  })
+  .passthrough()
+/** `POST /characters/{id}/portrait`: synchronous, and free (`usage.generations: 0` every time observed). */
+const SetPortraitSchema = z
+  .object({
+    character_id: z.string().min(1),
+    size: z.number().int().positive(),
+    url: z.string().min(1),
+    usage: UsageSchema,
+  })
+  .passthrough()
+/**
+ * `usage` here is always null too (docs/ENDPOINTS.md); read
+ * `GET /background-jobs/{id}` for the real amount, the only place it
+ * appears — there is no `transfer-outfit-v2/{id}` status endpoint.
+ */
+const TransferOutfitSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    usage: UsageSchema,
+  })
+  .passthrough()
 const CharacterAnimationDirectionSchema = z
   .object({
     direction: z.string(),
@@ -1259,6 +1297,86 @@ export class PixelLabClient {
       }),
     })
     return validateResponse(AnimateSubmitSchema, raw, "animate-character")
+  }
+
+  /**
+   * A full-body sprite in, a bust portrait out (or the reverse, unused
+   * today). Job-based like a state or `1dir`, not the couple-generations
+   * "conversion" the name suggests: the smallest `resultSize` (16px) billed
+   * 20 generations live (docs/ENDPOINTS.md, "Characters, measured").
+   */
+  async createPortraitCharacterPro(args: {
+    direction: "portrait_to_character" | "character_to_portrait"
+    image: Base64Image
+    view?: string
+    resultSize?: number
+    seed?: number
+  }): Promise<{ background_job_id: string; status: string; usage?: PixelLabUsage | null }> {
+    const raw = await this.request<unknown>("/portrait-character-pro", {
+      method: "POST",
+      body: JSON.stringify({
+        direction: args.direction,
+        image: { type: "base64", base64: args.image.base64, format: args.image.format },
+        ...(args.view ? { view: args.view } : {}),
+        ...(args.resultSize != null ? { result_size: args.resultSize } : {}),
+        ...(args.seed != null ? { seed: args.seed } : {}),
+      }),
+    })
+    return validateResponse(PortraitSubmitSchema, raw, "portrait-character-pro")
+  }
+
+  /** Throws PixelLabError(423) while the job is still drawing, like tiles and map objects. */
+  async getPortraitCharacterJob(jobId: string): Promise<{ status: string; download_url?: string | null; width?: number | null; height?: number | null }> {
+    const raw = await this.request<unknown>(`/portrait-character-pro/${encodeURIComponent(jobId)}`)
+    return validateResponse(PortraitJobSchema, raw, "portrait-character-pro/{id}")
+  }
+
+  /**
+   * Attaches a portrait image to a character record. Synchronous and free
+   * (0 generations, live); PixelLab does not link this to
+   * `createPortraitCharacterPro` automatically, and `GET /characters/{id}`
+   * never grows a portrait field, so this response's `url` is the only place
+   * it appears.
+   */
+  async setCharacterPortrait(characterId: string, image: Base64Image): Promise<{ character_id: string; size: number; url: string; usage?: PixelLabUsage | null }> {
+    const raw = await this.request<unknown>(`/characters/${encodeURIComponent(characterId)}/portrait`, {
+      method: "POST",
+      body: JSON.stringify({ image: { type: "base64", base64: image.base64, format: image.format } }),
+    })
+    return validateResponse(SetPortraitSchema, raw, "characters/{id}/portrait")
+  }
+
+  /**
+   * Applies a reference outfit to 2–16 existing frames. Job-based like
+   * everything else here, but the completed job returns the result frames
+   * inline as base64 (`last_response.quantized_images`), not as storage
+   * URLs — the one PixelLab character tool that works this way. A live
+   * 2-frame, 92x92 job billed 20 generations (docs/ENDPOINTS.md).
+   */
+  async transferOutfitV2(args: {
+    referenceImage: Base64Image & { width: number; height: number }
+    frames: (Base64Image & { width: number; height: number })[]
+    imageSize: { width: number; height: number }
+    seed?: number
+    noBackground?: boolean
+    additionalInstructions?: string
+  }): Promise<{ background_job_id: string; status: string; usage?: PixelLabUsage | null }> {
+    const image = (img: Base64Image & { width: number; height: number }) => ({
+      image: { type: "base64", base64: img.base64, format: img.format },
+      size: { width: img.width, height: img.height },
+    })
+    const raw = await this.request<unknown>("/transfer-outfit-v2", {
+      method: "POST",
+      body: JSON.stringify({
+        reference_image: image(args.referenceImage),
+        frames: args.frames.map(image),
+        image_size: args.imageSize,
+        ...(args.seed != null ? { seed: args.seed } : {}),
+        ...(args.noBackground !== undefined ? { no_background: args.noBackground } : {}),
+        ...(args.additionalInstructions ? { additional_instructions: args.additionalInstructions } : {}),
+      }),
+    })
+    return validateResponse(TransferOutfitSubmitSchema, raw, "transfer-outfit-v2")
   }
 
   async getCharacter(characterId: string): Promise<PixelLabCharacter> {
