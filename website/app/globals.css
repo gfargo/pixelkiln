@@ -42,8 +42,8 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: -0.02em;
 }
 .kiln-mark {
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
   image-rendering: pixelated;
 }
 .site-header nav {
