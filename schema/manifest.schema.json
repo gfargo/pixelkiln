@@ -1012,6 +1012,7 @@
                       "correct-pixelart",
                       "animate",
                       "animate-pixminimax",
+                      "animate-skeleton",
                       "interpolate",
                       "edit-animation"
                     ]
@@ -1081,6 +1082,18 @@
                   },
                   "enhancePrompt": {
                     "type": "boolean"
+                  },
+                  "keypointsFile": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "skeletonTemplate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "engine": {
                     "type": "string",

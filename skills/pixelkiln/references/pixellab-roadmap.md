@@ -246,6 +246,28 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   actually describe `uiAsset`'s pricing. Left unpatched from one data point:
   over-reading stays the safe `--budget` direction, but a real call likely
   costs about half of what `pixelkiln plan` prints, pending a second size.
+- **Skeleton-driven animation** (`POST /animate-with-skeleton-v3`, beta,
+  tier 1+ subscription — pose a reference image frame-by-frame from a
+  supplied 18-joint skeleton per frame, instead of a text motion
+  description) — closed by the `revision` asset shape's `animate-skeleton`
+  mode; see `pixellab.md` and `docs/REVISIONS.md#skeleton-driven-animation`.
+  `POST /estimate-skeleton` (auto-derive a reference image's own keypoints)
+  is wrapped too, but deliberately kept outside the manifest pipeline — a
+  standalone `pixelkiln estimate-skeleton` CLI command, not a
+  `resolveSpecs`/`estimate()`-time call — so `animate-skeleton`'s submission
+  composes exactly one never-tested-live PixelLab endpoint, not two chained
+  together. **Correcting this catalog's own prior research**: this entry
+  used to also claim a distinct "animation to animation" endpoint existed,
+  for transferring an existing walk cycle's motion onto a different
+  character. Checked against the live `animate_with_skeleton_v3` MCP tool
+  schema: **there is no such endpoint.** The real composition is
+  `estimate-skeleton` run once per frame of a source animation, then
+  `animate-with-skeleton-v3` against a *different* reference image reusing
+  those keypoints — a two-endpoint composition a person can now build by
+  hand with the primitives above, not a primitive pixelkiln itself
+  automates. Neither `animate-with-skeleton-v3` nor `estimate-skeleton` has
+  been exercised against a live account; request field names come from the
+  MCP tool schema, not an observed call.
 
 - **Fonts** (`/generate-font-pro`, an 80-glyph atlas plus a `.ttf` from a
   style description) — no tutorial demonstrated it in depth, so demand is
@@ -367,22 +389,23 @@ native Godot 4 `TileSet` resource directly, verified in CI — worth knowing if
 Map Workshop parity is ever considered, since the export leg is arguably
 already solved better here than in PixelLab's own reference flow.
 
-## Skeleton-driven animation and animation-to-animation motion transfer
+## Animation-to-animation motion transfer
 
-Two more animation mechanisms with no equivalent: **"Animate with skeleton"**
-(fit a rig template — bipedal, realistic, chibi, or quadruped body plans —
-generate two frames at a time with each accepted pair becoming context for
-the next, height/head-size/offset controls) and **"Animation to animation"**
-(transfer the motion/shape structure of an *existing* walk cycle onto a
-newly described or referenced character, frame budget capped by the source's
-canvas size). Both demonstrated in "How to Make Walking Animations for Pixel
-Art Characters in PixelLab." Neither exists in pixelkiln's `character`
-schema, which only knows named templates, v3 text loops, and pro loops — none
-take a user-supplied motion source or expose a skeleton-editing surface.
-Already flagged as explicitly out of scope in docs/PIXELLAB.md
-("skeleton-driven animation"); animation-to-animation is new information not
-previously catalogued anywhere.
-
+Transferring the motion of an *existing* walk cycle onto a newly described or
+referenced character — demonstrated in "How to Make Walking Animations for
+Pixel Art Characters in PixelLab." As corrected in the now-closed
+skeleton-driven-animation entry above: this is not one endpoint, it is
+`estimate-skeleton` run per frame of the source animation plus
+`animate-with-skeleton-v3` against the new character's reference image
+reusing those keypoints. Both primitives exist in this adapter now
+(`animate-skeleton` revision mode, `pixelkiln estimate-skeleton`), so a
+person can build this by hand today — chaining `estimate-skeleton` calls
+across a source animation's frames into one keypoints file, then pointing an
+`animate-skeleton` revision's `from` at a different character. What remains
+a real gap is automating that chain as its own pixelkiln capability (one
+command, not N manual `estimate-skeleton` calls plus hand-assembling the
+result into a `SkeletonSetSchema` file) — worth scoping once the base
+`animate-skeleton` mode has shipped and seen real use.
 
 ## Not PixelLab gaps at all — different products, no action implied
 

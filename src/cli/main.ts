@@ -16,6 +16,7 @@ import { runFont, runUnzoom } from "./commands/pixellab-utils.ts"
 import { runQuality } from "./commands/quality.ts"
 import { runRecipe } from "./commands/recipe.ts"
 import { runRefine } from "./commands/refine.ts"
+import { runEstimateSkeleton } from "./commands/skeleton.ts"
 import { runTools } from "./commands/tools.ts"
 import { runWorkspace } from "./commands/workspace.ts"
 
@@ -81,6 +82,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   refine: runRefine,
   recipe: runRecipe,
   workspace: runWorkspace,
+  "estimate-skeleton": runEstimateSkeleton,
   unzoom: runUnzoom,
   font: runFont,
 }

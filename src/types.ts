@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { SkeletonSet } from "./skeleton.ts"
 
 const MediaTypeSchema = z.enum(["image/png", "image/gif"])
 
@@ -41,7 +42,7 @@ export type GridConfidence = z.infer<typeof GridConfidenceSchema>
 
 export const RevisionModeSchema = z.enum([
   "image-to-image", "inpaint", "outpaint", "reduce-colors", "correct-pixelart", "animate", "animate-pixminimax",
-  "interpolate", "edit-animation",
+  "animate-skeleton", "interpolate", "edit-animation",
 ])
 export type RevisionMode = z.infer<typeof RevisionModeSchema>
 
@@ -733,6 +734,30 @@ export const RevisionSchema = z
     /** `animate`/`animate-pixminimax` only: let PixelLab expand the action into a fuller motion description first. */
     enhancePrompt: z.boolean().optional(),
     /**
+     * `animate-skeleton` only: manifest-relative path to a committed
+     * `SkeletonSet` JSON file (see `src/skeleton.ts`) — the pose the parent
+     * image is already in, plus 3-15 per-frame poses for the motion.
+     * Authored via `pixelkiln estimate-skeleton`, then hand-tweaked; never
+     * inline in the manifest, the same reasoning `mask`/`lastFrame` are
+     * committed files rather than inline pixel data.
+     */
+    keypointsFile: z.string().min(1).optional(),
+    /**
+     * `animate-skeleton` only: the body a joint's missing `depth` is taken
+     * from. PixelLab's default is `mannequin`; free string like `character`'s
+     * own `template` field, validated at the provider layer against the
+     * same `mannequin`/`bear`/`cat`/`dog`/`horse`/`lion` vocabulary.
+     */
+    skeletonTemplate: z.string().min(1).optional(),
+    /**
+     * `animate-skeleton` only: what the character *looks like*, a noun
+     * phrase (colours, clothing, held items) — distinct from the asset's
+     * own `prompt`, which this mode sends as the motion's short label
+     * (PixelLab's `action`), the same `prompt`-as-motion convention
+     * `animate`/`animate-pixminimax` already use.
+     */
+    description: z.string().min(1).optional(),
+    /**
      * `image-to-image`/`inpaint` only: which provider engine draws the
      * edit. `pro-flash` selects PixelLab's Pro Flash edit and inpaint tier
      * (`/edit-image-pro-flash`, `/inpaint-image-pro-flash`) instead of the
@@ -827,22 +852,45 @@ export const RevisionSchema = z
         path: ["fps"],
       })
     }
-    if (revision.direction !== undefined && revision.mode !== "animate-pixminimax") {
+    if (revision.direction !== undefined && revision.mode !== "animate-pixminimax" && revision.mode !== "animate-skeleton") {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "direction applies to animate-pixminimax revisions only",
+        message: "direction applies to animate-pixminimax/animate-skeleton revisions only",
+        path: ["direction"],
+      })
+    }
+    if (revision.mode === "animate-skeleton" && revision.direction === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "animate-skeleton revisions require a direction",
         path: ["direction"],
       })
     }
     if (revision.frames !== undefined && revision.frames % 2 !== 0) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
     }
+    if (revision.mode === "animate-skeleton" && !revision.keypointsFile) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "animate-skeleton revisions require keypointsFile",
+        path: ["keypointsFile"],
+      })
+    }
+    for (const field of ["keypointsFile", "skeletonTemplate", "description"] as const) {
+      if (revision[field] !== undefined && revision.mode !== "animate-skeleton") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${field} applies to animate-skeleton revisions only`,
+          path: [field],
+        })
+      }
+    }
   })
 
 export type Revision = z.infer<typeof RevisionSchema>
 
 /** Modes whose output is an ordered frame set rather than one image. */
-export const FRAME_SET_REVISION_MODES: readonly RevisionMode[] = ["animate", "animate-pixminimax", "interpolate", "edit-animation"]
+export const FRAME_SET_REVISION_MODES: readonly RevisionMode[] = ["animate", "animate-pixminimax", "animate-skeleton", "interpolate", "edit-animation"]
 
 /**
  * Modes that can read a whole member set from their parent (a character's
@@ -909,6 +957,12 @@ export interface ResolvedRevision {
   lastFrameFormat?: "png" | "jpeg" | null
   direction?: CharacterDirection
   enhancePrompt?: boolean
+  keypointsFile?: string
+  /** Null keeps planning possible before the keypoints file is authored. */
+  keypointsSha256?: string | null
+  skeleton?: SkeletonSet | null
+  skeletonTemplate?: string
+  description?: string
   engine?: "pro-flash"
 }
 
@@ -1622,11 +1676,16 @@ export const LockEntrySchema = z.object({
       paletteImageSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       dithering: RevisionDitheringSchema.optional(),
       ditheringStrength: z.number().min(0).max(10).optional(),
-      frames: z.number().int().min(4).max(40).optional(),
+      // 4-40 for animate/animate-pixminimax; animate-skeleton's own 3-15
+      // range extends the floor down to 3, hence min(3) here rather than 4.
+      frames: z.number().int().min(3).max(40).optional(),
       fps: z.number().int().min(1).max(60).optional(),
       lastFrameSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       direction: CharacterDirectionSchema.optional(),
       enhancePrompt: z.boolean().optional(),
+      keypointsSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+      skeletonTemplate: z.string().min(1).optional(),
+      description: z.string().min(1).optional(),
       engine: z.enum(["pro-flash"]).optional(),
     })
     .strict()

@@ -200,6 +200,27 @@ export function objectProCost(spec: ResolvedSpec): number {
   return south ? proFlashObjectCost(south.width, south.height, object.directions, true) : proFlashObjectCost(spec.width, spec.height, object.directions, false)
 }
 
+/**
+ * `/animate-with-skeleton-v3`'s own documented anchors (its MCP tool
+ * schema): 3 frames = 2 generations, 8 = 3, 15 = 4. No in-between value is
+ * confirmed live, so this piecewise-linearly interpolates between the
+ * nearest two anchors — closer to the real (unknown) curve than a flat
+ * per-bucket tier would be, without claiming precision this codebase
+ * doesn't have. Never called below 3 or above 15; both ends are exact.
+ */
+function animateSkeletonCost(frames: number): number {
+  const anchors: Array<[frames: number, generations: number]> = [[3, 2], [8, 3], [15, 4]]
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const [lowFrames, lowCost] = anchors[i]!
+    const [highFrames, highCost] = anchors[i + 1]!
+    if (frames >= lowFrames && frames <= highFrames) {
+      const t = (frames - lowFrames) / (highFrames - lowFrames)
+      return lowCost + t * (highCost - lowCost)
+    }
+  }
+  return frames <= anchors[0]![0] ? anchors[0]![1] : anchors[anchors.length - 1]![1]
+}
+
 const CHARACTER_TEMPLATES = ["mannequin", "bear", "cat", "dog", "horse", "lion"] as const
 /** Pro Flash also fits a skeleton to whatever the image shows. */
 const PRO_FLASH_TEMPLATES = [...CHARACTER_TEMPLATES, "custom"] as const
@@ -303,7 +324,9 @@ export class PixelLabProvider implements Provider {
    * rather than a described edit — and `animate`/`animate-pixminimax`
    * (`/animate-with-text-v3`, `/animate-pixminimax`), which animate any loose
    * image from a text description with no character/object resource
-   * required — and `interpolate` (`/interpolation-v2`, the in-betweens
+   * required — `animate-skeleton` (`/animate-with-skeleton-v3`, posing the
+   * source from a supplied per-frame skeleton instead of a text description)
+   * — and `interpolate` (`/interpolation-v2`, the in-betweens
    * from one keyframe to another) and `edit-animation`
    * (`/edit-animation-v2`, one text edit applied across a whole frame set).
    * `outpaint` does not: there is no canvas-expansion endpoint in the API,
@@ -313,7 +336,8 @@ export class PixelLabProvider implements Provider {
   supportsRevision(mode: RevisionMode): boolean {
     return (
       mode === "inpaint" || mode === "image-to-image" || mode === "reduce-colors" || mode === "correct-pixelart" ||
-      mode === "animate" || mode === "animate-pixminimax" || mode === "interpolate" || mode === "edit-animation"
+      mode === "animate" || mode === "animate-pixminimax" || mode === "animate-skeleton" ||
+      mode === "interpolate" || mode === "edit-animation"
     )
   }
 
@@ -361,6 +385,19 @@ export class PixelLabProvider implements Provider {
       // it stays flat at larger canvases, or for a whole member set sent
       // together (still one call), is unknown.
       return { unit: "generations", amount: 0.1, candidates: 1 }
+    }
+    if (spec.revision?.mode === "animate-skeleton") {
+      // PixelLab's own tool docs give three real anchors — 3 frames=2,
+      // 8=3, 15=4 generations — cost barely moving with length, unlike
+      // animate/animate-pixminimax's canvas-area formula. No in-between
+      // value is confirmed live, so this interpolates between the nearest
+      // two anchors and ceilings — the safe direction for --budget — rather
+      // than borrow an unrelated formula. `frames` is null until the
+      // keypoints file exists (see manifest.ts); estimate defaults to the
+      // 8-frame anchor in that case, same "assume a mid-size default"
+      // convention `animate`'s own `frames ?? 8` fallback already uses.
+      const frames = spec.revision.frames ?? 8
+      return { unit: "generations", amount: Math.ceil(animateSkeletonCost(frames)), candidates: 1 }
     }
     if (spec.revision?.mode === "interpolate" || spec.revision?.mode === "edit-animation") {
       // Both are documented "(Pro)" endpoints with no usage example in the
@@ -491,6 +528,21 @@ export class PixelLabProvider implements Provider {
       const { sourceWidth: width, sourceHeight: height } = spec.revision
       if (width != null && height != null && (width > 1024 || height > 1024)) {
         throw new Error(`PixelLab correct-pixelart source is ${width}x${height}; the API takes at most 1024 pixels per side`)
+      }
+    }
+    if (spec.revision?.mode === "animate-skeleton") {
+      const { sourceWidth: width, sourceHeight: height, frames, skeletonTemplate } = spec.revision
+      if (width != null && height != null && (width > 256 || height > 256)) {
+        throw new Error(`PixelLab animate-skeleton source is ${width}x${height}; the API takes at most 256 pixels per side`)
+      }
+      // `frames` is null until the keypoints file exists (manifest.ts) —
+      // that is a "not ready yet" state `plan` must still show, not a
+      // validation failure, same as a not-yet-drawn mask never fails here.
+      if (frames != null && (frames < 3 || frames > 15)) {
+        throw new Error(`PixelLab animate-skeleton takes 3 to 15 frames; the keypoints file has ${frames}`)
+      }
+      if (skeletonTemplate && !CHARACTER_TEMPLATES.includes(skeletonTemplate as (typeof CHARACTER_TEMPLATES)[number])) {
+        throw new Error(`PixelLab animate-skeleton template "${skeletonTemplate}" is not one of ${CHARACTER_TEMPLATES.join(", ")}`)
       }
     }
     if (spec.revision?.mode === "animate" || spec.revision?.mode === "animate-pixminimax") {
@@ -1772,6 +1824,36 @@ export class PixelLabProvider implements Provider {
       return { jobId: res.background_job_id }
     }
 
+    // animate-skeleton poses `image` frame-by-frame from a supplied
+    // skeleton per frame, rather than a text motion description alone —
+    // still a plain async background job, same family as animate/
+    // animate-pixminimax above. Deliberately does NOT call
+    // `client.estimateSkeleton()` anywhere in this path (see that method's
+    // own doc comment): the keypoints file is read and verified exactly
+    // like every other auxiliary revision input (mask/lastFrame/
+    // paletteImage), never derived from a live call at submit time.
+    if (revision.mode === "animate-skeleton") {
+      if (!revision.keypointsFile || !revision.keypointsSha256 || !revision.skeleton) {
+        throw new Error(`${spec.styleId}/${spec.assetId}: revision keypoints are not ready`)
+      }
+      const keypointsBytes = readFileSync(revision.keypointsFile)
+      if (sha256(keypointsBytes) !== revision.keypointsSha256) {
+        throw new Error(`${spec.styleId}/${spec.assetId}: revision keypoints changed after the manifest was resolved`)
+      }
+      const res = await this.client.animateWithSkeletonV3({
+        firstFrame: image,
+        firstFrameKeypoints: revision.skeleton.firstFrameKeypoints,
+        keypoints: revision.skeleton.frames,
+        direction: revision.direction!,
+        templateId: revision.skeletonTemplate,
+        action: spec.prompt,
+        description: revision.description,
+        seed: spec.seed,
+        noBackground: spec.noBackground,
+      })
+      return { jobId: res.background_job_id }
+    }
+
     // image-to-image: PixelLab has no denoise-strength knob on this
     // endpoint, so a declared `strength` has nowhere to go. Refuse rather
     // than silently drop what the manifest asked for.
@@ -1857,7 +1939,7 @@ export class PixelLabProvider implements Provider {
       return this.pollCachedRevision(jobId, context)
     }
     if (
-      revisionMode === "animate" || revisionMode === "animate-pixminimax" ||
+      revisionMode === "animate" || revisionMode === "animate-pixminimax" || revisionMode === "animate-skeleton" ||
       revisionMode === "interpolate" || revisionMode === "edit-animation"
     ) {
       return this.pollAnimateRevision(jobId, context)

@@ -36,6 +36,11 @@ Commands
             first. Local art is untouched.
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
+  estimate-skeleton <image> [--out <file>]
+            PixelLab only: derive an 18-joint skeleton from an image, direct
+            and un-budgeted (like balance, not a generation). Prints the
+            keypoints JSON, or writes it with --out — the way to bootstrap
+            an animate-skeleton revision's keypointsFile.
   status    Summarise the lockfile.
   edit      Hand-edit an asset in your own editor: copies the generated PNG to
             <outDir>/edits/, declares it as the asset's source, and opens it.

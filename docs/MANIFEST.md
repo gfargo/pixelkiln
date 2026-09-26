@@ -468,7 +468,7 @@ their own page: [Characters](./CHARACTERS.md) and
 
 | Revision field | Type | Meaning |
 |---|---|---|
-| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, `correct-pixelart`, `animate`, `animate-pixminimax`, `interpolate`, or `edit-animation`. The selected provider must opt into the mode. |
+| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, `correct-pixelart`, `animate`, `animate-pixminimax`, `animate-skeleton`, `interpolate`, or `edit-animation`. The selected provider must opt into the mode. |
 | `from` | asset id, required | Parent asset in the same style. Self-references, unknown ids, and cycles are rejected. A parent written as a set (a character's directions, an animation's frames) is read as every member: `reduce-colors`, `correct-pixelart`, and `edit-animation` take the whole set in one call; the other modes refuse it. See [Revising a whole set at once](./REVISIONS.md#revising-a-whole-set-at-once). |
 | `mask` | string | Manifest-relative PNG required for `inpaint`; rejected for the other modes. Its dimensions must match an available source. |
 | `strength` | number 0–1 | Workflow edit/denoise strength (`image-to-image`, `correct-pixelart`); rejected for `reduce-colors`, `animate`, `animate-pixminimax`, `interpolate`, and `edit-animation`. Interpretation is provider- and model-specific. |
@@ -476,11 +476,14 @@ their own page: [Characters](./CHARACTERS.md) and
 | `paletteImage` | string | `reduce-colors` only. Manifest-relative image whose colors become the palette; unlike `mask`, no size relationship to the source is required. |
 | `dithering` | enum | `reduce-colors` only. `none` (default), `2x2`, `4x4`, or `8x8`. |
 | `ditheringStrength` | number 0–10 | `reduce-colors` only. Ignored when `dithering` is `none`. |
-| `frames` | integer 4–40, even | `animate`/`animate-pixminimax` only. `animate` caps at 16; `animate-pixminimax` allows up to 40. |
+| `frames` | integer 4–40, even | `animate`/`animate-pixminimax` only. `animate` caps at 16; `animate-pixminimax` allows up to 40. Rejected for `animate-skeleton` (frame count comes from `keypointsFile` instead), `interpolate`, and `edit-animation`. |
 | `fps` | integer 1–60 | `animate`/`animate-pixminimax`/`interpolate`/`edit-animation` only. Playback rate recorded with the frames; the provider does not store one. Defaults to the parent's own rate when it is a loop, else 8. |
 | `lastFrame` | string | `animate`/`animate-pixminimax`: manifest-relative image pinning where the motion ends, turning an open-ended animation into an interpolation. `interpolate`: required, the ending keyframe (the parent is the start); it must match the parent's size. |
-| `direction` | enum | `animate-pixminimax` only. The sprite's facing, used only alongside `enhancePrompt`. |
+| `direction` | enum | `animate-pixminimax`/`animate-skeleton`. Optional (alongside `enhancePrompt`) for the former; **required** for the latter. |
 | `enhancePrompt` | boolean | `animate`/`animate-pixminimax` only. Lets the provider expand the prompt into a fuller motion description first, for an extra documented +0.05-generation surcharge. |
+| `keypointsFile` | string, required for `animate-skeleton` | Manifest-relative JSON file (`src/skeleton.ts`'s `SkeletonSetSchema`): the pose the source is already in, plus 3–15 per-frame poses. See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation). |
+| `skeletonTemplate` | string | `animate-skeleton` only. Body a joint's missing `depth` is taken from: `mannequin` (default), `bear`, `cat`, `dog`, `horse`, or `lion`. |
+| `description` | string | `animate-skeleton` only. What the subject *looks like* (colours, clothing, held items) — the asset's own `prompt` is sent as the motion's short label instead. |
 | `engine` | enum | `image-to-image`/`inpaint` only. `pro-flash` draws the edit with PixelLab's Pro Flash edit or inpaint endpoint instead of the default Pro one: 5–9 generations instead of 20–40, 32 to 256px per side in multiples of 4, no `strength`. Omit for the default. |
 
 The parent may use committed `source`, downloaded generated output, or a

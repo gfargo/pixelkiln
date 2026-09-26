@@ -171,6 +171,9 @@ export function specHash(
             lastFrameSha256: spec.revision.lastFrameSha256,
             direction: spec.revision.direction,
             enhancePrompt: spec.revision.enhancePrompt,
+            keypointsSha256: spec.revision.keypointsSha256,
+            skeletonTemplate: spec.revision.skeletonTemplate,
+            description: spec.revision.description,
             engine: spec.revision.engine,
           }
         : undefined,

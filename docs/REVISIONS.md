@@ -7,11 +7,12 @@ dependencies before submission, and records the lineage in the lockfile.
 
 The manifest and pipeline are provider-neutral. ComfyUI and PixelLab implement
 it; PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
-`correct-pixelart`, `animate`, `animate-pixminimax`, `interpolate`, and
-`edit-animation`, not `outpaint` (its API has no canvas-expansion endpoint).
-ComfyUI covers every mode generically except the four frame-set modes
-(`animate`, `animate-pixminimax`, `interpolate`, `edit-animation`), which need
-an ordered frame set its revision path cannot produce. Retro Diffusion and Scenario reject revision
+`correct-pixelart`, `animate`, `animate-pixminimax`, `animate-skeleton`,
+`interpolate`, and `edit-animation`, not `outpaint` (its API has no
+canvas-expansion endpoint). ComfyUI covers every mode generically except the
+five frame-set modes (`animate`, `animate-pixminimax`, `animate-skeleton`,
+`interpolate`, `edit-animation`), which need an ordered frame set its
+revision path cannot produce. Retro Diffusion and Scenario reject revision
 work during offline resolution instead of silently starting a fresh
 text-to-image job.
 
@@ -316,6 +317,81 @@ writes a single output image, and an animation is a frame set — a structural
 gap rather than a missing binding, so `supportsRevision` refuses it up front
 rather than failing partway through submission.
 
+## Skeleton-driven animation
+
+A third mode, `animate-skeleton`, poses the source image frame-by-frame from
+a supplied 18-joint skeleton per frame instead of a text motion description:
+
+```jsonc
+{
+  "assets": {
+    "hero-swing": {
+      "prompt": "swinging the sword downward",
+      "revision": {
+        "mode": "animate-skeleton",
+        "from": "hero-idle",
+        "keypointsFile": "poses/hero-swing.json",
+        "direction": "south"
+      }
+    }
+  }
+}
+```
+
+`keypointsFile` names a manifest-relative committed JSON file, not inline
+manifest data — the same reasoning `mask`/`lastFrame` are files rather than
+inline pixels. It must match the shape `src/skeleton.ts`'s `SkeletonSetSchema`
+validates: `{"firstFrameKeypoints": [...18 joints], "frames": [[...18
+joints], ...3 to 15 of them]}`, each joint `{"label": "RIGHT KNEE", "x": 0.52,
+"y": 0.71, "z_index": 9, "depth": 4}` (`depth` optional — PixelLab fills it
+from `skeletonTemplate`, default `mannequin`, when omitted). Bootstrap this
+file with `pixelkiln estimate-skeleton <image> --out poses/hero-swing.json`
+(see [CLI reference](./CLI.md#estimate-skeleton)) rather than hand-typing 18
+joints from scratch, then hand-tweak individual joints for in-between frames.
+
+`direction` is **required** for this mode (unlike `animate-pixminimax`,
+where it is optional). `frames`/`fps`/`lastFrame`/`enhancePrompt` are all
+rejected — the frame count comes from the keypoints file itself
+(`frames.length`), never a manifest number. `description` (optional: what the
+character *looks like* — colours, clothing, held items) is a new field
+distinct from the asset's own `prompt`, which this mode sends as the motion's
+short label (PixelLab's `action`) — the same `prompt`-as-motion convention
+`animate`/`animate-pixminimax` already use, just under this endpoint's own
+field name.
+
+`firstFrameKeypoints` (inside the keypoints file) describes the pose the
+reference image is *already* in — PixelLab redraws that frame first to learn
+its background and colors before animating forward, and does not return it.
+**PixelKiln cannot verify this against the image's actual content.** A
+mismatch does not error; it silently degrades transparency and color
+accuracy in every generated frame. When in doubt, run `estimate-skeleton` on
+the reference image itself and use that result, rather than hand-authoring
+a guess.
+
+**Deliberately not wired into the manifest pipeline: `estimate-skeleton`
+itself.** `PixelLabClient.estimateSkeleton()` exists and the CLI command above
+calls it directly, but nothing in `resolveSpecs`/`estimate()`/`submitRevision`
+ever calls it — planning stays offline by construction (the keypoints file is
+read like any other manifest input, never a network call), and the only
+PixelLab endpoint `animate-skeleton`'s submission composes is
+`animate-with-skeleton-v3` itself, not two never-tested-live calls chained
+together. A future pipeline stage that budgets and tracks `estimate-skeleton`
+calls the way `gen` does everything else is tracked separately, once this
+mode has shipped and seen real use.
+
+Cost uses PixelLab's own documented anchors (3 frames = 2 generations, 8 = 3,
+15 = 4 — barely moving with length, unlike `animate`/`animate-pixminimax`'s
+canvas-area formula) and interpolates between the nearest two for any
+in-between frame count, ceiling'd — the safe direction for `--budget` — since
+no in-between value is confirmed live. **Neither `animate-with-skeleton-v3`
+nor `estimate-skeleton` has been exercised against a live account**; request
+field names come from the live `animate_with_skeleton_v3` MCP tool schema
+(the same authoritative source already trusted for the character/object
+family), not an observed call.
+
+ComfyUI does not support this mode either, for the same structural reason as
+`animate`/`animate-pixminimax`.
+
 ## Dependency gate
 
 `pixelkiln plan` reports a revision as `blocked` when its parent is not safe to
@@ -464,6 +540,14 @@ further — there is nothing to ask.
   request/response shapes come from PixelLab's live OpenAPI document, not an
   observed call. Treat the exact field names as provisional until a real
   call confirms them.
+- `animate-skeleton` calls `/animate-with-skeleton-v3`, also a real async
+  background job, at most 256 pixels per side and 3-15 frames (the frame
+  count comes from `keypointsFile`, not a manifest field). See
+  [Skeleton-driven animation](#skeleton-driven-animation) above for the full
+  field list, the `keypointsFile` shape, and the `estimateSkeleton`
+  CLI-only-and-never-in-the-submission-path decision. Same unverified-live
+  caveat as `animate`/`animate-pixminimax`, sourced from the live
+  `animate_with_skeleton_v3` MCP tool schema rather than an observed call.
 
 - The mask convention is fixed, not graph-defined like ComfyUI's: white marks
   the area to generate, black the area to preserve. There is no way to flip it.
@@ -535,16 +619,20 @@ hash, strength, and — for `reduce-colors` — `numColors`, the palette image's
 hash, and the dithering settings, or — for `animate`/`animate-pixminimax` —
 `frames`, `fps`, the last frame's hash, `direction`, and `enhancePrompt`
 (`interpolate` records `fps` and the end keyframe's hash; `edit-animation`
-records `fps`). For a set parent, the parent hash is one hash over every
-member's hash in order.
+records `fps`), or — for `animate-skeleton` — the keypoints file's hash,
+`skeletonTemplate`, and `description` (`direction` is recorded the same way;
+`frames` comes from the keypoints file itself, same field, same staleness
+rule as the others). For a set parent, the parent hash is one hash over
+every member's hash in order.
 ComfyUI provider metadata also retains the same lineage beside the workflow
 hash.
 
 Changing the prompt, workflow, mode, strength, parent bytes, mask bytes, color
 count, palette image bytes, dithering settings, frame count, last frame
-bytes, direction, or enhancePrompt makes the child stale. Moving an unchanged
-parent, mask, palette image, or last frame file does not. When a child
-has a quality profile, the new raw output hash also invalidates its old quality
+bytes, direction, enhancePrompt, keypoints file bytes, skeletonTemplate, or
+description makes the child stale. Moving an unchanged parent, mask, palette
+image, last frame file, or keypoints file does not. When a child has a
+quality profile, the new raw output hash also invalidates its old quality
 record, so a revised image cannot inherit approval from an earlier generation.
 
 Commit the parent art or parent lock entry, masks, child output, child lock

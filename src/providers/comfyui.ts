@@ -372,11 +372,12 @@ export class ComfyUIProvider implements Provider {
   /**
    * Everything else resolves generically to whatever the user's own
    * workflow does with `bindings.sourceImage`. The frame-set modes
-   * (`animate`, `animate-pixminimax`, `interpolate`, `edit-animation`) are
-   * the exception: they produce an ordered frame set, and this adapter's
-   * revision path always writes a single output image (see `submit`/`fetch`
-   * below) — a real structural gap, not a missing binding, so they are
-   * rejected here rather than only failing once `validate` runs.
+   * (`animate`, `animate-pixminimax`, `animate-skeleton`, `interpolate`,
+   * `edit-animation`) are the exception: they produce an ordered frame set,
+   * and this adapter's revision path always writes a single output image
+   * (see `submit`/`fetch` below) — a real structural gap, not a missing
+   * binding, so they are rejected here rather than only failing once
+   * `validate` runs.
    */
   supportsRevision(mode: RevisionMode): boolean {
     return !FRAME_SET_REVISION_MODES.includes(mode)
