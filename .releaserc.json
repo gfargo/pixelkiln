@@ -9,6 +9,7 @@
         ]
       }
     ],
+    "./scripts/release-plugins/skill-release-analyzer.mjs",
     "@semantic-release/release-notes-generator",
     "@semantic-release/changelog",
     "@semantic-release/npm",
