@@ -454,6 +454,32 @@ try {
     check(await page.evaluate(() => !(document.querySelector(".preview img.onion") as HTMLImageElement).hidden), "onion skin shows the previous frame")
     await page.click(".frames-bar .chip input")
 
+    // Group by family: a character's members share one row with its own actions.
+    await page.goto(`${studioServer.url}?group=family`, { waitUntil: "networkidle0" })
+    const families = await page.evaluate(() => [...document.querySelectorAll(".fam-group")].map((g) => ({
+      head: g.querySelector(".fam-head b")?.textContent ?? null,
+      cards: [...g.querySelectorAll(".card")].map((c) => (c as HTMLElement).dataset.key),
+    })))
+    const mira = families.find((f) => f.head === "mira")
+    check(mira?.cards.join(",") === "characters/mira,characters/mira.idle.south,characters/mira.walk.south,characters/mira.walk.east,characters/mira.walk.north,characters/mira.walk.west",
+      `grouping by family puts the base first and each loop around the compass (${JSON.stringify(families)})`)
+
+    // Select several, act on them together: priced actions, and one tag write.
+    await page.click("#select")
+    await page.click('.card[data-key="props/crate"]')
+    await page.click('.card[data-key="characters/mira.idle.south"]')
+    const selbar = await page.$eval("#selbar", (n) => n.textContent ?? "")
+    check(/2 selected/.test(selbar) && /Generate 1 · 1 generation/.test(selbar) && /Regenerate 1 · /.test(selbar), `the selection bar prices what it would do (${selbar})`)
+    check(await page.evaluate(() => !document.querySelector(".drawer")), "a click in select mode picks a card instead of opening it")
+    await page.type("#selbar .tagbox input", "hero")
+    await page.click("#selbar .tagbox button")
+    await page.waitForFunction(() => /Tagged 2 assets/.test(document.getElementById("selmsg")?.textContent ?? ""), { timeout: 5_000 })
+    const tagged = JSON.parse(await readFile(studioManifest, "utf8")) as { assets: Record<string, { tags?: string[] }> }
+    check(tagged.assets.crate?.tags?.includes("hero") === true && tagged.assets["mira.idle"]?.tags?.includes("hero") === true,
+      "tagging writes each asset once, a split loop on its shorthand")
+    await page.keyboard.press("Escape")
+    check(await page.evaluate(() => (document.getElementById("selbar") as HTMLElement).hidden && !document.querySelector(".card .sel")), "Escape leaves select mode")
+
     // A job that finishes while the tab is in the background raises a system
     // notification, once the viewer has turned them on. The browser's
     // Notification and document.hidden are stood in for.

@@ -479,6 +479,26 @@ screenshot.
 
 The page keeps these choices in the browser's local storage, per viewer.
 
+#### Families and selections
+
+- **Group: by family** gives each character or `objectPro` object its own
+  row inside its style. The base comes first, then its states, then each loop
+  around the compass, then portraits and outfits. The row header counts the
+  family's members by state and has buttons for the family view and, with
+  `--budget`, for generating whatever is missing, stale or failed.
+- **Select**, or ctrl/⌘-click on any card, switches to picking cards instead
+  of opening them. The bar at the bottom acts on the selection:
+  - **Generate** runs whatever is missing, stale or failed, as one job;
+  - **Regenerate** replaces whatever is up to date;
+  - **Compare** opens up to four of them side by side;
+  - with `--edit`, **Add tag** and **Remove tag** change one tag on every
+    selected asset in a single manifest write.
+
+  Each action shows its count, and Generate and Regenerate show their
+  price. A loop split with `animation.directions` is tagged on its
+  shorthand. "Select all" appears on each style or family, and
+  <kbd>Esc</kbd> leaves select mode.
+
 #### `--json`: the snapshot as data
 
 `--json` prints the same snapshot to stdout without starting a server. It is

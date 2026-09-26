@@ -2,6 +2,7 @@ import { renderTray, toggleCompare } from "./compare.ts"
 import { $, S, STATE_TONE, backdropControl, displayScale, el, fmtBytes, fmtCost, fmtWhen, formRegion, isFrameSet, projectOf, savePrefs, ui } from "./core.ts"
 import { editForm, newAnimationForm, newStateForm } from "./family-forms.ts"
 import { familyMembers, familyRoot, openFamily, refreshFamily } from "./family.ts"
+import { renderSelectionBar } from "./selection.ts"
 import { newRevisionForm } from "./forms.ts"
 import { generateActions, historySection, jobStrip, renderHeader, renderMain, upstreamSection, visibleItems } from "./grid.ts"
 import { handEditSection } from "./hand-edit.ts"
@@ -520,7 +521,7 @@ export function readUrlState() {
   ui.projects = new Set(list('project'));
   ui.compare = list('compare').slice(0, 4);
   if (['key', 'newest', 'oldest', 'cost', 'size'].includes(params.get('sort') ?? '')) ui.sort = params.get('sort')!;
-  if (['style', 'none'].includes(params.get('group') ?? '')) ui.group = params.get('group')!;
+  if (['style', 'family', 'none'].includes(params.get('group') ?? '')) ui.group = params.get('group')!;
 }
 export function writeUrlState() {
   const params = new URLSearchParams();
@@ -586,6 +587,7 @@ export function render() {
   renderMain(visibleItems());
   renderDrawer();
   renderTray();
+  renderSelectionBar();
   refreshFamily();
 }
 
@@ -601,5 +603,6 @@ export function renderQuietly() {
   if (region !== 'main') renderMain(visibleItems());
   if (region !== 'drawer') renderDrawer();
   renderTray();
+  renderSelectionBar();
   refreshFamily();
 }

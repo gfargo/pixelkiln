@@ -5,6 +5,8 @@ import { budgetLine, generateDialog, openReview } from "./editor.ts"
 import { addAssetForm, styleForm } from "./forms.ts"
 import { JOB_VERB, PHASE_TEXT, activeJobFor, familyLabel, paletteRuleOf } from "./jobs.ts"
 import { pruneLoops, registerLoop } from "./motion.ts"
+import { familyMembers, familyRoot, loopName, openFamily } from "./family.ts"
+import { selectAllButton, toggleSelected } from "./selection.ts"
 
 export function visibleItems() {
   const q = ui.q.trim().toLowerCase();
@@ -162,7 +164,9 @@ export function thumb(item) {
 
 export function card(item) {
   const slot = ui.compare.indexOf(item.id);
-  const c = el('button', 'card' + (item.outputs.some((o) => o.url) ? '' : ' ghost') + (ui.open === item.id ? ' active' : '') + (slot >= 0 ? ' compared' : ''));
+  const picked = ui.selected.has(item.id);
+  const c = el('button', 'card' + (item.outputs.some((o) => o.url) ? '' : ' ghost') + (ui.open === item.id ? ' active' : '') + (slot >= 0 ? ' compared' : '') + (picked ? ' selected' : ''));
+  if (ui.selecting) c.setAttribute('aria-pressed', String(picked));
   c.type = 'button';
   c.dataset.key = item.id;
   c.setAttribute('aria-label', item.id + ', ' + item.state + (slot >= 0 ? ', in comparison' : ''));
@@ -189,7 +193,12 @@ export function card(item) {
     cell.append(badge);
   }
   c.append(cell, body);
-  c.onclick = (e) => { if (e.shiftKey) toggleCompare(item.id); else openItem(item.id); };
+  if (ui.selecting) cell.append(el('span', 'sel', '✓'));
+  c.onclick = (e) => {
+    if (e.shiftKey) toggleCompare(item.id);
+    else if (ui.selecting || e.metaKey || e.ctrlKey) toggleSelected(item.id);
+    else openItem(item.id);
+  };
   // A loop plays under the pointer (or always, with "play loops" on).
   const still = cell.querySelector(':scope > img') as HTMLImageElement | null;
   const shown = item.edit && item.editStatus === 'edited' && item.edits.every((e) => e.url) ? item.edits : item.outputs.filter((o) => o.url);
@@ -235,7 +244,7 @@ export function renderMain(items) {
   const sections: any = [];
   for (const pr of projects) {
     const inProject = pr ? shown.filter((i) => i.project === pr.id) : shown;
-    const styleSections = ui.group === 'style'
+    const styleSections = ui.group === 'style' || ui.group === 'family'
       ? S.snap.styles.filter((s) => !pr || s.project === pr.id)
           .map((s) => ({ style: s, items: inProject.filter((i) => i.styleId === s.id) })).filter((s) => s.items.length)
       : (inProject.length ? [{ style: null, items: inProject }] : []);
@@ -289,6 +298,7 @@ export function renderMain(items) {
         r.onclick = () => generateDialog(refreshable, { project: s.project, refresh: true });
         tools.append(r);
       }
+      if (ui.selecting && ui.group !== 'family') tools.append(selectAllButton(sec.items));
       const styleKey = 'style:' + (s.project || '') + ':' + s.id;
       if (EDITABLE && s.outDir) {
         const es = el('button', null, ui.editing === styleKey ? 'Cancel' : 'Edit style');
@@ -306,9 +316,12 @@ export function renderMain(items) {
       if (ui.editing === styleKey) wrap.append(styleForm(s));
       if (ui.editing === addKey) wrap.append(addAssetForm(s));
     }
-    const grid = el('div', 'grid');
-    for (const item of sec.items) grid.append(card(item));
-    wrap.append(grid);
+    if (ui.group === 'family') wrap.append(...familyGroups(sec.items));
+    else {
+      const grid = el('div', 'grid');
+      for (const item of sec.items) grid.append(card(item));
+      wrap.append(grid);
+    }
     root.append(wrap);
   }
   if (hidden) {
@@ -320,6 +333,99 @@ export function renderMain(items) {
     more.append(b);
     root.append(more);
   }
+}
+
+// ---- families on the grid ------------------------------------------------------
+
+const KIND_ORDER = { base: 0, state: 1, animation: 2, portrait: 3, outfit: 4 };
+const TURN = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
+
+/** A family's members in reading order: base, states, each loop around the compass, portraits, outfits. */
+function familyOrder(a, b) {
+  const ka = KIND_ORDER[a.character.kind] ?? 9, kb = KIND_ORDER[b.character.kind] ?? 9;
+  if (ka !== kb) return ka - kb;
+  if (a.character.kind === 'animation') {
+    const la = loopName(a), lb = loopName(b);
+    if (la !== lb) return la < lb ? -1 : 1;
+    return TURN.indexOf(a.character.direction) - TURN.indexOf(b.character.direction);
+  }
+  return a.assetId < b.assetId ? -1 : a.assetId > b.assetId ? 1 : 0;
+}
+
+/**
+ * One row per character or object: its header (counts, the family view, one
+ * Generate for whatever is missing) over its cards. Anything outside a
+ * family keeps the plain grid, after them.
+ */
+function familyGroups(items) {
+  const families = new Map<string, { root: any; members: any[] }>();
+  const loose: any[] = [];
+  for (const item of items) {
+    const root = item.character ? familyRoot(item) : null;
+    if (!root) { loose.push(item); continue; }
+    if (!families.has(root.id)) families.set(root.id, { root, members: [] });
+    families.get(root.id)!.members.push(item);
+  }
+  const out: HTMLElement[] = [];
+  for (const { root, members } of families.values()) {
+    members.sort(familyOrder);
+    const group = el('div', 'fam-group');
+    const head = el('div', 'fam-head');
+    head.append(el('b', 'mono', root.assetId));
+    const counts: Record<string, number> = {};
+    for (const m of members) counts[m.state] = (counts[m.state] || 0) + 1;
+    const tally = el('span', 'fam-tally');
+    const loops = new Set(members.filter((m) => m.character.kind === 'animation').map(loopName)).size;
+    tally.append(document.createTextNode(members.length + (members.length === 1 ? ' asset' : ' assets') + (loops ? ' · ' + loops + (loops === 1 ? ' loop' : ' loops') : '')));
+    for (const [state, n] of Object.entries(counts)) {
+      const t = el('span', 'st');
+      t.append(el('i', 'dot ' + STATE_TONE[state]), document.createTextNode(n + ' ' + state));
+      tally.append(t);
+    }
+    head.append(tally);
+    const tools = el('div', 'tools');
+    if (ui.selecting) tools.append(selectAllButton(members));
+    const view = el('button', null, 'Family view'); view.type = 'button';
+    view.onclick = () => openFamily(root);
+    tools.append(view);
+    const everything = familyMembers(root);
+    const todo = everything.filter(actionable);
+    if (GENERATION && todo.length) {
+      const g = el('button', 'primary', 'Generate ' + todo.length + ' · ' + priceOf(todo)); g.type = 'button';
+      g.title = 'One job for the family: parents first, then everything drawn from them';
+      g.onclick = () => generateDialog(todo, { project: root.project });
+      tools.append(g);
+    }
+    head.append(tools);
+    const grid = el('div', 'grid');
+    for (const m of members) grid.append(card(m));
+    group.append(head, grid);
+    out.push(group);
+  }
+  if (loose.length) {
+    const group = el('div', 'fam-group loose');
+    if (families.size) {
+      const head = el('div', 'fam-head');
+      head.append(el('b', null, 'Not in a family'), el('span', 'fam-tally', loose.length + (loose.length === 1 ? ' asset' : ' assets')));
+      if (ui.selecting) { const tools = el('div', 'tools'); tools.append(selectAllButton(loose)); head.append(tools); }
+      group.append(head);
+    }
+    const grid = el('div', 'grid');
+    for (const item of loose) grid.append(card(item));
+    group.append(grid);
+    out.push(group);
+  }
+  return out;
+}
+
+/** Generate would do something for it: nothing made yet, out of date, or failed. */
+export const actionable = (item) => item.declared && item.currentSpecHash !== null && ['missing', 'stale', 'failed'].includes(item.state);
+
+/** A total per unit, the way a style header prices its Generate. */
+export function priceOf(items) {
+  const totals: Record<string, number> = {};
+  for (const i of items) if (i.estimatedCost !== null) totals[i.costUnit] = (totals[i.costUnit] || 0) + i.estimatedCost;
+  return Object.entries(totals).map(([unit, n]) => fmtCost(unit, Math.round(n * 100) / 100)).join(' + ') || 'free';
 }
 
 export function projectHeader(pr, count) {

@@ -16,7 +16,7 @@ import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
 import { handEditProjectPath, readHandEditCompanion } from "../pipeline/hand-edit.ts"
 import { historyLimit } from "../pipeline/history.ts"
-import { expandAssetFilter } from "../loop-directions.ts"
+import { expandAssetFilter, loopShorthandOf } from "../loop-directions.ts"
 import { pixelLabObjectUrl } from "../providers/pixellab.ts"
 import type { SkeletonSet } from "../skeleton.ts"
 
@@ -154,6 +154,12 @@ export interface GalleryItem {
   providerMetadata: Record<string, unknown>
   /** Post-processing recorded on the entry: the palette its files were snapped to, if any. */
   postprocess: Postprocess | null
+  /**
+   * The manifest id an edit to this asset goes to: its own id, or the loop
+   * shorthand (`animation.directions`) it was expanded from; null when the
+   * manifest no longer declares it.
+   */
+  declaredAs: string | null
   /** Manifest asset as declared, for the "intent" side of the record. */
   asset: Asset | null
   /** Manifest-relative committed art placed instead of generated output. */
@@ -740,6 +746,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       styleId: spec.styleId,
       assetId: spec.assetId,
       declared: true,
+      declaredAs: loopShorthandOf(spec.assetId, loaded.loopFamilies) ?? spec.assetId,
       state: planItem.state,
       reason: planItem.reason,
       status: entry?.status ?? null,
@@ -820,6 +827,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       styleId: entry.styleId,
       assetId: entry.assetId,
       declared: false,
+      declaredAs: null,
       state: "undeclared",
       reason: "not declared by the current manifest; `pixelkiln prune` removes the entry",
       status: entry.status,

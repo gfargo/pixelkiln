@@ -114,9 +114,11 @@ ${css}</style>
     </select>
     <select id="group" aria-label="Group">
       <option value="style">Group: by style</option>
+      <option value="family">Group: by family</option>
       <option value="none">Group: none</option>
     </select>
     <span id="editing" class="editing" hidden title="This gallery can write the manifest. It never contacts a provider.">editing</span>
+    <button id="select" type="button" title="Pick several records to generate, regenerate, compare, or tag together (or ctrl/⌘-click a card)">Select</button>
     <button id="studio" type="button" hidden title="Draft a new character: its style, base, loops, and portrait, priced as you go">+ New character</button>
     <button id="refresh" type="button" title="Re-read the manifest, lockfile, and disk">Refresh</button>
     <label class="chip" title="Refresh every 5 seconds while this tab is visible"><input id="auto" type="checkbox"> auto</label>
@@ -130,6 +132,7 @@ ${css}</style>
   <div id="tools"></div>
 </header>
 <main id="root"></main>
+<div id="selbar" class="selbar" hidden></div>
 <footer>
   Click a sprite for its full record; <kbd>shift</kbd>-click adds it to a side-by-side comparison. <kbd>←</kbd>/<kbd>→</kbd> step through the visible set while a record
   is open, <kbd>,</kbd>/<kbd>.</kbd> step a loop's frames and <kbd>space</kbd> plays it, <kbd>Esc</kbd> closes it, and <kbd>/</kbd> jumps to search. This page reads the manifest, lockfile,

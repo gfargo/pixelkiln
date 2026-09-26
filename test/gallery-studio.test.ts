@@ -72,6 +72,9 @@ describe("batch edits", () => {
     // The loop shorthand expands into its three directions and a free mirror for west's flip.
     expect(keys).toEqual(["cast/mira", "cast/mira.bust", "cast/mira.walk.east", "cast/mira.walk.north", "cast/mira.walk.south", "cast/mira.walk.west"])
     expect(build.snapshot.items.find((item) => item.key === "cast/mira.walk.east")?.mirrorOfKey).toBe("cast/mira.walk.west")
+    // Edits to a split loop go to the shorthand it came from.
+    expect(build.snapshot.items.find((item) => item.key === "cast/mira.walk.north")?.declaredAs).toBe("mira.walk")
+    expect(build.snapshot.items.find((item) => item.key === "cast/mira")?.declaredAs).toBe("mira")
 
     const before = await readFile(manifestPath, "utf8")
     await expect(edit({
