@@ -32,6 +32,7 @@ import {
 } from "./types.ts"
 import { sha256, sha256File, specHash } from "./hash.ts"
 import { imageMetadata, MediaType } from "./media.ts"
+import { expandAssetFilter, expandLoopDirections } from "./loop-directions.ts"
 import { expectedOutputPath, memberPath } from "./outputs.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
@@ -41,12 +42,23 @@ export interface LoadedManifest {
   /** Directory the manifest lives in. All relative paths resolve against it. */
   root: string
   path: string
+  /**
+   * `animation.directions` shorthands, by the id they were declared under,
+   * and the asset ids each expanded into. Absent when the manifest has none.
+   */
+  loopFamilies?: Record<string, string[]>
 }
 
 export async function loadManifest(manifestPath: string): Promise<LoadedManifest> {
   const abs = path.resolve(manifestPath)
   if (!existsSync(abs)) throw new ProjectError(`No manifest at ${abs}`)
-  const input = ManifestInputSchema.safeParse(JSON.parse(await readFile(abs, "utf8")))
+  // One loop declared for several directions becomes the explicit assets it
+  // stands for before anything validates them; see src/loop-directions.ts.
+  const expansion = expandLoopDirections(JSON.parse(await readFile(abs, "utf8")))
+  if (expansion.issues.length) {
+    throw new ProjectError(`Manifest at ${abs} is invalid:\n${expansion.issues.map((i) => `  ${i}`).join("\n")}`)
+  }
+  const input = ManifestInputSchema.safeParse(expansion.raw)
   if (!input.success) {
     const issues = formatManifestIssues(input.error.issues)
     throw new ProjectError(`Manifest at ${abs} is invalid:\n${issues}`)
@@ -129,7 +141,8 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
   if (unknownReferences.length) {
     throw new ProjectError(`Manifest at ${abs} is invalid:\n${unknownReferences.map((i) => `  ${i}`).join("\n")}`)
   }
-  return { manifest: parsed.data, root: path.dirname(abs), path: abs }
+  const loopFamilies = Object.keys(expansion.families).length ? { loopFamilies: expansion.families } : {}
+  return { manifest: parsed.data, root: path.dirname(abs), path: abs, ...loopFamilies }
 }
 
 /** The asset this one is generated from, whichever shape declares it. */
@@ -268,14 +281,16 @@ export async function resolveSpecs(
       )
     }
   }
-  for (const unknownAsset of filter?.assets ?? []) {
+  // A loop shorthand's id selects the whole family it expanded into.
+  const assetFilter = expandAssetFilter(filter?.assets ?? [], loaded.loopFamilies)
+  for (const unknownAsset of assetFilter) {
     if (!manifest.assets[unknownAsset]) {
       throw new UsageError(`Unknown asset "${unknownAsset}".`)
     }
   }
 
-  const requestedAssetIds = new Set(filter?.assets?.length
-    ? filter.assets
+  const requestedAssetIds = new Set(assetFilter.length
+    ? assetFilter
     : Object.keys(manifest.assets))
   const resolutionAssetIds = new Set(requestedAssetIds)
   for (const assetId of [...requestedAssetIds]) {

@@ -66,7 +66,7 @@ not merely a label edit.
 | `remoteId` | string | The provider's own id for art that already exists on the account, so `adopt` maps it without matching bytes: an object id, a character id, or `<character id>#<animation group id>`. Not part of the spec's identity. |
 | `revision` | object | Controlled image-to-image or inpaint dependency. See [controlled revisions](REVISIONS.md). |
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](./CHARACTERS.md). |
-| `animation` | object | `character` styles: a loop of another character asset in one direction. See [Characters](./CHARACTERS.md). |
+| `animation` | object | `character` styles: a loop of another character asset in one direction. `directions` (a list, instead of `direction`) declares the loop for several directions at once and fills the unnamed flips with mirrors; see [One loop, several directions](./CHARACTERS.md#one-loop-several-directions). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
 | `batch` | object | `1dir` styles: rides along on another `1dir` asset's `item_descriptions` submission instead of generating on its own — `{ "of": "<leader asset id>", "index": <1-based slot> }`. See [`1dir`](./GENERATORS.md#1dir). |
 | `pieces` | array | `uiAsset` styles: exact shape regions (`rounded_rect`/`circle`/`polygon`) the panel is composited from, each with a unique `id`. See [`uiAsset`](./GENERATORS.md#uiasset). |
