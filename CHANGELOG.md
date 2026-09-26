@@ -1,3 +1,12 @@
+## [0.60.1](https://github.com/gfargo/pixelkiln/compare/v0.60.0...v0.60.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **ci:** drop NAMING.md from the check scripts' hardcoded lists ([1bcfdfe](https://github.com/gfargo/pixelkiln/commit/1bcfdfe1fb17104cb9e05d44eba05028e4b5127b))
+* **website:** open external links in new tabs ([c223f38](https://github.com/gfargo/pixelkiln/commit/c223f3851bf27c33808ec3f3156bda0b019e4ef7))
+* **website:** stop duplicating the OG image alt text ([c0dc6ec](https://github.com/gfargo/pixelkiln/commit/c0dc6ec259d22300e5a490bf58c49fc0bbbd8d85))
+
 # [0.60.0](https://github.com/gfargo/pixelkiln/compare/v0.59.0...v0.60.0) (2026-09-23)
 
 
