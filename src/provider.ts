@@ -95,6 +95,13 @@ export interface SubmitContext {
   /** Provider-side id of the character a pro base anchors its style on, when the spec names one. */
   styleObjectId?: string
   /**
+   * The provider's own id for an image the spec's `reference` sprite is a
+   * byte-for-byte copy of, when another lock entry generated it and recorded
+   * one (a PixelLab `imageProFlash` output's `source_image_id`). An adapter
+   * may send the id instead of re-uploading the bytes.
+   */
+  referenceSourceImageId?: string
+  /**
    * The parent's own downloaded output files, in lock order, for a spec
    * whose provider work reads bytes rather than a remote id (an outfit
    * re-clothing a loop's frames). The pipeline proved the parent current

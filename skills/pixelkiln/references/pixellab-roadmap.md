@@ -326,12 +326,15 @@ quote/identity lookup — not billed):**
   exactly, reassuring cross-validation of the quote endpoint even though it
   is a quote, not a bill.
 
-Not modeled at all today: pixelkiln's `imagePro` generator and the `revision`
-asset shape's `image-to-image`/`inpaint` modes only ever call the non-Flash
-endpoints (`generate-image-v2`, `edit-images-v2`, `inpaint-v3`). Adding Pro
-Flash would mean a new generator (or a model/engine choice on the existing
-ones) plus a new inpaint `outputMethod` field and the `context_image`
-mechanism — real, scoped work, not a docs fix.
+**Now modeled, in part:** the `imageProFlash` generator wraps `create`
+(style image + `styleTraits`, 16–256px in multiples of 4), and a revision's
+`"engine": "pro-flash"` sends `image-to-image` to `edit` (text method) and
+`inpaint` to `inpaint`. A still's `source_image_id` is recorded and reused
+when a Pro Flash character or object base's `reference` is that still's exact
+file (issue #145). Still unmodeled: `edit`'s `"reference"` method, the
+`use_color_palette_correction` flag, inpaint's `output_method` choice and the
+`context_image` + `bounding_box` mechanism. Costs use the provisional quotes
+above; none has been billed live yet.
 
 ## Map Workshop (scene composition)
 
