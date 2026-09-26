@@ -111,12 +111,14 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   catalog has repeatedly found wrong once measured (`isometricTile`,
   `objectPro`); PixelLab's own MCP tool descriptions claiming 0.1 generations
   were the correct source instead. Only confirmed at this one size — whether
-  it holds at larger canvases is unconfirmed. **Batch/multi-frame input remains
-  unmodeled**: both endpoints are built to take several frames in one call so
-  an animation or a character's eight directions share one consistent
-  palette/cleanup pass, which is the actual differentiator the tutorials
-  demonstrate — PixelKiln only ever sends one frame per revision today, the
-  same limit `image-to-image`/`inpaint` already have. Freshly confirmed by
+  it holds at larger canvases is unconfirmed. **Batch/multi-frame input is
+  now modeled too**: both endpoints are built to take several frames in one
+  call so an animation or a character's eight directions share one
+  consistent palette/cleanup pass, which is the actual differentiator the
+  tutorials demonstrate. A revision whose parent is a set (directions, or
+  `-frame-NN` files) now sends every member together and writes the result
+  back under the same roles; see `docs/REVISIONS.md`'s "Revising a whole set
+  at once." The price of a multi-frame call is unmeasured. Freshly confirmed by
   "How to Reduce Colors Like a Pro!": the real-world shape of this gap is
   project-wide, not per-asset — the tutorial applies one palette across a
   character's full 8-direction set, its states, each animation (per-frame,
@@ -126,8 +128,9 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   tutorial's other two reduction modes ("auto reduce colors" is pixelkiln's
   own omit-both default; "use palette" is `paletteImage`, including one
   imported from Lospec into the source editor's palette list before use) —
-  the batch/multi-frame gap above is the only piece still missing, and this
-  tutorial is stronger evidence that it is the one that matters.
+  and the batch/multi-frame piece above now covers the per-set step. What
+  remains is the project-wide sweep: one revision per set, declared by hand,
+  rather than one command that applies a palette across every asset.
 - **Generic (non-character) animation and interpolation** (`/animate-with-text-v3`,
   `/animate-pixminimax`) — PixelLab's **Animate with text** tools work on
   *any* image, not just a `character`/`objectPro` asset. Demonstrated
@@ -147,9 +150,13 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   several plausible field names rather than one confirmed shape, the way
   `pollRevision` already handles `image-to-image`/`inpaint`. The dedicated
   **Interpolate** endpoint (`/interpolation-v2`, a separate "Pro" two-keyframe
-  tool distinct from `last_frame` pinning on the animate endpoints above)
-  remains unwrapped — a narrower, real gap, with real demonstrated demand
-  now: "Level Up Your Game: Custom Sprite Animation Tutorial" used it
+  tool distinct from `last_frame` pinning on the animate endpoints above) is
+  now wrapped too, as the `interpolate` revision mode (parent = start
+  keyframe, required `lastFrame` = end keyframe), alongside
+  `/edit-animation-v2` as `edit-animation` (one text edit across a whole
+  frame set). Both unmeasured, both borrowing the 20/25/40 Pro canvas tiers.
+  Real demonstrated demand for Interpolate: "Level Up Your Game: Custom
+  Sprite Animation Tutorial" used it
   repeatedly, in Aseprite via PixelLab's own extension, as the fix for an
   animation a single `animate-with-text` attempt couldn't produce directly —
   a character knocked backward by a hit. One `animate-with-text` pass from
@@ -160,7 +167,10 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   Interpolate fill the motion between them (8 frames for the fall, 11 for the
   recovery back to idle, both with `enhancePrompt` on) — a "key poses first,
   then interpolate the gap" pattern worth carrying into any future wrapper,
-  not just the raw endpoint. Also newly confirmed, from "Pixel Art Animation
+  not just the raw endpoint (`docs/REVISIONS.md` carries it as the
+  recommended use of `interpolate`; the endpoint itself has no
+  `enhance_prompt` field, so that part of the tutorial's setup came from
+  PixelLab's editor extension). Also newly confirmed, from "Pixel Art Animation
   Tutorial: Images Pro Flash, Skeleton V3 & PixMiniMax": PixelLab states
   outright that PixMiniMax allows "up to 40 frames," a second, independent
   (though still not live-billed) confirmation of the schema's 40-frame
@@ -200,12 +210,16 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   Set" and "Easiest way to create pixel art UI." Investigated directly
   against the live OpenAPI document rather than the tutorials' own framing,
   which turned out to overstate the surface: a search across "ui-asset",
-  "element", "split", and "template" paths found **only one creation
-  endpoint** (`/create-ui-asset`, + `GET`/`DELETE /ui-assets/{id}`) — no
+  "element", "split", and "template" paths found one panel-creation
+  endpoint (`/create-ui-asset`, + `GET`/`DELETE /ui-assets/{id}`) — no
   separate batch-icon endpoint, no states endpoint, no nine-slice endpoint,
   despite the tutorials describing all three. Closed by the `uiAsset`
   generator (plain panel generation only); see `pixellab.md` and
-  `docs/GENERATORS.md#uiasset`. **Splitting into individual elements and
+  `docs/GENERATORS.md#uiasset`. That search missed a second UI endpoint,
+  `/generate-ui-v2` ("Generate UI (Pro)": one element from a description,
+  16px and up, with an optional concept image and palette hint), found on a
+  later full read of the path list and now wrapped as the `uiElement`
+  generator; see `docs/GENERATORS.md#uielement`. Unmeasured. **Splitting into individual elements and
   nine-slice are not buildable at all**: `GET /ui-assets/{id}` returns one
   flat composited image with no per-piece sub-image or bounding-box data in
   its response schema, regardless of how many `pieces` the request declared.
@@ -233,11 +247,24 @@ which tutorial(s) demonstrated real (not hypothetical) demand for it.
   over-reading stays the safe `--budget` direction, but a real call likely
   costs about half of what `pixelkiln plan` prints, pending a second size.
 
-## Fonts
-
-`create_font` exists on PixelLab's live MCP surface; no tutorial in this
-batch demonstrated it in depth, so demand is unconfirmed beyond the tool's
-existence. Not modeled at all.
+- **Fonts** (`/generate-font-pro`, an 80-glyph atlas plus a `.ttf` from a
+  style description) — no tutorial demonstrated it in depth, so demand is
+  unconfirmed beyond the endpoint's existence. Closed by `pixelkiln font`, a
+  standalone command rather than a generator: a font has no style suffix,
+  candidates, or image-shaped primary output for the lockfile to track. The
+  documented 25-generation price is unmeasured.
+- **Unzoom** (`/unzoom`, recover the native grid of upscaled pixel art) —
+  PixelLab's own API overview calls upscaled reference art "the most common
+  cause of disappointing output" from every reference-taking endpoint.
+  Closed by `pixelkiln unzoom`, a standalone command on a loose file, since
+  the art it is for comes from outside the manifest. Its result is opaque
+  (transparency is composited onto white first). Cost unmeasured.
+- **`/create-8-direction-object`** is deliberately left unwrapped. `objectPro`
+  already covers what it does (8 rotations from a prompt or a reference
+  image, a `view`, a style image) on `/create-object-pro-flash` at roughly 6
+  generations to its 20–40. Its one unique field, `style_object_id` (style
+  from an existing 8-direction object's sprites), is not worth a second,
+  pricier engine on its own.
 
 ## Pro Flash for plain image create, edit, and inpaint
 

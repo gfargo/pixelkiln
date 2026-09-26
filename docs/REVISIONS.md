@@ -7,10 +7,11 @@ dependencies before submission, and records the lineage in the lockfile.
 
 The manifest and pipeline are provider-neutral. ComfyUI and PixelLab implement
 it; PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
-`correct-pixelart`, `animate`, and `animate-pixminimax`, not `outpaint` (its
-API has no canvas-expansion endpoint). ComfyUI covers every mode generically
-except `animate`/`animate-pixminimax`, which need an ordered frame set its
-revision path cannot produce. Retro Diffusion and Scenario reject revision
+`correct-pixelart`, `animate`, `animate-pixminimax`, `interpolate`, and
+`edit-animation`, not `outpaint` (its API has no canvas-expansion endpoint).
+ComfyUI covers every mode generically except the four frame-set modes
+(`animate`, `animate-pixminimax`, `interpolate`, `edit-animation`), which need
+an ordered frame set its revision path cannot produce. Retro Diffusion and Scenario reject revision
 work during offline resolution instead of silently starting a fresh
 text-to-image job.
 
@@ -138,14 +139,47 @@ photographs and 3-D renders, not for reprocessing" pixel art):
 `strength` (0–1, PixelLab's own default 0.1) is how far the model may move
 from the source; start low and only raise it for real repair.
 
-Neither mode supports the source being a frame set (a character animation, an
-`objectPro` loop) yet — each processes exactly one image per revision, the
-same as `image-to-image`. PixelLab's own `/reduce-colors` and
-`/correct-pixelart` endpoints are built to take several frames in one call
-specifically so an animation's frames (or a character's eight directions)
-share one consistent palette/cleanup pass instead of drifting frame by frame;
-pixelkiln does not expose that yet — revise each frame as its own asset for
-now, and expect some frame-to-frame drift from doing so independently.
+### Revising a whole set at once
+
+Both modes also take a parent that is a **set** rather than one image: a
+character's or object's directions, an animation loop, or another frame-set
+revision. Every member goes to PixelLab in one call, which is the point of
+both endpoints: an animation's frames (or a character's eight directions) come
+back on one shared palette, or through one consistent cleanup pass, instead of
+drifting frame by frame the way revising each member separately would.
+
+```jsonc
+{
+  "assets": {
+    "hero-walk-east": { "prompt": "walking", "animation": { "of": "hero", "direction": "east" } },
+    "hero-walk-east-16c": {
+      "prompt": "16-color walk",
+      "revision": { "mode": "reduce-colors", "from": "hero-walk-east", "numColors": 16 }
+    }
+  }
+}
+```
+
+Nothing new is declared: when the parent has no file at its own path but has
+`<stem>-<role>.png` members beside it, those members are the source. Two role
+vocabularies are recognized: a full 8- or 4-direction rotation (`-south.png`,
+`-south-east.png`, ...), or numbered frames (`-frame-00.png` upward). The
+child's output keeps the parent's roles, so `hero-walk-east-16c-frame-03.png`
+is the reduced version of `hero-walk-east-frame-03.png`, and a frame set keeps
+its playback rate.
+
+- Every member's hash goes into the child's identity, so a change to any one
+  frame (not only the first) makes the child stale. The lock records one
+  `sourceSha256` over every member hash in order, the same formula a mirror
+  records over its source.
+- Before spending, the member files found on disk are checked against the
+  parent's own lock entry. A `-frame-11.png` left over from an older, longer
+  generation blocks the revision with a message naming the count mismatch
+  rather than being sent as if it belonged.
+- Members must all be the same size. `reduce-colors`' 512×512 limit is for the
+  whole call: sixteen 64×64 frames fit, five 256×256 do not.
+- Every other mode except `edit-animation` (below) reads exactly one image and
+  refuses a set parent at plan time, naming the modes that take one.
 
 ## Animation and interpolation
 
@@ -216,9 +250,70 @@ already takes for `image-to-image`/`inpaint`. Cost is likewise unmeasured:
 near-identical) as a placeholder, plus `enhancePrompt`'s own documented
 +0.05-generation surcharge, which is a real schema number rather than a guess.
 
-ComfyUI does not support either mode: its revision path always writes a
-single output image, and an animation is a frame set — a structural gap
-rather than a missing binding, so `supportsRevision` refuses it up front
+### Interpolate between two keyframes
+
+`interpolate` calls `/interpolation-v2`, PixelLab's dedicated "Interpolate
+(Pro)" tool: the parent is the start keyframe, `lastFrame` (required here) is
+the end keyframe, and the asset's `prompt` describes the transition. Unlike
+`lastFrame` on `animate`, the frame count is the model's own choice (PixelLab
+documents "typically 4-8"); there is no `frames` field.
+
+```jsonc
+{
+  "assets": {
+    "knight-hit-fall": {
+      "prompt": "knocked backward off his feet by a heavy blow",
+      "revision": {
+        "mode": "interpolate",
+        "from": "knight-hit-airborne",
+        "lastFrame": "art/knight-hit-landed.png",
+        "fps": 12
+      }
+    }
+  }
+}
+```
+
+This is the "key poses first, then interpolate the gap" pattern from
+PixelLab's own tutorials, for motion one `animate` pass cannot produce
+cleanly: build each key pose as a plain `image-to-image` revision (an
+airborne "just hit" frame, then a "landed" frame edited from it), then let
+`interpolate` fill the motion between them. `lastFrame` can be any earlier
+asset's own generated output file, and the plan holds the revision as
+`blocked` until that file exists. Both keyframes must be the same size, 16 to
+128 pixels per side.
+
+### Edit every frame of an animation at once
+
+`edit-animation` calls `/edit-animation-v2`: one text edit ("add a red cape")
+applied across a whole frame set in a single call, so the change stays
+consistent from frame to frame. It is `image-to-image` for an entire
+animation. The parent must be a set (see
+[Revising a whole set at once](#revising-a-whole-set-at-once)); a
+single-image parent is refused. The result keeps the parent's roles, so a
+character's eight directions edited together stay eight directions.
+
+```jsonc
+{
+  "revision": { "mode": "edit-animation", "from": "hero-walk-east" }
+}
+```
+
+Frames are 16 to 256 pixels per side, and because PixelLab packs every frame
+into one grid before editing, the frame ceiling falls as frames grow: 16
+frames up to 64px, 9 up to 80px, 4 up to 256px. Both are checked at plan
+time.
+
+`interpolate` and `edit-animation` land in candidate review like `animate`,
+take `fps` (defaulting to the parent's own rate when it has one, else 8), and
+reject `strength`. Neither has been exercised against a live account: request
+fields come from PixelLab's live OpenAPI document, the completed job is read
+by the same defensive frame-list lookup `animate` uses, and cost is an
+estimate (see [PixelLab](#pixellab) below).
+
+ComfyUI supports none of the four frame-set modes: its revision path always
+writes a single output image, and an animation is a frame set — a structural
+gap rather than a missing binding, so `supportsRevision` refuses it up front
 rather than failing partway through submission.
 
 ## Dependency gate
@@ -330,9 +425,20 @@ further — there is nothing to ask.
   recorded as `billed` on every call regardless
   (`context.metadata.revisionUsage`, since there is no later background job
   to ask the way `billedForJob` asks for every other adapter call).
-- `reduce-colors`'s total size limit is 512×512 worth of pixels (262144px²);
-  `correct-pixelart`'s is 1024 pixels per side. Both are checked before a
-  request is sent, the same as `inpaint`'s 32–512px floor/ceiling.
+- `reduce-colors`'s total size limit is 512×512 worth of pixels (262144px²)
+  across every member sent; `correct-pixelart`'s is 1024 pixels per side.
+  Both are checked before a request is sent, the same as `inpaint`'s
+  32–512px floor/ceiling. The 0.1-generation cost above was measured on one
+  image; a whole member set is still one call, but whether its price stays
+  flat is unmeasured.
+- `interpolate` (`/interpolation-v2`) and `edit-animation`
+  (`/edit-animation-v2`) are both documented "Pro" endpoints with no usage
+  example in the schema and no live measurement. `estimate()` borrows the
+  same 20/25/40 canvas tiers the other unmeasured Pro edits use, sized on the
+  keyframe for `interpolate` and on the packed frame grid for
+  `edit-animation` (four 32×32 frames price as a 64×64 canvas, the 40 tier).
+  Over-reading is the safe direction for `--budget`; expect a live bill at or
+  below the plan.
 - `animate` calls `/animate-with-text-v3`, `animate-pixminimax` calls
   `/animate-pixminimax` — both real async background jobs, unlike the two
   Cleanup-tier modes above, since they generate new frames rather than
@@ -414,7 +520,10 @@ further — there is nothing to ask.
 The lock entry records revision mode, parent id, parent hash, optional mask
 hash, strength, and — for `reduce-colors` — `numColors`, the palette image's
 hash, and the dithering settings, or — for `animate`/`animate-pixminimax` —
-`frames`, `fps`, the last frame's hash, `direction`, and `enhancePrompt`.
+`frames`, `fps`, the last frame's hash, `direction`, and `enhancePrompt`
+(`interpolate` records `fps` and the end keyframe's hash; `edit-animation`
+records `fps`). For a set parent, the parent hash is one hash over every
+member's hash in order.
 ComfyUI provider metadata also retains the same lineage beside the workflow
 hash.
 

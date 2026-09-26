@@ -16,6 +16,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose, 1 per template loop | one set of directions, or one ordered loop |
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
+| One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 20–40 generations (unmeasured) | 1 image |
 
 Start with `map` unless a required capability points elsewhere. Forty `map`
 re-rolls cost the same as one 64×64 `1dir` call.
@@ -398,6 +399,50 @@ the measured call proves the formula wrong here, since it billed the floor
 price at an area well above where `1dir`/`tiles` would bill the ceiling.
 Left as an over-read for `--budget` until a second size is measured; see
 [ENDPOINTS.md](./ENDPOINTS.md) for the full writeup.
+
+## `uiElement`
+
+`uiElement` wraps PixelLab's `/generate-ui-v2` ("Generate UI (Pro)"): one UI
+element — a button, a health bar, an inventory slot, a dialogue box — from
+the prompt alone. Where `uiAsset` lays a panel out from `pieces`/`elements`
+on a 192px-and-up canvas, `uiElement` has no layout vocabulary and goes down
+to 16×16, which suits icons and small widgets:
+
+```jsonc
+{
+  "styles": {
+    "hud": {
+      "generator": "uiElement",
+      "uiColorPalette": "brown and gold",
+      "styleImages": [{ "path": "refs/hud-concept.png" }],
+      "outDir": "art/ui"
+    }
+  },
+  "assets": {
+    "slot": { "prompt": "wooden inventory slot with metal corners", "width": 32, "height": 32 },
+    "hp-bar": { "prompt": "health bar with a red fill", "width": 96, "height": 16 }
+  }
+}
+```
+
+- `width`/`height` default to 256×256 and can be non-square: 16 up to 792
+  wide and 688 tall, with the exact ceiling set by aspect ratio upstream
+  (square tops out at 512×512, 16:9 at 688×384).
+- The style's single `styleImages` entry, if any, is sent as the endpoint's
+  `concept_image`: design guidance for the element, not a strict style
+  transfer. More than one is refused.
+- `uiColorPalette` is sent as `color_palette`, the same free-text hint
+  `uiAsset` takes. PixelLab removes the background by default; set
+  `noBackground: false` on the style to keep it.
+- One call is expected to return one image, recorded straight away. If the
+  endpoint ever returns several, they go to candidate review like
+  `imagePro`'s.
+
+**Unmeasured.** The schema carries no usage example and no call has been
+billed yet. The plan prices it on the same 20/25/40 canvas tiers as
+`1dir`/`tiles`, the safe over-read for a Pro endpoint, and the completed
+job's shape is read defensively (`pollUiElement` names the keys it got if
+the shape is not the documented `images` list).
 
 ## Style variants
 

@@ -65,7 +65,8 @@ export function specHash(
       // intentionally absent; width/height are derived from it, so it is
       // already covered.
       noBackground:
-        spec.generator === "pixflux" || spec.generator === "uiAsset" || spec.provider !== "pixellab"
+        spec.generator === "pixflux" || spec.generator === "uiAsset" || spec.generator === "uiElement" ||
+          spec.provider !== "pixellab"
           ? spec.noBackground
           : undefined,
       tileType: spec.tileType,
