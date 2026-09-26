@@ -1,5 +1,5 @@
 import { renderTray, toggleCompare } from "./compare.ts"
-import { $, S, STATE_TONE, displayScale, el, fmtBytes, fmtCost, fmtWhen, formRegion, isFrameSet, projectOf, ui } from "./core.ts"
+import { $, S, STATE_TONE, backdropControl, displayScale, el, fmtBytes, fmtCost, fmtWhen, formRegion, isFrameSet, projectOf, savePrefs, ui } from "./core.ts"
 import { editForm, newAnimationForm, newStateForm } from "./family-forms.ts"
 import { familyMembers, familyRoot, openFamily, refreshFamily } from "./family.ts"
 import { newRevisionForm } from "./forms.ts"
@@ -72,17 +72,26 @@ export function renderPreview(item, host) {
     host.append(preview);
     return;
   }
-  const member = shown[Math.min(ui.member, shown.length - 1)] || shown[0];
-  const frameSet = isFrameSet(item);
+  let idx = Math.min(ui.member, shown.length - 1);
+  const frameSet = isFrameSet(item) && shown.length > 1;
   const w = item.width, h = item.height;
   const box = Math.min(window.innerWidth, 540) - 62;
   const auto = displayScale(w, h, box, Math.min(window.innerHeight * 0.55, 560));
   const zoom = ui.zoom === 'auto' ? auto : ui.zoom === 'fit' ? Math.min(auto, 1) : Number(ui.zoom);
-  const img = el('img');
-  img.src = member.url; img.alt = member.role || item.assetId;
-  if (zoom >= 1) { img.width = Math.round(w * zoom); img.height = Math.round(h * zoom); }
-  else { img.style.maxWidth = '100%'; img.style.maxHeight = '55vh'; img.style.width = 'auto'; img.style.height = 'auto'; }
-  preview.append(img);
+  const sized = (img: HTMLImageElement) => {
+    if (zoom >= 1) { img.width = Math.round(w * zoom); img.height = Math.round(h * zoom); }
+    else { img.style.maxWidth = '100%'; img.style.maxHeight = '55vh'; img.style.width = 'auto'; img.style.height = 'auto'; }
+    return img;
+  };
+  const stack = el('div', 'stack');
+  const img = sized(el('img'));
+  img.src = shown[idx].url; img.alt = shown[idx].role || item.assetId;
+  // Onion skin: the frame before, faint, under the current one.
+  const onion = sized(el('img', 'onion'));
+  onion.alt = ''; onion.setAttribute('aria-hidden', 'true');
+  onion.hidden = !(frameSet && ui.onion);
+  stack.append(onion, img);
+  preview.append(stack);
 
   const zoomBar = el('div', 'zoom');
   zoomBar.append(el('span', null, 'zoom'));
@@ -93,39 +102,81 @@ export function renderPreview(item, host) {
     zoomBar.append(b);
   }
   const label = el('span', 'grow', w + '×' + h + (zoom >= 1 ? ' at ' + zoom + '×' : ' fitted'));
-  zoomBar.append(label);
-  if (frameSet && shown.length > 1) {
-    const fps = item.fps || 12;
-    const play = el('button', null, 'Play ' + fps + ' fps');
-    play.type = 'button';
-    let idx = shown.indexOf(member);
-    play.onclick = () => {
-      if (ui.playing) { stopPlayback(); play.textContent = 'Play ' + fps + ' fps'; return; }
-      play.textContent = 'Pause';
-      ui.playing = setInterval(() => {
-        if (document.hidden) return;
-        idx = (idx + 1) % shown.length;
-        img.src = shown[idx].url;
-        label.textContent = (shown[idx].role || 'frame ' + (idx + 1)) + ' · ' + w + '×' + h + (zoom >= 1 ? ' at ' + zoom + '×' : '');
-        for (const [i, b] of [...host.querySelectorAll('.members button')].entries()) b.classList.toggle('on', i === idx);
-      }, Math.max(16, Math.round(1000 / fps)));
-    };
-    zoomBar.append(play);
-  }
+  zoomBar.append(label, backdropControl());
   host.append(preview, zoomBar);
 
+  let strip: HTMLElement | null = null;
+  const show = (i: number) => {
+    idx = (i + shown.length) % shown.length;
+    ui.member = idx;
+    img.src = shown[idx].url;
+    img.alt = shown[idx].role || item.assetId;
+    if (frameSet) {
+      onion.src = shown[(idx - 1 + shown.length) % shown.length].url;
+      scrub.value = String(idx);
+      count.textContent = (idx + 1) + ' / ' + shown.length;
+    }
+    if (strip) for (const [j, b] of [...strip.querySelectorAll('button')].entries()) b.classList.toggle('on', j === idx);
+  };
+
+  // A frame set gets a player: step, scrub, speed, and onion skin.
+  const scrub = el('input'); const count = el('span', 'count');
+  if (frameSet) {
+    const bar = el('div', 'frames-bar');
+    const own = item.fps || 12;
+    const fps = () => ui.fps || own;
+    const prev = el('button', null, '◀'); prev.type = 'button'; prev.title = 'Previous frame (,)';
+    const next = el('button', null, '▶'); next.type = 'button'; next.title = 'Next frame (.)';
+    const play = el('button', 'play', 'Play'); play.type = 'button'; play.title = 'Play or pause (space)';
+    const pause = () => { stopPlayback(); play.textContent = 'Play'; };
+    const start = () => {
+      stopPlayback();
+      play.textContent = 'Pause';
+      ui.playing = setInterval(() => { if (!document.hidden) show(idx + 1); }, Math.max(16, Math.round(1000 / fps())));
+    };
+    play.onclick = () => (ui.playing ? pause() : start());
+    prev.onclick = () => { pause(); show(idx - 1); };
+    next.onclick = () => { pause(); show(idx + 1); };
+    scrub.type = 'range'; scrub.min = '0'; scrub.max = String(shown.length - 1); scrub.step = '1';
+    scrub.setAttribute('aria-label', 'Frame');
+    scrub.oninput = () => { pause(); show(Number(scrub.value)); };
+    const speed = el('select');
+    speed.setAttribute('aria-label', 'Frames per second');
+    const rates = [...new Set([own, 4, 6, 8, 10, 12, 15, 24])].sort((a, b) => a - b);
+    for (const r of rates) speed.append(new Option(r + ' fps' + (r === own ? ' (its own)' : ''), String(r)));
+    speed.value = String(fps());
+    speed.onchange = () => { ui.fps = Number(speed.value) === own ? null : Number(speed.value); if (ui.playing) start(); };
+    const onionBox = el('label', 'chip');
+    const onionToggle = el('input'); onionToggle.type = 'checkbox'; onionToggle.checked = ui.onion;
+    onionToggle.onchange = () => { ui.onion = onionToggle.checked; onion.hidden = !ui.onion; savePrefs(); };
+    onionBox.title = 'Show the previous frame faintly under this one';
+    onionBox.append(onionToggle, document.createTextNode(' onion skin'));
+    bar.append(prev, play, next, scrub, count, speed, onionBox);
+    host.append(bar);
+    (host as any).__frames = { step: (n: number) => { pause(); show(idx + n); }, toggle: () => play.click() };
+  } else {
+    (host as any).__frames = null;
+  }
+
   if (shown.length > 1) {
-    const strip = el('div', 'members');
+    strip = el('div', 'members');
     shown.forEach((o, i) => {
-      const b = el('button', o === member ? 'on' : null);
+      const b = el('button', i === idx ? 'on' : null);
       b.type = 'button';
       const t = el('img'); t.src = o.url; t.alt = o.role || 'output ' + (i + 1); t.loading = 'lazy';
       b.append(t, el('span', null, o.role || String(i + 1)));
-      b.onclick = () => { ui.member = i; renderPreview(item, host); };
-      strip.append(b);
+      b.onclick = () => { if (frameSet) { stopPlayback(); } show(i); if (!frameSet) renderPreview(item, host); };
+      strip!.append(b);
     });
     host.append(strip);
   }
+  show(idx);
+}
+
+/** The open drawer's frame player, for the keyboard: `,` and `.` step, space plays. */
+export function drawerFrames(): { step: (n: number) => void; toggle: () => void } | null {
+  const host = document.querySelector('.drawer .dbody > div');
+  return host ? (host as any).__frames ?? null : null;
 }
 
 /** How the drawer names each member of a character or object family. */

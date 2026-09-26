@@ -1,5 +1,5 @@
 import type { GalleryItem } from "../../snapshot.ts"
-import { $, S, displayScale, el, fmtCost, fmtWhen, ui } from "./core.ts"
+import { $, S, displayScale, el, fmtCost, fmtWhen, ui, backdropControl } from "./core.ts"
 import { openItem, render } from "./drawer.ts"
 
 // ---- compare ---------------------------------------------------------------
@@ -57,7 +57,7 @@ export function openCompare() {
     b.type = 'button'; b.onclick = () => { ui.compareZoom = String(z); openCompare(); };
     zoomBar.append(b);
   }
-  bar.append(zoomBar);
+  bar.append(zoomBar, backdropControl());
   const zoom = ui.compareZoom === 'auto' ? auto : ui.compareZoom === 'fit' ? Math.min(auto, 1) : Number(ui.compareZoom);
 
   const body = el('div', 'compare-body');

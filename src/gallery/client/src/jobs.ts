@@ -73,6 +73,7 @@ export async function pollJobs() {
   for (const job of S.GEN.jobs) {
     if (!ACTIVE_PHASES.has(job.phase) && !ui.settled.has(job.id)) {
       ui.settled.add(job.id); changed = true;
+      notifyJob(job);
       // The open record hears how its job ended, where the strip was.
       const open = ui.open && S.snap.items.find((i) => i.id === ui.open);
       if (open && job.project === open.project && job.keys.includes(open.key)) {
@@ -86,7 +87,7 @@ export async function pollJobs() {
           : 'Done.' };
       }
     }
-    if (job.phase === 'review' && !ui.settled.has(job.id + ':review')) { ui.settled.add(job.id + ':review'); changed = true; }
+    if (job.phase === 'review' && !ui.settled.has(job.id + ':review')) { ui.settled.add(job.id + ':review'); changed = true; notifyJob(job); }
   }
   if (changed) refresh();
   else {
@@ -104,6 +105,37 @@ export async function pollJobs() {
   clearTimeout(jobsTimer ?? undefined);
   if (active) jobsTimer = setTimeout(pollJobs, 2000);
 }
+const DONE_VERB = { generate: 'Generated', resume: 'Resumed', refresh: 'Pulled upstream changes for', restore: 'Restored', revert: 'Brought back a generation of' };
+
+/** Asks once for permission to raise system notifications; true when they can be shown. */
+export async function enableNotifications(): Promise<boolean> {
+  if (typeof Notification === 'undefined') return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') {
+    $('note').textContent = ' Notifications are blocked for this page in the browser\'s site settings.';
+    return false;
+  }
+  try { return (await Notification.requestPermission()) === 'granted'; }
+  catch { return false; }
+}
+
+/**
+ * A system notification for a job that finished or stopped for review, raised
+ * only while this tab is in the background: in front, the page says it itself.
+ */
+function notifyJob(job) {
+  if (!ui.notify || !document.hidden || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const n = job.keys.length;
+  const what = n === 1 ? job.keys[0] : n + ' assets';
+  const body = job.phase === 'review' ? job.review.length + ' waiting for you to pick a candidate'
+    : job.phase === 'failed' ? 'failed: ' + (job.error || 'see the log')
+    : (DONE_VERB[job.mode] || 'Finished') + ' ' + what;
+  try {
+    const note = new Notification('pixelkiln' + (job.project ? ' · ' + job.project : ''), { body, tag: 'pixelkiln-job-' + job.id });
+    note.onclick = () => { window.focus(); note.close(); };
+  } catch { /* some browsers only allow notifications from a service worker */ }
+}
+
 export function renderJobs() {
   const host = $('jobs');
   host.textContent = '';

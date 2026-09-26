@@ -1,4 +1,4 @@
-import { $, S, STATE_TONE, displayScale, el, fmtCost } from "./core.ts"
+import { $, S, STATE_TONE, backdropControl, displayScale, el, fmtCost } from "./core.ts"
 import { openItem } from "./drawer.ts"
 import { generateDialog } from "./editor.ts"
 
@@ -23,6 +23,8 @@ const ROSE = ['north-west', 'north', 'north-east', 'west', null, 'east', 'south-
 const SPEEDS = [0.5, 1, 2];
 const SPIN_MS = 420;
 const DRAG_STEP_PX = 28;
+/** The inside of a loop-grid cell. */
+const CELL_PX = 68;
 
 interface Anim { img: HTMLImageElement; urls: string[]; fps: number; index: number }
 interface FamilyState {
@@ -162,7 +164,7 @@ function renderFamily() {
     t.append(el('i', 'dot ' + STATE_TONE[state]), document.createTextNode(n + ' ' + state));
     tally.append(t);
   }
-  bar.append(tally);
+  bar.append(tally, backdropControl());
   if (GENERATION) {
     const todo = members.filter((m) => m.declared && m.currentSpecHash !== null && ['missing', 'stale', 'failed'].includes(m.state));
     if (todo.length) {
@@ -389,13 +391,14 @@ function loopCell(item, parent, direction) {
   img.alt = item.assetId;
   const urls = frameUrls(item);
   if (urls.length) {
+    fitCell(img, item.width, item.height);
     img.src = urls[0];
     for (const u of urls) { const p = new Image(); p.src = u; }
     if (urls.length > 1) F!.anims.push({ img, urls, fps: item.fps || 12, index: 0 });
   } else {
     // Nothing drawn yet: the parent's matching rotation stands in, dimmed.
     const ghost = rotationUrl(parent, direction);
-    if (ghost) { img.src = ghost; b.classList.add('ghost'); } else img.hidden = true;
+    if (ghost) { fitCell(img, parent.width, parent.height); img.src = ghost; b.classList.add('ghost'); } else img.hidden = true;
   }
   b.append(img);
   if (item.mirrorOfKey) b.append(el('span', 'lg-mirror', '⇋'));
@@ -415,6 +418,7 @@ function extrasStrip(extras) {
     const img = el('img'); img.alt = item.assetId;
     const urls = frameUrls(item);
     if (urls.length) {
+      fitCell(img, item.width, item.height);
       img.src = urls[0];
       if (urls.length > 1) F!.anims.push({ img, urls, fps: item.fps || 12, index: 0 });
     } else img.hidden = true;
@@ -426,6 +430,13 @@ function extrasStrip(extras) {
   }
   wrap.append(strip);
   return wrap;
+}
+
+/** Pixel art in a cell: scaled up by whole steps to fill it, or down to fit. */
+function fitCell(img: HTMLImageElement, width: number, height: number) {
+  const s = displayScale(width, height, CELL_PX, CELL_PX);
+  img.width = Math.max(1, Math.round(width * s));
+  img.height = Math.max(1, Math.round(height * s));
 }
 
 function highlight(direction: string) {

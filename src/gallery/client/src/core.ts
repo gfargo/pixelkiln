@@ -45,6 +45,15 @@ export interface UiState {
   logs: Set<string>
   /** Job ids already seen finished, so a completion refreshes exactly once. */
   settled: Set<string>
+  /** Every loop on the grid plays, not only the one under the pointer. */
+  playLoops: boolean
+  /** What sprites sit on: 'checker', 'dark', 'light', or a #rrggbb colour. */
+  backdrop: string
+  /** A job that finishes while this tab is hidden raises a system notification. */
+  notify: boolean
+  /** Drawer frame-set playback: frames per second chosen by hand (null: the set's own), and onion skin. */
+  fps: number | null
+  onion: boolean
 }
 
 export const ui: UiState = {
@@ -57,7 +66,71 @@ export const ui: UiState = {
   compareZoom: 'auto',
   logs: new Set(),
   settled: new Set(),
+  playLoops: false,
+  backdrop: 'checker',
+  notify: false,
+  fps: null,
+  onion: false,
 };
+
+// ---- per-viewer preferences ------------------------------------------------
+// Conveniences only: a private window or blocked storage just starts from the defaults.
+const PREFS_KEY = 'pixelkiln.gallery.prefs';
+const PREF_NAMES = ['playLoops', 'backdrop', 'notify', 'onion'] as const;
+export function loadPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+    for (const name of PREF_NAMES) if (typeof saved[name] === typeof ui[name]) (ui as any)[name] = saved[name];
+  } catch { /* defaults */ }
+  applyBackdrop();
+}
+export function savePrefs() {
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(Object.fromEntries(PREF_NAMES.map((n) => [n, ui[n]])))); }
+  catch { /* not kept */ }
+}
+const HEX = /^#[0-9a-f]{6}$/i;
+export function applyBackdrop() {
+  const custom = HEX.test(ui.backdrop);
+  document.body.dataset.backdrop = custom ? 'custom' : ui.backdrop;
+  document.body.style.setProperty('--stage-bg', custom ? ui.backdrop : '');
+  if (!custom) document.body.style.removeProperty('--stage-bg');
+}
+
+/**
+ * The backdrop picker: checker, dark, light, or any colour. One setting for
+ * every place a sprite is shown; `onChange` lets a caller redraw its own labels.
+ */
+export function backdropControl(onChange?: () => void) {
+  const wrap = el('span', 'backdrop');
+  wrap.title = 'What sprites sit on: judge them against dark, light, or your game\'s own background';
+  const options: Array<[string, string]> = [['checker', 'Transparency grid'], ['dark', 'Dark'], ['light', 'Light']];
+  const buttons: HTMLButtonElement[] = [];
+  const picker = el('input');
+  picker.type = 'color';
+  picker.setAttribute('aria-label', 'Custom backdrop colour');
+  const sync = () => {
+    for (const b of buttons) b.classList.toggle('on', b.dataset.value === ui.backdrop);
+    picker.classList.toggle('on', HEX.test(ui.backdrop));
+    if (HEX.test(ui.backdrop)) picker.value = ui.backdrop;
+  };
+  const set = (value: string) => {
+    ui.backdrop = value; applyBackdrop(); savePrefs();
+    for (const other of document.querySelectorAll('.backdrop')) (other as any).__sync?.();
+    onChange?.();
+  };
+  for (const [value, label] of options) {
+    const b = el('button', 'bd-' + value);
+    b.type = 'button'; b.dataset.value = value; b.title = label; b.setAttribute('aria-label', 'Backdrop: ' + label);
+    b.onclick = () => set(value);
+    buttons.push(b);
+    wrap.append(b);
+  }
+  picker.oninput = () => set(picker.value.toLowerCase());
+  wrap.append(picker);
+  (wrap as any).__sync = sync;
+  sync();
+  return wrap;
+}
 /**
  * Where the open form sits, if one is open: its fields live only in the
  * DOM, so redrawing that part of the page would discard what was typed.
