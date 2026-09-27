@@ -9,9 +9,11 @@ import { enableNotifications, pollJobs } from "./jobs.ts"
 import { setPlayLoops } from "./motion.ts"
 import { setSelecting } from "./selection.ts"
 import { openShortcuts } from "./keys.ts"
+import { installUndo, undoLast } from "./undo.ts"
 import { closeEditorSheet } from "./sheet.ts"
 
 loadPrefs();
+installUndo();
 $('refresh').onclick = refresh;
 $('select').onclick = () => setSelecting(!ui.selecting);
 $('keys').onclick = openShortcuts;
@@ -63,6 +65,9 @@ document.addEventListener('keydown', (e) => {
   const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
   if (e.key === '/' && !typing) { e.preventDefault(); $('q').focus(); return; }
   if (e.key === '?' && !typing) { e.preventDefault(); openShortcuts(); return; }
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !typing && EDITABLE && !$('dialog-host').childNodes.length) {
+    e.preventDefault(); void undoLast(); return;
+  }
   if (e.key === 'Escape') {
     if ($('view-menu').open) { e.preventDefault(); $('view-menu').open = false; $('view-menu').querySelector('summary').focus(); return; }
     if (typing && document.activeElement?.id === 'q') { (document.activeElement as HTMLElement).blur(); return; }

@@ -207,7 +207,20 @@ export const projectOf = (item) => S.snap.workspace
 // The only write this page ever makes: one manifest edit, quoting the
 // manifest hash it was rendered from so a concurrent hand edit is refused
 // rather than overwritten. The server answers with the rebuilt gallery.
+/** Called after every successful edit, with whether it changed the manifest (undo listens). */
+export const editHooks: { saved: ((body: any, changedManifest: boolean) => void) | null } = { saved: null };
+/** The manifest hash a snapshot shows for a project (null: the single project). */
+export const manifestShaOf = (snap: GallerySnapshot, project: string | null | undefined) => snap.workspace
+  ? snap.workspace.projects.find((pr) => pr.id === project)?.manifestSha256 ?? null
+  : snap.project?.manifestSha256 ?? null;
+
 export async function postEdit(body) {
+  const before = manifestShaOf(S.snap, body && body.project);
+  const snap = await sendEdit(body);
+  editHooks.saved?.(body, manifestShaOf(snap, body && body.project) !== before);
+  return snap;
+}
+async function sendEdit(body) {
   const res = await fetch('/api/edit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Pixelkiln-Session': SESSION ?? '' },

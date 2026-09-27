@@ -499,6 +499,13 @@ gesture the page answers to.
 
 The page keeps these choices in the browser's local storage, per viewer.
 
+With `--edit`, every change the page writes to the manifest (a form, a
+tag, a new direction, a studio character) says what it saved and offers
+**Undo** (or ⌘Z / ctrl+Z). Undo steps back through this session's writes and
+puts the previous manifest back. It is refused when the file has changed
+outside the gallery since the gallery wrote it, so a hand edit is never
+thrown away.
+
 #### Families and selections
 
 - **Tags:** every tag the manifest declares on an asset becomes a filter

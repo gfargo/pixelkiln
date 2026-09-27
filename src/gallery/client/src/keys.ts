@@ -12,6 +12,7 @@ const GROUPS: Array<{ title: string; keys: Array<[string[], string]> }> = [
       [['/'], 'jump to search'],
       [['?'], 'this list'],
       [['Esc'], 'close whatever is open: a sheet, the record, the View menu, or select mode'],
+      [['⌘/ctrl', 'Z'], 'undo the gallery\'s last manifest edit (with --edit)'],
     ],
   },
   {
