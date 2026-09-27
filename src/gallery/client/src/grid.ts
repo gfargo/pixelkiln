@@ -1,5 +1,5 @@
 import { toggleCompare } from "./compare.ts"
-import { $, S, STATE_ORDER, STATE_TONE, displayScale, el, fmtCost, fmtSpend, fmtWhen, isFrameSet, postEdit, projectOf, shortPath, ui } from "./core.ts"
+import { $, S, STATE_ORDER, STATE_TONE, displayScale, el, fmtCost, fmtSpend, fmtWhen, isFrameSet, postEdit, projectOf, shortPath, ui, CARD_SIZES, declaredTags } from "./core.ts"
 import { openItem, render, renderDrawer, row } from "./drawer.ts"
 import { budgetLine, generateDialog, openReview } from "./editor.ts"
 import { addAssetForm, styleForm } from "./forms.ts"
@@ -15,6 +15,7 @@ export function visibleItems() {
     if (ui.providers.size && !ui.providers.has(item.provider)) return false;
     if (ui.generators.size && !ui.generators.has(item.generator)) return false;
     if (ui.projects.size && !ui.projects.has(item.project ?? '')) return false;
+    if (ui.tags.size && !declaredTags(item).some((t) => ui.tags.has(t))) return false;
     if (!q) return true;
     const hay = [item.id, item.prompt, item.currentPrompt, item.jobId, item.objectId,
       item.recordedSpecHash, item.currentSpecHash, item.category, ...(item.tags || []),
@@ -110,7 +111,19 @@ export function renderHeader() {
     chips.append(el('span', 'sep'));
     for (const [k, v] of [...byGen].sort()) chips.append(chip(k, v, ui.generators, k));
   }
-  if (ui.states.size || ui.providers.size || ui.generators.size || ui.projects.size || ui.q) {
+  const byTag = new Map<string, number>();
+  for (const item of S.snap.items) for (const t of declaredTags(item)) byTag.set(t, (byTag.get(t) || 0) + 1);
+  for (const t of ui.tags) if (!byTag.has(t)) byTag.set(t, 0);
+  if (byTag.size) {
+    chips.append(el('span', 'sep'));
+    for (const [k, v] of [...byTag].sort()) {
+      const c = chip('#' + k, v, ui.tags, k);
+      c.classList.add('tag');
+      c.title = 'Assets tagged “' + k + '” in the manifest';
+      chips.append(c);
+    }
+  }
+  if (ui.states.size || ui.providers.size || ui.generators.size || ui.projects.size || ui.tags.size || ui.q) {
     const clear = el('button', 'chip', 'clear filters');
     clear.type = 'button';
     clear.onclick = () => clearFilters();
@@ -119,7 +132,7 @@ export function renderHeader() {
 }
 
 export function clearFilters() {
-  ui.states.clear(); ui.providers.clear(); ui.generators.clear(); ui.projects.clear();
+  ui.states.clear(); ui.providers.clear(); ui.generators.clear(); ui.projects.clear(); ui.tags.clear();
   ui.q = ''; $('q').value = '';
   render();
 }
@@ -145,7 +158,7 @@ export function thumb(item) {
       const box = el('div');
       const img = el('img');
       img.src = o.url; img.alt = o.role || item.assetId; img.loading = 'lazy';
-      const s = displayScale(w, h, 66, 52);
+      const s = displayScale(w, h, ...CARD_SIZES[ui.size].tile);
       if (s >= 1) { img.width = w * s; img.height = h * s; } else img.className = 'fit';
       box.append(img); multi.append(box);
     }
@@ -154,7 +167,7 @@ export function thumb(item) {
   }
   const img = el('img');
   img.src = shown[0].url; img.alt = item.assetId; img.loading = 'lazy';
-  const s = displayScale(w, h, 156, 116);
+  const s = displayScale(w, h, ...CARD_SIZES[ui.size].box);
   if (s >= 1) { img.width = w * s; img.height = h * s; } else img.className = 'fit';
   cell.append(img);
   if (isFrameSet(item)) cell.append(el('span', 'badge', '▸ ' + shown.length + ' frames'));

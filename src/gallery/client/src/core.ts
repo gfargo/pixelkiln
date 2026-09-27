@@ -60,6 +60,10 @@ export interface UiState {
   selected: Set<string>
   /** The drawer tab in view; it sticks as records are stepped through. */
   drawerTab: string
+  /** Declared tags filtered to (any of them). */
+  tags: Set<string>
+  /** Card size on the grid: 's', 'm', or 'l'. */
+  size: string
 }
 
 export const ui: UiState = {
@@ -80,17 +84,30 @@ export const ui: UiState = {
   selecting: false,
   selected: new Set(),
   drawerTab: 'overview',
+  tags: new Set(),
+  size: 'm',
 };
+
+/** Card sizes: the box a sprite is drawn into on a card, and the multi-output tile. */
+export const CARD_SIZES: Record<string, { box: [number, number]; tile: [number, number] }> = {
+  s: { box: [112, 80], tile: [48, 36] },
+  m: { box: [156, 116], tile: [66, 52] },
+  l: { box: [240, 190], tile: [108, 88] },
+};
+/** The tags an asset declares in the manifest (not the provider-side tags pixelkiln adds). */
+export const declaredTags = (item): string[] => (item.asset && Array.isArray(item.asset.tags) ? item.asset.tags : []);
 
 // ---- per-viewer preferences ------------------------------------------------
 // Conveniences only: a private window or blocked storage just starts from the defaults.
 const PREFS_KEY = 'pixelkiln.gallery.prefs';
-const PREF_NAMES = ['playLoops', 'backdrop', 'notify', 'onion', 'drawerTab'] as const;
+const PREF_NAMES = ['playLoops', 'backdrop', 'notify', 'onion', 'drawerTab', 'size'] as const;
 export function loadPrefs() {
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
     for (const name of PREF_NAMES) if (typeof saved[name] === typeof ui[name]) (ui as any)[name] = saved[name];
   } catch { /* defaults */ }
+  if (!CARD_SIZES[ui.size]) ui.size = 'm';
+  document.body.dataset.size = ui.size;
   applyBackdrop();
 }
 export function savePrefs() {

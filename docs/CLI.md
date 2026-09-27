@@ -473,9 +473,16 @@ between tabs once one has focus.
 
 #### Looking at sprites
 
+The header keeps search, **Select**, **+ New character**, **Refresh**, and
+**?** in one row. The **View** menu holds sort, grouping, card size (S, M,
+or L), the backdrop, and the playback, refresh, and notification switches.
+**?** (or the <kbd>?</kbd> key) lists every keyboard shortcut and pointer
+gesture the page answers to.
+
 - **Loops on the grid:** a loop's card plays while the pointer is over it.
-  **play loops** in the header plays every loop in view at once.
-- **Backdrop:** the swatches in the header, and beside the zoom controls,
+  **Play every loop** in the View menu plays every loop in view at once.
+- **Card size:** S fits more on screen; L draws sprites bigger.
+- **Backdrop:** the swatches in the View menu, and beside the zoom controls,
   set what every sprite sits on. The choices are a transparency grid, dark,
   light, or any colour you pick, so art can be judged against the game's own
   background.
@@ -486,7 +493,7 @@ between tabs once one has focus.
   - a speed setting, with the loop's own fps marked;
   - **onion skin**, which shows the previous frame faintly under the
     current one.
-- **Notifications:** with `--budget`, **notify** raises a system
+- **Notifications:** with `--budget`, **Notify when a job finishes** raises a system
   notification when a job finishes, or stops for review, while the tab is in
   the background.
 
@@ -494,6 +501,9 @@ The page keeps these choices in the browser's local storage, per viewer.
 
 #### Families and selections
 
+- **Tags:** every tag the manifest declares on an asset becomes a filter
+  chip (`#forge`) beside the state, provider, and generator chips, and is
+  kept in the URL (`?tag=forge`).
 - **Group: by family** gives each character or `objectPro` object its own
   row inside its style. The base comes first, then its states, then each loop
   around the compass, then portraits and outfits. The row header counts the

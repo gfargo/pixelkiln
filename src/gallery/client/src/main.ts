@@ -1,18 +1,34 @@
 import { refresh } from "./refresh.ts"
 import { openStudio } from "./studio.ts"
 import { openCompare } from "./compare.ts"
-import { $, S, backdropControl, loadPrefs, savePrefs, ui } from "./core.ts"
+import { $, S, CARD_SIZES, backdropControl, loadPrefs, savePrefs, ui } from "./core.ts"
 import { closeItem, drawerFrames, keyFromHash, readUrlState, render, step, stopPlayback } from "./drawer.ts"
 import { pollEditor } from "./editor.ts"
 import { familyState } from "./family.ts"
 import { enableNotifications, pollJobs } from "./jobs.ts"
 import { setPlayLoops } from "./motion.ts"
 import { setSelecting } from "./selection.ts"
+import { openShortcuts } from "./keys.ts"
 import { closeEditorSheet } from "./sheet.ts"
 
 loadPrefs();
 $('refresh').onclick = refresh;
 $('select').onclick = () => setSelecting(!ui.selecting);
+$('keys').onclick = openShortcuts;
+// Card size: S, M, or L, kept per viewer.
+const syncSize = () => { for (const b of $('size').querySelectorAll('button')) b.classList.toggle('on', b.dataset.size === ui.size); };
+for (const b of $('size').querySelectorAll('button')) {
+  b.onclick = () => {
+    if (!CARD_SIZES[b.dataset.size]) return;
+    ui.size = b.dataset.size; document.body.dataset.size = ui.size; savePrefs(); syncSize(); render();
+  };
+}
+syncSize();
+// The View menu closes on a click anywhere outside it.
+document.addEventListener('click', (e) => {
+  const menu = $('view-menu');
+  if (menu.open && !menu.contains(e.target as Node)) menu.open = false;
+});
 $('playloops').checked = ui.playLoops;
 $('playloops').onchange = (e) => { setPlayLoops(e.target.checked); savePrefs(); };
 $('backdrop-slot').replaceWith(backdropControl());
@@ -46,7 +62,9 @@ $('group').onchange = (e) => { ui.group = e.target.value; render(); };
 document.addEventListener('keydown', (e) => {
   const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
   if (e.key === '/' && !typing) { e.preventDefault(); $('q').focus(); return; }
+  if (e.key === '?' && !typing) { e.preventDefault(); openShortcuts(); return; }
   if (e.key === 'Escape') {
+    if ($('view-menu').open) { e.preventDefault(); $('view-menu').open = false; $('view-menu').querySelector('summary').focus(); return; }
     if (typing && document.activeElement?.id === 'q') { (document.activeElement as HTMLElement).blur(); return; }
     if (S.SHEET) { e.preventDefault(); closeEditorSheet(); return; }
     if ($('dialog-host').childNodes.length) { e.preventDefault(); $('dialog-host').textContent = ''; return; }

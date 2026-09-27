@@ -155,6 +155,17 @@ try {
   }
 
   console.log("\ngallery smoke")
+  // The header's View menu holds sort, group, card size, backdrop, and playback; ? lists every shortcut.
+  await page.click("#view-menu summary")
+  await page.click('#size button[data-size="l"]')
+  const large = await page.evaluate(() => [document.body.dataset.size, getComputedStyle(document.querySelector(".cell")!).height])
+  check(large[0] === "l" && large[1] === "210px", `the View menu sets large cards (${large.join(", ")})`)
+  await page.click('#size button[data-size="m"]')
+  await page.keyboard.press("Escape")
+  check(await page.evaluate(() => !(document.getElementById("view-menu") as HTMLDetailsElement).open), "Escape closes the View menu")
+  await page.keyboard.press("?")
+  check((await page.$eval("#dialog-host", (n) => n.textContent ?? "")).includes("Keyboard shortcuts"), "? opens the keyboard shortcuts")
+  await page.keyboard.press("Escape")
   check((await page.$$(".card")).length === 2, "two cards render")
   check((await item("base/anvil"))?.state === "ok", "anvil is ok")
   check((await item("base/hammer"))?.state === "missing", "hammer is missing")
@@ -470,6 +481,8 @@ try {
     await page.hover('.card[data-key="characters/mira.walk.west"]')
     check(await srcsOf(walkThumb) > 1, "a loop plays while the pointer is over its card")
     await page.mouse.move(2, 2)
+    // Playback and the backdrop live in the header's View menu.
+    await page.click("#view-menu summary")
     await page.click("#playloops")
     check(await srcsOf('.card[data-key="characters/mira.idle.south"] .cell > img') > 1, "play loops plays every loop without hovering")
     await page.click("#playloops")
@@ -479,7 +492,9 @@ try {
     await page.reload({ waitUntil: "networkidle0" })
     const backdrop = await page.evaluate(() => [document.body.dataset.backdrop, getComputedStyle(document.querySelector(".cell")!).backgroundColor])
     check(backdrop[0] === "light" && backdrop[1] === "rgb(239, 233, 220)", `the light backdrop sticks and colours the cards (${backdrop.join(", ")})`)
+    await page.click("#view-menu summary")
     await page.click("header .backdrop .bd-checker")
+    await page.keyboard.press("Escape")
 
     // The drawer's frame player: step with , and ., onion skin under the frame.
     await page.goto(`${studioServer.url}#characters/mira.walk.west`, { waitUntil: "networkidle0" })
@@ -519,6 +534,12 @@ try {
       "tagging writes each asset once, a split loop on its shorthand")
     await page.keyboard.press("Escape")
     check(await page.evaluate(() => (document.getElementById("selbar") as HTMLElement).hidden && !document.querySelector(".card .sel")), "Escape leaves select mode")
+    // Declared tags become filter chips.
+    await page.evaluate(() => ([...document.querySelectorAll("#chips .chip.tag")] as HTMLButtonElement[]).find((c) => c.textContent?.startsWith("#hero"))!.click())
+    const heroes = await page.evaluate(() => [...document.querySelectorAll(".card")].map((c) => (c as HTMLElement).dataset.key).sort())
+    check(heroes.join(",") === "characters/mira.idle.south,props/crate" && new URL(page.url()).searchParams.get("tag") === "hero",
+      `the #hero chip filters to the tagged assets (${heroes.join(",")})`)
+    await page.evaluate(() => ([...document.querySelectorAll("#chips .chip")] as HTMLButtonElement[]).find((c) => c.textContent === "clear filters")!.click())
 
     // A job that finishes while the tab is in the background raises a system
     // notification, once the viewer has turned them on. The browser's
