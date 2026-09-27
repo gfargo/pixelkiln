@@ -84,7 +84,7 @@ section.project { border-bottom:1px solid var(--line-strong); background:var(--p
 .card:hover { border-color:var(--line-strong); }
 .card.active { border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
 .card.ghost { border-style:dashed; background:transparent; }
-.cell { height:132px; display:grid; place-items:center; background-color:var(--stage-bg);
+.cell { height:132px; flex:none; display:grid; place-items:center; background-color:var(--stage-bg);
   background-image:var(--stage-pattern); background-size:12px 12px; background-position:0 0,6px 6px;
   overflow:hidden; position:relative; padding:8px; }
 .card.ghost .cell { background-image:none; background-color:var(--panel-deep); color:var(--dim); font-size:12px; }
@@ -508,6 +508,9 @@ td.col-on { background:rgba(255,107,53,.08); }
 #keys { width:32px; padding:6px 0; font:700 13px/1 var(--mono); }
 body[data-size="s"] .grid { grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); gap:8px; }
 body[data-size="s"] .cell { height:96px; }
+/* A card not yet drawn holds this size (content-visibility), so it has to match the card size. */
+body[data-size="s"] .card { contain-intrinsic-size:auto 132px auto 160px; }
+body[data-size="l"] .card { contain-intrinsic-size:auto 260px auto 275px; }
 body[data-size="s"] .cbody { padding:6px 8px; }
 body[data-size="l"] .grid { grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); }
 body[data-size="l"] .cell { height:210px; }
