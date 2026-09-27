@@ -142,6 +142,7 @@ ${css}</style>
 </header>
 <main id="root"></main>
 <div id="selbar" class="selbar" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <footer>
   Click a sprite for its full record; press <kbd>?</kbd> for every keyboard shortcut. This page reads the manifest, lockfile,
   and disk only. It never contacts a provider<span id="foot-edit"> and never writes anything</span><span id="foot-editing" hidden>.

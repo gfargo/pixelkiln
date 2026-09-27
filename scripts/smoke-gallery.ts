@@ -541,6 +541,32 @@ try {
       `the #hero chip filters to the tagged assets (${heroes.join(",")})`)
     await page.evaluate(() => ([...document.querySelectorAll("#chips .chip")] as HTMLButtonElement[]).find((c) => c.textContent === "clear filters")!.click())
 
+    // Every manifest write says what it did, and Undo puts the manifest back.
+    check(/Saved: 2 changes to the manifest/.test(await page.$eval("#toast", (n) => n.textContent ?? "")), "a tag write says what it saved")
+    await page.evaluate(() => ([...document.querySelectorAll("#toast button")] as HTMLButtonElement[]).find((b) => b.textContent === "Undo")!.click())
+    await page.waitForFunction(() => /Undone/.test(document.getElementById("toast")?.textContent ?? ""), { timeout: 5_000 })
+    const untagged = JSON.parse(await readFile(studioManifest, "utf8")) as { assets: Record<string, { tags?: string[] }> }
+    check(!untagged.assets.crate?.tags && !untagged.assets["mira.idle"]?.tags, "Undo takes the tags back out of the manifest")
+
+    // The studio suggests templates, previews one this project has drawn, and keeps an unfinished draft.
+    await page.click("#studio")
+    await page.waitForSelector(".studio-form", { timeout: 5_000 })
+    const preview = await page.$eval(".studio-loop .studio-tpl-preview", (n) => ((n as HTMLElement).hidden ? "" : n.textContent ?? ""))
+    const suggestions = await page.$$eval("#studio-templates option", (os) => os.map((o) => (o as HTMLOptionElement).value))
+    check(/walk, as drawn for mira\.walk\./.test(preview) && suggestions.includes("breathing-idle") && suggestions.includes("walk"),
+      `the walk loop previews this project's own walk, and templates are suggested (${preview})`)
+    await page.type(".studio-form input[placeholder='e.g. mira']", "nova")
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    await page.keyboard.press("Escape")
+    await page.click("#studio")
+    await page.waitForSelector(".studio-form", { timeout: 5_000 })
+    const restored = await page.evaluate(() => [Boolean(document.querySelector(".studio-draft")), (document.querySelector(".studio-form input[placeholder='e.g. mira']") as HTMLInputElement).value])
+    check(restored[0] === true && restored[1] === "nova", `closing the studio keeps the draft (${JSON.stringify(restored)})`)
+    await page.evaluate(() => (document.querySelector(".studio-draft button") as HTMLButtonElement).click())
+    const fresh = await page.evaluate(() => [Boolean(document.querySelector(".studio-draft")), (document.querySelector(".studio-form input[placeholder='e.g. mira']") as HTMLInputElement).value])
+    check(fresh[0] === false && fresh[1] === "", "Start over discards the draft")
+    await page.keyboard.press("Escape")
+
     // A job that finishes while the tab is in the background raises a system
     // notification, once the viewer has turned them on. The browser's
     // Notification and document.hidden are stood in for.

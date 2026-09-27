@@ -105,6 +105,28 @@ describe("adding a direction to a loop", () => {
   })
 })
 
+describe("undoing a gallery edit", () => {
+  it("puts the manifest back, step by step, and never over a change made outside the gallery", async () => {
+    const edit = createGalleryEditHandler({ manifestFor: () => manifestPath, reload })
+    const original = await readFile(manifestPath, "utf8")
+    await edit({ action: "patch-asset", assetId: "crate", expectedSha256: await expected(), patch: { prompt: "a mossy crate" } })
+    const once = await readFile(manifestPath, "utf8")
+    await edit({ action: "patch-asset", assetId: "crate", expectedSha256: await expected(), patch: { tags: ["wood"] } })
+    await edit({ action: "undo-edit", expectedSha256: await expected() })
+    expect(await readFile(manifestPath, "utf8")).toBe(once)
+    await edit({ action: "undo-edit", expectedSha256: await expected() })
+    expect(await readFile(manifestPath, "utf8")).toBe(original)
+    await expect(edit({ action: "undo-edit", expectedSha256: await expected() })).rejects.toThrow(/nothing to undo/)
+
+    // A page quoting a stale hash is refused, and so is undo over a hand edit made since.
+    await edit({ action: "patch-asset", assetId: "crate", expectedSha256: await expected(), patch: { prompt: "a burnt crate" } })
+    await expect(edit({ action: "undo-edit", expectedSha256: "0".repeat(64) })).rejects.toMatchObject({ status: 409 })
+    await writeFile(manifestPath, (await readFile(manifestPath, "utf8")).replace("a burnt crate", "a crate, edited by hand"))
+    await expect(edit({ action: "undo-edit", expectedSha256: await expected() })).rejects.toThrow(/changed outside the gallery/)
+    expect(await readFile(manifestPath, "utf8")).toContain("a crate, edited by hand")
+  })
+})
+
 describe("pricing an unsaved edit", () => {
   it("quotes every new asset the way plan would, summed by unit, and writes nothing", async () => {
     await writeFile(path.join(dir, "refs.png"), Buffer.from(sprite(), "base64"))

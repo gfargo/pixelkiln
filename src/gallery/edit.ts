@@ -1,7 +1,9 @@
+import { readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { z } from "zod"
 import {
   applyManifestEdit,
+  ManifestDriftError,
   ManifestEditError,
   ManifestEditSchema,
   priceManifestEdit,
@@ -10,6 +12,7 @@ import {
 } from "../manifest-edit.ts"
 import { detachHandEdit, MAX_HAND_EDIT_BYTES, openInEditor, saveHandEdit, startHandEdit } from "../pipeline/hand-edit.ts"
 import { lockKey, type ResolvedSpec } from "../types.ts"
+import { sha256 } from "../hash.ts"
 import type { GalleryProjectContext } from "./generate.ts"
 import { saveProjectImage, UploadImageSchema } from "./upload.ts"
 import {
@@ -88,11 +91,73 @@ export interface GalleryEditHandlerOptions {
   onProgress?: (msg: string) => void
 }
 
+/** How many manifest writes a gallery session can step back through. */
+const UNDO_DEPTH = 20
+
+const UndoRequestSchema = z
+  .object({
+    action: z.literal("undo-edit"),
+    project: z.string().min(1).optional(),
+    /** The manifest as the page last saw it; undo refuses a manifest someone else has changed since. */
+    expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  })
+  .strict()
+
 /** The `edit` callback `serveGallery` expects: validate, apply, rebuild. */
 export function createGalleryEditHandler(
   opts: GalleryEditHandlerOptions,
 ): (body: unknown) => Promise<GalleryBuild> {
   const log = opts.onProgress ?? (() => {})
+  const apply = createEditApplier(opts, log)
+  // Per manifest, the text before each write this session made, and what the
+  // write left there: undo puts the text back only while the file still holds
+  // exactly what the gallery wrote, so a hand edit made since is never lost.
+  const history = new Map<string, Array<{ before: string; afterSha: string }>>()
+  const manifestOf = async (project: unknown): Promise<string | null> => {
+    try {
+      return path.resolve(await opts.manifestFor(typeof project === "string" ? project : undefined))
+    } catch {
+      return null
+    }
+  }
+  return async (body) => {
+    const undo = UndoRequestSchema.safeParse(body)
+    if (undo.success) {
+      const manifestPath = await manifestOf(undo.data.project)
+      if (!manifestPath) throw new ManifestEditError("no manifest to undo an edit in")
+      const current = await readFile(manifestPath, "utf8")
+      if (sha256(current) !== undo.data.expectedSha256) throw new ManifestDriftError(manifestPath)
+      const stack = history.get(manifestPath) ?? []
+      const last = stack[stack.length - 1]
+      if (!last) throw new ManifestEditError("nothing to undo: this gallery has not changed the manifest")
+      if (last.afterSha !== sha256(current)) {
+        history.delete(manifestPath)
+        throw Object.assign(new Error("the manifest changed outside the gallery since its last edit; undo would discard that change"), { status: 409 })
+      }
+      const tmp = manifestPath + ".pixelkiln-undo"
+      await writeFile(tmp, last.before)
+      await rename(tmp, manifestPath)
+      stack.pop()
+      log(`  manifest edit undone in ${path.relative(process.cwd(), manifestPath) || manifestPath}`)
+      return opts.reload()
+    }
+    const manifestPath = await manifestOf((body as { project?: unknown } | null)?.project)
+    const before = manifestPath ? await readFile(manifestPath, "utf8").catch(() => null) : null
+    const build = await apply(body)
+    if (manifestPath && before !== null) {
+      const after = await readFile(manifestPath, "utf8").catch(() => null)
+      if (after !== null && after !== before) {
+        const stack = history.get(manifestPath) ?? []
+        stack.push({ before, afterSha: sha256(after) })
+        if (stack.length > UNDO_DEPTH) stack.shift()
+        history.set(manifestPath, stack)
+      }
+    }
+    return build
+  }
+}
+
+function createEditApplier(opts: GalleryEditHandlerOptions, log: (msg: string) => void): (body: unknown) => Promise<GalleryBuild> {
   return async (body) => {
     const handEdit = HandEditRequestSchema.safeParse(body)
     if (handEdit.success) {

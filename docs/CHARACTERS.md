@@ -489,6 +489,13 @@ reference image change alone also makes it stale.
   saves everything in one validated write; with `--budget`, **Create &
   generate** also starts one job for all of it, which generates the base
   first and the loops and portrait as soon as it lands.
+
+  In the studio's loop rows, the template field suggests the templates
+  PixelLab documents and any this project already uses. A template the
+  project has already drawn plays beside the row, so you can see the motion
+  before choosing it. An unfinished draft is kept in the browser when the
+  sheet is closed, and comes back the next time it opens; **Start over**
+  discards it.
 - `pack --format godot` and `--format aseprite` write each direction as a
   still and each loop as a looping set at its fps; see
   [engine formats](./ARTIFACTS.md).

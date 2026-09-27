@@ -1,4 +1,4 @@
-import { $, el, field, fmtCost, postEdit, S, ui } from "./core.ts"
+import { $, el, field, fmtCost, fmtWhen, postEdit, S, ui } from "./core.ts"
 import { openItem, render } from "./drawer.ts"
 import { nextStep, showSaveError } from "./form-kit.ts"
 import { pollJobs, postGenerate, remainingBudget } from "./jobs.ts"
@@ -33,9 +33,40 @@ const LOOP_MODES = [
   { id: 'pro', label: 'pro: described in words, sequential (20-40 per direction)' },
 ];
 const templated = (mode: string) => mode === 'skeleton-v3' || mode === 'template';
+/**
+ * Template ids PixelLab documents (its schema lists the first ten, then
+ * "..."), plus the ones its guides use. Any other id is still accepted;
+ * the picker also offers every template this project already uses.
+ */
+const KNOWN_TEMPLATES = [
+  'walk', 'walking-8-frames', 'running-8-frames', 'breathing-idle', 'crouched-walking',
+  'attack', 'attack-back', 'attack-left', 'attack-right', 'cross-punch', 'backflip', 'angry', 'bark',
+];
+/** One unfinished draft per project, so closing the sheet by accident loses nothing. */
+const draftKey = () => 'pixelkiln.studio.draft:' + (S.snap.workspace ? S.snap.workspace.path : S.snap.project ? S.snap.project.manifest : '');
+function readDraft(): any | null {
+  try { const d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); return d && typeof d === 'object' ? d : null; }
+  catch { return null; }
+}
+function writeDraft(draft: any | null) {
+  try { if (draft) localStorage.setItem(draftKey(), JSON.stringify(draft)); else localStorage.removeItem(draftKey()); }
+  catch { /* not kept */ }
+}
+/** The templates this project's loops already use, with one generated loop to preview each. */
+function usedTemplates(projectId: string | null) {
+  const out = new Map<string, any>();
+  for (const i of S.snap.items) {
+    const t = i.asset && i.asset.animation && i.asset.animation.template;
+    if (!t || i.project !== projectId) continue;
+    const frames = i.outputs.filter((o) => o.url);
+    if (frames.length > 1 && !out.get(t)) out.set(t, i);
+    else if (!out.has(t)) out.set(t, null);
+  }
+  return out;
+}
 const idPattern = '[^\\/\\\\:]+';
 
-interface LoopRow { id: HTMLInputElement; mode: HTMLSelectElement; what: HTMLInputElement; directions: Map<string, HTMLInputElement>; wrap: HTMLElement }
+interface LoopRow { id: HTMLInputElement; mode: HTMLSelectElement; what: HTMLInputElement; directions: Map<string, HTMLInputElement>; wrap: HTMLElement; preview: HTMLElement }
 
 export function openStudio() {
   const host = $('dialog-host');
@@ -51,7 +82,8 @@ export function openStudio() {
   const scrim = el('div', 'sheet-scrim');
   const panel = el('div', 'sheet studio');
   let closed = false;
-  const close = () => { closed = true; if (priceTimer) clearTimeout(priceTimer); priceSeq++; host.textContent = ''; };
+  const previewTimers = new Set<ReturnType<typeof setInterval>>();
+  const close = () => { closed = true; if (priceTimer) clearTimeout(priceTimer); priceSeq++; for (const t of previewTimers) clearInterval(t); host.textContent = ''; };
   const bar = el('div', 'rbar');
   const back = el('button', null, 'Back to gallery'); back.type = 'button'; back.onclick = close;
   bar.append(back, el('span', null, 'A new character, priced as you draft it. Nothing is written until you create it.'));
@@ -108,7 +140,8 @@ export function openStudio() {
   const loopsSection = el('section', 'studio-part');
   const loopList = el('div', 'studio-loops');
   const addLoop = el('button', 'add', '+ Add a loop'); addLoop.type = 'button';
-  loopsSection.append(el('h3', null, 'Loops'), el('small', 'state-dim', 'Each loop is drawn once per ticked direction; a direction whose mirror is ticked is flipped from it for free.'), loopList, addLoop);
+  const templateList = el('datalist'); templateList.id = 'studio-templates';
+  loopsSection.append(el('h3', null, 'Loops'), el('small', 'state-dim', 'Each loop is drawn once per ticked direction; a direction whose mirror is ticked is flipped from it for free.'), loopList, addLoop, templateList);
 
   // ---- portrait -----------------------------------------------------------
   const portrait = el('input'); portrait.type = 'checkbox';
@@ -182,7 +215,37 @@ export function openStudio() {
   function syncLoopMode(row: LoopRow) {
     const t = templated(row.mode.value);
     row.what.placeholder = t ? 'template, e.g. walk, breathing-idle, running-8-frames' : 'the motion, e.g. "swings a sword overhead"';
-    row.what.title = t ? 'A PixelLab template id' : 'What the loop does';
+    row.what.title = t ? 'A PixelLab template id: pick one, or type any id PixelLab has' : 'What the loop does';
+    if (t) row.what.setAttribute('list', templateList.id); else row.what.removeAttribute('list');
+    syncPreview(row);
+  }
+  /** A template this project has already drawn plays beside the row, so the choice is seen, not guessed. */
+  function syncPreview(row: LoopRow) {
+    const old = (row.preview as any).__timer;
+    if (old) { clearInterval(old); previewTimers.delete(old); }
+    row.preview.textContent = '';
+    const name = row.what.value.trim();
+    const sample = templated(row.mode.value) && name ? usedTemplates(projectId()).get(name) : null;
+    if (!sample) { row.preview.hidden = true; return; }
+    const urls = sample.outputs.filter((o) => o.url).map((o) => o.url);
+    const img = el('img'); img.src = urls[0]; img.alt = name;
+    let i = 0;
+    // Esc empties the sheet without calling close(), so a timer also stops once its image is gone.
+    const timer = setInterval(() => {
+      if (!img.isConnected) { clearInterval(timer); previewTimers.delete(timer); return; }
+      if (!document.hidden) { i = (i + 1) % urls.length; img.src = urls[i]; }
+    }, Math.round(1000 / (sample.fps || 12)));
+    (row.preview as any).__timer = timer; previewTimers.add(timer);
+    row.preview.append(img, el('small', 'state-dim', name + ', as drawn for ' + sample.assetId));
+    row.preview.hidden = false;
+  }
+  function fillTemplateList() {
+    templateList.textContent = '';
+    const used = usedTemplates(projectId());
+    for (const t of [...new Set([...used.keys(), ...KNOWN_TEMPLATES])]) {
+      const o = el('option'); o.value = t; if (used.has(t)) o.label = 'used in this project';
+      templateList.append(o);
+    }
   }
   function addLoopRow(defaults: { id?: string; mode?: string; what?: string; directions?: string[] } = {}) {
     const wrap = el('div', 'studio-loop');
@@ -200,12 +263,14 @@ export function openStudio() {
       dirs.append(label);
     }
     const remove = el('button', null, 'Remove'); remove.type = 'button';
-    const row: LoopRow = { id, mode, what, directions: boxes, wrap };
-    remove.onclick = () => { loops.splice(loops.indexOf(row), 1); wrap.remove(); schedulePrice(); };
+    const preview = el('div', 'studio-tpl-preview'); preview.hidden = true;
+    const row: LoopRow = { id, mode, what, directions: boxes, wrap, preview };
+    what.addEventListener('input', () => syncPreview(row));
+    remove.onclick = () => { loops.splice(loops.indexOf(row), 1); wrap.remove(); schedulePrice(); keepDraft(); };
     mode.onchange = () => { syncLoopMode(row); schedulePrice(); };
     const line = el('div', 'row');
     line.append(field('loop id', id), field('mode', mode), field('template or motion', what));
-    wrap.append(line, dirs, remove);
+    wrap.append(line, preview, dirs, remove);
     loopList.append(wrap);
     loops.push(row);
     syncLoopMode(row);
@@ -347,6 +412,7 @@ export function openStudio() {
     const keys = price ? price.items.filter((i) => ours(i.key)).map((i) => i.key) : [];
     try {
       S.snap = await postEdit(request());
+      writeDraft(null);
       const newId = (pid ? pid + ':' : '') + sid + '/' + base;
       if (generate && keys.length) {
         await postGenerate({ keys, ...(pid ? { project: pid } : {}) });
@@ -405,11 +471,58 @@ export function openStudio() {
   form.addEventListener('input', schedulePrice);
   form.addEventListener('change', schedulePrice);
 
+  // ---- the draft ----------------------------------------------------------
+  const capture = () => ({
+    savedAt: new Date().toISOString(),
+    project: project.value, style: style.value, styleId: styleId.value, engine: engine.value, size: size.value,
+    directions: directions.value, body: body.value, view: view.value, outDir: outDir.value, outDirTouched,
+    baseId: baseId.value, prompt: prompt.value, reference,
+    loops: loops.map((r) => ({ id: r.id.value, mode: r.mode.value, what: r.what.value, directions: [...r.directions].filter(([, b]) => b.checked).map(([d]) => d) })),
+    portrait: portrait.checked, portraitSize: portraitSize.value,
+  });
+  let draftTimer: ReturnType<typeof setTimeout> | null = null;
+  const keepDraft = () => {
+    if (closed) return;
+    if (draftTimer) clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => { if (!closed) writeDraft(baseId.value.trim() || prompt.value.trim() ? capture() : null); }, 300);
+  };
+  form.addEventListener('input', keepDraft);
+  form.addEventListener('change', keepDraft);
+  addLoop.addEventListener('click', keepDraft);
+
   fillStyles();
+  fillTemplateList();
   syncEngine();
   syncStyle();
-  addLoopRow({ id: 'walk', mode: 'skeleton-v3', what: 'walk', directions: ['south', 'west', 'north'] });
-  addLoopRow({ id: 'idle', mode: 'skeleton-v3', what: 'breathing-idle', directions: ['south'] });
+  const draft = readDraft();
+  if (draft && (draft.baseId || draft.prompt)) {
+    const set = (input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, value: unknown) => {
+      if (typeof value !== 'string') return;
+      if (input instanceof HTMLSelectElement && ![...input.options].some((o) => o.value === value)) return;
+      input.value = value;
+    };
+    set(project, draft.project); fillStyles(); set(style, draft.style);
+    set(engine, draft.engine); syncEngine();
+    set(styleId, draft.styleId); set(size, draft.size); set(directions, draft.directions); set(body, draft.body); set(view, draft.view);
+    outDirTouched = Boolean(draft.outDirTouched); set(outDir, draft.outDir);
+    set(baseId, draft.baseId); set(prompt, draft.prompt);
+    if (typeof draft.reference === 'string') {
+      reference = draft.reference;
+      refField.append(el('small', 'state-dim studio-ref-kept', 'Using ' + draft.reference + ', uploaded with this draft. Choose a file to replace it.'));
+    }
+    portrait.checked = Boolean(draft.portrait); set(portraitSize, draft.portraitSize);
+    syncStyle();
+    for (const l of Array.isArray(draft.loops) ? draft.loops : []) addLoopRow({ id: l.id, mode: l.mode, what: l.what, directions: l.directions });
+    const note = el('div', 'notice studio-draft');
+    note.append(document.createTextNode('Picked up the draft you left ' + (fmtWhen(draft.savedAt) || 'earlier') + '. '));
+    const discard = el('button', 'linkish', 'Start over'); discard.type = 'button';
+    discard.onclick = () => { writeDraft(null); close(); openStudio(); };
+    note.append(discard);
+    form.prepend(note);
+  } else {
+    addLoopRow({ id: 'walk', mode: 'skeleton-v3', what: 'walk', directions: ['south', 'west', 'north'] });
+    addLoopRow({ id: 'idle', mode: 'skeleton-v3', what: 'breathing-idle', directions: ['south'] });
+  }
   updatePrice();
   setTimeout(() => baseId.focus(), 0);
 }
