@@ -1,3 +1,15 @@
+# [0.81.0](https://github.com/gfargo/pixelkiln/compare/v0.80.0...v0.81.0) (2026-09-27)
+
+
+### Bug Fixes
+
+* **gallery:** keep a card's sprite box at its size before the card is first drawn ([91cd381](https://github.com/gfargo/pixelkiln/commit/91cd38171e906344ba70521e86739762431f4bff))
+
+
+### Features
+
+* **gallery:** one-row header with a View menu, tag filters, card sizes, and a shortcut sheet ([48c5ef2](https://github.com/gfargo/pixelkiln/commit/48c5ef2f1aeda017902aabd42f82825a274cc5ad)), closes [#forge](https://github.com/gfargo/pixelkiln/issues/forge)
+
 # [0.80.0](https://github.com/gfargo/pixelkiln/compare/v0.79.0...v0.80.0) (2026-09-26)
 
 
