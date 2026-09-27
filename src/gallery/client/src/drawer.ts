@@ -592,6 +592,7 @@ export function readUrlState() {
   ui.states = new Set(list('state'));
   ui.providers = new Set(list('provider'));
   ui.generators = new Set(list('generator'));
+  ui.tags = new Set(list('tag'));
   ui.projects = new Set(list('project'));
   ui.compare = list('compare').slice(0, 4);
   if (['key', 'newest', 'oldest', 'cost', 'size'].includes(params.get('sort') ?? '')) ui.sort = params.get('sort')!;
@@ -603,6 +604,7 @@ export function writeUrlState() {
   if (ui.states.size) params.set('state', [...ui.states].join(','));
   if (ui.providers.size) params.set('provider', [...ui.providers].join(','));
   if (ui.generators.size) params.set('generator', [...ui.generators].join(','));
+  if (ui.tags.size) params.set('tag', [...ui.tags].join(','));
   if (ui.projects.size) params.set('project', [...ui.projects].join(','));
   if (ui.compare.length) params.set('compare', ui.compare.join(','));
   if (ui.sort !== 'key') params.set('sort', ui.sort);

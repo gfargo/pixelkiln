@@ -105,26 +105,35 @@ ${css}</style>
     <span class="project" id="project"></span>
     <span class="grow"></span>
     <label class="search"><input id="q" type="search" placeholder="Search assets, prompts, ids, hashes" autocomplete="off"><kbd>/</kbd></label>
-    <select id="sort" aria-label="Sort">
-      <option value="key">Sort: style / asset</option>
-      <option value="newest">Sort: newest first</option>
-      <option value="oldest">Sort: oldest first</option>
-      <option value="cost">Sort: cost</option>
-      <option value="size">Sort: size</option>
-    </select>
-    <select id="group" aria-label="Group">
-      <option value="style">Group: by style</option>
-      <option value="family">Group: by family</option>
-      <option value="none">Group: none</option>
-    </select>
+    <details class="menu" id="view-menu">
+      <summary title="Sort, group, card size, backdrop, and playback">View</summary>
+      <div class="menu-panel">
+        <label class="menu-row"><span>Sort</span><select id="sort" aria-label="Sort">
+          <option value="key">style / asset</option>
+          <option value="newest">newest first</option>
+          <option value="oldest">oldest first</option>
+          <option value="cost">cost</option>
+          <option value="size">size</option>
+        </select></label>
+        <label class="menu-row"><span>Group</span><select id="group" aria-label="Group">
+          <option value="style">by style</option>
+          <option value="family">by family</option>
+          <option value="none">none</option>
+        </select></label>
+        <div class="menu-row"><span>Cards</span><span class="seg" id="size" role="group" aria-label="Card size">
+          <button type="button" data-size="s" title="Small cards: more on screen">S</button><button type="button" data-size="m" title="Medium cards">M</button><button type="button" data-size="l" title="Large cards: sprites drawn bigger">L</button>
+        </span></div>
+        <div class="menu-row"><span>Backdrop</span><span id="backdrop-slot"></span></div>
+        <label class="menu-row check" title="Play every loop on the grid; without this, a loop plays while the pointer is over it"><input id="playloops" type="checkbox"> Play every loop</label>
+        <label class="menu-row check" title="Refresh every 5 seconds while this tab is visible"><input id="auto" type="checkbox"> Refresh every 5 seconds</label>
+        <label class="menu-row check" id="notify-chip" hidden title="A system notification when a job finishes while this tab is in the background"><input id="notify" type="checkbox"> Notify when a job finishes</label>
+      </div>
+    </details>
     <span id="editing" class="editing" hidden title="This gallery can write the manifest. It never contacts a provider.">editing</span>
     <button id="select" type="button" title="Pick several records to generate, regenerate, compare, or tag together (or ctrl/⌘-click a card)">Select</button>
     <button id="studio" type="button" hidden title="Draft a new character: its style, base, loops, and portrait, priced as you go">+ New character</button>
     <button id="refresh" type="button" title="Re-read the manifest, lockfile, and disk">Refresh</button>
-    <label class="chip" title="Refresh every 5 seconds while this tab is visible"><input id="auto" type="checkbox"> auto</label>
-    <label class="chip" title="Play every loop on the grid; without this, a loop plays while the pointer is over it"><input id="playloops" type="checkbox"> play loops</label>
-    <span id="backdrop-slot"></span>
-    <label class="chip" id="notify-chip" hidden title="A system notification when a job finishes while this tab is in the background"><input id="notify" type="checkbox"> notify</label>
+    <button id="keys" type="button" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
   </div>
   <div class="totals" id="totals"></div>
   <div class="chips" id="chips"></div>
@@ -134,8 +143,7 @@ ${css}</style>
 <main id="root"></main>
 <div id="selbar" class="selbar" hidden></div>
 <footer>
-  Click a sprite for its full record; <kbd>shift</kbd>-click adds it to a side-by-side comparison. <kbd>←</kbd>/<kbd>→</kbd> step through the visible set while a record
-  is open, <kbd>,</kbd>/<kbd>.</kbd> step a loop's frames and <kbd>space</kbd> plays it, <kbd>Esc</kbd> closes it, and <kbd>/</kbd> jumps to search. This page reads the manifest, lockfile,
+  Click a sprite for its full record; press <kbd>?</kbd> for every keyboard shortcut. This page reads the manifest, lockfile,
   and disk only. It never contacts a provider<span id="foot-edit"> and never writes anything</span><span id="foot-editing" hidden>.
   Editing is on: saving rewrites the manifest and nothing else</span><span id="foot-gen" hidden>.
   Generation is on under the session budget shown above; every run is the same submit, poll, and fetch as <code>pixelkiln gen</code></span>.
