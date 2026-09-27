@@ -1,3 +1,10 @@
+# [0.82.0](https://github.com/gfargo/pixelkiln/compare/v0.81.0...v0.82.0) (2026-09-27)
+
+
+### Features
+
+* **gallery:** undo for manifest edits, and a studio that suggests templates and keeps drafts ([9a9440a](https://github.com/gfargo/pixelkiln/commit/9a9440a4f7eb86d158b53a19e394e9dbc72260b5))
+
 # [0.81.0](https://github.com/gfargo/pixelkiln/compare/v0.80.0...v0.81.0) (2026-09-27)
 
 
