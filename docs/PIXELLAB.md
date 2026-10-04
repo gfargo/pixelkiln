@@ -146,7 +146,15 @@ comparing notes with someone using a different one:
   is a deliberately partial surface: "the API provides everything that the
   MCP doesn't." Good for ad hoc, conversational generation; it has no concept
   of a project's state, a budget, or what has already been paid for.
-  Complements PixelKiln rather than competing with it.
+  Complements PixelKiln rather than competing with it. It also carries
+  `pixelart_workbench`, a free-for-subscribers command line for art you
+  already have: `lint`, `score`, `inspect`, and `compare` report defects, and
+  `shade`, `selout`, and `repair` return an improved copy under a new id.
+  PixelLab's endpoint list has no matching REST call, so PixelKiln cannot
+  drive it, and its subjects are account ids or image references, never file
+  paths. Use it for a quick check or touch-up in conversation, then download
+  the result and declare it as an asset's `source` to bring it under the
+  manifest.
 - **PixelLab's editor plugins for Aseprite and Pixelorama**, which bring
   PixelLab's create/edit/inpaint/animate/interpolate/reduce-colors tools into
   an existing pixel-art editor's own canvas and layers. Good for a human
