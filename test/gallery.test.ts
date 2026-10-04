@@ -731,6 +731,42 @@ describe("applyManifestEdit", () => {
     expect(written.assets["anvil-worn"].revision).toEqual({ mode: "image-to-image", from: "anvil", strength: 0.4 })
   })
 
+  it("adds the mask-free PixelLab revision modes and has the loader accept each", async () => {
+    const { manifestPath } = await generated()
+    const cases: [string, Record<string, unknown>][] = [
+      ["anvil-reduced", { mode: "reduce-colors", from: "anvil", numColors: 8, dithering: "4x4" }],
+      ["anvil-clean", { mode: "correct-pixelart", from: "anvil", strength: 0.5 }],
+      ["anvil-wobble", { mode: "animate", from: "anvil", frames: 8, fps: 8 }],
+      ["anvil-spin", { mode: "animate-pixminimax", from: "anvil", frames: 8, enhancePrompt: true, direction: "south" }],
+    ]
+    for (const [assetId, revision] of cases) {
+      await applyManifestEdit(manifestPath, {
+        action: "add-asset", assetId, expectedSha256: await sha256File(manifestPath),
+        asset: { prompt: assetId, styles: ["base"], revision },
+      })
+    }
+    const specs = await resolveSpecs(await loadManifest(manifestPath))
+    for (const [assetId, revision] of cases) {
+      expect(specs.find((spec) => spec.assetId === assetId)!.revision).toMatchObject({ mode: revision.mode, sourceAssetId: "anvil" })
+    }
+  })
+
+  it("refuses a revision mode or field the gallery cannot author", async () => {
+    const { manifestPath } = await generated()
+    const sha = await sha256File(manifestPath)
+    for (const revision of [
+      { mode: "inpaint", from: "anvil" },
+      { mode: "interpolate", from: "anvil" },
+      { mode: "animate", from: "anvil", frames: 7 },
+      { mode: "reduce-colors", from: "anvil", strength: 0.3 },
+      { mode: "edit-animation", from: "anvil", frames: 8 },
+    ]) {
+      expect(ManifestEditSchema.safeParse({
+        action: "add-asset", assetId: "x", expectedSha256: sha, asset: { prompt: "x", revision },
+      }).success).toBe(false)
+    }
+  })
+
   it("refuses a revision whose parent does not exist", async () => {
     const { manifestPath } = await generated()
     await expect(applyManifestEdit(manifestPath, {

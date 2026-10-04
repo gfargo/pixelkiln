@@ -58,13 +58,18 @@ input to the provider workflow, not a cross-model quality guarantee.
 
 **From the gallery** (`pixelkiln gallery --edit`): open a completed or
 committed asset's drawer and use "+ New revision" under "Revisions from this
-asset" to create an `image-to-image` child of it — an edit instruction, an
-optional strength, and a new asset id are all it asks for. The button only
+asset" to create a child of it. On a PixelLab sprite the mode picker offers
+`image-to-image`, `animate`, `animate-pixminimax`, `reduce-colors`, and
+`correct-pixelart`; on a PixelLab frame set (or a character's directions) it
+offers `edit-animation`, `reduce-colors`, and `correct-pixelart`, which take
+the whole set. Other providers get `image-to-image`. The form asks only for
+the new asset id, the instruction or motion, and the mode's own options
+(strength, frames, fps, colours, dithering). The button only
 appears once the parent has usable pixels (committed `source`, a current
 downloaded generation, or a current approved quality output); the plan still
 reports `blocked` with the real reason if that turns out wrong once the asset
-exists. `inpaint` needs a mask upload the gallery does not offer yet, so it
-still has to be added by hand.
+exists. `inpaint` needs a mask upload and `interpolate` an ending keyframe, and
+the gallery offers neither, so those still have to be added by hand.
 
 "+ Skeleton animation", beside it on a single PixelLab sprite, creates an
 `animate-skeleton` child instead. The poses come from a keypoints file already

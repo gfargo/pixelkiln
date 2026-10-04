@@ -12,6 +12,7 @@ import {
   CharacterOutfitSchema,
   CharacterPortraitSchema,
   CharacterProportionsSchema,
+  RevisionDitheringSchema,
 } from "./types.ts"
 
 /**
@@ -93,10 +94,10 @@ const NewAssetSchema = z
     styles: z.array(z.string().min(1)).optional(),
     /**
      * A controlled regeneration of another asset in the same manifest,
-     * instead of a fresh generation. `inpaint` needs a mask upload the
-     * gallery does not offer yet, so only `image-to-image` and
-     * `animate-skeleton` (whose keypoints file the gallery writes first) can
-     * be created here; hand-edit the manifest for the other modes.
+     * instead of a fresh generation. `inpaint` needs a mask upload and
+     * `interpolate` an ending-keyframe image the gallery does not offer, so
+     * those two are hand-edited; every other mode can be created here
+     * (`animate-skeleton` after the gallery writes its keypoints file).
      */
     revision: z
       .discriminatedUnion("mode", [
@@ -106,6 +107,37 @@ const NewAssetSchema = z
             /** Asset id of the parent this revises; must already exist. */
             from: z.string().min(1),
             strength: z.number().min(0).max(1).optional(),
+          })
+          .strict(),
+        z
+          .object({
+            mode: z.literal("reduce-colors"),
+            from: z.string().min(1),
+            /** A target colour count; the gallery leaves PixelLab's default when this is omitted. */
+            numColors: z.number().int().min(2).max(256).optional(),
+            dithering: RevisionDitheringSchema.optional(),
+            ditheringStrength: z.number().min(0).max(10).optional(),
+          })
+          .strict(),
+        z
+          .object({ mode: z.literal("correct-pixelart"), from: z.string().min(1), strength: z.number().min(0).max(1).optional() })
+          .strict(),
+        z
+          .object({
+            mode: z.enum(["animate", "animate-pixminimax"]),
+            from: z.string().min(1),
+            frames: z.number().int().min(4).max(40).refine((n) => n % 2 === 0, "frames must be even").optional(),
+            fps: z.number().int().min(1).max(60).optional(),
+            enhancePrompt: z.boolean().optional(),
+            /** `animate-pixminimax` only; the loader refuses it on `animate`. */
+            direction: CharacterDirectionSchema.optional(),
+          })
+          .strict(),
+        z
+          .object({
+            mode: z.literal("edit-animation"),
+            from: z.string().min(1),
+            fps: z.number().int().min(1).max(60).optional(),
           })
           .strict(),
         z

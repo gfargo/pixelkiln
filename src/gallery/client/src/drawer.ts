@@ -455,6 +455,12 @@ export function renderDrawer() {
       if (item.revision.maskSha256) row(dl, 'mask sha256', item.revision.maskSha256.slice(0, 16) + '…', { mono: true, copy: item.revision.maskSha256 });
       if (item.revision.strength !== undefined) row(dl, 'strength', item.revision.strength);
     }
+    const declared = item.asset && item.asset.revision;
+    if (declared) {
+      for (const [label, key] of [['facing', 'direction'], ['looks like', 'description'], ['body template', 'skeletonTemplate'], ['frames', 'frames'], ['fps', 'fps'], ['colours', 'numColors'], ['dithering', 'dithering']]) {
+        if (declared[key] !== undefined) row(dl, label, declared[key]);
+      }
+    }
     if (item.skeleton) {
       row(dl, 'keypoints', item.skeleton.keypointsFile, { mono: true });
       if (item.skeleton.set) {

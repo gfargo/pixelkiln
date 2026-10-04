@@ -206,10 +206,37 @@ export function addAssetForm(style) {
 }
 
 /**
- * A new `image-to-image` revision of `item`, restricted to `item`'s own
- * style (a revision's `from` resolves per style, and this button starts
- * from one specific generation). `inpaint` needs a mask upload the gallery
- * does not offer yet, so this form only ever creates `image-to-image`.
+ * Revision modes a form can create for `item`, with what each needs. The
+ * whole-set modes (`edit-animation`, and `reduce-colors` and `correct-pixelart`
+ * over every frame at once) read a frame set; the rest read one image.
+ * `inpaint` needs a mask upload and `interpolate` an ending keyframe, which
+ * the gallery does not offer, and `animate-skeleton` has its own form. Only
+ * PixelLab implements the non-text modes, so other providers keep to
+ * `image-to-image`.
+ */
+export function revisionModesFor(item) {
+  if (item.provider !== 'pixellab') return [['image-to-image', 'edit with a text instruction']];
+  if (item.outputs.length > 1) {
+    return [
+      ['edit-animation', 'one text edit across every frame'],
+      ['reduce-colors', 'fewer colours, across every frame'],
+      ['correct-pixelart', 'clean up the pixel grid, across every frame'],
+    ];
+  }
+  return [
+    ['image-to-image', 'edit with a text instruction'],
+    ['animate', 'animate it from a text description'],
+    ['animate-pixminimax', 'animate it, holding the facing direction'],
+    ['reduce-colors', 'fewer colours, optional dithering'],
+    ['correct-pixelart', 'clean up the pixel grid'],
+  ];
+}
+
+/**
+ * A new revision of `item`, restricted to `item`'s own style (a revision's
+ * `from` resolves per style, and this button starts from one specific
+ * generation). The mode picker offers what the record's provider and shape
+ * allow; the server checks the choice again through the real manifest loader.
  */
 export function newRevisionForm(item) {
   const pr = projectOf(item);
@@ -217,11 +244,59 @@ export function newRevisionForm(item) {
   form.append(el('h3', null, 'New revision of ' + item.assetId));
   const id = el('input'); id.type = 'text'; id.placeholder = 'asset-id'; id.required = true; id.autocomplete = 'off';
   id.pattern = '[^\\/\\\\]+';
-  const prompt = el('textarea'); prompt.placeholder = 'Edit instruction, e.g. "add snow on the roof".'; prompt.required = true;
+  const modes = revisionModesFor(item);
+  const mode = el('select');
+  for (const [value, label] of modes) mode.append(new Option(value + ': ' + label, value));
+  const prompt = el('textarea');
   const strength = el('input'); strength.type = 'number'; strength.min = '0'; strength.max = '1'; strength.step = '0.05'; strength.placeholder = 'provider default';
+  const frames = el('input'); frames.type = 'number'; frames.min = '4'; frames.max = '40'; frames.step = '2'; frames.placeholder = 'provider default';
+  const fps = el('input'); fps.type = 'number'; fps.min = '1'; fps.max = '60'; fps.step = '1'; fps.placeholder = 'playback rate';
+  const enhance = el('input'); enhance.type = 'checkbox';
+  const enhanceField = el('label', 'field check'); enhanceField.append(enhance, el('span', null, 'let PixelLab expand the motion description first'));
+  const direction = el('select');
+  for (const d of ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west']) direction.append(new Option(d, d));
+  const numColors = el('input'); numColors.type = 'number'; numColors.min = '2'; numColors.max = '256'; numColors.step = '1'; numColors.placeholder = 'PixelLab default';
+  const dithering = el('select');
+  for (const d of ['', 'none', '2x2', '4x4', '8x8']) dithering.append(new Option(d || 'default', d));
   const row1 = el('div', 'row');
-  row1.append(field('new asset id', id), field('strength', strength, 'PixelLab rejects an explicit strength for image-to-image; leave this blank there.'));
-  form.append(row1, field('edit instruction', prompt, 'The style still adds its prefix and suffix.'));
+  row1.append(field('new asset id', id), field('mode', mode));
+  const promptField = field('instruction', prompt);
+  const strengthField = field('strength', strength, 'PixelLab rejects an explicit strength for image-to-image; leave this blank there. Optional for correct-pixelart.');
+  const framesField = field('frames', frames, 'Even, 4 to 40; animate allows up to 16.');
+  const fpsField = field('fps', fps, 'Recorded with the frames; PixelLab does not store one.');
+  const directionField = field('facing', direction, 'Holds the sprite\'s facing while the motion is expanded.');
+  const colorsField = field('colours', numColors);
+  const ditherField = field('dithering', dithering);
+  const grids = el('div', 'row'); grids.append(framesField, fpsField);
+  const cleanup = el('div', 'row'); cleanup.append(colorsField, ditherField);
+  form.append(row1, promptField, strengthField, grids, directionField, enhanceField, cleanup);
+  const hints = {
+    'image-to-image': ['edit instruction', 'add snow on the roof', 'The style still adds its prefix and suffix.'],
+    animate: ['motion', 'the chest wobbling gently', 'Describes the movement; the parent image is the first frame.'],
+    'animate-pixminimax': ['motion', 'the chest wobbling gently', 'Describes the movement; the parent image is the first frame.'],
+    'edit-animation': ['edit instruction', 'add a red cape', 'Applied across every frame in one call, so the change stays consistent.'],
+    'reduce-colors': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
+    'correct-pixelart': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
+  };
+  const sync = () => {
+    const m = mode.value;
+    const [label, placeholder, hint] = hints[m];
+    promptField.querySelector('span')!.textContent = label;
+    promptField.querySelector('small')?.remove();
+    promptField.append(el('small', null, hint));
+    prompt.placeholder = placeholder;
+    prompt.required = m !== 'reduce-colors' && m !== 'correct-pixelart';
+    strengthField.hidden = m !== 'image-to-image' && m !== 'correct-pixelart';
+    grids.hidden = !(m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation');
+    framesField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
+    fpsField.hidden = grids.hidden;
+    directionField.hidden = !(m === 'animate-pixminimax' && enhance.checked);
+    enhanceField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
+    cleanup.hidden = m !== 'reduce-colors';
+  };
+  mode.onchange = sync;
+  enhance.onchange = sync;
+  sync();
   const actions = el('div', 'actions');
   const save = el('button', 'primary', 'Create revision'); save.type = 'submit';
   const cancel = el('button', null, 'Cancel'); cancel.type = 'button'; cancel.onclick = () => { ui.editing = null; renderDrawer(); };
@@ -231,9 +306,20 @@ export function newRevisionForm(item) {
   form.onsubmit = async (e) => {
     e.preventDefault();
     save.disabled = true; msg.className = 'msg'; msg.textContent = 'saving…';
-    const revision: any = { mode: 'image-to-image', from: item.assetId };
-    if (strength.value.trim() !== '') revision.strength = Number(strength.value);
-    const asset = { prompt: prompt.value, styles: [item.styleId], revision };
+    const m = mode.value;
+    const revision: any = { mode: m, from: item.assetId };
+    if ((m === 'image-to-image' || m === 'correct-pixelart') && strength.value.trim() !== '') revision.strength = Number(strength.value);
+    if ((m === 'animate' || m === 'animate-pixminimax') && frames.value.trim() !== '') revision.frames = Number(frames.value);
+    if ((m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation') && fps.value.trim() !== '') revision.fps = Number(fps.value);
+    if ((m === 'animate' || m === 'animate-pixminimax') && enhance.checked) revision.enhancePrompt = true;
+    if (m === 'animate-pixminimax' && enhance.checked) revision.direction = direction.value;
+    if (m === 'reduce-colors') {
+      if (numColors.value.trim() !== '') revision.numColors = Number(numColors.value);
+      if (dithering.value) revision.dithering = dithering.value;
+    }
+    // Cleanup modes never send the prompt, but an asset still needs one.
+    const text = prompt.value.trim() || (m === 'reduce-colors' ? 'reduce colours' : m === 'correct-pixelart' ? 'correct pixel art' : '');
+    const asset = { prompt: text, styles: [item.styleId], revision };
     try {
       const body: any = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };
       if (item.project) body.project = item.project;
