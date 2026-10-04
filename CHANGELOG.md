@@ -1,3 +1,10 @@
+# [0.83.0](https://github.com/gfargo/pixelkiln/compare/v0.82.0...v0.83.0) (2026-10-04)
+
+
+### Features
+
+* **gallery:** create every mask-free PixelLab revision mode from the drawer ([#240](https://github.com/gfargo/pixelkiln/issues/240)) ([114e64a](https://github.com/gfargo/pixelkiln/commit/114e64a09a335661eaaeace0b129f16c1d86fe46))
+
 # [0.82.0](https://github.com/gfargo/pixelkiln/compare/v0.81.0...v0.82.0) (2026-09-27)
 
 
