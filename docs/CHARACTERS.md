@@ -181,9 +181,10 @@ biped on `mannequin`, or one of the quadruped templates. A character that
 is neither (a round robot, a slime) gets a walk from text on the v3
 engine instead; a template on it either fails upstream (`custom`
 template) or redraws the character as the biped it expected. PixelLab's
-"Skeleton V3" model update markedly improved template-loop reliability;
-where earlier guidance favored a custom v3 loop over trusting a template,
-a named template is now the reasonable default for a body it fits.
+"Skeleton V3" update is the separate `skeleton-v3` mode described below, not
+a change to plain `template` loops: the tutorial that announced it says the
+original templates were not recommended for quality, and recommends the new
+model for the same template names.
 
 An animation is one loop of one character (`animation.of`, a base or a
 state) in one `direction`. With a `template` (PixelLab's `walk`,

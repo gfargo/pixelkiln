@@ -59,8 +59,10 @@ state transitions, and output placement.
 ## Providers, PixelLab MCP, and PixelKiln
 
 The [official PixelLab MCP server](https://github.com/pixellab-code/pixellab-mcp)
-gives an agent direct PixelLab creation tools. It is complementary to PixelKiln,
-not a replacement:
+gives an agent direct PixelLab creation tools, plus `pixelart_workbench` for
+linting, scoring, shading, and repairing art that already exists (MCP-only;
+see [Set up PixelLab](./PIXELLAB.md)). It is complementary to PixelKiln, not a
+replacement:
 
 | Layer | Responsibility |
 |---|---|
