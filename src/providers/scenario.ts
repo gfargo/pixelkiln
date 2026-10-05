@@ -16,6 +16,8 @@ import type { Generator, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
 
 const DEFAULT_BASE_URL = "https://api.cloud.scenario.com/v1"
 const SOURCE_PROTOCOL = "scenario:"
+/** Attempts after the first for a generation request: 1+2+4+8+16+16+16+16 seconds of backoff, about 80. */
+const SUBMIT_RETRIES = 8
 const PROTECTED_PARAMETERS = new Set([
   "dryRun",
   "height",
@@ -114,7 +116,11 @@ class ScenarioClient {
   ): Promise<string> {
     const response = await this.call(
       `/generate/custom/${encodeURIComponent(modelId)}`,
-      { method: "POST", body: JSON.stringify(body) },
+      // A 429 here means this account's concurrent-job limit refused the
+      // request, so nothing was accepted or billed; wait it out instead of
+      // failing the asset. The default four retries give up after about half
+      // a minute, before a running job has finished.
+      { method: "POST", body: JSON.stringify(body), retries: SUBMIT_RETRIES },
       { projectId },
     )
     const job = (response as { job?: unknown })?.job
@@ -296,11 +302,16 @@ export class ScenarioProvider implements Provider {
     if (!Number.isInteger(count) || count < 1 || count > 4) {
       throw new Error("Scenario numOutputs must be a whole number from 1 to 4")
     }
+    // Models disagree about their canvas (FLUX wants 128 to 2048 in steps of
+    // 16, Retro Diffusion Plus 16 to 384, some Kling models 672 and up), so
+    // this only rules out nonsense. The free dry-run that precedes every paid
+    // request returns the model's own bound, e.g. "Input width must be at
+    // least 672", before anything is spent.
     if (
-      spec.width < 128 || spec.width > 2048 || spec.width % 16 !== 0 ||
-      spec.height < 128 || spec.height > 2048 || spec.height % 16 !== 0
+      !Number.isInteger(spec.width) || spec.width < 16 || spec.width > 4096 ||
+      !Number.isInteger(spec.height) || spec.height < 16 || spec.height > 4096
     ) {
-      throw new Error("Scenario width and height must be multiples of 16 from 128 to 2048")
+      throw new Error("Scenario width and height must be whole numbers from 16 to 4096")
     }
     if (styleImages.length) {
       throw new Error("Scenario styleImages are not supported yet; use a reusable Scenario model")
@@ -359,7 +370,16 @@ export class ScenarioProvider implements Provider {
     }
     const assetIds = scenarioAssetIds(job)
     if (!assetIds.length) return { status: "failed", error: "Scenario job returned no asset IDs" }
-    const assets = await this.assets(assetIds, reference.projectId)
+    let assets: ScenarioAsset[]
+    try {
+      assets = await this.assets(assetIds, reference.projectId)
+    } catch (error) {
+      // An output the adapter cannot take (a JPEG from a model that does not
+      // return PNG) will not change on the next poll, and the job is already
+      // billed; fail the asset instead of polling it forever.
+      if (error instanceof UnsupportedScenarioOutput) return { status: "failed", error: error.message }
+      throw error
+    }
     if (assets.length > 1) {
       return {
         status: "review",
@@ -545,9 +565,12 @@ function assetDownloadUrl(asset: ScenarioAsset): string {
   return asset.originalFileUrl || asset.url
 }
 
+/** A finished Scenario asset in a format PixelKiln cannot take; retrying will not help. */
+class UnsupportedScenarioOutput extends Error {}
+
 function assertPngAsset(asset: ScenarioAsset): void {
   if (asset.originalMimeType && asset.originalMimeType !== MediaType.PNG) {
-    throw new Error(
+    throw new UnsupportedScenarioOutput(
       `Scenario asset ${asset.id} is ${asset.originalMimeType}; PixelKiln's Scenario MVP requires PNG output`,
     )
   }

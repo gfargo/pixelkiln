@@ -1,0 +1,141 @@
+{
+  "name": "scenario-model-bakeoff",
+  "provider": "scenario",
+  "styles": {
+    "klein-9b": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/klein-9b",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-klein-9b",
+          "numOutputs": 1,
+          "maxComputeUnits": 1
+        }
+      }
+    },
+    "schnell": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/schnell",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_bfl-flux-1-schnell",
+          "numOutputs": 1,
+          "maxComputeUnits": 1
+        }
+      }
+    },
+    "p-image": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/p-image",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_p-image",
+          "numOutputs": 1,
+          "maxComputeUnits": 1
+        }
+      }
+    },
+    "recraft-flash": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/recraft-flash",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_recraft-v4-1-flash",
+          "numOutputs": 1,
+          "maxComputeUnits": 2
+        }
+      }
+    },
+    "krea-2-turbo": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/krea-2-turbo",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_krea-2-turbo",
+          "numOutputs": 1,
+          "maxComputeUnits": 2
+        }
+      }
+    },
+    "meta-muse": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/meta-muse",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_meta-muse-image",
+          "numOutputs": 1,
+          "maxComputeUnits": 2
+        }
+      }
+    },
+    "ernie-turbo": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/ernie-turbo",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_ernie-image-turbo",
+          "numOutputs": 1,
+          "maxComputeUnits": 3
+        }
+      }
+    },
+    "z-image-turbo": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/z-image-turbo",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_z-image-turbo",
+          "numOutputs": 1,
+          "maxComputeUnits": 4
+        }
+      }
+    },
+    "qwen-image-3": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/qwen-image-3",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_alibaba-qwen-image-3-0",
+          "numOutputs": 1,
+          "maxComputeUnits": 6
+        }
+      }
+    },
+    "gpt-image-2": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/gpt-image-2",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_openai-gpt-image-2",
+          "numOutputs": 1,
+          "maxComputeUnits": 11
+        }
+      }
+    }
+  },
+  "assets": {
+    "mountain-keep": {
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette"
+    }
+  }
+}
