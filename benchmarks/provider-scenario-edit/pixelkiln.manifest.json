@@ -1,0 +1,29 @@
+{
+  "name": "scenario-edit-smoke",
+  "provider": "scenario",
+  "styles": {
+    "edit": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-klein-9b",
+          "numOutputs": 1,
+          "maxComputeUnits": 1
+        }
+      }
+    }
+  },
+  "assets": {
+    "keep": {
+      "prompt": "a stone mountain keep",
+      "source": "art/keep.png"
+    },
+    "keep-snow": {
+      "prompt": "the same keep in winter: snow on the roofs and battlements, pixel art",
+      "revision": { "mode": "image-to-image", "from": "keep" }
+    }
+  }
+}

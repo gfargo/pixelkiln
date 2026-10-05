@@ -82,9 +82,58 @@ keeps job and asset lookup scoped to the intended Scenario project.
 replace PixelKiln-owned `prompt`, dimensions, seed, output count, project, or
 budget fields.
 
-Style reference uploads are not implemented. A `styleImages` entry fails
-during free manifest resolution rather than uploading the same image on every
-run. Train or reuse a Scenario model for the first integration.
+## Reference images and edits
+
+Most Scenario image models take reference images, which serve both as style
+guidance and as the image to edit. PixelKiln uploads each local image to
+Scenario once (`POST /assets`, free), keeps the returned asset id by content
+hash in a temporary cache so a rerun does not upload it again, and sends the ids
+as the model's `referenceImages` input. Two things use this:
+
+- A style's `styleImages` are sent as references with every asset in the style.
+- An `image-to-image` revision sends its parent first, then any style images.
+  The prompt is the edit instruction, as in
+  [controlled revisions](./REVISIONS.md). Masked `inpaint` and the
+  PixelLab animation and cleanup modes are not available, and `strength` is
+  refused because Scenario has no common one; use the model's own `parameters`.
+
+```jsonc
+{
+  "styles": {
+    "edit": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "assets/generated",
+      "providerOptions": {
+        "scenario": { "modelId": "model_bfl-flux-2-klein-9b", "maxComputeUnits": 1 }
+      }
+    }
+  },
+  "assets": {
+    "keep": { "prompt": "a stone mountain keep", "source": "art/keep.png" },
+    "keep-snow": {
+      "prompt": "the same keep in winter: snow on the roofs, pixel art",
+      "revision": { "mode": "image-to-image", "from": "keep" }
+    }
+  }
+}
+```
+
+The adapter does not know each model's input names, so a model whose image
+input is not called `referenceImages` needs `referenceParameter` (for example
+`"image"`), and `referenceArray: false` if it takes one image rather than a
+list. `parameters` may not also set that input. A model must accept images at
+all: the free dry run, which now includes the references, rejects one that
+does not before anything is spent. A reference can add to the quote (GPT Image 2
+priced one text-only 512×512 request at 11 CU and the same request with a
+reference at 12).
+
+On October 5, 2026 a one-image `image-to-image` revision of the bake-off's GPT
+Image 2 keep through `model_bfl-flux-2-klein-9b` quoted and billed 1 CU and
+returned the same keep with snow on its roofs and battlements, banners and
+layout intact. The committed
+[Scenario edit smoke](../benchmarks/provider-scenario-edit/README.md) has the
+manifest, lockfile, and both images. That is one sample on one model.
 
 ## Plan before spending
 
@@ -212,9 +261,11 @@ for every style:
 | `numOutputs` | One to four PNG candidates; defaults to one. |
 | `projectId` | Optional Scenario ownership/routing project. |
 | `parameters` | Additional model-specific JSON inputs. PixelKiln-owned request fields cannot be overridden. |
+| `referenceParameter` | The model input that takes images, default `referenceImages`. |
+| `referenceArray` | `false` when that input takes one image rather than a list. |
 
 The current adapter supports `map`, whole-number dimensions from 16 to 4096px,
-optional seed, and no style-image uploads. Every paid request is preceded
+optional seed, style images and `image-to-image` revisions as reference uploads. Every paid request is preceded
 by an identical `dryRun=true` request. See [Set up Scenario](SCENARIO.md) for
 credentials, cost semantics, recovery, and the paid live-test boundary.
 

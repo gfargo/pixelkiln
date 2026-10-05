@@ -97,8 +97,8 @@ the same graph and still differ because their checkpoint bytes, custom nodes,
 or sampler settings differ. Commit the workflow and record the model stack used
 to test it.
 
-The revision manifest and dependency gate are provider-neutral. ComfyUI and
-PixelLab opt in; Retro Diffusion and Scenario reject revision assets offline.
+The revision manifest and dependency gate are provider-neutral. ComfyUI,
+PixelLab, and Scenario (`image-to-image` only) opt in; Retro Diffusion rejects revision assets offline.
 PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
 `correct-pixelart`, `animate`, `animate-pixminimax`, `animate-skeleton`,
 `interpolate`, and `edit-animation`, but not `outpaint`. ComfyUI covers the
