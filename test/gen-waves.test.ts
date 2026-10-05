@@ -77,6 +77,31 @@ describe("gen waves", () => {
     expect(process.exitCode).toBeUndefined()
   })
 
+  it("takes a chain across styles to the end in one invocation", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "cross",
+      provider: PROVIDER,
+      styles: {
+        gen: { generator: "map", outDir: "out/gen" },
+        tidy: { generator: "map", outDir: "out/tidy" },
+      },
+      assets: {
+        hero: { prompt: "a hero", width: 32, height: 32, styles: ["gen"] },
+        "hero-tidy": {
+          prompt: "tidied", width: 32, height: 32, styles: ["tidy"],
+          revision: { mode: "image-to-image", from: "hero", fromStyle: "gen" },
+        },
+      },
+    }))
+    await gen(manifestPath, "--budget", "10")
+    const project = await openProject(manifestPath, { env: false })
+    const plan = await project.plan()
+    expect(plan.items.map((i) => `${i.key}=${i.state}`)).toEqual(["gen/hero=ok", "tidy/hero-tidy=ok"])
+    expect(existsSync(path.join(dir, "out/gen/hero.png"))).toBe(true)
+    expect(existsSync(path.join(dir, "out/tidy/hero-tidy.png"))).toBe(true)
+  })
+
   it("stops before a wave the remaining budget cannot cover, keeping earlier waves' work", async () => {
     const manifestPath = await chainedProject()
     await gen(manifestPath, "--budget", "2")

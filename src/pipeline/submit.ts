@@ -302,6 +302,7 @@ export async function submit(
         ? {
             mode: spec.revision.mode,
             sourceAssetId: spec.revision.sourceAssetId,
+            ...(spec.revision.sourceStyleId ? { sourceStyleId: spec.revision.sourceStyleId } : {}),
             sourceSha256: spec.revision.sourceSha256!,
             ...(spec.revision.maskSha256 ? { maskSha256: spec.revision.maskSha256 } : {}),
             ...(spec.revision.strength == null ? {} : { strength: spec.revision.strength }),
