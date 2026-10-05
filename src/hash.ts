@@ -184,6 +184,9 @@ export function specHash(
             skeletonTemplate: spec.revision.skeletonTemplate,
             description: spec.revision.description,
             removalTask: spec.revision.removalTask,
+            driftThreshold: spec.revision.driftThreshold,
+            subjectDescription: spec.revision.subjectDescription,
+            initialPose: spec.revision.initialPose,
             engine: spec.revision.engine,
           }
         : undefined,

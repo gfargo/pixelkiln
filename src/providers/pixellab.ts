@@ -668,6 +668,9 @@ export class PixelLabProvider implements Provider {
       if (mode === "animate" && frames != null && frames > 16) {
         throw new Error(`PixelLab animate takes 4 to 16 frames; ${frames} is too many (use animate-pixminimax for up to 40)`)
       }
+      if (mode === "animate-pixminimax" && frames != null && frames % 4 !== 0) {
+        throw new Error(`PixelLab animate-pixminimax takes a multiple of 4 frames (4 to 40); ${frames} is not one`)
+      }
       if (
         lastFrameWidth != null && lastFrameHeight != null && width != null && height != null &&
         (lastFrameWidth !== width || lastFrameHeight !== height)
@@ -1936,6 +1939,7 @@ export class PixelLabProvider implements Provider {
           seed: spec.seed,
           noBackground: spec.noBackground,
           enhancePrompt: revision.enhancePrompt,
+          driftThreshold: revision.driftThreshold,
         })
         return { jobId: res.background_job_id }
       }
@@ -1948,6 +1952,10 @@ export class PixelLabProvider implements Provider {
         noBackground: spec.noBackground,
         enhancePrompt: revision.enhancePrompt,
         direction: revision.direction,
+        ...(spec.view === "side" || spec.view === "low top-down" || spec.view === "high top-down" ? { view: spec.view } : {}),
+        subjectDescription: revision.subjectDescription,
+        initialPose: revision.initialPose,
+        driftThreshold: revision.driftThreshold,
       })
       return { jobId: res.background_job_id }
     }
@@ -1973,6 +1981,9 @@ export class PixelLabProvider implements Provider {
         firstFrameKeypoints: revision.skeleton.firstFrameKeypoints,
         keypoints: revision.skeleton.frames,
         direction: revision.direction!,
+        // The style's camera, when it is one this endpoint knows; its enum is
+        // narrower than a style's free-string `view`.
+        ...(spec.view === "side" || spec.view === "low top-down" || spec.view === "high top-down" ? { view: spec.view } : {}),
         templateId: revision.skeletonTemplate,
         action: spec.prompt,
         description: revision.description,

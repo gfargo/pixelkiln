@@ -270,6 +270,7 @@ export function newRevisionForm(item) {
   const enhance = el('input'); enhance.type = 'checkbox';
   const enhanceField = el('label', 'field check'); enhanceField.append(enhance, el('span', null, 'let PixelLab expand the motion description first'));
   const direction = el('select');
+  direction.append(new Option('let PixelLab read it', ''));
   for (const d of ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west']) direction.append(new Option(d, d));
   const numColors = el('input'); numColors.type = 'number'; numColors.min = '2'; numColors.max = '256'; numColors.step = '1'; numColors.placeholder = 'PixelLab default';
   const dithering = el('select');
@@ -289,20 +290,26 @@ export function newRevisionForm(item) {
   const masker = maskEditor(displayUrl(item), () => {});
   const maskBox = el('div');
   maskBox.append(masker.root, field('mask file', maskPath, 'Inside the project. A black and white PNG the size of the sprite; white is repainted.'), maskOverwriteField);
+  const drift = el('input'); drift.type = 'number'; drift.min = '0'; drift.step = '0.01'; drift.placeholder = 'PixelLab default';
+  const subjectText = el('input'); subjectText.type = 'text'; subjectText.maxLength = 300; subjectText.placeholder = 'optional: a knight in silver plate armour';
+  const poseText = el('input'); poseText.type = 'text'; poseText.maxLength = 300; poseText.placeholder = 'optional: standing upright with the sword lowered';
   const row1 = el('div', 'row');
   row1.append(field('new asset id', id), field('mode', mode));
   const promptField = field('instruction', prompt);
   const strengthField = field('strength', strength, 'PixelLab rejects an explicit strength for image-to-image; leave this blank there. Optional for correct-pixelart.');
-  const framesField = field('frames', frames, 'Even, 4 to 40; animate allows up to 16.');
+  const framesField = field('frames', frames, 'animate: even, 4 to 16. animate-pixminimax: a multiple of 4, up to 40.');
+  const driftField = field('de-flicker', drift, 'Colour drift threshold: 0 corrects every frame toward the first, higher corrects fewer.');
+  const captionRow = el('div', 'row');
+  captionRow.append(field('subject', subjectText, 'Left blank, PixelLab reads it off the image, and can decline some images.'), field('starting pose', poseText));
   const fpsField = field('fps', fps, 'Recorded with the frames; PixelLab does not store one.');
-  const directionField = field('facing', direction, 'Holds the sprite\'s facing while the motion is expanded.');
+  const directionField = field('facing', direction, 'Which way the sprite faces; left blank, PixelLab reads it off the image.');
   const colorsField = field('colours', numColors);
   const ditherField = field('dithering', dithering);
   const removalField = field('removal', removal, 'PixelLab takes at most 400 by 400 pixels.');
   const subjectField = field('foreground', subject, 'A hint that helps PixelLab find what to keep.');
   const grids = el('div', 'row'); grids.append(framesField, fpsField);
   const cleanup = el('div', 'row'); cleanup.append(colorsField, ditherField);
-  form.append(row1, promptField, maskBox, endingField, strengthField, grids, directionField, enhanceField, cleanup, removalField, subjectField);
+  form.append(row1, promptField, maskBox, endingField, strengthField, grids, driftField, captionRow, directionField, enhanceField, cleanup, removalField, subjectField);
   const hints = {
     'image-to-image': ['edit instruction', 'add snow on the roof', 'The style still adds its prefix and suffix.'],
     animate: ['motion', 'the chest wobbling gently', 'Describes the movement; the parent image is the first frame.'],
@@ -324,11 +331,13 @@ export function newRevisionForm(item) {
     prompt.required = !['reduce-colors', 'correct-pixelart', 'remove-background'].includes(m);
     strengthField.hidden = m !== 'image-to-image' && m !== 'correct-pixelart';
     grids.hidden = !(m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation' || m === 'interpolate');
+    driftField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
+    captionRow.hidden = m !== 'animate-pixminimax';
     maskBox.hidden = m !== 'inpaint';
     endingField.hidden = m !== 'interpolate';
     framesField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
     fpsField.hidden = grids.hidden;
-    directionField.hidden = !(m === 'animate-pixminimax' && enhance.checked);
+    directionField.hidden = m !== 'animate-pixminimax';
     enhanceField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
     cleanup.hidden = m !== 'reduce-colors';
     removalField.hidden = subjectField.hidden = m !== 'remove-background';
@@ -351,7 +360,12 @@ export function newRevisionForm(item) {
     if ((m === 'animate' || m === 'animate-pixminimax') && frames.value.trim() !== '') revision.frames = Number(frames.value);
     if ((m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation' || m === 'interpolate') && fps.value.trim() !== '') revision.fps = Number(fps.value);
     if ((m === 'animate' || m === 'animate-pixminimax') && enhance.checked) revision.enhancePrompt = true;
-    if (m === 'animate-pixminimax' && enhance.checked) revision.direction = direction.value;
+    if (m === 'animate-pixminimax') {
+      if (direction.value) revision.direction = direction.value;
+      if (subjectText.value.trim()) revision.subjectDescription = subjectText.value.trim();
+      if (poseText.value.trim()) revision.initialPose = poseText.value.trim();
+    }
+    if ((m === 'animate' || m === 'animate-pixminimax') && drift.value.trim() !== '') revision.driftThreshold = Number(drift.value);
     if (m === 'reduce-colors') {
       if (numColors.value.trim() !== '') revision.numColors = Number(numColors.value);
       if (dithering.value) revision.dithering = dithering.value;

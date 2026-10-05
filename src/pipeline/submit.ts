@@ -318,6 +318,9 @@ export async function submit(
             ...(spec.revision.skeletonTemplate ? { skeletonTemplate: spec.revision.skeletonTemplate } : {}),
             ...(spec.revision.description ? { description: spec.revision.description } : {}),
             ...(spec.revision.removalTask ? { removalTask: spec.revision.removalTask } : {}),
+            ...(spec.revision.driftThreshold == null ? {} : { driftThreshold: spec.revision.driftThreshold }),
+            ...(spec.revision.subjectDescription ? { subjectDescription: spec.revision.subjectDescription } : {}),
+            ...(spec.revision.initialPose ? { initialPose: spec.revision.initialPose } : {}),
             ...(spec.revision.engine ? { engine: spec.revision.engine } : {}),
           }
         : null,

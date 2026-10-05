@@ -202,6 +202,11 @@ describe("asset revisions", () => {
     await expect(writeProject({ mode: "inpaint", from: "source", description: "x" }))
       .rejects.toThrow(/description applies to animate-skeleton\/remove-background revisions only/)
 
+    await expect(writeProject({ mode: "animate", from: "source", subjectDescription: "a knight" }))
+      .rejects.toThrow(/subjectDescription applies to animate-pixminimax revisions only/)
+    await expect(writeProject({ mode: "image-to-image", from: "source", driftThreshold: 0.1 }))
+      .rejects.toThrow(/driftThreshold applies to animate\/animate-pixminimax revisions only/)
+
     // A palette reference is a color source only — a different shape than the
     // asset it's revising is fine, unlike a mask.
     await writeFile(path.join(dir, "palette.png"), png(200, 4, 1))

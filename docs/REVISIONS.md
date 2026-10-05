@@ -269,8 +269,18 @@ pixels the same way `image-to-image` does:
 `animate` calls `/animate-with-text-v3` (4–16 frames, even). `animate-pixminimax`
 calls `/animate-pixminimax` — PixelLab's MiniMax-powered engine, beta and
 gated to a tier 1 subscription or higher — for 4 to 40 frames and two extra
-knobs: `direction` (the sprite's facing, used only alongside `enhancePrompt`
-to aim motion the right way on screen) and the same `enhancePrompt`. Both
+knobs: `direction` (the sprite's facing, which also aims `enhancePrompt`'s
+motion the right way on screen) and the same `enhancePrompt`. It also takes
+two caption fields, `subjectDescription` (what the parent shows, one noun
+phrase) and `initialPose` (the pose it is in). PixelLab reads any caption
+field you leave out off the image with an AI model, and can decline some
+images, failing the job until you send them yourself; sending all of them,
+with `enhancePrompt` off, rewrites nothing. The style's `view` is sent as the
+view caption. `frames` must be a multiple of 4 for this mode, which is
+checked at plan time. Both modes take `driftThreshold`, PixelLab's colour
+de-flicker sensitivity: frames whose foreground drifts from the first frame
+beyond it are corrected toward it, `0` corrects every frame, and omitting it
+keeps PixelLab's default. Both
 reject a declared `strength` (there is no denoise knob here, same as
 `image-to-image`) and both send the asset's own `prompt` as the motion
 description — `action` for `animate`, `description` for `animate-pixminimax`.
@@ -405,7 +415,10 @@ inline pixels. It must match the shape `src/skeleton.ts`'s `SkeletonSetSchema`
 validates: `{"firstFrameKeypoints": [...18 joints], "frames": [[...18
 joints], ...3 to 15 of them]}`, each joint `{"label": "RIGHT KNEE", "x": 0.52,
 "y": 0.71, "z_index": 9, "depth": 4}` (`depth` optional — PixelLab fills it
-from `skeletonTemplate`, default `mannequin`, when omitted). `label` is one
+from `skeletonTemplate`, default `mannequin`, when omitted). The request also
+carries the style's `view` (`side`, `low top-down`, or `high top-down`) so the
+motion is posed for the sprite's own camera; PixelLab assumes `low top-down`
+otherwise. `label` is one
 of PixelLab's 18 joints (`NOSE`, `NECK`, `RIGHT`/`LEFT` `SHOULDER`, `ELBOW`,
 `ARM` for the wrist, `HIP`, `KNEE`, `LEG` for the ankle, `EYE`, `EAR`), each
 exactly once per pose; a misspelled or repeated joint fails when the manifest
