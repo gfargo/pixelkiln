@@ -186,6 +186,39 @@ adapter. They overlap PixelKiln's own offline work: `pixelkiln refine` snaps
 the grid and palette for free, and PixelLab's `remove-background` revision costs
 one generation. Reach for these when the art is already on Scenario.
 
+### Retro Diffusion on Scenario
+
+Scenario hosts three Retro Diffusion models, and they are the most pixel-art-specific
+models in its catalog: `model_retrodiffusion-plus` (18 styles from `default` and
+`retro` to `isometric_asset`, `topdown_asset`, `character_turnaround`, and
+`ui_element`), `model_retrodiffusion-tile` (`tileset`, `tileset_advanced`,
+`single_tile`, `tile_variation`, `tile_object`, `scene_object`), and
+`model_retrodiffusion-animation` (`four_angle_walking`, `walking_and_idle`,
+`small_sprites`, `vfx`). On a `cu-basic` account every dry run answered
+`ModelAccessRestrictedError` with `requiredPlan: cu-pro-q3-25`, so none of this
+has been run, and no price is known until the plan is upgraded.
+
+Judging from Scenario's parameter reference (nothing here was exercised), what
+the adapter already supports and what it does not:
+
+| Need | Status |
+|---|---|
+| `style`, `removeBg`, `tileX`, `tileY`, `strength`, `bypassPromptExpansion` | Pass-through `parameters`. |
+| 16 to 384 px canvas | Accepted now; the model's bound comes from the free dry run. |
+| `image` (image-to-image) | Supported through an `image-to-image` revision with `referenceParameter: "image"` and `referenceArray: false`. |
+| `inputPalette` (a palette image) | Not supported: the adapter has one reference input. |
+| More than 4 outputs (Plus and Tile allow 10) | Not supported: `numOutputs` stops at 4. |
+| Animation as a PNG spritesheet (`returnSpritesheet: true`) | Lands as one still image; there is no frame-set output for Scenario, so a person would slice it. The default GIF output is refused. |
+| Tilesets | Land as one still; PixelKiln's tile roles and exports do not apply. |
+
+PixelKiln also has a direct [Retro Diffusion](./RETRO_DIFFUSION.md) provider
+with live-tested single stills. Choosing between them is a billing and plan
+question (Retro Diffusion's USD credits against Scenario's compute units), not a
+feature one, until the Scenario route is measured. The first live check after
+upgrading should be one `model_retrodiffusion-plus` still at 64×64 with the
+default style: quote, billed amount, dimensions, and whether it comes back as
+PNG.
+
 ## Plan before spending
 
 Scenario prices depend on model, size, steps, and output count, so PixelKiln
