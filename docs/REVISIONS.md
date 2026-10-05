@@ -43,15 +43,10 @@ Keep the parent as its own asset and point the child at its stable asset id:
 }
 ```
 
-`from` names another asset in the same style. A source and its revision cannot
-be the same asset, and revision chains cannot contain a cycle. `source` and
-`revision` are mutually exclusive on one asset.
-
-Revision edges do not cross styles or providers in this version. To use output
-from another provider, commit or retain that PNG and declare it as a separate
-`source` asset in the ComfyUI revision style. The child still records the exact
-source hash, but the cross-provider handoff is a file boundary rather than one
-automatic lock dependency.
+`from` names another asset. It lives in the child's own style unless
+`fromStyle` names another (see [Across styles](#across-styles)). A source and its
+revision cannot be the same asset, and revision chains cannot contain a cycle.
+`source` and `revision` are mutually exclusive on one asset.
 
 Start with a low strength. Values around `0.2`–`0.4` give the workflow room to
 change texture and lighting while retaining more of the source. Higher values
@@ -103,6 +98,41 @@ Lineage section draws its poses over its parent the same way, and "Edit
 poses" opens the same editor on its keypoints file. Saving rewrites the file
 only if it still holds what the page loaded (an edit made elsewhere since is
 refused, not overwritten), and the animation is stale until generated again.
+
+### Across styles
+
+A style has one provider and one model, so a chain that generates with one model
+and cleans up with another spans styles. Name the parent's style:
+
+```jsonc
+{
+  "styles": {
+    "gen": { "generator": "map", "outDir": "art/gen", "providerOptions": { "scenario": { "modelId": "model_bfl-flux-2-klein-9b", "maxComputeUnits": 1 } } },
+    "pixelate": { "generator": "map", "outDir": "art/pixelate", "providerOptions": { "scenario": { "modelId": "model_sc-pixelate", "maxComputeUnits": 5, "referenceParameter": "image", "referenceArray": false } } }
+  },
+  "assets": {
+    "knight": { "prompt": "a knight, isolated on white", "styles": ["gen"] },
+    "knight-px": {
+      "prompt": "pixelate",
+      "styles": ["pixelate"],
+      "revision": { "mode": "image-to-image", "from": "knight", "fromStyle": "gen" }
+    }
+  }
+}
+```
+
+The child starts from the parent's output file, however that style produced it
+(any provider, or a placed `source`), and the dependency gate is unchanged: the
+child is `blocked` until the parent is downloaded, current, and untouched, and
+`gen` takes the whole chain to the end in one run, one wave per link. The parent
+must be an asset in the named style. Styles may depend on one another but not
+in a cycle, and `fromStyle` naming the asset's own style is the ordinary case.
+`--style` still selects which specs a run returns; a parent style it excludes is
+resolved, not generated.
+
+A `quality` profile gates the style it is on. Put it on the last style of a
+chain, whose parents are in other styles, and only that style's output is gated.
+A profile on a style that also holds the raw parent would block the child.
 
 ## Inpainting
 

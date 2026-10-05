@@ -170,7 +170,7 @@ async function inspectRevision(
   if (!dependency.ready) {
     return {
       ready: false,
-      reason: `revision source ${spec.styleId}/${revision.sourceAssetId} is not ready: ${dependency.reason}`,
+      reason: `revision source ${revision.sourceStyleId ?? spec.styleId}/${revision.sourceAssetId} is not ready: ${dependency.reason}`,
     }
   }
 

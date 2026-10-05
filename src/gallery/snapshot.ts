@@ -774,9 +774,9 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       currentSpecHash: spec.specHash,
       revision: entry?.revision ?? null,
       revisionParentKey: spec.revision
-        ? lockKey(spec.styleId, spec.revision.sourceAssetId)
+        ? lockKey(spec.revision.sourceStyleId ?? spec.styleId, spec.revision.sourceAssetId)
         : entry?.revision
-          ? lockKey(spec.styleId, entry.revision.sourceAssetId)
+          ? lockKey(entry.revision.sourceStyleId ?? spec.styleId, entry.revision.sourceAssetId)
           : null,
       mirrorOfKey: spec.mirror
         ? lockKey(spec.styleId, spec.mirror.sourceAssetId)
@@ -854,7 +854,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       recordedSpecHash: entry.specHash,
       currentSpecHash: null,
       revision: entry.revision,
-      revisionParentKey: entry.revision ? lockKey(entry.styleId, entry.revision.sourceAssetId) : null,
+      revisionParentKey: entry.revision ? lockKey(entry.revision.sourceStyleId ?? entry.styleId, entry.revision.sourceAssetId) : null,
       mirrorOfKey: entry.mirror ? lockKey(entry.styleId, entry.mirror.sourceAssetId) : null,
       skeleton: null,
       character: describeCharacter(undefined, entry),

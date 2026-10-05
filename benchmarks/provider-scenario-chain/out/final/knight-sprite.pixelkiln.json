@@ -1,0 +1,95 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../cutout/knight-sprite.png",
+      "sha256": "8913b3e7edb8a98828552ed249069aab59b88ee24128dd2d621e05fae8d21f26",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 19,
+      "height": 64,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 32,
+        "minGridConfidence": "high",
+        "minTransparency": 0.5
+      },
+      "transparency": 0.762451171875,
+      "width": 64
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 64,
+      "nativeWidth": 64,
+      "phaseX": 0,
+      "phaseY": 0,
+      "protocol": "python-core-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 512,
+      "sourceWidth": 512,
+      "stepX": 8,
+      "stepY": 8,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#000000",
+        "#222034",
+        "#45283c",
+        "#663931",
+        "#8f563b",
+        "#df7126",
+        "#d9a066",
+        "#eec39a",
+        "#fbf236",
+        "#99e550",
+        "#6abe30",
+        "#37946e",
+        "#4b692f",
+        "#524b24",
+        "#323c39",
+        "#3f3f74",
+        "#306082",
+        "#5b6ee1",
+        "#639bff",
+        "#5fcde4",
+        "#cbdbfc",
+        "#ffffff",
+        "#9badb7",
+        "#847e87",
+        "#696a6a",
+        "#595652",
+        "#76428a",
+        "#ac3232",
+        "#d95763",
+        "#d77bba",
+        "#8f974a",
+        "#8a6f30"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "a18c0594521e905d2fce83b72eba5a0c9f2c6c28cb30f9825c67d61832b520e3",
+  "outputs": [
+    {
+      "path": "knight-sprite.png",
+      "sha256": "c62125debcf26cff14fd9b24205d66a42e27903a0c6e9430013912c9c8b53676"
+    }
+  ]
+}

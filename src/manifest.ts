@@ -98,12 +98,23 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
       }
     }
     if (asset.revision) {
-      if (!parsed.data.assets[asset.revision.from]) {
+      const parent = parsed.data.assets[asset.revision.from]
+      if (!parent) {
         unknownReferences.push(
           `assets.${assetId}.revision.from: unknown asset "${asset.revision.from}"`,
         )
       } else if (asset.revision.from === assetId) {
         unknownReferences.push(`assets.${assetId}.revision.from: an asset cannot revise itself`)
+      }
+      const fromStyle = asset.revision.fromStyle
+      if (fromStyle) {
+        if (!styleIds.has(fromStyle)) {
+          unknownReferences.push(`assets.${assetId}.revision.fromStyle: unknown style "${fromStyle}"`)
+        } else if (parent && parent.styles.length && !parent.styles.includes(fromStyle)) {
+          unknownReferences.push(
+            `assets.${assetId}.revision.fromStyle: "${asset.revision.from}" is not in style "${fromStyle}"`,
+          )
+        }
       }
     }
     // A state's parent is a base or another state; an animation's parent is
@@ -278,7 +289,7 @@ export async function resolveSpecs(
   }
   const specs: ResolvedSpec[] = []
 
-  const styleIds = Object.keys(manifest.styles).filter(
+  const requestedStyleIds = Object.keys(manifest.styles).filter(
     (id) => !filter?.styles?.length || filter.styles.includes(id),
   )
   for (const unknownStyle of filter?.styles ?? []) {
@@ -307,6 +318,46 @@ export async function resolveSpecs(
       current = parentAssetId(manifest.assets[current])
     }
   }
+
+  // A revision may start from another style's output (`revision.fromStyle`),
+  // so a style is resolved after every style it revises from. Such a parent
+  // style is resolved even when the run is filtered away from it, but its
+  // specs are not part of the result. Styles may depend on one another but
+  // not in a cycle.
+  const styleDependencies = new Map<string, Set<string>>()
+  for (const styleId of Object.keys(manifest.styles)) {
+    const needed = new Set<string>()
+    for (const assetId of resolutionAssetIds) {
+      const asset = manifest.assets[assetId]
+      if (asset?.styles.length && !asset.styles.includes(styleId)) continue
+      const fromStyle = asset?.revision?.fromStyle
+      if (fromStyle && fromStyle !== styleId) needed.add(fromStyle)
+    }
+    styleDependencies.set(styleId, needed)
+  }
+  const styleIds: string[] = []
+  const emitStyles = new Set(requestedStyleIds)
+  {
+    const placed = new Set<string>()
+    const visiting: string[] = []
+    const place = (styleId: string) => {
+      if (placed.has(styleId)) return
+      const cycleStart = visiting.indexOf(styleId)
+      if (cycleStart >= 0) {
+        throw new Error(
+          `Styles revise each other in a cycle: ${[...visiting.slice(cycleStart), styleId].join(" -> ")}. ` +
+            "revision.fromStyle must form a chain, not a loop.",
+        )
+      }
+      visiting.push(styleId)
+      for (const dependency of styleDependencies.get(styleId) ?? []) place(dependency)
+      visiting.pop()
+      placed.add(styleId)
+      styleIds.push(styleId)
+    }
+    for (const styleId of requestedStyleIds) place(styleId)
+  }
+  const styleFinalizers = new Map<string, (assetId: string) => Promise<ResolvedSpec>>()
 
   // Style images are hashed, not just named: editing a reference image must
   // invalidate every spec that depends on it.
@@ -658,7 +709,7 @@ export async function resolveSpecs(
     }
 
     const finalized = new Set<string>()
-    const finalize = async (assetId: string): Promise<ResolvedSpec> => {
+    const finalize: (assetId: string) => Promise<ResolvedSpec> = async (assetId) => {
       const resolved = styleSpecs.get(assetId)
       if (!resolved) {
         throw new Error(
@@ -809,7 +860,12 @@ export async function resolveSpecs(
             `Provider "${activeProvider.id}" does not support ${asset.revision.mode} revisions`,
           )
         }
-        const sourceSpec = await finalize(asset.revision.from)
+        const sourceStyleId = asset.revision.fromStyle && asset.revision.fromStyle !== styleId
+          ? asset.revision.fromStyle
+          : undefined
+        const sourceSpec = sourceStyleId
+          ? await styleFinalizers.get(sourceStyleId)!(asset.revision.from)
+          : await finalize(asset.revision.from)
         const sourceStem = sourceSpec.quality?.outFile ??
           (sourceSpec.source ? path.resolve(root, sourceSpec.source) : sourceSpec.outFile)
         // A parent drawn as a set (a character's directions, an animation's
@@ -862,6 +918,7 @@ export async function resolveSpecs(
         resolved.revision = {
           mode: asset.revision.mode,
           sourceAssetId: asset.revision.from,
+          ...(sourceStyleId ? { sourceStyleId } : {}),
           sourceFile,
           sourceSha256: sourceImage?.hash ?? null,
           sourceWidth: sourceImage?.width ?? null,
@@ -997,7 +1054,9 @@ export async function resolveSpecs(
       finalized.add(assetId)
       return resolved
     }
+    styleFinalizers.set(styleId, finalize)
 
+    if (!emitStyles.has(styleId)) continue
     for (const assetId of Object.keys(manifest.assets)) {
       if (!requestedAssetIds.has(assetId) || !styleSpecs.has(assetId)) continue
       specs.push(await finalize(assetId))
