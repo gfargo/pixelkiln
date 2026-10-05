@@ -1,0 +1,86 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../../outputs/pixelate/keep-pixelated.png",
+      "sha256": "99c42c946d39a3774e772d7f3026ffd1e209a7bf302a568973554b082ddf5e41",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 23,
+      "height": 102,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 23,
+        "minGridConfidence": "high",
+        "minTransparency": null
+      },
+      "transparency": 0,
+      "width": 102
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 102,
+      "nativeWidth": 102,
+      "phaseX": 0,
+      "phaseY": 0,
+      "protocol": "python-core-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 512,
+      "sourceWidth": 512,
+      "stepX": 5.019607843137255,
+      "stepY": 5.019607843137255,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#f5f5f5",
+        "#2a2c2d",
+        "#353844",
+        "#857f7b",
+        "#6c6c66",
+        "#5d5954",
+        "#474542",
+        "#14181d",
+        "#3b4438",
+        "#1c141c",
+        "#151414",
+        "#b5aca4",
+        "#9ca49c",
+        "#4a543b",
+        "#a48c7c",
+        "#313e5b",
+        "#0a0b0d",
+        "#a4947c",
+        "#3b4c72",
+        "#140c10",
+        "#9c9ca4",
+        "#744c34",
+        "#7c543c"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "316b1027dc3b4c96e37e3b2eecd35c0fecaed8f76ca27cddb739c419563afa33",
+  "outputs": [
+    {
+      "path": "keep-final.png",
+      "sha256": "b80f054bb9efed2c62bafc30cbb53dcdc687735c965258b5f7fdc42ba630358e"
+    }
+  ]
+}

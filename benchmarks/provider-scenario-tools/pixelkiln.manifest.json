@@ -86,6 +86,48 @@
           "referenceArray": false
         }
       }
+    },
+    "final": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "outputs/final",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false
+        }
+      },
+      "quality": {
+        "outDir": "refined/final",
+        "palette": [
+          "#f5f5f5",
+          "#2a2c2d",
+          "#353844",
+          "#857f7b",
+          "#6c6c66",
+          "#5d5954",
+          "#474542",
+          "#14181d",
+          "#3b4438",
+          "#1c141c",
+          "#151414",
+          "#b5aca4",
+          "#9ca49c",
+          "#4a543b",
+          "#a48c7c",
+          "#313e5b",
+          "#0a0b0d",
+          "#a4947c",
+          "#3b4c72",
+          "#140c10",
+          "#9c9ca4",
+          "#744c34",
+          "#7c543c"
+        ],
+        "minGridConfidence": "high"
+      }
     }
   },
   "assets": {
@@ -166,6 +208,13 @@
         "mode": "image-to-image",
         "from": "snapped"
       }
+    },
+    "keep-final": {
+      "prompt": "the pixelated keep, refined to its native grid",
+      "source": "outputs/pixelate/keep-pixelated.png",
+      "styles": [
+        "final"
+      ]
     }
   }
 }
