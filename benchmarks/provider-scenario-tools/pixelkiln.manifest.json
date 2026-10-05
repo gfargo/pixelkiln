@@ -1,0 +1,38 @@
+{
+  "name": "scenario-tool-models",
+  "provider": "scenario",
+  "styles": {
+    "cutout": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "outputs/cutout",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_birefnet-background-removal",
+          "maxComputeUnits": 2,
+          "referenceParameter": "image",
+          "referenceArray": false
+        }
+      }
+    },
+    "snap": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "outputs/snap",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_pixel-snapper",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false,
+          "parameters": { "colors": 16 }
+        }
+      }
+    }
+  },
+  "assets": {
+    "keep": { "prompt": "a stone mountain keep", "source": "art/keep.png", "styles": ["cutout", "snap"] },
+    "keep-cutout": { "prompt": "remove the background", "styles": ["cutout"], "revision": { "mode": "image-to-image", "from": "keep" } },
+    "keep-snapped": { "prompt": "snap to the pixel grid", "styles": ["snap"], "revision": { "mode": "image-to-image", "from": "keep" } }
+  }
+}

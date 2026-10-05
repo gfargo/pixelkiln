@@ -97,8 +97,8 @@ the same graph and still differ because their checkpoint bytes, custom nodes,
 or sampler settings differ. Commit the workflow and record the model stack used
 to test it.
 
-The revision manifest and dependency gate are provider-neutral. ComfyUI and
-PixelLab opt in; Retro Diffusion and Scenario reject revision assets offline.
+The revision manifest and dependency gate are provider-neutral. ComfyUI,
+PixelLab, and Scenario (`image-to-image` only) opt in; Retro Diffusion rejects revision assets offline.
 PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
 `correct-pixelart`, `animate`, `animate-pixminimax`, `animate-skeleton`,
 `interpolate`, and `edit-animation`, but not `outpaint`. ComfyUI covers the
@@ -116,7 +116,7 @@ only the part that fits its existing still-image pipeline.
 |---|---|
 | Best fit today | A controlled one-asset spike using a hosted model or project LoRA with a hard CU ceiling |
 | PixelKiln generator | `map` stills |
-| Output | One to four PNG candidates, 128–2048px in multiples of 16 |
+| Output | One to four PNG candidates, 16–4096px; each model has its own bounds |
 | Cost model | Manifest `maxComputeUnits`, command budget, then free authoritative preflight before each paid request |
 | Recovery | Durable job and asset IDs refresh temporary signed original-file URLs |
 | Account lifecycle | Read-only connectivity check; no balance, list, adopt, salvage, tag, or purge yet |

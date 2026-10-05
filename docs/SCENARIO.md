@@ -31,8 +31,12 @@ override the production API root. Ordinary projects should leave it unset.
 PixelKiln calls `POST /generate/custom/{modelId}`. Scenario model inputs vary;
 inspect the model's current parameter reference before adding optional inputs.
 The initial PixelKiln contract sends `prompt`, `width`, `height`, `numOutputs`,
-and an optional `seed`. It accepts dimensions from 128–2048px in multiples of
-16 and one to four PNG outputs.
+and an optional `seed`. It accepts whole-number dimensions from 16 to 4096px and one to four PNG
+outputs. Each model has its own tighter bounds (FLUX takes 128 to 2048 in
+steps of 16, Retro Diffusion Plus 16 to 384); the free dry run that precedes
+every paid request reports them, for example "Input width must be at least
+672", before anything is spent. A model may also return a different canvas than
+the one requested, so check real dimensions.
 
 The public `model_bfl-flux-2-dev` profile documents that input shape. A custom
 LoRA used with that base can be supplied as `parameters.modelId` when the
@@ -78,9 +82,146 @@ keeps job and asset lookup scoped to the intended Scenario project.
 replace PixelKiln-owned `prompt`, dimensions, seed, output count, project, or
 budget fields.
 
-Style reference uploads are not implemented. A `styleImages` entry fails
-during free manifest resolution rather than uploading the same image on every
-run. Train or reuse a Scenario model for the first integration.
+## Reference images and edits
+
+Most Scenario image models take reference images, which serve both as style
+guidance and as the image to edit. PixelKiln uploads each local image to
+Scenario once (`POST /assets`, free), keeps the returned asset id by content
+hash in a temporary cache so a rerun does not upload it again, and sends the ids
+as the model's `referenceImages` input. Two things use this:
+
+- A style's `styleImages` are sent as references with every asset in the style.
+- An `image-to-image` revision sends its parent first, then any style images.
+  The prompt is the edit instruction, as in
+  [controlled revisions](./REVISIONS.md). Masked `inpaint` and the
+  PixelLab animation and cleanup modes are not available, and `strength` is
+  refused because Scenario has no common one; use the model's own `parameters`.
+
+```jsonc
+{
+  "styles": {
+    "edit": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "assets/generated",
+      "providerOptions": {
+        "scenario": { "modelId": "model_bfl-flux-2-klein-9b", "maxComputeUnits": 1 }
+      }
+    }
+  },
+  "assets": {
+    "keep": { "prompt": "a stone mountain keep", "source": "art/keep.png" },
+    "keep-snow": {
+      "prompt": "the same keep in winter: snow on the roofs, pixel art",
+      "revision": { "mode": "image-to-image", "from": "keep" }
+    }
+  }
+}
+```
+
+The adapter does not know each model's input names, so a model whose image
+input is not called `referenceImages` needs `referenceParameter` (for example
+`"image"`), and `referenceArray: false` if it takes one image rather than a
+list. `parameters` may not also set that input. A model must accept images at
+all: the free dry run, which now includes the references, rejects one that
+does not before anything is spent. A reference can add to the quote (GPT Image 2
+priced one text-only 512×512 request at 11 CU and the same request with a
+reference at 12).
+
+On October 5, 2026 a one-image `image-to-image` revision of the bake-off's GPT
+Image 2 keep through `model_bfl-flux-2-klein-9b` quoted and billed 1 CU and
+returned the same keep with snow on its roofs and battlements, banners and
+layout intact. The committed
+[Scenario edit smoke](../benchmarks/provider-scenario-edit/README.md) has the
+manifest, lockfile, and both images. That is one sample on one model.
+
+### Tool models as image-to-image
+
+Scenario's single-image tools (pixel snapper, pixelate, background removal,
+upscalers) are models like any other, so they run through the same
+`image-to-image` revision with no extra mode: point the style at the tool's
+model, name its input `image`, and put its settings in `parameters`. The
+adapter's other fields (`prompt`, `width`, `height`, `numOutputs`, `seed`) are
+accepted and ignored by these tools, and the free dry run prices the exact
+request. Free dry runs on October 5, 2026 quoted these on a `cu-basic` account:
+
+| Model | CU | Inputs besides `image` |
+|---|---:|---|
+| `model_birefnet-background-removal` | 2 | none |
+| `model_recraft-crisp-upscale` | 2 | none |
+| `model_bria-remove-background`, `model_photoroom-background-removal` | 3 | none |
+| `model_pixel-snapper` | 5 | `colors` 8 to 256 (default 16) |
+| `model_sc-pixelate` | 5 | `pixelGridSize` 1 to 512, `removeNoise`, `colorPalette`, `colorPaletteSize` |
+| `model_upscale-v3`, `model_topaz-image-upscale` | 10 | none |
+
+```jsonc
+{
+  "styles": {
+    "snap": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "assets/snapped",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_pixel-snapper",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false,
+          "parameters": { "colors": 16 }
+        }
+      }
+    }
+  },
+  "assets": {
+    "keep-snapped": {
+      "prompt": "snap to the pixel grid",
+      "revision": { "mode": "image-to-image", "from": "keep" }
+    }
+  }
+}
+```
+
+Birefnet and Pixel Snapper were then run once each through the adapter (7 CU,
+quoted and billed identically; see the
+[tool-model smoke](../benchmarks/provider-scenario-tools/README.md)). Pixel
+Snapper returned an 83×83, exactly-16-colour native-grid version of a 512×512
+image, a different size than the manifest's canvas, and Birefnet's cutout kept
+its subject at alpha 254 rather than 255. The other tools were only quoted. They overlap PixelKiln's own offline work: `pixelkiln refine` snaps
+the grid and palette for free, and PixelLab's `remove-background` revision costs
+one generation. Reach for these when the art is already on Scenario.
+
+### Retro Diffusion on Scenario
+
+Scenario hosts three Retro Diffusion models, and they are the most pixel-art-specific
+models in its catalog: `model_retrodiffusion-plus` (18 styles from `default` and
+`retro` to `isometric_asset`, `topdown_asset`, `character_turnaround`, and
+`ui_element`), `model_retrodiffusion-tile` (`tileset`, `tileset_advanced`,
+`single_tile`, `tile_variation`, `tile_object`, `scene_object`), and
+`model_retrodiffusion-animation` (`four_angle_walking`, `walking_and_idle`,
+`small_sprites`, `vfx`). On a `cu-basic` account every dry run answered
+`ModelAccessRestrictedError` with `requiredPlan: cu-pro-q3-25`, so none of this
+has been run, and no price is known until the plan is upgraded.
+
+Judging from Scenario's parameter reference (nothing here was exercised), what
+the adapter already supports and what it does not:
+
+| Need | Status |
+|---|---|
+| `style`, `removeBg`, `tileX`, `tileY`, `strength`, `bypassPromptExpansion` | Pass-through `parameters`. |
+| 16 to 384 px canvas | Accepted now; the model's bound comes from the free dry run. |
+| `image` (image-to-image) | Supported through an `image-to-image` revision with `referenceParameter: "image"` and `referenceArray: false`. |
+| `inputPalette` (a palette image) | Not supported: the adapter has one reference input. |
+| More than 4 outputs (Plus and Tile allow 10) | Not supported: `numOutputs` stops at 4. |
+| Animation as a PNG spritesheet (`returnSpritesheet: true`) | Lands as one still image; there is no frame-set output for Scenario, so a person would slice it. The default GIF output is refused. |
+| Tilesets | Land as one still; PixelKiln's tile roles and exports do not apply. |
+
+PixelKiln also has a direct [Retro Diffusion](./RETRO_DIFFUSION.md) provider
+with live-tested single stills. Choosing between them is a billing and plan
+question (Retro Diffusion's USD credits against Scenario's compute units), not a
+feature one, until the Scenario route is measured. The first live check after
+upgrading should be one `model_retrodiffusion-plus` still at 64×64 with the
+default style: quote, billed amount, dimensions, and whether it comes back as
+PNG.
 
 ## Plan before spending
 
@@ -114,6 +255,12 @@ quote stops the run before paid work. Scenario's `costDetails` already sum to
 `creativeUnitsCost`; PixelKiln records both without double-counting. A separate
 IP-detection charge is additive when Scenario reports one.
 
+A 429 on a generation request means the account's concurrent-job limit
+refused it: nothing was accepted or billed, and the adapter retries for about
+80 seconds. Past that, rerun `gen`; the assets that landed are kept. A finished
+job whose asset is not a PNG (some models return JPEG) is billed, so that asset
+is marked failed rather than polled again.
+
 The command budget is still a hard ceiling over the whole selected run. The
 manifest ceiling protects each request from a changed live quote.
 
@@ -122,6 +269,24 @@ A still-image style can declare `quality` to recover a native grid, enforce a
 closed palette, and require named approval before pack or mount. This offline
 policy does not change the Scenario request or CU quote. See
 [Manifest quality profiles](./MANIFEST.md#quality-profiles).
+
+### Models and what they cost
+
+A free survey on October 5, 2026 quoted every non-deprecated text-to-image
+model with a prompt-only 512×512 dry run on a `cu-basic` account. 37 were
+usable and 19 were refused with `ModelAccessRestrictedError` (the Retro
+Diffusion Plus, Tile, and Animation models need the `cu-pro-q3-25` plan).
+Quotes ran from 1 CU (FLUX.2 Klein 9b, FLUX.1 Schnell, P-Image) through 2 to 6
+for the Krea 2, Recraft V4.1 Flash, Meta Muse, Ernie, Z-Image, and Qwen Image
+models, 11 to 12 for GPT Image 2 and Gemini 3.1 Flash, to 16 for the FLUX.2 Dev
+this page was first validated on. The
+[model bake-off](../benchmarks/provider-scenario-bakeoff/README.md) ran ten of
+them once: price did not predict fit, several models ignore the requested
+canvas size, and one returned a JPEG, which the adapter refuses.
+
+Scenario's catalog also lists pixel-art LoRAs, background-removal and upscale
+models, and a `pixel-snapper` cleanup tool. LoRA models answer a different
+endpoint than `/generate/custom/{modelId}`, which this adapter does not call.
 
 ### Current live validation
 
@@ -184,9 +349,11 @@ for every style:
 | `numOutputs` | One to four PNG candidates; defaults to one. |
 | `projectId` | Optional Scenario ownership/routing project. |
 | `parameters` | Additional model-specific JSON inputs. PixelKiln-owned request fields cannot be overridden. |
+| `referenceParameter` | The model input that takes images, default `referenceImages`. |
+| `referenceArray` | `false` when that input takes one image rather than a list. |
 
-The current adapter supports `map`, dimensions from 128–2048px in multiples of
-16, optional seed, and no style-image uploads. Every paid request is preceded
+The current adapter supports `map`, whole-number dimensions from 16 to 4096px,
+optional seed, style images and `image-to-image` revisions as reference uploads. Every paid request is preceded
 by an identical `dryRun=true` request. See [Set up Scenario](SCENARIO.md) for
 credentials, cost semantics, recovery, and the paid live-test boundary.
 
