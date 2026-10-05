@@ -302,6 +302,9 @@ const CorrectPixelartResponseSchema = z
     usage: z.unknown().optional(),
   })
   .passthrough()
+const RemoveBackgroundResponseSchema = z
+  .object({ image: z.object({ base64: z.string().min(1) }).passthrough(), usage: z.unknown().optional() })
+  .passthrough()
 /** Every Pro Flash image endpoint answers with the same job shape; `source_image_id` is the durable id a later character or object can reuse. */
 const ProFlashImageSubmitSchema = z
   .object({
@@ -1823,6 +1826,35 @@ export class PixelLabClient {
     )
     const pngs = cleanupResults(res.images, images.length, "correct-pixelart")
     return { png: pngs[0]!, pngs, usage: res.usage }
+  }
+
+  /**
+   * `/remove-background`: a transparent PNG from one pixel-art image,
+   * synchronously, like the rest of the Cleanup tier. The API takes at most
+   * 400x400 worth of area, one image per call. `simple` is faster and suits
+   * flat backgrounds; `complex` is slower and handles detailed edges. The
+   * schema's response example is dollar-denominated (`usd: 0.01`); the
+   * subscription cost measured 1 generation (docs/ENDPOINTS.md), and the
+   * default `simple` task is the one measured.
+   */
+  async removeBackground(args: {
+    image: Base64Image
+    width: number
+    height: number
+    task?: "simple" | "complex"
+    text?: string
+    seed?: number
+  }): Promise<{ png: Buffer; usage: unknown }> {
+    const body: Record<string, unknown> = { image: args.image, image_size: { width: args.width, height: args.height } }
+    if (args.task) body.background_removal_task = args.task === "complex" ? "remove_complex_background" : "remove_simple_background"
+    if (args.text) body.text = args.text
+    if (args.seed != null) body.seed = args.seed
+    const res = validateResponse(
+      RemoveBackgroundResponseSchema,
+      await this.request<unknown>("/remove-background", { method: "POST", body: JSON.stringify(body) }),
+      "remove-background",
+    )
+    return { png: Buffer.from(res.image.base64, "base64"), usage: res.usage }
   }
 
   /**

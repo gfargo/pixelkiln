@@ -25,6 +25,7 @@ describe("PixelLab: supportsRevision", () => {
     expect(provider.supportsRevision("image-to-image")).toBe(true)
     expect(provider.supportsRevision("reduce-colors")).toBe(true)
     expect(provider.supportsRevision("correct-pixelart")).toBe(true)
+    expect(provider.supportsRevision("remove-background")).toBe(true)
     expect(provider.supportsRevision("animate")).toBe(true)
     expect(provider.supportsRevision("animate-pixminimax")).toBe(true)
     expect(provider.supportsRevision("animate-skeleton")).toBe(true)
@@ -131,6 +132,24 @@ describe("PixelLabClient: the Cleanup-tier wire", () => {
       palette_image: { base64: "UEFM", format: "png" },
       dithering: "4x4",
       dithering_strength: 7,
+    })
+  })
+
+  it("sends remove-background with its task, size and hint", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ image: { base64: "UkVTVUxU" } }), { status: 200 })))
+    const client = new PixelLabClient("key")
+    const res = await client.removeBackground({
+      image: { base64: "U09VUkNF", format: "png" }, width: 32, height: 32, task: "complex", text: "a knight",
+    })
+    expect(res.png.toString("base64")).toBe("UkVTVUxU")
+    const call = vi.mocked(fetch).mock.calls[0]!
+    expect(new URL(String(call[0])).pathname).toBe("/v2/remove-background")
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      image: { base64: "U09VUkNF", format: "png" },
+      image_size: { width: 32, height: 32 },
+      background_removal_task: "remove_complex_background",
+      text: "a knight",
     })
   })
 
@@ -470,6 +489,30 @@ describe("PixelLab provider: revision submit and poll", () => {
     await poll(provider, lock, lockPath, { intervalMs: 0, specs: [child!] })
     await fetchAssets(provider, [child!], lock, lockPath)
     expect(lock.entries["base/revised"]).toMatchObject({ status: "downloaded" })
+    const written = await import("node:fs/promises").then((fs) => fs.readFile(child!.outFile))
+    expect(written.equals(resultPng)).toBe(true)
+  })
+
+  it("submits remove-background synchronously and downloads the transparent bytes", async () => {
+    const loaded = await writeProject({ mode: "remove-background", from: "source", removalTask: "simple" })
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    expect(child!.cost).toBe(1)
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const plan = await buildPlan([child!], lock)
+    const resultPng = png(30, 32, 32)
+    let body: Record<string, unknown> | null = null
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      expect(new URL(String(input)).pathname).toBe("/v2/remove-background")
+      body = JSON.parse(String(init?.body))
+      return new Response(JSON.stringify({ image: { base64: resultPng.toString("base64") } }), { status: 200 })
+    }))
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs: [child!] })
+    await fetchAssets(provider, [child!], lock, lockPath)
+    expect(body).toMatchObject({ image_size: { width: 32, height: 32 }, background_removal_task: "remove_simple_background" })
+    expect(lock.entries["base/revised"]).toMatchObject({ status: "downloaded", revision: { mode: "remove-background", removalTask: "simple" } })
     const written = await import("node:fs/promises").then((fs) => fs.readFile(child!.outFile))
     expect(written.equals(resultPng)).toBe(true)
   })

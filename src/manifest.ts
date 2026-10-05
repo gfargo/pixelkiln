@@ -919,6 +919,7 @@ export async function resolveSpecs(
             : {}),
           ...(asset.revision.skeletonTemplate ? { skeletonTemplate: asset.revision.skeletonTemplate } : {}),
           ...(asset.revision.description ? { description: asset.revision.description } : {}),
+          ...(asset.revision.removalTask ? { removalTask: asset.revision.removalTask } : {}),
           ...(asset.revision.engine ? { engine: asset.revision.engine } : {}),
         }
       }

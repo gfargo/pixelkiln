@@ -439,6 +439,7 @@ export class PixelLabProvider implements Provider {
   supportsRevision(mode: RevisionMode): boolean {
     return (
       mode === "inpaint" || mode === "image-to-image" || mode === "reduce-colors" || mode === "correct-pixelart" ||
+      mode === "remove-background" ||
       mode === "animate" || mode === "animate-pixminimax" || mode === "animate-skeleton" ||
       mode === "interpolate" || mode === "edit-animation"
     )
@@ -474,6 +475,11 @@ export class PixelLabProvider implements Provider {
       // member reports zero so `--budget` never double-counts one call's
       // cost across N lock entries.
       return { unit: "generations", amount: 0, candidates: 1 }
+    }
+    if (spec.revision?.mode === "remove-background") {
+      // Measured at 1 generation on a 64x64 source (docs/ENDPOINTS.md,
+      // "Post-processing utilities"), not the schema example's $0.01.
+      return { unit: "generations", amount: 1, candidates: 1 }
     }
     if (spec.revision?.mode === "reduce-colors" || spec.revision?.mode === "correct-pixelart") {
       // Confirmed live: a flat 0.1 generations for both, on a 32x32 source,
@@ -631,6 +637,12 @@ export class PixelLabProvider implements Provider {
       const { sourceWidth: width, sourceHeight: height } = spec.revision
       if (width != null && height != null && (width > 1024 || height > 1024)) {
         throw new Error(`PixelLab correct-pixelart source is ${width}x${height}; the API takes at most 1024 pixels per side`)
+      }
+    }
+    if (spec.revision?.mode === "remove-background") {
+      const { sourceWidth: width, sourceHeight: height } = spec.revision
+      if (width != null && height != null && (width > 400 || height > 400)) {
+        throw new Error(`PixelLab remove-background source is ${width}x${height}; the API takes at most 400x400`)
       }
     }
     if (spec.revision?.mode === "animate-skeleton") {
@@ -1868,6 +1880,18 @@ export class PixelLabProvider implements Provider {
       const res = await this.client.correctPixelart({ images, strength: revision.strength })
       return this.cacheCleanupResult(res.pngs, res.usage, roles, revision.sourceFps)
     }
+    if (revision.mode === "remove-background") {
+      if (width == null || height == null) throw new Error(`${spec.styleId}/${spec.assetId}: remove-background needs the source's size`)
+      const res = await this.client.removeBackground({
+        image,
+        width,
+        height,
+        task: revision.removalTask,
+        text: revision.description,
+        seed: spec.seed,
+      })
+      return this.cacheCleanupResult([res.png], res.usage, roles, revision.sourceFps)
+    }
 
     // interpolate and edit-animation are background jobs that complete with
     // a frame list, like animate below, and land in the same review.
@@ -2039,7 +2063,7 @@ export class PixelLabProvider implements Provider {
     // an ordinary submission of the same base generator, which is why this
     // checks the spec the pipeline threads through PollContext instead.
     const revisionMode = context?.spec?.revision?.mode
-    if (revisionMode === "reduce-colors" || revisionMode === "correct-pixelart") {
+    if (revisionMode === "reduce-colors" || revisionMode === "correct-pixelart" || revisionMode === "remove-background") {
       return this.pollCachedRevision(jobId, context)
     }
     if (

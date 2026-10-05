@@ -41,8 +41,8 @@ export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
 export type GridConfidence = z.infer<typeof GridConfidenceSchema>
 
 export const RevisionModeSchema = z.enum([
-  "image-to-image", "inpaint", "outpaint", "reduce-colors", "correct-pixelart", "animate", "animate-pixminimax",
-  "animate-skeleton", "interpolate", "edit-animation",
+  "image-to-image", "inpaint", "outpaint", "reduce-colors", "correct-pixelart", "remove-background", "animate",
+  "animate-pixminimax", "animate-skeleton", "interpolate", "edit-animation",
 ])
 export type RevisionMode = z.infer<typeof RevisionModeSchema>
 
@@ -786,12 +786,15 @@ export const RevisionSchema = z
      * same `mannequin`/`bear`/`cat`/`dog`/`horse`/`lion` vocabulary.
      */
     skeletonTemplate: z.string().min(1).optional(),
+    /** `remove-background` only: `simple` is faster and suits flat backgrounds; `complex` handles detailed edges. PixelLab defaults to `simple`. */
+    removalTask: z.enum(["simple", "complex"]).optional(),
     /**
-     * `animate-skeleton` only: what the character *looks like*, a noun
+     * `animate-skeleton`: what the character *looks like*, a noun
      * phrase (colours, clothing, held items) — distinct from the asset's
      * own `prompt`, which this mode sends as the motion's short label
      * (PixelLab's `action`), the same `prompt`-as-motion convention
-     * `animate`/`animate-pixminimax` already use.
+     * `animate`/`animate-pixminimax` already use. `remove-background`: a
+     * short description of the foreground, which PixelLab uses as a hint.
      */
     description: z.string().min(1).optional(),
     /**
@@ -913,7 +916,28 @@ export const RevisionSchema = z
         path: ["keypointsFile"],
       })
     }
-    for (const field of ["keypointsFile", "skeletonTemplate", "description"] as const) {
+    if (revision.removalTask !== undefined && revision.mode !== "remove-background") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "removalTask applies to remove-background revisions only",
+        path: ["removalTask"],
+      })
+    }
+    if (revision.strength !== undefined && revision.mode === "remove-background") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "remove-background revisions do not take a strength",
+        path: ["strength"],
+      })
+    }
+    if (revision.description !== undefined && revision.mode !== "animate-skeleton" && revision.mode !== "remove-background") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "description applies to animate-skeleton/remove-background revisions only",
+        path: ["description"],
+      })
+    }
+    for (const field of ["keypointsFile", "skeletonTemplate"] as const) {
       if (revision[field] !== undefined && revision.mode !== "animate-skeleton") {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -1000,6 +1024,7 @@ export interface ResolvedRevision {
   skeleton?: SkeletonSet | null
   skeletonTemplate?: string
   description?: string
+  removalTask?: "simple" | "complex"
   engine?: "pro-flash"
 }
 
@@ -1727,6 +1752,7 @@ export const LockEntrySchema = z.object({
       keypointsSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       skeletonTemplate: z.string().min(1).optional(),
       description: z.string().min(1).optional(),
+      removalTask: z.enum(["simple", "complex"]).optional(),
       engine: z.enum(["pro-flash"]).optional(),
     })
     .strict()

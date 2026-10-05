@@ -7,8 +7,8 @@ dependencies before submission, and records the lineage in the lockfile.
 
 The manifest and pipeline are provider-neutral. ComfyUI and PixelLab implement
 it; PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
-`correct-pixelart`, `animate`, `animate-pixminimax`, `animate-skeleton`,
-`interpolate`, and `edit-animation`, not `outpaint` (its API has no
+`correct-pixelart`, `remove-background`, `animate`, `animate-pixminimax`,
+`animate-skeleton`, `interpolate`, and `edit-animation`, not `outpaint` (its API has no
 canvas-expansion endpoint). ComfyUI covers every mode generically except the
 five frame-set modes (`animate`, `animate-pixminimax`, `animate-skeleton`,
 `interpolate`, `edit-animation`), which need an ordered frame set its
@@ -59,8 +59,8 @@ input to the provider workflow, not a cross-model quality guarantee.
 **From the gallery** (`pixelkiln gallery --edit`): open a completed or
 committed asset's drawer and use "+ New revision" under "Revisions from this
 asset" to create a child of it. On a PixelLab sprite the mode picker offers
-`image-to-image`, `animate`, `animate-pixminimax`, `reduce-colors`, and
-`correct-pixelart`; on a PixelLab frame set (or a character's directions) it
+`image-to-image`, `animate`, `animate-pixminimax`, `reduce-colors`,
+`correct-pixelart`, and `remove-background`; on a PixelLab frame set (or a character's directions) it
 offers `edit-animation`, `reduce-colors`, and `correct-pixelart`, which take
 the whole set. Other providers get `image-to-image`. The form asks only for
 the new asset id, the instruction or motion, and the mode's own options
@@ -164,6 +164,31 @@ photographs and 3-D renders, not for reprocessing" pixel art):
 
 `strength` (0–1, PixelLab's own default 0.1) is how far the model may move
 from the source; start low and only raise it for real repair.
+
+### Remove a background
+
+`remove-background` calls PixelLab's `/remove-background` and returns the
+same sprite on a transparent background. It is synchronous like the other
+cleanup modes, takes one image of at most 400 by 400 pixels, and refuses a
+set parent. Our measurements found it the one utility that leaves a locked
+palette intact (it also drops stray fringe pixels; see
+[ENDPOINTS](./ENDPOINTS.md#post-processing-utilities-measured)); cost is 1
+generation.
+
+```jsonc
+{
+  "revision": {
+    "mode": "remove-background",
+    "from": "hero",
+    "removalTask": "complex",
+    "description": "a knight holding a sword"
+  }
+}
+```
+
+`removalTask` is `simple` (PixelLab's default: faster, for flat backgrounds)
+or `complex` (slower, for detailed edges). `description` is an optional hint
+naming the foreground. Both are rejected on other modes, as is `strength`.
 
 ### Revising a whole set at once
 

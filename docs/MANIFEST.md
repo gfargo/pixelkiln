@@ -64,7 +64,7 @@ not merely a label edit.
 | `source` | string | Manifest-relative committed art used instead of generation. For a set of PNG outputs (a `frames` animation, a `tiles` set) a path that is not a file is the stem of a hand edit laid beside the generated members (`<stem>-<role>.png` each); the set still generates. Mutually exclusive with `revision`. |
 | `sourceByStyle` | object | Per-style `source`, keyed by style id; wins over `source` for that style. Written by `pixelkiln edit` for a hand edit of an asset that is in several styles. |
 | `remoteId` | string | The provider's own id for art that already exists on the account, so `adopt` maps it without matching bytes: an object id, a character id, or `<character id>#<animation group id>`. Not part of the spec's identity. |
-| `revision` | object | Controlled dependency on another asset: `image-to-image`, `inpaint`, or `outpaint`; on PixelLab also `reduce-colors`, `correct-pixelart`, the animate modes (`animate`, `animate-pixminimax`, `animate-skeleton`), `interpolate`, and `edit-animation`. `engine: "pro-flash"` selects PixelLab's Pro Flash tier for `image-to-image`/`inpaint`. See [controlled revisions](REVISIONS.md). |
+| `revision` | object | Controlled dependency on another asset: `image-to-image`, `inpaint`, or `outpaint`; on PixelLab also `reduce-colors`, `correct-pixelart`, `remove-background`, the animate modes (`animate`, `animate-pixminimax`, `animate-skeleton`), `interpolate`, and `edit-animation`. `engine: "pro-flash"` selects PixelLab's Pro Flash tier for `image-to-image`/`inpaint`. See [controlled revisions](REVISIONS.md). |
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](./CHARACTERS.md). |
 | `animation` | object | `character` styles: a loop of another character asset in one direction. `directions` (a list, instead of `direction`) declares the loop for several directions at once and fills the unnamed flips with mirrors; see [One loop, several directions](./CHARACTERS.md#one-loop-several-directions). |
 | `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
@@ -471,11 +471,12 @@ their own page: [Characters](./CHARACTERS.md) and
 
 | Revision field | Type | Meaning |
 |---|---|---|
-| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, `correct-pixelart`, `animate`, `animate-pixminimax`, `animate-skeleton`, `interpolate`, or `edit-animation`. The selected provider must opt into the mode. |
+| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, `correct-pixelart`, `remove-background`, `animate`, `animate-pixminimax`, `animate-skeleton`, `interpolate`, or `edit-animation`. The selected provider must opt into the mode. |
 | `from` | asset id, required | Parent asset in the same style. Self-references, unknown ids, and cycles are rejected. A parent written as a set (a character's directions, an animation's frames) is read as every member: `reduce-colors`, `correct-pixelart`, and `edit-animation` take the whole set in one call; the other modes refuse it. See [Revising a whole set at once](./REVISIONS.md#revising-a-whole-set-at-once). |
 | `mask` | string | Manifest-relative PNG required for `inpaint`; rejected for the other modes. Its dimensions must match an available source. |
-| `strength` | number 0–1 | Workflow edit/denoise strength (`image-to-image`, `correct-pixelart`); rejected for `reduce-colors`, `animate`, `animate-pixminimax`, `interpolate`, and `edit-animation`. Interpretation is provider- and model-specific. |
+| `strength` | number 0–1 | Workflow edit/denoise strength (`image-to-image`, `correct-pixelart`); rejected for `reduce-colors`, `remove-background`, `animate`, `animate-pixminimax`, `interpolate`, and `edit-animation`. Interpretation is provider- and model-specific. |
 | `numColors` | integer 2–256 | `reduce-colors` only. Target palette size; mutually exclusive with `paletteImage`. |
+| `removalTask` | `simple` or `complex` | `remove-background` only. `simple` (PixelLab's default) is faster for flat backgrounds; `complex` handles detailed edges. |
 | `paletteImage` | string | `reduce-colors` only. Manifest-relative image whose colors become the palette; unlike `mask`, no size relationship to the source is required. |
 | `dithering` | enum | `reduce-colors` only. `none` (default), `2x2`, `4x4`, or `8x8`. |
 | `ditheringStrength` | number 0–10 | `reduce-colors` only. Ignored when `dithering` is `none`. |
@@ -486,7 +487,7 @@ their own page: [Characters](./CHARACTERS.md) and
 | `enhancePrompt` | boolean | `animate`/`animate-pixminimax` only. Lets the provider expand the prompt into a fuller motion description first, for an extra documented +0.05-generation surcharge. |
 | `keypointsFile` | string, required for `animate-skeleton` | Manifest-relative JSON file (`src/skeleton.ts`'s `SkeletonSetSchema`): the pose the source is already in, plus 3–15 per-frame poses. See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation). |
 | `skeletonTemplate` | string | `animate-skeleton` only. Body a joint's missing `depth` is taken from: `mannequin` (default), `bear`, `cat`, `dog`, `horse`, or `lion`. |
-| `description` | string | `animate-skeleton` only. What the subject *looks like* (colours, clothing, held items) — the asset's own `prompt` is sent as the motion's short label instead. |
+| `description` | string | `animate-skeleton`: what the subject *looks like* (colours, clothing, held items) — the asset's own `prompt` is sent as the motion's short label instead. `remove-background`: a hint naming the foreground. Rejected on other modes. |
 | `engine` | enum | `image-to-image`/`inpaint` only. `pro-flash` draws the edit with PixelLab's Pro Flash edit or inpaint endpoint instead of the default Pro one: 5–9 generations instead of 20–40, 32 to 256px per side in multiples of 4, no `strength`. Omit for the default. |
 
 The parent may use committed `source`, downloaded generated output, or a

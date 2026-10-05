@@ -124,6 +124,15 @@ const NewAssetSchema = z
           .strict(),
         z
           .object({
+            mode: z.literal("remove-background"),
+            from: z.string().min(1),
+            removalTask: z.enum(["simple", "complex"]).optional(),
+            /** A short description of the foreground, sent as PixelLab's text hint. */
+            description: z.string().min(1).optional(),
+          })
+          .strict(),
+        z
+          .object({
             mode: z.enum(["animate", "animate-pixminimax"]),
             from: z.string().min(1),
             frames: z.number().int().min(4).max(40).refine((n) => n % 2 === 0, "frames must be even").optional(),

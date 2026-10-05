@@ -457,7 +457,7 @@ export function renderDrawer() {
     }
     const declared = item.asset && item.asset.revision;
     if (declared) {
-      for (const [label, key] of [['facing', 'direction'], ['looks like', 'description'], ['body template', 'skeletonTemplate'], ['frames', 'frames'], ['fps', 'fps'], ['colours', 'numColors'], ['dithering', 'dithering']]) {
+      for (const [label, key] of [['facing', 'direction'], ['looks like', 'description'], ['body template', 'skeletonTemplate'], ['frames', 'frames'], ['fps', 'fps'], ['colours', 'numColors'], ['dithering', 'dithering'], ['removal', 'removalTask']]) {
         if (declared[key] !== undefined) row(dl, label, declared[key]);
       }
     }

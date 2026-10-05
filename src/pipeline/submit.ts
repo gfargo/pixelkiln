@@ -317,6 +317,7 @@ export async function submit(
             ...(spec.revision.keypointsSha256 ? { keypointsSha256: spec.revision.keypointsSha256 } : {}),
             ...(spec.revision.skeletonTemplate ? { skeletonTemplate: spec.revision.skeletonTemplate } : {}),
             ...(spec.revision.description ? { description: spec.revision.description } : {}),
+            ...(spec.revision.removalTask ? { removalTask: spec.revision.removalTask } : {}),
             ...(spec.revision.engine ? { engine: spec.revision.engine } : {}),
           }
         : null,
