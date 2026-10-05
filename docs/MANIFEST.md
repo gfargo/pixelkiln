@@ -480,11 +480,14 @@ their own page: [Characters](./CHARACTERS.md) and
 | `paletteImage` | string | `reduce-colors` only. Manifest-relative image whose colors become the palette; unlike `mask`, no size relationship to the source is required. |
 | `dithering` | enum | `reduce-colors` only. `none` (default), `2x2`, `4x4`, or `8x8`. |
 | `ditheringStrength` | number 0–10 | `reduce-colors` only. Ignored when `dithering` is `none`. |
-| `frames` | integer 4–40, even | `animate`/`animate-pixminimax` only. `animate` caps at 16; `animate-pixminimax` allows up to 40. Rejected for `animate-skeleton` (frame count comes from `keypointsFile` instead), `interpolate`, and `edit-animation`. |
+| `frames` | integer 4–40, even | `animate`/`animate-pixminimax` only. `animate` caps at 16 (even); `animate-pixminimax` allows up to 40 in multiples of 4. Rejected for `animate-skeleton` (frame count comes from `keypointsFile` instead), `interpolate`, and `edit-animation`. |
 | `fps` | integer 1–60 | `animate`/`animate-pixminimax`/`interpolate`/`edit-animation` only. Playback rate recorded with the frames; the provider does not store one. Defaults to the parent's own rate when it is a loop, else 8. |
 | `lastFrame` | string | `animate`/`animate-pixminimax`: manifest-relative image pinning where the motion ends, turning an open-ended animation into an interpolation. `interpolate`: required, the ending keyframe (the parent is the start); it must match the parent's size. |
-| `direction` | enum | `animate-pixminimax`/`animate-skeleton`. Optional (alongside `enhancePrompt`) for the former; **required** for the latter. |
+| `direction` | enum | `animate-pixminimax`/`animate-skeleton`. Optional for the former (a caption field PixelLab otherwise reads off the image); **required** for the latter. |
 | `enhancePrompt` | boolean | `animate`/`animate-pixminimax` only. Lets the provider expand the prompt into a fuller motion description first, for an extra documented +0.05-generation surcharge. |
+| `driftThreshold` | number ≥ 0 | `animate`/`animate-pixminimax` only. Colour de-flicker sensitivity: frames drifting from the first beyond it are corrected toward it; `0` corrects every frame. Omit for PixelLab's default. |
+| `subjectDescription` | string ≤ 300 | `animate-pixminimax` only. What the parent shows, one noun phrase; PixelLab reads it off the image when omitted and can decline some images. |
+| `initialPose` | string ≤ 300 | `animate-pixminimax` only. The pose the parent is in; read off the image when omitted. |
 | `keypointsFile` | string, required for `animate-skeleton` | Manifest-relative JSON file (`src/skeleton.ts`'s `SkeletonSetSchema`): the pose the source is already in, plus 3–15 per-frame poses. See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation). |
 | `skeletonTemplate` | string | `animate-skeleton` only. Body a joint's missing `depth` is taken from: `mannequin` (default), `bear`, `cat`, `dog`, `horse`, or `lion`. |
 | `description` | string | `animate-skeleton`: what the subject *looks like* (colours, clothing, held items) — the asset's own `prompt` is sent as the motion's short label instead. `remove-background`: a hint naming the foreground. Rejected on other modes. |

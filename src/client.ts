@@ -2003,8 +2003,10 @@ export class PixelLabClient {
     seed?: number
     noBackground?: boolean
     enhancePrompt?: boolean
+    driftThreshold?: number
   }): Promise<{ background_job_id: string; status: string }> {
     const body: Record<string, unknown> = { first_frame: args.firstFrame, action: args.action }
+    if (args.driftThreshold != null) body.drift_threshold = args.driftThreshold
     if (args.lastFrame) body.last_frame = args.lastFrame
     if (args.frameCount != null) body.frame_count = args.frameCount
     if (args.seed != null) body.seed = args.seed
@@ -2032,8 +2034,17 @@ export class PixelLabClient {
     noBackground?: boolean
     enhancePrompt?: boolean
     direction?: string
+    /** PixMiniMax's other caption fields; any left out are read off the image, which can fail the job. */
+    view?: "side" | "low top-down" | "high top-down"
+    subjectDescription?: string
+    initialPose?: string
+    driftThreshold?: number
   }): Promise<{ background_job_id: string; status: string }> {
     const body: Record<string, unknown> = { first_frame: args.firstFrame, description: args.description }
+    if (args.view) body.view = args.view
+    if (args.subjectDescription) body.subject_description = args.subjectDescription
+    if (args.initialPose) body.initial_pose = args.initialPose
+    if (args.driftThreshold != null) body.drift_threshold = args.driftThreshold
     if (args.lastFrame) body.last_frame = args.lastFrame
     if (args.frameCount != null) body.frame_count = args.frameCount
     if (args.seed != null) body.seed = args.seed

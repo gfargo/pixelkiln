@@ -162,8 +162,11 @@ const NewAssetSchema = z
             frames: z.number().int().min(4).max(40).refine((n) => n % 2 === 0, "frames must be even").optional(),
             fps: z.number().int().min(1).max(60).optional(),
             enhancePrompt: z.boolean().optional(),
-            /** `animate-pixminimax` only; the loader refuses it on `animate`. */
+            driftThreshold: z.number().min(0).optional(),
+            /** `animate-pixminimax` only; the loader refuses these on `animate`. */
             direction: CharacterDirectionSchema.optional(),
+            subjectDescription: z.string().min(1).max(300).optional(),
+            initialPose: z.string().min(1).max(300).optional(),
           })
           .strict(),
         z

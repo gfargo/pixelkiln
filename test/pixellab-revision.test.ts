@@ -236,6 +236,31 @@ describe("PixelLabClient: the animate wire", () => {
     })
   })
 
+  it("sends PixMiniMax's caption fields and the drift threshold when set", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ background_job_id: "job-5", status: "processing" }), { status: 202 })))
+    const client = new PixelLabClient("key")
+    await client.animatePixminimax({
+      firstFrame: { base64: "Rg==", format: "png" },
+      description: "sword slash",
+      view: "side",
+      subjectDescription: "a knight in silver plate armour",
+      initialPose: "standing with the sword lowered",
+      driftThreshold: 0.2,
+    })
+    await client.animateWithTextV3({ firstFrame: { base64: "Rg==", format: "png" }, action: "walk", driftThreshold: 0 })
+    const [pixminimax, text] = vi.mocked(fetch).mock.calls
+    expect(JSON.parse(String((pixminimax![1] as RequestInit).body))).toEqual({
+      first_frame: { base64: "Rg==", format: "png" },
+      description: "sword slash",
+      view: "side",
+      subject_description: "a knight in silver plate armour",
+      initial_pose: "standing with the sword lowered",
+      drift_threshold: 0.2,
+    })
+    expect(JSON.parse(String((text![1] as RequestInit).body))).toMatchObject({ drift_threshold: 0 })
+  })
+
   const keypoint = (label: string) => ({ label, x: 0.5, y: 0.5, z_index: 1 })
 
   it("sends animate-with-skeleton-v3 with first_frame_keypoints, keypoints, and direction, omitting unset optionals", async () => {
@@ -689,6 +714,9 @@ describe("PixelLab provider: revision submit and poll", () => {
 
     await expect(resolveSpecs(await writeProject({ mode: "animate", from: "source", frames: 40 }), { assets: ["revised"] }))
       .rejects.toThrow(/PixelLab animate takes 4 to 16 frames/)
+    await expect(resolveSpecs(await writeProject({ mode: "animate-pixminimax", from: "source", frames: 6 }), { assets: ["revised"] }))
+      .rejects.toThrow(/animate-pixminimax takes a multiple of 4 frames/)
+    await resolveSpecs(await writeProject({ mode: "animate-pixminimax", from: "source", frames: 12 }), { assets: ["revised"] })
   })
 })
 

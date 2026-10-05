@@ -766,7 +766,22 @@ export const RevisionSchema = z
      * `interpolate`: required, the ending keyframe; the parent is the start.
      */
     lastFrame: z.string().min(1).optional(),
-    /** `animate-pixminimax` only: facing direction, used only alongside `enhancePrompt` to hold the sprite's facing. */
+    /**
+     * `animate`/`animate-pixminimax` only: colour de-flicker sensitivity.
+     * Frames whose foreground drifts from the first frame beyond this are
+     * corrected toward it; 0 corrects every frame and higher values correct
+     * fewer. Omit for PixelLab's default.
+     */
+    driftThreshold: z.number().min(0).optional(),
+    /**
+     * `animate-pixminimax` only: one noun phrase for what the parent shows.
+     * PixelLab reads it off the image when omitted, and can decline some
+     * images, failing the job until it is sent.
+     */
+    subjectDescription: z.string().min(1).max(300).optional(),
+    /** `animate-pixminimax` only: the pose the parent is in, read off the image by PixelLab when omitted. */
+    initialPose: z.string().min(1).max(300).optional(),
+    /** `animate-pixminimax` only: facing direction, one of the model's caption fields, so it also holds the sprite's facing. */
     direction: CharacterDirectionSchema.optional(),
     /** `animate`/`animate-pixminimax` only: let PixelLab expand the action into a fuller motion description first. */
     enhancePrompt: z.boolean().optional(),
@@ -916,6 +931,22 @@ export const RevisionSchema = z
         path: ["keypointsFile"],
       })
     }
+    if (revision.driftThreshold !== undefined && revision.mode !== "animate" && revision.mode !== "animate-pixminimax") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "driftThreshold applies to animate/animate-pixminimax revisions only",
+        path: ["driftThreshold"],
+      })
+    }
+    for (const field of ["subjectDescription", "initialPose"] as const) {
+      if (revision[field] !== undefined && revision.mode !== "animate-pixminimax") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${field} applies to animate-pixminimax revisions only`,
+          path: [field],
+        })
+      }
+    }
     if (revision.removalTask !== undefined && revision.mode !== "remove-background") {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1025,6 +1056,9 @@ export interface ResolvedRevision {
   skeletonTemplate?: string
   description?: string
   removalTask?: "simple" | "complex"
+  driftThreshold?: number
+  subjectDescription?: string
+  initialPose?: string
   engine?: "pro-flash"
 }
 
@@ -1753,6 +1787,9 @@ export const LockEntrySchema = z.object({
       skeletonTemplate: z.string().min(1).optional(),
       description: z.string().min(1).optional(),
       removalTask: z.enum(["simple", "complex"]).optional(),
+      driftThreshold: z.number().min(0).optional(),
+      subjectDescription: z.string().min(1).max(300).optional(),
+      initialPose: z.string().min(1).max(300).optional(),
       engine: z.enum(["pro-flash"]).optional(),
     })
     .strict()
