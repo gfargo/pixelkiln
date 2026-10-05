@@ -738,7 +738,7 @@ describe("applyManifestEdit", () => {
       ["anvil-clean", { mode: "correct-pixelart", from: "anvil", strength: 0.5 }],
       ["anvil-cutout", { mode: "remove-background", from: "anvil", removalTask: "complex", description: "an anvil" }],
       ["anvil-wobble", { mode: "animate", from: "anvil", frames: 8, fps: 8 }],
-      ["anvil-spin", { mode: "animate-pixminimax", from: "anvil", frames: 8, enhancePrompt: true, direction: "south" }],
+      ["anvil-spin", { mode: "animate-pixminimax", from: "anvil", frames: 8, enhancePrompt: true, direction: "south", subjectDescription: "an anvil", initialPose: "resting", driftThreshold: 0.1 }],
     ]
     for (const [assetId, revision] of cases) {
       await applyManifestEdit(manifestPath, {

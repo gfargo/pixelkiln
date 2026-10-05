@@ -28,6 +28,12 @@ import {
  */
 const HexSha = z.string().regex(/^[0-9a-f]{64}$/)
 
+/** A project file a revision reads: inside the project, so a form cannot point a revision at an arbitrary path. */
+const ProjectFileSchema = z
+  .string()
+  .min(1)
+  .refine((file) => !path.isAbsolute(file) && !file.split(/[\\/]/).includes(".."), "must be a path inside the project")
+
 /** A JSON-safe subset of `AssetSchema` that is sensible to change in a form. */
 const AssetPatchSchema = z
   .object({
@@ -94,10 +100,11 @@ const NewAssetSchema = z
     styles: z.array(z.string().min(1)).optional(),
     /**
      * A controlled regeneration of another asset in the same manifest,
-     * instead of a fresh generation. `inpaint` needs a mask upload and
-     * `interpolate` an ending-keyframe image the gallery does not offer, so
-     * those two are hand-edited; every other mode can be created here
-     * (`animate-skeleton` after the gallery writes its keypoints file).
+     * instead of a fresh generation. Every mode but `outpaint` can be
+     * created here: `inpaint` names a mask file the gallery's mask editor
+     * wrote first, `interpolate` names an existing image as its ending
+     * keyframe, and `animate-skeleton` names the keypoints file the gallery
+     * wrote first.
      */
     revision: z
       .discriminatedUnion("mode", [
@@ -120,6 +127,23 @@ const NewAssetSchema = z
           })
           .strict(),
         z
+          .object({
+            mode: z.literal("inpaint"),
+            from: z.string().min(1),
+            /** Black-and-white PNG the same size as the parent; white is repainted. */
+            mask: ProjectFileSchema,
+          })
+          .strict(),
+        z
+          .object({
+            mode: z.literal("interpolate"),
+            from: z.string().min(1),
+            /** The ending keyframe: an image already in the project, the parent's size. */
+            lastFrame: ProjectFileSchema,
+            fps: z.number().int().min(1).max(60).optional(),
+          })
+          .strict(),
+        z
           .object({ mode: z.literal("correct-pixelart"), from: z.string().min(1), strength: z.number().min(0).max(1).optional() })
           .strict(),
         z
@@ -138,8 +162,11 @@ const NewAssetSchema = z
             frames: z.number().int().min(4).max(40).refine((n) => n % 2 === 0, "frames must be even").optional(),
             fps: z.number().int().min(1).max(60).optional(),
             enhancePrompt: z.boolean().optional(),
-            /** `animate-pixminimax` only; the loader refuses it on `animate`. */
+            driftThreshold: z.number().min(0).optional(),
+            /** `animate-pixminimax` only; the loader refuses these on `animate`. */
             direction: CharacterDirectionSchema.optional(),
+            subjectDescription: z.string().min(1).max(300).optional(),
+            initialPose: z.string().min(1).max(300).optional(),
           })
           .strict(),
         z

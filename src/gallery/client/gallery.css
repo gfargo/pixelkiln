@@ -337,6 +337,8 @@ textarea.mono { font-family:var(--mono); font-size:11.5px; }
 .pose-stage .joint { cursor:grab; }
 .pose-stage .joint:active { cursor:grabbing; }
 .pose-side { display:grid; gap:8px; align-content:start; }
+.mask-editor { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.mask-stage { image-rendering:pixelated; touch-action:none; cursor:crosshair; border:1px solid var(--line); background:var(--panel-deep); max-width:100%; align-self:flex-start; }
 .pose-tools { display:flex; flex-wrap:wrap; gap:6px; }
 .pose-tools button { font:11.5px/1 var(--mono); padding:6px 8px; }
 .pose-status { font:11.5px/1.45 var(--mono); color:var(--dim); }

@@ -1,6 +1,8 @@
 import { addAssetAndOpen, showSaveError } from "./form-kit.ts"
 import { S, el, field, fmtCost, numberInput, numberOrNull, postEdit, projectOf, ui } from "./core.ts"
 import { render, renderDrawer } from "./drawer.ts"
+import { maskEditor } from "./mask-editor.ts"
+import { displayUrl } from "./skeleton.ts"
 
 // ---- editing (only when the server minted a session) ---------------------
 
@@ -215,8 +217,13 @@ export function addAssetForm(style) {
  * `image-to-image`.
  */
 export function revisionModesFor(item) {
+  const single = item.outputs.length === 1;
+  const sized = (min, max) => item.width >= min && item.height >= min && item.width <= max && item.height <= max;
+  if (item.provider === 'comfyui') {
+    return [['image-to-image', 'edit with a text instruction'], ...(single ? [['inpaint', 'repaint a painted area']] : [])];
+  }
   if (item.provider !== 'pixellab') return [['image-to-image', 'edit with a text instruction']];
-  if (item.outputs.length > 1) {
+  if (!single) {
     return [
       ['edit-animation', 'one text edit across every frame'],
       ['reduce-colors', 'fewer colours, across every frame'],
@@ -225,12 +232,20 @@ export function revisionModesFor(item) {
   }
   return [
     ['image-to-image', 'edit with a text instruction'],
+    ...(sized(32, 512) ? [['inpaint', 'repaint a painted area, keep the rest']] : []),
     ['animate', 'animate it from a text description'],
     ['animate-pixminimax', 'animate it, holding the facing direction'],
+    ...(sized(16, 128) && endingKeyframes(item).length ? [['interpolate', 'in-betweens toward another sprite']] : []),
     ['reduce-colors', 'fewer colours, optional dithering'],
     ['correct-pixelart', 'clean up the pixel grid'],
     ['remove-background', 'cut the background out to transparency'],
   ];
+}
+
+/** Other single-image records in `item`'s style and size, which can end an interpolation. */
+export function endingKeyframes(item) {
+  return S.snap.items.filter((other) => other.id !== item.id && other.project === item.project && other.styleId === item.styleId &&
+    other.outputs.length === 1 && other.outputs[0].exists && other.width === item.width && other.height === item.height);
 }
 
 /**
@@ -255,6 +270,7 @@ export function newRevisionForm(item) {
   const enhance = el('input'); enhance.type = 'checkbox';
   const enhanceField = el('label', 'field check'); enhanceField.append(enhance, el('span', null, 'let PixelLab expand the motion description first'));
   const direction = el('select');
+  direction.append(new Option('let PixelLab read it', ''));
   for (const d of ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west']) direction.append(new Option(d, d));
   const numColors = el('input'); numColors.type = 'number'; numColors.min = '2'; numColors.max = '256'; numColors.step = '1'; numColors.placeholder = 'PixelLab default';
   const dithering = el('select');
@@ -262,24 +278,44 @@ export function newRevisionForm(item) {
   const removal = el('select');
   removal.append(new Option('simple: faster, flat backgrounds', 'simple'), new Option('complex: slower, detailed edges', 'complex'));
   const subject = el('input'); subject.type = 'text'; subject.placeholder = 'optional: e.g. a knight holding a sword';
+  const ending = el('select');
+  for (const other of endingKeyframes(item)) ending.append(new Option(other.assetId, other.outputs[0].path));
+  const endingField = field('ending keyframe', ending, 'Another sprite of the same style and size; the parent is the start. Regenerating that sprite makes this stale.');
+  const maskPath = el('input'); maskPath.type = 'text';
+  let maskTouched = false;
+  maskPath.oninput = () => { maskTouched = true; };
+  id.oninput = () => { if (!maskTouched) maskPath.value = id.value.trim() ? 'masks/' + id.value.trim() + '.png' : ''; };
+  const maskOverwrite = el('input'); maskOverwrite.type = 'checkbox';
+  const maskOverwriteField = el('label', 'field check'); maskOverwriteField.append(maskOverwrite, el('span', null, 'replace the mask file if it exists'));
+  const masker = maskEditor(displayUrl(item), () => {});
+  const maskBox = el('div');
+  maskBox.append(masker.root, field('mask file', maskPath, 'Inside the project. A black and white PNG the size of the sprite; white is repainted.'), maskOverwriteField);
+  const drift = el('input'); drift.type = 'number'; drift.min = '0'; drift.step = '0.01'; drift.placeholder = 'PixelLab default';
+  const subjectText = el('input'); subjectText.type = 'text'; subjectText.maxLength = 300; subjectText.placeholder = 'optional: a knight in silver plate armour';
+  const poseText = el('input'); poseText.type = 'text'; poseText.maxLength = 300; poseText.placeholder = 'optional: standing upright with the sword lowered';
   const row1 = el('div', 'row');
   row1.append(field('new asset id', id), field('mode', mode));
   const promptField = field('instruction', prompt);
   const strengthField = field('strength', strength, 'PixelLab rejects an explicit strength for image-to-image; leave this blank there. Optional for correct-pixelart.');
-  const framesField = field('frames', frames, 'Even, 4 to 40; animate allows up to 16.');
+  const framesField = field('frames', frames, 'animate: even, 4 to 16. animate-pixminimax: a multiple of 4, up to 40.');
+  const driftField = field('de-flicker', drift, 'Colour drift threshold: 0 corrects every frame toward the first, higher corrects fewer.');
+  const captionRow = el('div', 'row');
+  captionRow.append(field('subject', subjectText, 'Left blank, PixelLab reads it off the image, and can decline some images.'), field('starting pose', poseText));
   const fpsField = field('fps', fps, 'Recorded with the frames; PixelLab does not store one.');
-  const directionField = field('facing', direction, 'Holds the sprite\'s facing while the motion is expanded.');
+  const directionField = field('facing', direction, 'Which way the sprite faces; left blank, PixelLab reads it off the image.');
   const colorsField = field('colours', numColors);
   const ditherField = field('dithering', dithering);
   const removalField = field('removal', removal, 'PixelLab takes at most 400 by 400 pixels.');
   const subjectField = field('foreground', subject, 'A hint that helps PixelLab find what to keep.');
   const grids = el('div', 'row'); grids.append(framesField, fpsField);
   const cleanup = el('div', 'row'); cleanup.append(colorsField, ditherField);
-  form.append(row1, promptField, strengthField, grids, directionField, enhanceField, cleanup, removalField, subjectField);
+  form.append(row1, promptField, maskBox, endingField, strengthField, grids, driftField, captionRow, directionField, enhanceField, cleanup, removalField, subjectField);
   const hints = {
     'image-to-image': ['edit instruction', 'add snow on the roof', 'The style still adds its prefix and suffix.'],
     animate: ['motion', 'the chest wobbling gently', 'Describes the movement; the parent image is the first frame.'],
     'animate-pixminimax': ['motion', 'the chest wobbling gently', 'Describes the movement; the parent image is the first frame.'],
+    inpaint: ['paint in', 'a glowing runestone', 'What fills the painted area; the rest of the sprite is kept.'],
+    interpolate: ['motion', 'the door swinging open', 'Describes the movement between the two sprites.'],
     'edit-animation': ['edit instruction', 'add a red cape', 'Applied across every frame in one call, so the change stays consistent.'],
     'reduce-colors': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
     'correct-pixelart': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
@@ -294,10 +330,14 @@ export function newRevisionForm(item) {
     prompt.placeholder = placeholder;
     prompt.required = !['reduce-colors', 'correct-pixelart', 'remove-background'].includes(m);
     strengthField.hidden = m !== 'image-to-image' && m !== 'correct-pixelart';
-    grids.hidden = !(m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation');
+    grids.hidden = !(m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation' || m === 'interpolate');
+    driftField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
+    captionRow.hidden = m !== 'animate-pixminimax';
+    maskBox.hidden = m !== 'inpaint';
+    endingField.hidden = m !== 'interpolate';
     framesField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
     fpsField.hidden = grids.hidden;
-    directionField.hidden = !(m === 'animate-pixminimax' && enhance.checked);
+    directionField.hidden = m !== 'animate-pixminimax';
     enhanceField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
     cleanup.hidden = m !== 'reduce-colors';
     removalField.hidden = subjectField.hidden = m !== 'remove-background';
@@ -318,13 +358,19 @@ export function newRevisionForm(item) {
     const revision: any = { mode: m, from: item.assetId };
     if ((m === 'image-to-image' || m === 'correct-pixelart') && strength.value.trim() !== '') revision.strength = Number(strength.value);
     if ((m === 'animate' || m === 'animate-pixminimax') && frames.value.trim() !== '') revision.frames = Number(frames.value);
-    if ((m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation') && fps.value.trim() !== '') revision.fps = Number(fps.value);
+    if ((m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation' || m === 'interpolate') && fps.value.trim() !== '') revision.fps = Number(fps.value);
     if ((m === 'animate' || m === 'animate-pixminimax') && enhance.checked) revision.enhancePrompt = true;
-    if (m === 'animate-pixminimax' && enhance.checked) revision.direction = direction.value;
+    if (m === 'animate-pixminimax') {
+      if (direction.value) revision.direction = direction.value;
+      if (subjectText.value.trim()) revision.subjectDescription = subjectText.value.trim();
+      if (poseText.value.trim()) revision.initialPose = poseText.value.trim();
+    }
+    if ((m === 'animate' || m === 'animate-pixminimax') && drift.value.trim() !== '') revision.driftThreshold = Number(drift.value);
     if (m === 'reduce-colors') {
       if (numColors.value.trim() !== '') revision.numColors = Number(numColors.value);
       if (dithering.value) revision.dithering = dithering.value;
     }
+    if (m === 'interpolate') revision.lastFrame = ending.value;
     if (m === 'remove-background') {
       revision.removalTask = removal.value;
       if (subject.value.trim()) revision.description = subject.value.trim();
@@ -333,9 +379,22 @@ export function newRevisionForm(item) {
     const text = prompt.value.trim() || ({ 'reduce-colors': 'reduce colours', 'correct-pixelart': 'correct pixel art', 'remove-background': 'remove background' } as Record<string, string>)[m] || '';
     const asset = { prompt: text, styles: [item.styleId], revision };
     try {
-      const body: any = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };
+      let body: any;
+      let what = 'Added to the manifest.';
+      if (m === 'inpaint') {
+        const png = masker.png();
+        if (!png || masker.empty()) throw new Error('Paint the area to repaint first.');
+        body = {
+          action: 'create-inpaint-revision', expectedSha256: pr!.manifestSha256, styleId: item.styleId, from: item.assetId,
+          assetId: id.value.trim(), prompt: text, maskPath: maskPath.value.trim(), maskBase64: png.base64,
+        };
+        if (maskOverwrite.checked) body.overwrite = true;
+        what = 'Added to the manifest with ' + body.maskPath + '.';
+      } else {
+        body = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };
+      }
       if (item.project) body.project = item.project;
-      await addAssetAndOpen(body, { project: item.project, styleId: item.styleId }, 'Added to the manifest.');
+      await addAssetAndOpen(body, { project: item.project, styleId: item.styleId }, what);
     } catch (err) {
       showSaveError(msg, save, err);
     }

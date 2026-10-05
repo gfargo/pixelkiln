@@ -920,6 +920,9 @@ export async function resolveSpecs(
           ...(asset.revision.skeletonTemplate ? { skeletonTemplate: asset.revision.skeletonTemplate } : {}),
           ...(asset.revision.description ? { description: asset.revision.description } : {}),
           ...(asset.revision.removalTask ? { removalTask: asset.revision.removalTask } : {}),
+          ...(asset.revision.driftThreshold == null ? {} : { driftThreshold: asset.revision.driftThreshold }),
+          ...(asset.revision.subjectDescription ? { subjectDescription: asset.revision.subjectDescription } : {}),
+          ...(asset.revision.initialPose ? { initialPose: asset.revision.initialPose } : {}),
           ...(asset.revision.engine ? { engine: asset.revision.engine } : {}),
         }
       }
