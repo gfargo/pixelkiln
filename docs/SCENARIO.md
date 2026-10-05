@@ -237,20 +237,77 @@ refined it, for 8 CU on the cheapest path and 18 CU with GPT Image 2, ending in
 a 64×64 transparent sprite that passed the `refine` gate. Three rules came out
 of it:
 
-- A revision's parent must be in the same style, and a style has one model. To
-  chain steps, restate the previous output in the next style as a placed
-  `source`: `"source": "outputs/gen-klein/knight.png"`. Run each step with
-  `gen --style <id>`; nothing orders them yet.
+- A style has one model, so a chain spans styles. Name the parent's style with
+  `revision.fromStyle` (see [Across styles](./REVISIONS.md#across-styles)); the
+  child is blocked until the parent is generated, and `gen` runs the whole chain
+  in one invocation, one wave per link. The
+  [chain run](../benchmarks/provider-scenario-chain/README.md) did this live in
+  8 CU. (The pipeline benchmark was run before `fromStyle` existed, so it
+  restates each output as a placed `source` and runs `gen --style` per step.)
 - A `quality` profile gates every asset in its style, parents included, so a raw
-  parent blocks its own child. Put `quality` only on a final style whose asset is
-  the last output placed as a `source`, then run `pixelkiln refine --style`.
+  parent in the same style blocks its own child. Put `quality` on the last style
+  of the chain, whose parents are in other styles, then run
+  `pixelkiln refine --style`.
 - Pass the same palette to the tool (Pixelate's `colorPalette`) and to
-  `quality.palette`. The output then stays inside it. Pixelate's
-  `pixelGridSize` also set the detected native grid closely (48, 64 and 128
-  asked, 46, 64 and 128 found).
+  `quality.palette`. The output then stays inside it.
 
 A palette that is too small for the art costs fidelity (a bright blue cape
 became navy under a 32-colour palette), so passing the gate is not approval.
+
+### Large and illustrative art: render big, pixelate, refine
+
+A [game pilot](../benchmarks/provider-scenario-game-pilot/README.md) ran the
+chain on a real game's large landmarks (240 px wide, 176 to 224 px tall) and on a
+course cover, and it is where Scenario earned a place: a strong model renders the
+art at four times its final size, Pixelate reduces it to the target grid on a
+bounded palette, Birefnet removes the background, and `refine` confirms the
+grid. It is poor at the opposite end: 32 px props lose their shape.
+
+| Step | Setting that worked |
+|---|---|
+| Render | GPT Image 2 (`quality: medium`, flat 11 CU at any canvas size; `high` is 44), or FLUX.2 Klein 9b (1 CU). Ask for the subject isolated on a plain white background, with no ground or shadow. Canvas four times the target. |
+| Pixelate | `pixelGridSize` and `colorPaletteSize` 64. **On an input wider than about 512 px the grid is not literal:** 240 asked on a 960 px image gave 2 px blocks (480 cells), 120 gave 4 px blocks (240 cells). Test one image and read the blocks before a batch. |
+| Cut out | Birefnet, 2 CU. |
+| Refine | `pixelkiln refine` with the image's own 64 most common colours. |
+
+With the right grid, a 960×832 render of a ski lodge came back as a **240×208**
+native grid at **high** confidence, the same size as the game's existing
+sprite, and visibly more detailed. At twice the grid the detector reported
+medium confidence and a doubled grid, so a result that is not high is a sign the
+grid was mis-set, not that the art is bad. The 1 CU Klein render of a temple was
+about as good as the 11 CU GPT one. One chain costs 8 CU (Klein) or 18 CU (GPT
+Image 2).
+
+For a **cover or key art**, GPT Image 2 at four times the size, then Pixelate at a
+grid giving the target width, produced a convincing pixel scene with 31 colours.
+It renders legible title text, which PixelLab does not, and the text survives
+Pixelate. Before pixelating it is a painterly illustration, not pixel art.
+
+Do not use this for small native-size props. A winter pine and an autumn tree at
+32 px came back as different trees, and Birefnet left holes in the canopy. A
+free recolour of the original, or a PixelLab generation at the native size, is
+the better tool there.
+
+### Sound effects and other non-image models
+
+The adapter handles still images only, but Scenario's audio models are reachable
+through the same account. A call outside PixelKiln (`POST /generate/custom/{model}`,
+then poll `/jobs/{id}` and fetch the asset) produced a sound effect for 1 CU;
+nothing about it is recorded in a lockfile. Measured on October 5, 2026:
+
+| Model | CU | Output |
+|---|---:|---|
+| `model_mm-audio-2-t2a` (MM Audio SFX) | 1, flat at any duration | Mono MP3, 44.1 kHz, 64 kbps |
+| `model_elevenlabs-sound-effects-v2` | 30, flat at any duration | Stereo MP3, 44.1 kHz, 128 kbps |
+
+Both ignore the duration for pricing, so ask for the length the game needs. A
+prompt that narrates a sequence ("chains rattle, then the disc drops into the
+tray") came back at the full requested length with the events spread out;
+asking for one fast sound and a duration of 1.0 to 1.4 seconds, then trimming
+leading and trailing silence, is how a tight impact effect is made. Music models
+(ACE-Step, MusicGen, ElevenLabs Music, Lyria 3.5) quoted 10 to 30 CU; Sonilo and
+Lyria 3 Pro need the `cu-pro-q3-25` plan. Judge audio by ear: nothing here
+verified it.
 
 ## Plan before spending
 
