@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "entries": {
+    "cutout/keep-cutout": {
+      "styleId": "cutout",
+      "assetId": "keep-cutout",
+      "specHash": "8165cd8a6a9d4271c735ab8c5b7bcfd4fbd2776ae3d240d0e5bfc5313c7b688a",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "remove the background",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "keep",
+        "sourceSha256": "acf40550a5b3e6b4396551848a09b82e41938fdcf370846d82c6f5564d430f22"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_rCbjsZFV4XNa9wtDhJ5wWYME",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_obuhhDASMv9BmThZZqpsRPHj",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_obuhhDASMv9BmThZZqpsRPHj",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_obuhhDASMv9BmThZZqpsRPHj",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/cutout/keep-cutout.png",
+          "sha256": "5770200482f7ff409d923baff6b39a6381257d3045ffb174d2f46902c697982e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_birefnet-background-removal",
+          "projectId": null,
+          "maxComputeUnits": 2,
+          "quotedComputeUnits": 2,
+          "creativeUnitsCost": 2,
+          "costDetails": {
+            "custom-generation": 2
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_NhXopEdiJ2zVC8aPW3g8WBbL"
+          ],
+          "apiJobId": "job_rCbjsZFV4XNa9wtDhJ5wWYME",
+          "billedComputeUnits": 2,
+          "billing": {
+            "cuCost": 2,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_obuhhDASMv9BmThZZqpsRPHj",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T14:19:06.379Z",
+      "downloadedAt": "2026-10-05T14:19:52.331Z",
+      "cost": 2,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "snap/keep-snapped": {
+      "styleId": "snap",
+      "assetId": "keep-snapped",
+      "specHash": "bcc696b78bcb80d41a936425070c97aae42a7257ee86ef86392e4111e4ad797c",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "snap to the pixel grid",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "keep",
+        "sourceSha256": "acf40550a5b3e6b4396551848a09b82e41938fdcf370846d82c6f5564d430f22"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_FqpjxBH6btMuqzAB38bLgGCv",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_C6EvtVYbzaAjTMnaviueu2ZG",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_C6EvtVYbzaAjTMnaviueu2ZG",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_C6EvtVYbzaAjTMnaviueu2ZG",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/snap/keep-snapped.png",
+          "sha256": "bace018f4b81ed72ddb1bbe8c46c11127b10c04665b5687aa7689e58f6af2a3b",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_pixel-snapper",
+          "projectId": null,
+          "maxComputeUnits": 5,
+          "quotedComputeUnits": 5,
+          "creativeUnitsCost": 5,
+          "costDetails": {
+            "custom-generation": 5
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_NhXopEdiJ2zVC8aPW3g8WBbL"
+          ],
+          "apiJobId": "job_FqpjxBH6btMuqzAB38bLgGCv",
+          "billedComputeUnits": 5,
+          "billing": {
+            "cuCost": 5,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_C6EvtVYbzaAjTMnaviueu2ZG",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T14:19:07.524Z",
+      "downloadedAt": "2026-10-05T14:19:52.070Z",
+      "cost": 5,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    }
+  }
+}

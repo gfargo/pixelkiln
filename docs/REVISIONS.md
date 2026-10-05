@@ -5,14 +5,16 @@ The parent may be committed art, a downloaded generation, or an approved
 quality output. PixelKiln hashes the exact parent and mask bytes, blocks stale
 dependencies before submission, and records the lineage in the lockfile.
 
-The manifest and pipeline are provider-neutral. ComfyUI and PixelLab implement
+The manifest and pipeline are provider-neutral. ComfyUI, PixelLab and Scenario implement
 it; PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
 `correct-pixelart`, `remove-background`, `animate`, `animate-pixminimax`,
 `animate-skeleton`, `interpolate`, and `edit-animation`, not `outpaint` (its API has no
 canvas-expansion endpoint). ComfyUI covers every mode generically except the
 five frame-set modes (`animate`, `animate-pixminimax`, `animate-skeleton`,
 `interpolate`, `edit-animation`), which need an ordered frame set its
-revision path cannot produce. Retro Diffusion and Scenario reject revision
+revision path cannot produce. Scenario covers `image-to-image` only, by uploading the parent as a reference
+image to its editing models ([Set up Scenario](./SCENARIO.md#reference-images-and-edits)).
+Retro Diffusion rejects revision
 work during offline resolution instead of silently starting a fresh
 text-to-image job.
 

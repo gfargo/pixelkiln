@@ -30,6 +30,7 @@ beforeEach(async () => {
   process.env.SCENARIO_SDK_API_KEY = "scenario-key"
   process.env.SCENARIO_SDK_API_SECRET = "scenario-secret"
   process.env.SCENARIO_API_BASE_URL = "https://scenario.test/v1"
+  process.env.SCENARIO_UPLOAD_CACHE = path.join(dir, "scenario-uploads.json")
 })
 
 afterEach(async () => {
@@ -37,6 +38,7 @@ afterEach(async () => {
   restoreEnv("SCENARIO_SDK_API_KEY", oldKey)
   restoreEnv("SCENARIO_SDK_API_SECRET", oldSecret)
   restoreEnv("SCENARIO_API_BASE_URL", oldBase)
+  delete process.env.SCENARIO_UPLOAD_CACHE
   await rm(dir, { recursive: true, force: true })
 })
 
@@ -146,9 +148,97 @@ describe("Scenario provider", () => {
       },
       assets: { keep: { prompt: "a keep" } },
     }))
-    await expect(resolveSpecs(await loadManifest(manifestPath))).rejects.toThrow(
-      /styleImages are not supported yet/,
-    )
+    // A style image is now uploaded and sent as a reference, so resolving it
+    // is free and offline.
+    const [spec] = await resolveSpecs(await loadManifest(manifestPath))
+    expect(spec!.providerOptions).toMatchObject({ modelId: "model_bfl-flux-2-dev" })
+    await expect(project({ referenceParameter: "" })).rejects.toThrow(/referenceParameter must be a non-empty string/)
+  })
+
+  async function revisionProject(options: Record<string, unknown> = {}, revision: Record<string, unknown> = {}) {
+    await writeFile(path.join(dir, "keep.png"), FAKE_PNG)
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "scenario-revision",
+      provider: "scenario",
+      styles: {
+        base: {
+          generator: "map",
+          size: 512,
+          outDir: "out",
+          providerOptions: {
+            scenario: { modelId: "model_openai-gpt-image-2", maxComputeUnits: 12, ...options },
+          },
+        },
+      },
+      assets: {
+        keep: { prompt: "a keep", source: "keep.png" },
+        "keep-snow": { prompt: "add snow to the roof", revision: { mode: "image-to-image", from: "keep", ...revision } },
+      },
+    }))
+    const specs = await resolveSpecs(await loadManifest(manifestPath))
+    return specs.find((spec) => spec.assetId === "keep-snow")!
+  }
+
+  it("edits an image by uploading the parent once and sending it as a reference", async () => {
+    const calls: Array<{ path: string; dryRun: boolean; body: Record<string, unknown> }> = []
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      const url = new URL(String(input))
+      const body = init?.body ? JSON.parse(String(init.body)) : {}
+      calls.push({ path: url.pathname, dryRun: url.searchParams.get("dryRun") === "true", body })
+      if (url.pathname.endsWith("/assets")) return json({ asset: { id: "asset_uploaded_1" } })
+      return url.searchParams.get("dryRun") === "true"
+        ? json({ creativeUnitsCost: 11, costDetails: { "custom-generation": 11 } })
+        : json({ job: { jobId: "job-edit", status: "queued" } })
+    }))
+    const spec = await revisionProject()
+    expect(spec.revision).toMatchObject({ mode: "image-to-image", sourceAssetId: "keep" })
+    const provider = createProvider("scenario", "online")
+    const first = await provider.submit(spec, [])
+    await provider.submit(spec, [])
+
+    expect(calls.filter((call) => call.path.endsWith("/assets"))).toHaveLength(1)
+    expect(calls.find((call) => call.path.endsWith("/assets"))!.body).toMatchObject({
+      image: FAKE_PNG.toString("base64"),
+      name: expect.stringMatching(/^pixelkiln-[0-9a-f]{12}\.png$/),
+    })
+    const generation = calls.filter((call) => call.path.includes("/generate/custom/"))
+    expect(generation[0]!.dryRun).toBe(true)
+    expect(generation[0]!.body).toEqual({
+      prompt: "add snow to the roof",
+      width: 512,
+      height: 512,
+      numOutputs: 1,
+      referenceImages: ["asset_uploaded_1"],
+    })
+    expect(generation[1]!.body).toEqual(generation[0]!.body)
+    expect(first.metadata).toMatchObject({ referenceAssetIds: ["asset_uploaded_1"], quotedComputeUnits: 11 })
+  })
+
+  it("sends a single reference under the model's own input name", async () => {
+    const bodies: Record<string, unknown>[] = []
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith("/assets")) return json({ asset: { id: "asset_one" } })
+      bodies.push(JSON.parse(String(init?.body)))
+      return url.searchParams.get("dryRun") === "true"
+        ? json({ creativeUnitsCost: 1, costDetails: {} })
+        : json({ job: { jobId: "job", status: "queued" } })
+    }))
+    const spec = await revisionProject({ referenceParameter: "image", referenceArray: false })
+    await createProvider("scenario", "online").submit(spec, [])
+    expect(bodies[0]).toMatchObject({ image: "asset_one" })
+    expect(bodies[0]).not.toHaveProperty("referenceImages")
+  })
+
+  it("refuses edits Scenario cannot express before any request", async () => {
+    vi.stubGlobal("fetch", vi.fn())
+    await expect(revisionProject({}, { strength: 0.4 })).rejects.toThrow(/takes no strength/)
+    await expect(revisionProject({ parameters: { referenceImages: ["x"] } }))
+      .rejects.toThrow(/parameters.referenceImages is the reference-image input/)
+    await expect(revisionProject({ referenceArray: false }, { mode: "inpaint", mask: "keep.png" }))
+      .rejects.toThrow(/does not support the "inpaint" revision mode|not support|inpaint/i)
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it("sends an identical body through free preflight before the paid request", async () => {

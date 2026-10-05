@@ -1,0 +1,75 @@
+{
+  "version": 2,
+  "entries": {
+    "edit/keep-snow": {
+      "styleId": "edit",
+      "assetId": "keep-snow",
+      "specHash": "56df2fad65e86adc086dd438d9bcd56a2716cdfb11a2d2f0d77eb5e19a1e4ebe",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "the same keep in winter: snow on the roofs and battlements, pixel art",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "keep",
+        "sourceSha256": "acf40550a5b3e6b4396551848a09b82e41938fdcf370846d82c6f5564d430f22"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_n2eFJSzq2wSbS8uYJnddA6cr",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_vRWomPpwo6gX1MJ8KD1DAxJU",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_vRWomPpwo6gX1MJ8KD1DAxJU",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_vRWomPpwo6gX1MJ8KD1DAxJU",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/keep-snow.png",
+          "sha256": "76658ffcd40867f5dbca5a42078e2aa884e1dcfc3173bf64a7901ed7d2e5fa58",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-klein-9b",
+          "projectId": null,
+          "maxComputeUnits": 1,
+          "quotedComputeUnits": 1,
+          "creativeUnitsCost": 1,
+          "costDetails": {
+            "custom-generation": 1
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_NhXopEdiJ2zVC8aPW3g8WBbL"
+          ],
+          "apiJobId": "job_n2eFJSzq2wSbS8uYJnddA6cr",
+          "billedComputeUnits": 1,
+          "billing": {
+            "cuCost": 1,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_vRWomPpwo6gX1MJ8KD1DAxJU",
+          "outputIndex": 0
+        }
+      },
+      "submittedAt": "2026-10-05T14:13:55.421Z",
+      "downloadedAt": "2026-10-05T14:14:45.778Z",
+      "cost": 1,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    }
+  }
+}

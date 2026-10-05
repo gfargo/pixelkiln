@@ -1,4 +1,9 @@
+import { createHash } from "node:crypto"
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
+import os from "node:os"
+import path from "node:path"
 import { MAX_DOWNLOAD_BYTES } from "../client.ts"
+import { sha256 } from "../hash.ts"
 import { fetchWithRetry, type RetryInit, type RetryingFetch, type RetryOptions } from "../http.ts"
 import { ProviderError } from "../errors.ts"
 import { MediaType } from "../media.ts"
@@ -12,7 +17,7 @@ import type {
   ProviderSubmission,
   RateLimit,
 } from "../provider.ts"
-import type { Generator, ResolvedSpec, ResolvedStyleImage } from "../types.ts"
+import type { Generator, ResolvedSpec, ResolvedStyleImage, RevisionMode } from "../types.ts"
 
 const DEFAULT_BASE_URL = "https://api.cloud.scenario.com/v1"
 const SOURCE_PROTOCOL = "scenario:"
@@ -40,6 +45,20 @@ export interface ScenarioOptions {
   projectId?: string
   /** Additional model-specific JSON inputs that cannot replace PixelKiln-owned intent. */
   parameters?: Record<string, unknown>
+  /**
+   * The model input that takes images: a style's `styleImages` and a
+   * revision's parent are uploaded to Scenario and sent here as asset ids.
+   * Most image models call it `referenceImages` and take a list.
+   */
+  referenceParameter?: string
+  /** False for a model whose reference input takes one image rather than a list. */
+  referenceArray?: boolean
+}
+
+/** What the adapter needs to put one local image into a generation request. */
+interface ReferenceImage {
+  base64: string
+  format: "png" | "jpeg"
 }
 
 interface ScenarioQuote {
@@ -127,6 +146,30 @@ class ScenarioClient {
     const jobId = readJobId(job)
     if (!jobId) throw new Error("Scenario did not return an async job id")
     return jobId
+  }
+
+  /**
+   * Uploads one image (POST /assets) and returns its asset id, which a model's
+   * reference input takes. Free, and idempotent per image: the id is kept by
+   * content hash so a rerun does not upload the same bytes again.
+   */
+  async uploadImage(image: ReferenceImage, projectId?: string): Promise<string> {
+    const bytes = Buffer.from(image.base64, "base64")
+    const digest = sha256(bytes)
+    const cached = readUploadCache()[uploadCacheKey(this.baseUrl, projectId, digest)]
+    if (cached) return cached
+    const response = await this.call(
+      "/assets",
+      {
+        method: "POST",
+        body: JSON.stringify({ image: image.base64, name: `pixelkiln-${digest.slice(0, 12)}.${image.format === "png" ? "png" : "jpg"}` }),
+      },
+      { projectId },
+    )
+    const id = (response as { asset?: { id?: unknown } })?.asset?.id
+    if (typeof id !== "string" || !id) throw new Error("Scenario did not return an uploaded asset id")
+    writeUploadCache(uploadCacheKey(this.baseUrl, projectId, digest), id)
+    return id
   }
 
   async job(id: string, projectId?: string): Promise<ScenarioJob> {
@@ -281,6 +324,15 @@ export class ScenarioProvider implements Provider {
     return generator === "map"
   }
 
+  /**
+   * An edit is a generation with the parent as a reference image, which the
+   * editing models (GPT Image, Gemini, FLUX) take. Masked inpainting and the
+   * PixelLab-specific modes have no common Scenario input.
+   */
+  supportsRevision(mode: RevisionMode): boolean {
+    return mode === "image-to-image"
+  }
+
   estimate(spec: ResolvedSpec): CostEstimate {
     const options = scenarioOptions(spec)
     return {
@@ -313,8 +365,28 @@ export class ScenarioProvider implements Provider {
     ) {
       throw new Error("Scenario width and height must be whole numbers from 16 to 4096")
     }
-    if (styleImages.length) {
-      throw new Error("Scenario styleImages are not supported yet; use a reusable Scenario model")
+    const revision = spec.revision
+    if (revision) {
+      if (revision.sourceMembers?.length) {
+        throw new Error(
+          `Scenario edits one image; ${revision.sourceAssetId} is a ${revision.sourceMembers.length}-member set`,
+        )
+      }
+      if (revision.strength != null) {
+        throw new Error("Scenario image-to-image takes no strength; use the model's own parameters")
+      }
+    }
+    const parameter = referenceParameter(options)
+    if ((styleImages.length || revision) && Object.hasOwn(options.parameters ?? {}, parameter)) {
+      throw new Error(
+        `Scenario parameters.${parameter} is the reference-image input and is filled from styleImages and revisions`,
+      )
+    }
+    if ((styleImages.length + (revision ? 1 : 0)) > 1 && options.referenceArray === false) {
+      throw new Error(`Scenario ${parameter} takes one image; use one style image or a revision, not both`)
+    }
+    if (options.referenceParameter != null && (typeof options.referenceParameter !== "string" || !options.referenceParameter.trim())) {
+      throw new Error("Scenario referenceParameter must be a non-empty string")
     }
     if (options.projectId != null && (typeof options.projectId !== "string" || !options.projectId.trim())) {
       throw new Error("Scenario projectId must be a non-empty string")
@@ -329,7 +401,15 @@ export class ScenarioProvider implements Provider {
   async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): Promise<ProviderSubmission> {
     this.validate(spec, styleImages)
     const options = scenarioOptions(spec)
-    const body = requestBody(spec, options)
+    // The edit's parent goes first, then any style references. Uploading is
+    // free, so it happens before the dry run: the model's own quote needs the
+    // images in the request it prices.
+    const references: ReferenceImage[] = []
+    if (spec.revision) references.push(readRevisionSource(spec))
+    for (const image of styleImages) references.push({ base64: image.base64, format: image.format })
+    const referenceAssetIds: string[] = []
+    for (const image of references) referenceAssetIds.push(await this.client.uploadImage(image, options.projectId))
+    const body = requestBody(spec, options, referenceAssetIds)
     const quote = await this.client.quote(options.modelId, body, options.projectId)
     if (quote.total > options.maxComputeUnits + Number.EPSILON) {
       throw new Error(
@@ -348,6 +428,7 @@ export class ScenarioProvider implements Provider {
         creativeUnitsCost: quote.creativeUnitsCost,
         costDetails: quote.costDetails,
         ipDetectionCost: quote.ipDetectionCost,
+        ...(referenceAssetIds.length ? { referenceAssetIds } : {}),
       },
     }
   }
@@ -443,6 +524,36 @@ export class ScenarioProvider implements Provider {
   }
 }
 
+/** Uploaded asset ids by content, kept across runs; a missing or unreadable file just means uploading again. */
+function uploadCachePath(): string {
+  return process.env.SCENARIO_UPLOAD_CACHE ?? path.join(os.tmpdir(), "pixelkiln-scenario", "uploads.json")
+}
+
+function uploadCacheKey(baseUrl: string, projectId: string | undefined, digest: string): string {
+  return createHash("sha256").update(`${baseUrl}\n${projectId ?? ""}\n${digest}`).digest("hex")
+}
+
+function readUploadCache(): Record<string, string> {
+  try {
+    const value = JSON.parse(readFileSync(uploadCachePath(), "utf8")) as unknown
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, string>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeUploadCache(key: string, assetId: string): void {
+  try {
+    const file = uploadCachePath()
+    mkdirSync(path.dirname(file), { recursive: true })
+    const tmp = `${file}.${process.pid}.tmp`
+    writeFileSync(tmp, JSON.stringify({ ...readUploadCache(), [key]: assetId }))
+    renameSync(tmp, file)
+  } catch {
+    // A cache that cannot be written costs one repeat upload, not a failure.
+  }
+}
+
 function scenarioOptions(spec: ResolvedSpec): ScenarioOptions {
   return spec.providerOptions as unknown as ScenarioOptions
 }
@@ -460,9 +571,30 @@ function scenarioBaseUrl(value: string): string {
   return url.href.replace(/\/$/, "")
 }
 
-function requestBody(spec: ResolvedSpec, options: ScenarioOptions): Record<string, unknown> {
+function referenceParameter(options: ScenarioOptions): string {
+  return options.referenceParameter?.trim() || "referenceImages"
+}
+
+/** The parent's bytes, checked against the hash the spec's identity was built from. */
+function readRevisionSource(spec: ResolvedSpec): ReferenceImage {
+  const revision = spec.revision!
+  if (!revision.sourceFile || !revision.sourceSha256 || !revision.sourceFormat) {
+    throw new Error(`${spec.styleId}/${spec.assetId}: revision source is not ready`)
+  }
+  const bytes = readFileSync(revision.sourceFile)
+  if (sha256(bytes) !== revision.sourceSha256) {
+    throw new Error(`${spec.styleId}/${spec.assetId}: revision source changed after the manifest was resolved`)
+  }
+  return { base64: bytes.toString("base64"), format: revision.sourceFormat }
+}
+
+function requestBody(spec: ResolvedSpec, options: ScenarioOptions, referenceAssetIds: string[] = []): Record<string, unknown> {
+  const parameter = referenceParameter(options)
   return {
     ...(options.parameters ?? {}),
+    ...(referenceAssetIds.length
+      ? { [parameter]: options.referenceArray === false ? referenceAssetIds[0] : referenceAssetIds }
+      : {}),
     prompt: spec.prompt,
     width: spec.width,
     height: spec.height,
