@@ -183,6 +183,7 @@ export function specHash(
             keypointsSha256: spec.revision.keypointsSha256,
             skeletonTemplate: spec.revision.skeletonTemplate,
             description: spec.revision.description,
+            removalTask: spec.revision.removalTask,
             engine: spec.revision.engine,
           }
         : undefined,

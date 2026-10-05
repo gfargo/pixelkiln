@@ -17,6 +17,10 @@ Read this reference when an asset declares `revision`.
   5 generations up to 96px, 6 up to 208px, 9 beyond (provisional quotes),
   against 20–40. The parent must be 32–256px per side in multiples of 4, and
   `strength` is refused. Other modes reject `engine`.
+- `remove-background` (PixelLab, one image up to 400x400, `removalTask`
+  `simple` or `complex`, optional `description` hint) cuts the background out
+  to transparency and leaves a locked palette intact; 1 generation measured.
+  It refuses a set parent.
 - `reduce-colors` and `correct-pixelart` send no prompt to the provider — the
   asset's `prompt` stays a manifest-only label. `numColors`/`paletteImage`
   are mutually exclusive; a `paletteImage` has no size relationship to the
@@ -84,7 +88,8 @@ Read this reference when an asset declares `revision`.
 - `pixelkiln gallery --edit` can create a revision directly from a parent's
   drawer ("+ New revision" under "Revisions from this asset"), once the parent
   has usable pixels: on a PixelLab sprite `image-to-image`, `animate`,
-  `animate-pixminimax`, `reduce-colors`, or `correct-pixelart`; on a PixelLab
+  `animate-pixminimax`, `reduce-colors`, `correct-pixelart`, or
+  `remove-background`; on a PixelLab
   frame set (or a character's directions) `edit-animation`, `reduce-colors`,
   or `correct-pixelart`; on other providers `image-to-image`. On a single
   PixelLab sprite, "+ Skeleton animation" creates an `animate-skeleton`

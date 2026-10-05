@@ -195,6 +195,13 @@ describe("asset revisions", () => {
     await expect(writeProject({ mode: "correct-pixelart", from: "source", dithering: "4x4" }))
       .rejects.toThrow(/dithering applies to reduce-colors revisions only/)
 
+    await expect(writeProject({ mode: "image-to-image", from: "source", removalTask: "simple" }))
+      .rejects.toThrow(/removalTask applies to remove-background revisions only/)
+    await expect(writeProject({ mode: "remove-background", from: "source", strength: 0.4 }))
+      .rejects.toThrow(/remove-background revisions do not take a strength/)
+    await expect(writeProject({ mode: "inpaint", from: "source", description: "x" }))
+      .rejects.toThrow(/description applies to animate-skeleton\/remove-background revisions only/)
+
     // A palette reference is a color source only — a different shape than the
     // asset it's revising is fine, unlike a mask.
     await writeFile(path.join(dir, "palette.png"), png(200, 4, 1))

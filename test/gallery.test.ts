@@ -736,6 +736,7 @@ describe("applyManifestEdit", () => {
     const cases: [string, Record<string, unknown>][] = [
       ["anvil-reduced", { mode: "reduce-colors", from: "anvil", numColors: 8, dithering: "4x4" }],
       ["anvil-clean", { mode: "correct-pixelart", from: "anvil", strength: 0.5 }],
+      ["anvil-cutout", { mode: "remove-background", from: "anvil", removalTask: "complex", description: "an anvil" }],
       ["anvil-wobble", { mode: "animate", from: "anvil", frames: 8, fps: 8 }],
       ["anvil-spin", { mode: "animate-pixminimax", from: "anvil", frames: 8, enhancePrompt: true, direction: "south" }],
     ]

@@ -229,6 +229,7 @@ export function revisionModesFor(item) {
     ['animate-pixminimax', 'animate it, holding the facing direction'],
     ['reduce-colors', 'fewer colours, optional dithering'],
     ['correct-pixelart', 'clean up the pixel grid'],
+    ['remove-background', 'cut the background out to transparency'],
   ];
 }
 
@@ -258,6 +259,9 @@ export function newRevisionForm(item) {
   const numColors = el('input'); numColors.type = 'number'; numColors.min = '2'; numColors.max = '256'; numColors.step = '1'; numColors.placeholder = 'PixelLab default';
   const dithering = el('select');
   for (const d of ['', 'none', '2x2', '4x4', '8x8']) dithering.append(new Option(d || 'default', d));
+  const removal = el('select');
+  removal.append(new Option('simple: faster, flat backgrounds', 'simple'), new Option('complex: slower, detailed edges', 'complex'));
+  const subject = el('input'); subject.type = 'text'; subject.placeholder = 'optional: e.g. a knight holding a sword';
   const row1 = el('div', 'row');
   row1.append(field('new asset id', id), field('mode', mode));
   const promptField = field('instruction', prompt);
@@ -267,9 +271,11 @@ export function newRevisionForm(item) {
   const directionField = field('facing', direction, 'Holds the sprite\'s facing while the motion is expanded.');
   const colorsField = field('colours', numColors);
   const ditherField = field('dithering', dithering);
+  const removalField = field('removal', removal, 'PixelLab takes at most 400 by 400 pixels.');
+  const subjectField = field('foreground', subject, 'A hint that helps PixelLab find what to keep.');
   const grids = el('div', 'row'); grids.append(framesField, fpsField);
   const cleanup = el('div', 'row'); cleanup.append(colorsField, ditherField);
-  form.append(row1, promptField, strengthField, grids, directionField, enhanceField, cleanup);
+  form.append(row1, promptField, strengthField, grids, directionField, enhanceField, cleanup, removalField, subjectField);
   const hints = {
     'image-to-image': ['edit instruction', 'add snow on the roof', 'The style still adds its prefix and suffix.'],
     animate: ['motion', 'the chest wobbling gently', 'Describes the movement; the parent image is the first frame.'],
@@ -277,6 +283,7 @@ export function newRevisionForm(item) {
     'edit-animation': ['edit instruction', 'add a red cape', 'Applied across every frame in one call, so the change stays consistent.'],
     'reduce-colors': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
     'correct-pixelart': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
+    'remove-background': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
   };
   const sync = () => {
     const m = mode.value;
@@ -285,7 +292,7 @@ export function newRevisionForm(item) {
     promptField.querySelector('small')?.remove();
     promptField.append(el('small', null, hint));
     prompt.placeholder = placeholder;
-    prompt.required = m !== 'reduce-colors' && m !== 'correct-pixelart';
+    prompt.required = !['reduce-colors', 'correct-pixelart', 'remove-background'].includes(m);
     strengthField.hidden = m !== 'image-to-image' && m !== 'correct-pixelart';
     grids.hidden = !(m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation');
     framesField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
@@ -293,6 +300,7 @@ export function newRevisionForm(item) {
     directionField.hidden = !(m === 'animate-pixminimax' && enhance.checked);
     enhanceField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
     cleanup.hidden = m !== 'reduce-colors';
+    removalField.hidden = subjectField.hidden = m !== 'remove-background';
   };
   mode.onchange = sync;
   enhance.onchange = sync;
@@ -317,8 +325,12 @@ export function newRevisionForm(item) {
       if (numColors.value.trim() !== '') revision.numColors = Number(numColors.value);
       if (dithering.value) revision.dithering = dithering.value;
     }
+    if (m === 'remove-background') {
+      revision.removalTask = removal.value;
+      if (subject.value.trim()) revision.description = subject.value.trim();
+    }
     // Cleanup modes never send the prompt, but an asset still needs one.
-    const text = prompt.value.trim() || (m === 'reduce-colors' ? 'reduce colours' : m === 'correct-pixelart' ? 'correct pixel art' : '');
+    const text = prompt.value.trim() || ({ 'reduce-colors': 'reduce colours', 'correct-pixelart': 'correct pixel art', 'remove-background': 'remove background' } as Record<string, string>)[m] || '';
     const asset = { prompt: text, styles: [item.styleId], revision };
     try {
       const body: any = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };

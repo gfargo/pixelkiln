@@ -1010,6 +1010,7 @@
                       "outpaint",
                       "reduce-colors",
                       "correct-pixelart",
+                      "remove-background",
                       "animate",
                       "animate-pixminimax",
                       "animate-skeleton",
@@ -1090,6 +1091,13 @@
                   "skeletonTemplate": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "removalTask": {
+                    "type": "string",
+                    "enum": [
+                      "simple",
+                      "complex"
+                    ]
                   },
                   "description": {
                     "type": "string",
