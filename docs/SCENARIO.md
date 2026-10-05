@@ -135,6 +135,57 @@ layout intact. The committed
 [Scenario edit smoke](../benchmarks/provider-scenario-edit/README.md) has the
 manifest, lockfile, and both images. That is one sample on one model.
 
+### Tool models as image-to-image
+
+Scenario's single-image tools (pixel snapper, pixelate, background removal,
+upscalers) are models like any other, so they run through the same
+`image-to-image` revision with no extra mode: point the style at the tool's
+model, name its input `image`, and put its settings in `parameters`. The
+adapter's other fields (`prompt`, `width`, `height`, `numOutputs`, `seed`) are
+accepted and ignored by these tools, and the free dry run prices the exact
+request. Free dry runs on October 5, 2026 quoted these on a `cu-basic` account:
+
+| Model | CU | Inputs besides `image` |
+|---|---:|---|
+| `model_birefnet-background-removal` | 2 | none |
+| `model_recraft-crisp-upscale` | 2 | none |
+| `model_bria-remove-background`, `model_photoroom-background-removal` | 3 | none |
+| `model_pixel-snapper` | 5 | `colors` 8 to 256 (default 16) |
+| `model_sc-pixelate` | 5 | `pixelGridSize` 1 to 512, `removeNoise`, `colorPalette`, `colorPaletteSize` |
+| `model_upscale-v3`, `model_topaz-image-upscale` | 10 | none |
+
+```jsonc
+{
+  "styles": {
+    "snap": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "assets/snapped",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_pixel-snapper",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false,
+          "parameters": { "colors": 16 }
+        }
+      }
+    }
+  },
+  "assets": {
+    "keep-snapped": {
+      "prompt": "snap to the pixel grid",
+      "revision": { "mode": "image-to-image", "from": "keep" }
+    }
+  }
+}
+```
+
+Only the quotes were checked; none of these tools has been run through the
+adapter. They overlap PixelKiln's own offline work: `pixelkiln refine` snaps
+the grid and palette for free, and PixelLab's `remove-background` revision costs
+one generation. Reach for these when the art is already on Scenario.
+
 ## Plan before spending
 
 Scenario prices depend on model, size, steps, and output count, so PixelKiln
