@@ -71,6 +71,76 @@
       "billed": null,
       "provider": "scenario"
     },
+    "pixelate/keep-pixelated": {
+      "styleId": "pixelate",
+      "assetId": "keep-pixelated",
+      "specHash": "2b18001d0d1e85134ec6e0f803e51835488ddf3aa5dba8fbd9afdb40415a932f",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixelate",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "keep",
+        "sourceSha256": "acf40550a5b3e6b4396551848a09b82e41938fdcf370846d82c6f5564d430f22"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_DefYNdMv9GSDL5RJsNvMrSfT",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_ZmZDt4Qa8Pf1X4yYAfq6Khsn",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_ZmZDt4Qa8Pf1X4yYAfq6Khsn",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_ZmZDt4Qa8Pf1X4yYAfq6Khsn",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/pixelate/keep-pixelated.png",
+          "sha256": "99c42c946d39a3774e772d7f3026ffd1e209a7bf302a568973554b082ddf5e41",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "projectId": null,
+          "maxComputeUnits": 5,
+          "quotedComputeUnits": 5,
+          "creativeUnitsCost": 5,
+          "costDetails": {
+            "custom-generation": 5
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_NhXopEdiJ2zVC8aPW3g8WBbL"
+          ],
+          "apiJobId": "job_DefYNdMv9GSDL5RJsNvMrSfT",
+          "billedComputeUnits": 5,
+          "billing": {
+            "cuCost": 5,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_ZmZDt4Qa8Pf1X4yYAfq6Khsn",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T14:57:57.428Z",
+      "downloadedAt": "2026-10-05T14:59:12.402Z",
+      "cost": 5,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
     "snap/keep-snapped": {
       "styleId": "snap",
       "assetId": "keep-snapped",
@@ -137,6 +207,197 @@
       "submittedAt": "2026-10-05T14:19:07.524Z",
       "downloadedAt": "2026-10-05T14:19:52.070Z",
       "cost": 5,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "upscale-recraft/snapped-recraft": {
+      "styleId": "upscale-recraft",
+      "assetId": "snapped-recraft",
+      "specHash": "f2013817b233b4b29ac02566d3a55d9c4b5598515c468dbc6d14c98ef0451bef",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "upscale",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "snapped",
+        "sourceSha256": "bace018f4b81ed72ddb1bbe8c46c11127b10c04665b5687aa7689e58f6af2a3b"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_S6eQSEECgF2RcJvm1xT7acum",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": null,
+      "candidateIndex": null,
+      "status": "failed",
+      "error": "Scenario asset asset_4m9CTuQ6ebELLzQAoV89Msr9 is image/webp; PixelKiln's Scenario MVP requires PNG output",
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_recraft-crisp-upscale",
+          "projectId": null,
+          "maxComputeUnits": 2,
+          "quotedComputeUnits": 2,
+          "creativeUnitsCost": 2,
+          "costDetails": {
+            "custom-generation": 2
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_iQdw3PPzRcRh7Xpzp3ex7Brs"
+          ]
+        }
+      },
+      "submittedAt": "2026-10-05T14:57:58.637Z",
+      "downloadedAt": null,
+      "cost": 2,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "upscale-topaz/snapped-topaz": {
+      "styleId": "upscale-topaz",
+      "assetId": "snapped-topaz",
+      "specHash": "e2b7e9474453403c2176496413cffb175472a7619fe9dab32937e93407931b53",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "upscale",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "snapped",
+        "sourceSha256": "bace018f4b81ed72ddb1bbe8c46c11127b10c04665b5687aa7689e58f6af2a3b"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_HLyRgg9zvNrf6SEVxUgysqP3",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_hkVqwkCqUVZS74EF5FH9wD5x",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_hkVqwkCqUVZS74EF5FH9wD5x",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_hkVqwkCqUVZS74EF5FH9wD5x",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/upscale-topaz/snapped-topaz.png",
+          "sha256": "000485582d32e38d3e7eaf0c9908f2ebbce07669dbc5c233c9a1013048ef4678",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_topaz-image-upscale",
+          "projectId": null,
+          "maxComputeUnits": 10,
+          "quotedComputeUnits": 10,
+          "creativeUnitsCost": 10,
+          "costDetails": {
+            "custom-generation": 10
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_iQdw3PPzRcRh7Xpzp3ex7Brs"
+          ],
+          "apiJobId": "job_HLyRgg9zvNrf6SEVxUgysqP3",
+          "billedComputeUnits": 10,
+          "billing": {
+            "cuCost": 10,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_hkVqwkCqUVZS74EF5FH9wD5x",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T14:58:04.840Z",
+      "downloadedAt": "2026-10-05T14:59:12.639Z",
+      "cost": 10,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "upscale-v3/snapped-v3": {
+      "styleId": "upscale-v3",
+      "assetId": "snapped-v3",
+      "specHash": "90d567f27d02eae7066f9d2aa0d7319a94333c02f28deaa1f61dcc864eb11f9b",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "upscale",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "snapped",
+        "sourceSha256": "bace018f4b81ed72ddb1bbe8c46c11127b10c04665b5687aa7689e58f6af2a3b"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_wdVsMJdBCxrmonzPziCyMxBV",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_48cXwQm8Arn93yL6jLceJizr",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_48cXwQm8Arn93yL6jLceJizr",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_48cXwQm8Arn93yL6jLceJizr",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/upscale-v3/snapped-v3.png",
+          "sha256": "c7c83d91e409be5943373f11d075f71bd5252dfaba360dae295ccdc051e54dbe",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_upscale-v3",
+          "projectId": null,
+          "maxComputeUnits": 10,
+          "quotedComputeUnits": 10,
+          "creativeUnitsCost": 10,
+          "costDetails": {
+            "custom-generation": 10
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_iQdw3PPzRcRh7Xpzp3ex7Brs"
+          ],
+          "apiJobId": "job_wdVsMJdBCxrmonzPziCyMxBV",
+          "billedComputeUnits": 10,
+          "billing": {
+            "cuCost": 10,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_48cXwQm8Arn93yL6jLceJizr",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T14:57:59.644Z",
+      "downloadedAt": "2026-10-05T14:59:12.556Z",
+      "cost": 10,
       "costUnit": "compute-units",
       "billed": null,
       "provider": "scenario"

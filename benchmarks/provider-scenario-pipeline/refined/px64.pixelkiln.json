@@ -1,0 +1,86 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../outputs/px64/keep-px64.png",
+      "sha256": "49a238e5df4957947e39f1cbbcad2c3c7a2537aa7d93ef20dd813ec8dd32554f",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 23,
+      "height": 64,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 23,
+        "minGridConfidence": "high",
+        "minTransparency": null
+      },
+      "transparency": 0,
+      "width": 64
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 64,
+      "nativeWidth": 64,
+      "phaseX": 0,
+      "phaseY": 0,
+      "protocol": "python-core-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 512,
+      "sourceWidth": 512,
+      "stepX": 8,
+      "stepY": 8,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#f8f8f8",
+        "#292b2d",
+        "#3c3936",
+        "#5c5854",
+        "#807976",
+        "#353945",
+        "#646c68",
+        "#474541",
+        "#141c1e",
+        "#141415",
+        "#b8b1ab",
+        "#3b4438",
+        "#a59584",
+        "#4b543a",
+        "#1c1c14",
+        "#394b73",
+        "#a48c7c",
+        "#9c9c9c",
+        "#333e58",
+        "#090a0c",
+        "#9ca49c",
+        "#6c4434",
+        "#8c5c2c"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "ecc3e50b4ff75d118fdd1c0256cc75d6da4f63c0a741a46af5cfa6d81e35075a",
+  "outputs": [
+    {
+      "path": "px64.png",
+      "sha256": "18d14bd7b9056e555070228a41f7653fa91ebc6326ff7554e278c132f3a466ef"
+    }
+  ]
+}
