@@ -19,7 +19,7 @@ function describe(body): string {
     case 'add-asset': return 'added ' + body.assetId;
     case 'patch-asset': return 'changed ' + body.assetId;
     case 'set-source': case 'clear-source': return 'changed the source of ' + body.assetId;
-    case 'create-skeleton-animation': return 'added ' + body.assetId;
+    case 'create-skeleton-animation': case 'create-inpaint-revision': return 'added ' + body.assetId;
     case 'start-edit': return 'started a hand edit of ' + body.assetId;
     case 'save-edit': return 'saved a hand edit of ' + body.assetId;
     case 'detach-edit': return 'detached the hand edit of ' + body.assetId;

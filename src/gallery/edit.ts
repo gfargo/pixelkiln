@@ -15,6 +15,7 @@ import { lockKey, type ResolvedSpec } from "../types.ts"
 import { sha256 } from "../hash.ts"
 import type { GalleryProjectContext } from "./generate.ts"
 import { saveProjectImage, UploadImageSchema } from "./upload.ts"
+import { createInpaintRevision, InpaintRevisionRequestSchema } from "./image-revision.ts"
 import {
   createSkeletonAnimation,
   SkeletonAnimationRequestSchema,
@@ -237,6 +238,24 @@ function createEditApplier(opts: GalleryEditHandlerOptions, log: (msg: string) =
       throw new ManifestEditError(
         "invalid skeleton animation: " +
           skeleton.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
+      )
+    }
+    const inpaint = InpaintRevisionRequestSchema.safeParse(body)
+    if (inpaint.success) {
+      let manifestPath: string
+      try {
+        manifestPath = await opts.manifestFor(inpaint.data.project)
+      } catch (error) {
+        throw new ManifestEditError(error instanceof Error ? error.message : String(error))
+      }
+      const mask = await createInpaintRevision(manifestPath, inpaint.data)
+      log(`  manifest edited: added inpaint revision ${inpaint.data.assetId} (mask ${mask})`)
+      return opts.reload()
+    }
+    if ((body as { action?: unknown } | null)?.action === "create-inpaint-revision") {
+      throw new ManifestEditError(
+        "invalid inpaint revision: " +
+          inpaint.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
       )
     }
     const parsed = ManifestEditSchema.safeParse(body)

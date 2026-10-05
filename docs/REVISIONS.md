@@ -59,17 +59,28 @@ input to the provider workflow, not a cross-model quality guarantee.
 **From the gallery** (`pixelkiln gallery --edit`): open a completed or
 committed asset's drawer and use "+ New revision" under "Revisions from this
 asset" to create a child of it. On a PixelLab sprite the mode picker offers
-`image-to-image`, `animate`, `animate-pixminimax`, `reduce-colors`,
-`correct-pixelart`, and `remove-background`; on a PixelLab frame set (or a character's directions) it
-offers `edit-animation`, `reduce-colors`, and `correct-pixelart`, which take
-the whole set. Other providers get `image-to-image`. The form asks only for
-the new asset id, the instruction or motion, and the mode's own options
-(strength, frames, fps, colours, dithering). The button only
+`image-to-image`, `inpaint`, `animate`, `animate-pixminimax`, `interpolate`,
+`reduce-colors`, `correct-pixelart`, and `remove-background`; on a PixelLab
+frame set (or a character's directions) it offers `edit-animation`,
+`reduce-colors`, and `correct-pixelart`, which take the whole set. ComfyUI
+sprites get `image-to-image` and `inpaint`; other providers get
+`image-to-image`. The form asks only for the new asset id, the instruction or
+motion, and the mode's own options (strength, frames, fps, colours,
+dithering, removal task).
+
+`inpaint` opens a mask editor over the sprite: paint the area to repaint with
+a brush sized in sprite pixels, erase, invert, undo. Saving writes the mask
+as a black-and-white PNG of the sprite's size at the path you give (default
+`masks/<asset-id>.png`) and declares the revision in one step; if the manifest
+refuses the asset the mask file is removed again. The sprite must be 32 to 512
+pixels per side. `interpolate` offers the project's other single-image
+records of the same style and size as the ending keyframe (the parent is the
+start), for sprites 16 to 128 pixels per side; it appears only when there is
+one. The button only
 appears once the parent has usable pixels (committed `source`, a current
 downloaded generation, or a current approved quality output); the plan still
 reports `blocked` with the real reason if that turns out wrong once the asset
-exists. `inpaint` needs a mask upload and `interpolate` an ending keyframe, and
-the gallery offers neither, so those still have to be added by hand.
+exists. `outpaint` is not offered; no provider implements it.
 
 "+ Skeleton animation", beside it on a single PixelLab sprite, creates an
 `animate-skeleton` child instead. The poses come from a keypoints file already

@@ -332,6 +332,31 @@ try {
     await dragJoint("LEFT LEG", 25, 0)
     const drafted = JSON.parse(await page.$eval("form.edit textarea", (t) => (t as HTMLTextAreaElement).value)) as { frames: { label: string; x: number }[][] }
     check(drafted.frames[0]!.find((j) => j.label === "LEFT LEG")!.x > 0.7, "dragging in the create form writes the JSON")
+
+    // The mask editor: paint over the sprite in a new inpaint revision, and
+    // the page writes the mask and declares the revision.
+    await page.reload({ waitUntil: "networkidle0" })
+    check(await pressButton(".drawer button", "+ New revision"), "a sprite offers + New revision")
+    await page.waitForSelector("form.edit", { timeout: 5_000 })
+    await page.evaluate(() => {
+      const select = [...document.querySelectorAll("form.edit select")].find((x) => [...(x as HTMLSelectElement).options].some((o) => o.value === "inpaint")) as HTMLSelectElement
+      select.value = "inpaint"
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    await page.waitForSelector("form.edit canvas.mask-stage", { visible: true, timeout: 5_000 })
+    await page.type("form.edit input[placeholder='asset-id']", "hero-rune")
+    await page.type("form.edit textarea", "a glowing runestone")
+    const stage = (await (await page.$("form.edit canvas.mask-stage"))!.boundingBox())!
+    await page.mouse.move(stage.x + stage.width * 0.3, stage.y + stage.height * 0.3)
+    await page.mouse.down()
+    await page.mouse.move(stage.x + stage.width * 0.6, stage.y + stage.height * 0.6, { steps: 6 })
+    await page.mouse.up()
+    await pressButton("form.edit button", "Create revision")
+    await noticeMatches("masks/hero-rune.png")
+    const written = JSON.parse(await readFile(poseManifest, "utf8")) as { assets: Record<string, { revision?: { mode: string; mask?: string } }> }
+    check(written.assets["hero-rune"]?.revision?.mode === "inpaint" && written.assets["hero-rune"]?.revision?.mask === "masks/hero-rune.png", "painting a mask declares an inpaint revision that names it")
+    const maskBytes = await readFile(path.join(poseDir, "masks", "hero-rune.png"))
+    check(maskBytes.subarray(1, 4).toString() === "PNG" && maskBytes.readUInt32BE(16) === 64 && maskBytes.readUInt32BE(20) === 64, "the mask is a PNG the size of the sprite")
   } finally {
     await poseServer.close()
   }
