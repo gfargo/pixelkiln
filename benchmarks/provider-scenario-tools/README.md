@@ -67,3 +67,29 @@ Spend: 27 CU, all billed.
 
 Files added: `art/keep-snapped.png`, `outputs/pixelate/`, `outputs/upscale-topaz/`,
 `outputs/upscale-v3/`.
+
+## Third step: the free refine gate
+
+Pixelate's output, Pixel Snapper's output, and the raw GPT Image 2 keep were run
+through `pixelkiln refine` in path mode (Pixel Art Fixer at the pinned
+revision, default `high` grid confidence, each image's own most common colours as
+the palette). This costs nothing.
+
+| Image | Detected native grid | Confidence | Gate |
+|---|---|---|---|
+| Raw GPT Image 2 keep (512×512) | 138×139 | low | fails |
+| Pixel Snapper output (83×83) | 23×24 | medium | fails |
+| **Pixelate output (512×512)** | **102×102** | **high** | **passes**, 23-colour palette, no dithering |
+
+The Pixelate result is a `refined/pixelate.png` of 102×102 pixels with a
+`.pixelkiln.json` record in `pending` review. So the chain that reached a
+gate-passing, closed-palette native-grid asset was GPT Image 2 (11 CU), Pixelate
+(5 CU), then free refinement: 16 CU for one asset, and it still needs a person's
+1× review before it can be approved.
+
+Pixel Snapper's output was already native-resolution, so the detector, which
+looks for an upscaled grid, found a wrong coarser one. Do not run Pixel Snapper's
+result through `refine`; it is already the grid. The raw 512 px image has no
+consistent grid for the detector to find, which is the problem Pixelate solved.
+
+Files added: `refined/pixelate.png`, `refined/pixelate.pixelkiln.json`.
