@@ -1,0 +1,86 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../outputs/px128/keep-px128.png",
+      "sha256": "2307a59d2b7c7689f70c076758305aa5603fe3364c1c2f450379f1349e2abe9e",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 23,
+      "height": 128,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 23,
+        "minGridConfidence": "high",
+        "minTransparency": null
+      },
+      "transparency": 0,
+      "width": 128
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 128,
+      "nativeWidth": 128,
+      "phaseX": 0,
+      "phaseY": 0,
+      "protocol": "python-core-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 512,
+      "sourceWidth": 512,
+      "stepX": 4,
+      "stepY": 4,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#f1f1f1",
+        "#222426",
+        "#343234",
+        "#867f7a",
+        "#393d3a",
+        "#151514",
+        "#6b6c67",
+        "#5d5954",
+        "#2a342e",
+        "#4a4d44",
+        "#45413c",
+        "#9a9c9c",
+        "#b4a99f",
+        "#252d3e",
+        "#3b4c74",
+        "#0a0c0d",
+        "#373e53",
+        "#140c10",
+        "#9cac9c",
+        "#7c3c1c",
+        "#8a5830",
+        "#a46c34",
+        "#dc8434"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "39226ee97fee3016e3819159d1c11b04ad0362e12141fead68c24543b4b14d4d",
+  "outputs": [
+    {
+      "path": "px128.png",
+      "sha256": "6b016ae1f908d66e8746d9767d48178d2961032ccf8fcec44e7a9d183a0ac473"
+    }
+  ]
+}

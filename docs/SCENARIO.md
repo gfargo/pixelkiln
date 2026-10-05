@@ -229,6 +229,29 @@ upgrading should be one `model_retrodiffusion-plus` still at 64×64 with the
 default style: quote, billed amount, dimensions, and whether it comes back as
 PNG.
 
+### Chaining models and tools
+
+The [pipeline run](../benchmarks/provider-scenario-pipeline/README.md)
+generated a character, pixelated it to a palette, cut out its background, and
+refined it, for 8 CU on the cheapest path and 18 CU with GPT Image 2, ending in
+a 64×64 transparent sprite that passed the `refine` gate. Three rules came out
+of it:
+
+- A revision's parent must be in the same style, and a style has one model. To
+  chain steps, restate the previous output in the next style as a placed
+  `source`: `"source": "outputs/gen-klein/knight.png"`. Run each step with
+  `gen --style <id>`; nothing orders them yet.
+- A `quality` profile gates every asset in its style, parents included, so a raw
+  parent blocks its own child. Put `quality` only on a final style whose asset is
+  the last output placed as a `source`, then run `pixelkiln refine --style`.
+- Pass the same palette to the tool (Pixelate's `colorPalette`) and to
+  `quality.palette`. The output then stays inside it. Pixelate's
+  `pixelGridSize` also set the detected native grid closely (48, 64 and 128
+  asked, 46, 64 and 128 found).
+
+A palette that is too small for the art costs fidelity (a bright blue cape
+became navy under a 32-colour palette), so passing the gate is not approval.
+
 ## Plan before spending
 
 Scenario prices depend on model, size, steps, and output count, so PixelKiln

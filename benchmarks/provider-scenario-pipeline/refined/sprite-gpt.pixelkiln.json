@@ -1,0 +1,95 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../outputs/char-cut/cut-gpt.png",
+      "sha256": "9eab739e90d9bd53ae3e9826b1c6680bd7ca4774ef05d67f3362d1295908bde9",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 21,
+      "height": 64,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 32,
+        "minGridConfidence": "high",
+        "minTransparency": 0.5
+      },
+      "transparency": 0.664306640625,
+      "width": 64
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 64,
+      "nativeWidth": 64,
+      "phaseX": 0,
+      "phaseY": 0,
+      "protocol": "python-core-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 512,
+      "sourceWidth": 512,
+      "stepX": 8,
+      "stepY": 8,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#000000",
+        "#222034",
+        "#45283c",
+        "#663931",
+        "#8f563b",
+        "#df7126",
+        "#d9a066",
+        "#eec39a",
+        "#fbf236",
+        "#99e550",
+        "#6abe30",
+        "#37946e",
+        "#4b692f",
+        "#524b24",
+        "#323c39",
+        "#3f3f74",
+        "#306082",
+        "#5b6ee1",
+        "#639bff",
+        "#5fcde4",
+        "#cbdbfc",
+        "#ffffff",
+        "#9badb7",
+        "#847e87",
+        "#696a6a",
+        "#595652",
+        "#76428a",
+        "#ac3232",
+        "#d95763",
+        "#d77bba",
+        "#8f974a",
+        "#8a6f30"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "d1819073c2f6e8f93b1033e08706521c5bbd30bac672582ad5c8fa8ac699f6d1",
+  "outputs": [
+    {
+      "path": "sprite-gpt.png",
+      "sha256": "02bc92d3c7f29d32cae7c05ed1a3bd1e89c98d0b924a1598f00e3055c8e441c9"
+    }
+  ]
+}
