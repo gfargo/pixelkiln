@@ -1,3 +1,17 @@
+# [0.84.0](https://github.com/gfargo/pixelkiln/compare/v0.83.0...v0.84.0) (2026-10-05)
+
+
+### Bug Fixes
+
+* **pixellab:** send the style's camera view with animate-skeleton ([ced9c96](https://github.com/gfargo/pixelkiln/commit/ced9c96c8e568550fc70f2f7d09db7d6b6fe6aad))
+
+
+### Features
+
+* **gallery:** paint an inpaint mask and pick an interpolate ending keyframe ([62029b8](https://github.com/gfargo/pixelkiln/commit/62029b834ca79b947673fec68aa95fd3b2b2ea6f))
+* **revision:** add a remove-background mode for PixelLab ([e53cd56](https://github.com/gfargo/pixelkiln/commit/e53cd56a5d14dec0f980c6ad595490ce60fdee35))
+* **revision:** animate-pixminimax caption fields, drift threshold, multiple-of-4 frames ([#244](https://github.com/gfargo/pixelkiln/issues/244)) ([3d52f5c](https://github.com/gfargo/pixelkiln/commit/3d52f5cfa2a51d98c0ac9cf448566b451bd556bd))
+
 # [0.83.0](https://github.com/gfargo/pixelkiln/compare/v0.82.0...v0.83.0) (2026-10-04)
 
 
