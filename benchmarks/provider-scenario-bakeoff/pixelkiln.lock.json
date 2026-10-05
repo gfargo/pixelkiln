@@ -1,0 +1,616 @@
+{
+  "version": 2,
+  "entries": {
+    "ernie-turbo/mountain-keep": {
+      "styleId": "ernie-turbo",
+      "assetId": "mountain-keep",
+      "specHash": "63c00c11f5cbab93d8016cb9ceb4607ad89f62d678091616ad88f07a7a6ef3f5",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_VVtPB3FSNcA9ui5cxo2QTmbV",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_RahBxzqMKQKpzGQLuumfj7EX",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_RahBxzqMKQKpzGQLuumfj7EX",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_RahBxzqMKQKpzGQLuumfj7EX",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/ernie-turbo/mountain-keep.png",
+          "sha256": "b075730e15e61ce6ed017608e3642d51535d6fbd2c8f5d87b64aba2c2830388e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_ernie-image-turbo",
+          "projectId": null,
+          "maxComputeUnits": 3,
+          "quotedComputeUnits": 3,
+          "creativeUnitsCost": 3,
+          "costDetails": {
+            "custom-generation": 3
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_VVtPB3FSNcA9ui5cxo2QTmbV",
+          "billedComputeUnits": 3,
+          "billing": {
+            "cuCost": 3,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_RahBxzqMKQKpzGQLuumfj7EX",
+          "outputIndex": 0
+        }
+      },
+      "submittedAt": "2026-10-05T13:51:34.273Z",
+      "downloadedAt": "2026-10-05T14:04:43.099Z",
+      "cost": 3,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "gpt-image-2/mountain-keep": {
+      "styleId": "gpt-image-2",
+      "assetId": "mountain-keep",
+      "specHash": "6ce91d5d463394f1ffc161d697b9e07ddea019fe7780e4b315c43bcef509ffee",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_5wdvpQvL6GfG4NkZMMZyz6XL",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_9bZ2ZR22r19CkR8EWD1TWrcE",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_9bZ2ZR22r19CkR8EWD1TWrcE",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_9bZ2ZR22r19CkR8EWD1TWrcE",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/gpt-image-2/mountain-keep.png",
+          "sha256": "acf40550a5b3e6b4396551848a09b82e41938fdcf370846d82c6f5564d430f22",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_openai-gpt-image-2",
+          "projectId": null,
+          "maxComputeUnits": 11,
+          "quotedComputeUnits": 11,
+          "creativeUnitsCost": 11,
+          "costDetails": {
+            "custom-generation": 11
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_5wdvpQvL6GfG4NkZMMZyz6XL",
+          "billedComputeUnits": 11,
+          "billing": {
+            "cuCost": 11,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_9bZ2ZR22r19CkR8EWD1TWrcE",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T13:50:47.944Z",
+      "downloadedAt": "2026-10-05T13:51:25.287Z",
+      "cost": 11,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "klein-9b/mountain-keep": {
+      "styleId": "klein-9b",
+      "assetId": "mountain-keep",
+      "specHash": "f68a80693a2818c9d6f13cc93bf297c75605f3250d677c7768998e391f34c704",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_cKL4gKSqProYHjY2ky3PYq1Y",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_jVm7JPWusZKxzYUr97PQ77cY",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_jVm7JPWusZKxzYUr97PQ77cY",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_jVm7JPWusZKxzYUr97PQ77cY",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/klein-9b/mountain-keep.png",
+          "sha256": "35a5540741e109eb71dea925347a3f055a1b9177ff9d505bd89c9f64a3e1c863",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-klein-9b",
+          "projectId": null,
+          "maxComputeUnits": 1,
+          "quotedComputeUnits": 1,
+          "creativeUnitsCost": 1,
+          "costDetails": {
+            "custom-generation": 1
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_cKL4gKSqProYHjY2ky3PYq1Y",
+          "billedComputeUnits": 1,
+          "billing": {
+            "cuCost": 1,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_jVm7JPWusZKxzYUr97PQ77cY",
+          "outputIndex": 0
+        }
+      },
+      "submittedAt": "2026-10-05T13:48:57.725Z",
+      "downloadedAt": "2026-10-05T13:51:25.284Z",
+      "cost": 1,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "krea-2-turbo/mountain-keep": {
+      "styleId": "krea-2-turbo",
+      "assetId": "mountain-keep",
+      "specHash": "c26ac9748bebe5dc96e6c50a93a0d6231f2656bdc936ecea1a775edbb27316d0",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_gwpfzT2ThuoXEATPTRkQdW3H",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_orkj5nXNf3MragWpjL8DoJ3W",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_orkj5nXNf3MragWpjL8DoJ3W",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_orkj5nXNf3MragWpjL8DoJ3W",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/krea-2-turbo/mountain-keep.png",
+          "sha256": "2d030c86c461d344ead9e6100b88df3577a34d3e496539ab82e9c848e619d098",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_krea-2-turbo",
+          "projectId": null,
+          "maxComputeUnits": 2,
+          "quotedComputeUnits": 2,
+          "creativeUnitsCost": 2,
+          "costDetails": {
+            "custom-generation": 2
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_gwpfzT2ThuoXEATPTRkQdW3H",
+          "billedComputeUnits": 2,
+          "billing": {
+            "cuCost": 2,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_orkj5nXNf3MragWpjL8DoJ3W",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T13:49:36.409Z",
+      "downloadedAt": "2026-10-05T13:51:25.589Z",
+      "cost": 2,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "meta-muse/mountain-keep": {
+      "styleId": "meta-muse",
+      "assetId": "mountain-keep",
+      "specHash": "7160df30ccbd95275742594a78ccb624c7c7bfb586b9042332d87a6b9a860491",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_T9nyUFiCRLYoWeVhp561ZPPV",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_dZZdk4BNygUbQbqnDZjVBHGs",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_dZZdk4BNygUbQbqnDZjVBHGs",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_dZZdk4BNygUbQbqnDZjVBHGs",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/meta-muse/mountain-keep.png",
+          "sha256": "408d3e8c5da60716be0bc6ec4f686760706a3f4d979029c1f23c349d4e76572e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_meta-muse-image",
+          "projectId": null,
+          "maxComputeUnits": 2,
+          "quotedComputeUnits": 2,
+          "creativeUnitsCost": 2,
+          "costDetails": {
+            "custom-generation": 2
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_T9nyUFiCRLYoWeVhp561ZPPV",
+          "billedComputeUnits": 2,
+          "billing": {
+            "cuCost": 2,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_dZZdk4BNygUbQbqnDZjVBHGs",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T13:49:55.333Z",
+      "downloadedAt": "2026-10-05T13:51:26.355Z",
+      "cost": 2,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "p-image/mountain-keep": {
+      "styleId": "p-image",
+      "assetId": "mountain-keep",
+      "specHash": "ade5ebd17b65fe5c11e1a0f23e66c870d4a706c64651c6102731c7c0d410ce5f",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_RXWXsDLqF2uw2y3STA5hu5qz",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": null,
+      "candidateIndex": null,
+      "status": "failed",
+      "error": "Scenario asset asset_ATgJ6FuAYDjCagXW1SEjvSB7 is image/jpeg; PixelKiln's Scenario MVP requires PNG output",
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_p-image",
+          "projectId": null,
+          "maxComputeUnits": 1,
+          "quotedComputeUnits": 1,
+          "creativeUnitsCost": 1,
+          "costDetails": {
+            "custom-generation": 1
+          },
+          "ipDetectionCost": 0
+        }
+      },
+      "submittedAt": "2026-10-05T13:51:32.260Z",
+      "downloadedAt": null,
+      "cost": 1,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "qwen-image-3/mountain-keep": {
+      "styleId": "qwen-image-3",
+      "assetId": "mountain-keep",
+      "specHash": "c182d697b63ce932f9e32eab0878b6349453ae151711353c013b89b1ae6657a2",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_nbca4dtR27xzsSXK4Ptnyu3n",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_p1XYin1r2UJBmvWq5AHPQmQ9",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_p1XYin1r2UJBmvWq5AHPQmQ9",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_p1XYin1r2UJBmvWq5AHPQmQ9",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/qwen-image-3/mountain-keep.png",
+          "sha256": "16929914774ca257b05454c9976aee98c4c00e73573ae93707f34621fc10f0f9",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_alibaba-qwen-image-3-0",
+          "projectId": null,
+          "maxComputeUnits": 6,
+          "quotedComputeUnits": 6,
+          "creativeUnitsCost": 6,
+          "costDetails": {
+            "custom-generation": 6
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_nbca4dtR27xzsSXK4Ptnyu3n",
+          "billedComputeUnits": 6,
+          "billing": {
+            "cuCost": 6,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_p1XYin1r2UJBmvWq5AHPQmQ9",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T13:51:35.406Z",
+      "downloadedAt": "2026-10-05T14:04:43.101Z",
+      "cost": 6,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "recraft-flash/mountain-keep": {
+      "styleId": "recraft-flash",
+      "assetId": "mountain-keep",
+      "specHash": "849e900689711603ef77a38607045eeb6ae214e5dad1365078e8591973968d44",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_jgQ2JZibEkvUeDxSEZ3irns6",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_FhbxuTCvhtTzhk5BqpzBmw9W",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_FhbxuTCvhtTzhk5BqpzBmw9W",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_FhbxuTCvhtTzhk5BqpzBmw9W",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/recraft-flash/mountain-keep.png",
+          "sha256": "3b2974c978200d94d3e3726c25861fb3cf05029635eba820049d3d0c990b0ba8",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_recraft-v4-1-flash",
+          "projectId": null,
+          "maxComputeUnits": 2,
+          "quotedComputeUnits": 2,
+          "creativeUnitsCost": 2,
+          "costDetails": {
+            "custom-generation": 2
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_jgQ2JZibEkvUeDxSEZ3irns6",
+          "billedComputeUnits": 2,
+          "billing": {
+            "cuCost": 2,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_FhbxuTCvhtTzhk5BqpzBmw9W",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T13:51:33.270Z",
+      "downloadedAt": "2026-10-05T14:04:43.034Z",
+      "cost": 2,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "schnell/mountain-keep": {
+      "styleId": "schnell",
+      "assetId": "mountain-keep",
+      "specHash": "f1247738753b3719960525debfd1a5a38681a8f5835149833ed8341f62aaa4a4",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_tBEoYNdNUuJcDbHmCNq7qEmr",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_BPKASMEUXezTTsL1gxy2PUSZ",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_BPKASMEUXezTTsL1gxy2PUSZ",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_BPKASMEUXezTTsL1gxy2PUSZ",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/schnell/mountain-keep.png",
+          "sha256": "4b8dade6f3effdf617cbf39d5b0c7f5227a40e1ed89bf58b808b84c381e608cb",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_bfl-flux-1-schnell",
+          "projectId": null,
+          "maxComputeUnits": 1,
+          "quotedComputeUnits": 1,
+          "creativeUnitsCost": 1,
+          "costDetails": {
+            "custom-generation": 1
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_tBEoYNdNUuJcDbHmCNq7qEmr",
+          "billedComputeUnits": 1,
+          "billing": {
+            "cuCost": 1,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_BPKASMEUXezTTsL1gxy2PUSZ",
+          "outputIndex": 0
+        }
+      },
+      "submittedAt": "2026-10-05T13:48:59.050Z",
+      "downloadedAt": "2026-10-05T13:51:25.286Z",
+      "cost": 1,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "z-image-turbo/mountain-keep": {
+      "styleId": "z-image-turbo",
+      "assetId": "mountain-keep",
+      "specHash": "4f61e7855553f00627d7daccc5251f5b73ae642094d99f21ea9896ff8de887a1",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a compact stone mountain keep, readable pixel-art silhouette",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_auJuNXA9SDzhmFoBxkyiDAAD",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_62haH2qP67ZVRFpYAv98CToe",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_62haH2qP67ZVRFpYAv98CToe",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_62haH2qP67ZVRFpYAv98CToe",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/z-image-turbo/mountain-keep.png",
+          "sha256": "0c87cb00076563fc8c704311a7115e1bfeaa5585fc32ed84148757ba89d57d81",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_z-image-turbo",
+          "projectId": null,
+          "maxComputeUnits": 4,
+          "quotedComputeUnits": 1,
+          "creativeUnitsCost": 1,
+          "costDetails": {
+            "custom-generation": 1
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_auJuNXA9SDzhmFoBxkyiDAAD",
+          "billedComputeUnits": 1,
+          "billing": {
+            "cuCost": 1,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_62haH2qP67ZVRFpYAv98CToe",
+          "outputIndex": 0
+        }
+      },
+      "submittedAt": "2026-10-05T13:50:24.464Z",
+      "downloadedAt": "2026-10-05T13:51:25.286Z",
+      "cost": 4,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    }
+  }
+}

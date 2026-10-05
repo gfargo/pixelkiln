@@ -23,8 +23,8 @@ schemas remain unverified. Require a one-asset smoke before widening a batch.
 - Verify the chosen model returns PNG. The MVP rejects other media formats,
   style-image uploads, animation, and tiles.
 
-Scenario model parameters vary. The MVP supplies prompt, 128–2048px dimensions
-in multiples of 16, one to four outputs, and optional seed. Put only documented
+Scenario model parameters vary. The MVP supplies prompt, 16–4096px dimensions
+(each model has tighter bounds, reported by the free dry run), one to four outputs, and optional seed. Put only documented
 model inputs in `parameters`; PixelKiln rejects attempts to override its prompt,
 dimensions, seed, output count, project routing, or CU ceiling.
 

@@ -31,8 +31,12 @@ override the production API root. Ordinary projects should leave it unset.
 PixelKiln calls `POST /generate/custom/{modelId}`. Scenario model inputs vary;
 inspect the model's current parameter reference before adding optional inputs.
 The initial PixelKiln contract sends `prompt`, `width`, `height`, `numOutputs`,
-and an optional `seed`. It accepts dimensions from 128–2048px in multiples of
-16 and one to four PNG outputs.
+and an optional `seed`. It accepts whole-number dimensions from 16 to 4096px and one to four PNG
+outputs. Each model has its own tighter bounds (FLUX takes 128 to 2048 in
+steps of 16, Retro Diffusion Plus 16 to 384); the free dry run that precedes
+every paid request reports them, for example "Input width must be at least
+672", before anything is spent. A model may also return a different canvas than
+the one requested, so check real dimensions.
 
 The public `model_bfl-flux-2-dev` profile documents that input shape. A custom
 LoRA used with that base can be supplied as `parameters.modelId` when the
@@ -114,6 +118,12 @@ quote stops the run before paid work. Scenario's `costDetails` already sum to
 `creativeUnitsCost`; PixelKiln records both without double-counting. A separate
 IP-detection charge is additive when Scenario reports one.
 
+A 429 on a generation request means the account's concurrent-job limit
+refused it: nothing was accepted or billed, and the adapter retries for about
+80 seconds. Past that, rerun `gen`; the assets that landed are kept. A finished
+job whose asset is not a PNG (some models return JPEG) is billed, so that asset
+is marked failed rather than polled again.
+
 The command budget is still a hard ceiling over the whole selected run. The
 manifest ceiling protects each request from a changed live quote.
 
@@ -122,6 +132,24 @@ A still-image style can declare `quality` to recover a native grid, enforce a
 closed palette, and require named approval before pack or mount. This offline
 policy does not change the Scenario request or CU quote. See
 [Manifest quality profiles](./MANIFEST.md#quality-profiles).
+
+### Models and what they cost
+
+A free survey on October 5, 2026 quoted every non-deprecated text-to-image
+model with a prompt-only 512×512 dry run on a `cu-basic` account. 37 were
+usable and 19 were refused with `ModelAccessRestrictedError` (the Retro
+Diffusion Plus, Tile, and Animation models need the `cu-pro-q3-25` plan).
+Quotes ran from 1 CU (FLUX.2 Klein 9b, FLUX.1 Schnell, P-Image) through 2 to 6
+for the Krea 2, Recraft V4.1 Flash, Meta Muse, Ernie, Z-Image, and Qwen Image
+models, 11 to 12 for GPT Image 2 and Gemini 3.1 Flash, to 16 for the FLUX.2 Dev
+this page was first validated on. The
+[model bake-off](../benchmarks/provider-scenario-bakeoff/README.md) ran ten of
+them once: price did not predict fit, several models ignore the requested
+canvas size, and one returned a JPEG, which the adapter refuses.
+
+Scenario's catalog also lists pixel-art LoRAs, background-removal and upscale
+models, and a `pixel-snapper` cleanup tool. LoRA models answer a different
+endpoint than `/generate/custom/{modelId}`, which this adapter does not call.
 
 ### Current live validation
 
@@ -185,8 +213,8 @@ for every style:
 | `projectId` | Optional Scenario ownership/routing project. |
 | `parameters` | Additional model-specific JSON inputs. PixelKiln-owned request fields cannot be overridden. |
 
-The current adapter supports `map`, dimensions from 128–2048px in multiples of
-16, optional seed, and no style-image uploads. Every paid request is preceded
+The current adapter supports `map`, whole-number dimensions from 16 to 4096px,
+optional seed, and no style-image uploads. Every paid request is preceded
 by an identical `dryRun=true` request. See [Set up Scenario](SCENARIO.md) for
 credentials, cost semantics, recovery, and the paid live-test boundary.
 

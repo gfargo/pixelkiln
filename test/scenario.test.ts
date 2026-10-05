@@ -123,7 +123,9 @@ describe("Scenario provider", () => {
   })
 
   it("rejects unsupported dimensions and style images before submission", async () => {
-    await expect(project({}, { width: 130, height: 512 })).rejects.toThrow(/multiples of 16/)
+    await expect(project({}, { width: 512, height: 5000 })).rejects.toThrow(/4096|5000/)
+    // The model's own bounds come from the free dry run, not an offline table.
+    await project({}, { width: 130, height: 64 })
 
     const reference = path.join(dir, "reference.png")
     await writeFile(reference, FAKE_PNG)
@@ -412,8 +414,10 @@ describe("Scenario provider", () => {
         asset: { id: "asset-webp", url: "https://cdn.test/a.webp", originalMimeType: "image/webp", outputIndex: 0 },
       })
     }))
+    // The job is already billed and the format will not change, so the asset
+    // fails instead of being polled again forever.
     await expect(createProvider("scenario", "online").poll("job-webp", "map"))
-      .rejects.toThrow(/requires PNG output/)
+      .resolves.toMatchObject({ status: "failed", error: expect.stringMatching(/requires PNG output/) })
   })
 
   it("names missing credentials and redacts credentials from provider errors", async () => {
