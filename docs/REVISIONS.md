@@ -369,7 +369,10 @@ inline pixels. It must match the shape `src/skeleton.ts`'s `SkeletonSetSchema`
 validates: `{"firstFrameKeypoints": [...18 joints], "frames": [[...18
 joints], ...3 to 15 of them]}`, each joint `{"label": "RIGHT KNEE", "x": 0.52,
 "y": 0.71, "z_index": 9, "depth": 4}` (`depth` optional — PixelLab fills it
-from `skeletonTemplate`, default `mannequin`, when omitted). `label` is one
+from `skeletonTemplate`, default `mannequin`, when omitted). The request also
+carries the style's `view` (`side`, `low top-down`, or `high top-down`) so the
+motion is posed for the sprite's own camera; PixelLab assumes `low top-down`
+otherwise. `label` is one
 of PixelLab's 18 joints (`NOSE`, `NECK`, `RIGHT`/`LEFT` `SHOULDER`, `ELBOW`,
 `ARM` for the wrist, `HIP`, `KNEE`, `LEG` for the ankle, `EYE`, `EAR`), each
 exactly once per pose; a misspelled or repeated joint fails when the manifest

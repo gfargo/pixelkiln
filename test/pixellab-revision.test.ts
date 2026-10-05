@@ -248,6 +248,7 @@ describe("PixelLabClient: the animate wire", () => {
       firstFrameKeypoints: [keypoint("NOSE")],
       keypoints: [[keypoint("NOSE")]],
       direction: "east",
+      view: "side",
       templateId: "bear",
       action: "walk",
       description: "a blue bear",
@@ -260,6 +261,7 @@ describe("PixelLabClient: the animate wire", () => {
       first_frame_keypoints: [keypoint("NOSE")],
       keypoints: [[keypoint("NOSE")]],
       direction: "east",
+      view: "side",
       template_id: "bear",
       action: "walk",
       description: "a blue bear",
@@ -802,7 +804,8 @@ describe("PixelLab provider: animate-skeleton", () => {
 
     const provider = new PixelLabProvider(new PixelLabClient("key"))
     await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
-    expect(submitBody).toMatchObject({ direction: "south" })
+    expect(submitBody).toMatchObject({ direction: "south", view: child!.view })
+    expect(["side", "low top-down", "high top-down"]).toContain(child!.view)
     expect((submitBody as Record<string, unknown>).first_frame_keypoints).toHaveLength(18)
     expect((submitBody as Record<string, unknown>).keypoints).toHaveLength(3)
 

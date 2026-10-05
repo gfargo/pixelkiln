@@ -1949,6 +1949,9 @@ export class PixelLabProvider implements Provider {
         firstFrameKeypoints: revision.skeleton.firstFrameKeypoints,
         keypoints: revision.skeleton.frames,
         direction: revision.direction!,
+        // The style's camera, when it is one this endpoint knows; its enum is
+        // narrower than a style's free-string `view`.
+        ...(spec.view === "side" || spec.view === "low top-down" || spec.view === "high top-down" ? { view: spec.view } : {}),
         templateId: revision.skeletonTemplate,
         action: spec.prompt,
         description: revision.description,

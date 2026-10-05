@@ -2036,6 +2036,8 @@ export class PixelLabClient {
     firstFrameKeypoints: SkeletonKeypoint[]
     keypoints: SkeletonKeypoint[][]
     direction: CharacterDirection
+    /** The camera the sprite is drawn at; PixelLab assumes `low top-down` when omitted, which poses a side-view sprite for the wrong camera. */
+    view?: "side" | "low top-down" | "high top-down"
     templateId?: string
     action?: string
     description?: string
@@ -2048,6 +2050,7 @@ export class PixelLabClient {
       keypoints: args.keypoints,
       direction: args.direction,
     }
+    if (args.view) body.view = args.view
     if (args.templateId) body.template_id = args.templateId
     if (args.action) body.action = args.action
     if (args.description) body.description = args.description
