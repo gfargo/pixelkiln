@@ -25,14 +25,147 @@
           "maxComputeUnits": 5,
           "referenceParameter": "image",
           "referenceArray": false,
-          "parameters": { "colors": 16 }
+          "parameters": {
+            "colors": 16
+          }
+        }
+      }
+    },
+    "pixelate": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "outputs/pixelate",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false,
+          "parameters": {
+            "pixelGridSize": 96,
+            "colorPaletteSize": 24
+          }
+        }
+      }
+    },
+    "upscale-recraft": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "outputs/upscale-recraft",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_recraft-crisp-upscale",
+          "maxComputeUnits": 2,
+          "referenceParameter": "image",
+          "referenceArray": false
+        }
+      }
+    },
+    "upscale-v3": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "outputs/upscale-v3",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_upscale-v3",
+          "maxComputeUnits": 10,
+          "referenceParameter": "image",
+          "referenceArray": false
+        }
+      }
+    },
+    "upscale-topaz": {
+      "generator": "map",
+      "size": 512,
+      "outDir": "outputs/upscale-topaz",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_topaz-image-upscale",
+          "maxComputeUnits": 10,
+          "referenceParameter": "image",
+          "referenceArray": false
         }
       }
     }
   },
   "assets": {
-    "keep": { "prompt": "a stone mountain keep", "source": "art/keep.png", "styles": ["cutout", "snap"] },
-    "keep-cutout": { "prompt": "remove the background", "styles": ["cutout"], "revision": { "mode": "image-to-image", "from": "keep" } },
-    "keep-snapped": { "prompt": "snap to the pixel grid", "styles": ["snap"], "revision": { "mode": "image-to-image", "from": "keep" } }
+    "keep": {
+      "prompt": "a stone mountain keep",
+      "source": "art/keep.png",
+      "styles": [
+        "cutout",
+        "snap",
+        "pixelate"
+      ]
+    },
+    "keep-cutout": {
+      "prompt": "remove the background",
+      "styles": [
+        "cutout"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "keep"
+      }
+    },
+    "keep-snapped": {
+      "prompt": "snap to the pixel grid",
+      "styles": [
+        "snap"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "keep"
+      }
+    },
+    "keep-pixelated": {
+      "prompt": "pixelate",
+      "styles": [
+        "pixelate"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "keep"
+      }
+    },
+    "snapped": {
+      "prompt": "the pixel-snapped keep, 83x83",
+      "source": "art/keep-snapped.png",
+      "styles": [
+        "upscale-recraft",
+        "upscale-v3",
+        "upscale-topaz"
+      ]
+    },
+    "snapped-recraft": {
+      "prompt": "upscale",
+      "styles": [
+        "upscale-recraft"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "snapped"
+      }
+    },
+    "snapped-v3": {
+      "prompt": "upscale",
+      "styles": [
+        "upscale-v3"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "snapped"
+      }
+    },
+    "snapped-topaz": {
+      "prompt": "upscale",
+      "styles": [
+        "upscale-topaz"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "snapped"
+      }
+    }
   }
 }
