@@ -1,3 +1,11 @@
+# [0.85.0](https://github.com/gfargo/pixelkiln/compare/v0.84.0...v0.85.0) (2026-10-05)
+
+
+### Features
+
+* **scenario:** retry past the concurrency limit, fail non-PNG assets, drop the offline size table ([907c794](https://github.com/gfargo/pixelkiln/commit/907c7947384a482da5976742b50d1464c1184c3d))
+* **scenario:** style images and image-to-image revisions as reference uploads ([d7a1f87](https://github.com/gfargo/pixelkiln/commit/d7a1f870ca5a3e3c684c745a618962cb66eb1efd))
+
 # [0.84.0](https://github.com/gfargo/pixelkiln/compare/v0.83.0...v0.84.0) (2026-10-05)
 
 
