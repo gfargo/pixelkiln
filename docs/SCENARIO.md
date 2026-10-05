@@ -181,8 +181,12 @@ request. Free dry runs on October 5, 2026 quoted these on a `cu-basic` account:
 }
 ```
 
-Only the quotes were checked; none of these tools has been run through the
-adapter. They overlap PixelKiln's own offline work: `pixelkiln refine` snaps
+Birefnet and Pixel Snapper were then run once each through the adapter (7 CU,
+quoted and billed identically; see the
+[tool-model smoke](../benchmarks/provider-scenario-tools/README.md)). Pixel
+Snapper returned an 83×83, exactly-16-colour native-grid version of a 512×512
+image, a different size than the manifest's canvas, and Birefnet's cutout kept
+its subject at alpha 254 rather than 255. The other tools were only quoted. They overlap PixelKiln's own offline work: `pixelkiln refine` snaps
 the grid and palette for free, and PixelLab's `remove-background` revision costs
 one generation. Reach for these when the art is already on Scenario.
 
