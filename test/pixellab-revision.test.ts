@@ -10,6 +10,7 @@ import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
+import { runPicker } from "../src/pick/server.ts"
 import { encodeRgbaPng } from "../src/png.ts"
 import { SKELETON_LABELS } from "../src/skeleton.ts"
 import type { Lock } from "../src/types.ts"
@@ -885,6 +886,73 @@ describe("PixelLab provider: animate-skeleton", () => {
     const polled = await poll(provider, lock, lockPath, { intervalMs: 0, specs: [child!] })
     expect(polled.review).toBe(1)
     expect(lock.entries["base/revised"]).toMatchObject({ status: "review" })
+  })
+
+  it("serves the decoded frames to the pick sheet over HTTP, never as file:// URLs", async () => {
+    // The frames decode to file:// URLs in the provider's temp cache. The
+    // sheet is served from http://127.0.0.1, which a browser refuses to let
+    // load a file:// image ("Not allowed to load local resource"), so a
+    // frame set reviewed that way showed nothing but broken images.
+    const loaded = await writeProject({}, { keypointsFile: "poses.json", frameCount: 3 })
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const plan = await buildPlan([child!], lock)
+
+    const frames = [0, 1, 2].map((i) => png(40 + i * 10, 32, 32))
+    const localFetch = globalThis.fetch
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const url = new URL(String(input))
+      if (url.pathname === "/v2/animate-with-skeleton-v3") {
+        return new Response(JSON.stringify({ background_job_id: "skel-review", status: "processing" }), { status: 202 })
+      }
+      if (url.pathname === "/v2/background-jobs/skel-review") {
+        return new Response(JSON.stringify({
+          id: "skel-review", status: "completed", created_at: "now",
+          last_response: { images: frames.map((f) => ({ base64: f.toString("base64") })) },
+        }), { status: 200 })
+      }
+      throw new Error(`unexpected request: ${url.pathname}`)
+    }))
+
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    await poll(provider, lock, lockPath, { intervalMs: 0, specs: [child!] })
+    expect(lock.entries["base/revised"]).toMatchObject({ status: "review" })
+
+    let url = ""
+    const picked = runPicker(provider, lock, lockPath, {
+      open: false,
+      specs: [child!],
+      onReady: (ready) => (url = ready.url),
+    })
+    await vi.waitFor(() => expect(url).not.toBe(""))
+
+    const page = await (await localFetch(url)).text()
+    expect(page).not.toContain("file://")
+    for (const [i, bytes] of frames.entries()) {
+      expect(page).toContain(`/review-frame/0/${i}`)
+      const served = await localFetch(`${url}review-frame/0/${i}`)
+      expect(served.status).toBe(200)
+      expect(served.headers.get("content-type")).toBe("image/png")
+      expect(Buffer.from(await served.arrayBuffer()).equals(bytes)).toBe(true)
+    }
+    expect((await localFetch(`${url}review-frame/0/3`)).status).toBe(404)
+
+    const applied = await localFetch(`${url}apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selections: [{ key: "base/revised", index: 0 }] }),
+    })
+    expect(applied.ok).toBe(true)
+    expect(await picked).toEqual({ selected: 1, skipped: 0 })
+    // The lockfile keeps the provider's own file:// sources, which `fetch`
+    // reads from disk; a review route means nothing once the sheet closes.
+    const accepted = lock.entries["base/revised"]!
+    expect(accepted.status).toBe("selected")
+    expect(accepted.sourceUrls.map((source) => source.url)).toEqual(
+      frames.map((_, i) => expect.stringMatching(new RegExp(`^file://.*skel-review-${i}\\.png$`))),
+    )
   })
 
   it("refuses to submit when the keypoints file is not ready, and detects drift since resolve", async () => {

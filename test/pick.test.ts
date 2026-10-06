@@ -10,6 +10,7 @@ import { poll } from "../src/pipeline/poll.ts"
 import { prepareReview, runPicker } from "../src/pick/server.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { lockKey, type Lock } from "../src/types.ts"
+import type { JobState } from "../src/provider.ts"
 
 let dir: string
 let lockPath: string
@@ -23,7 +24,7 @@ afterEach(async () => {
 
 /** Drives the real submit → poll pipeline so the resulting lock entry is
  *  genuinely in review status, rather than hand-authoring one. */
-async function projectInReview(candidates = 4) {
+async function projectInReview(candidates = 4, provider = new FakeProvider({ candidates })) {
   const manifest = {
     name: "itest",
     styles: { base: { generator: "1dir", size: 64, outDir: "out", promptSuffix: "clean" } },
@@ -33,11 +34,29 @@ async function projectInReview(candidates = 4) {
   await writeFile(manifestPath, JSON.stringify(manifest))
   const loaded = await loadManifest(manifestPath)
   const specs = await resolveSpecs(loaded)
-  const provider = new FakeProvider({ candidates })
   const lock: Lock = { version: 2, entries: {} }
   await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, { spacingMs: 0 })
   await poll(provider, lock, lockPath, { intervalMs: 0 })
   return { provider, lock, specs }
+}
+
+/**
+ * Candidates the way PixelLab's imagePro and uiElement report them: decoded
+ * to a local cache and named by `file://` URL, beside whatever the provider
+ * hosts. Promotion names no source of its own, so `apply` falls back to the
+ * URL the provider listed for the candidate.
+ */
+class LocalCacheProvider extends FakeProvider {
+  constructor(private readonly urls: string[]) {
+    super({ candidates: urls.length })
+  }
+  override async poll(jobId: string): Promise<JobState> {
+    const state = await super.poll(jobId)
+    return state.status === "review" ? { ...state, candidateUrls: this.urls } : state
+  }
+  override async selectCandidate(jobId: string, index: number, commonTag?: string) {
+    return { ...(await super.selectCandidate(jobId, index, commonTag)), sourceUrl: null }
+  }
 }
 
 describe("runPicker", () => {
@@ -134,6 +153,48 @@ describe("runPicker", () => {
       body: JSON.stringify({ selections: [{ key, index: 0 }] }),
     })
     expect(await picked).toEqual({ selected: 1, skipped: 0 })
+  })
+
+  it("serves a candidate the provider cached on disk on its own route, never as a file:// URL", async () => {
+    // A sheet served from http://127.0.0.1 cannot load a file:// image.
+    const cached = path.join(dir, "cached-0.png")
+    await writeFile(cached, FAKE_PNG)
+    const hosted = "https://cdn.example.test/candidate-1.png"
+    const { provider, lock } = await projectInReview(2, new LocalCacheProvider([`file://${cached}`, hosted]))
+    const key = lockKey("base", "anvil")
+    expect(lock.entries[key]!.status).toBe("review")
+
+    // Hosted under the gallery, the route carries the prefix; a hosted URL is untouched.
+    const embedded = await prepareReview(provider, lock, { routePrefix: "/review/abc" })
+    expect(embedded!.groups[0]!.frameUrls).toEqual(["/review/abc/review-frame/0/0", hosted])
+    expect(embedded!.assets.get("/review/abc/review-frame/0/0")).toEqual({ path: cached, contentType: "image/png" })
+    expect(embedded!.html()).not.toContain("file://")
+
+    let url = ""
+    const picked = runPicker(provider, lock, lockPath, {
+      open: false,
+      onReady: (ready) => (url = ready.url),
+    })
+    await vi.waitFor(() => expect(url).not.toBe(""))
+    const page = await (await fetch(url)).text()
+    expect(page).toContain("/review-frame/0/0")
+    expect(page).toContain(hosted)
+    expect(page).not.toContain("file://")
+    const served = await fetch(url + "review-frame/0/0")
+    expect(served.status).toBe(200)
+    expect(served.headers.get("content-type")).toBe("image/png")
+    expect(Buffer.from(await served.arrayBuffer())).toEqual(FAKE_PNG)
+    // Only the cached candidate has a route; the hosted one needs none.
+    expect((await fetch(url + "review-frame/0/1")).status).toBe(404)
+
+    await fetch(url + "apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selections: [{ key, index: 0 }] }),
+    })
+    expect(await picked).toEqual({ selected: 1, skipped: 0 })
+    // The lockfile records the provider's URL, which fetch can read, not the route.
+    expect(lock.entries[key]).toMatchObject({ status: "selected", candidateIndex: 0, sourceUrl: `file://${cached}` })
   })
 
   it("ignores an out-of-range index instead of throwing", async () => {

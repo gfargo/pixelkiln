@@ -153,7 +153,13 @@ against `buildPlan` and the session budget and runs `submit`, `poll`, and
 and `applyReview` host the `pick` sheet for a job's waiting keys. The sheet
 itself comes from `prepareReview`, which `runPicker` also uses: it gathers the
 candidate groups, the local files the sheet may load, and the apply step,
-without an HTTP server of its own.
+without an HTTP server of its own. Those files (`session.assets`, exact route →
+path and content type) are revision sources, the art a regeneration replaces,
+and any frame or candidate the provider cached on local disk, such as
+PixelLab's decoded animation frames. A browser will not load a `file://` image
+into a page served over HTTP, so the sheet names each of those by its route,
+under `routePrefix` when one is given; a host that embeds the sheet must serve
+every route in `assets`. Hosted provider URLs reach the sheet unchanged.
 
 ## Hand edits and the in-browser editor
 

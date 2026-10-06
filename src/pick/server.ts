@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { requireSelectCandidate, type Provider } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
-import { mediaTypeFromExtension } from "../media.ts"
+import { detectMediaType, mediaTypeFromExtension } from "../media.ts"
 import { resolveOutputPath } from "../outputs.ts"
 import { pngSize } from "../pipeline/init.ts"
 import { lockKey, primaryOutput, type LockEntry, type Lock, type ResolvedSpec } from "../types.ts"
@@ -27,7 +27,11 @@ export interface ReviewReadyInfo {
  */
 export interface ReviewSession {
   groups: SheetGroup[]
-  /** Exact local media routes the sheet references (revision sources). */
+  /**
+   * Exact local media routes the sheet references: revision sources, the art
+   * a regeneration replaces, and any frame or candidate the provider cached
+   * on local disk.
+   */
   assets: ReadonlyMap<string, { path: string; contentType: string }>
   /** Render the sheet, optionally addressed for an embedding host. */
   html(options?: RenderSheetOptions): string
@@ -77,6 +81,29 @@ async function currentArt(
   return { path: file, contentType, width, height }
 }
 
+/**
+ * The local file behind a provider's `file://` frame or candidate URL, or
+ * null for a hosted one.
+ *
+ * A provider that decodes inline results to a local cache (PixelLab's
+ * animate revisions, `imagePro`, `uiElement`) reports them as `file://`
+ * URLs, which `fetch` reads straight from disk. A sheet served from
+ * `http://127.0.0.1` is not allowed to load a `file://` image, so handing it
+ * those URLs drew every frame broken; the sheet gets each file on its own
+ * review route instead, the way it gets a revision source. The path is
+ * everything after the scheme, unencoded, which is how the provider writes
+ * the URL and how its own `download` reads it back.
+ */
+async function cachedFrame(url: string): Promise<{ path: string; contentType: string } | null> {
+  if (!url.startsWith("file://")) return null
+  const file = url.slice("file://".length)
+  const contentType =
+    mediaTypeFromExtension(file) ??
+    detectMediaType(await readFile(file).catch(() => Buffer.alloc(0))) ??
+    "application/octet-stream"
+  return { path: file, contentType }
+}
+
 /** Gather every entry in review for this provider. Null when nothing is waiting. */
 export async function prepareReview(
   provider: Provider,
@@ -90,6 +117,9 @@ export async function prepareReview(
   )
   const reviewAssets = new Map<string, { path: string; contentType: string }>()
   const prefix = opts.routePrefix ?? ""
+  // What the provider called each frame, by key. The sheet's `frameUrls` may
+  // be review routes instead, and a route must never reach the lockfile.
+  const providerUrls = new Map<string, string[]>()
 
   const groups: SheetGroup[] = []
   for (const [key, entry] of Object.entries(lock.entries)) {
@@ -102,7 +132,19 @@ export async function prepareReview(
         (state.status !== "review" && state.status !== "review-set") ||
         (state.status === "review" ? !state.candidateUrls.length : !state.frameUrls.length)
       ) continue
-      const frameUrls = state.status === "review" ? state.candidateUrls : state.frameUrls
+      const urls = state.status === "review" ? state.candidateUrls : state.frameUrls
+      const frameUrls: string[] = []
+      const frameAssets: [string, { path: string; contentType: string }][] = []
+      for (const [index, url] of urls.entries()) {
+        const cached = await cachedFrame(url)
+        if (!cached) {
+          frameUrls.push(url)
+          continue
+        }
+        const route = `${prefix}/review-frame/${encodeURIComponent(String(groups.length))}/${index}`
+        frameAssets.push([route, cached])
+        frameUrls.push(route)
+      }
       const sourceRoute = spec?.revision
         ? `${prefix}/revision-source/${encodeURIComponent(String(groups.length))}`
         : null
@@ -119,6 +161,8 @@ export async function prepareReview(
       if (current && currentRoute) {
         reviewAssets.set(currentRoute, { path: current.path, contentType: current.contentType })
       }
+      for (const [route, asset] of frameAssets) reviewAssets.set(route, asset)
+      providerUrls.set(key, urls)
       groups.push({
         key,
         assetId: entry.assetId,
@@ -218,7 +262,7 @@ export async function prepareReview(
           status: "selected",
           objectId,
           candidateIndex: index,
-          sourceUrl: sourceUrl ?? group.frameUrls[index] ?? null,
+          sourceUrl: sourceUrl ?? providerUrls.get(key)?.[index] ?? null,
           sourceUrls: [],
           provider: provider.id,
           providerMetadata: metadata
