@@ -98,7 +98,7 @@ if (!home.includes("48–128px native per part")) {
 if (!home.includes("Still workflow live-tested") || !home.includes("frame workflow awaits a live benchmark")) {
   failures.push("provider results are missing the ComfyUI still/frame readiness boundary");
 }
-if (!home.includes("accepted frame prompts are saved before the next one is queued")) {
+if (!home.includes("saves each accepted frame prompt before it queues the next one")) {
   failures.push("home page is missing the ComfyUI frame checkpoint guarantee");
 }
 if (!home.includes("style.quality") || !home.includes("blocked until approval is current")) {

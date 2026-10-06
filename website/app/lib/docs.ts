@@ -51,7 +51,7 @@ export const docs: DocEntry[] = [
   {
     slug: "scenario",
     title: "Set up Scenario",
-    description: "Configure hosted models, two-part credentials, CU preflight, and durable downloads.",
+    description: "Set up hosted models and two-part credentials, then use reference-image edits, multi-model chains, and the measured findings.",
     file: "docs/SCENARIO.md",
     group: "Providers",
   },
@@ -95,7 +95,7 @@ export const docs: DocEntry[] = [
   {
     slug: "generators",
     title: "Generator selection",
-    description: "Choose the right capability and understand measured costs.",
+    description: "Pick a generator and see what it costs.",
     file: "docs/GENERATORS.md",
     group: "Guides",
   },
@@ -116,7 +116,7 @@ export const docs: DocEntry[] = [
   {
     slug: "revisions",
     title: "Controlled asset revisions",
-    description: "Revise current art with hashed parents, masks, approval gates, and side-by-side review, including PixelLab palette cleanup, animation, and interpolation.",
+    description: "Revise current art with hashed parents, masks, approval gates, and side-by-side review. Covers PixelLab palette cleanup, animation, interpolation, and chaining revisions across styles.",
     file: "docs/REVISIONS.md",
     group: "Guides",
   },

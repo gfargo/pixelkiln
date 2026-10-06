@@ -39,10 +39,11 @@ export default function Home() {
       <JsonLd data={jsonLd} />
       <SiteHeader />
       <main>
+
       <section className="hero shell">
         <div className="hero-copy">
           <p className="eyebrow">
-            <span className="status-dot" /> Generated pixel art, without the guesswork
+            <span className="status-dot" /> A build pipeline for generated pixel art
           </p>
           <h1>
             Fire once.
@@ -52,8 +53,9 @@ export default function Home() {
             <em>with receipts.</em>
           </h1>
           <p className="hero-deck">
-            Declare the art you need, see the price before generation, choose
-            candidates yourself, and keep a hash for every file you ship.
+            Declare the sprites you need in one manifest. PixelKiln prices the
+            run offline, lets you choose among candidates, and records a SHA-256
+            hash for every file you ship.
           </p>
           <div className="hero-actions">
             <TrackedLink
@@ -74,7 +76,10 @@ export default function Home() {
               View on GitHub <span aria-hidden="true">↗</span>
             </TrackedLink>
           </div>
-          <div className="trust-line" aria-label="Core guarantees">
+          <div className="hero-install">
+            <CopyCommand command="npm install --save-dev pixelkiln" />
+          </div>
+          <div className="trust-line" aria-label="What PixelKiln does">
             <span>Offline planning</span>
             <span>Hard budgets</span>
             <span>Exact provenance</span>
@@ -162,45 +167,59 @@ export default function Home() {
             <span>LLM calls in the loop</span>
           </div>
           <p>
-            The judgment stays human.
+            You choose every image.
             <br />
-            The mechanics stay deterministic.
+            PixelKiln does the polling, hashing, and file placement the same way every time.
           </p>
         </div>
         </section>
 
         <section className="workflow-section shell" id="workflow">
           <div className="section-heading">
-            <p className="eyebrow">Four steps from one committed manifest</p>
-            <h2>Declare it. Price it.<br />Review it. Ship it.</h2>
+            <h2>Declare it. Price it. Generate it.<br />Review it. Ship it.</h2>
+            <p className="section-deck workflow-deck">
+              One committed manifest drives every step. Each step says what it reads and what it writes.
+            </p>
           </div>
           <div className="workflow-grid">
             <article>
               <span className="step-number">01</span>
               <div className="step-glyph"><Image src="/sprites/workflow/declare.png" alt="" width={64} height={64} /></div>
               <h3>Declare</h3>
-              <p>Put asset names, prompts, provider settings, and an optional final-art quality profile in one file.</p>
+              <p>List each asset, its prompt, its provider, and an optional final-art quality profile in one file.</p>
+              <small className="step-io">You write the manifest.</small>
               <code>pixelkiln.manifest.json</code>
             </article>
             <article>
               <span className="step-number">02</span>
               <div className="step-glyph"><Image src="/sprites/workflow/plan.png" alt="" width={64} height={64} /></div>
               <h3>Plan</h3>
-              <p>Compare the manifest with the lockfile and disk. See what costs money and what can be restored for free.</p>
+              <p>Compare the manifest with the lockfile and the files on disk. The plan shows what costs money and what you can restore for free, and it makes no provider calls.</p>
+              <small className="step-io">Reads the manifest, lockfile, and disk. Spends nothing.</small>
               <code>pixelkiln plan</code>
             </article>
             <article>
               <span className="step-number">03</span>
-              <div className="step-glyph"><Image src="/sprites/workflow/review.png" alt="" width={64} height={64} /></div>
-              <h3>Review</h3>
-              <p>Choose from a local candidate sheet, touch a sprite up in the gallery&apos;s editor, then approve the exact pixels you ship.</p>
-              <code>pixelkiln pick</code>
+              <div className="step-glyph"><Image src="/sprites/spark.png" alt="" width={64} height={64} /></div>
+              <h3>Generate</h3>
+              <p>Pass a budget and PixelKiln submits, polls, and downloads. It saves each remote id before polling, so a failed download is recoverable work and not a second charge.</p>
+              <small className="step-io">Writes the lockfile and the downloaded files.</small>
+              <code>pixelkiln gen --budget 120</code>
             </article>
             <article>
               <span className="step-number">04</span>
+              <div className="step-glyph"><Image src="/sprites/workflow/review.png" alt="" width={64} height={64} /></div>
+              <h3>Review</h3>
+              <p>Choose from a local candidate sheet, touch a sprite up in the gallery&apos;s editor, then approve the exact pixels you ship.</p>
+              <small className="step-io">Writes your choice and approval to the lockfile.</small>
+              <code>pixelkiln pick</code>
+            </article>
+            <article>
+              <span className="step-number">05</span>
               <div className="step-glyph"><Image src="/sprites/workflow/ship.png" alt="" width={64} height={64} /></div>
               <h3>Ship</h3>
-              <p>Build repeatable atlases, Aseprite sheet JSON, Godot SpriteFrames, and tilesets for Tiled and Godot. A style with a palette rule never ships a colour outside it. Quality-profile styles stay blocked until approval is current.</p>
+              <p>Build atlases, Aseprite sheet JSON, Godot SpriteFrames, and tilesets for Tiled and Godot. A style with a palette rule never ships a color outside it. Quality-profile styles stay blocked until approval is current.</p>
+              <small className="step-io">Writes sheets and exports with provenance.</small>
               <code>pixelkiln pack</code>
             </article>
           </div>
@@ -209,83 +228,44 @@ export default function Home() {
         <section className="review-section">
           <div className="shell review-grid">
             <div className="section-heading review-copy">
-              <p className="eyebrow">Review and edits stay local</p>
-              <h2>Choose the image.<br />Fix the pixel.<br />Keep the receipts.</h2>
+              <h2>Pick the image.<br />Edit the pixels.<br />Keep the record.</h2>
               <p className="section-deck">
-                PixelLab, Retro Diffusion, ComfyUI, and Scenario use the same review,
-                lockfile, and recovery flow. PixelKiln records every candidate,
-                then leaves the visual decision to you. The page preserves native
-                aspect ratios and stays readable on ultrawide displays. Afterwards,{" "}
-                <code>pixelkiln gallery</code> opens any generation with its
-                prompt, cost, hashes, lineage, and approval. It compares two
-                records side by side. With <code>--edit</code> it changes prompts
-                and style fields and adds assets. With <code>--budget</code> it
-                generates again, under a ceiling you set.
+                <code>pixelkiln pick</code> opens a local page with every
+                candidate. It preserves native aspect ratios and stays readable on
+                ultrawide displays, and a frame set counts as one choice.
+                PixelKiln records every candidate and leaves the decision to you.
               </p>
               <p className="section-deck">
-                Regenerating keeps the version it replaces. Each record lists its
-                previous generations, up to a count you choose, and one click
-                brings any of them back. Nothing is spent, and the swap can be
-                undone from the same list.
+                Afterwards, <code>pixelkiln gallery</code> opens any generation
+                with its prompt, cost, hashes, lineage, and approval, and compares
+                two records side by side. With <code>--edit</code> it changes
+                prompts and style fields and adds assets. With{" "}
+                <code>--budget</code> it generates again under the ceiling you set.
               </p>
               <p className="section-deck">
-                Providers are asked for your palette; <code>enforcePalette</code>{" "}
-                makes it a guarantee. Every downloaded sprite is snapped to the
-                nearest palette colour as it is written, the provider&apos;s
-                bytes stay in the cache, and turning the rule on or off later
-                re-applies it to art you already paid for.
-              </p>
-              <p className="section-deck">
-                Hand edits stay beside the art, never over the record. Open a
-                sprite in your own editor with <code>pixelkiln edit</code>, or in
-                the gallery&apos;s built-in{" "}
+                Regenerating keeps the version it replaces, up to a count you
+                choose, and one click brings it back at no cost. Hand edits save
+                beside the generated file, never over it. Open a sprite in your own
+                editor with <code>pixelkiln edit</code>, or in the gallery&apos;s
+                built-in{" "}
                 <a href="https://pixelorama.org" rel="noreferrer">Pixelorama</a>,
-                a pinned build fetched once and verified by hash, and save it
-                back with its layers kept. Frame sets and tile sets open as one
-                project with a frame per member, and every member is written back
-                under its role. Art edited in PixelLab&apos;s own editor returns
-                with <code>fetch --refresh</code>.
+                a pinned build fetched once and verified by hash. Art you edit in
+                PixelLab&apos;s own editor comes back with{" "}
+                <code>fetch --refresh</code>.
               </p>
-              <div className="provider-status" aria-label="Current provider support">
-                <span><i className="status-dot" /> PixelLab <em>production</em></span>
-                <span><i /> Retro Diffusion <em>experimental</em></span>
-                <span><i /> ComfyUI <em>experimental</em></span>
-                <span><i /> Scenario <em>experimental</em></span>
-                <span><i /> FakeProvider <em>tests</em></span>
-              </div>
-              <p className="provider-note">
-                PixelLab has live coverage for generation and account recovery.
-                Retro Diffusion has live-tested single-candidate stills. ComfyUI
-                has passed local generation, candidate review, cache recovery,
-                and grid refinement. Atomic frame sets have automated coverage,
-                and accepted frame prompts are saved before the next one is queued.
-                They still need a live pose recipe and benchmark. The tested SDXL
-                graph needs manual cleanup and art review. Scenario has passed paid
-                single- and two-output generation, human review, and durable
-                recovery, and has run ten more models, six tool models,
-                reference-image edits, and multi-model chains once each.
+              <p className="section-deck">
+                PixelKiln asks providers for your palette, and <code>enforcePalette</code>{" "}
+                makes it a rule: every downloaded sprite is snapped to the nearest
+                palette color as it is written, while the provider&apos;s bytes stay
+                in the cache. Turning the rule on or off later re-applies it to art
+                you already paid for.
               </p>
               <div className="review-links">
-                <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
-                  Compare providers
-                </TrackedLink>
-                <TrackedLink className="text-link" id="review_provider_benchmark" section="review" href="/docs/provider-benchmark">
-                  See the environment benchmark
-                </TrackedLink>
                 <TrackedLink className="text-link" id="review_gallery_docs" section="review" href="/docs/cli/gallery">
                   Browse the gallery command
                 </TrackedLink>
                 <TrackedLink className="text-link" id="review_edit_docs" section="review" href="/docs/getting-started#touch-art-up-by-hand">
                   Touch art up by hand
-                </TrackedLink>
-                <TrackedLink
-                  className="text-link"
-                  id="review_pixellab_mcp"
-                  section="review"
-                  href="https://github.com/pixellab-code/pixellab-mcp"
-                  external
-                >
-                  PixelLab MCP ↗
                 </TrackedLink>
               </div>
             </div>
@@ -336,6 +316,48 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="safety-section">
+          <div className="shell safety-grid">
+            <div className="section-heading safety-copy">
+              <h2>Paid work needs a paper trail.</h2>
+              <p className="section-deck">
+                Every provider object, prompt identity, output role, path, and
+                byte hash survives in project state. A failed download remains
+                recoverable work, not a reason to pay twice.
+              </p>
+              <ul className="check-list">
+                <li><span>✓</span> Remote identity saved before polling</li>
+                <li><span>✓</span> Content-addressed local recovery cache</li>
+                <li><span>✓</span> Hand edits kept beside the generated file</li>
+                <li><span>✓</span> Replaced generations kept, restorable at no cost</li>
+                <li><span>✓</span> Manual-edit and overwrite protection</li>
+                <li><span>✓</span> Transactional atlas and export writes</li>
+              </ul>
+              <TrackedLink className="text-link" id="safety_recovery" section="safety" href="/docs/recovery">
+                Explore recovery guarantees
+              </TrackedLink>
+            </div>
+            <div className="lock-visual" aria-label="Example provenance lock entry">
+              <div className="lock-label">pixelkiln.lock.json</div>
+              <pre><code>{`{
+  "base/anvil": {
+    "status": "downloaded",
+    "provider": "pixellab",
+    "specHash": "61c9…a071",
+    "cost": { "value": 1,
+              "unit": "generations" },
+    "outputs": [{
+      "path": "art/base/anvil.png",
+      "sha256": "98f1…c42a"
+    }]
+  }
+}`}</code></pre>
+              <div className="lock-callout top"><span>◇</span> paid-work identity</div>
+              <div className="lock-callout bottom"><span>◇</span> exact output bytes</div>
+            </div>
+          </div>
+        </section>
+
         <section className="cast-section" id="characters">
           <div className="shell">
             <figure className="cast-strip" aria-label="One character facing eight directions">
@@ -346,7 +368,6 @@ export default function Home() {
             </figure>
             <div className="cast-grid">
               <div className="section-heading cast-copy">
-                <p className="eyebrow">Characters are a family, not a file</p>
                 <h2>Draw the base once.<br />Everything else follows it.</h2>
                 <p className="section-deck">
                   A <code>character</code> style holds a base drawn facing 4 or 8
@@ -422,23 +443,55 @@ export default function Home() {
         <section className="provider-showcase-section shell" id="providers">
           <div className="section-heading split-heading provider-showcase-heading">
             <div>
-              <h2>Real runs.<br />Different pixels.</h2>
+              <h2>Four providers, one review flow.</h2>
             </div>
             <p className="section-deck">
-              These are outputs from committed benchmark projects. The
-              ComfyUI card separates its model canvas from the recovered native
-              pixel grid, because a large raster can still contain fake pixels.
-              Its samples are diagnostics, not finished asset recommendations.
-              Scenario shows its first paid integration smoke, not a comparable
-              environment benchmark; its measured findings are in their own
-              section below. A manifest <code>style.quality</code> profile
-              can apply the same offline palette and approval gate after any
-              supported single-image provider or an atomic ComfyUI frame set.
-              ComfyUI and PixelLab both back controlled revisions, and
-              PixelLab adds palette cleanup, animation, and interpolation of an
-              existing asset. PixelKiln hashes the parent and mask bytes before
-              any revision runs.
+              PixelLab, Retro Diffusion, ComfyUI, and Scenario share the same
+              review, lockfile, and recovery flow. The cards below show outputs from
+              committed benchmark projects, one sample each. The ComfyUI card
+              separates its model canvas from the recovered native pixel grid,
+              because a large raster can still contain fake pixels. Its samples are
+              diagnostics, not asset recommendations. A <code>style.quality</code>{" "}
+              profile applies the same palette and approval gate after any
+              single-image provider or an atomic ComfyUI frame set. ComfyUI and
+              PixelLab both back controlled revisions, and PixelLab adds palette
+              cleanup, animation, and interpolation of an existing asset.
+              PixelKiln hashes the parent and mask bytes before a revision runs.
             </p>
+          </div>
+
+          <div className="provider-table-wrap">
+            <table className="provider-table" aria-label="Provider support and what has run">
+              <thead>
+                <tr><th>Provider</th><th>Status</th><th>Billed in</th><th>What has run</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">PixelLab</th>
+                  <td><span className="provider-badge production">Production</span></td>
+                  <td>Generations</td>
+                  <td>Generation and account recovery against a live account.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Retro Diffusion</th>
+                  <td><span className="provider-badge experimental">Experimental</span></td>
+                  <td>USD</td>
+                  <td>Single-candidate stills, live. Its other paths need paid runs.</td>
+                </tr>
+                <tr>
+                  <th scope="row">ComfyUI</th>
+                  <td><span className="provider-badge experimental">Experimental</span></td>
+                  <td>Nothing (self-hosted)</td>
+                  <td>Local generation, candidate review, cache recovery, and grid refinement. Atomic frame sets have automated coverage, and PixelKiln saves each accepted frame prompt before it queues the next one. They still need a live pose recipe and benchmark. The tested SDXL graph needs manual cleanup and art review.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Scenario</th>
+                  <td><span className="provider-badge experimental">Experimental</span></td>
+                  <td>Compute units</td>
+                  <td>Paid single- and two-output generation, human review, and recovery. Ten more models, six tool models, reference-image edits, and multi-model chains ran once each.</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <div className="provider-showcase-grid">
@@ -655,6 +708,9 @@ export default function Home() {
           </div>
 
           <div className="provider-showcase-links">
+            <TrackedLink className="text-link" id="review_pixellab_mcp" section="provider_showcase" href="https://github.com/pixellab-code/pixellab-mcp" external>
+              PixelLab MCP ↗
+            </TrackedLink>
             <TrackedLink className="text-link" id="showcase_mixed_providers" section="provider_showcase" href="/docs/mixed-providers">
               Use several providers in one project
             </TrackedLink>
@@ -670,8 +726,7 @@ export default function Home() {
         <section className="scenario-section shell" id="scenario">
           <div className="section-heading split-heading">
             <div>
-              <p className="eyebrow">Scenario, measured</p>
-              <h2>Cheap models.<br />A real pipeline.<br />Honest limits.</h2>
+              <h2>Scenario, measured: ten models, one chain, and where it fails.</h2>
             </div>
             <p className="section-deck">
               We ran Scenario&apos;s catalogue through PixelKiln: ten text-to-image
@@ -722,7 +777,7 @@ export default function Home() {
                   <figcaption><b>1 CU</b> render</figcaption>
                 </figure>
                 <figure>
-                  <Image src="/benchmarks/provider-scenario-showcase/chain-2-pixelate.png" alt="The knight pixelated onto a 32-colour palette" width={256} height={256} sizes="(max-width: 680px) 50vw, 200px" />
+                  <Image src="/benchmarks/provider-scenario-showcase/chain-2-pixelate.png" alt="The knight pixelated onto a 32-color palette" width={256} height={256} sizes="(max-width: 680px) 50vw, 200px" />
                   <figcaption><b>5 CU</b> Pixelate</figcaption>
                 </figure>
                 <figure>
@@ -748,7 +803,7 @@ export default function Home() {
             <h3>What a real game taught us</h3>
             <ul>
               <li><b>Large art works.</b> A 240 px landmark chain returned the existing sprite&apos;s exact size at high confidence, with far more detail, for 8 CU on the cheap model or 18 CU on the strongest.</li>
-              <li><b>A reference keeps the design.</b> Sending the current sprite as a reference raised silhouette overlap from 0.39 to 0.66 to 0.93 to 1.00, at the same pixel scale. Some models shift colours.</li>
+              <li><b>A reference keeps the design.</b> Sending the current sprite as a reference raised silhouette overlap from 0.39 to 0.66 to 0.93 to 1.00, at the same pixel scale. Some models shift colors.</li>
               <li><b>Small sprites and tiles do not.</b> 32 px props came back as different objects with holes after the cutout; terrain tiles and characters need tools built for them.</li>
               <li><b>Backdrops need the prompt to say flat.</b> An isometric prompt lay on a diagonal plane; asking for a front-facing horizontal strip gave the exact grid. A mist fade needs a better cutout route.</li>
               <li><b>The pixelate grid is not always literal.</b> On a 960 px render, asking for 240 made 2 px blocks and asking for 120 made the 240 cells wanted. Check one image first.</li>
@@ -794,94 +849,13 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="safety-section">
-          <div className="shell safety-grid">
-            <div className="section-heading safety-copy">
-              <h2>Paid work needs a paper trail.</h2>
-              <p className="section-deck">
-                Every provider object, prompt identity, output role, path, and
-                byte hash survives in project state. A failed download remains
-                recoverable work, not a reason to pay twice.
-              </p>
-              <ul className="check-list">
-                <li><span>✓</span> Remote identity saved before polling</li>
-                <li><span>✓</span> Content-addressed local recovery cache</li>
-                <li><span>✓</span> Hand edits kept beside the generated file</li>
-                <li><span>✓</span> Replaced generations kept, restorable at no cost</li>
-                <li><span>✓</span> Manual-edit and overwrite protection</li>
-                <li><span>✓</span> Transactional atlas and export writes</li>
-              </ul>
-              <TrackedLink className="text-link" id="safety_recovery" section="safety" href="/docs/recovery">
-                Explore recovery guarantees
-              </TrackedLink>
-            </div>
-            <div className="lock-visual" aria-label="Example provenance lock entry">
-              <div className="lock-label">pixelkiln.lock.json</div>
-              <pre><code>{`{
-  "base/anvil": {
-    "status": "downloaded",
-    "provider": "pixellab",
-    "specHash": "61c9…a071",
-    "cost": { "value": 1,
-              "unit": "generations" },
-    "outputs": [{
-      "path": "art/base/anvil.png",
-      "sha256": "98f1…c42a"
-    }]
-  }
-}`}</code></pre>
-              <div className="lock-callout top"><span>◇</span> paid-work identity</div>
-              <div className="lock-callout bottom"><span>◇</span> exact output bytes</div>
-            </div>
-          </div>
-        </section>
-
-        <section className="capabilities-section shell">
-          <div className="section-heading split-heading">
-            <div>
-              <h2>The prompt is only the start.</h2>
-            </div>
-            <p className="section-deck">PixelKiln handles the work between a prompt and the files your game loads.</p>
-          </div>
-          <div className="capability-grid">
-            <article className="capability-card large">
-              <span className="card-index">Plan</span>
-              <h3>Know the bill before the fire starts.</h3>
-              <p>Offline diffs distinguish new spend from zero-cost recovery. Copy the estimate into a hard budget ceiling.</p>
-              <div className="budget-meter">
-                <div><span>Selected work</span><strong>80 / 120</strong></div>
-                <div className="meter-track"><span /></div>
-              </div>
-            </article>
-            <article className="capability-card">
-              <span className="card-index">Recover</span>
-              <h3>Restore before you regenerate.</h3>
-              <p>Rebuild missing output from trusted cache bytes or a provider URL without new generation cost. A regeneration keeps the version it replaced, so the old one is one command away.</p>
-              <div className="micro-state"><span className="status-dot" /> recoverable, 0 generations</div>
-            </article>
-            <article className="capability-card">
-              <span className="card-index">Audit</span>
-              <h3>Turn accepted pixels into a release gate.</h3>
-              <p>Declare the final palette and grid threshold, record human approval, and block stale or unreviewed art in CI.</p>
-              <div className="audit-bars" aria-hidden="true"><span /><span /><span /><span /><span /></div>
-            </article>
-            <article className="capability-card large">
-              <span className="card-index">Package</span>
-              <h3>Build the files your engine expects.</h3>
-              <p>Pack sheets, mount stable cells, and export lossless generic, Tiled, or Godot terrain metadata with provenance.</p>
-              <div className="format-list"><span>PNG</span><span>JSON</span><span>TILED</span><span>GODOT 4</span></div>
-            </article>
-          </div>
-        </section>
-
         <section className="generator-section">
           <div className="shell">
             <div className="section-heading split-heading">
               <div>
-                <p className="eyebrow">Different routes, different bills</p>
-                <h2>Use the capability you need.<br />Pay only for that.</h2>
+                <h2>The same sprite can cost 1 generation or 40.</h2>
               </div>
-              <p className="section-deck">Measured PixelLab costs vary by up to 40×. Retro Diffusion uses USD pricing. Self-hosted ComfyUI has no provider charge. PixelKiln keeps those units separate.</p>
+              <p className="section-deck">Measured PixelLab costs vary by up to 40×. Retro Diffusion bills in USD, Scenario in compute units, and self-hosted ComfyUI has no provider charge. PixelKiln keeps those units separate.</p>
             </div>
             <div className="generator-table">
               <div className="generator-row header"><span>Generator</span><span>Best for</span><span>Measured cost</span></div>
@@ -891,7 +865,7 @@ export default function Home() {
               <div className="generator-row"><strong>1dir</strong><span>References and candidate variety</span><span><i style={{ width: "72%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 20–40 gen</span></div>
               <div className="generator-row"><strong>terrain</strong><span>Two-terrain elevation tilesets</span><span><i style={{ width: "100%" }} /> 20–40 gen (unmeasured)</span></div>
-              <div className="generator-row"><strong>isometricTile</strong><span>A single elevation tile — a mesa, a cliff block</span><span><i style={{ width: "2.5%" }} /> 1 gen</span></div>
+              <div className="generator-row"><strong>isometricTile</strong><span>A single elevation tile, such as a mesa or a cliff block</span><span><i style={{ width: "2.5%" }} /> 1 gen</span></div>
               <div className="generator-row"><strong>character</strong><span>A base in 8 directions, its poses, its loops</span><span><i style={{ width: "17.5%" }} /> 1–40 gen per base by engine, 1–4 per template loop, mirrors free</span></div>
               <div className="generator-row"><strong>objectPro</strong><span>A skeleton-free prop&apos;s base, poses, and loops</span><span><i style={{ width: "17.5%" }} /> about 6 gen per base at 64px, 1 per loop (unmeasured)</span></div>
               <div className="generator-row"><strong>imageProFlash</strong><span>Styled stills on the Pro Flash model, 16–256px</span><span><i style={{ width: "22.5%" }} /> 5–9 gen (quoted)</span></div>
@@ -914,8 +888,8 @@ export default function Home() {
         <section className="install-section shell">
           <div className="install-panel">
             <div>
-              <h2>Teach your agent the PixelKiln workflow.</h2>
-              <p>The skill tells compatible agents when to plan, ask for a budget, restore existing work, stop for human review, and verify output.</p>
+              <h2>Give your agent the PixelKiln workflow.</h2>
+              <p>The skill tells compatible agents when to plan, when to ask for a budget, when to restore existing work, when to stop for human review, and how to verify output.</p>
             </div>
             <div className="install-actions">
               <CopyCommand command="npx skills add gfargo/pixelkiln@pixelkiln" />
@@ -940,6 +914,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+
       </main>
       <SiteFooter />
     </>
