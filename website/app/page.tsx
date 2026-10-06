@@ -665,6 +665,120 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="scenario-section shell" id="scenario">
+          <div className="section-heading split-heading">
+            <div>
+              <p className="eyebrow">Scenario, measured</p>
+              <h2>Cheap models.<br />A real pipeline.<br />Honest limits.</h2>
+            </div>
+            <p className="section-deck">
+              We ran Scenario&apos;s catalogue through PixelKiln: ten text-to-image
+              models priced from 1 to 11 compute units, six single-image tool
+              models, reference-image edits, a three-model chain, and a real
+              isometric pixel-art game&apos;s structures, covers, backdrops, and sound
+              effects. Every paid request is preceded by a free quote and held
+              under a ceiling you set. These are our own benchmark images, one
+              sample each.
+            </p>
+          </div>
+
+          <div className="scenario-grid">
+            <article className="scenario-panel">
+              <h3>Price does not predict fit</h3>
+              <div className="scenario-strip scenario-strip-four">
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/klein-1cu.png" alt="A pixel-art stone keep on a mountain from FLUX.2 Klein 9b" width={384} height={384} sizes="(max-width: 680px) 50vw, 200px" />
+                  <figcaption><b>1 CU</b> FLUX.2 Klein 9b</figcaption>
+                </figure>
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/krea-2cu.png" alt="A pixel-art mossy cave mountain from Krea 2 Turbo" width={384} height={384} sizes="(max-width: 680px) 50vw, 200px" />
+                  <figcaption><b>2 CU</b> Krea 2 Turbo</figcaption>
+                </figure>
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/ernie-3cu.png" alt="A pixel-art castle on a cliff from Ernie Image Turbo" width={384} height={384} sizes="(max-width: 680px) 50vw, 200px" />
+                  <figcaption><b>3 CU</b> Ernie Image Turbo</figcaption>
+                </figure>
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/gpt-11cu.png" alt="A detailed pixel-art stone keep with banners from GPT Image 2" width={384} height={384} sizes="(max-width: 680px) 50vw, 200px" />
+                  <figcaption><b>11 CU</b> GPT Image 2</figcaption>
+                </figure>
+              </div>
+              <p>
+                The same brief, seed, and 512 px request to four models. The 1 and
+                2 CU models gave a usable silhouette and the most authentic pixel
+                texture; GPT Image 2 followed the brief best. None returned a
+                native-grid, closed-palette asset, and four ignored the requested
+                canvas size.
+              </p>
+            </article>
+
+            <article className="scenario-panel">
+              <h3>Render, pixelate, cut out, refine</h3>
+              <div className="scenario-strip scenario-strip-four scenario-strip-chain">
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/chain-1-render.png" alt="A knight rendered by FLUX.2 Klein 9b on a white background" width={256} height={256} sizes="(max-width: 680px) 50vw, 200px" />
+                  <figcaption><b>1 CU</b> render</figcaption>
+                </figure>
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/chain-2-pixelate.png" alt="The knight pixelated onto a 32-colour palette" width={256} height={256} sizes="(max-width: 680px) 50vw, 200px" />
+                  <figcaption><b>5 CU</b> Pixelate</figcaption>
+                </figure>
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/chain-3-cutout.png" alt="The pixelated knight with its background removed" width={256} height={256} sizes="(max-width: 680px) 50vw, 200px" />
+                  <figcaption><b>2 CU</b> Birefnet cutout</figcaption>
+                </figure>
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/chain-4-refined.png" alt="The final 64 by 64 transparent knight sprite after refinement" width={256} height={256} sizes="(max-width: 680px) 50vw, 200px" />
+                  <figcaption><b>free</b> refine, 64×64</figcaption>
+                </figure>
+              </div>
+              <p>
+                One manifest, one <code>pixelkiln gen</code>, 8 CU: each step names its
+                parent&apos;s style, so the chain runs in order and a 64×64 transparent
+                sprite lands at the end, held at the same review gate as any other
+                asset. On a real game&apos;s 240 px landmarks the same chain returned
+                the sprite&apos;s exact size at high confidence with far more detail.
+              </p>
+            </article>
+          </div>
+
+          <div className="scenario-bottom">
+            <div className="scenario-snippet">
+              <pre><code>{`"assets": {
+  "knight":    { "styles": ["render"],   "prompt": "…" },
+  "knight-px": { "styles": ["pixelate"], "prompt": "pixelate",
+    "revision": { "mode": "image-to-image",
+                  "from": "knight", "fromStyle": "render" } }
+}`}</code></pre>
+              <p>
+                <code>revision.fromStyle</code> lets a style that uses one model
+                revise another style&apos;s output, so a chain across models is declared,
+                priced, and ordered instead of stitched by hand.
+              </p>
+            </div>
+            <dl className="scenario-facts">
+              <div><dt>Where it fits</dt><dd>Large landmarks, covers and key art with legible text, flat backdrops, image-to-image edits at 1 CU, and cheap sound effects</dd></div>
+              <div><dt>Where it does not</dt><dd>32 px props, characters, terrain tiles and cliff blocks, which stay on a tool built for them</dd></div>
+              <div><dt>Cost control</dt><dd>A free quote before every paid call, a per-style ceiling, and a command budget</dd></div>
+            </dl>
+          </div>
+
+          <div className="scenario-links">
+            <TrackedLink className="text-link" id="scenario_docs" section="scenario" href="/docs/scenario">
+              Set up Scenario
+            </TrackedLink>
+            <TrackedLink className="text-link" id="scenario_across_styles" section="scenario" href="/docs/revisions#across-styles">
+              Chain models across styles
+            </TrackedLink>
+            <TrackedLink className="text-link" id="scenario_game_pilot" section="scenario" href="https://github.com/gfargo/pixelkiln/tree/main/benchmarks/provider-scenario-game-pilot" external>
+              Read the game pilot ↗
+            </TrackedLink>
+            <TrackedLink className="text-link" id="scenario_bakeoff" section="scenario" href="https://github.com/gfargo/pixelkiln/tree/main/benchmarks/provider-scenario-bakeoff" external>
+              Inspect the model bake-off ↗
+            </TrackedLink>
+          </div>
+        </section>
+
         <section className="safety-section">
           <div className="shell safety-grid">
             <div className="section-heading safety-copy">

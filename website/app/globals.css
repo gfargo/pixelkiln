@@ -725,6 +725,89 @@ a { color: inherit; text-decoration: none; }
 .provider-card dd { margin: 0; color: #c3baaa; }
 .provider-card-links { display: flex; flex-wrap: wrap; gap: 24px; }
 .provider-showcase-links { display: flex; flex-wrap: wrap; gap: 26px; }
+.scenario-section { padding-block: 150px; }
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 70px;
+}
+.scenario-panel {
+  padding: 34px;
+  border: 1px solid var(--line-strong);
+  background: #1b1913;
+}
+.scenario-panel h3 { margin: 0 0 24px; font-size: 26px; line-height: 1.1; }
+.scenario-panel > p {
+  margin: 24px 0 0;
+  color: #aaa293;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.scenario-strip {
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+.scenario-strip-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.scenario-strip figure { margin: 0; background: #12100d; }
+.scenario-strip img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #0d0c09;
+}
+.scenario-strip-chain img { image-rendering: pixelated; }
+.scenario-strip figcaption {
+  padding: 9px 10px;
+  border-top: 1px solid var(--line);
+  color: #857e70;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.scenario-strip figcaption b { display: block; color: var(--ember-light); font-weight: 600; }
+.scenario-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+.scenario-snippet, .scenario-panel, .scenario-facts { min-width: 0; }
+.scenario-snippet {
+  padding: 28px 34px;
+  border: 1px solid var(--line-strong);
+  background: #1b1913;
+}
+.scenario-snippet pre {
+  margin: 0;
+  overflow-x: auto;
+  color: #d8cfbd;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.scenario-snippet p { margin: 22px 0 0; color: #aaa293; font-size: 13px; line-height: 1.7; }
+.scenario-facts {
+  margin: 0;
+  border: 1px solid var(--line-strong);
+  background: #1b1913;
+}
+.scenario-facts div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 20px;
+  padding: 18px 30px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.scenario-facts div:first-child { border-top: 0; }
+.scenario-facts dt { color: #857e70; font-family: var(--font-geist-mono), monospace; font-size: 10px; text-transform: uppercase; }
+.scenario-facts dd { margin: 0; color: #c3baaa; }
+.scenario-links { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 34px; }
+
 
 .safety-section {
   padding-block: 140px;
@@ -1000,6 +1083,7 @@ a { color: inherit; text-decoration: none; }
   .review-grid { grid-template-columns: 1fr; }
   .review-copy { max-width: 720px; }
   .provider-showcase-grid { grid-template-columns: 1fr; }
+  .scenario-grid, .scenario-bottom { grid-template-columns: minmax(0, 1fr); }
   .lock-visual { width: min(680px, calc(100% - 35px)); }
   .docs-layout { grid-template-columns: 170px minmax(0, 1fr); }
   .docs-toc { display: none; }
@@ -1028,7 +1112,10 @@ a { color: inherit; text-decoration: none; }
   .proof-grid > div { min-height: 92px; padding: 20px 0; border-right: 0; border-bottom: 1px solid var(--line); }
   .proof-grid p { grid-column: auto; padding: 24px 0 27px; }
   .split-heading { grid-template-columns: 1fr; gap: 30px; }
-  .workflow-section, .provider-showcase-section, .capabilities-section, .install-section { padding-block: 95px; }
+  .workflow-section, .provider-showcase-section, .scenario-section, .capabilities-section, .install-section { padding-block: 95px; }
+  .scenario-panel, .scenario-snippet { padding: 22px; }
+  .scenario-strip-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scenario-facts div { grid-template-columns: 1fr; gap: 6px; padding: 16px 22px; }
   .workflow-grid { grid-template-columns: 1fr; margin-top: 48px; }
   .workflow-grid article { min-height: 400px; padding: 30px 0; border-right: 0; border-top: 1px solid var(--line); }
   .safety-section, .generator-section, .review-section, .cast-section { padding-block: 95px; }
