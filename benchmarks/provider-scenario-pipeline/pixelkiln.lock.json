@@ -1,0 +1,621 @@
+{
+  "version": 2,
+  "entries": {
+    "char-cut/cut-gpt": {
+      "styleId": "char-cut",
+      "assetId": "cut-gpt",
+      "specHash": "2e5a3a4930a76c83df8689cd5ba3d71c42515be964f0f8d522eb441ca7aa635b",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "remove the background",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "px-gpt",
+        "sourceSha256": "86e2e1a5c2ba9f3714b5fc5e87c011d8fe96da912a1306b9d51cd3279e656b42"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_w1TabrFS2m8RYFzpcmyUjp1H",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_dDwJpA4aubUdTGR96ctKxJCv",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_dDwJpA4aubUdTGR96ctKxJCv",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_dDwJpA4aubUdTGR96ctKxJCv",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/char-cut/cut-gpt.png",
+          "sha256": "9eab739e90d9bd53ae3e9826b1c6680bd7ca4774ef05d67f3362d1295908bde9",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_birefnet-background-removal",
+          "projectId": null,
+          "maxComputeUnits": 2,
+          "quotedComputeUnits": 2,
+          "creativeUnitsCost": 2,
+          "costDetails": {
+            "custom-generation": 2
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_b9hyqv7AL25RUmYJ3deCfG29"
+          ],
+          "apiJobId": "job_w1TabrFS2m8RYFzpcmyUjp1H",
+          "billedComputeUnits": 2,
+          "billing": {
+            "cuCost": 2,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_dDwJpA4aubUdTGR96ctKxJCv",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T16:16:44.773Z",
+      "downloadedAt": "2026-10-05T16:17:08.585Z",
+      "cost": 2,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "char-cut/cut-klein": {
+      "styleId": "char-cut",
+      "assetId": "cut-klein",
+      "specHash": "991276179e9df020b65c4e2bb5b2de4a183c555aa529a598d9e027318754e04d",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "remove the background",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "px-klein",
+        "sourceSha256": "7337aa2033e1630d2db97ef7b5b633e8be18d88d7b38c0d0c0e6afc30074cc04"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_9P65Gw1F51UdASnwT8g1bVDN",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_H6RNb6mVo8xcPRbaEuaG8BCp",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_H6RNb6mVo8xcPRbaEuaG8BCp",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_H6RNb6mVo8xcPRbaEuaG8BCp",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/char-cut/cut-klein.png",
+          "sha256": "8913b3e7edb8a98828552ed249069aab59b88ee24128dd2d621e05fae8d21f26",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_birefnet-background-removal",
+          "projectId": null,
+          "maxComputeUnits": 2,
+          "quotedComputeUnits": 2,
+          "creativeUnitsCost": 2,
+          "costDetails": {
+            "custom-generation": 2
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_oeHBgt8ZYSXhf7DdyyjMJeui"
+          ],
+          "apiJobId": "job_9P65Gw1F51UdASnwT8g1bVDN",
+          "billedComputeUnits": 2,
+          "billing": {
+            "cuCost": 2,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_H6RNb6mVo8xcPRbaEuaG8BCp",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T16:16:43.564Z",
+      "downloadedAt": "2026-10-05T16:17:08.586Z",
+      "cost": 2,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "char-px/knight-gpt-px": {
+      "styleId": "char-px",
+      "assetId": "knight-gpt-px",
+      "specHash": "26a428936adeb3cd3a86cbb966b5489550b32d1a19e41ae69ec5afec2dbdbfff",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixelate",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "knight-gpt",
+        "sourceSha256": "db9a830896b4238933742e8d25abc25e64af5eade1b06928a2723186981911f1"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_SZ2penPatFGvssMshGekTFLN",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_cwE2fPKFK76S5zgStuFueFP5",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_cwE2fPKFK76S5zgStuFueFP5",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_cwE2fPKFK76S5zgStuFueFP5",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/char-px/knight-gpt-px.png",
+          "sha256": "86e2e1a5c2ba9f3714b5fc5e87c011d8fe96da912a1306b9d51cd3279e656b42",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "projectId": null,
+          "maxComputeUnits": 5,
+          "quotedComputeUnits": 5,
+          "creativeUnitsCost": 5,
+          "costDetails": {
+            "custom-generation": 5
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_MiV1FeHfmr3j6oeCw3bbxxck"
+          ],
+          "apiJobId": "job_SZ2penPatFGvssMshGekTFLN",
+          "billedComputeUnits": 5,
+          "billing": {
+            "cuCost": 5,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_cwE2fPKFK76S5zgStuFueFP5",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T16:16:14.575Z",
+      "downloadedAt": "2026-10-05T16:16:22.499Z",
+      "cost": 5,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "char-px/knight-klein-px": {
+      "styleId": "char-px",
+      "assetId": "knight-klein-px",
+      "specHash": "454ecaf5b0bbb09f3f5f296752412fe0607da70de64080638ab68a8f477598d7",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixelate",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "knight-klein",
+        "sourceSha256": "2373f018cac560aee3eabf4cd340aafa899d69e5dba5c37142762a4e33fe3d2e"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_yaGWWDNfKptnjFZeKyTswjsh",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_Nh1YVrZX56bUKkuQXGrrkBK3",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_Nh1YVrZX56bUKkuQXGrrkBK3",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_Nh1YVrZX56bUKkuQXGrrkBK3",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/char-px/knight-klein-px.png",
+          "sha256": "7337aa2033e1630d2db97ef7b5b633e8be18d88d7b38c0d0c0e6afc30074cc04",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "projectId": null,
+          "maxComputeUnits": 5,
+          "quotedComputeUnits": 5,
+          "creativeUnitsCost": 5,
+          "costDetails": {
+            "custom-generation": 5
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_Wmv5kYsXPDPpeKd8qxx4pKpa"
+          ],
+          "apiJobId": "job_yaGWWDNfKptnjFZeKyTswjsh",
+          "billedComputeUnits": 5,
+          "billing": {
+            "cuCost": 5,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_Nh1YVrZX56bUKkuQXGrrkBK3",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T16:16:13.329Z",
+      "downloadedAt": "2026-10-05T16:16:22.498Z",
+      "cost": 5,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "gen-gpt/knight": {
+      "styleId": "gen-gpt",
+      "assetId": "knight",
+      "specHash": "5feaffe3a72471092fd68a30ae12fba43eb466e00229069c1fa1e96761c4411a",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a knight in silver armour with a blue cape, full body, standing, front view, isolated on a plain white background, pixel art",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_3vUTTyeDQapeHCfD66uzWsP6",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_HFk6Hj1k5YcSCZbo4UNnouFd",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_HFk6Hj1k5YcSCZbo4UNnouFd",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_HFk6Hj1k5YcSCZbo4UNnouFd",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/gen-gpt/knight.png",
+          "sha256": "db9a830896b4238933742e8d25abc25e64af5eade1b06928a2723186981911f1",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_openai-gpt-image-2",
+          "projectId": null,
+          "maxComputeUnits": 11,
+          "quotedComputeUnits": 11,
+          "creativeUnitsCost": 11,
+          "costDetails": {
+            "custom-generation": 11
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_3vUTTyeDQapeHCfD66uzWsP6",
+          "billedComputeUnits": 11,
+          "billing": {
+            "cuCost": 11,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_HFk6Hj1k5YcSCZbo4UNnouFd",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T16:15:00.118Z",
+      "downloadedAt": "2026-10-05T16:15:50.643Z",
+      "cost": 11,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "gen-klein/knight": {
+      "styleId": "gen-klein",
+      "assetId": "knight",
+      "specHash": "f200117d9634b74159dea068be406ad0bf4e32b578e8af85e61eb6630dfc6a73",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a knight in silver armour with a blue cape, full body, standing, front view, isolated on a plain white background, pixel art",
+      "width": 512,
+      "height": 512,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_TCzauWfBeKnJnwpqUAYZyjzW",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_4SFmJK3cw3Evv38589YT4Xhz",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_4SFmJK3cw3Evv38589YT4Xhz",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_4SFmJK3cw3Evv38589YT4Xhz",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/gen-klein/knight.png",
+          "sha256": "2373f018cac560aee3eabf4cd340aafa899d69e5dba5c37142762a4e33fe3d2e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-klein-9b",
+          "projectId": null,
+          "maxComputeUnits": 1,
+          "quotedComputeUnits": 1,
+          "creativeUnitsCost": 1,
+          "costDetails": {
+            "custom-generation": 1
+          },
+          "ipDetectionCost": 0,
+          "apiJobId": "job_TCzauWfBeKnJnwpqUAYZyjzW",
+          "billedComputeUnits": 1,
+          "billing": {
+            "cuCost": 1,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_4SFmJK3cw3Evv38589YT4Xhz",
+          "outputIndex": 0
+        }
+      },
+      "submittedAt": "2026-10-05T16:14:58.864Z",
+      "downloadedAt": "2026-10-05T16:15:50.642Z",
+      "cost": 1,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "px128/keep-px128": {
+      "styleId": "px128",
+      "assetId": "keep-px128",
+      "specHash": "d1140c5dcf798ade48cda90daed5cb6f5e606dbc16495a986aaf78398472e975",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixelate",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "keep",
+        "sourceSha256": "acf40550a5b3e6b4396551848a09b82e41938fdcf370846d82c6f5564d430f22"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_RJuwLkRhSNGpYeT1Zoq22tyW",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_MHC4vp394TFGsV3bbnRiK1VW",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_MHC4vp394TFGsV3bbnRiK1VW",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_MHC4vp394TFGsV3bbnRiK1VW",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/px128/keep-px128.png",
+          "sha256": "2307a59d2b7c7689f70c076758305aa5603fe3364c1c2f450379f1349e2abe9e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "projectId": null,
+          "maxComputeUnits": 5,
+          "quotedComputeUnits": 5,
+          "creativeUnitsCost": 5,
+          "costDetails": {
+            "custom-generation": 5
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_NhXopEdiJ2zVC8aPW3g8WBbL"
+          ],
+          "apiJobId": "job_RJuwLkRhSNGpYeT1Zoq22tyW",
+          "billedComputeUnits": 5,
+          "billing": {
+            "cuCost": 5,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_MHC4vp394TFGsV3bbnRiK1VW",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T16:15:41.879Z",
+      "downloadedAt": "2026-10-05T16:15:50.639Z",
+      "cost": 5,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "px48/keep-px48": {
+      "styleId": "px48",
+      "assetId": "keep-px48",
+      "specHash": "883a8ea37de58554c24b3a10d40f41ace72466ba38ddac87453c8c6219f201f6",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixelate",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "keep",
+        "sourceSha256": "acf40550a5b3e6b4396551848a09b82e41938fdcf370846d82c6f5564d430f22"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_V5CwPQtCnKL9M7JzWxYjU5UC",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_TBYTqStxeF3iAnLy1AafmWDQ",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_TBYTqStxeF3iAnLy1AafmWDQ",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_TBYTqStxeF3iAnLy1AafmWDQ",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/px48/keep-px48.png",
+          "sha256": "0af5f21377632b71d33c450d8978c39ea45342ca7918a06a33f267f45890f439",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "projectId": null,
+          "maxComputeUnits": 5,
+          "quotedComputeUnits": 5,
+          "creativeUnitsCost": 5,
+          "costDetails": {
+            "custom-generation": 5
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_NhXopEdiJ2zVC8aPW3g8WBbL"
+          ],
+          "apiJobId": "job_V5CwPQtCnKL9M7JzWxYjU5UC",
+          "billedComputeUnits": 5,
+          "billing": {
+            "cuCost": 5,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_TBYTqStxeF3iAnLy1AafmWDQ",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T16:15:01.171Z",
+      "downloadedAt": "2026-10-05T16:15:50.640Z",
+      "cost": 5,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    },
+    "px64/keep-px64": {
+      "styleId": "px64",
+      "assetId": "keep-px64",
+      "specHash": "8d4c98abe902b8c6ba425fe146bf0f6f91e3bd07c118d9ed890be65ef25031de",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "pixelate",
+      "width": 512,
+      "height": 512,
+      "revision": {
+        "mode": "image-to-image",
+        "sourceAssetId": "keep",
+        "sourceSha256": "acf40550a5b3e6b4396551848a09b82e41938fdcf370846d82c6f5564d430f22"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "scenario://job?id=job_CpbEN3Xn2DM8c7yGcEcZxvNj",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "asset_VyE4o59oqxeXMwzVJZU6C78z",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "scenario://asset?id=asset_VyE4o59oqxeXMwzVJZU6C78z",
+      "sourceUrls": [
+        {
+          "url": "scenario://asset?id=asset_VyE4o59oqxeXMwzVJZU6C78z",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "outputs/px64/keep-px64.png",
+          "sha256": "49a238e5df4957947e39f1cbbcad2c3c7a2537aa7d93ef20dd813ec8dd32554f",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "projectId": null,
+          "maxComputeUnits": 5,
+          "quotedComputeUnits": 5,
+          "creativeUnitsCost": 5,
+          "costDetails": {
+            "custom-generation": 5
+          },
+          "ipDetectionCost": 0,
+          "referenceAssetIds": [
+            "asset_NhXopEdiJ2zVC8aPW3g8WBbL"
+          ],
+          "apiJobId": "job_CpbEN3Xn2DM8c7yGcEcZxvNj",
+          "billedComputeUnits": 5,
+          "billing": {
+            "cuCost": 5,
+            "cuDiscount": 0
+          },
+          "assetId": "asset_VyE4o59oqxeXMwzVJZU6C78z",
+          "outputIndex": null
+        }
+      },
+      "submittedAt": "2026-10-05T16:15:35.130Z",
+      "downloadedAt": "2026-10-05T16:15:50.638Z",
+      "cost": 5,
+      "costUnit": "compute-units",
+      "billed": null,
+      "provider": "scenario"
+    }
+  }
+}

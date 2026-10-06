@@ -1,0 +1,86 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../outputs/px48/keep-px48.png",
+      "sha256": "0af5f21377632b71d33c450d8978c39ea45342ca7918a06a33f267f45890f439",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 23,
+      "height": 46,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 23,
+        "minGridConfidence": "high",
+        "minTransparency": null
+      },
+      "transparency": 0,
+      "width": 46
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 46,
+      "nativeWidth": 46,
+      "phaseX": 0,
+      "phaseY": 0,
+      "protocol": "python-core-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 512,
+      "sourceWidth": 512,
+      "stepX": 11.130434782608695,
+      "stepY": 11.130434782608695,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#d0ccc8",
+        "#2b2f32",
+        "#3c3b3c",
+        "#807b76",
+        "#5a5653",
+        "#1c1c1e",
+        "#6d6460",
+        "#141412",
+        "#1f241c",
+        "#4a4d42",
+        "#45433e",
+        "#64645c",
+        "#94948c",
+        "#15141c",
+        "#a69682",
+        "#4d576a",
+        "#373d4f",
+        "#a48c7c",
+        "#141d1d",
+        "#8d8f94",
+        "#6c543c",
+        "#0c1428",
+        "#c4742c"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "da96fd70edbc590f3fa1677946a65641d0d6392032b81b32cc327fb833080af2",
+  "outputs": [
+    {
+      "path": "px48.png",
+      "sha256": "e8931dec1175ae3893844e5aae7460eaed155c5079210663e94c9a6c59f84780"
+    }
+  ]
+}

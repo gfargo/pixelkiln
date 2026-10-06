@@ -1,0 +1,95 @@
+{
+  "format": "pixelkiln-artifact-bundle",
+  "version": 1,
+  "kind": "refine",
+  "sources": [
+    {
+      "id": "source",
+      "path": "../outputs/char-px/knight-klein-px.png",
+      "sha256": "7337aa2033e1630d2db97ef7b5b633e8be18d88d7b38c0d0c0e6afc30074cc04",
+      "included": true
+    }
+  ],
+  "options": {
+    "audit": {
+      "colorCount": 19,
+      "height": 64,
+      "paletteConformant": true,
+      "reasons": [],
+      "safe": true,
+      "thresholds": {
+        "maxColors": 32,
+        "minGridConfidence": "high",
+        "minTransparency": null
+      },
+      "transparency": 0,
+      "width": 64
+    },
+    "nativeGrid": {
+      "confidence": "high",
+      "consensus": "fast:ac+rl(S)",
+      "nativeHeight": 64,
+      "nativeWidth": 64,
+      "phaseX": 0,
+      "phaseY": 0,
+      "protocol": "python-core-v1",
+      "revision": "ef376e57e1c272633ca2dbf5f29ec3fcf6596465",
+      "sourceHeight": 512,
+      "sourceWidth": 512,
+      "stepX": 8,
+      "stepY": 8,
+      "tool": "pixel-art-fixer",
+      "url": "https://github.com/Retro-Diffusion/pixel-art-fixer"
+    },
+    "palette": {
+      "colors": [
+        "#000000",
+        "#222034",
+        "#45283c",
+        "#663931",
+        "#8f563b",
+        "#df7126",
+        "#d9a066",
+        "#eec39a",
+        "#fbf236",
+        "#99e550",
+        "#6abe30",
+        "#37946e",
+        "#4b692f",
+        "#524b24",
+        "#323c39",
+        "#3f3f74",
+        "#306082",
+        "#5b6ee1",
+        "#639bff",
+        "#5fcde4",
+        "#cbdbfc",
+        "#ffffff",
+        "#9badb7",
+        "#847e87",
+        "#696a6a",
+        "#595652",
+        "#76428a",
+        "#ac3232",
+        "#d95763",
+        "#d77bba",
+        "#8f974a",
+        "#8a6f30"
+      ],
+      "distance": "redmean",
+      "dither": "none"
+    },
+    "review": {
+      "status": "pending"
+    },
+    "schema": "pixelkiln-quality",
+    "version": 1
+  },
+  "fingerprint": "ad9cd59fae1cb3e2435520aa2d03743c92dd19dd3f3dca7fb2d8289ba136773c",
+  "outputs": [
+    {
+      "path": "knight-klein.png",
+      "sha256": "b1d42382df464aa326f79ad2ab2998e78aff8be341247b08533a64fa0c9e6ded"
+    }
+  ]
+}

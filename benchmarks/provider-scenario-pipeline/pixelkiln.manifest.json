@@ -1,0 +1,265 @@
+{
+  "name": "scenario-pipeline",
+  "provider": "scenario",
+  "styles": {
+    "gen-klein": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/gen-klein",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_bfl-flux-2-klein-9b",
+          "maxComputeUnits": 1
+        }
+      }
+    },
+    "gen-gpt": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/gen-gpt",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_openai-gpt-image-2",
+          "maxComputeUnits": 11
+        }
+      }
+    },
+    "px48": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/px48",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false,
+          "parameters": {
+            "pixelGridSize": 48,
+            "colorPaletteSize": 24
+          }
+        }
+      }
+    },
+    "px64": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/px64",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false,
+          "parameters": {
+            "pixelGridSize": 64,
+            "colorPaletteSize": 24
+          }
+        }
+      }
+    },
+    "px128": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/px128",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false,
+          "parameters": {
+            "pixelGridSize": 128,
+            "colorPaletteSize": 24
+          }
+        }
+      }
+    },
+    "char-px": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/char-px",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_sc-pixelate",
+          "maxComputeUnits": 5,
+          "referenceParameter": "image",
+          "referenceArray": false,
+          "parameters": {
+            "pixelGridSize": 64,
+            "colorPalette": [
+              "#000000",
+              "#222034",
+              "#45283c",
+              "#663931",
+              "#8f563b",
+              "#df7126",
+              "#d9a066",
+              "#eec39a",
+              "#fbf236",
+              "#99e550",
+              "#6abe30",
+              "#37946e",
+              "#4b692f",
+              "#524b24",
+              "#323c39",
+              "#3f3f74",
+              "#306082",
+              "#5b6ee1",
+              "#639bff",
+              "#5fcde4",
+              "#cbdbfc",
+              "#ffffff",
+              "#9badb7",
+              "#847e87",
+              "#696a6a",
+              "#595652",
+              "#76428a",
+              "#ac3232",
+              "#d95763",
+              "#d77bba",
+              "#8f974a",
+              "#8a6f30"
+            ]
+          }
+        }
+      }
+    },
+    "char-cut": {
+      "generator": "map",
+      "size": 512,
+      "seed": 31415,
+      "outDir": "outputs/char-cut",
+      "providerOptions": {
+        "scenario": {
+          "modelId": "model_birefnet-background-removal",
+          "maxComputeUnits": 2,
+          "referenceParameter": "image",
+          "referenceArray": false
+        }
+      }
+    }
+  },
+  "assets": {
+    "knight": {
+      "prompt": "a knight in silver armour with a blue cape, full body, standing, front view, isolated on a plain white background, pixel art",
+      "styles": [
+        "gen-klein",
+        "gen-gpt"
+      ]
+    },
+    "keep": {
+      "prompt": "a stone mountain keep",
+      "source": "art/keep.png",
+      "styles": [
+        "px48",
+        "px64",
+        "px128"
+      ]
+    },
+    "keep-px48": {
+      "prompt": "pixelate",
+      "styles": [
+        "px48"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "keep"
+      }
+    },
+    "keep-px64": {
+      "prompt": "pixelate",
+      "styles": [
+        "px64"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "keep"
+      }
+    },
+    "keep-px128": {
+      "prompt": "pixelate",
+      "styles": [
+        "px128"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "keep"
+      }
+    },
+    "knight-klein": {
+      "prompt": "klein knight",
+      "source": "outputs/gen-klein/knight.png",
+      "styles": [
+        "char-px"
+      ]
+    },
+    "knight-gpt": {
+      "prompt": "gpt knight",
+      "source": "outputs/gen-gpt/knight.png",
+      "styles": [
+        "char-px"
+      ]
+    },
+    "knight-klein-px": {
+      "prompt": "pixelate",
+      "styles": [
+        "char-px"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "knight-klein"
+      }
+    },
+    "knight-gpt-px": {
+      "prompt": "pixelate",
+      "styles": [
+        "char-px"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "knight-gpt"
+      }
+    },
+    "px-klein": {
+      "prompt": "pixelated klein knight",
+      "source": "outputs/char-px/knight-klein-px.png",
+      "styles": [
+        "char-cut"
+      ]
+    },
+    "cut-klein": {
+      "prompt": "remove the background",
+      "styles": [
+        "char-cut"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "px-klein"
+      }
+    },
+    "px-gpt": {
+      "prompt": "pixelated gpt knight",
+      "source": "outputs/char-px/knight-gpt-px.png",
+      "styles": [
+        "char-cut"
+      ]
+    },
+    "cut-gpt": {
+      "prompt": "remove the background",
+      "styles": [
+        "char-cut"
+      ],
+      "revision": {
+        "mode": "image-to-image",
+        "from": "px-gpt"
+      }
+    }
+  }
+}
