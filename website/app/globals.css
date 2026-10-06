@@ -388,14 +388,15 @@ a { color: inherit; text-decoration: none; }
 .workflow-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: auto auto auto 1fr auto auto;
   margin-top: 72px;
   border-top: 1px solid var(--line-strong);
 }
 .workflow-grid article {
-  min-height: 440px;
-  display: flex;
-  flex-direction: column;
-  padding: 28px 24px;
+  grid-row: span 6;
+  display: grid;
+  grid-template-rows: subgrid;
+  padding: 28px 24px 34px;
   border-right: 1px solid var(--line);
 }
 .workflow-grid article:first-child { padding-left: 0; }
@@ -423,11 +424,11 @@ a { color: inherit; text-decoration: none; }
 }
 .workflow-grid h3 { margin: 0 0 14px; font-size: 23px; letter-spacing: -0.035em; }
 .workflow-grid p { margin: 0 0 18px; color: #a39b8d; font-size: 13px; line-height: 1.66; }
-.step-io { display: block; margin: 0 0 22px; padding-top: 14px; border-top: 1px solid var(--line); color: #857e70; font-size: 12px; line-height: 1.55; }
+.step-io { display: block; align-self: start; margin: 0 0 22px; padding-top: 14px; border-top: 1px solid var(--line); color: #857e70; font-size: 12px; line-height: 1.55; }
 .workflow-deck { max-width: 560px; margin-top: 22px; }
 .workflow-grid code {
-  align-self: flex-start;
-  margin-top: auto;
+  align-self: end;
+  justify-self: start;
   max-width: 100%;
   overflow-x: auto;
   padding: 8px 10px;
@@ -1047,7 +1048,81 @@ a { color: inherit; text-decoration: none; }
 .markdown-body th { color: var(--cream); text-align: left; }
 .markdown-body th, .markdown-body td { padding: 11px 12px; border: 1px solid var(--line); vertical-align: top; }
 .markdown-body img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); background: #eef3f2; image-rendering: pixelated; }
+.gallery-section {
+  padding-block: 140px;
+  border-top: 1px solid var(--line);
+}
+.gallery-deck { max-width: 640px; margin-top: 22px; }
+.gallery-hero, .gallery-editor { margin-top: 64px; }
+.gallery-hero { box-shadow: 20px 20px 0 rgba(255, 107, 53, .08); }
+.gallery-editor { margin-top: 72px; }
+.gallery-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 72px;
+  border-top: 1px solid var(--line-strong);
+}
+.gallery-tiers article {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 4;
+  padding: 28px 28px 8px;
+  border-right: 1px solid var(--line);
+}
+.gallery-tiers article:first-child { padding-left: 0; }
+.gallery-tiers article:last-child { border-right: 0; padding-right: 0; }
+.gallery-tiers { grid-template-rows: auto auto auto 1fr; }
+.gallery-tiers h3 { margin: 0 0 16px; font-size: 26px; letter-spacing: -0.035em; }
+.gallery-tiers code {
+  justify-self: start;
+  align-self: start;
+  margin-bottom: 18px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: #100f0c;
+  color: #c9bfae;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.gallery-tiers .step-io code { display: inline; padding: 0; border: 0; background: none; color: #a39b8c; font-size: inherit; margin: 0; }
+.gallery-tiers ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; align-content: start; }
+.gallery-tiers li {
+  position: relative;
+  padding-left: 18px;
+  color: #a39b8d;
+  font-size: 13px;
+  line-height: 1.62;
+}
+.gallery-tiers li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 7px;
+  height: 1px;
+  background: var(--ember-light);
+}
+.gallery-tiers li code {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #c9bfae;
+  font-size: 12px;
+}
+.gallery-tiers a { color: var(--ember-light); }
+.gallery-links { margin-top: 56px; }
+
 .markdown-body hr { margin: 48px 0; border: 0; border-top: 1px solid var(--line); }
+
+@media (max-width: 1240px) {
+  .workflow-grid code { white-space: normal; overflow-wrap: anywhere; }
+}
 
 @media (max-width: 980px) {
   .hero { grid-template-columns: 1fr; gap: 44px; }
@@ -1055,8 +1130,14 @@ a { color: inherit; text-decoration: none; }
   .hero-visual { width: min(640px, 94%); margin-inline: auto; }
   .proof-grid { grid-template-columns: repeat(3, 1fr); }
   .proof-grid p { grid-column: 1 / -1; padding: 25px 0 27px; border-top: 1px solid var(--line); }
-  .workflow-grid { grid-template-columns: repeat(2, 1fr); }
-  .workflow-grid article { min-height: 0; padding: 28px 24px; }
+  .workflow-grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: none; }
+  .workflow-grid article { grid-row: auto; display: flex; flex-direction: column; padding: 28px 24px; }
+  .workflow-grid code { margin-top: auto; }
+  .gallery-tiers { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .gallery-tiers article { grid-row: auto; display: block; padding: 32px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .gallery-tiers article:last-child { border-bottom: 0; }
+  .gallery-tiers code { display: inline-block; margin-bottom: 18px; }
+  .gallery-tiers .step-io { margin-bottom: 20px; }
   .workflow-grid article:nth-child(odd) { padding-left: 0; }
   .workflow-grid article:nth-child(even) { border-right: 0; padding-right: 0; }
   .workflow-grid article:nth-child(n + 3) { border-top: 1px solid var(--line); }
@@ -1098,8 +1179,12 @@ a { color: inherit; text-decoration: none; }
   .scenario-strip-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scenario-facts div { grid-template-columns: 1fr; gap: 6px; padding: 16px 22px; }
   .workflow-grid { grid-template-columns: 1fr; margin-top: 48px; }
-  .workflow-grid article { min-height: 400px; padding: 30px 0; border-right: 0; border-top: 1px solid var(--line); }
-  .safety-section, .generator-section, .review-section, .cast-section { padding-block: 95px; }
+  .workflow-grid article { min-height: 0; padding: 30px 0; border-right: 0; border-top: 1px solid var(--line); }
+  .workflow-grid .step-io { margin-bottom: 22px; }
+  .workflow-grid code { margin-top: 4px; align-self: flex-start; }
+  .gallery-hero { box-shadow: 10px 10px 0 rgba(255, 107, 53, .08); margin-top: 44px; }
+  .gallery-editor { margin-top: 48px; }
+  .safety-section, .generator-section, .review-section, .gallery-section, .cast-section { padding-block: 95px; }
   .cast-grid { grid-template-columns: 1fr; gap: 54px; margin-top: 60px; }
   .cast-manifest { box-shadow: 10px 10px 0 rgba(255, 107, 53, .08); }
   .cast-manifest .lock-callout { display: none; }
