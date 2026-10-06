@@ -1,3 +1,10 @@
+## [0.86.3](https://github.com/gfargo/pixelkiln/compare/v0.86.2...v0.86.3) (2026-10-06)
+
+
+### Bug Fixes
+
+* **review:** serve cached frame-set images over the review server instead of file:// URLs ([76ec3d5](https://github.com/gfargo/pixelkiln/commit/76ec3d5b687f44fe1d07d980f8b3c00b6d8abc7c))
+
 ## [0.86.2](https://github.com/gfargo/pixelkiln/compare/v0.86.1...v0.86.2) (2026-10-06)
 
 ## [0.86.1](https://github.com/gfargo/pixelkiln/compare/v0.86.0...v0.86.1) (2026-10-06)
