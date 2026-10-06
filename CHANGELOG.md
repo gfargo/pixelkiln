@@ -1,3 +1,10 @@
+# [0.86.0](https://github.com/gfargo/pixelkiln/compare/v0.85.0...v0.86.0) (2026-10-06)
+
+
+### Features
+
+* **manifest:** revise from an asset in another style with revision.fromStyle ([63b8ced](https://github.com/gfargo/pixelkiln/commit/63b8ced6ba933198760a8d04e118976becf14bbe))
+
 # [0.85.0](https://github.com/gfargo/pixelkiln/compare/v0.84.0...v0.85.0) (2026-10-05)
 
 
