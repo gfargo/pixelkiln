@@ -23,7 +23,8 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
         <span>pixelkiln</span>
       </Link>
       <nav aria-label="Primary navigation">
-        <TrackedLink id="nav_workflow" section="header" href="/#workflow">Workflow</TrackedLink>
+        <TrackedLink id="nav_workflow" section="header" href="/#workflow">How it works</TrackedLink>
+        <TrackedLink id="nav_gallery" section="header" href="/#gallery">Gallery</TrackedLink>
         <TrackedLink id="nav_providers" section="header" href="/#providers">Providers</TrackedLink>
         <TrackedLink id="nav_docs" section="header" href="/docs">Docs</TrackedLink>
         <TrackedLink
@@ -63,16 +64,21 @@ export function SiteFooter() {
         </div>
         <div className="footer-links">
           <div>
-            <span>Explore</span>
+            <span>Learn</span>
             <TrackedLink id="footer_docs" section="footer" href="/docs">Documentation</TrackedLink>
-            <TrackedLink id="footer_workflow" section="footer" href="/#workflow">Workflow</TrackedLink>
+            <TrackedLink id="footer_quickstart" section="footer" href="/docs/getting-started">Quickstart</TrackedLink>
+            <TrackedLink id="footer_workflow" section="footer" href="/#workflow">How it works</TrackedLink>
+            <TrackedLink id="footer_gallery" section="footer" href="/#gallery">The gallery</TrackedLink>
+            <TrackedLink id="footer_generators" section="footer" href="/docs/generators">Generators</TrackedLink>
+            <TrackedLink id="footer_benchmark" section="footer" href="/docs/provider-benchmark">Benchmark</TrackedLink>
+          </div>
+          <div>
+            <span>Providers</span>
             <TrackedLink id="footer_providers" section="footer" href="/#providers">Provider results</TrackedLink>
             <TrackedLink id="footer_pixellab" section="footer" href="/docs/pixellab">Set up PixelLab</TrackedLink>
             <TrackedLink id="footer_retro" section="footer" href="/docs/retro-diffusion">Set up Retro Diffusion</TrackedLink>
             <TrackedLink id="footer_comfyui" section="footer" href="/docs/comfyui">Set up ComfyUI</TrackedLink>
             <TrackedLink id="footer_scenario" section="footer" href="/docs/scenario">Set up Scenario</TrackedLink>
-            <TrackedLink id="footer_benchmark" section="footer" href="/docs/provider-benchmark">Benchmark</TrackedLink>
-            <TrackedLink id="footer_generators" section="footer" href="/docs/generators">Generators</TrackedLink>
           </div>
           <div>
             <span>Project</span>

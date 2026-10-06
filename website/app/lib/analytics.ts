@@ -12,6 +12,7 @@ export type CtaSection =
   | "hero"
   | "install"
   | "review"
+  | "gallery"
   | "characters"
   | "safety"
   | "generator"

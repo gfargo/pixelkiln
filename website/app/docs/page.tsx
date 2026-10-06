@@ -59,6 +59,8 @@ export default function DocsIndex() {
             ["docs_quick_restore", "/docs/recovery#restore-missing-output", "rebuild missing files without regenerating"],
             ["docs_quick_pack", "/docs/artifacts#pack", "build sprite sheets and SpriteFrames for the engine"],
             ["docs_quick_ci", "/docs/quality#plan-gate", "block stale or unreviewed art in CI"],
+            ["docs_quick_chain", "/docs/revisions#across-styles", "chain several models in one project"],
+            ["docs_quick_scenario", "/docs/scenario", "see what Scenario's models cost and where they fit"],
           ].map(([id, href, label]) => (
             <TrackedLink key={id} id={id} section="docs_index" href={href}>{label}</TrackedLink>
           ))}
