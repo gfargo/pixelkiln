@@ -186,7 +186,13 @@ quoted and billed identically; see the
 [tool-model smoke](../benchmarks/provider-scenario-tools/README.md)). Pixel
 Snapper returned an 83×83, exactly-16-colour native-grid version of a 512×512
 image, a different size than the manifest's canvas, and Birefnet's cutout kept
-its subject at alpha 254 rather than 255. The other tools were only quoted. They overlap PixelKiln's own offline work: `pixelkiln refine` snaps
+its subject at alpha 254 rather than 255. Pixelate (5 CU) was run too and returned a 23-colour, crisp pixel version at the
+source's size; of the upscalers, Topaz smoothed the art, Upscale V3 repainted it
+as a photoreal castle, and Recraft Crisp returned WebP, which the adapter refuses,
+so none of them suits pixel art. Pixelate's output also passed `pixelkiln refine`'s
+high-confidence grid gate as a 102×102, 23-colour asset, where the raw image
+(low confidence) and Pixel Snapper's output (medium) did not: GPT Image 2,
+then Pixelate, then free refinement made one gate-passing asset for 16 CU. They overlap PixelKiln's own offline work: `pixelkiln refine` snaps
 the grid and palette for free, and PixelLab's `remove-background` revision costs
 one generation. Reach for these when the art is already on Scenario.
 
