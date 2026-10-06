@@ -14,7 +14,7 @@ matched its bill. One sample per subject, judged by eye.
 | 32 px native props (a tree turned autumn or winter) | **Poor.** Edit, Pixelate and cutout (8 CU each) returned different trees; Pixelate at the native grid reduced fine detail to blocks, and Birefnet punched holes in the canopy. |
 | 240 px landmarks (temple, ski lodge, harbour warehouse) | **Strong.** More detailed than the game's current sprites, at the same pixel scale. |
 | Course cover (192×96 banner) | **Strong, with a different look.** Much richer than the current cover, with legible title text. |
-| Sound effects | **Promising, not settled.** 1 CU for MM Audio, 30 CU for ElevenLabs. The first takes were too long; the shorter ones are awaiting the owner's ear. |
+| Sound effects | **Works, with effort.** ElevenLabs (30 CU a take) made a usable two-part basket sound once each event was its own sound and the prompt described bars, not a cavity; MM Audio (1 CU) could not make impacts. |
 
 ## Landmarks (62 CU, then 7)
 
@@ -46,17 +46,28 @@ rendered title text ("Maplewood Meadows"), not pixel art. Pixelate at a requeste
 192 grid made it pixel art with 31 colours, text intact; `refine` found a 256×128
 grid at high confidence. To land on the game's 192×96, ask for about 144.
 
-## Sound effects (4 + 4 + 30 CU)
+## Sound effects (about 300 CU in all)
 
-A disc hitting a basket's chains and dropping into the tray. MM Audio (`duration`
-in seconds) at 1 CU and ElevenLabs Sound Effects 2 (`durationSeconds`) at 30 CU
-priced flat regardless of length. A prompt that narrated the whole sequence at
-3 to 4 seconds was too long; the owner wanted the chain rattle and the drop
-almost simultaneous. Prompts asking for one fast sound and a duration of 1.0 to
-1.4 seconds, then trimming leading and trailing silence with ffmpeg
-(`silenceremove` at -50 dB, forward then reversed), gave 0.8 to 1.4 second files.
-ElevenLabs was the only stereo 128 kbps output; MM Audio is mono 64 kbps.
-These calls were made directly against the API, since the adapter handles stills.
+A disc hitting a basket's chains and dropping onto its bars, judged by the game's
+owner by ear. Nineteen generations over four rounds:
+
+1. One narrated prompt, 3 to 4 seconds (MM Audio 1 CU, ElevenLabs 30 CU): too
+   long, with the chain rattle and the drop spread out; the owner wanted them
+   almost immediate.
+2. One prompt, 0.8 to 1.4 seconds (MM Audio): "like the microphone was on and
+   it was empty space". The envelope agreed: the quietest took had every moment
+   within 20 dB of the peak, and none had a sharp onset.
+3. One short ElevenLabs take (1.2 s): closer, but no drop and not chain-like.
+4. The events split into separate sounds and layered (see
+   [Set up Scenario](../../docs/SCENARIO.md#sound-effects-and-other-non-image-models)):
+   MM Audio's chain was usable but its drop was silence; ElevenLabs gave both. The
+   first drop ("hollow steel basket") sounded like a bucket with an echo. Three
+   more prompts and four takes of the "ring of thin steel bars" wording followed;
+   the second re-run of that prompt won.
+
+The finished effect is `disc_basket_putt.wav`, 0.6 s, 44.1 kHz mono, with the
+two prompts and the post chain in a provenance note. It lives with the owner, not
+in this repository. The synth prototype (free, pure Python) was not chosen.
 
 ## Not tested
 

@@ -304,10 +304,39 @@ Both ignore the duration for pricing, so ask for the length the game needs. A
 prompt that narrates a sequence ("chains rattle, then the disc drops into the
 tray") came back at the full requested length with the events spread out;
 asking for one fast sound and a duration of 1.0 to 1.4 seconds, then trimming
-leading and trailing silence, is how a tight impact effect is made. Music models
-(ACE-Step, MusicGen, ElevenLabs Music, Lyria 3.5) quoted 10 to 30 CU; Sonilo and
-Lyria 3 Pro need the `cu-pro-q3-25` plan. Judge audio by ear: nothing here
-verified it.
+leading and trailing silence, helps, but it was not enough on its own.
+
+**What finally worked for a two-part impact** (a disc hitting a basket's chains,
+then landing on its bars), judged by the game's owner by ear:
+
+- **Generate each event as its own sound and layer them.** One prompt cannot carry
+  two events. MM Audio returned ambience for an impact prompt (its "drop" came
+  back at -50 dB, near silence) and ElevenLabs was the only model that made
+  distinct hits; an envelope check (the share of time within 20 dB of the peak,
+  and the count of sharp onsets) caught the ambience before anyone listened.
+- **Describe the physical object, not a word that implies a cavity.** "Hollow
+  steel basket" produced a bucket-like clank with echo. What worked was "a plastic
+  disc landing on a ring of thin steel bars: a dry plastic-on-metal clack followed
+  by a quick tinny rattle against the metal rods, outdoors in open air,
+  completely dry, no echo, no reverb, no hollow resonance, no bucket sound."
+  The chain layer used "loose steel chain links rattling and jangling ... close up,
+  dry, no room reverb, no background noise."
+- **Expect big variation between takes.** Re-running the same ElevenLabs prompt
+  gave drops of 65 ms, 114 ms, 166 ms and 274 ms; the owner picked the second of
+  three re-runs. There is no seed, so keep the chosen file and note the prompt.
+- **Layer with ffmpeg:** trim silence below -50 dB at both ends, high-pass at
+  60 Hz, `loudnorm` each part to -18 LUFS, delay the second part about 260 ms,
+  `amix` without normalisation, limit at 0.89, then `loudnorm` the mix to -16 LUFS.
+
+One finished two-part effect cost about 210 CU of ElevenLabs generations here (a
+chain layer and six drop attempts at 30 CU each), after about 70 CU of cheaper
+attempts that did not work, so budget for several takes of each part. Because a game's sounds should share one tone, fix the prompt
+wording ("close up, dry, no room reverb, no background noise"), the model, and
+the post chain above for every effect, and record each effect's prompts, model
+and post steps beside the file.
+
+Music models (ACE-Step, MusicGen, ElevenLabs Music, Lyria 3.5) quoted 10 to 30
+CU; Sonilo and Lyria 3 Pro need the `cu-pro-q3-25` plan. Music was not generated.
 
 ## Plan before spending
 
