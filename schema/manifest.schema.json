@@ -1022,6 +1022,10 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "fromStyle": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "mask": {
                     "type": "string",
                     "minLength": 1
