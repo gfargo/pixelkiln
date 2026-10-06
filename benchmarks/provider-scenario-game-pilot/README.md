@@ -13,6 +13,7 @@ matched its bill. One sample per subject, judged by eye.
 |---|---|
 | 32 px native props (a tree turned autumn or winter) | **Poor.** Edit, Pixelate and cutout (8 CU each) returned different trees; Pixelate at the native grid reduced fine detail to blocks, and Birefnet punched holes in the canopy. |
 | 240 px landmarks (temple, ski lodge, harbour warehouse) | **Strong.** More detailed than the game's current sprites, at the same pixel scale. |
+| Backdrops (256×112 strips) | **Strong with a flat prompt.** The isometric prompt gave a diagonal plane; the flat one gave the exact 256×112 grid at high confidence. Mist fades need another cutout route. |
 | Course cover (192×96 banner) | **Strong, with a different look.** Much richer than the current cover, with legible title text. |
 | Sound effects | **Works, with effort.** ElevenLabs (30 CU a take) made a usable two-part basket sound once each event was its own sound and the prompt described bars, not a cavity; MM Audio (1 CU) could not make impacts. |
 
@@ -38,6 +39,24 @@ plain white background, no ground, no cast shadow".
   heads, stairs); GPT added a clearer shrine doorway. The GPT warehouse added
   legible signage the prompt had not asked for.
 - Whole chains: 18 CU with GPT Image 2, 8 CU with Klein.
+
+## Backdrops (36 CU, then 44 CU)
+
+Two of the game's 256×112 backdrops (an alpine ridge and a swamp treeline), same
+chain: GPT Image 2 at 1024×448 (11 CU), Pixelate with `pixelGridSize: 128` (5 CU,
+a 256-cell grid on this input), Birefnet (2 CU), `refine`. 18 CU each.
+
+- With the game's own prompt, both came back lying on a **diagonal isometric
+  plane**, richer than the originals but the wrong composition.
+- With the isometric wording removed and a "flat side-on front-facing elevation
+  view ... NOT isometric ... base line straight and horizontal" instruction, both
+  came back as horizontal bands. Finals were **256×112 at high confidence** with 47
+  and 45 colours, the exact size of the originals.
+- A 1 CU FLUX.2 Klein 9b render of the alpine ridge (8 CU through the chain) gave
+  a single dramatic massif, closer to the original's silhouette than GPT's wide
+  band of many peaks.
+- **The mist foot is the weak spot.** Birefnet left a speckled grey fringe where a
+  form fades into the white background.
 
 ## Cover (11 + 5 CU)
 
@@ -71,6 +90,6 @@ in this repository. The synth prototype (free, pure Python) was not chosen.
 
 ## Not tested
 
-A style-matched run (the game's palette per course), animation or video models,
+The other six biomes' backdrops, a style-matched run (the game's palette per course), animation or video models,
 Retro Diffusion (locked on a `cu-basic` plan), and whether these results are
 stable across seeds.
