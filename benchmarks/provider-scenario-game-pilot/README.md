@@ -79,6 +79,43 @@ All seven native chains landed on the sprite's exact size at high confidence wit
   a detailed image, but larger than any sprite the game carries and with a less
   certain pixel grid.
 
+## Reference-image redraws (78 CU)
+
+Can a reference image keep a structure's own design? The same five structures, but
+each original sprite went in as the reference (upscaled 4× on white) with an
+`image-to-image` instruction: "Redraw this exact building as a much richer, more
+detailed pixel art illustration. Keep the same design, shape, proportions, layout,
+viewing angle and colour scheme; add finer detail, texture and shading ... isolated
+on a plain white background, no ground, no cast shadow." FLUX.2 Klein 9b for all five,
+GPT Image 2 (12 CU with a reference) for the fort and the tower, then the same
+Pixelate, Birefnet, `refine` chain. 78 CU, every quote matched its bill, and all
+seven finals landed on the sprite's exact size at high confidence.
+
+Silhouette match, measured as the overlap of the opaque areas against the current
+sprite (1.00 is identical), against the earlier text-only runs:
+
+| Structure | Text-only Klein | Reference Klein | Reference GPT |
+|---|---:|---:|---:|
+| Canyon rim lodge | 0.39 | 1.00 | |
+| Swamp sugar mill | 0.61 | 0.96 | |
+| Geothermal plant | 0.57 | 0.98 | |
+| Weather tower | 0.46 | 1.00 | 0.77 |
+| Coastal battery | 0.66 | 0.93 | 0.81 |
+
+- **The design survives.** Layout, proportions and footprint match the original
+  (content size within a pixel or two), where the text-only versions were different
+  buildings.
+- **The gain is texture and shading, not a new look.** The result reads as the same
+  sprite redrawn with finer detail. It is the same pixel scale, not a bigger one.
+- **Colour drifts.** Klein recoloured: the pink lodge went golden-brown, the grey
+  plant rusty brown, the grey fort sand-beige, and the blue-grey tower gained orange
+  struts. GPT Image 2 held the original colours on the tower and the fort, at a
+  lower silhouette match (0.77 and 0.81) because it redraws finer details.
+- **Chain cost is the same for Klein (8 CU) and 19 CU with GPT.**
+
+Not tried: forcing the original sprite's own palette through Pixelate's
+`colorPalette` to stop the colour drift, and a bigger grid from a reference.
+
 ## Backdrops (36 CU, then 44 CU)
 
 Two of the game's 256×112 backdrops (an alpine ridge and a swamp treeline), same

@@ -291,6 +291,14 @@ building changed style, the footprint drifted by up to 25%, Klein baked a ground
 under most (GPT did not), and a thin lattice tower at 128 px came out noisy. Asking for
 twice the grid worked as an image but gave only medium confidence.
 
+To keep a building's own design, send the existing sprite as a reference and ask for
+the same design redrawn in finer detail (a placed `source` asset as the parent of an
+`image-to-image` revision, the sprite upscaled 4× on white). Against the current
+sprites, silhouette overlap rose from 0.39 to 0.66 with text alone to 0.93 to 1.00
+with a Klein reference (0.77 and 0.81 with GPT Image 2), and the footprint matched.
+The result is the same sprite with finer texture and shading, not a new look and not a
+bigger one. Klein shifted colours; GPT held them better at a lower silhouette match.
+
 **Backdrops** (wide, flat landform strips) need the prompt to say so. The game's
 original prompt, which ends "isometric 2:1 perspective", came back as a ridge and a
 treeline lying on a diagonal ground plane. A prompt with its isometric wording
