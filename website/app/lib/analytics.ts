@@ -16,6 +16,7 @@ export type CtaSection =
   | "safety"
   | "generator"
   | "provider_showcase"
+  | "scenario"
   | "docs_index"
   | "docs_sidebar"
   | "docs_search"
