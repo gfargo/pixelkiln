@@ -260,9 +260,10 @@ export default function Home() {
                 and grid refinement. Atomic frame sets have automated coverage,
                 and accepted frame prompts are saved before the next one is queued.
                 They still need a live pose recipe and benchmark. The tested SDXL
-                graph needs manual cleanup and art review. Scenario&apos;s BFL profile
-                has passed paid single- and two-output generation, human review,
-                and durable recovery.
+                graph needs manual cleanup and art review. Scenario has passed paid
+                single- and two-output generation, human review, and durable
+                recovery, and has run ten more models, six tool models,
+                reference-image edits, and multi-model chains once each.
               </p>
               <div className="review-links">
                 <TrackedLink className="text-link" id="review_provider_boundary" section="review" href="/docs/provider-notes">
@@ -429,7 +430,8 @@ export default function Home() {
               pixel grid, because a large raster can still contain fake pixels.
               Its samples are diagnostics, not finished asset recommendations.
               Scenario shows its first paid integration smoke, not a comparable
-              environment benchmark. A manifest <code>style.quality</code> profile
+              environment benchmark; its measured findings are in their own
+              section below. A manifest <code>style.quality</code> profile
               can apply the same offline palette and approval gate after any
               supported single-image provider or an atomic ComfyUI frame set.
               ComfyUI and PixelLab both back controlled revisions, and
@@ -635,8 +637,8 @@ export default function Home() {
               </p>
               <dl>
                 <div><dt>Measured cost</dt><dd>16 CU for one output; 32 CU for two</dd></div>
-                <div><dt>Best fit</dt><dd>Hosted models and project-specific LoRA experiments</dd></div>
-                <div><dt>Readiness</dt><dd>One BFL profile live-tested; other schemas unverified</dd></div>
+                <div><dt>Best fit</dt><dd>Large or illustrative art, reference-image edits, and chains of hosted models</dd></div>
+                <div><dt>Readiness</dt><dd>Eleven image models, six tool models, and reference edits run once each; other schemas unverified</dd></div>
               </dl>
               <div className="provider-card-links">
                 <TrackedLink className="text-link" id="showcase_scenario_setup" section="provider_showcase" href="/docs/scenario">
@@ -741,6 +743,19 @@ export default function Home() {
               </p>
             </article>
           </div>
+
+          <article className="scenario-panel scenario-findings">
+            <h3>What a real game taught us</h3>
+            <ul>
+              <li><b>Large art works.</b> A 240 px landmark chain returned the existing sprite&apos;s exact size at high confidence, with far more detail, for 8 CU on the cheap model or 18 CU on the strongest.</li>
+              <li><b>A reference keeps the design.</b> Sending the current sprite as a reference raised silhouette overlap from 0.39 to 0.66 to 0.93 to 1.00, at the same pixel scale. Some models shift colours.</li>
+              <li><b>Small sprites and tiles do not.</b> 32 px props came back as different objects with holes after the cutout; terrain tiles and characters need tools built for them.</li>
+              <li><b>Backdrops need the prompt to say flat.</b> An isometric prompt lay on a diagonal plane; asking for a front-facing horizontal strip gave the exact grid. A mist fade needs a better cutout route.</li>
+              <li><b>The pixelate grid is not always literal.</b> On a 960 px render, asking for 240 made 2 px blocks and asking for 120 made the 240 cells wanted. Check one image first.</li>
+              <li><b>Sound effects need one event each.</b> A two-part impact worked only as two sounds layered, and only on the pricier model; the cheap one returned ambience.</li>
+              <li><b>Quotes were exact, the balance is not visible.</b> Every quote matched its bill, but the adapter cannot read the account balance, and a hand tally ran about 5% under it.</li>
+            </ul>
+          </article>
 
           <div className="scenario-bottom">
             <div className="scenario-snippet">

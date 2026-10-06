@@ -73,7 +73,7 @@ remains the production adapter. See
 provider options and current limits, or
 [provider comparison](../PROVIDERS.md) for selection guidance.
 
-For experimental Scenario still generation, use both credentials:
+For experimental Scenario still generation and reference-image edits, use both credentials:
 
 ```dotenv
 SCENARIO_SDK_API_KEY=...

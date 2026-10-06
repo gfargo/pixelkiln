@@ -27,7 +27,7 @@ them.
 | PixelLab | Production; paid generation and account workflows live-tested | `PIXELLAB_API_KEY` | generations |
 | Retro Diffusion | Experimental; authenticated paid still generation, download, provenance, and recovery live-tested; advanced workflows pending | `RD_API_KEY` | USD |
 | ComfyUI | Experimental; local generation, review, recovery, and image-to-image revision smoke live-tested on Apple MPS; inpaint/outpaint remain mock-tested | none; optional `COMFYUI_BASE_URL` | free |
-| Scenario | Experimental; BFL Flux 2 Dev authentication, CU preflight, paid single/two-output generation, review, download, and durable recovery live-tested | `SCENARIO_SDK_API_KEY` and `SCENARIO_SDK_API_SECRET` | compute-units |
+| Scenario | Experimental; BFL Flux 2 Dev authentication, CU preflight, paid single/two-output generation, review, download, and durable recovery live-tested; reference-image edits, tool models, and multi-model chains run once each | `SCENARIO_SDK_API_KEY` and `SCENARIO_SDK_API_SECRET` | compute-units |
 | FakeProvider | Test-only deterministic lifecycle | none | free |
 
 Live tests now cover single-candidate RD Fast and RD Plus stills from cost quote
@@ -267,9 +267,11 @@ to ComfyUI. Provider-keyed budgets, independent orchestration, lock-authoritativ
 recovery, and explicit account-provider selection ship with it.
 
 The Scenario still-image adapter from
-[GitHub issue #52](https://github.com/gfargo/pixelkiln/issues/52) now has mocked
-edge coverage and a paid BFL Flux 2 Dev lifecycle smoke. It remains
-experimental until more model schemas and representative art briefs pass.
+[GitHub issue #52](https://github.com/gfargo/pixelkiln/issues/52) has mocked edge
+coverage, a paid BFL Flux 2 Dev lifecycle smoke, and a broader evaluation (ten
+more models, six tool models, reference-image edits, multi-model chains, and a real
+game's art) recorded in [Set up Scenario](./docs/SCENARIO.md#where-the-evidence-is).
+It remains experimental until more model schemas and representative art briefs pass.
 
 | Candidate | What it adds | Fit with PixelKiln | Main cost or risk | Priority |
 |---|---|---|---|---:|

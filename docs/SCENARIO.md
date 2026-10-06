@@ -1,16 +1,29 @@
 # Set up Scenario
 
 [Scenario](https://www.scenario.com/) is an experimental hosted provider for
-project-specific models and third-party image models. PixelKiln currently
-supports still PNG generation through Scenario's universal model endpoint,
-free Compute Unit preflight, asynchronous jobs, multi-output review, and
-refreshable asset downloads.
+project-specific models and third-party image models. PixelKiln supports still
+PNG generation through Scenario's universal model endpoint, free Compute Unit
+preflight, asynchronous jobs, multi-output review, and refreshable asset
+downloads. It also uploads your images as references, so a style's
+`styleImages` and `image-to-image` revisions work, and a manifest can chain
+several Scenario models across styles with
+[`revision.fromStyle`](./REVISIONS.md#across-styles). The adapter handles
+still images only; audio models are reachable through the same account but not
+through PixelKiln.
 
-Every code path in the adapter has mocked coverage. BFL Flux 2 Dev has also passed
-live authentication, cost preflight, paid single- and two-output generation,
-human review, PNG download, and provider-backed recovery. Start every untested
-model with one disposable asset and a small ceiling. This integration remains
-experimental because Scenario model schemas vary.
+Every code path in the adapter has mocked coverage. BFL Flux 2 Dev passed live
+authentication, cost preflight, paid single- and two-output generation, human
+review, PNG download, and provider-backed recovery. A later evaluation ran ten
+more text-to-image models, six tool models, reference-image edits, multi-model
+chains, and a real game's art; its findings are on this page and its benchmark
+projects are listed in [Where the evidence is](#where-the-evidence-is). Start
+every untested model with one disposable asset and a small ceiling. This
+integration remains experimental because Scenario model schemas vary.
+
+The short version of what that evaluation found: price does not predict fit;
+large or illustrative art (landmarks, covers, flat backdrops) comes out well
+through render, Pixelate, cutout, and `refine`; small native-size sprites, tiles,
+and characters do not; and a reference image keeps an existing design.
 
 ## Requirements
 
@@ -371,6 +384,57 @@ and post steps beside the file.
 Music models (ACE-Step, MusicGen, ElevenLabs Music, Lyria 3.5) quoted 10 to 30
 CU; Sonilo and Lyria 3 Pro need the `cu-pro-q3-25` plan. Music was not generated.
 
+### Calling the API directly: the dry run and the legacy endpoint
+
+Two facts for anyone calling Scenario outside PixelKiln, because both cost compute
+units to find:
+
+- **The free dry run is only the query parameter** `?dryRun=true`. A `dryRun: true`
+  in the JSON body is ignored, and the request submits and bills a real job. A probe of
+  the legacy `/generate/txt2img` endpoint made that mistake and billed 10 CU for a
+  FLUX.1 LoRA image, and jobs there cannot be cancelled ("Cannot cancel this type of
+  job"). The adapter always sends the query parameter.
+- **LoRA models do not use `/generate/custom/{modelId}`.** A public pixel-art LoRA
+  (Flux Retro Aesthetics) answered "Custom models only are supported for this
+  endpoint" there. The older `/generate/txt2img` endpoint accepted it at 10 CU an
+  image, returned a JPEG (which the adapter refuses), and is absent from the current
+  API reference. The adapter does not call it, and the same-quality Klein render costs
+  1 CU.
+
+### Budget and billing notes
+
+- **The adapter cannot read your balance.** `gen` enforces the budget you pass
+  (`scenario does not expose an account balance; enforcing its run budget`) and
+  the per-style `maxComputeUnits`, but the remaining balance is only on Scenario's
+  dashboard. Whether the allowance renews depends on the plan and billing
+  setup; a dashboard showing "No monthly reset scheduled" means it may not.
+- **Check the dashboard against your own tally.** In our evaluation a hand total
+  of quoted and billed amounts came to about 715 CU while the dashboard's balance
+  had fallen by 753 CU, about 5% more. The cause was not identified, so budget with a
+  margin.
+- **Quotes were exact where the adapter made them.** Every quote the adapter took
+  matched the billed amount in the lockfile, including failed assets that the
+  adapter refused after billing (a JPEG or WebP result is billed even though no
+  file lands).
+- **Flat prices.** GPT Image 2 `quality: medium` was 11 CU at any canvas size (`high`
+  44), ElevenLabs sound effects 30 CU at any length, and tool models 2 to 10 CU.
+
+### Where the evidence is
+
+Each is a committed project with its manifest, lockfile, outputs, and README:
+
+| Project | What it ran | CU |
+|---|---|---:|
+| `benchmarks/provider-scenario-smoke` | The first live run: FLUX.2 Dev, one and two outputs, recovery | 48 |
+| `benchmarks/provider-scenario-bakeoff` | Ten models on one brief | 33 |
+| `benchmarks/provider-scenario-edit` | One reference-image edit | 1 |
+| `benchmarks/provider-scenario-tools` | Birefnet, Pixel Snapper, Pixelate, three upscalers, and the refine gate | 34 |
+| `benchmarks/provider-scenario-pipeline` | Generate, pixelate, cut out, refine a character, with a sweep of Pixelate grid sizes | 41 |
+| `benchmarks/provider-scenario-chain` | The same chain declared with `revision.fromStyle` and run by one `gen` | 8 |
+| `benchmarks/provider-scenario-game-pilot` | A real game's landmarks, covers, backdrops, structures, and sound effects (settings and measurements only; the game's art is not included) | about 630 |
+
+Scratch projects for the game pilot are not committed, so its README is the record.
+
 ## Plan before spending
 
 Scenario prices depend on model, size, steps, and output count, so PixelKiln
@@ -523,10 +587,13 @@ quote, final billing, selected asset ID, output index, and output hash without
 retaining credentials or signed query strings. Once cached, `restore` prefers
 the validated local content cache.
 
-Scenario account listing, adoption, salvage, tagging, deletion, balance, image
-uploads, training, background removal, and upscaling are not part of this first
-adapter. PixelKiln reports unavailable account commands instead of pretending
-they succeeded.
+Scenario account listing, adoption, salvage, tagging, deletion, balance, and
+training are not part of the adapter. Image uploads exist only to send
+references (see [Reference images and edits](#reference-images-and-edits)), and
+background removal, pixel snapping, and upscaling run as ordinary models through
+`image-to-image` revisions ([Tool models](#tool-models-as-image-to-image)).
+PixelKiln reports unavailable account commands instead of pretending they
+succeeded.
 
 ## Mixed-provider projects
 
