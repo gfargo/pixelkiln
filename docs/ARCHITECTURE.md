@@ -288,7 +288,7 @@ coverage. Live Apple MPS runs cover a small Stable
 Diffusion 1.5 plumbing smoke and
 the SDXL Base plus Pixel Art XL composition benchmark, including four-candidate
 review, cache recovery, and native-grid refinement. `ScenarioProvider` is an experimental hosted still-image
-adapter. It keeps offline planning conservative, records the provider's free
+adapter that also uploads references for `styleImages` and `image-to-image` revisions. It keeps offline planning conservative, records the provider's free
 submit-time Compute Unit quote, and stores durable `scenario://` job and asset
 references that refresh signed URLs. Authentication and CU preflight have
 passed live with BFL Flux 2 Dev, along with paid single/two-output jobs, human

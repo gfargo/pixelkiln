@@ -366,7 +366,7 @@ verification. See [Library API](./docs/LIBRARY.md).
 | [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
 | [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
 | [Set up ComfyUI](./docs/COMFYUI.md) | Self-hosted stills, revisions, ordered frame sets, per-asset inputs, and quality limits. |
-| [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, review, and durable downloads. |
+| [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, reference-image edits, multi-model chains, measured findings, and durable downloads. |
 | [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
 | [Controlled revisions](./docs/REVISIONS.md) | Image-to-image, inpaint, palette cleanup, animation, and interpolation from a parent; masks, fail-closed readiness, provenance, and ComfyUI bindings. |
 | [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |

@@ -17,7 +17,7 @@ work accordingly. The experimental `retrodiffusion` adapter supports
 still-image `map`/`pixflux`, `tiles` sheets, and `animation` GIF/spritesheet
 work. The experimental `comfyui` adapter runs committed API-format `map` and
 ordered still-frame workflows on a self-hosted server. The experimental `scenario` adapter runs
-hosted still models with Compute Unit preflight and durable asset recovery.
+hosted still models, with reference-image edits, Compute Unit preflight, and durable asset recovery.
 
 Which command:
 
