@@ -283,6 +283,23 @@ grid giving the target width, produced a convincing pixel scene with 31 colours.
 It renders legible title text, which PixelLab does not, and the text survives
 Pixelate. Before pixelating it is a painterly illustration, not pixel art.
 
+**Backdrops** (wide, flat landform strips) need the prompt to say so. The game's
+original prompt, which ends "isometric 2:1 perspective", came back as a ridge and a
+treeline lying on a diagonal ground plane. A prompt with its isometric wording
+removed and "flat side-on front-facing elevation view like a stage backdrop strip,
+perfectly horizontal composition spanning the full width of the image edge to
+edge, NOT isometric, no three-quarter view, no diagonal ground plane, the base
+line straight and horizontal and the form fading to nothing at its foot, isolated
+on a plain white background, no sky" gave a front-facing horizontal band for an
+alpine ridge and a swamp treeline. At a 1024×448 render with `pixelGridSize: 128`
+(a 256-cell grid on that 1024 px input) both came back as the game's exact
+256×112 grid at high confidence, 45 to 47 colours. The 1 CU Klein alpine ridge
+was a cleaner single massif than the 11 CU GPT one, which was a wide band of many
+peaks. Birefnet did not handle the fade into mist: it left a speckled grey fringe
+along the foot where the form dissolves into the white background, so a fade
+needs another route (keying luminance to alpha locally, or rendering on a known
+tint).
+
 Do not use this for small native-size props. A winter pine and an autumn tree at
 32 px came back as different trees, and Birefnet left holes in the canopy. A
 free recolour of the original, or a PixelLab generation at the native size, is
