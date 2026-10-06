@@ -163,11 +163,14 @@ native aspect ratios, uses exact integer zoom for small art, fits large work,
 and centers the decision surface on wide displays. A revision row shows its
 parent source beside the new candidates, and a regeneration (`gen --force`)
 shows the art it would replace beside them while that file is still on disk,
-so the question is "is this better?" rather than "is this good?". A ComfyUI
-frame set appears as an
+so the question is "is this better?" rather than "is this good?". A frame set
+(a ComfyUI frame set, a PixelLab animation, or a frame-set revision such as
+`animate-skeleton`) appears as an
 animated ordered strip and is accepted or left unresolved as a unit. Its preview
 can be paused, starts paused when reduced motion is enabled, and stops while it
-is offscreen. Arrow keys navigate, Enter selects, 1–9 choose directly, and 0
+is offscreen. Frames and candidates the provider decoded to a local cache are
+served by the review server itself, since a localhost page may not load a
+`file://` image. Arrow keys navigate, Enter selects, 1–9 choose directly, and 0
 leaves a row unresolved. Only rows submitted
 with **Apply selections** are written to the lockfile. Closing the window applies
 nothing. See the [Getting started guide](GETTING_STARTED.md#start-a-new-project)
