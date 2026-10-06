@@ -283,6 +283,14 @@ grid giving the target width, produced a convincing pixel scene with 31 colours.
 It renders legible title text, which PixelLab does not, and the text survives
 Pixelate. Before pixelating it is a painterly illustration, not pixel art.
 
+A [structures pilot](../benchmarks/provider-scenario-game-pilot/README.md#structures-pilot-90-cu)
+repeated this on five more buildings from five biomes at 8 CU each (18 CU with GPT
+Image 2): all seven chains landed on the sprite's exact size at high confidence
+with 63 colours and far more detail. Treat each result as a new design: the
+building changed style, the footprint drifted by up to 25%, Klein baked a ground patch
+under most (GPT did not), and a thin lattice tower at 128 px came out noisy. Asking for
+twice the grid worked as an image but gave only medium confidence.
+
 **Backdrops** (wide, flat landform strips) need the prompt to say so. The game's
 original prompt, which ends "isometric 2:1 perspective", came back as a ridge and a
 treeline lying on a diagonal ground plane. A prompt with its isometric wording

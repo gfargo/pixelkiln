@@ -40,6 +40,45 @@ plain white background, no ground, no cast shadow".
   legible signage the prompt had not asked for.
 - Whole chains: 18 CU with GPT Image 2, 8 CU with Klein.
 
+## Structures pilot (90 CU)
+
+Five more of the game's structures, one per biome: a canyon rim lodge, a swamp
+sugar mill, a volcanic geothermal plant, an alpine weather tower, and a coastal gun
+battery. Each: render at 4× the sprite size, Pixelate with the grid that gives the
+sprite's own width (120 on a 960 px render, 128 on the 512 px tower render),
+Birefnet cutout, then `refine` with the image's 64 most common colours. FLUX.2
+Klein 9b for all five (8 CU each), GPT Image 2 for the mill and the plant (18 CU),
+and a Klein render of those two pixelated at twice the grid.
+
+| Structure | Sprite | Final grid, confidence | Content size (current / Klein / GPT) |
+|---|---|---|---|
+| Canyon rim lodge | 240×192 | 240×192, high | 205×157 / 207×137 / none |
+| Swamp sugar mill | 240×192 | 240×192, high (both) | 160×147 / 200×151 / 206×182 |
+| Geothermal plant | 240×192 | 240×192, high (both) | 196×153 / 200×173 / 219×179 |
+| Alpine weather tower | 128×224 | 128×224, high | 70×209 / 86×210 / none |
+| Coastal battery | 240×160 | 240×160, high | 194×129 / 151×125 / none |
+
+All seven native chains landed on the sprite's exact size at high confidence with
+63 colours (the current sprites carry 135 to 368). Judged by eye, one sample each:
+
+- **Detail is much higher** on the lodge, mill and plant, with the same pixel scale.
+  They are different buildings, not recreations: the canyon lodge went from pink
+  plaster to golden sandstone, the plant gained a rusted corrugated hall on stilts,
+  and the battery became a compact round fort with the cannon in a keep. A
+  structure must be re-judged as a new design, not a like-for-like swap.
+- **Klein and GPT were close.** The visible difference was ground: Klein ignored "no
+  ground" and baked a dirt patch under three of the five, while GPT's came back
+  without any. Ground in the sprite would show against the course terrain.
+- **Footprints drift.** The mill came back 25% wider than the current sprite; the
+  battery 22% narrower. The canvas is the same, but the building fills it
+  differently, which matters once it is placed.
+- **Thin lattice does not survive 128 px.** The weather tower (guy wires, a lattice
+  mast) came back as a noisy, less readable object, front-facing and not isometric.
+- **Twice the grid is possible but ambiguous.** Asking for 240 on the 960 px render
+  (a 480-cell grid) gave 472×385 and 480×387 results at *medium* confidence, not high:
+  a detailed image, but larger than any sprite the game carries and with a less
+  certain pixel grid.
+
 ## Backdrops (36 CU, then 44 CU)
 
 Two of the game's 256×112 backdrops (an alpine ridge and a swamp treeline), same
