@@ -134,7 +134,7 @@ background. That distinction matters more than raw canvas size.
 
 | Asset type | PixelLab | Retro Diffusion | ComfyUI | Scenario |
 |---|---|---|---|---|
-| Isolated house, building, mountain, or landmark | Start with `map`: arbitrary dimensions up to 400×400 and a measured one-generation cost. Live benchmark outputs had opaque backgrounds, so plan for cleanup. Use `1dir` only when references or candidate variety justify 20–40 generations and a square canvas. | Start with `rd_plus__topdown_asset`, `rd_plus__isometric_asset`, or `rd_tile__scene_object`, depending on perspective. `rd_tile__scene_object` is intended for 64–384px objects placed on tile maps. | Choose a checkpoint or LoRA trained for the intended perspective, then keep background removal or segmentation in the workflow. For the tested Pixel Art XL stack, target 48–128px native components even though the adapter accepts larger working canvases. | Raw model output is opaque and anti-aliased (the BFL smoke keep used 19,619 colors), but a chain of render at four times the size, Pixelate to the target grid, Birefnet, and `refine` took a 960 px render of an alpine lodge to a 240×208 native grid at high confidence with 63 colors, for 18 CU (a 1 CU render can be nearly as good). Details and the Pixelate grid caveat are in [Set up Scenario](./docs/SCENARIO.md#large-and-illustrative-art-render-big-pixelate-refine). One sample per subject. |
+| Isolated house, building, mountain, or landmark | Start with `map`: arbitrary dimensions up to 400×400 and a measured one-generation cost. Live benchmark outputs had opaque backgrounds, so plan for cleanup. Use `1dir` only when references or candidate variety justify 10–25 generations and a square canvas. | Start with `rd_plus__topdown_asset`, `rd_plus__isometric_asset`, or `rd_tile__scene_object`, depending on perspective. `rd_tile__scene_object` is intended for 64–384px objects placed on tile maps. | Choose a checkpoint or LoRA trained for the intended perspective, then keep background removal or segmentation in the workflow. For the tested Pixel Art XL stack, target 48–128px native components even though the adapter accepts larger working canvases. | Raw model output is opaque and anti-aliased (the BFL smoke keep used 19,619 colors), but a chain of render at four times the size, Pixelate to the target grid, Birefnet, and `refine` took a 960 px render of an alpine lodge to a 240×208 native grid at high confidence with 63 colors, for 18 CU (a 1 CU render can be nearly as good). Details and the Pixelate grid caveat are in [Set up Scenario](./docs/SCENARIO.md#large-and-illustrative-art-render-big-pixelate-refine). One sample per subject. |
 | Full scenic background | Use `pixflux` with `noBackground: false` when an exact palette matters, or `map` for a simple scene; both top out at 400×400. `imagePro` reaches 792 wide or 688 tall for a flat 40 generations. | `rd_plus__environment` targets one-point-perspective scenes; `rd_plus__topdown_map` targets 3/4 top-down maps. These styles support up to 384×384. | Use composition controls only to establish the scene. Recover and review native components, then compose them at 1× with one grid and palette. A large model canvas is not a large native pixel-art canvas. | GPT Image 2 at four times the target size, then Pixelate, turned a course-cover brief into a convincing pixel scene with 31 colors and legible title text. It has not been put through the shared benchmark. A large model canvas is not native pixel resolution: pixelate to the grid you need and check it with `refine`. |
 | Style consistency across a set | `1dir` accepts a style reference and returns size-dependent candidates, but it is more expensive and capped at the square-object range. | RD Pro accepts up to nine references and has stronger prompt following, but its common styles top out at 256×256 and cost $0.18 per image. Environment-specific RD Plus styles trade references for a larger 384px canvas. | LoRAs, reference adapters, ControlNet, and shared latent settings can live in the committed workflow. Reproducibility also depends on external model and custom-node versions. | Scenario's project models and LoRAs are the main reason to use it for a set. PixelKiln can pin the model ID and parameters, but its first live run covers only the public BFL profile. |
 | Very large final scene | Generate reusable objects, terrain, and background layers separately; assemble them deterministically and integer-upscale the result. | Use the same layered approach. The API has a 512px overall ceiling, but the useful environment and scene-object styles currently cap at 384px. | The graph can tile, upscale, or composite beyond hosted-provider limits, but memory and seam quality become workflow concerns. Prefer reusable layers unless the scene truly needs one render. | Scenario can request a larger raster from a compatible model, but the same rule applies: generate reusable layers at their useful native detail, compose at 1×, and integer-upscale only the final scene. |
@@ -206,20 +206,20 @@ conversion to dollars:
 |---|---:|
 | `map` | 1 generation |
 | `pixflux` | 1 generation |
-| `1dir` | 20–40 generations |
-| `imagePro` | 40 generations |
+| `1dir` | 10–25 generations |
+| `imagePro` | 10–25 generations by canvas (a flat 40 before October 2026) |
 | `imageProFlash` | 5–9 generations (provisional quote) |
-| `tiles` | 20–40 generations |
-| `terrain` | 20–40 generations (unmeasured) |
+| `tiles` | 10–25 generations |
+| `terrain` | 10–25 generations (unmeasured) |
 | `isometricTile` | 1 generation (measured once) |
-| `character` base | 1 (standard), 2–9 (v3), 20–40 (pro), 6–17 (pro-flash; rotations only from a reference) |
-| `character` state or portrait | 20–40 generations |
-| `character` animation | 1 (template), 2–4 (`skeleton-v3`, budgeted at 4), 1 at 64px from text, 20–40 (pro) |
+| `character` base | 1 (standard), 2–9 (v3), 10–25 (pro), 6–17 (pro-flash; rotations only from a reference) |
+| `character` state or portrait | 10–25 generations |
+| `character` animation | 1 (template), 2–4 (`skeleton-v3`, budgeted at 4), 1 at 64px from text, 10–25 (pro) |
 | `character` outfit | 20 generations (one 2-frame, 92×92 job) |
 | `objectPro` base | 6 at 64px (unmeasured) |
 | `uiAsset` | 20 generations (measured once, at 256×192) |
-| `uiElement` | 20–40 generations (unmeasured) |
-| `image-to-image` / `inpaint` revision | 20–40 generations; 5–9 with `engine: "pro-flash"` (provisional quote) |
+| `uiElement` | 10–25 generations (unmeasured) |
+| `image-to-image` / `inpaint` revision | 10–25 generations; 5–9 with `engine: "pro-flash"` (provisional quote) |
 | `reduce-colors` / `correct-pixelart` revision | 0.1 generations (measured at 32×32) |
 
 Retro Diffusion publishes USD formulas and fixed prices. Examples relevant to

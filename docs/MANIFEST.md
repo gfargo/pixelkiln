@@ -492,7 +492,7 @@ their own page: [Characters](./CHARACTERS.md) and
 | `keypointsFile` | string, required for `animate-skeleton` | Manifest-relative JSON file (`src/skeleton.ts`'s `SkeletonSetSchema`): the pose the source is already in, plus 3–15 per-frame poses. See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation). |
 | `skeletonTemplate` | string | `animate-skeleton` only. Body a joint's missing `depth` is taken from: `mannequin` (default), `bear`, `cat`, `dog`, `horse`, or `lion`. |
 | `description` | string | `animate-skeleton`: what the subject *looks like* (colours, clothing, held items) — the asset's own `prompt` is sent as the motion's short label instead. `remove-background`: a hint naming the foreground. Rejected on other modes. |
-| `engine` | enum | `image-to-image`/`inpaint` only. `pro-flash` draws the edit with PixelLab's Pro Flash edit or inpaint endpoint instead of the default Pro one: 5–9 generations instead of 20–40, 32 to 256px per side in multiples of 4, no `strength`. Omit for the default. |
+| `engine` | enum | `image-to-image`/`inpaint` only. `pro-flash` draws the edit with PixelLab's Pro Flash edit or inpaint endpoint instead of the default Pro one: 5–9 generations instead of 10–25, 32 to 256px per side in multiples of 4, no `strength`. Omit for the default. |
 
 The parent may use committed `source`, downloaded generated output, or a
 current approved quality output. Parent and mask hashes participate in the

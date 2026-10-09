@@ -3,7 +3,8 @@
  *
  * `unzoom` exists for art that comes from outside the pipeline — a reference
  * pulled from the web, a sprite someone posted at 16x — before it is used as
- * a `styleImages` or `reference` path. A font is not art a manifest asset
+ * a `styleImages` or `reference` path. `pixelate` is its counterpart for art
+ * that was never pixel art at all: a photo, a painting, a 3-D render. A font is not art a manifest asset
  * tracks at all: it has no style suffix, no prompt-per-asset, no candidates,
  * and its main output is a `.ttf`, not a PNG. Both therefore write plain
  * files and leave the lockfile alone.
@@ -68,8 +69,12 @@ export const FONT_WEIGHTS = ["Bold", "Regular"] as const
 export type FontWeight = (typeof FONT_WEIGHTS)[number]
 export const FONT_GLYPH_SIZES = [8, 16, 32, 64] as const
 export type FontGlyphSize = (typeof FONT_GLYPH_SIZES)[number]
-/** Documented price of one `/generate-font-pro` call, on a subscription. Not yet confirmed against a live bill. */
-export const FONT_COST_GENERATIONS = 25
+/**
+ * Documented price of one `/generate-font-pro` call, on a subscription: 15
+ * since PixelLab's October 2026 Pro cut (25 before). Not yet confirmed
+ * against a live bill.
+ */
+export const FONT_COST_GENERATIONS = 15
 
 export interface GenerateFontOptions {
   description: string
@@ -149,6 +154,104 @@ export async function generateFont(
     if (Date.now() - started > timeout) {
       throw new Error(
         `PixelLab font job ${jobId} is still ${job.status} after ${Math.round(timeout / 1000)} s; ` +
+          "it keeps running upstream, but this command has stopped waiting",
+      )
+    }
+    await sleep(interval)
+  }
+}
+
+/** `/image-to-pixelart-pro-flash`'s flat price, billed exactly this live in October 2026. */
+export const PIXELATE_COST_GENERATIONS = 6
+/** Sources longer than this on either side are scaled down by PixelLab before conversion; they are not refused. */
+export const PIXELATE_MAX_SIDE = 2048
+
+export interface PixelateOptions {
+  /** Defaults to `<input>.pixel.png` beside the input. */
+  out?: string
+  /** Optional style steer, e.g. "retro vibes with light dithering". */
+  description?: string
+  seed?: number
+  force?: boolean
+  /** Poll interval and ceiling. Conversions measured at about 30 s. */
+  intervalMs?: number
+  timeoutMs?: number
+  onProgress?: (status: string) => void
+  sleep?: (ms: number) => Promise<void>
+}
+
+export interface PixelateResult {
+  jobId: string
+  out: string
+  original: { width: number; height: number }
+  pixelated: { width: number; height: number }
+  /** PixelLab's gallery id for the result, reusable as a Pro Flash `source_image_id`. */
+  imageId: string
+  usage: unknown
+}
+
+/** Where `pixelate` writes when no `--out` is given: beside the input, never over it. */
+export function defaultPixelateOut(input: string): string {
+  const ext = path.extname(input)
+  return `${ext ? input.slice(0, -ext.length) : input}.pixel.png`
+}
+
+/**
+ * Convert a photo, painting, or render into pixel art with PixelLab's Image
+ * to Pixel Art Pro Flash, wait for it, and write the PNG. PixelLab picks the
+ * output size itself from the source's detected pixel scale, so there is no
+ * size option; the result keeps a transparent background where the model
+ * finds one. For art that is already pixel art and merely upscaled, use
+ * `unzoomFile` instead: it recovers the grid rather than redrawing.
+ */
+export async function pixelateFile(
+  client: Pick<PixelLabClient, "imageToPixelartProFlash" | "getBackgroundJob">,
+  input: string,
+  opts: PixelateOptions = {},
+): Promise<PixelateResult> {
+  const out = path.resolve(opts.out ?? defaultPixelateOut(input))
+  if (path.resolve(input) === out) throw new Error("pixelate will not overwrite its own input; pass a different --out")
+  if (existsSync(out) && !opts.force) throw new Error(`${out} already exists; pass --force to replace it`)
+  const bytes = await readFile(input)
+  const metadata = imageMetadata(bytes)
+  if (!metadata) throw new Error(`${input} is not a readable PNG or JPEG`)
+  const { width, height, format } = metadata
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+  const interval = opts.intervalMs ?? 5000
+  const timeout = opts.timeoutMs ?? 10 * 60_000
+  const submitted = await client.imageToPixelartProFlash({
+    image: { base64: bytes.toString("base64"), format },
+    description: opts.description,
+    seed: opts.seed,
+  })
+  const jobId = submitted.background_job_id
+  const started = Date.now()
+  for (;;) {
+    const job = await client.getBackgroundJob(jobId)
+    opts.onProgress?.(job.status)
+    if (job.status === "failed") throw new Error(`PixelLab pixelate job ${jobId} failed upstream`)
+    if (job.status === "completed") {
+      const images = job.last_response?.images
+      const first = Array.isArray(images) ? (images[0] as { base64?: unknown; width?: unknown; height?: unknown } | undefined) : undefined
+      if (!first || typeof first.base64 !== "string" || !first.base64) {
+        throw new Error(`PixelLab pixelate job ${jobId} completed without an image at last_response.images[0]`)
+      }
+      const png = Buffer.from(first.base64, "base64")
+      const size = imageMetadata(png)
+      await mkdir(path.dirname(out), { recursive: true })
+      await writeFile(out, png)
+      return {
+        jobId,
+        out,
+        original: { width, height },
+        pixelated: { width: size?.width ?? Number(first.width), height: size?.height ?? Number(first.height) },
+        imageId: submitted.image_id,
+        usage: job.usage ?? null,
+      }
+    }
+    if (Date.now() - started > timeout) {
+      throw new Error(
+        `PixelLab pixelate job ${jobId} is still ${job.status} after ${Math.round(timeout / 1000)} s; ` +
           "it keeps running upstream, but this command has stopped waiting",
       )
     }

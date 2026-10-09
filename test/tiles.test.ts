@@ -61,8 +61,8 @@ describe("tiles cost", () => {
   // Pricing off one tile would put every set at the floor: a 32px tile is
   // 1024px on its own no matter how many of them the call draws.
   it("prices off the whole set, not one tile", () => {
-    expect(tilesCost(32, 1)).toBe(20)
-    expect(tilesCost(32, 16)).toBe(40)
+    expect(tilesCost(32, 1)).toBe(10)
+    expect(tilesCost(32, 16)).toBe(25)
   })
 
   it("is monotonic in the number of variations", () => {
@@ -292,7 +292,7 @@ describe("style images", () => {
 
     const [spec] = await resolveSpecs(loaded)
 
-    expect(spec).toMatchObject({ width: 32, height: 32, size: 32, candidates: 64, cost: 20 })
+    expect(spec).toMatchObject({ width: 32, height: 32, size: 32, candidates: 64, cost: 10 })
   })
 })
 

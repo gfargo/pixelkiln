@@ -10,8 +10,10 @@ import {
   CHARACTER_DIRECTIONS_4,
   CHARACTER_DIRECTIONS_8,
   MEMBER_SET_REVISION_MODES,
+  PRO_TIER_PRICES,
   candidateCount,
   generationCost,
+  proTierCost,
   type CharacterDirection,
   type Generator,
   type ResolvedCharacter,
@@ -96,13 +98,13 @@ function billedFromUsage(usage: PixelLabUsage | null | undefined): BilledAmount 
  * A standard base is a flat 1. A v3 base is Pixen's 1 plus the rotation
  * pass, `ceil(s*s*8 / 65536)`; a pro-flash base is its image tier plus the
  * same rotation pass. Pro bases, every state, and a portrait are priced by
- * canvas tier, 20 to 40, the same tiers as `1dir`; PixelLab resolves the
- * exact tier when the job runs and reserves against the floor, so this
- * reports the tier the canvas lands in (a 16px portrait billed exactly the
- * 20-generation floor live; docs/ENDPOINTS.md, "Characters, measured"). A
- * template animation is 1 per direction; a v3 animation scales with canvas
- * and frames, `ceil(w*h*frames / 65536)`; a pro animation is the 20 to 40
- * tier.
+ * canvas tier, 10 to 25 since PixelLab's October 2026 price cut (20 to 40
+ * before), the same tiers as `1dir`; PixelLab resolves the exact tier when
+ * the job runs and reserves against the floor, so this reports the tier the
+ * canvas lands in (a 16px portrait billed exactly the then 20-generation
+ * floor live; docs/ENDPOINTS.md, "Characters, measured"). A template
+ * animation is 1 per direction; a v3 animation scales with canvas and
+ * frames, `ceil(w*h*frames / 65536)`; a pro animation is the 10 to 25 tier.
  */
 export function characterCost(spec: ResolvedSpec): number {
   const character = spec.character
@@ -121,10 +123,11 @@ export function characterCost(spec: ResolvedSpec): number {
   if (character.kind === "outfit") {
     // Measured once, live: a 2-frame, 92x92 job billed 20 (docs/ENDPOINTS.md,
     // "Characters, measured"), the floor of the 1dir tier that number would
-    // otherwise be nowhere near (92x92 alone tiers at 40). Not yet measured
-    // at other frame counts or canvases, so this is a floor, not a formula;
-    // `billed` reports the real amount once a job completes.
-    return 20
+    // otherwise be nowhere near (92x92 alone tiers at the top). Not yet
+    // measured at other frame counts or canvases, so this is a floor, not a
+    // formula; `billed` reports the real amount once a job completes. The
+    // floor itself fell from 20 to 10 in PixelLab's October 2026 Pro cut.
+    return PRO_TIER_PRICES[0]
   }
   if (character.mode === "standard") return 1
   if (character.mode === "v3") {
@@ -546,6 +549,8 @@ export class PixelLabProvider implements Provider {
       }
     }
     if (spec.revision) {
+      // Prices below were measured before PixelLab's October 2026 Pro cut
+      // (20/25/40 then, 10/15/25 now); the breakpoints are what carries over.
       // /inpaint-v3 and /edit-images-v2 are both documented "Pro" endpoints,
       // like /generate-with-style-v2 and /generate-image-v2. Live calls to
       // inpaint-v3 confirm its floor (32x32, 1024px², billed 20) and
@@ -557,22 +562,16 @@ export class PixelLabProvider implements Provider {
       // 352x352 (123904px²) and 384x384 (147456px²) already billed 40.
       // Both real breakpoints are now tightly bracketed: 20->25 in
       // (65536px², 82944px²], 25->40 in (102400px², 123904px²]
-      // (docs/ENDPOINTS.md). Below 2048px² this still returns 20 (correct
-      // everywhere measured); at or above 2048px² it always returns 40,
-      // which is wrong for 288x288 and 320x320 specifically (confirmed 25,
-      // not 40) -- still a safe direction, just a bigger miss than a
-      // single tier. edit-images-v2 above its own 32x32 floor is
-      // unmeasured entirely.
-      // Reuse the same canvas-area tiering already measured for those Pro
-      // endpoints and for 1dir/tiles rather than guess a number for what
-      // remains unconfirmed: per
-      // generationCost's own contract, over-reading is the safe direction
-      // for a `--budget` gate. The image actually sent is the parent's own
-      // size, not the child's declared width/height, so size against that
-      // when it is known.
+      // (docs/ENDPOINTS.md). `proTierCost` uses exactly those measured
+      // breakpoints, at their upper ends, so it never under-reads a point
+      // measured so far. edit-images-v2 above its own 32x32 floor is
+      // unmeasured; it shares the endpoint family and the floor, so it
+      // borrows the same breakpoints. The image actually sent is the
+      // parent's own size, not the child's declared width/height, so size
+      // against that when it is known.
       const width = spec.revision.sourceWidth ?? spec.width
       const height = spec.revision.sourceHeight ?? spec.height
-      return { unit: "generations", amount: generationCost(width, height, "1dir"), candidates: 1 }
+      return { unit: "generations", amount: proTierCost(width, height), candidates: 1 }
     }
     // `tiles` and `terrain` both price and count off the whole set, both of
     // which the manifest layer already worked out; see tilesCost /

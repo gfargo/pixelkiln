@@ -439,10 +439,10 @@ describe("characterCost", () => {
     expect(characterCost(spec({ mode: "v3", reference: { south: { width: 64, height: 64 } } } as never, 64))).toBe(1)
     expect(characterCost(spec({ mode: "v3", reference: { south: { width: 128, height: 128 } } } as never, 64))).toBe(2)
     expect(characterCost(spec({ mode: "v3" }, 128))).toBe(3)
-    expect(characterCost(spec({ mode: "pro" }, 64))).toBe(40)
-    expect(characterCost(spec({ mode: "pro" }, 32))).toBe(20)
-    expect(characterCost(spec({ kind: "state" }, 64))).toBe(40)
-    expect(characterCost(spec({ kind: "state" }, 32))).toBe(20)
+    expect(characterCost(spec({ mode: "pro" }, 64))).toBe(25)
+    expect(characterCost(spec({ mode: "pro" }, 32))).toBe(10)
+    expect(characterCost(spec({ kind: "state" }, 64))).toBe(25)
+    expect(characterCost(spec({ kind: "state" }, 32))).toBe(10)
     const anim = (mode: "template" | "skeleton-v3" | "v3" | "pro", size: number, frames = 8) =>
       spec({ kind: "animation", animation: { mode, direction: "east", frames, fps: 8, keepFirstFrame: true } }, size)
     expect(characterCost(anim("template", 128))).toBe(1)
@@ -451,14 +451,14 @@ describe("characterCost", () => {
     expect(characterCost(anim("v3", 64))).toBe(1)
     expect(characterCost(anim("v3", 128))).toBe(2)
     expect(characterCost(anim("v3", 160, 16))).toBe(7)
-    expect(characterCost(anim("pro", 64))).toBe(40)
+    expect(characterCost(anim("pro", 64))).toBe(25)
   })
 
   it("is what plan reports before any spend", async () => {
     const loaded = await loadManifest(await writeManifest())
     const specs = await resolveSpecs(loaded)
     const cost = Object.fromEntries(specs.map((s) => [s.assetId, s.cost]))
-    expect(cost).toEqual({ mira: 1, "mira.chair_spin": 40, "mira.fireman_spin": 1 })
+    expect(cost).toEqual({ mira: 1, "mira.chair_spin": 25, "mira.fireman_spin": 1 })
     const plan = await buildPlan(specs, { version: 2, entries: {} })
     expect(plan.items.find((i) => i.key === "cast/mira")).toMatchObject({ state: "missing" })
     expect(plan.items.find((i) => i.key === "cast/mira.chair_spin")).toMatchObject({ state: "blocked", reason: expect.stringContaining("state parent cast/mira is not ready") })
@@ -812,7 +812,7 @@ describe("the pipeline", () => {
     plan = await p.plan()
     expect(plan.items.find((i) => i.key === "cast/mira")).toMatchObject({ state: "ok" })
     expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.chair_spin"])
-    expect(plan.groups[0]!.cost).toBe(40)
+    expect(plan.groups[0]!.cost).toBe(25)
     await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
     expect(client.calls.at(-1)).toBe("state:char-1:sitting in the air with knees up, spinning")
     client.complete("char-2", 30)
@@ -1036,12 +1036,12 @@ describe("billed usage", () => {
     const plan = await p.plan()
     expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.chair_spin"])
     await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
-    expect(p.lock.entries["cast/mira.chair_spin"]!.cost).toBe(40)
+    expect(p.lock.entries["cast/mira.chair_spin"]!.cost).toBe(25)
     client.complete("char-2", 30)
     // The live example from issue #143: a 64px state estimated at 40 billed about 22.
     client.setBaseUsage("char-2", { type: "generations", generations: 22 })
     await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
-    expect(p.lock.entries["cast/mira.chair_spin"]).toMatchObject({ cost: 40, billed: { amount: 22, unit: "generations" } })
+    expect(p.lock.entries["cast/mira.chair_spin"]).toMatchObject({ cost: 25, billed: { amount: 22, unit: "generations" } })
   })
 
   it("records an animation's actual bill from the same background job poll already reads for its frames", async () => {
@@ -1134,7 +1134,7 @@ describe("portraits", () => {
     p = await openProject(file, { env: false })
     const plan = await p.plan()
     expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.bust"])
-    expect(plan.groups[0]!.cost).toBe(20)
+    expect(plan.groups[0]!.cost).toBe(10)
     await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
     expect(client.calls.at(-1)).toBe("portrait:character_to_portrait:16")
     const jobId = p.lock.entries["cast/mira.bust"]!.jobId!
@@ -1270,7 +1270,7 @@ describe("outfit transfer", () => {
     p = await openProject(file, { env: false })
     const outfitPlan = await p.plan()
     expect(outfitPlan.actionable.map((i) => i.key)).toEqual(["cast/mira.walk.armored"])
-    expect(outfitPlan.groups[0]!.cost).toBe(20)
+    expect(outfitPlan.groups[0]!.cost).toBe(10)
     await submit(provider, p.loaded, outfitPlan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
     expect(client.calls.at(-1)).toBe("outfit:4")
     const jobId = p.lock.entries["cast/mira.walk.armored"]!.jobId!

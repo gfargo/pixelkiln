@@ -69,16 +69,16 @@ unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles
 |---|---|---:|
 | `map` | You need one prop, icon, building, or landmark at arbitrary dimensions | 1 generation |
 | `pixflux` | You need a closed palette or a full-bleed background | 1 generation |
-| `1dir` | You need references or several candidates for human review | 20 to 40 generations |
-| `tiles` | You need ground variations or a connected structural set | 20 to 40 generations |
-| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff) | 20 to 40 generations (unmeasured) |
+| `1dir` | You need references or several candidates for human review | 10 to 25 generations |
+| `tiles` | You need ground variations or a connected structural set | 10 to 25 generations |
+| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff) | 10 to 25 generations (unmeasured) |
 | `isometricTile` | You need one standalone isometric tile, 16 to 64px | 1 generation (measured once) |
-| `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall | 40 generations |
+| `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall | 10 to 25 generations |
 | `imageProFlash` | You need a still on the Pro Flash model, optionally styled from one image, 16 to 256px | 5 to 9 generations (provisional quote) |
 | `character` | You need a character in 4 or 8 directions, with states, loops, portraits, or outfits | See [Characters](./CHARACTERS.md) |
 | `objectPro` | You need a prop or creature with rotations, states, or loops but no character rig | about 6 at 64px (unmeasured) |
 | `uiAsset` | You need a UI panel composited from pieces and named elements, 192px and up | 20 generations (measured once) |
-| `uiElement` | You need one UI element from a description, 16px and up | 20 to 40 generations (unmeasured) |
+| `uiElement` | You need one UI element from a description, 16px and up | 10 to 25 generations (unmeasured) |
 
 `map` accepts these values:
 
@@ -93,7 +93,7 @@ channel before building a production batch. For a scenic background, use
 `pixflux` with `noBackground: false`.
 
 Read [Generator selection](./GENERATORS.md) for the full constraints and
-measured economics. "20 to 40 generations" is a tier, not an exact figure:
+measured economics. "10 to 25 generations" is a tier, not an exact figure:
 `poll` reads what a completed job actually billed and records it as `billed`
 beside the submit-time `cost` estimate a wave budget spends against;
 `pixelkiln history`, `plan --json`, and the gallery show both when they
