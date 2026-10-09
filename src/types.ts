@@ -125,9 +125,9 @@ export function candidateCount(size: number): number {
  *
  *   1dir  10-25 by canvas tier (1K=10, 2K=15, 4K=25), returning 4-64
  *         candidates for that one price. PixelLab cut every Pro tier in
- *         October 2026 (release 0.4.128) from 20/25/40 to 10/15/25; the
- *         breakpoints below are the ones the old prices were measured
- *         against, kept until the new ones are re-measured.
+ *         October 2026 (release 0.4.128) from 20/25/40 to 10/15/25;
+ *         re-measuring `inpaint-v3` showed the breakpoints did not move
+ *         (see `proTierCost`).
  *
  *   tiles 10-25 on the same canvas tiers as `1dir`, but the canvas is picked
  *         from tile size x variation count rather than a single sprite, so a
@@ -200,8 +200,9 @@ export const PRO_TIER_PRICES = [10, 15, 25] as const
  * on `/inpaint-v3` (docs/ENDPOINTS.md): up to 256x256 (65536px²) is the
  * floor, up to 320x320 (102400px²) the middle tier, anything larger the
  * top. PixelLab's release notes describe the new tiers as 16-256, 256-384,
- * and 384-512 per side, but 352x352 billed the top tier when last measured,
- * so the measured breakpoint is kept: it can only over-read, never under.
+ * and 384-512 per side, but re-measured after the cut, 256x256 billed 10,
+ * 288x288 15, and both 352x352 and 384x384 billed 25: the breakpoints did
+ * not move, only the prices.
  */
 export function proTierCost(width: number, height: number): number {
   const px = width * height

@@ -308,9 +308,10 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
 - **October 2026 Pro price cut** — PixelLab 0.4.128 moved every Pro tool from
   20/25/40 to 10/15/25 generations. Cost estimates now use the new prices,
   and `imagePro` (`generate-image-v2`) is tiered instead of a flat 40: a
-  64x64 call billed 10 live. The old tier breakpoints are kept until a
-  352px or 384px call is re-measured (docs/ENDPOINTS.md, "October 2026 Pro
-  price cut").
+  64x64 call billed 10 live. Re-measured `inpaint-v3` calls (256, 288, 352,
+  and 384px billed 10, 15, 25, 25) show the breakpoints did not move, despite
+  the release notes putting 352-384px in the middle tier (docs/ENDPOINTS.md,
+  "October 2026 Pro price cut").
 - **Pro Flash for plain image create, edit, and inpaint** — a third image
   tier, distinct from `pixflux`/`map`'s 1-generation endpoints and
   `imagePro`'s `generate-image-v2` (a flat 40 then, 10–25 since October 2026), on the same model

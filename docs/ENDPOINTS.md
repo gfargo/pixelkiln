@@ -234,18 +234,22 @@ OpenAPI now quotes "10–25 generations" for 1- and 8-direction objects, Pro
 characters, and Pro object animations, and 15 for `generate-font-pro`
 (previously 25).
 
-pixelkiln's estimates use the new prices on the **old breakpoints**. The
-`inpaint-v3` bisection below found the old top tier starting by 352×352,
-which the release notes would put in the middle tier. Until a 352px or
-384px call is re-measured, the estimate keeps the measured breakpoint, so it
-can only over-read. Every historical measurement on this page that says 20,
-25, or 40 predates the cut and is kept as a record.
+**Only the prices moved, not the breakpoints.** The release notes put
+352px and 384px in the middle tier, but both billed the top tier (25) when
+re-measured on `inpaint-v3` after the cut, exactly where the old bisection
+below put the boundary. pixelkiln's estimates use the new prices on those
+measured breakpoints. Every historical measurement on this page that says
+20, 25, or 40 predates the cut and is kept as a record.
 
 Re-measured after the cut:
 
 | Endpoint | Canvas | Before | After |
 |---|---|---|---|
 | `generate-image-v2` | 64×64 | 40 (flat at any size) | **10** |
+| `inpaint-v3` | 256×256 | 20 | **10** |
+| `inpaint-v3` | 288×288 | 25 | **15** |
+| `inpaint-v3` | 352×352 | 40 | **25** |
+| `inpaint-v3` | 384×384 | 40 | **25** |
 
 `generate-image-v2` is no longer flat; pixelkiln now prices it with
 `proTierCost` (≤65536px² is 10, ≤102400px² is 15, larger is 25), the same

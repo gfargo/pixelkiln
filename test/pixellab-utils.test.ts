@@ -328,7 +328,7 @@ describe("proTierCost", () => {
     expect(proTierCost(256, 256)).toBe(10)
     expect(proTierCost(288, 288)).toBe(15)
     expect(proTierCost(320, 320)).toBe(15)
-    // Measured in the top tier before the price cut, though the release notes put it in the middle.
+    // Billed 25 live after the cut, though the release notes put 352 and 384 in the middle tier.
     expect(proTierCost(352, 352)).toBe(25)
     expect(proTierCost(512, 512)).toBe(25)
   })
