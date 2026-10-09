@@ -18,7 +18,7 @@ import { pollJobs, postGenerate, remainingBudget } from "./jobs.ts"
 const ENGINES = [
   { id: 'v3', label: 'v3: PixelLab\'s recommended base engine (2 to 9 by size; 1 from a sprite)', min: 32, max: 256, directions: [8] },
   { id: 'pro-flash', label: 'pro-flash: the newest image model draws the south sprite (6 to 17 by size)', min: 16, max: 256, directions: [8] },
-  { id: 'pro', label: 'pro: reference-based, 20 to 40 by size', min: 32, max: 168, directions: [8] },
+  { id: 'pro', label: 'pro: reference-based, 10 to 25 by size', min: 32, max: 168, directions: [8] },
   { id: 'standard', label: 'standard: skeleton template, 1 generation', min: 16, max: 256, directions: [8, 4] },
 ];
 const BODIES = ['mannequin', 'bear', 'cat', 'dog', 'horse', 'lion'];
@@ -30,7 +30,7 @@ const LOOP_MODES = [
   { id: 'skeleton-v3', label: 'skeleton-v3: a template, posed by the skeleton model (steadiest; 2-4 per direction)' },
   { id: 'template', label: 'template: a template, redrawn (1 per direction)' },
   { id: 'v3', label: 'v3: described in words' },
-  { id: 'pro', label: 'pro: described in words, sequential (20-40 per direction)' },
+  { id: 'pro', label: 'pro: described in words, sequential (10-25 per direction)' },
 ];
 const templated = (mode: string) => mode === 'skeleton-v3' || mode === 'template';
 /**
@@ -149,7 +149,7 @@ export function openStudio() {
   for (const s of PORTRAIT_SIZES) portraitSize.append(new Option(s + ' px', String(s)));
   portraitSize.value = '64';
   const portraitSection = el('section', 'studio-part');
-  const portraitCheck = el('label', 'field check'); portraitCheck.append(portrait, el('span', null, 'add a bust portrait (20 to 40 generations)'));
+  const portraitCheck = el('label', 'field check'); portraitCheck.append(portrait, el('span', null, 'add a bust portrait (10 to 25 generations)'));
   portraitSection.append(el('h3', null, 'Portrait'), portraitCheck, field('portrait size', portraitSize));
 
   // ---- price and actions --------------------------------------------------

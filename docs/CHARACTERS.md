@@ -69,7 +69,7 @@ asset, that PixelLab draws facing 4 or 8 directions. `mode` picks the
 engine: `standard` (1 generation, the skeleton template, `outline`,
 `shading`, and `detail` as soft guidance, and `palette` sent as a colour
 reference), `v3` (2 to 9 by size, the highest quality, up to 256px),
-`pro` (20 to 40 by size), or `pro-flash` (6 to 17 by size: PixelLab's
+`pro` (10 to 25 by size), or `pro-flash` (6 to 17 by size: PixelLab's
 newest image model draws the south sprite and v3 rotates it; sizes are
 multiples of 4 up to 256, `template` may be `custom`, and a `reference`
 pays for the rotations only, 1 at 64px). `size` is the character's size;
@@ -380,7 +380,7 @@ attached to that character's own PixelLab record:
 result sizes (16, 32, 48, 64, 128, or 160 — 128 and 160 render at 2K and cost
 more), independent of the style's own `size`. A portrait takes no prompt: it
 is drawn from the parent's pixels, not text, so it is priced and generated
-like a state, 20 to 40 generations by the size tier (a 16px portrait billed
+like a state, 10 to 25 generations by the size tier (a 16px portrait billed
 exactly 20, the floor, in a live test; see [`docs/ENDPOINTS.md`](ENDPOINTS.md)).
 It lands as `<asset>.png`, one file like a single-direction generator, and
 `pixelkiln fetch` also attaches it to the parent's character record upstream

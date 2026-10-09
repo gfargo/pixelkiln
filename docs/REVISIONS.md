@@ -593,7 +593,7 @@ source's own size; the canvas never grows) or `/inpaint-image-pro-flash`
 (replaces only the mask's white pixels and keeps the rest exactly). It is the
 same model the `imageProFlash` generator and the `pro-flash` character engine
 use, priced on the same provisional Pro Flash tier (5 generations up to 96px,
-6 up to 208px, 9 beyond) instead of the 20–40 of the default Pro endpoints.
+6 up to 208px, 9 beyond) instead of the 10–25 of the default Pro endpoints.
 Sources must be 32 to 256px per side in multiples of 4; `strength` is refused,
 since neither endpoint has one. The finished job is read the same way as the
 default endpoints'. PixelLab also offers reference-image edits, a
@@ -635,7 +635,7 @@ further — there is nothing to ask.
 - `interpolate` (`/interpolation-v2`) and `edit-animation`
   (`/edit-animation-v2`) are both documented "Pro" endpoints with no usage
   example in the schema and no live measurement. `estimate()` borrows the
-  same 20/25/40 canvas tiers the other unmeasured Pro edits use, sized on the
+  same 10/15/25 canvas tiers the other unmeasured Pro edits use, sized on the
   keyframe for `interpolate` and on the packed frame grid for
   `edit-animation` (four 32×32 frames price as a 64×64 canvas, the 40 tier).
   Over-reading is the safe direction for `--budget`; expect a live bill at or

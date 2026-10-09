@@ -13,18 +13,19 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *         Arbitrary width x height. Returns exactly one result, so there is no
  *         selection step: if you dislike it, re-roll for 1 more.
  *
- *   1dir  POST /create-1-direction-object. 20-40 generations.
+ *   1dir  POST /create-1-direction-object. 10-25 generations (20-40 before
+ *         PixelLab's October 2026 Pro price cut).
  *         The single-facing sibling of create-8-direction-object, meant for
  *         objects you may later want rotations or animations of. Square only.
  *         Returns 4-64 candidates for its one fixed price, which is genuinely
- *         useful when you want to compare options side by side, but at 40x the
- *         cost of a map object, re-rolling a map object forty times is the same
- *         money. Reach for this when you need rotations, or when the extra
- *         rendering detail is worth 40x.
+ *         useful when you want to compare options side by side, but at 10-25x
+ *         the cost of a map object, re-rolling a map object that many times is
+ *         the same money. Reach for this when you need rotations, or when the
+ *         extra rendering detail is worth it.
  *
  * Rule of thumb: if the asset is a standalone image and you are not going to
  * animate or rotate it, `map` is the right call. Generating 65 icons costs 65
- * generations that way and 2,600 the other.
+ * generations that way and 650-1,625 the other.
  *
  * Not yet implemented, but measured and worth knowing (see README):
  *   POST /create-image-pixflux also costs 1 generation, returns the image
@@ -122,31 +123,35 @@ export function candidateCount(size: number): number {
  *   map   FLAT 1 generation, any size. Verified: a 32x36 and a 64x96 map object
  *         each cost exactly 1 (balance 4751 → 4750 → 4749). Single result.
  *
- *   1dir  20-40 by canvas tier (1K=20, 2K=25, 4K=40), returning 4-64
- *         candidates for that one price.
+ *   1dir  10-25 by canvas tier (1K=10, 2K=15, 4K=25), returning 4-64
+ *         candidates for that one price. PixelLab cut every Pro tier in
+ *         October 2026 (release 0.4.128) from 20/25/40 to 10/15/25;
+ *         re-measuring `inpaint-v3` showed the breakpoints did not move
+ *         (see `proTierCost`).
  *
- *   tiles 20-40 on the same canvas tiers as `1dir`, but the canvas is picked
+ *   tiles 10-25 on the same canvas tiers as `1dir`, but the canvas is picked
  *         from tile size x variation count rather than a single sprite, so a
  *         small tile in a large set can still reach the top tier. Reported by
  *         the API at submit time; estimated here from the widest canvas the
  *         request can produce, which is the honest direction to be wrong in
  *         for a `--budget` check.
  *
- *   imagePro FLAT 40 generations, any size or aspect ratio, regardless of
- *         canvas tier (docs/ENDPOINTS.md, "Single-image generators,
- *         measured"). `/generate-image-v2`, the Pro image tier: unlike
- *         `pixflux`, it reaches non-square canvases up to 792x688 and does
- *         real style transfer, at a flat price rather than one that scales
- *         with area the way `1dir`/`tiles` do.
+ *   imagePro Tiered since October 2026, see `proTierCost`. It was a flat 40
+ *         at any size before PixelLab's 0.4.128 price cut; a 64x64 call
+ *         billed exactly 10 after it (docs/ENDPOINTS.md, "Single-image
+ *         generators, measured"). `/generate-image-v2`, the Pro image tier:
+ *         unlike `pixflux`, it reaches non-square canvases up to 792x688
+ *         and does real style transfer.
  *
  *   uiAsset Confirmed live at one data point, and it disproved the borrowed
  *         formula: a real 256x192 (49152px²) call billed exactly 20
- *         generations (balance 4979.8 → 4959.8), the low end of the
- *         `create_ui_asset` MCP tool's "20-40 generations" claim. No
+ *         generations (balance 4979.8 → 4959.8) under the old prices, the
+ *         low end of the `create_ui_asset` MCP tool's then "20-40
+ *         generations" claim (10 at today's floor). No
  *         dedicated branch exists here, so it still falls through to the
  *         same canvas-tier formula as `1dir`/`tiles` below, which — given
  *         uiAsset's 192px-per-side floor (36864px²) already past the
- *         2048px² top tier — always predicts the 40 ceiling. That
+ *         2048px² top tier — always predicts the 25 ceiling. That
  *         prediction is now known wrong: 49152px² sits well above where
  *         `1dir`/`tiles` would bill 40, yet this billed the floor price.
  *         Left unpatched from one data point, which keeps `--budget` an
@@ -164,9 +169,9 @@ export function candidateCount(size: number): number {
  *         through to the same canvas tiers as `1dir`/`tiles`, the safe
  *         over-read for a Pro endpoint.
  *
- * So `1dir` buys candidate variety at 20-40x the price, and `map` buys
+ * So `1dir` buys candidate variety at 10-25x the price, and `map` buys
  * arbitrary (non-square) dimensions nearly free. For a single-result asset,
- * forty re-rolls of a map object cost the same as one 1dir call.
+ * ten to twenty-five re-rolls of a map object cost the same as one 1dir call.
  */
 export function generationCost(
   width: number,
@@ -174,11 +179,36 @@ export function generationCost(
   generator: Generator = "map",
 ): number {
   if (generator === "map" || generator === "pixflux") return 1
-  if (generator === "imagePro") return 40
+  if (generator === "imagePro") return proTierCost(width, height)
   const px = width * height
-  if (px <= 1024) return 20
-  if (px <= 2048) return 25
-  return 40
+  if (px <= 1024) return PRO_TIER_PRICES[0]
+  if (px <= 2048) return PRO_TIER_PRICES[1]
+  return PRO_TIER_PRICES[2]
+}
+
+/**
+ * PixelLab's Pro price ladder, floor to ceiling, in generations. PixelLab's
+ * release 0.4.128 (October 2026) cut it from 20/25/40 to 10/15/25 across
+ * every Pro tool: images, edits, inpaints, objects, Pro characters, states,
+ * and Pro animations. PixelLab's own OpenAPI now quotes "10-25 generations"
+ * for objects, Pro characters, and Pro animations.
+ */
+export const PRO_TIER_PRICES = [10, 15, 25] as const
+
+/**
+ * One Pro call on a canvas whose size is known, at the breakpoints measured
+ * on `/inpaint-v3` (docs/ENDPOINTS.md): up to 256x256 (65536px²) is the
+ * floor, up to 320x320 (102400px²) the middle tier, anything larger the
+ * top. PixelLab's release notes describe the new tiers as 16-256, 256-384,
+ * and 384-512 per side, but re-measured after the cut, 256x256 billed 10,
+ * 288x288 15, and both 352x352 and 384x384 billed 25: the breakpoints did
+ * not move, only the prices.
+ */
+export function proTierCost(width: number, height: number): number {
+  const px = width * height
+  if (px <= 65536) return PRO_TIER_PRICES[0]
+  if (px <= 102400) return PRO_TIER_PRICES[1]
+  return PRO_TIER_PRICES[2]
 }
 
 /**
@@ -194,9 +224,9 @@ export function generationCost(
  */
 export function tilesCost(tileSize: number, variations: number): number {
   const px = tileSize * tileSize * Math.max(1, variations)
-  if (px <= 1024) return 20
-  if (px <= 2048) return 25
-  return 40
+  if (px <= 1024) return PRO_TIER_PRICES[0]
+  if (px <= 2048) return PRO_TIER_PRICES[1]
+  return PRO_TIER_PRICES[2]
 }
 
 /**
@@ -1076,7 +1106,7 @@ const StyleObjectSchema = z
   .object({
     /** Generation backend for this style. Omit to inherit the manifest default. */
     provider: z.string().min(1).optional(),
-    // `map` is the default because it is 20-40x cheaper and correct for any
+    // `map` is the default because it is 10-25x cheaper and correct for any
     // asset that is not going to be rotated or animated.
     generator: GeneratorSchema.default("map"),
     /** Square edge length. The active provider owns its exact limit. */

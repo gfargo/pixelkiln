@@ -1424,7 +1424,8 @@ export class PixelLabClient {
    * A full-body sprite in, a bust portrait out (or the reverse, unused
    * today). Job-based like a state or `1dir`, not the couple-generations
    * "conversion" the name suggests: the smallest `resultSize` (16px) billed
-   * 20 generations live (docs/ENDPOINTS.md, "Characters, measured").
+   * 20 generations live (docs/ENDPOINTS.md, "Characters, measured"), the
+   * Pro floor before PixelLab's October 2026 cut put it at 10.
    */
   async createPortraitCharacterPro(args: {
     direction: "portrait_to_character" | "character_to_portrait"
@@ -1472,7 +1473,8 @@ export class PixelLabClient {
    * everything else here, but the completed job returns the result frames
    * inline as base64 (`last_response.quantized_images`), not as storage
    * URLs — the one PixelLab character tool that works this way. A live
-   * 2-frame, 92x92 job billed 20 generations (docs/ENDPOINTS.md).
+   * 2-frame, 92x92 job billed 20 generations (docs/ENDPOINTS.md), before
+   * PixelLab's October 2026 Pro cut halved that floor to 10.
    */
   async transferOutfitV2(args: {
     referenceImage: Base64Image & { width: number; height: number }
@@ -1533,7 +1535,9 @@ export class PixelLabClient {
    * far higher than this tiering assumes; 352x352 (123904px²), 384x384
    * (147456px²), and 512x512 (262144px², the tiering ceiling) all billed
    * 40. Both breakpoints are now tightly bracketed: 20->25 in
-   * (65536px², 82944px²], 25->40 in (102400px², 123904px²].
+   * (65536px², 82944px²], 25->40 in (102400px², 123904px²]. Those prices
+   * predate PixelLab's October 2026 Pro cut to 10/15/25; `proTierCost`
+   * keeps the breakpoints with the new prices.
    * `editImagesV2` below returns the same fields under `images`, plural
    * and array-wrapped, not `image` — do not assume the two endpoints share
    * one response shape. See docs/ENDPOINTS.md and docs/REVISIONS.md for
@@ -1604,8 +1608,9 @@ export class PixelLabClient {
   }
 
   /**
-   * PixelLab's Pro image tier, `/generate-image-v2`: a flat 40 generations
-   * (docs/ENDPOINTS.md, "Single-image generators, measured") for real style
+   * PixelLab's Pro image tier, `/generate-image-v2`: 10 to 25 generations by
+   * canvas since PixelLab's October 2026 Pro cut, a flat 40 before
+   * (docs/ENDPOINTS.md, "Single-image generators, measured"), for real style
    * transfer and non-square canvases up to 792x688, where `pixflux` is
    * limited to 400x400 and no style reference. Like a revision, this hands
    * back a plain background job with no resource of its own; unlike a
@@ -1717,6 +1722,29 @@ export class PixelLabClient {
       ProFlashImageSubmitSchema,
       await this.request<unknown>("/inpaint-image-pro-flash", { method: "POST", body: JSON.stringify(body) }),
       "inpaint-image-pro-flash",
+    )
+  }
+
+  /**
+   * `/image-to-pixelart-pro-flash`: a photo, painting, or render in, pixel
+   * art out, with no size to pass: PixelLab detects the native pixel scale
+   * and picks the output size (a 256x256 render came back 108x109, on a
+   * transparent background). A flat 6 generations, billed exactly that live
+   * in October 2026. Sources over 2048px on the longer side are scaled down
+   * upstream. The finished job carries the image at `last_response.images[0]`.
+   */
+  async imageToPixelartProFlash(args: {
+    image: Base64Image
+    description?: string
+    seed?: number
+  }): Promise<z.output<typeof ProFlashImageSubmitSchema>> {
+    const body: Record<string, unknown> = { image: args.image }
+    if (args.description) body.description = args.description
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      ProFlashImageSubmitSchema,
+      await this.request<unknown>("/image-to-pixelart-pro-flash", { method: "POST", body: JSON.stringify(body) }),
+      "image-to-pixelart-pro-flash",
     )
   }
 

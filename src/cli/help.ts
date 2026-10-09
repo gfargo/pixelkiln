@@ -63,8 +63,12 @@ Commands
             add/remove/list/status/claims. Offline.
   unzoom    PixelLab: shrink an upscaled image (--from) back to its native
             pixel grid before using it as a style or reference image.
+  pixelate  PixelLab: convert a photo, painting, or render (--from) into
+            pixel art with Image to Pixel Art Pro Flash; PixelLab picks the
+            output size. Optional --description steers the style. 6
+            generations; asks first.
   font      PixelLab: generate a pixel font (--description, --out); writes a
-            .ttf and a glyph atlas PNG. 25 generations; asks first.
+            .ttf and a glyph atlas PNG. 15 generations; asks first.
 
 Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
@@ -87,7 +91,8 @@ Options
   --model-root <dir>  recipe verify: also hash required local model files
   --generation <n|hash>  restore: the previous generation to bring back (1 = newest)
   --quantize <n>      unzoom: 0 auto palette (default), -1 keep all colors, 2-256 exact
-  --description <text>  font: the style to draw, e.g. "warm orange arcade font"
+  --description <text>  font: the style to draw, e.g. "warm orange arcade font";
+                      pixelate: an optional style steer, e.g. "light dithering"
   --weight <w>        font: Bold or Regular (default)
   --glyph-px <n>      font: native glyph size, 8, 16 (default), 32, or 64
   --prune             cache: remove invalid/unreferenced local cache data
@@ -147,6 +152,7 @@ Examples
   pixelkiln quality snapshot --inputs quality-inputs.json --out pixelkiln.quality.json
   pixelkiln quality check --from pixelkiln.quality.json
   pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png
+  pixelkiln pixelate --from renders/lodge.png --out art/lodge.png
   pixelkiln font --description "warm orange arcade font" --weight Bold --out fonts/arcade
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json

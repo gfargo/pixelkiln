@@ -67,13 +67,13 @@ describe("PixelLabClient: generate-image-v2 wire", () => {
 })
 
 describe("resolving an imagePro spec", () => {
-  it("prices flat 40 regardless of size and counts candidates by size tier", async () => {
+  it("prices on the Pro tiers since October 2026 and counts candidates by size tier", async () => {
     const loaded = await writeManifest({}, { width: 64, height: 64 })
     const [spec] = await resolveSpecs(loaded)
     expect(spec.generator).toBe("imagePro")
     expect(spec.width).toBe(64)
     expect(spec.height).toBe(64)
-    expect(spec.cost).toBe(40)
+    expect(spec.cost).toBe(10)
     expect(spec.candidates).toBe(candidateCount(64))
   })
 
@@ -93,9 +93,14 @@ describe("provider", () => {
     expect(provider.supports("imagePro")).toBe(true)
   })
 
-  it("estimates a flat 40 with candidates by size", () => {
+  it("estimates by canvas tier with candidates by size", () => {
+    // A 64x64 call billed exactly 10 live after PixelLab's October 2026 Pro cut (a flat 40 before).
     const spec = { generator: "imagePro", width: 64, height: 64, size: 64 } as ResolvedSpec
-    expect(provider.estimate(spec)).toEqual({ unit: "generations", amount: 40, candidates: candidateCount(64) })
+    expect(provider.estimate(spec)).toEqual({ unit: "generations", amount: 10, candidates: candidateCount(64) })
+    const wide = { generator: "imagePro", width: 384, height: 216, size: 384 } as ResolvedSpec
+    expect(provider.estimate(wide)).toMatchObject({ amount: 15 })
+    const big = { generator: "imagePro", width: 512, height: 512, size: 512 } as ResolvedSpec
+    expect(provider.estimate(big)).toMatchObject({ amount: 25 })
   })
 
   it("rejects a canvas outside the API's 792x688 box", async () => {

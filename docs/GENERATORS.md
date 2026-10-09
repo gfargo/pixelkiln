@@ -10,17 +10,17 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 |---|---|---:|---|
 | Standalone prop or icon with arbitrary dimensions | `map` (default) | 1 generation | 1 |
 | Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
-| Candidate variety, richer rendering, future rotation/animation | `1dir` | 20–40 generations | 4–64 by size |
-| Ground tiles or connectable structural sets | `tiles` | 20–40 generations | variations or complete set |
-| Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | 20–40 generations (unmeasured) | 16 or 25 tiles |
+| Candidate variety, richer rendering, future rotation/animation | `1dir` | 10–25 generations | 4–64 by size |
+| Ground tiles or connectable structural sets | `tiles` | 10–25 generations | variations or complete set |
+| Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | 10–25 generations (unmeasured) | 16 or 25 tiles |
 | A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
-| Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 40 generations flat | 1–64 by size |
+| Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 10–25 generations by canvas | 1–64 by size |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | Animated GIF or spritesheet from Retro Diffusion | `animation` | $0.07–$0.25 per animation (published price) | 1 GIF or PNG sheet |
-| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 20–40 per pose or portrait, 1 per template loop (2–4 as `skeleton-v3`), 20 per outfit (measured once) | one set of directions, one ordered loop, or one portrait |
+| A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 10–25 per pose or portrait, 1 per template loop (2–4 as `skeleton-v3`), 20 per outfit (measured once) | one set of directions, one ordered loop, or one portrait |
 | A prop, creature, or vehicle with rotations, states, or loops but no character rig | `objectPro` | about 6 per base at 64px (unmeasured) | one set of directions, or one ordered loop |
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
-| One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 20–40 generations (unmeasured) | 1 image |
+| One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 10–25 generations (unmeasured) | 1 image |
 | A styled still on the Pro Flash model, or the south sprite a Pro Flash character will rotate | `imageProFlash` | 5–9 generations (PixelLab's provisional quote) | 1 image |
 
 Start with `map` unless a required capability points elsewhere. Forty `map`
@@ -275,13 +275,13 @@ and regenerating the parent makes the child stale.
 |---|---:|---:|
 | base, `mode: standard` | create-character-with-4/8-directions | 1 |
 | base, `mode: v3` | create-character-v3 | 1 + ceil(size² × 8 / 65536): 2 at 64px, 3 at 128px; from a `reference`, the rotations alone on its canvas: 1 at 64px |
-| base, `mode: pro` | create-character-pro | 20–40 by canvas |
+| base, `mode: pro` | create-character-pro | 10–25 by canvas |
 | base, `mode: pro-flash` | create-character-pro-flash | image tier (5 to 96px, 6 to 208px, 9 above) + ceil(size² × 8 / 65536): 6 at 64px, 8 at 128px, 17 at 256px; rotations only from a `reference` |
-| state | create-character-state | 20–40 by canvas |
+| state | create-character-state | 10–25 by canvas |
 | animation with a `template` | animate-character | 1 |
 | animation from text (v3) | animate-character | ceil(size² × frames / 65536): 1 at 64px, 2 at 128px |
-| animation, `mode: pro` | animate-character | 20–40 by canvas |
-| portrait | portrait-character-pro | 20–40 by `size` (16px billed exactly 20 live) |
+| animation, `mode: pro` | animate-character | 10–25 by canvas |
+| portrait | portrait-character-pro | 10–25 by `size` (16px billed exactly 20 live, before the October 2026 cut) |
 | outfit | transfer-outfit-v2 | 20 (a 2-frame, 92×92 job billed exactly this live; not yet measured at other frame counts or canvases) |
 
 The 20–40 tiers are PixelLab's; the tier is resolved from the canvas when
@@ -450,7 +450,7 @@ Left as an over-read for `--budget` until a second size is measured; see
 `imageProFlash` wraps PixelLab's `/create-image-pro-flash`: one native
 pixel-art image on the Pro Flash model, the same model the `character` and
 `objectPro` `pro-flash` engines draw with, as a plain still. It sits between
-`pixflux`/`map` (1 generation, no style reference) and `imagePro` (a flat 40):
+`pixflux`/`map` (1 generation, no style reference) and `imagePro` (10–25 by canvas):
 
 ```jsonc
 {
@@ -530,7 +530,7 @@ to 16×16, which suits icons and small widgets:
   `imagePro`'s.
 
 **Unmeasured.** The schema carries no usage example and no call has been
-billed yet. The plan prices it on the same 20/25/40 canvas tiers as
+billed yet. The plan prices it on the same 10/15/25 canvas tiers as
 `1dir`/`tiles`, the safe over-read for a Pro endpoint, and the completed
 job's shape is read defensively (`pollUiElement` names the keys it got if
 the shape is not the documented `images` list).

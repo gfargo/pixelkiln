@@ -263,10 +263,10 @@ describe("revision member sets and the interpolate/edit-animation modes", () => 
   it("prices interpolate and edit-animation on the Pro canvas tiers, edit-animation on its packed grid", async () => {
     const provider = PixelLabProvider.forOffline()
     const interp = await project({ mode: "interpolate", from: "hero", lastFrame: "keys/end.png" }, [])
-    expect(provider.estimate(await child(interp.loaded))).toMatchObject({ unit: "generations", amount: 20 })
+    expect(provider.estimate(await child(interp.loaded))).toMatchObject({ unit: "generations", amount: 10 })
     const set = await project({ mode: "edit-animation", from: "hero" }, frames(4))
     // Four 32x32 frames pack into a 64x64 grid: 4096px², the top tier.
-    expect(provider.estimate(await child(set.loaded))).toMatchObject({ unit: "generations", amount: 40 })
+    expect(provider.estimate(await child(set.loaded))).toMatchObject({ unit: "generations", amount: 25 })
   })
 
   it("resolves a revision inside a character style as an edit of the loop, not a new character", async () => {

@@ -77,7 +77,7 @@ export interface Args {
   explicitLock?: string
   /** unzoom: 0 auto-detects a palette, -1 keeps every color, 2-256 quantizes to that many. */
   quantize?: number
-  /** font: the style description sent to PixelLab. */
+  /** font and pixelate: the style description sent to PixelLab. */
   description?: string
   /** font: Bold or Regular. */
   weight?: string
@@ -107,7 +107,7 @@ export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
-  "skeleton-preview", "unzoom", "font", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "pixelate", "font", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const

@@ -45,13 +45,13 @@ afterEach(async () => {
 
 describe("cost model", () => {
   it("charges 1dir by canvas tier, not by candidate count", () => {
-    expect(generationCost(32, 32, "1dir")).toBe(20) // 1024px
-    expect(generationCost(45, 45, "1dir")).toBe(25) // 2025px
-    expect(generationCost(64, 64, "1dir")).toBe(40) // 4096px
+    expect(generationCost(32, 32, "1dir")).toBe(10) // 1024px
+    expect(generationCost(45, 45, "1dir")).toBe(15) // 2025px
+    expect(generationCost(64, 64, "1dir")).toBe(25) // 4096px
   })
 
   // Measured live: a 32x36 and a 64x96 map object each cost exactly 1
-  // generation. Applying the 1dir tiers here overstated map cost by 20-40x.
+  // generation. Applying the 1dir tiers here overstated map cost by 10-25x.
   it("charges map objects a flat 1 regardless of size", () => {
     expect(generationCost(32, 36, "map")).toBe(1)
     expect(generationCost(64, 96, "map")).toBe(1)
@@ -59,7 +59,7 @@ describe("cost model", () => {
   })
 
   // The default is `map` because it is the right choice for any asset that is
-  // not going to be rotated or animated, and 20-40x cheaper.
+  // not going to be rotated or animated, and 10-25x cheaper.
   it("defaults to map pricing when no generator is given", () => {
     expect(generationCost(64, 64)).toBe(1)
   })
@@ -150,7 +150,7 @@ describe("plan", () => {
 
     expect(plan.items).toHaveLength(2)
     expect(plan.items.every((i) => i.state === "missing")).toBe(true)
-    expect(plan.cost).toBe(80) // 2 assets x 40
+    expect(plan.cost).toBe(50) // 2 assets x 25
     expect(plan.candidates).toBe(32) // 2 x 16
   })
 
@@ -297,7 +297,7 @@ describe("plan", () => {
     }
     const plan = await buildPlan(specs, lock)
     expect(plan.items.every((i) => i.state === "stale")).toBe(true)
-    expect(plan.cost).toBe(80)
+    expect(plan.cost).toBe(50)
   })
 
   it("maps paid workflow states to their exact zero-cost resume commands", async () => {

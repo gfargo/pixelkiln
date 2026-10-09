@@ -1097,7 +1097,7 @@ describe("createGenerateHandlers", () => {
     const first = await lean.start({ keys: ["base/tongs", "base/tongs-worn"] })
     const stopped = await untilPhase(lean, first.id, ["done", "failed", "review"])
     expect(stopped).toMatchObject({ phase: "done", counts: { submitted: 1 } })
-    expect(stopped.messages.join("\n")).toMatch(/wave 2 would spend 20 generations on pixellab but only 9 generations .* stopping here/)
+    expect(stopped.messages.join("\n")).toMatch(/wave 2 would spend 10 generations on pixellab but only 9 generations .* stopping here/)
   })
 
   it("refuses unknown keys, keys another job holds, and providers with no budget", async () => {

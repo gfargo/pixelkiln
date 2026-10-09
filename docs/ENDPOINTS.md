@@ -38,17 +38,22 @@ matters most for icon and prop work.
 | `create-image-pixen` | **1** | sync (~40s) | no | no | Best raw detail at 1 generation |
 | `create-image-bitforge` | **1** | sync (~20s) | yes | yes | Best on paper, poor in practice |
 | `map-objects` | **1** | job (~30s) | rejected | no | Fine when the prompt carries the style |
-| `create-1-direction-object` | **20–40** | job | no | yes | Only when you need rotations |
+| `create-1-direction-object` | **10–25** | job | no | yes | Only when you need rotations |
 | `generate-with-style-v2` (Pro) | **20** | job (~150s) | no | yes | Real style transfer |
-| `generate-image-v2` (Pro) | **40** | job (~150s) | no | yes | Real style transfer |
+| `generate-image-v2` (Pro) | **10–25** | job (~150s) | no | yes | Real style transfer |
 
-`1dir` prices by canvas area: ≤1024 px = 20, ≤2048 px = 25, larger = 40. A
-64×64 icon therefore costs 40. Every other generator above is a flat 1–40
-regardless of size.
+`1dir` prices by canvas area: ≤1024 px = 10, ≤2048 px = 15, larger = 25. A
+64×64 icon therefore costs 25. These are October 2026 prices; see [the Pro
+price cut](#october-2026-pro-price-cut) below for what changed and what was
+re-measured. `generate-with-style-v2`'s 20 predates the cut and has not been
+re-measured.
+
+`generate-image-v2` was a flat 40 at any size until the cut. It now tiers by
+canvas like the other Pro tools: a 64×64 call billed exactly 10.
 
 `generate-image-v2` is wrapped by pixelkiln's `imagePro` generator
 (skills/pixelkiln/references/pixellab.md): non-square and larger canvases
-than `pixflux` allows, at the flat 40 above. Its `reference_images` and
+than `pixflux` allows, at the 10–25 above. Its `reference_images` and
 `style_image` are not modeled, and its completed job's response shape is
 inferred from `edit-images-v2`'s (also unmeasured for this endpoint
 specifically) rather than confirmed live — see `pollImagePro` in
@@ -185,6 +190,76 @@ standalone command on a loose file rather than a revision mode, since the
 art it is for (a reference pulled from outside) is not a manifest asset; see
 [the CLI reference](./CLI.md#unzoom). Cost unmeasured; PixelLab's MCP tool
 description claims 0.1 generations, the same as the rest of the tier.
+
+---
+
+## Image to Pixel Art Pro Flash, measured
+
+`POST /image-to-pixelart-pro-flash` (added in PixelLab 0.4.128, October
+2026) converts a photo, painting, or render into pixel art. Unlike
+`image-to-pixelart` above, it takes no size: PixelLab detects the source's
+pixel scale and picks the output size. The only other fields are an optional
+`description` that steers the style and a `seed`. Sources over 2048px on the
+longer side are scaled down upstream.
+
+Measured live, October 2026:
+
+| Source | Description | Output | Billed |
+|---|---|---|---|
+| 256×256 opaque render (a knight) | none | 108×109, transparent background | **6** |
+| 384×384 opaque render (a mountain keep) | "light dithering" | 84×110, transparent background | **6** |
+
+- It is a background job. The submit response carries `estimated_generations:
+  6`, `pricing_provisional: true`, and `image_id`/`source_image_id` (the result
+  is also saved to the PixelLab gallery). `usage` on the submit is null.
+- The completed job has `usage: {type: "generations", generations: 6}` and the
+  image at `last_response.images[0]` as `{type, base64, width, height}`.
+  `last_response.original_images[0]` is the same size, before PixelLab's
+  final "touching up pixels" pass. pixelkiln reads `images[0]`.
+- Unlike `image-to-pixelart`, it keeps alpha: both opaque renders came back
+  with the subject cut out on transparency.
+
+Wired up as `pixelkiln pixelate`, a standalone command on a loose file like
+`unzoom`; see [the CLI reference](./CLI.md#pixelate). Use `unzoom` instead
+for art that is already pixel art and was only upscaled.
+
+---
+
+## October 2026 Pro price cut
+
+PixelLab 0.4.128 (October 2026) cut every Pro tool's price ladder from
+20/25/40 to **10/15/25** generations. The release notes give the new tiers
+by side: 16–256px is 10, 256–384px is 15, 384–512px is 25. PixelLab's
+OpenAPI now quotes "10–25 generations" for 1- and 8-direction objects, Pro
+characters, and Pro object animations, and 15 for `generate-font-pro`
+(previously 25).
+
+**Only the prices moved, not the breakpoints.** The release notes put
+352px and 384px in the middle tier, but both billed the top tier (25) when
+re-measured on `inpaint-v3` after the cut, exactly where the old bisection
+below put the boundary. pixelkiln's estimates use the new prices on those
+measured breakpoints. Every historical measurement on this page that says
+20, 25, or 40 predates the cut and is kept as a record.
+
+Re-measured after the cut:
+
+| Endpoint | Canvas | Before | After |
+|---|---|---|---|
+| `generate-image-v2` | 64×64 | 40 (flat at any size) | **10** |
+| `inpaint-v3` | 256×256 | 20 | **10** |
+| `inpaint-v3` | 288×288 | 25 | **15** |
+| `inpaint-v3` | 352×352 | 40 | **25** |
+| `inpaint-v3` | 384×384 | 40 | **25** |
+
+`generate-image-v2` is no longer flat; pixelkiln now prices it with
+`proTierCost` (≤65536px² is 10, ≤102400px² is 15, larger is 25), the same
+function `inpaint-v3` and `edit-images-v2` revisions use.
+
+**Create VFX** shipped in the same release as an experimental web tool
+(`pixellab.ai/create-vfx`). As of October 2026 it has no REST endpoint in
+`/v2/openapi.json` and no MCP tool; PixelLab says the MCP tool is coming.
+pixelkiln cannot wrap it until one of those exists; see the
+[roadmap](../skills/pixelkiln/references/pixellab-roadmap.md).
 
 ---
 
@@ -385,7 +460,7 @@ constraint, not a hint: 130 badges across two sets came back containing *only*
 the requested colours.
 
 **Re-roll one bad asset.** 1 generation. `gen --only <id> --force`. Cheaper than
-asking for more candidates. A `1dir` call that yields 16 candidates costs 20–40.
+asking for more candidates. A `1dir` call that yields 16 candidates costs 10–25.
 
 **Clean up fringing.** `remove-background` at 1 generation, and it will not
 disturb the palette.
@@ -394,7 +469,8 @@ disturb the palette.
 size. Do not use `resize`.
 
 **Anchor to an existing look rather than a palette.** `generate-with-style-v2`
-(20) or `generate-image-v2` (40). `bitforge` claims to do this for 1, but see
+(20 before the October 2026 cut, not re-measured) or `generate-image-v2`
+(10–25). `bitforge` claims to do this for 1, but see
 above. `map` has no style anchoring at all. A 1-bit set generated through it
 came back with a yellow star and a brown chocolate bar.
 
@@ -562,8 +638,8 @@ Listed so the gaps are known rather than assumed away:
   neither schema carries a usage example.
 - `/generate-font-pro` (+ `GET /generate-font-pro/{job_id}`) — an 80-glyph
   atlas PNG plus a `.ttf` from a style description, `weight`
-  (`Bold`/`Regular`), and `glyph_px` (8/16/32/64). Documented at 25
-  generations, unmeasured. Wired up as `pixelkiln font`, outside the
+  (`Bold`/`Regular`), and `glyph_px` (8/16/32/64). Documented at 15
+  generations since the October 2026 cut (25 before), unmeasured. Wired up as `pixelkiln font`, outside the
   manifest; see [the CLI reference](./CLI.md#font).
 - Everything else PixelLab's own tutorials demonstrate that this file has no
   entry for at all — "animation to animation" motion transfer,
@@ -575,7 +651,8 @@ Listed so the gaps are known rather than assumed away:
   `uiAsset` generator; cost confirmed live at one data point, 20 generations
   for a 256x192 canvas).
 - `image-to-pixelart-pro` takes only `image` + `description`, no size fields.
-  The non-Pro version is characterised above.
+  The non-Pro version is characterised above, and the Pro Flash version,
+  which pixelkiln wraps, [below](#image-to-pixel-art-pro-flash-measured).
 - the tileset family, with schema documented above and costs unmeasured
   (the standalone isometric tile endpoint alongside it now has one real
   measured data point — see above)

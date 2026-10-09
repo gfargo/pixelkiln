@@ -451,7 +451,7 @@ describe("PixelLab provider: revision submit and poll", () => {
     const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
     // The style's plain `map` generator would price this at 1 generation;
     // a 32x32 revision should price at the 1dir/tiles-pro floor instead.
-    expect(child!.cost).toBe(20)
+    expect(child!.cost).toBe(10)
   })
 
   it("estimates reduce-colors and correct-pixelart at a flat 0.1 generations, not the canvas tiers", async () => {

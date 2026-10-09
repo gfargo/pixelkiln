@@ -40,10 +40,10 @@ describe("uiElement", () => {
   it("resolves non-square sizes down to 16px, carries uiColorPalette, and prices on the Pro canvas tiers", async () => {
     const [spec] = await resolveSpecs(await writeManifest({ uiColorPalette: "brown and gold" }, { prompt: "a slot", width: 40, height: 40 }))
     expect(spec).toMatchObject({ generator: "uiElement", width: 40, height: 40, uiColorPalette: "brown and gold" })
-    expect(PixelLabProvider.forOffline().estimate(spec!)).toMatchObject({ unit: "generations", amount: 25 })
+    expect(PixelLabProvider.forOffline().estimate(spec!)).toMatchObject({ unit: "generations", amount: 15 })
     const [big] = await resolveSpecs(await writeManifest())
     expect(big).toMatchObject({ width: 256, height: 256 })
-    expect(PixelLabProvider.forOffline().estimate(big!)).toMatchObject({ amount: 40 })
+    expect(PixelLabProvider.forOffline().estimate(big!)).toMatchObject({ amount: 25 })
   })
 
   it("refuses sizes outside the endpoint's range and more than one concept image", async () => {

@@ -1,15 +1,19 @@
-/** `unzoom` and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
+/** `unzoom`, `pixelate`, and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
 import path from "node:path"
 import { clientFromEnv } from "../../client.ts"
 import { loadEnvFiles } from "../../env.ts"
 import { UsageError } from "../../errors.ts"
 import {
+  defaultPixelateOut,
   defaultUnzoomOut,
   FONT_COST_GENERATIONS,
   FONT_GLYPH_SIZES,
   FONT_WEIGHTS,
   fontOutputPaths,
   generateFont,
+  PIXELATE_COST_GENERATIONS,
+  PIXELATE_MAX_SIDE,
+  pixelateFile,
   unzoomFile,
   type FontGlyphSize,
   type FontWeight,
@@ -85,4 +89,38 @@ export async function runFont(args: Args): Promise<void> {
   }
   log(`  wrote ${res.ttf}`)
   log(`  wrote ${res.atlas}`)
+}
+
+export async function runPixelate(args: Args): Promise<void> {
+  if (!args.from) throw new UsageError("pixelate needs --from <image>: the photo, painting, or render to convert")
+  const out = args.out ?? defaultPixelateOut(args.from)
+  log(`  pixelate ${args.from} → ${out}${args.description ? ` ("${args.description}")` : ""}; PixelLab picks the output size`)
+  log(`  cost: ${PIXELATE_COST_GENERATIONS} generations (Image to Pixel Art Pro Flash, flat)`)
+  if (args.budget !== undefined && args.budget < PIXELATE_COST_GENERATIONS) {
+    throw new Error(`--budget ${args.budget} is below this conversion's ${PIXELATE_COST_GENERATIONS}-generation cost`)
+  }
+  if (args.dryRun) {
+    log("  dry run: nothing sent")
+    return
+  }
+  if (!(await confirm(`  Spend ${PIXELATE_COST_GENERATIONS} generations on this conversion?`, args.yes))) return
+  loadKeys(args)
+  let last = ""
+  const res = await pixelateFile(clientFromEnv(), args.from, {
+    out,
+    description: args.description,
+    force: args.force,
+    onProgress: (status) => {
+      if (status !== last) log(`  ${status}…`)
+      last = status
+    },
+  })
+  if (args.json) {
+    log(JSON.stringify({ version: 1, ...res }, null, 2))
+    return
+  }
+  const scaled = Math.max(res.original.width, res.original.height) > PIXELATE_MAX_SIDE ? " (scaled down upstream first)" : ""
+  log(
+    `  ${res.original.width}x${res.original.height}${scaled} → ${res.pixelated.width}x${res.pixelated.height}; wrote ${res.out}`,
+  )
 }

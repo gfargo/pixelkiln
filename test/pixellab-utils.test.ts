@@ -5,7 +5,8 @@ import { tmpdir } from "node:os"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { PixelLabClient } from "../src/client.ts"
 import { parseArgs } from "../src/cli/args.ts"
-import { defaultUnzoomOut, fontOutputPaths, generateFont, unzoomFile } from "../src/pixellab-utils.ts"
+import { defaultPixelateOut, defaultUnzoomOut, fontOutputPaths, generateFont, pixelateFile, unzoomFile } from "../src/pixellab-utils.ts"
+import { proTierCost } from "../src/types.ts"
 import { encodeRgbaPng } from "../src/png.ts"
 
 function png(width: number, height: number): Buffer {
@@ -223,11 +224,123 @@ describe("generateFont", () => {
   })
 })
 
+describe("PixelLabClient: image-to-pixelart-pro-flash wire", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("sends the image with the optional description and seed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({
+        background_job_id: "job-p", image_id: "img-p", source_image_id: "img-p", status: "processing",
+        estimated_generations: 6, pricing_provisional: true, usage: null,
+      }), { status: 202 })))
+    const res = await new PixelLabClient("key").imageToPixelartProFlash({
+      image: { base64: "SU4=", format: "png" },
+      description: "light dithering",
+      seed: 4,
+    })
+    expect(res).toMatchObject({ background_job_id: "job-p", image_id: "img-p", estimated_generations: 6 })
+    const call = vi.mocked(fetch).mock.calls[0]!
+    expect(new URL(String(call[0])).pathname).toBe("/v2/image-to-pixelart-pro-flash")
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      image: { base64: "SU4=", format: "png" },
+      description: "light dithering",
+      seed: 4,
+    })
+  })
+})
+
+describe("pixelateFile", () => {
+  let dir: string
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-pixelate-"))
+  })
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  // The completed shape below is the one a live October 2026 job returned.
+  function client(status: "completed" | "failed" = "completed") {
+    let polls = 0
+    return {
+      imageToPixelartProFlash: vi.fn(async () => ({
+        background_job_id: "job-p", image_id: "img-p", source_image_id: "img-p", status: "processing",
+      })),
+      getBackgroundJob: vi.fn(async () => {
+        polls += 1
+        if (polls < 2) return { id: "job-p", status: "processing" }
+        return {
+          id: "job-p",
+          status,
+          usage: { type: "generations", generations: 6 },
+          last_response: { images: [{ type: "base64", base64: png(27, 28).toString("base64"), width: 27, height: 28 }] },
+        }
+      }),
+    }
+  }
+
+  it("submits the file, polls until completed, and writes beside the input by default", async () => {
+    const input = path.join(dir, "render.png")
+    await writeFile(input, png(256, 256))
+    const fake = client()
+    const seen: string[] = []
+    const res = await pixelateFile(fake, input, { description: "dither", sleep: async () => {}, onProgress: (s) => seen.push(s) })
+    expect(seen).toEqual(["processing", "completed"])
+    expect(fake.imageToPixelartProFlash).toHaveBeenCalledWith({
+      image: { base64: png(256, 256).toString("base64"), format: "png" },
+      description: "dither",
+      seed: undefined,
+    })
+    expect(res).toMatchObject({
+      jobId: "job-p",
+      out: path.join(dir, "render.pixel.png"),
+      original: { width: 256, height: 256 },
+      pixelated: { width: 27, height: 28 },
+      imageId: "img-p",
+      usage: { type: "generations", generations: 6 },
+    })
+    expect((await readFile(res.out)).equals(png(27, 28))).toBe(true)
+    expect(defaultPixelateOut("a/b.jpeg")).toBe("a/b.pixel.png")
+  })
+
+  it("refuses its own input, an existing output without force, and a non-image, before sending", async () => {
+    const input = path.join(dir, "render.png")
+    await writeFile(input, png(64, 64))
+    const fake = client()
+    await expect(pixelateFile(fake, input, { out: input })).rejects.toThrow(/its own input/)
+    await writeFile(path.join(dir, "render.pixel.png"), "old")
+    await expect(pixelateFile(fake, input)).rejects.toThrow(/already exists/)
+    await writeFile(path.join(dir, "notes.txt"), "hello")
+    await expect(pixelateFile(fake, path.join(dir, "notes.txt"))).rejects.toThrow(/not a readable PNG or JPEG/)
+    expect(fake.imageToPixelartProFlash).not.toHaveBeenCalled()
+  })
+
+  it("stops on an upstream failure", async () => {
+    const input = path.join(dir, "render.png")
+    await writeFile(input, png(64, 64))
+    await expect(pixelateFile(client("failed"), input, { sleep: async () => {} })).rejects.toThrow(/failed upstream/)
+    expect(existsSync(path.join(dir, "render.pixel.png"))).toBe(false)
+  })
+})
+
+describe("proTierCost", () => {
+  it("uses the inpaint-measured breakpoints at PixelLab's October 2026 prices", () => {
+    expect(proTierCost(32, 32)).toBe(10)
+    expect(proTierCost(256, 256)).toBe(10)
+    expect(proTierCost(288, 288)).toBe(15)
+    expect(proTierCost(320, 320)).toBe(15)
+    // Billed 25 live after the cut, though the release notes put 352 and 384 in the middle tier.
+    expect(proTierCost(352, 352)).toBe(25)
+    expect(proTierCost(512, 512)).toBe(25)
+  })
+})
+
 describe("parseArgs: unzoom and font", () => {
   it("reads the new flags and range-checks them", () => {
     expect(parseArgs(["unzoom", "--from", "a.png", "--quantize", "-1"]).quantize).toBe(-1)
     expect(() => parseArgs(["unzoom", "--from", "a.png", "--quantize", "300"])).toThrow(/--quantize/)
     const font = parseArgs(["font", "--description", "arcade", "--weight", "Bold", "--glyph-px", "32", "--out", "f"])
     expect(font).toMatchObject({ command: "font", description: "arcade", weight: "Bold", glyphPx: 32, out: "f" })
+    const pixelate = parseArgs(["pixelate", "--from", "r.png", "--description", "dither", "--out", "p.png"])
+    expect(pixelate).toMatchObject({ command: "pixelate", from: "r.png", description: "dither", out: "p.png" })
   })
 })
