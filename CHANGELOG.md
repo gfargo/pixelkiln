@@ -1,3 +1,10 @@
+# [0.87.0](https://github.com/gfargo/pixelkiln/compare/v0.86.3...v0.87.0) (2026-10-09)
+
+
+### Features
+
+* **pixellab:** adopt PixelLab 0.4.128 Pro pricing and add pixelate (Image to Pixel Art Pro Flash) ([5d1f640](https://github.com/gfargo/pixelkiln/commit/5d1f64082517700a33cdeedb1fc8eeeec3cfc83e))
+
 ## [0.86.3](https://github.com/gfargo/pixelkiln/compare/v0.86.2...v0.86.3) (2026-10-06)
 
 
