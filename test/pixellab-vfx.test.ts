@@ -199,6 +199,14 @@ describe("makeVfx", () => {
     expect(savedRun.calls[1]).toEqual([STEP_A, "export", "--name", "My boom", "--replace", EFFECT])
   })
 
+  it("sets fps with a recipe patch after the effect exists, since start --fps loses to a preset's own", async () => {
+    const { client, calls, download } = fake([startReply(STEP_A), PART_REPLY, exportReply("i.gif, i.json, i.png"), startReply(STEP_C)])
+    await makeVfx(client, { preset: "impact_burst", fps: 8, name: "Slow", out: path.join(dir, "slow"), download })
+    expect(calls[0]).toEqual(["start", "--preset", "impact_burst"])
+    expect(calls[1]).toEqual([STEP_A, "render", JSON.stringify({ patch: [{ op: "set", path: "fps", value: 8 }] })])
+    expect(calls[2]![1]).toBe("export")
+  })
+
   it("sends a local sprite inline and records it relative to the record, so a re-render finds it", async () => {
     await writeFile(path.join(dir, "hero.png"), encodeRgbaPng(2, 2, Buffer.alloc(16, 200)))
     const { client, calls, download } = fake([startReply(STEP_A), exportReply("i.gif, i.json, i.png"), startReply(STEP_C)])

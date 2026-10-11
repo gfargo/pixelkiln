@@ -240,7 +240,6 @@ export async function makeVfx(client: Pick<PixelLabMcpClient, "callTool">, opts:
 
   const startArgv = ["start"]
   if (opts.sprite) startArgv.push("--sprite", await resolveVfxSprite(opts.sprite))
-  if (opts.fps !== undefined) startArgv.push("--fps", String(opts.fps))
   if (opts.preset) startArgv.push("--preset", opts.preset)
   if (opts.effect) startArgv.push("--effect", opts.effect)
   progress(opts.preset ? `starting from preset ${opts.preset}` : opts.effect ? `starting from saved effect ${opts.effect}` : "starting")
@@ -256,6 +255,12 @@ export async function makeVfx(client: Pick<PixelLabMcpClient, "callTool">, opts:
   if (opts.parts?.length) {
     progress(`adding ${opts.parts.map((part) => part.name).join(", ")}`)
     step = parseVfxStep(await call([step, "add_part", JSON.stringify({ parts: opts.parts })]))
+  }
+  if (opts.fps !== undefined) {
+    // `start --fps` is ignored when a preset or saved effect brings its own
+    // (checked live); a patch on the working recipe is what sets it.
+    progress(`setting ${opts.fps} fps`)
+    step = parseVfxStep(await call([step, "render", JSON.stringify({ patch: [{ op: "set", path: "fps", value: opts.fps }] })]))
   }
 
   const exportArgv = [step, "export", "--name", name]
