@@ -74,6 +74,21 @@ describe("PixelLabMcpClient", () => {
     await expect(new PixelLabMcpClient("key").callTool("vfx_workbench", {})).rejects.toThrow(/bad params/)
   })
 
+  it("retries a busy reply with backoff, then gives up with the tool's message", async () => {
+    const busy = { jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "error: the pixel tools are busy. retry in a few seconds." }], isError: true } }
+    const ok = { jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "effect step: x" }] } }
+    const replies = [busy, busy, ok]
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(replies.shift()), { status: 200 })))
+    const waits: number[] = []
+    const client = new PixelLabMcpClient("key", { sleep: async (ms) => { waits.push(ms) } })
+    expect((await client.callTool("vfx_workbench", {})).text).toBe("effect step: x")
+    expect(waits).toEqual([2000, 4000])
+
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(busy), { status: 200 })))
+    await expect(new PixelLabMcpClient("key", { busyRetries: 1, sleep: async () => {} }).callTool("vfx_workbench", {}))
+      .rejects.toThrow(/pixel tools are busy/)
+  })
+
   it("takes the response, not a notification, from a stream carrying both", () => {
     const body = [
       `data: ${JSON.stringify({ jsonrpc: "2.0", method: "notifications/progress", params: {} })}`,

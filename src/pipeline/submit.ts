@@ -369,6 +369,8 @@ export async function submit(
       const anchor = spec.character?.styleAnchor
       const anchorEntry = anchor ? lock.entries[lockKey(anchor.spec.styleId, anchor.spec.assetId)] : undefined
       const replacedMetadata = previousEntry?.providerMetadata?.[provider.id]
+      const lastGeneration = previousEntry?.status === "downloaded" ? previousEntry : previousEntry?.history?.[0]
+      const lastGenerationMetadata = lastGeneration?.providerMetadata?.[provider.id]
       const parentOutputs = spec.character?.kind === "outfit" && parentEntry
         ? parentEntry.outputs.map((output, index) => ({
             path: currentEntryOutputPath(parentEntry, spec.character!.parentSpec!, index),
@@ -383,6 +385,7 @@ export async function submit(
         ...(anchorEntry?.objectId ? { styleObjectId: anchorEntry.objectId } : {}),
         ...(parentOutputs ? { parentOutputs } : {}),
         ...(replacedMetadata ? { replacedMetadata } : {}),
+        ...(lastGenerationMetadata ? { lastGenerationMetadata } : {}),
         ...(previousMetadata ? { previousMetadata } : {}),
         checkpoint: async (checkpoint) => {
           if (!checkpoint.jobId) throw new Error("Provider checkpoint returned an empty job id")

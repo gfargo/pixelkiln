@@ -4,7 +4,7 @@ import { existsSync } from "node:fs"
 import { BudgetError, ProjectError, UsageError } from "../errors.ts"
 import { formatCost, type Provider } from "../provider.ts"
 import { createProvider, type ProviderMode } from "../providers/registry.ts"
-import type { LoadedManifest } from "../manifest.ts"
+import { assetInStyle, type LoadedManifest } from "../manifest.ts"
 import { openProject as openLibraryProject } from "../project.ts"
 import { sha256File } from "../hash.ts"
 import { lockKey, type Lock, type Manifest, type ResolvedSpec } from "../types.ts"
@@ -27,7 +27,7 @@ export async function provenanceFile(id: string, file: string): Promise<Artifact
 export function manifestSources(manifest: Manifest, styleId: string): Record<string, string> {
   const sources: Record<string, string> = {}
   for (const [assetId, asset] of Object.entries(manifest.assets)) {
-    if (asset.styles.length && !asset.styles.includes(styleId)) continue
+    if (!assetInStyle(asset, styleId, manifest.styles[styleId])) continue
     const source = asset.sourceByStyle[styleId] ?? asset.source
     if (source) sources[assetId] = source
   }

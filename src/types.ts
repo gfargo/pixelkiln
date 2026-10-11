@@ -35,7 +35,7 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
  *   parameter on /map-objects returns a 500, so the palette lock is
  *   pixflux-only. Its rendering is flatter than 1dir's.
  */
-export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro", "uiAsset", "uiElement", "imageProFlash"])
+export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro", "uiAsset", "uiElement", "imageProFlash", "vfx"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
@@ -178,6 +178,7 @@ export function generationCost(
   height: number,
   generator: Generator = "map",
 ): number {
+  if (generator === "vfx") return 0
   if (generator === "map" || generator === "pixflux") return 1
   if (generator === "imagePro") return proTierCost(width, height)
   const px = width * height
@@ -537,6 +538,45 @@ export const MapSceneSchema = z
   })
   .strict()
 export type MapScene = z.infer<typeof MapSceneSchema>
+
+/** One part added to a `vfx` effect: the part's name plus its placement and slider options, sent as given. */
+export const VfxPartSchema = z.object({ name: z.string().min(1) }).catchall(z.unknown())
+
+/**
+ * `vfx` assets only: an animated effect rendered by PixelLab's VFX workbench.
+ * Start from a whole-effect `preset` or a `recipe` file (a bare recipe or a
+ * `.vfx.json` record from `pixelkiln vfx`), not both, and add `parts` on
+ * top; parts alone also start an effect. `sprite` is the character the
+ * effect is built around: a manifest-relative PNG or JPEG (any earlier
+ * asset's output file works) or a PixelLab reference. `name` is the effect's
+ * name in the account's My effects and is not part of its identity.
+ */
+export const AssetVfxSchema = z
+  .object({
+    preset: z.string().min(1).optional(),
+    recipe: z.string().min(1).optional(),
+    parts: z.array(VfxPartSchema).optional(),
+    sprite: z.string().min(1).optional(),
+    fps: z.number().int().min(1).max(60).optional(),
+    name: z.string().min(1).optional(),
+  })
+  .strict()
+  .superRefine((vfx, context) => {
+    if (vfx.preset && vfx.recipe) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "start a vfx from a preset or a recipe, not both", path: ["recipe"] })
+    }
+    if (!vfx.preset && !vfx.recipe && !vfx.parts?.length) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "a vfx needs a preset, a recipe, or at least one part", path: ["preset"] })
+    }
+    if (vfx.sprite && /^(https?|data):/i.test(vfx.sprite)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "a vfx sprite is a manifest-relative image or a character:/object:/gallery: reference; a URL has no content to track",
+        path: ["sprite"],
+      })
+    }
+  })
+export type AssetVfx = z.infer<typeof AssetVfxSchema>
 
 /** Applies a reference outfit to an existing loop's frames (PixelLab's `transfer-outfit-v2`). */
 export const CharacterOutfitSchema = z
@@ -1413,7 +1453,7 @@ export const StyleSchema = StyleObjectSchema
     path: ["tileFeature"],
   })
   .superRefine((style, ctx) => {
-    if (style.quality && (style.generator === "tiles" || style.generator === "terrain" || style.generator === "animation")) {
+    if (style.quality && (style.generator === "tiles" || style.generator === "terrain" || style.generator === "animation" || style.generator === "vfx")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "quality profiles currently support single-image generators only",
@@ -1554,6 +1594,8 @@ export const AssetSchema = z
     outfit: CharacterOutfitSchema.optional(),
     /** `map` styles only: draw this object in the style of a scene image. See `MapSceneSchema`. */
     scene: MapSceneSchema.optional(),
+    /** `vfx` styles only: the effect to render. See `AssetVfxSchema`. */
+    vfx: AssetVfxSchema.optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
@@ -1634,7 +1676,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene", asset.vfx && "vfx"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1651,7 +1693,7 @@ export const AssetSchema = z
     }
     // A template loop is described by its template; v3 and pro loops still
     // need the motion in words, which the provider checks.
-    if (asset.prompt === undefined && !asset.mirror && !asset.portrait && !asset.outfit && !asset.animation?.template) {
+    if (asset.prompt === undefined && !asset.mirror && !asset.portrait && !asset.outfit && !asset.animation?.template && !asset.vfx) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Required",
@@ -2015,6 +2057,24 @@ export interface ResolvedMapScene {
     | { type: "mask"; file: string; sha256: string | null; width: number | null; height: number | null }
 }
 
+/**
+ * A `vfx` effect as resolved for hashing and submission. The recipe is
+ * read and content-hashed; a local sprite carries its content hash, null
+ * until the file exists (it may be another asset's output), the way a
+ * scene's does.
+ */
+export interface ResolvedVfx {
+  preset?: string
+  recipe?: { file: string; sha256: string; recipe: Record<string, unknown> }
+  parts?: Array<{ name: string; [option: string]: unknown }>
+  sprite?:
+    | { file: string; sha256: string | null; width: number | null; height: number | null; format: "png" | "jpeg" | null }
+    | { reference: string }
+  fps?: number
+  /** The name saved to My effects; not part of identity. */
+  name: string
+}
+
 export interface ResolvedMirror {
   sourceAssetId: string
   sourceSpec: ResolvedSpec
@@ -2075,6 +2135,8 @@ export interface ResolvedSpec {
   batch?: ResolvedBatch
   /** `map` only: the scene this object is drawn into, in that scene's style. */
   scene?: ResolvedMapScene
+  /** `vfx` only: the effect to render. */
+  vfx?: ResolvedVfx
   /** Provider-side id declared for adoption; excluded from the spec hash. */
   remoteId?: string
   /**

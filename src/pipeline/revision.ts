@@ -33,6 +33,7 @@ export async function inspectRevisionReadiness(
   if (spec.character?.styleAnchor) return inspectStyleAnchor(spec, lock, new Set())
   if (spec.objectPro?.parentSpec) return inspectObjectProParent(spec, lock, new Set())
   if (spec.scene) return inspectScene(spec)
+  if (spec.vfx?.sprite && "file" in spec.vfx.sprite) return inspectVfxSprite(spec)
   if (!spec.revision) return null
   return inspectRevision(spec, lock, new Set())
 }
@@ -71,6 +72,18 @@ async function inspectScene(spec: ResolvedSpec): Promise<RevisionReadiness> {
     if ((await sha256File(file)) !== sha256) return { ready: false, reason: `${label} changed after the manifest was resolved` }
   }
   return { ready: true, reason: "scene is current" }
+}
+
+/**
+ * An effect built around a local sprite sends that sprite as it was hashed
+ * at resolve time. It is often another asset's output (a character's south
+ * view), so a missing file is "not yet", not an error.
+ */
+async function inspectVfxSprite(spec: ResolvedSpec): Promise<RevisionReadiness> {
+  const sprite = spec.vfx!.sprite as { file: string; sha256: string | null }
+  if (!sprite.sha256 || !existsSync(sprite.file)) return { ready: false, reason: `vfx sprite does not exist yet: ${sprite.file}` }
+  if ((await sha256File(sprite.file)) !== sprite.sha256) return { ready: false, reason: "vfx sprite changed after the manifest was resolved" }
+  return { ready: true, reason: "vfx sprite is current" }
 }
 
 /**

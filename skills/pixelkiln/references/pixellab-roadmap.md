@@ -313,8 +313,11 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   API key. It starts from a preset, a saved effect, or a recipe file, adds
   parts, downloads the sheet, GIF, atlas, and optional game pack, and saves
   the recipe so the effect re-renders byte for byte (docs/ENDPOINTS.md, "VFX
-  workbench (MCP only), measured"). Still open: a manifest generator, so
-  effects can be planned, locked, and packed like every other asset.
+  workbench (MCP only), measured"). Effects are also a manifest generator,
+  `vfx`, planned, locked, and packed like every other asset (see
+  docs/GENERATORS.md). Still open there: a sprite named by asset rather than
+  by file, the game pack's per-piece clips, and the effect's anchor in the
+  sheet formats.
 - **October 2026 Pro price cut** — PixelLab 0.4.128 moved every Pro tool from
   20/25/40 to 10/15/25 generations. Cost estimates now use the new prices,
   and `imagePro` (`generate-image-v2`) is tiered instead of a flat 40: a

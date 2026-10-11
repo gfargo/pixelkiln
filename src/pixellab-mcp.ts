@@ -45,22 +45,51 @@ export function parseMcpBody(body: string): Record<string, unknown> {
   return last
 }
 
+/**
+ * A tool reply asking to be retried shortly. The VFX workbench answers
+ * "the pixel tools are busy. retry in a few seconds." while another render
+ * on the account is still running (seen live with two effects in one `gen`).
+ */
+export function isBusyReply(text: string): boolean {
+  return /\bbusy\b.*\bretry\b/i.test(text)
+}
+
 export class PixelLabMcpClient {
   private readonly http: RetryingFetch
   private readonly url: string
+  private readonly busyRetries: number
+  private readonly sleep: (ms: number) => Promise<void>
   private nextId = 1
 
   constructor(
     private readonly apiKey: string,
-    opts: { url?: string; timeoutMs?: number; fetch?: typeof fetch } = {},
+    opts: { url?: string; timeoutMs?: number; fetch?: typeof fetch; busyRetries?: number; sleep?: (ms: number) => Promise<void> } = {},
   ) {
     if (!apiKey) throw new Error("PIXELLAB_API_KEY is required")
     this.url = opts.url ?? PIXELLAB_MCP_URL
     this.http = fetchWithRetry(opts.fetch, { timeoutMs: opts.timeoutMs ?? 180_000 })
+    this.busyRetries = opts.busyRetries ?? 4
+    this.sleep = opts.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
   }
 
-  /** Call one tool and return its text and images. A tool-level error (`isError`) throws with the tool's own message. */
+  /**
+   * Call one tool and return its text and images. A tool-level error
+   * (`isError`) throws with the tool's own message, after a few spaced
+   * retries when the tool only said it was busy.
+   */
   async callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+    for (let attempt = 0; ; attempt++) {
+      const reply = await this.callOnce(name, args)
+      if (!reply.isError) return { text: reply.text, images: reply.images }
+      if (attempt < this.busyRetries && isBusyReply(reply.text)) {
+        await this.sleep(2000 * 2 ** attempt)
+        continue
+      }
+      throw new Error(`PixelLab ${name}: ${reply.text || "the tool reported an error"}`)
+    }
+  }
+
+  private async callOnce(name: string, args: Record<string, unknown>): Promise<McpToolResult & { isError: boolean }> {
     const auth = this.apiKey.startsWith("Bearer ") ? this.apiKey : `Bearer ${this.apiKey}`
     const id = this.nextId++
     const res = await this.http(this.url, {
@@ -83,11 +112,10 @@ export class PixelLabMcpClient {
       .filter((block) => block.type === "text" && typeof block.text === "string")
       .map((block) => block.text as string)
       .join("\n")
-    if (result.isError) throw new Error(`PixelLab ${name}: ${text || "the tool reported an error"}`)
     const images = (result.content ?? [])
       .filter((block) => block.type === "image" && typeof block.data === "string")
       .map((block) => ({ mimeType: String(block.mimeType ?? "image/png"), data: block.data as string }))
-    return { text, images }
+    return { text, images, isError: Boolean(result.isError) }
   }
 }
 

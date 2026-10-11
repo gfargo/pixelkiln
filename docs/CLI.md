@@ -1076,6 +1076,10 @@ timing, a projectile you drew), use the `vfx_workbench` tool from an MCP
 client such as Claude Code. Then pull the result into the project with
 `pixelkiln vfx --effect <id>`.
 
+To plan, lock, and pack effects with the rest of a project's art, declare
+them in the manifest instead, with the [`vfx` generator](./GENERATORS.md#vfx).
+A `.vfx.json` record from this command works there as a `recipe`.
+
 ### `font`
 
 ```bash

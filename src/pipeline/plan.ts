@@ -141,13 +141,14 @@ export async function buildPlan(
     } else if (opts.force) {
       state = "missing"
       reason = "--force"
-    } else if (!entry && spec.source && spec.generator !== "frames") {
+    } else if (!entry && spec.source && spec.generator !== "frames" && spec.generator !== "vfx") {
       // An asset with a `source` is placed from committed art by `mount`, and
       // AssetSchema.source says it needs no lock entry at all. Treating it as
       // `missing` puts art pixelkiln did not make and will never generate into
       // the actionable list, and bills a generation cost for each one. A frame
       // set's source is a hand edit beside generated frames, not a stand-in
-      // for them, so without an entry the set is still missing.
+      // for them (an effect is a frame set too), so without an entry the set
+      // is still missing.
       if (existsSync(path.resolve(spec.root, spec.source))) {
         state = "ok"
         reason = `placed from ${spec.source}; not generated`

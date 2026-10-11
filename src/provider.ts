@@ -115,6 +115,12 @@ export interface SubmitContext {
    * PixelLab would otherwise skip) reads its ids from here.
    */
   replacedMetadata?: ProviderMetadata
+  /**
+   * Provider-owned details of this asset's newest downloaded generation,
+   * current or retired to history. Unlike `replacedMetadata` it survives a
+   * failed attempt in between, which leaves the entry it replaces empty.
+   */
+  lastGenerationMetadata?: ProviderMetadata
 }
 
 export interface CandidateSelection {

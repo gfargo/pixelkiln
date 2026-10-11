@@ -259,11 +259,11 @@ Measured PixelLab economics vary by 40×:
 | Independent or connectable ground tiles | `tiles` | 10–25 generations |
 | A character in 4 or 8 directions, its poses, its loops | `character` | 1 per base, 10–25 per pose, 1 per template loop per direction; a `mirror` of a loop is free |
 
-Start with the required capability, not the most expensive endpoint. Forty `map`
+Start with the required capability, not the most expensive endpoint. Twenty-five `map`
 re-rolls cost the same as one 64×64 `1dir` call; conversely, `map` cannot replace a
-hard palette or reference-image constraint. PixelLab has seven more generators
+hard palette or reference-image constraint. PixelLab has eight more generators
 (`imagePro`, `imageProFlash`, `terrain`, `isometricTile`, `objectPro`, `uiAsset`,
-`uiElement`); see [Generator selection](./docs/GENERATORS.md) and the [measured endpoint reference](./docs/ENDPOINTS.md).
+`uiElement`, and `vfx` for free animated effects); see [Generator selection](./docs/GENERATORS.md) and the [measured endpoint reference](./docs/ENDPOINTS.md).
 
 Generator names describe PixelKiln workflows; their exact capabilities and prices
 depend on the selected provider. Retro Diffusion also supports the provider-specific

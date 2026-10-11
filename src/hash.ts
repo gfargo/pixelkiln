@@ -35,6 +35,9 @@ export function specHash(
   providerOptionIdentity: unknown = spec.providerOptions,
   providerInputIdentity: unknown = spec.providerInputs ?? {},
 ): string {
+  // An effect is rendered from its vfx block alone: the prompt is a label,
+  // and the size, view, and style knobs never reach the workbench.
+  const effect = Boolean(spec.vfx)
   return sha256(
     JSON.stringify({
       // Preserve every existing PixelLab hash while making a provider switch
@@ -51,15 +54,15 @@ export function specHash(
           ? providerInputIdentity
           : undefined,
       generator: spec.generator,
-      prompt: spec.prompt,
-      width: spec.width,
-      height: spec.height,
-      view: spec.view,
-      outline: spec.outline ?? null,
-      shading: spec.shading ?? null,
-      detail: spec.detail ?? null,
-      seed: spec.seed ?? null,
-      palette: spec.palette,
+      prompt: effect ? undefined : spec.prompt,
+      width: effect ? undefined : spec.width,
+      height: effect ? undefined : spec.height,
+      view: effect ? undefined : spec.view,
+      outline: effect ? undefined : spec.outline ?? null,
+      shading: effect ? undefined : spec.shading ?? null,
+      detail: effect ? undefined : spec.detail ?? null,
+      seed: effect ? undefined : spec.seed ?? null,
+      palette: effect ? undefined : spec.palette,
       // `noBackground` only reaches the wire for pixflux and uiAsset; the
       // tile fields are undefined for every other generator. `tileSize` is
       // intentionally absent; width/height are derived from it, so it is
@@ -154,6 +157,19 @@ export function specHash(
               : undefined,
             styleTraits: spec.objectPro.styleTraits,
             reference: spec.objectPro.reference?.sha256,
+          }
+        : undefined,
+      // A recipe and a local sprite enter as their contents' hashes, never
+      // their paths; the My effects name is not identity.
+      vfx: spec.vfx
+        ? {
+            preset: spec.vfx.preset,
+            recipe: spec.vfx.recipe?.sha256,
+            parts: spec.vfx.parts,
+            fps: spec.vfx.fps,
+            sprite: spec.vfx.sprite
+              ? "reference" in spec.vfx.sprite ? spec.vfx.sprite.reference : spec.vfx.sprite.sha256
+              : undefined,
           }
         : undefined,
       // A mirror's bytes come from its source's recorded outputs; the plan

@@ -22,9 +22,10 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 | One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 10–25 generations (unmeasured) | 1 image |
 | A styled still on the Pro Flash model, or the south sprite a Pro Flash character will rotate | `imageProFlash` | 5–9 generations (PixelLab's provisional quote) | 1 image |
+| An animated effect (spell, hit, explosion, aura), on its own or around a sprite | `vfx` | free (a renderer, not a model) | one ordered frame set |
 
-Start with `map` unless a required capability points elsewhere. Forty `map`
-re-rolls cost the same as one 64×64 `1dir` call.
+Start with `map` unless a required capability points elsewhere. Twenty-five
+`map` re-rolls cost the same as one 64×64 `1dir` call.
 
 `terrain` and `imagePro` have no section below: their fields and limits are in
 the [PixelLab skill reference](../skills/pixelkiln/references/pixellab.md), and
@@ -534,6 +535,75 @@ billed yet. The plan prices it on the same 10/15/25 canvas tiers as
 `1dir`/`tiles`, the safe over-read for a Pro endpoint, and the completed
 job's shape is read defensively (`pollUiElement` names the keys it got if
 the shape is not the documented `images` list).
+
+## `vfx`
+
+`vfx` renders animated pixel-art effects with PixelLab's VFX workbench:
+spells, hits, explosions, auras, shields, status icons, weather. The workbench
+is a renderer, not a model. An effect is a recipe of layers, most of them
+dropped in as tuned parts, and it renders the same pixels every time. It is
+free on a PixelLab subscription, and PixelLab offers it only over MCP, which
+pixelkiln calls with the same `PIXELLAB_API_KEY`.
+
+```jsonc
+{
+  "styles": {
+    "fx": { "generator": "vfx", "outDir": "art/fx" }
+  },
+  "assets": {
+    "robot.zap": {
+      "prompt": "lightning on the robot",
+      "vfx": { "preset": "lightning_strike", "sprite": "art/chars/robot-south.png" }
+    },
+    "boom": {
+      "vfx": { "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "fps": 12 }
+    },
+    "zap.tuned": {
+      "vfx": { "recipe": "fx/zap.vfx.json" }
+    }
+  }
+}
+```
+
+- Start from one `preset` (`pixelkiln vfx presets` lists them) or one
+  `recipe`, and add `parts` (`pixelkiln vfx parts`) on top. `parts` alone also
+  start an effect. Each part is `{ "name": … }` plus any of the workbench's
+  own options, sent as given: `size`, `colour`, `amount`, `speed`, `start`,
+  `end`, `anchor`, `at`, `offset`, `travel`, `role`, `params`.
+- `recipe` is a bare recipe JSON or a `.vfx.json` record written by
+  `pixelkiln vfx`. That is how an effect tuned by hand, in the workbench or
+  with the sliders on pixellab.ai, enters a manifest: export it with
+  `pixelkiln vfx --effect <id> --out fx/zap`, then point `recipe` at the
+  record.
+- `sprite` builds the effect around a character: a manifest-relative PNG or
+  JPEG, or a `character:<id>:<direction>`, `object:<id>`, or `gallery:<id>`
+  reference. A path may be another asset's output. Until that file exists
+  the effect is blocked, and `gen` renders it in a later wave once it does.
+  The exported frames include the sprite.
+- `fps` overrides the preset's or recipe's own rate. `name` is the effect's
+  name in your PixelLab My effects; it defaults to `pixelkiln:<style>/<asset>`.
+  `prompt` is optional and only a label.
+- An asset that lists no `styles` joins every style of its own kind: a `vfx`
+  style takes the assets with a `vfx` block, and every other style the
+  assets without one. A mirror or revision of an effect names its style.
+
+**Outputs.** The exported spritesheet is cut into frames,
+`<asset>-frame-00.png` onward, recorded as an ordered frame set with the
+effect's fps and whether it loops. `pack` lays them out like any loop, and
+`pack --format godot` writes a one-shot effect with `loop: false`. The
+gallery plays them, shows the rendered size, and links each generation to
+its effect on pixellab.ai.
+
+**Identity.** An effect goes stale when its preset, parts, fps, recipe
+content, or sprite content changes. It does not go stale for a renamed or
+moved file, a new `name` or `prompt`, or a style's prompt, size, or palette
+settings, none of which reach the workbench. Plan cannot see slider changes
+made on pixellab.ai or changes to PixelLab's own presets.
+
+**Regenerating.** A regeneration exports over the effect the asset rendered
+last time, so My effects keeps one entry per asset. If that effect was
+changed on pixellab.ai since, or deleted, a new effect is saved instead and
+the edited one is left alone; the lock records why.
 
 ## Style variants
 
