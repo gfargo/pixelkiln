@@ -87,6 +87,20 @@ export interface Args {
   frames?: number
   /** gallery: skeleton estimates the session may make. */
   estimateLimit?: number
+  /** vfx: a PixelLab VFX preset to start from. */
+  preset?: string
+  /** vfx: a recipe file (a bare recipe or a `.vfx.json` record) to render. */
+  recipe?: string
+  /** vfx: a saved My effects id to start from and export over. */
+  effect?: string
+  /** vfx: parts to add, in order. */
+  parts: string[]
+  /** vfx: the sprite the effect is built around (a file, URL, or PixelLab reference). */
+  sprite?: string
+  /** vfx: frames per second. */
+  fps?: number
+  /** vfx: also export the game-pack ZIP. */
+  gamePack: boolean
 }
 
 const VALUE_FLAGS = [
@@ -97,17 +111,18 @@ const VALUE_FLAGS = [
   "--reviewer", "--note",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
+  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh", "--no-editor",
+  "--edit", "--refresh", "--no-editor", "--game-pack",
 ] as const
 
 export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
-  "skeleton-preview", "unzoom", "pixelate", "font", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "pixelate", "vfx", "font", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -117,6 +132,7 @@ const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 const EDIT_SUBCOMMANDS = ["start", "detach"] as const
 const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
+const VFX_SUBCOMMANDS = ["make", "presets", "parts"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -216,6 +232,12 @@ export function parseArgs(argv: string[]): Args {
       throw new UsageError("skeleton-preview needs a keypoints file or an animate-skeleton asset id")
     }
     rest = rest.slice(1)
+  } else if (command === "vfx") {
+    subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "make" : rest[0]
+    if (!(VFX_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown vfx subcommand "${subcommand}". Known: ${VFX_SUBCOMMANDS.join(", ")}`)
+    }
+    if (rest[0] === subcommand) rest = rest.slice(1)
   } else if (command === "refine") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "run" : rest[0]
     if (!(REFINE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
@@ -418,5 +440,12 @@ export function parseArgs(argv: string[]): Args {
     glyphPx: numberOption("--glyph-px", { min: 8, max: 64, integer: true }),
     frames: numberOption("--frames", { min: 3, max: 15, integer: true }),
     estimateLimit: numberOption("--estimate-limit", { min: 0, max: 1000, integer: true }),
+    preset: get("--preset"),
+    recipe: get("--recipe"),
+    effect: get("--effect"),
+    parts: list("--part"),
+    sprite: get("--sprite"),
+    fps: numberOption("--fps", { min: 1, max: 60, integer: true }),
+    gamePack: rest.includes("--game-pack"),
   }
 }

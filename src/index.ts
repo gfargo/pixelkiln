@@ -48,6 +48,8 @@ export {
 export * from "./pipeline/audit.ts"
 export * from "./pipeline/refine.ts"
 export * from "./pixellab-utils.ts"
+export * from "./pixellab-mcp.ts"
+export * from "./pixellab-vfx.ts"
 export * from "./pipeline/quality-profile.ts"
 export * from "./pipeline/revision.ts"
 export * from "./pipeline/quality-regression.ts"
