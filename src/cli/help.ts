@@ -67,6 +67,10 @@ Commands
             pixel art with Image to Pixel Art Pro Flash; PixelLab picks the
             output size. Optional --description steers the style. 6
             generations; asks first.
+  vfx       PixelLab: build an animated pixel-art effect with the VFX
+            workbench (free) from a --preset, a --recipe file, a saved
+            --effect, and/or --part; writes <out>.png/.gif/.json and a
+            .vfx.json recipe record. vfx presets / vfx parts list options.
   font      PixelLab: generate a pixel font (--description, --out); writes a
             .ttf and a glyph atlas PNG. 15 generations; asks first.
 
@@ -94,6 +98,13 @@ Options
   --description <text>  font: the style to draw, e.g. "warm orange arcade font";
                       pixelate: an optional style steer, e.g. "light dithering"
   --weight <w>        font: Bold or Regular (default)
+  --preset <name>     vfx: start from a whole-effect preset (vfx presets lists them)
+  --recipe <file>     vfx: render a recipe or an earlier run's .vfx.json record
+  --effect <id>       vfx: start from a saved My effects id and export over it
+  --part <name>       vfx: add a part (repeatable; vfx parts lists them)
+  --sprite <ref>      vfx: build around a sprite: a file, a URL, or character:<id>:<dir>
+  --fps <n>           vfx: frames per second, 1-60
+  --game-pack         vfx: also download the game-pack ZIP
   --glyph-px <n>      font: native glyph size, 8, 16 (default), 32, or 64
   --prune             cache: remove invalid/unreferenced local cache data
   --manifest <path>   Default: pixelkiln.manifest.json
@@ -153,6 +164,7 @@ Examples
   pixelkiln quality check --from pixelkiln.quality.json
   pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png
   pixelkiln pixelate --from renders/lodge.png --out art/lodge.png
+  pixelkiln vfx --preset explosion --part scorch_mark --out fx/explosion --game-pack
   pixelkiln font --description "warm orange arcade font" --weight Bold --out fonts/arcade
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json

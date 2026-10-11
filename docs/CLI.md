@@ -54,6 +54,7 @@ Which command:
 | see the account balance | `pixelkiln balance` |
 | shrink upscaled outside art to its native grid before using it as a reference | `pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png` |
 | turn a photo, painting, or render into pixel art | `pixelkiln pixelate --from renders/lodge.png --out art/lodge.png` |
+| make a pixel-art effect (spell, hit, explosion, aura), free | `pixelkiln vfx --preset explosion --out fx/explosion` |
 | generate a pixel font (`.ttf` plus glyph atlas) | `pixelkiln font --description "warm orange arcade font" --out fonts/arcade` |
 | start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
 | see a keypoints file's poses over the source before paying | `pixelkiln skeleton-preview hero-swing` |
@@ -1007,8 +1008,9 @@ which recovers the grid instead of redrawing it.
 - PixelLab picks the output size from the source's detected pixel scale; there
   is no size option. A 256x256 render came back 108x109 and a 384x384 render
   84x110. Sources over 2048px on the longer side are scaled down upstream.
-- The result keeps transparency: both opaque renders measured came back with
-  the subject cut out.
+- **The result is opaque**, on a near-white background (transparent source
+  areas become white too), like `unzoom`. Remove the background afterwards
+  when you need a cut-out sprite.
 - `--description` optionally steers the style, e.g. `"retro vibes with light
   dithering"`.
 - A flat **6 generations**, confirmed against a live bill. The command prints
@@ -1022,6 +1024,57 @@ which recovers the grid instead of redrawing it.
 Like `unzoom`, it writes a loose file and leaves the lockfile alone. Declare
 the result as an asset's `source`, or use it as a `styleImages` or
 `reference` path, to bring it into a manifest.
+
+### `vfx`
+
+```bash
+pixelkiln vfx presets
+pixelkiln vfx parts
+pixelkiln vfx --preset explosion --part scorch_mark --out fx/explosion --game-pack
+pixelkiln vfx --preset heal_pillar --sprite sprites/hero.png --out fx/hero-heal
+pixelkiln vfx --recipe fx/explosion.vfx.json --out fx/explosion-v2
+pixelkiln vfx --effect <saved effect id> --out fx/explosion --force
+```
+
+Builds an animated pixel-art effect with PixelLab's VFX workbench (Create
+VFX), exports it, and downloads it. PixelLab only offers the workbench as an
+MCP tool, with no REST endpoint, so this command talks to PixelLab's MCP
+server with the same `PIXELLAB_API_KEY`. The workbench is a renderer, not a
+model: it is **free** on a subscription and the same recipe renders the
+same pixels every time.
+
+- `vfx presets` and `vfx parts` print PixelLab's current lists: whole-effect
+  presets (explosion, lightning_strike, heal_pillar, portal, aura, and more)
+  and parts to layer on (scorch_mark, spark_burst, stun_stars, rain_streaks,
+  and about 90 others).
+- Start from exactly one of `--preset <name>`, `--recipe <file>`, or
+  `--effect <id>`, or from `--part` alone. `--part <name>` is repeatable and
+  adds parts on top, in order.
+- `--sprite` builds the effect around a character: a local PNG or JPEG, a
+  URL, or a PixelLab reference such as `character:<id>:south`.
+- `--fps <n>` sets the frame rate (1–60). `--name` sets the name saved to
+  your PixelLab "My effects"; it defaults to the preset or the output's file
+  name.
+- `--out <base>` writes `<base>.png` (spritesheet), `<base>.gif`,
+  `<base>.json` (an Aseprite-style frame atlas pointing at the sheet, with the
+  effect's anchor in `meta.anchor`), and `<base>.vfx.json`. `--game-pack`
+  adds `<base>-game.zip`: every piece as its own clip (the whole effect, the
+  layers behind and in front of the sprite, each part) plus a
+  `manifest.json` saying where each plays. Existing files are replaced only
+  with `--force`.
+- `<base>.vfx.json` records the saved effect's id, its edit link on
+  pixellab.ai, the frame facts, the sprite it was built around, and the
+  effect's full **recipe**. Pass it back as `--recipe` to render the same
+  effect again; it reuses the recorded sprite unless you pass `--sprite`.
+- Every run saves the effect to your My effects, where its sliders can be
+  moved on pixellab.ai. Pick the changes up with `--effect <id> --force`,
+  which exports over the saved effect and keeps its name.
+- `--json` prints the export facts and paths; `--dry-run` sends nothing.
+
+For effects that need more than presets and parts (your own layers, exact
+timing, a projectile you drew), use the `vfx_workbench` tool from an MCP
+client such as Claude Code. Then pull the result into the project with
+`pixelkiln vfx --effect <id>`.
 
 ### `font`
 
@@ -1113,7 +1166,7 @@ Print the package version. `-v` is an alias.
 | `--budget <n\|provider=n>` | submit/gen/gallery | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
-| `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
+| `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser (`open`, `xdg-open`, or `start`, by platform), or the editor for `edit`. |
@@ -1129,10 +1182,10 @@ Print the package version. `-v` is an alias.
 | `--from <path>` | init/refine/quality check/unzoom | Existing source tree for init; source PNG or quality record for one-file refine mode; baseline for quality check; the upscaled image for unzoom; the photo or render for pixelate. Omit it to use manifest `style.quality`. |
 | `--exclude <names>` | init | Directory/name fragments to exclude; repeatable. |
 | `--generator <name>` | init | Generator assigned to the scaffolded style. |
-| `--name <name>` | init/font | Project name for the scaffolded manifest, or the generated font's family name. |
+| `--name <name>` | init/font/vfx | Project name for the scaffolded manifest, the generated font's family name, or the effect's name in My effects. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--port <n>` | pick/salvage/gallery | Local review or gallery server port; otherwise chooses a free port. |
-| `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed or pixelated PNG, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
+| `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/vfx/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed or pixelated PNG, the effect's `<base>.png`/`.gif`/`.json`/`.vfx.json`, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
 | `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, or `godot` (TileSet). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
@@ -1154,6 +1207,13 @@ Print the package version. `-v` is an alias.
 | `--description <text>` | font/pixelate | The font's style, e.g. `"warm orange arcade font"`, or an optional style steer for pixelate. |
 | `--weight <w>` | font | `Bold` or `Regular` (default). |
 | `--glyph-px <n>` | font | Native glyph size: `8`, `16` (default), `32`, or `64`. |
+| `--preset <name>` | vfx | Start from one of PixelLab's whole-effect presets; `pixelkiln vfx presets` lists them. |
+| `--recipe <file>` | vfx | Render a recipe: a bare recipe JSON or a `.vfx.json` record from an earlier run. |
+| `--effect <id>` | vfx | Start from an effect saved in your PixelLab My effects, and export over it. |
+| `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
+| `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
+| `--fps <n>` | vfx | Frame rate, 1–60. |
+| `--game-pack` | vfx | Also download the game-pack ZIP (one clip per piece plus a manifest). |
 | `--generation <n\|hash>` | restore | Bring a replaced generation back: `1` is the most recently replaced, or a prefix of one of its output hashes. One asset at a time. |
 
 ## Exit and output contract

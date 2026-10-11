@@ -206,8 +206,8 @@ Measured live, October 2026:
 
 | Source | Description | Output | Billed |
 |---|---|---|---|
-| 256×256 opaque render (a knight) | none | 108×109, transparent background | **6** |
-| 384×384 opaque render (a mountain keep) | "light dithering" | 84×110, transparent background | **6** |
+| 256×256 opaque render (a knight) | none | 108×109, opaque, near-white background | **6** |
+| 384×384 opaque render (a mountain keep) | "light dithering" | 84×110, opaque, near-white background | **6** |
 
 - It is a background job. The submit response carries `estimated_generations:
   6`, `pricing_provisional: true`, and `image_id`/`source_image_id` (the result
@@ -216,8 +216,10 @@ Measured live, October 2026:
   image at `last_response.images[0]` as `{type, base64, width, height}`.
   `last_response.original_images[0]` is the same size, before PixelLab's
   final "touching up pixels" pass. pixelkiln reads `images[0]`.
-- Unlike `image-to-pixelart`, it keeps alpha: both opaque renders came back
-  with the subject cut out on transparency.
+- **The result is opaque.** Both outputs have every pixel at alpha 255, the
+  subject on a near-white field (`#fefefe`). PixelLab's MCP tool for the same
+  conversion says transparent source areas become white too. Run
+  `remove-background` (1 generation) on the result when you need a cut-out.
 
 Wired up as `pixelkiln pixelate`, a standalone command on a loose file like
 `unzoom`; see [the CLI reference](./CLI.md#pixelate). Use `unzoom` instead
@@ -255,11 +257,59 @@ Re-measured after the cut:
 `proTierCost` (≤65536px² is 10, ≤102400px² is 15, larger is 25), the same
 function `inpaint-v3` and `edit-images-v2` revisions use.
 
-**Create VFX** shipped in the same release as an experimental web tool
-(`pixellab.ai/create-vfx`). As of October 2026 it has no REST endpoint in
-`/v2/openapi.json` and no MCP tool; PixelLab says the MCP tool is coming.
-pixelkiln cannot wrap it until one of those exists; see the
-[roadmap](../skills/pixelkiln/references/pixellab-roadmap.md).
+---
+
+## VFX workbench (MCP only), measured
+
+Create VFX shipped in PixelLab 0.4.128 as a web tool
+(`pixellab.ai/create-vfx`). Since October 2026 it is also the
+`vfx_workbench` tool on PixelLab's MCP server. It still has **no REST
+endpoint**: `/v2/openapi.json` lists nothing for it.
+
+**It is a renderer, not a model.** An effect is a JSON recipe of layers
+(glows, rings, rays, particles, noise, and more), most of them dropped in as
+tuned "parts" with their own sliders. PixelLab renders the recipe to
+pixel-art frames, generates nothing, and bills nothing on a subscription.
+Rendering is deterministic: the same recipe re-rendered gave a byte-identical
+sheet and GIF.
+
+**Calling it.** `POST https://api.pixellab.ai/mcp` with the REST API's own key
+as a bearer token, one JSON-RPC `tools/call` per request. No `initialize`
+handshake or session id is needed (the server issues none). The reply is a
+short server-sent-event stream whose `data:` line holds the JSON-RPC
+response; its `content` is plain text plus PNG contact sheets of the frames.
+
+The tool takes one `argv` list per call:
+
+- `start [--preset <name> | --effect <saved id>] [--sprite <image>] [--fps N]`
+  returns a step id. `--preset` and `--effect` also print the working recipe
+  as one JSON line. `--sprite` accepts base64, a `data:` URL, a URL, or
+  `character:<id>:<direction>` / `object:<id>` / `gallery:<id>`.
+- `<step> add_part '{"parts": [...]}'`, `set_part`, `remove_part`, `throw`, and
+  `render '{"recipe": {...}}'` or `'{"patch": [...]}'` each return a **new**
+  step id. Steps are immutable, so an older id is a way back.
+- `<step> export --name <n> [--replace <saved id>] [--game-pack]` saves to
+  the account's My effects and replies with the effect id, an edit link,
+  `<w>x<h>, <n> frames @ <fps> fps, plays once|loops`, the anchor, and a
+  download folder listing `<slug>.gif`, `<slug>.png` (sheet), `<slug>.json`
+  (an Aseprite/TexturePacker-style atlas with `meta.anchor`), and with
+  `--game-pack`, `<slug>-game.zip` (`whole.png`, one sheet per part,
+  `manifest.json` with each clip's depth, frames, and offset). The download
+  URLs need no auth.
+- `describe presets|parts|recipe|edits|...` documents the rest: 17 presets
+  and about 90 parts as of October 2026.
+
+**Two gaps a wrapper has to cover:**
+
+- No reply after a part is added prints the recipe, and the exported JSON
+  does not carry it. `start --effect <saved id>` does, including slider
+  changes made on pixellab.ai, so pixelkiln reads it back from there after
+  each export.
+- A recipe stores only where the sprite stands (`subject: {x, y, align}`),
+  not its pixels, so re-rendering an effect built around a sprite needs the
+  sprite sent again.
+
+Wired up as `pixelkiln vfx`; see [the CLI reference](./CLI.md#vfx).
 
 ---
 

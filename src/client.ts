@@ -1728,8 +1728,8 @@ export class PixelLabClient {
   /**
    * `/image-to-pixelart-pro-flash`: a photo, painting, or render in, pixel
    * art out, with no size to pass: PixelLab detects the native pixel scale
-   * and picks the output size (a 256x256 render came back 108x109, on a
-   * transparent background). A flat 6 generations, billed exactly that live
+   * and picks the output size (a 256x256 render came back 108x109). The
+   * result is opaque, on a near-white background. A flat 6 generations, billed exactly that live
    * in October 2026. Sources over 2048px on the longer side are scaled down
    * upstream. The finished job carries the image at `last_response.images[0]`.
    */

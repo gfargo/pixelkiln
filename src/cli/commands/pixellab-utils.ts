@@ -1,8 +1,10 @@
-/** `unzoom`, `pixelate`, and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
+/** `unzoom`, `pixelate`, `vfx`, and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
 import path from "node:path"
 import { clientFromEnv } from "../../client.ts"
 import { loadEnvFiles } from "../../env.ts"
 import { UsageError } from "../../errors.ts"
+import { mcpClientFromEnv } from "../../pixellab-mcp.ts"
+import { describeVfx, makeVfx, readVfxRecipe, vfxOutputPaths } from "../../pixellab-vfx.ts"
 import {
   defaultPixelateOut,
   defaultUnzoomOut,
@@ -123,4 +125,62 @@ export async function runPixelate(args: Args): Promise<void> {
   log(
     `  ${res.original.width}x${res.original.height}${scaled} → ${res.pixelated.width}x${res.pixelated.height}; wrote ${res.out}`,
   )
+}
+
+export async function runVfx(args: Args): Promise<void> {
+  if (args.subcommand === "presets" || args.subcommand === "parts") {
+    if (args.dryRun) {
+      log(`  would list PixelLab's VFX ${args.subcommand}; nothing sent`)
+      return
+    }
+    loadKeys(args)
+    log(await describeVfx(mcpClientFromEnv(), args.subcommand))
+    return
+  }
+  if (!args.out) throw new UsageError("vfx needs --out <base>: <base>.png, .gif, .json, and .vfx.json are written")
+  const starts = [args.preset, args.recipe, args.effect].filter(Boolean)
+  if (starts.length > 1) throw new UsageError("vfx takes one of --preset, --recipe, or --effect, not several")
+  if (starts.length === 0 && args.parts.length === 0) {
+    throw new UsageError("vfx needs something to start from: --preset <name>, --recipe <file>, --effect <id>, or --part <name>")
+  }
+  const paths = vfxOutputPaths(args.out)
+  const fromRecipe = args.recipe ? await readVfxRecipe(args.recipe) : undefined
+  const sprite = args.sprite ?? fromRecipe?.sprite
+  const recipeName = typeof fromRecipe?.recipe.name === "string" ? fromRecipe.recipe.name : undefined
+  const name = args.name ?? (args.effect ? undefined : recipeName ?? args.preset ?? path.basename(paths.sheet, ".png"))
+  const from = args.preset ? `preset ${args.preset}` : args.recipe ? `recipe ${args.recipe}` : args.effect ? `saved effect ${args.effect}` : "nothing"
+  log(
+    `  vfx ${name ? `"${name}"` : "(keeping its saved name)"} from ${from}` +
+      `${args.parts.length ? ` + ${args.parts.join(", ")}` : ""}${sprite ? ` around ${sprite}` : ""}` +
+      ` → ${paths.sheet} (+ .gif, .json, .vfx.json${args.gamePack ? ", -game.zip" : ""})`,
+  )
+  log("  cost: free on a PixelLab subscription (a renderer, not a generation); saved to your My effects")
+  if (args.dryRun) {
+    log("  dry run: nothing sent")
+    return
+  }
+  if (fromRecipe?.sprite && !args.sprite) log(`  using the sprite the record names: ${fromRecipe.sprite}`)
+  loadKeys(args)
+  const res = await makeVfx(mcpClientFromEnv(), {
+    preset: args.preset,
+    recipe: fromRecipe?.recipe,
+    effect: args.effect,
+    parts: args.parts.map((part) => ({ name: part })),
+    sprite,
+    fps: args.fps,
+    name: args.name,
+    out: args.out,
+    gamePack: args.gamePack,
+    force: args.force,
+    onProgress: (message) => log(`  ${message}…`),
+  })
+  if (args.json) {
+    log(JSON.stringify({ version: 1, ...res }, null, 2))
+    return
+  }
+  log(`  ${res.width}x${res.height}, ${res.frames} frames @ ${res.fps} fps, ${res.loop ? "loops" : "plays once"}`)
+  for (const file of [res.paths.sheet, res.paths.gif, res.paths.atlas, res.paths.gamePack, res.paths.provenance]) {
+    if (file) log(`  wrote ${file}`)
+  }
+  if (res.editUrl) log(`  tweak it with sliders: ${res.editUrl} (then: pixelkiln vfx --effect ${res.effectId} --out ${args.out} --force)`)
 }

@@ -200,8 +200,10 @@ export function defaultPixelateOut(input: string): string {
  * Convert a photo, painting, or render into pixel art with PixelLab's Image
  * to Pixel Art Pro Flash, wait for it, and write the PNG. PixelLab picks the
  * output size itself from the source's detected pixel scale, so there is no
- * size option; the result keeps a transparent background where the model
- * finds one. For art that is already pixel art and merely upscaled, use
+ * size option. The result is opaque, on a near-white background (measured
+ * on both live outputs; transparent source areas become white as well), so
+ * a cut-out sprite needs its background removed afterwards. For art that is
+ * already pixel art and merely upscaled, use
  * `unzoomFile` instead: it recovers the grid rather than redrawing.
  */
 export async function pixelateFile(

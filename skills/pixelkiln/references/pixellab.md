@@ -467,15 +467,22 @@ reference-image method, palette correction, inpaint's output-method choice,
 and inpainting with surrounding `context_image`. See
 [pixellab-roadmap.md](./pixellab-roadmap.md) for the confirmed shape.
 
-Four commands call PixelLab on loose files, outside the manifest and
+Five commands call PixelLab on loose files, outside the manifest and
 lockfile. `pixelkiln unzoom --from <file> --out <file>` returns upscaled
 pixel art to its native grid; run it before outside art becomes a
 `reference` or `styleImages` entry (input at least 256×256, result opaque,
 cost unmeasured). `pixelkiln pixelate --from <file> --out <file>` converts a
 photo, painting, or render into pixel art with Image to Pixel Art Pro Flash:
-PixelLab picks the output size, the result keeps transparency, an optional
+PixelLab picks the output size, the result is opaque on near-white, an optional
 `--description` steers the style, and it costs a flat 6 generations
-(measured) after asking first. `pixelkiln font --description <text> --out <base>` writes a
+(measured) after asking first. `pixelkiln vfx --preset <name> --out <base>`
+builds an animated effect (explosion, heal pillar, lightning strike, aura,
+and more; `pixelkiln vfx presets` and `vfx parts` list them) with PixelLab's
+VFX workbench, which is free and reached through PixelLab's MCP server. Add
+`--part <name>` to layer parts, `--sprite <file|character:<id>:<dir>>` to
+build around a character, and `--game-pack` for per-piece clips. It writes a
+spritesheet, GIF, atlas JSON, and a `.vfx.json` record whose recipe
+re-renders the same effect with `--recipe`. `pixelkiln font --description <text> --out <base>` writes a
 `.ttf` and an 80-glyph atlas for PixelLab's documented 15 generations, and
 asks first. `pixelkiln estimate-skeleton <image> --out <file>` starts an
 `animate-skeleton` keypoints file, and `pixelkiln skeleton-preview <asset>`
