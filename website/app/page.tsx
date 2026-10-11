@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { absoluteUrl } from "@/app/lib/metadata";
+import { CodeBody, CodeWindow } from "@/app/ui/code-window";
 import { CopyCommand } from "@/app/ui/copy-command";
 import { JsonLd } from "@/app/ui/json-ld";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
@@ -384,7 +385,8 @@ export default function Home() {
             </div>
             <div className="lock-visual" aria-label="Example provenance lock entry">
               <div className="lock-label">pixelkiln.lock.json</div>
-              <pre><code>{`{
+              <CodeBody language="json" code={`
+{
   "base/anvil": {
     "status": "downloaded",
     "provider": "pixellab",
@@ -396,7 +398,8 @@ export default function Home() {
       "sha256": "98f1…c42a"
     }]
   }
-}`}</code></pre>
+}
+`} />
               <div className="lock-callout top"><span>◇</span> paid-work identity</div>
               <div className="lock-callout bottom"><span>◇</span> exact output bytes</div>
             </div>
@@ -451,7 +454,8 @@ export default function Home() {
               <div className="cast-visuals">
                 <div className="lock-visual cast-manifest" aria-label="A character family in the manifest">
                   <div className="lock-label">pixelkiln.manifest.json</div>
-                  <pre><code>{`"cast": {
+                  <CodeBody language="json" code={`
+"cast": {
   "generator": "character", "mode": "pro-flash",
   "template": "custom", "size": 96 },
 
@@ -465,7 +469,8 @@ export default function Home() {
   "prompt": "walking in place, short legs stepping",
   "animation": { "of": "bot", "direction": "west",
     "frames": 12, "fps": 12 } },
-"bot.walk.east": { "mirror": "bot.walk.west" }`}</code></pre>
+"bot.walk.east": { "mirror": "bot.walk.west" }
+`} />
                   <div className="lock-callout top"><span>◇</span> 2 generations to rotate</div>
                   <div className="lock-callout bottom"><span>◇</span> 0 for the mirror</div>
                 </div>
@@ -481,6 +486,78 @@ export default function Home() {
                   <figcaption>Four moves on the same robot, animated from a sentence each on the v3 engine: two generations per loop, the resting pose kept as frame 0. Each is reviewed as one set in <code>pick</code> and packed as one looping animation at the fps the manifest records. The arrows and dots are yours; it also cycles on its own.</figcaption>
                 </figure>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="effects-section" id="effects">
+          <div className="shell">
+            <div className="section-heading split-heading">
+              <div>
+                <h2>Effects on your own sprites,<br />rendered for free.</h2>
+              </div>
+              <p className="section-deck">
+                <code>pixelkiln vfx</code> drives PixelLab&apos;s VFX workbench. Start
+                from one of its presets or layer its parts, build the effect around
+                a character, and get a spritesheet, a GIF, an atlas, and a game pack
+                with every piece as its own clip. The workbench renders a recipe
+                instead of generating, so it costs nothing on a subscription, and
+                the recipe it saves renders the same pixels again.
+              </p>
+            </div>
+            <div className="effects-strip">
+              <figure>
+                <picture>
+                  <source media="(prefers-reduced-motion: reduce)" srcSet="/effects/robot-shield-still.png" />
+                  <img src="/effects/robot-shield.gif" alt="A shimmering bubble shield around the robot" width={192} height={192} loading="lazy" />
+                </picture>
+                <figcaption><b>shield_bubble</b> preset</figcaption>
+              </figure>
+              <figure>
+                <picture>
+                  <source media="(prefers-reduced-motion: reduce)" srcSet="/effects/robot-aura-still.png" />
+                  <img src="/effects/robot-aura.gif" alt="A crackling blue aura rising around the robot" width={192} height={224} loading="lazy" />
+                </picture>
+                <figcaption><b>aura</b> preset, electric ramp</figcaption>
+              </figure>
+              <figure>
+                <picture>
+                  <source media="(prefers-reduced-motion: reduce)" srcSet="/effects/robot-lightning-still.png" />
+                  <img src="/effects/robot-lightning.gif" alt="A lightning bolt striking the robot, with a shockwave ring" width={192} height={256} loading="lazy" />
+                </picture>
+                <figcaption><b>lightning_strike</b> preset, one-shot</figcaption>
+              </figure>
+              <figure>
+                <picture>
+                  <source media="(prefers-reduced-motion: reduce)" srcSet="/effects/robot-stun-still.png" />
+                  <img src="/effects/robot-stun.gif" alt="Stars circling over the robot's head" width={142} height={186} loading="lazy" />
+                </picture>
+                <figcaption><b>stun_stars</b> part</figcaption>
+              </figure>
+            </div>
+            <div className="effects-bottom">
+              <CodeWindow
+                title="terminal"
+                language="shell"
+                copyId="effects_vfx_commands"
+                section="effects"
+                code={`
+pixelkiln vfx --preset lightning_strike --sprite robot.png --out fx/zap
+# writes fx/zap.png  .gif  .json  .vfx.json
+
+pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
+`}
+              />
+              <ul className="check-list effects-list">
+                <li><span>✓</span> 17 presets and about 90 parts: explosions, slashes, auras, shields, status icons, weather.</li>
+                <li><span>✓</span> Every effect is saved to your PixelLab account, where its sliders can be moved; <code>--effect</code> pulls the edit back down.</li>
+                <li><span>✓</span> A <code>.vfx.json</code> record keeps the full recipe; re-rendering one gave a byte-identical sheet.</li>
+              </ul>
+            </div>
+            <div className="review-links">
+              <TrackedLink className="text-link" id="effects_cli_docs" section="effects" href="/docs/cli#vfx">
+                Read the vfx reference
+              </TrackedLink>
             </div>
           </div>
         </section>
@@ -842,6 +919,30 @@ export default function Home() {
                 the sprite&apos;s exact size at high confidence with far more detail.
               </p>
             </article>
+            <article className="scenario-panel scenario-panel-wide">
+              <h3>The same render, one PixelLab call</h3>
+              <div className="scenario-strip scenario-strip-three scenario-strip-chain">
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/chain-1-render.png" alt="The same knight render, the source for both conversions" width={256} height={256} sizes="(max-width: 680px) 33vw, 200px" />
+                  <figcaption><b>source</b> the 1 CU render</figcaption>
+                </figure>
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/chain-2-pixelate.png" alt="The knight after Scenario's Pixelate" width={256} height={256} sizes="(max-width: 680px) 33vw, 200px" />
+                  <figcaption><b>5 CU</b> Scenario Pixelate</figcaption>
+                </figure>
+                <figure>
+                  <Image src="/benchmarks/provider-scenario-showcase/pixellab-pixelate.png" alt="The knight after PixelLab's Image to Pixel Art Pro Flash, 108 by 109 pixels" width={108} height={109} sizes="(max-width: 680px) 33vw, 200px" unoptimized />
+                  <figcaption><b>6 gen</b> PixelLab pixelate, 108×109</figcaption>
+                </figure>
+              </div>
+              <p>
+                <code>pixelkiln pixelate</code> sends the same knight to PixelLab&apos;s
+                Image to Pixel Art Pro Flash. PixelLab picked the 108×109 grid itself and
+                returned it in one call for a flat 6 generations. Like Scenario&apos;s
+                Pixelate, the result is opaque, here on near-white, so the cutout step
+                still applies before it becomes a sprite.
+              </p>
+            </article>
           </div>
 
           <article className="scenario-panel scenario-findings">
@@ -858,13 +959,27 @@ export default function Home() {
           </article>
 
           <div className="scenario-bottom">
-            <div className="scenario-snippet">
-              <pre><code>{`"assets": {
-  "knight":    { "styles": ["render"],   "prompt": "…" },
-  "knight-px": { "styles": ["pixelate"], "prompt": "pixelate",
-    "revision": { "mode": "image-to-image",
-                  "from": "knight", "fromStyle": "render" } }
-}`}</code></pre>
+            <div className="scenario-snippet scenario-snippet-window">
+              <CodeWindow
+                title="pixelkiln.manifest.json"
+                language="json"
+                copyId="scenario_chain_manifest"
+                section="scenario"
+                code={`
+"assets": {
+  "knight": { "styles": ["render"], "prompt": "…" },
+  "knight-px": {
+    "styles": ["pixelate"],
+    "prompt": "pixelate",
+    "revision": {
+      "mode": "image-to-image",
+      "from": "knight",
+      "fromStyle": "render"
+    }
+  }
+}
+`}
+              />
               <p>
                 <code>revision.fromStyle</code> lets a style that uses one model
                 revise another style&apos;s output, so a chain across models is declared,
