@@ -4,7 +4,7 @@ import { existsSync } from "node:fs"
 import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
 import { loadLock, spendByUnit } from "../lock.ts"
-import { loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
+import { assetInStyle, loadManifest, resolveSpecs, type LoadedManifest } from "../manifest.ts"
 import { cacheFileName, MediaType, mediaTypeFromExtension } from "../media.ts"
 import { currentEntryOutputPath, frameSetFps, normalizeLockOutputPaths, portableOutputPath, resolveOutputPath, sourceIsStem, sourceOutputPath } from "../outputs.ts"
 import { buildPlan, type PlanState } from "../pipeline/plan.ts"
@@ -325,11 +325,22 @@ export function galleryMediaRoute(id: string): string {
   return `/media/${id}`
 }
 
+/**
+ * The size an effect actually rendered at. A `vfx` spec's size is nominal
+ * until the workbench answers (a preset picks its own canvas), so the lock
+ * entry's own width and height are the guess; the export's are the fact.
+ */
+function renderedSize(entry: LockEntry | undefined): { width: number; height: number } | null {
+  const vfx = entry?.providerMetadata?.[entry.provider]?.vfx as { width?: unknown; height?: unknown } | undefined
+  return typeof vfx?.width === "number" && typeof vfx.height === "number" ? { width: vfx.width, height: vfx.height } : null
+}
+
 /** True when the manifest still pairs this asset with this style. */
 function isDeclared(loaded: LoadedManifest, styleId: string, assetId: string): boolean {
   const asset = loaded.manifest.assets[assetId]
-  if (!asset || !loaded.manifest.styles[styleId]) return false
-  return asset.styles.length === 0 || asset.styles.includes(styleId)
+  const style = loaded.manifest.styles[styleId]
+  if (!asset || !style) return false
+  return assetInStyle(asset, styleId, style)
 }
 
 function matchesFilter(
@@ -754,8 +765,8 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
       generator: entry?.generator ?? spec.generator,
       prompt: entry?.prompt ?? spec.prompt,
       currentPrompt: entry && entry.prompt !== spec.prompt ? spec.prompt : null,
-      width: entry?.width ?? spec.width,
-      height: entry?.height ?? spec.height,
+      width: renderedSize(entry)?.width ?? entry?.width ?? spec.width,
+      height: renderedSize(entry)?.height ?? entry?.height ?? spec.height,
       tileFeature: entry?.tileFeature ?? spec.tileFeature ?? null,
       fps: quality?.frameSet?.fps ?? metadataFps(entry) ?? spec.quality?.fps ?? null,
       cost: entry?.cost ?? 0,

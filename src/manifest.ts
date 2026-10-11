@@ -20,6 +20,7 @@ import {
   CHARACTER_DIRECTIONS_8,
   MIRRORED_DIRECTION,
   type Asset,
+  type AssetVfx,
   type CharacterDirection,
   type Generator,
   type Manifest,
@@ -31,6 +32,7 @@ import {
   type ResolvedRevisionMember,
   type ResolvedSpec,
   type ResolvedStyleImage,
+  type ResolvedVfx,
   type Style,
   type StyleInput,
 } from "./types.ts"
@@ -41,6 +43,7 @@ import { expectedOutputPath, memberPath } from "./outputs.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
 import { parseSkeletonSet, type SkeletonSet } from "./skeleton.ts"
+import { isVfxReference, readVfxRecipe, vfxRecipeSha256 } from "./pixellab-vfx.ts"
 
 export interface LoadedManifest {
   manifest: Manifest
@@ -110,7 +113,7 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
       if (fromStyle) {
         if (!styleIds.has(fromStyle)) {
           unknownReferences.push(`assets.${assetId}.revision.fromStyle: unknown style "${fromStyle}"`)
-        } else if (parent && parent.styles.length && !parent.styles.includes(fromStyle)) {
+        } else if (parent && !assetInStyle(parent, fromStyle, parsed.data.styles[fromStyle])) {
           unknownReferences.push(
             `assets.${assetId}.revision.fromStyle: "${asset.revision.from}" is not in style "${fromStyle}"`,
           )
@@ -159,6 +162,22 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
   }
   const loopFamilies = Object.keys(expansion.families).length ? { loopFamilies: expansion.families } : {}
   return { manifest: parsed.data, root: path.dirname(abs), path: abs, ...loopFamilies }
+}
+
+/**
+ * Whether a style renders an asset. An asset that names its styles is in
+ * exactly those. One that names none joins every style of its own kind: a
+ * `vfx` style takes the assets that declare an effect, every other style the
+ * assets that do not, so a plain prompt never lands in an effects style and
+ * an effect never lands in an image style.
+ */
+export function assetInStyle(
+  asset: Pick<Asset, "styles" | "vfx">,
+  styleId: string,
+  style: Pick<Style, "generator"> | undefined,
+): boolean {
+  if (asset.styles.length) return asset.styles.includes(styleId)
+  return (style?.generator === "vfx") === Boolean(asset.vfx)
 }
 
 /** The asset this one is generated from, whichever shape declares it. */
@@ -329,8 +348,8 @@ export async function resolveSpecs(
     const needed = new Set<string>()
     for (const assetId of resolutionAssetIds) {
       const asset = manifest.assets[assetId]
-      if (asset?.styles.length && !asset.styles.includes(styleId)) continue
-      const fromStyle = asset?.revision?.fromStyle
+      if (!asset || !assetInStyle(asset, styleId, manifest.styles[styleId])) continue
+      const fromStyle = asset.revision?.fromStyle
       if (fromStyle && fromStyle !== styleId) needed.add(fromStyle)
     }
     styleDependencies.set(styleId, needed)
@@ -408,7 +427,7 @@ export async function resolveSpecs(
 
     for (const [assetId, asset] of Object.entries(manifest.assets)) {
       if (!resolutionAssetIds.has(assetId)) continue
-      if (asset.styles.length && !asset.styles.includes(styleId)) continue
+      if (!assetInStyle(asset, styleId, style)) continue
 
       const generator = style.generator
       if (!activeProvider.supports(generator)) {
@@ -432,6 +451,17 @@ export async function resolveSpecs(
       const providerInputs = inputResolution.inputs
       const providerInputIdentity = inputResolution.identity ?? providerInputs
       providerInputIdentities.set(assetId, providerInputIdentity)
+      if (asset.vfx && generator !== "vfx") {
+        throw new Error(`assets.${assetId}: vfx needs a vfx style; "${styleId}" generates ${generator}`)
+      }
+      if (generator === "vfx" && !asset.vfx && !asset.mirror && !asset.revision) {
+        throw new Error(
+          `assets.${assetId}: style "${styleId}" renders effects; give the asset a vfx block, or make it a mirror or revision of one`,
+        )
+      }
+      const vfx = generator === "vfx" && asset.vfx
+        ? await resolveVfxShape(root, assetId, asset.vfx, `pixelkiln:${styleId}/${assetId}`)
+        : undefined
       let width: number
       let height: number
       let size: number
@@ -482,6 +512,13 @@ export async function resolveSpecs(
         size = asset.size ?? style.size ?? 64
         width = size
         height = size
+      } else if (generator === "vfx") {
+        // Nominal until rendered: a recipe's own canvas when there is one.
+        // The export records the real size.
+        const canvas = vfx?.recipe?.recipe.canvas as { w?: unknown; h?: unknown } | undefined
+        width = typeof canvas?.w === "number" ? canvas.w : (asset.width ?? style.size ?? 64)
+        height = typeof canvas?.h === "number" ? canvas.h : (asset.height ?? style.size ?? 64)
+        size = Math.max(width, height)
       } else if (generator === "uiAsset" || generator === "uiElement") {
         // Non-square capable, like imagePro, but 64 (the shared default
         // below) is under uiAsset's own 192px floor — default to 256
@@ -538,7 +575,8 @@ export async function resolveSpecs(
         terrainUpperDescription = wrap(parsed.upper)
         terrainTransitionDescription = parsed.transition ? wrap(parsed.transition) : undefined
         prompt = subject.trim()
-      } else if ((generator === "character" || generator === "objectPro") && characterKind !== "base") {
+      } else if (((generator === "character" || generator === "objectPro") && characterKind !== "base") || vfx) {
+        // An effect's prompt is a label only; nothing sends it.
         prompt = subject.trim()
       } else {
         prompt = [style.promptPrefix, subject, style.promptSuffix]
@@ -634,6 +672,7 @@ export async function resolveSpecs(
         ...(generator === "objectPro" && !asset.revision && characterKind !== "portrait"
           ? { objectPro: await resolveObjectProShape(assetId, asset, style, characterKind, { root, load: loadStyleImage }) }
           : {}),
+        ...(vfx ? { vfx } : {}),
         cost:
           generator === "tiles"
             ? tilesCost(tileSize, tileVariations)
@@ -1144,6 +1183,45 @@ async function resolveMapScene(
   return "oval" in placement
     ? { ...base, placement: { type: "oval", fraction: placement.oval } }
     : { ...base, placement: { type: "rectangle", fraction: placement.rectangle } }
+}
+
+/**
+ * A `vfx` block as hashed and submitted. The recipe file must exist (it is
+ * authored, not generated) and is identified by its content. A local sprite
+ * may be another asset's output that does not exist yet, so it resolves with
+ * a null hash and the asset waits for it, as a scene does. A `.vfx.json`
+ * record's sprite stands in when the manifest names none.
+ */
+async function resolveVfxShape(root: string, assetId: string, vfx: AssetVfx, defaultName: string): Promise<ResolvedVfx> {
+  let recipe: ResolvedVfx["recipe"]
+  let recordedSprite: string | undefined
+  if (vfx.recipe) {
+    const file = path.resolve(root, vfx.recipe)
+    if (!existsSync(file)) throw new Error(`assets.${assetId}.vfx.recipe: VFX recipe not found: ${file}`)
+    const read = await readVfxRecipe(file).catch((error: unknown) => {
+      throw new Error(`assets.${assetId}.vfx.recipe: ${error instanceof Error ? error.message : String(error)}`)
+    })
+    recipe = { file, sha256: vfxRecipeSha256(read.recipe), recipe: read.recipe }
+    recordedSprite = read.sprite
+  }
+  const spriteRef = vfx.sprite
+    ? (isVfxReference(vfx.sprite) ? vfx.sprite : path.resolve(root, vfx.sprite))
+    : recordedSprite
+  let sprite: ResolvedVfx["sprite"]
+  if (spriteRef && isVfxReference(spriteRef)) {
+    sprite = { reference: spriteRef }
+  } else if (spriteRef) {
+    const image = await optionalRevisionImage(spriteRef, `assets.${assetId}.vfx.sprite`)
+    sprite = { file: spriteRef, sha256: image?.hash ?? null, width: image?.width ?? null, height: image?.height ?? null, format: image?.format ?? null }
+  }
+  return {
+    ...(vfx.preset ? { preset: vfx.preset } : {}),
+    ...(recipe ? { recipe } : {}),
+    ...(vfx.parts?.length ? { parts: vfx.parts } : {}),
+    ...(sprite ? { sprite } : {}),
+    ...(vfx.fps !== undefined ? { fps: vfx.fps } : {}),
+    name: vfx.name ?? defaultName,
+  }
 }
 
 async function optionalRevisionImage(

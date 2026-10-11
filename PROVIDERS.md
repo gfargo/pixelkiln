@@ -57,7 +57,7 @@ the providers offer directly.
 | Decision | PixelLab | Retro Diffusion |
 |---|---|---|
 | Best fit today | Existing PixelKiln projects, account reconciliation, and live-tested generation | Native pixel-art styles, USD budgets, animation, and alternate tileset workflows |
-| PixelKiln generators | `map`, `pixflux`, `1dir`, `imagePro`, `imageProFlash`, `tiles`, `terrain`, `isometricTile`, `character`, `objectPro`, `uiAsset`, `uiElement` | `map` and `pixflux` stills, `tiles`, `animation` |
+| PixelKiln generators | `map`, `pixflux`, `1dir`, `imagePro`, `imageProFlash`, `tiles`, `terrain`, `isometricTile`, `character`, `objectPro`, `uiAsset`, `uiElement`, `vfx` | `map` and `pixflux` stills, `tiles`, `animation` |
 | Output | PNG stills, candidates, structural tile members, and ordered frame sets | PNG stills/tiles/spritesheets or animated GIF |
 | Candidate review | Yes; count varies by generator and size | Yes for 1–16 still candidates; animations and tilesets currently use one result |
 | References | `1dir` and tile style modes; a character or `objectPro` reference sprite; a `pro` character concept image; one `imageProFlash` style image; one `uiElement` concept image | Up to nine for supported RD Pro/user still styles; constrained inputs for animation and tiles |
@@ -209,6 +209,7 @@ conversion to dollars:
 | `1dir` | 10–25 generations |
 | `imagePro` | 10–25 generations by canvas (a flat 40 before October 2026) |
 | `imageProFlash` | 5–9 generations (provisional quote) |
+| `vfx` | free (a renderer, not a model) |
 | `tiles` | 10–25 generations |
 | `terrain` | 10–25 generations (unmeasured) |
 | `isometricTile` | 1 generation (measured once) |

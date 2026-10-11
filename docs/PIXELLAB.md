@@ -75,6 +75,7 @@ unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles
 | `isometricTile` | You need one standalone isometric tile, 16 to 64px | 1 generation (measured once) |
 | `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall | 10 to 25 generations |
 | `imageProFlash` | You need a still on the Pro Flash model, optionally styled from one image, 16 to 256px | 5 to 9 generations (provisional quote) |
+| `vfx` | You need an animated effect (spell, hit, explosion, aura), on its own or around a sprite | free (rendered, not generated) |
 | `character` | You need a character in 4 or 8 directions, with states, loops, portraits, or outfits | See [Characters](./CHARACTERS.md) |
 | `objectPro` | You need a prop or creature with rotations, states, or loops but no character rig | about 6 at 64px (unmeasured) |
 | `uiAsset` | You need a UI panel composited from pieces and named elements, 192px and up | 20 generations (measured once) |

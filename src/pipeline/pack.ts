@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { Lock } from "../types.ts"
-import { frameSetFps, resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceIsStem, sourceOutputPath } from "../outputs.ts"
+import { frameSetFps, frameSetLoop, resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceIsStem, sourceOutputPath } from "../outputs.ts"
 import type { AtlasSet } from "./sheet-formats.ts"
 import { sha256 } from "../hash.ts"
 
@@ -326,6 +326,7 @@ export function packStyle(
         id,
         kind: isFrames ? "frames" : "members",
         ...(fps ? { fps } : {}),
+        ...(isFrames && frameSetLoop(entry) === false ? { loop: false } : {}),
         frames: selected.map((output) => output.id),
       })
     }

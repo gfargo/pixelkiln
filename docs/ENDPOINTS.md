@@ -309,7 +309,11 @@ The tool takes one `argv` list per call:
   not its pixels, so re-rendering an effect built around a sprite needs the
   sprite sent again.
 
-Wired up as `pixelkiln vfx`; see [the CLI reference](./CLI.md#vfx).
+Wired up as `pixelkiln vfx` for loose files ([the CLI reference](./CLI.md#vfx))
+and as the `vfx` manifest generator ([GENERATORS.md](./GENERATORS.md#vfx)),
+which cuts the exported sheet into an ordered frame set. The workbench
+answers "the pixel tools are busy. retry in a few seconds." while another
+render on the account is running; pixelkiln retries that with backoff.
 
 ---
 

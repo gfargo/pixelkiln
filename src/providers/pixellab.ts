@@ -4,6 +4,8 @@ import os from "node:os"
 import path from "node:path"
 import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type ProFlashCostOperation, type PixelLabCharacter, type PixelLabObject, type PixelLabUsage } from "../client.ts"
 import { sha256 } from "../hash.ts"
+import { mcpClientFromEnv, type PixelLabMcpClient } from "../pixellab-mcp.ts"
+import { readSavedVfxRecipe, runVfxWorkbench, sliceVfxSheet, vfxRecipeSha256, type VfxExport } from "../pixellab-vfx.ts"
 import { imageMetadata } from "../media.ts"
 import { paletteSwatch } from "../png.ts"
 import {
@@ -70,6 +72,8 @@ export function pixelLabObjectUrl(generator: Generator, objectId: string | null)
     const characterId = objectId.split("#")[0]!
     return characterId ? `https://www.pixellab.ai/create-character/${encodeURIComponent(characterId)}` : null
   }
+  // A rendered effect records its My effects id, which opens with its sliders.
+  if (generator === "vfx") return `https://pixellab.ai/create-vfx?effect=${encodeURIComponent(objectId)}`
   return null
 }
 
@@ -386,10 +390,18 @@ function decodeObjectAnimationJob(jobId: string): ObjectAnimationJob | null {
 export class PixelLabProvider implements Provider {
   readonly id = "pixellab"
 
-  constructor(private readonly client: PixelLabClient) {}
+  /**
+   * `mcp` reaches the tools PixelLab offers only over MCP (the VFX
+   * workbench). Offline and download-only providers have none, and a `vfx`
+   * submission through one says so.
+   */
+  constructor(
+    private readonly client: PixelLabClient,
+    private readonly mcp?: Pick<PixelLabMcpClient, "callTool">,
+  ) {}
 
   static fromEnv(): PixelLabProvider {
-    return new PixelLabProvider(clientFromEnv())
+    return new PixelLabProvider(clientFromEnv(), mcpClientFromEnv())
   }
 
   /** Public storage URLs and the local content cache do not require API auth. */
@@ -415,7 +427,8 @@ export class PixelLabProvider implements Provider {
       generator === "objectPro" ||
       generator === "uiAsset" ||
       generator === "uiElement" ||
-      generator === "imageProFlash"
+      generator === "imageProFlash" ||
+      generator === "vfx"
     )
   }
 
@@ -466,13 +479,16 @@ export class PixelLabProvider implements Provider {
    * the id is the filename, polling is an existence check, and downloading
    * is a file read.
    */
-  private static cacheDir(namespace: "pixflux" | "outfit" = "pixflux"): string {
+  private static cacheDir(namespace: "pixflux" | "outfit" | "vfx" = "pixflux"): string {
     const dir = path.join(os.tmpdir(), `pixelkiln-${namespace}`)
     mkdirSync(dir, { recursive: true })
     return dir
   }
 
   estimate(spec: ResolvedSpec): CostEstimate {
+    // The VFX workbench renders a recipe and bills nothing on a subscription.
+    // Still in generations: one provider's plan never mixes cost units.
+    if (spec.vfx) return { unit: "generations", amount: 0, candidates: 1 }
     if (spec.batch?.role === "member") {
       // The leader's single submission already covers every member; a
       // member reports zero so `--budget` never double-counts one call's
@@ -598,6 +614,9 @@ export class PixelLabProvider implements Provider {
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
+    if (spec.generator === "vfx" && styleImages.length) {
+      throw new Error("PixelLab vfx takes no style images; an effect's look comes from its preset, parts, or recipe")
+    }
     const members = spec.revision?.sourceMembers
     if (spec.revision && members && !MEMBER_SET_REVISION_MODES.includes(spec.revision.mode)) {
       throw new Error(
@@ -1595,6 +1614,7 @@ export class PixelLabProvider implements Provider {
   async submit(spec: ResolvedSpec, styleImages: ResolvedStyleImage[], context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
     this.validate(spec, styleImages)
     if (spec.revision) return this.submitRevision(spec)
+    if (spec.vfx) return this.submitVfx(spec, context)
     if (spec.generator === "character") return this.submitCharacter(spec, styleImages, context)
     if (spec.generator === "objectPro") return this.submitObjectPro(spec, styleImages, context)
     if (spec.generator === "uiAsset") {
@@ -2083,6 +2103,7 @@ export class PixelLabProvider implements Provider {
       return this.pollAnimateRevision(jobId, context)
     }
     if (context?.spec?.revision) return this.pollRevision(jobId)
+    if (generator === "vfx") return this.pollVfx(jobId, context)
     // A Pro Flash image is a plain background job completing with one
     // image, the same as an image-to-image revision; its ids were recorded
     // at submit.
@@ -2136,6 +2157,135 @@ export class PixelLabProvider implements Provider {
    * background job to ask afterwards the way `billedForJob` does for async
    * work.
    */
+  /**
+   * Render a `vfx` asset with the VFX workbench, which is synchronous and
+   * free. The frames are cut from the exported sheet and parked in the
+   * cache like pixflux's bytes; the export's download folder is recorded so
+   * `poll` can cut them again if the cache is cleared.
+   *
+   * A regeneration exports over the effect this asset rendered last time, so
+   * My effects keeps one entry per asset, unless that effect has changed on
+   * pixellab.ai since (someone moved its sliders) or is gone. Then a new
+   * effect is saved and the edited one is left alone.
+   */
+  private async submitVfx(spec: ResolvedSpec, context?: SubmitContext): Promise<{ jobId: string; metadata?: Record<string, unknown> }> {
+    const vfx = spec.vfx!
+    if (!this.mcp) throw new Error("PixelLab vfx renders over PixelLab's MCP server, which this provider was built without")
+    let sprite: string | undefined
+    if (vfx.sprite && "reference" in vfx.sprite) {
+      sprite = vfx.sprite.reference
+    } else if (vfx.sprite) {
+      const { file } = vfx.sprite
+      if (!existsSync(file)) throw new Error(`vfx sprite does not exist yet: ${file}`)
+      const bytes = readFileSync(file)
+      if (sha256(bytes) !== vfx.sprite.sha256) {
+        throw new Error(`vfx sprite changed after the manifest was resolved: ${file}; run the command again`)
+      }
+      const format = imageMetadata(bytes)?.format ?? "png"
+      sprite = `data:image/${format};base64,${bytes.toString("base64")}`
+    }
+
+    const previous = (context?.replacedMetadata?.vfx ?? context?.lastGenerationMetadata?.vfx) as
+      | { effectId?: string; recipe?: Record<string, unknown> | null }
+      | undefined
+    let replace: string | undefined
+    let newEffect: string | undefined
+    if (previous?.effectId) {
+      const upstream = await readSavedVfxRecipe(this.mcp, previous.effectId)
+      if (!upstream) newEffect = `effect ${previous.effectId} is no longer in My effects`
+      else if (!previous.recipe || vfxRecipeSha256(upstream) !== vfxRecipeSha256(previous.recipe)) {
+        newEffect = `effect ${previous.effectId} changed on pixellab.ai since it was rendered; it was kept`
+      } else replace = previous.effectId
+    }
+
+    const jobId = randomUUID()
+    const facts = (exported: VfxExport, name: string) => ({
+      effectId: exported.effectId,
+      editUrl: exported.editUrl,
+      name,
+      imageId: exported.imageId,
+      width: exported.width,
+      height: exported.height,
+      frames: exported.frames,
+      fps: exported.fps,
+      loop: exported.loop,
+      anchor: exported.anchor,
+      downloadBase: exported.downloadBase,
+      files: exported.files,
+      replaced: replace ?? null,
+      ...(newEffect ? { newEffect } : {}),
+    })
+    const { exported, recipe, name } = await runVfxWorkbench(this.mcp, {
+      preset: vfx.preset,
+      recipe: vfx.recipe?.recipe,
+      parts: vfx.parts,
+      sprite,
+      fps: vfx.fps,
+      name: vfx.name,
+      defaultName: vfx.name,
+      replace,
+      notes: `pixelkiln ${spec.styleId}/${spec.assetId}`,
+      // The effect exists from here on; record it before anything else can fail.
+      onExported: (done, effectName) => context?.checkpoint({ jobId, complete: true, metadata: { vfx: facts(done, effectName) } }),
+    })
+    await this.cacheVfxFrames(jobId, exported)
+    return { jobId, metadata: { vfx: { ...facts(exported, name), recipe } } }
+  }
+
+  /** Cut an export's sheet into frames, with a sidecar `poll` reads without any lock metadata. */
+  private async cacheVfxFrames(
+    jobId: string,
+    exported: Pick<VfxExport, "effectId" | "width" | "height" | "frames" | "fps" | "loop" | "downloadBase" | "files">,
+  ): Promise<void> {
+    const sheetFile = exported.files.find((file) => /\.png$/i.test(file))
+    const atlasFile = exported.files.find((file) => /\.json$/i.test(file))
+    if (!sheetFile) throw new Error(`PixelLab's vfx export listed no spritesheet: ${exported.files.join(", ")}`)
+    const sheet = await this.client.download(`${exported.downloadBase}${encodeURIComponent(sheetFile)}`)
+    const atlas = atlasFile
+      ? JSON.parse((await this.client.download(`${exported.downloadBase}${encodeURIComponent(atlasFile)}`)).toString("utf8"))
+      : undefined
+    const frames = sliceVfxSheet(sheet, exported, atlas)
+    const dir = PixelLabProvider.cacheDir("vfx")
+    frames.forEach((frame, index) => writeFileSync(path.join(dir, `${jobId}-${index}.png`), frame))
+    writeFileSync(
+      path.join(dir, `${jobId}.json`),
+      JSON.stringify({ effectId: exported.effectId, count: frames.length, fps: exported.fps, loop: exported.loop }),
+    )
+  }
+
+  private async pollVfx(jobId: string, context?: PollContext): Promise<JobState> {
+    const dir = PixelLabProvider.cacheDir("vfx")
+    const sidecar = path.join(dir, `${jobId}.json`)
+    const cached = () => {
+      if (!existsSync(sidecar)) return null
+      const facts = JSON.parse(readFileSync(sidecar, "utf8")) as { effectId: string; count: number; fps: number; loop: boolean }
+      const files = Array.from({ length: facts.count }, (_, index) => path.join(dir, `${jobId}-${index}.png`))
+      return files.every((file) => existsSync(file)) ? { facts, files } : null
+    }
+    let found = cached()
+    const recorded = context?.metadata?.vfx as Parameters<PixelLabProvider["cacheVfxFrames"]>[1] | undefined
+    if (!found && recorded?.downloadBase && Array.isArray(recorded.files)) {
+      // The cache was cleared; the export's files are still downloadable.
+      await this.cacheVfxFrames(jobId, recorded)
+      found = cached()
+    }
+    if (!found) {
+      return { status: "failed", error: "vfx frames are no longer cached locally; re-run submit for this asset (free)" }
+    }
+    const { facts, files } = found
+    const sources = files.length === 1
+      ? [{ url: `file://${files[0]}` }]
+      : files.map((file, index) => ({ url: `file://${file}`, role: `frame-${String(index).padStart(2, "0")}` }))
+    return {
+      status: "ready",
+      objectId: facts.effectId,
+      sourceUrl: sources[0]!.url,
+      sources,
+      ...(files.length > 1 ? { metadata: { frameSet: { fps: facts.fps, count: files.length, loop: facts.loop } } } : {}),
+      billed: null,
+    }
+  }
+
   private async pollCachedRevision(jobId: string, context?: PollContext): Promise<JobState> {
     const usage = context?.metadata?.revisionUsage as PixelLabUsage | undefined
     const roles = context?.metadata?.revisionMembers

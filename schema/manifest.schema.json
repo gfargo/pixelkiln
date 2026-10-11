@@ -47,7 +47,8 @@
                       "objectPro",
                       "uiAsset",
                       "uiElement",
-                      "imageProFlash"
+                      "imageProFlash",
+                      "vfx"
                     ],
                     "default": "map"
                   },
@@ -505,7 +506,8 @@
                       "objectPro",
                       "uiAsset",
                       "uiElement",
-                      "imageProFlash"
+                      "imageProFlash",
+                      "vfx"
                     ],
                     "default": "map"
                   },
@@ -1542,6 +1544,49 @@
                 "required": [
                   "image"
                 ],
+                "additionalProperties": false
+              },
+              "vfx": {
+                "type": "object",
+                "properties": {
+                  "preset": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "recipe": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "parts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "additionalProperties": {}
+                    }
+                  },
+                  "sprite": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fps": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
                 "additionalProperties": false
               },
               "proportions": {

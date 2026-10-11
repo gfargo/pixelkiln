@@ -122,7 +122,8 @@
                 "objectPro",
                 "uiAsset",
                 "uiElement",
-                "imageProFlash"
+                "imageProFlash",
+                "vfx"
               ],
               "default": "map"
             },

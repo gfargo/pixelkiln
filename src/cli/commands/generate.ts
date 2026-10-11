@@ -271,9 +271,12 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
       }
     }
     // Another wave is worth a look only when this one put new art on disk
-    // and something in the manifest waits on a parent.
+    // and something in the manifest waits on a parent, or on a file another
+    // asset may just have drawn (a scene, an effect's sprite).
     return args.command === "gen" && submitted > 0 && total.downloaded > 0 && !total.failed &&
-      specs.some((spec) => spec.character?.parentSpec || spec.character?.styleAnchor || spec.revision || spec.mirror)
+      specs.some((spec) =>
+        spec.character?.parentSpec || spec.character?.styleAnchor || spec.revision || spec.mirror || spec.scene ||
+        (spec.vfx?.sprite && "file" in spec.vfx.sprite))
   }
   return false
 }

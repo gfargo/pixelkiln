@@ -277,3 +277,13 @@ export function frameSetFps(entry: Pick<LockEntry, "provider" | "providerMetadat
   }
   return null
 }
+
+/**
+ * False when a frame-set entry recorded that it plays once (a one-shot
+ * effect); null when it recorded nothing, which every loop so far means.
+ */
+export function frameSetLoop(entry: Pick<LockEntry, "provider" | "providerMetadata">): boolean | null {
+  const frameSet = entry.providerMetadata?.[entry.provider]?.frameSet
+  const loop = frameSet && typeof frameSet === "object" ? (frameSet as { loop?: unknown }).loop : undefined
+  return typeof loop === "boolean" ? loop : null
+}

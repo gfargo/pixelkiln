@@ -24,9 +24,10 @@ export function inheritorsOf(style, field) {
   return out;
 }
 // noBackground reaches the request only for pixflux and non-PixelLab
-// providers; elsewhere a change is recorded but alters nothing.
+// providers; elsewhere a change is recorded but alters nothing. An effect is
+// rendered from its own vfx block, so no style field reaches it.
 export const fieldReaches = (field, style) =>
-  field === 'enforcePalette' ? false
+  style.generator === 'vfx' || field === 'enforcePalette' ? false
     : field !== 'noBackground' || style.generator === 'pixflux' || style.provider !== 'pixellab';
 export function blastRadius(style, fields) {
   const byId = new Map(S.snap.styles.filter((x) => x.project === style.project).map((x) => [x.id, x]));

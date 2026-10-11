@@ -21,8 +21,10 @@ import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { MAX_DOWNLOAD_BYTES } from "./client.ts"
+import { sha256 } from "./hash.ts"
 import { fetchWithRetry } from "./http.ts"
 import { imageMetadata } from "./media.ts"
+import { decodePng, encodeRgbaPng } from "./png.ts"
 import type { PixelLabMcpClient } from "./pixellab-mcp.ts"
 
 export const VFX_TOOL = "vfx_workbench"
@@ -216,6 +218,137 @@ function localPathFor(file: string, paths: ReturnType<typeof vfxOutputPaths>): s
   return null
 }
 
+export interface VfxWorkbenchOptions {
+  preset?: string
+  recipe?: Record<string, unknown>
+  effect?: string
+  parts?: VfxPart[]
+  /** Already in the form the workbench takes: see `resolveVfxSprite`. */
+  sprite?: string
+  fps?: number
+  /** The My effects name; defaults to the saved effect's or recipe's own, then `defaultName`. */
+  name?: string
+  defaultName: string
+  /** A My effects id to export over instead of saving a new effect. */
+  replace?: string
+  gamePack?: boolean
+  /** Stored with each step by PixelLab, to improve its tools. */
+  notes?: string
+  onProgress?: (message: string) => void
+  /** Called as soon as the export lands, before the recipe is read back, so a caller can checkpoint it. */
+  onExported?: (exported: VfxExport, name: string) => void | Promise<void>
+}
+
+/**
+ * The workbench calls for one effect: start, render a recipe, add parts,
+ * set fps, export, then read the saved effect's recipe back (the export reply
+ * carries none). Downloads nothing.
+ */
+export async function runVfxWorkbench(
+  client: Pick<PixelLabMcpClient, "callTool">,
+  opts: VfxWorkbenchOptions,
+): Promise<{ exported: VfxExport; recipe: Record<string, unknown> | null; name: string }> {
+  const starts = [opts.preset, opts.recipe, opts.effect].filter((value) => value !== undefined).length
+  if (starts > 1) throw new Error("Start a VFX from one of a preset, a recipe, or a saved effect, not several")
+  if (starts === 0 && !opts.parts?.length) {
+    throw new Error("A VFX needs something to start from: a preset, a recipe, a saved effect, or at least one part")
+  }
+  const progress = opts.onProgress ?? (() => {})
+  const call = async (argv: string[]) => (await client.callTool(VFX_TOOL, { argv, ...(opts.notes ? { notes: opts.notes } : {}) })).text
+
+  const startArgv = ["start"]
+  if (opts.sprite) startArgv.push("--sprite", opts.sprite)
+  if (opts.preset) startArgv.push("--preset", opts.preset)
+  if (opts.effect) startArgv.push("--effect", opts.effect)
+  progress(opts.preset ? `starting from preset ${opts.preset}` : opts.effect ? `starting from saved effect ${opts.effect}` : "starting")
+  const started = await call(startArgv)
+  let step = parseVfxStep(started)
+  const savedName = opts.effect ? parseVfxRecipe(started)?.name : opts.recipe?.name
+  const name = opts.name ?? (typeof savedName === "string" ? savedName : undefined) ?? opts.defaultName
+
+  if (opts.recipe) {
+    progress("rendering the recipe")
+    step = parseVfxStep(await call([step, "render", JSON.stringify({ recipe: opts.recipe })]))
+  }
+  if (opts.parts?.length) {
+    progress(`adding ${opts.parts.map((part) => part.name).join(", ")}`)
+    step = parseVfxStep(await call([step, "add_part", JSON.stringify({ parts: opts.parts })]))
+  }
+  if (opts.fps !== undefined) {
+    // `start --fps` is ignored when a preset or saved effect brings its own
+    // (checked live); a patch on the working recipe is what sets it.
+    progress(`setting ${opts.fps} fps`)
+    step = parseVfxStep(await call([step, "render", JSON.stringify({ patch: [{ op: "set", path: "fps", value: opts.fps }] })]))
+  }
+
+  const exportArgv = [step, "export", "--name", name]
+  if (opts.replace) exportArgv.push("--replace", opts.replace)
+  if (opts.gamePack) exportArgv.push("--game-pack")
+  progress(opts.gamePack ? "exporting with a game pack" : "exporting")
+  const exported = parseVfxExport(await call(exportArgv))
+  await opts.onExported?.(exported, name)
+
+  progress("reading the saved recipe")
+  const recipe = parseVfxRecipe(await call(["start", "--effect", exported.effectId]))
+  return { exported, recipe, name }
+}
+
+/** The saved effect's recipe, or null when the account no longer has it (PixelLab: "No saved effect … in your library"). */
+export async function readSavedVfxRecipe(
+  client: Pick<PixelLabMcpClient, "callTool">,
+  effectId: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    return parseVfxRecipe((await client.callTool(VFX_TOOL, { argv: ["start", "--effect", effectId] })).text)
+  } catch (error) {
+    if (error instanceof Error && /no saved effect/i.test(error.message)) return null
+    throw error
+  }
+}
+
+/**
+ * A recipe's identity: what renders, not what it is called. `name` and
+ * `notes` change with an export's name and never reach a pixel, so two
+ * recipes that differ only there hash the same.
+ */
+export function vfxRecipeSha256(recipe: Record<string, unknown>): string {
+  const { name: _name, notes: _notes, ...rest } = recipe
+  return sha256(JSON.stringify(rest))
+}
+
+/**
+ * Cut an exported spritesheet into its frames. The atlas's frame rectangles
+ * are used when it lists one per frame; otherwise the sheet is read as a
+ * row-major grid of `width`x`height` cells, which is how PixelLab lays it out.
+ */
+export function sliceVfxSheet(
+  sheet: Buffer,
+  facts: { width: number; height: number; frames: number },
+  atlas?: unknown,
+): Buffer[] {
+  const image = decodePng(sheet)
+  const listed = (atlas as { frames?: unknown } | undefined)?.frames
+  const rects = Array.isArray(listed) && listed.length === facts.frames
+    ? listed.map((entry) => (entry as { frame: { x: number; y: number; w: number; h: number } }).frame)
+    : Array.from({ length: facts.frames }, (_, index) => {
+        const columns = Math.max(1, Math.floor(image.width / facts.width))
+        return { x: (index % columns) * facts.width, y: Math.floor(index / columns) * facts.height, w: facts.width, h: facts.height }
+      })
+  return rects.map((rect, index) => {
+    if (rect.x < 0 || rect.y < 0 || rect.x + rect.w > image.width || rect.y + rect.h > image.height) {
+      throw new Error(
+        `VFX frame ${index + 1} (${rect.w}x${rect.h} at ${rect.x},${rect.y}) falls outside the ${image.width}x${image.height} sheet`,
+      )
+    }
+    const out = Buffer.alloc(rect.w * rect.h * 4)
+    for (let y = 0; y < rect.h; y++) {
+      const from = ((rect.y + y) * image.width + rect.x) * 4
+      image.pixels.copy(out, y * rect.w * 4, from, from + rect.w * 4)
+    }
+    return encodeRgbaPng(rect.w, rect.h, out)
+  })
+}
+
 /**
  * Build, export, and download one effect: start (preset, saved effect,
  * recipe, or nothing), add parts, export to My effects, download the files,
@@ -236,39 +369,20 @@ export async function makeVfx(client: Pick<PixelLabMcpClient, "callTool">, opts:
     }
   }
   const progress = opts.onProgress ?? (() => {})
-  const call = async (argv: string[]) => (await client.callTool(VFX_TOOL, { argv, notes: "pixelkiln vfx" })).text
-
-  const startArgv = ["start"]
-  if (opts.sprite) startArgv.push("--sprite", await resolveVfxSprite(opts.sprite))
-  if (opts.preset) startArgv.push("--preset", opts.preset)
-  if (opts.effect) startArgv.push("--effect", opts.effect)
-  progress(opts.preset ? `starting from preset ${opts.preset}` : opts.effect ? `starting from saved effect ${opts.effect}` : "starting")
-  const started = await call(startArgv)
-  let step = parseVfxStep(started)
-  const savedName = opts.effect ? parseVfxRecipe(started)?.name : opts.recipe?.name
-  const name = opts.name ?? (typeof savedName === "string" ? savedName : undefined) ?? opts.preset ?? path.basename(paths.sheet, ".png")
-
-  if (opts.recipe) {
-    progress("rendering the recipe")
-    step = parseVfxStep(await call([step, "render", JSON.stringify({ recipe: opts.recipe })]))
-  }
-  if (opts.parts?.length) {
-    progress(`adding ${opts.parts.map((part) => part.name).join(", ")}`)
-    step = parseVfxStep(await call([step, "add_part", JSON.stringify({ parts: opts.parts })]))
-  }
-  if (opts.fps !== undefined) {
-    // `start --fps` is ignored when a preset or saved effect brings its own
-    // (checked live); a patch on the working recipe is what sets it.
-    progress(`setting ${opts.fps} fps`)
-    step = parseVfxStep(await call([step, "render", JSON.stringify({ patch: [{ op: "set", path: "fps", value: opts.fps }] })]))
-  }
-
-  const exportArgv = [step, "export", "--name", name]
-  const replace = opts.replace ?? opts.effect
-  if (replace) exportArgv.push("--replace", replace)
-  if (opts.gamePack) exportArgv.push("--game-pack")
-  progress(opts.gamePack ? "exporting with a game pack" : "exporting")
-  const exported = parseVfxExport(await call(exportArgv))
+  const { exported, recipe, name } = await runVfxWorkbench(client, {
+    preset: opts.preset,
+    recipe: opts.recipe,
+    effect: opts.effect,
+    parts: opts.parts,
+    sprite: opts.sprite ? await resolveVfxSprite(opts.sprite) : undefined,
+    fps: opts.fps,
+    name: opts.name,
+    defaultName: opts.preset ?? path.basename(paths.sheet, ".png"),
+    replace: opts.replace ?? opts.effect,
+    gamePack: opts.gamePack,
+    notes: "pixelkiln vfx",
+    onProgress: progress,
+  })
 
   const download = opts.download ?? defaultDownload
   const written: MakeVfxResult["paths"] = { sheet: paths.sheet, gif: paths.gif, atlas: paths.atlas, provenance: paths.provenance }
@@ -290,9 +404,6 @@ export async function makeVfx(client: Pick<PixelLabMcpClient, "callTool">, opts:
     if (!existsSync(file)) throw new Error(`PixelLab's export listed no file for ${path.basename(file)}: ${exported.files.join(", ")}`)
   }
 
-  // The export reply carries no recipe; the saved effect does, sliders and all.
-  progress("reading the saved recipe")
-  const recipe = parseVfxRecipe(await call(["start", "--effect", exported.effectId]))
   const spriteRecord = !opts.sprite || /^data:/.test(opts.sprite)
     ? undefined
     : isVfxReference(opts.sprite)

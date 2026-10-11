@@ -22,6 +22,8 @@ export interface AtlasSet {
   kind: "frames" | "members"
   /** Playback rate for `frames`; absent for structural sets. */
   fps?: number
+  /** False for a `frames` set that plays once (a one-shot effect); absent means it loops. */
+  loop?: boolean
   /** Frame ids in play order. */
   frames: string[]
 }
@@ -136,7 +138,7 @@ export function renderGodotSpriteFrames(atlas: SheetAtlas, opts: SheetFormatOpti
     )
   }
   for (const set of atlas.sets ?? []) {
-    if (set.kind === "frames") animation(set.id, set.frames, set.fps ?? GODOT_DEFAULT_SPEED, true)
+    if (set.kind === "frames") animation(set.id, set.frames, set.fps ?? GODOT_DEFAULT_SPEED, set.loop ?? true)
     else for (const id of set.frames) animation(id, [id], GODOT_DEFAULT_SPEED, false)
   }
   for (const frame of atlas.frames) {

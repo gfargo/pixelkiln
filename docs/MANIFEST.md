@@ -70,6 +70,7 @@ not merely a label edit.
 | `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
 | `outfit` | object | `character` styles: an existing loop's frames re-clothed from an outfit image, `{ "of": "<loop asset>", "reference": "<image>" }`, with optional `additionalInstructions`. See [Outfit transfer](./CHARACTERS.md#outfit-transfer). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
+| `vfx` | object | `vfx` styles, PixelLab only: the effect to render. `{ "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "sprite": "art/chars/hero.png", "fps": 12 }`; start from one `preset` or one `recipe` (a recipe JSON or a `.vfx.json` record), with optional `parts`, `sprite`, `fps`, and `name`. Replaces `prompt` as the required field. See [`vfx`](./GENERATORS.md#vfx). |
 | `scene` | object | `map` styles, PixelLab only: draw this object into a scene image, in its style. `{ "image": "scene.png", "placement": { "oval": 0.3 } }`; `placement` is `oval` or `rectangle` (a fraction, 0.05–0.95) or `mask` (a PNG the size of the scene). See [Drawing into a scene](./GENERATORS.md#drawing-into-a-scene). |
 | `batch` | object | `1dir` styles: rides along on another `1dir` asset's `item_descriptions` submission instead of generating on its own — `{ "of": "<leader asset id>", "index": <1-based slot> }`. See [`1dir`](./GENERATORS.md#1dir). |
 | `pieces` | array | `uiAsset` styles: exact shape regions (`rounded_rect`/`circle`/`polygon`) the panel is composited from, each with a unique `id`. See [`uiAsset`](./GENERATORS.md#uiasset). |
@@ -79,7 +80,7 @@ not merely a label edit.
 | `concept` | string | `character` styles, `pro` bases: a manifest-relative concept image (up to 1024px) the design is seeded from. |
 | `styleCharacter` | string | `character` styles, `pro` bases: this base's style anchor, over the style's. |
 | `providerInputs` | JSON scalar/sequence map, `{}` | Named per-asset inputs consumed by the active provider. ComfyUI accepts scalars and, for `frames`, one ordered 2–64 value sequence. Image bindings upload PNG/JPEG inputs. |
-| `styles` | string array, `[]` | Restrict the asset to named styles; empty means every style. |
+| `styles` | string array, `[]` | Restrict the asset to named styles. Empty means every style of the asset's kind: `vfx` styles for an asset with a `vfx` block, every other style otherwise. |
 | `promptByStyle` | string map, `{}` | Replace only the asset prompt for a named style. |
 | `cell` | `[column,row]` | The grid cell this asset owns in a mounted sheet; see [stable-cell mounting](#stable-cell-mounting). |
 | `outputRole` | string | Select one structural output when a generator returns a set. |
@@ -119,7 +120,7 @@ One asset using the fields most projects reach for:
 |---|---|---|
 | `extends` | style id | Optional parent style. The child inherits resolved settings but must declare its own `outDir`. |
 | `provider` | top-level default | Provider registry id for this style. Assets cannot override it. |
-| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, `objectPro`, `uiAsset`, `uiElement`, `imageProFlash`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
+| `generator` | `map` | `map`, `1dir`, `pixflux`, `tiles`, `terrain`, `isometricTile`, `imagePro`, `character`, `objectPro`, `uiAsset`, `uiElement`, `imageProFlash`, `vfx`, or provider-specific `animation`/`frames`. See [GENERATORS.md](./GENERATORS.md). |
 | `outDir` | string, required | Output directory relative to the manifest. |
 | `promptPrefix` | `""` | Prepended to every participating asset prompt. |
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
