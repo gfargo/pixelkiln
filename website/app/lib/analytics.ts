@@ -42,6 +42,10 @@ export function trackInstallCommandCopied() {
   track("Install Command Copied", { target: "agent_skill", source: "homepage" });
 }
 
+export function trackCodeCopied(id: string, section: CtaSection) {
+  track("Code Copied", { id, section });
+}
+
 export function trackDocumentationLink(id: string, slug: string, source: CtaSection) {
   track("Documentation Link Clicked", { id, slug, source });
 }

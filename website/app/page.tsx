@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { absoluteUrl } from "@/app/lib/metadata";
+import { CodeBody, CodeWindow } from "@/app/ui/code-window";
 import { CopyCommand } from "@/app/ui/copy-command";
 import { JsonLd } from "@/app/ui/json-ld";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
@@ -384,7 +385,8 @@ export default function Home() {
             </div>
             <div className="lock-visual" aria-label="Example provenance lock entry">
               <div className="lock-label">pixelkiln.lock.json</div>
-              <pre><code>{`{
+              <CodeBody language="json" code={`
+{
   "base/anvil": {
     "status": "downloaded",
     "provider": "pixellab",
@@ -396,7 +398,8 @@ export default function Home() {
       "sha256": "98f1…c42a"
     }]
   }
-}`}</code></pre>
+}
+`} />
               <div className="lock-callout top"><span>◇</span> paid-work identity</div>
               <div className="lock-callout bottom"><span>◇</span> exact output bytes</div>
             </div>
@@ -451,7 +454,8 @@ export default function Home() {
               <div className="cast-visuals">
                 <div className="lock-visual cast-manifest" aria-label="A character family in the manifest">
                   <div className="lock-label">pixelkiln.manifest.json</div>
-                  <pre><code>{`"cast": {
+                  <CodeBody language="json" code={`
+"cast": {
   "generator": "character", "mode": "pro-flash",
   "template": "custom", "size": 96 },
 
@@ -465,7 +469,8 @@ export default function Home() {
   "prompt": "walking in place, short legs stepping",
   "animation": { "of": "bot", "direction": "west",
     "frames": 12, "fps": 12 } },
-"bot.walk.east": { "mirror": "bot.walk.west" }`}</code></pre>
+"bot.walk.east": { "mirror": "bot.walk.west" }
+`} />
                   <div className="lock-callout top"><span>◇</span> 2 generations to rotate</div>
                   <div className="lock-callout bottom"><span>◇</span> 0 for the mirror</div>
                 </div>
@@ -531,12 +536,18 @@ export default function Home() {
               </figure>
             </div>
             <div className="effects-bottom">
-              <pre className="effects-snippet"><code>{`pixelkiln vfx --preset lightning_strike \\
-  --sprite robot.png --out fx/zap
-# fx/zap.png .gif .json .vfx.json
+              <CodeWindow
+                title="terminal"
+                language="shell"
+                copyId="effects_vfx_commands"
+                section="effects"
+                code={`
+pixelkiln vfx --preset lightning_strike --sprite robot.png --out fx/zap
+# writes fx/zap.png  .gif  .json  .vfx.json
 
-pixelkiln vfx --recipe fx/zap.vfx.json \\
-  --out fx/zap-again`}</code></pre>
+pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
+`}
+              />
               <ul className="check-list effects-list">
                 <li><span>✓</span> 17 presets and about 90 parts: explosions, slashes, auras, shields, status icons, weather.</li>
                 <li><span>✓</span> Every effect is saved to your PixelLab account, where its sliders can be moved; <code>--effect</code> pulls the edit back down.</li>
@@ -948,13 +959,27 @@ pixelkiln vfx --recipe fx/zap.vfx.json \\
           </article>
 
           <div className="scenario-bottom">
-            <div className="scenario-snippet">
-              <pre><code>{`"assets": {
-  "knight":    { "styles": ["render"],   "prompt": "…" },
-  "knight-px": { "styles": ["pixelate"], "prompt": "pixelate",
-    "revision": { "mode": "image-to-image",
-                  "from": "knight", "fromStyle": "render" } }
-}`}</code></pre>
+            <div className="scenario-snippet scenario-snippet-window">
+              <CodeWindow
+                title="pixelkiln.manifest.json"
+                language="json"
+                copyId="scenario_chain_manifest"
+                section="scenario"
+                code={`
+"assets": {
+  "knight": { "styles": ["render"], "prompt": "…" },
+  "knight-px": {
+    "styles": ["pixelate"],
+    "prompt": "pixelate",
+    "revision": {
+      "mode": "image-to-image",
+      "from": "knight",
+      "fromStyle": "render"
+    }
+  }
+}
+`}
+              />
               <p>
                 <code>revision.fromStyle</code> lets a style that uses one model
                 revise another style&apos;s output, so a chain across models is declared,
