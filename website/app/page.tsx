@@ -159,7 +159,7 @@ export default function Home() {
             <span>generation providers</span>
           </div>
           <div>
-            <strong>36</strong>
+            <strong>37</strong>
             <span>composable commands</span>
           </div>
           <div>
@@ -916,6 +916,7 @@ export default function Home() {
               <div className="generator-row"><strong>imageProFlash</strong><span>Styled stills on the Pro Flash model, 16–256px</span><span><i style={{ width: "36%" }} /> 5–9 gen (quoted)</span></div>
               <div className="generator-row"><strong>uiAsset</strong><span>UI panels, buttons, and bars from pieces and elements</span><span><i style={{ width: "100%" }} /> 10–25 gen (20 measured before PixelLab&apos;s price cut)</span></div>
               <div className="generator-row"><strong>uiElement</strong><span>One UI element from a description, 16px and up</span><span><i style={{ width: "100%" }} /> 10–25 gen (unmeasured)</span></div>
+              <div className="generator-row"><strong>vfx</strong><span>Animated effects: explosions, spells, auras, hits (a command, via PixelLab&apos;s VFX workbench)</span><span><i style={{ width: "0%" }} /> free on a subscription</span></div>
               <div className="generator-row"><strong>animation</strong><span>Retro Diffusion GIFs and sprite sheets</span><span>USD quote</span></div>
               <div className="generator-row"><strong>frames</strong><span>Controlled ComfyUI still sequences</span><span>0 provider units</span></div>
             </div>
