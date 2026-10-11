@@ -1,3 +1,16 @@
+# [0.88.0](https://github.com/gfargo/pixelkiln/compare/v0.87.0...v0.88.0) (2026-10-11)
+
+
+### Bug Fixes
+
+* **pixellab:** apply vfx --fps as a recipe patch ([d2973fa](https://github.com/gfargo/pixelkiln/commit/d2973fa4f8d9bd9c1739cf898331f0bb9405c4a2))
+
+
+### Features
+
+* **pixellab:** add the vfx manifest generator ([c8ac015](https://github.com/gfargo/pixelkiln/commit/c8ac01573cb97259824dc6c68b72522af8ff33b2))
+* **pixellab:** add vfx, PixelLab's VFX workbench over its MCP server ([7e0c6d1](https://github.com/gfargo/pixelkiln/commit/7e0c6d1532f41b11bef4fc90aaac90f92cfba0e3))
+
 # [0.87.0](https://github.com/gfargo/pixelkiln/compare/v0.86.3...v0.87.0) (2026-10-09)
 
 
