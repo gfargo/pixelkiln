@@ -371,16 +371,20 @@ and as a `vfx` block's `description` ([GENERATORS.md](./GENERATORS.md#described-
 
 ---
 
-## Tilesets: schema only, not yet measured
+## Tilesets: mostly schema, one sidescroller measured
 
 Called out separately because these are the most capable endpoints for level art
-and they are relevant to the disc-golf game. **Costs below are unmeasured.**
+and they are relevant to the disc-golf game. **Top-down costs are unmeasured**:
+pixelkiln plans a top-down set at PixelLab's own quote (Pro 15 for tiles up to
+32px, 25 at 64px; standard 4, the top of its quoted 1 to 4). The sidescroller
+cost below is measured.
 
 `POST /tilesets` (top-down) and `/tilesets-sidescroller` are the current
 versions; `/create-tileset*` are the older aliases with identical schemas.
-The top-down family is wrapped by pixelkiln's `terrain` generator
-(skills/pixelkiln/references/pixellab.md); `/create-tileset-sidescroller` and
-the reference-image/`color_image` knobs below are not.
+Both are wrapped by pixelkiln's `terrain` generator
+(skills/pixelkiln/references/pixellab.md), the sidescroller one with
+`terrainOrientation: "sidescroller"`; the reference-image/`color_image`
+knobs below are not.
 
 They take `lower_description` + `upper_description` (+ optional
 `transition_description`). You describe two terrains and the transition between
@@ -390,8 +394,43 @@ them, and get a tileset that blends them. Distinctively, they accept **both**
 family that combines palette forcing with style anchoring.
 
 Useful knobs: `tile_size`, `tileset_adherence` / `tileset_adherence_freedom`
-(how strictly tiles must fit together), `raggedness` and `slope_size` for edge
-character, plus the usual `outline` / `shading` / `detail`.
+(how strictly tiles must fit together), and the usual `outline` / `shading` /
+`detail`. Pro's border controls are `raggedness`, `roundness`,
+`boundary_amplitude` with `boundary_seed`, `step_slope`, and
+`connect_diagonals`; `spread_x` and `slope_size` are documented as "No
+effect" now and kept only so existing calls work.
+
+`lower_base_tile_id` / `upper_base_tile_id` connect a new set to another
+set's terrain. `GET /tilesets/{id}` (observed live) has a top-level
+`metadata.terrain_ids` of `{ "lower": "<uuid>", "upper": "<uuid>" }`: those
+are the base tile ids, so set A's `upper` id sent as set B's
+`lower_base_tile_id` makes the two share that terrain. pixelkiln records them
+as `terrainIds` when it polls a set.
+
+### Sidescroller, measured
+
+One `POST /create-tileset-sidescroller` call, 16px tiles,
+`transition_size: 0.25`, `lower_description` "mossy stone bricks texture",
+`transition_description` "green grass texture", billed **exactly 3
+generations** (balance 5107 to 5104). PixelLab's MCP tool quotes 2 or 3.
+
+- The body has no `mode`, `view`, `upper_description`, or shape controls.
+  `tile_size` is 16 or 32 only, `transition_size` one of 0, 0.25, 0.5, 1.
+  `lower_base_tile_id` is the only connection field.
+- Submit answers `{ tileset_id, background_job_id, status: "processing" }`,
+  with `usage: null`.
+- `GET /tilesets/{id}` (and `/tilesets-sidescroller/{id}`) returns the
+  top-down shape: 16 tiles named `wang_0` to `wang_15`, each with `corners`
+  and `pattern_4x4`, images base64 inline. But `tileset.terrain_types` is
+  `["central", "background"]` while every corner still says `"lower"` (the
+  platform) or `"upper"` (empty, transparent air; the all-upper tile is
+  blank). pixelkiln records `["lower", "upper"]` so its corner masks work.
+- `metadata.terrain_ids` has `lower` only, and `metadata.view` is `"side"`.
+  `metadata.transition_size` came back `0.0` although 0.25 was sent.
+- `usage` is null on the GET, so the billed amount comes from
+  `GET /background-jobs/{background_job_id}` (`usage.generations: 3.0`).
+
+A trimmed copy of that response is `test/fixtures/tileset/sidescroller-get.json`.
 
 `create-tiles-pro` is a different shape, a single `description` plus
 `style_images`, `tile_view`, `building_*` fields for structures.

@@ -84,6 +84,27 @@ export function specHash(
       uiPieces: spec.uiPieces,
       uiElements: spec.uiElements,
       uiColorPalette: spec.uiColorPalette,
+      // The older terrain knobs (terrainMode, terrainTransitionSize, and the
+      // rest) were never part of this hash, and adding them now would make
+      // every existing terrain entry stale. The Pro shape controls added
+      // after them are identity, each only when set.
+      terrainRoundness: spec.terrainRoundness,
+      terrainBoundaryAmplitude: spec.terrainBoundaryAmplitude,
+      terrainBoundarySeed: spec.terrainBoundarySeed,
+      terrainStepSlope: spec.terrainStepSlope,
+      terrainConnectDiagonals: spec.terrainConnectDiagonals,
+      // "top-down" is the default and draws the same set as leaving it out.
+      terrainOrientation: spec.terrainOrientation === "sidescroller" ? spec.terrainOrientation : undefined,
+      // Which set and which of its terrains, not that terrain's id: the id
+      // is in the lockfile, and the plan compares it there (like a mirror).
+      terrainConnect: spec.terrainConnect
+        ? Object.fromEntries(
+            (["lower", "upper"] as const).flatMap((side) => {
+              const link = spec.terrainConnect![side]
+              return link ? [[side, { of: link.assetId, terrain: link.terrain }]] : []
+            }),
+          )
+        : undefined,
       // Scene and mask enter as their bytes' hashes, never their paths.
       scene: spec.scene
         ? {

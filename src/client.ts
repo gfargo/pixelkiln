@@ -97,6 +97,14 @@ export interface Tileset {
   tiles: TilesetTile[]
 }
 
+/** The parts of a tileset's top-level `metadata` pixelkiln reads. */
+export interface TilesetMetadata {
+  /** Base tile id per terrain (`lower`, `upper`), for connecting another set to it. */
+  terrainIds: Record<string, string>
+  /** `"side"` for a sidescroller set. */
+  view: string | null
+}
+
 export interface MapObject {
   object_id: string
   status: string
@@ -193,6 +201,19 @@ const TilesetGetSchema = z
       })
       .passthrough(),
     usage: UsageSchema,
+    /**
+     * `terrain_ids` names each terrain's base tile id: the id another set
+     * sends as `lower_base_tile_id`/`upper_base_tile_id` to share that
+     * terrain. A sidescroller set has only `lower` (its upper is empty air).
+     */
+    metadata: z
+      .object({
+        terrain_ids: z.record(z.string()).nullable().optional(),
+        view: z.string().nullable().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
   })
   .passthrough()
 const IsometricTileSubmitSchema = z
@@ -845,12 +866,19 @@ export class PixelLabClient {
     lowerDescription: string
     upperDescription: string
     transitionDescription?: string
+    lowerBaseTileId?: string
+    upperBaseTileId?: string
     tileSize?: number
     mode?: string
     shapeStyle?: string
     spreadX?: number
     slopeSize?: number
     raggedness?: number
+    roundness?: number
+    boundaryAmplitude?: number
+    boundarySeed?: number
+    stepSlope?: number
+    connectDiagonals?: boolean
     transitionSize?: number
     view?: string
     outline?: string
@@ -863,12 +891,19 @@ export class PixelLabClient {
       upper_description: args.upperDescription,
     }
     if (args.transitionDescription) body.transition_description = args.transitionDescription
+    if (args.lowerBaseTileId) body.lower_base_tile_id = args.lowerBaseTileId
+    if (args.upperBaseTileId) body.upper_base_tile_id = args.upperBaseTileId
     if (args.tileSize != null) body.tile_size = { width: args.tileSize, height: args.tileSize }
     if (args.mode) body.mode = args.mode
     if (args.shapeStyle) body.shape_style = args.shapeStyle
     if (args.spreadX != null) body.spread_x = args.spreadX
     if (args.slopeSize != null) body.slope_size = args.slopeSize
     if (args.raggedness != null) body.raggedness = args.raggedness
+    if (args.roundness != null) body.roundness = args.roundness
+    if (args.boundaryAmplitude != null) body.boundary_amplitude = args.boundaryAmplitude
+    if (args.boundarySeed != null) body.boundary_seed = args.boundarySeed
+    if (args.stepSlope != null) body.step_slope = args.stepSlope
+    if (args.connectDiagonals != null) body.connect_diagonals = args.connectDiagonals
     if (args.transitionSize != null) body.transition_size = args.transitionSize
     if (args.view) body.view = args.view
     if (args.outline) body.outline = args.outline
@@ -882,14 +917,59 @@ export class PixelLabClient {
     )
   }
 
-  /** Throws PixelLabError(423) while the set is still drawing; see Tileset. */
-  async getTileset(tilesetId: string): Promise<{ tileset: Tileset; usage: PixelLabUsage | null }> {
+  /**
+   * `/create-tileset-sidescroller`: a platform set seen from the side. One
+   * terrain (`lower_description`, the platform body) and the decorative
+   * layer on top of it (`transition_description`); the other side of every
+   * edge is empty air, so there is no upper description, mode, view, or
+   * shape control. 16 or 32px tiles only. The result is read through
+   * `getTileset` like a top-down set.
+   */
+  async createTilesetSidescroller(args: {
+    lowerDescription: string
+    transitionDescription?: string
+    lowerBaseTileId?: string
+    tileSize?: number
+    transitionSize?: number
+    outline?: string
+    shading?: string
+    detail?: string
+    seed?: number
+  }): Promise<{ tileset_id: string; background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { lower_description: args.lowerDescription }
+    if (args.transitionDescription) body.transition_description = args.transitionDescription
+    if (args.lowerBaseTileId) body.lower_base_tile_id = args.lowerBaseTileId
+    if (args.tileSize != null) body.tile_size = { width: args.tileSize, height: args.tileSize }
+    if (args.transitionSize != null) body.transition_size = args.transitionSize
+    if (args.outline) body.outline = args.outline
+    if (args.shading) body.shading = args.shading
+    if (args.detail) body.detail = args.detail
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      TilesetSubmitSchema,
+      await this.request<unknown>("/create-tileset-sidescroller", { method: "POST", body: JSON.stringify(body) }),
+      "create sidescroller tileset",
+    )
+  }
+
+  /**
+   * Throws PixelLabError(423) while the set is still drawing; see Tileset.
+   * Serves top-down and sidescroller sets alike.
+   */
+  async getTileset(tilesetId: string): Promise<{ tileset: Tileset; usage: PixelLabUsage | null; metadata: TilesetMetadata }> {
     const res = await validateResponse(
       TilesetGetSchema,
       await this.request<unknown>(`/tilesets/${tilesetId}`),
       "get tileset",
     )
-    return { tileset: res.tileset, usage: res.usage ?? null }
+    return {
+      tileset: res.tileset,
+      usage: res.usage ?? null,
+      metadata: {
+        terrainIds: res.metadata?.terrain_ids ?? {},
+        view: res.metadata?.view ?? null,
+      },
+    }
   }
 
   /** A single standalone isometric tile — no connectable set, no candidates. */

@@ -34,6 +34,7 @@ export async function inspectRevisionReadiness(
   if (spec.objectPro?.parentSpec) return inspectObjectProParent(spec, lock, new Set())
   if (spec.scene) return inspectScene(spec)
   if (spec.vfx?.sprite && "file" in spec.vfx.sprite) return inspectVfxSprite(spec)
+  if (spec.terrainConnect) return inspectTerrainConnect(spec, lock, new Set())
   if (!spec.revision) return null
   return inspectRevision(spec, lock, new Set())
 }
@@ -56,6 +57,24 @@ async function inspectStyleAnchor(spec: ResolvedSpec, lock: Lock, seen: Set<stri
     return { ready: false, reason: `${label} has no PixelLab character id recorded` }
   }
   return { ready: true, reason: `${label} is current` }
+}
+
+/**
+ * A connected terrain set is drawn from the other set's terrain as PixelLab
+ * holds it, so that set must be downloaded, current, and untouched, with
+ * its tileset id recorded; its terrain id is read through that at submit.
+ */
+async function inspectTerrainConnect(spec: ResolvedSpec, lock: Lock, seen: Set<string>): Promise<RevisionReadiness> {
+  for (const link of [spec.terrainConnect!.lower, spec.terrainConnect!.upper]) {
+    if (!link) continue
+    const label = `connected set ${spec.styleId}/${link.assetId}`
+    const dependency = await inspectParent(link.spec, lock, seen)
+    if (!dependency.ready) return { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
+    if (!lock.entries[lockKey(link.spec.styleId, link.spec.assetId)]?.objectId) {
+      return { ready: false, reason: `${label} has no PixelLab tileset id recorded` }
+    }
+  }
+  return { ready: true, reason: "connected sets are current" }
 }
 
 /**
@@ -291,6 +310,10 @@ async function inspectParent(
   }
   if (spec.objectPro?.parentSpec) {
     const inputs = await inspectObjectProParent(spec, lock, nextSeen)
+    if (!inputs.ready) return inputs
+  }
+  if (spec.terrainConnect) {
+    const inputs = await inspectTerrainConnect(spec, lock, nextSeen)
     if (!inputs.ready) return inputs
   }
 

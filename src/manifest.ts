@@ -12,6 +12,7 @@ import {
   generationCost,
   isometricTileCost,
   parseTerrainDescriptions,
+  terrainCost,
   terrainTileCount,
   tileVariationCount,
   tileFeatureOutputCount,
@@ -157,6 +158,34 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
     visited.add(assetId)
   }
   for (const assetId of Object.keys(parsed.data.assets)) visitParents(assetId, [])
+  // A connected terrain set waits for the set it shares a terrain with, so
+  // two sets that each wait on the other could never generate.
+  const connectVisiting: string[] = []
+  const connectVisited = new Set<string>()
+  const visitConnections = (assetId: string) => {
+    if (connectVisited.has(assetId)) return
+    const cycleStart = connectVisiting.indexOf(assetId)
+    if (cycleStart >= 0) {
+      unknownReferences.push(
+        `assets.${assetId}.connect: connection cycle ${[...connectVisiting.slice(cycleStart), assetId].join(" -> ")}`,
+      )
+      return
+    }
+    connectVisiting.push(assetId)
+    for (const [side, link] of Object.entries(parsed.data.assets[assetId]?.connect ?? {})) {
+      if (!link) continue
+      if (!parsed.data.assets[link.of]) {
+        unknownReferences.push(`assets.${assetId}.connect.${side}.of: unknown asset "${link.of}"`)
+      } else if (link.of === assetId) {
+        unknownReferences.push(`assets.${assetId}.connect.${side}.of: a set cannot connect to itself`)
+      } else {
+        visitConnections(link.of)
+      }
+    }
+    connectVisiting.pop()
+    connectVisited.add(assetId)
+  }
+  for (const assetId of Object.keys(parsed.data.assets)) visitConnections(assetId)
   if (unknownReferences.length) {
     throw new ProjectError(`Manifest at ${abs} is invalid:\n${unknownReferences.map((i) => `  ${i}`).join("\n")}`)
   }
@@ -183,6 +212,15 @@ export function assetInStyle(
 /** The asset this one is generated from, whichever shape declares it. */
 export function parentAssetId(asset: Asset | undefined): string | undefined {
   return asset?.revision?.from ?? asset?.state?.of ?? asset?.animation?.of ?? asset?.portrait?.of ?? asset?.outfit?.of
+}
+
+/** Every asset this one waits for: its parent, and the sets a terrain set connects to. */
+function dependencyAssetIds(asset: Asset | undefined): string[] {
+  const parent = parentAssetId(asset)
+  return [
+    ...(parent ? [parent] : []),
+    ...[asset?.connect?.lower?.of, asset?.connect?.upper?.of].filter((id): id is string => Boolean(id)),
+  ]
 }
 
 function formatManifestIssues(issues: ZodIssue[]): string {
@@ -330,11 +368,12 @@ export async function resolveSpecs(
     ? assetFilter
     : Object.keys(manifest.assets))
   const resolutionAssetIds = new Set(requestedAssetIds)
-  for (const assetId of [...requestedAssetIds]) {
-    let current = parentAssetId(manifest.assets[assetId])
-    while (current && !resolutionAssetIds.has(current)) {
-      resolutionAssetIds.add(current)
-      current = parentAssetId(manifest.assets[current])
+  const pending = [...requestedAssetIds]
+  while (pending.length) {
+    for (const dependency of dependencyAssetIds(manifest.assets[pending.pop()!])) {
+      if (resolutionAssetIds.has(dependency) || !manifest.assets[dependency]) continue
+      resolutionAssetIds.add(dependency)
+      pending.push(dependency)
     }
   }
 
@@ -544,6 +583,9 @@ export async function resolveSpecs(
           `assets.${assetId}: ${asset.portrait ? "portrait" : "outfit"} needs a character style; "${styleId}" generates ${generator}`,
         )
       }
+      if (asset.connect && generator !== "terrain") {
+        throw new Error(`assets.${assetId}: connect needs a terrain style; "${styleId}" generates ${generator}`)
+      }
       if ((asset.pieces || asset.elements) && generator !== "uiAsset") {
         throw new Error(
           `assets.${assetId}: ${asset.pieces ? "pieces" : "elements"} needs a uiAsset style; ` +
@@ -561,7 +603,22 @@ export async function resolveSpecs(
       let terrainUpperDescription: string | undefined
       let terrainTransitionDescription: string | undefined
       let prompt: string
-      if (generator === "terrain") {
+      if (generator === "terrain" && style.terrainOrientation === "sidescroller") {
+        // A platform set has one terrain and the layer on top of it; the
+        // other side of every edge is empty air, which takes no description.
+        const parsed = parseTerrainDescriptions(subject)
+        if (!parsed || parsed.transition) {
+          throw new Error(
+            `assets.${assetId}: a sidescroller terrain needs exactly "1). <platform body> 2). <top layer>" ` +
+              "in its prompt (e.g. 1). stone brick texture 2). green grass texture)",
+          )
+        }
+        const wrap = (text: string) =>
+          [style.promptPrefix, text, style.promptSuffix].map((p) => p.trim()).filter(Boolean).join(", ")
+        terrainLowerDescription = wrap(parsed.lower)
+        terrainTransitionDescription = wrap(parsed.upper)
+        prompt = subject.trim()
+      } else if (generator === "terrain") {
         const parsed = parseTerrainDescriptions(subject)
         if (!parsed) {
           throw new Error(
@@ -598,8 +655,8 @@ export async function resolveSpecs(
         tileFeatureOutputCount(generator === "tiles" ? style.tileFeature : undefined) ??
         tileVariationCount(countNumberedDescriptions(prompt))
       // A `/create-tileset` call is always a connectable set too: 16 tiles,
-      // or 25 at the cliff transitionSize.
-      const terrainTiles = generator === "terrain" ? terrainTileCount(style.terrainTransitionSize) : 0
+      // or 25 in the tall layout.
+      const terrainTiles = generator === "terrain" ? terrainTileCount(style.terrainTransitionSize, style.terrainMode, style.terrainOrientation) : 0
 
       const base = {
         styleId,
@@ -659,8 +716,14 @@ export async function resolveSpecs(
         terrainSpreadX: generator === "terrain" ? style.terrainSpreadX : undefined,
         terrainSlopeSize: generator === "terrain" ? style.terrainSlopeSize : undefined,
         terrainRaggedness: generator === "terrain" ? style.terrainRaggedness : undefined,
+        terrainRoundness: generator === "terrain" ? style.terrainRoundness : undefined,
+        terrainBoundaryAmplitude: generator === "terrain" ? style.terrainBoundaryAmplitude : undefined,
+        terrainBoundarySeed: generator === "terrain" ? style.terrainBoundarySeed : undefined,
+        terrainStepSlope: generator === "terrain" ? style.terrainStepSlope : undefined,
+        terrainConnectDiagonals: generator === "terrain" ? style.terrainConnectDiagonals : undefined,
         terrainTransitionSize: generator === "terrain" ? style.terrainTransitionSize : undefined,
         terrainView: generator === "terrain" ? style.terrainView : undefined,
+        terrainOrientation: generator === "terrain" ? style.terrainOrientation : undefined,
         isometricTileSize: generator === "isometricTile" ? style.isometricTileSize : undefined,
         isometricTileShape: generator === "isometricTile" ? style.isometricTileShape : undefined,
         // A revision in a character or objectPro style is a provider edit of
@@ -679,7 +742,7 @@ export async function resolveSpecs(
           generator === "tiles"
             ? tilesCost(tileSize, tileVariations)
             : generator === "terrain"
-              ? tilesCost(size, terrainTiles)
+              ? terrainCost(style.terrainMode, size, style.terrainOrientation)
               : generator === "isometricTile"
                 ? isometricTileCost()
                 : generationCost(width, height, generator),
@@ -1096,6 +1159,27 @@ export async function resolveSpecs(
             memberAssetIds: sorted.map((m) => m.id),
           }
         }
+      }
+      if (asset.connect) {
+        // The other set is finalized first so its identity is settled; the
+        // terrain id itself is read from its lock entry at submit time.
+        const links: NonNullable<ResolvedSpec["terrainConnect"]> = {}
+        for (const side of ["lower", "upper"] as const) {
+          const link = asset.connect[side]
+          if (!link) continue
+          if (!styleSpecs.has(link.of)) {
+            throw new Error(
+              `assets.${assetId}.connect.${side}.of: "${link.of}" is not in style "${styleId}"; ` +
+                "connected terrain sets share one style",
+            )
+          }
+          const linkedSpec = await finalize(link.of)
+          if (linkedSpec.generator !== "terrain") {
+            throw new Error(`assets.${assetId}.connect.${side}.of: "${link.of}" is not a terrain set`)
+          }
+          links[side] = { assetId: link.of, terrain: link.terrain, spec: linkedSpec }
+        }
+        resolved.terrainConnect = links
       }
       if (asset.scene) resolved.scene = await resolveMapScene(root, styleId, assetId, resolved.generator, asset.scene, activeProvider)
       resolved.specHash = specHash(

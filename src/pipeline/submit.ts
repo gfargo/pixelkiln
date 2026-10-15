@@ -5,11 +5,12 @@ import {
   validateCostEstimate,
   type CostUnit,
   type Provider,
+  type SubmitContext,
 } from "../provider.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
-import { lockKey, type Lock, type ResolvedSpec, type ResolvedStyleImage } from "../types.ts"
+import { lockKey, type Lock, type LockEntry, type ResolvedSpec, type ResolvedStyleImage } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
 import { requireRevisionReady } from "./revision.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
@@ -288,6 +289,26 @@ export async function submit(
       ? lock.entries[lockKey(spec.character.parentSpec.styleId, spec.character.parentSpec.assetId)]
       : undefined
 
+    // A connected terrain set is drawn from the other set's current
+    // generation; which one is recorded so a regenerated set shows it stale.
+    const terrainLinks: NonNullable<SubmitContext["terrainLinks"]> = {}
+    const terrainConnect: NonNullable<LockEntry["terrainConnect"]> = {}
+    for (const side of ["lower", "upper"] as const) {
+      const link = spec.terrainConnect?.[side]
+      if (!link) continue
+      const other = lock.entries[lockKey(link.spec.styleId, link.spec.assetId)]
+      // requireRevisionReady proved the other set downloaded with an id.
+      const objectId = other!.objectId!
+      const terrainIds = other!.providerMetadata?.[provider.id]?.terrainIds as Record<string, unknown> | undefined
+      const terrainId = terrainIds?.[link.terrain]
+      terrainLinks[side] = {
+        objectId,
+        terrain: link.terrain,
+        ...(typeof terrainId === "string" && terrainId ? { terrainId } : {}),
+      }
+      terrainConnect[side] = { sourceAssetId: link.assetId, sourceObjectId: objectId }
+    }
+
     // Record intent before spending, so an interrupted run stays diagnosable.
     upsert(lock, key, {
       styleId: spec.styleId,
@@ -333,6 +354,7 @@ export async function submit(
             referenceSha256: spec.character.outfit!.reference.sha256,
           }
         : null,
+      terrainConnect: spec.terrainConnect ? terrainConnect : undefined,
       status: "pending",
       jobId: previousJobId ?? null,
       ...(previousJobId ? { submissionComplete: false } : { submissionComplete: undefined }),
@@ -385,6 +407,7 @@ export async function submit(
         ...(parentEntry?.objectId ? { parentObjectId: parentEntry.objectId } : {}),
         ...(anchorEntry?.objectId ? { styleObjectId: anchorEntry.objectId } : {}),
         ...(parentOutputs ? { parentOutputs } : {}),
+        ...(spec.terrainConnect ? { terrainLinks } : {}),
         ...(replacedMetadata ? { replacedMetadata } : {}),
         ...(lastGenerationMetadata ? { lastGenerationMetadata } : {}),
         ...(previousMetadata ? { previousMetadata } : {}),

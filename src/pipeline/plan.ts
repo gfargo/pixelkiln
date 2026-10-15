@@ -44,7 +44,25 @@ function dependencies(spec: ResolvedSpec): ResolvedSpec[] {
     spec.character?.parentSpec,
     spec.character?.styleAnchor?.spec,
     spec.objectPro?.parentSpec,
+    spec.terrainConnect?.lower?.spec,
+    spec.terrainConnect?.upper?.spec,
   ].filter((parent): parent is ResolvedSpec => Boolean(parent))
+}
+
+/**
+ * The first side of a connected terrain set whose other set is no longer
+ * the generation this one was drawn from: regenerated, restored to another
+ * generation, or never recorded.
+ */
+function changedTerrainConnection(spec: ResolvedSpec, entry: LockEntry, lock: Lock): string | null {
+  for (const side of ["lower", "upper"] as const) {
+    const link = spec.terrainConnect?.[side]
+    if (!link) continue
+    const other = lock.entries[lockKey(link.spec.styleId, link.spec.assetId)]
+    const recorded = entry.terrainConnect?.[side]
+    if (!recorded || recorded.sourceObjectId !== other?.objectId) return link.assetId
+  }
+  return null
 }
 
 export interface PlanItem {
@@ -134,6 +152,7 @@ export async function buildPlan(
     let state: PlanState
     let reason: string
 
+    const changedConnection = entry ? changedTerrainConnection(spec, entry, lock) : null
     const revision = await inspectRevisionReadiness(spec, lock)
     if (revision && !revision.ready) {
       state = "blocked"
@@ -192,6 +211,11 @@ export async function buildPlan(
       // need their own check, the same way a mirror's source does.
       state = "stale"
       reason = `outfit source ${spec.character.parentAssetId} changed; re-clothe the loop again`
+    } else if (changedConnection) {
+      // Which set and terrain this connects to is in specHash above; the
+      // other set's current generation is only in the lockfile.
+      state = "stale"
+      reason = `connected set ${changedConnection} was regenerated; draw this set from its new terrain`
     } else if (entry.status === "download-failed") {
       state = "recoverable"
       const force = entry.error?.includes("pass --force") ? " --force" : ""
