@@ -18,7 +18,9 @@ own MCP tool schemas (`create_image_pro_flash`, `edit_image_pro_flash`,
 and `search_knowledge`) plus the REST OpenAPI document's `/create-tileset`
 and `/create-tileset-sidescroller` request schemas, where a tutorial's
 framing needed checking against the live surface, the same standard the
-original pass held itself to.
+original pass held itself to. The PixelLab 0.4.130 release notes (October 2026: Tileset
+Pro, a target palette for Create Image Pro, VFX in the API, normal maps)
+were checked the same way against the REST OpenAPI document.
 Read this when scoping new PixelLab work, so effort goes toward a
 confirmed gap with real demand rather than a guess. Nothing here is a
 commitment to build it — it is what is missing, with the evidence for why it
@@ -62,17 +64,26 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   — a real gap, not a docs fix: `tiles`'s own `tileFeature: "tileset"` draws
   one terrain's edges, not two named, connected terrain levels with their own
   transition prompt. Closed by the `terrain` generator; see
-  `pixellab.md`. Cost is unmeasured: the estimate runs a whole set through
-  the canvas-tier formula, so every `terrain` asset plans at 25. PixelLab's
-  `create_topdown_tileset` MCP description quotes Pro at 15 generations up to
-  32px and 25 above (the tilesets tutorial agrees, 15 at 16px and 25 at
-  64px), and standard at 1 to 4, mean 3.1 over 6,124 charges. So the plan
-  over-reads, which is the safe direction for `--budget`.
-  `/create-tileset-sidescroller`, connected sets (`lower_base_tile_id`/
-  `upper_base_tile_id`), reference images, `color_image`, and most of the
-  `pro` pipeline's shape controls remain unmodeled; see
-  [Pro tilesets](#pro-tilesets-shape-controls-sidescrollers-and-connected-sets)
-  below, which also records that `spreadX`/`slopeSize` no longer do anything.
+  `pixellab.md`. Reference images and `color_image` remain unmodeled.
+- **Tileset Pro shape controls, connected sets, and sidescrollers**
+  (PixelLab 0.4.130, October 2026). `terrain` styles take
+  `terrainRoundness`, `terrainBoundaryAmplitude`/`terrainBoundarySeed`,
+  `terrainStepSlope`, and `terrainConnectDiagonals`, each refused outside
+  the mode that reads it. `terrainSpreadX`/`terrainSlopeSize` are
+  deprecated, since PixelLab now documents both as "No effect". A Pro set at
+  `terrainTransitionSize` 0.5 counts as 25 tiles. An asset's `connect` shares
+  a terrain with another set in the same style: pixelkiln records each set's
+  `metadata.terrain_ids`, sends the other set's id as `lower_base_tile_id` or
+  `upper_base_tile_id`, blocks until that set is downloaded, and marks the
+  connected set stale when the other is regenerated.
+  `terrainOrientation: "sidescroller"` calls `/create-tileset-sidescroller`
+  (platform body plus top layer). Its response is the top-down shape with
+  `terrain_types` `["central","background"]` but `lower`/`upper` corners,
+  lower being the platform. **Measured once**: a 16px set at transition 0.25
+  billed exactly 3 generations. Estimates now follow PixelLab's quotes: Pro
+  15 up to 32px and 25 at 64px, standard 4 (the top of its quoted 1 to 4),
+  sidescroller 3. What is still open is in
+  [Pro tilesets](#pro-tilesets-what-is-left-after-04130) below.
 - **Pro-tier full-bleed background generation** (`generate-image-v2`, PixelLab's
   Pro image tier) at arbitrary custom aspect ratios (not just square) —
   already measured at 40 generations in `docs/ENDPOINTS.md`, but `pixflux`
@@ -331,7 +342,30 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   `vfx`, planned, locked, and packed like every other asset (see
   docs/GENERATORS.md). Still open there: a sprite named by asset rather than
   by file, the game pack's per-piece clips, and the effect's anchor in the
-  sheet formats.
+  sheet formats. PixelLab 0.4.130 then put a second effects path in the
+  REST API: `POST /vfx`, the website's VFX *artist*, which builds an effect
+  from a plain-language description and saves it to My effects. It is paid:
+  1 generation for a lite effect with no sprite or one up to 128px, up to 28
+  for a pro effect around a 512px sprite, charged on delivery and never more
+  than twice the quote. Closed as a `vfx` block's `description` (with
+  `artist: "lite" | "pro"`) and `pixelkiln vfx --description`. Plans count
+  twice the quote. Unmeasured: the completed job's `files` shape, whether
+  its sheet matches the workbench's layout, and a real bill. Animated
+  sprites (GIF or strips) are not sent yet.
+- **Normal maps** (`POST /normal-map`, PixelLab 0.4.130) — a sprite's normal
+  map for engine lighting, 8 to 512px, up to 32 frames as one strip so the
+  light stays steady, `opengl` or `directx` convention, 0.5 generations.
+  Closed by the `revision` asset shape's `normal-map` mode (a loop goes as
+  one strip and comes back cut into frames; a character's directions are
+  refused, since a strip would shape every direction from the first) and the
+  standalone `pixelkiln normal-map` command. Styles with `enforcePalette` or
+  `quality` refuse it so nothing palette-snaps a normal map. Unmeasured.
+- **Target palette for Create Image Pro** (`target_palette` on
+  `/generate-image-v2`, PixelLab 0.4.130) — an `imagePro` style's `palette`
+  is now sent as the colors every pixel must use, with `maxColors` (2 to 64
+  per image) and `paletteName`. The beta `smart` mapping is left out because
+  PixelLab documents it as single-image only and `imagePro` returns a grid of
+  candidates below 171px. Cost unchanged and unmeasured with a palette.
 - **October 2026 Pro price cut** — PixelLab 0.4.128 moved every Pro tool from
   20/25/40 to 10/15/25 generations. Cost estimates now use the new prices,
   and `imagePro` (`generate-image-v2`) is tiered instead of a flat 40: a
@@ -390,64 +424,36 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   from an existing 8-direction object's sprites), is not worth a second,
   pricier engine on its own.
 
-## Pro tilesets: shape controls, sidescrollers, and connected sets
+## Pro tilesets: what is left after 0.4.130
 
-"PixelLab Pro Tilesets: Full Guide" walks the web app's Pro tileset form. Checked
-against `/create-tileset`'s REST schema and the `create_topdown_tileset`
-MCP tool, it shows `terrain` has drifted behind the endpoint:
+"PixelLab Pro Tilesets: Full Guide" and the 0.4.130 release ("Tileset Pro
+Update... Both top down and sidescroller has been updated! It also supports
+connecting different tilesets") are now mostly covered; see the closed
+`terrain` entries above. Checked against `/create-tileset` and
+`/create-tileset-sidescroller`'s REST schemas, what remains:
 
-- **`terrainSpreadX` and `terrainSlopeSize` are now no-ops.** Both schemas
-  describe `spread_x` and `slope_size` as "No effect - the Pro pipeline no
-  longer uses it; kept so existing calls work." pixelkiln still sends them
-  and documents them as shape controls. `raggedness` still works, at half
-  strength on tall sets (`transition_size` above 0.4).
-- **Four Pro shape controls are unmodeled.** `roundness` (0 square, 1 round,
-  2 corners cut at 45°; default 0.85 on Pro), `boundary_amplitude` (0 to
-  0.3, how far the border meanders, the video's "uneven boundary") with
-  `boundary_seed` (the "reshuffle" button), `step_slope` (0 cliff to 2
-  gentle slope, Pro at `transition_size` 0.25 only), and `connect_diagonals`
-  (Pro only; joins the two diagonal tiles into one area). The video shows
-  `connect_diagonals` plus `roundness` 2 as the fix for 45° paths and
-  coastlines that otherwise break into one island per step.
-- **Pro at `transition_size` 0.5 returns 25 tiles, not 16.** The REST and
-  MCP schemas agree that Pro reads `transition_size` as wall height and
-  switches to the 25-tile tall-wall layout above 0.4 (the video: "above 40%,
-  it turns into a proper wall... The set grows to 25 tiles"). pixelkiln's
-  `terrainTileCount` returns 25 only at exactly 1, so `plan` shows 16
-  candidates for a Pro set at 0.5. The download keeps every tile the
-  response carries, so this is a display error, not lost tiles.
+- **Pro sidescrollers are web-app only.** The video's sidescroller is the
+  Pro form at 16, 32, and 64px with top-layer height up to 100%.
+  `/create-tileset-sidescroller` has no `mode` field, and its tile size is
+  16 or 32. pixelkiln's sidescroller sets use whatever model that endpoint
+  runs.
+- **Older terrain fields are not identity.** `terrainMode`,
+  `terrainTransitionSize`, `terrainRaggedness`, `terrainShapeStyle`, and
+  `terrainView` never entered `specHash`, so changing one does not mark a set stale. The 0.4.130 fields
+  are hashed (when set). Hashing the older ones would make every existing
+  terrain lock entry stale at once, so it needs a deliberate migration.
 - **Wall-continuation twins export as duplicates.** The 25-tile layout has
   21 distinct corner combinations. Four tiles share corners with a twin and
-  differ only in `pattern_4x4`. pixelkiln records `pattern_4x4` but builds
-  Tiled/Godot masks from `corners`, so each twin pair exports with the same
-  mask.
-- **Sidescroller tilesets** (`/create-tileset-sidescroller`): still a gap. The
-  public endpoint takes `lower_description` (the platform body),
-  `transition_description` (the top layer), `transition_size` (0, 0.25, 0.5,
-  or 1), 16 or 32px, and an optional `lower_base_tile_id`. The MCP tool quotes
-  2 or 3 generations per set. The video's sidescroller is the web app's
-  **Pro** form at 16, 32, and 64px with top-layer height up to 100%. The REST
-  schema has no `mode` field, so Pro sidescrollers are not reachable through
-  the public API today. Demand is demonstrated twice now (this video and
-  "Create a Full Side Scroller Level").
-- **Connected tilesets.** Still a gap. Passing one set's base tile id as the
-  next set's `lower_base_tile_id` (or `upper_base_tile_id`) makes them share
-  that terrain, so ocean, sand, grass, path, and cliffs paint on one map. The
-  video builds four sets this way. `create_map` adds the rule that matters
-  for a future wrapper: sharing a family makes a terrain available, not
-  blendable. Two terrains with no tileset of their own render black where
-  they meet. The video's Claude Code run hit exactly that (a black edge where
-  a path touched the beach) and moved the path. A pixelkiln version would
-  need one asset to reference another's base tile id, which means a
-  dependency edge like `revision`'s parent.
-- **Prompting advice** for the skill reference rather than code: end each
-  terrain description on the word "texture" ("plain smooth sand texture"),
-  because otherwise Pro scatters rocks, shells, or plants over it; Pro needs
-  short prompts; and color, season, and outline words ("autumn", "frosty",
-  "bold black outlines with cel shading", "four-color green palette") move
-  the result more than mood words, while "cute chibi" and "flat shaded" land
-  close together. Standard rewrites the prompt and gives a flatter look with
-  a hard edge.
+  differ only in `pattern_4x4`, which pixelkiln records but cannot express in
+  a four-bit Tiled/Godot corner mask.
+- **Unexercised live:** `lower_base_tile_id`/`upper_base_tile_id`, every
+  new shape control, and the top-down prices (Pro 15 or 25, standard planned
+  at 4 from PixelLab's quoted 1 to 4). Sidescroller tile counts at transition
+  sizes other than 0.25 are assumed to be 16. The one sidescroller call
+  returned `metadata.transition_size: 0.0` although 0.25 was sent.
+- **Prompting advice** lives in the skill reference: end each terrain on
+  the word "texture", keep prompts short, and lead with color, season, and
+  outline words.
 
 ## Generated effects with PixMiniMax
 
