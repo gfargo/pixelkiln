@@ -12,6 +12,7 @@ import {
   generationCost,
   isometricTileCost,
   parseTerrainDescriptions,
+  terrainCost,
   terrainTileCount,
   tileVariationCount,
   tileFeatureOutputCount,
@@ -598,8 +599,8 @@ export async function resolveSpecs(
         tileFeatureOutputCount(generator === "tiles" ? style.tileFeature : undefined) ??
         tileVariationCount(countNumberedDescriptions(prompt))
       // A `/create-tileset` call is always a connectable set too: 16 tiles,
-      // or 25 at the cliff transitionSize.
-      const terrainTiles = generator === "terrain" ? terrainTileCount(style.terrainTransitionSize) : 0
+      // or 25 in the tall layout.
+      const terrainTiles = generator === "terrain" ? terrainTileCount(style.terrainTransitionSize, style.terrainMode) : 0
 
       const base = {
         styleId,
@@ -657,6 +658,11 @@ export async function resolveSpecs(
         terrainSpreadX: generator === "terrain" ? style.terrainSpreadX : undefined,
         terrainSlopeSize: generator === "terrain" ? style.terrainSlopeSize : undefined,
         terrainRaggedness: generator === "terrain" ? style.terrainRaggedness : undefined,
+        terrainRoundness: generator === "terrain" ? style.terrainRoundness : undefined,
+        terrainBoundaryAmplitude: generator === "terrain" ? style.terrainBoundaryAmplitude : undefined,
+        terrainBoundarySeed: generator === "terrain" ? style.terrainBoundarySeed : undefined,
+        terrainStepSlope: generator === "terrain" ? style.terrainStepSlope : undefined,
+        terrainConnectDiagonals: generator === "terrain" ? style.terrainConnectDiagonals : undefined,
         terrainTransitionSize: generator === "terrain" ? style.terrainTransitionSize : undefined,
         terrainView: generator === "terrain" ? style.terrainView : undefined,
         isometricTileSize: generator === "isometricTile" ? style.isometricTileSize : undefined,
@@ -677,7 +683,7 @@ export async function resolveSpecs(
           generator === "tiles"
             ? tilesCost(tileSize, tileVariations)
             : generator === "terrain"
-              ? tilesCost(size, terrainTiles)
+              ? terrainCost(style.terrainMode, size)
               : generator === "isometricTile"
                 ? isometricTileCost()
                 : generationCost(width, height, generator),

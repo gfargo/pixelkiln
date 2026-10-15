@@ -81,6 +81,15 @@ export function specHash(
       uiPieces: spec.uiPieces,
       uiElements: spec.uiElements,
       uiColorPalette: spec.uiColorPalette,
+      // The older terrain knobs (terrainMode, terrainTransitionSize, and the
+      // rest) were never part of this hash, and adding them now would make
+      // every existing terrain entry stale. The Pro shape controls added
+      // after them are identity, each only when set.
+      terrainRoundness: spec.terrainRoundness,
+      terrainBoundaryAmplitude: spec.terrainBoundaryAmplitude,
+      terrainBoundarySeed: spec.terrainBoundarySeed,
+      terrainStepSlope: spec.terrainStepSlope,
+      terrainConnectDiagonals: spec.terrainConnectDiagonals,
       // Scene and mask enter as their bytes' hashes, never their paths.
       scene: spec.scene
         ? {

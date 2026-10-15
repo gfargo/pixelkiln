@@ -248,15 +248,45 @@ export function isometricTileCost(): number {
 }
 
 /**
- * Tiles returned by one `/create-tileset` call: 16 for a standard Wang
- * corner set, or 25 when `transitionSize` is exactly 1.0 (the cliff layout,
- * which adds a third "transition" corner value). `shapeStyle` accepts any
+ * Tiles returned by one `/create-tileset` call: 16 for a Wang corner set, or
+ * 25 in the tall layout. Standard switches to 25 only when `transitionSize`
+ * is exactly 1.0 (the cliff layout, which adds a third "transition" corner
+ * value). Pro reads `transitionSize` as wall height and switches above 0.4,
+ * so a Pro set at 0.5 is 25 tiles too. `shapeStyle` accepts any
  * transitionSize and switches to an extended 32-tile layout above 0.5, which
  * this adapter does not model; `validate()` rejects that combination rather
  * than under-count it here.
+ *
+ * A sidescroller set (`/create-tileset-sidescroller`) came back as 16 tiles
+ * at transitionSize 0.25, the one size measured; it is counted as 16 at
+ * every size until another is.
  */
-export function terrainTileCount(transitionSize: number | undefined): number {
+export function terrainTileCount(
+  transitionSize: number | undefined,
+  mode?: string,
+  orientation?: string,
+): number {
+  if (orientation === "sidescroller") return 16
+  if (mode === "pro") return transitionSize != null && transitionSize > 0.4 ? 25 : 16
   return transitionSize === 1 ? 25 : 16
+}
+
+/**
+ * Cost of one terrain set, in generations. Flat per set, not tiered by the
+ * canvas the way `tiles` is:
+ *
+ *   sidescroller  3, measured (a 16px set at transitionSize 0.25 billed
+ *                 exactly 3)
+ *   pro           15 for tiles up to 32px, 25 at 64px, PixelLab's own quote
+ *   standard      4, the top of PixelLab's quoted 1-4 (mean 3.1), so the
+ *                 plan never under-reads
+ *
+ * The top-down prices are PixelLab's MCP tool description, not measurements.
+ */
+export function terrainCost(mode: string | undefined, tileSize: number, orientation?: string): number {
+  if (orientation === "sidescroller") return 3
+  if (mode === "pro") return tileSize <= 32 ? 15 : 25
+  return 4
 }
 
 /**
@@ -267,6 +297,10 @@ export function terrainTileCount(transitionSize: number | undefined): number {
  * `tiles` already asks for: "1). deep ocean water 2). golden sand 3). wet
  * sand with foam". Returns null when fewer than two numbered groups are
  * found, which the caller turns into a manifest-time error.
+ *
+ * A sidescroller set reads the same groups differently: 1). is the platform
+ * body (`lower_description`) and 2). the top layer on it
+ * (`transition_description`). The caller does that mapping.
  */
 export function parseTerrainDescriptions(
   prompt: string,
@@ -1257,9 +1291,10 @@ const StyleObjectSchema = z
     terrainTileSize: z.union([z.literal(16), z.literal(32), z.literal(64)]).optional(),
     /**
      * `terrain` generator only. `standard` is the classic Wang tileset
-     * pipeline; `pro` is a newer corner-pair pipeline with its own shape
-     * controls (`terrainSpreadX`, `terrainSlopeSize`, `terrainRaggedness`)
-     * in place of `terrainShapeStyle`. The API default is `standard`.
+     * pipeline; `pro` is a newer pipeline with its own shape controls
+     * (`terrainRaggedness`, `terrainRoundness`, `terrainBoundaryAmplitude`,
+     * `terrainStepSlope`, `terrainConnectDiagonals`) in place of
+     * `terrainShapeStyle`. The API default is `standard`.
      */
     terrainMode: z.enum(["standard", "pro"]).optional(),
     /**
@@ -1271,26 +1306,71 @@ const StyleObjectSchema = z
     /**
      * `terrain` generator only, `terrainMode: "standard"`. Procedural
      * boundary geometry: `square` or `round`, 16px or 32px tiles only.
-     * Rejected together with `terrainMode: "pro"`, whose own shape controls
-     * are `terrainSpreadX`/`terrainSlopeSize`/`terrainRaggedness`.
+     * Rejected together with `terrainMode: "pro"`, which has its own shape
+     * controls.
      */
     terrainShapeStyle: z.enum(["square", "round"]).optional(),
-    /** `terrain` generator only, `terrainMode: "pro"`. Boundary spread
-     *  between terrains (0 = steep, 1 = gradual). API default 0.5. */
+    /**
+     * Deprecated: no effect. PixelLab's Pro pipeline no longer reads
+     * `spread_x`; the API keeps accepting it so existing calls work, and so
+     * does pixelkiln. Use `terrainBoundaryAmplitude` or `terrainStepSlope`.
+     */
     terrainSpreadX: z.number().min(0).max(1).optional(),
-    /** `terrain` generator only, `terrainMode: "pro"`. Slope on the N/W/E
-     *  sides as a fraction of wall height. API default 0. */
+    /**
+     * Deprecated: no effect. PixelLab's Pro pipeline no longer reads
+     * `slope_size`; the API keeps accepting it so existing calls work, and
+     * so does pixelkiln. `terrainStepSlope` is the slope control now.
+     */
     terrainSlopeSize: z.number().min(0).max(1).optional(),
     /** `terrain` generator only, `terrainMode: "pro"`. Terrain boundary
-     *  noise (0 = smooth, 1 = rough). API default 0. */
+     *  noise (0 = smooth, 1 = rough), half strength on tall sets
+     *  (`terrainTransitionSize` above 0.4). API default 0. */
     terrainRaggedness: z.number().min(0).max(1).optional(),
+    /**
+     * `terrain` generator only, `terrainMode: "pro"` or `terrainShapeStyle`.
+     * Corner shape of the border between the terrains: 0 square, 1 round,
+     * 2 corners cut at 45° (values between blend). Above 1 needs pro. The API
+     * default is 0.85 on pro and 0.6 with a shape style. With
+     * `terrainConnectDiagonals`, 2 is the fix for 45° paths and coastlines
+     * that otherwise break into one island per step.
+     */
+    terrainRoundness: z.number().min(0).max(2).optional(),
+    /**
+     * `terrain` generator only, `terrainMode: "pro"` (any transition size)
+     * or `terrainShapeStyle` (transition size up to 0.5). How far the border
+     * meanders instead of running straight: 0 straight (the default) to 0.3.
+     * Tiles still connect seamlessly.
+     */
+    terrainBoundaryAmplitude: z.number().min(0).max(0.3).optional(),
+    /**
+     * `terrain` generator only, with `terrainBoundaryAmplitude`. Picks the
+     * meander's shape: another number gives a different border at the same
+     * amplitude, the same number the same border. API default 0.
+     */
+    terrainBoundarySeed: z.number().int().min(0).optional(),
+    /**
+     * `terrain` generator only, `terrainMode: "pro"` with
+     * `terrainTransitionSize: 0.25`. How the bank between the terrains
+     * falls: 0 a straight cliff (the default) to 2 a gentle slope spread
+     * over more ground.
+     */
+    terrainStepSlope: z.number().min(0).max(2).optional(),
+    /**
+     * `terrain` generator only, `terrainMode: "pro"`. On the two diagonal
+     * tiles (upper terrain in opposite corners), true joins the upper
+     * corners through the middle into one area; false (the default) runs the
+     * lower terrain between them.
+     */
+    terrainConnectDiagonals: z.boolean().optional(),
     /**
      * `terrain` generator only. Visual height of the step between lower and
      * upper terrain. Without `terrainShapeStyle`, only 0, 0.25, 0.5, or 1 are
-     * accepted (1 switches to the 25-tile cliff layout, where corners take a
-     * third "transition" value); with it, any value from 0 to 1 works, but
-     * above 0.5 switches to an extended 32-tile layout this adapter does not
-     * model. API default 0.
+     * accepted. Standard switches to the 25-tile cliff layout at 1, where
+     * corners take a third "transition" value; Pro reads it as wall height
+     * and switches to the 25-tile tall-wall layout above 0.4, so 0.5 is
+     * already 25 tiles there. With `terrainShapeStyle`, any value from 0 to 1
+     * works, but above 0.5 switches to an extended 32-tile layout this
+     * adapter does not model. API default 0.
      */
     terrainTransitionSize: z.number().min(0).max(1).optional(),
     /** `terrain` generator only. Camera angle; the API default is `high
@@ -2203,6 +2283,11 @@ export interface ResolvedSpec {
   terrainSpreadX?: number
   terrainSlopeSize?: number
   terrainRaggedness?: number
+  terrainRoundness?: number
+  terrainBoundaryAmplitude?: number
+  terrainBoundarySeed?: number
+  terrainStepSlope?: number
+  terrainConnectDiagonals?: boolean
   terrainTransitionSize?: number
   terrainView?: string
   /** `isometricTile` generator only. See StyleSchema for what each one means. */

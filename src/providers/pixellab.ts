@@ -591,9 +591,10 @@ export class PixelLabProvider implements Provider {
     }
     // `tiles` and `terrain` both price and count off the whole set, both of
     // which the manifest layer already worked out; see tilesCost /
-    // tileVariationCount / terrainTileCount. `/create-tileset`'s own cost is
-    // unmeasured, so this borrows the same canvas-tier model. `isometricTile`
-    // is a real measured flat 1 generation; see isometricTileCost().
+    // tileVariationCount / terrainCost / terrainTileCount. A terrain set is
+    // flat per set by mode (PixelLab's own quote for top-down, measured for
+    // a sidescroller), not canvas-tiered. `isometricTile` is a real measured
+    // flat 1 generation; see isometricTileCost().
     if (spec.generator === "tiles" || spec.generator === "terrain" || spec.generator === "isometricTile") {
       return { unit: "generations", amount: spec.cost, candidates: spec.candidates }
     }
@@ -817,8 +818,27 @@ export class PixelLabProvider implements Provider {
       if (spec.terrainShapeStyle && spec.terrainMode === "pro") {
         throw new Error(
           "PixelLab terrain: terrainShapeStyle is standard-mode only; pro's own shape controls " +
-            "are terrainSpreadX/terrainSlopeSize/terrainRaggedness",
+            "are terrainRaggedness/terrainRoundness/terrainBoundaryAmplitude/terrainStepSlope",
         )
+      }
+      const pro = spec.terrainMode === "pro"
+      if (spec.terrainRoundness != null && !pro && !spec.terrainShapeStyle) {
+        throw new Error('PixelLab terrain: terrainRoundness needs terrainMode: "pro" or a terrainShapeStyle')
+      }
+      if (spec.terrainRoundness != null && spec.terrainRoundness > 1 && !pro) {
+        throw new Error('PixelLab terrain: terrainRoundness above 1 (corners cut toward 45°) needs terrainMode: "pro"')
+      }
+      if (spec.terrainBoundaryAmplitude != null && !pro && !spec.terrainShapeStyle) {
+        throw new Error('PixelLab terrain: terrainBoundaryAmplitude needs terrainMode: "pro" or a terrainShapeStyle')
+      }
+      if (spec.terrainBoundarySeed != null && spec.terrainBoundaryAmplitude == null) {
+        throw new Error("PixelLab terrain: terrainBoundarySeed shapes terrainBoundaryAmplitude's border; set both or neither")
+      }
+      if (spec.terrainStepSlope != null && !(pro && spec.terrainTransitionSize === 0.25)) {
+        throw new Error('PixelLab terrain: terrainStepSlope needs terrainMode: "pro" with terrainTransitionSize 0.25')
+      }
+      if (spec.terrainConnectDiagonals != null && !pro) {
+        throw new Error('PixelLab terrain: terrainConnectDiagonals needs terrainMode: "pro"')
       }
       if (spec.terrainTileSize === 64 && spec.terrainMode !== "pro") {
         throw new Error('PixelLab terrain: a 64px tile needs terrainMode: "pro"')
@@ -1717,6 +1737,11 @@ export class PixelLabProvider implements Provider {
         spreadX: spec.terrainSpreadX,
         slopeSize: spec.terrainSlopeSize,
         raggedness: spec.terrainRaggedness,
+        roundness: spec.terrainRoundness,
+        boundaryAmplitude: spec.terrainBoundaryAmplitude,
+        boundarySeed: spec.terrainBoundarySeed,
+        stepSlope: spec.terrainStepSlope,
+        connectDiagonals: spec.terrainConnectDiagonals,
         transitionSize: spec.terrainTransitionSize,
         view: spec.terrainView,
         outline: spec.outline,

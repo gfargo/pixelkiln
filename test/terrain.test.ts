@@ -6,7 +6,8 @@ import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { PixelLabProvider } from "../src/providers/pixellab.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
-import { parseTerrainDescriptions, terrainTileCount, tilesCost, type Lock, type ResolvedSpec } from "../src/types.ts"
+import { parseTerrainDescriptions, terrainCost, terrainTileCount, type Lock, type ResolvedSpec } from "../src/types.ts"
+import { specHash } from "../src/hash.ts"
 
 let dir: string
 
@@ -56,6 +57,23 @@ describe("terrainTileCount", () => {
     expect(terrainTileCount(0.5)).toBe(16)
     expect(terrainTileCount(1)).toBe(25)
   })
+
+  it("switches a Pro set to the 25-tile tall-wall layout above 0.4", () => {
+    expect(terrainTileCount(undefined, "pro")).toBe(16)
+    expect(terrainTileCount(0.25, "pro")).toBe(16)
+    expect(terrainTileCount(0.5, "pro")).toBe(25)
+    expect(terrainTileCount(1, "pro")).toBe(25)
+  })
+})
+
+describe("terrainCost", () => {
+  it("prices a set flat by mode and tile size", () => {
+    expect(terrainCost(undefined, 16)).toBe(4)
+    expect(terrainCost("standard", 32)).toBe(4)
+    expect(terrainCost("pro", 16)).toBe(15)
+    expect(terrainCost("pro", 32)).toBe(15)
+    expect(terrainCost("pro", 64)).toBe(25)
+  })
 })
 
 describe("resolving a terrain spec", () => {
@@ -73,7 +91,7 @@ describe("resolving a terrain spec", () => {
     expect(spec.width).toBe(32)
     expect(spec.height).toBe(32)
     expect(spec.candidates).toBe(16)
-    expect(spec.cost).toBe(tilesCost(32, 16))
+    expect(spec.cost).toBe(15)
   })
 
   it("wraps each parsed segment in the style's prompt prefix/suffix", async () => {
@@ -83,11 +101,48 @@ describe("resolving a terrain spec", () => {
     expect(spec.terrainUpperDescription).toBe("pixel art, golden sand, 16-bit")
   })
 
-  it("prices and counts off the cliff transition tier", async () => {
+  it("counts off the cliff transition tier at standard's flat price", async () => {
     const loaded = await writeManifest({ terrainTransitionSize: 1 })
     const [spec] = await resolveSpecs(loaded)
     expect(spec.candidates).toBe(25)
-    expect(spec.cost).toBe(tilesCost(16, 25))
+    expect(spec.cost).toBe(4)
+  })
+
+  it("counts a Pro set at transitionSize 0.5 as 25 tiles", async () => {
+    const loaded = await writeManifest({ terrainMode: "pro", terrainTransitionSize: 0.5, terrainTileSize: 64 })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec.candidates).toBe(25)
+    expect(spec.cost).toBe(25)
+  })
+
+  it("carries the Pro shape controls", async () => {
+    const loaded = await writeManifest({
+      terrainMode: "pro",
+      terrainTransitionSize: 0.25,
+      terrainRoundness: 2,
+      terrainBoundaryAmplitude: 0.2,
+      terrainBoundarySeed: 7,
+      terrainStepSlope: 1.5,
+      terrainConnectDiagonals: true,
+    })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec).toMatchObject({
+      terrainRoundness: 2,
+      terrainBoundaryAmplitude: 0.2,
+      terrainBoundarySeed: 7,
+      terrainStepSlope: 1.5,
+      terrainConnectDiagonals: true,
+    })
+  })
+
+  it("keeps an existing terrain spec's hash and hashes each shape control only when set", async () => {
+    const [plain] = await resolveSpecs(await writeManifest({ terrainMode: "pro" }))
+    // The hash a terrain spec had before the shape controls existed.
+    const { terrainRoundness: _r, terrainBoundaryAmplitude: _a, terrainBoundarySeed: _s, terrainStepSlope: _t, terrainConnectDiagonals: _d, ...legacy } = plain!
+    expect(plain!.specHash).toBe(specHash(legacy, []))
+    const [round] = await resolveSpecs(await writeManifest({ terrainMode: "pro", terrainRoundness: 1 }))
+    const [diagonal] = await resolveSpecs(await writeManifest({ terrainMode: "pro", terrainConnectDiagonals: false }))
+    expect(new Set([plain!.specHash, round!.specHash, diagonal!.specHash]).size).toBe(3)
   })
 
   it("rejects a terrain prompt without two numbered groups", async () => {
@@ -138,6 +193,23 @@ describe("provider", () => {
     await expect(resolveSpecs(loaded)).rejects.toThrow(/64px tile needs terrainMode/)
   })
 
+  it.each([
+    [{ terrainRoundness: 1 }, /terrainRoundness needs terrainMode: "pro" or a terrainShapeStyle/],
+    [{ terrainShapeStyle: "round", terrainRoundness: 1.5 }, /terrainRoundness above 1 .* needs terrainMode: "pro"/],
+    [{ terrainBoundaryAmplitude: 0.1 }, /terrainBoundaryAmplitude needs terrainMode: "pro" or a terrainShapeStyle/],
+    [{ terrainMode: "pro", terrainBoundarySeed: 3 }, /terrainBoundarySeed .* set both or neither/],
+    [{ terrainMode: "pro", terrainStepSlope: 1 }, /terrainStepSlope needs terrainMode: "pro" with terrainTransitionSize 0.25/],
+    [{ terrainStepSlope: 1, terrainTransitionSize: 0.25 }, /terrainStepSlope needs terrainMode: "pro"/],
+    [{ terrainConnectDiagonals: true }, /terrainConnectDiagonals needs terrainMode: "pro"/],
+  ])("rejects a shape control outside the mode that reads it: %o", async (style, error) => {
+    await expect(resolveSpecs(await writeManifest(style))).rejects.toThrow(error)
+  })
+
+  it("accepts roundness and a meander on a standard set with a shape style", async () => {
+    const loaded = await writeManifest({ terrainShapeStyle: "square", terrainRoundness: 0.5, terrainBoundaryAmplitude: 0.1 })
+    await expect(resolveSpecs(loaded)).resolves.toHaveLength(1)
+  })
+
   it("rejects an off-grid transitionSize without shapeStyle", async () => {
     const loaded = await writeManifest({ terrainTransitionSize: 0.9 })
     await expect(resolveSpecs(loaded)).rejects.toThrow(/TransitionSize must be 0, 0.25, 0.5, or 1/)
@@ -152,6 +224,10 @@ describe("submit and poll", () => {
       terrainSpreadX: 0.3,
       terrainSlopeSize: 0.2,
       terrainRaggedness: 0.1,
+      terrainRoundness: 2,
+      terrainBoundaryAmplitude: 0.3,
+      terrainBoundarySeed: 4,
+      terrainConnectDiagonals: true,
       terrainView: "low top-down",
     }, "1). deep ocean water 2). golden sand 3). wet sand with foam")
     const specs = await resolveSpecs(loaded)
@@ -182,6 +258,10 @@ describe("submit and poll", () => {
       spreadX: 0.3,
       slopeSize: 0.2,
       raggedness: 0.1,
+      roundness: 2,
+      boundaryAmplitude: 0.3,
+      boundarySeed: 4,
+      connectDiagonals: true,
       view: "low top-down",
     })
   })

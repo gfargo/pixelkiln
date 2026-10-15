@@ -839,6 +839,11 @@ export class PixelLabClient {
     spreadX?: number
     slopeSize?: number
     raggedness?: number
+    roundness?: number
+    boundaryAmplitude?: number
+    boundarySeed?: number
+    stepSlope?: number
+    connectDiagonals?: boolean
     transitionSize?: number
     view?: string
     outline?: string
@@ -857,6 +862,11 @@ export class PixelLabClient {
     if (args.spreadX != null) body.spread_x = args.spreadX
     if (args.slopeSize != null) body.slope_size = args.slopeSize
     if (args.raggedness != null) body.raggedness = args.raggedness
+    if (args.roundness != null) body.roundness = args.roundness
+    if (args.boundaryAmplitude != null) body.boundary_amplitude = args.boundaryAmplitude
+    if (args.boundarySeed != null) body.boundary_seed = args.boundarySeed
+    if (args.stepSlope != null) body.step_slope = args.stepSlope
+    if (args.connectDiagonals != null) body.connect_diagonals = args.connectDiagonals
     if (args.transitionSize != null) body.transition_size = args.transitionSize
     if (args.view) body.view = args.view
     if (args.outline) body.outline = args.outline
