@@ -12,7 +12,8 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 10–25 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 10–25 generations | variations or complete set |
-| Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | plans at 25; PixelLab quotes 15–25 for Pro (unmeasured) | 16 or 25 tiles |
+| Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | Pro 15, or 25 at 64px; standard plans at 4 (PixelLab's quotes, unmeasured) | 16 or 25 tiles |
+| Platform tileset for a sidescroller (stone body, grass top) | `terrain`, `terrainOrientation: "sidescroller"` | 3 generations | 16 tiles |
 | A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
 | Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 10–25 generations by canvas | 1–64 by size |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
@@ -28,8 +29,10 @@ Start with `map` unless a required capability points elsewhere. Twenty-five
 `map` re-rolls cost the same as one 64×64 `1dir` call.
 
 `terrain` and `imagePro` have no section below: their fields and limits are in
-the [PixelLab skill reference](../skills/pixelkiln/references/pixellab.md), and
-a `terrain` set's export shape is in [Tiles](./TILES.md). Retro Diffusion
+the [PixelLab skill reference](../skills/pixelkiln/references/pixellab.md),
+including Pro's border controls, sidescroller sets, and connecting sets that
+share a terrain (an asset's `connect`), and a `terrain` set's export shape is
+in [Tiles](./TILES.md). Retro Diffusion
 `animation` styles are in [Set up Retro Diffusion](./RETRO_DIFFUSION.md).
 
 ## `map`

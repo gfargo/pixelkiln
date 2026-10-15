@@ -72,6 +72,7 @@ not merely a label edit.
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
 | `vfx` | object | `vfx` styles, PixelLab only: the effect to render. `{ "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "sprite": "art/chars/hero.png", "fps": 12 }`; start from one `preset` or one `recipe` (a recipe JSON or a `.vfx.json` record), with optional `parts`, `sprite`, `fps`, and `name`. Replaces `prompt` as the required field. See [`vfx`](./GENERATORS.md#vfx). |
 | `scene` | object | `map` styles, PixelLab only: draw this object into a scene image, in its style. `{ "image": "scene.png", "placement": { "oval": 0.3 } }`; `placement` is `oval` or `rectangle` (a fraction, 0.05–0.95) or `mask` (a PNG the size of the scene). See [Drawing into a scene](./GENERATORS.md#drawing-into-a-scene). |
+| `connect` | object | `terrain` styles, PixelLab only: share a terrain with another set in the same style, keyed by this set's own side. `{ "lower": { "of": "coast", "terrain": "upper" } }` makes this set's lower terrain `coast`'s upper. The other set generates first; regenerating it makes this one stale. A sidescroller set connects only `lower`. Cycles are rejected. |
 | `batch` | object | `1dir` styles: rides along on another `1dir` asset's `item_descriptions` submission instead of generating on its own — `{ "of": "<leader asset id>", "index": <1-based slot> }`. See [`1dir`](./GENERATORS.md#1dir). |
 | `pieces` | array | `uiAsset` styles: exact shape regions (`rounded_rect`/`circle`/`polygon`) the panel is composited from, each with a unique `id`. See [`uiAsset`](./GENERATORS.md#uiasset). |
 | `elements` | string array | `uiAsset` styles: named, auto-positioned UI scaffolds (`button`, `health_bar`, `window`, ...). Combine with `pieces`; omit both for a plain full-canvas panel. See [`uiAsset`](./GENERATORS.md#uiasset). |
@@ -140,6 +141,19 @@ One asset using the fields most projects reach for:
 | `tileView` | enum | `top-down`, `high top-down`, `low top-down`, or `side`. |
 | `tileFeature` | enum | Connectable `roads`, `tileset`, or `building` structural set. |
 | `outlineMode` | enum | `outline` or `segmentation`; segmentation avoids quilted ground seams. |
+| `terrainOrientation` | `top-down` | `terrain` only. `sidescroller` makes a platform set: prompt `1). <platform body> 2). <top layer>`, 16 or 32px, no mode, view, or shape controls. |
+| `terrainMode` | `standard` | `terrain` only. `standard` or `pro`. |
+| `terrainTileSize` | `16` | `terrain` only. 16, 32, or 64 (`pro` only). |
+| `terrainTransitionSize` | `0` | `terrain` only. 0, 0.25, 0.5, or 1 (any 0–0.5 with `terrainShapeStyle`). Pro reads it as wall height; above 0.4 a Pro set has 25 tiles, standard only at 1. |
+| `terrainView` | `high top-down` | `terrain` only. `low top-down` or `high top-down`. |
+| `terrainShapeStyle` | | `terrain`, `standard` only. `square` or `round` procedural boundary. |
+| `terrainRaggedness` | `0` | `terrain`, `pro` only. Boundary noise, 0–1. |
+| `terrainRoundness` | 0.85 pro, 0.6 shape style | `terrain`, `pro` or `terrainShapeStyle`. Border corners: 0 square, 1 round, 2 cut at 45° (above 1 `pro` only). |
+| `terrainBoundaryAmplitude` | `0` | `terrain`, `pro` or `terrainShapeStyle`. How far the border meanders, 0–0.3. |
+| `terrainBoundarySeed` | `0` | `terrain`, with `terrainBoundaryAmplitude`. Which meander, an integer. |
+| `terrainStepSlope` | `0` | `terrain`, `pro` at `terrainTransitionSize` 0.25 only. 0 a cliff to 2 a gentle slope. |
+| `terrainConnectDiagonals` | `false` | `terrain`, `pro` only. Join the diagonal tiles' upper corners into one area. |
+| `terrainSpreadX` / `terrainSlopeSize` | | Deprecated: PixelLab ignores both. Still accepted. |
 | `mode` | `standard` | `character` only. `standard`, `v3`, `pro`, or `pro-flash`; see [Characters](./CHARACTERS.md). |
 | `directions` | `8` | `character` only. `4` or `8`; every engine but `standard` draws 8. |
 | `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`; `custom` for `pro-flash`. |

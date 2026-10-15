@@ -24,7 +24,7 @@ providers, or before any PixelLab account operation.
 | `pixflux` | Closed palettes or full-bleed backgrounds up to 400×400 | 1 generation |
 | `1dir` | Reference-guided work or several candidates | 10–25 generations |
 | `tiles` | Ground variations or connected structures | 10–25 generations |
-| `terrain` | A two-terrain Wang tileset for elevation (grass-to-water, floor-to-cliff) | Unmeasured; plans at 25. PixelLab quotes 15 (Pro, up to 32px) or 25 (Pro, 64px), about 3 standard |
+| `terrain` | A two-terrain Wang tileset for elevation (grass-to-water, floor-to-cliff), or a sidescroller platform set | Sidescroller **3**, measured. Top-down plans at PixelLab's quote: Pro 15 (up to 32px) or 25 (64px), standard 4 (quoted 1–4) |
 | `imagePro` | A larger or non-square background/scene, or real style transfer | **10–25 generations** by canvas (64px billed 10; a flat 40 before October 2026) |
 | `character` | A character in 4 or 8 directions, its poses (`state`), its loops (`animation`), bust `portrait`s, and `outfit` transfers onto a loop | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose or portrait, 1 per template loop per direction (2–4 as `skeleton-v3`), 20 per outfit (measured once) |
 | `objectPro` | A prop, creature, or vehicle that needs rotations, states, or loops but has no character rig | 6 per base at 64px (1 from a `reference`), **unmeasured**; assumed to match `character` pro-flash |
@@ -92,31 +92,61 @@ into the three fields before the call, with the style's `promptPrefix`/
 `promptSuffix` wrapped around each one individually rather than the whole
 string once.
 
-A set is 16 tiles, or 25 in the "cliff" layout: `terrainTransitionSize` 1,
-or 0.5 on Pro. There the step between levels is a wall and corners take a
-third "transition" value. A set always resolves straight to a
-finished asset with one output file per tile, never a candidate sheet to
-pick from, the same as a connectable `tiles` set. `terrainTileSize` sets the
-tile edge (16 or 32 in both modes, 64 needs `terrainMode: "pro"`, default
-16). `terrainMode: "standard"` (the default) is the classic Wang pipeline,
+A set is 16 tiles, or 25 in the tall layout: `terrainTransitionSize` 1 on
+standard, or anything above 0.4 on Pro (so 0.5 is already 25 tiles). There
+the step between levels is a wall and corners take a third "transition"
+value. A set always resolves straight to a finished asset with one output
+file per tile, never a candidate sheet to pick from, the same as a
+connectable `tiles` set. `terrainTileSize` sets the tile edge (16 or 32 in
+both modes, 64 needs `terrainMode: "pro"`, default 16).
+`terrainTransitionSize` is 0, 0.25, 0.5, or 1 without `terrainShapeStyle`
+(any value 0–1 with it, though above 0.5 switches to an extended 32-tile
+layout pixelkiln does not model). Pro reads it as wall height: 0 flat, 0.25
+a low bank, 0.5 or 1 a proper wall. `terrainView` picks `low top-down` or
+`high top-down` (API default). The style's `outline`/`shading`/`detail`
+apply here too.
+
+`terrainMode: "standard"` (the default) is the classic Wang pipeline,
 optionally with `terrainShapeStyle` (`square` or `round`) for a fixed
-procedural boundary; `terrainMode: "pro"` rejects `terrainShapeStyle`
-outright, and its one working shape control in pixelkiln is
-`terrainRaggedness` (0 = smooth, 1 = rough boundary noise, half strength on
-tall sets). `terrainSpreadX` and `terrainSlopeSize` are still accepted but
-PixelLab now ignores both ("No effect - the Pro pipeline no longer uses
-it"), so don't reach for them. Pro's newer controls (`roundness`,
-`connect_diagonals`, an uneven boundary, `step_slope`) are not modeled yet;
-see [pixellab-roadmap.md](./pixellab-roadmap.md). `terrainTransitionSize` (0, 0.25, 0.5, or 1 without `terrainShapeStyle`;
-any value 0–1 with it, though above 0.5 switches to an extended 32-tile
-layout pixelkiln does not yet model) controls how pronounced the elevation
-step looks. Pro reads it as wall height: 0 flat, 0.25 a low bank, and 0.5 or
-1 a proper wall in a 25-tile set (`plan` still shows 16 candidates at 0.5;
-every returned tile downloads). `terrainView` picks `low top-down` or `high top-down` (API
-default). The style's existing `outline`/`shading`/`detail` apply here too.
-Reference images, a forced palette, and the `pro` pipeline's own tunables
-beyond the three above (`tileStrength`, `tilesetAdherence`, and the rest)
-are not modeled yet; open an issue if a real project needs one of them.
+procedural boundary. `terrainMode: "pro"` rejects `terrainShapeStyle` and
+shapes the border with its own controls, each refused outside the mode that
+reads it:
+
+- `terrainRaggedness` (0–1): boundary noise, half strength on tall sets.
+- `terrainRoundness` (0–2): 0 square corners, 1 round, 2 cut at 45°. Pro or
+  a shape style; above 1 needs Pro. Defaults 0.85 (Pro), 0.6 (shape style).
+- `terrainBoundaryAmplitude` (0–0.3) and `terrainBoundarySeed` (integer):
+  how far the border meanders, and which meander. Pro, or a shape style.
+- `terrainStepSlope` (0–2): 0 a cliff to 2 a gentle slope. Pro at
+  `terrainTransitionSize` 0.25 only.
+- `terrainConnectDiagonals` (boolean): joins the two diagonal tiles'
+  upper corners into one area. Pro only. With `terrainRoundness: 2` it is
+  the fix for 45° paths and coastlines that break into one island per step.
+
+`terrainSpreadX` and `terrainSlopeSize` are deprecated: PixelLab ignores
+both now, so leave them out. Reference images, a forced palette, and the
+remaining tunables (`tileStrength`, `tilesetAdherence`) are not modeled.
+
+**Connected sets.** An asset's `connect` makes one of its terrains the very
+terrain of another set in the same style, so ocean, sand, and grass paint on
+one map: `"connect": { "lower": { "of": "coast", "terrain": "upper" } }` is
+"this set's lower terrain is `coast`'s upper". The other set generates
+first (the connected one is blocked until it is downloaded, and follows in
+the next wave), PixelLab draws the shared terrain from its base tile, and
+regenerating the other set makes this one stale. Sharing a terrain makes it
+available, not blendable: two terrains with no set of their own between
+them still meet with a hard (in PixelLab's map tool, black) edge, so plan a
+set for every pair that touches.
+
+**Sidescroller sets.** `terrainOrientation: "sidescroller"` switches to
+`/create-tileset-sidescroller`: a platform seen from the side. The prompt is
+`"1). mossy stone bricks texture 2). green grass texture"`, the platform
+body and the layer on top of it; the other side of every edge is empty air.
+16 or 32px tiles, `terrainTransitionSize` (the top layer's height) 0, 0.25,
+0.5, or 1, and none of the mode, view, or shape controls. It billed 3
+generations for 16 tiles. A sidescroller set connects only its platform
+(`lower`) terrain. PixelLab's Pro sidescroller (64px, taller top layers) is
+web-app only.
 
 Prompt each terrain as a short material ending on the word "texture" ("deep
 ocean water texture", "plain smooth sand texture"). PixelLab's "Pro
@@ -127,9 +157,7 @@ terrain: color, season, and outline words ("autumn", "frosty", "bold black
 outlines with cel shading", "four-color green palette") change the set the
 most, so try two or three at a time. With `terrainTransitionSize` above 0.4
 on Pro, the third numbered description is the wall itself ("crumbling
-dungeon brick wall"). Sidescroller platform sets and sets that share a
-terrain with another set (ocean→sand, then sand→grass) are PixelLab features
-`terrain` does not reach yet.
+dungeon brick wall").
 
 `1dir`'s own candidate mechanic (the size-tiered table above) normally
 returns N variations of one prompt. `/create-1-direction-object` also takes
