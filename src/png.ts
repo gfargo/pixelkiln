@@ -466,3 +466,45 @@ export function parseHex(hex: string): { r: number; g: number; b: number } {
   const n = parseInt(m[1]!, 16)
   return { r: (n >> 16) & 0xff, g: (n >> 8) & 0xff, b: n & 0xff }
 }
+
+/**
+ * Lays equal-sized PNG frames side by side, left to right, as one RGBA PNG:
+ * the horizontal strip PixelLab's `/normal-map` takes for an animation.
+ */
+export function joinStripPng(frames: Buffer[]): Buffer {
+  const decoded = frames.map((frame) => decodePng(frame))
+  const first = decoded[0]
+  if (!first) throw new Error("a strip needs at least one frame")
+  const { width, height } = first
+  for (const [index, frame] of decoded.entries()) {
+    if (frame.width !== width || frame.height !== height) {
+      throw new Error(`strip frame ${index} is ${frame.width}x${frame.height}; frame 0 is ${width}x${height}`)
+    }
+  }
+  const stride = width * 4
+  const out = Buffer.alloc(stride * decoded.length * height)
+  for (let y = 0; y < height; y++) {
+    for (const [index, frame] of decoded.entries()) {
+      frame.pixels.copy(out, (y * decoded.length + index) * stride, y * stride, (y + 1) * stride)
+    }
+  }
+  return encodeRgbaPng(width * decoded.length, height, out)
+}
+
+/** Cuts a horizontal strip PNG back into `frames` equal RGBA PNGs, left to right. */
+export function splitStripPng(strip: Buffer, frames: number): Buffer[] {
+  const image = decodePng(strip)
+  if (frames < 1 || image.width % frames !== 0) {
+    throw new Error(`a ${image.width}x${image.height} strip does not split into ${frames} equal frames`)
+  }
+  const width = image.width / frames
+  const stride = width * 4
+  return Array.from({ length: frames }, (_, index) => {
+    const out = Buffer.alloc(stride * image.height)
+    for (let y = 0; y < image.height; y++) {
+      const from = (y * image.width + index * width) * 4
+      image.pixels.copy(out, y * stride, from, from + stride)
+    }
+    return encodeRgbaPng(width, image.height, out)
+  })
+}

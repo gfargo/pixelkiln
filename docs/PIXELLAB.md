@@ -236,14 +236,15 @@ inpainting, whole-image editing, and skeleton-driven animation (posing a
 reference image frame-by-frame from a supplied keypoint skeleton, not a text
 description) are the `revision` asset shape, not the `character` generator;
 see [Controlled asset revisions](./REVISIONS.md). The same revision shape
-animates, interpolates, recolors, and cleans up any asset, a whole character
-or loop at once where the endpoint takes a set; `pixelkiln estimate-skeleton`
+animates, interpolates, recolors, cleans up, and makes normal maps for any
+asset, a whole character or loop at once where the endpoint takes a set; `pixelkiln estimate-skeleton`
 starts a skeleton file from an image. Pro Flash stills are the
 `imageProFlash` generator, and Pro Flash edit and inpaint are a revision's
 `"engine": "pro-flash"`. Object Creator is the
 `objectPro` generator, UI panels and elements are `uiAsset` and `uiElement`,
-and fonts and unzooming reference art are the standalone `pixelkiln font` and
-`pixelkiln unzoom` commands. Map Workshop
+and fonts, unzooming reference art, and normal maps for loose files are the
+standalone `pixelkiln font`, `pixelkiln unzoom`, and `pixelkiln normal-map`
+commands. Map Workshop
 scene composition (placing objects and characters into a map, in-scene
 inpainting, export) is a separate PixelLab product surface this adapter does
 not model at all — including PixelKiln's own `map` generator, which is

@@ -7,8 +7,9 @@ dependencies before submission, and records the lineage in the lockfile.
 
 The manifest and pipeline are provider-neutral. ComfyUI, PixelLab and Scenario implement
 it; PixelLab covers `image-to-image`, `inpaint`, `reduce-colors`,
-`correct-pixelart`, `remove-background`, `animate`, `animate-pixminimax`,
-`animate-skeleton`, `interpolate`, and `edit-animation`, not `outpaint` (its API has no
+`correct-pixelart`, `remove-background`, `normal-map`, `animate`,
+`animate-pixminimax`, `animate-skeleton`, `interpolate`, and `edit-animation`,
+not `outpaint` (its API has no
 canvas-expansion endpoint). ComfyUI covers every mode generically except the
 five frame-set modes (`animate`, `animate-pixminimax`, `animate-skeleton`,
 `interpolate`, `edit-animation`), which need an ordered frame set its
@@ -57,9 +58,11 @@ input to the provider workflow, not a cross-model quality guarantee.
 committed asset's drawer and use "+ New revision" under "Revisions from this
 asset" to create a child of it. On a PixelLab sprite the mode picker offers
 `image-to-image`, `inpaint`, `animate`, `animate-pixminimax`, `interpolate`,
-`reduce-colors`, `correct-pixelart`, and `remove-background`; on a PixelLab
-frame set (or a character's directions) it offers `edit-animation`,
-`reduce-colors`, and `correct-pixelart`, which take the whole set. ComfyUI
+`reduce-colors`, `correct-pixelart`, `remove-background`, and `normal-map`;
+on a PixelLab frame set (or a character's directions) it offers
+`edit-animation`, `reduce-colors`, and `correct-pixelart`, which take the whole
+set, plus `normal-map` on an animation loop. `normal-map` is hidden in a style
+that sets `enforcePalette` or `quality`. ComfyUI
 sprites get `image-to-image` and `inpaint`; other providers get
 `image-to-image`. The form asks only for the new asset id, the instruction or
 motion, and the mode's own options (strength, frames, fps, colours,
@@ -233,6 +236,59 @@ generation.
 or `complex` (slower, for detailed edges). `description` is an optional hint
 naming the foreground. Both are rejected on other modes, as is `strength`.
 
+### Normal maps
+
+`normal-map` calls PixelLab's `/normal-map` and returns the parent's normal
+map, so a game engine can light the sprite. The map is the parent's size: RGB
+is the way each pixel faces, and alpha is 255 where the sprite shows and 0
+elsewhere. It is a background job, and costs 0.5 generation per call,
+charged only when the map is delivered (PixelLab's documented price; not yet
+measured here).
+
+```jsonc
+{
+  "styles": {
+    "lit": { "generator": "map", "outDir": "art/normals" }
+  },
+  "assets": {
+    "hero-walk-east-normals": {
+      "prompt": "normal map",
+      "styles": ["lit"],
+      "revision": { "mode": "normal-map", "from": "hero-walk-east", "fromStyle": "chars", "convention": "opengl" }
+    }
+  }
+}
+```
+
+- `convention` is `opengl` (PixelLab's default: green up, for Godot, Unity,
+  and Phaser) or `directx` (green down, for Unreal). It is rejected on other
+  modes and enters the spec hash only when set. `strength` is refused.
+- The parent must be a PNG, 8 to 512 pixels per side; both are checked at
+  plan time.
+- **A loop goes as one strip.** When the parent is an animation (its
+  `-frame-NN.png` members), every frame is laid left to right in one image
+  and sent with `frames: N`, up to 32. PixelLab shapes the first frame and
+  carries it to the rest, so the light holds steady across the loop instead
+  of flickering. The returned strip is cut back into `-frame-NN.png` files
+  under the parent's roles, keeping its playback rate. A whole loop is one
+  call, so it costs 0.5 too.
+- **A character's directions are refused.** They are separate views, not
+  frames of one motion: sent as a strip, each would be shaped from the first
+  direction, and one call per direction would put several paid jobs behind
+  one lock entry with no way to recover half of them. Make one `normal-map`
+  revision per direction, each from an asset whose `source` is that
+  direction's file.
+- **A normal map is lighting data, not art.** Its colours are directions, so
+  palette snapping or the quality gate's grid repair would wreck it. A
+  `normal-map` revision in a style that sets `enforcePalette` or `quality` is
+  refused at plan time; put it in a style without either (as `lit` above) and
+  name the parent's style with `fromStyle`. A `mirror` of a normal map is
+  refused too: flipping the pixels leaves every red channel pointing the old
+  way.
+
+For a loose file outside the manifest, `pixelkiln normal-map` does the same
+job (see [CLI](./CLI.md#normal-map)).
+
 ### Revising a whole set at once
 
 Both modes also take a parent that is a **set** rather than one image: a
@@ -272,6 +328,8 @@ its playback rate.
   rather than being sent as if it belonged.
 - Members must all be the same size. `reduce-colors`' 512×512 limit is for the
   whole call: sixteen 64×64 frames fit, five 256×256 do not.
+- `normal-map` takes an animation loop as one strip but refuses a set of
+  directions (see [Normal maps](#normal-maps)).
 - Every other mode except `edit-animation` (below) reads exactly one image and
   refuses a set parent at plan time, naming the modes that take one.
 
@@ -660,6 +718,12 @@ further — there is nothing to ask.
   CLI-only-and-never-in-the-submission-path decision. Same unverified-live
   caveat as `animate`/`animate-pixminimax`, sourced from the live
   `animate_with_skeleton_v3` MCP tool schema rather than an observed call.
+- `normal-map` calls `/normal-map` (PixelLab 0.4.130), a background job whose
+  map is `last_response.image`; a loop's frames go and come back as one
+  horizontal strip, cut into per-frame files on poll. See
+  [Normal maps](#normal-maps). Not exercised against a live account yet: the
+  request and response shapes, and the 0.5-generation price, come from
+  PixelLab's live OpenAPI document.
 
 - The mask convention is fixed, not graph-defined like ComfyUI's: white marks
   the area to generate, black the area to preserve. There is no way to flip it.

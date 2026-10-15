@@ -63,6 +63,9 @@ export function specHash(
       detail: effect ? undefined : spec.detail ?? null,
       seed: effect ? undefined : spec.seed ?? null,
       palette: effect ? undefined : spec.palette,
+      // `imagePro` only, and absent unless the style sets them.
+      paletteName: spec.paletteName,
+      maxColors: spec.maxColors,
       // `noBackground` only reaches the wire for pixflux and uiAsset; the
       // tile fields are undefined for every other generator. `tileSize` is
       // intentionally absent; width/height are derived from it, so it is
@@ -205,6 +208,7 @@ export function specHash(
             skeletonTemplate: spec.revision.skeletonTemplate,
             description: spec.revision.description,
             removalTask: spec.revision.removalTask,
+            convention: spec.revision.convention,
             driftThreshold: spec.revision.driftThreshold,
             subjectDescription: spec.revision.subjectDescription,
             initialPose: spec.revision.initialPose,

@@ -9,7 +9,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | You need | Generator | Measured cost | Candidates/output |
 |---|---|---:|---|
 | Standalone prop or icon with arbitrary dimensions | `map` (default) | 1 generation | 1 |
-| Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
+| Exact fixed palette | `pixflux`, or `imagePro` for a larger or non-square canvas | 1 generation (`imagePro`: 10–25) | 1 inline image (`imagePro`: 1–64 by size) |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 10–25 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 10–25 generations | variations or complete set |
 | Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | plans at 25; PixelLab quotes 15–25 for Pro (unmeasured) | 16 or 25 tiles |

@@ -21,7 +21,8 @@ import {
 } from "../pixellab-vfx.ts"
 import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
-import { paletteSwatch } from "../png.ts"
+import { NORMAL_MAP_COST_GENERATIONS, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
+import { joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
   CHARACTER_DIRECTIONS_8,
@@ -487,7 +488,8 @@ export class PixelLabProvider implements Provider {
    * source from a supplied per-frame skeleton instead of a text description)
    * — and `interpolate` (`/interpolation-v2`, the in-betweens
    * from one keyframe to another) and `edit-animation`
-   * (`/edit-animation-v2`, one text edit applied across a whole frame set).
+   * (`/edit-animation-v2`, one text edit applied across a whole frame set),
+   * and `normal-map` (`/normal-map`, lighting data for a sprite or a loop).
    * `outpaint` does not: there is no canvas-expansion endpoint in the API,
    * matching docs/REVISIONS.md's note that no provider ships a tested
    * outpaint path yet.
@@ -495,7 +497,7 @@ export class PixelLabProvider implements Provider {
   supportsRevision(mode: RevisionMode): boolean {
     return (
       mode === "inpaint" || mode === "image-to-image" || mode === "reduce-colors" || mode === "correct-pixelart" ||
-      mode === "remove-background" ||
+      mode === "remove-background" || mode === "normal-map" ||
       mode === "animate" || mode === "animate-pixminimax" || mode === "animate-skeleton" ||
       mode === "interpolate" || mode === "edit-animation"
     )
@@ -542,6 +544,11 @@ export class PixelLabProvider implements Provider {
       // Measured at 1 generation on a 64x64 source (docs/ENDPOINTS.md,
       // "Post-processing utilities"), not the schema example's $0.01.
       return { unit: "generations", amount: 1, candidates: 1 }
+    }
+    if (spec.revision?.mode === "normal-map") {
+      // PixelLab's documented flat price, per call: a loop's frames go as one
+      // strip, so a whole loop costs the same as one sprite. Not yet measured.
+      return { unit: "generations", amount: NORMAL_MAP_COST_GENERATIONS, candidates: 1 }
     }
     if (spec.revision?.mode === "reduce-colors" || spec.revision?.mode === "correct-pixelart") {
       // Confirmed live: a flat 0.1 generations for both, on a 32x32 source,
@@ -675,8 +682,34 @@ export class PixelLabProvider implements Provider {
       throw new Error(
         `PixelLab ${spec.revision.mode} reads one source image; ${spec.revision.sourceAssetId} is a ` +
           `${members.length}-member set (${members[0]!.role}, ...). Revise one member through a declared ` +
-          "source, or use reduce-colors, correct-pixelart, or edit-animation, which take the whole set",
+          "source, or use reduce-colors, correct-pixelart, edit-animation, or normal-map, which take the whole set",
       )
+    }
+    if (spec.revision?.mode === "normal-map") {
+      const { sourceWidth: width, sourceHeight: height, sourceFormat, sourceAssetId } = spec.revision
+      // A loop goes as one strip so PixelLab plans the shape once and the
+      // light holds steady across frames. Directions are separate views,
+      // not frames of one motion: sent as a strip they would all be shaped
+      // from the first, and one call per direction would put several paid
+      // jobs behind one lock entry. Each direction gets its own revision.
+      if (members && !members.every((member) => member.role.startsWith("frame-"))) {
+        throw new Error(
+          `PixelLab normal-map reads one sprite or one animation loop; ${sourceAssetId} is a set of directions ` +
+            `(${members.map((member) => member.role).join(", ")}). Make one normal-map revision per direction, ` +
+            "each from an asset whose `source` is that direction's file",
+        )
+      }
+      if (members && members.length > NORMAL_MAP_MAX_FRAMES) {
+        throw new Error(
+          `PixelLab normal-map takes at most ${NORMAL_MAP_MAX_FRAMES} frames in one strip; ${sourceAssetId} has ${members.length}`,
+        )
+      }
+      if (sourceFormat === "jpeg") {
+        throw new Error(`PixelLab normal-map reads a PNG, whose alpha marks where the sprite is; ${sourceAssetId} is a JPEG`)
+      }
+      const frames = members?.length ?? 1
+      const problem = width != null && height != null ? normalMapSizeProblem(width * frames, height, frames) : null
+      if (problem) throw new Error(`PixelLab normal-map source ${sourceAssetId}: ${problem}`)
     }
     if (spec.revision?.engine === "pro-flash") {
       const { sourceWidth: width, sourceHeight: height, mode } = spec.revision
@@ -803,6 +836,9 @@ export class PixelLabProvider implements Provider {
         `PixelLab imagePro is ${spec.width}x${spec.height}; the API takes 16 to 792 wide and ` +
           "16 to 688 tall (the exact ceiling also depends on aspect ratio)",
       )
+    }
+    if (spec.generator === "imagePro" && !spec.revision && spec.palette.length && (spec.palette.length < 2 || spec.palette.length > 256)) {
+      throw new Error(`PixelLab imagePro's target palette takes 2 to 256 colours; the style's palette has ${spec.palette.length}`)
     }
     if (
       spec.generator === "uiAsset" &&
@@ -1802,6 +1838,7 @@ export class PixelLabProvider implements Provider {
         height: spec.height,
         noBackground: spec.noBackground,
         seed: spec.seed,
+        targetPalette: { colors: spec.palette, name: spec.paletteName, maxColors: spec.maxColors },
       })
       // Like a revision, jobId is the background_job_id itself: there is no
       // separate resource id to poll, so pollImagePro polls it directly.
@@ -1966,6 +2003,21 @@ export class PixelLabProvider implements Provider {
         seed: spec.seed,
       })
       return this.cacheCleanupResult([res.png], res.usage, roles, revision.sourceFps)
+    }
+    // normal-map is a background job; a loop's frames go left to right as one
+    // strip, and the roles ride in the metadata so `pollNormalMap` can cut
+    // the returned strip back into the same files.
+    if (revision.mode === "normal-map") {
+      const strip: Base64Image = roles
+        ? { base64: joinStripPng(images.map((member) => Buffer.from(member.base64, "base64"))).toString("base64"), format: "png" }
+        : image
+      const res = await this.client.normalMap({ image: strip, frames: roles?.length ?? 1, convention: revision.convention })
+      return {
+        jobId: res.background_job_id,
+        metadata: roles
+          ? { revisionMembers: roles, ...(revision.sourceFps != null ? { revisionFps: revision.sourceFps } : {}) }
+          : {},
+      }
     }
 
     // interpolate and edit-animation are background jobs that complete with
@@ -2149,6 +2201,7 @@ export class PixelLabProvider implements Provider {
     if (revisionMode === "reduce-colors" || revisionMode === "correct-pixelart" || revisionMode === "remove-background") {
       return this.pollCachedRevision(jobId, context)
     }
+    if (revisionMode === "normal-map") return this.pollNormalMap(jobId, context)
     if (
       revisionMode === "animate" || revisionMode === "animate-pixminimax" || revisionMode === "animate-skeleton" ||
       revisionMode === "interpolate" || revisionMode === "edit-animation"
@@ -2478,6 +2531,56 @@ export class PixelLabProvider implements Provider {
     if (!existsSync(file)) return gone
     const sourceUrl = `file://${file}`
     return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }], billed: billedFromUsage(usage) }
+  }
+
+  /**
+   * A `normal-map` revision: a background job whose map is
+   * `last_response.image`. A loop's map comes back as the strip it was sent
+   * as, and is cut into one file per frame under the parent's roles. Nothing
+   * downstream palette-snaps it: the manifest refuses a normal map in a
+   * style with `enforcePalette` or `quality`.
+   */
+  private async pollNormalMap(jobId: string, context?: PollContext): Promise<JobState> {
+    const job = await this.client.getBackgroundJob(jobId)
+    if (job.status === "failed") return { status: "failed", error: "normal-map job failed upstream" }
+    if (job.status !== "completed") return { status: "processing" }
+    const billed = billedFromUsage(job.usage)
+    const png = normalMapResultPng(job.last_response)
+    if (!png) {
+      return {
+        status: "failed",
+        error:
+          `Invalid PixelLab response for normal-map job ${jobId}: completed with no image at last_response.image ` +
+          `(got: ${Object.keys(job.last_response ?? {}).join(", ") || "no keys"})`,
+      }
+    }
+    const roles = context?.metadata?.revisionMembers
+    if (Array.isArray(roles) && roles.length) {
+      let frames: Buffer[]
+      try {
+        frames = splitStripPng(png, roles.length)
+      } catch (error) {
+        return { status: "failed", error: `normal-map job ${jobId}: ${(error as Error).message}` }
+      }
+      const sources = frames.map((frame, index) => {
+        const file = path.join(PixelLabProvider.cacheDir(), `${jobId}-${index}.png`)
+        writeFileSync(file, frame)
+        return { url: `file://${file}`, role: String(roles[index]) }
+      })
+      const fps = context?.metadata?.revisionFps
+      return {
+        status: "ready",
+        objectId: jobId,
+        sourceUrl: sources[0]!.url,
+        sources,
+        ...(typeof fps === "number" ? { metadata: { frameSet: { fps, count: sources.length } } } : {}),
+        billed,
+      }
+    }
+    const file = path.join(PixelLabProvider.cacheDir(), `${jobId}.png`)
+    writeFileSync(file, png)
+    const sourceUrl = `file://${file}`
+    return { status: "ready", objectId: jobId, sourceUrl, sources: [{ url: sourceUrl }], billed }
   }
 
   /**

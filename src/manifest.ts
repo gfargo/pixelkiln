@@ -623,6 +623,8 @@ export async function resolveSpecs(
         uiColorPalette: generator === "uiAsset" || generator === "uiElement" ? style.uiColorPalette : undefined,
         ...(generator === "imageProFlash" && style.styleTraits ? { styleTraits: style.styleTraits } : {}),
         palette: style.palette,
+        ...(generator === "imagePro" && style.paletteName ? { paletteName: style.paletteName } : {}),
+        ...(generator === "imagePro" && style.maxColors != null ? { maxColors: style.maxColors } : {}),
         enforcePalette: style.enforcePalette,
         noBackground: style.noBackground,
         tileSize: generator === "tiles" ? tileSize : undefined,
@@ -767,6 +769,12 @@ export async function resolveSpecs(
         if (sourceSpec.generator === "tiles" || sourceSpec.generator === "terrain") {
           throw new Error(`assets.${assetId}: a tile set cannot be mirrored; its edges carry meaning`)
         }
+        if (sourceSpec.revision?.mode === "normal-map") {
+          throw new Error(
+            `assets.${assetId}: a normal map cannot be mirrored by flipping its pixels; every red channel ` +
+              "would still point the old way. Make a normal-map revision of the mirrored art instead",
+          )
+        }
         if (sourceSpec.character?.kind === "animation") {
           const facing = sourceSpec.character.animation!.direction
           const mirrored = MIRRORED_DIRECTION[facing]
@@ -899,6 +907,16 @@ export async function resolveSpecs(
             `Provider "${activeProvider.id}" does not support ${asset.revision.mode} revisions`,
           )
         }
+        // A normal map's RGB is a direction per pixel, not a colour: snapping
+        // it to a palette or repairing it on a pixel grid would wreck the
+        // lighting it encodes, so a style that does either cannot hold one.
+        if (asset.revision.mode === "normal-map" && (style.enforcePalette || style.quality)) {
+          throw new Error(
+            `assets.${assetId}: a normal-map revision is lighting data, not art, and style "${styleId}" sets ` +
+              `${style.enforcePalette ? "enforcePalette" : "quality"}, which would recolour it. Put it in a style ` +
+              "without enforcePalette or quality, and name the parent's style with revision.fromStyle",
+          )
+        }
         const sourceStyleId = asset.revision.fromStyle && asset.revision.fromStyle !== styleId
           ? asset.revision.fromStyle
           : undefined
@@ -1016,6 +1034,7 @@ export async function resolveSpecs(
           ...(asset.revision.skeletonTemplate ? { skeletonTemplate: asset.revision.skeletonTemplate } : {}),
           ...(asset.revision.description ? { description: asset.revision.description } : {}),
           ...(asset.revision.removalTask ? { removalTask: asset.revision.removalTask } : {}),
+          ...(asset.revision.convention ? { convention: asset.revision.convention } : {}),
           ...(asset.revision.driftThreshold == null ? {} : { driftThreshold: asset.revision.driftThreshold }),
           ...(asset.revision.subjectDescription ? { subjectDescription: asset.revision.subjectDescription } : {}),
           ...(asset.revision.initialPose ? { initialPose: asset.revision.initialPose } : {}),

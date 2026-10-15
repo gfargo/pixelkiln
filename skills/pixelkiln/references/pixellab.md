@@ -25,7 +25,7 @@ providers, or before any PixelLab account operation.
 | `1dir` | Reference-guided work or several candidates | 10–25 generations |
 | `tiles` | Ground variations or connected structures | 10–25 generations |
 | `terrain` | A two-terrain Wang tileset for elevation (grass-to-water, floor-to-cliff) | Unmeasured; plans at 25. PixelLab quotes 15 (Pro, up to 32px) or 25 (Pro, 64px), about 3 standard |
-| `imagePro` | A larger or non-square background/scene, or real style transfer | **10–25 generations** by canvas (64px billed 10; a flat 40 before October 2026) |
+| `imagePro` | A larger or non-square background/scene, or real style transfer; takes the style `palette` as a hard constraint | **10–25 generations** by canvas (64px billed 10; a flat 40 before October 2026) |
 | `character` | A character in 4 or 8 directions, its poses (`state`), its loops (`animation`), bust `portrait`s, and `outfit` transfers onto a loop | 1 per standard base, 6 per pro-flash base at 64px (1 from a `reference`), 20–40 per pose or portrait, 1 per template loop per direction (2–4 as `skeleton-v3`), 20 per outfit (measured once) |
 | `objectPro` | A prop, creature, or vehicle that needs rotations, states, or loops but has no character rig | 6 per base at 64px (1 from a `reference`), **unmeasured**; assumed to match `character` pro-flash |
 | `isometricTile` | One standalone isometric tile (a raised mesa, a cliff block), 16–64px | **1 generation, measured once** (32px `block`) |
@@ -165,7 +165,13 @@ and a 64×64 call billed exactly 10 (`docs/ENDPOINTS.md`, "October 2026 Pro
 price cut"). One call still returns
 several candidates to pick from by the same size tiering as `1dir` (up to
 42px: 64, 43–85px: 16, 86–170px: 4, above 170px: 1), reached through the
-generic background-job endpoint the same way a `revision` is. Reference
+generic background-job endpoint the same way a `revision` is. The style's
+`palette` goes out as the beta `target_palette` (PixelLab 0.4.130): every
+pixel of every candidate lands on those 2–256 colours, at no extra cost.
+`paletteName` (needs `palette`) names it, and `maxColors` (2–64) caps each
+candidate's colours, with or without a palette. PixelLab's `smart` palette
+mapping is not wrapped: it is "single images only", and this endpoint
+returns a grid of candidates below 171px. Reference
 images and a style image (`reference_images`, `style_image` +
 `style_options`, up to 4 subject references plus one style reference) exist
 on this endpoint but are not modeled yet, and the completed job's exact
@@ -430,6 +436,9 @@ An asset that declares `revision` against a PixelLab style calls `inpaint`
 (palette quantize, `/reduce-colors`), `correct-pixelart` (edge/noise
 cleanup, `/correct-pixelart`), `remove-background` (transparent cutout,
 `/remove-background`, one image up to 400x400, 1 generation measured),
+`normal-map` (`/normal-map`, lighting normals for a sprite or a loop sent as
+one strip, 0.5 generation per call from the docs, a background job; refused
+on a set of directions and in a style with `enforcePalette` or `quality`),
 `animate` (`/animate-with-text-v3`),
 `animate-pixminimax` (`/animate-pixminimax`, beta, tier 1 subscription or
 higher), `animate-skeleton` (`/animate-with-skeleton-v3`, also beta/tier
@@ -516,7 +525,7 @@ reference-image method, palette correction, inpaint's output-method choice,
 and inpainting with surrounding `context_image`. See
 [pixellab-roadmap.md](./pixellab-roadmap.md) for the confirmed shape.
 
-Five commands call PixelLab on loose files, outside the manifest and
+Six commands call PixelLab on loose files, outside the manifest and
 lockfile. `pixelkiln unzoom --from <file> --out <file>` returns upscaled
 pixel art to its native grid; run it before outside art becomes a
 `reference` or `styleImages` entry (input at least 256×256, result opaque,
@@ -524,7 +533,10 @@ cost unmeasured). `pixelkiln pixelate --from <file> --out <file>` converts a
 photo, painting, or render into pixel art with Image to Pixel Art Pro Flash:
 PixelLab picks the output size, the result is opaque on near-white, an optional
 `--description` steers the style, and it costs a flat 6 generations
-(measured) after asking first. `pixelkiln vfx --preset <name> --out <base>`
+(measured) after asking first. `pixelkiln normal-map --from <png> [--frames
+N] [--convention opengl|directx]` writes a sprite's normal map, or a strip's
+(N equal frames side by side, up to 32), for 0.5 generation after asking
+first. `pixelkiln vfx --preset <name> --out <base>`
 builds an animated effect (explosion, heal pillar, lightning strike, aura,
 and more; `pixelkiln vfx presets` and `vfx parts` list them) with PixelLab's
 VFX workbench, which is free and reached through PixelLab's MCP server. Add

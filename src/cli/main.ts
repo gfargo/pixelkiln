@@ -12,7 +12,7 @@ import { runAccept, runCache, runPrune } from "./commands/housekeeping.ts"
 import { runInit } from "./commands/init.ts"
 import { runAudit, runDoctor, runPlan, runStatus } from "./commands/inspect.ts"
 import { runExport, runMount, runPack } from "./commands/pack.ts"
-import { runFont, runPixelate, runUnzoom, runVfx } from "./commands/pixellab-utils.ts"
+import { runFont, runNormalMap, runPixelate, runUnzoom, runVfx } from "./commands/pixellab-utils.ts"
 import { runQuality } from "./commands/quality.ts"
 import { runRecipe } from "./commands/recipe.ts"
 import { runRefine } from "./commands/refine.ts"
@@ -86,6 +86,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   "skeleton-preview": runSkeletonPreview,
   unzoom: runUnzoom,
   pixelate: runPixelate,
+  "normal-map": runNormalMap,
   vfx: runVfx,
   font: runFont,
 }

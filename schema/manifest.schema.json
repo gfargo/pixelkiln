@@ -383,6 +383,16 @@
                     },
                     "default": []
                   },
+                  "paletteName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "maxColors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 64
+                  },
                   "enforcePalette": {
                     "type": "boolean",
                     "default": false
@@ -842,6 +852,16 @@
                     },
                     "default": []
                   },
+                  "paletteName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "maxColors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 64
+                  },
                   "enforcePalette": {
                     "type": "boolean",
                     "default": false
@@ -1017,7 +1037,8 @@
                       "animate-pixminimax",
                       "animate-skeleton",
                       "interpolate",
-                      "edit-animation"
+                      "edit-animation",
+                      "normal-map"
                     ]
                   },
                   "from": {
@@ -1117,6 +1138,13 @@
                     "enum": [
                       "simple",
                       "complex"
+                    ]
+                  },
+                  "convention": {
+                    "type": "string",
+                    "enum": [
+                      "opengl",
+                      "directx"
                     ]
                   },
                   "description": {
