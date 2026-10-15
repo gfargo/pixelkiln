@@ -31,7 +31,7 @@ providers, or before any PixelLab account operation.
 | `isometricTile` | One standalone isometric tile (a raised mesa, a cliff block), 16–64px | **1 generation, measured once** (32px `block`) |
 | `uiAsset` | A UI panel, button, health bar, or other chrome, from precise `pieces` and/or named `elements` | **20 generations, measured once** (256×192); the borrowed canvas-tier estimate still predicts 40 |
 | `uiElement` | One UI element (button, slot, bar, dialogue box) from the prompt, 16px and up, with an optional concept image | 10–25 generations, **unmeasured** |
-| `vfx` | An animated effect (explosion, aura, lightning, status icons) from a `vfx` block: a `preset` or `recipe`, `parts`, an optional `sprite` to build around; cut into an ordered frame set | **free** (a renderer, not a model) |
+| `vfx` | An animated effect (explosion, aura, lightning, status icons) from a `vfx` block: a `preset` or `recipe`, `parts`, an optional `sprite` to build around; cut into an ordered frame set. Or a `description` (+ `artist`: `lite`/`pro`, a local PNG `sprite`) for PixelLab's paid VFX artist | workbench **free** (a renderer, not a model); `description`: lite 1–5, pro 6–28 by sprite size, billed up to 2× the quote, which is what plan counts (**unmeasured**) |
 | `imageProFlash` | A styled still on the Pro Flash model (style image + `styleTraits`), 16–256px in multiples of 4; also the natural source for a Pro Flash character's south sprite | 5–9 generations, PixelLab's provisional quote |
 
 `tiles` is not limited to top-down ground: `tileType` selects the projection
@@ -481,7 +481,13 @@ the `direction` value. The same tutorial states outright that PixMiniMax
 "allows up to 40 frames," a second, independent (though still not
 live-billed) confirmation of the ceiling above.
 
-Try `vfx` first for an effect: it is free and re-renders the same pixels.
+Try `vfx` first for an effect: the workbench is free and re-renders the same
+pixels. When presets and parts do not get there and the person would rather
+describe the effect, a `vfx` `description` asks PixelLab's paid VFX artist
+(`POST /vfx`) instead: it cannot be mixed with `preset`/`recipe`/`parts`/`fps`,
+its `sprite` must be a local PNG up to 512px (no `character:` references), and
+every regeneration is a new, re-billed effect. Tell the person the price
+before running it.
 Generate one instead when the effect is a drawn object or a character's own
 motion, such as a water hammer that bursts into a splash, a sword turning
 into lightning, or a mage casting. PixelLab's "How to Make Animated Pixel
@@ -525,7 +531,10 @@ VFX workbench, which is free and reached through PixelLab's MCP server. Add
 `--part <name>` to layer parts, `--sprite <file|character:<id>:<dir>>` to
 build around a character, and `--game-pack` for per-piece clips. It writes a
 spritesheet, GIF, atlas JSON, and a `.vfx.json` record whose recipe
-re-renders the same effect with `--recipe`. `pixelkiln font --description <text> --out <base>` writes a
+re-renders the same effect with `--recipe`. `pixelkiln vfx --description
+<text> [--artist pro] --out <base>` asks the paid VFX artist instead, prints
+the quote and its 2× ceiling, and asks first; with `--effect <id>` it changes
+that saved effect in place. `pixelkiln font --description <text> --out <base>` writes a
 `.ttf` and an 80-glyph atlas for PixelLab's documented 15 generations, and
 asks first. `pixelkiln estimate-skeleton <image> --out <file>` starts an
 `animate-skeleton` keypoints file, and `pixelkiln skeleton-preview <asset>`

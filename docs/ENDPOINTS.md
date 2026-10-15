@@ -263,8 +263,9 @@ function `inpaint-v3` and `edit-images-v2` revisions use.
 
 Create VFX shipped in PixelLab 0.4.128 as a web tool
 (`pixellab.ai/create-vfx`). Since October 2026 it is also the
-`vfx_workbench` tool on PixelLab's MCP server. It still has **no REST
-endpoint**: `/v2/openapi.json` lists nothing for it.
+`vfx_workbench` tool on PixelLab's MCP server. The workbench still has **no
+REST endpoint**. 0.4.130 added only the paid artist to REST, as `POST /vfx`
+([below](#vfx-artist-post-vfx-unmeasured)).
 
 **It is a renderer, not a model.** An effect is a JSON recipe of layers
 (glows, rings, rays, particles, noise, and more), most of them dropped in as
@@ -314,6 +315,59 @@ and as the `vfx` manifest generator ([GENERATORS.md](./GENERATORS.md#vfx)),
 which cuts the exported sheet into an ordered frame set. The workbench
 answers "the pixel tools are busy. retry in a few seconds." while another
 render on the account is running; pixelkiln retries that with backoff.
+
+---
+
+## VFX artist (`POST /vfx`), unmeasured
+
+PixelLab 0.4.130 added "Create VFX" to the REST API: an effects artist (the
+website's VFX creator) that builds an effect from a plain-language
+description, renders it, checks its own work, and saves it to My effects.
+Everything below comes from the OpenAPI document. No live job has been run,
+so neither the completed shape nor a bill has been seen.
+
+**Request** (`VfxRequest`): `description` (required, up to 8000 characters;
+with `effect_id`, what to change), `sprite` (optional base64 PNG or GIF, up
+to 512×512 per frame; an animation is a GIF or a horizontal strip of
+`sprite_frames`, 1–32), `sprite_fps` (1–60), `artist` (`lite`, the default,
+or `pro`), `effect_id` (change a saved effect in place; it keeps its own
+sprite), `conversation` (from a previous result, with its `effect_id`:
+priced as a change), `name` (up to 80 characters), and `game_pack`.
+
+**Response.** A 202 with `background_job_id`, `status`, `quoted_generations`,
+and `usage`. Poll `GET /background-jobs/{id}` every 5–10 s (PixelLab says
+30–90 s usually). A completed job's `last_response` has `files` (no-auth
+links: `<name>.gif`, `<name>.png` sheet, `<name>.json` with frames,
+durations, `pivot`, and `meta.anchor`, `<name>-game.zip` with `game_pack`,
+`<name>-normals.png` when a light made the sprite's normal map), `effect_id`,
+`name`, `edit_url`, `message`, `canvas` `{w, h}`, `frames`, `fps`, `loop`,
+`anchor` `{kind, x, y}`, `parts`, and `conversation`. The shape of `files`
+(a list or a map) is not documented; pixelkiln reads a URL list, a list of
+`{name, url}` records, or a name-to-URL map, and fails naming the keys it got
+otherwise.
+
+**Errors.** 400 is a request to change (the detail says what), 402 means
+insufficient credits, 429 too many concurrent jobs, and 503 the renderer is
+busy. The shared HTTP policy retries 429 and 503 with backoff.
+
+**Cost** (generations), quoted at submit and charged on delivery: the quote,
+or more when the effect took much longer (the overrun past 25% of the
+quote), never more than twice the quote.
+
+| | lite | pro |
+|---|---|---|
+| new effect, no sprite or up to 128 px | 1 | 6 (8 with a sprite) |
+| change (with `conversation`) | 1 | 4 |
+| sprite up to 256 px | 3 (change 2) | 14 (change 5) |
+| sprite up to 512 px | 5 (change 2) | 28 (change 8) |
+
+An animated sprite adds "a little per frame", unpriced; pixelkiln sends
+still PNG sprites only. Plans and `--budget` count twice the quote, the most
+a job can bill, and the lock records `quotedGenerations` beside the bill read
+from the finished job's `usage`.
+
+Wired up as `pixelkiln vfx --description` ([CLI](./CLI.md#described-effects-paid))
+and as a `vfx` block's `description` ([GENERATORS.md](./GENERATORS.md#described-effects-the-paid-vfx-artist)).
 
 ---
 

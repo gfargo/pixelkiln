@@ -1,8 +1,8 @@
 /**
  * PixelLab's VFX workbench (Create VFX), driven through its MCP tool.
  *
- * PixelLab added Create VFX in 0.4.128 (October 2026) and exposes it only as
- * the `vfx_workbench` MCP tool; there is no REST endpoint. It is a renderer,
+ * PixelLab added Create VFX in 0.4.128 (October 2026) and exposes the
+ * workbench only as the `vfx_workbench` MCP tool. It is a renderer,
  * not a model: an effect is a JSON recipe of layers (most of them dropped in
  * as tuned "parts"), rendered to crisp pixel-art frames, and nothing is
  * generated or billed (free on a subscription). Every call returns a new
@@ -16,11 +16,16 @@
  * a saved effect, or a recipe file, optionally add parts, export, download,
  * and save the effect's final recipe beside the files so the same effect
  * can be rendered again later, byte for byte, with `recipe`.
+ *
+ * 0.4.130 added the paid side over REST: `POST /vfx`, an effects artist that
+ * builds an effect from a plain-language description (the website's VFX
+ * creator), renders it, checks it, and saves it to My effects. The second
+ * half of this file drives it; its results are the same kind of export.
  */
 import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { MAX_DOWNLOAD_BYTES } from "./client.ts"
+import { MAX_DOWNLOAD_BYTES, type PixelLabClient } from "./client.ts"
 import { sha256 } from "./hash.ts"
 import { fetchWithRetry } from "./http.ts"
 import { imageMetadata } from "./media.ts"
@@ -97,8 +102,15 @@ export async function describeVfx(client: Pick<PixelLabMcpClient, "callTool">, t
   return (await client.callTool(VFX_TOOL, { argv: ["describe", topic] })).text
 }
 
-/** `<out>.png`, `.gif`, `.json`, `.vfx.json`, and `-game.zip`, with a trailing extension on `out` treated as the base's own. */
-export function vfxOutputPaths(out: string): { sheet: string; gif: string; atlas: string; provenance: string; gamePack: string } {
+/** `<out>.png`, `.gif`, `.json`, `.vfx.json`, `-game.zip`, and the artist's `-normals.png`, with a trailing extension on `out` treated as the base's own. */
+export function vfxOutputPaths(out: string): {
+  sheet: string
+  gif: string
+  atlas: string
+  provenance: string
+  gamePack: string
+  normals: string
+} {
   const base = path.resolve(out.replace(/\.(png|gif|json|zip)$/i, "").replace(/\.vfx$/i, ""))
   return {
     sheet: `${base}.png`,
@@ -106,6 +118,7 @@ export function vfxOutputPaths(out: string): { sheet: string; gif: string; atlas
     atlas: `${base}.json`,
     provenance: `${base}.vfx.json`,
     gamePack: `${base}-game.zip`,
+    normals: `${base}-normals.png`,
   }
 }
 
@@ -316,6 +329,22 @@ export function vfxRecipeSha256(recipe: Record<string, unknown>): string {
   return sha256(JSON.stringify(rest))
 }
 
+type FrameRect = { x: number; y: number; w: number; h: number }
+
+/**
+ * An atlas's frame rectangles in order, from an Aseprite-style `frames` list
+ * or hash, or null when any entry lacks a numeric `frame` rectangle.
+ */
+export function vfxAtlasFrames(atlas: unknown): FrameRect[] | null {
+  const listed = (atlas as { frames?: unknown } | undefined)?.frames
+  const entries = Array.isArray(listed) ? listed : listed && typeof listed === "object" ? Object.values(listed) : null
+  if (!entries?.length) return null
+  const rects = entries.map((entry) => (entry as { frame?: Partial<FrameRect> } | null)?.frame)
+  return rects.every((rect) => rect && [rect.x, rect.y, rect.w, rect.h].every((n) => typeof n === "number"))
+    ? (rects as FrameRect[])
+    : null
+}
+
 /**
  * Cut an exported spritesheet into its frames. The atlas's frame rectangles
  * are used when it lists one per frame; otherwise the sheet is read as a
@@ -327,9 +356,9 @@ export function sliceVfxSheet(
   atlas?: unknown,
 ): Buffer[] {
   const image = decodePng(sheet)
-  const listed = (atlas as { frames?: unknown } | undefined)?.frames
-  const rects = Array.isArray(listed) && listed.length === facts.frames
-    ? listed.map((entry) => (entry as { frame: { x: number; y: number; w: number; h: number } }).frame)
+  const listed = vfxAtlasFrames(atlas)
+  const rects = listed && listed.length === facts.frames
+    ? listed
     : Array.from({ length: facts.frames }, (_, index) => {
         const columns = Math.max(1, Math.floor(image.width / facts.width))
         return { x: (index % columns) * facts.width, y: Math.floor(index / columns) * facts.height, w: facts.width, h: facts.height }
@@ -440,4 +469,383 @@ export async function makeVfx(client: Pick<PixelLabMcpClient, "callTool">, opts:
   }
   await writeFile(paths.provenance, `${JSON.stringify(provenance, null, 2)}\n`)
   return { ...exported, paths: written, recipe }
+}
+
+// The VFX artist: `POST /vfx` over REST, paid.
+
+export type VfxArtist = "lite" | "pro"
+export const VFX_ARTISTS = ["lite", "pro"] as const
+/** The artist takes a sprite up to this many pixels per side (per frame). */
+export const VFX_ARTIST_MAX_SPRITE = 512
+
+/**
+ * PixelLab's quote for one `POST /vfx`, in generations, from the table in
+ * its OpenAPI description (0.4.130; no live bill seen yet). `sprite` is the
+ * sprite's longer side, `"none"` without one, or `"unknown"` for a file that
+ * does not exist yet, which is priced at the top (512px) tier. A `change` is
+ * a request with an `effect_id` and that effect's `conversation`; without
+ * the conversation PixelLab prices a change as a new effect.
+ */
+export function vfxArtistQuote(artist: VfxArtist, sprite: number | "none" | "unknown", change = false): number {
+  // Columns: no sprite, a sprite up to 128px, up to 256px, up to 512px.
+  const table = {
+    lite: { new: [1, 1, 3, 5], change: [1, 1, 2, 2] },
+    pro: { new: [6, 8, 14, 28], change: [4, 4, 5, 8] },
+  }
+  const tier = sprite === "none" ? 0 : sprite === "unknown" ? 3 : sprite <= 128 ? 1 : sprite <= 256 ? 2 : 3
+  return table[artist][change ? "change" : "new"][tier]!
+}
+
+/**
+ * The most one artist job can bill. PixelLab charges the quote, more when
+ * the effect took much longer, and never more than twice the quote, so
+ * plans and `--budget` count twice the quote: a run never spends past what
+ * its budget let through. The bill is read back from the finished job.
+ */
+export function vfxArtistCeiling(quote: number): number {
+  return quote * 2
+}
+
+/** A sprite file's bytes as the artist takes them: a PNG up to 512px a side. */
+export function vfxArtistSprite(bytes: Buffer, label: string): { image: { base64: string; format: "png" }; side: number } {
+  const metadata = imageMetadata(bytes)
+  if (metadata?.format !== "png") throw new Error(`${label}: PixelLab's VFX artist takes a PNG sprite`)
+  const side = Math.max(metadata.width, metadata.height)
+  if (side > VFX_ARTIST_MAX_SPRITE) {
+    throw new Error(
+      `${label} is ${metadata.width}x${metadata.height}; PixelLab's VFX artist takes up to ${VFX_ARTIST_MAX_SPRITE}x${VFX_ARTIST_MAX_SPRITE} ` +
+        "(crop or pad it; never rescale pixel art)",
+    )
+  }
+  return { image: { base64: bytes.toString("base64"), format: "png" }, side }
+}
+
+export interface VfxArtistFile {
+  name: string
+  url: string
+}
+
+/**
+ * `last_response.files` as name and URL pairs. The shape is undocumented, so
+ * a list of URLs, a list of `{name, url}` records, and a name-to-URL map are
+ * all read; a file's name falls back to its URL's last path segment.
+ */
+export function vfxArtistFiles(raw: unknown): VfxArtistFile[] {
+  const urlOf = (value: unknown): string | null => {
+    if (typeof value === "string") return /^https?:\/\//i.test(value) ? value : null
+    if (!value || typeof value !== "object") return null
+    for (const key of ["url", "download_url", "href"]) {
+      const url = (value as Record<string, unknown>)[key]
+      if (typeof url === "string" && /^https?:\/\//i.test(url)) return url
+    }
+    return null
+  }
+  const nameOf = (value: unknown, url: string, key: string | undefined): string => {
+    if (value && typeof value === "object") {
+      for (const field of ["name", "filename", "file"]) {
+        const name = (value as Record<string, unknown>)[field]
+        if (typeof name === "string" && name) return name
+      }
+    }
+    if (key && /\.[a-z0-9]+$/i.test(key)) return key
+    return decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "")
+  }
+  const entries: Array<[string | undefined, unknown]> = Array.isArray(raw)
+    ? raw.map((value) => [undefined, value])
+    : raw && typeof raw === "object"
+      ? Object.entries(raw)
+      : []
+  const files: VfxArtistFile[] = []
+  for (const [key, value] of entries) {
+    const url = urlOf(value)
+    if (url) files.push({ name: nameOf(value, url, key), url })
+  }
+  return files
+}
+
+export interface VfxArtistResult {
+  effectId: string
+  name: string | null
+  editUrl: string | null
+  /** What the artist says it made. */
+  message: string | null
+  width: number | null
+  height: number | null
+  frames: number | null
+  fps: number | null
+  loop: boolean | null
+  anchor: { kind: string | null; x: number; y: number } | null
+  parts: unknown
+  /** Passed back with `effect_id` to price a change as a change. */
+  conversation: string | null
+  files: VfxArtistFile[]
+  sheet: VfxArtistFile
+  atlas: VfxArtistFile | null
+  gif: VfxArtistFile | null
+  gamePack: VfxArtistFile | null
+  /** The sprite's normal map, when a light in the effect made one. */
+  normals: VfxArtistFile | null
+}
+
+/**
+ * A completed `/vfx` job's `last_response`. Every field named here is from
+ * PixelLab's OpenAPI description, not a live job; a reply with no effect id
+ * or no spritesheet fails naming the keys it did have.
+ */
+export function parseVfxArtistResult(done: Record<string, unknown>, jobId: string): VfxArtistResult {
+  const files = vfxArtistFiles(done.files)
+  const pick = (test: RegExp, skip?: RegExp) => files.find((file) => test.test(file.name) && !skip?.test(file.name)) ?? null
+  const normals = /-normals?\.png$/i
+  const sheet = pick(/\.png$/i, normals)
+  const effectId = typeof done.effect_id === "string" && done.effect_id ? done.effect_id : null
+  if (!effectId || !sheet) {
+    throw new Error(
+      `Invalid PixelLab response for vfx job ${jobId}: completed without ${effectId ? "a spritesheet among its files" : "an effect_id"} ` +
+        `(last_response keys: ${Object.keys(done).join(", ") || "none"}; files: ${JSON.stringify(done.files ?? null).slice(0, 400)}); ` +
+        "update parseVfxArtistResult in src/pixellab-vfx.ts with the real shape",
+    )
+  }
+  const number = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null)
+  const text = (value: unknown) => (typeof value === "string" && value ? value : null)
+  const canvas = (done.canvas ?? {}) as { w?: unknown; h?: unknown }
+  const anchor = done.anchor as { kind?: unknown; x?: unknown; y?: unknown } | undefined
+  return {
+    effectId,
+    name: text(done.name),
+    editUrl: text(done.edit_url),
+    message: text(done.message),
+    width: number(canvas.w),
+    height: number(canvas.h),
+    frames: number(done.frames),
+    fps: number(done.fps),
+    loop: typeof done.loop === "boolean" ? done.loop : null,
+    anchor: anchor && number(anchor.x) !== null && number(anchor.y) !== null
+      ? { kind: text(anchor.kind), x: anchor.x as number, y: anchor.y as number }
+      : null,
+    parts: done.parts ?? null,
+    conversation: text(done.conversation),
+    files,
+    sheet,
+    atlas: pick(/\.json$/i),
+    gif: pick(/\.gif$/i),
+    gamePack: pick(/\.zip$/i),
+    normals: pick(normals),
+  }
+}
+
+/** The frame size and count the result states, filled in from the atlas where it is silent. */
+export function vfxArtistFrameFacts(
+  result: Pick<VfxArtistResult, "width" | "height" | "frames" | "effectId">,
+  atlas: unknown,
+): { width: number; height: number; frames: number } {
+  const rects = vfxAtlasFrames(atlas)
+  const frames = result.frames ?? rects?.length ?? null
+  const width = result.width ?? rects?.[0]?.w ?? null
+  const height = result.height ?? rects?.[0]?.h ?? null
+  if (!frames || !width || !height) {
+    throw new Error(`PixelLab vfx effect ${result.effectId} came back with no frame size or count, in the result or its atlas`)
+  }
+  return { width, height, frames }
+}
+
+export interface MakeVfxWithArtistOptions {
+  description: string
+  artist?: VfxArtist
+  /** A local PNG the effect is built around, up to 512px a side. */
+  sprite?: string
+  /** A My effects id to change in place; `description` then says what to change. */
+  effect?: string
+  /** The `conversation` an earlier result for `effect` handed back; prices the change as a change. */
+  conversation?: string
+  name?: string
+  out: string
+  gamePack?: boolean
+  force?: boolean
+  onProgress?: (message: string) => void
+  /** Poll interval and ceiling. PixelLab documents 30-90 s. */
+  intervalMs?: number
+  timeoutMs?: number
+  sleep?: (ms: number) => Promise<void>
+}
+
+export interface VfxArtistProvenance {
+  version: 1
+  provider: "pixellab"
+  tool: "vfx"
+  artist: VfxArtist
+  description: string
+  name: string | null
+  effectId: string
+  editUrl: string | null
+  message: string | null
+  source: { sprite?: string; changed?: string }
+  width: number
+  height: number
+  frames: number
+  fps: number | null
+  loop: boolean | null
+  anchor: VfxArtistResult["anchor"]
+  parts: unknown
+  files: { sheet: string; gif?: string; atlas?: string; gamePack?: string; normals?: string }
+  quotedGenerations: number | null
+  usage: unknown
+  /** Passed back with `--effect` to change this effect at the change price; `pixelkiln vfx` reads it from here. */
+  conversation: string | null
+  exportedAt: string
+}
+
+export interface MakeVfxWithArtistResult {
+  jobId: string
+  effectId: string
+  editUrl: string | null
+  name: string | null
+  message: string | null
+  width: number
+  height: number
+  frames: number
+  fps: number | null
+  loop: boolean | null
+  anchor: VfxArtistResult["anchor"]
+  quotedGenerations: number | null
+  usage: unknown
+  paths: { sheet: string; provenance: string; gif?: string; atlas?: string; gamePack?: string; normals?: string }
+}
+
+/**
+ * Ask PixelLab's VFX artist for one effect, wait for it, download its files,
+ * and write `<out>.vfx.json`. Paid: the caller prices it first with
+ * `vfxArtistQuote` and `vfxArtistCeiling`.
+ */
+export async function makeVfxWithArtist(
+  client: Pick<PixelLabClient, "createVfx" | "getBackgroundJob" | "download">,
+  opts: MakeVfxWithArtistOptions,
+): Promise<MakeVfxWithArtistResult> {
+  const paths = vfxOutputPaths(opts.out)
+  if (!opts.force) {
+    for (const file of [paths.sheet, paths.gif, paths.atlas, paths.provenance, ...(opts.gamePack ? [paths.gamePack] : [])]) {
+      if (existsSync(file)) throw new Error(`${file} already exists; pass --force to replace it`)
+    }
+  }
+  const progress = opts.onProgress ?? (() => {})
+  const sprite = opts.sprite ? vfxArtistSprite(await readFile(opts.sprite), opts.sprite).image : undefined
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+  const interval = opts.intervalMs ?? 6000
+  const timeout = opts.timeoutMs ?? 10 * 60_000
+
+  const submitted = await client.createVfx({
+    description: opts.description,
+    artist: opts.artist,
+    sprite,
+    effectId: opts.effect,
+    conversation: opts.effect ? opts.conversation : undefined,
+    name: opts.name,
+    gamePack: opts.gamePack,
+  })
+  const jobId = submitted.background_job_id
+  progress(`submitted job ${jobId}, quoted ${submitted.quoted_generations ?? "?"} generations`)
+  const started = Date.now()
+  let job: Awaited<ReturnType<PixelLabClient["getBackgroundJob"]>>
+  for (;;) {
+    job = await client.getBackgroundJob(jobId)
+    if (job.status === "completed") break
+    if (job.status === "failed") throw new Error(`PixelLab vfx job ${jobId} failed upstream${vfxJobFailure(job.last_response)}`)
+    if (Date.now() - started > timeout) {
+      throw new Error(
+        `PixelLab vfx job ${jobId} is still ${job.status} after ${Math.round(timeout / 1000)} s; ` +
+          "it keeps running upstream (and bills when delivered), but this command has stopped waiting",
+      )
+    }
+    progress(job.status)
+    await sleep(interval)
+  }
+  const result = parseVfxArtistResult(job.last_response ?? {}, jobId)
+
+  await mkdir(path.dirname(paths.sheet), { recursive: true })
+  const written: MakeVfxWithArtistResult["paths"] = { sheet: paths.sheet, provenance: paths.provenance }
+  await writeFile(paths.sheet, await client.download(result.sheet.url))
+  let atlas: unknown
+  if (result.atlas) {
+    // The atlas names its sheet by PixelLab's file name; point it at ours.
+    atlas = JSON.parse((await client.download(result.atlas.url)).toString("utf8"))
+    const meta = (atlas as { meta?: Record<string, unknown> }).meta
+    if (meta) meta.image = path.basename(paths.sheet)
+    await writeFile(paths.atlas, `${JSON.stringify(atlas, null, 2)}\n`)
+    written.atlas = paths.atlas
+  }
+  for (const [file, target, key] of [
+    [result.gif, paths.gif, "gif"],
+    [result.gamePack, paths.gamePack, "gamePack"],
+    [result.normals, paths.normals, "normals"],
+  ] as const) {
+    if (!file) continue
+    await writeFile(target, await client.download(file.url))
+    written[key] = target
+  }
+  const facts = vfxArtistFrameFacts(result, atlas)
+
+  const usage = job.usage ?? null
+  const provenance: VfxArtistProvenance = {
+    version: 1,
+    provider: "pixellab",
+    tool: "vfx",
+    artist: opts.artist ?? "lite",
+    description: opts.description,
+    name: result.name,
+    effectId: result.effectId,
+    editUrl: result.editUrl,
+    message: result.message,
+    source: {
+      ...(opts.sprite ? { sprite: path.relative(path.dirname(paths.provenance), path.resolve(opts.sprite)).split(path.sep).join("/") } : {}),
+      ...(opts.effect ? { changed: opts.effect } : {}),
+    },
+    ...facts,
+    fps: result.fps,
+    loop: result.loop,
+    anchor: result.anchor,
+    parts: result.parts,
+    files: Object.fromEntries(
+      (["sheet", "gif", "atlas", "gamePack", "normals"] as const)
+        .filter((key) => written[key])
+        .map((key) => [key, path.basename(written[key]!)]),
+    ) as VfxArtistProvenance["files"],
+    quotedGenerations: submitted.quoted_generations ?? null,
+    usage,
+    conversation: result.conversation,
+    exportedAt: new Date().toISOString(),
+  }
+  await writeFile(paths.provenance, `${JSON.stringify(provenance, null, 2)}\n`)
+  return {
+    jobId,
+    effectId: result.effectId,
+    editUrl: result.editUrl,
+    name: result.name,
+    message: result.message,
+    ...facts,
+    fps: result.fps,
+    loop: result.loop,
+    anchor: result.anchor,
+    quotedGenerations: submitted.quoted_generations ?? null,
+    usage,
+    paths: written,
+  }
+}
+
+/** `: <reason>` from a failed job's `last_response`, or nothing when it gives none. */
+export function vfxJobFailure(done: Record<string, unknown> | null | undefined): string {
+  for (const key of ["error", "detail", "message"]) {
+    const value = done?.[key]
+    if (typeof value === "string" && value) return `: ${value}`
+  }
+  return ""
+}
+
+/** The `conversation` an earlier `.vfx.json` record kept, when it is the record of `effectId`. */
+export async function readVfxConversation(file: string, effectId: string): Promise<string | undefined> {
+  if (!existsSync(file)) return undefined
+  try {
+    const record = JSON.parse(await readFile(file, "utf8")) as { effectId?: unknown; conversation?: unknown }
+    return record.effectId === effectId && typeof record.conversation === "string" ? record.conversation : undefined
+  } catch {
+    return undefined
+  }
 }

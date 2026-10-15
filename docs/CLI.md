@@ -1076,6 +1076,43 @@ timing, a projectile you drew), use the `vfx_workbench` tool from an MCP
 client such as Claude Code. Then pull the result into the project with
 `pixelkiln vfx --effect <id>`.
 
+#### Described effects (paid)
+
+```bash
+pixelkiln vfx --description "a blue lightning strike that leaves sparks" --out fx/zap
+pixelkiln vfx --description "a green healing aura" --artist pro --sprite sprites/hero.png --out fx/heal
+pixelkiln vfx --description "make it red and faster" --effect <effect id> --out fx/zap --force
+```
+
+`--description` asks PixelLab's VFX artist (`POST /vfx`) to build the
+effect from words instead of the free workbench: it picks the parts, renders
+the effect, checks it, and saves it to My effects. It goes over the REST API
+and needs no MCP.
+
+- `--artist lite` (the default) or `--artist pro`, the stronger artist for
+  detailed effects.
+- `--sprite` must be a local PNG up to 512×512; the artist takes pixels, not
+  a URL or a `character:` reference. `--preset`, `--recipe`, `--part`, and
+  `--fps` are refused with `--description`.
+- `--effect <id>` changes that saved effect in place, with `--description`
+  saying what to change. When `<base>.vfx.json` is that effect's record from
+  an earlier run, its `conversation` is sent too, which PixelLab prices as a
+  change. Without one, PixelLab prices it as a new effect.
+- **Cost.** PixelLab quotes each job and bills on delivery, up to twice the
+  quote when the effect runs long. Its table: lite 1 generation (3 with a
+  sprite over 128 px, 5 over 256 px; a change 1–2), pro 6 (8 with a sprite,
+  14 over 128 px, 28 over 256 px; a change 4–8). The command prints the quote
+  and the twice-the-quote ceiling and asks first. `--budget <n>` refuses when
+  `n` is below the ceiling, `--yes` skips the question, and `--dry-run` sends
+  nothing. A change prices the saved effect's sprite at the top tier unless
+  you pass `--sprite`, since its size is not known here.
+- It writes the same `<base>.png`, `.gif`, `.json`, and `-game.zip` (with
+  `--game-pack`) as the workbench, plus `<base>-normals.png` when a light in
+  the effect made the sprite's normal map. `<base>.vfx.json` records the
+  effect id, edit link, the artist's message, the frame facts, the quote, the
+  bill, and the `conversation`. It holds no recipe; to get a free, repeatable
+  one, run `pixelkiln vfx --effect <id> --out <another base>` afterwards.
+
 To plan, lock, and pack effects with the rest of a project's art, declare
 them in the manifest instead, with the [`vfx` generator](./GENERATORS.md#vfx).
 A `.vfx.json` record from this command works there as a `recipe`.
@@ -1208,7 +1245,8 @@ Print the package version. `-v` is an alias.
 | `--note <text>` | refine approve | Optional review note stored in the quality companion. |
 | `--model-root <path>` | recipe verify | ComfyUI `models` directory. Enables streamed hash checks for every external model declared by the recipe. |
 | `--quantize <n>` | unzoom | `0` auto-detects a palette (default), `-1` keeps every color, `2`-`256` quantizes to exactly that many. |
-| `--description <text>` | font/pixelate | The font's style, e.g. `"warm orange arcade font"`, or an optional style steer for pixelate. |
+| `--description <text>` | font/pixelate/vfx | The font's style, e.g. `"warm orange arcade font"`, an optional style steer for pixelate, or the effect for PixelLab's paid VFX artist (with `--effect`, what to change). |
+| `--artist <a>` | vfx | With `--description`: `lite` (default) or `pro`. |
 | `--weight <w>` | font | `Bold` or `Regular` (default). |
 | `--glyph-px <n>` | font | Native glyph size: `8`, `16` (default), `32`, or `64`. |
 | `--preset <name>` | vfx | Start from one of PixelLab's whole-effect presets; `pixelkiln vfx presets` lists them. |

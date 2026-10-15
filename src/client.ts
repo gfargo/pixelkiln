@@ -316,6 +316,15 @@ const ProFlashImageSubmitSchema = z
     usage: z.unknown().optional(),
   })
   .passthrough()
+/** `POST /vfx`'s 202: a background job plus the quote it bills against (`VfxResponse`, OpenAPI 0.4.130). */
+const VfxSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    quoted_generations: z.number().nullable().optional(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
 const UnzoomResponseSchema = z
   .object({
     image: z.object({ base64: z.string().min(1) }).passthrough(),
@@ -2003,6 +2012,37 @@ export class PixelLabClient {
       RevisionJobSubmitSchema,
       await this.request<unknown>("/generate-font-pro", { method: "POST", body: JSON.stringify(body) }),
       "generate-font-pro",
+    )
+  }
+
+  /**
+   * `POST /vfx`: PixelLab's effects artist builds an animated effect from a
+   * description, around an optional sprite, and saves it to My effects. With
+   * `effectId` it changes that saved effect in place; adding the effect's
+   * `conversation` prices the change as a change. A background job whose
+   * 202 carries `quoted_generations`; PixelLab bills on delivery, up to
+   * twice the quote. A 503 (renderer busy) is retried by the shared policy.
+   */
+  async createVfx(args: {
+    description: string
+    artist?: "lite" | "pro"
+    sprite?: { base64: string; format: "png" }
+    effectId?: string
+    conversation?: string
+    name?: string
+    gamePack?: boolean
+  }): Promise<z.output<typeof VfxSubmitSchema>> {
+    const body: Record<string, unknown> = { description: args.description }
+    if (args.artist) body.artist = args.artist
+    if (args.sprite) body.sprite = { type: "base64", base64: args.sprite.base64, format: args.sprite.format }
+    if (args.effectId) body.effect_id = args.effectId
+    if (args.conversation) body.conversation = args.conversation
+    if (args.name) body.name = args.name
+    if (args.gamePack) body.game_pack = true
+    return validateResponse(
+      VfxSubmitSchema,
+      await this.request<unknown>("/vfx", { method: "POST", body: JSON.stringify(body) }),
+      "vfx",
     )
   }
 
