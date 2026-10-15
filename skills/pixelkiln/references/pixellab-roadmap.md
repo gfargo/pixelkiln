@@ -349,9 +349,11 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   for a pro effect around a 512px sprite, charged on delivery and never more
   than twice the quote. Closed as a `vfx` block's `description` (with
   `artist: "lite" | "pro"`) and `pixelkiln vfx --description`. Plans count
-  twice the quote. Unmeasured: the completed job's `files` shape, whether
-  its sheet matches the workbench's layout, and a real bill. Animated
-  sprites (GIF or strips) are not sent yet.
+  twice the quote. **Measured once**: a lite effect with no sprite billed
+  exactly its 1-generation quote, and its sheet (a 3×3 grid with an
+  Aseprite-style atlas) cut into 8 correct frames (docs/ENDPOINTS.md). A
+  sprite, the pro artist, and changes are unmeasured. Animated sprites (GIF
+  or strips) are not sent yet.
 - **Normal maps** (`POST /normal-map`, PixelLab 0.4.130) — a sprite's normal
   map for engine lighting, 8 to 512px, up to 32 frames as one strip so the
   light stays steady, `opengl` or `directx` convention, 0.5 generations.
@@ -359,7 +361,9 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   one strip and comes back cut into frames; a character's directions are
   refused, since a strip would shape every direction from the first) and the
   standalone `pixelkiln normal-map` command. Styles with `enforcePalette` or
-  `quality` refuse it so nothing palette-snaps a normal map. Unmeasured.
+  `quality` refuse it so nothing palette-snaps a normal map. **Measured
+  once**: an 8-frame 1304×26 strip billed exactly 0.5 and came back the same
+  size with matching alpha.
 - **Target palette for Create Image Pro** (`target_palette` on
   `/generate-image-v2`, PixelLab 0.4.130) — an `imagePro` style's `palette`
   is now sent as the colors every pixel must use, with `maxColors` (2 to 64

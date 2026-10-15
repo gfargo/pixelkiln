@@ -721,9 +721,10 @@ further — there is nothing to ask.
 - `normal-map` calls `/normal-map` (PixelLab 0.4.130), a background job whose
   map is `last_response.image`; a loop's frames go and come back as one
   horizontal strip, cut into per-frame files on poll. See
-  [Normal maps](#normal-maps). Not exercised against a live account yet: the
-  request and response shapes, and the 0.5-generation price, come from
-  PixelLab's live OpenAPI document.
+  [Normal maps](#normal-maps). Measured once through `pixelkiln normal-map`:
+  an 8-frame strip billed exactly 0.5 generations and came back the same
+  size with matching alpha (docs/ENDPOINTS.md). The revision mode shares
+  that request but has not run live itself.
 
 - The mask convention is fixed, not graph-defined like ComfyUI's: white marks
   the area to generate, black the area to preserve. There is no way to flip it.

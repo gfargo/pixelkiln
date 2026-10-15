@@ -23,7 +23,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 | One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 10–25 generations (unmeasured) | 1 image |
 | A styled still on the Pro Flash model, or the south sprite a Pro Flash character will rotate | `imageProFlash` | 5–9 generations (PixelLab's provisional quote) | 1 image |
-| An animated effect (spell, hit, explosion, aura), on its own or around a sprite | `vfx` | free from presets and parts; 1–28 when described to PixelLab's artist (unmeasured; plans at twice the quote) | one ordered frame set |
+| An animated effect (spell, hit, explosion, aura), on its own or around a sprite | `vfx` | free from presets and parts; 1–28 when described to PixelLab's artist (lite measured at 1; plans at twice the quote) | one ordered frame set |
 
 Start with `map` unless a required capability points elsewhere. Twenty-five
 `map` re-rolls cost the same as one 64×64 `1dir` call.
