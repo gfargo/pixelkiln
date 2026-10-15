@@ -603,7 +603,22 @@ export async function resolveSpecs(
       let terrainUpperDescription: string | undefined
       let terrainTransitionDescription: string | undefined
       let prompt: string
-      if (generator === "terrain") {
+      if (generator === "terrain" && style.terrainOrientation === "sidescroller") {
+        // A platform set has one terrain and the layer on top of it; the
+        // other side of every edge is empty air, which takes no description.
+        const parsed = parseTerrainDescriptions(subject)
+        if (!parsed || parsed.transition) {
+          throw new Error(
+            `assets.${assetId}: a sidescroller terrain needs exactly "1). <platform body> 2). <top layer>" ` +
+              "in its prompt (e.g. 1). stone brick texture 2). green grass texture)",
+          )
+        }
+        const wrap = (text: string) =>
+          [style.promptPrefix, text, style.promptSuffix].map((p) => p.trim()).filter(Boolean).join(", ")
+        terrainLowerDescription = wrap(parsed.lower)
+        terrainTransitionDescription = wrap(parsed.upper)
+        prompt = subject.trim()
+      } else if (generator === "terrain") {
         const parsed = parseTerrainDescriptions(subject)
         if (!parsed) {
           throw new Error(
@@ -641,7 +656,7 @@ export async function resolveSpecs(
         tileVariationCount(countNumberedDescriptions(prompt))
       // A `/create-tileset` call is always a connectable set too: 16 tiles,
       // or 25 in the tall layout.
-      const terrainTiles = generator === "terrain" ? terrainTileCount(style.terrainTransitionSize, style.terrainMode) : 0
+      const terrainTiles = generator === "terrain" ? terrainTileCount(style.terrainTransitionSize, style.terrainMode, style.terrainOrientation) : 0
 
       const base = {
         styleId,
@@ -706,6 +721,7 @@ export async function resolveSpecs(
         terrainConnectDiagonals: generator === "terrain" ? style.terrainConnectDiagonals : undefined,
         terrainTransitionSize: generator === "terrain" ? style.terrainTransitionSize : undefined,
         terrainView: generator === "terrain" ? style.terrainView : undefined,
+        terrainOrientation: generator === "terrain" ? style.terrainOrientation : undefined,
         isometricTileSize: generator === "isometricTile" ? style.isometricTileSize : undefined,
         isometricTileShape: generator === "isometricTile" ? style.isometricTileShape : undefined,
         // A revision in a character or objectPro style is a provider edit of
@@ -724,7 +740,7 @@ export async function resolveSpecs(
           generator === "tiles"
             ? tilesCost(tileSize, tileVariations)
             : generator === "terrain"
-              ? terrainCost(style.terrainMode, size)
+              ? terrainCost(style.terrainMode, size, style.terrainOrientation)
               : generator === "isometricTile"
                 ? isometricTileCost()
                 : generationCost(width, height, generator),

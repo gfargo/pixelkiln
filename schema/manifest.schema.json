@@ -268,6 +268,13 @@
                       "high top-down"
                     ]
                   },
+                  "terrainOrientation": {
+                    "type": "string",
+                    "enum": [
+                      "top-down",
+                      "sidescroller"
+                    ]
+                  },
                   "isometricTileSize": {
                     "type": "number",
                     "enum": [
@@ -747,6 +754,13 @@
                     "enum": [
                       "low top-down",
                       "high top-down"
+                    ]
+                  },
+                  "terrainOrientation": {
+                    "type": "string",
+                    "enum": [
+                      "top-down",
+                      "sidescroller"
                     ]
                   },
                   "isometricTileSize": {

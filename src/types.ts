@@ -1410,6 +1410,16 @@ const StyleObjectSchema = z
      *  top-down`. */
     terrainView: z.enum(["low top-down", "high top-down"]).optional(),
     /**
+     * `terrain` generator only. `top-down` (the default) is a two-terrain
+     * map set from `/create-tileset`; `sidescroller` is a platform set from
+     * `/create-tileset-sidescroller`, seen from the side: the prompt's 1).
+     * is the platform body and 2). the top layer on it (grass, snow, moss),
+     * and the set's other terrain is empty air. 16 or 32px tiles,
+     * `terrainTransitionSize` 0, 0.25, 0.5, or 1 (the top layer's height),
+     * and none of the top-down mode, view, or shape controls.
+     */
+    terrainOrientation: z.enum(["top-down", "sidescroller"]).optional(),
+    /**
      * `isometricTile` generator only. `/create-isometric-tile`'s own tile
      * grid size, distinct from `size` (the generation canvas, 16-64px — the
      * API's own guidance is that sizes above 24px "often produce better
@@ -2341,6 +2351,7 @@ export interface ResolvedSpec {
   terrainConnectDiagonals?: boolean
   terrainTransitionSize?: number
   terrainView?: string
+  terrainOrientation?: string
   /** `terrain` generator only: the sets this one shares a terrain with, per side. */
   terrainConnect?: Partial<Record<TerrainSide, ResolvedTerrainLink>>
   /** `isometricTile` generator only. See StyleSchema for what each one means. */

@@ -813,55 +813,8 @@ export class PixelLabProvider implements Provider {
       if (spec.detail) {
         requirePixelLabOption("terrain", "detail", spec.detail, ["low detail", "medium detail", "highly detailed"])
       }
-      // Real API rejections, not soft defaults: shape_style is standard-only,
-      // and a 64px tile needs the pro pipeline.
-      if (spec.terrainShapeStyle && spec.terrainMode === "pro") {
-        throw new Error(
-          "PixelLab terrain: terrainShapeStyle is standard-mode only; pro's own shape controls " +
-            "are terrainRaggedness/terrainRoundness/terrainBoundaryAmplitude/terrainStepSlope",
-        )
-      }
-      const pro = spec.terrainMode === "pro"
-      if (spec.terrainRoundness != null && !pro && !spec.terrainShapeStyle) {
-        throw new Error('PixelLab terrain: terrainRoundness needs terrainMode: "pro" or a terrainShapeStyle')
-      }
-      if (spec.terrainRoundness != null && spec.terrainRoundness > 1 && !pro) {
-        throw new Error('PixelLab terrain: terrainRoundness above 1 (corners cut toward 45°) needs terrainMode: "pro"')
-      }
-      if (spec.terrainBoundaryAmplitude != null && !pro && !spec.terrainShapeStyle) {
-        throw new Error('PixelLab terrain: terrainBoundaryAmplitude needs terrainMode: "pro" or a terrainShapeStyle')
-      }
-      if (spec.terrainBoundarySeed != null && spec.terrainBoundaryAmplitude == null) {
-        throw new Error("PixelLab terrain: terrainBoundarySeed shapes terrainBoundaryAmplitude's border; set both or neither")
-      }
-      if (spec.terrainStepSlope != null && !(pro && spec.terrainTransitionSize === 0.25)) {
-        throw new Error('PixelLab terrain: terrainStepSlope needs terrainMode: "pro" with terrainTransitionSize 0.25')
-      }
-      if (spec.terrainConnectDiagonals != null && !pro) {
-        throw new Error('PixelLab terrain: terrainConnectDiagonals needs terrainMode: "pro"')
-      }
-      if (spec.terrainTileSize === 64 && spec.terrainMode !== "pro") {
-        throw new Error('PixelLab terrain: a 64px tile needs terrainMode: "pro"')
-      }
-      if (
-        spec.terrainShapeStyle &&
-        spec.terrainTransitionSize != null &&
-        spec.terrainTransitionSize > 0.5
-      ) {
-        throw new Error(
-          "PixelLab terrain: terrainShapeStyle with terrainTransitionSize above 0.5 uses an " +
-            "extended 32-tile layout pixelkiln does not model; use 0, 0.25, or 0.5",
-        )
-      }
-      if (
-        !spec.terrainShapeStyle &&
-        spec.terrainTransitionSize != null &&
-        ![0, 0.25, 0.5, 1].includes(spec.terrainTransitionSize)
-      ) {
-        throw new Error(
-          "PixelLab terrain: terrainTransitionSize must be 0, 0.25, 0.5, or 1 unless terrainShapeStyle is set",
-        )
-      }
+      if (spec.terrainOrientation === "sidescroller") this.validateSidescrollerTerrain(spec)
+      else this.validateTopDownTerrain(spec)
     }
     if (spec.generator === "isometricTile") {
       if (spec.outline) {
@@ -915,6 +868,102 @@ export class PixelLabProvider implements Provider {
       throw new Error(
         `${spec.styleId}/${spec.assetId} resolves to ${spec.tags.length} tags, ` +
           `but PixelLab allows at most 20`,
+      )
+    }
+  }
+
+  /** `/create-tileset`'s own rules, beyond the enums both terrain endpoints share. */
+  private validateTopDownTerrain(spec: ResolvedSpec): void {
+    // Real API rejections, not soft defaults: shape_style is standard-only,
+    // and a 64px tile needs the pro pipeline.
+    if (spec.terrainShapeStyle && spec.terrainMode === "pro") {
+      throw new Error(
+        "PixelLab terrain: terrainShapeStyle is standard-mode only; pro's own shape controls " +
+          "are terrainRaggedness/terrainRoundness/terrainBoundaryAmplitude/terrainStepSlope",
+      )
+    }
+    const pro = spec.terrainMode === "pro"
+    if (spec.terrainRoundness != null && !pro && !spec.terrainShapeStyle) {
+      throw new Error('PixelLab terrain: terrainRoundness needs terrainMode: "pro" or a terrainShapeStyle')
+    }
+    if (spec.terrainRoundness != null && spec.terrainRoundness > 1 && !pro) {
+      throw new Error('PixelLab terrain: terrainRoundness above 1 (corners cut toward 45°) needs terrainMode: "pro"')
+    }
+    if (spec.terrainBoundaryAmplitude != null && !pro && !spec.terrainShapeStyle) {
+      throw new Error('PixelLab terrain: terrainBoundaryAmplitude needs terrainMode: "pro" or a terrainShapeStyle')
+    }
+    if (spec.terrainBoundarySeed != null && spec.terrainBoundaryAmplitude == null) {
+      throw new Error("PixelLab terrain: terrainBoundarySeed shapes terrainBoundaryAmplitude's border; set both or neither")
+    }
+    if (spec.terrainStepSlope != null && !(pro && spec.terrainTransitionSize === 0.25)) {
+      throw new Error('PixelLab terrain: terrainStepSlope needs terrainMode: "pro" with terrainTransitionSize 0.25')
+    }
+    if (spec.terrainConnectDiagonals != null && !pro) {
+      throw new Error('PixelLab terrain: terrainConnectDiagonals needs terrainMode: "pro"')
+    }
+    if (spec.terrainTileSize === 64 && spec.terrainMode !== "pro") {
+      throw new Error('PixelLab terrain: a 64px tile needs terrainMode: "pro"')
+    }
+    if (
+      spec.terrainShapeStyle &&
+      spec.terrainTransitionSize != null &&
+      spec.terrainTransitionSize > 0.5
+    ) {
+      throw new Error(
+        "PixelLab terrain: terrainShapeStyle with terrainTransitionSize above 0.5 uses an " +
+          "extended 32-tile layout pixelkiln does not model; use 0, 0.25, or 0.5",
+      )
+    }
+    if (
+      !spec.terrainShapeStyle &&
+      spec.terrainTransitionSize != null &&
+      ![0, 0.25, 0.5, 1].includes(spec.terrainTransitionSize)
+    ) {
+      throw new Error(
+        "PixelLab terrain: terrainTransitionSize must be 0, 0.25, 0.5, or 1 unless terrainShapeStyle is set",
+      )
+    }
+  }
+
+  /**
+   * `/create-tileset-sidescroller` takes a platform, its top layer, and the
+   * layer's height, and nothing of the top-down endpoint's mode, camera, or
+   * shape controls; sending one would be silently dropped, so it is refused.
+   */
+  private validateSidescrollerTerrain(spec: ResolvedSpec): void {
+    const topDownOnly = {
+      terrainMode: spec.terrainMode,
+      terrainShapeStyle: spec.terrainShapeStyle,
+      terrainView: spec.terrainView,
+      terrainSpreadX: spec.terrainSpreadX,
+      terrainSlopeSize: spec.terrainSlopeSize,
+      terrainRaggedness: spec.terrainRaggedness,
+      terrainRoundness: spec.terrainRoundness,
+      terrainBoundaryAmplitude: spec.terrainBoundaryAmplitude,
+      terrainBoundarySeed: spec.terrainBoundarySeed,
+      terrainStepSlope: spec.terrainStepSlope,
+      terrainConnectDiagonals: spec.terrainConnectDiagonals,
+    }
+    const set = Object.entries(topDownOnly).filter(([, value]) => value != null).map(([field]) => field)
+    if (set.length) {
+      throw new Error(`PixelLab terrain: a sidescroller set takes no ${set.join(", ")}; those are top-down controls`)
+    }
+    if (spec.terrainTileSize !== 16 && spec.terrainTileSize !== 32) {
+      throw new Error(`PixelLab terrain: a sidescroller set's tiles are 16 or 32px, got ${spec.terrainTileSize}`)
+    }
+    if (spec.terrainTransitionSize != null && ![0, 0.25, 0.5, 1].includes(spec.terrainTransitionSize)) {
+      throw new Error("PixelLab terrain: a sidescroller set's terrainTransitionSize must be 0, 0.25, 0.5, or 1")
+    }
+    if (spec.terrainConnect?.upper) {
+      throw new Error(
+        "PixelLab terrain: a sidescroller set's upper terrain is empty air; only its lower (platform) terrain can connect",
+      )
+    }
+    // A connected set shares this one's style, so it is a sidescroller too.
+    const link = spec.terrainConnect?.lower
+    if (link?.terrain === "upper") {
+      throw new Error(
+        `PixelLab terrain: ${link.assetId}'s upper terrain is empty air; connect to its lower (platform) terrain`,
       )
     }
   }
@@ -1724,6 +1773,28 @@ export class PixelLabProvider implements Provider {
         styleImages: styleImages.map(({ base64, width, height }) => ({ base64, width, height })),
       })
       return { jobId: res.tile_id, metadata: { backgroundJobId: res.background_job_id } }
+    }
+
+    if (spec.generator === "terrain" && spec.terrainOrientation === "sidescroller") {
+      const baseTileIds = await this.terrainBaseTileIds(context?.terrainLinks)
+      const res = await this.client.createTilesetSidescroller({
+        lowerDescription: spec.terrainLowerDescription!,
+        transitionDescription: spec.terrainTransitionDescription,
+        lowerBaseTileId: baseTileIds.lower,
+        tileSize: spec.terrainTileSize,
+        transitionSize: spec.terrainTransitionSize,
+        outline: spec.outline,
+        shading: spec.shading,
+        detail: spec.detail,
+        seed: spec.seed,
+      })
+      return {
+        jobId: res.tileset_id,
+        metadata: {
+          backgroundJobId: res.background_job_id,
+          ...(Object.keys(baseTileIds).length ? { baseTileIds } : {}),
+        },
+      }
     }
 
     if (spec.generator === "terrain") {
@@ -2672,6 +2743,11 @@ export class PixelLabProvider implements Provider {
   private async pollTerrain(tilesetId: string, context?: PollContext): Promise<JobState> {
     try {
       const { tileset, usage, metadata } = await this.client.getTileset(tilesetId)
+      // A sidescroller set names its terrains "central"/"background", but
+      // its corners still say "lower" (the platform) and "upper" (empty
+      // air). Exporters match corners against terrainTypes, so they get the
+      // corner vocabulary and the provider's names are kept beside it.
+      const sidescroller = metadata.view === "side" || context?.spec?.terrainOrientation === "sidescroller"
       const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
       const billed = billedFromUsage(usage) ?? (await this.billedForJob(backgroundJobId))
       const sources: OutputSource[] = []
@@ -2690,7 +2766,8 @@ export class PixelLabProvider implements Provider {
         sourceUrl: sources[0]?.url ?? null,
         sources,
         metadata: {
-          terrainTypes: tileset.terrain_types,
+          terrainTypes: sidescroller ? ["lower", "upper"] : tileset.terrain_types,
+          ...(sidescroller ? { providerTerrainTypes: tileset.terrain_types, view: "side" } : {}),
           terrainTiles,
           // Each terrain's base tile id, which a connected set sends.
           ...(Object.keys(metadata.terrainIds).length ? { terrainIds: metadata.terrainIds } : {}),

@@ -906,6 +906,41 @@ export class PixelLabClient {
   }
 
   /**
+   * `/create-tileset-sidescroller`: a platform set seen from the side. One
+   * terrain (`lower_description`, the platform body) and the decorative
+   * layer on top of it (`transition_description`); the other side of every
+   * edge is empty air, so there is no upper description, mode, view, or
+   * shape control. 16 or 32px tiles only. The result is read through
+   * `getTileset` like a top-down set.
+   */
+  async createTilesetSidescroller(args: {
+    lowerDescription: string
+    transitionDescription?: string
+    lowerBaseTileId?: string
+    tileSize?: number
+    transitionSize?: number
+    outline?: string
+    shading?: string
+    detail?: string
+    seed?: number
+  }): Promise<{ tileset_id: string; background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { lower_description: args.lowerDescription }
+    if (args.transitionDescription) body.transition_description = args.transitionDescription
+    if (args.lowerBaseTileId) body.lower_base_tile_id = args.lowerBaseTileId
+    if (args.tileSize != null) body.tile_size = { width: args.tileSize, height: args.tileSize }
+    if (args.transitionSize != null) body.transition_size = args.transitionSize
+    if (args.outline) body.outline = args.outline
+    if (args.shading) body.shading = args.shading
+    if (args.detail) body.detail = args.detail
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      TilesetSubmitSchema,
+      await this.request<unknown>("/create-tileset-sidescroller", { method: "POST", body: JSON.stringify(body) }),
+      "create sidescroller tileset",
+    )
+  }
+
+  /**
    * Throws PixelLabError(423) while the set is still drawing; see Tileset.
    * Serves top-down and sidescroller sets alike.
    */

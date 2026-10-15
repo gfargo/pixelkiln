@@ -343,6 +343,13 @@
                 "high top-down"
               ]
             },
+            "terrainOrientation": {
+              "type": "string",
+              "enum": [
+                "top-down",
+                "sidescroller"
+              ]
+            },
             "isometricTileSize": {
               "type": "number",
               "enum": [

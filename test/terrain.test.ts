@@ -1,9 +1,11 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest"
-import { mkdir, mkdtemp, writeFile, rm } from "node:fs/promises"
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest"
+import { mkdir, mkdtemp, readFile, writeFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { PixelLabProvider } from "../src/providers/pixellab.ts"
+import { PixelLabClient } from "../src/client.ts"
+import { normalizeTerrainTiles } from "../src/pipeline/tileset-export.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import {
@@ -473,5 +475,118 @@ describe("connected terrain sets", () => {
     const connection = { lower: { sourceAssetId: "coast", sourceObjectId: "coast-set-1" } }
     expect(retireGeneration({ ...entry, terrainConnect: connection }, "2026-10-15T00:00:00.000Z").terrainConnect).toEqual(connection)
     expect("terrainConnect" in retireGeneration(entry, "2026-10-15T00:00:00.000Z")).toBe(false)
+  })
+})
+
+describe("sidescroller terrain sets", () => {
+  const side = { terrainOrientation: "sidescroller" }
+  const platformPrompt = "1). mossy stone bricks texture 2). green grass texture"
+
+  it("reads 1). as the platform body and 2). as its top layer, and plans at the measured price", async () => {
+    const [spec] = await resolveSpecs(await writeManifest({ ...side, promptPrefix: "pixel art" }, platformPrompt))
+    expect(spec!.terrainLowerDescription).toBe("pixel art, mossy stone bricks texture")
+    expect(spec!.terrainTransitionDescription).toBe("pixel art, green grass texture")
+    expect(spec!.terrainUpperDescription).toBeUndefined()
+    expect(spec!.cost).toBe(3)
+    expect(spec!.candidates).toBe(16)
+    expect(terrainCost(undefined, 32, "sidescroller")).toBe(3)
+    expect(terrainTileCount(1, undefined, "sidescroller")).toBe(16)
+  })
+
+  it("hashes the orientation only when it is sidescroller", async () => {
+    const [plain] = await resolveSpecs(await writeManifest({}, platformPrompt))
+    const [topDown] = await resolveSpecs(await writeManifest({ terrainOrientation: "top-down" }, platformPrompt))
+    const [sidescroller] = await resolveSpecs(await writeManifest(side, platformPrompt))
+    expect(topDown!.specHash).toBe(plain!.specHash)
+    expect(sidescroller!.specHash).not.toBe(plain!.specHash)
+  })
+
+  it("rejects a third prompt group and a missing top layer", async () => {
+    await expect(resolveSpecs(await writeManifest(side, `${platformPrompt} 3). wet moss`)))
+      .rejects.toThrow(/sidescroller terrain needs exactly "1\). <platform body> 2\). <top layer>"/)
+    await expect(resolveSpecs(await writeManifest(side, "1). stone bricks")))
+      .rejects.toThrow(/sidescroller terrain needs exactly/)
+  })
+
+  it.each([
+    [{ terrainMode: "standard" }, /takes no terrainMode; those are top-down controls/],
+    [{ terrainView: "high top-down" }, /takes no terrainView/],
+    [{ terrainShapeStyle: "round", terrainRoundness: 1 }, /takes no terrainShapeStyle, terrainRoundness/],
+    [{ terrainRaggedness: 0.5 }, /takes no terrainRaggedness/],
+    [{ terrainTileSize: 64 }, /tiles are 16 or 32px, got 64/],
+    [{ terrainTransitionSize: 0.3 }, /terrainTransitionSize must be 0, 0.25, 0.5, or 1/],
+  ])("rejects what the sidescroller endpoint does not take: %o", async (style, error) => {
+    await expect(resolveSpecs(await writeManifest({ ...side, ...style }, platformPrompt))).rejects.toThrow(error)
+  })
+
+  it("connects only the platform terrain, and only to another platform", async () => {
+    const write = async (connect: Record<string, unknown>) => {
+      const manifest = {
+        name: "test",
+        styles: { base: { outDir: "out", generator: "terrain", ...side } },
+        assets: { cave: { prompt: platformPrompt }, ledge: { prompt: "1). dark stone texture 2). snow texture", connect } },
+      }
+      await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
+      return resolveSpecs(await loadManifest(path.join(dir, "m.json")))
+    }
+    await expect(write({ upper: { of: "cave", terrain: "lower" } })).rejects.toThrow(/only its lower \(platform\) terrain can connect/)
+    await expect(write({ lower: { of: "cave", terrain: "upper" } })).rejects.toThrow(/cave's upper terrain is empty air/)
+    await expect(write({ lower: { of: "cave", terrain: "lower" } })).resolves.toHaveLength(2)
+  })
+
+  it("posts to /create-tileset-sidescroller with only the fields it takes", async () => {
+    const loaded = await writeManifest({ ...side, terrainTileSize: 32, terrainTransitionSize: 0.25, outline: "lineless", seed: 9 }, platformPrompt)
+    const calls: { url: string; body: Record<string, unknown> }[] = []
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), body: JSON.parse(String(init!.body)) })
+      return new Response(JSON.stringify({ usage: null, tileset_id: "side-1", background_job_id: "bg-1", status: "processing" }), { status: 200 })
+    }))
+    try {
+      const specs = await resolveSpecs(loaded)
+      const lock: Lock = { version: 2, entries: {} }
+      await submit(new PixelLabProvider(new PixelLabClient("key")), loaded, (await buildPlan(specs, lock)).actionable, lock, path.join(dir, "lock.json"), { spacingMs: 0 })
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.url).toMatch(/\/create-tileset-sidescroller$/)
+      expect(calls[0]!.body).toEqual({
+        lower_description: "mossy stone bricks texture",
+        transition_description: "green grass texture",
+        tile_size: { width: 32, height: 32 },
+        transition_size: 0.25,
+        outline: "lineless",
+        seed: 9,
+      })
+      expect(lock.entries[lockKey("base", "ground")]).toMatchObject({ jobId: "side-1", cost: 3, status: "processing" })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("polls the live response shape into corner masks Tiled and Godot can read", async () => {
+    const fixture = JSON.parse(await readFile(path.resolve("test/fixtures/tileset/sidescroller-get.json"), "utf8"))
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/background-jobs/")
+      ? new Response(JSON.stringify({ id: "bg-1", status: "completed", usage: { type: "generations", generations: 3 } }), { status: 200 })
+      : new Response(JSON.stringify(fixture), { status: 200 })))
+    try {
+      const provider = new PixelLabProvider(new PixelLabClient("key"))
+      const state = await provider.poll("side-1", "terrain", { metadata: { backgroundJobId: "bg-1" } })
+      expect(state.status).toBe("ready")
+      if (state.status !== "ready") return
+      // usage is null on GET; the background job is where the billing is.
+      expect(state.billed).toEqual({ amount: 3, unit: "generations" })
+      expect(state.sources).toHaveLength(16)
+      expect(state.metadata).toMatchObject({
+        terrainTypes: ["lower", "upper"],
+        providerTerrainTypes: ["central", "background"],
+        view: "side",
+        terrainIds: { lower: "0b0f2bc0-c3ed-4e35-8290-b0646f35ee8a" },
+      })
+      const rules = normalizeTerrainTiles(state.metadata)!
+      // Every one of the 16 corner combinations, platform corners as set bits.
+      expect(new Set(Object.values(rules.masks)).size).toBe(16)
+      const wang0 = state.sources!.findIndex((source) => source.role!.endsWith("wang-0"))
+      expect(rules.masks[wang0]).toBe(0b1111)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

@@ -90,6 +90,8 @@ export function specHash(
       terrainBoundarySeed: spec.terrainBoundarySeed,
       terrainStepSlope: spec.terrainStepSlope,
       terrainConnectDiagonals: spec.terrainConnectDiagonals,
+      // "top-down" is the default and draws the same set as leaving it out.
+      terrainOrientation: spec.terrainOrientation === "sidescroller" ? spec.terrainOrientation : undefined,
       // Which set and which of its terrains, not that terrain's id: the id
       // is in the lockfile, and the plan compares it there (like a mirror).
       terrainConnect: spec.terrainConnect
