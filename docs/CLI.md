@@ -54,6 +54,7 @@ Which command:
 | see the account balance | `pixelkiln balance` |
 | shrink upscaled outside art to its native grid before using it as a reference | `pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png` |
 | turn a photo, painting, or render into pixel art | `pixelkiln pixelate --from renders/lodge.png --out art/lodge.png` |
+| make a normal map so an engine can light a sprite or a loop strip | `pixelkiln normal-map --from art/hero-walk.png --frames 6` |
 | make a pixel-art effect (spell, hit, explosion, aura), free | `pixelkiln vfx --preset explosion --out fx/explosion` |
 | generate a pixel font (`.ttf` plus glyph atlas) | `pixelkiln font --description "warm orange arcade font" --out fonts/arcade` |
 | start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
@@ -1025,6 +1026,38 @@ Like `unzoom`, it writes a loose file and leaves the lockfile alone. Declare
 the result as an asset's `source`, or use it as a `styleImages` or
 `reference` path, to bring it into a manifest.
 
+### `normal-map`
+
+```bash
+pixelkiln normal-map --from art/hero-walk.png --frames 6 --convention opengl --out art/hero-walk-normal.png
+```
+
+Makes the normal map of a sprite with PixelLab's `/normal-map`, so a game
+engine can light it. The map is the input's size: RGB is the way each pixel
+faces, and alpha is 255 where the sprite shows and 0 elsewhere.
+
+- `--from` must be a PNG: its alpha marks where the sprite is. For an
+  animation, pass a horizontal strip of equal frames and `--frames <n>` (1–32,
+  default 1). PixelLab shapes the first frame and carries that to the others,
+  so the light stays steady, and returns the map as a strip of the same
+  layout.
+- Each frame must be 8 to 512 pixels per side, and the strip's width must
+  divide evenly by `--frames`. Both are checked before anything is sent.
+- `--convention opengl` (the default) is green up, for Godot, Unity, and
+  Phaser; `--convention directx` is green down, for Unreal.
+- **0.5 generation** per call, a whole strip included, charged only when the
+  map is delivered (PixelLab's documented price; not yet measured here). The
+  command prints that and asks first; `--yes` skips the question,
+  `--budget <n>` refuses when `n` is below it, and `--dry-run` sends nothing.
+- `--out` defaults to `<input>.normal.png` beside the input, and the input is
+  never overwritten. An existing `--out` is replaced only with `--force`.
+- `--json` prints the job id, the map's size, the frame count, the convention,
+  and the billed usage.
+
+It writes a loose file and leaves the lockfile alone. For a manifest asset or
+a loop, declare a [`normal-map` revision](./REVISIONS.md#normal-maps) instead:
+it tracks the parent and cuts a loop's map back into per-frame files.
+
 ### `vfx`
 
 ```bash
@@ -1163,14 +1196,15 @@ Print the package version. `-v` is an alias.
 | Option | Applies to | Meaning |
 |---|---|---|
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
-| `--frames <n>` | `estimate-skeleton` | Frames to scaffold after the estimated pose, 3–15; default 4. |
+| `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
+| `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |
 | `--budget <n\|provider=n>` | submit/gen/gallery | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
-| `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
+| `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/normal-map/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser (`open`, `xdg-open`, or `start`, by platform), or the editor for `edit`. |
@@ -1183,13 +1217,13 @@ Print the package version. `-v` is an alias.
 | `--provider <id>` | balance/adopt/salvage/purge/workspace add | Select the account provider for a mixed manifest, or set the workspace catalog's default provider hint. |
 | `--account <label>` | workspace add | Free-form account label, e.g. distinguishing sandboxes. |
 | `--all` | salvage dry run | List every unclaimed object rather than the first 30. |
-| `--from <path>` | init/refine/quality check/unzoom | Existing source tree for init; source PNG or quality record for one-file refine mode; baseline for quality check; the upscaled image for unzoom; the photo or render for pixelate. Omit it to use manifest `style.quality`. |
+| `--from <path>` | init/refine/quality check/unzoom/pixelate/normal-map | Existing source tree for init; source PNG or quality record for one-file refine mode; baseline for quality check; the upscaled image for unzoom; the photo or render for pixelate; the sprite or strip for normal-map. Omit it to use manifest `style.quality`. |
 | `--exclude <names>` | init | Directory/name fragments to exclude; repeatable. |
 | `--generator <name>` | init | Generator assigned to the scaffolded style. |
 | `--name <name>` | init/font/vfx | Project name for the scaffolded manifest, the generated font's family name, or the effect's name in My effects. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--port <n>` | pick/salvage/gallery | Local review or gallery server port; otherwise chooses a free port. |
-| `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/vfx/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed or pixelated PNG, the effect's `<base>.png`/`.gif`/`.json`/`.vfx.json`, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
+| `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/normal-map/vfx/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed, pixelated, or normal-map PNG, the effect's `<base>.png`/`.gif`/`.json`/`.vfx.json`, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
 | `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, or `godot` (TileSet). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |

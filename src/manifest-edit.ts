@@ -12,6 +12,7 @@ import {
   CharacterOutfitSchema,
   CharacterPortraitSchema,
   CharacterProportionsSchema,
+  NormalMapConventionSchema,
   RevisionDitheringSchema,
 } from "./types.ts"
 
@@ -154,6 +155,9 @@ const NewAssetSchema = z
             /** A short description of the foreground, sent as PixelLab's text hint. */
             description: z.string().min(1).optional(),
           })
+          .strict(),
+        z
+          .object({ mode: z.literal("normal-map"), from: z.string().min(1), convention: NormalMapConventionSchema.optional() })
           .strict(),
         z
           .object({

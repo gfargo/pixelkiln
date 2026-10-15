@@ -1,11 +1,12 @@
-/** `unzoom`, `pixelate`, `vfx`, and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
+/** `unzoom`, `pixelate`, `normal-map`, `vfx`, and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
 import path from "node:path"
-import { clientFromEnv } from "../../client.ts"
+import { clientFromEnv, type NormalMapConvention } from "../../client.ts"
 import { loadEnvFiles } from "../../env.ts"
 import { UsageError } from "../../errors.ts"
 import { mcpClientFromEnv } from "../../pixellab-mcp.ts"
 import { describeVfx, makeVfx, readVfxRecipe, vfxOutputPaths } from "../../pixellab-vfx.ts"
 import {
+  defaultNormalMapOut,
   defaultPixelateOut,
   defaultUnzoomOut,
   FONT_COST_GENERATIONS,
@@ -13,6 +14,9 @@ import {
   FONT_WEIGHTS,
   fontOutputPaths,
   generateFont,
+  NORMAL_MAP_CONVENTIONS,
+  NORMAL_MAP_COST_GENERATIONS,
+  normalMapFile,
   PIXELATE_COST_GENERATIONS,
   PIXELATE_MAX_SIDE,
   pixelateFile,
@@ -125,6 +129,46 @@ export async function runPixelate(args: Args): Promise<void> {
   log(
     `  ${res.original.width}x${res.original.height}${scaled} → ${res.pixelated.width}x${res.pixelated.height}; wrote ${res.out}`,
   )
+}
+
+export async function runNormalMap(args: Args): Promise<void> {
+  if (!args.from) throw new UsageError("normal-map needs --from <png>: the sprite, or a horizontal strip of --frames equal frames")
+  const convention = (args.convention ?? "opengl") as NormalMapConvention
+  if (!(NORMAL_MAP_CONVENTIONS as readonly string[]).includes(convention)) {
+    throw new UsageError(`--convention must be ${NORMAL_MAP_CONVENTIONS.join(" or ")}, got "${args.convention}"`)
+  }
+  const frames = args.frames ?? 1
+  const out = args.out ?? defaultNormalMapOut(args.from)
+  log(
+    `  normal-map ${args.from}${frames > 1 ? ` (a strip of ${frames} frames)` : ""} → ${out}, ` +
+      `${convention} (green ${convention === "opengl" ? "up" : "down"})`,
+  )
+  log(`  cost: ${NORMAL_MAP_COST_GENERATIONS} generation (PixelLab's documented price, charged on delivery)`)
+  if (args.budget !== undefined && args.budget < NORMAL_MAP_COST_GENERATIONS) {
+    throw new Error(`--budget ${args.budget} is below this normal map's ${NORMAL_MAP_COST_GENERATIONS}-generation cost`)
+  }
+  if (args.dryRun) {
+    log("  dry run: nothing sent")
+    return
+  }
+  if (!(await confirm(`  Spend ${NORMAL_MAP_COST_GENERATIONS} generation on this normal map?`, args.yes))) return
+  loadKeys(args)
+  let last = ""
+  const res = await normalMapFile(clientFromEnv(), args.from, {
+    out,
+    frames,
+    convention: args.convention ? convention : undefined,
+    force: args.force,
+    onProgress: (status) => {
+      if (status !== last) log(`  ${status}…`)
+      last = status
+    },
+  })
+  if (args.json) {
+    log(JSON.stringify({ version: 1, ...res }, null, 2))
+    return
+  }
+  log(`  ${res.width}x${res.height}${res.frames > 1 ? `, ${res.frames} frames` : ""}; wrote ${res.out}`)
 }
 
 export async function runVfx(args: Args): Promise<void> {

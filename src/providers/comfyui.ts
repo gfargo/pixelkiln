@@ -471,6 +471,12 @@ export class ComfyUIProvider implements Provider {
             "workflow does with bindings.sourceImage; write that behavior into the graph directly.",
         )
       }
+      if (spec.revision.convention) {
+        throw new Error(
+          "ComfyUI has no binding for convention — that is PixelLab's /normal-map parameter. A normal-map " +
+            "revision on ComfyUI is whatever your own workflow does; build the green-channel convention into the graph.",
+        )
+      }
       if (
         (!options.bindings.width || !options.bindings.height) &&
         spec.revision.sourceWidth != null &&

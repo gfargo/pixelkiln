@@ -67,6 +67,10 @@ Commands
             pixel art with Image to Pixel Art Pro Flash; PixelLab picks the
             output size. Optional --description steers the style. 6
             generations; asks first.
+  normal-map PixelLab: make the normal map of a PNG sprite (--from), or of a
+            horizontal strip of --frames equal frames, so an engine can light
+            it. --convention opengl (default) or directx. 0.5 generation;
+            asks first.
   vfx       PixelLab: build an animated pixel-art effect with the VFX
             workbench (free) from a --preset, a --recipe file, a saved
             --effect, and/or --part; writes <out>.png/.gif/.json and a
@@ -98,6 +102,9 @@ Options
   --description <text>  font: the style to draw, e.g. "warm orange arcade font";
                       pixelate: an optional style steer, e.g. "light dithering"
   --weight <w>        font: Bold or Regular (default)
+  --frames <n>        estimate-skeleton: poses to scaffold, 3-15;
+                      normal-map: equal frames in the --from strip, 1-32
+  --convention <c>    normal-map: opengl (green up, default) or directx (green down)
   --preset <name>     vfx: start from a whole-effect preset (vfx presets lists them)
   --recipe <file>     vfx: render a recipe or an earlier run's .vfx.json record
   --effect <id>       vfx: start from a saved My effects id and export over it
@@ -164,6 +171,7 @@ Examples
   pixelkiln quality check --from pixelkiln.quality.json
   pixelkiln unzoom --from refs/knight-512.png --out refs/knight.png
   pixelkiln pixelate --from renders/lodge.png --out art/lodge.png
+  pixelkiln normal-map --from art/hero-walk.png --frames 6 --out art/hero-walk-normal.png
   pixelkiln vfx --preset explosion --part scorch_mark --out fx/explosion --game-pack
   pixelkiln font --description "warm orange arcade font" --weight Bold --out fonts/arcade
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json

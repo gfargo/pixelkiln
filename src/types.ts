@@ -43,8 +43,11 @@ export type GridConfidence = z.infer<typeof GridConfidenceSchema>
 
 export const RevisionModeSchema = z.enum([
   "image-to-image", "inpaint", "outpaint", "reduce-colors", "correct-pixelart", "remove-background", "animate",
-  "animate-pixminimax", "animate-skeleton", "interpolate", "edit-animation",
+  "animate-pixminimax", "animate-skeleton", "interpolate", "edit-animation", "normal-map",
 ])
+
+/** `normal-map`'s green-channel convention: `opengl` is green up (Godot, Unity, Phaser), `directx` green down (Unreal). */
+export const NormalMapConventionSchema = z.enum(["opengl", "directx"])
 export type RevisionMode = z.infer<typeof RevisionModeSchema>
 
 /** A decoded style reference ready for a provider-specific request body. */
@@ -881,6 +884,8 @@ export const RevisionSchema = z
     skeletonTemplate: z.string().min(1).optional(),
     /** `remove-background` only: `simple` is faster and suits flat backgrounds; `complex` handles detailed edges. PixelLab defaults to `simple`. */
     removalTask: z.enum(["simple", "complex"]).optional(),
+    /** `normal-map` only: `opengl` (green up; PixelLab's default) or `directx` (green down, for Unreal). */
+    convention: NormalMapConventionSchema.optional(),
     /**
      * `animate-skeleton`: what the character *looks like*, a noun
      * phrase (colours, clothing, held items) — distinct from the asset's
@@ -1032,11 +1037,18 @@ export const RevisionSchema = z
         path: ["removalTask"],
       })
     }
-    if (revision.strength !== undefined && revision.mode === "remove-background") {
+    if (revision.strength !== undefined && (revision.mode === "remove-background" || revision.mode === "normal-map")) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "remove-background revisions do not take a strength",
+        message: `${revision.mode} revisions do not take a strength`,
         path: ["strength"],
+      })
+    }
+    if (revision.convention !== undefined && revision.mode !== "normal-map") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "convention applies to normal-map revisions only",
+        path: ["convention"],
       })
     }
     if (revision.description !== undefined && revision.mode !== "animate-skeleton" && revision.mode !== "remove-background") {
@@ -1067,8 +1079,10 @@ export const FRAME_SET_REVISION_MODES: readonly RevisionMode[] = ["animate", "an
  * directions, an animation's frames) in one call, rather than one image.
  * `edit-animation` needs one; the two Cleanup-tier modes process a set
  * together so every member lands on one shared palette or cleanup pass.
+ * `normal-map` takes an animation's frames only, as one strip, so the light
+ * stays steady across them; the provider refuses a set of directions.
  */
-export const MEMBER_SET_REVISION_MODES: readonly RevisionMode[] = ["reduce-colors", "correct-pixelart", "edit-animation"]
+export const MEMBER_SET_REVISION_MODES: readonly RevisionMode[] = ["reduce-colors", "correct-pixelart", "edit-animation", "normal-map"]
 
 /** One file of a revision parent that is a member set rather than a single image. */
 export interface ResolvedRevisionMember {
@@ -1136,6 +1150,7 @@ export interface ResolvedRevision {
   skeletonTemplate?: string
   description?: string
   removalTask?: "simple" | "complex"
+  convention?: "opengl" | "directx"
   driftThreshold?: number
   subjectDescription?: string
   initialPose?: string
@@ -1892,6 +1907,7 @@ export const LockEntrySchema = z.object({
       skeletonTemplate: z.string().min(1).optional(),
       description: z.string().min(1).optional(),
       removalTask: z.enum(["simple", "complex"]).optional(),
+      convention: NormalMapConventionSchema.optional(),
       driftThreshold: z.number().min(0).optional(),
       subjectDescription: z.string().min(1).max(300).optional(),
       initialPose: z.string().min(1).max(300).optional(),

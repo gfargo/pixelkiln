@@ -436,6 +436,9 @@ An asset that declares `revision` against a PixelLab style calls `inpaint`
 (palette quantize, `/reduce-colors`), `correct-pixelart` (edge/noise
 cleanup, `/correct-pixelart`), `remove-background` (transparent cutout,
 `/remove-background`, one image up to 400x400, 1 generation measured),
+`normal-map` (`/normal-map`, lighting normals for a sprite or a loop sent as
+one strip, 0.5 generation per call from the docs, a background job; refused
+on a set of directions and in a style with `enforcePalette` or `quality`),
 `animate` (`/animate-with-text-v3`),
 `animate-pixminimax` (`/animate-pixminimax`, beta, tier 1 subscription or
 higher), `animate-skeleton` (`/animate-with-skeleton-v3`, also beta/tier
@@ -516,7 +519,7 @@ reference-image method, palette correction, inpaint's output-method choice,
 and inpainting with surrounding `context_image`. See
 [pixellab-roadmap.md](./pixellab-roadmap.md) for the confirmed shape.
 
-Five commands call PixelLab on loose files, outside the manifest and
+Six commands call PixelLab on loose files, outside the manifest and
 lockfile. `pixelkiln unzoom --from <file> --out <file>` returns upscaled
 pixel art to its native grid; run it before outside art becomes a
 `reference` or `styleImages` entry (input at least 256×256, result opaque,
@@ -524,7 +527,10 @@ cost unmeasured). `pixelkiln pixelate --from <file> --out <file>` converts a
 photo, painting, or render into pixel art with Image to Pixel Art Pro Flash:
 PixelLab picks the output size, the result is opaque on near-white, an optional
 `--description` steers the style, and it costs a flat 6 generations
-(measured) after asking first. `pixelkiln vfx --preset <name> --out <base>`
+(measured) after asking first. `pixelkiln normal-map --from <png> [--frames
+N] [--convention opengl|directx]` writes a sprite's normal map, or a strip's
+(N equal frames side by side, up to 32), for 0.5 generation after asking
+first. `pixelkiln vfx --preset <name> --out <base>`
 builds an animated effect (explosion, heal pillar, lightning strike, aura,
 and more; `pixelkiln vfx presets` and `vfx parts` list them) with PixelLab's
 VFX workbench, which is free and reached through PixelLab's MCP server. Add

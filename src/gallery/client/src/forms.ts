@@ -224,11 +224,17 @@ export function revisionModesFor(item) {
     return [['image-to-image', 'edit with a text instruction'], ...(single ? [['inpaint', 'repaint a painted area']] : [])];
   }
   if (item.provider !== 'pixellab') return [['image-to-image', 'edit with a text instruction']];
+  // The loader refuses a normal map in a style that would recolour it.
+  const style = S.snap.styles.find((s) => s.id === item.styleId && s.project === item.project);
+  const normals = !(style && (style.enforcePalette || style.quality)) && sized(8, 512);
   if (!single) {
+    // A normal map takes a loop as one strip; a set of directions is refused.
+    const loop = item.outputs.length <= 32 && item.outputs.every((output) => output.role && output.role.startsWith('frame-'));
     return [
       ['edit-animation', 'one text edit across every frame'],
       ['reduce-colors', 'fewer colours, across every frame'],
       ['correct-pixelart', 'clean up the pixel grid, across every frame'],
+      ...(loop && normals ? [['normal-map', 'lighting normals, one steady map per frame']] : []),
     ];
   }
   return [
@@ -240,6 +246,7 @@ export function revisionModesFor(item) {
     ['reduce-colors', 'fewer colours, optional dithering'],
     ['correct-pixelart', 'clean up the pixel grid'],
     ['remove-background', 'cut the background out to transparency'],
+    ...(normals ? [['normal-map', 'a normal map, so an engine can light it']] : []),
   ];
 }
 
@@ -279,6 +286,8 @@ export function newRevisionForm(item) {
   const removal = el('select');
   removal.append(new Option('simple: faster, flat backgrounds', 'simple'), new Option('complex: slower, detailed edges', 'complex'));
   const subject = el('input'); subject.type = 'text'; subject.placeholder = 'optional: e.g. a knight holding a sword';
+  const convention = el('select');
+  convention.append(new Option('opengl: green up (Godot, Unity, Phaser)', 'opengl'), new Option('directx: green down (Unreal)', 'directx'));
   const ending = el('select');
   for (const other of endingKeyframes(item)) ending.append(new Option(other.assetId, other.outputs[0].path));
   const endingField = field('ending keyframe', ending, 'Another sprite of the same style and size; the parent is the start. Regenerating that sprite makes this stale.');
@@ -308,9 +317,10 @@ export function newRevisionForm(item) {
   const ditherField = field('dithering', dithering);
   const removalField = field('removal', removal, 'PixelLab takes at most 400 by 400 pixels.');
   const subjectField = field('foreground', subject, 'A hint that helps PixelLab find what to keep.');
+  const conventionField = field('convention', convention, 'Which way green points. 0.5 generation per sprite or per loop.');
   const grids = el('div', 'row'); grids.append(framesField, fpsField);
   const cleanup = el('div', 'row'); cleanup.append(colorsField, ditherField);
-  form.append(row1, promptField, maskBox, endingField, strengthField, grids, driftField, captionRow, directionField, enhanceField, cleanup, removalField, subjectField);
+  form.append(row1, promptField, maskBox, endingField, strengthField, grids, driftField, captionRow, directionField, enhanceField, cleanup, removalField, subjectField, conventionField);
   const hints = {
     'image-to-image': ['edit instruction', 'add snow on the roof', 'The style still adds its prefix and suffix.'],
     animate: ['motion', 'the chest wobbling gently', 'Describes the movement; the parent image is the first frame.'],
@@ -321,6 +331,7 @@ export function newRevisionForm(item) {
     'reduce-colors': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
     'correct-pixelart': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
     'remove-background': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
+    'normal-map': ['note', 'optional', 'Cleanup only: the text is kept as a label, not sent.'],
   };
   const sync = () => {
     const m = mode.value;
@@ -329,7 +340,7 @@ export function newRevisionForm(item) {
     promptField.querySelector('small')?.remove();
     promptField.append(el('small', null, hint));
     prompt.placeholder = placeholder;
-    prompt.required = !['reduce-colors', 'correct-pixelart', 'remove-background'].includes(m);
+    prompt.required = !['reduce-colors', 'correct-pixelart', 'remove-background', 'normal-map'].includes(m);
     strengthField.hidden = m !== 'image-to-image' && m !== 'correct-pixelart';
     grids.hidden = !(m === 'animate' || m === 'animate-pixminimax' || m === 'edit-animation' || m === 'interpolate');
     driftField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
@@ -342,6 +353,7 @@ export function newRevisionForm(item) {
     enhanceField.hidden = !(m === 'animate' || m === 'animate-pixminimax');
     cleanup.hidden = m !== 'reduce-colors';
     removalField.hidden = subjectField.hidden = m !== 'remove-background';
+    conventionField.hidden = m !== 'normal-map';
   };
   mode.onchange = sync;
   enhance.onchange = sync;
@@ -376,8 +388,10 @@ export function newRevisionForm(item) {
       revision.removalTask = removal.value;
       if (subject.value.trim()) revision.description = subject.value.trim();
     }
+    // opengl is PixelLab's default, so only the other one is written.
+    if (m === 'normal-map' && convention.value === 'directx') revision.convention = 'directx';
     // Cleanup modes never send the prompt, but an asset still needs one.
-    const text = prompt.value.trim() || ({ 'reduce-colors': 'reduce colours', 'correct-pixelart': 'correct pixel art', 'remove-background': 'remove background' } as Record<string, string>)[m] || '';
+    const text = prompt.value.trim() || ({ 'reduce-colors': 'reduce colours', 'correct-pixelart': 'correct pixel art', 'remove-background': 'remove background', 'normal-map': 'normal map' } as Record<string, string>)[m] || '';
     const asset = { prompt: text, styles: [item.styleId], revision };
     try {
       let body: any;

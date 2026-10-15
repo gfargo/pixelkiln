@@ -593,6 +593,9 @@ export interface Base64Image {
   format: "png" | "jpeg"
 }
 
+/** `/normal-map`'s green-channel convention: `opengl` is green up, `directx` green down. */
+export type NormalMapConvention = "opengl" | "directx"
+
 /** PixelLab's discriminated proportions object from the manifest's preset name or multipliers. */
 export function proportionsPayload(proportions: CharacterProportions): Record<string, unknown> {
   if (typeof proportions === "string") return { type: "preset", name: proportions }
@@ -1899,6 +1902,32 @@ export class PixelLabClient {
       "remove-background",
     )
     return { png: Buffer.from(res.image.base64, "base64"), usage: res.usage }
+  }
+
+  /**
+   * `/normal-map` (PixelLab 0.4.130): the normal map of a sprite, so a game
+   * engine can light it. RGB is the way each pixel faces, alpha is 255 where
+   * the sprite shows and 0 elsewhere, at the input's size. An animation goes
+   * as one horizontal strip of `frames` equal frames (up to 32, each 8 to 512
+   * px per side) and comes back as a strip, planned once on the first frame
+   * so the light stays steady. `opengl` (the default) is green up, for
+   * Godot, Unity, and Phaser; `directx` is green down, for Unreal. A
+   * background job whose map is `last_response.image`; 0.5 generation,
+   * charged only when the map is delivered.
+   */
+  async normalMap(args: {
+    image: Base64Image
+    frames?: number
+    convention?: NormalMapConvention
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { image: args.image }
+    if (args.frames != null && args.frames !== 1) body.frames = args.frames
+    if (args.convention) body.convention = args.convention
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/normal-map", { method: "POST", body: JSON.stringify(body) }),
+      "normal-map",
+    )
   }
 
   /**

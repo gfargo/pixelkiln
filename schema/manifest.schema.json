@@ -1037,7 +1037,8 @@
                       "animate-pixminimax",
                       "animate-skeleton",
                       "interpolate",
-                      "edit-animation"
+                      "edit-animation",
+                      "normal-map"
                     ]
                   },
                   "from": {
@@ -1137,6 +1138,13 @@
                     "enum": [
                       "simple",
                       "complex"
+                    ]
+                  },
+                  "convention": {
+                    "type": "string",
+                    "enum": [
+                      "opengl",
+                      "directx"
                     ]
                   },
                   "description": {
