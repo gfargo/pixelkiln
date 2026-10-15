@@ -160,7 +160,9 @@ export function specHash(
           }
         : undefined,
       // A recipe and a local sprite enter as their contents' hashes, never
-      // their paths; the My effects name is not identity.
+      // their paths; the My effects name is not identity. `description` and
+      // `artist` exist only for the paid VFX artist and stay absent for a
+      // workbench effect, so its hash is the one it always had.
       vfx: spec.vfx
         ? {
             preset: spec.vfx.preset,
@@ -170,6 +172,8 @@ export function specHash(
             sprite: spec.vfx.sprite
               ? "reference" in spec.vfx.sprite ? spec.vfx.sprite.reference : spec.vfx.sprite.sha256
               : undefined,
+            description: spec.vfx.description,
+            artist: spec.vfx.description ? spec.vfx.artist : undefined,
           }
         : undefined,
       // A mirror's bytes come from its source's recorded outputs; the plan

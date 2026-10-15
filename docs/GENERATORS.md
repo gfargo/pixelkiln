@@ -543,7 +543,9 @@ spells, hits, explosions, auras, shields, status icons, weather. The workbench
 is a renderer, not a model. An effect is a recipe of layers, most of them
 dropped in as tuned parts, and it renders the same pixels every time. It is
 free on a PixelLab subscription, and PixelLab offers it only over MCP, which
-pixelkiln calls with the same `PIXELLAB_API_KEY`.
+pixelkiln calls with the same `PIXELLAB_API_KEY`. An effect can also be
+described in words for PixelLab's paid VFX artist; see
+[Described effects](#described-effects-the-paid-vfx-artist).
 
 ```jsonc
 {
@@ -613,6 +615,74 @@ made on pixellab.ai or changes to PixelLab's own presets.
 last time, so My effects keeps one entry per asset. If that effect was
 changed on pixellab.ai since, or deleted, a new effect is saved instead and
 the edited one is left alone; the lock records why.
+
+### Described effects: the paid VFX artist
+
+A `description` in place of a preset, recipe, or parts asks PixelLab's VFX
+artist (`POST /vfx`, added in 0.4.130) to build the effect. The artist is the
+same one behind the website's VFX creator: it picks and tunes parts from your
+words, renders the effect, checks its own work, and saves it to My effects.
+
+```jsonc
+"zap.described": {
+  "vfx": {
+    "description": "a blue lightning strike that hits the ground and leaves sparks",
+    "artist": "pro",
+    "sprite": "art/chars/robot-south.png"
+  }
+}
+```
+
+Use the free workbench when a preset or a few parts get you there, or when
+you want to tune the effect by hand; it renders the same pixels every time.
+Use the artist when you would rather describe the effect than assemble it.
+It costs generations, and the same description draws a different effect
+each time.
+
+- `description` is the effect in plain words: what it is, its colours, how
+  it moves, how long. It cannot be combined with `preset`, `recipe`,
+  `parts`, or `fps`; the artist picks those itself.
+- `artist` is `lite` (the default, quick and cheap) or `pro` (the stronger
+  artist, for detailed effects).
+- `sprite` must be a local PNG up to 512×512, another asset's output
+  included. The endpoint takes the sprite's pixels, so `character:`,
+  `object:`, and `gallery:` references are refused; point at the
+  character's own output file instead. JPEG is refused too.
+- `name` is capped at 80 characters, and the default is cut to fit.
+
+**Cost.** PixelLab quotes each job when it is submitted and bills on
+delivery: the quote, or more when the effect ran long, never more than twice
+the quote. The quote comes from this table (generations):
+
+| | lite | pro |
+|---|---|---|
+| no sprite, or a sprite up to 128 px | 1 | 6 (8 with a sprite) |
+| sprite up to 256 px | 3 | 14 |
+| sprite up to 512 px | 5 | 28 |
+
+`plan` and `--budget` count **twice the quote**, the most a job can bill, so
+a budget is never overrun. A sprite that is another asset's output not drawn
+yet is priced at the 512 px tier until it exists. The lock records PixelLab's
+own quote (`quotedGenerations`) and the bill read from the finished job.
+These prices are PixelLab's published table; no artist bill has been
+measured here yet.
+
+**Outputs and identity.** The artist's spritesheet is cut into the same
+ordered frame set as the workbench's, with its fps and loop flag. The lock
+records the effect id, its edit link, the artist's message, the anchor, the
+parts it used, and the file names. The asset goes stale when its
+`description`, `artist`, or sprite content changes, and not for `name` or
+`prompt`. Adding these fields left every workbench effect's identity as it
+was.
+
+**Regenerating.** Every regeneration is a new effect, billed again. The
+manifest's description is the whole effect, not a change to the last one,
+so it is never sent as one. The previous effect stays in My effects, and the
+lock names it (`previousEffect`). To change one saved effect in place at the
+change price, use `pixelkiln vfx --description "<what to change>" --effect
+<id>` ([CLI](./CLI.md#vfx)). To turn a described effect into a free,
+repeatable recipe, export it with `pixelkiln vfx --effect <id> --out
+fx/zap` and point a workbench `recipe` at the record.
 
 ## Style variants
 

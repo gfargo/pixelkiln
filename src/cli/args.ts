@@ -77,8 +77,10 @@ export interface Args {
   explicitLock?: string
   /** unzoom: 0 auto-detects a palette, -1 keeps every color, 2-256 quantizes to that many. */
   quantize?: number
-  /** font and pixelate: the style description sent to PixelLab. */
+  /** font and pixelate: the style description sent to PixelLab; vfx: the effect for the paid VFX artist. */
   description?: string
+  /** vfx: lite or pro, the VFX artist that draws a --description. */
+  artist?: string
   /** font: Bold or Regular. */
   weight?: string
   /** font: native glyph size, 8/16/32/64. */
@@ -111,7 +113,7 @@ const VALUE_FLAGS = [
   "--reviewer", "--note",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
-  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps",
+  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--artist",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -436,6 +438,7 @@ export function parseArgs(argv: string[]): Args {
     account: get("--account"),
     quantize: numberOption("--quantize", { min: -1, max: 256, integer: true }),
     description: get("--description"),
+    artist: get("--artist"),
     weight: get("--weight"),
     glyphPx: numberOption("--glyph-px", { min: 8, max: 64, integer: true }),
     frames: numberOption("--frames", { min: 3, max: 15, integer: true }),

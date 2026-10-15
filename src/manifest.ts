@@ -1211,7 +1211,8 @@ async function resolveVfxShape(root: string, assetId: string, vfx: AssetVfx, def
   if (spriteRef && isVfxReference(spriteRef)) {
     sprite = { reference: spriteRef }
   } else if (spriteRef) {
-    const image = await optionalRevisionImage(spriteRef, `assets.${assetId}.vfx.sprite`)
+    // The VFX artist takes PNG (or GIF) pixels; the workbench also reads JPEG.
+    const image = await optionalRevisionImage(spriteRef, `assets.${assetId}.vfx.sprite`, vfx.description ? "png" : undefined)
     sprite = { file: spriteRef, sha256: image?.hash ?? null, width: image?.width ?? null, height: image?.height ?? null, format: image?.format ?? null }
   }
   return {
@@ -1220,7 +1221,9 @@ async function resolveVfxShape(root: string, assetId: string, vfx: AssetVfx, def
     ...(vfx.parts?.length ? { parts: vfx.parts } : {}),
     ...(sprite ? { sprite } : {}),
     ...(vfx.fps !== undefined ? { fps: vfx.fps } : {}),
-    name: vfx.name ?? defaultName,
+    // The artist caps a name at 80 characters; a long default is cut, not refused.
+    name: vfx.name ?? (vfx.description ? defaultName.slice(0, 80) : defaultName),
+    ...(vfx.description ? { description: vfx.description, artist: vfx.artist ?? "lite" } : {}),
   }
 }
 

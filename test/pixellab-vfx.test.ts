@@ -127,6 +127,7 @@ describe("vfx reply parsing", () => {
       atlas: path.resolve("fx/boom.json"),
       provenance: path.resolve("fx/boom.vfx.json"),
       gamePack: path.resolve("fx/boom-game.zip"),
+      normals: path.resolve("fx/boom-normals.png"),
     })
   })
 })

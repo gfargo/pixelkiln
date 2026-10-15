@@ -550,6 +550,11 @@ export const VfxPartSchema = z.object({ name: z.string().min(1) }).catchall(z.un
  * effect is built around: a manifest-relative PNG or JPEG (any earlier
  * asset's output file works) or a PixelLab reference. `name` is the effect's
  * name in the account's My effects and is not part of its identity.
+ *
+ * `description` instead asks PixelLab's paid VFX artist (`POST /vfx`) to
+ * build the effect from plain words, with `artist` picking lite or pro. It
+ * replaces the workbench's preset, recipe, parts, and fps, and its sprite
+ * must be a local PNG: the endpoint takes pixels, not a PixelLab reference.
  */
 export const AssetVfxSchema = z
   .object({
@@ -559,14 +564,41 @@ export const AssetVfxSchema = z
     sprite: z.string().min(1).optional(),
     fps: z.number().int().min(1).max(60).optional(),
     name: z.string().min(1).optional(),
+    description: z.string().trim().min(1).max(8000).optional(),
+    artist: z.enum(["lite", "pro"]).optional(),
   })
   .strict()
   .superRefine((vfx, context) => {
+    if (vfx.description !== undefined) {
+      // The artist builds the whole effect from the words. Nothing of the
+      // workbench's reaches it, so a mix would hash settings that never render.
+      for (const key of ["preset", "recipe", "parts", "fps"] as const) {
+        if (vfx[key] !== undefined) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `a vfx description goes to PixelLab's VFX artist, which takes no ${key}; use a description or the workbench's preset/recipe/parts/fps, not both`,
+            path: [key],
+          })
+        }
+      }
+      if (vfx.sprite && /^(character|object|gallery):/.test(vfx.sprite)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "the VFX artist takes a sprite's pixels, not a PixelLab reference; point sprite at a PNG file (another asset's output works)",
+          path: ["sprite"],
+        })
+      }
+      if (vfx.name && vfx.name.length > 80) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "the VFX artist takes a name of at most 80 characters", path: ["name"] })
+      }
+    } else if (vfx.artist) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "artist picks who draws a vfx description; add a description", path: ["artist"] })
+    }
     if (vfx.preset && vfx.recipe) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: "start a vfx from a preset or a recipe, not both", path: ["recipe"] })
     }
-    if (!vfx.preset && !vfx.recipe && !vfx.parts?.length) {
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "a vfx needs a preset, a recipe, or at least one part", path: ["preset"] })
+    if (vfx.description === undefined && !vfx.preset && !vfx.recipe && !vfx.parts?.length) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "a vfx needs a preset, a recipe, or at least one part, or a description", path: ["preset"] })
     }
     if (vfx.sprite && /^(https?|data):/i.test(vfx.sprite)) {
       context.addIssue({
@@ -2073,6 +2105,10 @@ export interface ResolvedVfx {
   fps?: number
   /** The name saved to My effects; not part of identity. */
   name: string
+  /** Set when PixelLab's paid VFX artist (`POST /vfx`) builds the effect instead of the workbench. */
+  description?: string
+  /** The artist's tier, set with `description` only; lite unless the manifest says pro. */
+  artist?: "lite" | "pro"
 }
 
 export interface ResolvedMirror {
