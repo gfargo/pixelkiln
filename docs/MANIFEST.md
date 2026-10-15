@@ -131,7 +131,9 @@ One asset using the fields most projects reach for:
 | `shading` | string | PixelLab `map`: `flat shading`, `basic shading`, `medium shading`, or `detailed shading`. |
 | `detail` | string | PixelLab `map`: `low detail`, `medium detail`, or `high detail`. |
 | `seed` | integer | Deterministic provider seed where supported. |
-| `palette` | hex array, `[]` | The style's palette; `#` is optional. Sent to providers that take one (`pixflux`, Retro Diffusion, ComfyUI bindings). |
+| `palette` | hex array, `[]` | The style's palette; `#` is optional. Sent to providers that take one (`pixflux`, `imagePro` as its target palette, Retro Diffusion, ComfyUI bindings). |
+| `paletteName` | string ≤100 | `imagePro` only, needs `palette`: the palette's name (`Game Boy`, `PICO-8`), which PixelLab uses to help the look. |
+| `maxColors` | integer 2–64 | `imagePro` only: at most this many colours in each candidate, drawn from `palette` when one is set. |
 | `enforcePalette` | boolean, `false` | Snap every downloaded PNG to the nearest `palette` colour, no dithering. Needs at least two colours. See [Palette enforcement](#palette-enforcement). |
 | `noBackground` | boolean, `true` | `pixflux` background removal. Set false for scenes/backdrops. |
 | `providerOptions` | object, `{}` | Options grouped by provider id. Only the active provider's object is resolved and hashed. |
@@ -243,6 +245,10 @@ Generator-specific fields are validated before planning. Important constraints:
   or style images. `enforcePalette` still holds its output to the palette.
 - `pixflux` accepts a forced `palette` and returns inline output; it has no
   style-image support.
+- `imagePro` sends `palette` (2 to 256 colours) as PixelLab's beta target
+  palette: every pixel of every candidate is one of those colours. Add
+  `paletteName` to name it and `maxColors` to cap each candidate's colours.
+  The cost is unchanged.
 - `tiles` cannot combine `tileFeature` with `styleImages` because the provider
   rejects connectable features in style-tile mode.
 - ComfyUI `frames` derives its count from one 2–64 item `providerInputs`

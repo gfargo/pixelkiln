@@ -751,6 +751,9 @@ export class PixelLabProvider implements Provider {
           "16 to 688 tall (the exact ceiling also depends on aspect ratio)",
       )
     }
+    if (spec.generator === "imagePro" && !spec.revision && spec.palette.length && (spec.palette.length < 2 || spec.palette.length > 256)) {
+      throw new Error(`PixelLab imagePro's target palette takes 2 to 256 colours; the style's palette has ${spec.palette.length}`)
+    }
     if (
       spec.generator === "uiAsset" &&
       (spec.width < 192 || spec.height < 192 || spec.width > 688 || spec.height > 688)
@@ -1749,6 +1752,7 @@ export class PixelLabProvider implements Provider {
         height: spec.height,
         noBackground: spec.noBackground,
         seed: spec.seed,
+        targetPalette: { colors: spec.palette, name: spec.paletteName, maxColors: spec.maxColors },
       })
       // Like a revision, jobId is the background_job_id itself: there is no
       // separate resource id to poll, so pollImagePro polls it directly.

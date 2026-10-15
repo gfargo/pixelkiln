@@ -1622,6 +1622,13 @@ export class PixelLabClient {
    *
    * Reference images and a style image (`reference_images`, `style_image` +
    * `style_options`) exist on this endpoint but are not modeled here yet.
+   *
+   * `targetPalette` is the beta `target_palette` (PixelLab 0.4.130): with
+   * `colors`, the image is drawn for them and every result pixel is one of
+   * them; `name` ("PICO-8") helps the look; `maxColors` caps the colours in
+   * each candidate. Its `smart` flag is not modeled: it is documented as
+   * "single images only", and this endpoint returns a grid of candidates
+   * below 171px.
    */
   async createImagePro(args: {
     description: string
@@ -1629,6 +1636,7 @@ export class PixelLabClient {
     height: number
     noBackground?: boolean
     seed?: number
+    targetPalette?: { colors?: string[]; name?: string; maxColors?: number }
   }): Promise<{ background_job_id: string; status: string }> {
     const body: Record<string, unknown> = {
       description: args.description,
@@ -1636,6 +1644,14 @@ export class PixelLabClient {
     }
     if (args.noBackground != null) body.no_background = args.noBackground
     if (args.seed != null) body.seed = args.seed
+    const palette = args.targetPalette
+    if (palette && (palette.colors?.length || palette.maxColors != null)) {
+      body.target_palette = {
+        ...(palette.colors?.length ? { colors: palette.colors } : {}),
+        ...(palette.name ? { name: palette.name } : {}),
+        ...(palette.maxColors != null ? { max_colors: palette.maxColors } : {}),
+      }
+    }
     return validateResponse(
       RevisionJobSubmitSchema,
       await this.request<unknown>("/generate-image-v2", { method: "POST", body: JSON.stringify(body) }),

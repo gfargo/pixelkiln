@@ -1378,7 +1378,9 @@ const StyleObjectSchema = z
     /** Fixed seed for reproducibility where the endpoint supports it. */
     seed: z.number().int().optional(),
     /**
-     * Forced palette, as `#rrggbb` values. `pixflux` only.
+     * Forced palette, as `#rrggbb` values. Sent as a swatch to `pixflux`
+     * and the generators that take one, and to `imagePro` as its
+     * `target_palette.colors` (2 to 256 colours).
      *
      * Unlike prose, this is a hard constraint. The API is handed a swatch
      * image and the output is limited to those colours. Verified: a four-colour
@@ -1390,6 +1392,10 @@ const StyleObjectSchema = z
     palette: z
       .array(HexColorSchema)
       .default([]),
+    /** `imagePro` only: the palette's name ("Game Boy", "PICO-8"), which PixelLab uses to help the look. Needs `palette`. */
+    paletteName: z.string().min(1).max(100).optional(),
+    /** `imagePro` only: at most this many colours in each candidate, 2 to 64 (drawn from `palette` when one is set). */
+    maxColors: z.number().int().min(2).max(64).optional(),
     /**
      * Snap every visible pixel of the downloaded art to the nearest `palette`
      * colour, without dithering. The palette is sent to providers that take
@@ -1458,6 +1464,22 @@ export const StyleSchema = StyleObjectSchema
         code: z.ZodIssueCode.custom,
         message: "quality profiles currently support single-image generators only",
         path: ["quality"],
+      })
+    }
+    for (const field of ["paletteName", "maxColors"] as const) {
+      if (style[field] !== undefined && style.generator !== "imagePro") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${field} applies to the imagePro generator only`,
+          path: [field],
+        })
+      }
+    }
+    if (style.paletteName !== undefined && style.palette.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "paletteName names the palette's colours; set palette too",
+        path: ["paletteName"],
       })
     }
     if (style.enforcePalette && style.palette.length < 2) {
@@ -2164,6 +2186,9 @@ export interface ResolvedSpec {
   styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
   /** Forced palette hex values; empty unless the style sets one. */
   palette: string[]
+  /** `imagePro` generator only: `target_palette.name` and `.max_colors`. */
+  paletteName?: string
+  maxColors?: number
   /** Snap downloaded art to `palette`; excluded from the spec hash. */
   enforcePalette: boolean
   /** `pixflux` only. Strip the generated background. Defaults to true. */

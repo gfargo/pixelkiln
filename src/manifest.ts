@@ -623,6 +623,8 @@ export async function resolveSpecs(
         uiColorPalette: generator === "uiAsset" || generator === "uiElement" ? style.uiColorPalette : undefined,
         ...(generator === "imageProFlash" && style.styleTraits ? { styleTraits: style.styleTraits } : {}),
         palette: style.palette,
+        ...(generator === "imagePro" && style.paletteName ? { paletteName: style.paletteName } : {}),
+        ...(generator === "imagePro" && style.maxColors != null ? { maxColors: style.maxColors } : {}),
         enforcePalette: style.enforcePalette,
         noBackground: style.noBackground,
         tileSize: generator === "tiles" ? tileSize : undefined,

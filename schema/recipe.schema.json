@@ -458,6 +458,16 @@
               },
               "default": []
             },
+            "paletteName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "maxColors": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 64
+            },
             "enforcePalette": {
               "type": "boolean",
               "default": false
