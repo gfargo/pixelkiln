@@ -90,6 +90,16 @@ export function specHash(
       terrainBoundarySeed: spec.terrainBoundarySeed,
       terrainStepSlope: spec.terrainStepSlope,
       terrainConnectDiagonals: spec.terrainConnectDiagonals,
+      // Which set and which of its terrains, not that terrain's id: the id
+      // is in the lockfile, and the plan compares it there (like a mirror).
+      terrainConnect: spec.terrainConnect
+        ? Object.fromEntries(
+            (["lower", "upper"] as const).flatMap((side) => {
+              const link = spec.terrainConnect![side]
+              return link ? [[side, { of: link.assetId, terrain: link.terrain }]] : []
+            }),
+          )
+        : undefined,
       // Scene and mask enter as their bytes' hashes, never their paths.
       scene: spec.scene
         ? {

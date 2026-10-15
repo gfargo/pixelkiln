@@ -527,6 +527,39 @@ export const CharacterStateSchema = z
   .strict()
 export type CharacterState = z.infer<typeof CharacterStateSchema>
 
+/** One of a terrain set's two terrains. */
+export const TerrainSideSchema = z.enum(["lower", "upper"])
+export type TerrainSide = z.infer<typeof TerrainSideSchema>
+
+/** Another terrain set's terrain, which this set's own terrain is. */
+export const TerrainLinkSchema = z
+  .object({
+    /** A terrain asset in the same style. */
+    of: z.string().min(1),
+    /** Which of that set's terrains: its `lower` or its `upper`. */
+    terrain: TerrainSideSchema,
+  })
+  .strict()
+export type TerrainLink = z.infer<typeof TerrainLinkSchema>
+
+/**
+ * `terrain` styles: this set shares a terrain with another set, so the two
+ * paint on one map. Keyed by this set's own side: `{ "lower": { "of":
+ * "coast", "terrain": "upper" } }` makes this set's lower terrain the very
+ * terrain that is `coast`'s upper (sand, say, under a sand-to-grass set).
+ * PixelLab draws it from that terrain's base tile, sent as
+ * `lower_base_tile_id`/`upper_base_tile_id`. The other set is generated
+ * first; regenerating it makes this one stale.
+ */
+export const TerrainConnectSchema = z
+  .object({
+    lower: TerrainLinkSchema.optional(),
+    upper: TerrainLinkSchema.optional(),
+  })
+  .strict()
+  .refine((connect) => connect.lower || connect.upper, { message: "connect needs lower, upper, or both" })
+export type TerrainConnect = z.infer<typeof TerrainConnectSchema>
+
 /** PixelLab's fixed `portrait-character-pro` result sizes; 128 and 160 render at 2K and cost more. */
 export const CharacterPortraitSizeSchema = z.union([
   z.literal(16),
@@ -1676,6 +1709,8 @@ export const AssetSchema = z
     scene: MapSceneSchema.optional(),
     /** `vfx` styles only: the effect to render. See `AssetVfxSchema`. */
     vfx: AssetVfxSchema.optional(),
+    /** `terrain` styles only: share a terrain with another set. See `TerrainConnectSchema`. */
+    connect: TerrainConnectSchema.optional(),
     /** `character` styles, `standard` humanoid bases: this character's proportions, over the style's. */
     proportions: CharacterProportionsSchema.optional(),
     /**
@@ -1756,7 +1791,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene", asset.vfx && "vfx"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene", asset.vfx && "vfx", asset.connect && "connect"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1881,6 +1916,12 @@ const LockSourceSchema = z.object({
   mediaType: MediaTypeSchema.optional(),
 })
 
+/** A connected terrain set's other sets, per side, as they were when it was submitted. */
+const LockTerrainConnectSchema = z.record(
+  TerrainSideSchema,
+  z.object({ sourceAssetId: z.string().min(1), sourceObjectId: z.string().min(1) }).strict(),
+)
+
 /**
  * A generation this entry replaced, kept so it can be brought back. It is the
  * retired entry's identity (object, sources, output hashes, prompt, cost)
@@ -1910,6 +1951,8 @@ export const LockHistoryEntrySchema = z.object({
   billed: z.object({ amount: z.number(), unit: z.string() }).nullable().default(null),
   provider: z.string().default("pixellab"),
   postprocess: PostprocessSchema.optional(),
+  /** A connected terrain set's other sets; see LockEntrySchema.terrainConnect. */
+  terrainConnect: LockTerrainConnectSchema.optional(),
   /** When the replacement was submitted. */
   retiredAt: z.string(),
 })
@@ -1992,6 +2035,14 @@ export const LockEntrySchema = z.object({
     .strict()
     .nullable()
     .default(null),
+  /**
+   * For a connected terrain set: per side of this set, the set it shares
+   * that terrain with and that set's provider id when this was submitted.
+   * Tracked the way `outfit` is, not through `specHash`: the other set's
+   * id lives in the lockfile, which manifest resolution does not read.
+   * Absent (not null) otherwise, so other entries do not grow the key.
+   */
+  terrainConnect: LockTerrainConnectSchema.optional(),
 
   /**
    * Output hashes owned by the previous generation while its replacement is
@@ -2290,7 +2341,16 @@ export interface ResolvedSpec {
   terrainConnectDiagonals?: boolean
   terrainTransitionSize?: number
   terrainView?: string
+  /** `terrain` generator only: the sets this one shares a terrain with, per side. */
+  terrainConnect?: Partial<Record<TerrainSide, ResolvedTerrainLink>>
   /** `isometricTile` generator only. See StyleSchema for what each one means. */
   isometricTileSize?: number
   isometricTileShape?: string
+}
+
+/** A `connect` side resolved against the other set's spec in the same style. */
+export interface ResolvedTerrainLink {
+  assetId: string
+  terrain: TerrainSide
+  spec: ResolvedSpec
 }

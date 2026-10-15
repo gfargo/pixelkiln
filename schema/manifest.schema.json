@@ -1633,6 +1633,54 @@
                 },
                 "additionalProperties": false
               },
+              "connect": {
+                "type": "object",
+                "properties": {
+                  "lower": {
+                    "type": "object",
+                    "properties": {
+                      "of": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "terrain": {
+                        "type": "string",
+                        "enum": [
+                          "lower",
+                          "upper"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "of",
+                      "terrain"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "upper": {
+                    "type": "object",
+                    "properties": {
+                      "of": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "terrain": {
+                        "type": "string",
+                        "enum": [
+                          "lower",
+                          "upper"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "of",
+                      "terrain"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
               "proportions": {
                 "anyOf": [
                   {

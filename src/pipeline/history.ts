@@ -57,6 +57,7 @@ export function retireGeneration(entry: LockEntry, retiredAt: string): LockHisto
     billed: entry.billed,
     provider: entry.provider,
     postprocess: entry.postprocess,
+    ...(entry.terrainConnect ? { terrainConnect: entry.terrainConnect } : {}),
     retiredAt,
   }
 }
@@ -210,6 +211,9 @@ export async function revertGeneration(
     billed: generation.billed,
     provider: generation.provider,
     postprocess: generation.postprocess,
+    // A connected set comes back with the connection it was drawn from, so
+    // the plan compares the restored generation, not the one it replaced.
+    terrainConnect: generation.terrainConnect,
     history,
   })
   await saveLock(lockPath, lock)

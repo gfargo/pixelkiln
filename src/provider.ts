@@ -109,6 +109,13 @@ export interface SubmitContext {
    */
   parentOutputs?: { path: string; role?: string }[]
   /**
+   * For a terrain set that shares a terrain with another set (`connect`),
+   * per side of this set: the other set's provider id, which of its
+   * terrains, and that terrain's own id when the lockfile recorded one. The
+   * pipeline proved the other set current before calling.
+   */
+  terrainLinks?: Partial<Record<"lower" | "upper", { objectId: string; terrain: "lower" | "upper"; terrainId?: string }>>
+  /**
    * Provider-owned details of the generation this submission replaces, when
    * the lockfile had one for the same asset, whatever its state. An adapter
    * that must clear upstream work before redoing it (a character animation

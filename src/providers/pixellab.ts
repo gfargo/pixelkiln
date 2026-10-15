@@ -1727,10 +1727,13 @@ export class PixelLabProvider implements Provider {
     }
 
     if (spec.generator === "terrain") {
+      const baseTileIds = await this.terrainBaseTileIds(context?.terrainLinks)
       const res = await this.client.createTileset({
         lowerDescription: spec.terrainLowerDescription!,
         upperDescription: spec.terrainUpperDescription!,
         transitionDescription: spec.terrainTransitionDescription,
+        lowerBaseTileId: baseTileIds.lower,
+        upperBaseTileId: baseTileIds.upper,
         tileSize: spec.terrainTileSize,
         mode: spec.terrainMode,
         shapeStyle: spec.terrainShapeStyle,
@@ -1749,7 +1752,13 @@ export class PixelLabProvider implements Provider {
         detail: spec.detail,
         seed: spec.seed,
       })
-      return { jobId: res.tileset_id, metadata: { backgroundJobId: res.background_job_id } }
+      return {
+        jobId: res.tileset_id,
+        metadata: {
+          backgroundJobId: res.background_job_id,
+          ...(Object.keys(baseTileIds).length ? { baseTileIds } : {}),
+        },
+      }
     }
 
     if (spec.generator === "isometricTile") {
@@ -2629,6 +2638,29 @@ export class PixelLabProvider implements Provider {
   }
 
   /**
+   * The base tile id of each terrain a connected set shares: the other
+   * set's recorded `terrainIds`, or, for a set downloaded before pixelkiln
+   * recorded them, read from PixelLab's own record of it (a free GET).
+   */
+  private async terrainBaseTileIds(
+    links: SubmitContext["terrainLinks"],
+  ): Promise<Partial<Record<"lower" | "upper", string>>> {
+    const ids: Partial<Record<"lower" | "upper", string>> = {}
+    for (const side of ["lower", "upper"] as const) {
+      const link = links?.[side]
+      if (!link) continue
+      const id = link.terrainId ?? (await this.client.getTileset(link.objectId)).metadata.terrainIds[link.terrain]
+      if (!id) {
+        throw new Error(
+          `PixelLab terrain: tileset ${link.objectId} has no ${link.terrain} terrain id to connect this set's ${side} terrain to`,
+        )
+      }
+      ids[side] = id
+    }
+    return ids
+  }
+
+  /**
    * `/create-tileset` reports progress the same way `tiles` does (423 while
    * drawing, 200 once finished), but each tile's image comes back embedded
    * as base64 rather than a `storage_urls` link, so it is decoded straight
@@ -2639,7 +2671,7 @@ export class PixelLabProvider implements Provider {
    */
   private async pollTerrain(tilesetId: string, context?: PollContext): Promise<JobState> {
     try {
-      const { tileset, usage } = await this.client.getTileset(tilesetId)
+      const { tileset, usage, metadata } = await this.client.getTileset(tilesetId)
       const backgroundJobId = context?.metadata?.backgroundJobId as string | undefined
       const billed = billedFromUsage(usage) ?? (await this.billedForJob(backgroundJobId))
       const sources: OutputSource[] = []
@@ -2657,7 +2689,12 @@ export class PixelLabProvider implements Provider {
         objectId: tilesetId,
         sourceUrl: sources[0]?.url ?? null,
         sources,
-        metadata: { terrainTypes: tileset.terrain_types, terrainTiles },
+        metadata: {
+          terrainTypes: tileset.terrain_types,
+          terrainTiles,
+          // Each terrain's base tile id, which a connected set sends.
+          ...(Object.keys(metadata.terrainIds).length ? { terrainIds: metadata.terrainIds } : {}),
+        },
         billed,
       }
     } catch (err) {
