@@ -406,8 +406,8 @@ normal-map` ([REVISIONS.md](./REVISIONS.md#normal-maps)).
 Called out separately because these are the most capable endpoints for level art
 and they are relevant to the disc-golf game. pixelkiln plans a top-down set
 at PixelLab's own quote (Pro 15 for tiles up to 32px, 25 at 64px; standard 4,
-the top of its quoted 1 to 4). Pro at 32px and the sidescroller are measured
-below; Pro at 64px and standard are not.
+the top of its quoted 1 to 4). Every kind is measured below: Pro billed
+exactly its quote at 32px and 64px, and standard billed 3, under the plan.
 
 `POST /tilesets` (top-down) and `/tilesets-sidescroller` are the current
 versions; `/create-tileset*` are the older aliases with identical schemas.
@@ -436,6 +436,32 @@ set's terrain. `GET /tilesets/{id}` (observed live) has a top-level
 are the base tile ids, so set A's `upper` id sent as set B's
 `lower_base_tile_id` makes the two share that terrain. pixelkiln records them
 as `terrainIds` when it polls a set.
+
+### Pro at 64px, edge slope, and standard sets, measured
+
+A second round on the same showcase project billed 46 generations in all
+(balance 5055 to 5009), each set exactly as below:
+
+- `lava-floor`: Pro, 64px, `terrainTransitionSize: 0.5`,
+  `terrainRaggedness: 0.4`, `terrainBoundaryAmplitude: 0.15`,
+  `terrainBoundarySeed: 3`, prompt `1). glowing lava texture 2). dark dungeon
+  stone floor texture 3). crumbling dungeon brick wall`. Billed **exactly
+  25** and returned **25 tiles** covering **21** distinct corner
+  combinations, which confirms that Pro switches to the tall-wall layout at
+  0.5, not only at 1, and that four tiles are corner twins. The third
+  description became the brick wall dropping into the lava.
+- `swamp-marsh`: Pro, 32px, `terrainTransitionSize: 0.25`,
+  `terrainStepSlope: 1.5`, `terrainRaggedness: 0.8`. Billed **exactly 15**,
+  16 tiles, with a ragged bank between the water and the marsh grass.
+- `lake-grass` and `path-grass`: standard, 32px. Each billed **3**, under the
+  planned 4. `path-grass` used `connect: { upper: { of: "lake-grass",
+  terrain: "upper" } }`, sent `upper_base_tile_id`, and its recorded
+  `terrain_ids.upper` came back identical to `lake-grass`'s upper id. The
+  standard sets look flatter, with a hard edge, as PixelLab's tilesets
+  tutorial describes.
+
+pixelkiln keeps connected sets in one style, and a style fixes
+`terrainMode`, so a standard set cannot connect to a Pro set.
 
 ### Pro top-down and a connected pair, measured
 

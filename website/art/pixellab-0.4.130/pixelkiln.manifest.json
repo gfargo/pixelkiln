@@ -36,6 +36,43 @@
         "website",
         "pixellab-0.4.130"
       ]
+    },
+    "dungeon": {
+      "generator": "terrain",
+      "terrainMode": "pro",
+      "terrainTileSize": 64,
+      "terrainTransitionSize": 0.5,
+      "terrainRaggedness": 0.4,
+      "terrainBoundaryAmplitude": 0.15,
+      "terrainBoundarySeed": 3,
+      "outDir": "../../public/showcase/tilesets",
+      "tags": [
+        "website",
+        "pixellab-0.4.130"
+      ]
+    },
+    "marsh": {
+      "generator": "terrain",
+      "terrainMode": "pro",
+      "terrainTileSize": 32,
+      "terrainTransitionSize": 0.25,
+      "terrainStepSlope": 1.5,
+      "terrainRaggedness": 0.8,
+      "outDir": "../../public/showcase/tilesets",
+      "tags": [
+        "website",
+        "pixellab-0.4.130"
+      ]
+    },
+    "paths": {
+      "generator": "terrain",
+      "terrainMode": "standard",
+      "terrainTileSize": 32,
+      "outDir": "../../public/showcase/tilesets",
+      "tags": [
+        "website",
+        "pixellab-0.4.130"
+      ]
     }
   },
   "assets": {
@@ -76,6 +113,36 @@
         "fromStyle": "gameboy",
         "convention": "opengl"
       }
+    },
+    "lava-floor": {
+      "styles": [
+        "dungeon"
+      ],
+      "prompt": "1). glowing lava texture 2). dark dungeon stone floor texture 3). crumbling dungeon brick wall"
+    },
+    "swamp-marsh": {
+      "styles": [
+        "marsh"
+      ],
+      "prompt": "1). calm murky swamp water texture 2). plain marsh grass texture"
+    },
+    "path-grass": {
+      "styles": [
+        "paths"
+      ],
+      "prompt": "1). plain dirt path texture 2). plain short grass texture",
+      "connect": {
+        "upper": {
+          "of": "lake-grass",
+          "terrain": "upper"
+        }
+      }
+    },
+    "lake-grass": {
+      "styles": [
+        "paths"
+      ],
+      "prompt": "1). calm lake water texture 2). plain short grass texture"
     }
   }
 }

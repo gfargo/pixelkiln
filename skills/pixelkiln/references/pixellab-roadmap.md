@@ -461,9 +461,12 @@ connecting different tilesets") are now mostly covered; see the closed
 - **Measured once:** a Pro 32px set billed exactly 15, and a second set
   connected to it through `lower_base_tile_id` billed exactly 15 and shared
   its sand (docs/ENDPOINTS.md). `terrainRoundness: 2` with
-  `terrainConnectDiagonals` gave clean 45° edges. **Unexercised live:**
-  Pro at 64px, standard sets, `upper_base_tile_id`, and the other shape
-  controls. Sidescroller tile counts at transition
+  `terrainConnectDiagonals` gave clean 45° edges. A second round confirmed
+  Pro at 64px (exactly 25, and 25 tiles at transition 0.5), edge slope and
+  an uneven boundary (15 at 32px), standard sets (3 each, under the planned
+  4), and connecting through `upper_base_tile_id`. **Still open:** a
+  standard set cannot connect to a Pro set, because connected sets share a
+  style and a style fixes the mode. Sidescroller tile counts at transition
   sizes other than 0.25 are assumed to be 16. The one sidescroller call
   returned `metadata.transition_size: 0.0` although 0.25 was sent.
 - **Prompting advice** lives in the skill reference: end each terrain on
