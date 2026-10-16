@@ -16,11 +16,15 @@ import {
   terrainTileCount,
   type Lock,
   type LockEntry,
+  type LockTerrainSettings,
   type ResolvedSpec,
 } from "../src/types.ts"
-import { sha256, specHash } from "../src/hash.ts"
+import { sha256, specHash, terrainSettings } from "../src/hash.ts"
 import { currentEntryOutputPath } from "../src/outputs.ts"
-import { retireGeneration } from "../src/pipeline/history.ts"
+import { retireGeneration, revertGeneration } from "../src/pipeline/history.ts"
+import { loadLock } from "../src/lock.ts"
+import { encodeRgbaPng } from "../src/png.ts"
+import { FakeProvider } from "../src/providers/fake.ts"
 
 let dir: string
 
@@ -588,5 +592,152 @@ describe("sidescroller terrain sets", () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+})
+
+describe("terrain settings outside specHash", () => {
+  /** A downloaded terrain set with one output on disk, optionally with recorded settings. */
+  async function downloaded(
+    spec: ResolvedSpec,
+    settings?: LockTerrainSettings,
+    bytes = encodeRgbaPng(1, 1, Buffer.from([1, 2, 3, 255])),
+  ): Promise<LockEntry> {
+    const entry = LockEntrySchema.parse({
+      styleId: spec.styleId,
+      assetId: spec.assetId,
+      specHash: spec.specHash,
+      generator: spec.generator,
+      prompt: spec.prompt,
+      width: spec.width,
+      height: spec.height,
+      status: "downloaded",
+      jobId: "set-1",
+      objectId: "set-1",
+      outputs: [{ path: "x.png", sha256: sha256(bytes) }],
+      ...(settings ? { terrainSettings: settings } : {}),
+    })
+    const file = currentEntryOutputPath(entry, spec, 0)
+    await mkdir(path.dirname(file), { recursive: true })
+    await writeFile(file, bytes)
+    return entry
+  }
+
+  /** The plan item for `entry` under a manifest with `style`, its specHash matching. */
+  async function planned(style: Record<string, unknown>, entry: LockEntry) {
+    const specs = await resolveSpecs(await writeManifest(style))
+    const lock: Lock = { version: 2, entries: { [lockKey("base", "ground")]: { ...entry, specHash: specs[0]!.specHash } } }
+    return (await buildPlan(specs, lock)).items[0]!
+  }
+
+  async function writeMap(): Promise<ReturnType<typeof loadManifest>> {
+    await writeFile(path.join(dir, "m.json"), JSON.stringify({
+      name: "test",
+      styles: { base: { outDir: "out", generator: "map" } },
+      assets: { rock: { prompt: "a rock", width: 32, height: 32 } },
+    }))
+    return loadManifest(path.join(dir, "m.json"))
+  }
+
+  it("records only the settings the manifest sets, and nothing for other generators", async () => {
+    const [spec] = await resolveSpecs(await writeManifest({ terrainMode: "pro", terrainTransitionSize: 0.25, promptPrefix: "pixel art" }))
+    expect(terrainSettings(spec!)).toEqual({
+      terrainMode: "pro",
+      terrainTransitionSize: 0.25,
+      terrainLowerDescription: "pixel art, deep ocean water",
+      terrainUpperDescription: "pixel art, golden sand",
+    })
+    const [rock] = await resolveSpecs(await writeMap())
+    expect(terrainSettings(rock!)).toBeUndefined()
+  })
+
+  it("writes the settings on submit; a non-terrain entry gets no key", async () => {
+    const loaded = await writeManifest({ terrainTransitionSize: 0.5, terrainView: "low top-down" })
+    const specs = await resolveSpecs(loaded)
+    const provider = new PixelLabProvider({
+      createTileset: async () => ({ tileset_id: "tileset-1", background_job_id: "bg-1", status: "processing" }),
+    } as never)
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const lock: Lock = { version: 2, entries: {} }
+    await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, lockPath, { spacingMs: 0 })
+    expect((await loadLock(lockPath)).entries[lockKey("base", "ground")]!.terrainSettings).toEqual({
+      terrainTransitionSize: 0.5,
+      terrainView: "low top-down",
+      terrainLowerDescription: "deep ocean water",
+      terrainUpperDescription: "golden sand",
+    })
+
+    const mapLoaded = await writeMap()
+    const mapSpecs = await resolveSpecs(mapLoaded)
+    const mapLockPath = path.join(dir, "map.lock.json")
+    const mapLock: Lock = { version: 2, entries: {} }
+    await submit(new FakeProvider({ candidates: 1 }), mapLoaded, (await buildPlan(mapSpecs, mapLock)).actionable, mapLock, mapLockPath, { spacingMs: 0 })
+    const raw = JSON.parse(await readFile(mapLockPath, "utf8")) as { entries: Record<string, Record<string, unknown>> }
+    expect(raw.entries[lockKey("base", "rock")]).toBeDefined()
+    expect("terrainSettings" in raw.entries[lockKey("base", "rock")]!).toBe(false)
+  })
+
+  it("marks a set stale, naming each setting that changed", async () => {
+    const [spec] = await resolveSpecs(await writeManifest({ terrainTransitionSize: 0.25 }))
+    const entry = await downloaded(spec!, terrainSettings(spec!))
+    expect((await planned({ terrainTransitionSize: 0.25 }, entry)).state).toBe("ok")
+
+    const changed = await planned({ terrainTransitionSize: 0.5 }, entry)
+    expect(changed.state).toBe("stale")
+    expect(changed.reason).toBe("terrainTransitionSize changed from 0.25 to 0.5")
+
+    const several = await planned({ terrainMode: "pro", terrainTransitionSize: 0.25, terrainRaggedness: 0.4, promptPrefix: "pixel art" }, entry)
+    expect(several.state).toBe("stale")
+    expect(several.reason).toContain('terrainMode changed from unset to "pro"')
+    expect(several.reason).toContain("terrainRaggedness changed from unset to 0.4")
+    expect(several.reason).toContain('terrainLowerDescription changed from "deep ocean water" to "pixel art, deep ocean water"')
+  })
+
+  it("counts an explicitly written API default as a change, as specHash does", async () => {
+    const [spec] = await resolveSpecs(await writeManifest({}))
+    const entry = await downloaded(spec!, terrainSettings(spec!))
+    const explicit = await planned({ terrainMode: "standard" }, entry)
+    expect(explicit.state).toBe("stale")
+    expect(explicit.reason).toBe('terrainMode changed from unset to "standard"')
+  })
+
+  it("takes an entry with no recorded settings as current", async () => {
+    const [spec] = await resolveSpecs(await writeManifest({ terrainTransitionSize: 0.25 }))
+    const entry = await downloaded(spec!)
+    expect(entry.terrainSettings).toBeUndefined()
+    expect((await planned({ terrainTransitionSize: 0.5, terrainView: "low top-down" }, entry)).state).toBe("ok")
+  })
+
+  it("restores a generation with the settings it was drawn with", async () => {
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const [spec] = await resolveSpecs(await writeManifest({ terrainTransitionSize: 0.25 }))
+    const [wide] = await resolveSpecs(await writeManifest({ terrainTransitionSize: 0.5 }))
+    const oldBytes = encodeRgbaPng(1, 1, Buffer.from([9, 9, 9, 255]))
+    const older = await downloaded(spec!, terrainSettings(spec!), oldBytes)
+    const current = await downloaded(spec!, terrainSettings(wide!))
+    const legacy = retireGeneration({ ...older, terrainSettings: undefined }, "2026-10-15T00:00:00.000Z")
+    expect("terrainSettings" in legacy).toBe(false)
+    const lock: Lock = { version: 2, entries: {} }
+    lock.entries[lockKey("base", "ground")] = {
+      ...current,
+      history: [
+        { ...retireGeneration(older, "2026-10-16T00:00:00.000Z"), sourceUrls: [{ url: "file:///older.png" }] },
+        { ...legacy, sourceUrls: [{ url: "file:///legacy.png" }] },
+      ],
+    }
+    expect((await buildPlan([spec!], lock)).items[0]).toMatchObject({
+      state: "stale",
+      reason: "terrainTransitionSize changed from 0.5 to 0.25",
+    })
+
+    const provider = { id: "pixellab", download: async () => oldBytes } as never
+    await revertGeneration(provider, spec!, lock, lockPath, { generation: 1, cacheDir: false })
+    expect(lock.entries[lockKey("base", "ground")]!.terrainSettings).toEqual(terrainSettings(spec!))
+    expect((await buildPlan([spec!], lock)).items[0]!.state).toBe("ok")
+
+    // Generation 2 is now the one from before settings were recorded: it
+    // comes back with none, so it is taken as current.
+    await revertGeneration(provider, spec!, lock, lockPath, { generation: 2, cacheDir: false })
+    expect(lock.entries[lockKey("base", "ground")]!.terrainSettings).toBeUndefined()
+    expect((await buildPlan([spec!], lock)).items[0]!.state).toBe("ok")
   })
 })

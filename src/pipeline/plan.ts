@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { sha256File } from "../hash.ts"
+import { sha256File, terrainSettings } from "../hash.ts"
 import { mirrorCurrent, mirrorSourceHash } from "./mirror.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
-import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
+import { lockKey, type Lock, type LockEntry, type LockTerrainSettings, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
 import { inspectQualityProfile, type QualityProfileInspection } from "./quality-profile.ts"
 import { postprocessCurrent } from "./postprocess.ts"
@@ -63,6 +63,23 @@ function changedTerrainConnection(spec: ResolvedSpec, entry: LockEntry, lock: Lo
     if (!recorded || recorded.sourceObjectId !== other?.objectId) return link.assetId
   }
   return null
+}
+
+/**
+ * Which recorded terrain settings (the ones specHash leaves out) the
+ * manifest no longer matches, as "<field> changed from <old> to <new>".
+ * An entry submitted before they were recorded has none and is current.
+ */
+function changedTerrainSettings(spec: ResolvedSpec, entry: LockEntry): string | null {
+  const recorded = entry.terrainSettings
+  const current = terrainSettings(spec)
+  if (!recorded || !current) return null
+  const show = (value: unknown) => value === undefined ? "unset" : JSON.stringify(value)
+  const fields = new Set([...Object.keys(recorded), ...Object.keys(current)] as (keyof LockTerrainSettings)[])
+  const changes = [...fields]
+    .filter((field) => recorded[field] !== current[field])
+    .map((field) => `${field} changed from ${show(recorded[field])} to ${show(current[field])}`)
+  return changes.length ? changes.join("; ") : null
 }
 
 export interface PlanItem {
@@ -153,6 +170,7 @@ export async function buildPlan(
     let reason: string
 
     const changedConnection = entry ? changedTerrainConnection(spec, entry, lock) : null
+    const changedSettings = entry ? changedTerrainSettings(spec, entry) : null
     const revision = await inspectRevisionReadiness(spec, lock)
     if (revision && !revision.ready) {
       state = "blocked"
@@ -216,6 +234,11 @@ export async function buildPlan(
       // other set's current generation is only in the lockfile.
       state = "stale"
       reason = `connected set ${changedConnection} was regenerated; draw this set from its new terrain`
+    } else if (changedSettings) {
+      // The older terrain knobs are not in specHash (adding them would have
+      // made every terrain entry stale); each entry records its own.
+      state = "stale"
+      reason = changedSettings
     } else if (entry.status === "download-failed") {
       state = "recoverable"
       const force = entry.error?.includes("pass --force") ? " --force" : ""

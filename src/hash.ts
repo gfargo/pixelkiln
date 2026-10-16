@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
-import type { ResolvedSpec } from "./types.ts"
+import type { LockTerrainSettings, ResolvedSpec } from "./types.ts"
 
 export function sha256(data: Buffer | string): string {
   return createHash("sha256").update(data).digest("hex")
@@ -86,8 +86,9 @@ export function specHash(
       uiColorPalette: spec.uiColorPalette,
       // The older terrain knobs (terrainMode, terrainTransitionSize, and the
       // rest) were never part of this hash, and adding them now would make
-      // every existing terrain entry stale. The Pro shape controls added
-      // after them are identity, each only when set.
+      // every existing terrain entry stale; terrainSettings below records
+      // them per entry instead. The Pro shape controls added after them are
+      // identity, each only when set.
       terrainRoundness: spec.terrainRoundness,
       terrainBoundaryAmplitude: spec.terrainBoundaryAmplitude,
       terrainBoundarySeed: spec.terrainBoundarySeed,
@@ -238,4 +239,32 @@ export function specHash(
         : undefined,
     }),
   )
+}
+
+/**
+ * What a terrain set's request carries that specHash leaves out, recorded on
+ * its lock entry at submit and compared by the plan. Each key is present
+ * only when the manifest sets it: an explicitly written API default (say
+ * `terrainMode: "standard"`) counts as a change from leaving it out, the
+ * way specHash treats every other written default. The descriptions are
+ * the prompt wrapped in the style's prefix and suffix, which the prompt in
+ * specHash does not include. `terrainTileSize` is absent because width and
+ * height already hash it. Undefined for every other generator, so their
+ * entries never gain the key.
+ */
+export function terrainSettings(spec: ResolvedSpec): LockTerrainSettings | undefined {
+  if (spec.generator !== "terrain") return undefined
+  const settings: LockTerrainSettings = {
+    terrainMode: spec.terrainMode,
+    terrainShapeStyle: spec.terrainShapeStyle,
+    terrainSpreadX: spec.terrainSpreadX,
+    terrainSlopeSize: spec.terrainSlopeSize,
+    terrainRaggedness: spec.terrainRaggedness,
+    terrainTransitionSize: spec.terrainTransitionSize,
+    terrainView: spec.terrainView,
+    terrainLowerDescription: spec.terrainLowerDescription,
+    terrainUpperDescription: spec.terrainUpperDescription,
+    terrainTransitionDescription: spec.terrainTransitionDescription,
+  }
+  return Object.fromEntries(Object.entries(settings).filter(([, value]) => value !== undefined))
 }

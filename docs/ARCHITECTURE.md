@@ -112,6 +112,14 @@ retain:
   same output bytes, which is what lets a restore reproduce a recorded hash.
   It is compared against the manifest on every `plan`: a difference is
   `recoverable`, never `stale`, because no provider work is involved;
+- `terrainSettings`, `terrain` entries only: the settings the request was
+  sent with that `specHash` leaves out (the older mode, transition size,
+  view, shape, and raggedness knobs, and each terrain's description as
+  sent). Hashing them would have made every existing terrain entry stale,
+  so `plan` compares this record instead and reports `stale` naming each
+  changed setting. An entry from before it was recorded has none and is
+  taken as current. A history entry keeps its own, so a restore is
+  compared against the generation it brought back;
 - temporary `supersededOutputs[]` ownership hashes while a stale generation is
   being replaced;
 - provider-specific metadata under a provider-id namespace;

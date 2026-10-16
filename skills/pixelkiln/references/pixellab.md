@@ -127,6 +127,16 @@ reads it:
 both now, so leave them out. Reference images, a forced palette, and the
 remaining tunables (`tileStrength`, `tilesetAdherence`) are not modeled.
 
+Changing any terrain setting marks the set stale. The Pro shape controls
+are in `specHash`; the older ones (`terrainMode`, `terrainTransitionSize`,
+`terrainRaggedness`, `terrainShapeStyle`, `terrainView`, the deprecated
+pair) and the style's `promptPrefix`/`promptSuffix` are recorded on the
+lock entry as `terrainSettings` instead, and `plan` names the one that
+changed ("terrainTransitionSize changed from 0.25 to 0.5"). A setting is
+compared as written: adding `terrainMode: "standard"` to a style that left
+it out is a change, even though it is the default. A set generated before
+this record existed has none and stays current until it is regenerated.
+
 **Connected sets.** An asset's `connect` makes one of its terrains the very
 terrain of another set in the same style, so ocean, sand, and grass paint on
 one map: `"connect": { "lower": { "of": "coast", "terrain": "upper" } }` is
