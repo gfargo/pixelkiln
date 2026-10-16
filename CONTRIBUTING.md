@@ -42,6 +42,12 @@ npm run website:dev
 The site reads canonical Markdown from `docs/` and the root policy files at
 build time. Do not create a second documentation copy under `website/`.
 
+The home page's "Latest updates from our providers" section reads
+`website/app/lib/provider-updates.ts`. When a provider ships a feature
+PixelKiln can use, add an entry at the top of that list. The newest entry
+shows its figures and code sample; earlier ones collapse to a short row. Show
+only output from a real call, with the bill the docs record.
+
 Website sprites are generated from `website/art/pixelkiln.manifest.json`.
 Treat those requests as paid work: run `plan` and `audit` first, use an explicit
 hard budget, and commit the manifest, lockfile, and reviewed outputs together.

@@ -125,8 +125,8 @@ Each has been billed live and matched the plan: Pro sets at 32px (15) and
 64px (25, 25 tiles at transition 0.5), a second set connected to the first
 (15), standard sets (3 each), a sidescroller set (3), a 64×64 `imagePro`
 call with the Game Boy palette (10, every pixel one of its four colours), a
-lite described effect (1), and normal maps (0.5 each). The home page shows
-the results.
+lite described effect (1), and normal maps (0.5 each). The home page's latest
+updates section shows the results.
 
 ## Learn from PixelLab's tutorials
 

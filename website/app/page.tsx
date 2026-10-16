@@ -3,6 +3,7 @@ import { absoluteUrl } from "@/app/lib/metadata";
 import { CodeBody, CodeWindow } from "@/app/ui/code-window";
 import { CopyCommand } from "@/app/ui/copy-command";
 import { JsonLd } from "@/app/ui/json-ld";
+import { ProviderUpdates } from "@/app/ui/provider-updates";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
 import { SpriteCarousel } from "@/app/ui/sprite-carousel";
 import { SpriteLoop } from "@/app/ui/sprite-loop";
@@ -562,88 +563,7 @@ pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
           </div>
         </section>
 
-        <section className="effects-section release-section" id="pixellab-0-4-130">
-          <div className="shell">
-            <div className="section-heading split-heading">
-              <div>
-                <h2>New in PixelLab 0.4.130,<br />run through a manifest.</h2>
-              </div>
-              <p className="section-deck">
-                Connected and tall-walled tilesets, a target palette for Create Image
-                Pro, effects described in words, and normal maps all work from a
-                manifest now. Every
-                image below came from a real call, and each one billed exactly
-                what <code>pixelkiln plan</code> said it would.
-              </p>
-            </div>
-            <div className="effects-strip release-strip">
-              <figure className="release-map">
-                <picture>
-                  <img src="/showcase/tilesets/island.png" alt="A sandy island with a grass meadow in the middle, surrounded by ocean, edges cut at 45 degrees" width={448} height={320} loading="lazy" />
-                </picture>
-                <figcaption><b>two connected Pro sets</b> ocean to sand, then sand to grass, which shares the first set&apos;s sand. 15 generations each.</figcaption>
-              </figure>
-              <figure className="release-map">
-                <picture>
-                  <img src="/showcase/tilesets/dungeon.png" alt="Dark stone dungeon floors raised over a lava sea, with brick walls dropping into the lava and lava pits cut into the floors" width={512} height={480} loading="lazy" />
-                </picture>
-                <figcaption><b>one Pro set with tall walls</b> lava under dungeon stone at 64px, transition 0.5: 25 tiles, walls included. 25 generations.</figcaption>
-              </figure>
-              <figure>
-                <picture>
-                  <img src="/showcase/palette/chest.png" alt="A treasure chest drawn in the four Game Boy greens" width={192} height={192} loading="lazy" />
-                </picture>
-                <figcaption><b>Game Boy palette</b> imagePro, 16 candidates, every pixel one of four colours. 10 generations.</figcaption>
-              </figure>
-              <figure>
-                <picture>
-                  <source media="(prefers-reduced-motion: reduce)" srcSet="/showcase/normals/chest-relit-still.png" />
-                  <img src="/showcase/normals/chest-relit.gif" alt="The same chest lit by a light circling it, using its normal map" width={192} height={192} loading="lazy" />
-                </picture>
-                <figcaption><b>normal-map revision</b> the chest under a moving light. 0.5 generations.</figcaption>
-              </figure>
-              <figure>
-                <picture>
-                  <source media="(prefers-reduced-motion: reduce)" srcSet="/showcase/effects/fireball-described-still.png" />
-                  <img src="/showcase/effects/fireball-described.gif" alt="A small orange fireball with a flickering trail" width={326} height={52} loading="lazy" style={{ width: "100%" }} />
-                </picture>
-                <figcaption><b>described effect</b> &quot;a small orange fireball flying right&quot;, lite artist. 1 generation.</figcaption>
-              </figure>
-            </div>
-            <div className="effects-bottom">
-              <CodeWindow
-                title="pixelkiln.manifest.json"
-                language="json"
-                copyId="release_manifest"
-                section="release"
-                code={`
-"sand-grass": {
-  "prompt": "1). plain smooth sand texture 2). plain short grass texture",
-  "connect": { "lower": { "of": "ocean-sand", "terrain": "upper" } }
-},
-"chest-normals": {
-  "styles": ["lit"],
-  "revision": { "mode": "normal-map", "from": "chest", "fromStyle": "gameboy" }
-}
-`}
-              />
-              <ul className="check-list effects-list">
-                <li><span>✓</span> A connected set waits for the set it shares a terrain with, sends that set&apos;s tile id, and goes stale when it is regenerated.</li>
-                <li><span>✓</span> <code>terrainRoundness: 2</code> with <code>terrainConnectDiagonals</code> cuts the coast at 45°. Sidescroller platform sets cost 3.</li>
-                <li><span>✓</span> A style&apos;s <code>palette</code> now reaches Create Image Pro; <code>maxColors</code> caps each candidate.</li>
-                <li><span>✓</span> <code>pixelkiln normal-map</code> and <code>vfx --description</code> do the same for loose files.</li>
-              </ul>
-            </div>
-            <div className="review-links">
-              <TrackedLink className="text-link" id="release_pixellab_docs" section="release" href="/docs/pixellab">
-                Read what changed in 0.4.130
-              </TrackedLink>
-              <TrackedLink className="text-link" id="release_tiles_docs" section="release" href="/docs/tiles">
-                Export tilesets to Tiled and Godot
-              </TrackedLink>
-            </div>
-          </div>
-        </section>
+        <ProviderUpdates />
 
         <section className="provider-showcase-section shell" id="providers">
           <div className="section-heading split-heading provider-showcase-heading">
