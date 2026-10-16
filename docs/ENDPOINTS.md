@@ -401,13 +401,13 @@ normal-map` ([REVISIONS.md](./REVISIONS.md#normal-maps)).
 
 ---
 
-## Tilesets: mostly schema, one sidescroller measured
+## Tilesets: measured once per kind
 
 Called out separately because these are the most capable endpoints for level art
-and they are relevant to the disc-golf game. **Top-down costs are unmeasured**:
-pixelkiln plans a top-down set at PixelLab's own quote (Pro 15 for tiles up to
-32px, 25 at 64px; standard 4, the top of its quoted 1 to 4). The sidescroller
-cost below is measured.
+and they are relevant to the disc-golf game. pixelkiln plans a top-down set
+at PixelLab's own quote (Pro 15 for tiles up to 32px, 25 at 64px; standard 4,
+the top of its quoted 1 to 4). Pro at 32px and the sidescroller are measured
+below; Pro at 64px and standard are not.
 
 `POST /tilesets` (top-down) and `/tilesets-sidescroller` are the current
 versions; `/create-tileset*` are the older aliases with identical schemas.
@@ -436,6 +436,24 @@ set's terrain. `GET /tilesets/{id}` (observed live) has a top-level
 are the base tile ids, so set A's `upper` id sent as set B's
 `lower_base_tile_id` makes the two share that terrain. pixelkiln records them
 as `terrainIds` when it polls a set.
+
+### Pro top-down and a connected pair, measured
+
+October 2026, through `pixelkiln gen` on the website's showcase project
+(`website/art/pixellab-0.4.130`). Two Pro sets at 32px with
+`terrainRoundness: 2` and `terrainConnectDiagonals: true`:
+
+- `ocean-sand` ("deep ocean water texture" to "plain smooth sand texture")
+  billed **exactly 15 generations**, 16 tiles. Its `metadata.terrain_ids`
+  held both a `lower` and an `upper` id, recorded as `terrainIds`.
+- `sand-grass` ("plain smooth sand texture" to "plain short grass texture")
+  with `connect: { lower: { of: "ocean-sand", terrain: "upper" } }` stayed
+  blocked until `ocean-sand` was downloaded, then sent `ocean-sand`'s upper
+  id as `lower_base_tile_id` and billed **exactly 15**.
+- Painted together on one vertex grid, the two sets join at the shared sand
+  with matching colour. The second set's sand carries fewer pebbles, so the
+  ring where it meets the first set's sand is visible up close. "plain smooth
+  sand texture" still came back with pebbles in the first set.
 
 ### Sidescroller, measured
 

@@ -71,7 +71,7 @@ unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles
 | `pixflux` | You need a closed palette or a full-bleed background | 1 generation |
 | `1dir` | You need references or several candidates for human review | 10 to 25 generations |
 | `tiles` | You need ground variations or a connected structural set | 10 to 25 generations |
-| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff), sets that share a terrain, or a sidescroller platform set | sidescroller 3 (measured); top-down Pro 15 or 25, standard up to 4 (PixelLab's quote) |
+| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff), sets that share a terrain, or a sidescroller platform set | Pro 15 at 32px and sidescroller 3 (measured); Pro 25 at 64px and standard up to 4 (PixelLab's quote) |
 | `isometricTile` | You need one standalone isometric tile, 16 to 64px | 1 generation (measured once) |
 | `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall, optionally held to the style's `palette` | 10 to 25 generations |
 | `imageProFlash` | You need a still on the Pro Flash model, optionally styled from one image, 16 to 256px | 5 to 9 generations (provisional quote) |
@@ -121,10 +121,11 @@ PixelLab 0.4.130 (October 2026) added four things. PixelKiln covers each:
   loop at 0.5 generations, and `pixelkiln normal-map` does it for a loose
   file. See [Controlled asset revisions](./REVISIONS.md#normal-maps).
 
-Three have been billed live once each: a sidescroller set (3 generations),
-a lite described effect (1, its quote), and an 8-frame normal map strip
-(0.5). Top-down Pro prices and the palette use PixelLab's published
-prices.
+Each has been billed live and matched the plan: a Pro 32px set (15) and a
+second set connected to it (15), a sidescroller set (3), a 64×64 `imagePro`
+call with the Game Boy palette (10, every pixel one of its four colours), a
+lite described effect (1), and normal maps (0.5 each). The home page shows
+the results.
 
 ## Learn from PixelLab's tutorials
 

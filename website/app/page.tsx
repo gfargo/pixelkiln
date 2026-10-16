@@ -562,6 +562,82 @@ pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
           </div>
         </section>
 
+        <section className="effects-section release-section" id="pixellab-0-4-130">
+          <div className="shell">
+            <div className="section-heading split-heading">
+              <div>
+                <h2>New in PixelLab 0.4.130,<br />run through a manifest.</h2>
+              </div>
+              <p className="section-deck">
+                Connected tilesets, a target palette for Create Image Pro, effects
+                described in words, and normal maps all work from a manifest now. Every
+                image below came from a real call, and each one billed exactly
+                what <code>pixelkiln plan</code> said it would.
+              </p>
+            </div>
+            <div className="effects-strip release-strip">
+              <figure>
+                <picture>
+                  <img src="/showcase/tilesets/island.png" alt="A sandy island with a grass meadow in the middle, surrounded by ocean, edges cut at 45 degrees" width={448} height={320} loading="lazy" />
+                </picture>
+                <figcaption><b>two connected Pro sets</b> ocean to sand, then sand to grass, which shares the first set&apos;s sand. 15 generations each.</figcaption>
+              </figure>
+              <figure>
+                <picture>
+                  <img src="/showcase/palette/chest.png" alt="A treasure chest drawn in the four Game Boy greens" width={192} height={192} loading="lazy" />
+                </picture>
+                <figcaption><b>Game Boy palette</b> imagePro, 16 candidates, every pixel one of four colours. 10 generations.</figcaption>
+              </figure>
+              <figure>
+                <picture>
+                  <source media="(prefers-reduced-motion: reduce)" srcSet="/showcase/normals/chest-relit-still.png" />
+                  <img src="/showcase/normals/chest-relit.gif" alt="The same chest lit by a light circling it, using its normal map" width={192} height={192} loading="lazy" />
+                </picture>
+                <figcaption><b>normal-map revision</b> the chest under a moving light. 0.5 generations.</figcaption>
+              </figure>
+              <figure>
+                <picture>
+                  <source media="(prefers-reduced-motion: reduce)" srcSet="/showcase/effects/fireball-described-still.png" />
+                  <img src="/showcase/effects/fireball-described.gif" alt="A small orange fireball with a flickering trail" width={326} height={52} loading="lazy" style={{ width: "100%" }} />
+                </picture>
+                <figcaption><b>described effect</b> &quot;a small orange fireball flying right&quot;, lite artist. 1 generation.</figcaption>
+              </figure>
+            </div>
+            <div className="effects-bottom">
+              <CodeWindow
+                title="pixelkiln.manifest.json"
+                language="json"
+                copyId="release_manifest"
+                section="release"
+                code={`
+"sand-grass": {
+  "prompt": "1). plain smooth sand texture 2). plain short grass texture",
+  "connect": { "lower": { "of": "ocean-sand", "terrain": "upper" } }
+},
+"chest-normals": {
+  "styles": ["lit"],
+  "revision": { "mode": "normal-map", "from": "chest", "fromStyle": "gameboy" }
+}
+`}
+              />
+              <ul className="check-list effects-list">
+                <li><span>✓</span> A connected set waits for the set it shares a terrain with, sends that set&apos;s tile id, and goes stale when it is regenerated.</li>
+                <li><span>✓</span> <code>terrainRoundness: 2</code> with <code>terrainConnectDiagonals</code> cuts the coast at 45°. Sidescroller platform sets cost 3.</li>
+                <li><span>✓</span> A style&apos;s <code>palette</code> now reaches Create Image Pro; <code>maxColors</code> caps each candidate.</li>
+                <li><span>✓</span> <code>pixelkiln normal-map</code> and <code>vfx --description</code> do the same for loose files.</li>
+              </ul>
+            </div>
+            <div className="review-links">
+              <TrackedLink className="text-link" id="release_pixellab_docs" section="release" href="/docs/pixellab">
+                Read what changed in 0.4.130
+              </TrackedLink>
+              <TrackedLink className="text-link" id="release_tiles_docs" section="release" href="/docs/tiles">
+                Export tilesets to Tiled and Godot
+              </TrackedLink>
+            </div>
+          </div>
+        </section>
+
         <section className="provider-showcase-section shell" id="providers">
           <div className="section-heading split-heading provider-showcase-heading">
             <div>
@@ -1021,17 +1097,17 @@ pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
               <div className="generator-row header"><span>Generator</span><span>Best for</span><span>Measured cost</span></div>
               <div className="generator-row"><strong>map</strong><span>Standalone props and icons</span><span><i style={{ width: "4%" }} /> 1 gen</span></div>
               <div className="generator-row"><strong>pixflux</strong><span>Exact closed palettes</span><span><i style={{ width: "4%" }} /> 1 gen</span></div>
-              <div className="generator-row"><strong>imagePro</strong><span>Non-square or larger scenes, real style transfer</span><span><i style={{ width: "100%" }} /> 10–25 gen by canvas</span></div>
+              <div className="generator-row"><strong>imagePro</strong><span>Non-square or larger scenes, style transfer, a target palette</span><span><i style={{ width: "100%" }} /> 10–25 gen by canvas</span></div>
               <div className="generator-row"><strong>1dir</strong><span>References and candidate variety</span><span><i style={{ width: "72%" }} /> 10–25 gen</span></div>
               <div className="generator-row"><strong>tiles</strong><span>Ground and structural sets</span><span><i style={{ width: "100%" }} /> 10–25 gen</span></div>
-              <div className="generator-row"><strong>terrain</strong><span>Two-terrain elevation tilesets</span><span><i style={{ width: "100%" }} /> 10–25 gen (unmeasured)</span></div>
+              <div className="generator-row"><strong>terrain</strong><span>Two-terrain tilesets, connected sets, and sidescroller platforms</span><span><i style={{ width: "60%" }} /> 15 gen Pro (25 at 64px), 3 sidescroller</span></div>
               <div className="generator-row"><strong>isometricTile</strong><span>A single elevation tile, such as a mesa or a cliff block</span><span><i style={{ width: "4%" }} /> 1 gen</span></div>
               <div className="generator-row"><strong>character</strong><span>A base in 8 directions, its poses, its loops</span><span><i style={{ width: "28%" }} /> 1–25 gen per base by engine, 1–4 per template loop, mirrors free</span></div>
               <div className="generator-row"><strong>objectPro</strong><span>A skeleton-free prop&apos;s base, poses, and loops</span><span><i style={{ width: "28%" }} /> about 6 gen per base at 64px, 1 per loop (unmeasured)</span></div>
               <div className="generator-row"><strong>imageProFlash</strong><span>Styled stills on the Pro Flash model, 16–256px</span><span><i style={{ width: "36%" }} /> 5–9 gen (quoted)</span></div>
               <div className="generator-row"><strong>uiAsset</strong><span>UI panels, buttons, and bars from pieces and elements</span><span><i style={{ width: "100%" }} /> 10–25 gen (20 measured before PixelLab&apos;s price cut)</span></div>
               <div className="generator-row"><strong>uiElement</strong><span>One UI element from a description, 16px and up</span><span><i style={{ width: "100%" }} /> 10–25 gen (unmeasured)</span></div>
-              <div className="generator-row"><strong>vfx</strong><span>Animated effects: explosions, spells, auras, hits, on their own or around a sprite</span><span><i style={{ width: "0%" }} /> free on a subscription</span></div>
+              <div className="generator-row"><strong>vfx</strong><span>Animated effects: explosions, spells, auras, hits, on their own or around a sprite</span><span><i style={{ width: "4%" }} /> free from presets, 1 gen and up when described</span></div>
               <div className="generator-row"><strong>animation</strong><span>Retro Diffusion GIFs and sprite sheets</span><span>USD quote</span></div>
               <div className="generator-row"><strong>frames</strong><span>Controlled ComfyUI still sequences</span><span>0 provider units</span></div>
             </div>
