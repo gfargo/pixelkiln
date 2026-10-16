@@ -7,6 +7,7 @@ import {
   type Provider,
   type SubmitContext,
 } from "../provider.ts"
+import { terrainSettings } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
@@ -355,6 +356,9 @@ export async function submit(
           }
         : null,
       terrainConnect: spec.terrainConnect ? terrainConnect : undefined,
+      // The terrain knobs specHash leaves out, so the plan can tell a
+      // changed one; undefined (no key) for every other generator.
+      terrainSettings: terrainSettings(spec),
       status: "pending",
       jobId: previousJobId ?? null,
       ...(previousJobId ? { submissionComplete: false } : { submissionComplete: undefined }),

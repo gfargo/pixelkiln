@@ -2002,6 +2002,28 @@ const LockTerrainConnectSchema = z.record(
 )
 
 /**
+ * The settings a terrain set was drawn with that `specHash` leaves out: the
+ * older mode, shape, and camera knobs, and each terrain's description as
+ * sent (the prompt wrapped in the style's prefix and suffix). Hashing them
+ * would have made every terrain entry stale at once, so they are recorded
+ * per entry at submit and compared by the plan instead. A key is present
+ * only when the setting was written; an omitted one is the API's default.
+ */
+export const LockTerrainSettingsSchema = z.object({
+  terrainMode: z.string().optional(),
+  terrainShapeStyle: z.string().optional(),
+  terrainSpreadX: z.number().optional(),
+  terrainSlopeSize: z.number().optional(),
+  terrainRaggedness: z.number().optional(),
+  terrainTransitionSize: z.number().optional(),
+  terrainView: z.string().optional(),
+  terrainLowerDescription: z.string().optional(),
+  terrainUpperDescription: z.string().optional(),
+  terrainTransitionDescription: z.string().optional(),
+})
+export type LockTerrainSettings = z.infer<typeof LockTerrainSettingsSchema>
+
+/**
  * A generation this entry replaced, kept so it can be brought back. It is the
  * retired entry's identity (object, sources, output hashes, prompt, cost)
  * without the live-state fields; `pixelkiln restore --generation` swaps it
@@ -2032,6 +2054,8 @@ export const LockHistoryEntrySchema = z.object({
   postprocess: PostprocessSchema.optional(),
   /** A connected terrain set's other sets; see LockEntrySchema.terrainConnect. */
   terrainConnect: LockTerrainConnectSchema.optional(),
+  /** A terrain set's settings outside specHash; see LockEntrySchema.terrainSettings. */
+  terrainSettings: LockTerrainSettingsSchema.optional(),
   /** When the replacement was submitted. */
   retiredAt: z.string(),
 })
@@ -2123,6 +2147,14 @@ export const LockEntrySchema = z.object({
    * Absent (not null) otherwise, so other entries do not grow the key.
    */
   terrainConnect: LockTerrainConnectSchema.optional(),
+  /**
+   * For a terrain set: the settings it was submitted with that `specHash`
+   * leaves out (see LockTerrainSettingsSchema). The plan marks the entry
+   * stale when the manifest's differ. Absent on entries submitted before
+   * it was recorded, which are taken as current, and on every other
+   * generator's entries.
+   */
+  terrainSettings: LockTerrainSettingsSchema.optional(),
 
   /**
    * Output hashes owned by the previous generation while its replacement is

@@ -84,6 +84,16 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   15 up to 32px and 25 at 64px, standard 4 (the top of its quoted 1 to 4),
   sidescroller 3. What is still open is in
   [Pro tilesets](#pro-tilesets-what-is-left-after-04130) below.
+- **Older terrain fields as identity.** `terrainMode`,
+  `terrainTransitionSize`, `terrainRaggedness`, `terrainShapeStyle`,
+  `terrainView`, the deprecated `terrainSpreadX`/`terrainSlopeSize`, and
+  the descriptions as sent (the prompt wrapped in the style's prefix and
+  suffix) never entered `specHash`, and hashing them would have made every
+  existing terrain entry stale at once. Closed without a migration: submit
+  records them on the entry as `terrainSettings` (kept through history and
+  `restore --generation`), and the plan marks a set stale naming each one
+  that changed. An entry from before the record has none and stays current
+  until it is next regenerated. The 0.4.130 fields stay hashed (when set).
 - **Pro-tier full-bleed background generation** (`generate-image-v2`, PixelLab's
   Pro image tier) at arbitrary custom aspect ratios (not just square) —
   already measured at 40 generations in `docs/ENDPOINTS.md`, but `pixflux`
@@ -444,11 +454,6 @@ connecting different tilesets") are now mostly covered; see the closed
   `/create-tileset-sidescroller` has no `mode` field, and its tile size is
   16 or 32. pixelkiln's sidescroller sets use whatever model that endpoint
   runs.
-- **Older terrain fields are not identity.** `terrainMode`,
-  `terrainTransitionSize`, `terrainRaggedness`, `terrainShapeStyle`, and
-  `terrainView` never entered `specHash`, so changing one does not mark a set stale. The 0.4.130 fields
-  are hashed (when set). Hashing the older ones would make every existing
-  terrain lock entry stale at once, so it needs a deliberate migration.
 - **Wall-continuation twins export as duplicates.** The 25-tile layout has
   21 distinct corner combinations. Four tiles share corners with a twin and
   differ only in `pattern_4x4`, which pixelkiln records but cannot express in

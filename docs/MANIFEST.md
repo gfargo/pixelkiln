@@ -155,7 +155,7 @@ One asset using the fields most projects reach for:
 | `terrainBoundarySeed` | `0` | `terrain`, with `terrainBoundaryAmplitude`. Which meander, an integer. |
 | `terrainStepSlope` | `0` | `terrain`, `pro` at `terrainTransitionSize` 0.25 only. 0 a cliff to 2 a gentle slope. |
 | `terrainConnectDiagonals` | `false` | `terrain`, `pro` only. Join the diagonal tiles' upper corners into one area. |
-| `terrainSpreadX` / `terrainSlopeSize` | | Deprecated: PixelLab ignores both. Still accepted. |
+| `terrainSpreadX` / `terrainSlopeSize` | | Deprecated: PixelLab ignores both. Still accepted. Changing any `terrain*` field marks the set stale: the older ones (mode, transition size, view, shape style, raggedness, these two) and the descriptions as sent are recorded per lock entry as `terrainSettings` rather than hashed, compared as written (an explicit default counts as a change), and absent on sets generated before that record existed, which stay current. |
 | `mode` | `standard` | `character` only. `standard`, `v3`, `pro`, or `pro-flash`; see [Characters](./CHARACTERS.md). |
 | `directions` | `8` | `character` only. `4` or `8`; every engine but `standard` draws 8. |
 | `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`; `custom` for `pro-flash`. |
