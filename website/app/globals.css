@@ -551,7 +551,9 @@ a { color: inherit; text-decoration: none; }
 }
 .effects-strip figcaption b { display: block; color: var(--ember-light); font-weight: 600; }
 .release-section { border-top: 1px solid var(--line); }
-.release-strip { grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); }
+.release-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.release-strip figure { grid-column: span 2; }
+.release-strip .release-map { grid-column: span 3; }
 .release-strip picture { align-items: center; }
 .effects-bottom {
   display: grid;
@@ -1230,7 +1232,9 @@ a { color: inherit; text-decoration: none; }
 
 @media (max-width: 980px) {
   .effects-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .release-strip figure:first-child, .release-strip figure:last-child { grid-column: 1 / -1; }
+  .release-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .release-strip figure { grid-column: span 1; }
+  .release-strip .release-map, .release-strip figure:last-child { grid-column: 1 / -1; }
   .effects-bottom { grid-template-columns: minmax(0, 1fr); }
   .hero { grid-template-columns: 1fr; gap: 44px; }
   .hero-copy { max-width: 720px; }

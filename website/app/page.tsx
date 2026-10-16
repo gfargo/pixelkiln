@@ -569,18 +569,25 @@ pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
                 <h2>New in PixelLab 0.4.130,<br />run through a manifest.</h2>
               </div>
               <p className="section-deck">
-                Connected tilesets, a target palette for Create Image Pro, effects
-                described in words, and normal maps all work from a manifest now. Every
+                Connected and tall-walled tilesets, a target palette for Create Image
+                Pro, effects described in words, and normal maps all work from a
+                manifest now. Every
                 image below came from a real call, and each one billed exactly
                 what <code>pixelkiln plan</code> said it would.
               </p>
             </div>
             <div className="effects-strip release-strip">
-              <figure>
+              <figure className="release-map">
                 <picture>
                   <img src="/showcase/tilesets/island.png" alt="A sandy island with a grass meadow in the middle, surrounded by ocean, edges cut at 45 degrees" width={448} height={320} loading="lazy" />
                 </picture>
                 <figcaption><b>two connected Pro sets</b> ocean to sand, then sand to grass, which shares the first set&apos;s sand. 15 generations each.</figcaption>
+              </figure>
+              <figure className="release-map">
+                <picture>
+                  <img src="/showcase/tilesets/dungeon.png" alt="Dark stone dungeon floors raised over a lava sea, with brick walls dropping into the lava and lava pits cut into the floors" width={512} height={480} loading="lazy" />
+                </picture>
+                <figcaption><b>one Pro set with tall walls</b> lava under dungeon stone at 64px, transition 0.5: 25 tiles, walls included. 25 generations.</figcaption>
               </figure>
               <figure>
                 <picture>
