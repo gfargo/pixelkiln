@@ -263,8 +263,9 @@ function `inpaint-v3` and `edit-images-v2` revisions use.
 
 Create VFX shipped in PixelLab 0.4.128 as a web tool
 (`pixellab.ai/create-vfx`). Since October 2026 it is also the
-`vfx_workbench` tool on PixelLab's MCP server. It still has **no REST
-endpoint**: `/v2/openapi.json` lists nothing for it.
+`vfx_workbench` tool on PixelLab's MCP server. The workbench still has **no
+REST endpoint**. 0.4.130 added only the paid artist to REST, as `POST /vfx`
+([below](#vfx-artist-post-vfx-measured-once)).
 
 **It is a renderer, not a model.** An effect is a JSON recipe of layers
 (glows, rings, rays, particles, noise, and more), most of them dropped in as
@@ -317,16 +318,103 @@ render on the account is running; pixelkiln retries that with backoff.
 
 ---
 
-## Tilesets: schema only, not yet measured
+## VFX artist (`POST /vfx`), measured once
+
+PixelLab 0.4.130 added "Create VFX" to the REST API: an effects artist (the
+website's VFX creator) that builds an effect from a plain-language
+description, renders it, checks its own work, and saves it to My effects.
+The request and price table come from the OpenAPI document.
+
+**Measured once** (October 2026, Tier 3 account): `pixelkiln vfx
+--description "a small orange fireball flying right, flickering flames,
+short looping trail" --artist lite`, no sprite. The submit quoted 1
+generation and the finished job's `usage` billed exactly 1 (balance 5104
+to 5103).
+The job finished in about 20 s. `files` held the GIF, the sheet, and the
+atlas. The result was a 163×26 canvas, 8 frames at 12 fps, looping, anchor
+`origin` at (80, 13), parts `fireball` and `trail`. The sheet is 489×78, a
+3×3 grid holding 8 frames, and the atlas is an Aseprite-style `frames` list
+with per-frame `frame` rects and 83 ms durations. pixelkiln's slicer cut 8
+correct frames from it. A sprite, the pro artist, a change, and the game
+pack remain unmeasured.
+
+**Request** (`VfxRequest`): `description` (required, up to 8000 characters;
+with `effect_id`, what to change), `sprite` (optional base64 PNG or GIF, up
+to 512×512 per frame; an animation is a GIF or a horizontal strip of
+`sprite_frames`, 1–32), `sprite_fps` (1–60), `artist` (`lite`, the default,
+or `pro`), `effect_id` (change a saved effect in place; it keeps its own
+sprite), `conversation` (from a previous result, with its `effect_id`:
+priced as a change), `name` (up to 80 characters), and `game_pack`.
+
+**Response.** A 202 with `background_job_id`, `status`, `quoted_generations`,
+and `usage`. Poll `GET /background-jobs/{id}` every 5–10 s (PixelLab says
+30–90 s usually). A completed job's `last_response` has `files` (no-auth
+links: `<name>.gif`, `<name>.png` sheet, `<name>.json` with frames,
+durations, `pivot`, and `meta.anchor`, `<name>-game.zip` with `game_pack`,
+`<name>-normals.png` when a light made the sprite's normal map), `effect_id`,
+`name`, `edit_url`, `message`, `canvas` `{w, h}`, `frames`, `fps`, `loop`,
+`anchor` `{kind, x, y}`, `parts`, and `conversation`. The shape of `files`
+(a list or a map) is not documented; pixelkiln reads a URL list, a list of
+`{name, url}` records, or a name-to-URL map, and fails naming the keys it got
+otherwise.
+
+**Errors.** 400 is a request to change (the detail says what), 402 means
+insufficient credits, 429 too many concurrent jobs, and 503 the renderer is
+busy. The shared HTTP policy retries 429 and 503 with backoff.
+
+**Cost** (generations), quoted at submit and charged on delivery: the quote,
+or more when the effect took much longer (the overrun past 25% of the
+quote), never more than twice the quote.
+
+| | lite | pro |
+|---|---|---|
+| new effect, no sprite or up to 128 px | 1 | 6 (8 with a sprite) |
+| change (with `conversation`) | 1 | 4 |
+| sprite up to 256 px | 3 (change 2) | 14 (change 5) |
+| sprite up to 512 px | 5 (change 2) | 28 (change 8) |
+
+An animated sprite adds "a little per frame", unpriced; pixelkiln sends
+still PNG sprites only. Plans and `--budget` count twice the quote, the most
+a job can bill, and the lock records `quotedGenerations` beside the bill read
+from the finished job's `usage`.
+
+Wired up as `pixelkiln vfx --description` ([CLI](./CLI.md#described-effects-paid))
+and as a `vfx` block's `description` ([GENERATORS.md](./GENERATORS.md#described-effects-the-paid-vfx-artist)).
+
+---
+
+## Normal map (`POST /normal-map`), measured once
+
+PixelLab 0.4.130. The body is `image` (base64 PNG, 8 to 512px per frame
+side; an animation is a horizontal strip), `frames` (1 to 32), and
+`convention` (`opengl`, green up, the default; or `directx`). It returns a
+background job, and the finished job's `last_response.image` is the map as
+a PNG the input's size. PixelLab documents 0.5 generations, charged on
+delivery.
+
+**Measured once** (October 2026): `pixelkiln normal-map --frames 8` on a
+1304×26 strip of eight 163×26 effect frames billed exactly 0.5 generations
+(balance 5103 to 5102.5) and returned a 1304×26 RGBA strip. Its alpha
+matched the source's pixel for pixel, so the strip cuts back into the same
+8 frames. Wired up as the `normal-map` revision mode and `pixelkiln
+normal-map` ([REVISIONS.md](./REVISIONS.md#normal-maps)).
+
+---
+
+## Tilesets: mostly schema, one sidescroller measured
 
 Called out separately because these are the most capable endpoints for level art
-and they are relevant to the disc-golf game. **Costs below are unmeasured.**
+and they are relevant to the disc-golf game. **Top-down costs are unmeasured**:
+pixelkiln plans a top-down set at PixelLab's own quote (Pro 15 for tiles up to
+32px, 25 at 64px; standard 4, the top of its quoted 1 to 4). The sidescroller
+cost below is measured.
 
 `POST /tilesets` (top-down) and `/tilesets-sidescroller` are the current
 versions; `/create-tileset*` are the older aliases with identical schemas.
-The top-down family is wrapped by pixelkiln's `terrain` generator
-(skills/pixelkiln/references/pixellab.md); `/create-tileset-sidescroller` and
-the reference-image/`color_image` knobs below are not.
+Both are wrapped by pixelkiln's `terrain` generator
+(skills/pixelkiln/references/pixellab.md), the sidescroller one with
+`terrainOrientation: "sidescroller"`; the reference-image/`color_image`
+knobs below are not.
 
 They take `lower_description` + `upper_description` (+ optional
 `transition_description`). You describe two terrains and the transition between
@@ -336,8 +424,43 @@ them, and get a tileset that blends them. Distinctively, they accept **both**
 family that combines palette forcing with style anchoring.
 
 Useful knobs: `tile_size`, `tileset_adherence` / `tileset_adherence_freedom`
-(how strictly tiles must fit together), `raggedness` and `slope_size` for edge
-character, plus the usual `outline` / `shading` / `detail`.
+(how strictly tiles must fit together), and the usual `outline` / `shading` /
+`detail`. Pro's border controls are `raggedness`, `roundness`,
+`boundary_amplitude` with `boundary_seed`, `step_slope`, and
+`connect_diagonals`; `spread_x` and `slope_size` are documented as "No
+effect" now and kept only so existing calls work.
+
+`lower_base_tile_id` / `upper_base_tile_id` connect a new set to another
+set's terrain. `GET /tilesets/{id}` (observed live) has a top-level
+`metadata.terrain_ids` of `{ "lower": "<uuid>", "upper": "<uuid>" }`: those
+are the base tile ids, so set A's `upper` id sent as set B's
+`lower_base_tile_id` makes the two share that terrain. pixelkiln records them
+as `terrainIds` when it polls a set.
+
+### Sidescroller, measured
+
+One `POST /create-tileset-sidescroller` call, 16px tiles,
+`transition_size: 0.25`, `lower_description` "mossy stone bricks texture",
+`transition_description` "green grass texture", billed **exactly 3
+generations** (balance 5107 to 5104). PixelLab's MCP tool quotes 2 or 3.
+
+- The body has no `mode`, `view`, `upper_description`, or shape controls.
+  `tile_size` is 16 or 32 only, `transition_size` one of 0, 0.25, 0.5, 1.
+  `lower_base_tile_id` is the only connection field.
+- Submit answers `{ tileset_id, background_job_id, status: "processing" }`,
+  with `usage: null`.
+- `GET /tilesets/{id}` (and `/tilesets-sidescroller/{id}`) returns the
+  top-down shape: 16 tiles named `wang_0` to `wang_15`, each with `corners`
+  and `pattern_4x4`, images base64 inline. But `tileset.terrain_types` is
+  `["central", "background"]` while every corner still says `"lower"` (the
+  platform) or `"upper"` (empty, transparent air; the all-upper tile is
+  blank). pixelkiln records `["lower", "upper"]` so its corner masks work.
+- `metadata.terrain_ids` has `lower` only, and `metadata.view` is `"side"`.
+  `metadata.transition_size` came back `0.0` although 0.25 was sent.
+- `usage` is null on the GET, so the billed amount comes from
+  `GET /background-jobs/{background_job_id}` (`usage.generations: 3.0`).
+
+A trimmed copy of that response is `test/fixtures/tileset/sidescroller-get.json`.
 
 `create-tiles-pro` is a different shape, a single `description` plus
 `style_images`, `tile_view`, `building_*` fields for structures.

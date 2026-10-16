@@ -77,14 +77,18 @@ export interface Args {
   explicitLock?: string
   /** unzoom: 0 auto-detects a palette, -1 keeps every color, 2-256 quantizes to that many. */
   quantize?: number
-  /** font and pixelate: the style description sent to PixelLab. */
+  /** font and pixelate: the style description sent to PixelLab; vfx: the effect for the paid VFX artist. */
   description?: string
+  /** vfx: lite or pro, the VFX artist that draws a --description. */
+  artist?: string
   /** font: Bold or Regular. */
   weight?: string
   /** font: native glyph size, 8/16/32/64. */
   glyphPx?: number
-  /** estimate-skeleton: frames to scaffold after the estimated pose, 3-15. */
+  /** estimate-skeleton: frames to scaffold after the estimated pose, 3-15. normal-map: equal frames in the --from strip, 1-32. */
   frames?: number
+  /** normal-map: opengl (green up) or directx (green down). */
+  convention?: string
   /** gallery: skeleton estimates the session may make. */
   estimateLimit?: number
   /** vfx: a PixelLab VFX preset to start from. */
@@ -111,7 +115,7 @@ const VALUE_FLAGS = [
   "--reviewer", "--note",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
-  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps",
+  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--artist", "--convention",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -122,7 +126,7 @@ export const COMMANDS = [
   "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
-  "skeleton-preview", "unzoom", "pixelate", "vfx", "font", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -436,9 +440,13 @@ export function parseArgs(argv: string[]): Args {
     account: get("--account"),
     quantize: numberOption("--quantize", { min: -1, max: 256, integer: true }),
     description: get("--description"),
+    artist: get("--artist"),
     weight: get("--weight"),
     glyphPx: numberOption("--glyph-px", { min: 8, max: 64, integer: true }),
-    frames: numberOption("--frames", { min: 3, max: 15, integer: true }),
+    frames: command === "normal-map"
+      ? numberOption("--frames", { min: 1, max: 32, integer: true })
+      : numberOption("--frames", { min: 3, max: 15, integer: true }),
+    convention: get("--convention"),
     estimateLimit: numberOption("--estimate-limit", { min: 0, max: 1000, integer: true }),
     preset: get("--preset"),
     recipe: get("--recipe"),

@@ -9,10 +9,11 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | You need | Generator | Measured cost | Candidates/output |
 |---|---|---:|---|
 | Standalone prop or icon with arbitrary dimensions | `map` (default) | 1 generation | 1 |
-| Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
+| Exact fixed palette | `pixflux`, or `imagePro` for a larger or non-square canvas | 1 generation (`imagePro`: 10–25) | 1 inline image (`imagePro`: 1–64 by size) |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 10–25 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 10–25 generations | variations or complete set |
-| Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | plans at 25; PixelLab quotes 15–25 for Pro (unmeasured) | 16 or 25 tiles |
+| Two-terrain Wang tileset for elevation (grass to water, floor to cliff), or a sidescroller platform set | `terrain` | Pro 15, or 25 at 64px; standard plans at 4 (PixelLab's quotes); sidescroller 3 (measured) | 16 or 25 tiles |
+| Platform tileset for a sidescroller (stone body, grass top) | `terrain`, `terrainOrientation: "sidescroller"` | 3 generations | 16 tiles |
 | A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
 | Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 10–25 generations by canvas | 1–64 by size |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
@@ -22,14 +23,16 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
 | One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 10–25 generations (unmeasured) | 1 image |
 | A styled still on the Pro Flash model, or the south sprite a Pro Flash character will rotate | `imageProFlash` | 5–9 generations (PixelLab's provisional quote) | 1 image |
-| An animated effect (spell, hit, explosion, aura), on its own or around a sprite | `vfx` | free (a renderer, not a model) | one ordered frame set |
+| An animated effect (spell, hit, explosion, aura), on its own or around a sprite | `vfx` | free from presets and parts; 1–28 when described to PixelLab's artist (lite measured at 1; plans at twice the quote) | one ordered frame set |
 
 Start with `map` unless a required capability points elsewhere. Twenty-five
 `map` re-rolls cost the same as one 64×64 `1dir` call.
 
 `terrain` and `imagePro` have no section below: their fields and limits are in
-the [PixelLab skill reference](../skills/pixelkiln/references/pixellab.md), and
-a `terrain` set's export shape is in [Tiles](./TILES.md). Retro Diffusion
+the [PixelLab skill reference](../skills/pixelkiln/references/pixellab.md),
+including Pro's border controls, sidescroller sets, and connecting sets that
+share a terrain (an asset's `connect`), and a `terrain` set's export shape is
+in [Tiles](./TILES.md). Retro Diffusion
 `animation` styles are in [Set up Retro Diffusion](./RETRO_DIFFUSION.md).
 
 ## `map`
@@ -543,7 +546,9 @@ spells, hits, explosions, auras, shields, status icons, weather. The workbench
 is a renderer, not a model. An effect is a recipe of layers, most of them
 dropped in as tuned parts, and it renders the same pixels every time. It is
 free on a PixelLab subscription, and PixelLab offers it only over MCP, which
-pixelkiln calls with the same `PIXELLAB_API_KEY`.
+pixelkiln calls with the same `PIXELLAB_API_KEY`. An effect can also be
+described in words for PixelLab's paid VFX artist; see
+[Described effects](#described-effects-the-paid-vfx-artist).
 
 ```jsonc
 {
@@ -613,6 +618,74 @@ made on pixellab.ai or changes to PixelLab's own presets.
 last time, so My effects keeps one entry per asset. If that effect was
 changed on pixellab.ai since, or deleted, a new effect is saved instead and
 the edited one is left alone; the lock records why.
+
+### Described effects: the paid VFX artist
+
+A `description` in place of a preset, recipe, or parts asks PixelLab's VFX
+artist (`POST /vfx`, added in 0.4.130) to build the effect. The artist is the
+same one behind the website's VFX creator: it picks and tunes parts from your
+words, renders the effect, checks its own work, and saves it to My effects.
+
+```jsonc
+"zap.described": {
+  "vfx": {
+    "description": "a blue lightning strike that hits the ground and leaves sparks",
+    "artist": "pro",
+    "sprite": "art/chars/robot-south.png"
+  }
+}
+```
+
+Use the free workbench when a preset or a few parts get you there, or when
+you want to tune the effect by hand; it renders the same pixels every time.
+Use the artist when you would rather describe the effect than assemble it.
+It costs generations, and the same description draws a different effect
+each time.
+
+- `description` is the effect in plain words: what it is, its colours, how
+  it moves, how long. It cannot be combined with `preset`, `recipe`,
+  `parts`, or `fps`; the artist picks those itself.
+- `artist` is `lite` (the default, quick and cheap) or `pro` (the stronger
+  artist, for detailed effects).
+- `sprite` must be a local PNG up to 512×512, another asset's output
+  included. The endpoint takes the sprite's pixels, so `character:`,
+  `object:`, and `gallery:` references are refused; point at the
+  character's own output file instead. JPEG is refused too.
+- `name` is capped at 80 characters, and the default is cut to fit.
+
+**Cost.** PixelLab quotes each job when it is submitted and bills on
+delivery: the quote, or more when the effect ran long, never more than twice
+the quote. The quote comes from this table (generations):
+
+| | lite | pro |
+|---|---|---|
+| no sprite, or a sprite up to 128 px | 1 | 6 (8 with a sprite) |
+| sprite up to 256 px | 3 | 14 |
+| sprite up to 512 px | 5 | 28 |
+
+`plan` and `--budget` count **twice the quote**, the most a job can bill, so
+a budget is never overrun. A sprite that is another asset's output not drawn
+yet is priced at the 512 px tier until it exists. The lock records PixelLab's
+own quote (`quotedGenerations`) and the bill read from the finished job.
+These prices are PixelLab's published table; no artist bill has been
+measured here yet.
+
+**Outputs and identity.** The artist's spritesheet is cut into the same
+ordered frame set as the workbench's, with its fps and loop flag. The lock
+records the effect id, its edit link, the artist's message, the anchor, the
+parts it used, and the file names. The asset goes stale when its
+`description`, `artist`, or sprite content changes, and not for `name` or
+`prompt`. Adding these fields left every workbench effect's identity as it
+was.
+
+**Regenerating.** Every regeneration is a new effect, billed again. The
+manifest's description is the whole effect, not a change to the last one,
+so it is never sent as one. The previous effect stays in My effects, and the
+lock names it (`previousEffect`). To change one saved effect in place at the
+change price, use `pixelkiln vfx --description "<what to change>" --effect
+<id>` ([CLI](./CLI.md#vfx)). To turn a described effect into a free,
+repeatable recipe, export it with `pixelkiln vfx --effect <id> --out
+fx/zap` and point a workbench `recipe` at the record.
 
 ## Style variants
 

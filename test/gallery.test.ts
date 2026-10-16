@@ -752,6 +752,15 @@ describe("applyManifestEdit", () => {
     }
   })
 
+  it("takes a normal-map revision and has the loader check PixelLab's sizes", async () => {
+    const { manifestPath } = await generated()
+    // The fixture anvil is 1x1: the edit parses, then the loader refuses it.
+    await expect(applyManifestEdit(manifestPath, {
+      action: "add-asset", assetId: "anvil-normals", expectedSha256: await sha256File(manifestPath),
+      asset: { prompt: "normal map", styles: ["base"], revision: { mode: "normal-map", from: "anvil", convention: "directx" } },
+    })).rejects.toThrow(/8 to 512 px per side/)
+  })
+
   it("refuses a revision mode or field the gallery cannot author", async () => {
     const { manifestPath } = await generated()
     const sha = await sha256File(manifestPath)

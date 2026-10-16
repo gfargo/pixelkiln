@@ -234,6 +234,28 @@
                     "minimum": 0,
                     "maximum": 1
                   },
+                  "terrainRoundness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "terrainBoundaryAmplitude": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 0.3
+                  },
+                  "terrainBoundarySeed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "terrainStepSlope": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "terrainConnectDiagonals": {
+                    "type": "boolean"
+                  },
                   "terrainTransitionSize": {
                     "type": "number",
                     "minimum": 0,
@@ -244,6 +266,13 @@
                     "enum": [
                       "low top-down",
                       "high top-down"
+                    ]
+                  },
+                  "terrainOrientation": {
+                    "type": "string",
+                    "enum": [
+                      "top-down",
+                      "sidescroller"
                     ]
                   },
                   "isometricTileSize": {
@@ -382,6 +411,16 @@
                       "pattern": "^#?[0-9a-f]{6}$"
                     },
                     "default": []
+                  },
+                  "paletteName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "maxColors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 64
                   },
                   "enforcePalette": {
                     "type": "boolean",
@@ -693,6 +732,28 @@
                     "minimum": 0,
                     "maximum": 1
                   },
+                  "terrainRoundness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "terrainBoundaryAmplitude": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 0.3
+                  },
+                  "terrainBoundarySeed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "terrainStepSlope": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "terrainConnectDiagonals": {
+                    "type": "boolean"
+                  },
                   "terrainTransitionSize": {
                     "type": "number",
                     "minimum": 0,
@@ -703,6 +764,13 @@
                     "enum": [
                       "low top-down",
                       "high top-down"
+                    ]
+                  },
+                  "terrainOrientation": {
+                    "type": "string",
+                    "enum": [
+                      "top-down",
+                      "sidescroller"
                     ]
                   },
                   "isometricTileSize": {
@@ -841,6 +909,16 @@
                       "pattern": "^#?[0-9a-f]{6}$"
                     },
                     "default": []
+                  },
+                  "paletteName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "maxColors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 64
                   },
                   "enforcePalette": {
                     "type": "boolean",
@@ -1017,7 +1095,8 @@
                       "animate-pixminimax",
                       "animate-skeleton",
                       "interpolate",
-                      "edit-animation"
+                      "edit-animation",
+                      "normal-map"
                     ]
                   },
                   "from": {
@@ -1117,6 +1196,13 @@
                     "enum": [
                       "simple",
                       "complex"
+                    ]
+                  },
+                  "convention": {
+                    "type": "string",
+                    "enum": [
+                      "opengl",
+                      "directx"
                     ]
                   },
                   "description": {
@@ -1585,6 +1671,66 @@
                   "name": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000
+                  },
+                  "artist": {
+                    "type": "string",
+                    "enum": [
+                      "lite",
+                      "pro"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "connect": {
+                "type": "object",
+                "properties": {
+                  "lower": {
+                    "type": "object",
+                    "properties": {
+                      "of": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "terrain": {
+                        "type": "string",
+                        "enum": [
+                          "lower",
+                          "upper"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "of",
+                      "terrain"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "upper": {
+                    "type": "object",
+                    "properties": {
+                      "of": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "terrain": {
+                        "type": "string",
+                        "enum": [
+                          "lower",
+                          "upper"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "of",
+                      "terrain"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false

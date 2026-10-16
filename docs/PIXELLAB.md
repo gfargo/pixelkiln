@@ -71,11 +71,11 @@ unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles
 | `pixflux` | You need a closed palette or a full-bleed background | 1 generation |
 | `1dir` | You need references or several candidates for human review | 10 to 25 generations |
 | `tiles` | You need ground variations or a connected structural set | 10 to 25 generations |
-| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff) | plans at 25; PixelLab quotes 15 to 25 for Pro (unmeasured) |
+| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff), sets that share a terrain, or a sidescroller platform set | sidescroller 3 (measured); top-down Pro 15 or 25, standard up to 4 (PixelLab's quote) |
 | `isometricTile` | You need one standalone isometric tile, 16 to 64px | 1 generation (measured once) |
-| `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall | 10 to 25 generations |
+| `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall, optionally held to the style's `palette` | 10 to 25 generations |
 | `imageProFlash` | You need a still on the Pro Flash model, optionally styled from one image, 16 to 256px | 5 to 9 generations (provisional quote) |
-| `vfx` | You need an animated effect (spell, hit, explosion, aura), on its own or around a sprite | free (rendered, not generated) |
+| `vfx` | You need an animated effect (spell, hit, explosion, aura), on its own or around a sprite | free from presets and parts; 1 to 28 when described to PixelLab's artist (lite measured at 1) |
 | `character` | You need a character in 4 or 8 directions, with states, loops, portraits, or outfits | See [Characters](./CHARACTERS.md) |
 | `objectPro` | You need a prop or creature with rotations, states, or loops but no character rig | about 6 at 64px (unmeasured) |
 | `uiAsset` | You need a UI panel composited from pieces and named elements, 192px and up | 20 generations (measured once) |
@@ -100,10 +100,36 @@ beside the submit-time `cost` estimate a wave budget spends against;
 `pixelkiln history`, `plan --json`, and the gallery show both when they
 differ (docs/ENDPOINTS.md, "Limits and billing").
 
+## What changed in PixelLab 0.4.130
+
+PixelLab 0.4.130 (October 2026) added four things. PixelKiln covers each:
+
+- **Tileset Pro.** Top-down Pro sets take roundness, connected diagonals, an
+  uneven boundary, and edge slope, and sets can share a terrain. These are
+  `terrain` style fields plus an asset's `connect`; see the
+  [manifest reference](./MANIFEST.md). Sidescroller sets use
+  `terrainOrientation: "sidescroller"`. The public API has no Pro mode for
+  sidescrollers yet.
+- **A target palette for Create Image Pro.** An `imagePro` style's `palette`
+  now reaches PixelLab, which draws every pixel from it. `maxColors` caps
+  each image and `paletteName` names the palette.
+- **VFX in the API.** A `vfx` block with a `description` asks PixelLab's
+  effects artist for the effect, at 1 generation and up. Presets, parts, and
+  recipes still render free on the workbench. See
+  [Generator selection](./GENERATORS.md#described-effects-the-paid-vfx-artist).
+- **Normal maps.** A `normal-map` revision makes one for a sprite or a whole
+  loop at 0.5 generations, and `pixelkiln normal-map` does it for a loose
+  file. See [Controlled asset revisions](./REVISIONS.md#normal-maps).
+
+Three have been billed live once each: a sidescroller set (3 generations),
+a lite described effect (1, its quote), and an 8-frame normal map strip
+(0.5). Top-down Pro prices and the palette use PixelLab's published
+prices.
+
 ## Learn from PixelLab's tutorials
 
 PixelLab's YouTube channel teaches its web app, not PixelKiln, but most of
-its advice carries over. Two recent videos change what we recommend.
+its advice carries over. Two recent videos changed what we recommend.
 
 ### Pro tilesets
 
@@ -122,10 +148,16 @@ covers the `terrain` generator's endpoint.
 - `terrainRaggedness` roughens the border; 0.8 gives a marsh edge.
   `terrainSpreadX` and `terrainSlopeSize` no longer change anything, because
   PixelLab's Pro pipeline stopped reading them.
-- The video also uses controls PixelKiln doesn't send yet: roundness, the
-  "Connect diagonal corners" checkbox for clean 45° paths, sidescroller
-  platform sets, and connected sets that share a terrain (ocean to sand,
-  then sand to grass). Build those in PixelLab's web app for now.
+- For clean 45° paths and coastlines, set `terrainConnectDiagonals: true`
+  and `terrainRoundness: 2`. That is the video's "Connect diagonal corners"
+  checkbox with roundness at 45°.
+- To paint ocean, sand, and grass on one map, chain sets with `connect`:
+  the sand-to-grass set's lower terrain is the ocean-to-sand set's upper.
+  Every pair of terrains that touch needs its own set, or they meet with a
+  hard edge.
+- `terrainOrientation: "sidescroller"` makes platform sets: `1). mossy stone
+  bricks texture 2). green grass texture`. The video's Pro sidescroller, at
+  64px with a taller top layer, is only in PixelLab's web app.
 
 ### Animated effects
 
@@ -236,14 +268,15 @@ inpainting, whole-image editing, and skeleton-driven animation (posing a
 reference image frame-by-frame from a supplied keypoint skeleton, not a text
 description) are the `revision` asset shape, not the `character` generator;
 see [Controlled asset revisions](./REVISIONS.md). The same revision shape
-animates, interpolates, recolors, and cleans up any asset, a whole character
-or loop at once where the endpoint takes a set; `pixelkiln estimate-skeleton`
+animates, interpolates, recolors, cleans up, and makes normal maps for any
+asset, a whole character or loop at once where the endpoint takes a set; `pixelkiln estimate-skeleton`
 starts a skeleton file from an image. Pro Flash stills are the
 `imageProFlash` generator, and Pro Flash edit and inpaint are a revision's
 `"engine": "pro-flash"`. Object Creator is the
 `objectPro` generator, UI panels and elements are `uiAsset` and `uiElement`,
-and fonts and unzooming reference art are the standalone `pixelkiln font` and
-`pixelkiln unzoom` commands. Map Workshop
+and fonts, unzooming reference art, and normal maps for loose files are the
+standalone `pixelkiln font`, `pixelkiln unzoom`, and `pixelkiln normal-map`
+commands. Map Workshop
 scene composition (placing objects and characters into a map, in-scene
 inpainting, export) is a separate PixelLab product surface this adapter does
 not model at all — including PixelKiln's own `map` generator, which is

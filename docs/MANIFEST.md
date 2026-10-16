@@ -64,14 +64,15 @@ not merely a label edit.
 | `source` | string | Manifest-relative committed art used instead of generation. For a set of PNG outputs (a `frames` animation, a `tiles` set) a path that is not a file is the stem of a hand edit laid beside the generated members (`<stem>-<role>.png` each); the set still generates. Mutually exclusive with `revision`. |
 | `sourceByStyle` | object | Per-style `source`, keyed by style id; wins over `source` for that style. Written by `pixelkiln edit` for a hand edit of an asset that is in several styles. |
 | `remoteId` | string | The provider's own id for art that already exists on the account, so `adopt` maps it without matching bytes: an object id, a character id, or `<character id>#<animation group id>`. Not part of the spec's identity. |
-| `revision` | object | Controlled dependency on another asset: `image-to-image`, `inpaint`, or `outpaint`; on PixelLab also `reduce-colors`, `correct-pixelart`, `remove-background`, the animate modes (`animate`, `animate-pixminimax`, `animate-skeleton`), `interpolate`, and `edit-animation`. `engine: "pro-flash"` selects PixelLab's Pro Flash tier for `image-to-image`/`inpaint`. See [controlled revisions](REVISIONS.md). |
+| `revision` | object | Controlled dependency on another asset: `image-to-image`, `inpaint`, or `outpaint`; on PixelLab also `reduce-colors`, `correct-pixelart`, `remove-background`, `normal-map`, the animate modes (`animate`, `animate-pixminimax`, `animate-skeleton`), `interpolate`, and `edit-animation`. `engine: "pro-flash"` selects PixelLab's Pro Flash tier for `image-to-image`/`inpaint`. See [controlled revisions](REVISIONS.md). |
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](./CHARACTERS.md). |
 | `animation` | object | `character` styles: a loop of another character asset in one direction. `directions` (a list, instead of `direction`) declares the loop for several directions at once and fills the unnamed flips with mirrors; see [One loop, several directions](./CHARACTERS.md#one-loop-several-directions). |
 | `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
 | `outfit` | object | `character` styles: an existing loop's frames re-clothed from an outfit image, `{ "of": "<loop asset>", "reference": "<image>" }`, with optional `additionalInstructions`. See [Outfit transfer](./CHARACTERS.md#outfit-transfer). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
-| `vfx` | object | `vfx` styles, PixelLab only: the effect to render. `{ "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "sprite": "art/chars/hero.png", "fps": 12 }`; start from one `preset` or one `recipe` (a recipe JSON or a `.vfx.json` record), with optional `parts`, `sprite`, `fps`, and `name`. Replaces `prompt` as the required field. See [`vfx`](./GENERATORS.md#vfx). |
+| `vfx` | object | `vfx` styles, PixelLab only: the effect to render. `{ "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "sprite": "art/chars/hero.png", "fps": 12 }`; start from one `preset` or one `recipe` (a recipe JSON or a `.vfx.json` record), with optional `parts`, `sprite`, `fps`, and `name`. Or give a `description` (with optional `artist`: `lite` or `pro`, a local PNG `sprite`, and `name`) for PixelLab's paid VFX artist instead; it excludes `preset`, `recipe`, `parts`, and `fps`. Replaces `prompt` as the required field. See [`vfx`](./GENERATORS.md#vfx) and [Described effects](./GENERATORS.md#described-effects-the-paid-vfx-artist). |
 | `scene` | object | `map` styles, PixelLab only: draw this object into a scene image, in its style. `{ "image": "scene.png", "placement": { "oval": 0.3 } }`; `placement` is `oval` or `rectangle` (a fraction, 0.05–0.95) or `mask` (a PNG the size of the scene). See [Drawing into a scene](./GENERATORS.md#drawing-into-a-scene). |
+| `connect` | object | `terrain` styles, PixelLab only: share a terrain with another set in the same style, keyed by this set's own side. `{ "lower": { "of": "coast", "terrain": "upper" } }` makes this set's lower terrain `coast`'s upper. The other set generates first; regenerating it makes this one stale. A sidescroller set connects only `lower`. Cycles are rejected. |
 | `batch` | object | `1dir` styles: rides along on another `1dir` asset's `item_descriptions` submission instead of generating on its own — `{ "of": "<leader asset id>", "index": <1-based slot> }`. See [`1dir`](./GENERATORS.md#1dir). |
 | `pieces` | array | `uiAsset` styles: exact shape regions (`rounded_rect`/`circle`/`polygon`) the panel is composited from, each with a unique `id`. See [`uiAsset`](./GENERATORS.md#uiasset). |
 | `elements` | string array | `uiAsset` styles: named, auto-positioned UI scaffolds (`button`, `health_bar`, `window`, ...). Combine with `pieces`; omit both for a plain full-canvas panel. See [`uiAsset`](./GENERATORS.md#uiasset). |
@@ -131,7 +132,9 @@ One asset using the fields most projects reach for:
 | `shading` | string | PixelLab `map`: `flat shading`, `basic shading`, `medium shading`, or `detailed shading`. |
 | `detail` | string | PixelLab `map`: `low detail`, `medium detail`, or `high detail`. |
 | `seed` | integer | Deterministic provider seed where supported. |
-| `palette` | hex array, `[]` | The style's palette; `#` is optional. Sent to providers that take one (`pixflux`, Retro Diffusion, ComfyUI bindings). |
+| `palette` | hex array, `[]` | The style's palette; `#` is optional. Sent to providers that take one (`pixflux`, `imagePro` as its target palette, Retro Diffusion, ComfyUI bindings). |
+| `paletteName` | string ≤100 | `imagePro` only, needs `palette`: the palette's name (`Game Boy`, `PICO-8`), which PixelLab uses to help the look. |
+| `maxColors` | integer 2–64 | `imagePro` only: at most this many colours in each candidate, drawn from `palette` when one is set. |
 | `enforcePalette` | boolean, `false` | Snap every downloaded PNG to the nearest `palette` colour, no dithering. Needs at least two colours. See [Palette enforcement](#palette-enforcement). |
 | `noBackground` | boolean, `true` | `pixflux` background removal. Set false for scenes/backdrops. |
 | `providerOptions` | object, `{}` | Options grouped by provider id. Only the active provider's object is resolved and hashed. |
@@ -140,6 +143,19 @@ One asset using the fields most projects reach for:
 | `tileView` | enum | `top-down`, `high top-down`, `low top-down`, or `side`. |
 | `tileFeature` | enum | Connectable `roads`, `tileset`, or `building` structural set. |
 | `outlineMode` | enum | `outline` or `segmentation`; segmentation avoids quilted ground seams. |
+| `terrainOrientation` | `top-down` | `terrain` only. `sidescroller` makes a platform set: prompt `1). <platform body> 2). <top layer>`, 16 or 32px, no mode, view, or shape controls. |
+| `terrainMode` | `standard` | `terrain` only. `standard` or `pro`. |
+| `terrainTileSize` | `16` | `terrain` only. 16, 32, or 64 (`pro` only). |
+| `terrainTransitionSize` | `0` | `terrain` only. 0, 0.25, 0.5, or 1 (any 0–0.5 with `terrainShapeStyle`). Pro reads it as wall height; above 0.4 a Pro set has 25 tiles, standard only at 1. |
+| `terrainView` | `high top-down` | `terrain` only. `low top-down` or `high top-down`. |
+| `terrainShapeStyle` | | `terrain`, `standard` only. `square` or `round` procedural boundary. |
+| `terrainRaggedness` | `0` | `terrain`, `pro` only. Boundary noise, 0–1. |
+| `terrainRoundness` | 0.85 pro, 0.6 shape style | `terrain`, `pro` or `terrainShapeStyle`. Border corners: 0 square, 1 round, 2 cut at 45° (above 1 `pro` only). |
+| `terrainBoundaryAmplitude` | `0` | `terrain`, `pro` or `terrainShapeStyle`. How far the border meanders, 0–0.3. |
+| `terrainBoundarySeed` | `0` | `terrain`, with `terrainBoundaryAmplitude`. Which meander, an integer. |
+| `terrainStepSlope` | `0` | `terrain`, `pro` at `terrainTransitionSize` 0.25 only. 0 a cliff to 2 a gentle slope. |
+| `terrainConnectDiagonals` | `false` | `terrain`, `pro` only. Join the diagonal tiles' upper corners into one area. |
+| `terrainSpreadX` / `terrainSlopeSize` | | Deprecated: PixelLab ignores both. Still accepted. |
 | `mode` | `standard` | `character` only. `standard`, `v3`, `pro`, or `pro-flash`; see [Characters](./CHARACTERS.md). |
 | `directions` | `8` | `character` only. `4` or `8`; every engine but `standard` draws 8. |
 | `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`; `custom` for `pro-flash`. |
@@ -243,6 +259,10 @@ Generator-specific fields are validated before planning. Important constraints:
   or style images. `enforcePalette` still holds its output to the palette.
 - `pixflux` accepts a forced `palette` and returns inline output; it has no
   style-image support.
+- `imagePro` sends `palette` (2 to 256 colours) as PixelLab's beta target
+  palette: every pixel of every candidate is one of those colours. Add
+  `paletteName` to name it and `maxColors` to cap each candidate's colours.
+  The cost is unchanged.
 - `tiles` cannot combine `tileFeature` with `styleImages` because the provider
   rejects connectable features in style-tile mode.
 - ComfyUI `frames` derives its count from one 2–64 item `providerInputs`
@@ -472,13 +492,14 @@ their own page: [Characters](./CHARACTERS.md) and
 
 | Revision field | Type | Meaning |
 |---|---|---|
-| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, `correct-pixelart`, `remove-background`, `animate`, `animate-pixminimax`, `animate-skeleton`, `interpolate`, or `edit-animation`. The selected provider must opt into the mode. |
-| `from` | asset id, required | Parent asset, in this asset's style unless `fromStyle` names another. Self-references, unknown ids, and cycles are rejected. A parent written as a set (a character's directions, an animation's frames) is read as every member: `reduce-colors`, `correct-pixelart`, and `edit-animation` take the whole set in one call; the other modes refuse it. See [Revising a whole set at once](./REVISIONS.md#revising-a-whole-set-at-once). |
+| `mode` | enum, required | `image-to-image`, `inpaint`, `outpaint`, `reduce-colors`, `correct-pixelart`, `remove-background`, `normal-map`, `animate`, `animate-pixminimax`, `animate-skeleton`, `interpolate`, or `edit-animation`. The selected provider must opt into the mode. |
+| `from` | asset id, required | Parent asset, in this asset's style unless `fromStyle` names another. Self-references, unknown ids, and cycles are rejected. A parent written as a set (a character's directions, an animation's frames) is read as every member: `reduce-colors`, `correct-pixelart`, and `edit-animation` take the whole set in one call, and `normal-map` takes an animation's frames as one strip but refuses a set of directions; the other modes refuse it. See [Revising a whole set at once](./REVISIONS.md#revising-a-whole-set-at-once). |
 | `fromStyle` | style id | The style the parent lives in, when it is not this asset's own. The parent must be an asset in that style, and styles may depend on one another but not in a cycle. See [Across styles](./REVISIONS.md#across-styles). |
 | `mask` | string | Manifest-relative PNG required for `inpaint`; rejected for the other modes. Its dimensions must match an available source. |
-| `strength` | number 0–1 | Workflow edit/denoise strength (`image-to-image`, `correct-pixelart`); rejected for `reduce-colors`, `remove-background`, `animate`, `animate-pixminimax`, `interpolate`, and `edit-animation`. Interpretation is provider- and model-specific. |
+| `strength` | number 0–1 | Workflow edit/denoise strength (`image-to-image`, `correct-pixelart`); rejected for `reduce-colors`, `remove-background`, `normal-map`, `animate`, `animate-pixminimax`, `interpolate`, and `edit-animation`. Interpretation is provider- and model-specific. |
 | `numColors` | integer 2–256 | `reduce-colors` only. Target palette size; mutually exclusive with `paletteImage`. |
 | `removalTask` | `simple` or `complex` | `remove-background` only. `simple` (PixelLab's default) is faster for flat backgrounds; `complex` handles detailed edges. |
+| `convention` | `opengl` or `directx` | `normal-map` only. `opengl` (PixelLab's default) is green up, for Godot, Unity, and Phaser; `directx` is green down, for Unreal. A `normal-map` revision is refused in a style with `enforcePalette` or `quality`; see [Normal maps](./REVISIONS.md#normal-maps). |
 | `paletteImage` | string | `reduce-colors` only. Manifest-relative image whose colors become the palette; unlike `mask`, no size relationship to the source is required. |
 | `dithering` | enum | `reduce-colors` only. `none` (default), `2x2`, `4x4`, or `8x8`. |
 | `ditheringStrength` | number 0–10 | `reduce-colors` only. Ignored when `dithering` is `none`. |

@@ -309,6 +309,28 @@
               "minimum": 0,
               "maximum": 1
             },
+            "terrainRoundness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "terrainBoundaryAmplitude": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.3
+            },
+            "terrainBoundarySeed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "terrainStepSlope": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "terrainConnectDiagonals": {
+              "type": "boolean"
+            },
             "terrainTransitionSize": {
               "type": "number",
               "minimum": 0,
@@ -319,6 +341,13 @@
               "enum": [
                 "low top-down",
                 "high top-down"
+              ]
+            },
+            "terrainOrientation": {
+              "type": "string",
+              "enum": [
+                "top-down",
+                "sidescroller"
               ]
             },
             "isometricTileSize": {
@@ -457,6 +486,16 @@
                 "pattern": "^#?[0-9a-f]{6}$"
               },
               "default": []
+            },
+            "paletteName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "maxColors": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 64
             },
             "enforcePalette": {
               "type": "boolean",

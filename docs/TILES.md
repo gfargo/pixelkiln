@@ -37,9 +37,10 @@ renumbered by array position.
 
 ### The `terrain` generator's shape
 
-`terrain` (`/create-tileset`, [`docs/GENERATORS.md`](GENERATORS.md)) is a
-different PixelLab endpoint from `tiles`' `tileFeature: "tileset"` above, and
-its response carries no `tile_rules` bitmask at all. Instead each tile names
+`terrain` (`/create-tileset`, or `/create-tileset-sidescroller` for a
+sidescroller set; [`docs/GENERATORS.md`](GENERATORS.md)) is a different
+PixelLab endpoint from `tiles`' `tileFeature: "tileset"` above, and its
+response carries no `tile_rules` bitmask at all. Instead each tile names
 which terrain occupies its four corners directly:
 
 ```jsonc
@@ -50,11 +51,20 @@ which terrain occupies its four corners directly:
       "terrainTiles": [
         { "role": "tile-00-none", "corners": { "NW": "upper", "NE": "upper", "SW": "upper", "SE": "upper" } },
         { "role": "tile-01-nw-ne-sw-se", "corners": { "NW": "lower", "NE": "lower", "SW": "lower", "SE": "lower" } }
-      ]
+      ],
+      // Each terrain's base tile id; a connected set sends one of these.
+      "terrainIds": { "lower": "<uuid>", "upper": "<uuid>" }
     }
   }
 }
 ```
+
+A sidescroller set names its terrains `["central", "background"]` while its
+corners still say `lower` (the platform) and `upper` (empty air; the
+all-`upper` tile is blank). PixelKiln records the corner vocabulary,
+`["lower", "upper"]`, as `terrainTypes` so masks match, and keeps
+PixelLab's names as `providerTerrainTypes` beside `view: "side"`. In Tiled
+and Godot the platform is terrain 0.
 
 `normalizeTerrainTiles()` (`src/pipeline/tileset-export.ts`) turns this into
 the same `NormalizedTileRules` shape `tileRules` would have produced directly:
@@ -213,12 +223,13 @@ isometric-corner-names bug; the counts alone did not.
   (see above); the cliff-tier 25-tile set exports, but its middle transition
   ring is not distinguished from the two named terrains in Tiled/Godot, and
   its four wall-continuation twins export with duplicate masks.
-- A `terrain` set exports alone. PixelLab can connect sets that share a
-  terrain (its "connect existing" option, `lower_base_tile_id` in the API),
-  and PixelLab's [Pro tilesets guide](https://www.youtube.com/watch?v=MbkqpDUFkEg)
-  paints ocean, sand, grass, path, and cliffs on one map that way. PixelKiln
-  does not request connected sets or merge several sets into one engine
-  terrain set yet.
+- A `terrain` set exports alone. A connected set (`connect` in the
+  manifest, `lower_base_tile_id`/`upper_base_tile_id` in the API) shares a
+  terrain with another set, the way PixelLab's
+  [Pro tilesets guide](https://www.youtube.com/watch?v=MbkqpDUFkEg) paints
+  ocean, sand, grass, path, and cliffs on one map, but each set still
+  exports as its own two-terrain Tiled Wang set or Godot terrain set.
+  PixelKiln does not merge connected sets into one engine terrain set yet.
 - Godot edge/side masks on an isometric or oblique tile remain generic- or
   Tiled-only; see Godot 4 above.
 - Export never changes source PNGs or the lockfile.

@@ -63,6 +63,9 @@ export function specHash(
       detail: effect ? undefined : spec.detail ?? null,
       seed: effect ? undefined : spec.seed ?? null,
       palette: effect ? undefined : spec.palette,
+      // `imagePro` only, and absent unless the style sets them.
+      paletteName: spec.paletteName,
+      maxColors: spec.maxColors,
       // `noBackground` only reaches the wire for pixflux and uiAsset; the
       // tile fields are undefined for every other generator. `tileSize` is
       // intentionally absent; width/height are derived from it, so it is
@@ -81,6 +84,27 @@ export function specHash(
       uiPieces: spec.uiPieces,
       uiElements: spec.uiElements,
       uiColorPalette: spec.uiColorPalette,
+      // The older terrain knobs (terrainMode, terrainTransitionSize, and the
+      // rest) were never part of this hash, and adding them now would make
+      // every existing terrain entry stale. The Pro shape controls added
+      // after them are identity, each only when set.
+      terrainRoundness: spec.terrainRoundness,
+      terrainBoundaryAmplitude: spec.terrainBoundaryAmplitude,
+      terrainBoundarySeed: spec.terrainBoundarySeed,
+      terrainStepSlope: spec.terrainStepSlope,
+      terrainConnectDiagonals: spec.terrainConnectDiagonals,
+      // "top-down" is the default and draws the same set as leaving it out.
+      terrainOrientation: spec.terrainOrientation === "sidescroller" ? spec.terrainOrientation : undefined,
+      // Which set and which of its terrains, not that terrain's id: the id
+      // is in the lockfile, and the plan compares it there (like a mirror).
+      terrainConnect: spec.terrainConnect
+        ? Object.fromEntries(
+            (["lower", "upper"] as const).flatMap((side) => {
+              const link = spec.terrainConnect![side]
+              return link ? [[side, { of: link.assetId, terrain: link.terrain }]] : []
+            }),
+          )
+        : undefined,
       // Scene and mask enter as their bytes' hashes, never their paths.
       scene: spec.scene
         ? {
@@ -160,7 +184,9 @@ export function specHash(
           }
         : undefined,
       // A recipe and a local sprite enter as their contents' hashes, never
-      // their paths; the My effects name is not identity.
+      // their paths; the My effects name is not identity. `description` and
+      // `artist` exist only for the paid VFX artist and stay absent for a
+      // workbench effect, so its hash is the one it always had.
       vfx: spec.vfx
         ? {
             preset: spec.vfx.preset,
@@ -170,6 +196,8 @@ export function specHash(
             sprite: spec.vfx.sprite
               ? "reference" in spec.vfx.sprite ? spec.vfx.sprite.reference : spec.vfx.sprite.sha256
               : undefined,
+            description: spec.vfx.description,
+            artist: spec.vfx.description ? spec.vfx.artist : undefined,
           }
         : undefined,
       // A mirror's bytes come from its source's recorded outputs; the plan
@@ -201,6 +229,7 @@ export function specHash(
             skeletonTemplate: spec.revision.skeletonTemplate,
             description: spec.revision.description,
             removalTask: spec.revision.removalTask,
+            convention: spec.revision.convention,
             driftThreshold: spec.revision.driftThreshold,
             subjectDescription: spec.revision.subjectDescription,
             initialPose: spec.revision.initialPose,

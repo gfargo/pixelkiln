@@ -97,6 +97,14 @@ export interface Tileset {
   tiles: TilesetTile[]
 }
 
+/** The parts of a tileset's top-level `metadata` pixelkiln reads. */
+export interface TilesetMetadata {
+  /** Base tile id per terrain (`lower`, `upper`), for connecting another set to it. */
+  terrainIds: Record<string, string>
+  /** `"side"` for a sidescroller set. */
+  view: string | null
+}
+
 export interface MapObject {
   object_id: string
   status: string
@@ -193,6 +201,19 @@ const TilesetGetSchema = z
       })
       .passthrough(),
     usage: UsageSchema,
+    /**
+     * `terrain_ids` names each terrain's base tile id: the id another set
+     * sends as `lower_base_tile_id`/`upper_base_tile_id` to share that
+     * terrain. A sidescroller set has only `lower` (its upper is empty air).
+     */
+    metadata: z
+      .object({
+        terrain_ids: z.record(z.string()).nullable().optional(),
+        view: z.string().nullable().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
   })
   .passthrough()
 const IsometricTileSubmitSchema = z
@@ -313,6 +334,15 @@ const ProFlashImageSubmitSchema = z
     source_image_id: z.string().min(1),
     status: z.string().default("processing"),
     estimated_generations: z.number().nullable().optional(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
+/** `POST /vfx`'s 202: a background job plus the quote it bills against (`VfxResponse`, OpenAPI 0.4.130). */
+const VfxSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    quoted_generations: z.number().nullable().optional(),
     usage: z.unknown().optional(),
   })
   .passthrough()
@@ -593,6 +623,9 @@ export interface Base64Image {
   format: "png" | "jpeg"
 }
 
+/** `/normal-map`'s green-channel convention: `opengl` is green up, `directx` green down. */
+export type NormalMapConvention = "opengl" | "directx"
+
 /** PixelLab's discriminated proportions object from the manifest's preset name or multipliers. */
 export function proportionsPayload(proportions: CharacterProportions): Record<string, unknown> {
   if (typeof proportions === "string") return { type: "preset", name: proportions }
@@ -833,12 +866,19 @@ export class PixelLabClient {
     lowerDescription: string
     upperDescription: string
     transitionDescription?: string
+    lowerBaseTileId?: string
+    upperBaseTileId?: string
     tileSize?: number
     mode?: string
     shapeStyle?: string
     spreadX?: number
     slopeSize?: number
     raggedness?: number
+    roundness?: number
+    boundaryAmplitude?: number
+    boundarySeed?: number
+    stepSlope?: number
+    connectDiagonals?: boolean
     transitionSize?: number
     view?: string
     outline?: string
@@ -851,12 +891,19 @@ export class PixelLabClient {
       upper_description: args.upperDescription,
     }
     if (args.transitionDescription) body.transition_description = args.transitionDescription
+    if (args.lowerBaseTileId) body.lower_base_tile_id = args.lowerBaseTileId
+    if (args.upperBaseTileId) body.upper_base_tile_id = args.upperBaseTileId
     if (args.tileSize != null) body.tile_size = { width: args.tileSize, height: args.tileSize }
     if (args.mode) body.mode = args.mode
     if (args.shapeStyle) body.shape_style = args.shapeStyle
     if (args.spreadX != null) body.spread_x = args.spreadX
     if (args.slopeSize != null) body.slope_size = args.slopeSize
     if (args.raggedness != null) body.raggedness = args.raggedness
+    if (args.roundness != null) body.roundness = args.roundness
+    if (args.boundaryAmplitude != null) body.boundary_amplitude = args.boundaryAmplitude
+    if (args.boundarySeed != null) body.boundary_seed = args.boundarySeed
+    if (args.stepSlope != null) body.step_slope = args.stepSlope
+    if (args.connectDiagonals != null) body.connect_diagonals = args.connectDiagonals
     if (args.transitionSize != null) body.transition_size = args.transitionSize
     if (args.view) body.view = args.view
     if (args.outline) body.outline = args.outline
@@ -870,14 +917,59 @@ export class PixelLabClient {
     )
   }
 
-  /** Throws PixelLabError(423) while the set is still drawing; see Tileset. */
-  async getTileset(tilesetId: string): Promise<{ tileset: Tileset; usage: PixelLabUsage | null }> {
+  /**
+   * `/create-tileset-sidescroller`: a platform set seen from the side. One
+   * terrain (`lower_description`, the platform body) and the decorative
+   * layer on top of it (`transition_description`); the other side of every
+   * edge is empty air, so there is no upper description, mode, view, or
+   * shape control. 16 or 32px tiles only. The result is read through
+   * `getTileset` like a top-down set.
+   */
+  async createTilesetSidescroller(args: {
+    lowerDescription: string
+    transitionDescription?: string
+    lowerBaseTileId?: string
+    tileSize?: number
+    transitionSize?: number
+    outline?: string
+    shading?: string
+    detail?: string
+    seed?: number
+  }): Promise<{ tileset_id: string; background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { lower_description: args.lowerDescription }
+    if (args.transitionDescription) body.transition_description = args.transitionDescription
+    if (args.lowerBaseTileId) body.lower_base_tile_id = args.lowerBaseTileId
+    if (args.tileSize != null) body.tile_size = { width: args.tileSize, height: args.tileSize }
+    if (args.transitionSize != null) body.transition_size = args.transitionSize
+    if (args.outline) body.outline = args.outline
+    if (args.shading) body.shading = args.shading
+    if (args.detail) body.detail = args.detail
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      TilesetSubmitSchema,
+      await this.request<unknown>("/create-tileset-sidescroller", { method: "POST", body: JSON.stringify(body) }),
+      "create sidescroller tileset",
+    )
+  }
+
+  /**
+   * Throws PixelLabError(423) while the set is still drawing; see Tileset.
+   * Serves top-down and sidescroller sets alike.
+   */
+  async getTileset(tilesetId: string): Promise<{ tileset: Tileset; usage: PixelLabUsage | null; metadata: TilesetMetadata }> {
     const res = await validateResponse(
       TilesetGetSchema,
       await this.request<unknown>(`/tilesets/${tilesetId}`),
       "get tileset",
     )
-    return { tileset: res.tileset, usage: res.usage ?? null }
+    return {
+      tileset: res.tileset,
+      usage: res.usage ?? null,
+      metadata: {
+        terrainIds: res.metadata?.terrain_ids ?? {},
+        view: res.metadata?.view ?? null,
+      },
+    }
   }
 
   /** A single standalone isometric tile — no connectable set, no candidates. */
@@ -1622,6 +1714,13 @@ export class PixelLabClient {
    *
    * Reference images and a style image (`reference_images`, `style_image` +
    * `style_options`) exist on this endpoint but are not modeled here yet.
+   *
+   * `targetPalette` is the beta `target_palette` (PixelLab 0.4.130): with
+   * `colors`, the image is drawn for them and every result pixel is one of
+   * them; `name` ("PICO-8") helps the look; `maxColors` caps the colours in
+   * each candidate. Its `smart` flag is not modeled: it is documented as
+   * "single images only", and this endpoint returns a grid of candidates
+   * below 171px.
    */
   async createImagePro(args: {
     description: string
@@ -1629,6 +1728,7 @@ export class PixelLabClient {
     height: number
     noBackground?: boolean
     seed?: number
+    targetPalette?: { colors?: string[]; name?: string; maxColors?: number }
   }): Promise<{ background_job_id: string; status: string }> {
     const body: Record<string, unknown> = {
       description: args.description,
@@ -1636,6 +1736,14 @@ export class PixelLabClient {
     }
     if (args.noBackground != null) body.no_background = args.noBackground
     if (args.seed != null) body.seed = args.seed
+    const palette = args.targetPalette
+    if (palette && (palette.colors?.length || palette.maxColors != null)) {
+      body.target_palette = {
+        ...(palette.colors?.length ? { colors: palette.colors } : {}),
+        ...(palette.name ? { name: palette.name } : {}),
+        ...(palette.maxColors != null ? { max_colors: palette.maxColors } : {}),
+      }
+    }
     return validateResponse(
       RevisionJobSubmitSchema,
       await this.request<unknown>("/generate-image-v2", { method: "POST", body: JSON.stringify(body) }),
@@ -1886,6 +1994,32 @@ export class PixelLabClient {
   }
 
   /**
+   * `/normal-map` (PixelLab 0.4.130): the normal map of a sprite, so a game
+   * engine can light it. RGB is the way each pixel faces, alpha is 255 where
+   * the sprite shows and 0 elsewhere, at the input's size. An animation goes
+   * as one horizontal strip of `frames` equal frames (up to 32, each 8 to 512
+   * px per side) and comes back as a strip, planned once on the first frame
+   * so the light stays steady. `opengl` (the default) is green up, for
+   * Godot, Unity, and Phaser; `directx` is green down, for Unreal. A
+   * background job whose map is `last_response.image`; 0.5 generation,
+   * charged only when the map is delivered.
+   */
+  async normalMap(args: {
+    image: Base64Image
+    frames?: number
+    convention?: NormalMapConvention
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { image: args.image }
+    if (args.frames != null && args.frames !== 1) body.frames = args.frames
+    if (args.convention) body.convention = args.convention
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/normal-map", { method: "POST", body: JSON.stringify(body) }),
+      "normal-map",
+    )
+  }
+
+  /**
    * `/unzoom`: recover native-resolution pixel art from an upscaled image (a
    * 32x32 sprite saved at 512x512). Synchronous like the Cleanup tier.
    * PixelLab's own API overview names this "the most common cause of
@@ -2003,6 +2137,37 @@ export class PixelLabClient {
       RevisionJobSubmitSchema,
       await this.request<unknown>("/generate-font-pro", { method: "POST", body: JSON.stringify(body) }),
       "generate-font-pro",
+    )
+  }
+
+  /**
+   * `POST /vfx`: PixelLab's effects artist builds an animated effect from a
+   * description, around an optional sprite, and saves it to My effects. With
+   * `effectId` it changes that saved effect in place; adding the effect's
+   * `conversation` prices the change as a change. A background job whose
+   * 202 carries `quoted_generations`; PixelLab bills on delivery, up to
+   * twice the quote. A 503 (renderer busy) is retried by the shared policy.
+   */
+  async createVfx(args: {
+    description: string
+    artist?: "lite" | "pro"
+    sprite?: { base64: string; format: "png" }
+    effectId?: string
+    conversation?: string
+    name?: string
+    gamePack?: boolean
+  }): Promise<z.output<typeof VfxSubmitSchema>> {
+    const body: Record<string, unknown> = { description: args.description }
+    if (args.artist) body.artist = args.artist
+    if (args.sprite) body.sprite = { type: "base64", base64: args.sprite.base64, format: args.sprite.format }
+    if (args.effectId) body.effect_id = args.effectId
+    if (args.conversation) body.conversation = args.conversation
+    if (args.name) body.name = args.name
+    if (args.gamePack) body.game_pack = true
+    return validateResponse(
+      VfxSubmitSchema,
+      await this.request<unknown>("/vfx", { method: "POST", body: JSON.stringify(body) }),
+      "vfx",
     )
   }
 

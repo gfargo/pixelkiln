@@ -63,6 +63,66 @@ describe("PixelLabClient: generate-image-v2 wire", () => {
         seed: 7,
       },
     })
+    expect(calls[0]!.body).not.toHaveProperty("target_palette")
+  })
+
+  it("sends target_palette with colours, name, and cap", async () => {
+    const client = new PixelLabClient("key")
+    await client.createImagePro({
+      description: "a lake",
+      width: 64,
+      height: 64,
+      targetPalette: { colors: ["#081820", "#346856", "#88c070", "#e0f8d0"], name: "Game Boy", maxColors: 4 },
+    })
+    expect(calls[0]!.body).toMatchObject({
+      target_palette: { colors: ["#081820", "#346856", "#88c070", "#e0f8d0"], name: "Game Boy", max_colors: 4 },
+    })
+  })
+
+  it("sends a bare colour cap, and nothing for an empty palette", async () => {
+    const client = new PixelLabClient("key")
+    await client.createImagePro({ description: "a lake", width: 64, height: 64, targetPalette: { colors: [], maxColors: 8 } })
+    expect((calls[0]!.body as Record<string, unknown>).target_palette).toEqual({ max_colors: 8 })
+    await client.createImagePro({ description: "a lake", width: 64, height: 64, targetPalette: { colors: [] } })
+    expect(calls[1]!.body).not.toHaveProperty("target_palette")
+  })
+})
+
+describe("imagePro target palette", () => {
+  const GAME_BOY = ["#081820", "#346856", "#88c070", "#e0f8d0"]
+
+  it("submits the style's palette, name, and cap", async () => {
+    const loaded = await writeManifest({ palette: GAME_BOY, paletteName: "Game Boy", maxColors: 4 }, { width: 64, height: 64 })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec).toMatchObject({ paletteName: "Game Boy", maxColors: 4 })
+    const createImagePro = vi.fn(async () => ({ background_job_id: "bg-1", status: "processing" }))
+    await new PixelLabProvider({ createImagePro } as never).submit(spec!, [])
+    expect(createImagePro).toHaveBeenCalledWith(expect.objectContaining({
+      targetPalette: { colors: GAME_BOY, name: "Game Boy", maxColors: 4 },
+    }))
+    // Same price as without one.
+    expect(spec!.cost).toBe(10)
+  })
+
+  it("hashes paletteName and maxColors only when they are set", async () => {
+    const plain = await resolveSpecs(await writeManifest({ palette: GAME_BOY }))
+    const capped = await resolveSpecs(await writeManifest({ palette: GAME_BOY, maxColors: 4 }))
+    const named = await resolveSpecs(await writeManifest({ palette: GAME_BOY, paletteName: "Game Boy" }))
+    expect(plain[0]).not.toHaveProperty("paletteName")
+    expect(plain[0]).not.toHaveProperty("maxColors")
+    expect(new Set([plain[0]!.specHash, capped[0]!.specHash, named[0]!.specHash]).size).toBe(3)
+  })
+
+  it("rejects the new fields outside imagePro, a name without colours, and a cap out of range", async () => {
+    await expect(writeManifest({ generator: "pixflux", maxColors: 4 })).rejects.toThrow(/maxColors applies to the imagePro generator only/)
+    await expect(writeManifest({ paletteName: "PICO-8" })).rejects.toThrow(/set palette too/)
+    await expect(writeManifest({ maxColors: 65 })).rejects.toThrow()
+    await expect(writeManifest({ maxColors: 1 })).rejects.toThrow()
+  })
+
+  it("rejects a one-colour palette", async () => {
+    const loaded = await writeManifest({ palette: ["#000000"] })
+    await expect(resolveSpecs(loaded)).rejects.toThrow(/2 to 256 colours/)
   })
 })
 

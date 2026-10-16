@@ -27,6 +27,7 @@ describe("PixelLab: supportsRevision", () => {
     expect(provider.supportsRevision("reduce-colors")).toBe(true)
     expect(provider.supportsRevision("correct-pixelart")).toBe(true)
     expect(provider.supportsRevision("remove-background")).toBe(true)
+    expect(provider.supportsRevision("normal-map")).toBe(true)
     expect(provider.supportsRevision("animate")).toBe(true)
     expect(provider.supportsRevision("animate-pixminimax")).toBe(true)
     expect(provider.supportsRevision("animate-skeleton")).toBe(true)

@@ -1,11 +1,26 @@
-/** `unzoom`, `pixelate`, `vfx`, and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
+/** `unzoom`, `pixelate`, `normal-map`, `vfx`, and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
+import { readFile } from "node:fs/promises"
 import path from "node:path"
-import { clientFromEnv } from "../../client.ts"
+import { clientFromEnv, type NormalMapConvention } from "../../client.ts"
 import { loadEnvFiles } from "../../env.ts"
 import { UsageError } from "../../errors.ts"
 import { mcpClientFromEnv } from "../../pixellab-mcp.ts"
-import { describeVfx, makeVfx, readVfxRecipe, vfxOutputPaths } from "../../pixellab-vfx.ts"
 import {
+  describeVfx,
+  isVfxReference,
+  makeVfx,
+  makeVfxWithArtist,
+  readVfxConversation,
+  readVfxRecipe,
+  VFX_ARTISTS,
+  vfxArtistCeiling,
+  vfxArtistQuote,
+  vfxArtistSprite,
+  vfxOutputPaths,
+  type VfxArtist,
+} from "../../pixellab-vfx.ts"
+import {
+  defaultNormalMapOut,
   defaultPixelateOut,
   defaultUnzoomOut,
   FONT_COST_GENERATIONS,
@@ -13,6 +28,9 @@ import {
   FONT_WEIGHTS,
   fontOutputPaths,
   generateFont,
+  NORMAL_MAP_CONVENTIONS,
+  NORMAL_MAP_COST_GENERATIONS,
+  normalMapFile,
   PIXELATE_COST_GENERATIONS,
   PIXELATE_MAX_SIDE,
   pixelateFile,
@@ -127,6 +145,46 @@ export async function runPixelate(args: Args): Promise<void> {
   )
 }
 
+export async function runNormalMap(args: Args): Promise<void> {
+  if (!args.from) throw new UsageError("normal-map needs --from <png>: the sprite, or a horizontal strip of --frames equal frames")
+  const convention = (args.convention ?? "opengl") as NormalMapConvention
+  if (!(NORMAL_MAP_CONVENTIONS as readonly string[]).includes(convention)) {
+    throw new UsageError(`--convention must be ${NORMAL_MAP_CONVENTIONS.join(" or ")}, got "${args.convention}"`)
+  }
+  const frames = args.frames ?? 1
+  const out = args.out ?? defaultNormalMapOut(args.from)
+  log(
+    `  normal-map ${args.from}${frames > 1 ? ` (a strip of ${frames} frames)` : ""} → ${out}, ` +
+      `${convention} (green ${convention === "opengl" ? "up" : "down"})`,
+  )
+  log(`  cost: ${NORMAL_MAP_COST_GENERATIONS} generation (PixelLab's documented price, charged on delivery)`)
+  if (args.budget !== undefined && args.budget < NORMAL_MAP_COST_GENERATIONS) {
+    throw new Error(`--budget ${args.budget} is below this normal map's ${NORMAL_MAP_COST_GENERATIONS}-generation cost`)
+  }
+  if (args.dryRun) {
+    log("  dry run: nothing sent")
+    return
+  }
+  if (!(await confirm(`  Spend ${NORMAL_MAP_COST_GENERATIONS} generation on this normal map?`, args.yes))) return
+  loadKeys(args)
+  let last = ""
+  const res = await normalMapFile(clientFromEnv(), args.from, {
+    out,
+    frames,
+    convention: args.convention ? convention : undefined,
+    force: args.force,
+    onProgress: (status) => {
+      if (status !== last) log(`  ${status}…`)
+      last = status
+    },
+  })
+  if (args.json) {
+    log(JSON.stringify({ version: 1, ...res }, null, 2))
+    return
+  }
+  log(`  ${res.width}x${res.height}${res.frames > 1 ? `, ${res.frames} frames` : ""}; wrote ${res.out}`)
+}
+
 export async function runVfx(args: Args): Promise<void> {
   if (args.subcommand === "presets" || args.subcommand === "parts") {
     if (args.dryRun) {
@@ -138,6 +196,8 @@ export async function runVfx(args: Args): Promise<void> {
     return
   }
   if (!args.out) throw new UsageError("vfx needs --out <base>: <base>.png, .gif, .json, and .vfx.json are written")
+  if (args.description !== undefined) return runVfxArtist(args, args.out)
+  if (args.artist) throw new UsageError("--artist picks who draws a vfx --description; add one")
   const starts = [args.preset, args.recipe, args.effect].filter(Boolean)
   if (starts.length > 1) throw new UsageError("vfx takes one of --preset, --recipe, or --effect, not several")
   if (starts.length === 0 && args.parts.length === 0) {
@@ -183,4 +243,90 @@ export async function runVfx(args: Args): Promise<void> {
     if (file) log(`  wrote ${file}`)
   }
   if (res.editUrl) log(`  tweak it with sliders: ${res.editUrl} (then: pixelkiln vfx --effect ${res.effectId} --out ${args.out} --force)`)
+}
+
+/** `vfx --description`: PixelLab's paid VFX artist (`POST /vfx`) instead of the free workbench. */
+async function runVfxArtist(args: Args, out: string): Promise<void> {
+  const description = args.description!.trim()
+  if (!description) throw new UsageError('vfx --description needs the effect in words, e.g. "a blue lightning strike that leaves sparks"')
+  const workbenchOnly = [
+    ["--preset", args.preset],
+    ["--recipe", args.recipe],
+    ["--part", args.parts.length ? args.parts : undefined],
+    ["--fps", args.fps],
+  ] as const
+  for (const [flag, value] of workbenchOnly) {
+    if (value !== undefined) {
+      throw new UsageError(`vfx --description asks PixelLab's VFX artist, which takes no ${flag}; ${flag} is for the free workbench`)
+    }
+  }
+  const artist = (args.artist ?? "lite") as VfxArtist
+  if (!(VFX_ARTISTS as readonly string[]).includes(artist)) {
+    throw new UsageError(`--artist must be ${VFX_ARTISTS.join(" or ")}, got "${args.artist}"`)
+  }
+  if (args.sprite && isVfxReference(args.sprite)) {
+    throw new UsageError("vfx --description takes --sprite as a local PNG; PixelLab's VFX artist takes pixels, not a reference or URL")
+  }
+  if (args.name && args.name.length > 80) throw new UsageError("vfx --description takes a --name of at most 80 characters")
+  const paths = vfxOutputPaths(out)
+  const side = args.sprite ? vfxArtistSprite(await readFile(args.sprite), args.sprite).side : "none"
+  const conversation = args.effect ? await readVfxConversation(paths.provenance, args.effect) : undefined
+  // A change keeps the saved effect's own sprite, whose size is not known here.
+  const quote = vfxArtistQuote(artist, args.effect && !args.sprite ? "unknown" : side, Boolean(conversation))
+  const ceiling = vfxArtistCeiling(quote)
+  log(
+    `  vfx by PixelLab's ${artist} artist: "${description}"${args.sprite ? ` around ${args.sprite}` : ""}` +
+      ` → ${paths.sheet} (+ .gif, .json, .vfx.json${args.gamePack ? ", -game.zip" : ""})`,
+  )
+  if (args.effect) {
+    log(
+      `  changes saved effect ${args.effect} in place` +
+        (conversation
+          ? `, priced as a change (its conversation is in ${path.basename(paths.provenance)})`
+          : `; ${path.basename(paths.provenance)} holds no conversation for it, so PixelLab prices it as a new effect`),
+    )
+  }
+  log(`  cost: about ${quote} generations by PixelLab's table, billed on delivery; at most ${ceiling} if the effect runs long`)
+  if (args.budget !== undefined && args.budget < ceiling) {
+    throw new Error(`--budget ${args.budget} is below this effect's ${ceiling}-generation ceiling`)
+  }
+  if (args.dryRun) {
+    log("  dry run: nothing sent")
+    return
+  }
+  if (!(await confirm(`  Spend up to ${ceiling} generations on this effect?`, args.yes))) return
+  loadKeys(args)
+  let last = ""
+  const res = await makeVfxWithArtist(clientFromEnv(), {
+    description,
+    artist,
+    sprite: args.sprite,
+    effect: args.effect,
+    conversation,
+    name: args.name,
+    out,
+    gamePack: args.gamePack,
+    force: args.force,
+    onProgress: (status) => {
+      if (status !== last) log(`  ${status}…`)
+      last = status
+    },
+  })
+  if (args.json) {
+    log(JSON.stringify({ version: 1, ...res }, null, 2))
+    return
+  }
+  log(
+    `  ${res.width}x${res.height}, ${res.frames} frames` +
+      `${res.fps ? ` @ ${res.fps} fps` : ""}${res.loop === null ? "" : res.loop ? ", loops" : ", plays once"}`,
+  )
+  if (res.message) log(`  the artist: ${res.message}`)
+  for (const file of [res.paths.sheet, res.paths.gif, res.paths.atlas, res.paths.gamePack, res.paths.normals, res.paths.provenance]) {
+    if (file) log(`  wrote ${file}`)
+  }
+  const usage = res.usage as { generations?: unknown } | null
+  if (typeof usage?.generations === "number") log(`  billed ${usage.generations} generations (quoted ${res.quotedGenerations ?? "?"})`)
+  if (res.editUrl) log(`  tweak it with sliders: ${res.editUrl}`)
+  log(`  change it: pixelkiln vfx --description "<what to change>" --effect ${res.effectId} --out ${out} --force`)
+  log(`  render it again for free with the workbench: pixelkiln vfx --effect ${res.effectId} --out <base>`)
 }
