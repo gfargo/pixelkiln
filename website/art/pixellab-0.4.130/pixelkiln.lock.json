@@ -1422,6 +1422,1089 @@
       },
       "provider": "pixellab"
     },
+    "dungeon/lava-floor": {
+      "styleId": "dungeon",
+      "assetId": "lava-floor",
+      "specHash": "708459dbdc89b61ce3c611cc68edde19b273b015dac3dea38fb7cd91fc0021c2",
+      "generator": "terrain",
+      "tileFeature": null,
+      "prompt": "1). glowing lava texture 2). dark dungeon stone floor texture 3). crumbling dungeon brick wall",
+      "width": 64,
+      "height": 64,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "terrainSettings": {
+        "terrainMode": "pro",
+        "terrainRaggedness": 0.4,
+        "terrainTransitionSize": 0.5,
+        "terrainLowerDescription": "glowing lava texture",
+        "terrainUpperDescription": "dark dungeon stone floor texture",
+        "terrainTransitionDescription": "crumbling dungeon brick wall"
+      },
+      "supersededOutputs": [],
+      "jobId": "d49d401a-ae19-4a7d-b312-92a6108dc406",
+      "submissionComplete": true,
+      "reviewObjectId": "d49d401a-ae19-4a7d-b312-92a6108dc406",
+      "objectId": "d49d401a-ae19-4a7d-b312-92a6108dc406",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-00-t1-0-r1-c0.png",
+          "sha256": "104bfe0081687c6b0ec2e620a27317830a4fe78bcd1d515c3657191c3ab7a667",
+          "role": "tile-00-t1-0-r1-c0",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-01-t1-1-r2-c1.png",
+          "sha256": "fffb06e1333ab173c7ba3675983ce5a35b1d0e445cb223c535803329dcb54a65",
+          "role": "tile-01-t1-1-r2-c1",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-02-t1-2-r2-c2.png",
+          "sha256": "9b02d9e66a5621decf8cb4e89dfe84d441c8667ae9bb05280c771fc211d5ed78",
+          "role": "tile-02-t1-2-r2-c2",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-03-t1-3-r2-c3.png",
+          "sha256": "80dff6d49ff9753064b2426aeac67ebae8c7546689f107f40b8637a37e73af04",
+          "role": "tile-03-t1-3-r2-c3",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-04-t1-10-r3-c1.png",
+          "sha256": "4bc526f262c4a768db4445cf53927259d2d2a0071c3fc3f35db3b0a5ff569d4f",
+          "role": "tile-04-t1-10-r3-c1",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-05-t1-4-r4-c1.png",
+          "sha256": "0ee2235a80edb6a50e0b585074f92392b1689a83ea19cfb3e030bbe32f489bd8",
+          "role": "tile-05-t1-4-r4-c1",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-06-t1-5-r5-c2.png",
+          "sha256": "160574f6126bd1ed80079bc1e4e0d85f88117987c56ae9e9ff62a6a43946d8c8",
+          "role": "tile-06-t1-5-r5-c2",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-07-t1-6-r3-c6.png",
+          "sha256": "755e6718a24def5e0d670dccb333fe70044158e17444f138907bd574ce81067e",
+          "role": "tile-07-t1-6-r3-c6",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-08-t1-14-r4-c6.png",
+          "sha256": "048d91137783da37cc667ef3b7c648b67c613cf3750cf8a2e2cb7ba143065a8c",
+          "role": "tile-08-t1-14-r4-c6",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-09-t1-8-r4-c3.png",
+          "sha256": "81006c3a88148f2fa612fc1de7940844ebec5f62f181c08fba17529d71827564",
+          "role": "tile-09-t1-8-r4-c3",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-10-t1-9-r4-c4.png",
+          "sha256": "dced19cf13096c42b27051a57d01473ef28a3cdf78e6f964147181bbdc7e8d0a",
+          "role": "tile-10-t1-9-r4-c4",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-11-t1-16-r6-c4.png",
+          "sha256": "331ebff0b5d3ca9b212385e16f7e114b1bf8ec14fedd65f53a9819dc73b72ac0",
+          "role": "tile-11-t1-16-r6-c4",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-12-t1-17-r6-c5.png",
+          "sha256": "cc3ed0311532be22d8f04cdf61bc5a42e1fed72c9c82348010e68a1ef0343ad1",
+          "role": "tile-12-t1-17-r6-c5",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-13-t1-18-r6-c6.png",
+          "sha256": "d434e49b33289277d31918e33a57f0dbce3c6086449624550fcc46ee0b8fe611",
+          "role": "tile-13-t1-18-r6-c6",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-14-t1-19-r7-c4.png",
+          "sha256": "3826a50a227b343987077018175d8720989eac8d23423dfda36c056f8f3d4d57",
+          "role": "tile-14-t1-19-r7-c4",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-15-t1-20-r7-c5.png",
+          "sha256": "0c0bd83358ee1a30ffea534deab00b8bc524916b6a3387c0e9d2320d2cbd2432",
+          "role": "tile-15-t1-20-r7-c5",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-16-t1-21-r7-c6.png",
+          "sha256": "9d1e3041353ec99770841f5dfbfef3d32ff9244d5ac6b0a8521ade849304aa34",
+          "role": "tile-16-t1-21-r7-c6",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-17-t1-22-r8-c1.png",
+          "sha256": "371058d3c4ccbf8ad4089094142ccdb9125d5a8316e5419a2db973b6bd46677b",
+          "role": "tile-17-t1-22-r8-c1",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-18-t1-23-r8-c2.png",
+          "sha256": "405d850198f25aba0fe730021ad9ed67e99e069a868fb24963b8366f32ffaef1",
+          "role": "tile-18-t1-23-r8-c2",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-19-t1-24-r8-c4.png",
+          "sha256": "b8bc44e8268c7ae788ee8b4dba244e20cbc678ca19c948f2b576ee81d1219475",
+          "role": "tile-19-t1-24-r8-c4",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-20-t1-25-r9-c1.png",
+          "sha256": "46780bd3e3a0a4269385208f8069195d71090f9c579a45e4676d8f77715cdbee",
+          "role": "tile-20-t1-25-r9-c1",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-21-t1-26-r9-c2.png",
+          "sha256": "874c12134bbcc919b562d36ab92083d0862d7ca468056149cc51668b28fdbc17",
+          "role": "tile-21-t1-26-r9-c2",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-22-t1-27-r9-c4.png",
+          "sha256": "8ea05fa521c4b56957975655b73d9986fd07b6b2f35e61644b67eed738714cbd",
+          "role": "tile-22-t1-27-r9-c4",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-23-t1-28-r10-c2.png",
+          "sha256": "4f11346601793b093b12d5d49f15f98d0531ec4e909430efa670af6ad5b89789",
+          "role": "tile-23-t1-28-r10-c2",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lava-floor-tile-24-t1-30-r11-c2.png",
+          "sha256": "19d3a768644c2a8e49d6ae6b703ca4a05248c1a4b948d141e89e8e64751c2144",
+          "role": "tile-24-t1-30-r11-c2",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "ce3a8ec8-917e-4081-aea2-b10c7b599ad6",
+          "terrainTypes": [
+            "lower",
+            "upper"
+          ],
+          "terrainTiles": [
+            {
+              "role": "tile-00-t1-0-r1-c0",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-01-t1-1-r2-c1",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-02-t1-2-r2-c2",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-03-t1-3-r2-c3",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-04-t1-10-r3-c1",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-05-t1-4-r4-c1",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-06-t1-5-r5-c2",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-07-t1-6-r3-c6",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-08-t1-14-r4-c6",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-09-t1-8-r4-c3",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-10-t1-9-r4-c4",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-11-t1-16-r6-c4",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "transition"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  2,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  0,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-12-t1-17-r6-c5",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "transition",
+                "SE": "transition"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  2,
+                  2,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  0,
+                  0,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-13-t1-18-r6-c6",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "transition",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  2,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  0,
+                  0,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-14-t1-19-r7-c4",
+              "corners": {
+                "NW": "upper",
+                "NE": "transition",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  1,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  2,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-15-t1-20-r7-c5",
+              "corners": {
+                "NW": "transition",
+                "NE": "transition",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  2,
+                  2,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-16-t1-21-r7-c6",
+              "corners": {
+                "NW": "transition",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  2,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-17-t1-22-r8-c1",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "transition"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  2,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  0,
+                  0,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-18-t1-23-r8-c2",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "transition",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  2,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  0,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-19-t1-24-r8-c4",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "transition",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  2,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  0,
+                  1,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-20-t1-25-r9-c1",
+              "corners": {
+                "NW": "lower",
+                "NE": "transition",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  2,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-21-t1-26-r9-c2",
+              "corners": {
+                "NW": "transition",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  1,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  2,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-22-t1-27-r9-c4",
+              "corners": {
+                "NW": "transition",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  2,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-23-t1-28-r10-c2",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "transition"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  2,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  1,
+                  0,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-24-t1-30-r11-c2",
+              "corners": {
+                "NW": "upper",
+                "NE": "transition",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  2,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            }
+          ],
+          "terrainIds": {
+            "lower": "21f04a07-2640-4aeb-837d-551a15e369dc",
+            "upper": "833bf1f6-ac7e-4e8b-afe5-8a6ad7ff02fe"
+          }
+        }
+      },
+      "submittedAt": "2026-10-16T14:31:45.098Z",
+      "downloadedAt": "2026-10-16T14:34:15.331Z",
+      "cost": 25,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 25,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    },
     "gameboy/chest": {
       "styleId": "gameboy",
       "assetId": "chest",
@@ -1508,6 +2591,2150 @@
       "costUnit": "generations",
       "billed": {
         "amount": 0.5,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    },
+    "marsh/swamp-marsh": {
+      "styleId": "marsh",
+      "assetId": "swamp-marsh",
+      "specHash": "8603bec7683c66a9154c1632adf6474bdd85f469eea08468f056a440589862b7",
+      "generator": "terrain",
+      "tileFeature": null,
+      "prompt": "1). calm murky swamp water texture 2). plain marsh grass texture",
+      "width": 32,
+      "height": 32,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "terrainSettings": {
+        "terrainMode": "pro",
+        "terrainRaggedness": 0.8,
+        "terrainTransitionSize": 0.25,
+        "terrainLowerDescription": "calm murky swamp water texture",
+        "terrainUpperDescription": "plain marsh grass texture"
+      },
+      "supersededOutputs": [],
+      "jobId": "9e8c636a-11b3-401e-97c1-1a945b27bc97",
+      "submissionComplete": true,
+      "reviewObjectId": "9e8c636a-11b3-401e-97c1-1a945b27bc97",
+      "objectId": "9e8c636a-11b3-401e-97c1-1a945b27bc97",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-00-wang-13.png",
+          "sha256": "20f697f82704c8933f776fec45d9d8b9e3ec9322a08360f8d7276ae38d967b50",
+          "role": "tile-00-wang-13",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-01-wang-10.png",
+          "sha256": "0cb3782d3cca7ec9bbdb064362bdb7ef77f35d63384018520b148274e81624ac",
+          "role": "tile-01-wang-10",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-02-wang-4.png",
+          "sha256": "4343c6c2544329121c92d97d304e7de531b533e25ea003258f32e513d2683e1f",
+          "role": "tile-02-wang-4",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-03-wang-12.png",
+          "sha256": "59fb8fb7b8d6c33541498948d5c7a8c818f167343eb8f9872a2c4b3563f7d0e1",
+          "role": "tile-03-wang-12",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-04-wang-6.png",
+          "sha256": "0e51863ba2e9da3e5a6474c3e2b3966f11ffa9791990bbe2df802fb1961a2ff1",
+          "role": "tile-04-wang-6",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-05-wang-8.png",
+          "sha256": "7cb3812adf84aadd451ff5192b143c7c733ef4c3b3013126ce98ef49a6b1712b",
+          "role": "tile-05-wang-8",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-06-wang-0.png",
+          "sha256": "8b4821fd73268a6251ea22f4f063741e63fdb3eec7f66c99a707e7d508157352",
+          "role": "tile-06-wang-0",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-07-wang-1.png",
+          "sha256": "57b52efc1c67626c43d3c5f44483e37121fdbb1f2859cf99b4ec5909fc02ff3c",
+          "role": "tile-07-wang-1",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-08-wang-11.png",
+          "sha256": "0d062d2b6e1c8fc3e6baf3b920119378a2e0655ddaea6335df8e87eb52cec83f",
+          "role": "tile-08-wang-11",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-09-wang-3.png",
+          "sha256": "a21e232c2de6136215fefebacb6b912635dd7ac9c9bc04ab70cd134a7914ec43",
+          "role": "tile-09-wang-3",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-10-wang-2.png",
+          "sha256": "853eeb134ec6f6f041c9c6936ee351ca875fa845c1379c8f3cb3d304667916f0",
+          "role": "tile-10-wang-2",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-11-wang-5.png",
+          "sha256": "3ba5b2dfa027496f0bc5840ba6adb49e4fa9cad1de692c1730c184380b38e947",
+          "role": "tile-11-wang-5",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-12-wang-15.png",
+          "sha256": "0b9bfbeb5dccb019c8eff80fb738c8f322104d7104a70a29a82850baae075c44",
+          "role": "tile-12-wang-15",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-13-wang-14.png",
+          "sha256": "494591e686dc84f98a9b0fac3f94d03e8375d611aadb0ec4e1f693f36c20df4a",
+          "role": "tile-13-wang-14",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-14-wang-9.png",
+          "sha256": "f8581593e92f277a62290bf51a571ed7c0822af2550988a9efcddd8e4baa0a12",
+          "role": "tile-14-wang-9",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/swamp-marsh-tile-15-wang-7.png",
+          "sha256": "f0afd217042307c52870812f6c53d62a059cfd9cc3b2d18035eea5b3502590d4",
+          "role": "tile-15-wang-7",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "87885ebc-b6d1-476f-99d7-64242cd30a27",
+          "terrainTypes": [
+            "lower",
+            "upper"
+          ],
+          "terrainTiles": [
+            {
+              "role": "tile-00-wang-13",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-01-wang-10",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-02-wang-4",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-03-wang-12",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-04-wang-6",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-05-wang-8",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-06-wang-0",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-07-wang-1",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-08-wang-11",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-09-wang-3",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-10-wang-2",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-11-wang-5",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-12-wang-15",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-13-wang-14",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-14-wang-9",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-15-wang-7",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            }
+          ],
+          "terrainIds": {
+            "lower": "2e57d549-2ce3-47e0-985f-1bb6d2aed155",
+            "upper": "b384736d-40ed-4ae3-96de-c9e1aa58c588"
+          }
+        }
+      },
+      "submittedAt": "2026-10-16T14:31:47.661Z",
+      "downloadedAt": "2026-10-16T14:34:15.024Z",
+      "cost": 15,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 15,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    },
+    "paths/lake-grass": {
+      "styleId": "paths",
+      "assetId": "lake-grass",
+      "specHash": "23a940ff92985521f0bd7c5e4bba95d4f22ea865446afc7842f9f453f64eb92b",
+      "generator": "terrain",
+      "tileFeature": null,
+      "prompt": "1). calm lake water texture 2). plain short grass texture",
+      "width": 32,
+      "height": 32,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "terrainSettings": {
+        "terrainMode": "standard",
+        "terrainLowerDescription": "calm lake water texture",
+        "terrainUpperDescription": "plain short grass texture"
+      },
+      "supersededOutputs": [],
+      "jobId": "18996faf-2ad4-44de-9592-393dde44c88c",
+      "submissionComplete": true,
+      "reviewObjectId": "18996faf-2ad4-44de-9592-393dde44c88c",
+      "objectId": "18996faf-2ad4-44de-9592-393dde44c88c",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-00-wang-13.png",
+          "sha256": "a221dbb5c343fa97ccfe115023d5b45ef1ff974945b62a3be070294bff4641fe",
+          "role": "tile-00-wang-13",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-01-wang-10.png",
+          "sha256": "82cb80b61a1cd6a5d42939ff7f95ffa90c7123cdc9409aae4227c7a7846cde95",
+          "role": "tile-01-wang-10",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-02-wang-4.png",
+          "sha256": "45e2c486217746878648c7675495057c9fe9e2d82dd074c49b345dca95f61cff",
+          "role": "tile-02-wang-4",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-03-wang-12.png",
+          "sha256": "5a747515d3f04a52df7aca17ecc6986e558206cf5ac055cdb334974178a82538",
+          "role": "tile-03-wang-12",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-04-wang-6.png",
+          "sha256": "162ab838a3f31230eb6be8bde9ef72adfa3a51ce1afb0b49cafc37778eceb93b",
+          "role": "tile-04-wang-6",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-05-wang-8.png",
+          "sha256": "875583351a7cd36c78745c424d7f9834932159bc76d49be7c199d544892bc16a",
+          "role": "tile-05-wang-8",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-06-wang-0.png",
+          "sha256": "afaf4afe84604f2a93c9b8cf3cd647d516d5cd2374d99c4266a202eddb464d31",
+          "role": "tile-06-wang-0",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-07-wang-1.png",
+          "sha256": "995414436bef823cca9c8a70a552c85e0c7ae47455f61208efc4138bc7c4ebb0",
+          "role": "tile-07-wang-1",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-08-wang-11.png",
+          "sha256": "4508cd17a0b2740b669fd4e1269e4c8d3d9888d91eb1a291a574c8b0c2f1ab36",
+          "role": "tile-08-wang-11",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-09-wang-3.png",
+          "sha256": "9c85bd6ecf05ff57425b687a4eba522b07a180acd36ce58716a8d790d0ce7221",
+          "role": "tile-09-wang-3",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-10-wang-2.png",
+          "sha256": "77c0b36858be1aad31de401fa1beac5073867b879dc1509878b5c734a0613551",
+          "role": "tile-10-wang-2",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-11-wang-5.png",
+          "sha256": "11a593e4a68f8b658f2edc26f4898efb63f3caffefc71bb49193b8c32b6b2f77",
+          "role": "tile-11-wang-5",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-12-wang-15.png",
+          "sha256": "87cbad6ce3676690303760c9097a69fc62c6d1cdf2aaece81a1a138ab3f86e88",
+          "role": "tile-12-wang-15",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-13-wang-14.png",
+          "sha256": "6aaf85309a2b06730db7933d79e7a8a551109dd0553524bd734aeb7e5b023c61",
+          "role": "tile-13-wang-14",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-14-wang-9.png",
+          "sha256": "7f1dcbd1eda25d30431af78ba67d06b7bbc341116c60f865ebe93d5146def4a8",
+          "role": "tile-14-wang-9",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/lake-grass-tile-15-wang-7.png",
+          "sha256": "4708b22cb86e316cebce7acd5630fb33942e9d9fb47a98aef75f03ba3a09aada",
+          "role": "tile-15-wang-7",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "865d8445-47ed-496e-a890-63695015ed84",
+          "terrainTypes": [
+            "lower",
+            "upper"
+          ],
+          "terrainTiles": [
+            {
+              "role": "tile-00-wang-13",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-01-wang-10",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-02-wang-4",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-03-wang-12",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-04-wang-6",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-05-wang-8",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-06-wang-0",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-07-wang-1",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-08-wang-11",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-09-wang-3",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-10-wang-2",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-11-wang-5",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-12-wang-15",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-13-wang-14",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-14-wang-9",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-15-wang-7",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            }
+          ],
+          "terrainIds": {
+            "lower": "1bc29bde-ef02-4ba6-bf37-fb34233653f0",
+            "upper": "b21cc9a1-5e0d-4baa-ad6e-634fca140b80"
+          }
+        }
+      },
+      "submittedAt": "2026-10-16T14:31:50.178Z",
+      "downloadedAt": "2026-10-16T14:34:15.056Z",
+      "cost": 4,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 3,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    },
+    "paths/path-grass": {
+      "styleId": "paths",
+      "assetId": "path-grass",
+      "specHash": "f002bf90245d0beec050716c25c6d35b411ed5e927e3704b00806ae91c03a936",
+      "generator": "terrain",
+      "tileFeature": null,
+      "prompt": "1). plain dirt path texture 2). plain short grass texture",
+      "width": 32,
+      "height": 32,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "terrainConnect": {
+        "upper": {
+          "sourceAssetId": "lake-grass",
+          "sourceObjectId": "18996faf-2ad4-44de-9592-393dde44c88c"
+        }
+      },
+      "terrainSettings": {
+        "terrainMode": "standard",
+        "terrainLowerDescription": "plain dirt path texture",
+        "terrainUpperDescription": "plain short grass texture"
+      },
+      "supersededOutputs": [],
+      "jobId": "d7f369d7-6d84-4824-a60e-9b647c087bc2",
+      "submissionComplete": true,
+      "reviewObjectId": "d7f369d7-6d84-4824-a60e-9b647c087bc2",
+      "objectId": "d7f369d7-6d84-4824-a60e-9b647c087bc2",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-00-wang-13.png",
+          "sha256": "0f26eaec849d931e4ca6ea246927f9a46367338e9d7c7b71eb9f02aaf4486742",
+          "role": "tile-00-wang-13",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-01-wang-10.png",
+          "sha256": "5437e82e5af3100505aa624c54897829620012a1b68404653e084e6eb2229cd5",
+          "role": "tile-01-wang-10",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-02-wang-4.png",
+          "sha256": "17bb8680573a84be337953dedcd39458a0b03158d99374d88969eba8a2b1d6ae",
+          "role": "tile-02-wang-4",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-03-wang-12.png",
+          "sha256": "6af6ce8286ac1584af444ec0d12e85ae76e170dcedae716c58d1be5dfd659c5d",
+          "role": "tile-03-wang-12",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-04-wang-6.png",
+          "sha256": "f451379311d98a099a92dad2c3e5f26e87737fc86100e7d91afcf68a69384c2d",
+          "role": "tile-04-wang-6",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-05-wang-8.png",
+          "sha256": "8dc3dadd042c6c3d7312c7b8507ee196c298e6c634cf94b1580e90ae288ea12b",
+          "role": "tile-05-wang-8",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-06-wang-0.png",
+          "sha256": "b73894992b63edc3b884db26d1164df344282fb05a8b9b177614fc1a506a4d47",
+          "role": "tile-06-wang-0",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-07-wang-1.png",
+          "sha256": "6e69ccb7a1e57b36ddfa9183f200da0ee6be20cb8feff8e2ae964eaf6dcd146c",
+          "role": "tile-07-wang-1",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-08-wang-11.png",
+          "sha256": "3d839efcfb0fadd14caa1f41b2619bc8caf67607ba36fed2ca189e1bb3679f1b",
+          "role": "tile-08-wang-11",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-09-wang-3.png",
+          "sha256": "cd6a0ca8ed83381bb0ee2aec97b591666772f9d654fd51227f7df72f22584957",
+          "role": "tile-09-wang-3",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-10-wang-2.png",
+          "sha256": "edf9c8a033b6c74a62853ffa70b9f48ef1d34cd6f81e5ad76288386309a8128d",
+          "role": "tile-10-wang-2",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-11-wang-5.png",
+          "sha256": "09004ca1ed932db6dc4c6541a01909c1b57bb156fc5b7439920a16ce89aa959a",
+          "role": "tile-11-wang-5",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-12-wang-15.png",
+          "sha256": "c0245893c64c2480c7d7439075b78ccdd1d68d209e5323a520c9b941ade15fb0",
+          "role": "tile-12-wang-15",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-13-wang-14.png",
+          "sha256": "32723605f3ced9bdf22a01c9d4ad81aa07937a3e58db261c9f6b333cb827b58a",
+          "role": "tile-13-wang-14",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-14-wang-9.png",
+          "sha256": "c30c2957906c5c918919ac4cfbb0390a82db1c96a26a85321fc339b92329eaeb",
+          "role": "tile-14-wang-9",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/tilesets/path-grass-tile-15-wang-7.png",
+          "sha256": "255a8ff71d1e03eeb73c7a55733390d969005b53271ab6aa1327b2476117f17d",
+          "role": "tile-15-wang-7",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "ce58b9fc-2a54-425f-a9fe-b44c3b903675",
+          "baseTileIds": {
+            "upper": "b21cc9a1-5e0d-4baa-ad6e-634fca140b80"
+          },
+          "terrainTypes": [
+            "lower",
+            "upper"
+          ],
+          "terrainTiles": [
+            {
+              "role": "tile-00-wang-13",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-01-wang-10",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-02-wang-4",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-03-wang-12",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-04-wang-6",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-05-wang-8",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-06-wang-0",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-07-wang-1",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-08-wang-11",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-09-wang-3",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-10-wang-2",
+              "corners": {
+                "NW": "lower",
+                "NE": "lower",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-11-wang-5",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-12-wang-15",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-13-wang-14",
+              "corners": {
+                "NW": "upper",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "lower"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-14-wang-9",
+              "corners": {
+                "NW": "upper",
+                "NE": "lower",
+                "SW": "lower",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  1,
+                  0,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            },
+            {
+              "role": "tile-15-wang-7",
+              "corners": {
+                "NW": "lower",
+                "NE": "upper",
+                "SW": "upper",
+                "SE": "upper"
+              },
+              "pattern4x4": {
+                "row_0": [
+                  255,
+                  255,
+                  255,
+                  255
+                ],
+                "row_1": [
+                  255,
+                  0,
+                  1,
+                  255
+                ],
+                "row_2": [
+                  255,
+                  1,
+                  1,
+                  255
+                ],
+                "row_3": [
+                  255,
+                  255,
+                  255,
+                  255
+                ]
+              }
+            }
+          ],
+          "terrainIds": {
+            "lower": "9b9e02bc-29ed-4fc9-a6b5-e4447f390655",
+            "upper": "b21cc9a1-5e0d-4baa-ad6e-634fca140b80"
+          }
+        }
+      },
+      "submittedAt": "2026-10-16T14:34:17.835Z",
+      "downloadedAt": "2026-10-16T14:36:27.875Z",
+      "cost": 4,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 3,
         "unit": "generations"
       },
       "provider": "pixellab"
