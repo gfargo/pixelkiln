@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { PixelLabClient } from "../src/client.ts"
-import { PixelLabProvider } from "../src/providers/pixellab.ts"
+import { PixelLabProvider, pixminimaxCost } from "../src/providers/pixellab.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
@@ -691,6 +691,42 @@ describe("PixelLab provider: revision submit and poll", () => {
       { assets: ["revised"] },
     )
     expect(enhanced[0]!.cost).toBe(1.05)
+  })
+
+  it("never under-reads PixelLab's published animate-pixminimax prices", () => {
+    // 64x64 at 4/8/16/40 frames = 1/1/2/6; 80x80 at 8 = 1; 32x32 at 4 = 1.
+    expect(pixminimaxCost(64, 64, 4)).toBe(1)
+    expect(pixminimaxCost(64, 64, 8)).toBe(1)
+    expect(pixminimaxCost(64, 64, 16)).toBe(2)
+    expect(pixminimaxCost(64, 64, 40)).toBe(6)
+    expect(pixminimaxCost(80, 80, 8)).toBeGreaterThanOrEqual(1)
+    expect(pixminimaxCost(80, 80, 8)).toBeLessThanOrEqual(2)
+    expect(pixminimaxCost(32, 32, 4)).toBe(1)
+    // Longer or larger clips never get cheaper.
+    expect(pixminimaxCost(64, 64, 24)).toBeGreaterThanOrEqual(2)
+    expect(pixminimaxCost(128, 128, 40)).toBeGreaterThan(pixminimaxCost(64, 64, 40))
+  })
+
+  it("estimates a 40-frame 64x64 animate-pixminimax revision at 6 generations, plus enhancePrompt's 0.05", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "pixelkiln-pixminimax-cost-"))
+    try {
+      await writeFile(path.join(dir, "source.png"), png(20, 64, 64))
+      const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+      await writeFile(manifestPath, JSON.stringify({
+        name: "pixminimax-cost",
+        provider: "pixellab",
+        styles: { base: { generator: "map", size: 32, outDir: "art" } },
+        assets: {
+          source: { prompt: "a stone tower", source: "source.png" },
+          revised: { prompt: "x", width: 64, height: 64, revision: { mode: "animate-pixminimax", from: "source", frames: 40, enhancePrompt: true } },
+        },
+      }))
+      const loaded = await loadManifest(manifestPath)
+      const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+      expect(child!.cost).toBe(6.05)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 
   it("rejects animate/animate-pixminimax sources over 256px per side and animate frame counts over 16", async () => {

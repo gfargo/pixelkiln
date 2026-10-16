@@ -180,10 +180,12 @@ that bursts into a splash or a sword that turns into lightning.
    first.
 
 Pad a growing effect onto a larger canvas before animating it, since a
-revision animates its parent at the parent's own size. Long PixMiniMax clips
-can also cost more than `plan` says: PixelLab prices a 40-frame 64×64 clip
-at 6 generations, and PixelKiln estimates 3. Set `--budget` with that gap in
-mind.
+revision animates its parent at the parent's own size. PixMiniMax is
+priced by generation time: a 64×64 clip at 4, 8, 16, and 40 frames costs 1,
+1, 2, and 6 generations. `plan` interpolates through those published points
+and rounds up, so it matches them and over-reads slightly just above 64px,
+where PixelLab upscales and charges less (80×80 at 8 frames reads 2, billed
+1). Other sizes and frame counts are interpolated, not measured.
 
 ## Account workflows
 

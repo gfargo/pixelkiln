@@ -492,12 +492,13 @@ missing:
   unchanged. pixelkiln's frame extraction for this mode is unexercised live,
   so whether the input frame lands in the set is unknown. There is no
   manifest way to drop a frame either way.
-- **The cost estimate under-reads long clips.** The MCP tool now prices
+- **The cost estimate is interpolated, not measured.** The MCP tool prices
   PixMiniMax by generation time: 64×64 at 4, 8, 16, and 40 frames costs 1, 1,
-  2, and 6 generations. pixelkiln's placeholder,
-  `ceil(width × height × frames / 65536)`, gives 1, 1, 1, and 3 for the same
-  clips. Unlike every other unmeasured estimate here, this one under-reads,
-  so `--budget` can be too low.
+  2, and 6 generations; 80×80 at 8 frames costs 1; 32×32 at 4 frames costs 1.
+  pixelkiln interpolates through those points and rounds up, so it never
+  under-reads them, and it over-reads where the model upscales (sizes just
+  above 64 or 128px bill less than area predicts). No live PixMiniMax call has
+  confirmed the in-between values.
 - **Joining two clips.** The video joins two orb animations end to end in
   Aseprite. pixelkiln has no frame-set concatenation; `lastFrame` can pin a
   clip's ending to another clip's frame file, but the two sets stay separate.
