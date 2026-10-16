@@ -1,3 +1,10 @@
+## [0.89.2](https://github.com/gfargo/pixelkiln/compare/v0.89.1...v0.89.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* **pixellab:** mark terrain sets stale when settings outside specHash change ([41e938e](https://github.com/gfargo/pixelkiln/commit/41e938eff89d8e668e7893111e17459e0315d5c8))
+
 ## [0.89.1](https://github.com/gfargo/pixelkiln/compare/v0.89.0...v0.89.1) (2026-10-16)
 
 # [0.89.0](https://github.com/gfargo/pixelkiln/compare/v0.88.0...v0.89.0) (2026-10-16)
