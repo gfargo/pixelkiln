@@ -12,7 +12,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Exact fixed palette | `pixflux`, or `imagePro` for a larger or non-square canvas | 1 generation (`imagePro`: 10–25) | 1 inline image (`imagePro`: 1–64 by size) |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 10–25 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 10–25 generations | variations or complete set |
-| Two-terrain Wang tileset for elevation (grass to water, floor to cliff), or a sidescroller platform set | `terrain` | Pro 15 at 32px and sidescroller 3 (measured); Pro 25 at 64px, standard plans at 4 (PixelLab's quotes) | 16 or 25 tiles |
+| Two-terrain Wang tileset for elevation (grass to water, floor to cliff), or a sidescroller platform set | `terrain` | Pro 15 at 32px and sidescroller 3, Pro 25 at 64px, standard 3 (all measured; standard plans at 4) | 16 or 25 tiles |
 | Platform tileset for a sidescroller (stone body, grass top) | `terrain`, `terrainOrientation: "sidescroller"` | 3 generations | 16 tiles |
 | A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
 | Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 10–25 generations by canvas | 1–64 by size |
