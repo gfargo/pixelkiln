@@ -407,10 +407,16 @@ whether it's hosted URLs or inline base64) is an informed guess checked
 against several plausible shapes (see `pollAnimateRevision` in
 `src/providers/pixellab.ts`), the same defensive posture `pollRevision`
 already takes for `image-to-image`/`inpaint`. Cost is likewise unmeasured:
-`estimate()` borrows `character`'s own measured v3-loop formula
+`animate`'s `estimate()` borrows `character`'s own measured v3-loop formula
 (`ceil(width × height × frames / 65536)`, since the request shapes are
-near-identical) as a placeholder, plus `enhancePrompt`'s own documented
-+0.05-generation surcharge, which is a real schema number rather than a guess.
+near-identical) as a placeholder. `animate-pixminimax` is priced by generation
+time: PixelLab's MCP tool documents 64×64 at 4, 8, 16, and 40 frames as 1, 1,
+2, and 6 generations (80×80 at 8 frames and 32×32 at 4 frames are 1). The
+estimate interpolates through those points and rounds up, so it never
+under-reads them, and over-reads slightly just above 64 or 128px, where the
+model upscales and charges less than area predicts. Both add `enhancePrompt`'s
+own documented +0.05-generation surcharge, a real schema number rather than a
+guess.
 
 ### Interpolate between two keyframes
 
@@ -704,8 +710,7 @@ further — there is nothing to ask.
   transform the source. Both take at most 256 pixels per side; `animate`
   additionally caps at 16 frames (`animate-pixminimax` allows up to 40). See
   [Animation and interpolation](#animation-and-interpolation) above for the
-  full field list, the frame-set output shape, and its own (still unmeasured)
-  cost caveat — unlike the Cleanup tier above, neither `animate` nor
+  full field list, the frame-set output shape, and its own cost caveat — unlike the Cleanup tier above, neither `animate` nor
   `animate-pixminimax` has been exercised against a live account yet, and the
   request/response shapes come from PixelLab's live OpenAPI document, not an
   observed call. Treat the exact field names as provisional until a real

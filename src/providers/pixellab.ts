@@ -349,6 +349,28 @@ export function objectProCost(spec: ResolvedSpec): number {
 }
 
 /**
+ * `animate_image_pixminimax` prices by generation time. Published points:
+ * 64x64 at 4/8/16/40 frames = 1/1/2/6 generations, 80x80 at 8 = 1, 32x32 at
+ * 4 = 1. Frames scaled by canvas area against 64x64 give one number that the
+ * curve below interpolates linearly through those points, rounded up. The
+ * model upscales sizes just above 64 or 128px, so those cost less than area
+ * predicts; the estimate over-reads there rather than under-reads (80x80 at 8
+ * frames reads 2, published 1). Past the last point it extrapolates at that
+ * segment's slope.
+ */
+export function pixminimaxCost(width: number, height: number, frames: number): number {
+  const equivalent = (width * height * frames) / 4096
+  const points: Array<[number, number]> = [[8, 1], [16, 2], [40, 6]]
+  if (equivalent <= 8) return 1
+  let [x0, y0] = points[0]!
+  for (const [x1, y1] of points.slice(1)) {
+    if (equivalent <= x1) return Math.ceil(y0 + ((equivalent - x0) * (y1 - y0)) / (x1 - x0))
+    ;[x0, y0] = [x1, y1]
+  }
+  return Math.ceil(6 + ((equivalent - 40) * 4) / 24)
+}
+
+/**
  * `/animate-with-skeleton-v3`'s own documented anchors (its MCP tool
  * schema): 3 frames = 2 generations, 8 = 3, 15 = 4. No in-between value is
  * confirmed live, so this piecewise-linearly interpolates between the
@@ -592,19 +614,16 @@ export class PixelLabProvider implements Provider {
       return { unit: "generations", amount: generationCost(width * side, height * side, "1dir"), candidates: 1 }
     }
     if (spec.revision?.mode === "animate" || spec.revision?.mode === "animate-pixminimax") {
-      // Unmeasured against a live account; no usage example exists for
-      // either endpoint at all (only a generic background-job example).
-      // `/animate-with-text-v3`'s request shape is near-identical to
-      // `character`'s own v3 text loop (first_frame/action/frame_count/
-      // seed/no_background/enhance_prompt), so this borrows that measured
-      // formula — `ceil(width*height*frames / 65536)` — as a placeholder,
-      // same reasoning `objectPro` used to borrow `character` pro-flash's
-      // cost. `enhance_prompt` costs its own documented +0.05 generations,
-      // which is a real number from the schema, not a guess.
+      // `animate` borrows `character`'s measured v3-loop formula,
+      // `ceil(width*height*frames / 65536)`, as a placeholder. PixMiniMax is
+      // priced by generation time instead (see `pixminimaxCost`).
+      // `enhance_prompt` costs its own documented +0.05 generations.
       const width = spec.revision.sourceWidth ?? spec.width
       const height = spec.revision.sourceHeight ?? spec.height
       const frames = spec.revision.frames ?? 8
-      const base = Math.max(1, Math.ceil((width * height * frames) / 65536))
+      const base = spec.revision.mode === "animate-pixminimax"
+        ? pixminimaxCost(width, height, frames)
+        : Math.max(1, Math.ceil((width * height * frames) / 65536))
       return { unit: "generations", amount: spec.revision.enhancePrompt ? base + 0.05 : base, candidates: 1 }
     }
     if (spec.revision?.engine === "pro-flash") {

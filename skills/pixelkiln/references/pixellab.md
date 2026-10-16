@@ -543,10 +543,11 @@ up: `driftThreshold` or a `reduce-colors` revision over the frame set for
 color flicker, `correct-pixelart` or `pixelkiln edit` for stray pixels, and
 check a loop's last frame against its first for a duplicate.
 
-Budget `animate-pixminimax` above what `plan` prints for long clips. The MCP
-tool prices it by generation time (64×64 at 16 frames is 2, at 40 frames is
-6), while pixelkiln's placeholder estimate gives 1 and 3. Tell the person the
-plan may under-read before a long PixMiniMax run.
+`animate-pixminimax` is priced by generation time (64×64 at 4, 8, 16, and 40
+frames is 1, 1, 2, and 6), and `plan` interpolates through those published
+points, rounding up. It matches them and over-reads slightly just above 64px
+(80×80 at 8 frames reads 2, billed 1). Sizes and frame counts between the
+points are interpolated, so treat them as estimates.
 
 Parts of Pro Flash image editing are still outside this adapter: `edit`'s
 reference-image method, palette correction, inpaint's output-method choice,
