@@ -70,8 +70,14 @@ role — correct here because `terrainTiles` and the output list are pushed in
 the same loop, but worth knowing if either is ever reordered independently.
 
 A tile whose corner is `"transition"` (the extra ring PixelLab adds at
-`terrainTransitionSize: 1`) has no bit of its own in a two-terrain corner
+`terrainTransitionSize: 1`, or 0.5 on Pro) has no bit of its own in a two-terrain corner
 mask; it is folded into whichever of `terrains[0]`/`terrains[1]` it isn't.
+
+That 25-tile layout covers 21 distinct corner combinations. Four
+wall-continuation tiles share their corners with a twin and differ only in
+`pattern_4x4`, which PixelLab says is the field to match on. PixelKiln
+stores each tile's `pattern4x4` but builds masks from `corners`, so each
+twin pair gets the same mask.
 
 ## Command
 
@@ -205,7 +211,14 @@ isometric-corner-names bug; the counts alone did not.
   placement semantics would have to be invented.
 - A `terrain` asset's `"transition"` corners collapse into a two-color mask
   (see above); the cliff-tier 25-tile set exports, but its middle transition
-  ring is not distinguished from the two named terrains in Tiled/Godot.
+  ring is not distinguished from the two named terrains in Tiled/Godot, and
+  its four wall-continuation twins export with duplicate masks.
+- A `terrain` set exports alone. PixelLab can connect sets that share a
+  terrain (its "connect existing" option, `lower_base_tile_id` in the API),
+  and PixelLab's [Pro tilesets guide](https://www.youtube.com/watch?v=MbkqpDUFkEg)
+  paints ocean, sand, grass, path, and cliffs on one map that way. PixelKiln
+  does not request connected sets or merge several sets into one engine
+  terrain set yet.
 - Godot edge/side masks on an isometric or oblique tile remain generic- or
   Tiled-only; see Godot 4 above.
 - Export never changes source PNGs or the lockfile.

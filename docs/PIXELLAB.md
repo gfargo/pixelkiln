@@ -71,7 +71,7 @@ unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles
 | `pixflux` | You need a closed palette or a full-bleed background | 1 generation |
 | `1dir` | You need references or several candidates for human review | 10 to 25 generations |
 | `tiles` | You need ground variations or a connected structural set | 10 to 25 generations |
-| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff) | 10 to 25 generations (unmeasured) |
+| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff) | plans at 25; PixelLab quotes 15 to 25 for Pro (unmeasured) |
 | `isometricTile` | You need one standalone isometric tile, 16 to 64px | 1 generation (measured once) |
 | `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall | 10 to 25 generations |
 | `imageProFlash` | You need a still on the Pro Flash model, optionally styled from one image, 16 to 256px | 5 to 9 generations (provisional quote) |
@@ -99,6 +99,59 @@ measured economics. "10 to 25 generations" is a tier, not an exact figure:
 beside the submit-time `cost` estimate a wave budget spends against;
 `pixelkiln history`, `plan --json`, and the gallery show both when they
 differ (docs/ENDPOINTS.md, "Limits and billing").
+
+## Learn from PixelLab's tutorials
+
+PixelLab's YouTube channel teaches its web app, not PixelKiln, but most of
+its advice carries over. Two recent videos change what we recommend.
+
+### Pro tilesets
+
+[PixelLab Pro Tilesets: Full Guide](https://www.youtube.com/watch?v=MbkqpDUFkEg)
+covers the `terrain` generator's endpoint.
+
+- End each terrain on the word "texture": `1). deep ocean water texture 2).
+  plain smooth sand texture`. Without it, Pro sometimes scatters rocks,
+  shells, or plants over the sand.
+- Keep terrain prompts short and put style words in the style's
+  `promptPrefix` or `promptSuffix`. Color, season, and outline words
+  ("autumn", "frosty", "bold black outlines") change a set more than mood
+  words do.
+- On Pro, `terrainTransitionSize` is wall height. 0 is flat ground, 0.25 a
+  low bank, and 0.5 or 1 a full wall in a 25-tile set.
+- `terrainRaggedness` roughens the border; 0.8 gives a marsh edge.
+  `terrainSpreadX` and `terrainSlopeSize` no longer change anything, because
+  PixelLab's Pro pipeline stopped reading them.
+- The video also uses controls PixelKiln doesn't send yet: roundness, the
+  "Connect diagonal corners" checkbox for clean 45° paths, sidescroller
+  platform sets, and connected sets that share a terrain (ocean to sand,
+  then sand to grass). Build those in PixelLab's web app for now.
+
+### Animated effects
+
+[How to Make Animated Pixel Art VFX in PixelLab](https://www.youtube.com/watch?v=t8FIMv-8QpI)
+generates effects instead of rendering them. The `vfx` generator is free and
+renders the same pixels every time, so try it first. Generate when the
+effect is a drawn thing or a character's own motion, like a water hammer
+that bursts into a splash or a sword that turns into lightning.
+
+1. Draw a sheet of effects with one `imagePro` call. List one effect per
+   frame in the prompt; a 64×64 canvas returns 16 candidates to pick from.
+2. Animate the pick with an `animate-pixminimax` revision. Describe the
+   motion, not the look, and ask a loop to return to its first state.
+3. Pin an ending with `lastFrame` when the motion should land somewhere. An
+   ice crystal can grow from a few blue pixels, or a `"engine": "pro-flash"`
+   edit of the same sprite can be the ending it transforms into.
+4. Clean up. `driftThreshold` or a `reduce-colors` revision fixes
+   frame-to-frame color flicker, and `correct-pixelart` or `pixelkiln edit`
+   removes stray pixels. Check whether a loop's last frame repeats its
+   first.
+
+Pad a growing effect onto a larger canvas before animating it, since a
+revision animates its parent at the parent's own size. Long PixMiniMax clips
+can also cost more than `plan` says: PixelLab prices a 40-frame 64×64 clip
+at 6 generations, and PixelKiln estimates 3. Set `--budget` with that gap in
+mind.
 
 ## Account workflows
 

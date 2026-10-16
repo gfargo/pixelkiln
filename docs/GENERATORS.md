@@ -12,7 +12,7 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Exact fixed palette | `pixflux` | 1 generation | 1 inline image |
 | Candidate variety, richer rendering, future rotation/animation | `1dir` | 10–25 generations | 4–64 by size |
 | Ground tiles or connectable structural sets | `tiles` | 10–25 generations | variations or complete set |
-| Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | 10–25 generations (unmeasured) | 16 or 25 tiles |
+| Two-terrain Wang tileset for elevation (grass to water, floor to cliff) | `terrain` | plans at 25; PixelLab quotes 15–25 for Pro (unmeasured) | 16 or 25 tiles |
 | A single elevation tile — a raised mesa, a cliff block | `isometricTile` | 1 generation | 1 |
 | Larger or non-square scene or background, up to 792 wide and 688 tall | `imagePro` | 10–25 generations by canvas | 1–64 by size |
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
@@ -586,6 +586,15 @@ pixelkiln calls with the same `PIXELLAB_API_KEY`.
 - An asset that lists no `styles` joins every style of its own kind: a `vfx`
   style takes the assets with a `vfx` block, and every other style the
   assets without one. A mirror or revision of an effect names its style.
+
+The workbench builds an effect from tuned parts. An effect that is a drawn
+object or a character's own motion, like a sword turning into lightning or a
+mage casting a fireball, is a job for generation instead: an `imagePro`
+sheet of candidates, then an `animate-pixminimax` revision with an optional
+`lastFrame`. PixelLab's
+[VFX tutorial](https://www.youtube.com/watch?v=t8FIMv-8QpI) shows that
+workflow, and [Set up PixelLab](./PIXELLAB.md#animated-effects) maps it onto
+PixelKiln.
 
 **Outputs.** The exported spritesheet is cut into frames,
 `<asset>-frame-00.png` onward, recorded as an ordered frame set with the

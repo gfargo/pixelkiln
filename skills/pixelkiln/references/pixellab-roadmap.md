@@ -1,17 +1,24 @@
 # PixelLab coverage and remaining gaps
 
 A catalog of PixelLab capabilities checked against PixelKiln: what this
-adapter now covers, and what is still absent. It was built by reading all 29
+adapter now covers, and what is still absent. It was built by reading all 31
 tutorials on PixelLab's official YouTube channel (the original
 26 — the 12 featured on pixellab.ai plus 14 more from the channel's "PixelLab
-Tutorial" playlist, filtered to ~12 months back from that pass — plus 3 more
+Tutorial" playlist, filtered to ~12 months back from that pass — plus 5 more
 published since: "Level Up Your Game: Custom Sprite Animation Tutorial,"
 "Pixel Art Animation Tutorial: Images Pro Flash, Skeleton V3 & PixMiniMax,"
-and "How to Reduce Colors Like a Pro!") against this adapter's actual source
-— and, for the newest pass, against PixelLab's own MCP tool schemas
-(`create_image_pro_flash`, `edit_image_pro_flash`, `inpaint_image_pro_flash`,
-`get_pro_flash_capabilities`) where a tutorial's framing needed checking
-against the live surface, the same standard the original pass held itself to.
+"How to Reduce Colors Like a Pro!", "How to Make Animated Pixel Art VFX in
+PixelLab" (https://www.youtube.com/watch?v=t8FIMv-8QpI), and "PixelLab Pro
+Tilesets: Full Guide" (https://www.youtube.com/watch?v=MbkqpDUFkEg)) against
+this adapter's actual source — and, for the newer passes, against PixelLab's
+own MCP tool schemas (`create_image_pro_flash`, `edit_image_pro_flash`,
+`inpaint_image_pro_flash`, `get_pro_flash_capabilities`, and for the last two
+`create_topdown_tileset`, `create_sidescroller_tileset`, `create_tiles_pro`,
+`create_map`, `animate_image_pixminimax`, `create_image_pro`, `vfx_workbench`,
+and `search_knowledge`) plus the REST OpenAPI document's `/create-tileset`
+and `/create-tileset-sidescroller` request schemas, where a tutorial's
+framing needed checking against the live surface, the same standard the
+original pass held itself to.
 Read this when scoping new PixelLab work, so effort goes toward a
 confirmed gap with real demand rather than a guess. Nothing here is a
 commitment to build it — it is what is missing, with the evidence for why it
@@ -55,10 +62,17 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   — a real gap, not a docs fix: `tiles`'s own `tileFeature: "tileset"` draws
   one terrain's edges, not two named, connected terrain levels with their own
   transition prompt. Closed by the `terrain` generator; see
-  `pixellab.md`. Cost is unmeasured (borrows the same 10/15/25 canvas tiers
-  already confirmed for `tiles` and `1dir`); `/create-tileset-sidescroller`,
-  reference images, `color_image`, and the `pro` pipeline's own tunables
-  beyond `spreadX`/`slopeSize`/`raggedness` remain unmodeled.
+  `pixellab.md`. Cost is unmeasured: the estimate runs a whole set through
+  the canvas-tier formula, so every `terrain` asset plans at 25. PixelLab's
+  `create_topdown_tileset` MCP description quotes Pro at 15 generations up to
+  32px and 25 above (the tilesets tutorial agrees, 15 at 16px and 25 at
+  64px), and standard at 1 to 4, mean 3.1 over 6,124 charges. So the plan
+  over-reads, which is the safe direction for `--budget`.
+  `/create-tileset-sidescroller`, connected sets (`lower_base_tile_id`/
+  `upper_base_tile_id`), reference images, `color_image`, and most of the
+  `pro` pipeline's shape controls remain unmodeled; see
+  [Pro tilesets](#pro-tilesets-shape-controls-sidescrollers-and-connected-sets)
+  below, which also records that `spreadX`/`slopeSize` no longer do anything.
 - **Pro-tier full-bleed background generation** (`generate-image-v2`, PixelLab's
   Pro image tier) at arbitrary custom aspect ratios (not just square) —
   already measured at 40 generations in `docs/ENDPOINTS.md`, but `pixflux`
@@ -375,6 +389,108 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   generations to its 20–40. Its one unique field, `style_object_id` (style
   from an existing 8-direction object's sprites), is not worth a second,
   pricier engine on its own.
+
+## Pro tilesets: shape controls, sidescrollers, and connected sets
+
+"PixelLab Pro Tilesets: Full Guide" walks the web app's Pro tileset form. Checked
+against `/create-tileset`'s REST schema and the `create_topdown_tileset`
+MCP tool, it shows `terrain` has drifted behind the endpoint:
+
+- **`terrainSpreadX` and `terrainSlopeSize` are now no-ops.** Both schemas
+  describe `spread_x` and `slope_size` as "No effect - the Pro pipeline no
+  longer uses it; kept so existing calls work." pixelkiln still sends them
+  and documents them as shape controls. `raggedness` still works, at half
+  strength on tall sets (`transition_size` above 0.4).
+- **Four Pro shape controls are unmodeled.** `roundness` (0 square, 1 round,
+  2 corners cut at 45°; default 0.85 on Pro), `boundary_amplitude` (0 to
+  0.3, how far the border meanders, the video's "uneven boundary") with
+  `boundary_seed` (the "reshuffle" button), `step_slope` (0 cliff to 2
+  gentle slope, Pro at `transition_size` 0.25 only), and `connect_diagonals`
+  (Pro only; joins the two diagonal tiles into one area). The video shows
+  `connect_diagonals` plus `roundness` 2 as the fix for 45° paths and
+  coastlines that otherwise break into one island per step.
+- **Pro at `transition_size` 0.5 returns 25 tiles, not 16.** The REST and
+  MCP schemas agree that Pro reads `transition_size` as wall height and
+  switches to the 25-tile tall-wall layout above 0.4 (the video: "above 40%,
+  it turns into a proper wall... The set grows to 25 tiles"). pixelkiln's
+  `terrainTileCount` returns 25 only at exactly 1, so `plan` shows 16
+  candidates for a Pro set at 0.5. The download keeps every tile the
+  response carries, so this is a display error, not lost tiles.
+- **Wall-continuation twins export as duplicates.** The 25-tile layout has
+  21 distinct corner combinations. Four tiles share corners with a twin and
+  differ only in `pattern_4x4`. pixelkiln records `pattern_4x4` but builds
+  Tiled/Godot masks from `corners`, so each twin pair exports with the same
+  mask.
+- **Sidescroller tilesets** (`/create-tileset-sidescroller`): still a gap. The
+  public endpoint takes `lower_description` (the platform body),
+  `transition_description` (the top layer), `transition_size` (0, 0.25, 0.5,
+  or 1), 16 or 32px, and an optional `lower_base_tile_id`. The MCP tool quotes
+  2 or 3 generations per set. The video's sidescroller is the web app's
+  **Pro** form at 16, 32, and 64px with top-layer height up to 100%. The REST
+  schema has no `mode` field, so Pro sidescrollers are not reachable through
+  the public API today. Demand is demonstrated twice now (this video and
+  "Create a Full Side Scroller Level").
+- **Connected tilesets.** Still a gap. Passing one set's base tile id as the
+  next set's `lower_base_tile_id` (or `upper_base_tile_id`) makes them share
+  that terrain, so ocean, sand, grass, path, and cliffs paint on one map. The
+  video builds four sets this way. `create_map` adds the rule that matters
+  for a future wrapper: sharing a family makes a terrain available, not
+  blendable. Two terrains with no tileset of their own render black where
+  they meet. The video's Claude Code run hit exactly that (a black edge where
+  a path touched the beach) and moved the path. A pixelkiln version would
+  need one asset to reference another's base tile id, which means a
+  dependency edge like `revision`'s parent.
+- **Prompting advice** for the skill reference rather than code: end each
+  terrain description on the word "texture" ("plain smooth sand texture"),
+  because otherwise Pro scatters rocks, shells, or plants over it; Pro needs
+  short prompts; and color, season, and outline words ("autumn", "frosty",
+  "bold black outlines with cel shading", "four-color green palette") move
+  the result more than mood words, while "cute chibi" and "flat shaded" land
+  close together. Standard rewrites the prompt and gives a flatter look with
+  a hard edge.
+
+## Generated effects with PixMiniMax
+
+"How to Make Animated Pixel Art VFX in PixelLab" builds effects with
+generation rather than the VFX workbench (`vfx`). It draws a sheet of
+different effects in one Create Image Pro call, then animates each one with
+PixMiniMax. Most of the steps already exist in pixelkiln. An `imagePro`
+asset at 64×64 returns 16 candidates, and a prompt that lists one effect
+per frame ("an orange fireball facing right, a white and cyan crescent
+slash, ...") fills them. `animate-pixminimax` takes the pick as its parent,
+`lastFrame` pins an ending (a full ice crystal grown from a few blue pixels,
+a splash after a water hammer), and a `"engine": "pro-flash"` revision makes
+that ending from the start frame (the video's plain sword, then a "lightning
+enhanced version"). `driftThreshold` and a `reduce-colors` revision across
+the frame set cover its frame-to-frame color flicker, and `correct-pixelart`
+or `pixelkiln edit` covers its stray pixels. The video's frame counts (12,
+16, 20, 24) are all multiples of 4, which PixMiniMax requires. What is
+missing:
+
+- **Several assets from one candidate sheet.** The video animates eight or
+  more effects from two sheets. `pick` gives one `imagePro` asset one
+  candidate, so each effect is either its own paid call or a hand-copied
+  `source` file. `1dir`'s `batch` is the closest shape, but it fans one call
+  out to declared descriptions, not to picks.
+- **Padding the canvas before animating.** The video reframes most effects
+  onto a larger canvas (64 to 80px) so a flame or splash has room to grow.
+  A revision sends its parent at the parent's own size. The workaround is a
+  hand-padded `source` file.
+- **Trimming a loop's repeated frame.** The video deletes the last frame of
+  a fireball loop because it repeats the first. `animate_image_pixminimax`
+  says `get_image` returns `frame_count + 1` images with index 0 the input
+  unchanged. pixelkiln's frame extraction for this mode is unexercised live,
+  so whether the input frame lands in the set is unknown. There is no
+  manifest way to drop a frame either way.
+- **The cost estimate under-reads long clips.** The MCP tool now prices
+  PixMiniMax by generation time: 64×64 at 4, 8, 16, and 40 frames costs 1, 1,
+  2, and 6 generations. pixelkiln's placeholder,
+  `ceil(width × height × frames / 65536)`, gives 1, 1, 1, and 3 for the same
+  clips. Unlike every other unmeasured estimate here, this one under-reads,
+  so `--budget` can be too low.
+- **Joining two clips.** The video joins two orb animations end to end in
+  Aseprite. pixelkiln has no frame-set concatenation; `lastFrame` can pin a
+  clip's ending to another clip's frame file, but the two sets stay separate.
 
 ## Map Workshop (scene composition)
 
