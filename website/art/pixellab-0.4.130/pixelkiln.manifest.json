@@ -1,0 +1,81 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-website-pixellab-0.4.130",
+  "styles": {
+    "coast": {
+      "generator": "terrain",
+      "terrainMode": "pro",
+      "terrainTileSize": 32,
+      "terrainRoundness": 2,
+      "terrainConnectDiagonals": true,
+      "outDir": "../../public/showcase/tilesets",
+      "tags": [
+        "website",
+        "pixellab-0.4.130"
+      ]
+    },
+    "gameboy": {
+      "generator": "imagePro",
+      "palette": [
+        "#081820",
+        "#346856",
+        "#88c070",
+        "#e0f8d0"
+      ],
+      "paletteName": "Game Boy",
+      "outDir": "../../public/showcase/palette",
+      "tags": [
+        "website",
+        "pixellab-0.4.130"
+      ]
+    },
+    "lit": {
+      "generator": "map",
+      "outDir": "../../public/showcase/normals",
+      "tags": [
+        "website",
+        "pixellab-0.4.130"
+      ]
+    }
+  },
+  "assets": {
+    "ocean-sand": {
+      "styles": [
+        "coast"
+      ],
+      "prompt": "1). deep ocean water texture 2). plain smooth sand texture"
+    },
+    "sand-grass": {
+      "styles": [
+        "coast"
+      ],
+      "prompt": "1). plain smooth sand texture 2). plain short grass texture",
+      "connect": {
+        "lower": {
+          "of": "ocean-sand",
+          "terrain": "upper"
+        }
+      }
+    },
+    "chest": {
+      "styles": [
+        "gameboy"
+      ],
+      "prompt": "small wooden treasure chest with a brass lock",
+      "width": 64,
+      "height": 64
+    },
+    "chest-normals": {
+      "prompt": "normal map",
+      "styles": [
+        "lit"
+      ],
+      "revision": {
+        "mode": "normal-map",
+        "from": "chest",
+        "fromStyle": "gameboy",
+        "convention": "opengl"
+      }
+    }
+  }
+}
