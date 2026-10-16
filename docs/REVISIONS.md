@@ -242,8 +242,8 @@ naming the foreground. Both are rejected on other modes, as is `strength`.
 map, so a game engine can light the sprite. The map is the parent's size: RGB
 is the way each pixel faces, and alpha is 255 where the sprite shows and 0
 elsewhere. It is a background job, and costs 0.5 generation per call,
-charged only when the map is delivered (PixelLab's documented price; not yet
-measured here).
+charged only when the map is delivered (measured: a sprite and an 8-frame
+strip each billed exactly 0.5).
 
 ```jsonc
 {
@@ -723,8 +723,8 @@ further — there is nothing to ask.
   horizontal strip, cut into per-frame files on poll. See
   [Normal maps](#normal-maps). Measured once through `pixelkiln normal-map`:
   an 8-frame strip billed exactly 0.5 generations and came back the same
-  size with matching alpha (docs/ENDPOINTS.md). The revision mode shares
-  that request but has not run live itself.
+  size with matching alpha (docs/ENDPOINTS.md). The revision mode billed
+  0.5 on a 64×64 sprite too.
 
 - The mask convention is fixed, not graph-defined like ComfyUI's: white marks
   the area to generate, black the area to preserve. There is no way to flip it.

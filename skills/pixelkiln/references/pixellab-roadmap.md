@@ -363,13 +363,16 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   standalone `pixelkiln normal-map` command. Styles with `enforcePalette` or
   `quality` refuse it so nothing palette-snaps a normal map. **Measured
   once**: an 8-frame 1304×26 strip billed exactly 0.5 and came back the same
-  size with matching alpha.
+  size with matching alpha. The revision mode then billed 0.5 on a 64×64
+  sprite through `pixelkiln gen`.
 - **Target palette for Create Image Pro** (`target_palette` on
   `/generate-image-v2`, PixelLab 0.4.130) — an `imagePro` style's `palette`
   is now sent as the colors every pixel must use, with `maxColors` (2 to 64
   per image) and `paletteName`. The beta `smart` mapping is left out because
   PixelLab documents it as single-image only and `imagePro` returns a grid of
-  candidates below 171px. Cost unchanged and unmeasured with a palette.
+  candidates below 171px. **Measured once**: a 64×64 call with the Game Boy
+  palette billed exactly 10, and the picked candidate used only those four
+  colours.
 - **October 2026 Pro price cut** — PixelLab 0.4.128 moved every Pro tool from
   20/25/40 to 10/15/25 generations. Cost estimates now use the new prices,
   and `imagePro` (`generate-image-v2`) is tiered instead of a flat 40: a
@@ -450,9 +453,12 @@ connecting different tilesets") are now mostly covered; see the closed
   21 distinct corner combinations. Four tiles share corners with a twin and
   differ only in `pattern_4x4`, which pixelkiln records but cannot express in
   a four-bit Tiled/Godot corner mask.
-- **Unexercised live:** `lower_base_tile_id`/`upper_base_tile_id`, every
-  new shape control, and the top-down prices (Pro 15 or 25, standard planned
-  at 4 from PixelLab's quoted 1 to 4). Sidescroller tile counts at transition
+- **Measured once:** a Pro 32px set billed exactly 15, and a second set
+  connected to it through `lower_base_tile_id` billed exactly 15 and shared
+  its sand (docs/ENDPOINTS.md). `terrainRoundness: 2` with
+  `terrainConnectDiagonals` gave clean 45° edges. **Unexercised live:**
+  Pro at 64px, standard sets, `upper_base_tile_id`, and the other shape
+  controls. Sidescroller tile counts at transition
   sizes other than 0.25 are assumed to be 16. The one sidescroller call
   returned `metadata.transition_size: 0.0` although 0.25 was sent.
 - **Prompting advice** lives in the skill reference: end each terrain on
