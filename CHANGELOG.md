@@ -1,3 +1,15 @@
+# [0.89.0](https://github.com/gfargo/pixelkiln/compare/v0.88.0...v0.89.0) (2026-10-16)
+
+
+### Features
+
+* **pixellab:** connect terrain sets that share a terrain ([38d7796](https://github.com/gfargo/pixelkiln/commit/38d7796334ca8fbd40c936c587908578ad73ac93))
+* **pixellab:** describe a vfx for PixelLab's paid VFX artist ([135ecc1](https://github.com/gfargo/pixelkiln/commit/135ecc1e2565f6927f821905773115708299fc7f))
+* **pixellab:** generate sidescroller tilesets ([17035f5](https://github.com/gfargo/pixelkiln/commit/17035f585429dd990f9cfc02222b6a9146e370a7))
+* **pixellab:** model Pro tileset shape controls and price terrain sets by mode ([3a9a821](https://github.com/gfargo/pixelkiln/commit/3a9a8215052a987a6525b9af2314e94bf73eae6a))
+* **pixellab:** send the style palette to imagePro as a target palette ([f68a579](https://github.com/gfargo/pixelkiln/commit/f68a5798bec1bfd054857bd817b8174ef7afa110))
+* **revision:** add a normal-map mode and command for PixelLab ([ae2d869](https://github.com/gfargo/pixelkiln/commit/ae2d8698349ccd6688b92db11c4b6cc3151ef4c5))
+
 # [0.88.0](https://github.com/gfargo/pixelkiln/compare/v0.87.0...v0.88.0) (2026-10-11)
 
 
