@@ -15,7 +15,7 @@ export type CtaSection =
   | "gallery"
   | "characters"
   | "effects"
-  | "release"
+  | "provider_updates"
   | "safety"
   | "generator"
   | "provider_showcase"
