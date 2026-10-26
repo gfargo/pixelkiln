@@ -55,7 +55,7 @@ function Featured({ update }: { update: ProviderUpdate }) {
   return (
     <div className="updates-featured" id={update.id}>
       <p className="updates-meta">
-        <b>{update.provider}</b> {update.release} · {update.date}
+        <b>{update.provider}</b> {update.release ? `${update.release} · ` : ""}{update.date}
       </p>
       <h3>{update.title}</h3>
       <p className="updates-summary">
@@ -96,7 +96,7 @@ function Earlier({ update }: { update: ProviderUpdate }) {
     <article className="updates-row" id={update.id}>
       <p className="updates-meta">
         <b>{update.provider}</b> {update.release}
-        <br />
+        {update.release ? <br /> : " "}
         {update.date}
       </p>
       <div>
@@ -111,6 +111,13 @@ function Earlier({ update }: { update: ProviderUpdate }) {
             </li>
           ))}
         </ul>
+        {update.figures?.length ? (
+          <div className="updates-mini">
+            {update.figures.map((figure) => (
+              <Figure key={figure.src} figure={figure} />
+            ))}
+          </div>
+        ) : null}
         <Links update={update} />
       </div>
     </article>
