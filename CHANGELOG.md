@@ -1,3 +1,15 @@
+# [0.90.0](https://github.com/gfargo/pixelkiln/compare/v0.89.6...v0.90.0) (2026-10-30)
+
+
+### Bug Fixes
+
+* **pixellab:** refuse an animate-skeleton revision with no description at plan time ([70955d2](https://github.com/gfargo/pixelkiln/commit/70955d2d866391bfe84446493d6c3a827c3d535e))
+
+
+### Features
+
+* **characters:** sentence-driven skeleton-v3 loops ([7ee9186](https://github.com/gfargo/pixelkiln/commit/7ee9186ad8268ff8a32658b04a9d8681bd0e3910))
+
 ## [0.89.6](https://github.com/gfargo/pixelkiln/compare/v0.89.5...v0.89.6) (2026-10-30)
 
 ## [0.89.5](https://github.com/gfargo/pixelkiln/compare/v0.89.4...v0.89.5) (2026-10-30)
