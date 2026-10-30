@@ -412,6 +412,19 @@ try {
       select.value = value
       select.dispatchEvent(new Event("change", { bubbles: true }))
     }, engine)
+    // PixelLab poses a template only onto a character with a 3D skeleton, and a standard base has none.
+    const loopModes = () => page.evaluate(() => [...document.querySelectorAll(".studio-loop select")].map((s) => ({
+      value: (s as HTMLSelectElement).value,
+      v3Disabled: [...(s as HTMLSelectElement).options].find((o) => o.value === "skeleton-v3")!.disabled,
+    })))
+    const onV3 = await loopModes()
+    check(onV3.length > 0 && onV3.every((m) => m.value === "skeleton-v3" && !m.v3Disabled), `a v3 base starts its loops on skeleton-v3 (${JSON.stringify(onV3)})`)
+    await setEngine("standard")
+    const onStandard = await loopModes()
+    check(onStandard.length > 0 && onStandard.every((m) => m.value === "template" && m.v3Disabled), `a standard base starts its loops on template, with skeleton-v3 greyed out (${JSON.stringify(onStandard)})`)
+    await setEngine("v3")
+    const backOnV3 = await loopModes()
+    check(backOnV3.every((m) => m.value === "skeleton-v3" && !m.v3Disabled), "untouched loops return to skeleton-v3 when the engine goes back to v3")
     await setEngine("pro-flash")
     await page.waitForSelector(".studio-price .quote-live", { timeout: 10_000 })
     const live = await page.$eval(".studio-price", (n) => n.textContent ?? "")

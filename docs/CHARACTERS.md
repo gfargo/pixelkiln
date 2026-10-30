@@ -490,7 +490,10 @@ reference image change alone also makes it stale.
   the base with an optional sprite of your own (uploaded into `refs/`, so
   only the rotations are billed), any number of loops (each a template
   posed by `skeleton-v3` by default, or a plain template, v3, or pro loop,
-  in the directions you tick, mirrors added free), and a portrait. The
+  in the directions you tick, mirrors added free), and a portrait. A
+  `standard` base has no 3D skeleton for `skeleton-v3` to pose, so its loops
+  start on `template` and the skeleton-v3 choice is greyed out; the new-loop
+  form on an existing base does the same. The
   sheet prices the draft live, the way `plan` would. Pro Flash bases are
   priced by PixelLab's own quote (`/pro-flash/cost`, a free call) when the
   project has a key; those rows are marked live, and the offline estimate

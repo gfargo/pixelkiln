@@ -1,6 +1,25 @@
 import { postEdit, S, ui } from "./core.ts"
 import { openItem, render } from "./drawer.ts"
 
+/**
+ * PixelLab poses a template with the skeleton model only onto a character
+ * with a stored 3D skeleton, and a `standard` base has none: `plan` refuses
+ * that pairing. `pro` and `pro-flash` are unverified, so they stay allowed.
+ */
+export const skeletonV3Allowed = (engine: string | null | undefined) => engine !== 'standard';
+
+/** The mode a new template loop starts on for a base made with `engine`. */
+export const defaultLoopMode = (engine: string | null | undefined) => skeletonV3Allowed(engine) ? 'skeleton-v3' : 'template';
+
+/** Greys out the skeleton-v3 choice for an engine it cannot run on, and says why. */
+export function syncSkeletonOption(select: HTMLSelectElement, engine: string | null | undefined) {
+  const option = [...select.options].find((o) => o.value === 'skeleton-v3');
+  if (!option) return;
+  const allowed = skeletonV3Allowed(engine);
+  option.disabled = !allowed;
+  option.title = allowed ? '' : 'PixelLab poses a template only onto a v3 character. A standard base has no 3D skeleton; use template.';
+}
+
 /** What happens after a manifest-only save, which depends on whether this page can generate. */
 export const nextStep = () => GENERATION
   ? 'Generate it from its record when you are ready.'

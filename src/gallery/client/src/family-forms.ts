@@ -1,4 +1,4 @@
-import { addAssetAndOpen, showSaveError } from "./form-kit.ts"
+import { addAssetAndOpen, defaultLoopMode, showSaveError, syncSkeletonOption } from "./form-kit.ts"
 import { S, el, field, fmtCost, numberInput, numberOrNull, postEdit, projectOf, splitTags, ui } from "./core.ts"
 import { render, renderDrawer } from "./drawer.ts"
 
@@ -71,7 +71,14 @@ export function newAnimationForm(item) {
     );
   }
   mode.append(new Option('v3 (text-described)', 'v3'), new Option('pro (sequential, high quality)', 'pro'));
-  mode.value = isCharacter ? 'skeleton-v3' : 'v3';
+  // The base's engine decides whether skeleton-v3 can run: a loop's own record carries the animation mode, so look the engine up on its style.
+  const engineId = isCharacter
+    ? c.kind === 'animation'
+      ? S.snap.styles.find((st) => st.id === item.styleId && st.project === (item.project ?? null))?.characterMode
+      : c.mode
+    : null;
+  if (isCharacter) syncSkeletonOption(mode, engineId);
+  mode.value = isCharacter ? defaultLoopMode(engineId) : 'v3';
   const template = el('input'); template.type = 'text'; template.placeholder = 'e.g. walk, breathing-idle';
   const templateHint = {
     'skeleton-v3': 'A PixelLab template posed onto the character by the skeleton model, which moves it instead of redrawing it: steadier identity and colours. 2 to 4 generations and 3 to 5 minutes per direction; beta, Tier 1 plans and up.',
