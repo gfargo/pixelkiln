@@ -1,0 +1,21 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-website-skeleton",
+  "styles": {
+    "rig": { "generator": "map", "outDir": "out", "view": "low top-down", "noBackground": true }
+  },
+  "assets": {
+    "hero": { "prompt": "cheerful adventurer", "width": 64, "height": 64, "source": "hero-south.png", "styles": ["rig"] },
+    "hero-wave": {
+      "prompt": "wave",
+      "styles": ["rig"],
+      "revision": {
+        "mode": "animate-skeleton",
+        "from": "hero",
+        "keypointsFile": "poses/wave.json",
+        "direction": "south",
+        "description": "cheerful adventurer with short auburn hair, blue tunic, brown boots, red satchel"
+      }
+    }
+  }
+}
