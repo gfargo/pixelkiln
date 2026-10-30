@@ -299,7 +299,7 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   `resolveSpecs`/`estimate()`-time call — so `animate-skeleton`'s submission
   composes exactly one PixelLab endpoint, not two chained together. Both
   endpoints have since run live once (8 frames billed exactly 3), and the
-  run found that `description` is required: `plan` does not check for it yet. **Correcting this catalog's own prior research**: this entry
+  run found that `description` is required, which `plan` now enforces. **Correcting this catalog's own prior research**: this entry
   used to also claim a distinct "animation to animation" endpoint existed,
   for transferring an existing walk cycle's motion onto a different
   character. Checked against the live `animate_with_skeleton_v3` MCP tool

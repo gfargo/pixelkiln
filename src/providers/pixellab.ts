@@ -764,6 +764,21 @@ export class PixelLabProvider implements Provider {
       if (skeletonTemplate && !CHARACTER_TEMPLATES.includes(skeletonTemplate as (typeof CHARACTER_TEMPLATES)[number])) {
         throw new Error(`PixelLab animate-skeleton template "${skeletonTemplate}" is not one of ${CHARACTER_TEMPLATES.join(", ")}`)
       }
+      // Measured: /animate-with-skeleton-v3 answers 422 `description: Field
+      // required` without a description, and `action` (the asset's prompt) is
+      // the motion label. Both are optional on the wire in this client, so the
+      // check lives here, where `plan` and `gen` both reach it.
+      if (!spec.revision.description?.trim()) {
+        throw new Error(
+          `${spec.styleId}/${spec.assetId}: an animate-skeleton revision needs revision.description, what the character looks like ` +
+            `(for example "a knight in steel armour holding a sword"); PixelLab refuses the request without it`,
+        )
+      }
+      if (!spec.prompt.trim()) {
+        throw new Error(
+          `${spec.styleId}/${spec.assetId}: an animate-skeleton revision needs a prompt, a short motion label (for example "swinging the sword")`,
+        )
+      }
     }
     if (spec.revision?.mode === "animate" || spec.revision?.mode === "animate-pixminimax") {
       const { sourceWidth: width, sourceHeight: height, mode, frames, lastFrameWidth, lastFrameHeight } = spec.revision

@@ -492,7 +492,8 @@ a supplied 18-joint skeleton per frame instead of a text motion description:
         "mode": "animate-skeleton",
         "from": "hero-idle",
         "keypointsFile": "poses/hero-swing.json",
-        "direction": "south"
+        "direction": "south",
+        "description": "a knight in steel armour holding a sword"
       }
     }
   }
@@ -522,8 +523,8 @@ over the source image, locally and for free.
 `direction` is **required** for this mode (unlike `animate-pixminimax`,
 where it is optional). `frames`/`fps`/`lastFrame`/`enhancePrompt` are all
 rejected — the frame count comes from the keypoints file itself
-(`frames.length`), never a manifest number. `description` (optional: what the
-character *looks like* — colours, clothing, held items) is a new field
+(`frames.length`), never a manifest number. `description` (**required**: what
+the character *looks like* — colours, clothing, held items) is a new field
 distinct from the asset's own `prompt`, which this mode sends as the motion's
 short label (PixelLab's `action`) — the same `prompt`-as-motion convention
 `animate`/`animate-pixminimax` already use, just under this endpoint's own
@@ -560,8 +561,10 @@ anchor, and returned 8 frames at the sprite's own 64×64 size. The endpoint
 **requires both `description` and `action`**: the asset's `prompt` is sent as
 `action` (a short motion label such as "wave"), and `revision.description`
 (what the character looks like) is sent as `description`. Without a
-`description` PixelLab answers `422` with `description: Field required`,
-and `plan` does not catch that yet.
+`description` PixelLab answers `422` with `description: Field required`, so
+`plan` refuses an `animate-skeleton` revision without a non-empty
+`revision.description` (or an empty `prompt`) and the gallery's form asks for
+one.
 
 ComfyUI does not support this mode either, for the same structural reason as
 `animate`/`animate-pixminimax`.

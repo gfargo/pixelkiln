@@ -279,7 +279,7 @@ try {
     styles: { chars: { outDir: "out" } },
     assets: {
       hero: { prompt: "a knight", width: 64, height: 64, source: "art/hero.png" },
-      "hero-wave": { prompt: "waving", revision: { mode: "animate-skeleton", from: "hero", keypointsFile: "poses/hero-wave.json", direction: "south" } },
+      "hero-wave": { prompt: "waving", revision: { mode: "animate-skeleton", from: "hero", keypointsFile: "poses/hero-wave.json", direction: "south", description: "a knight in steel armour" } },
     },
   }, null, 2))
   const loadPoses = () => openProject(poseManifest, { env: false })

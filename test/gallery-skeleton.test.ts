@@ -61,6 +61,7 @@ const request = async (extra: Record<string, unknown> = {}) => ({
   prompt: "swinging the sword",
   direction: "south",
   keypointsFile: "poses/hero-swing.json",
+  description: "a knight in silver armour",
   set: poses,
   ...extra,
 })
@@ -87,6 +88,11 @@ describe("creating a skeleton animation from the gallery", () => {
     expect(item.skeleton).toMatchObject({ keypointsFile: "poses/hero-swing.json", set: poses, sha256: expect.stringMatching(/^[0-9a-f]{64}$/) })
     expect(item.revisionParentKey).toBe("chars/hero")
     expect(build.snapshot.items.find((candidate) => candidate.key === "chars/hero")!.skeleton).toBeNull()
+  })
+
+  it("refuses a request with no description", async () => {
+    const edit = createGalleryEditHandler({ manifestFor: () => manifestPath, reload })
+    await expect(edit(await request({ description: undefined }))).rejects.toThrow(/description/)
   })
 
   it("uses a keypoints file already in the project, and refuses one that is missing", async () => {

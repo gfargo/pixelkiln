@@ -106,10 +106,10 @@ export function skeletonAnimationForm(item) {
   const prompt = el('input'); prompt.type = 'text'; prompt.placeholder = 'e.g. swinging the sword downward'; prompt.required = true;
   const direction = el('select');
   for (const d of ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west']) direction.append(new Option(d, d));
-  const description = el('input'); description.type = 'text'; description.placeholder = 'optional: colours, clothing, held items';
+  const description = el('input'); description.type = 'text'; description.placeholder = 'e.g. a knight in steel armour holding a sword'; description.required = true;
   const row1 = el('div', 'row');
   row1.append(field('new asset id', id), field('facing', direction, 'Which way the sprite faces.'));
-  form.append(row1, field('motion', prompt, 'A short label for the movement; sent as PixelLab\'s action.'), field('looks like', description));
+  form.append(row1, field('motion', prompt, 'A short label for the movement; sent as PixelLab\'s action.'), field('looks like', description, 'What the character looks like: colours, clothing, held items. PixelLab refuses the request without it.'));
 
   const source = el('select');
   source.append(new Option('estimate from this sprite', 'estimate'), new Option('paste poses', 'paste'), new Option('use a file in the project', 'file'));
@@ -203,8 +203,8 @@ export function skeletonAnimationForm(item) {
     const body: any = {
       action: 'create-skeleton-animation', expectedSha256: pr!.manifestSha256, styleId: item.styleId, from: item.assetId,
       assetId: id.value.trim(), prompt: prompt.value.trim(), direction: direction.value, keypointsFile: file.value.trim(),
+      description: description.value.trim(),
     };
-    if (description.value.trim()) body.description = description.value.trim();
     if (source.value !== 'file') { body.set = set; if (overwrite.checked) body.overwrite = true; }
     if (item.project) body.project = item.project;
     try {
