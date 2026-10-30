@@ -1,3 +1,4 @@
+import type React from "react";
 import { providerUpdates, type ProviderUpdate, type UpdateFigure } from "@/app/lib/provider-updates";
 import { CodeWindow } from "@/app/ui/code-window";
 import { TrackedLink } from "@/app/ui/tracked-link";
@@ -33,7 +34,7 @@ function Figure({ figure }: { figure: UpdateFigure }) {
         {image}
       </picture>
       <figcaption>
-        <b>{figure.title}</b> {figure.caption}
+        <b>{figure.title}</b> <Inline text={figure.caption} />
       </figcaption>
     </figure>
   );
@@ -112,7 +113,7 @@ function Earlier({ update }: { update: ProviderUpdate }) {
           ))}
         </ul>
         {update.figures?.length ? (
-          <div className="updates-mini">
+          <div className="updates-mini" style={{ "--cols": Math.min(update.figures.length, 5) } as React.CSSProperties}>
             {update.figures.map((figure) => (
               <Figure key={figure.src} figure={figure} />
             ))}

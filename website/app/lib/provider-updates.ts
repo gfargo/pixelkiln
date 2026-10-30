@@ -18,7 +18,7 @@ export type UpdateFigure = {
   alt: string;
   width: number;
   height: number;
-  /** A bold lead-in, then the rest of the caption. */
+  /** A bold lead-in, then the rest of the caption (`backticks` mark code). */
   title: string;
   caption: string;
   /** `wide` figures take half the row, the rest a third. */
@@ -45,6 +45,66 @@ export type ProviderUpdate = {
 };
 
 export const providerUpdates: ProviderUpdate[] = [
+  {
+    id: "pixellab-skeleton-v3-custom",
+    provider: "PixelLab",
+    date: "October 2026",
+    title: "Custom animation on skeleton v3, from a sentence or your own poses",
+    summary:
+      "PixelLab's character creator now animates a character from one sentence or from skeletons you pose. PixelKiln sends both from a manifest. Each loop below billed exactly 3 generations for 8 frames.",
+    features: [
+      "A `skeleton-v3` loop with a `prompt` and no `template` animates the sentence: 3 to 15 frames, on a v3 character.",
+      "`animate-skeleton` poses your own 18-joint skeletons, and `pixelkiln estimate-skeleton` starts the file from an image.",
+      "A standard character has no 3D skeleton, so `plan` refuses it and says why.",
+      "Each direction of a sentence loop is its own request for now, so directions can move a little differently.",
+    ],
+    figures: [
+      {
+        src: "/showcase/skeleton/wave-sentence.gif",
+        still: "/showcase/skeleton/wave-sentence-still.png",
+        alt: "An adventurer with auburn hair and a blue tunic waving both arms overhead",
+        width: 288,
+        height: 288,
+        title: "from a sentence",
+        caption: "\"cheerfully waving both arms overhead\", 8 frames at 96×96. 3 generations.",
+        wide: true,
+      },
+      {
+        src: "/showcase/skeleton/wave-custom-pose.gif",
+        still: "/showcase/skeleton/wave-custom-pose-still.png",
+        alt: "The same adventurer raising and swinging both arms, following poses drawn by hand",
+        width: 256,
+        height: 256,
+        title: "from hand-edited poses",
+        caption: "eight skeletons edited from `estimate-skeleton`, 64×64. 3 generations.",
+        wide: true,
+      },
+    ],
+    code: {
+      title: "pixelkiln.manifest.json",
+      language: "json",
+      copyId: "updates_skeleton_manifest",
+      code: `
+"hero.cheer": {
+  "prompt": "cheerfully waving both arms overhead",
+  "animation": { "of": "hero", "mode": "skeleton-v3", "frames": 8, "directions": ["south"] }
+},
+"hero-wave": {
+  "prompt": "wave",
+  "revision": {
+    "mode": "animate-skeleton", "from": "hero",
+    "keypointsFile": "poses/wave.json", "direction": "south",
+    "description": "cheerful adventurer, blue tunic, red satchel"
+  }
+}
+`,
+    },
+    links: [
+      { id: "updates_skeleton_guide", label: "Read the PixelLab guide", href: "/docs/pixellab#custom-animation-on-skeleton-v3" },
+      { id: "updates_skeleton_sentence", label: "Loops from a sentence", href: "/docs/characters#loops-from-a-sentence" },
+      { id: "updates_skeleton_poses", label: "Pose a skeleton yourself", href: "/docs/revisions#skeleton-driven-animation" },
+    ],
+  },
   {
     id: "pixellab-0-4-130",
     provider: "PixelLab",
