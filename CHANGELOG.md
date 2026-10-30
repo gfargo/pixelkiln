@@ -1,3 +1,10 @@
+# [0.91.0](https://github.com/gfargo/pixelkiln/compare/v0.90.0...v0.91.0) (2026-10-30)
+
+
+### Features
+
+* **characters:** share one motion across the directions of a sentence loop ([3f1ad4d](https://github.com/gfargo/pixelkiln/commit/3f1ad4da62d5701276a9b08ae6ee3382ab48365e))
+
 # [0.90.0](https://github.com/gfargo/pixelkiln/compare/v0.89.6...v0.90.0) (2026-10-30)
 
 
