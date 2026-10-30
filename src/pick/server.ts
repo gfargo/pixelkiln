@@ -135,12 +135,15 @@ export async function prepareReview(
       const urls = state.status === "review" ? state.candidateUrls : state.frameUrls
       const frameUrls: string[] = []
       const frameAssets: [string, { path: string; contentType: string }][] = []
+      const frameSizes: ({ width: number; height: number } | null)[] = []
       for (const [index, url] of urls.entries()) {
         const cached = await cachedFrame(url)
         if (!cached) {
           frameUrls.push(url)
+          frameSizes.push(null)
           continue
         }
+        frameSizes.push(cached.contentType === "image/png" ? pngSize(await readFile(cached.path).catch(() => Buffer.alloc(0))) : null)
         const route = `${prefix}/review-frame/${encodeURIComponent(String(groups.length))}/${index}`
         frameAssets.push([route, cached])
         frameUrls.push(route)
@@ -170,6 +173,7 @@ export async function prepareReview(
         prompt: entry.prompt,
         reviewObjectId: entry.reviewObjectId,
         frameUrls,
+        ...(frameSizes.some(Boolean) ? { frameSizes } : {}),
         width: entry.width,
         height: entry.height,
         ...(state.status === "review-set"
