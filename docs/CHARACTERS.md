@@ -259,7 +259,10 @@ character from it, with no template to pick. `frames` takes PixelLab's own
   `directions`), so each direction's motion is written from the sentence
   separately and may differ a little. Appending to a recorded group is not
   wired up; the lock keeps each direction's `animationGroupId` for when it is.
-  Verified live is a single south direction only.
+  Verified live through PixelKiln with a single south direction on an
+  adopted v3 character: "jumping with joy and pumping both fists", 8 frames
+  at 96×96, billed 3, with `animationId` and `animationGroupId` saved in the
+  lock.
 
 ### Pose frames and other loop controls
 

@@ -922,9 +922,11 @@ generations and finished in about two minutes:
   added with `animation_group_id` move the same way (humanoids). pixelkiln
   sends this mode for a character loop with `mode: "skeleton-v3"`, a prompt,
   and no template (docs/CHARACTERS.md, "Loops from a sentence"), one request
-  per direction asset and without `animation_group_id`. Verified live with
-  one south direction on a v3 character; a standard-engine character is
-  refused (`has no stored 3D skeleton`).
+  per direction asset and without `animation_group_id`. Verified live twice
+  with one south direction on a v3 character, once by a direct call and once
+  through `pixelkiln gen` (a manifest loop on an `adopt`ed character, 8
+  frames at 96×96, billed 3, then `pick` and `fetch`); a standard-engine
+  character is refused (`has no stored 3D skeleton`).
 
 ## Characters, measured
 
