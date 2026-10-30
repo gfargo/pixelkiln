@@ -56,7 +56,7 @@ not merely a label edit.
 
 | Field | Type/default | Meaning |
 |---|---|---|
-| `prompt` | string, required unless `mirror`, `portrait`, `outfit`, or a template loop (`animation.template`) | The subject wording wrapped by the selected style's prompt prefix and suffix. A template loop is described by its template; a v3 or pro loop still needs the motion in words. |
+| `prompt` | string, required unless `mirror`, `portrait`, `outfit`, or a template loop (`animation.template`) | The subject wording wrapped by the selected style's prompt prefix and suffix. A template loop is described by its template; a v3, pro, or sentence (`skeleton-v3` with no template) loop still needs the motion in words. |
 | `width` / `height` | integer 16–8192 | Per-asset dimensions for generators that accept rectangular output. Provider limits may be lower. |
 | `size` | integer 16–8192 | Per-asset square size where the generator uses one dimension. |
 | `file` | string | Output path below the style's `outDir`; defaults to `<category>/<assetId>.png`. |
@@ -66,7 +66,7 @@ not merely a label edit.
 | `remoteId` | string | The provider's own id for art that already exists on the account, so `adopt` maps it without matching bytes: an object id, a character id, or `<character id>#<animation group id>`. Not part of the spec's identity. |
 | `revision` | object | Controlled dependency on another asset: `image-to-image`, `inpaint`, or `outpaint`; on PixelLab also `reduce-colors`, `correct-pixelart`, `remove-background`, `normal-map`, the animate modes (`animate`, `animate-pixminimax`, `animate-skeleton`), `interpolate`, and `edit-animation`. `engine: "pro-flash"` selects PixelLab's Pro Flash tier for `image-to-image`/`inpaint`. See [controlled revisions](REVISIONS.md). |
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](./CHARACTERS.md). |
-| `animation` | object | `character` styles: a loop of another character asset in one direction. `directions` (a list, instead of `direction`) declares the loop for several directions at once and fills the unnamed flips with mirrors; see [One loop, several directions](./CHARACTERS.md#one-loop-several-directions). |
+| `animation` | object | `character` styles: a loop of another character asset in one direction. `directions` (a list, instead of `direction`) declares the loop for several directions at once and fills the unnamed flips with mirrors; see [One loop, several directions](./CHARACTERS.md#one-loop-several-directions). `mode: "skeleton-v3"` with no `template` animates the asset's `prompt` as a sentence (3–15 `frames`, default 8; a v3 base); see [Loops from a sentence](./CHARACTERS.md#loops-from-a-sentence). |
 | `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
 | `outfit` | object | `character` styles: an existing loop's frames re-clothed from an outfit image, `{ "of": "<loop asset>", "reference": "<image>" }`, with optional `additionalInstructions`. See [Outfit transfer](./CHARACTERS.md#outfit-transfer). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |

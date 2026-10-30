@@ -1459,7 +1459,10 @@ export class PixelLabClient {
    * Every mode but skeleton-v3 goes to `/animate-character`, the path whose
    * shapes were measured live. skeleton-v3 is documented only on
    * `/characters/animations`, which takes the same request and answers with
-   * the same job list (plus an `animation_group_id`).
+   * the same job list (plus an `animation_group_id`). With no `template` it
+   * animates `actionDescription` as a sentence, 3 to 15 `frameCount` frames
+   * written into one 3D motion; measured on a v3 character (8 frames, 64px:
+   * 3 generations, frames back at 96x96).
    */
   async animateCharacter(args: {
     characterId: string
@@ -1499,7 +1502,8 @@ export class PixelLabClient {
         ...(args.template ? { template_animation_id: args.template } : {}),
         ...(args.actionDescription ? { action_description: args.actionDescription } : {}),
         ...(args.description ? { description: args.description } : {}),
-        ...(args.mode === "v3" && args.frameCount ? { frame_count: args.frameCount } : {}),
+        // A template fixes its own frame count; v3 and a skeleton-v3 sentence take one.
+        ...((args.mode === "v3" || (args.mode === "skeleton-v3" && !args.template)) && args.frameCount ? { frame_count: args.frameCount } : {}),
         ...(args.mode === "v3" && args.keepFirstFrame === false ? { keep_first_frame: false } : {}),
         ...(args.mode === "v3" && args.startFrame ? { custom_start_frame: encode(args.startFrame) } : {}),
         ...(args.mode === "v3" && args.endFrame ? { end_frame: encode(args.endFrame) } : {}),

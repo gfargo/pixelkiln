@@ -45,7 +45,8 @@ export const SkeletonAnimationRequestSchema = z
     /** The motion, sent as PixelLab's `action`. */
     prompt: z.string().min(1),
     direction: CharacterDirectionSchema,
-    description: z.string().min(1).optional(),
+    /** What the character looks like; PixelLab refuses the request without it. */
+    description: z.string().min(1),
     skeletonTemplate: z.string().min(1).optional(),
     /** Manifest-relative JSON path inside the project. */
     keypointsFile: z.string().min(1),
@@ -202,7 +203,7 @@ export async function createSkeletonAnimation(
           from: request.from,
           keypointsFile: relative.split(path.sep).join("/"),
           direction: request.direction,
-          ...(request.description ? { description: request.description } : {}),
+          description: request.description,
           ...(request.skeletonTemplate ? { skeletonTemplate: request.skeletonTemplate } : {}),
         },
       },

@@ -130,7 +130,7 @@ describe("runSkeletonPreview", () => {
       styles: { s: { outDir: "art" } },
       assets: {
         hero: { prompt: "a knight", width: 64, height: 64 },
-        "hero-swing": { prompt: "swing", revision: { mode: "animate-skeleton", from: "hero", keypointsFile: "poses.json", direction: "south" } },
+        "hero-swing": { prompt: "swing", revision: { mode: "animate-skeleton", from: "hero", keypointsFile: "poses.json", direction: "south", description: "a knight" } },
         other: { prompt: "a rock", width: 64, height: 64 },
       },
     }))

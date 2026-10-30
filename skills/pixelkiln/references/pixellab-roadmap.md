@@ -31,6 +31,13 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
 
 ## Already closed since this catalog's research began
 
+- **Sentence-driven skeleton-v3 loops** — a character loop with
+  `mode: "skeleton-v3"`, no `template`, and a `prompt` animates the sentence
+  on `/characters/animations` (`action_description`, 3 to 15 `frames`). Billed
+  exactly 3 generations for 8 frames at 64px, frames back at 96×96; the plan
+  budgets 4. See `docs/CHARACTERS.md`, "Loops from a sentence". Shared motion
+  across directions is not wired up (one request per direction asset).
+
 - **Skeleton-v3 template loops** — `/characters/animations`'
   `mode: "skeleton-v3"` poses a template with the skeleton video model
   (2 to 4 generations and 3 to 5 minutes per direction, beta, Tier 1 and
@@ -299,7 +306,7 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   `resolveSpecs`/`estimate()`-time call — so `animate-skeleton`'s submission
   composes exactly one PixelLab endpoint, not two chained together. Both
   endpoints have since run live once (8 frames billed exactly 3), and the
-  run found that `description` is required: `plan` does not check for it yet. **Correcting this catalog's own prior research**: this entry
+  run found that `description` is required, which `plan` now enforces. **Correcting this catalog's own prior research**: this entry
   used to also claim a distinct "animation to animation" endpoint existed,
   for transferring an existing walk cycle's motion onto a different
   character. Checked against the live `animate_with_skeleton_v3` MCP tool
@@ -517,19 +524,16 @@ missing:
   Aseprite. pixelkiln has no frame-set concatenation; `lastFrame` can pin a
   clip's ending to another clip's frame file, but the two sets stay separate.
 
-## Sentence-driven skeleton-v3 loops
+## Sentence-driven skeleton-v3 loops, shared motion across directions
 
-PixelLab's October 2026 character-creator update adds custom animation on the
-skeleton v3 model: a sentence becomes one 3D motion that every direction of
-the animation is drawn from, so a direction added later moves the same way.
-It is `POST /characters/animations` with `mode: "skeleton-v3"`, an
-`action_description`, and no `template_animation_id` (3 to 15 frames, humanoid
-v3 characters). **Measured once**: an 8-frame south loop billed exactly 3 and
-came back at 96×96 (docs/ENDPOINTS.md, "Skeleton-driven motion, measured").
-Still a gap: a character loop's `mode: "skeleton-v3"` needs a `template`,
-and the request never sends `action_description` for it. Closing it means a
-loop that names `skeleton-v3` and a `prompt` without a template, a
-`frames` count from 3 to 15, and adding a direction to an existing group.
+PixelLab's sentence loops (`mode: "skeleton-v3"`, no template) are supported;
+see "Already closed". What is still open: every direction of one request is
+drawn from one 3D motion, and `animation_group_id` appends a direction to an
+existing animation so it moves the same way. pixelkiln makes one request per
+direction asset and never sends the group id, so each direction's motion is
+written separately. Closing it means linking the direction assets of a
+`directions` loop to one group (a batch like `1dir`'s, or the recorded
+`animationGroupId` of a sibling) and passing it on the later requests.
 
 ## Map Workshop (scene composition)
 

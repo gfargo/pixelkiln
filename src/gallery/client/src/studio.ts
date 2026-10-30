@@ -1,6 +1,6 @@
 import { $, el, field, fmtCost, fmtWhen, postEdit, S, ui } from "./core.ts"
 import { openItem, render } from "./drawer.ts"
-import { defaultLoopMode, nextStep, showSaveError, skeletonV3Allowed, syncSkeletonOption } from "./form-kit.ts"
+import { defaultLoopMode, nextStep, showSaveError, SKELETON_WORDS, SKELETON_WORDS_FRAMES, skeletonV3Allowed, syncSkeletonOption } from "./form-kit.ts"
 import { pollJobs, postGenerate, remainingBudget } from "./jobs.ts"
 
 /**
@@ -14,7 +14,8 @@ import { pollJobs, postGenerate, remainingBudget } from "./jobs.ts"
  * Engine defaults follow PixelLab's own recommendations: v3 for bases (its
  * "recommended entry point"), skeleton-v3 for template loops. A standard
  * base has no 3D skeleton for skeleton-v3 to pose, so its loops start on
- * template and the skeleton-v3 choice is greyed out.
+ * template and both skeleton-v3 choices (a template, or a sentence) are
+ * greyed out.
  */
 
 const ENGINES = [
@@ -30,6 +31,7 @@ const FOUR = ['south', 'east', 'north', 'west'];
 const PORTRAIT_SIZES = [16, 32, 48, 64, 128, 160];
 const LOOP_MODES = [
   { id: 'skeleton-v3', label: 'skeleton-v3: a template, posed by the skeleton model (steadiest; 2-4 per direction)' },
+  { id: SKELETON_WORDS, label: 'skeleton-v3: described in words (3-15 frames; 3 per direction measured)' },
   { id: 'template', label: 'template: a template, redrawn (1 per direction)' },
   { id: 'v3', label: 'v3: described in words' },
   { id: 'pro', label: 'pro: described in words, sequential (10-25 per direction)' },
@@ -68,7 +70,7 @@ function usedTemplates(projectId: string | null) {
 }
 const idPattern = '[^\\/\\\\:]+';
 
-interface LoopRow { id: HTMLInputElement; mode: HTMLSelectElement; picked: boolean; what: HTMLInputElement; directions: Map<string, HTMLInputElement>; wrap: HTMLElement; preview: HTMLElement }
+interface LoopRow { id: HTMLInputElement; mode: HTMLSelectElement; picked: boolean; what: HTMLInputElement; frames: HTMLInputElement; framesField: HTMLElement; directions: Map<string, HTMLInputElement>; wrap: HTMLElement; preview: HTMLElement }
 
 export function openStudio() {
   const host = $('dialog-host');
@@ -225,13 +227,17 @@ export function openStudio() {
     const engineId = loopEngine();
     syncSkeletonOption(row.mode, engineId);
     if (!row.picked) row.mode.value = defaultLoopMode(engineId);
-    else if (row.mode.value === 'skeleton-v3' && !skeletonV3Allowed(engineId)) row.mode.value = 'template';
+    else if (!skeletonV3Allowed(engineId)) {
+      if (row.mode.value === 'skeleton-v3') row.mode.value = 'template';
+      else if (row.mode.value === SKELETON_WORDS) row.mode.value = 'v3';
+    }
     syncLoopMode(row);
   }
   function syncLoopMode(row: LoopRow) {
     const t = templated(row.mode.value);
     row.what.placeholder = t ? 'template, e.g. walk, breathing-idle, running-8-frames' : 'the motion, e.g. "swings a sword overhead"';
     row.what.title = t ? 'A PixelLab template id: pick one, or type any id PixelLab has' : 'What the loop does';
+    row.framesField.hidden = row.mode.value !== SKELETON_WORDS;
     if (t) row.what.setAttribute('list', templateList.id); else row.what.removeAttribute('list');
     syncPreview(row);
   }
@@ -263,13 +269,17 @@ export function openStudio() {
       templateList.append(o);
     }
   }
-  function addLoopRow(defaults: { id?: string; mode?: string; what?: string; directions?: string[] } = {}) {
+  function addLoopRow(defaults: { id?: string; mode?: string; what?: string; frames?: string; directions?: string[] } = {}) {
     const wrap = el('div', 'studio-loop');
     const id = el('input'); id.type = 'text'; id.placeholder = 'walk'; id.required = true; id.pattern = idPattern; id.value = defaults.id ?? '';
     const mode = el('select');
     for (const m of LOOP_MODES) mode.append(new Option(m.label, m.id));
     mode.value = defaults.mode ?? defaultLoopMode(loopEngine());
     const what = el('input'); what.type = 'text'; what.required = true; what.value = defaults.what ?? '';
+    // Only a sentence loop takes a frame count here; a template decides its own.
+    const frames = el('input'); frames.type = 'number'; frames.min = String(SKELETON_WORDS_FRAMES.min); frames.max = String(SKELETON_WORDS_FRAMES.max); frames.step = '1';
+    frames.placeholder = String(SKELETON_WORDS_FRAMES.fallback); frames.value = defaults.frames ?? '';
+    const framesField = field('frames', frames, '3 to 15; each direction is billed separately.');
     const dirs = el('div', 'studio-dirs');
     const boxes = new Map<string, HTMLInputElement>();
     for (const d of COMPASS) {
@@ -280,12 +290,13 @@ export function openStudio() {
     }
     const remove = el('button', null, 'Remove'); remove.type = 'button';
     const preview = el('div', 'studio-tpl-preview'); preview.hidden = true;
-    const row: LoopRow = { id, mode, picked: defaults.mode !== undefined, what, directions: boxes, wrap, preview };
+    const row: LoopRow = { id, mode, picked: defaults.mode !== undefined, what, frames, framesField, directions: boxes, wrap, preview };
     what.addEventListener('input', () => syncPreview(row));
     remove.onclick = () => { loops.splice(loops.indexOf(row), 1); wrap.remove(); schedulePrice(); keepDraft(); };
     mode.onchange = () => { row.picked = true; syncLoopMode(row); schedulePrice(); };
     const line = el('div', 'row');
-    line.append(field('loop id', id), field('mode', mode), field('template or motion', what));
+    line.append(field('loop id', id), field('mode', mode), field('template or motion', what), framesField);
+    frames.oninput = () => { schedulePrice(); keepDraft(); };
     wrap.append(line, preview, dirs, remove);
     loopList.append(wrap);
     loops.push(row);
@@ -314,6 +325,12 @@ export function openStudio() {
       if (templated(row.mode.value)) {
         animation.template = row.what.value.trim();
         if (row.mode.value === 'skeleton-v3') animation.mode = 'skeleton-v3';
+      } else if (row.mode.value === SKELETON_WORDS) {
+        // The sentence is the asset's prompt; no template makes it a sentence loop.
+        animation.mode = 'skeleton-v3';
+        asset.prompt = row.what.value.trim();
+        const count = row.frames.value.trim();
+        if (count !== '' && Number(count) !== SKELETON_WORDS_FRAMES.fallback) animation.frames = Number(count);
       } else {
         animation.mode = row.mode.value;
         asset.prompt = row.what.value.trim();
@@ -493,7 +510,7 @@ export function openStudio() {
     project: project.value, style: style.value, styleId: styleId.value, engine: engine.value, size: size.value,
     directions: directions.value, body: body.value, view: view.value, outDir: outDir.value, outDirTouched,
     baseId: baseId.value, prompt: prompt.value, reference,
-    loops: loops.map((r) => ({ id: r.id.value, mode: r.mode.value, what: r.what.value, directions: [...r.directions].filter(([, b]) => b.checked).map(([d]) => d) })),
+    loops: loops.map((r) => ({ id: r.id.value, mode: r.mode.value, what: r.what.value, frames: r.frames.value, directions: [...r.directions].filter(([, b]) => b.checked).map(([d]) => d) })),
     portrait: portrait.checked, portraitSize: portraitSize.value,
   });
   let draftTimer: ReturnType<typeof setTimeout> | null = null;
@@ -528,7 +545,7 @@ export function openStudio() {
     }
     portrait.checked = Boolean(draft.portrait); set(portraitSize, draft.portraitSize);
     syncStyle();
-    for (const l of Array.isArray(draft.loops) ? draft.loops : []) addLoopRow({ id: l.id, mode: l.mode, what: l.what, directions: l.directions });
+    for (const l of Array.isArray(draft.loops) ? draft.loops : []) addLoopRow({ id: l.id, mode: l.mode, what: l.what, frames: l.frames, directions: l.directions });
     const note = el('div', 'notice studio-draft');
     note.append(document.createTextNode('Picked up the draft you left ' + (fmtWhen(draft.savedAt) || 'earlier') + '. '));
     const discard = el('button', 'linkish', 'Start over'); discard.type = 'button';

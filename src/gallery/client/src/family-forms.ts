@@ -1,4 +1,4 @@
-import { addAssetAndOpen, defaultLoopMode, showSaveError, syncSkeletonOption } from "./form-kit.ts"
+import { addAssetAndOpen, defaultLoopMode, showSaveError, SKELETON_WORDS, SKELETON_WORDS_FRAMES, syncSkeletonOption } from "./form-kit.ts"
 import { S, el, field, fmtCost, numberInput, numberOrNull, postEdit, projectOf, splitTags, ui } from "./core.ts"
 import { render, renderDrawer } from "./drawer.ts"
 
@@ -67,6 +67,7 @@ export function newAnimationForm(item) {
   if (isCharacter) {
     mode.append(
       new Option('skeleton-v3 (a template, posed by the skeleton model; steadiest)', 'skeleton-v3'),
+      new Option('skeleton-v3: described in words (3-15 frames; 3 per direction measured)', SKELETON_WORDS),
       new Option('template (a template, redrawn; 1 generation)', 'template'),
     );
   }
@@ -84,8 +85,10 @@ export function newAnimationForm(item) {
     'skeleton-v3': 'A PixelLab template posed onto the character by the skeleton model, which moves it instead of redrawing it: steadier identity and colours. 2 to 4 generations and 3 to 5 minutes per direction; beta, Tier 1 plans and up.',
     template: 'A PixelLab template, redrawn frame by frame; 1 generation regardless of frame count.',
   };
+  const wordsHint = 'Needs a v3 base. The sentence is written into one 3D motion, 3 to 15 frames; the canvas can grow around the sprite. About 3 generations per direction measured; beta, Tier 1 plans and up.';
   const templateField = field('template id', template, templateHint.template);
   const frames = el('input'); frames.type = 'number'; frames.min = '4'; frames.max = '16'; frames.step = '2'; frames.placeholder = '8';
+  const framesField = field('frames', frames);
   const fps = el('input'); fps.type = 'number'; fps.min = '1'; fps.max = '60'; fps.placeholder = '8';
   const directionField = (() => {
     if (c.directions === 1) return null;
@@ -101,9 +104,10 @@ export function newAnimationForm(item) {
   if (directionField) row1.append(directionField.wrap);
   form.append(row1, field('what it does', prompt, 'The style still adds its prefix and suffix.'));
   if (isCharacter) form.append(templateField);
-  const row2 = el('div', 'row'); row2.append(field('frames', frames), field('fps', fps));
+  const row2 = el('div', 'row'); row2.append(framesField, field('fps', fps));
   form.append(row2);
-  if (subject) form.append(field('subject override', subject));
+  const subjectField = subject ? field('subject override', subject) : null;
+  if (subjectField) form.append(subjectField);
   const syncMode = () => {
     const isTemplate = isCharacter && (mode.value === 'template' || mode.value === 'skeleton-v3');
     templateField.style.display = isTemplate ? '' : 'none';
@@ -112,7 +116,15 @@ export function newAnimationForm(item) {
     template.required = isTemplate;
     // The template says what happens; the text only has to for v3 and pro.
     prompt.required = !isTemplate;
+    const words = isCharacter && mode.value === SKELETON_WORDS;
     row2.style.display = isTemplate ? 'none' : '';
+    // A sentence loop takes PixelLab's 3 to 15 frames, odd included; v3 and pro take an even 4 to 16.
+    frames.min = words ? String(SKELETON_WORDS_FRAMES.min) : '4';
+    frames.max = words ? String(SKELETON_WORDS_FRAMES.max) : '16';
+    frames.step = words ? '1' : '2';
+    if (words) frames.title = wordsHint; else frames.removeAttribute('title');
+    // PixelLab's description for a sentence request is unverified, so the manifest refuses a subject there.
+    if (subjectField) subjectField.style.display = words ? 'none' : '';
   };
   if (isCharacter) { mode.onchange = syncMode; syncMode(); } else { templateField.style.display = 'none'; }
   const actions = el('div', 'actions');
@@ -130,11 +142,12 @@ export function newAnimationForm(item) {
       animation.template = template.value.trim();
       if (mode.value === 'skeleton-v3') animation.mode = 'skeleton-v3';
     } else {
-      animation.mode = mode.value;
+      // A sentence loop is skeleton-v3 with no template; the form's own value for it is not a manifest mode.
+      animation.mode = mode.value === SKELETON_WORDS ? 'skeleton-v3' : mode.value;
       if (frames.value.trim() !== '') animation.frames = Number(frames.value);
       if (fps.value.trim() !== '') animation.fps = Number(fps.value);
     }
-    if (subject && subject.value.trim()) animation.subject = subject.value.trim();
+    if (subject && subject.value.trim() && mode.value !== SKELETON_WORDS) animation.subject = subject.value.trim();
     const asset = { prompt: prompt.value, styles: [item.styleId], animation };
     try {
       const body: any = { action: 'add-asset', assetId: id.value.trim(), expectedSha256: pr!.manifestSha256, asset };

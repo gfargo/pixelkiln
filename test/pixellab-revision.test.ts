@@ -767,7 +767,7 @@ describe("PixelLab provider: animate-skeleton", () => {
           prompt: "swinging the sword",
           width: 32,
           height: 32,
-          revision: { mode: "animate-skeleton", from: "source", direction: "south", ...(keypointsFile ? { keypointsFile } : {}), ...revisionExtra },
+          revision: { mode: "animate-skeleton", from: "source", direction: "south", description: "a knight in steel armour", ...(keypointsFile ? { keypointsFile } : {}), ...revisionExtra },
         },
       },
     }))
@@ -790,6 +790,13 @@ describe("PixelLab provider: animate-skeleton", () => {
         return manifestPath
       })()),
     ).rejects.toThrow(/require a direction/)
+  })
+
+  it("refuses a revision with no description at plan time, naming the field", async () => {
+    await expect(resolveSpecs(await writeProject({ description: undefined }, { frameCount: 3 }), { assets: ["revised"] }))
+      .rejects.toThrow(/needs revision\.description.*for example/)
+    await expect(resolveSpecs(await writeProject({ description: "   " }, { frameCount: 3 }), { assets: ["revised"] }))
+      .rejects.toThrow(/needs revision\.description/)
   })
 
   it("rejects keypointsFile/skeletonTemplate/description/direction on a mode other than animate-skeleton", async () => {
