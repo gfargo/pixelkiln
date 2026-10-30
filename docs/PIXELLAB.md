@@ -100,6 +100,52 @@ beside the submit-time `cost` estimate a wave budget spends against;
 `pixelkiln history`, `plan --json`, and the gallery show both when they
 differ (docs/ENDPOINTS.md, "Limits and billing").
 
+## Custom animation on skeleton v3
+
+PixelLab's character creator can now animate a character on its skeleton v3
+model from a sentence or from skeletons you pose, and the same two paths are
+in the API. PixelKiln sends both from a manifest.
+
+A loop with `mode: "skeleton-v3"` and no `template` animates its `prompt`:
+
+```jsonc
+"hero.cheer": {
+  "prompt": "cheerfully waving both arms overhead",
+  "animation": { "of": "hero", "mode": "skeleton-v3", "frames": 8, "directions": ["south"] }
+}
+```
+
+An `animate-skeleton` revision poses the sprite along skeletons you give it.
+`pixelkiln estimate-skeleton` writes the file from an image, you edit the
+joints, and `skeleton-preview` draws them over the sprite before you spend:
+
+```jsonc
+"hero-wave": {
+  "prompt": "wave",
+  "styles": ["rig"],
+  "revision": {
+    "mode": "animate-skeleton", "from": "hero",
+    "keypointsFile": "poses/wave.json", "direction": "south",
+    "description": "cheerful adventurer with short auburn hair, blue tunic"
+  }
+}
+```
+
+- Both need a v3 character. A `standard` base has no 3D skeleton for the model
+  to pose, so `plan` refuses the loop and names the engine.
+- The revision's `prompt` is the motion ("wave") and its `description` is how
+  the character looks. PixelLab requires both, and `plan` refuses a revision
+  without a description.
+- Each billed exactly 3 generations for 8 frames, measured live. The sentence
+  loop came back at 96×96 from a 64px character; the posed one stayed 64×64.
+  [The home page](https://pixelkiln.griffen.codes/#updates) shows both.
+- Each direction of a sentence loop is its own request for now, so a loop with
+  several directions can move a little differently in each. PixelLab can draw
+  every direction from one motion, but PixelKiln does not send that yet.
+
+See [Loops from a sentence](./CHARACTERS.md#loops-from-a-sentence) and
+[Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation).
+
 ## What changed in PixelLab 0.4.130
 
 PixelLab 0.4.130 (October 2026) added four things. PixelKiln covers each:
