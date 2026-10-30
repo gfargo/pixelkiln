@@ -553,11 +553,15 @@ Cost uses PixelLab's own documented anchors (3 frames = 2 generations, 8 = 3,
 15 = 4 — barely moving with length, unlike `animate`/`animate-pixminimax`'s
 canvas-area formula) and interpolates between the nearest two for any
 in-between frame count, ceiling'd — the safe direction for `--budget` — since
-no in-between value is confirmed live. **Neither `animate-with-skeleton-v3`
-nor `estimate-skeleton` has been exercised against a live account**; request
-field names come from the live `animate_with_skeleton_v3` MCP tool schema
-(the same authoritative source already trusted for the character/object
-family), not an observed call.
+no in-between value is confirmed live. **Both have now run live once**
+(October 2026): `estimate-skeleton` on a 64×64 sprite, then an 8-frame
+`animate-skeleton` revision of it billed exactly 3 generations, matching the
+anchor, and returned 8 frames at the sprite's own 64×64 size. The endpoint
+**requires both `description` and `action`**: the asset's `prompt` is sent as
+`action` (a short motion label such as "wave"), and `revision.description`
+(what the character looks like) is sent as `description`. Without a
+`description` PixelLab answers `422` with `description: Field required`,
+and `plan` does not catch that yet.
 
 ComfyUI does not support this mode either, for the same structural reason as
 `animate`/`animate-pixminimax`.
