@@ -297,8 +297,9 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   is wrapped too, but deliberately kept outside the manifest pipeline — a
   standalone `pixelkiln estimate-skeleton` CLI command, not a
   `resolveSpecs`/`estimate()`-time call — so `animate-skeleton`'s submission
-  composes exactly one never-tested-live PixelLab endpoint, not two chained
-  together. **Correcting this catalog's own prior research**: this entry
+  composes exactly one PixelLab endpoint, not two chained together. Both
+  endpoints have since run live once (8 frames billed exactly 3), and the
+  run found that `description` is required: `plan` does not check for it yet. **Correcting this catalog's own prior research**: this entry
   used to also claim a distinct "animation to animation" endpoint existed,
   for transferring an existing walk cycle's motion onto a different
   character. Checked against the live `animate_with_skeleton_v3` MCP tool
@@ -515,6 +516,20 @@ missing:
 - **Joining two clips.** The video joins two orb animations end to end in
   Aseprite. pixelkiln has no frame-set concatenation; `lastFrame` can pin a
   clip's ending to another clip's frame file, but the two sets stay separate.
+
+## Sentence-driven skeleton-v3 loops
+
+PixelLab's October 2026 character-creator update adds custom animation on the
+skeleton v3 model: a sentence becomes one 3D motion that every direction of
+the animation is drawn from, so a direction added later moves the same way.
+It is `POST /characters/animations` with `mode: "skeleton-v3"`, an
+`action_description`, and no `template_animation_id` (3 to 15 frames, humanoid
+v3 characters). **Measured once**: an 8-frame south loop billed exactly 3 and
+came back at 96×96 (docs/ENDPOINTS.md, "Skeleton-driven motion, measured").
+Still a gap: a character loop's `mode: "skeleton-v3"` needs a `template`,
+and the request never sends `action_description` for it. Closing it means a
+loop that names `skeleton-v3` and a `prompt` without a template, a
+`frames` count from 3 to 15, and adding a direction to an existing group.
 
 ## Map Workshop (scene composition)
 

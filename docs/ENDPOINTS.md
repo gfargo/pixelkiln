@@ -894,6 +894,34 @@ Listed so the gaps are known rather than assumed away:
   `animate-character`, portraits, and outfit transfer are covered in full; see
   the September 2026 measurements below.
 
+## Skeleton-driven motion, measured
+
+October 2026, on a v3 character (64×64, `pixen_v3`), each billed exactly 3
+generations and finished in about two minutes:
+
+- **`POST /animate-with-skeleton-v3`** (pixelkiln's `animate-skeleton`):
+  8 hand-edited poses on a 64×64 sprite returned 8 frames at 64×64, matching
+  PixelLab's anchor (8 frames = 3). `description` and `action` are both
+  required. Sent with neither, the endpoint answers `422` with a field
+  error for each, and a failed request bills nothing. The completed job's
+  `last_response` carries `images` (base64, `width`, `height`), `flow_kind`,
+  and `billing_usage` beside the top-level `usage`.
+- **`POST /characters/animations`, `mode: "skeleton-v3"` with no
+  `template_animation_id`** (PixelLab's new custom motion): a one-sentence
+  `action_description` and `frame_count` 8 returned 8 frames at **96×96**
+  (the character's own canvas grows from 64) in one job for `south`, saved
+  onto the character as an animation (`animation_id`, `animation_group_id`),
+  and billed 3. The submit answers `{ background_job_ids, directions,
+  animation_group_id, status, enhanced_prompt, enhance_usage }`. The finished
+  job's `last_response` has `images`, `storage_urls.frames`,
+  `generation_model: "skeleton-v3_custom"`, `animation_description`, and
+  `billing_usage: {usd: 0, type: "generations", generations: 3}`, the same
+  nested field as the other character jobs, which is where `poll` looks when
+  the top-level amount is a dollar zero. PixelLab says the action is written
+  into one 3D motion that every direction is drawn from, so later directions
+  added with `animation_group_id` move the same way (humanoids). pixelkiln
+  does not send this mode yet.
+
 ## Characters, measured
 
 - Standard bases draw on a canvas 28px larger than `image_size` (64 → 92,
