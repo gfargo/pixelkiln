@@ -1,6 +1,6 @@
 import { $, el, field, fmtCost, fmtWhen, postEdit, S, ui } from "./core.ts"
 import { openItem, render } from "./drawer.ts"
-import { nextStep, showSaveError } from "./form-kit.ts"
+import { defaultLoopMode, nextStep, showSaveError, skeletonV3Allowed, syncSkeletonOption } from "./form-kit.ts"
 import { pollJobs, postGenerate, remainingBudget } from "./jobs.ts"
 
 /**
@@ -12,7 +12,9 @@ import { pollJobs, postGenerate, remainingBudget } from "./jobs.ts"
  * under the session budget.
  *
  * Engine defaults follow PixelLab's own recommendations: v3 for bases (its
- * "recommended entry point"), skeleton-v3 for template loops.
+ * "recommended entry point"), skeleton-v3 for template loops. A standard
+ * base has no 3D skeleton for skeleton-v3 to pose, so its loops start on
+ * template and the skeleton-v3 choice is greyed out.
  */
 
 const ENGINES = [
@@ -66,7 +68,7 @@ function usedTemplates(projectId: string | null) {
 }
 const idPattern = '[^\\/\\\\:]+';
 
-interface LoopRow { id: HTMLInputElement; mode: HTMLSelectElement; what: HTMLInputElement; directions: Map<string, HTMLInputElement>; wrap: HTMLElement; preview: HTMLElement }
+interface LoopRow { id: HTMLInputElement; mode: HTMLSelectElement; picked: boolean; what: HTMLInputElement; directions: Map<string, HTMLInputElement>; wrap: HTMLElement; preview: HTMLElement }
 
 export function openStudio() {
   const host = $('dialog-host');
@@ -172,6 +174,8 @@ export function openStudio() {
   const characterStyles = () => S.snap.styles.filter((s) => s.generator === 'character' && s.project === projectId());
   const chosenEngine = () => ENGINES.find((e) => e.id === engine.value)!;
   const isNewStyle = () => style.value === '';
+  /** The engine the base will be drawn with: the new style's pick, or the chosen style's own. */
+  const loopEngine = () => isNewStyle() ? chosenEngine().id : characterStyles().find((s) => s.id === style.value)?.characterMode ?? 'standard';
   const styleDirections = () => {
     if (isNewStyle()) return Number(directions.value) === 4 ? FOUR : COMPASS;
     return COMPASS;
@@ -201,7 +205,7 @@ export function openStudio() {
     newStyle.hidden = !isNewStyle();
     styleId.required = isNewStyle();
     if (!outDirTouched) outDir.value = 'art/' + (styleId.value.trim() || 'characters');
-    for (const row of loops) syncLoopDirections(row);
+    for (const row of loops) { syncLoopDirections(row); syncLoopEngine(row); }
   }
 
   function syncLoopDirections(row: LoopRow) {
@@ -211,6 +215,18 @@ export function openStudio() {
       wrap.hidden = !allowed.includes(d);
       if (wrap.hidden) box.checked = false;
     }
+  }
+  /**
+   * Keeps every loop on a mode the base's engine can run. A row nobody has
+   * touched follows the engine's default; a row the person chose skeleton-v3
+   * on falls back to template when the engine cannot pose a skeleton.
+   */
+  function syncLoopEngine(row: LoopRow) {
+    const engineId = loopEngine();
+    syncSkeletonOption(row.mode, engineId);
+    if (!row.picked) row.mode.value = defaultLoopMode(engineId);
+    else if (row.mode.value === 'skeleton-v3' && !skeletonV3Allowed(engineId)) row.mode.value = 'template';
+    syncLoopMode(row);
   }
   function syncLoopMode(row: LoopRow) {
     const t = templated(row.mode.value);
@@ -252,7 +268,7 @@ export function openStudio() {
     const id = el('input'); id.type = 'text'; id.placeholder = 'walk'; id.required = true; id.pattern = idPattern; id.value = defaults.id ?? '';
     const mode = el('select');
     for (const m of LOOP_MODES) mode.append(new Option(m.label, m.id));
-    mode.value = defaults.mode ?? 'skeleton-v3';
+    mode.value = defaults.mode ?? defaultLoopMode(loopEngine());
     const what = el('input'); what.type = 'text'; what.required = true; what.value = defaults.what ?? '';
     const dirs = el('div', 'studio-dirs');
     const boxes = new Map<string, HTMLInputElement>();
@@ -264,17 +280,17 @@ export function openStudio() {
     }
     const remove = el('button', null, 'Remove'); remove.type = 'button';
     const preview = el('div', 'studio-tpl-preview'); preview.hidden = true;
-    const row: LoopRow = { id, mode, what, directions: boxes, wrap, preview };
+    const row: LoopRow = { id, mode, picked: defaults.mode !== undefined, what, directions: boxes, wrap, preview };
     what.addEventListener('input', () => syncPreview(row));
     remove.onclick = () => { loops.splice(loops.indexOf(row), 1); wrap.remove(); schedulePrice(); keepDraft(); };
-    mode.onchange = () => { syncLoopMode(row); schedulePrice(); };
+    mode.onchange = () => { row.picked = true; syncLoopMode(row); schedulePrice(); };
     const line = el('div', 'row');
     line.append(field('loop id', id), field('mode', mode), field('template or motion', what));
     wrap.append(line, preview, dirs, remove);
     loopList.append(wrap);
     loops.push(row);
-    syncLoopMode(row);
     syncLoopDirections(row);
+    syncLoopEngine(row);
   }
 
   // ---- the batch ----------------------------------------------------------
@@ -520,8 +536,8 @@ export function openStudio() {
     note.append(discard);
     form.prepend(note);
   } else {
-    addLoopRow({ id: 'walk', mode: 'skeleton-v3', what: 'walk', directions: ['south', 'west', 'north'] });
-    addLoopRow({ id: 'idle', mode: 'skeleton-v3', what: 'breathing-idle', directions: ['south'] });
+    addLoopRow({ id: 'walk', what: 'walk', directions: ['south', 'west', 'north'] });
+    addLoopRow({ id: 'idle', what: 'breathing-idle', directions: ['south'] });
   }
   updatePrice();
   setTimeout(() => baseId.focus(), 0);

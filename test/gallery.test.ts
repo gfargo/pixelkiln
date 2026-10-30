@@ -271,6 +271,23 @@ describe("buildGallerySnapshot", () => {
     expect(by("cast/anvil")).toBeUndefined()
   })
 
+  it("reports a character style's engine, defaulting to standard, and none for other generators", async () => {
+    const { loaded, specs } = await project({
+      name: "engines",
+      styles: {
+        v3cast: { generator: "character", outDir: "v3", size: 64, mode: "v3" },
+        plaincast: { generator: "character", outDir: "plain", size: 64 },
+        props: { generator: "map", outDir: "props" },
+      },
+      assets: { prop: { prompt: "a prop", styles: ["props"] } },
+    })
+    const { snapshot } = await buildGallerySnapshot({ loaded, specs, lock: { version: 2, entries: {} }, lockPath })
+    const mode = (id: string) => snapshot.styles.find((style) => style.id === id)!.characterMode
+    expect(mode("v3cast")).toBe("v3")
+    expect(mode("plaincast")).toBe("standard")
+    expect(mode("props")).toBeNull()
+  })
+
   it("places objectPro states and loops under their parents the same way a character does", async () => {
     const { loaded, specs } = await project({
       name: "props",

@@ -236,6 +236,12 @@ export interface GalleryStyle {
   /** Strip the generated background (sent for pixflux and non-PixelLab providers). */
   noBackground: boolean
   quality: boolean
+  /**
+   * A `character` style's creation engine (`standard` when the style names
+   * none, as in the manifest); null for any other generator. The studio and
+   * the new-loop form read it to pick a loop mode the engine can run.
+   */
+  characterMode: string | null
   /** Family counts for a `character` style; null otherwise. */
   characters: { bases: number; states: number; animations: number; portraits: number; outfits: number } | null
   tags: string[]
@@ -935,6 +941,7 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
         view: style?.view ?? null,
         noBackground: style?.noBackground ?? true,
         quality: Boolean(style?.quality),
+        characterMode: style?.generator === "character" ? style.mode ?? "standard" : null,
         characters: style?.generator === "character" || style?.generator === "objectPro"
           ? {
               bases: styleItems.filter((item) => item.character?.kind === "base").length,
