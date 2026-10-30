@@ -399,6 +399,8 @@ const AnimateSubmitSchema = z
   .object({
     background_job_ids: z.array(z.string()),
     directions: z.array(z.string()),
+    /** skeleton-v3 only: the group the directions were drawn into. */
+    animation_group_id: z.string().nullable().optional(),
     status: z.string().default("processing"),
     usage: UsageSchema,
   })
@@ -1462,7 +1464,10 @@ export class PixelLabClient {
    * the same job list (plus an `animation_group_id`). With no `template` it
    * animates `actionDescription` as a sentence, 3 to 15 `frameCount` frames
    * written into one 3D motion; measured on a v3 character (8 frames, 64px:
-   * 3 generations, frames back at 96x96).
+   * 3 generations, frames back at 96x96). `animationGroupId` (skeleton-v3
+   * only) adds the directions to an existing animation of the character,
+   * drawn from its motion; the group's own name must be sent again as
+   * `animationName`, or the group appears renamed.
    */
   async animateCharacter(args: {
     characterId: string
@@ -1477,6 +1482,8 @@ export class PixelLabClient {
     /** Template mode only. */
     textGuidanceScale?: number
     isometric?: boolean
+    /** skeleton-v3 only: add these directions to this existing animation instead of making a new one. */
+    animationGroupId?: string
     /** v3 only: a pose to start from and a pose to reach. */
     startFrame?: Base64Image
     endFrame?: Base64Image
@@ -1489,7 +1496,7 @@ export class PixelLabClient {
     /** v3 only. */
     enhancePrompt?: boolean
     paletteSwatchBase64?: string
-  }): Promise<{ background_job_ids: string[]; directions: string[]; usage?: PixelLabUsage | null }> {
+  }): Promise<{ background_job_ids: string[]; directions: string[]; animation_group_id?: string | null; usage?: PixelLabUsage | null }> {
     const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
     const endpoint = args.mode === "skeleton-v3" ? "/characters/animations" : "/animate-character"
     const raw = await this.request<unknown>(endpoint, {
@@ -1499,6 +1506,7 @@ export class PixelLabClient {
         animation_name: args.animationName,
         mode: args.mode,
         directions: args.directions,
+        ...(args.mode === "skeleton-v3" && args.animationGroupId ? { animation_group_id: args.animationGroupId } : {}),
         ...(args.template ? { template_animation_id: args.template } : {}),
         ...(args.actionDescription ? { action_description: args.actionDescription } : {}),
         ...(args.description ? { description: args.description } : {}),

@@ -35,8 +35,16 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   `mode: "skeleton-v3"`, no `template`, and a `prompt` animates the sentence
   on `/characters/animations` (`action_description`, 3 to 15 `frames`). Billed
   exactly 3 generations for 8 frames at 64px, frames back at 96×96; the plan
-  budgets 4. See `docs/CHARACTERS.md`, "Loops from a sentence". Shared motion
-  across directions is not wired up (one request per direction asset).
+  budgets 4. See `docs/CHARACTERS.md`, "Loops from a sentence".
+- **Shared motion across the directions of a sentence loop** — the first
+  direction of `directions` is submitted as a new animation; each later one
+  follows in the next wave with the leader's recorded `animation_group_id` and
+  the group's `animation_name`, so every direction is drawn from one 3D motion
+  (`animation.motionFrom`, lock `motionShare`). Adding a direction to a
+  generated loop appends into its group, a regenerated leader marks followers
+  stale, and a leader with no recorded group falls back to one request per
+  direction. **Mock-verified only; live proof pending** (a live append, and that
+  deleting one direction leaves the group and the others' motion intact).
 
 - **Skeleton-v3 template loops** — `/characters/animations`'
   `mode: "skeleton-v3"` poses a template with the skeleton video model
@@ -523,17 +531,6 @@ missing:
 - **Joining two clips.** The video joins two orb animations end to end in
   Aseprite. pixelkiln has no frame-set concatenation; `lastFrame` can pin a
   clip's ending to another clip's frame file, but the two sets stay separate.
-
-## Sentence-driven skeleton-v3 loops, shared motion across directions
-
-PixelLab's sentence loops (`mode: "skeleton-v3"`, no template) are supported;
-see "Already closed". What is still open: every direction of one request is
-drawn from one 3D motion, and `animation_group_id` appends a direction to an
-existing animation so it moves the same way. pixelkiln makes one request per
-direction asset and never sends the group id, so each direction's motion is
-written separately. Closing it means linking the direction assets of a
-`directions` loop to one group (a batch like `1dir`'s, or the recorded
-`animationGroupId` of a sibling) and passing it on the later requests.
 
 ## Map Workshop (scene composition)
 

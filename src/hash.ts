@@ -128,6 +128,10 @@ export function specHash(
             template: spec.character.template,
             parent: spec.character.parentAssetId,
             parentSha256: spec.character.parentSha256 ?? null,
+            // Which loop leads, not its group: the group is in the lockfile,
+            // and the plan compares it there. Absent for every loop that
+            // shares nothing, so no existing hash moves.
+            motionFrom: spec.character.motionLeader?.assetId,
             state: spec.character.state,
             // Pose images enter as their hashes, never their paths.
             animation: spec.character.animation

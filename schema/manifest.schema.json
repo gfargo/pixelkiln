@@ -1305,6 +1305,10 @@
                     },
                     "minItems": 1
                   },
+                  "motionFrom": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "frames": {
                     "type": "integer",
                     "minimum": 3,

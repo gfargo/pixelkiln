@@ -380,6 +380,8 @@ interface AnimationJob {
   name: string
   direction: CharacterDirection
   jobIds: string[]
+  /** The animation group the submit answered with, when it named one. */
+  groupId?: string
 }
 
 /** A poll handle that carries what a later run needs to find the animation upstream. */
@@ -392,7 +394,13 @@ function decodeAnimationJob(jobId: string): AnimationJob | null {
   try {
     const value = JSON.parse(Buffer.from(jobId.slice("character-animation:".length), "base64url").toString("utf8"))
     if (typeof value?.characterId === "string" && typeof value.name === "string" && typeof value.direction === "string") {
-      return { characterId: value.characterId, name: value.name, direction: value.direction, jobIds: Array.isArray(value.jobIds) ? value.jobIds : [] }
+      return {
+        characterId: value.characterId,
+        name: value.name,
+        direction: value.direction,
+        jobIds: Array.isArray(value.jobIds) ? value.jobIds : [],
+        ...(typeof value.groupId === "string" && value.groupId ? { groupId: value.groupId } : {}),
+      }
     }
   } catch {
     // fall through
@@ -1438,7 +1446,12 @@ export class PixelLabProvider implements Provider {
       }
     }
     const animation = character.animation!
-    const name = characterAnimationName(spec)
+    const ownName = characterAnimationName(spec)
+    // A later direction of a sentence loop is added to its leader's group, and
+    // PixelLab does not inherit the group's name: sending any other would make
+    // the group appear renamed.
+    const shared = context?.motionGroup
+    const name = shared?.animationName ?? ownName
     // PixelLab skips a direction that already exists on the character, so an
     // earlier take of this asset's direction goes first. It is found by the
     // group id the last poll recorded, or by the name PixelKiln gave it, or by
@@ -1446,10 +1459,21 @@ export class PixelLabProvider implements Provider {
     // touched.
     const replaced = (context?.replacedMetadata?.character ?? {}) as { animationGroupId?: string | null; animationId?: string | null }
     const existing = await this.client.getCharacter(parentId)
+    if (shared && !existing.animations.some((group) =>
+      group.animation_group_id === shared.animationGroupId && group.directions.some((d) => d.direction !== animation.direction))
+    ) {
+      throw new Error(
+        `${spec.styleId}/${spec.assetId} shares the motion of an animation group (${shared.animationGroupId}) that is no longer on ` +
+          "the character; regenerate the leading direction first",
+      )
+    }
+    // Only this asset's own direction is ever deleted, from the group it was in
+    // (a name match is not enough to touch another direction), so replacing a
+    // later direction never removes the leader's animation or the reverse.
     for (const group of existing.animations) {
       const ours = group.animation_group_id && (
         group.animation_group_id === replaced.animationGroupId ||
-        group.display_name === name ||
+        group.display_name === name || group.display_name === ownName ||
         (replaced.animationId && group.directions.some((d) => d.frames.some((url) => url.includes(`/animations/${replaced.animationId}/`))))
       )
       if (!ours || !group.animation_group_id) continue
@@ -1466,6 +1490,7 @@ export class PixelLabProvider implements Provider {
       frameCount: animation.frames,
       keepFirstFrame: animation.keepFirstFrame,
       directions: [animation.direction],
+      ...(shared ? { animationGroupId: shared.animationGroupId } : {}),
       seed: spec.seed,
       textGuidanceScale: character.textGuidanceScale,
       isometric: character.isometric,
@@ -1478,10 +1503,11 @@ export class PixelLabProvider implements Provider {
       enhancePrompt: animation.enhancePrompt,
       paletteSwatchBase64: spec.palette.length ? paletteSwatch(spec.palette).toString("base64") : undefined,
     })
-    const job: AnimationJob = { characterId: parentId, name, direction: animation.direction, jobIds: res.background_job_ids }
+    const groupId = res.animation_group_id ?? shared?.animationGroupId
+    const job: AnimationJob = { characterId: parentId, name, direction: animation.direction, jobIds: res.background_job_ids, ...(groupId ? { groupId } : {}) }
     return {
       jobId: encodeAnimationJob(job),
-      metadata: { character: { kind: "animation", characterId: parentId, animationName: name, direction: animation.direction, mode: animation.mode, backgroundJobIds: res.background_job_ids } },
+      metadata: { character: { kind: "animation", characterId: parentId, animationName: name, direction: animation.direction, mode: animation.mode, backgroundJobIds: res.background_job_ids, ...(groupId ? { animationGroupId: groupId } : {}) } },
     }
   }
 
@@ -1707,15 +1733,15 @@ export class PixelLabProvider implements Provider {
       const animationId = typeof done.animation_id === "string" ? done.animation_id : null
       if (Array.isArray(frames) && frames.length && frames.every((f) => typeof f === "string")) {
         const character = await this.client.getCharacter(job.characterId)
-        const group = findAnimation(character, job.name, job.direction, animationId)
-        return review(frames as string[], animationId, group?.groupId ?? null, billedFromUsage(status.usage))
+        const group = findAnimation(character, job.name, job.direction, animationId, job.groupId)
+        return review(frames as string[], animationId, group?.groupId ?? job.groupId ?? null, billedFromUsage(status.usage))
       }
     }
     // No job told us; the animation list is what is left, searched by name
     // or by the animation id an earlier poll recorded.
     const recorded = (context?.metadata?.character as { animationId?: string | null } | undefined)?.animationId ?? null
     const character = await this.client.getCharacter(job.characterId)
-    const found = findAnimation(character, job.name, job.direction, recorded)
+    const found = findAnimation(character, job.name, job.direction, recorded, job.groupId)
     if (found) return review(found.frames, found.animationId, found.groupId, null)
     return cleanedUp
       ? { status: "failed", error: `animation job is gone upstream and no "${job.name}" ${job.direction} animation exists on the character` }
@@ -3410,10 +3436,14 @@ function findAnimation(
   name: string,
   direction: string,
   animationId: string | null,
+  groupId?: string,
 ): { frames: string[]; groupId: string | null; animationId: string | null } | null {
   for (const group of character.animations) {
     const match = group.directions.find((d) => d.direction === direction && d.frames.length > 0)
     if (!match) continue
+    // Directions drawn into one group share its name, so when the submit named
+    // the group, that group is the answer and the name only the fallback.
+    if (groupId && group.animation_group_id !== groupId) continue
     const byName = group.display_name === name || group.animation_type === name
     const byId = animationId !== null && match.frames.some((url) => url.includes(`/animations/${animationId}/`))
     if (!byName && !byId) continue

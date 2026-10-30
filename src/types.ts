@@ -711,6 +711,15 @@ export const CharacterAnimationSchema = z
      */
     directions: z.array(CharacterDirectionSchema).min(1).optional(),
     /**
+     * A sentence loop (`mode: "skeleton-v3"`, no `template`) of another
+     * direction whose motion this one shares: the asset id of the loop that
+     * leads. This loop is then submitted after it, into its animation group,
+     * so PixelLab draws it from the same 3D motion. Written for you when
+     * `directions` expands (the first direction leads); set by hand only when
+     * declaring the loops explicitly.
+     */
+    motionFrom: z.string().min(1).optional(),
+    /**
      * Frames to generate without a template. A v3 loop takes an even 4 to 16;
      * a sentence loop (`mode: "skeleton-v3"` with no `template`) takes 3 to 15.
      */
@@ -803,6 +812,9 @@ export const CharacterAnimationSchema = z
     if (!animation.template && animation.mode === "template") {
       context.addIssue({ code: z.ZodIssueCode.custom, message: "template mode needs a template", path: ["template"] })
     }
+    if (animation.motionFrom !== undefined && !sentence) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "motionFrom applies to a skeleton-v3 loop from a sentence (no template)", path: ["motionFrom"] })
+    }
     // mode: "skeleton-v3" with no template animates the asset's prompt as a
     // sentence; whether that request takes PixelLab's description field is unverified.
     if (sentence && animation.subject !== undefined) {
@@ -861,6 +873,11 @@ export interface ResolvedCharacter {
   /** The parent's south-facing generated file, and its hash when it exists. A change makes this spec stale. */
   parentFile?: string
   parentSha256?: string | null
+  /**
+   * A sentence loop that shares another direction's motion: the loop that
+   * leads. This one is submitted after it, into its animation group.
+   */
+  motionLeader?: { assetId: string; spec: ResolvedSpec }
   state?: {
     paletteFromReference: boolean
     canvas?: { width: number; height: number }
@@ -2022,6 +2039,15 @@ const LockTerrainConnectSchema = z.record(
 )
 
 /**
+ * A sentence loop that shares another direction's motion: the loop that
+ * leads, and the animation group of that loop's generation this one was drawn
+ * into (null when the leader had none recorded, so this was drawn on its own).
+ */
+const LockMotionShareSchema = z
+  .object({ sourceAssetId: z.string().min(1), animationGroupId: z.string().min(1).nullable() })
+  .strict()
+
+/**
  * The settings a terrain set was drawn with that `specHash` leaves out: the
  * older mode, shape, and camera knobs, and each terrain's description as
  * sent (the prompt wrapped in the style's prefix and suffix). Hashing them
@@ -2074,6 +2100,8 @@ export const LockHistoryEntrySchema = z.object({
   postprocess: PostprocessSchema.optional(),
   /** A connected terrain set's other sets; see LockEntrySchema.terrainConnect. */
   terrainConnect: LockTerrainConnectSchema.optional(),
+  /** A sentence loop that shares another direction's motion; see LockEntrySchema.motionShare. */
+  motionShare: LockMotionShareSchema.optional(),
   /** A terrain set's settings outside specHash; see LockEntrySchema.terrainSettings. */
   terrainSettings: LockTerrainSettingsSchema.optional(),
   /** When the replacement was submitted. */
@@ -2167,6 +2195,16 @@ export const LockEntrySchema = z.object({
    * Absent (not null) otherwise, so other entries do not grow the key.
    */
   terrainConnect: LockTerrainConnectSchema.optional(),
+  /**
+   * For a sentence loop of a later direction: the loop whose motion it
+   * shares and the animation group of that loop's generation this was
+   * drawn into when submitted. Tracked the way `terrainConnect` is, not
+   * through `specHash`: the group lives in the lockfile. A regenerated leader
+   * has a new group, so the plan marks this stale. `animationGroupId` is
+   * null when the leader had no group recorded and this was drawn on its own.
+   * Absent otherwise.
+   */
+  motionShare: LockMotionShareSchema.optional(),
   /**
    * For a terrain set: the settings it was submitted with that `specHash`
    * leaves out (see LockTerrainSettingsSchema). The plan marks the entry

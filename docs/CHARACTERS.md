@@ -252,17 +252,44 @@ character from it, with no template to pick. `frames` takes PixelLab's own
   `skeleton-v3` loop. Measured live on a v3 character: 8 frames at 64px billed
   exactly 3 generations for one direction, about 15 seconds before the jobs
   start. `billed` in the lock records the real amount.
-- **Directions do not share one motion yet.** PixelLab draws every direction
-  of a request from one 3D motion, and `animation_group_id` appends a
-  direction to an existing animation so it moves the same way. pixelkiln
-  makes one request per direction asset (including each direction of
-  `directions`), so each direction's motion is written from the sentence
-  separately and may differ a little. Appending to a recorded group is not
-  wired up; the lock keeps each direction's `animationGroupId` for when it is.
-  Verified live through PixelKiln with a single south direction on an
-  adopted v3 character: "jumping with joy and pumping both fists", 8 frames
-  at 96×96, billed 3, with `animationId` and `animationGroupId` saved in the
-  lock.
+- **Directions share the first direction's motion.** PixelLab draws every
+  direction of an animation from one 3D motion, and `animation_group_id`
+  adds a direction to an existing animation so it moves the same way. The
+  first direction listed in `directions` leads and is submitted as a new
+  animation; every later direction follows in the next wave and is sent into
+  the leader's group (with the group's own name as `animation_name`, since
+  PixelLab does not inherit it). Each direction is still its own asset and
+  request, billed separately; mirrors flip a direction and join nothing. The
+  expansion writes `animation.motionFrom: "<leader id>"` on each later
+  direction, and you can write it yourself when declaring the loops
+  explicitly. It is part of the asset's identity; the leader's hash, a single
+  direction's, and every template or other loop's are unchanged.
+  - **Adding a direction later**: append it to `directions` (new directions
+    at the end, so the leader stays the same). The leader is already
+    downloaded and current, so the new direction goes straight into its
+    recorded group, with no regeneration of the others. Putting a new
+    direction first makes it the leader and the old one a follower, which
+    regenerates both.
+  - **Regenerating**: a regenerated leader is a new animation with a new group,
+    so followers drawn into the old group show `stale` ("shares motion with
+    `<leader>`, which was regenerated") and are redrawn into the new one.
+    Restoring an older generation brings back the group it was drawn into.
+    The lock keeps it as `motionShare: { sourceAssetId, animationGroupId }`.
+  - **Replacing**: only an asset's own direction is ever deleted, from the
+    group it is in, so redrawing a follower never removes the leader's
+    animation or the reverse. This relies on PixelLab keeping a group alive
+    while any direction remains, and on a follower keeping its motion after
+    the leader's direction is deleted; neither is verified.
+  - **Fallback**: a leader with no recorded `animationGroupId` (generated
+    before groups were recorded, or adopted without one) does not block its
+    followers. Each is drawn as its own request and animation, as before, and
+    `plan` says so; its `motionShare.animationGroupId` is `null`. If the
+    leader's recorded group is gone from the character, the follower fails
+    before spending and asks you to regenerate the leader.
+  - Verified against mocked HTTP only; not yet run live. A single south
+    direction was verified live through PixelKiln on an adopted v3 character:
+    "jumping with joy and pumping both fists", 8 frames at 96×96, billed 3,
+    with `animationId` and `animationGroupId` saved in the lock.
 
 ### Pose frames and other loop controls
 

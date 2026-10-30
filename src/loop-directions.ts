@@ -12,6 +12,10 @@
  * every direction whose flip is not named (`hero.walk.east`, mirroring
  * `hero.walk.west`). The expansion is pure JSON to JSON, so rewriting the
  * shorthand into explicit assets by hand leaves every identity unchanged.
+ *
+ * A sentence loop (skeleton-v3, no template) shares one motion across its
+ * directions: every loop after the first gets `animation.motionFrom` naming
+ * the first, which is submitted before the rest.
  */
 import { CharacterDirectionSchema, MIRRORED_DIRECTION, type CharacterDirection } from "./types.ts"
 
@@ -100,8 +104,16 @@ export function expandLoopDirections(raw: unknown): LoopExpansion {
     }
     for (const expandedId of ids) claimed.add(expandedId)
 
-    for (const loop of loops) {
-      expanded[loop.id] = { ...asset, animation: { ...animation, direction: loop.direction } }
+    const sentence = animation.mode === "skeleton-v3" && !animation.template
+    for (const [index, loop] of loops.entries()) {
+      expanded[loop.id] = {
+        ...asset,
+        animation: {
+          ...animation,
+          direction: loop.direction,
+          ...(sentence && index > 0 ? { motionFrom: loops[0]!.id } : {}),
+        },
+      }
     }
     for (const mirror of mirrors) {
       const inherited: RawAsset = {}

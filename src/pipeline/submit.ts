@@ -13,7 +13,7 @@ import { currentEntryOutputPath } from "../outputs.ts"
 import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec, type ResolvedStyleImage } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
-import { requireRevisionReady } from "./revision.ts"
+import { recordedAnimationGroup, requireRevisionReady } from "./revision.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
 import { deriveMirror, mirrorSourceHash } from "./mirror.ts"
 
@@ -310,6 +310,21 @@ export async function submit(
       terrainConnect[side] = { sourceAssetId: link.assetId, sourceObjectId: objectId }
     }
 
+    // A sentence loop of a later direction joins its leader's animation group
+    // so PixelLab draws it from the same motion. A leader with no recorded
+    // group (or name) leaves this loop to be drawn on its own, and the lock
+    // says so with a null group.
+    const motionLeader = spec.character?.motionLeader
+    const leaderGroup = motionLeader
+      ? recordedAnimationGroup(lock.entries[lockKey(motionLeader.spec.styleId, motionLeader.spec.assetId)])
+      : undefined
+    const motionGroup = leaderGroup?.animationGroupId && leaderGroup.animationName
+      ? { animationGroupId: leaderGroup.animationGroupId, animationName: leaderGroup.animationName }
+      : undefined
+    if (motionLeader && !motionGroup) {
+      log(`  ${key}: ${motionLeader.assetId} has no animation group recorded; drawing this direction on its own`)
+    }
+
     // Record intent before spending, so an interrupted run stays diagnosable.
     upsert(lock, key, {
       styleId: spec.styleId,
@@ -356,6 +371,9 @@ export async function submit(
           }
         : null,
       terrainConnect: spec.terrainConnect ? terrainConnect : undefined,
+      motionShare: motionLeader
+        ? { sourceAssetId: motionLeader.assetId, animationGroupId: motionGroup?.animationGroupId ?? null }
+        : undefined,
       // The terrain knobs specHash leaves out, so the plan can tell a
       // changed one; undefined (no key) for every other generator.
       terrainSettings: terrainSettings(spec),
@@ -412,6 +430,7 @@ export async function submit(
         ...(anchorEntry?.objectId ? { styleObjectId: anchorEntry.objectId } : {}),
         ...(parentOutputs ? { parentOutputs } : {}),
         ...(spec.terrainConnect ? { terrainLinks } : {}),
+        ...(motionGroup ? { motionGroup } : {}),
         ...(replacedMetadata ? { replacedMetadata } : {}),
         ...(lastGenerationMetadata ? { lastGenerationMetadata } : {}),
         ...(previousMetadata ? { previousMetadata } : {}),

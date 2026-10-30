@@ -46,6 +46,23 @@ describe("expandLoopDirections", () => {
     expect(expandAssetFilter(["hero.walk", "hero"], families)).toEqual([...families["hero.walk"]!, "hero"])
   })
 
+  it("links each later direction of a sentence loop to the first, and only a sentence loop", () => {
+    const loop = (animation: Record<string, unknown>) => ({
+      assets: { hero: base, "hero.cheer": { prompt: "cheering", animation: { of: "hero", directions: ["south", "west", "north"], ...animation } } },
+    })
+    const assets = (animation: Record<string, unknown>) =>
+      (expandLoopDirections(loop(animation)).raw as { assets: Record<string, { animation?: Record<string, unknown> }> }).assets
+    const sentence = assets({ mode: "skeleton-v3" })
+    expect(sentence["hero.cheer.south"]!.animation).not.toHaveProperty("motionFrom")
+    expect(sentence["hero.cheer.west"]!.animation).toMatchObject({ direction: "west", motionFrom: "hero.cheer.south" })
+    expect(sentence["hero.cheer.north"]!.animation).toMatchObject({ direction: "north", motionFrom: "hero.cheer.south" })
+    expect(sentence["hero.cheer.east"]).toEqual({ mirror: "hero.cheer.west" })
+    // One direction, a template loop, and every other mode stay as they were.
+    for (const animation of [{ mode: "skeleton-v3", directions: ["west"] }, { mode: "skeleton-v3", template: "walk" }, { mode: "v3" }, {}]) {
+      for (const expanded of Object.values(assets(animation))) expect(expanded.animation ?? {}).not.toHaveProperty("motionFrom")
+    }
+  })
+
   it("adds no mirror when both sides are named, or for south and north", () => {
     const { raw } = expandLoopDirections({
       assets: { hero: base, "hero.idle": { prompt: "idle", animation: { of: "hero", directions: ["south", "east", "west"] } } },

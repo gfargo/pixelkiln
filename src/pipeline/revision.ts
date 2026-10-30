@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { sha256File } from "../hash.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
-import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
+import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
 import { inspectQualityProfile } from "./quality-profile.ts"
 
 export interface RevisionReadiness {
@@ -29,7 +29,10 @@ export async function inspectRevisionReadiness(
   // family shares parentAssetId plumbing), but there is no single
   // south-facing file for inspectCharacterParent to look for.
   if (spec.character?.kind === "outfit") return inspectOutfit(spec, lock, new Set())
-  if (spec.character?.parentSpec) return inspectCharacterParent(spec, lock, new Set())
+  if (spec.character?.parentSpec) {
+    const parent = await inspectCharacterParent(spec, lock, new Set())
+    return parent.ready && spec.character.motionLeader ? inspectMotionLeader(spec, lock, new Set()) : parent
+  }
   if (spec.character?.styleAnchor) return inspectStyleAnchor(spec, lock, new Set())
   if (spec.objectPro?.parentSpec) return inspectObjectProParent(spec, lock, new Set())
   if (spec.scene) return inspectScene(spec)
@@ -75,6 +78,36 @@ async function inspectTerrainConnect(spec: ResolvedSpec, lock: Lock, seen: Set<s
     }
   }
   return { ready: true, reason: "connected sets are current" }
+}
+
+/**
+ * The animation group a downloaded loop was drawn into, and the name it holds
+ * there, as the last poll (or an adoption) recorded them. Either is missing
+ * for a loop from before groups were recorded, or one adopted without them.
+ */
+export function recordedAnimationGroup(
+  entry: LockEntry | undefined,
+): { animationGroupId: string | null; animationName: string | null } {
+  const character = entry?.providerMetadata?.[entry.provider]?.character as
+    | { animationGroupId?: unknown; animationName?: unknown }
+    | undefined
+  const text = (value: unknown) => typeof value === "string" && value ? value : null
+  return { animationGroupId: text(character?.animationGroupId), animationName: text(character?.animationName) }
+}
+
+/**
+ * A sentence loop that shares another direction's motion is drawn into that
+ * loop's animation group, so the leader must be downloaded, current, and
+ * untouched. Its group id is read from the lockfile at submit; a leader
+ * without one is not a blocker (this loop is then drawn on its own).
+ */
+async function inspectMotionLeader(spec: ResolvedSpec, lock: Lock, seen: Set<string>): Promise<RevisionReadiness> {
+  const leader = spec.character!.motionLeader!
+  const label = `motion leader ${spec.styleId}/${leader.assetId}`
+  const dependency = await inspectParent(leader.spec, lock, seen)
+  return dependency.ready
+    ? { ready: true, reason: `${label} is current` }
+    : { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
 }
 
 /**
@@ -302,6 +335,10 @@ async function inspectParent(
     if (!inputs.ready) return inputs
   } else if (spec.character?.parentSpec) {
     const inputs = await inspectCharacterParent(spec, lock, nextSeen)
+    if (!inputs.ready) return inputs
+  }
+  if (spec.character?.motionLeader) {
+    const inputs = await inspectMotionLeader(spec, lock, nextSeen)
     if (!inputs.ready) return inputs
   }
   if (spec.character?.styleAnchor) {
