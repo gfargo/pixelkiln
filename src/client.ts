@@ -664,7 +664,13 @@ export class PixelLabClient {
 
     const text = await res.text()
     if (!res.ok) {
-      throw new PixelLabError(`${init?.method ?? "GET"} ${path} → ${res.status}`, res.status, text)
+      // PixelLab's bare 500 for a skeleton-v3 loop on a character with no
+      // stored 3D skeleton (a standard base); its MCP names the reason.
+      const hint =
+        res.status === 500 && text.includes("Failed to start any animation jobs")
+          ? "; a skeleton-v3 loop needs a character with a stored 3D skeleton (a v3 base), use mode: \"template\" on a standard one"
+          : ""
+      throw new PixelLabError(`${init?.method ?? "GET"} ${path} → ${res.status}${hint}`, res.status, text)
     }
     if (!text) return {} as T
     try {

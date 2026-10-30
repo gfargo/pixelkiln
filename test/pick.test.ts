@@ -9,6 +9,7 @@ import { submit } from "../src/pipeline/submit.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { prepareReview, runPicker } from "../src/pick/server.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
+import { encodeRgbaPng } from "../src/png.ts"
 import { lockKey, type Lock } from "../src/types.ts"
 import type { JobState } from "../src/provider.ts"
 
@@ -195,6 +196,19 @@ describe("runPicker", () => {
     expect(await picked).toEqual({ selected: 1, skipped: 0 })
     // The lockfile records the provider's URL, which fetch can read, not the route.
     expect(lock.entries[key]).toMatchObject({ status: "selected", candidateIndex: 0, sourceUrl: `file://${cached}` })
+  })
+
+  it("reports a cached frame's own size, not the manifest's, and leaves hosted ones to the sheet", async () => {
+    const cached = path.join(dir, "frame-96.png")
+    await writeFile(cached, encodeRgbaPng(96, 96, Buffer.alloc(96 * 96 * 4)))
+    const hosted = "https://cdn.example.test/frame-1.png"
+    const { provider, lock } = await projectInReview(2, new LocalCacheProvider([`file://${cached}`, hosted]))
+    const session = await prepareReview(provider, lock, { routePrefix: "/review/abc" })
+    const group = session!.groups[0]!
+    // The style is 64px; the frame is 96px.
+    expect(group.width).toBe(64)
+    expect(group.frameSizes).toEqual([{ width: 96, height: 96 }, null])
+    expect(session!.html()).toContain('"frameSizes":[{"width":96,"height":96},null]')
   })
 
   it("ignores an out-of-range index instead of throwing", async () => {

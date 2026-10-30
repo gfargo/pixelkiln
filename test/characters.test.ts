@@ -399,6 +399,7 @@ describe("skeleton-v3 loops", () => {
 
   it("resolve with no prompt of their own, priced at the top of PixelLab's range", async () => {
     const loaded = await loadManifest(await writeManifest({
+      style: { mode: "v3" },
       assets: {
         mira: { prompt: "a knight" },
         "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", mode: "skeleton-v3", direction: "east" } },
@@ -407,6 +408,36 @@ describe("skeleton-v3 loops", () => {
     const walk = (await resolveSpecs(loaded)).find((spec) => spec.assetId === "mira.walk")!
     expect(walk.character?.animation).toMatchObject({ mode: "skeleton-v3", template: "walk", direction: "east" })
     expect(walk.cost).toBe(4)
+  })
+
+  it("are refused on a standard base, which stores no 3D skeleton, and allowed on v3 and pro", async () => {
+    const loop = { "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", mode: "skeleton-v3", direction: "east" } } }
+    const resolve = async (mode: string) =>
+      resolveSpecs(await loadManifest(await writeManifest({ style: { mode }, assets: { mira: { prompt: "a knight" }, ...loop } })))
+    await expect(resolve("standard")).rejects.toThrow(/skeleton-v3 poses a template onto a 3D skeleton, which a standard character has none of.*mode: "template"/)
+    await expect(resolve("v3")).resolves.toHaveLength(2)
+    await expect(resolve("pro")).resolves.toHaveLength(2)
+    // A plain template loop still works on a standard base.
+    const plain = { "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", direction: "east" } } }
+    await expect(resolveSpecs(await loadManifest(await writeManifest({ assets: { mira: { prompt: "a knight" }, ...plain } })))).resolves.toHaveLength(2)
+  })
+
+  it("explain PixelLab's bare 500 when one reaches a character with no skeleton anyway", async () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: "Failed to start any animation jobs" }), { status: 500 })))
+      const failing = new PixelLabClient("key")
+        .animateCharacter({ characterId: "char-1", animationName: "walk", directions: ["east"], mode: "skeleton-v3", template: "walk" } as never)
+        .catch((err: unknown) => err)
+      await vi.runAllTimersAsync()
+      const err = await failing
+      expect(err).toBeInstanceOf(PixelLabError)
+      expect((err as PixelLabError).status).toBe(500)
+      expect((err as PixelLabError).message).toMatch(/3D skeleton \(a v3 base\).*mode: "template"/)
+    } finally {
+      vi.unstubAllGlobals()
+      vi.useRealTimers()
+    }
   })
 })
 
@@ -689,6 +720,8 @@ function fakeClient() {
     forgetJobs() { jobs.clear(); jobResponses.clear(); baseJobs.clear(); baseJobUsage.clear(); baseJobResponse.clear() },
     /** Test hook: what a base or state's own background job reports as billed once it completes. */
     setBaseUsage(characterId: string, usage: Record<string, unknown>) { baseJobUsage.set(`job-${characterId}`, usage) },
+    /** Test hook: the `last_response` a base or state's background job carries. */
+    setBaseResponse(characterId: string, response: Record<string, unknown>) { baseJobResponse.set(`job-${characterId}`, response) },
     /** Test hook: what any background job (by its own id) reports as billed once it completes. */
     setJobUsage(jobId: string, usage: Record<string, unknown>) { baseJobUsage.set(jobId, usage) },
     portraitsSet: [] as { characterId: string; base64: string }[],
@@ -1020,6 +1053,33 @@ describe("billed usage", () => {
     client.setBaseUsage("char-1", { type: "generations", generations: 2 })
     await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
     expect(p.lock.entries["cast/mira"]).toMatchObject({ cost: 1, billed: { amount: 2, unit: "generations" } })
+  })
+
+  it("does not record a dollar-shaped zero as a v3 base's bill, and keeps the job id to ask again", async () => {
+    const file = await writeManifest({ style: { mode: "v3" }, assets: { mira: { prompt: "small young woman" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    client.setBaseUsage("char-1", { type: "usd", usd: 0 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    const entry = p.lock.entries["cast/mira"]!
+    expect(entry).toMatchObject({ status: "selected", cost: 2, billed: null })
+    expect(entry.providerMetadata?.pixellab?.character).toMatchObject({ characterId: "char-1", backgroundJobId: "job-char-1" })
+  })
+
+  it("falls back to the job's nested billing_usage when its top-level usage is a dollar-shaped zero", async () => {
+    const file = await writeManifest({ style: { mode: "v3" }, assets: { mira: { prompt: "small young woman" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    client.setBaseUsage("char-1", { type: "usd", usd: 0 })
+    client.setBaseResponse("char-1", { billing_usage: { type: "generations", generations: 2 }, billing_charged: true })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira"]).toMatchObject({ cost: 2, billed: { amount: 2, unit: "generations" } })
   })
 
   it("records a state's actual bill against its wider estimate tier", async () => {

@@ -781,6 +781,14 @@ one size; the higher cost tiers are still unconfirmed under
   carries `usage` once the job is gone, completed or not. `poll` reads the
   object/character for the result but would need this same job id, still
   polled separately today, to learn what it actually cost.
+- **A v3 character base once recorded `billed: {amount: 0, unit: "usd"}`**
+  against an estimate of 2 generations while the submit reported 1
+  generation consumed. Its job record had expired before the shape could be
+  read (jobs are deleted 8 hours after finishing, and the lock had dropped
+  the job id), so the real `usage` is unseen; `GET /characters/{id}` carries
+  none. `poll` now treats a dollar-denominated zero as not known, tries
+  `last_response.billing_usage`, and keeps `backgroundJobId` in the
+  character's lock metadata.
 - **`inpaint-v3` and `edit-images-v2` both confirmed live at their floor
   size**: a 32×32 masked inpaint and a separate 32×32 whole-image edit each
   billed exactly 20 generations, both matching a balance diff taken after.

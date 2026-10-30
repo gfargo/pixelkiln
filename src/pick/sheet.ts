@@ -11,6 +11,8 @@ export interface SheetGroup {
   height: number
   mode?: "candidates" | "frame-set"
   frameLabels?: string[]
+  /** Each frame's own size where it could be read (a locally cached PNG); null or absent, the sheet reads it off the loaded image. */
+  frameSizes?: ({ width: number; height: number } | null)[]
   fps?: number
   revision?: {
     mode: RevisionMode
@@ -330,8 +332,18 @@ GROUPS.forEach((g, gi) => {
     preview.loading = 'lazy';
     const index = document.createElement('span');
     index.className = 'idx';
-    index.textContent = (g.frameLabels?.[i] || String(i + 1)) + ' · ' +
-      g.width + '×' + g.height + ' · ' + scaleLabel;
+    // A frame's own size, not the manifest's: a 96px loop of a 64px
+    // character is 96×96. Known up front for a cached file, else once loaded.
+    const label = (w, h) => {
+      index.textContent = (g.frameLabels?.[i] || String(i + 1)) + ' · ' + w + '×' + h + ' · ' + scaleLabel;
+    };
+    const known = g.frameSizes?.[i];
+    label(known ? known.width : g.width, known ? known.height : g.height);
+    if (!known) {
+      preview.addEventListener('load', () => {
+        if (preview.naturalWidth && preview.naturalHeight) label(preview.naturalWidth, preview.naturalHeight);
+      }, { once: true });
+    }
     c.append(preview, index);
     if (g.recommendedIndex != null && i === recommended) {
       const badge = document.createElement('span');
