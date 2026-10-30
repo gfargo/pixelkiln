@@ -710,16 +710,21 @@ export const CharacterAnimationSchema = z
      * `src/loop-directions.ts`.
      */
     directions: z.array(CharacterDirectionSchema).min(1).optional(),
-    /** Frames to generate without a template (v3). Even, 4 to 16. */
-    frames: z.number().int().min(4).max(16).optional(),
+    /**
+     * Frames to generate without a template. A v3 loop takes an even 4 to 16;
+     * a sentence loop (`mode: "skeleton-v3"` with no `template`) takes 3 to 15.
+     */
+    frames: z.number().int().min(3).max(16).optional(),
     /** Playback rate recorded with the frames; PixelLab does not store one. */
     fps: z.number().int().min(1).max(60).default(8),
     /** v3 only: keep the resting pose as frame 0, so `frames` generated frames land as `frames + 1` files. */
     keepFirstFrame: z.boolean().default(true),
     /**
      * `template` when a template is named, otherwise `v3`; `skeleton-v3`
-     * poses a template with PixelLab's skeleton model instead; `pro` for the
-     * sequential high-quality engine.
+     * poses a template with PixelLab's skeleton model instead, or, with no
+     * template, animates the asset's prompt as a sentence written into one 3D
+     * motion (a v3 base; 3-15 `frames`); `pro` for the sequential
+     * high-quality engine.
      */
     mode: CharacterAnimationModeSchema.optional(),
     /**
@@ -753,15 +758,25 @@ export const CharacterAnimationSchema = z
         path: ["directions"],
       })
     }
-    if (animation.frames !== undefined && animation.frames % 2 !== 0) {
-      context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
+    const sentence = animation.mode === "skeleton-v3" && !animation.template
+    // A sentence loop's frame count is PixelLab's own 3 to 15, odd allowed;
+    // the v3 and pro engines draw an even 4 to 16.
+    if (animation.frames !== undefined && !sentence) {
+      if (animation.frames % 2 !== 0) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
+      } else if (animation.frames < 4) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be 4 to 16", path: ["frames"] })
+      }
+    }
+    if (animation.frames !== undefined && sentence && animation.frames > 15) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "a skeleton-v3 loop from a sentence takes 3 to 15 frames", path: ["frames"] })
     }
     const mode = animation.mode ?? (animation.template ? "template" : "v3")
     for (const key of ["startFrame", "endFrame", "enhancePrompt"] as const) {
       if (animation[key] !== undefined && mode !== "v3") {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `${key} is for v3 loops; a ${mode} loop ${mode === "template" || mode === "skeleton-v3" ? "starts from the character's rotation and follows its template" : "takes neither"}`,
+          message: `${key} is for v3 loops; a ${mode} loop ${mode === "template" || mode === "skeleton-v3" ? `starts from the character's rotation and ${animation.template ? "follows its template" : "animates its sentence"}` : "takes neither"}`,
           path: [key],
         })
       }
@@ -785,8 +800,13 @@ export const CharacterAnimationSchema = z
         path: ["frames"],
       })
     }
-    if (!animation.template && (animation.mode === "template" || animation.mode === "skeleton-v3")) {
-      context.addIssue({ code: z.ZodIssueCode.custom, message: `${animation.mode} mode needs a template`, path: ["template"] })
+    if (!animation.template && animation.mode === "template") {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "template mode needs a template", path: ["template"] })
+    }
+    // mode: "skeleton-v3" with no template animates the asset's prompt as a
+    // sentence; whether that request takes PixelLab's description field is unverified.
+    if (sentence && animation.subject !== undefined) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "subject does not apply to a skeleton-v3 loop from a sentence; describe the motion in the prompt", path: ["subject"] })
     }
   })
 export type CharacterAnimation = z.infer<typeof CharacterAnimationSchema>

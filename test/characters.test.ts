@@ -384,14 +384,15 @@ describe("character controls", () => {
 })
 
 describe("skeleton-v3 loops", () => {
-  it("pose a template, so they need one and take none of the frame or style controls", async () => {
+  it("pose a template, so they take none of the frame or style controls", async () => {
     const { CharacterAnimationSchema } = await import("../src/types.ts")
     const issues = (animation: Record<string, unknown>) => {
       const result = CharacterAnimationSchema.safeParse({ of: "mira", ...animation })
       return result.success ? [] : result.error.issues.map((issue) => issue.message)
     }
     expect(issues({ template: "walk", mode: "skeleton-v3" })).toEqual([])
-    expect(issues({ mode: "skeleton-v3" })).toEqual(["skeleton-v3 mode needs a template"])
+    // Without a template it is a sentence loop (see "skeleton-v3 loops from a sentence").
+    expect(issues({ mode: "skeleton-v3" })).toEqual([])
     expect(issues({ template: "walk", mode: "skeleton-v3", frames: 8 })).toEqual(["a template decides its own frame count; drop frames"])
     expect(issues({ template: "walk", mode: "skeleton-v3", outline: "lineless" })).toEqual(["outline overrides apply to template loops only"])
     expect(issues({ template: "walk", mode: "v3" })[0]).toMatch(/use "template" or "skeleton-v3"/)
@@ -438,6 +439,196 @@ describe("skeleton-v3 loops", () => {
       vi.unstubAllGlobals()
       vi.useRealTimers()
     }
+  })
+})
+
+describe("skeleton-v3 loops from a sentence", () => {
+  const sentenceLoop = (animation: Record<string, unknown> = {}, prompt = "swinging a sword in a wide arc") => ({
+    "mira.swing": { prompt, animation: { of: "mira", mode: "skeleton-v3", direction: "east", ...animation } },
+  })
+  const resolveLoops = async (loops: Record<string, unknown>, style: Record<string, unknown> = { mode: "v3" }) =>
+    resolveSpecs(await loadManifest(await writeManifest({ style, assets: { mira: { prompt: "a knight" }, ...loops } })))
+
+  it("are skeleton-v3 with no template, and take 3 to 15 frames where other loops take an even 4 to 16", async () => {
+    const { CharacterAnimationSchema } = await import("../src/types.ts")
+    const issues = (animation: Record<string, unknown>) => {
+      const result = CharacterAnimationSchema.safeParse({ of: "mira", ...animation })
+      return result.success ? [] : result.error.issues.map((issue) => issue.message)
+    }
+    expect(issues({ mode: "skeleton-v3" })).toEqual([])
+    expect(issues({ mode: "skeleton-v3", frames: 3 })).toEqual([])
+    expect(issues({ mode: "skeleton-v3", frames: 15 })).toEqual([])
+    expect(issues({ mode: "skeleton-v3", frames: 2 })[0]).toMatch(/greater than or equal to 3/)
+    expect(issues({ mode: "skeleton-v3", frames: 16 })).toEqual(["a skeleton-v3 loop from a sentence takes 3 to 15 frames"])
+    // The even 4 to 16 rule is unchanged for everything else.
+    expect(issues({ frames: 7 })).toEqual(["frames must be even"])
+    expect(issues({ frames: 2 })).toContain("frames must be 4 to 16")
+    expect(issues({ mode: "pro", frames: 3 })).toEqual(["frames must be even"])
+    expect(issues({ frames: 16 })).toEqual([])
+    // A template loop still decides its own frame count, and a template mode still needs a template.
+    expect(issues({ template: "walk", mode: "skeleton-v3", frames: 8 })).toEqual(["a template decides its own frame count; drop frames"])
+    expect(issues({ mode: "template" })).toEqual(["template mode needs a template"])
+  })
+
+  it("refuse the controls that belong to other loops", async () => {
+    const { CharacterAnimationSchema } = await import("../src/types.ts")
+    const issues = (animation: Record<string, unknown>) => {
+      const result = CharacterAnimationSchema.safeParse({ of: "mira", mode: "skeleton-v3", ...animation })
+      return result.success ? [] : result.error.issues.map((issue) => issue.message)
+    }
+    expect(issues({ startFrame: "a.png" })).toEqual(["startFrame is for v3 loops; a skeleton-v3 loop starts from the character's rotation and animates its sentence"])
+    expect(issues({ endFrame: "a.png" })[0]).toMatch(/endFrame is for v3 loops/)
+    expect(issues({ enhancePrompt: true })[0]).toMatch(/enhancePrompt is for v3 loops/)
+    expect(issues({ outline: "lineless" })).toEqual(["outline overrides apply to template loops only"])
+    expect(issues({ subject: "a frog" })[0]).toMatch(/subject does not apply to a skeleton-v3 loop from a sentence/)
+  })
+
+  it("resolve with their prompt untouched by the style's prefix and suffix, 8 frames by default, priced at the skeleton-v3 ceiling", async () => {
+    const [, swing] = await resolveLoops(sentenceLoop())
+    expect(swing!.prompt).toBe("swinging a sword in a wide arc")
+    expect(swing!.character?.animation).toMatchObject({ mode: "skeleton-v3", direction: "east", frames: 8 })
+    expect(swing!.character?.animation).not.toHaveProperty("template")
+    // Measured 3 generations for 8 frames at 64px; the estimate stays at the documented 2-4 range's top.
+    expect(swing!.cost).toBe(4)
+    const [, odd] = await resolveLoops(sentenceLoop({ frames: 5 }))
+    expect(odd!.character?.animation.frames).toBe(5)
+    expect(odd!.cost).toBe(4)
+  })
+
+  it("need a prompt, and are refused on a standard base and on an object", async () => {
+    await expect(resolveLoops(sentenceLoop({}, ""))).rejects.toThrow(/needs a prompt describing the motion.*animates its prompt/)
+    await expect(resolveLoops(sentenceLoop(), { mode: "standard" })).rejects.toThrow(
+      /a skeleton-v3 loop from a sentence writes the motion onto a 3D skeleton, which a standard character has none of.*mode: "template" with a template/,
+    )
+    await expect(resolveLoops(sentenceLoop(), { mode: "v3" })).resolves.toHaveLength(2)
+    await expect(resolveLoops(sentenceLoop(), { mode: "pro" })).resolves.toHaveLength(2)
+    await expect(
+      resolveSpecs(await loadManifest(await writeManifest({
+        style: { generator: "objectPro" },
+        assets: { crate: { prompt: "a crate" }, "crate.spin": { prompt: "spinning", animation: { of: "crate", mode: "skeleton-v3", direction: "south" } } },
+      }))),
+    ).rejects.toThrow(/objectPro animations have no "skeleton-v3" mode/)
+  })
+
+  it("expand into one loop per direction and mirror the flips like any other loop", async () => {
+    const specs = await resolveLoops({
+      "mira.swing": { prompt: "swinging a sword", animation: { of: "mira", mode: "skeleton-v3", directions: ["west", "north"], frames: 6 } },
+    })
+    const byId = Object.fromEntries(specs.map((spec) => [spec.assetId, spec]))
+    expect(byId["mira.swing.west"]!.character?.animation).toMatchObject({ mode: "skeleton-v3", direction: "west", frames: 6 })
+    expect(byId["mira.swing.north"]!.character?.animation).toMatchObject({ mode: "skeleton-v3", direction: "north", frames: 6 })
+    // The mirror is a local flip of its source's frames: no PixelLab call of its own, and the flipped facing.
+    expect(byId["mira.swing.east"]!.mirror?.sourceAssetId).toBe("mira.swing.west")
+    expect(byId["mira.swing.east"]!.character?.animation).toMatchObject({ mode: "skeleton-v3", direction: "east", frames: 6 })
+    expect(byId["mira.swing.east"]!.cost).toBe(0)
+  })
+
+  it("leave the identity of a template skeleton-v3 loop alone, and give a sentence loop its own", async () => {
+    const template = { "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", mode: "skeleton-v3", direction: "east" } } }
+    const [, walk] = await resolveLoops(template)
+    // Pinned from before sentence loops existed: a change here would mark every existing loop stale.
+    expect(walk!.specHash).toBe("8d0c1c32ac8661dcc61b52642084579316083bcdbd1121947fa7dda26265bb92")
+    const [, swing] = await resolveLoops(sentenceLoop())
+    expect(swing!.specHash).not.toBe(walk!.specHash)
+    const [, longer] = await resolveLoops(sentenceLoop({ frames: 12 }))
+    expect(longer!.specHash).not.toBe(swing!.specHash)
+  })
+
+  it("goes to /characters/animations with the sentence, a frame count, every direction, and no template", async () => {
+    const sent: { path: string; body: Record<string, unknown> }[] = []
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      const url = new URL(String(input))
+      sent.push({ path: url.pathname, body: init?.body ? JSON.parse(String(init.body)) : {} })
+      return new Response(JSON.stringify({
+        background_job_ids: ["job-a", "job-b"], directions: ["south", "west"], animation_group_id: "grp-1", status: "processing",
+        enhanced_prompt: null, enhance_usage: null,
+      }), { status: 200 })
+    }))
+    const res = await new PixelLabClient("key").animateCharacter({
+      characterId: "char-1",
+      animationName: "pixelkiln:cast/mira.swing",
+      actionDescription: "swinging a sword in a wide arc",
+      mode: "skeleton-v3",
+      frameCount: 8,
+      keepFirstFrame: false,
+      directions: ["south"],
+      textGuidanceScale: 9,
+      outline: "lineless",
+    })
+    expect(res.background_job_ids).toEqual(["job-a", "job-b"])
+    expect(sent[0]!.path).toBe("/v2/characters/animations")
+    expect(sent[0]!.body).toEqual({
+      character_id: "char-1",
+      animation_name: "pixelkiln:cast/mira.swing",
+      mode: "skeleton-v3",
+      directions: ["south"],
+      action_description: "swinging a sword in a wide arc",
+      frame_count: 8,
+    })
+  })
+
+  it("submit through the provider, then read the finished job's frames and its bill of 3 generations", async () => {
+    const [, swing] = await resolveLoops(sentenceLoop({ direction: "south", frames: 8 }))
+    const frames = ["https://cdn.test/animations/anim-1/frame_0.png", "https://cdn.test/animations/anim-1/frame_1.png"]
+    const sent: { path: string; method: string; body: Record<string, unknown> | null }[] = []
+    let submitted = false
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      const url = new URL(String(input))
+      const method = init?.method ?? "GET"
+      sent.push({ path: url.pathname, method, body: init?.body ? JSON.parse(String(init.body)) : null })
+      const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
+      if (url.pathname === "/v2/characters/char-1" && method === "GET") {
+        return json({
+          id: "char-1", name: "mira", size: { width: 64, height: 64 }, directions: 8, created_at: "now", status: "completed",
+          animations: !submitted ? [] : [{ display_name: "pixelkiln:cast/mira.swing", animation_type: "custom", animation_group_id: "grp-1", directions: [{ direction: "south", frames, frame_count: 2 }] }],
+        })
+      }
+      if (url.pathname === "/v2/characters/animations" && method === "POST") {
+        submitted = true
+        return json({
+          background_job_ids: ["job-1"], directions: ["south"], animation_group_id: "grp-1", status: "processing",
+          enhanced_prompt: null, enhance_usage: null,
+        })
+      }
+      if (url.pathname === "/v2/background-jobs/job-1") {
+        return json({
+          id: "job-1", status: "completed",
+          last_response: {
+            images: [{ base64: "AAAA", width: 96, height: 96 }],
+            storage_urls: { frames },
+            animation_id: "anim-1",
+            character_id: "char-1",
+            animation_group_id: "grp-1",
+            billing_usage: { usd: 0.03, type: "generations", generations: 3 },
+            generation_model: "skeleton-v3_custom",
+            animation_description: "swinging a sword in a wide arc",
+            requested_frame_count: 8,
+            template_animation_id: "custom-swinging a sword in a wide arc",
+          },
+          usage: { type: "generations", generations: 3.0 },
+        })
+      }
+      throw new Error(`unexpected request: ${method} ${url.pathname}`)
+    }))
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    const job = await provider.submit(swing!, [], { checkpoint: async () => {}, parentObjectId: "char-1" })
+    const post = sent.find((call) => call.method === "POST")!
+    expect(post.path).toBe("/v2/characters/animations")
+    expect(post.body).toMatchObject({
+      character_id: "char-1", mode: "skeleton-v3", directions: ["south"], frame_count: 8,
+      action_description: "swinging a sword in a wide arc", animation_name: "pixelkiln:cast/mira.swing",
+    })
+    expect(post.body).not.toHaveProperty("template_animation_id")
+    // The group id of a sibling direction is not sent: each direction is its own asset and request (docs/CHARACTERS.md).
+    expect(post.body).not.toHaveProperty("animation_group_id")
+
+    const state = await provider.poll(job.jobId, "character", { spec: swing })
+    expect(state).toMatchObject({
+      status: "review-set",
+      frameUrls: frames,
+      billed: { amount: 3, unit: "generations" },
+      metadata: { character: { animationId: "anim-1", animationGroupId: "grp-1", direction: "south" } },
+    })
   })
 })
 

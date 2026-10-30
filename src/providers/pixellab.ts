@@ -159,7 +159,9 @@ export function characterCost(spec: ResolvedSpec): number {
     const animation = character.animation!
     if (animation.mode === "template") return 1
     // PixelLab documents 2-4 by the template's frame count, which is not
-    // known offline; the top of the range keeps --budget a ceiling.
+    // known offline; the top of the range keeps --budget a ceiling. A
+    // sentence loop (no template) measured exactly 3 for 8 frames at 64px;
+    // it keeps the same ceiling.
     if (animation.mode === "skeleton-v3") return 4
     if (animation.mode === "v3") return Math.max(1, Math.ceil((px * animation.frames) / 65536))
     return generationCost(spec.width, spec.height, "1dir")
@@ -1228,8 +1230,16 @@ export class PixelLabProvider implements Provider {
             `but its character has ${character.directions} directions: ${allowed.join(", ")}`,
         )
       }
-      if (character.animation.mode !== "template" && character.animation.mode !== "skeleton-v3" && !spec.prompt.trim()) {
-        throw new Error(`${spec.styleId}/${spec.assetId} needs a prompt describing the motion, or a template`)
+      // skeleton-v3 without a template animates the prompt as a sentence.
+      const sentence = character.animation.mode === "skeleton-v3" && !character.animation.template
+      if (character.animation.mode !== "template" && (character.animation.mode !== "skeleton-v3" || sentence) && !spec.prompt.trim()) {
+        throw new Error(
+          `${spec.styleId}/${spec.assetId} needs a prompt describing the motion, or a template` +
+            (sentence ? ' (a skeleton-v3 loop with no template animates its prompt, e.g. "swinging a sword in a wide arc")' : ""),
+        )
+      }
+      if (sentence && (character.animation.frames < 3 || character.animation.frames > 15)) {
+        throw new Error(`${spec.styleId}/${spec.assetId}: a skeleton-v3 loop from a sentence takes 3 to 15 frames; ${character.animation.frames} is out of range`)
       }
       // Measured: PixelLab answers a skeleton-v3 loop on a standard base with
       // a bare 500 ("Failed to start any animation jobs", nothing billed),
@@ -1237,8 +1247,11 @@ export class PixelLabProvider implements Provider {
       // onto. pro and pro-flash bases are unverified, so they pass.
       if (character.animation.mode === "skeleton-v3" && character.mode === "standard") {
         throw new Error(
-          `${spec.styleId}/${spec.assetId}: skeleton-v3 poses a template onto a 3D skeleton, which a ${character.mode} character has none of; ` +
-            `use a v3 base (style mode: "v3"), or mode: "template" for this loop`,
+          sentence
+            ? `${spec.styleId}/${spec.assetId}: a skeleton-v3 loop from a sentence writes the motion onto a 3D skeleton, which a ${character.mode} character has none of; ` +
+                `use a v3 base (style mode: "v3"), or mode: "template" with a template for this loop`
+            : `${spec.styleId}/${spec.assetId}: skeleton-v3 poses a template onto a 3D skeleton, which a ${character.mode} character has none of; ` +
+                `use a v3 base (style mode: "v3"), or mode: "template" for this loop`,
         )
       }
     }

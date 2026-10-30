@@ -920,7 +920,11 @@ generations and finished in about two minutes:
   the top-level amount is a dollar zero. PixelLab says the action is written
   into one 3D motion that every direction is drawn from, so later directions
   added with `animation_group_id` move the same way (humanoids). pixelkiln
-  does not send this mode yet.
+  sends this mode for a character loop with `mode: "skeleton-v3"`, a prompt,
+  and no template (docs/CHARACTERS.md, "Loops from a sentence"), one request
+  per direction asset and without `animation_group_id`. Verified live with
+  one south direction on a v3 character; a standard-engine character is
+  refused (`has no stored 3D skeleton`).
 
 ## Characters, measured
 

@@ -416,11 +416,17 @@ try {
     const loopModes = () => page.evaluate(() => [...document.querySelectorAll(".studio-loop select")].map((s) => ({
       value: (s as HTMLSelectElement).value,
       v3Disabled: [...(s as HTMLSelectElement).options].find((o) => o.value === "skeleton-v3")!.disabled,
+      // The sentence form of skeleton-v3 needs the same stored skeleton; its frame count sits beside the row and shows only when it is picked.
+      wordsOffered: [...(s as HTMLSelectElement).options].some((o) => o.value === "skeleton-v3-words" && /described in words \(3-15 frames; 3 per direction measured\)/.test(o.textContent ?? "")),
+      wordsDisabled: [...(s as HTMLSelectElement).options].find((o) => o.value === "skeleton-v3-words")?.disabled ?? null,
+      framesShown: [...((s as HTMLElement).closest(".studio-loop")?.querySelectorAll("input[type=number]") ?? [])].some((n) => !(n as HTMLElement).closest("[hidden]")),
     })))
     const onV3 = await loopModes()
     check(onV3.length > 0 && onV3.every((m) => m.value === "skeleton-v3" && !m.v3Disabled), `a v3 base starts its loops on skeleton-v3 (${JSON.stringify(onV3)})`)
+    check(onV3.every((m) => m.wordsOffered && m.wordsDisabled === false && !m.framesShown), "a v3 base offers skeleton-v3 described in words, with no frame count until it is picked")
     await setEngine("standard")
     const onStandard = await loopModes()
+    check(onStandard.every((m) => m.wordsOffered && m.wordsDisabled === true), "a standard base greys out skeleton-v3 described in words")
     check(onStandard.length > 0 && onStandard.every((m) => m.value === "template" && m.v3Disabled), `a standard base starts its loops on template, with skeleton-v3 greyed out (${JSON.stringify(onStandard)})`)
     await setEngine("v3")
     const backOnV3 = await loopModes()

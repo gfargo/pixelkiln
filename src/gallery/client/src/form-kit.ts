@@ -11,13 +11,26 @@ export const skeletonV3Allowed = (engine: string | null | undefined) => engine !
 /** The mode a new template loop starts on for a base made with `engine`. */
 export const defaultLoopMode = (engine: string | null | undefined) => skeletonV3Allowed(engine) ? 'skeleton-v3' : 'template';
 
-/** Greys out the skeleton-v3 choice for an engine it cannot run on, and says why. */
+/**
+ * The choice that animates a sentence with the skeleton model. It saves as
+ * `mode: 'skeleton-v3'` with no template, so it needs its own value in the
+ * pickers, where 'skeleton-v3' means a template.
+ */
+export const SKELETON_WORDS = 'skeleton-v3-words';
+
+/** PixelLab's frame range for a sentence loop, odd counts included. */
+export const SKELETON_WORDS_FRAMES = { min: 3, max: 15, fallback: 8 };
+
+/** Greys out the skeleton-v3 choices for an engine they cannot run on, and says why. */
 export function syncSkeletonOption(select: HTMLSelectElement, engine: string | null | undefined) {
-  const option = [...select.options].find((o) => o.value === 'skeleton-v3');
-  if (!option) return;
   const allowed = skeletonV3Allowed(engine);
-  option.disabled = !allowed;
-  option.title = allowed ? '' : 'PixelLab poses a template only onto a v3 character. A standard base has no 3D skeleton; use template.';
+  for (const option of select.options) {
+    if (option.value !== 'skeleton-v3' && option.value !== SKELETON_WORDS) continue;
+    option.disabled = !allowed;
+    option.title = allowed ? '' : option.value === SKELETON_WORDS
+      ? 'PixelLab writes the motion onto a stored 3D skeleton, which a standard base has none of; use v3 or a template.'
+      : 'PixelLab poses a template only onto a v3 character. A standard base has no 3D skeleton; use template.';
+  }
 }
 
 /** What happens after a manifest-only save, which depends on whether this page can generate. */

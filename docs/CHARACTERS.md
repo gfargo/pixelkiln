@@ -222,6 +222,45 @@ single direction before a batch.
 "mira.walk": { "animation": { "of": "mira", "template": "walk", "mode": "skeleton-v3", "directions": ["south", "west", "north"] } }
 ```
 
+### Loops from a sentence
+
+`mode: "skeleton-v3"` with **no `template`** animates the asset's `prompt`
+instead: PixelLab writes the sentence into one 3D motion and draws the
+character from it, with no template to pick. `frames` takes PixelLab's own
+3 to 15 for this combination (odd counts included, default 8); a template
+`skeleton-v3` loop still takes none.
+
+```jsonc
+"mira.swing": {
+  "prompt": "swinging a sword in a wide arc",
+  "animation": { "of": "mira", "mode": "skeleton-v3", "frames": 8, "directions": ["south", "west"] }
+}
+```
+
+- **A v3 base is required.** The sentence is written onto the character's
+  stored 3D skeleton, which a `standard` base lacks, so `plan` and `validate`
+  refuse the pairing and name the engine. `pro` and `pro-flash` bases are
+  not refused but are unverified. An `objectPro` has no skeleton at all.
+- **The prompt is the sentence**, sent as written as `action_description`
+  (a loop's prompt never takes the style's prefix or suffix, same as a v3
+  loop). It is required; `startFrame`, `endFrame`, `enhancePrompt`,
+  `subject`, and the template style hints are refused.
+- **The canvas can grow.** The measured 64px loop came back at 96×96. The
+  frames are saved as PixelLab returns them; a mirror flips them locally like
+  any other loop.
+- **Cost**: the plan budgets 4 per direction, the same ceiling as a template
+  `skeleton-v3` loop. Measured live on a v3 character: 8 frames at 64px billed
+  exactly 3 generations for one direction, about 15 seconds before the jobs
+  start. `billed` in the lock records the real amount.
+- **Directions do not share one motion yet.** PixelLab draws every direction
+  of a request from one 3D motion, and `animation_group_id` appends a
+  direction to an existing animation so it moves the same way. pixelkiln
+  makes one request per direction asset (including each direction of
+  `directions`), so each direction's motion is written from the sentence
+  separately and may differ a little. Appending to a recorded group is not
+  wired up; the lock keeps each direction's `animationGroupId` for when it is.
+  Verified live is a single south direction only.
+
 ### Pose frames and other loop controls
 
 A v3 loop can start and end where you say. `startFrame` is a
@@ -489,11 +528,12 @@ reference image change alone also makes it stale.
   style (engine, size, directions, body, view, folder) or an existing one,
   the base with an optional sprite of your own (uploaded into `refs/`, so
   only the rotations are billed), any number of loops (each a template
-  posed by `skeleton-v3` by default, or a plain template, v3, or pro loop,
+  posed by `skeleton-v3` by default, a `skeleton-v3` loop described in words
+  with a 3 to 15 frame count, or a plain template, v3, or pro loop,
   in the directions you tick, mirrors added free), and a portrait. A
   `standard` base has no 3D skeleton for `skeleton-v3` to pose, so its loops
-  start on `template` and the skeleton-v3 choice is greyed out; the new-loop
-  form on an existing base does the same. The
+  start on `template` and both skeleton-v3 choices are greyed out; the
+  new-loop form on an existing base does the same. The
   sheet prices the draft live, the way `plan` would. Pro Flash bases are
   priced by PixelLab's own quote (`/pro-flash/cost`, a free call) when the
   project has a key; those rows are marked live, and the offline estimate
