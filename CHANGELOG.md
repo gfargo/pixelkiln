@@ -1,3 +1,10 @@
+## [0.89.5](https://github.com/gfargo/pixelkiln/compare/v0.89.4...v0.89.5) (2026-10-30)
+
+
+### Bug Fixes
+
+* **gallery:** start loops on a mode the base's engine can run ([772e228](https://github.com/gfargo/pixelkiln/commit/772e2284ec1752ede336397d4269076e08aec527))
+
 ## [0.89.4](https://github.com/gfargo/pixelkiln/compare/v0.89.3...v0.89.4) (2026-10-30)
 
 
