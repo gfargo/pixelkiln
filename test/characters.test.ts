@@ -399,6 +399,7 @@ describe("skeleton-v3 loops", () => {
 
   it("resolve with no prompt of their own, priced at the top of PixelLab's range", async () => {
     const loaded = await loadManifest(await writeManifest({
+      style: { mode: "v3" },
       assets: {
         mira: { prompt: "a knight" },
         "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", mode: "skeleton-v3", direction: "east" } },
@@ -407,6 +408,36 @@ describe("skeleton-v3 loops", () => {
     const walk = (await resolveSpecs(loaded)).find((spec) => spec.assetId === "mira.walk")!
     expect(walk.character?.animation).toMatchObject({ mode: "skeleton-v3", template: "walk", direction: "east" })
     expect(walk.cost).toBe(4)
+  })
+
+  it("are refused on a standard base, which stores no 3D skeleton, and allowed on v3 and pro", async () => {
+    const loop = { "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", mode: "skeleton-v3", direction: "east" } } }
+    const resolve = async (mode: string) =>
+      resolveSpecs(await loadManifest(await writeManifest({ style: { mode }, assets: { mira: { prompt: "a knight" }, ...loop } })))
+    await expect(resolve("standard")).rejects.toThrow(/skeleton-v3 poses a template onto a 3D skeleton, which a standard character has none of.*mode: "template"/)
+    await expect(resolve("v3")).resolves.toHaveLength(2)
+    await expect(resolve("pro")).resolves.toHaveLength(2)
+    // A plain template loop still works on a standard base.
+    const plain = { "mira.walk": { prompt: "", animation: { of: "mira", template: "walk", direction: "east" } } }
+    await expect(resolveSpecs(await loadManifest(await writeManifest({ assets: { mira: { prompt: "a knight" }, ...plain } })))).resolves.toHaveLength(2)
+  })
+
+  it("explain PixelLab's bare 500 when one reaches a character with no skeleton anyway", async () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: "Failed to start any animation jobs" }), { status: 500 })))
+      const failing = new PixelLabClient("key")
+        .animateCharacter({ characterId: "char-1", animationName: "walk", directions: ["east"], mode: "skeleton-v3", template: "walk" } as never)
+        .catch((err: unknown) => err)
+      await vi.runAllTimersAsync()
+      const err = await failing
+      expect(err).toBeInstanceOf(PixelLabError)
+      expect((err as PixelLabError).status).toBe(500)
+      expect((err as PixelLabError).message).toMatch(/3D skeleton \(a v3 base\).*mode: "template"/)
+    } finally {
+      vi.unstubAllGlobals()
+      vi.useRealTimers()
+    }
   })
 })
 

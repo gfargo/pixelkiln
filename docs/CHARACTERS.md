@@ -209,6 +209,15 @@ higher, and it is sent to `/characters/animations`, the endpoint that
 documents it; every other mode keeps using `/animate-character`. Like a
 template loop it takes no `frames` and needs no prompt of its own.
 
+It needs a character PixelLab stored a 3D skeleton for. A `v3` base has
+one (a `skeleton-v3` loop on it billed 3 generations live). A `standard`
+base has none: PixelLab answers `POST /characters/animations` with a bare
+500 (`Failed to start any animation jobs`, nothing billed) and, asked,
+says to use `mode: "template"` for that character. `plan` and `validate`
+refuse the combination and name the engine. `pro` and `pro-flash` bases
+are not refused, but a `skeleton-v3` loop on one is unverified; try a
+single direction before a batch.
+
 ```jsonc
 "mira.walk": { "animation": { "of": "mira", "template": "walk", "mode": "skeleton-v3", "directions": ["south", "west", "north"] } }
 ```
