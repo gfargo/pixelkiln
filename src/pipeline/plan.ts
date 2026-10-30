@@ -7,7 +7,7 @@ import { lockKey, type Lock, type LockEntry, type LockTerrainSettings, type Reso
 import type { CostUnit } from "../provider.ts"
 import { inspectQualityProfile, type QualityProfileInspection } from "./quality-profile.ts"
 import { postprocessCurrent } from "./postprocess.ts"
-import { inspectRevisionReadiness } from "./revision.ts"
+import { inspectRevisionReadiness, recordedAnimationGroup } from "./revision.ts"
 
 export type PlanState =
   | "ok" // spec unchanged, file present and matching; nothing to do
@@ -42,6 +42,7 @@ function dependencies(spec: ResolvedSpec): ResolvedSpec[] {
     spec.mirror?.sourceSpec,
     spec.revision?.sourceSpec,
     spec.character?.parentSpec,
+    spec.character?.motionLeader?.spec,
     spec.character?.styleAnchor?.spec,
     spec.objectPro?.parentSpec,
     spec.terrainConnect?.lower?.spec,
@@ -63,6 +64,19 @@ function changedTerrainConnection(spec: ResolvedSpec, entry: LockEntry, lock: Lo
     if (!recorded || recorded.sourceObjectId !== other?.objectId) return link.assetId
   }
   return null
+}
+
+/**
+ * The loop this one shares a motion with, when it was drawn into an
+ * animation group that loop no longer has: the leader was regenerated or
+ * restored to another generation. A loop drawn on its own because the leader
+ * had no group stays current until the leader gains one.
+ */
+function changedMotionLeader(spec: ResolvedSpec, entry: LockEntry, lock: Lock): string | null {
+  const leader = spec.character?.motionLeader
+  if (!leader) return null
+  const current = recordedAnimationGroup(lock.entries[lockKey(leader.spec.styleId, leader.spec.assetId)]).animationGroupId
+  return (entry.motionShare?.animationGroupId ?? null) === current ? null : leader.assetId
 }
 
 /**
@@ -170,6 +184,7 @@ export async function buildPlan(
     let reason: string
 
     const changedConnection = entry ? changedTerrainConnection(spec, entry, lock) : null
+    const changedMotion = entry ? changedMotionLeader(spec, entry, lock) : null
     const changedSettings = entry ? changedTerrainSettings(spec, entry) : null
     const revision = await inspectRevisionReadiness(spec, lock)
     if (revision && !revision.ready) {
@@ -234,6 +249,11 @@ export async function buildPlan(
       // other set's current generation is only in the lockfile.
       state = "stale"
       reason = `connected set ${changedConnection} was regenerated; draw this set from its new terrain`
+    } else if (changedMotion) {
+      // Which loop leads is in specHash above; its current animation group
+      // is only in the lockfile.
+      state = "stale"
+      reason = `shares motion with ${changedMotion}, which was regenerated; draw this direction into its new motion`
     } else if (changedSettings) {
       // The older terrain knobs are not in specHash (adding them would have
       // made every terrain entry stale); each entry records its own.
@@ -338,6 +358,17 @@ export async function buildPlan(
         item.reason = `mirror source ${parentKey} is ${parentState}; this follows in the next wave`
         break
       }
+    }
+  }
+
+  // A member whose leader is downloaded without a recorded animation group is
+  // drawn on its own; say so, since its motion then differs from the leader's.
+  for (const item of items) {
+    const leader = item.spec.character?.motionLeader
+    if (!leader || !isActionable(item)) continue
+    const leaderEntry = lock.entries[lockKey(leader.spec.styleId, leader.spec.assetId)]
+    if (leaderEntry?.status === "downloaded" && !recordedAnimationGroup(leaderEntry).animationGroupId) {
+      item.reason += `; ${leader.assetId} has no animation group recorded, so this is drawn on its own and its motion will differ`
     }
   }
 

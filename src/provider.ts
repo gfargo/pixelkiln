@@ -116,6 +116,14 @@ export interface SubmitContext {
    */
   terrainLinks?: Partial<Record<"lower" | "upper", { objectId: string; terrain: "lower" | "upper"; terrainId?: string }>>
   /**
+   * For a sentence loop that shares another direction's motion, when the
+   * leader's generation recorded the animation group it was drawn into: that
+   * group and the name the animation holds there. The adapter adds this
+   * direction to the group so it moves the same way. Absent when the leader
+   * has no group recorded, and the loop is then drawn on its own.
+   */
+  motionGroup?: { animationGroupId: string; animationName: string }
+  /**
    * Provider-owned details of the generation this submission replaces, when
    * the lockfile had one for the same asset, whatever its state. An adapter
    * that must clear upstream work before redoing it (a character animation

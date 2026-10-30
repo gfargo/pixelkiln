@@ -619,7 +619,7 @@ describe("skeleton-v3 loops from a sentence", () => {
       action_description: "swinging a sword in a wide arc", animation_name: "pixelkiln:cast/mira.swing",
     })
     expect(post.body).not.toHaveProperty("template_animation_id")
-    // The group id of a sibling direction is not sent: each direction is its own asset and request (docs/CHARACTERS.md).
+    // A lone loop starts a new animation; only a later direction of a loop is sent into a group (test/motion-share.test.ts).
     expect(post.body).not.toHaveProperty("animation_group_id")
 
     const state = await provider.poll(job.jobId, "character", { spec: swing })

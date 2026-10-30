@@ -58,6 +58,7 @@ export function retireGeneration(entry: LockEntry, retiredAt: string): LockHisto
     provider: entry.provider,
     postprocess: entry.postprocess,
     ...(entry.terrainConnect ? { terrainConnect: entry.terrainConnect } : {}),
+    ...(entry.motionShare ? { motionShare: entry.motionShare } : {}),
     ...(entry.terrainSettings ? { terrainSettings: entry.terrainSettings } : {}),
     retiredAt,
   }
@@ -215,6 +216,8 @@ export async function revertGeneration(
     // A connected set comes back with the connection it was drawn from, so
     // the plan compares the restored generation, not the one it replaced.
     terrainConnect: generation.terrainConnect,
+    // Likewise a loop that shared another direction's motion.
+    motionShare: generation.motionShare,
     // Likewise its settings; a generation from before they were recorded
     // comes back with none and is taken as current.
     terrainSettings: generation.terrainSettings,

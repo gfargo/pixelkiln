@@ -847,7 +847,9 @@ export async function resolveSpecs(
                 "mirror a loop facing east, west, or a diagonal",
             )
           }
-          resolved.character = { ...sourceSpec.character, animation: { ...sourceSpec.character.animation!, direction: mirrored } }
+          // A flip draws nothing, so it joins no motion group even when its source does.
+          const { motionLeader: _motionLeader, ...flipped } = sourceSpec.character
+          resolved.character = { ...flipped, animation: { ...sourceSpec.character.animation!, direction: mirrored } }
         } else if (sourceSpec.character) {
           resolved.character = { ...sourceSpec.character }
         }
@@ -911,6 +913,29 @@ export async function resolveSpecs(
           mode: resolved.character.kind === "base" ? resolved.character.mode : parentSpec.character?.mode ?? resolved.character.mode,
           directions: resolved.character.kind === "base" ? resolved.character.directions : parentSpec.character?.directions ?? resolved.character.directions,
         }
+      }
+      if (resolved.character?.animation && asset.animation?.motionFrom) {
+        // The leader is a sentence loop of the same character in another
+        // direction; it is submitted first and this one joins its animation
+        // group, so the lockfile (not the manifest) says which group.
+        const leaderId = asset.animation.motionFrom
+        const where = `assets.${assetId}.animation.motionFrom`
+        if (leaderId === assetId) throw new Error(`${where}: an asset cannot share its own motion`)
+        const leader = await finalize(leaderId)
+        const led = leader.character?.animation
+        if (leader.character?.kind !== "animation" || leader.mirror || !led || led.mode !== "skeleton-v3" || led.template) {
+          throw new Error(`${where}: ${leaderId} is not a skeleton-v3 loop from a sentence`)
+        }
+        if (leader.character.parentAssetId !== resolved.character.parentAssetId) {
+          throw new Error(`${where}: ${leaderId} animates ${leader.character.parentAssetId}, not ${resolved.character.parentAssetId}`)
+        }
+        if (leader.character.motionLeader) {
+          throw new Error(`${where}: ${leaderId} itself shares ${leader.character.motionLeader.assetId}'s motion; point at the loop that leads`)
+        }
+        if (led.direction === resolved.character.animation.direction) {
+          throw new Error(`${where}: ${leaderId} is drawn in the same direction; sharing a motion needs another direction`)
+        }
+        resolved.character = { ...resolved.character, motionLeader: { assetId: leaderId, spec: leader } }
       }
       if (resolved.objectPro && characterParent) {
         const parentSpec = await finalize(characterParent)

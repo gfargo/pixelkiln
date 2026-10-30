@@ -922,7 +922,12 @@ generations and finished in about two minutes:
   added with `animation_group_id` move the same way (humanoids). pixelkiln
   sends this mode for a character loop with `mode: "skeleton-v3"`, a prompt,
   and no template (docs/CHARACTERS.md, "Loops from a sentence"), one request
-  per direction asset and without `animation_group_id`. Verified live twice
+  per direction asset. The first direction of a `directions` loop is sent
+  without `animation_group_id`; each later one is sent after it with the
+  leader's recorded `animation_group_id` and the group's own `animation_name`
+  (not inherited, so omitting it would rename the group). That append is
+  **mock-verified only**: the request shape follows the tool's documentation
+  and a live append has not been run. Verified live twice
   with one south direction on a v3 character, once by a direct call and once
   through `pixelkiln gen` (a manifest loop on an `adopt`ed character, 8
   frames at 96×96, billed 3, then `pick` and `fetch`); a standard-engine
