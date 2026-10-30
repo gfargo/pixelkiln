@@ -1561,6 +1561,9 @@ export class PixelLabProvider implements Provider {
           directions: character.directions,
           size: character.size,
           updatedAt: character.updated_at ?? null,
+          // Kept: this metadata replaces the submit-time `character` entry,
+          // and the job id is the only way to read the bill again later.
+          ...(backgroundJobId ? { backgroundJobId } : {}),
         },
       },
       billed: await this.billedForJob(backgroundJobId),
@@ -2299,7 +2302,16 @@ export class PixelLabProvider implements Provider {
     if (!backgroundJobId) return null
     try {
       const job = await this.client.getBackgroundJob(backgroundJobId)
-      return billedFromUsage(job.usage)
+      // The job's `usage` can be the schema's dollar-shaped example with a
+      // zero (a v3 base read `{usd: 0}` against an estimate of 2
+      // generations); its copy at `last_response.billing_usage` is tried
+      // next, and a zero in dollars is "not known", never a bill of nothing.
+      const nested = (job.last_response as { billing_usage?: PixelLabUsage | null } | null | undefined)?.billing_usage
+      for (const usage of [job.usage, nested]) {
+        const billed = billedFromUsage(usage)
+        if (billed && !(billed.unit === "usd" && billed.amount === 0)) return billed
+      }
+      return null
     } catch {
       return null
     }

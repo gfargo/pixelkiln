@@ -720,6 +720,8 @@ function fakeClient() {
     forgetJobs() { jobs.clear(); jobResponses.clear(); baseJobs.clear(); baseJobUsage.clear(); baseJobResponse.clear() },
     /** Test hook: what a base or state's own background job reports as billed once it completes. */
     setBaseUsage(characterId: string, usage: Record<string, unknown>) { baseJobUsage.set(`job-${characterId}`, usage) },
+    /** Test hook: the `last_response` a base or state's background job carries. */
+    setBaseResponse(characterId: string, response: Record<string, unknown>) { baseJobResponse.set(`job-${characterId}`, response) },
     /** Test hook: what any background job (by its own id) reports as billed once it completes. */
     setJobUsage(jobId: string, usage: Record<string, unknown>) { baseJobUsage.set(jobId, usage) },
     portraitsSet: [] as { characterId: string; base64: string }[],
@@ -1051,6 +1053,33 @@ describe("billed usage", () => {
     client.setBaseUsage("char-1", { type: "generations", generations: 2 })
     await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
     expect(p.lock.entries["cast/mira"]).toMatchObject({ cost: 1, billed: { amount: 2, unit: "generations" } })
+  })
+
+  it("does not record a dollar-shaped zero as a v3 base's bill, and keeps the job id to ask again", async () => {
+    const file = await writeManifest({ style: { mode: "v3" }, assets: { mira: { prompt: "small young woman" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    client.setBaseUsage("char-1", { type: "usd", usd: 0 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    const entry = p.lock.entries["cast/mira"]!
+    expect(entry).toMatchObject({ status: "selected", cost: 2, billed: null })
+    expect(entry.providerMetadata?.pixellab?.character).toMatchObject({ characterId: "char-1", backgroundJobId: "job-char-1" })
+  })
+
+  it("falls back to the job's nested billing_usage when its top-level usage is a dollar-shaped zero", async () => {
+    const file = await writeManifest({ style: { mode: "v3" }, assets: { mira: { prompt: "small young woman" } } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    client.setBaseUsage("char-1", { type: "usd", usd: 0 })
+    client.setBaseResponse("char-1", { billing_usage: { type: "generations", generations: 2 }, billing_charged: true })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira"]).toMatchObject({ cost: 2, billed: { amount: 2, unit: "generations" } })
   })
 
   it("records a state's actual bill against its wider estimate tier", async () => {
