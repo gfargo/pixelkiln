@@ -1,3 +1,12 @@
+## [0.89.4](https://github.com/gfargo/pixelkiln/compare/v0.89.3...v0.89.4) (2026-10-30)
+
+
+### Bug Fixes
+
+* **pick:** label each frame with its own size, not the manifest's ([ba9f882](https://github.com/gfargo/pixelkiln/commit/ba9f8828be74ad6806964588ca1ae7ef167cf545))
+* **pixellab:** never record a dollar-shaped zero as a character's bill ([ed6427e](https://github.com/gfargo/pixelkiln/commit/ed6427e9c23c999c30ea39dc1741bd720d1e05b2))
+* **pixellab:** refuse skeleton-v3 loops on standard characters, explain the 500 ([48f0f1d](https://github.com/gfargo/pixelkiln/commit/48f0f1dd21c54ca9172f9fcd44abf452012b26c1))
+
 ## [0.89.3](https://github.com/gfargo/pixelkiln/compare/v0.89.2...v0.89.3) (2026-10-16)
 
 ## [0.89.2](https://github.com/gfargo/pixelkiln/compare/v0.89.1...v0.89.2) (2026-10-16)
