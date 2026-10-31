@@ -1,3 +1,10 @@
+## [0.91.2](https://github.com/gfargo/pixelkiln/compare/v0.91.1...v0.91.2) (2026-10-31)
+
+
+### Bug Fixes
+
+* **manifest:** resolve a motion leader, mirror source, and style anchor outside --only ([d819bae](https://github.com/gfargo/pixelkiln/commit/d819bae25fd86e2d2f0a5870c65d51ac7830a94b))
+
 ## [0.91.1](https://github.com/gfargo/pixelkiln/compare/v0.91.0...v0.91.1) (2026-10-31)
 
 # [0.91.0](https://github.com/gfargo/pixelkiln/compare/v0.90.0...v0.91.0) (2026-10-30)
