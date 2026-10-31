@@ -401,7 +401,8 @@ and came back at 96×96, so the canvas can grow. The plan still budgets 4. One
 request goes out per direction asset: the first direction of `directions`
 leads, and each later one follows in the next wave, sent into the leader's
 `animation_group_id` so every direction moves the same way (`animation.motionFrom`,
-lock `motionShare`; mock-verified only, docs/CHARACTERS.md, "Loops from a
+lock `motionShare`; a live append billed 3 and joined the group, deleting
+one direction of a group is unverified, docs/CHARACTERS.md, "Loops from a
 sentence"). The
 `prompt` is required and gets no style prefix or suffix.
 

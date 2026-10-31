@@ -286,10 +286,15 @@ character from it, with no template to pick. `frames` takes PixelLab's own
     `plan` says so; its `motionShare.animationGroupId` is `null`. If the
     leader's recorded group is gone from the character, the follower fails
     before spending and asks you to regenerate the leader.
-  - Verified against mocked HTTP only; not yet run live. A single south
-    direction was verified live through PixelKiln on an adopted v3 character:
-    "jumping with joy and pumping both fists", 8 frames at 96×96, billed 3,
-    with `animationId` and `animationGroupId` saved in the lock.
+  - **Verified live** (October 2026, an adopted v3 character): a south loop
+    ("jumping with joy and pumping both fists", 8 frames at 96×96, billed 3),
+    then `west` added to `directions`. Only `west` was planned and drawn; it
+    went into the south loop's recorded group, billed 3, and came back at
+    96×96 with the same timing as south: a crouch, both fists rising overhead,
+    and a return. PixelLab's character record then listed one group, named
+    after the leader, holding `south` and `west`, and its other animations
+    were untouched. Its free `east` mirror generated locally. Replacing one
+    direction (deleting it from a shared group) has not been run live.
 
 ### Pose frames and other loop controls
 

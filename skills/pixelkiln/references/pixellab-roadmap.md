@@ -43,8 +43,10 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   (`animation.motionFrom`, lock `motionShare`). Adding a direction to a
   generated loop appends into its group, a regenerated leader marks followers
   stale, and a leader with no recorded group falls back to one request per
-  direction. **Mock-verified only; live proof pending** (a live append, and that
-  deleting one direction leaves the group and the others' motion intact).
+  direction. **A live append is verified** (adding `west` to a generated `south`
+  loop billed 3, joined the leader's group, and moved with the same timing).
+  Still unverified: that deleting one direction leaves the group and the
+  others' motion intact.
 
 - **Skeleton-v3 template loops** — `/characters/animations`'
   `mode: "skeleton-v3"` poses a template with the skeleton video model
