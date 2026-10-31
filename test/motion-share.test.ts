@@ -135,6 +135,65 @@ describe("resolving a sentence loop's directions", () => {
   })
 })
 
+describe("--only with a shared motion", () => {
+  const only = async (assets: string[], styles: string[] = []) => {
+    const loaded = await loadManifest(manifestPath())
+    return resolveSpecs(loaded, { assets, styles })
+  }
+
+  it("resolves a follower named alone, reading its leader as a dependency without selecting it", async () => {
+    await open({ directions: ["south", "west"] })
+    const specs = await only(["hero.cheer.west"])
+    expect(specs.map((s) => s.assetId)).toEqual(["hero.cheer.west"])
+    expect(specs[0]!.character?.motionLeader?.assetId).toBe("hero.cheer.south")
+    // Same identity as when the whole manifest is resolved.
+    const all = await only([])
+    expect(specs[0]!.specHash).toBe(all.find((s) => s.assetId === "hero.cheer.west")!.specHash)
+    expect((await only(["hero.cheer.west"], ["cast"])).map((s) => s.assetId)).toEqual(["hero.cheer.west"])
+  })
+
+  it("leaves the leader alone when it is named alone, and takes both through the loop's base name", async () => {
+    await open({ directions: ["south", "west"] })
+    const leader = await only(["hero.cheer.south"])
+    expect(leader.map((s) => s.assetId)).toEqual(["hero.cheer.south"])
+    expect(leader[0]!.character?.motionLeader).toBeUndefined()
+    expect((await only(["hero.cheer"])).map((s) => s.assetId).sort()).toEqual(["hero.cheer.east", "hero.cheer.south", "hero.cheer.west"])
+  })
+
+  it("plans the follower as missing when the leader is downloaded and current, and holds it when the leader is absent", async () => {
+    const p = await open({ directions: ["south", "west"] })
+    const narrow = async () => (await buildPlan(await only(["hero.cheer.west"]), p.lock)).items.map((i) => [i.spec.assetId, i.state])
+    expect(await narrow()).toEqual([["hero.cheer.west", "blocked"]])
+    await markDownloaded(p, "hero.cheer.south", { providerMetadata: characterMeta("hero.cheer.south", "grp-1", "south") })
+    expect(await narrow()).toEqual([["hero.cheer.west", "missing"]])
+    const plan = await buildPlan(await only(["hero.cheer.west"]), p.lock)
+    expect(plan.actionable.map((i) => i.spec.assetId)).toEqual(["hero.cheer.west"])
+  })
+
+  it("still resolves a loop's character parent and a mirror's source when only the dependent is named", async () => {
+    await open({ directions: ["south", "west"] })
+    const loop = await only(["hero.cheer.west"])
+    expect(loop[0]!.character?.parentAssetId).toBe("hero")
+    await open({ directions: ["south", "west", "north"] })
+    const east = await only(["hero.cheer.east"])
+    expect(east.map((s) => s.assetId)).toEqual(["hero.cheer.east"])
+    expect(east[0]!.mirror?.sourceAssetId).toBe("hero.cheer.west")
+  })
+})
+
+describe("--only with a style anchor", () => {
+  it("resolves a base whose styleCharacter is outside the filter", async () => {
+    await writeFile(manifestPath(), JSON.stringify({
+      name: "anchor-test",
+      styles: { cast: { generator: "character", mode: "pro", outDir: "art/characters", size: 64, styleCharacter: "hero" } },
+      assets: { hero: { prompt: "a knight" }, rook: { prompt: "a rook" } },
+    }))
+    const specs = await resolveSpecs(await loadManifest(manifestPath()), { assets: ["rook"] })
+    expect(specs.map((s) => s.assetId)).toEqual(["rook"])
+    expect(specs[0]!.character?.styleAnchor?.assetId).toBe("hero")
+  })
+})
+
 describe("planning a shared motion", () => {
   it("lets the leader go first and holds the others for the next wave", async () => {
     const p = await open({ directions: ["south", "west", "north"] })
@@ -266,6 +325,19 @@ describe("submitting a shared motion", () => {
     expect(deletes(again)).toEqual([])
     expect(p.lock.entries["cast/hero.cheer.west"]!.motionShare).toEqual({ sourceAssetId: "hero.cheer.south", animationGroupId: "grp-7" })
     expect(p.lock.entries["cast/hero.cheer.west"]!.providerMetadata.pixellab).toMatchObject({ character: { animationGroupId: "grp-7", animationName: "name-as-recorded" } })
+  })
+
+  it("sends a follower named with --only into the leader's group without drawing the leader", async () => {
+    const p = await open({ directions: ["south", "west"] })
+    await markDownloaded(p, "hero.cheer.south", { providerMetadata: characterMeta("hero.cheer.south", "grp-7", "south", "name-as-recorded") })
+    const sent = stubPixelLab([{ id: "grp-7", name: "name-as-recorded", directions: ["south"] }])
+    const specs = await resolveSpecs(await loadManifest(manifestPath()), { assets: ["hero.cheer.west"] })
+    const provider = new PixelLabProvider(new (await import("../src/client.ts")).PixelLabClient("key"))
+    const plan = await buildPlan(specs, p.lock)
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(posts(sent)).toHaveLength(1)
+    expect(posts(sent)[0]!.body).toMatchObject({ directions: ["west"], animation_group_id: "grp-7", animation_name: "name-as-recorded" })
+    expect(deletes(sent)).toEqual([])
   })
 
   it("adds a direction to a loop that was generated earlier, straight away", async () => {

@@ -214,12 +214,23 @@ export function parentAssetId(asset: Asset | undefined): string | undefined {
   return asset?.revision?.from ?? asset?.state?.of ?? asset?.animation?.of ?? asset?.portrait?.of ?? asset?.outfit?.of
 }
 
-/** Every asset this one waits for: its parent, and the sets a terrain set connects to. */
-function dependencyAssetIds(asset: Asset | undefined): string[] {
+/**
+ * Every asset this one waits for: its parent, the sets a terrain set connects
+ * to, and the loop whose motion it shares. Under `--only` these are resolved
+ * read-only, never selected.
+ */
+function dependencyAssetIds(asset: Asset | undefined, styleAnchors: string[] = []): string[] {
   const parent = parentAssetId(asset)
   return [
     ...(parent ? [parent] : []),
-    ...[asset?.connect?.lower?.of, asset?.connect?.upper?.of].filter((id): id is string => Boolean(id)),
+    ...[
+      asset?.connect?.lower?.of,
+      asset?.connect?.upper?.of,
+      asset?.animation?.motionFrom,
+      asset?.mirror,
+      asset?.styleCharacter,
+      ...(asset?.styleCharacter ? [] : styleAnchors),
+    ].filter((id): id is string => Boolean(id)),
   ]
 }
 
@@ -368,9 +379,12 @@ export async function resolveSpecs(
     ? assetFilter
     : Object.keys(manifest.assets))
   const resolutionAssetIds = new Set(requestedAssetIds)
+  // A style-wide anchor is only read by character bases of that style; naming
+  // it for every asset only widens what is resolved, never what is emitted.
+  const styleAnchors = Object.values(manifest.styles).map((style) => style.styleCharacter).filter((id): id is string => Boolean(id))
   const pending = [...requestedAssetIds]
   while (pending.length) {
-    for (const dependency of dependencyAssetIds(manifest.assets[pending.pop()!])) {
+    for (const dependency of dependencyAssetIds(manifest.assets[pending.pop()!], styleAnchors)) {
       if (resolutionAssetIds.has(dependency) || !manifest.assets[dependency]) continue
       resolutionAssetIds.add(dependency)
       pending.push(dependency)
