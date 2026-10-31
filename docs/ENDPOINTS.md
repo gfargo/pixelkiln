@@ -925,9 +925,15 @@ generations and finished in about two minutes:
   per direction asset. The first direction of a `directions` loop is sent
   without `animation_group_id`; each later one is sent after it with the
   leader's recorded `animation_group_id` and the group's own `animation_name`
-  (not inherited, so omitting it would rename the group). That append is
-  **mock-verified only**: the request shape follows the tool's documentation
-  and a live append has not been run. Verified live twice
+  (not inherited, so omitting it would rename the group). That append was
+  **verified live once** (October 2026): adding `west` to a generated `south`
+  loop sent the leader's `animation_group_id` and `animation_name`, the submit
+  and the finished job both answered with that same group, the job billed 3,
+  and `GET /characters/{id}` then listed the group under the leader's name
+  with `directions` `south` and `west` (each animation there is
+  `{ display_name, animation_group_id, directions: { <direction>: ... } }`),
+  with the character's other animations untouched. Deleting one direction of
+  a shared group has not been run live. Verified live twice
   with one south direction on a v3 character, once by a direct call and once
   through `pixelkiln gen` (a manifest loop on an `adopt`ed character, 8
   frames at 96×96, billed 3, then `pick` and `fetch`); a standard-engine
