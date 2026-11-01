@@ -44,7 +44,7 @@ export default async function DocPage({ params }: DocPageProps) {
 
   if (!split) {
     return (
-      <DocShell jsonLd={jsonLd} sidebar={<DocSidebar active={doc} split={null} />} toc={<DocToc content={content} editFile={doc.file} />}>
+      <DocShell active={doc} jsonLd={jsonLd} sidebar={<DocSidebar active={doc} split={null} />} toc={<DocToc content={content} editFile={doc.file} />}>
         <div className="doc-heading">
           <span>{doc.group}</span>
           <h1>{doc.title}</h1>
@@ -57,7 +57,7 @@ export default async function DocPage({ params }: DocPageProps) {
 
   // A split doc's parent page: its introduction, then a map of its pages.
   return (
-    <DocShell jsonLd={jsonLd} sidebar={<DocSidebar active={doc} split={split} />} toc={<DocToc content="" editFile={doc.file} />}>
+    <DocShell active={doc} jsonLd={jsonLd} sidebar={<DocSidebar active={doc} split={split} />} toc={<DocToc content="" editFile={doc.file} />}>
       <div className="doc-heading">
         <span>{doc.group}</span>
         <h1>{doc.title}</h1>

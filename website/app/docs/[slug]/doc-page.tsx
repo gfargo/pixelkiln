@@ -129,14 +129,49 @@ export function docJsonLd(doc: DocEntry, crumbs: { name: string; path: string }[
   };
 }
 
-export function DocShell({ jsonLd, sidebar, toc, children }: { jsonLd: JsonLdValue; sidebar: ReactNode; toc: ReactNode; children: ReactNode }) {
+/** Docs in sidebar order, so "next" matches what the reader sees on the left. */
+const orderedDocs = docGroups.flatMap((group) => docs.filter((entry) => entry.group === group));
+
+/** Ends every docs page with somewhere to go, so a reader who lands from search is not left at a dead end. */
+export function DocNext({ active }: { active: DocEntry }) {
+  const index = orderedDocs.findIndex((entry) => entry.slug === active.slug);
+  const next = orderedDocs[index + 1];
+  const previous = index > 0 ? orderedDocs[index - 1] : undefined;
+  return (
+    <nav className="doc-next" aria-label="Keep reading">
+      {previous && (
+        <TrackedLink className="doc-next-card" id={`doc_prev_${active.slug}`} section="docs_pager" href={`/docs/${previous.slug}`}>
+          <span>← Previous</span>
+          <strong>{previous.title}</strong>
+        </TrackedLink>
+      )}
+      {next && (
+        <TrackedLink className="doc-next-card doc-next-forward" id={`doc_next_${active.slug}`} section="docs_pager" href={`/docs/${next.slug}`}>
+          <span>Next →</span>
+          <strong>{next.title}</strong>
+        </TrackedLink>
+      )}
+      {active.slug !== "getting-started" && (
+        <TrackedLink className="doc-next-card doc-next-start" id={`doc_start_${active.slug}`} section="docs_pager" href="/docs/getting-started">
+          <span>New to PixelKiln?</span>
+          <strong>Read the quickstart</strong>
+        </TrackedLink>
+      )}
+    </nav>
+  );
+}
+
+export function DocShell({ jsonLd, sidebar, toc, active, children }: { jsonLd: JsonLdValue; sidebar: ReactNode; toc: ReactNode; active: DocEntry; children: ReactNode }) {
   return (
     <>
       <JsonLd data={jsonLd} />
       <SiteHeader compact />
       <main className="docs-layout shell">
         {sidebar}
-        <article className="doc-article">{children}</article>
+        <article className="doc-article">
+          {children}
+          <DocNext active={active} />
+        </article>
         {toc}
       </main>
       <SiteFooter />

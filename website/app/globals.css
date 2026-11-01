@@ -1185,6 +1185,12 @@ a { color: inherit; text-decoration: none; }
 .doc-siblings a:hover { background: #1e1b15; }
 .doc-siblings > span { background: var(--ink); }
 .docs-toc .edit-link { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ember-light); font-family: var(--font-geist-mono), monospace; font-size: 8px; text-transform: uppercase; }
+.doc-next { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 64px; padding-top: 28px; border-top: 1px solid var(--line); }
+.doc-next-card { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border: 1px solid var(--line); background: #15130f; }
+.doc-next-card:hover { border-color: var(--ember); background: #1e1b15; }
+.doc-next-card span { color: #777064; font-family: var(--font-geist-mono), monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; }
+.doc-next-card strong { color: var(--cream); font-size: 14px; }
+.doc-next-forward span, .doc-next-start span { color: var(--ember-light); }
 .markdown-body { padding-top: 24px; color: #c8bfaf; font-size: 14px; line-height: 1.75; }
 .markdown-body h2 { scroll-margin-top: 30px; margin: 64px 0 20px; color: var(--cream); font-size: 30px; line-height: 1.15; letter-spacing: -0.04em; }
 .markdown-body h3 { scroll-margin-top: 30px; margin: 42px 0 14px; color: var(--cream); font-size: 20px; letter-spacing: -0.025em; }

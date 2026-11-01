@@ -57,7 +57,7 @@ export default async function ChildPage({ params }: ChildPageProps) {
   const body = child.content.replace(/^## [^\n]+\n+/, "");
 
   return (
-    <DocShell jsonLd={jsonLd} sidebar={<DocSidebar active={doc} split={split} activeChild={child.slug} />} toc={<DocToc content={body} editFile={doc.file} />}>
+    <DocShell active={doc} jsonLd={jsonLd} sidebar={<DocSidebar active={doc} split={split} activeChild={child.slug} />} toc={<DocToc content={body} editFile={doc.file} />}>
       <div className="doc-heading">
         <span>
           <Link href={`/docs/${doc.slug}`}>{doc.title}</Link>

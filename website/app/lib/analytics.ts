@@ -23,6 +23,7 @@ export type CtaSection =
   | "docs_index"
   | "docs_sidebar"
   | "docs_search"
+  | "docs_pager"
   | "footer";
 
 export function trackCta(id: string, section: CtaSection, href: string) {
