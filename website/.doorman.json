@@ -1,0 +1,37 @@
+{
+  "$schema": "https://doorman.griffen.codes/schema.json",
+  "firewallEnabled": true,
+  "rules": [
+    {
+      "id": "rule_log_cn_hk_sg",
+      "name": "Log CN/HK/SG traffic",
+      "description": "~85% of Oct 2026 visitors were crawler-like traffic from China, hitting single docs pages once. Log-only for a week to see volume; then switch action to challenge.",
+      "active": true,
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "geo_country",
+              "op": "inc",
+              "value": [
+                "CN",
+                "HK",
+                "SG"
+              ]
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "log"
+        }
+      }
+    }
+  ],
+  "ips": [],
+  "projectId": "prj_DlO0p7e58gwEHhC2TizJGHdt2Qzc",
+  "teamId": "team_3fFGpm53GtnbGGSzpHhWxBKe",
+  "version": 2,
+  "updatedAt": "2026-11-01T17:06:58.120Z"
+}
