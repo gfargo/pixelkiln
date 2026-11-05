@@ -64,6 +64,18 @@ more than planned or finishes in a shape PixelKiln cannot read.
 portraits, outfit transfer, `interpolate`, `edit-animation`), and their rows
 say so.
 
+**Free acceptance probe** (November 2026): for 13 of those 14 routes, a request
+carrying only a valid four-colour `target_palette` and none of the required
+fields was answered with `422`s that named the missing fields and nothing about
+`target_palette`, while the same request with an invalid palette (a non-hex
+colour, `max_colors` 999) was answered with two `target_palette` errors. So
+PixelLab's validator knows the field and its shape on those routes, which a
+mocked test cannot show. The probe cannot show that the palette is obeyed or what
+the call costs, and a failed validation bills nothing. The 14th route,
+`/objects/{id}/animations` (the `objectPro` `pro` animation), has no required
+fields, so a palette-only request could have been accepted and billed; it was
+not probed.
+
 | Endpoint | PixelKiln feature | Status | What is known (cost / sizes / shape) | Gaps (never seen) | Money at risk |
 |---|---|---|---|---|---|
 | `GET /balance` | `doctor`, `gen` balance reads, gallery | Measured live | Free. Count is at `subscription.generations` ([Reproducing these numbers](#reproducing-these-numbers)). | Only the subscription shape is documented; a credit-only account's reply is not recorded. | Low |
