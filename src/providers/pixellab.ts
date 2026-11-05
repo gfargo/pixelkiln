@@ -2795,15 +2795,15 @@ export class PixelLabProvider implements Provider {
    * `pollRevision` above, but completing with an ORDERED FRAME LIST instead
    * of a single image — the same `review-set` shape `pollCharacterAnimation`
    * returns, minus any character/object resource to look the result up on
-   * (there is none; this operates on a loose image). Unlike every other
-   * PixelLab call this adapter makes, the completed shape for
-   * `/animate-with-text-v3`/`/animate-pixminimax` has never been exercised
-   * against a live account — the checks below are an informed guess (hosted
-   * URLs under a plausible key name, the same `storage_urls.frames` shape
-   * character animations use, or inline base64 per frame, decoded to a local
-   * cache file the same way `pollRevision`'s single-image case already is)
-   * rather than an observed shape, and fail loudly, naming the keys actually
-   * received, for whatever the real shape turns out to be.
+   * (there is none; this operates on a loose image). Both
+   * `/animate-with-text-v3` and `/animate-pixminimax` have run live
+   * (November 2026) and the completed jobs were read correctly. The checks
+   * below stay defensive (hosted URLs under a plausible key name, the same
+   * `storage_urls.frames` shape character animations use, or inline base64
+   * per frame, decoded to a local cache file the same way `pollRevision`'s
+   * single-image case is) and fail loudly, naming the keys actually
+   * received, if a shape ever differs. PixMiniMax includes the input frame,
+   * so a set holds the requested count plus one.
    */
   private async pollAnimateRevision(jobId: string, context?: PollContext): Promise<JobState> {
     const job = await this.client.getBackgroundJob(jobId)
@@ -2964,8 +2964,8 @@ export class PixelLabProvider implements Provider {
       status: "failed",
       error:
         `Invalid PixelLab response for imagePro job ${jobId}: completed with no recognized images array ` +
-        `(got: ${Object.keys(done).join(", ") || "no keys"}); this endpoint's completed shape has not been ` +
-        "exercised live yet -- update pollImagePro in src/providers/pixellab.ts with the real shape",
+        `(got: ${Object.keys(done).join(", ") || "no keys"}); ` +
+        "update pollImagePro in src/providers/pixellab.ts with the real shape",
     }
   }
 

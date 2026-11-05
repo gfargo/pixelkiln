@@ -374,8 +374,9 @@ const SelectFramesSchema = z.object({ created_object_ids: z.array(z.string()) })
  * an authoritative source (no MCP tool wraps this endpoint to cross-check
  * against, unlike `animate-with-skeleton-v3` below). Synchronous — returns
  * keypoints directly, no `background_job_id` — per the issue's own "one-call
- * round trip" framing, but this specific claim is unverified against a live
- * account. Treat this schema as provisional until a real call confirms it.
+ * round trip" framing. The route has run live (October 2026), so the shape is
+ * observed, though the reply's `usage` is not typed and its cost was not
+ * recorded.
  */
 const EstimateSkeletonResponseSchema = z
   .object({
@@ -1776,10 +1777,10 @@ export class PixelLabClient {
    * limited to 400x400 and no style reference. Like a revision, this hands
    * back a plain background job with no resource of its own; unlike a
    * revision, one call returns several candidate images to pick from (the
-   * same 4/16/64-by-size tiering as `1dir`), not a single result, and its
-   * completed shape has not been exercised live yet — `pollImagePro` in
-   * pixellab.ts fails loudly rather than guess if `last_response.images`
-   * turns out not to be the real field name.
+   * same 4/16/64-by-size tiering as `1dir`), not a single result. It has run
+   * live (a 64x64 call billed 10, October 2026); `pollImagePro` in
+   * pixellab.ts still fails loudly rather than guess if `last_response.images`
+   * is not the field name.
    *
    * Reference images and a style image (`reference_images`, `style_image` +
    * `style_options`) exist on this endpoint but are not modeled here yet.
@@ -1927,7 +1928,8 @@ export class PixelLabClient {
    * guided by an optional concept image and a natural-language color
    * palette. A plain background job; unlike `/create-ui-asset` there is no
    * piece/element layout, and sizes start at 16px instead of 192. Its
-   * completed shape has not been exercised live; `pollUiElement` reads it
+   * completed shape came back as a list of candidates on a live
+   * 32x32 call (64 of them, billed 10); `pollUiElement` still reads it
    * defensively.
    */
   async generateUiV2(args: {
@@ -2253,11 +2255,10 @@ export class PixelLabClient {
    * no PixelLab character/object resource required — unlike `animateCharacter`
    * / `animateObject`, `firstFrame` is whatever bytes the caller has on hand.
    * A plain background job, like every other PixelLab async submission;
-   * unlike `inpaintV3`/`editImagesV2`, its completed shape has not been
-   * exercised against a live account (request/response fields here come from
-   * the live OpenAPI document, not an observed call — `pollAnimateRevision`
-   * in pixellab.ts checks several plausible field names for the frame list
-   * defensively, the same as `pollRevision` already does for image edits).
+   * like `inpaintV3`/`editImagesV2`, it has run live (November 2026, a
+   * 64x64 call of 4 frames billed 1 and returned 5 frames); `pollAnimateRevision`
+   * in pixellab.ts still checks several plausible field names for the frame
+   * list defensively, the same as `pollRevision` does for image edits.
    */
   async animateWithTextV3(args: {
     firstFrame: Base64Image
@@ -2379,8 +2380,8 @@ export class PixelLabClient {
    * `runEstimateSkeleton` in `src/cli/commands`) so the only PixelLab
    * endpoint composed into `animate-with-skeleton-v3`'s submission is that
    * one endpoint itself, not two unverified calls chained together.
-   * Synchronous per this endpoint's own framing; unverified against a live
-   * account (see `EstimateSkeletonResponseSchema`'s own caveat).
+   * Synchronous, and it has run live (October 2026; see
+   * `EstimateSkeletonResponseSchema`).
    */
   async estimateSkeleton(args: { image: Base64Image }): Promise<{ keypoints: SkeletonKeypoint[]; usage: unknown }> {
     const body: Record<string, unknown> = { image: { type: "base64", base64: args.image.base64, format: args.image.format } }

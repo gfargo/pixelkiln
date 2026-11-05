@@ -288,11 +288,13 @@ and regenerating the parent makes the child stale.
 | portrait | portrait-character-pro | 10–25 by `size` (16px billed exactly 20 live, before the October 2026 cut) |
 | outfit | transfer-outfit-v2 | 20 (a 2-frame, 92×92 job billed exactly this live; not yet measured at other frame counts or canvases) |
 
-The 20–40 tiers are PixelLab's; the tier is resolved from the canvas when
-the job runs and reserved against the floor, so `plan` reports the tier the
-canvas lands in. `plan` prices a 64px state at 40 (the 1dir tier for that
-many pixels); one live 64px state in September 2026 moved the balance by
-about 22, so the estimate reads high, which is the safe side for a budget.
+The 10–25 tiers are PixelLab's (20–40 before its October 2026 cut); the tier
+is resolved from the canvas when the job runs and reserved against the floor,
+so `plan` reports the tier the canvas lands in. `plan` prices a 64px state at
+25 (the 1dir tier for that many pixels); one live 64px state in September
+2026, before the cut, moved the balance by about 22 against the then 20–40
+tiers, so there is no bill on the new list, and the estimate is read as high,
+which is the safe side for a budget.
 `poll` now reads what a job like this actually billed and records it
 alongside the estimate as `billed`; `pixelkiln history`, `plan --json`, and
 the gallery show both when they differ, though `gen`'s wave budget still
@@ -441,12 +443,13 @@ plain `revision` (image-to-image) of the base panel, which already carries
 this for every other generator.
 
 **Cost: confirmed live at one data point — 20 generations for a 256x192
-canvas**, the low end of the `create_ui_asset` MCP tool's "20–40
-generations" claim. PixelKiln still estimates with the same canvas-tier
-formula as `1dir`/`tiles`, which predicts the 40 ceiling for every valid
-`uiAsset` size (its 192px floor is already past that formula's top tier) —
-the measured call proves the formula wrong here, since it billed the floor
-price at an area well above where `1dir`/`tiles` would bill the ceiling.
+canvas**, the low end of the `create_ui_asset` MCP tool's then "20–40
+generations" claim (before PixelLab's October 2026 cut to 10–25). PixelKiln
+still estimates with the same canvas-tier formula as `1dir`/`tiles`, which
+predicts the 25 ceiling for every valid `uiAsset` size (its 192px floor is
+already past that formula's top tier) — the measured call proves the
+formula wrong here, since it billed the floor price at an area well above
+where `1dir`/`tiles` would bill the ceiling.
 Left as an over-read for `--budget` until a second size is measured; see
 [ENDPOINTS.md](./ENDPOINTS.md) for the full writeup.
 

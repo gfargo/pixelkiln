@@ -308,10 +308,11 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   this one. **Cost confirmed live, and it overturned the borrowed
   formula**: a real 256x192 call against a Tier 2 account billed exactly 20
   generations (balance 4979.8 → 4959.8), the low end of the `create_ui_asset`
-  MCP tool description's "20-40 generations" claim. No dedicated cost branch
+  MCP tool description's then "20-40 generations" claim (10-25 since the
+  October 2026 cut). No dedicated cost branch
   exists, so `uiAsset` still falls through to the same canvas-tier formula
   `1dir`/`tiles` use, which — given this generator's 192px floor — always
-  predicts the 40 ceiling; the measured call billed the floor price at an
+  predicts the 25 ceiling; the measured call billed the floor price at an
   area well past where that formula would bill the ceiling, so it does not
   actually describe `uiAsset`'s pricing. Left unpatched from one data point:
   over-reading stays the safe `--budget` direction, but a real call likely
