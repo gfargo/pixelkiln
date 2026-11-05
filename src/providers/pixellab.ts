@@ -2,7 +2,7 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { randomUUID } from "node:crypto"
 import os from "node:os"
 import path from "node:path"
-import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type ProFlashCostOperation, type PixelLabCharacter, type PixelLabObject, type PixelLabUsage } from "../client.ts"
+import { PixelLabClient, PixelLabError, clientFromEnv, type Base64Image, type TargetPaletteArg, type ProFlashCostOperation, type PixelLabCharacter, type PixelLabObject, type PixelLabUsage } from "../client.ts"
 import { sha256 } from "../hash.ts"
 import { mcpClientFromEnv, type PixelLabMcpClient } from "../pixellab-mcp.ts"
 import {
@@ -863,8 +863,8 @@ export class PixelLabProvider implements Provider {
           "16 to 688 tall (the exact ceiling also depends on aspect ratio)",
       )
     }
-    if (spec.generator === "imagePro" && !spec.revision && spec.palette.length && (spec.palette.length < 2 || spec.palette.length > 256)) {
-      throw new Error(`PixelLab imagePro's target palette takes 2 to 256 colours; the style's palette has ${spec.palette.length}`)
+    if (spec.palette.length && (spec.palette.length < 2 || spec.palette.length > 256) && sendsTargetPalette(spec)) {
+      throw new Error(`PixelLab ${spec.generator}'s target palette takes 2 to 256 colours; the style's palette has ${spec.palette.length}`)
     }
     if (
       spec.generator === "uiAsset" &&
@@ -1363,6 +1363,7 @@ export class PixelLabProvider implements Provider {
         styleReferenceSize: styleImage ? { width: styleImage.width, height: styleImage.height } : undefined,
         styleTraits: character.styleTraits,
         sourceImageId: character.mode === "pro-flash" ? context?.referenceSourceImageId : undefined,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.character_id, metadata: { character: { kind: "base", characterId: res.character_id, mode: character.mode, directions: character.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -1394,6 +1395,7 @@ export class PixelLabProvider implements Provider {
         seed: spec.seed,
         noBackground: spec.noBackground,
         additionalInstructions: outfit.additionalInstructions,
+        targetPalette: targetPaletteFor(spec),
       })
       return {
         jobId: res.background_job_id,
@@ -1422,6 +1424,7 @@ export class PixelLabProvider implements Provider {
         canvas: character.state?.canvas,
         seed: spec.seed,
         noBackground: spec.noBackground,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.character_id, metadata: { character: { kind: "state", characterId: res.character_id, parentCharacterId: parentId, mode: character.mode, directions: character.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -1439,6 +1442,7 @@ export class PixelLabProvider implements Provider {
         view: spec.view,
         resultSize: character.portrait!.size,
         seed: spec.seed,
+        targetPalette: targetPaletteFor(spec),
       })
       return {
         jobId: res.background_job_id,
@@ -1533,6 +1537,7 @@ export class PixelLabProvider implements Provider {
         styleReferenceSize: styleImage ? { width: styleImage.width, height: styleImage.height } : undefined,
         styleTraits: object.styleTraits,
         sourceImageId: context?.referenceSourceImageId,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.object_id, metadata: { objectPro: { kind: "base", objectId: res.object_id, directions: object.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -1549,6 +1554,7 @@ export class PixelLabProvider implements Provider {
         editDescription: spec.prompt,
         stateName: spec.assetId.slice(0, 50),
         seed: spec.seed,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.object_id, metadata: { objectPro: { kind: "state", objectId: res.object_id, parentObjectId: parentId, directions: object.directions, backgroundJobId: res.background_job_id } } }
     }
@@ -1567,6 +1573,7 @@ export class PixelLabProvider implements Provider {
       endFrame: animation.endFrame ? readPose(spec, "end frame", animation.endFrame) : undefined,
       enhancePrompt: animation.enhancePrompt,
       replaceExisting: true,
+      targetPalette: targetPaletteFor(spec),
     })
     const submission = res.submissions.find((s) => s.direction === animation.direction) ?? res.submissions[0]
     const job: ObjectAnimationJob = { objectId: parentId, name, direction: animation.direction, jobId: submission?.background_job_id ?? null }
@@ -1853,6 +1860,7 @@ export class PixelLabProvider implements Provider {
         colorPalette: spec.uiColorPalette,
         noBackground: spec.noBackground,
         seed: spec.seed,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.ui_asset_id, metadata: { backgroundJobId: res.background_job_id } }
     }
@@ -1868,6 +1876,7 @@ export class PixelLabProvider implements Provider {
           ? { image: { base64: style.base64, format: style.format }, width: style.width, height: style.height }
           : undefined,
         styleTraits: spec.styleTraits,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.background_job_id, metadata: { imageProFlash: proFlashRecord(res) } }
     }
@@ -1883,6 +1892,7 @@ export class PixelLabProvider implements Provider {
         colorPalette: spec.uiColorPalette,
         noBackground: spec.noBackground,
         seed: spec.seed,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.background_job_id }
     }
@@ -1927,6 +1937,7 @@ export class PixelLabProvider implements Provider {
         // TilesProStyleImage is flat and wants the reference's real dimensions,
         // unlike 1dir's {type, base64, format} payload.
         styleImages: styleImages.map(({ base64, width, height }) => ({ base64, width, height })),
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.tile_id, metadata: { backgroundJobId: res.background_job_id } }
     }
@@ -1978,6 +1989,7 @@ export class PixelLabProvider implements Provider {
         shading: spec.shading,
         detail: spec.detail,
         seed: spec.seed,
+        targetPalette: targetPaletteFor(spec),
       })
       return {
         jobId: res.tileset_id,
@@ -2010,7 +2022,7 @@ export class PixelLabProvider implements Provider {
         height: spec.height,
         noBackground: spec.noBackground,
         seed: spec.seed,
-        targetPalette: { colors: spec.palette, name: spec.paletteName, maxColors: spec.maxColors },
+        targetPalette: targetPaletteFor(spec),
       })
       // Like a revision, jobId is the background_job_id itself: there is no
       // separate resource id to poll, so pollImagePro polls it directly.
@@ -2037,6 +2049,7 @@ export class PixelLabProvider implements Provider {
         // sending the same text as `description` too is redundant but
         // harmless, not a hedge against ambiguity.
         itemDescriptions: spec.batch?.role === "leader" ? spec.batch.itemDescriptions : undefined,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.object_id, metadata: { backgroundJobId: res.background_job_id } }
     }
@@ -2205,6 +2218,7 @@ export class PixelLabProvider implements Provider {
         action: spec.prompt,
         seed: spec.seed,
         noBackground: spec.noBackground,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.background_job_id }
     }
@@ -2216,6 +2230,7 @@ export class PixelLabProvider implements Provider {
         description: spec.prompt,
         seed: spec.seed,
         noBackground: spec.noBackground,
+        targetPalette: targetPaletteFor(spec),
       })
       return { jobId: res.background_job_id }
     }
@@ -3315,6 +3330,58 @@ function remoteCharacter(character: PixelLabCharacter): RemoteCharacter {
     status: character.status,
     animationCount: character.animation_count,
   }
+}
+
+/**
+ * Whether this spec's PixelLab call carries the beta `target_palette`
+ * (PixelLab 0.4.130), so PixelLab draws with the style's palette instead of
+ * relying on local snapping. Only where nothing palette-shaped is sent today,
+ * or the endpoint documents it for the mode in use:
+ *
+ * - `character` standard bases keep their `color_image` + `force_colors`
+ *   swatch (verified; the schema does not say it combines with a palette), v3
+ *   bases and `/create-character-v3` have no such field, and animations keep
+ *   the same swatch on every mode; the rest of the character kinds send it.
+ * - `terrain` sends it for top-down `pro` sets only ("mode='pro' only"); a
+ *   standard set and `/create-tileset-sidescroller` take none.
+ * - `objectPro` animations send it for `pro` only; the v3 call takes none.
+ * - `pixflux` keeps its swatch; `animate`, `animate-pixminimax` and
+ *   `animate-skeleton` revisions call endpoints with no such field.
+ */
+export function sendsTargetPalette(spec: ResolvedSpec): boolean {
+  if (spec.revision) return spec.revision.mode === "interpolate" || spec.revision.mode === "edit-animation"
+  if (spec.vfx) return false
+  switch (spec.generator) {
+    case "imagePro":
+    case "imageProFlash":
+    case "1dir":
+    case "tiles":
+    case "uiAsset":
+    case "uiElement":
+      return true
+    case "terrain":
+      return spec.terrainOrientation !== "sidescroller" && spec.terrainMode === "pro"
+    case "character": {
+      const character = spec.character
+      if (!character) return false
+      if (character.kind === "base") return character.mode === "pro" || character.mode === "pro-flash"
+      return character.kind !== "animation"
+    }
+    case "objectPro": {
+      const object = spec.objectPro
+      if (!object) return false
+      return object.kind !== "animation" || object.animation?.mode === "pro"
+    }
+    default:
+      return false
+  }
+}
+
+/** The style's palette, `paletteName` and `maxColors` as the one `target_palette` every wrapped endpoint takes; undefined when the route sends none or the style sets none. */
+export function targetPaletteFor(spec: ResolvedSpec): TargetPaletteArg | undefined {
+  if (!sendsTargetPalette(spec)) return undefined
+  if (!spec.palette.length && spec.maxColors == null) return undefined
+  return { colors: spec.palette, name: spec.paletteName, maxColors: spec.maxColors }
 }
 
 function requirePixelLabOption(

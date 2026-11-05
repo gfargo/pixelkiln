@@ -641,6 +641,33 @@ export function proportionsPayload(proportions: CharacterProportions): Record<st
   }
 }
 
+/**
+ * PixelLab 0.4.130's beta `target_palette`, accepted by 27 POST endpoints and
+ * built here for every one PixelKiln wraps. `colors` (2 to 256 hex) is what the
+ * image is drawn for and every pixel lands on; `name` ("PICO-8") helps the
+ * look; `maxColors` (2 to 64) caps the colours in each image. Its `smart`
+ * flag is deliberately not modeled: "single images only", beta, and most of
+ * these calls return a grid, a set or a loop. The one place the request field
+ * is spelled, so no wrapper can mistype it.
+ */
+export interface TargetPaletteArg {
+  colors?: string[]
+  name?: string
+  maxColors?: number
+}
+
+/** Spread into a request body: `{ target_palette }` when there is anything to send, `{}` otherwise. */
+export function targetPaletteBody(palette?: TargetPaletteArg): { target_palette?: Record<string, unknown> } {
+  if (!palette || !(palette.colors?.length || palette.maxColors != null)) return {}
+  return {
+    target_palette: {
+      ...(palette.colors?.length ? { colors: palette.colors } : {}),
+      ...(palette.name ? { name: palette.name } : {}),
+      ...(palette.maxColors != null ? { max_colors: palette.maxColors } : {}),
+    },
+  }
+}
+
 export class PixelLabClient {
   private readonly http: RetryingFetch
 
@@ -726,6 +753,7 @@ export class PixelLabClient {
     view?: string
     styleImages?: ResolvedStyleImage[]
     itemDescriptions?: string[]
+    targetPalette?: TargetPaletteArg
   }): Promise<{ object_id: string; status: string; n_frames: number; background_job_id: string }> {
     const body: Record<string, unknown> = { description: args.description }
     if (args.styleImages?.length) {
@@ -739,6 +767,7 @@ export class PixelLabClient {
     }
     if (args.view) body.view = args.view
     if (args.itemDescriptions?.length) body.item_descriptions = args.itemDescriptions
+    Object.assign(body, targetPaletteBody(args.targetPalette))
     const raw = await this.request<unknown>("/create-1-direction-object", {
       method: "POST",
       body: JSON.stringify(body),
@@ -828,6 +857,7 @@ export class PixelLabClient {
     outlineMode?: string
     seed?: number
     styleImages?: { base64: string; width: number; height: number }[]
+    targetPalette?: TargetPaletteArg
   }): Promise<{ tile_id: string; background_job_id: string; status: string }> {
     const body: Record<string, unknown> = { description: args.description }
     if (args.tileSize != null) body.tile_size = args.tileSize
@@ -848,6 +878,7 @@ export class PixelLabClient {
     if (args.outlineMode) body.outline_mode = args.outlineMode
     if (args.seed != null) body.seed = args.seed
     if (args.styleImages?.length) body.style_images = args.styleImages
+    Object.assign(body, targetPaletteBody(args.targetPalette))
     return validateResponse(
       TilesSubmitSchema,
       await this.request<unknown>("/create-tiles-pro", { method: "POST", body: JSON.stringify(body) }),
@@ -893,6 +924,8 @@ export class PixelLabClient {
     shading?: string
     detail?: string
     seed?: number
+    /** `mode: "pro"` only: standard sets take no palette (pixen picks its own colours). */
+    targetPalette?: TargetPaletteArg
   }): Promise<{ tileset_id: string; background_job_id: string; status: string }> {
     const body: Record<string, unknown> = {
       lower_description: args.lowerDescription,
@@ -918,6 +951,7 @@ export class PixelLabClient {
     if (args.shading) body.shading = args.shading
     if (args.detail) body.detail = args.detail
     if (args.seed != null) body.seed = args.seed
+    if (args.mode === "pro") Object.assign(body, targetPaletteBody(args.targetPalette))
     return validateResponse(
       TilesetSubmitSchema,
       await this.request<unknown>("/create-tileset", { method: "POST", body: JSON.stringify(body) }),
@@ -1042,6 +1076,7 @@ export class PixelLabClient {
     colorPalette?: string
     noBackground?: boolean
     seed?: number
+    targetPalette?: TargetPaletteArg
   }): Promise<{ ui_asset_id: string; background_job_id: string; usage: unknown }> {
     const body: Record<string, unknown> = {
       description: args.description,
@@ -1053,6 +1088,7 @@ export class PixelLabClient {
     if (args.colorPalette) body.color_palette = args.colorPalette
     if (args.noBackground != null) body.no_background = args.noBackground
     if (args.seed != null) body.seed = args.seed
+    Object.assign(body, targetPaletteBody(args.targetPalette))
     const res = await validateResponse(
       UiAssetSubmitSchema,
       await this.request<unknown>("/create-ui-asset", { method: "POST", body: JSON.stringify(body) }),
@@ -1142,6 +1178,7 @@ export class PixelLabClient {
     styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
     /** An owned image already holding the reference's exact pixels, sent instead of uploading them. */
     sourceImageId?: string
+    targetPalette?: TargetPaletteArg
   }): Promise<{ object_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
     const traits = args.styleTraits
@@ -1168,6 +1205,7 @@ export class PixelLabClient {
               : {}),
           }
         : {}),
+      ...targetPaletteBody(args.targetPalette),
     }
     return validateResponse(
       ObjectProSubmitSchema,
@@ -1177,13 +1215,14 @@ export class PixelLabClient {
   }
 
   /** A text edit of an existing object, applied to its whole rotation set and stored as a sibling. Always inherits the parent's exact canvas — no size override exists on this endpoint. */
-  async createObjectProState(args: { objectId: string; editDescription: string; stateName?: string; seed?: number }): Promise<{ object_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
+  async createObjectProState(args: { objectId: string; editDescription: string; stateName?: string; seed?: number; targetPalette?: TargetPaletteArg }): Promise<{ object_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const raw = await this.request<unknown>(`/objects/${encodeURIComponent(args.objectId)}/states`, {
       method: "POST",
       body: JSON.stringify({
         edit_description: args.editDescription,
         ...(args.stateName ? { state_name: args.stateName } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
+        ...targetPaletteBody(args.targetPalette),
       }),
     })
     return validateResponse(ObjectProSubmitSchema, raw, "create object state")
@@ -1211,6 +1250,8 @@ export class PixelLabClient {
     endFrame?: Base64Image
     enhancePrompt?: boolean
     replaceExisting?: boolean
+    /** `mode: "pro"` only: the v3 animation takes no palette. */
+    targetPalette?: TargetPaletteArg
   }): Promise<{ animation_group_id: string; object_id: string; mode: string; frame_count: number; submissions: { direction: string; status: string; background_job_id: string | null; animation_id: string | null }[]; usage?: PixelLabUsage | null }> {
     const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
     const body: Record<string, unknown> = {
@@ -1225,6 +1266,7 @@ export class PixelLabClient {
       ...(args.endFrame ? { end_frame: encode(args.endFrame) } : {}),
       ...(args.enhancePrompt ? { enhance_prompt: true } : {}),
       ...(args.replaceExisting ? { replace_existing: true } : {}),
+      ...(args.mode === "pro" ? targetPaletteBody(args.targetPalette) : {}),
     }
     const raw = await this.request<unknown>(`/objects/${encodeURIComponent(args.objectId)}/animations`, {
       method: "POST",
@@ -1330,6 +1372,8 @@ export class PixelLabClient {
     styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
     /** pro-flash only: an owned image already holding the south sprite's exact pixels, sent instead of uploading them. */
     sourceImageId?: string
+    /** `pro` and `pro-flash` only: standard keeps its swatch, and `v3` has no such field. */
+    targetPalette?: TargetPaletteArg
   }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const imageSize = { width: args.size, height: args.size }
     const palette = args.paletteSwatchBase64
@@ -1422,6 +1466,7 @@ export class PixelLabClient {
         ...palette,
       }
     }
+    if (args.mode === "pro" || args.mode === "pro-flash") Object.assign(body, targetPaletteBody(args.targetPalette))
     const raw = await this.request<unknown>(path, { method: "POST", body: JSON.stringify(body) })
     return validateResponse(CharacterSubmitSchema, raw, path.slice(1))
   }
@@ -1435,6 +1480,7 @@ export class PixelLabClient {
     canvas?: { width: number; height: number }
     seed?: number
     noBackground?: boolean
+    targetPalette?: TargetPaletteArg
   }): Promise<{ character_id: string; background_job_id: string; usage?: PixelLabUsage | null }> {
     const raw = await this.request<unknown>("/create-character-state", {
       method: "POST",
@@ -1446,6 +1492,7 @@ export class PixelLabClient {
         ...(args.stateName ? { state_name: args.stateName } : {}),
         ...(args.canvas ? { override_frame_size: args.canvas } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
+        ...targetPaletteBody(args.targetPalette),
       }),
     })
     return validateResponse(CharacterSubmitSchema, raw, "create-character-state")
@@ -1543,6 +1590,7 @@ export class PixelLabClient {
     view?: string
     resultSize?: number
     seed?: number
+    targetPalette?: TargetPaletteArg
   }): Promise<{ background_job_id: string; status: string; usage?: PixelLabUsage | null }> {
     const raw = await this.request<unknown>("/portrait-character-pro", {
       method: "POST",
@@ -1552,6 +1600,7 @@ export class PixelLabClient {
         ...(args.view ? { view: args.view } : {}),
         ...(args.resultSize != null ? { result_size: args.resultSize } : {}),
         ...(args.seed != null ? { seed: args.seed } : {}),
+        ...targetPaletteBody(args.targetPalette),
       }),
     })
     return validateResponse(PortraitSubmitSchema, raw, "portrait-character-pro")
@@ -1593,6 +1642,7 @@ export class PixelLabClient {
     seed?: number
     noBackground?: boolean
     additionalInstructions?: string
+    targetPalette?: TargetPaletteArg
   }): Promise<{ background_job_id: string; status: string; usage?: PixelLabUsage | null }> {
     const image = (img: Base64Image & { width: number; height: number }) => ({
       image: { type: "base64", base64: img.base64, format: img.format },
@@ -1607,6 +1657,7 @@ export class PixelLabClient {
         ...(args.seed != null ? { seed: args.seed } : {}),
         ...(args.noBackground !== undefined ? { no_background: args.noBackground } : {}),
         ...(args.additionalInstructions ? { additional_instructions: args.additionalInstructions } : {}),
+        ...targetPaletteBody(args.targetPalette),
       }),
     })
     return validateResponse(TransferOutfitSubmitSchema, raw, "transfer-outfit-v2")
@@ -1746,7 +1797,7 @@ export class PixelLabClient {
     height: number
     noBackground?: boolean
     seed?: number
-    targetPalette?: { colors?: string[]; name?: string; maxColors?: number }
+    targetPalette?: TargetPaletteArg
   }): Promise<{ background_job_id: string; status: string }> {
     const body: Record<string, unknown> = {
       description: args.description,
@@ -1754,14 +1805,7 @@ export class PixelLabClient {
     }
     if (args.noBackground != null) body.no_background = args.noBackground
     if (args.seed != null) body.seed = args.seed
-    const palette = args.targetPalette
-    if (palette && (palette.colors?.length || palette.maxColors != null)) {
-      body.target_palette = {
-        ...(palette.colors?.length ? { colors: palette.colors } : {}),
-        ...(palette.name ? { name: palette.name } : {}),
-        ...(palette.maxColors != null ? { max_colors: palette.maxColors } : {}),
-      }
-    }
+    Object.assign(body, targetPaletteBody(args.targetPalette))
     return validateResponse(
       RevisionJobSubmitSchema,
       await this.request<unknown>("/generate-image-v2", { method: "POST", body: JSON.stringify(body) }),
@@ -1786,6 +1830,8 @@ export class PixelLabClient {
     seed?: number
     styleImage?: { image: Base64Image; width: number; height: number }
     styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
+    /** Over a style image the palette wins: PixelLab documents that its colours "give way". */
+    targetPalette?: TargetPaletteArg
   }): Promise<z.output<typeof ProFlashImageSubmitSchema>> {
     const body: Record<string, unknown> = {
       description: args.description,
@@ -1805,6 +1851,7 @@ export class PixelLabClient {
         }
       }
     }
+    Object.assign(body, targetPaletteBody(args.targetPalette))
     return validateResponse(
       ProFlashImageSubmitSchema,
       await this.request<unknown>("/create-image-pro-flash", { method: "POST", body: JSON.stringify(body) }),
@@ -1891,6 +1938,7 @@ export class PixelLabClient {
     colorPalette?: string
     noBackground?: boolean
     seed?: number
+    targetPalette?: TargetPaletteArg
   }): Promise<{ background_job_id: string; status: string }> {
     const body: Record<string, unknown> = {
       description: args.description,
@@ -1905,6 +1953,7 @@ export class PixelLabClient {
     if (args.colorPalette) body.color_palette = args.colorPalette
     if (args.noBackground != null) body.no_background = args.noBackground
     if (args.seed != null) body.seed = args.seed
+    Object.assign(body, targetPaletteBody(args.targetPalette))
     return validateResponse(
       RevisionJobSubmitSchema,
       await this.request<unknown>("/generate-ui-v2", { method: "POST", body: JSON.stringify(body) }),
@@ -2087,6 +2136,7 @@ export class PixelLabClient {
     action: string
     seed?: number
     noBackground?: boolean
+    targetPalette?: TargetPaletteArg
   }): Promise<{ background_job_id: string; status: string }> {
     const size = { width: args.width, height: args.height }
     const body: Record<string, unknown> = {
@@ -2097,6 +2147,7 @@ export class PixelLabClient {
     }
     if (args.seed != null) body.seed = args.seed
     if (args.noBackground != null) body.no_background = args.noBackground
+    Object.assign(body, targetPaletteBody(args.targetPalette))
     return validateResponse(
       RevisionJobSubmitSchema,
       await this.request<unknown>("/interpolation-v2", { method: "POST", body: JSON.stringify(body) }),
@@ -2118,6 +2169,7 @@ export class PixelLabClient {
     description: string
     seed?: number
     noBackground?: boolean
+    targetPalette?: TargetPaletteArg
   }): Promise<{ background_job_id: string; status: string }> {
     const size = { width: args.width, height: args.height }
     const body: Record<string, unknown> = {
@@ -2127,6 +2179,7 @@ export class PixelLabClient {
     }
     if (args.seed != null) body.seed = args.seed
     if (args.noBackground != null) body.no_background = args.noBackground
+    Object.assign(body, targetPaletteBody(args.targetPalette))
     return validateResponse(
       RevisionJobSubmitSchema,
       await this.request<unknown>("/edit-animation-v2", { method: "POST", body: JSON.stringify(body) }),
