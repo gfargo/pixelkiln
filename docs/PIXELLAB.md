@@ -77,9 +77,9 @@ unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles
 | `imageProFlash` | You need a still on the Pro Flash model, optionally styled from one image, 16 to 256px | 5 to 9 generations (provisional quote) |
 | `vfx` | You need an animated effect (spell, hit, explosion, aura), on its own or around a sprite | free from presets and parts; 1 to 28 when described to PixelLab's artist (lite measured at 1) |
 | `character` | You need a character in 4 or 8 directions, with states, loops, portraits, or outfits | See [Characters](./CHARACTERS.md) |
-| `objectPro` | You need a prop or creature with rotations, states, or loops but no character rig | about 6 at 64px (unmeasured) |
+| `objectPro` | You need a prop or creature with rotations, states, or loops but no character rig | 6 per base (measured at 32px) |
 | `uiAsset` | You need a UI panel composited from pieces and named elements, 192px and up | 20 generations (measured once) |
-| `uiElement` | You need one UI element from a description, 16px and up | 10 to 25 generations (unmeasured) |
+| `uiElement` | You need one UI element from a description, 16px and up | 10 to 25 generations (a 32×32 call billed 10) |
 
 `map` accepts these values:
 

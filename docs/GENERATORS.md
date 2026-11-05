@@ -19,9 +19,9 @@ account; [ENDPOINTS.md](./ENDPOINTS.md) contains the detailed experiments.
 | Controlled pose/expression sequence in ComfyUI | `frames` | 0 `free` provider units | one atomic ordered set |
 | Animated GIF or spritesheet from Retro Diffusion | `animation` | $0.07–$0.25 per animation (published price) | 1 GIF or PNG sheet |
 | A character facing 4 or 8 directions, its poses, and its animations | `character` | 1 per base (standard), 10–25 per pose or portrait, 1 per template loop (2–4 as `skeleton-v3`), 20 per outfit (measured once) | one set of directions, one ordered loop, or one portrait |
-| A prop, creature, or vehicle with rotations, states, or loops but no character rig | `objectPro` | about 6 per base at 64px (unmeasured) | one set of directions, or one ordered loop |
+| A prop, creature, or vehicle with rotations, states, or loops but no character rig | `objectPro` | 6 per base (measured at 32px; about 6 at 64px) | one set of directions, or one ordered loop |
 | UI chrome — panels, buttons, health bars, toolbars | `uiAsset` | 20 generations (measured once, at 256x192) | 1 composited image |
-| One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 10–25 generations (unmeasured) | 1 image |
+| One UI element from a description, 16px and up, optionally guided by a concept image | `uiElement` | 10–25 generations (a 32×32 call billed 10) | 1 image |
 | A styled still on the Pro Flash model, or the south sprite a Pro Flash character will rotate | `imageProFlash` | 5–9 generations (PixelLab's provisional quote) | 1 image |
 | An animated effect (spell, hit, explosion, aura), on its own or around a sprite | `vfx` | free from presets and parts; 1–28 when described to PixelLab's artist (lite measured at 1; plans at twice the quote) | one ordered frame set |
 
@@ -351,12 +351,13 @@ ignored, since none of them reach the API for an object.
   restricted to the fields above (no `template`/`subject`, since neither
   applies). See [Working with a cast](./CHARACTERS.md#working-with-a-cast).
 
-**Cost is not independently measured.** `objectProCost()` assumes
-`/create-object-pro-flash`/its state/its animation price identically to
+**Cost: the base is measured, the rest is assumed.** `objectProCost()` prices
+`/create-object-pro-flash`/its state/its animation identically to
 `character`'s own measured pro-flash formula (`proFlashCharacterCost`),
-since the request bodies are near-identical minus `template_id` — treat it
-as a working assumption, not a confirmed number, until checked against a
-live account.
+since the request bodies are near-identical minus `template_id`. A 32px base
+billed exactly 6 live (November 2026, Tier 3) and returned 8 files at 32×32,
+matching the plan. The state route, the `pro` animation and other sizes
+are still mock only; treat them as a working assumption.
 
 Adoption (`pixelkiln adopt`) has not been extended for `objectPro`'s own
 `<object id>#<animation group id>` remote-id scheme yet, unlike `character`'s
@@ -529,15 +530,20 @@ to 16×16, which suits icons and small widgets:
 - `uiColorPalette` is sent as `color_palette`, the same free-text hint
   `uiAsset` takes. PixelLab removes the background by default; set
   `noBackground: false` on the style to keep it.
-- One call is expected to return one image, recorded straight away. If the
-  endpoint ever returns several, they go to candidate review like
-  `imagePro`'s.
+- A small element returns many candidates (64 at 32×32, measured), which go
+  to candidate review like `imagePro`'s; a call that returns one image is
+  recorded straight away.
 
-**Unmeasured.** The schema carries no usage example and no call has been
-billed yet. The plan prices it on the same 10/15/25 canvas tiers as
-`1dir`/`tiles`, the safe over-read for a Pro endpoint, and the completed
-job's shape is read defensively (`pollUiElement` names the keys it got if
-the shape is not the documented `images` list).
+**Cost: measured once.** A 32×32 call billed 10 live (November 2026, Tier 3)
+and the review page showed **64 candidates** at 32×32, which the plan said as
+1 until it followed the `/generate-image-v2` size tiers (`uiElementCandidateCount`:
+64 up to 32px, 49 at 33–35, 36 at 36–41, 25 at 42–50, 16 at 51–64, 9 at
+65–84, 16 at 85, 4 at 86–170, 1 above). Only the 32px point is a bill; the
+other bands are PixelLab's published grid. A size with more than one candidate
+goes to review. The plan prices the canvas on the 10/15/25 tiers as
+`1dir`/`tiles` do; other sizes are unbilled, and the completed job's shape
+is still read defensively (`pollUiElement` names the keys it got if the shape
+is not the documented `images` list).
 
 ## `vfx`
 

@@ -217,9 +217,9 @@ conversion to dollars:
 | `character` state or portrait | 10–25 generations |
 | `character` animation | 1 (template), 2–4 (`skeleton-v3`, budgeted at 4), 1 at 64px from text, 10–25 (pro) |
 | `character` outfit | 20 generations (one 2-frame, 92×92 job) |
-| `objectPro` base | 6 at 64px (unmeasured) |
+| `objectPro` base | 6 (measured at 32px; about 6 at 64px) |
 | `uiAsset` | 20 generations (measured once, at 256×192) |
-| `uiElement` | 10–25 generations (unmeasured) |
+| `uiElement` | 10–25 generations (a 32×32 call billed 10) |
 | `image-to-image` / `inpaint` revision | 10–25 generations; 5–9 with `engine: "pro-flash"` (provisional quote) |
 | `reduce-colors` / `correct-pixelart` revision | 0.1 generations (measured at 32×32) |
 

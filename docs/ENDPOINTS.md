@@ -62,7 +62,9 @@ more than planned or finishes in a shape PixelKiln cannot read.
 14 are mock only (`objectPro` base, state and `pro` animation, `1dir`, Pro
 `terrain`, `uiAsset`, `uiElement`, Pro and Pro Flash character bases, states,
 portraits, outfit transfer, `interpolate`, `edit-animation`), and their rows
-say so.
+say so. Since then `objectPro` base, `uiElement`, `interpolate` and
+`edit-animation` have each run live (November 2026), but without a palette, so
+the palette claim on them is still mock only.
 
 **Free acceptance probe** (November 2026): for 13 of those 14 routes, a request
 carrying only a valid four-colour `target_palette` and none of the required
@@ -95,13 +97,13 @@ not probed.
 | `POST /correct-pixelart` | revision `correct-pixelart` | Measured live | 0.1 generations at 32×32 ([Cleanup tier, measured](#cleanup-tier-measured)). | Larger canvases and multi-frame sets, as above. | Low |
 | `POST /unzoom` | `pixelkiln unzoom` | Unknown | "Cost unmeasured; PixelLab's MCP tool description claims 0.1" ([Cleanup tier, measured](#cleanup-tier-measured)). Nothing records a live run. | Everything. | Low |
 | `POST /normal-map` | revision `normal-map`, `pixelkiln normal-map` | Measured live | An 8-frame 1304×26 strip and a 64×64 revision each billed 0.5; the map comes back the input's size with matching alpha ([Normal map](#normal-map-post-normal-map-measured-once), October 2026). | The `directx` convention; strips near the 32-frame limit. | Low |
-| `POST /generate-ui-v2` | `uiElement` | Schema only | Documented 10 to 25; "no call has been billed yet" ([GENERATORS.md](./GENERATORS.md#uielement)). Planned on the 10/15/25 ladder. `target_palette` sent, mock only. | The price, and the completed-job shape (`pollUiElement` reads it defensively); the concept-image path. | High |
+| `POST /generate-ui-v2` | `uiElement` | Measured live | A 32×32 call billed 10 and the review page showed 64 candidates at 32×32 (November 2026, Tier 3; the plan said 1 candidate and now follows `uiElementCandidateCount`). Planned on the 10/15/25 ladder ([GENERATORS.md](./GENERATORS.md#uielement)). `target_palette` sent, mock only. | Other sizes (the 15 and 25 tiers and the other candidate bands, which come from PixelLab's published grid), and the concept-image path. | High |
 | `POST /create-1-direction-object` (+ `GET /objects/{id}`) | `1dir` | Measured live | A 32px, 3-description `batch` billed 20 (the pre-cut floor) and `item_descriptions[0]` owned slot 0 ([Candidates](#candidates)); candidate counts follow size. `target_palette` sent, mock only. | No bill since the October 2026 cut (10 / 15 / 25 is PixelLab's published ladder); tiers above the floor under `item_descriptions`. | High |
 | `POST /objects/{id}/select-frames` | `1dir` and `batch` pick | Run live, not measured | Promoted three candidates in the live batch run ([Candidates](#candidates)); `indices` is plural. | Its cost was not recorded. | Low |
 | `GET /objects?limit=&offset=` | `adopt`, `salvage` | Measured live | Free; a March 2026 sprite still resolved four months on ([Object lifecycle](#object-lifecycle)). | None recorded. | Low |
-| `POST /create-object-pro-flash` | `objectPro` base | Mock only | Assumed to price like `character` pro-flash: 6 at 64px, 1 from a `reference` ([GENERATORS.md](./GENERATORS.md#objectpro), "Cost is not independently measured"). `target_palette` sent, mock only. | Price, completed-job shape, 8-direction output. | Medium |
-| `POST /objects/{id}/states` | `objectPro` state | Mock only | Same assumption. `target_palette` sent, mock only. | Price and shape. | Medium |
-| `POST /objects/{id}/animations` | `objectPro` animation (`v3`, `pro`) | Mock only | Same assumption; `pro` mode is documented 10 to 25 per direction. `target_palette` sent on `pro` only, mock only. | Price, shape, per-direction billing. | High |
+| `POST /create-object-pro-flash` | `objectPro` base | Measured live | A 32px base billed 6 and returned 8 files at 32×32 (the rotations), matching the plan, which prices it like `character` pro-flash (November 2026, Tier 3; [GENERATORS.md](./GENERATORS.md#objectpro)). `target_palette` sent, mock only. | Other sizes and the 1-generation `reference` path. | Medium |
+| `POST /objects/{id}/states` | `objectPro` state | Mock only | Assumed to price like `character` pro-flash; the base ran live, this route did not. `target_palette` sent, mock only. | Price and shape. | Medium |
+| `POST /objects/{id}/animations` | `objectPro` animation (`v3`, `pro`) | Mock only | Same assumption as the state row; `pro` mode is documented 10 to 25 per direction. `target_palette` sent on `pro` only, mock only. | Price, shape, per-direction billing. | High |
 | `PATCH /objects/{id}/tags`, `PATCH /characters/{id}/tags` | tagging in `fetch`, `adopt`, `salvage` | Unknown | Only the negative is documented: pixflux, pixen and bitforge results "cannot be tagged" ([Object lifecycle](#object-lifecycle)). | A recorded live call. | Low |
 | `DELETE /objects/{id}`, `POST /objects/{id}/dismiss-review`, `DELETE /characters/{id}` | `salvage`, account cleanup | Unknown | Not discussed in the docs. | A recorded live call. | Low |
 | `DELETE /characters/{id}/animations` | replacing a loop's direction | Unknown | "Deleting one direction of a shared group has not been run live" ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured)). | Whether the rest of the group keeps its motion. | Low |
@@ -123,12 +125,12 @@ not probed.
 | `POST /characters/{id}/portrait` | `character` portrait attach | Measured live | Free (`usage.generations: 0`); the reply holds the only copy of the stored URL ([Characters, measured](#characters-measured)). | None recorded. | Low |
 | `POST /transfer-outfit-v2` | `character` outfit | Measured live | A 2-frame 92×92 job billed 20 (before the cut); frames return inline in `last_response.quantized_images` ([Characters, measured](#characters-measured)). `target_palette` sent, mock only. | Other frame counts (2 to 16) and canvases; the price after the cut. | High |
 | `GET /characters/{id}`, `GET /characters?limit=&offset=` | `adopt`, `fetch --refresh`, `salvage` | Measured live | Free; carries no `usage`; image URLs carry `?t=<updated_at>` ([Object lifecycle](#object-lifecycle)). | None recorded. | Low |
-| `POST /animate-with-text-v3` | revision `animate` | Schema only | Request fields from the OpenAPI document; the completed-job shape is a guess ([REVISIONS.md](./REVISIONS.md#animation-and-interpolation)). Cost borrows `character`'s v3 formula. | Price, completed shape, frame-list field. | High |
-| `POST /animate-pixminimax` | revision `animate-pixminimax` | Schema only | Same as above. PixelLab's MCP now prices it by time (64×64 at 4 / 8 / 16 / 40 frames: 1 / 1 / 2 / 6); the placeholder gives 1 / 1 / 1 / 3 ([roadmap](../skills/pixelkiln/references/pixellab-roadmap.md), "Generated effects with PixMiniMax"). | Price, completed shape, and whether the input frame is in the output. | High |
+| `POST /animate-with-text-v3` | revision `animate` | Measured live | A 64×64, 4-frame call billed 1 and returned 5 frames at 64×64 (the input frame plus 4); the plan, which borrows `character`'s v3 formula, said 1 (November 2026, Tier 3; [REVISIONS.md](./REVISIONS.md#animation-and-interpolation)). | Other sizes and frame counts (up to 16 frames at 256px reads 16 by the borrowed formula). | Medium |
+| `POST /animate-pixminimax` | revision `animate-pixminimax` | Measured live | 64×64 at 8 frames billed 1 and returned 9 frames at 64×64 (the input frame plus 8); at 16 frames billed 2 and returned 17. The plan said 1 for the 16-frame call because its old placeholder under-read; it now follows PixelLab's published table (64×64 at 4 / 8 / 16 / 40 frames: 1 / 1 / 2 / 6), see `pixMiniMaxCost` (November 2026, Tier 3; [roadmap](../skills/pixelkiln/references/pixellab-roadmap.md), "Generated effects with PixMiniMax"). | 40 frames and other sizes are unbilled (the table is PixelLab's, not a bill); `enhance_prompt`'s 0.05 is the schema's number. | Medium |
 | `POST /animate-with-skeleton-v3` | revision `animate-skeleton` | Measured live | 8 frames at 64×64 billed 3 and returned 8 frames at 64×64; `description` and `action` are both required, and sent with neither the endpoint returns 422 ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured), October 2026). | Other frame counts (3 = 2 and 15 = 4 are PixelLab's anchors, unbilled). | Low |
 | `POST /estimate-skeleton` | `pixelkiln estimate-skeleton`, gallery pose helper | Run live, not measured | Ran on a 64×64 sprite before the 8-frame revision ([REVISIONS.md](./REVISIONS.md#skeleton-driven-animation)). | Its cost; the reply's `usage` is typed `unknown`. | Low |
-| `POST /interpolation-v2` | revision `interpolate` | Schema only | No usage example in the schema; price borrows the 10/15/25 Pro tiers ([REVISIONS.md](./REVISIONS.md#interpolate-between-two-keyframes)). `target_palette` sent, mock only. | Price, completed shape. | High |
-| `POST /edit-animation-v2` | revision `edit-animation` | Schema only | Same; priced on the packed frame grid (four 32×32 frames price as 64×64). `target_palette` sent, mock only. | Price, completed shape. | High |
+| `POST /interpolation-v2` | revision `interpolate` | Measured live | A 64×64 start sprite with a `lastFrame` keyframe and the default frame count billed 10 and returned 14 frames at 64×64 (November 2026, Tier 3; [REVISIONS.md](./REVISIONS.md#interpolate-between-two-keyframes)). The planner said 25, a 2.5× over-read, and now prices the canvas on the 10/15/25 ladder. `target_palette` sent, mock only. | Canvases above 65536px² (15 and 25 tiers, unbilled) and other frame counts. | High |
+| `POST /edit-animation-v2` | revision `edit-animation` | Measured live | One text edit of a 9-frame 64×64 set billed 10 and the edited set was accepted into review (November 2026, Tier 3). The planner said 25 and now prices the packed grid (nine 64×64 frames: 192×192) on the same ladder. `target_palette` sent, mock only. | Larger sets and canvases, where the packed grid crosses 65536px² (unbilled, assumed to follow the ladder). | High |
 | `POST /vfx`, lite artist, no sprite | `pixelkiln vfx --description`, `vfx` block `description` | Measured live | One effect billed 1 (balance 5104 to 5103); 163×26, 8 frames, sheet and atlas cut into 8 correct frames ([VFX artist](#vfx-artist-post-vfx-measured-once), October 2026). | The `files` shape (list or map) is undocumented; PixelKiln reads three. | Low |
 | `POST /vfx`, sprite, pro artist, `effect_id` change or `game_pack` | same | Mock only | Quoted from the OpenAPI table: pro 6 (8 with a sprite), 14 and 28 for larger sprites; plans count twice the quote ([VFX artist](#vfx-artist-post-vfx-measured-once)). | Every variant above. | High |
 | MCP `tools/call` `vfx_workbench` at `api.pixellab.ai/mcp` | `pixelkiln vfx`, `vfx` block `preset` or `recipe` | Measured live | Free on a subscription; same recipe re-rendered byte-identical; exports a sheet, GIF, atlas and optional game pack ([VFX workbench (MCP only), measured](#vfx-workbench-mcp-only-measured), October 2026). | "Busy, retry" is the only recorded error; sprites by asset are not wired. | Low |
@@ -145,29 +147,29 @@ The High and Medium rows that are Mock only, Schema only or Run live, not
 measured, most exposed first. A live run of the top ones also settles the most
 uncertainty per generation.
 
-1. **`/animate-pixminimax`** (Schema only). The estimate under-reads long
-   clips (a 40-frame 64×64 clip costs 6, the placeholder says 3), so `--budget`
-   can be set too low, and the completed shape is a guess.
-2. **`/interpolation-v2` and `/edit-animation-v2`** (Schema only). Priced from
-   borrowed 10/15/25 tiers with no usage example; a whole frame set goes in one
-   call, so a miss is a full Pro tier, and the finished job is read defensively.
-3. **`/animate-with-text-v3`** (Schema only). Up to 16 generations a call by
-   PixelKiln's own formula, billed per animation, completed shape guessed.
-4. **`/objects/{id}/animations`, `/create-object-pro-flash`, `/objects/{id}/states`**
-   (Mock only). `objectPro` assumes `character` pro-flash prices; its `pro`
-   animations are 10 to 25 per direction.
-5. **`/generate-ui-v2`** (Schema only). 10 to 25, never billed, shape read
-   defensively.
-6. **`/animate-character` template and v3** (Run live, not measured). One job
+1. **`/objects/{id}/animations`, `/objects/{id}/states`** (Mock only).
+   `objectPro` assumes `character` pro-flash prices; the base ran live and
+   matched (6 at 32px), but its `pro` animations are 10 to 25 per direction.
+2. **`/animate-character` template and v3** (Run live, not measured). One job
    per direction, so an 8-direction loop is eight bills no one has recorded.
-7. **`/create-character-state`** (Run live, not measured). One rough bill
+3. **`/create-character-state`** (Run live, not measured). One rough bill
    (about 22) taken beside other jobs and before the cut.
-8. **`/vfx` with a sprite, the pro artist, a change or a game pack** (Mock
+4. **`/vfx` with a sprite, the pro artist, a change or a game pack** (Mock
    only). Up to 28 generations a call, and plans reserve twice the quote.
-9. **`/edit-image-pro-flash`, `/inpaint-image-pro-flash`** (Mock only). 5 to 6
+5. **`/edit-image-pro-flash`, `/inpaint-image-pro-flash`** (Mock only). 5 to 6
    per call on provisional quotes, no completed response seen.
-10. **`/create-character-v3`** (Run live, not measured). 2 at 64px, up to 9 at
-    256px, and the one recorded bill was an unreadable zero.
+6. **`/create-character-v3`** (Run live, not measured). 2 at 64px, up to 9 at
+   256px, and the one recorded bill was an unreadable zero.
+
+Measured in November 2026 and no longer on this list: `/animate-pixminimax`,
+`/animate-with-text-v3`, `/interpolation-v2`, `/edit-animation-v2`,
+`/generate-ui-v2` and the `objectPro` base. Their remaining exposure is the
+sizes and frame counts the row says were not billed. Two of the planners were
+wrong: `interpolate` and `edit-animation` over-read 2.5× (25 planned, 10 billed)
+and `animate-pixminimax` under-read a 16-frame clip (1 planned, 2 billed). Both
+are now calibrated to those bills, and the PixMiniMax planner follows PixelLab's
+published points at 4, 8, 16 and 40 frames, which the 40-frame point has not
+been billed against.
 
 Also worth a second look because they are measured on an old price list: the
 `1dir`, `/portrait-character-pro`, `/transfer-outfit-v2` and `/edit-images-v2`
@@ -1068,15 +1070,15 @@ Listed so the gaps are known rather than assumed away:
   across every frame of a set) are wired the same way, as the `interpolate`
   and `edit-animation` modes; see
   [Interpolate between two keyframes](./REVISIONS.md#interpolate-between-two-keyframes).
-  All four are schema-only for the *request* (live OpenAPI document, not an
-  observed call); the *completed job* response shape is a genuine unknown —
-  no usage example exists for either endpoint at all, only the generic
-  background-job one — so `pollAnimateRevision` checks several plausible
-  field names defensively rather than assume one. Cost borrows `character`'s
-  own measured v3-loop formula as a placeholder, for the same reason
-  `objectPro` borrowed `character` pro-flash's; `interpolate` and
-  `edit-animation` borrow the 10/15/25 Pro canvas tiers instead, since
-  neither schema carries a usage example.
+  All four ran live in November 2026 (Tier 3): 64×64 PixMiniMax at 8 and 16
+  frames billed 1 and 2, `animate-with-text-v3` at 4 frames billed 1,
+  `interpolate` billed 10, and `edit-animation` of a 9-frame set billed 10.
+  Every completed job was read correctly. PixMiniMax returned the frame count
+  plus the input frame (9 and 17 frames); `interpolate` returned 14 frames at
+  the default count. Cost: `animate` borrows `character`'s measured v3-loop
+  formula; `animate-pixminimax` follows PixelLab's published table, which the
+  borrowed formula under-read; `interpolate` and `edit-animation` price the
+  canvas on the 10/15/25 Pro ladder (the planner had read them as 25).
 - `/generate-font-pro` (+ `GET /generate-font-pro/{job_id}`) — an 80-glyph
   atlas PNG plus a `.ttf` from a style description, `weight`
   (`Bold`/`Regular`), and `glyph_px` (8/16/32/64). Documented at 15
