@@ -116,7 +116,7 @@ export const providerUpdates: ProviderUpdate[] = [
     features: [
       "A connected set waits for the set it shares a terrain with, sends that set's tile id, and goes stale when it is regenerated.",
       "`terrainRoundness: 2` with `terrainConnectDiagonals` cuts the coast at 45°. Sidescroller platform sets cost 3.",
-      "A style's `palette` now reaches Create Image Pro, and `maxColors` caps each candidate.",
+      "A style's `palette` now reaches Create Image Pro, and `maxColors` caps each candidate. PixelLab has since added it to more tools, and PixelKiln sends it to Pro Flash stills, tiles, Pro terrain, objects, UI, and Pro characters.",
       "`pixelkiln normal-map` and `vfx --description` do the same for loose files.",
     ],
     figures: [

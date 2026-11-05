@@ -408,7 +408,7 @@ and which tutorial(s) demonstrated real (not hypothetical) demand for it.
   revisions, through one helper (`targetPaletteBody`). `paletteName` and
   `maxColors` are style fields on those generators, hashed only when set; an
   existing style `palette` keeps its hash and is simply sent on regeneration.
-  **Mocked tests only, costs unmeasured** outside `imagePro`. **Not done**:
+  **Measured live** with a Game Boy palette: `imageProFlash` (a 32×32 still, 5, only the four colours) and `tiles` (4 tiles at 16px, 10, every candidate in the palette), matching the plan, as `imagePro` did (10). **The other routes are mocked tests only, costs unmeasured.** **Not done**:
   standard character bases and every character animation (their verified
   `color_image` + `force_colors` swatch stays, and the schema does not say it
   combines), the standard terrain set (the field is "mode='pro' only"), the

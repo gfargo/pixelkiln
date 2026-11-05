@@ -183,8 +183,9 @@ states, portraits and outfits), Pro `terrain`, and the `interpolate` and
 `edit-animation` revisions send a style's `palette`, `paletteName` and
 `maxColors` as `target_palette`. Standard characters and every character
 animation keep their `color_image` swatch, and `pixflux` keeps its own. Costs
-with a palette are unverified outside `imagePro` (PixelLab quotes none), and
-this rollout is covered by mocked tests only, not a live generation.
+with a palette are measured for `imagePro` (10), `imageProFlash` (a 32×32
+still, 5, in only the four palette colours), and `tiles` (4 tiles at 16px,
+10), and unverified elsewhere. The other routes are covered by mocked tests only.
 
 ## Learn from PixelLab's tutorials
 
