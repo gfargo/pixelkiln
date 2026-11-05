@@ -545,7 +545,7 @@ calls it directly, but nothing in `resolveSpecs`/`estimate()`/`submitRevision`
 ever calls it — planning stays offline by construction (the keypoints file is
 read like any other manifest input, never a network call), and the only
 PixelLab endpoint `animate-skeleton`'s submission composes is
-`animate-with-skeleton-v3` itself, not two never-tested-live calls chained
+`animate-with-skeleton-v3` itself, not two endpoints chained
 together. A future pipeline stage that budgets and tracks `estimate-skeleton`
 calls the way `gen` does everything else is tracked separately, once this
 mode has shipped and seen real use.
@@ -702,7 +702,7 @@ further — there is nothing to ask.
   example in the schema and no live measurement. `estimate()` borrows the
   same 10/15/25 canvas tiers the other unmeasured Pro edits use, sized on the
   keyframe for `interpolate` and on the packed frame grid for
-  `edit-animation` (four 32×32 frames price as a 64×64 canvas, the 40 tier).
+  `edit-animation` (four 32×32 frames price as a 64×64 canvas, the 10 tier).
   Over-reading is the safe direction for `--budget`; expect a live bill at or
   below the plan.
 - `animate` calls `/animate-with-text-v3`, `animate-pixminimax` calls
@@ -722,9 +722,10 @@ further — there is nothing to ask.
   count comes from `keypointsFile`, not a manifest field). See
   [Skeleton-driven animation](#skeleton-driven-animation) above for the full
   field list, the `keypointsFile` shape, and the `estimateSkeleton`
-  CLI-only-and-never-in-the-submission-path decision. Same unverified-live
-  caveat as `animate`/`animate-pixminimax`, sourced from the live
-  `animate_with_skeleton_v3` MCP tool schema rather than an observed call.
+  CLI-only-and-never-in-the-submission-path decision. Unlike
+  `animate`/`animate-pixminimax`, it has run live: an 8-frame revision billed
+  exactly 3 generations (see that section); its field names came from the
+  `animate_with_skeleton_v3` MCP tool schema.
 - `normal-map` calls `/normal-map` (PixelLab 0.4.130), a background job whose
   map is `last_response.image`; a loop's frames go and come back as one
   horizontal strip, cut into per-frame files on poll. See
