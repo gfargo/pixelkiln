@@ -29,6 +29,8 @@ import {
   MEMBER_SET_REVISION_MODES,
   PRO_TIER_PRICES,
   candidateCount,
+  uiElementCandidateCount,
+  pixMiniMaxCost,
   generationCost,
   proTierCost,
   type CharacterDirection,
@@ -588,32 +590,36 @@ export class PixelLabProvider implements Provider {
       return { unit: "generations", amount: Math.ceil(animateSkeletonCost(frames)), candidates: 1 }
     }
     if (spec.revision?.mode === "interpolate" || spec.revision?.mode === "edit-animation") {
-      // Both are documented "(Pro)" endpoints with no usage example in the
-      // schema and no live measurement yet. Borrow the same canvas-area
-      // tiering every other unmeasured Pro edit here uses — over-reading is
-      // the safe direction for `--budget`. edit-animation packs every frame
-      // into one square-ish grid before editing (its own docs), so the canvas
-      // it prices against is that grid, not one frame.
+      // Both are "(Pro)" endpoints priced on the canvas tiers, 10 up to
+      // 65536px^2, 15 up to 102400px^2, 25 above (`proTierCost`). Measured
+      // live (November 2026, Tier 3): a 64x64 interpolate with a lastFrame
+      // keyframe billed 10, and edit-animation of a 9-frame 64x64 set billed
+      // 10; this used to plan 25 for both, a 2.5x over-read from pricing
+      // them on the old 1dir area bands. Larger canvases and frame sets stay
+      // on the same tier ladder, unmeasured, so they read at or above what
+      // those measured points imply. edit-animation packs every frame into
+      // one square-ish grid before editing (its own docs), so the canvas it
+      // prices against is that grid, not one frame.
       const width = spec.revision.sourceWidth ?? spec.width
       const height = spec.revision.sourceHeight ?? spec.height
       const side = spec.revision.mode === "edit-animation"
         ? Math.ceil(Math.sqrt(Math.max(1, spec.revision.sourceMembers?.length ?? 1)))
         : 1
-      return { unit: "generations", amount: generationCost(width * side, height * side, "1dir"), candidates: 1 }
+      return { unit: "generations", amount: proTierCost(width * side, height * side), candidates: 1 }
     }
     if (spec.revision?.mode === "animate" || spec.revision?.mode === "animate-pixminimax") {
-      // Unmeasured against a live account; no usage example exists for
-      // either endpoint at all (only a generic background-job example).
-      // `/animate-with-text-v3`'s request shape is near-identical to
-      // `character`'s own v3 text loop (first_frame/action/frame_count/
-      // seed/no_background/enhance_prompt), so this borrows that measured
-      // formula — `ceil(width*height*frames / 65536)` — as a placeholder,
-      // same reasoning `objectPro` used to borrow `character` pro-flash's
-      // cost. `enhance_prompt` costs its own documented +0.05 generations,
-      // which is a real number from the schema, not a guess.
+      // `animate` (`/animate-with-text-v3`) borrows the character v3 text
+      // loop's formula, `ceil(width*height*frames / 65536)`; one live call
+      // (64x64, 4 frames) billed 1, as read. `animate-pixminimax` has its own
+      // published table that formula under-read (16 frames billed 2, it said
+      // 1), so it prices through `pixMiniMaxCost`. `enhance_prompt` costs its
+      // own documented +0.05 generations.
       const width = spec.revision.sourceWidth ?? spec.width
       const height = spec.revision.sourceHeight ?? spec.height
       const frames = spec.revision.frames ?? 8
+      if (spec.revision.mode === "animate-pixminimax") {
+        return { unit: "generations", amount: pixMiniMaxCost(width, height, frames, spec.revision.enhancePrompt), candidates: 1 }
+      }
       const base = Math.max(1, Math.ceil((width * height * frames) / 65536))
       return { unit: "generations", amount: spec.revision.enhancePrompt ? base + 0.05 : base, candidates: 1 }
     }
@@ -670,7 +676,12 @@ export class PixelLabProvider implements Provider {
     return {
       unit: "generations",
       amount: generationCost(spec.width, spec.height, spec.generator),
-      candidates: spec.generator === "1dir" || spec.generator === "imagePro" ? candidateCount(spec.size) : 1,
+      candidates:
+        spec.generator === "1dir" || spec.generator === "imagePro"
+          ? candidateCount(spec.size)
+          : spec.generator === "uiElement"
+            ? uiElementCandidateCount(spec.size)
+            : 1,
     }
   }
 
@@ -2784,15 +2795,15 @@ export class PixelLabProvider implements Provider {
    * `pollRevision` above, but completing with an ORDERED FRAME LIST instead
    * of a single image — the same `review-set` shape `pollCharacterAnimation`
    * returns, minus any character/object resource to look the result up on
-   * (there is none; this operates on a loose image). Unlike every other
-   * PixelLab call this adapter makes, the completed shape for
-   * `/animate-with-text-v3`/`/animate-pixminimax` has never been exercised
-   * against a live account — the checks below are an informed guess (hosted
-   * URLs under a plausible key name, the same `storage_urls.frames` shape
-   * character animations use, or inline base64 per frame, decoded to a local
-   * cache file the same way `pollRevision`'s single-image case already is)
-   * rather than an observed shape, and fail loudly, naming the keys actually
-   * received, for whatever the real shape turns out to be.
+   * (there is none; this operates on a loose image). Both
+   * `/animate-with-text-v3` and `/animate-pixminimax` have run live
+   * (November 2026) and the completed jobs were read correctly. The checks
+   * below stay defensive (hosted URLs under a plausible key name, the same
+   * `storage_urls.frames` shape character animations use, or inline base64
+   * per frame, decoded to a local cache file the same way `pollRevision`'s
+   * single-image case is) and fail loudly, naming the keys actually
+   * received, if a shape ever differs. PixMiniMax includes the input frame,
+   * so a set holds the requested count plus one.
    */
   private async pollAnimateRevision(jobId: string, context?: PollContext): Promise<JobState> {
     const job = await this.client.getBackgroundJob(jobId)
@@ -2953,8 +2964,8 @@ export class PixelLabProvider implements Provider {
       status: "failed",
       error:
         `Invalid PixelLab response for imagePro job ${jobId}: completed with no recognized images array ` +
-        `(got: ${Object.keys(done).join(", ") || "no keys"}); this endpoint's completed shape has not been ` +
-        "exercised live yet -- update pollImagePro in src/providers/pixellab.ts with the real shape",
+        `(got: ${Object.keys(done).join(", ") || "no keys"}); ` +
+        "update pollImagePro in src/providers/pixellab.ts with the real shape",
     }
   }
 

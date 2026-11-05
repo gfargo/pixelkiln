@@ -40,10 +40,23 @@ describe("uiElement", () => {
   it("resolves non-square sizes down to 16px, carries uiColorPalette, and prices on the Pro canvas tiers", async () => {
     const [spec] = await resolveSpecs(await writeManifest({ uiColorPalette: "brown and gold" }, { prompt: "a slot", width: 40, height: 40 }))
     expect(spec).toMatchObject({ generator: "uiElement", width: 40, height: 40, uiColorPalette: "brown and gold" })
-    expect(PixelLabProvider.forOffline().estimate(spec!)).toMatchObject({ unit: "generations", amount: 15 })
+    expect(PixelLabProvider.forOffline().estimate(spec!)).toMatchObject({ unit: "generations", amount: 15, candidates: 36 })
     const [big] = await resolveSpecs(await writeManifest())
     expect(big).toMatchObject({ width: 256, height: 256 })
-    expect(PixelLabProvider.forOffline().estimate(big!)).toMatchObject({ amount: 25 })
+    expect(PixelLabProvider.forOffline().estimate(big!)).toMatchObject({ amount: 25, candidates: 1 })
+  })
+
+  it("plans 64 candidates at 32px (measured live) and routes the job to review at submit", async () => {
+    const loaded = await writeManifest({}, { prompt: "a slot", width: 32, height: 32 })
+    const [spec] = await resolveSpecs(loaded)
+    expect(spec).toMatchObject({ cost: 10, candidates: 64 })
+    const lock: Lock = { version: 2, entries: {} }
+    const lockPath = path.join(dir, "m.lock.json")
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ background_job_id: "ui-64", status: "processing" }), { status: 202 })))
+    const provider = new PixelLabProvider(new PixelLabClient("key"))
+    const plan = await buildPlan([spec!], lock)
+    await submit(provider, loaded, plan.actionable, lock, lockPath, { spacingMs: 0 })
+    expect(Object.values(lock.entries)[0]).toMatchObject({ jobId: "ui-64", reviewObjectId: "ui-64" })
   })
 
   it("refuses sizes outside the endpoint's range and more than one concept image", async () => {

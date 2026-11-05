@@ -8,7 +8,7 @@ import { promisify } from "node:util"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { buildPlan, resumeActions } from "../src/pipeline/plan.ts"
 import { loadLock, remove, saveLock, upsert } from "../src/lock.ts"
-import { candidateCount, generationCost, lockKey, parseLock, primaryOutput, type Lock } from "../src/types.ts"
+import { candidateCount, generationCost, lockKey, parseLock, pixMiniMaxCost, primaryOutput, uiElementCandidateCount, type Lock } from "../src/types.ts"
 import { sha256 } from "../src/hash.ts"
 import { normalizeLockOutputPaths } from "../src/outputs.ts"
 
@@ -71,6 +71,39 @@ describe("cost model", () => {
     expect(candidateCount(85)).toBe(16)
     expect(candidateCount(128)).toBe(4)
     expect(candidateCount(256)).toBe(1)
+  })
+
+  it("gives uiElement the size-tiered candidate grid, 64 at 32px as measured live", () => {
+    const tiers: Array<[number, number]> = [
+      [16, 64], [32, 64], [33, 49], [35, 49], [36, 36], [41, 36], [42, 25], [50, 25], [51, 16], [64, 16],
+      [65, 9], [84, 9], [85, 16], [86, 4], [170, 4], [171, 1], [256, 1],
+    ]
+    for (const [size, count] of tiers) expect(uiElementCandidateCount(size)).toBe(count)
+  })
+
+  it("prices animate-pixminimax at or above every published point, monotonic in frames and canvas", () => {
+    // PixelLab's MCP table (64x64 at 4/8/16/40 frames = 1/1/2/6; 80x80 at 8 = 1; 32x32 at 4 = 1).
+    const published: Array<[number, number, number]> = [[64, 4, 1], [64, 8, 1], [64, 16, 2], [64, 40, 6], [80, 8, 1], [32, 4, 1]]
+    for (const [side, frames, billed] of published) {
+      expect(pixMiniMaxCost(side, side, frames)).toBeGreaterThanOrEqual(billed)
+    }
+    // The 64px points are exact; only 80x80 reads over.
+    expect([4, 8, 16, 40].map((f) => pixMiniMaxCost(64, 64, f))).toEqual([1, 1, 2, 6])
+    expect(pixMiniMaxCost(80, 80, 8)).toBe(2)
+    expect(pixMiniMaxCost(64, 64, 8, true)).toBeCloseTo(1.05)
+    let previous = 0
+    for (let frames = 4; frames <= 40; frames += 4) {
+      const cost = pixMiniMaxCost(64, 64, frames)
+      expect(cost).toBeGreaterThanOrEqual(previous)
+      previous = cost
+    }
+    previous = 0
+    for (let side = 16; side <= 256; side += 16) {
+      const cost = pixMiniMaxCost(side, side, 16)
+      expect(cost).toBeGreaterThanOrEqual(previous)
+      previous = cost
+    }
+    expect(pixMiniMaxCost(256, 256, 40)).toBe(106)
   })
 })
 

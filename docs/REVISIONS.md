@@ -400,17 +400,20 @@ review** first (`pixelkiln pick`), not straight to downloadable output; there
 is no per-candidate choice to make (it is one ordered set, previewed as a
 loop), just accept or reject the whole thing.
 
-**Neither endpoint's completed-job response shape has been exercised against
-a live account.** The request fields above come from PixelLab's live OpenAPI
-document; the shape of a *finished* job (which key holds the frame list, and
-whether it's hosted URLs or inline base64) is an informed guess checked
-against several plausible shapes (see `pollAnimateRevision` in
-`src/providers/pixellab.ts`), the same defensive posture `pollRevision`
-already takes for `image-to-image`/`inpaint`. Cost is likewise unmeasured:
-`estimate()` borrows `character`'s own measured v3-loop formula
+**Both endpoints ran live in November 2026 (Tier 3), and every completed job
+was read correctly.** A 64×64 `animate` of 4 frames billed 1 and returned 5
+frames at 64×64; a 64×64 `animate-pixminimax` billed 1 at 8 frames (9 frames
+back) and 2 at 16 frames (17 back). PixelLab includes the input frame in the
+set, so a set holds the requested count plus one. `pollAnimateRevision` still
+checks several plausible field names defensively rather than assume one.
+Cost: `animate` borrows `character`'s measured v3-loop formula
 (`ceil(width × height × frames / 65536)`, since the request shapes are
-near-identical) as a placeholder, plus `enhancePrompt`'s own documented
-+0.05-generation surcharge, which is a real schema number rather than a guess.
+near-identical), which matched the one bill; `animate-pixminimax` follows
+PixelLab's published table (64×64 at 4 / 8 / 16 / 40 frames costs 1 / 1 / 2 /
+6), because that formula read the 16-frame clip as 1 against a bill of 2 (see
+`pixMiniMaxCost`; 40 frames is the published number, not a bill). Both add
+`enhancePrompt`'s documented +0.05-generation surcharge. Other sizes and
+frame counts are unbilled.
 
 ### Interpolate between two keyframes
 
@@ -468,10 +471,12 @@ time.
 
 `interpolate` and `edit-animation` land in candidate review like `animate`,
 take `fps` (defaulting to the parent's own rate when it has one, else 8), and
-reject `strength`. Neither has been exercised against a live account: request
-fields come from PixelLab's live OpenAPI document, the completed job is read
-by the same defensive frame-list lookup `animate` uses, and cost is an
-estimate (see [PixelLab](#pixellab) below).
+reject `strength`. Both ran live in November 2026 (Tier 3) and the completed
+job was read correctly by the same frame-list lookup `animate` uses: a 64×64
+`interpolate` with a `lastFrame` keyframe billed 10 and returned 14 frames at
+64×64, and an `edit-animation` of a 9-frame 64×64 set billed 10. The plan
+now prices them at those 10 (it used to read 25). Larger canvases are
+unbilled (see [PixelLab](#pixellab) below).
 
 ComfyUI supports none of the four frame-set modes: its revision path always
 writes a single output image, and an animation is a frame set — a structural
@@ -698,25 +703,24 @@ further — there is nothing to ask.
   image; a whole member set is still one call, but whether its price stays
   flat is unmeasured.
 - `interpolate` (`/interpolation-v2`) and `edit-animation`
-  (`/edit-animation-v2`) are both documented "Pro" endpoints with no usage
-  example in the schema and no live measurement. `estimate()` borrows the
-  same 10/15/25 canvas tiers the other unmeasured Pro edits use, sized on the
-  keyframe for `interpolate` and on the packed frame grid for
-  `edit-animation` (four 32×32 frames price as a 64×64 canvas, the 10 tier).
-  Over-reading is the safe direction for `--budget`; expect a live bill at or
-  below the plan.
+  (`/edit-animation-v2`) are "Pro" endpoints and bill on the 10/15/25 canvas
+  ladder (`proTierCost`: 10 up to 65536px², 15 up to 102400px², 25 above).
+  `estimate()` sizes the canvas on the keyframe for `interpolate` and on the
+  packed frame grid for `edit-animation` (nine 64×64 frames pack into
+  192×192). Measured live in November 2026: a 64×64 `interpolate` and a
+  9-frame 64×64 `edit-animation` each billed 10, where the plan used to say
+  25. Larger canvases are unbilled and follow the same ladder; over-reading
+  is the safe direction for `--budget`.
 - `animate` calls `/animate-with-text-v3`, `animate-pixminimax` calls
   `/animate-pixminimax` — both real async background jobs, unlike the two
   Cleanup-tier modes above, since they generate new frames rather than
   transform the source. Both take at most 256 pixels per side; `animate`
   additionally caps at 16 frames (`animate-pixminimax` allows up to 40). See
   [Animation and interpolation](#animation-and-interpolation) above for the
-  full field list, the frame-set output shape, and its own (still unmeasured)
-  cost caveat — unlike the Cleanup tier above, neither `animate` nor
-  `animate-pixminimax` has been exercised against a live account yet, and the
-  request/response shapes come from PixelLab's live OpenAPI document, not an
-  observed call. Treat the exact field names as provisional until a real
-  call confirms them.
+  full field list, the frame-set output shape, and the live bills: both ran
+  live in November 2026 (64×64 `animate` at 4 frames billed 1; `animate-pixminimax`
+  at 8 and 16 frames billed 1 and 2), and the completed jobs were read
+  correctly.
 - `animate-skeleton` calls `/animate-with-skeleton-v3`, also a real async
   background job, at most 256 pixels per side and 3-15 frames (the frame
   count comes from `keypointsFile`, not a manifest field). See
