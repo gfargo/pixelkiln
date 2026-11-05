@@ -1,3 +1,11 @@
+# [0.92.0](https://github.com/gfargo/pixelkiln/compare/v0.91.2...v0.92.0) (2026-11-05)
+
+
+### Features
+
+* **pixellab:** send the style palette as target_palette to every wrapped tool that takes it ([b95e43e](https://github.com/gfargo/pixelkiln/commit/b95e43eb1f4bb21c365ae8f44ce9d94e5e85616e))
+* **website:** add docs next-step footer and drop automated analytics events ([#280](https://github.com/gfargo/pixelkiln/issues/280)) ([e43a82d](https://github.com/gfargo/pixelkiln/commit/e43a82d2fdb30d8fcbcba0776435d7679f323441))
+
 ## [0.91.2](https://github.com/gfargo/pixelkiln/compare/v0.91.1...v0.91.2) (2026-10-31)
 
 
