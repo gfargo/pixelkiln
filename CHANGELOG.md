@@ -1,3 +1,10 @@
+## [0.92.3](https://github.com/gfargo/pixelkiln/compare/v0.92.2...v0.92.3) (2026-11-05)
+
+
+### Bug Fixes
+
+* **pixellab:** calibrate pixminimax, interpolate, edit-animation and uiElement estimates from live runs ([6ece5e7](https://github.com/gfargo/pixelkiln/commit/6ece5e7f780866bf30d8a899635c999969c4a592))
+
 ## [0.92.2](https://github.com/gfargo/pixelkiln/compare/v0.92.1...v0.92.2) (2026-11-05)
 
 ## [0.92.1](https://github.com/gfargo/pixelkiln/compare/v0.92.0...v0.92.1) (2026-11-05)
