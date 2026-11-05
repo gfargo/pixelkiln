@@ -38,6 +38,16 @@ const MediaTypeSchema = z.enum(["image/png", "image/gif"])
 export const GeneratorSchema = z.enum(["1dir", "map", "pixflux", "tiles", "animation", "frames", "character", "terrain", "imagePro", "isometricTile", "objectPro", "uiAsset", "uiElement", "imageProFlash", "vfx"])
 export type Generator = z.infer<typeof GeneratorSchema>
 
+/**
+ * Generators with a PixelLab route that takes `target_palette`, so a style may
+ * set `paletteName` and `maxColors` for them. Whether a given asset's call
+ * sends it also depends on its mode (a standard terrain set and a standard
+ * character base keep their own mechanism); the provider decides that.
+ */
+export const TARGET_PALETTE_GENERATORS: readonly Generator[] = [
+  "imagePro", "imageProFlash", "objectPro", "1dir", "character", "tiles", "terrain", "uiAsset", "uiElement",
+]
+
 export const GridConfidenceSchema = z.enum(["low", "medium", "high"])
 export type GridConfidence = z.infer<typeof GridConfidenceSchema>
 
@@ -1586,8 +1596,8 @@ const StyleObjectSchema = z
     seed: z.number().int().optional(),
     /**
      * Forced palette, as `#rrggbb` values. Sent as a swatch to `pixflux`
-     * and the generators that take one, and to `imagePro` as its
-     * `target_palette.colors` (2 to 256 colours).
+     * and the generators that take one, and as `target_palette.colors` (2 to
+     * 256 colours) to every PixelLab call that takes it (`TARGET_PALETTE_GENERATORS`).
      *
      * Unlike prose, this is a hard constraint. The API is handed a swatch
      * image and the output is limited to those colours. Verified: a four-colour
@@ -1599,9 +1609,9 @@ const StyleObjectSchema = z
     palette: z
       .array(HexColorSchema)
       .default([]),
-    /** `imagePro` only: the palette's name ("Game Boy", "PICO-8"), which PixelLab uses to help the look. Needs `palette`. */
+    /** `target_palette.name` ("Game Boy", "PICO-8"), which PixelLab uses to help the look. Needs `palette`; generators in `TARGET_PALETTE_GENERATORS` only. */
     paletteName: z.string().min(1).max(100).optional(),
-    /** `imagePro` only: at most this many colours in each candidate, 2 to 64 (drawn from `palette` when one is set). */
+    /** `target_palette.max_colors`: at most this many colours in each image, 2 to 64 (drawn from `palette` when one is set). Generators in `TARGET_PALETTE_GENERATORS` only. */
     maxColors: z.number().int().min(2).max(64).optional(),
     /**
      * Snap every visible pixel of the downloaded art to the nearest `palette`
@@ -1674,10 +1684,10 @@ export const StyleSchema = StyleObjectSchema
       })
     }
     for (const field of ["paletteName", "maxColors"] as const) {
-      if (style[field] !== undefined && style.generator !== "imagePro") {
+      if (style[field] !== undefined && !TARGET_PALETTE_GENERATORS.includes(style.generator)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `${field} applies to the imagePro generator only`,
+          message: `${field} applies to the ${TARGET_PALETTE_GENERATORS.join(", ")} generators only`,
           path: [field],
         })
       }
@@ -2469,7 +2479,7 @@ export interface ResolvedSpec {
   styleTraits?: { palette?: boolean; outline?: boolean; detail?: boolean; shading?: boolean }
   /** Forced palette hex values; empty unless the style sets one. */
   palette: string[]
-  /** `imagePro` generator only: `target_palette.name` and `.max_colors`. */
+  /** `TARGET_PALETTE_GENERATORS` only: `target_palette.name` and `.max_colors`. */
   paletteName?: string
   maxColors?: number
   /** Snap downloaded art to `palette`; excluded from the spec hash. */

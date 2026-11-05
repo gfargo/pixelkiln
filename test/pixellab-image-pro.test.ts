@@ -113,8 +113,8 @@ describe("imagePro target palette", () => {
     expect(new Set([plain[0]!.specHash, capped[0]!.specHash, named[0]!.specHash]).size).toBe(3)
   })
 
-  it("rejects the new fields outside imagePro, a name without colours, and a cap out of range", async () => {
-    await expect(writeManifest({ generator: "pixflux", maxColors: 4 })).rejects.toThrow(/maxColors applies to the imagePro generator only/)
+  it("rejects the new fields on generators with no target palette, a name without colours, and a cap out of range", async () => {
+    await expect(writeManifest({ generator: "pixflux", maxColors: 4 })).rejects.toThrow(/maxColors applies to the .* generators only/)
     await expect(writeManifest({ paletteName: "PICO-8" })).rejects.toThrow(/set palette too/)
     await expect(writeManifest({ maxColors: 65 })).rejects.toThrow()
     await expect(writeManifest({ maxColors: 1 })).rejects.toThrow()
