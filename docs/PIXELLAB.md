@@ -158,7 +158,10 @@ PixelLab 0.4.130 (October 2026) added four things. PixelKiln covers each:
   sidescrollers yet.
 - **A target palette for Create Image Pro.** An `imagePro` style's `palette`
   now reaches PixelLab, which draws every pixel from it. `maxColors` caps
-  each image and `paletteName` names the palette.
+  each image and `paletteName` names the palette. PixelLab then added the
+  field to 26 more endpoints, and PixelKiln sends it to the ones it wraps
+  where no verified palette mechanism exists; see
+  [Target palette](./GENERATORS.md#target-palette).
 - **VFX in the API.** A `vfx` block with a `description` asks PixelLab's
   effects artist for the effect, at 1 generation and up. Presets, parts, and
   recipes still render free on the workbench. See
@@ -173,6 +176,15 @@ Each has been billed live and matched the plan: Pro sets at 32px (15) and
 call with the Game Boy palette (10, every pixel one of its four colours), a
 lite described effect (1), and normal maps (0.5 each). The home page's latest
 updates section shows the results.
+
+**The palette now reaches more tools.** `imageProFlash`, `objectPro`, `1dir`,
+`tiles`, `uiAsset`, `uiElement`, Pro and Pro Flash characters (with their
+states, portraits and outfits), Pro `terrain`, and the `interpolate` and
+`edit-animation` revisions send a style's `palette`, `paletteName` and
+`maxColors` as `target_palette`. Standard characters and every character
+animation keep their `color_image` swatch, and `pixflux` keeps its own. Costs
+with a palette are unverified outside `imagePro` (PixelLab quotes none), and
+this rollout is covered by mocked tests only, not a live generation.
 
 ## Learn from PixelLab's tutorials
 

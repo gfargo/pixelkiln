@@ -687,6 +687,50 @@ change price, use `pixelkiln vfx --description "<what to change>" --effect
 repeatable recipe, export it with `pixelkiln vfx --effect <id> --out
 fx/zap` and point a workbench `recipe` at the record.
 
+## Target palette
+
+PixelLab 0.4.130 added the beta `target_palette` (`colors`, `name`,
+`max_colors`) to `imagePro` and, since, 27 POST endpoints. A style's `palette`
+(2 to 256 colours; one colour is refused), `paletteName` and `maxColors` (2 to
+64, an optional cap per image) are sent as it wherever the endpoint takes it,
+so PixelLab draws with the palette instead of leaving it all to local
+`enforcePalette` snapping. `paletteName` and `maxColors` are accepted on the
+styles of `imagePro`, `imageProFlash`, `objectPro`, `1dir`, `character`,
+`tiles`, `terrain`, `uiAsset` and `uiElement`, and enter `specHash` only when
+set. PixelLab's `smart` flag is not sent (beta, "single images only"). The
+full endpoint list is in [ENDPOINTS.md](./ENDPOINTS.md#target-palette-target_palette).
+
+What goes out per asset shape:
+
+| Shape | Sent | Not sent, and why |
+|---|---|---|
+| `imagePro`, `imageProFlash`, `1dir`, `tiles`, `uiAsset`, `uiElement` | `target_palette` | `pixflux` keeps its `color_image` swatch |
+| `objectPro` | base, state, and `pro`-mode animation | `v3` animation: the endpoint documents the field for `mode='pro'` only |
+| `character` | `pro` and `pro-flash` bases, states, portraits, outfits | `standard` bases keep the `color_image` + `force_colors` swatch; `v3` has no field; animations (every mode) keep the same swatch |
+| `terrain` | top-down `terrainMode: "pro"` | standard sets (documented "mode='pro' only"), and sidescroller sets (the endpoint has none) |
+| `revision` | `interpolate`, `edit-animation` | `animate`, `animate-pixminimax`, `animate-skeleton` (their endpoints have none), `reduce-colors` (it takes `paletteImage`), and the other modes |
+
+Where an endpoint takes both a swatch and the new field (standard characters,
+animations), the existing, verified swatch stays and `target_palette` is not
+added, because the schema does not say they combine. On `imageProFlash`,
+a style image's own colours "give way" to the palette, per PixelLab, so
+`styleTraits.palette` is left as authored. `uiColorPalette` (a prose hint) is
+still sent next to the hex palette on UI assets and elements; the hex palette
+is what PixelLab enforces.
+
+A style whose `palette` was already set keeps its hash, so `plan` does not
+call it stale, but regenerating it will now send that palette on the routes
+above (it was already true for `imagePro`). **Costs are unchanged by
+PixelLab's documentation and unmeasured here**, except `imagePro` (a 64×64
+call billed exactly 10 with a palette); the rollout was tested against mocked
+requests only. `maxColors` without a `palette` on a multi-direction asset
+caps each direction separately, so the directions may pick different colours;
+give `colors` for those. Not done: `/create-character-v3` and the 4-direction
+standard character endpoint (no field), `/create-8-direction-object`,
+`/generate-with-style-v2`, `/image-to-pixelart-pro`, `/animate-with-text-v2`
+and `/tilesets` (not wrapped), and `pixelkiln pixelate` (a loose-file
+utility with no style, so no palette).
+
 ## Style variants
 
 Styles are namespaces. Add another style to re-derive the same asset ids into a

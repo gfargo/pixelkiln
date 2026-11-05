@@ -259,6 +259,42 @@ function `inpaint-v3` and `edit-images-v2` revisions use.
 
 ---
 
+## Target palette (`target_palette`)
+
+PixelLab 0.4.130 added a beta `target_palette` body field, then gave it to 27
+POST endpoints: `{ colors?: 2-256 hex, name?: string (≤100), max_colors?: 2-64,
+smart?: boolean }`. With `colors` every pixel is one of them; `max_colors` caps
+each image. The schema is documentation only so far: **cost with a palette is
+measured for `generate-image-v2` alone** (a 64×64 call billed 10, the same as
+without), and the rest are unmeasured. PixelKiln never sends `smart` (beta,
+"single images only", needs `colors`, adds 15 to 60 s).
+
+| Endpoint | PixelKiln wrapper | Sent |
+|---|---|---|
+| `/generate-image-v2` | `imagePro` | yes |
+| `/create-image-pro-flash` | `imageProFlash` | yes; the style image's colours give way to it |
+| `/create-object-pro-flash` | `objectPro` base | yes |
+| `/objects/{id}/states` | `objectPro` state | yes |
+| `/objects/{id}/animations` | `objectPro` animation | `pro` mode only (the field is documented for `mode='pro'`) |
+| `/create-1-direction-object` | `1dir` | yes |
+| `/create-tiles-pro` | `tiles` | yes |
+| `/create-tileset` | `terrain` top-down | `terrainMode: "pro"` only ("mode='pro' only"; `color_image` is documented as no effect on standard) |
+| `/create-ui-asset`, `/generate-ui-v2` | `uiAsset`, `uiElement` | yes |
+| `/create-character-pro`, `/create-character-pro-flash` | `character` Pro and Pro Flash bases | yes |
+| `/create-character-state`, `/portrait-character-pro`, `/transfer-outfit-v2` | `character` states, portraits, outfits | yes |
+| `/create-character-with-8-directions` | `character` standard base | no: keeps `color_image` + `force_colors`; the field is "mode='pro' only" and this wrapper sends standard |
+| `/animate-character`, `/characters/animations` | `character` animations | no: keep the same swatch on every mode; the schema does not say the two combine |
+| `/interpolation-v2`, `/edit-animation-v2` | `interpolate`, `edit-animation` revisions | yes |
+| `/create-8-direction-object`, `/generate-with-style-v2`, `/image-to-pixelart-pro`, `/animate-with-text-v2`, `/generate-8-rotations-v2`, `/tilesets` | not wrapped | no |
+| `/image-to-pixelart-pro-flash` | `pixelkiln pixelate` | no: a loose-file utility with no style, so no palette |
+
+`/create-tileset-sidescroller`, `/create-character-v3`, `/animate-with-text-v3`
+and `/animate-pixminimax` have no such field. Every request body is built by
+one helper (`targetPaletteBody` in `src/client.ts`), so the field is spelled
+once.
+
+---
+
 ## VFX workbench (MCP only), measured
 
 Create VFX shipped in PixelLab 0.4.128 as a web tool
