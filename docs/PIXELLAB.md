@@ -139,9 +139,10 @@ joints, and `skeleton-preview` draws them over the sprite before you spend:
 - Each billed exactly 3 generations for 8 frames, measured live. The sentence
   loop came back at 96×96 from a 64px character; the posed one stayed 64×64.
   [The home page](https://pixelkiln.griffen.codes/#updates) shows both.
-- Each direction of a sentence loop is its own request for now, so a loop with
-  several directions can move a little differently in each. PixelLab can draw
-  every direction from one motion, but PixelKiln does not send that yet.
+- Each direction of a sentence loop is its own request, but the first
+  direction leads and every later one is sent into its animation group, so all
+  directions are drawn from one motion (a live append billed 3 and joined the
+  group).
 
 See [Loops from a sentence](./CHARACTERS.md#loops-from-a-sentence) and
 [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation).
