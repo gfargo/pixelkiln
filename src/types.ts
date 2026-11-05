@@ -128,6 +128,26 @@ export function candidateCount(size: number): number {
 }
 
 /**
+ * Candidates `/generate-ui-v2` returns, by the longer side of the request.
+ * It is the same size-tiered grid as `/generate-image-v2`, but finer than
+ * `candidateCount`'s three bands: a live 32x32 call returned 64 candidates
+ * (docs/ENDPOINTS.md); the other bands are PixelLab's published grid, not
+ * re-measured here. Candidates cost nothing extra, so this only shapes the
+ * plan output and review routing.
+ */
+export function uiElementCandidateCount(size: number): number {
+  if (size <= 32) return 64
+  if (size <= 35) return 49
+  if (size <= 41) return 36
+  if (size <= 50) return 25
+  if (size <= 64) return 16
+  if (size <= 84) return 9
+  if (size === 85) return 16
+  if (size <= 170) return 4
+  return 1
+}
+
+/**
  * Generation cost per call. Measured against a live account, not inferred.
  *
  * The two generators are priced completely differently, and the gap is wide
@@ -177,10 +197,10 @@ export function candidateCount(size: number): number {
  *         beyond. Priced by the adapter, not by this table; see
  *         `proFlashImageCost` in providers/pixellab.ts.
  *
- *   uiElement UNVERIFIED. `/generate-ui-v2` ("Generate UI (Pro)") carries no
- *         usage example in its schema and has not been called live. It falls
- *         through to the same canvas tiers as `1dir`/`tiles`, the safe
- *         over-read for a Pro endpoint.
+ *   uiElement `/generate-ui-v2` ("Generate UI (Pro)"): a 32x32 call billed
+ *         exactly 10 live (November 2026) and returned 64 candidates (see
+ *         `uiElementCandidateCount`). It falls through to the same canvas
+ *         tiers as `1dir`/`tiles`; other sizes are unmeasured.
  *
  * So `1dir` buys candidate variety at 10-25x the price, and `map` buys
  * arbitrary (non-square) dimensions nearly free. For a single-result asset,
@@ -223,6 +243,33 @@ export function proTierCost(width: number, height: number): number {
   if (px <= 65536) return PRO_TIER_PRICES[0]
   if (px <= 102400) return PRO_TIER_PRICES[1]
   return PRO_TIER_PRICES[2]
+}
+
+/**
+ * Cost of one `/animate-pixminimax` call. PixelLab's MCP table publishes
+ * 64x64 at 4/8/16/40 frames = 1/1/2/6 generations (80x80 at 8 = 1, 32x32 at
+ * 4 = 1), and a live 64x64 call billed 1 at 8 frames and 2 at 16.
+ *
+ * Priced in 64x64-frame equivalents, f = width * height * frames / 4096,
+ * through a piecewise-linear curve over those anchors, ceiled: 1 up to f=8,
+ * then 1 -> 2 over 8..16, 2 -> 6 over 16..40. Above f=40 it extrapolates at
+ * the last segment's slope (one generation per 6 equivalents) rather than
+ * capping, so 256x256 at 40 frames reads 106: PixelLab says the model works
+ * on an upscaled canvas and sizes just above 64 or 128 are cheaper than just
+ * below, so area scaling is an over-read there, the safe direction for
+ * `--budget`. It is monotonic in frames and canvas and lands exactly on every
+ * published anchor (80x80 at 8 reads 2 against a published 1, a deliberate
+ * over-read). `enhance_prompt` adds its documented 0.05.
+ */
+export function pixMiniMaxCost(width: number, height: number, frames: number, enhancePrompt = false): number {
+  const f = (width * height * Math.max(1, frames)) / 4096
+  let units: number
+  if (f <= 8) units = 1
+  else if (f <= 16) units = 1 + (f - 8) / 8
+  else if (f <= 40) units = 2 + (f - 16) / 6
+  else units = 6 + (f - 40) / 6
+  const base = Math.max(1, Math.ceil(units - 1e-9))
+  return enhancePrompt ? base + 0.05 : base
 }
 
 /**

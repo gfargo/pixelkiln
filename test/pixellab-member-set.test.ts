@@ -265,8 +265,25 @@ describe("revision member sets and the interpolate/edit-animation modes", () => 
     const interp = await project({ mode: "interpolate", from: "hero", lastFrame: "keys/end.png" }, [])
     expect(provider.estimate(await child(interp.loaded))).toMatchObject({ unit: "generations", amount: 10 })
     const set = await project({ mode: "edit-animation", from: "hero" }, frames(4))
-    // Four 32x32 frames pack into a 64x64 grid: 4096px², the top tier.
-    expect(provider.estimate(await child(set.loaded))).toMatchObject({ unit: "generations", amount: 25 })
+    // Four 32x32 frames pack into a 64x64 grid: 4096px², still the floor.
+    expect(provider.estimate(await child(set.loaded))).toMatchObject({ unit: "generations", amount: 10 })
+  })
+
+  it("prices the live-measured interpolate and edit-animation calls at 10, and larger canvases higher", () => {
+    const provider = PixelLabProvider.forOffline()
+    const price = (mode: "interpolate" | "edit-animation", side: number, frames = 1) =>
+      provider.estimate({
+        width: side, height: side,
+        revision: { mode, sourceWidth: side, sourceHeight: side, sourceMembers: Array.from({ length: frames }, (_, i) => ({ role: `f${i}` })) },
+      } as unknown as ResolvedSpec).amount
+    // November 2026, Tier 3: both billed exactly 10 (the Pro floor); they planned 25.
+    expect(price("interpolate", 64)).toBe(10)
+    expect(price("edit-animation", 64, 9)).toBe(10)
+    // A 5x5 grid of 64px frames is 320x320, the middle tier; 8x8 frames of 64px is 512x512, the top.
+    expect(price("edit-animation", 64, 25)).toBe(15)
+    expect(price("edit-animation", 64, 64)).toBe(25)
+    expect(price("interpolate", 288)).toBe(15)
+    expect(price("interpolate", 384)).toBe(25)
   })
 
   it("resolves a revision inside a character style as an edit of the loop, not a new character", async () => {
