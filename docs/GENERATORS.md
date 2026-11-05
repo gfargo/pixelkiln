@@ -721,8 +721,11 @@ is what PixelLab enforces.
 A style whose `palette` was already set keeps its hash, so `plan` does not
 call it stale, but regenerating it will now send that palette on the routes
 above (it was already true for `imagePro`). **Costs are unchanged by
-PixelLab's documentation and unmeasured here**, except `imagePro` (a 64×64
-call billed exactly 10 with a palette); the rollout was tested against mocked
+PixelLab's documentation**, and two more routes are now measured with a
+palette: `imagePro` (a 64×64 call billed exactly 10), `imageProFlash` (a
+32×32 still billed exactly 5, in only the four palette colours) and `tiles`
+(one numbered description, 4 tiles at 16px, billed exactly 10, every
+candidate in the palette's greens). The other routes are tested against mocked
 requests only. `maxColors` without a `palette` on a multi-direction asset
 caps each direction separately, so the directions may pick different colours;
 give `colors` for those. Not done: `/create-character-v3` and the 4-direction

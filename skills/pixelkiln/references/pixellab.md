@@ -215,7 +215,7 @@ characters (bases, states, portraits, outfits), top-down Pro `terrain`, and
 `interpolate`/`edit-animation` revisions, with `paletteName`/`maxColors`
 accepted on those generators' styles. Standard characters and character
 animations keep their `color_image` swatch, `pixflux` its own, and the
-costs are unmeasured outside `imagePro` (see `docs/GENERATORS.md#target-palette`).
+costs with a palette are measured for `imagePro`, `imageProFlash`, and `tiles`, and unmeasured elsewhere (see `docs/GENERATORS.md#target-palette`).
 PixelLab's `smart` palette
 mapping is not wrapped: it is "single images only", and this endpoint
 returns a grid of candidates below 171px. Reference
