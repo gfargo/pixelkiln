@@ -1,3 +1,10 @@
+# [0.96.0](https://github.com/gfargo/pixelkiln/compare/v0.95.0...v0.96.0) (2026-11-09)
+
+
+### Features
+
+* **cli:** record provenance, post-process steps and the raw original on imports ([5225b4d](https://github.com/gfargo/pixelkiln/commit/5225b4d5465d6991eee532c4dc88fb222fdc3874))
+
 # [0.95.0](https://github.com/gfargo/pixelkiln/compare/v0.94.0...v0.95.0) (2026-11-09)
 
 
