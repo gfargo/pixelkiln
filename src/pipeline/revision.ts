@@ -24,6 +24,7 @@ export async function inspectRevisionReadiness(
   lock: Lock,
 ): Promise<RevisionReadiness | null> {
   if (spec.mirror) return inspectMirror(spec, lock, new Set())
+  if (spec.derive) return inspectDerive(spec, lock, new Set())
   // An outfit's dependency is its source loop's whole frame set, checked
   // the way a mirror's is; `character.parentSpec` is also set (so the
   // family shares parentAssetId plumbing), but there is no single
@@ -147,6 +148,24 @@ async function inspectMirror(spec: ResolvedSpec, lock: Lock, seen: Set<string>):
   const source = spec.mirror!.sourceSpec
   const label = `mirror source ${spec.styleId}/${spec.mirror!.sourceAssetId}`
   const dependency = await inspectParent(source, lock, seen)
+  return dependency.ready
+    ? { ready: true, reason: `${label} is current` }
+    : { ready: false, reason: `${label} is not ready: ${dependency.reason}` }
+}
+
+/**
+ * A derived asset reads its source's downloaded image, so an asset source has
+ * to be downloaded, current, and untouched, and a file source has to exist.
+ */
+async function inspectDerive(spec: ResolvedSpec, lock: Lock, seen: Set<string>): Promise<RevisionReadiness> {
+  const source = spec.derive!.source
+  if (source.kind === "file") {
+    return existsSync(path.resolve(spec.root, source.file))
+      ? { ready: true, reason: `source file ${source.file} exists` }
+      : { ready: false, reason: `derive source file does not exist: ${source.file}` }
+  }
+  const label = `derive source ${spec.styleId}/${source.assetId}`
+  const dependency = await inspectParent(source.spec, lock, seen)
   return dependency.ready
     ? { ready: true, reason: `${label} is current` }
     : { ready: false, reason: `${label} is not ready: ${dependency.reason}` }

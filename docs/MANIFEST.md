@@ -56,7 +56,7 @@ not merely a label edit.
 
 | Field | Type/default | Meaning |
 |---|---|---|
-| `prompt` | string, required unless `mirror`, `portrait`, `outfit`, or a template loop (`animation.template`) | The subject wording wrapped by the selected style's prompt prefix and suffix. A template loop is described by its template; a v3, pro, or sentence (`skeleton-v3` with no template) loop still needs the motion in words. |
+| `prompt` | string, required unless `mirror`, `derive`, `external`, `portrait`, `outfit`, or a template loop (`animation.template`) | The subject wording wrapped by the selected style's prompt prefix and suffix. A template loop is described by its template; a v3, pro, or sentence (`skeleton-v3` with no template) loop still needs the motion in words. |
 | `width` / `height` | integer 16–8192 | Per-asset dimensions for generators that accept rectangular output. Provider limits may be lower. |
 | `size` | integer 16–8192 | Per-asset square size where the generator uses one dimension. |
 | `file` | string | Output path below the style's `outDir`; defaults to `<category>/<assetId>.png`. |
@@ -70,6 +70,8 @@ not merely a label edit.
 | `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
 | `outfit` | object | `character` styles: an existing loop's frames re-clothed from an outfit image, `{ "of": "<loop asset>", "reference": "<image>" }`, with optional `additionalInstructions`. See [Outfit transfer](./CHARACTERS.md#outfit-transfer). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
+| `derive` | object | Made from existing pixels by one local transform, at no cost, with no provider. See [Derived and external assets](#derived-and-external-assets). |
+| `external` | object | Built by a script or tool outside pixelkiln; pixelkiln records and tracks the file but never builds it. See [Derived and external assets](#derived-and-external-assets). |
 | `vfx` | object | `vfx` styles, PixelLab only: the effect to render. `{ "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "sprite": "art/chars/hero.png", "fps": 12 }`; start from one `preset` or one `recipe` (a recipe JSON or a `.vfx.json` record), with optional `parts`, `sprite`, `fps`, and `name`. Or give a `description` (with optional `artist`: `lite` or `pro`, a local PNG `sprite`, and `name`) for PixelLab's paid VFX artist instead; it excludes `preset`, `recipe`, `parts`, and `fps`. Replaces `prompt` as the required field. See [`vfx`](./GENERATORS.md#vfx) and [Described effects](./GENERATORS.md#described-effects-the-paid-vfx-artist). |
 | `scene` | object | `map` styles, PixelLab only: draw this object into a scene image, in its style. `{ "image": "scene.png", "placement": { "oval": 0.3 } }`; `placement` is `oval` or `rectangle` (a fraction, 0.05–0.95) or `mask` (a PNG the size of the scene). See [Drawing into a scene](./GENERATORS.md#drawing-into-a-scene). |
 | `connect` | object | `terrain` styles, PixelLab only: share a terrain with another set in the same style, keyed by this set's own side. `{ "lower": { "of": "coast", "terrain": "upper" } }` makes this set's lower terrain `coast`'s upper. The other set generates first; regenerating it makes this one stale. A sidescroller set connects only `lower`. Cycles are rejected. |
@@ -429,6 +431,54 @@ changing `provider` alone:
 `providerInputs` on an asset is the same idea per asset, for providers that
 declare bindings (ComfyUI); a provider without them rejects a non-empty
 object rather than ignoring it.
+
+## Derived and external assets
+
+Not every asset is generated. Art recolored from another asset, or built by a
+script, still belongs in `plan`, the lockfile, and quality snapshots. Two
+asset kinds declare that, and they are deliberately separate: one pixelkiln
+makes itself, one it only keeps track of.
+
+### `derive`: made by pixelkiln from existing pixels
+
+```json
+"hedge_autumn": { "derive": { "from": "hedge", "transform": "recolor", "map": { "#4a7a3a": "#b8742c" } } },
+"hedge_2x":     { "derive": { "from": "hedge", "transform": "scale", "width": 64, "height": 64 } },
+"tile_snapped": { "derive": { "file": "art/tile.png", "transform": "palette-snap", "palette": ["#000000", "#ffffff"] } }
+```
+
+The input is `from` (another asset of the same style, which must be a single
+image) or `file` (a committed PNG, relative to the manifest), never both. The
+transform is one of:
+
+| `transform` | Fields | Does |
+|---|---|---|
+| `recolor` | `map` | Replaces exact `#rrggbb` colors. Unmapped colors and every alpha value stay. |
+| `palette-snap` | `palette` (2 to 256 colors) | Moves every visible pixel to the nearest palette color. |
+| `scale` | `width`, `height`, `mode` | Resizes to the exact size. `nearest` (default) keeps hard edges; `box` averages the covered pixels, weighted by alpha. |
+
+`gen` writes the file in the wave after its source lands, calls no provider, and
+costs nothing in any unit. The plan reports a derived asset `stale`, free to fix,
+when its source's recorded output, its `file`, the transform, or its parameters
+change. An edit by hand makes it `orphaned`, like any generated file. The lock entry
+records the input's hash under `derive`.
+
+### `external`: built elsewhere, tracked here
+
+```json
+"dock": { "external": { "builder": "python tools/iso_kit.py dock", "inputs": ["tools/iso_kit.py"] } }
+```
+
+pixelkiln never runs the `builder`; it is the command you run, recorded so the
+plan can tell you what to do. `inputs` are files the builder reads. Their hashes
+and the builder text are the asset's identity. Record the built file with
+`adopt --local`, which stores the file's hash, the builder, and the inputs' hashes.
+
+An external asset is never actionable, so `gen` skips it, including under
+`--force`. The plan reports it as: `untracked` when the file exists but is not
+recorded (run `adopt --local`), `orphaned` when the file is missing, when the
+builder or an input changed, or when the file changed since it was recorded
+(rebuild, then `adopt --local --force`), and `ok` otherwise.
 
 ## Characters and mirrors
 

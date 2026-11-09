@@ -66,6 +66,7 @@ export function buildImportedEntry(
     cost: 0,
     costUnit: spec.costUnit,
     provider: spec.provider,
+    ...(spec.external ? { external: { builder: spec.external.builder, inputs: spec.external.inputs } } : {}),
     imported: {
       source: opts.source ?? "external",
       ...(opts.note ? { note: opts.note } : {}),

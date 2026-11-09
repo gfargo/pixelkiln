@@ -1789,6 +1789,68 @@ export const InheritedStyleSchema = StyleObjectSchema.partial()
 export const StyleInputSchema = z.union([StyleSchema, InheritedStyleSchema])
 export type StyleInput = z.infer<typeof StyleInputSchema>
 
+/**
+ * An asset made from existing pixels by one local transform: no provider, no
+ * generation cost. The source is another asset of the same style (`from`) or a
+ * committed PNG (`file`), never both. The transform's own fields depend on
+ * which one it is; a field that belongs to another transform is refused.
+ */
+export const AssetDeriveSchema = z
+  .object({
+    /** Another asset in the same style whose output is the input. */
+    from: z.string().min(1).optional(),
+    /** A committed PNG, relative to the manifest, as the input. */
+    file: z.string().min(1).optional(),
+    transform: z.enum(["recolor", "palette-snap", "scale"]),
+    /** recolor: exact replacements, `#rrggbb` to `#rrggbb`. Unmapped colors and every alpha value stay. */
+    map: z.record(HexColorSchema, HexColorSchema).optional(),
+    /** palette-snap: the closed palette every visible pixel moves to. */
+    palette: z.array(HexColorSchema).min(2).max(256).optional(),
+    /** scale: the output size. */
+    width: z.number().int().min(1).max(4096).optional(),
+    height: z.number().int().min(1).max(4096).optional(),
+    /** scale: `nearest` (default) keeps hard edges; `box` averages the covered pixels. */
+    mode: z.enum(["nearest", "box"]).optional(),
+  })
+  .strict()
+  .superRefine((derive, context) => {
+    const issue = (message: string, path: string) =>
+      context.addIssue({ code: z.ZodIssueCode.custom, message, path: [path] })
+    if (Boolean(derive.from) === Boolean(derive.file)) {
+      issue("name exactly one source: `from` (an asset in this style) or `file` (a committed PNG)", derive.from ? "file" : "from")
+    }
+    const own = {
+      recolor: ["map"],
+      "palette-snap": ["palette"],
+      scale: ["width", "height", "mode"],
+    }[derive.transform]
+    for (const field of ["map", "palette", "width", "height", "mode"] as const) {
+      if (derive[field] !== undefined && !own.includes(field)) {
+        issue(`${field} does not apply to ${derive.transform}`, field)
+      }
+    }
+    if (derive.transform === "recolor" && !Object.keys(derive.map ?? {}).length) issue("recolor needs a non-empty map", "map")
+    if (derive.transform === "palette-snap" && !derive.palette) issue("palette-snap needs a palette", "palette")
+    if (derive.transform === "scale" && (!derive.width || !derive.height)) issue("scale needs width and height", "width")
+  })
+export type AssetDerive = z.infer<typeof AssetDeriveSchema>
+
+/**
+ * An asset a script or tool outside pixelkiln produces. pixelkiln never runs
+ * the builder: it records the command, hashes the file (and any inputs), and
+ * reports the asset as changed when either moves. Record the built file with
+ * `adopt --local`.
+ */
+export const AssetExternalSchema = z
+  .object({
+    /** The command that rebuilds the file. Documentation and identity; never executed. */
+    builder: z.string().min(1),
+    /** Files the builder reads, relative to the manifest. Their hashes are part of the asset's identity. */
+    inputs: z.array(z.string().min(1)).optional(),
+  })
+  .strict()
+export type AssetExternal = z.infer<typeof AssetExternalSchema>
+
 export const AssetSchema = z
   .object({
     /** The subject. Style wrapping comes from the style's prefix/suffix. Only a `mirror` may leave it out. */
@@ -1921,6 +1983,10 @@ export const AssetSchema = z
      * (a sword hand, a parted fringe) comes out the other way round.
      */
     mirror: z.string().min(1).optional(),
+    /** Made from existing pixels by a local transform; see AssetDeriveSchema. Free; the provider is never called. */
+    derive: AssetDeriveSchema.optional(),
+    /** Built by a tool outside pixelkiln; see AssetExternalSchema. Never generated. */
+    external: AssetExternalSchema.optional(),
     /**
      * Generated output role to place in `cell` when this asset expands to
      * several files. Omit for ordinary single-output assets. A structural set
@@ -1964,13 +2030,24 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene", asset.vfx && "vfx", asset.connect && "connect"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.derive && "derive", asset.external && "external", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene", asset.vfx && "vfx", asset.connect && "connect"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: `${shapes.join(" and ")} are mutually exclusive`,
         path: [shapes[1] as string],
       })
+    }
+    for (const shape of ["derive", "external"] as const) {
+      if (asset[shape] && (asset.source || Object.keys(asset.sourceByStyle).length)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: shape === "derive"
+            ? "a derived asset is made from its derive source; it cannot also declare a source"
+            : "an external asset is built outside pixelkiln; it cannot also declare a source",
+          path: [shape],
+        })
+      }
     }
     if (asset.mirror && (asset.source || Object.keys(asset.sourceByStyle).length)) {
       context.addIssue({
@@ -1981,11 +2058,18 @@ export const AssetSchema = z
     }
     // A template loop is described by its template; v3 and pro loops still
     // need the motion in words, which the provider checks.
-    if (asset.prompt === undefined && !asset.mirror && !asset.portrait && !asset.outfit && !asset.animation?.template && !asset.vfx) {
+    if (asset.prompt === undefined && !asset.mirror && !asset.derive && !asset.external && !asset.portrait && !asset.outfit && !asset.animation?.template && !asset.vfx) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Required",
         path: ["prompt"],
+      })
+    }
+    if ((asset.derive || asset.external) && (asset.reference || asset.concept)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "a derived or external asset is not drawn by a provider, so it takes no reference or concept image",
+        path: [asset.reference ? "reference" : "concept"],
       })
     }
     if (asset.reference && (asset.state || asset.animation || asset.mirror || asset.portrait || asset.outfit)) {
@@ -2372,6 +2456,30 @@ export const LockEntrySchema = z.object({
     })
     .strict()
     .optional(),
+  /**
+   * For a derived asset: what it was made from, and a hash of that input when
+   * this was made. Compared with the input's current bytes by the plan, so a
+   * changed source re-derives it for free. Absent on every other entry.
+   */
+  derive: z
+    .object({
+      sourceAssetId: z.string().min(1).optional(),
+      sourceFile: z.string().min(1).optional(),
+      sourceSha256: z.string().regex(/^[0-9a-f]{64}$/),
+    })
+    .strict()
+    .optional(),
+  /**
+   * For an external asset: the builder command and the hashes of the declared
+   * inputs when the file was recorded. Absent on every other entry.
+   */
+  external: z
+    .object({
+      builder: z.string().min(1),
+      inputs: z.array(z.object({ path: z.string(), sha256: z.string().nullable() }).strict()).default([]),
+    })
+    .strict()
+    .optional(),
 })
 
 export const LockSchema = z.object({
@@ -2455,6 +2563,26 @@ export interface ResolvedMirror {
   sourceSpec: ResolvedSpec
 }
 
+/** A derived asset: its transform, and the input it reads. */
+export interface ResolvedDerive {
+  transform: AssetDerive["transform"]
+  map?: Record<string, string>
+  palette?: string[]
+  width?: number
+  height?: number
+  mode?: "nearest" | "box"
+  source:
+    | { kind: "asset"; assetId: string; spec: ResolvedSpec }
+    | { kind: "file"; /** Relative to the manifest. */ file: string; sha256: string | null }
+}
+
+/** An external asset: the builder to run elsewhere and the inputs it reads, hashed now. */
+export interface ResolvedExternal {
+  builder: string
+  /** Paths relative to the manifest; a missing input has no hash. */
+  inputs: Array<{ path: string; sha256: string | null }>
+}
+
 /**
  * A `1dir` batch, leader or member. `itemDescriptions` is the full ordered
  * list (the leader's own prompt at index 0, then each member's prompt at
@@ -2506,6 +2634,8 @@ export interface ResolvedSpec {
   objectPro?: ResolvedObjectPro
   /** A local left-to-right flip of another asset in this style; costs nothing. */
   mirror?: ResolvedMirror
+  derive?: ResolvedDerive
+  external?: ResolvedExternal
   /** Set for a `1dir` asset that hosts or rides along on a batch submission. */
   batch?: ResolvedBatch
   /** `map` only: the scene this object is drawn into, in that scene's style. */
