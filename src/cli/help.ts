@@ -18,6 +18,8 @@ Commands
             --generation <n|hash> brings a previous generation back instead.
   history   List the generations each asset has replaced and can restore.
   adopt     Match existing account objects to files already in the repo.
+            --local records them offline (no key): --source, --note, --object-id, --dry-run.
+  hash      Print each asset's spec hash, file hash and would-be lock entry (offline).
   accept    Keep existing art after a style reword. Re-baseline, do not regenerate.
   salvage   Triage account objects no lockfile claims. Recovers usable art.
             One session per matching style unless --style forces a single one.

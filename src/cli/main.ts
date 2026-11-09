@@ -10,7 +10,7 @@ import { runGenerate } from "./commands/generate.ts"
 import { runHistory, runRestoreGeneration } from "./commands/history.ts"
 import { runAccept, runCache, runPrune } from "./commands/housekeeping.ts"
 import { runInit } from "./commands/init.ts"
-import { runAudit, runDoctor, runPlan, runStatus } from "./commands/inspect.ts"
+import { runAudit, runDoctor, runHash, runPlan, runStatus } from "./commands/inspect.ts"
 import { runExport, runMount, runPack } from "./commands/pack.ts"
 import { runFont, runNormalMap, runPixelate, runUnzoom, runVfx } from "./commands/pixellab-utils.ts"
 import { runQuality } from "./commands/quality.ts"
@@ -54,6 +54,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   "-v": runVersion,
   init: runInit,
   plan: runPlan,
+  hash: runHash,
   doctor: runDoctor,
   gen: runGenerate,
   submit: runGenerate,

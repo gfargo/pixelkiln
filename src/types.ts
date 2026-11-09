@@ -2359,6 +2359,19 @@ export const LockEntrySchema = z.object({
   history: z.array(LockHistoryEntrySchema).optional(),
   /** Post-processing applied to the recorded outputs; absent when the bytes are the provider's. */
   postprocess: PostprocessSchema.optional(),
+  /**
+   * Set when the entry records art made outside pixelkiln (the PixelLab MCP, a
+   * hand edit, another tool) and brought in with `adopt --local`: nothing was
+   * submitted, so jobId and cost are empty. Absent on generated entries.
+   */
+  imported: z
+    .object({
+      source: z.string().min(1),
+      note: z.string().optional(),
+      importedAt: z.string(),
+    })
+    .strict()
+    .optional(),
 })
 
 export const LockSchema = z.object({

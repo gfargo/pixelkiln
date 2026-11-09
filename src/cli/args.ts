@@ -27,6 +27,12 @@ export interface Args {
   edit: boolean
   /** gallery: do not offer the in-browser editor even with --edit. */
   noEditor: boolean
+  /** adopt: record local files as lock entries offline, with no provider key. */
+  local: boolean
+  /** adopt --local: where the art came from (mcp, hand, a tool name). */
+  source?: string
+  /** adopt --local: the provider object id of the one asset being imported. */
+  objectId?: string
   /** fetch: re-download downloaded outputs and replace files whose object changed upstream. */
   refresh: boolean
   from?: string
@@ -112,18 +118,18 @@ const VALUE_FLAGS = [
   "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs", "--format",
   "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma", "--workspace",
   "--provider", "--account", "--palette", "--fixer-python", "--fixer-revision", "--min-grid-confidence",
-  "--reviewer", "--note",
+  "--reviewer", "--note", "--source", "--object-id",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--artist", "--convention",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh", "--no-editor", "--game-pack",
+  "--edit", "--refresh", "--no-editor", "--game-pack", "--local",
 ] as const
 
 export const COMMANDS = [
-  "init", "plan", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
+  "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
   "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "help", "--help", "-h", "--version", "-v",
@@ -407,6 +413,9 @@ export function parseArgs(argv: string[]): Args {
     edit: rest.includes("--edit"),
     noEditor: rest.includes("--no-editor"),
     refresh: rest.includes("--refresh"),
+    local: rest.includes("--local"),
+    source: get("--source"),
+    objectId: get("--object-id"),
     from: get("--from"),
     out: get("--out"),
     generator: get("--generator"),

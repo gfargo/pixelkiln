@@ -44,6 +44,7 @@ import { expectedOutputPath, memberPath } from "./outputs.ts"
 import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
 import { parseSkeletonSet, type SkeletonSet } from "./skeleton.ts"
+import { pixelkilnVersion } from "./version.ts"
 import { isVfxReference, readVfxRecipe, vfxRecipeSha256 } from "./pixellab-vfx.ts"
 
 export interface LoadedManifest {
@@ -234,13 +235,48 @@ function dependencyAssetIds(asset: Asset | undefined, styleAnchors: string[] = [
   ]
 }
 
+/** How many schema errors a message lists before it folds the rest. */
+const MAX_LISTED_MANIFEST_ISSUES = 20
+
+function flattenManifestIssues(issues: ZodIssue[]): { lines: string[]; unknownShape: boolean } {
+  let unknownShape = false
+  const visit = (list: ZodIssue[]): string[] =>
+    list.flatMap((issue): string[] => {
+      if (issue.code === "invalid_union") return visit(issue.unionErrors.flatMap((error) => error.issues))
+      // Keys, enum values, and union branches the running version does not
+      // know are what a manifest written by a newer pixelkiln looks like.
+      if (issue.code === "unrecognized_keys" || issue.code === "invalid_enum_value") unknownShape = true
+      return [`  ${issue.path.join(".") || "(manifest)"}: ${issue.message}`]
+    })
+  // A union is checked branch by branch, so the same failure arrives once per
+  // branch. Show each distinct line once.
+  return { lines: [...new Set(visit(issues))], unknownShape }
+}
+
 function formatManifestIssues(issues: ZodIssue[]): string {
-  return issues.flatMap((issue): string[] => {
-    if (issue.code === "invalid_union") {
-      return issue.unionErrors.flatMap((error) => formatManifestIssues(error.issues).split("\n"))
-    }
-    return [`  ${issue.path.join(".")}: ${issue.message}`]
-  }).join("\n")
+  const { lines, unknownShape } = flattenManifestIssues(issues)
+  const entries = [...new Set(
+    lines.flatMap((line) => {
+      const match = /^ {2}((?:assets|styles)\.[^.:\s]+)/.exec(line)
+      return match ? [match[1]!] : []
+    }),
+  )]
+  const out: string[] = []
+  const version = pixelkilnVersion()
+  if (unknownShape) {
+    out.push(
+      `  This manifest uses fields or values pixelkiln ${version ?? "(this version)"} does not know. ` +
+        `If it was written by a newer release, run \`npx pixelkiln@latest\` or update the install before editing it.`,
+    )
+  }
+  if (entries.length) {
+    out.push(`  ${entries.length} invalid entr${entries.length === 1 ? "y" : "ies"}: ${entries.slice(0, 10).join(", ")}${entries.length > 10 ? ", …" : ""}`)
+  }
+  out.push(...lines.slice(0, MAX_LISTED_MANIFEST_ISSUES))
+  if (lines.length > MAX_LISTED_MANIFEST_ISSUES) {
+    out.push(`  … and ${lines.length - MAX_LISTED_MANIFEST_ISSUES} more`)
+  }
+  return out.join("\n")
 }
 
 /** Resolve child styles without carrying the inheritance marker into runtime state. */
@@ -1227,8 +1263,21 @@ export async function resolveSpecs(
         providerOptionIdentity,
         providerInputIdentities.get(assetId),
       )
-      activeProvider.validate?.(resolved, resolvedImages)
-      const estimate = validateCostEstimate(activeProvider.id, activeProvider.estimate(resolved))
+      // A provider rejects a spec (a size outside its limits, an unsupported
+      // option) without knowing which manifest entry it came from. Say so, or
+      // finding the entry means bisecting a manifest of a thousand assets.
+      let estimate: ReturnType<typeof validateCostEstimate>
+      try {
+        activeProvider.validate?.(resolved, resolvedImages)
+        estimate = validateCostEstimate(activeProvider.id, activeProvider.estimate(resolved))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (message.includes(`assets.${assetId}`)) throw error
+        throw new Error(
+          `assets.${assetId} (style "${styleId}", ${resolved.width}x${resolved.height}): ${message}`,
+          { cause: error },
+        )
+      }
       resolved.cost = estimate.amount
       resolved.costUnit = estimate.unit
       resolved.candidates = estimate.candidates

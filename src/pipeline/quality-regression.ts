@@ -99,10 +99,26 @@ export interface ResolvedQualityInput {
   tolerances: QualityTolerances
 }
 
+/** One metric of one case, before and after a partial re-snapshot. */
+export interface QualityMetricChange {
+  metric: string
+  before: unknown
+  after: unknown
+}
+
+export interface QualityCaseChange {
+  id: string
+  /** "added" when the baseline had no such case. */
+  kind: "updated" | "added" | "unchanged"
+  changes: QualityMetricChange[]
+}
+
 export interface QualitySnapshotResult {
   baseline: QualityBaseline
   path: string
   changed: boolean
+  /** Present for a partial (`only`) snapshot. */
+  cases?: QualityCaseChange[]
 }
 
 export interface QualityRegressionCaseResult {
@@ -357,6 +373,77 @@ export async function snapshotQualityBaseline(
   return { baseline, path: absolute, changed: result.changed.length > 0 }
 }
 
+/**
+ * Re-snapshots only the named cases of an existing baseline: each is measured
+ * afresh (every metric the current version writes, edge metrics included) and
+ * every other case is carried over untouched. An existing case keeps its
+ * reviewed tolerances; a case the baseline lacks is added with the inputs'.
+ */
+export async function snapshotQualityCases(
+  inputs: ResolvedQualityInput[],
+  baselinePath: string,
+  only: string[],
+  options: { dryRun?: boolean } = {},
+): Promise<QualitySnapshotResult> {
+  const absolute = path.resolve(baselinePath)
+  if (!existsSync(absolute)) {
+    throw new Error(`quality snapshot --only updates an existing baseline; ${absolute} does not exist. Run a full snapshot first.`)
+  }
+  let raw: { cases?: Array<Record<string, unknown>> } & Record<string, unknown>
+  try {
+    raw = JSON.parse(await readFile(absolute, "utf8"))
+  } catch (error) {
+    throw new Error(`Could not read quality baseline ${absolute}: ${message(error)}`, { cause: error })
+  }
+  if (!Array.isArray(raw.cases)) throw new Error(`Quality baseline ${absolute} has no cases array.`)
+
+  const byId = new Map(inputs.map((input) => [input.id, input]))
+  const unknown = only.filter((id) => !byId.has(id))
+  if (unknown.length) {
+    throw new Error(`--only names ${unknown.join(", ")}, which the quality inputs do not list. Known: ${[...byId.keys()].sort().join(", ")}`)
+  }
+  const root = path.dirname(absolute)
+  const cases = [...raw.cases]
+  const report: QualityCaseChange[] = []
+  for (const id of only) {
+    const input = byId.get(id)!
+    if (path.resolve(input.file) === absolute || (input.record && path.resolve(input.record) === absolute)) {
+      throw new Error(`Quality baseline output would overwrite an input: ${absolute}.`)
+    }
+    const expected = await measureImageQuality(input.file)
+    let record: { path: string; sha256: string } | undefined
+    if (input.record) {
+      await verifyRecordForImage(input.record, input.file)
+      record = { path: portableRelative(root, input.record), sha256: await sha256File(input.record) }
+    }
+    const index = cases.findIndex((entry) => entry.id === id)
+    const before = index >= 0 ? (cases[index]!.expected as Record<string, unknown> | undefined) ?? {} : {}
+    const next = {
+      id,
+      file: portableRelative(root, input.file),
+      ...(record ? { record } : {}),
+      expected,
+      tolerances: index >= 0 && cases[index]!.tolerances ? cases[index]!.tolerances : input.tolerances,
+    }
+    if (index >= 0) cases[index] = next
+    else cases.push(next)
+    const changes: QualityMetricChange[] = []
+    for (const metric of Object.keys(expected) as Array<keyof ImageQualityMetrics>) {
+      if (JSON.stringify(before[metric]) !== JSON.stringify(expected[metric])) {
+        changes.push({ metric, before: before[metric] ?? null, after: expected[metric] })
+      }
+    }
+    report.push({ id, kind: index < 0 ? "added" : changes.length ? "updated" : "unchanged", changes })
+  }
+
+  const baseline = QualityBaselineSchema.parse({ ...raw, cases })
+  const data = Buffer.from(JSON.stringify({ ...raw, cases }, null, 2) + "\n")
+  const current = await readFile(absolute)
+  const changed = !current.equals(data)
+  if (changed && !options.dryRun) await writeArtifactBundle([{ path: absolute, data }])
+  return { baseline, path: absolute, changed, cases: report }
+}
+
 export async function readQualityBaseline(baselinePath: string): Promise<QualityBaseline> {
   const absolute = path.resolve(baselinePath)
   let raw: unknown
@@ -367,9 +454,29 @@ export async function readQualityBaseline(baselinePath: string): Promise<Quality
   }
   const parsed = QualityBaselineSchema.safeParse(raw)
   if (!parsed.success) {
+    const cases = (raw as { cases?: Array<{ id?: unknown }> } | null)?.cases
+    // Say which case, not which array slot: a baseline hand-edited without a
+    // metric the current version writes is fixed by re-snapshotting that id.
+    const where = (issuePath: Array<string | number>) => {
+      if (issuePath[0] === "cases" && typeof issuePath[1] === "number") {
+        const id = cases?.[issuePath[1]]?.id
+        const rest = issuePath.slice(2).join(".")
+        return typeof id === "string" ? `cases[${id}]${rest ? `.${rest}` : ""}` : issuePath.join(".")
+      }
+      return issuePath.join(".") || "$"
+    }
+    const missing = [...new Set(parsed.error.issues.flatMap((issue) => {
+      const id = issue.path[0] === "cases" && typeof issue.path[1] === "number" ? cases?.[issue.path[1]]?.id : undefined
+      return issue.code === "invalid_type" && issue.received === "undefined" && typeof id === "string" ? [id] : []
+    }))]
     throw new Error(
       `Invalid quality baseline ${absolute}:\n` +
-        parsed.error.issues.map((issue) => `  ${issue.path.join(".") || "$"}: ${issue.message}`).join("\n"),
+        parsed.error.issues.map((issue) => `  ${where(issue.path)}: ${issue.message}`).join("\n") +
+        (missing.length
+          ? `\n  Entries missing fields: re-measure them with ` +
+            `\`pixelkiln quality snapshot --inputs <inputs> --out ${path.basename(absolute)} --only ${missing.join(",")}\` ` +
+            "rather than editing the JSON by hand."
+          : ""),
     )
   }
   return parsed.data

@@ -5,6 +5,7 @@ import {
   checkQualityBaseline,
   resolveQualityInputs,
   snapshotQualityBaseline,
+  snapshotQualityCases,
 } from "../../pipeline/quality-regression.ts"
 
 import { log } from "../io.ts"
@@ -28,6 +29,23 @@ export async function runQuality(args: Args): Promise<void> {
     if (path.resolve(args.inputs) === path.resolve(args.out)) {
       throw new Error("quality snapshot --out must not overwrite its --inputs file.")
     }
+    if (args.assets.length) {
+      const result = await snapshotQualityCases(inputs, args.out, args.assets, { dryRun: args.dryRun })
+      if (args.json) {
+        log(JSON.stringify({ version: 1, path: result.path, changed: result.changed, dryRun: args.dryRun, cases: result.cases }, null, 2))
+        return
+      }
+      for (const entry of result.cases ?? []) {
+        log(`  ${entry.kind === "unchanged" ? "unchanged" : args.dryRun ? `would ${entry.kind === "added" ? "add" : "update"}` : entry.kind}  ${entry.id}`)
+        for (const c of entry.changes) log(`         ${c.metric}: ${JSON.stringify(c.before)} -> ${JSON.stringify(c.after)}`)
+      }
+      log(
+        `\n  ${result.changed ? (args.dryRun ? "would write" : "wrote") : "no changes to"} ` +
+          `${path.relative(process.cwd(), result.path)}; other cases left as they were.`,
+      )
+      return
+    }
+    if (args.dryRun) throw new Error("quality snapshot --dry-run applies to a partial re-snapshot; add --only <id,...>.")
     const result = await snapshotQualityBaseline(inputs, args.out, { force: args.force })
     if (args.json) {
       log(JSON.stringify({

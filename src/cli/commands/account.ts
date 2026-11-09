@@ -8,6 +8,8 @@ import { loadManifest, resolveSpecs } from "../../manifest.ts"
 import { saveLock, upsert as upsertLock } from "../../lock.ts"
 import { lockKey } from "../../types.ts"
 import { pushTags } from "../../pipeline/fetch.ts"
+import { importLocal } from "../../pipeline/import.ts"
+import { UsageError } from "../../errors.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "../../pipeline/adopt.ts"
 import { adoptCharacters } from "../../pipeline/adopt-characters.ts"
 import {
@@ -39,7 +41,36 @@ export async function runBalance(args: Args): Promise<void> {
   log(`  remaining: ${formatCost(b.unit, b.remaining)}${b.total ? ` of ${b.total}` : ""}`)
 }
 
+/** `adopt --local`: record files already in the repo as lock entries. No provider, no key, no network. */
+async function runAdoptLocal(args: Args): Promise<void> {
+  if (args.tag || args.writePrompts) {
+    throw new UsageError("--tag and --write-prompts talk to the account; they cannot be combined with --local.")
+  }
+  const { specs, lock } = await openProject(args)
+  const result = await importLocal(specs, lock, args.lock, {
+    source: args.source,
+    note: args.note,
+    objectId: args.objectId,
+    force: args.force,
+    dryRun: args.dryRun,
+  })
+  if (args.json) {
+    log(JSON.stringify({
+      dryRun: args.dryRun,
+      imported: result.imported.map(({ key, entry }) => ({ key, entry })),
+      skipped: result.skipped,
+    }, null, 2))
+    return
+  }
+  for (const { key, entry } of result.imported) {
+    log(`  ${args.dryRun ? "would import" : "imported"} ${key}  ${entry.outputs?.[0]?.sha256.slice(0, 12)}`)
+  }
+  for (const { key, reason } of result.skipped) log(`  skipped ${key}: ${reason}`)
+  log(`\n  ${result.imported.length} ${args.dryRun ? "to import" : "imported"}, ${result.skipped.length} skipped (offline; no provider contacted)`)
+}
+
 export async function runAdopt(args: Args): Promise<void> {
+  if (args.local) return runAdoptLocal(args)
   const { loaded, specs, lock, accountProvider } = await openAccountProject(args)
   const providerFor = providerCache("online")
   const provider = providerFor(accountProvider)
