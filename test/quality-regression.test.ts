@@ -9,6 +9,7 @@ import {
   measureImageQuality,
   resolveQualityInputs,
   snapshotQualityBaseline,
+  snapshotQualityCases,
 } from "../src/pipeline/quality-regression.ts"
 
 describe("image quality regression", () => {
@@ -170,5 +171,50 @@ describe("image quality regression", () => {
     ))
     expect(report.safe).toBe(true)
     expect(report.summary).toEqual({ total: 3, passed: 3, failed: 0, changed: 0 })
+  })
+
+  describe("partial re-snapshot", () => {
+    async function twoCases() {
+      const { image, baseline } = await setup()
+      const other = path.join(dir, "art", "other.png")
+      await writeFile(other, verticalBands([[10, 20, 30, 255], [200, 100, 50, 255]]))
+      const inputs = resolveQualityInputs(
+        [{ id: "sample", path: "art/sample.png" }, { id: "other", path: "art/other.png" }],
+        path.join(dir, "quality-inputs.json"),
+      )
+      await snapshotQualityBaseline(inputs, baseline)
+      return { image, baseline, inputs }
+    }
+
+    it("rewrites only the named case and leaves the others byte-identical", async () => {
+      const { image, baseline, inputs } = await twoCases()
+      const before = JSON.parse(await readFile(baseline, "utf8")) as { cases: Array<{ id: string }> }
+      await writeFile(image, verticalBands([[0, 0, 0, 255], [255, 0, 0, 255], [255, 255, 255, 255]]))
+
+      const dry = await snapshotQualityCases(inputs, baseline, ["sample"], { dryRun: true })
+      expect(dry.changed).toBe(true)
+      expect(JSON.parse(await readFile(baseline, "utf8"))).toEqual(before)
+
+      const result = await snapshotQualityCases(inputs, baseline, ["sample"])
+      expect(result.cases?.[0]).toMatchObject({ id: "sample", kind: "updated" })
+      expect(result.cases?.[0]?.changes.map((c) => c.metric)).toContain("colorCount")
+      const after = JSON.parse(await readFile(baseline, "utf8")) as { cases: Array<{ id: string }> }
+      expect(after.cases.find((c) => c.id === "other")).toEqual(before.cases.find((c) => c.id === "other"))
+      expect((await checkQualityBaseline(baseline)).safe).toBe(true)
+    })
+
+    it("rejects an id the inputs do not list and a baseline that does not exist", async () => {
+      const { baseline, inputs } = await twoCases()
+      await expect(snapshotQualityCases(inputs, baseline, ["nope"])).rejects.toThrow(/do not list/)
+      await expect(snapshotQualityCases(inputs, path.join(dir, "missing.json"), ["sample"])).rejects.toThrow(/does not exist/)
+    })
+
+    it("names the case, and the fix, when a hand edit dropped a metric", async () => {
+      const { baseline } = await twoCases()
+      const raw = JSON.parse(await readFile(baseline, "utf8")) as { cases: Array<{ expected: Record<string, unknown> }> }
+      delete raw.cases[1]!.expected.edgeDensity
+      await writeFile(baseline, JSON.stringify(raw))
+      await expect(checkQualityBaseline(baseline)).rejects.toThrow(/cases\[sample\]\.expected\.edgeDensity.*--only sample/s)
+    })
   })
 })

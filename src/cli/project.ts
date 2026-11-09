@@ -177,7 +177,7 @@ async function open(args: Args): Promise<CliProject & Partial<CliAccountProject>
   const project = await openLibraryProject(args.manifest, { lockPath: args.lock, styles: args.styles, assets: args.assets })
   const { loaded, lock } = project
   let specs = project.specs
-  const accountProvider = ACCOUNT_COMMANDS.has(args.command)
+  const accountProvider = ACCOUNT_COMMANDS.has(args.command) && !args.local
     ? accountProviderId(loaded.manifest, args.provider, args.command)
     : undefined
   if (args.provider && !accountProvider) {

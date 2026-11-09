@@ -9,8 +9,10 @@ import { spendByUnit } from "../../lock.ts"
 import { buildPlan, summarize } from "../../pipeline/plan.ts"
 import { doctor } from "../../pipeline/doctor.ts"
 import { auditStyle, evaluateAudit, hex } from "../../pipeline/audit.ts"
+import { reportSpecHashes } from "../../pipeline/import.ts"
 import { openProject } from "../project.ts"
 import { log, printPlan } from "../io.ts"
+import { UsageError } from "../../errors.ts"
 import type { Args } from "../args.ts"
 
 export async function runStatus(args: Args): Promise<void> {
@@ -180,4 +182,25 @@ export async function runAudit(args: Args): Promise<void> {
     }, null, 2))
   }
   if (args.check && reports.some((report) => !report.evaluation.safe)) process.exitCode = 1
+}
+
+/** `hash`: the spec hash, file hash, and would-be import entry for each asset, offline. */
+export async function runHash(args: Args): Promise<void> {
+  const { specs, lock } = await openProject(args)
+  if (!args.assets.length && !args.styles.length && !args.all) {
+    throw new UsageError("hash needs --only <asset>, --style <style>, or --all.")
+  }
+  const reports = await reportSpecHashes(specs, lock)
+  if (args.json) {
+    log(JSON.stringify({ items: reports }, null, 2))
+    return
+  }
+  for (const report of reports) {
+    const state = !report.lock ? "no lock entry" : report.lock.matches ? "lock matches" : "lock differs"
+    log(`  ${report.key}`)
+    log(`    spec hash  ${report.specHash}`)
+    log(`    file hash  ${report.fileSha256 ?? "(no file)"}`)
+    log(`    ${state}`)
+  }
+  log(`\n  \`pixelkiln adopt --local\` writes the entry above for files with no lock entry.`)
 }

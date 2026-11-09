@@ -101,6 +101,25 @@ pixelkiln plan --style neon --only anvil,hammer --json --check
 `quality`, current raw output is not enough: each derived PNG must also have a
 current named approval.
 
+### `hash`
+
+Print what a manifest asset resolves to, offline: its spec hash, the SHA-256 of
+the file on disk, whether the lock entry matches both, and the lock entry
+`adopt --local` would write. Needs `--only`, `--style`, or `--all`.
+
+```bash
+pixelkiln hash --only rockfall_pile_iso
+pixelkiln hash --style props --json
+```
+
+The spec hash covers what would change the generated image: provider and its
+options, generator, prompt, size, view, outline, shading, detail, seed,
+palette, style traits and style-image hashes, and the generator-specific
+settings. The output path, `source`, and `tags` do not feed it, so moving or
+retagging a file never makes it stale. From code, `specHash` and
+`resolveSpecs` are exported from the package entry point; prefer this command
+to reaching into internals.
+
 ### `doctor`
 
 Validate the manifest, references, lockfile recovery sources, raw and quality
@@ -304,6 +323,21 @@ running `adopt` again.
 
 ```bash
 pixelkiln adopt --style cast
+```
+
+`adopt --local` is the keyless path for art made somewhere else (the PixelLab
+MCP, another tool, by hand). It never contacts a provider and needs no key: it
+hashes each selected asset's file, takes the spec hash from the manifest, and
+writes a lock entry marked `imported`, so `plan` reports the asset ok instead
+of untracked. `--source <name>` (default `external`) and `--note <text>` are
+recorded on the entry; `--object-id <id>` records the provider's object id for
+one asset. Entries already in the lockfile are skipped unless `--force`;
+`--dry-run` and `--json` show what would be written. Characters and effects
+are not imported this way.
+
+```bash
+pixelkiln adopt --local --only rockfall_pile_iso --source mcp --note "imageProFlash, box-downscaled"
+pixelkiln adopt --local --style props --dry-run
 ```
 
 ### `accept`
@@ -896,6 +930,19 @@ itself and records dimensions, palette, transparency, partial alpha, edge
 density and contrast, isolated-pixel ratio, and the PNG hash. A linked
 refinement record must be current and own the image.
 
+To refresh specific cases after redrawing their art, use
+`quality snapshot --only <id,...>` with the same `--inputs` and `--out`. It
+re-measures only those cases with every metric the current version writes, keeps
+their reviewed tolerances, and leaves every other case as it was; `--dry-run`
+prints the before and after of each metric without writing. Do not edit the
+baseline by hand: a missing metric makes `check` fail and name the case to
+re-snapshot.
+
+```bash
+pixelkiln quality snapshot --inputs config/quality-inputs.json \
+  --out quality/pixelkiln.quality.json --only rockfall_pile_iso --dry-run
+```
+
 `snapshot` leaves a different existing baseline untouched unless `--force` is
 explicit. `check` exits nonzero for missing files, dimension or metric drift,
 new colors, soft or partial-alpha edges, excessive isolated pixels, exact-hash
@@ -1240,7 +1287,7 @@ Print the package version. `-v` is an alias.
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |
 | `--budget <n\|provider=n>` | submit/gen/gallery | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
-| `--dry-run` | supported mutating commands | Inspect without spending or mutating provider state. |
+| `--dry-run` | supported mutating commands, adopt --local, quality snapshot --only | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/normal-map/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
@@ -1259,6 +1306,9 @@ Print the package version. `-v` is an alias.
 | `--generator <name>` | init | Generator assigned to the scaffolded style. |
 | `--name <name>` | init/font/vfx | Project name for the scaffolded manifest, the generated font's family name, or the effect's name in My effects. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
+| `--local` | adopt | Record local files as `imported` lock entries offline, with no provider key. |
+| `--source <name>` | adopt --local | Where the art came from (`mcp`, `hand`, a tool name); default `external`. |
+| `--object-id <id>` | adopt --local | The provider object id of the single asset being imported. |
 | `--port <n>` | pick/salvage/gallery | Local review or gallery server port; otherwise chooses a free port. |
 | `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/normal-map/vfx/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed, pixelated, or normal-map PNG, the effect's `<base>.png`/`.gif`/`.json`/`.vfx.json`, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |

@@ -62,6 +62,7 @@ export { poll, type PollOptions, type PollResult } from "./pipeline/poll.ts"
 export { fetchAssets, pushTags, type FetchResult } from "./pipeline/fetch.ts"
 export { doctor, type DoctorCheck, type DoctorLevel, type DoctorOptions, type DoctorReport } from "./pipeline/doctor.ts"
 export { adopt, tagAdopted, type AdoptResult } from "./pipeline/adopt.ts"
+export { importLocal, buildImportedEntry, reportSpecHashes, type ImportOptions, type ImportResult, type SpecHashReport } from "./pipeline/import.ts"
 export {
   prepareReview,
   runPicker,
