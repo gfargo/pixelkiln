@@ -1,3 +1,10 @@
+# [0.93.0](https://github.com/gfargo/pixelkiln/compare/v0.92.3...v0.93.0) (2026-11-09)
+
+
+### Features
+
+* **cli:** offline adopt --local, hash command, quality --only, clearer manifest errors ([8cb0d5b](https://github.com/gfargo/pixelkiln/commit/8cb0d5b766a88760510670eb2e6b92b615a93f59)), closes [#288](https://github.com/gfargo/pixelkiln/issues/288) [#289](https://github.com/gfargo/pixelkiln/issues/289) [#292](https://github.com/gfargo/pixelkiln/issues/292) [#290](https://github.com/gfargo/pixelkiln/issues/290) [#291](https://github.com/gfargo/pixelkiln/issues/291) [#293](https://github.com/gfargo/pixelkiln/issues/293)
+
 ## [0.92.3](https://github.com/gfargo/pixelkiln/compare/v0.92.2...v0.92.3) (2026-11-05)
 
 
