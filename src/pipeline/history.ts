@@ -60,6 +60,8 @@ export function retireGeneration(entry: LockEntry, retiredAt: string): LockHisto
     ...(entry.terrainConnect ? { terrainConnect: entry.terrainConnect } : {}),
     ...(entry.motionShare ? { motionShare: entry.motionShare } : {}),
     ...(entry.terrainSettings ? { terrainSettings: entry.terrainSettings } : {}),
+    ...(entry.imported ? { imported: entry.imported } : {}),
+    ...(entry.origin ? { origin: entry.origin } : {}),
     retiredAt,
   }
 }
@@ -221,6 +223,10 @@ export async function revertGeneration(
     // Likewise its settings; a generation from before they were recorded
     // comes back with none and is taken as current.
     terrainSettings: generation.terrainSettings,
+    // Imported art comes back as imported, with its provenance; a generated
+    // one clears both, so the plan does not call it imported.
+    imported: generation.imported,
+    origin: generation.origin,
     history,
   })
   await saveLock(lockPath, lock)

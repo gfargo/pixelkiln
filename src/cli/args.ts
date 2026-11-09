@@ -33,6 +33,17 @@ export interface Args {
   local: boolean
   /** adopt --local: where the art came from (mcp, hand, a tool name). */
   source?: string
+  /** adopt --local: the tool call that made the art. */
+  tool?: string
+  /** adopt --local: the prompt it was rolled with. */
+  importPrompt?: string
+  seed?: number
+  /** adopt --local: credits spent making it, in the asset's cost unit. */
+  importCost?: number
+  /** adopt --local: what was done after generation, in order; free text. */
+  steps: string[]
+  /** adopt --local: the unprocessed original PNG. */
+  raw?: string
   /** adopt --local: the provider object id of the one asset being imported. */
   objectId?: string
   /** fetch: re-download downloaded outputs and replace files whose object changed upstream. */
@@ -120,7 +131,7 @@ const VALUE_FLAGS = [
   "--from", "--out", "--generator", "--exclude", "--name", "--claims", "--columns", "--inputs", "--format",
   "--output-role", "--max-distance", "--min-transparency", "--max-colors", "--sigma", "--workspace",
   "--provider", "--account", "--palette", "--fixer-python", "--fixer-revision", "--min-grid-confidence",
-  "--reviewer", "--note", "--source", "--object-id",
+  "--reviewer", "--note", "--source", "--object-id", "--tool", "--prompt", "--seed", "--cost", "--step", "--raw",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--artist", "--convention",
@@ -419,6 +430,13 @@ export function parseArgs(argv: string[]): Args {
     strict: rest.includes("--strict"),
     source: get("--source"),
     objectId: get("--object-id"),
+    tool: get("--tool"),
+    importPrompt: get("--prompt"),
+    seed: numberOption("--seed", { min: 0, integer: true }),
+    importCost: numberOption("--cost", { min: 0 }),
+    // Steps are free text that may contain commas, so they are not split.
+    steps: rest.flatMap((token, i) => (token === "--step" && rest[i + 1] ? [rest[i + 1]!.trim()] : [])).filter(Boolean),
+    raw: get("--raw"),
     from: get("--from"),
     out: get("--out"),
     generator: get("--generator"),

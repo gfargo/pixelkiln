@@ -350,6 +350,27 @@ one asset. Entries already in the lockfile are skipped unless `--force`;
 `--dry-run` and `--json` show what would be written. Characters and effects
 are not imported this way.
 
+Art made through the PixelLab MCP is usually rolled interactively and then
+post-processed. Record that with `--tool` (the call that made it), `--prompt`
+(the prompt it was rolled with, kept as the entry's prompt), `--seed`, `--cost`
+(credits spent, in the asset's cost unit, counted in recorded spend), and one
+`--step "<text>"` per thing done afterwards, in order (`downscale 0.75, box`,
+`palette-snap lowplants`). Steps are free text: pixelkiln records them and never
+runs them. `--raw <png>` also records the unprocessed original; when the file on
+disk later equals it, `plan` says the original was dropped back over the
+processed art instead of "modified". These go in an `origin` object on the lock
+entry, separate from `imported`, so older versions still read the lockfile.
+
+The imported bytes are cached, and re-importing different art with `--force`
+keeps the earlier version in `history`, so `restore --generation <n|hash>` brings
+it back with no provider and no network. `history` marks imported generations and
+lists their tool and steps.
+
+```bash
+pixelkiln adopt --local --only rock --source mcp --tool create_image_pro_flash \
+  --seed 42 --cost 3 --step "downscale 0.75, box" --step "palette-snap lowplants" --raw raw/rock.png
+```
+
 ```bash
 pixelkiln adopt --local --only rockfall_pile_iso --source mcp --note "imageProFlash, box-downscaled"
 pixelkiln adopt --local --style props --dry-run
@@ -1325,6 +1346,12 @@ Print the package version. `-v` is an alias.
 | `--local` | adopt | Record local files as `imported` lock entries offline, with no provider key. |
 | `--source <name>` | adopt --local | Where the art came from (`mcp`, `hand`, a tool name); default `external`. |
 | `--object-id <id>` | adopt --local | The provider object id of the single asset being imported. |
+| `--tool <name>` | adopt --local | The tool call that made the art, recorded under `origin`. |
+| `--prompt <text>` | adopt --local | The prompt the art was rolled with; becomes the entry's prompt. |
+| `--seed <n>` | adopt --local | The seed it was rolled with. |
+| `--cost <n>` | adopt --local | Credits spent making it, in the asset's cost unit; counts toward recorded spend. |
+| `--step <text>` | adopt --local | One post-generation step, in order; repeatable, free text, recorded and never run. |
+| `--raw <png>` | adopt --local | The unprocessed original, for one asset; its hash is recorded and its bytes cached. |
 | `--port <n>` | pick/salvage/gallery | Local review or gallery server port; otherwise chooses a free port. |
 | `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/normal-map/vfx/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed, pixelated, or normal-map PNG, the effect's `<base>.png`/`.gif`/`.json`/`.vfx.json`, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |

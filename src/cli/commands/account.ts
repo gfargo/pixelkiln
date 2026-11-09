@@ -9,6 +9,7 @@ import { saveLock, upsert as upsertLock } from "../../lock.ts"
 import { lockKey } from "../../types.ts"
 import { pushTags } from "../../pipeline/fetch.ts"
 import { importLocal } from "../../pipeline/import.ts"
+import { historyLimit } from "../../pipeline/history.ts"
 import { UsageError } from "../../errors.ts"
 import { adopt, formatUnmatchedRemote, tagAdopted, writePromptsBack } from "../../pipeline/adopt.ts"
 import { adoptCharacters } from "../../pipeline/adopt-characters.ts"
@@ -46,11 +47,18 @@ async function runAdoptLocal(args: Args): Promise<void> {
   if (args.tag || args.writePrompts) {
     throw new UsageError("--tag and --write-prompts talk to the account; they cannot be combined with --local.")
   }
-  const { specs, lock } = await openProject(args)
+  const { loaded, specs, lock } = await openProject(args)
   const result = await importLocal(specs, lock, args.lock, {
     source: args.source,
     note: args.note,
     objectId: args.objectId,
+    tool: args.tool,
+    prompt: args.importPrompt,
+    seed: args.seed,
+    cost: args.importCost,
+    steps: args.steps,
+    raw: args.raw,
+    historyLimit: historyLimit(loaded.manifest),
     force: args.force,
     dryRun: args.dryRun,
   })

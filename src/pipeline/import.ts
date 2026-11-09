@@ -1,10 +1,14 @@
 import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
+import path from "node:path"
 import { sha256 } from "../hash.ts"
+import { MediaType } from "../media.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { portableOutputPath } from "../outputs.ts"
 import { decodePng } from "../png.ts"
-import { lockKey, type Lock, type LockEntry, type ResolvedSpec } from "../types.ts"
+import { DEFAULT_HISTORY_LIMIT, lockKey, type Lock, type LockEntry, type LockOrigin, type ResolvedSpec } from "../types.ts"
+import { cacheMedia } from "./fetch.ts"
+import { historyAfterReplacing } from "./history.ts"
 
 export interface ImportOptions {
   /** Where the art came from: "mcp", "hand", a tool name. Defaults to "external". */
@@ -16,6 +20,21 @@ export interface ImportOptions {
   force?: boolean
   /** Compute the entries without writing the lockfile. */
   dryRun?: boolean
+  /** The tool call that made it, e.g. `create_image_pro_flash`. */
+  tool?: string
+  /** The prompt it was actually rolled with, when that differs from the manifest's. */
+  prompt?: string
+  seed?: number
+  /** Credits spent making it, in the asset's cost unit. Counts toward recorded spend. */
+  cost?: number
+  /** What was done after generation, in order, as free text. Recorded, never run. */
+  steps?: string[]
+  /** The unprocessed original, so the plan can tell it from the processed file. */
+  raw?: string
+  /** Replaced generations to keep. Defaults to the built-in default. */
+  historyLimit?: number
+  /** Where bytes are cached so a replaced import can be restored; false skips it. */
+  cacheDir?: string | false
 }
 
 export interface ImportedEntry {
@@ -39,17 +58,26 @@ type EntryPatch = Partial<LockEntry>
 export function buildImportedEntry(
   spec: ResolvedSpec,
   bytes: Buffer,
-  opts: Pick<ImportOptions, "source" | "note" | "objectId"> = {},
+  opts: Pick<ImportOptions, "source" | "note" | "objectId" | "tool" | "prompt" | "seed" | "cost" | "steps"> & {
+    rawSha256?: string
+  } = {},
   now: Date = new Date(),
 ): EntryPatch {
   const png = decodePng(bytes)
   const at = now.toISOString()
+  const origin: LockOrigin = {
+    ...(opts.tool ? { tool: opts.tool } : {}),
+    ...(opts.prompt ? { prompt: opts.prompt } : {}),
+    ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
+    ...(opts.steps?.length ? { steps: opts.steps } : {}),
+    ...(opts.rawSha256 ? { raw: { sha256: opts.rawSha256 } } : {}),
+  }
   return {
     styleId: spec.styleId,
     assetId: spec.assetId,
     specHash: spec.specHash,
     generator: spec.generator,
-    prompt: spec.prompt,
+    prompt: opts.prompt ?? spec.prompt,
     width: png.width,
     height: png.height,
     jobId: opts.objectId ?? null,
@@ -63,9 +91,10 @@ export function buildImportedEntry(
     outputs: [{ path: portableOutputPath(spec.outFile, spec.root), sha256: sha256(bytes) }],
     submittedAt: null,
     downloadedAt: at,
-    cost: 0,
+    cost: opts.cost ?? 0,
     costUnit: spec.costUnit,
     provider: spec.provider,
+    ...(Object.keys(origin).length ? { origin } : {}),
     ...(spec.external ? { external: { builder: spec.external.builder, inputs: spec.external.inputs } } : {}),
     imported: {
       source: opts.source ?? "external",
@@ -96,6 +125,21 @@ export async function importLocal(
   if (opts.objectId && specs.length !== 1) {
     throw new Error(`--object-id names one object; ${specs.length} assets are selected. Narrow with --only and --style.`)
   }
+  const cacheDir = opts.cacheDir === false
+    ? null
+    : path.resolve(opts.cacheDir ?? path.join(path.dirname(lockPath), ".pixelkiln", "cache"))
+  let rawSha256: string | undefined
+  let rawBytes: Buffer | undefined
+  if (opts.raw) {
+    if (specs.length !== 1) throw new Error(`--raw names one original; ${specs.length} assets are selected. Narrow with --only and --style.`)
+    try {
+      rawBytes = await readFile(opts.raw)
+      decodePng(rawBytes)
+    } catch (error) {
+      throw new Error(`--raw ${opts.raw} is not a readable PNG: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
+    }
+    rawSha256 = sha256(rawBytes)
+  }
   const imported: ImportedEntry[] = []
   const skipped: ImportResult["skipped"] = []
   for (const spec of specs) {
@@ -114,8 +158,10 @@ export async function importLocal(
       continue
     }
     let patch: EntryPatch
+    let bytes: Buffer
     try {
-      patch = buildImportedEntry(spec, await readFile(spec.outFile), opts)
+      bytes = await readFile(spec.outFile)
+      patch = buildImportedEntry(spec, bytes, { ...opts, rawSha256 }, new Date())
     } catch (error) {
       skipped.push({ key, reason: `invalid PNG: ${error instanceof Error ? error.message : String(error)}` })
       continue
@@ -124,7 +170,24 @@ export async function importLocal(
       imported.push({ key, entry: patch as LockEntry })
       continue
     }
-    imported.push({ key, entry: upsert(lock, key, patch) })
+    // Replacing a recorded generation keeps it in history, and the bytes go
+    // into the content cache so `restore --generation` can bring either one
+    // back with no provider: an import has no object to download again.
+    const existing = lock.entries[key]
+    const history = existing?.outputs[0]?.sha256 === sha256(bytes)
+      ? existing.history // the same bytes again is not a replacement
+      : historyAfterReplacing(existing, opts.historyLimit ?? DEFAULT_HISTORY_LIMIT, patch.downloadedAt ?? new Date().toISOString())
+    if (cacheDir) {
+      await cacheMedia(cacheDir, bytes, MediaType.PNG)
+      if (rawBytes) await cacheMedia(cacheDir, rawBytes, MediaType.PNG)
+    }
+    imported.push({ key, entry: upsert(lock, key, {
+      ...patch,
+      // An import replaces the whole record: clear what the entry held that
+      // an import never has, or a regenerated entry would keep stale links.
+      origin: patch.origin,
+      history,
+    }) })
   }
   if (!opts.dryRun && imported.length) await saveLock(lockPath, lock)
   return { imported, skipped }
