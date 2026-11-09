@@ -444,6 +444,11 @@ PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
 pixelkiln edit detach --only anvil --style base
 ```
 
+A derived asset, an external asset, and a mirror have no hand edit of their own,
+because they cannot declare a `source`; `edit` refuses them and says what to do
+instead (edit the source, change the transform, or rebuild and `adopt --local
+--force`).
+
 The generated PNG is the provenance record. Its hash is in the lockfile,
 `plan` verifies it, and a regeneration replaces it, so the edit lives in a
 sibling file. `edit` copies the generated art to `<outDir>/edits/<same
