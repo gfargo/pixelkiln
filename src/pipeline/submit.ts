@@ -16,6 +16,7 @@ import type { PlanItem } from "./plan.ts"
 import { recordedAnimationGroup, requireRevisionReady } from "./revision.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
 import { deriveMirror, mirrorSourceHash } from "./mirror.ts"
+import { deriveAsset } from "./derive.ts"
 
 /**
  * Two distinct limits, easy to conflate:
@@ -75,11 +76,12 @@ export async function submit(
   // nothing, in whatever unit the rest of the batch is priced in.
   const estimates = new Map(items.map((item) => [
     item.key,
-    item.spec.mirror
+    item.spec.mirror || item.spec.derive
       ? { amount: 0, unit: item.spec.costUnit, candidates: 1 }
       : validateCostEstimate(provider.id, provider.estimate(item.spec)),
   ]))
-  const units = new Set([...estimates.values()].map((estimate) => estimate.unit))
+  // A derived asset is free in every unit, so it does not count toward the batch's.
+  const units = new Set(items.filter((item) => !item.spec.derive).map((item) => estimates.get(item.key)!.unit))
   if (units.size > 1) {
     throw new Error(`Provider "${provider.id}" returned mixed cost units for one submission batch`)
   }
@@ -213,10 +215,11 @@ export async function submit(
       // loop reaches them in), from the leader's single submitted job.
       continue
     }
-    if (spec.mirror) {
+    if (spec.mirror || spec.derive) {
       try {
         await requireRevisionReady(spec, lock)
-        await deriveMirror(spec, lock, lockPath, { onProgress: log })
+        if (spec.derive) await deriveAsset(spec, lock, lockPath, { onProgress: log })
+        else await deriveMirror(spec, lock, lockPath, { onProgress: log })
         submitted++
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

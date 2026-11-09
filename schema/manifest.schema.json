@@ -1825,6 +1825,87 @@
                 "type": "string",
                 "minLength": 1
               },
+              "derive": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "file": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "transform": {
+                    "type": "string",
+                    "enum": [
+                      "recolor",
+                      "palette-snap",
+                      "scale"
+                    ]
+                  },
+                  "map": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "pattern": "^#?[0-9a-f]{6}$"
+                    },
+                    "propertyNames": {
+                      "pattern": "^#?[0-9a-f]{6}$"
+                    }
+                  },
+                  "palette": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^#?[0-9a-f]{6}$"
+                    },
+                    "minItems": 2,
+                    "maxItems": 256
+                  },
+                  "width": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4096
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4096
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "nearest",
+                      "box"
+                    ]
+                  }
+                },
+                "required": [
+                  "transform"
+                ],
+                "additionalProperties": false
+              },
+              "external": {
+                "type": "object",
+                "properties": {
+                  "builder": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "inputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "builder"
+                ],
+                "additionalProperties": false
+              },
               "outputRole": {
                 "type": "string",
                 "minLength": 1

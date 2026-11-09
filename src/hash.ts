@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
+import { parseHex } from "./png.ts"
 import type { LockTerrainSettings, ResolvedSpec } from "./types.ts"
+
+function normalizeHex(value: string): string {
+  const { r, g, b } = parseHex(value)
+  return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`
+}
 
 export function sha256(data: Buffer | string): string {
   return createHash("sha256").update(data).digest("hex")
@@ -208,6 +214,30 @@ export function specHash(
       // A mirror's bytes come from its source's recorded outputs; the plan
       // compares those directly, so only the choice of source is identity.
       mirror: spec.mirror ? { of: spec.mirror.sourceAssetId } : undefined,
+      // A derived asset's identity is its transform and what it reads: the
+      // file source by its bytes' hash, an asset source by id (the plan
+      // compares that asset's current output with the one recorded).
+      derive: spec.derive
+        ? {
+            transform: spec.derive.transform,
+            map: spec.derive.map
+              ? Object.entries(spec.derive.map)
+                  .map(([from, to]) => [normalizeHex(from), normalizeHex(to)])
+                  .sort(([a], [b]) => a!.localeCompare(b!))
+              : undefined,
+            palette: spec.derive.palette?.map(normalizeHex),
+            width: spec.derive.width,
+            height: spec.derive.height,
+            mode: spec.derive.transform === "scale" ? spec.derive.mode ?? "nearest" : undefined,
+            from: spec.derive.source.kind === "asset" ? spec.derive.source.assetId : undefined,
+            fileSha256: spec.derive.source.kind === "file" ? spec.derive.source.sha256 : undefined,
+          }
+        : undefined,
+      // An external asset: the builder text and each declared input's path
+      // and bytes. The built file itself is checked by the plan.
+      external: spec.external
+        ? { builder: spec.external.builder, inputs: spec.external.inputs.length ? spec.external.inputs : undefined }
+        : undefined,
       // The whole group's ordered descriptions, not just this asset's own —
       // any sibling's prompt changing, or a member being added or removed,
       // must mark every member stale together, since they all ride on one

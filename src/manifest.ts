@@ -323,6 +323,7 @@ function dependencyAssetIds(asset: Asset | undefined, styleAnchors: string[] = [
       asset?.connect?.upper?.of,
       asset?.animation?.motionFrom,
       asset?.mirror,
+      asset?.derive?.from,
       asset?.styleCharacter,
       ...(asset?.styleCharacter ? [] : styleAnchors),
     ].filter((id): id is string => Boolean(id)),
@@ -973,6 +974,70 @@ export async function resolveSpecs(
       }
       if (finalized.has(assetId)) return resolved
       const asset = manifest.assets[assetId]!
+      if (asset.derive) {
+        // A derived asset is another asset's pixels (or a committed PNG's)
+        // through one local transform: no prompt, no provider request, no cost.
+        // It is finalized after its source so the source's own dependencies
+        // are already settled.
+        const derive = asset.derive
+        let source: NonNullable<ResolvedSpec["derive"]>["source"]
+        let sourceSpec: ResolvedSpec | undefined
+        if (derive.from) {
+          if (derive.from === assetId) throw new Error(`assets.${assetId}: an asset cannot derive from itself`)
+          sourceSpec = await finalize(derive.from)
+          if (sourceSpec.generator === "tiles" || sourceSpec.generator === "terrain") {
+            throw new Error(`assets.${assetId}: a tile set is several images; derive takes a single image`)
+          }
+          source = { kind: "asset", assetId: derive.from, spec: sourceSpec }
+        } else {
+          const file = path.resolve(root, derive.file!)
+          source = { kind: "file", file: derive.file!, sha256: existsSync(file) ? await sha256File(file) : null }
+        }
+        if (derive.transform === "scale") {
+          resolved.width = derive.width!
+          resolved.height = derive.height!
+        } else if (sourceSpec) {
+          resolved.width = sourceSpec.width
+          resolved.height = sourceSpec.height
+        } else if (source.kind === "file" && source.sha256) {
+          const metadata = imageMetadata(await readFile(path.resolve(root, source.file)))
+          if (metadata?.width && metadata.height) {
+            resolved.width = metadata.width
+            resolved.height = metadata.height
+          }
+        }
+        resolved.derive = {
+          transform: derive.transform,
+          ...(derive.map ? { map: derive.map } : {}),
+          ...(derive.palette ? { palette: derive.palette } : {}),
+          ...(derive.width ? { width: derive.width } : {}),
+          ...(derive.height ? { height: derive.height } : {}),
+          ...(derive.mode ? { mode: derive.mode } : {}),
+          source,
+        }
+        resolved.prompt = ""
+        resolved.specHash = specHash(resolved, styleImageHashes, providerOptionIdentity, providerInputIdentities.get(assetId))
+        resolved.cost = 0
+        resolved.candidates = 1
+        finalized.add(assetId)
+        return resolved
+      }
+      if (asset.external) {
+        // Built by a tool outside pixelkiln. The builder command and the inputs'
+        // bytes are its identity; nothing here runs the builder or calls a provider.
+        const inputs: NonNullable<ResolvedSpec["external"]>["inputs"] = []
+        for (const input of asset.external.inputs ?? []) {
+          const file = path.resolve(root, input)
+          inputs.push({ path: input, sha256: existsSync(file) ? await sha256File(file) : null })
+        }
+        resolved.external = { builder: asset.external.builder, inputs }
+        resolved.prompt = ""
+        resolved.specHash = specHash(resolved, styleImageHashes, providerOptionIdentity, providerInputIdentities.get(assetId))
+        resolved.cost = 0
+        resolved.candidates = 1
+        finalized.add(assetId)
+        return resolved
+      }
       if (asset.mirror) {
         // A mirror is the source's shape with its direction flipped: no
         // prompt, no provider request, no cost. It is finalized after its

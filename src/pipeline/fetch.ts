@@ -76,6 +76,8 @@ export async function fetchAssets(
     // A mirror has nothing upstream; a missing or drifted one is flipped
     // again by the next gen, which the plan says.
     if (specByKey.get(key)?.mirror) return false
+    // A derived or external asset has no provider object to download.
+    if (specByKey.get(key)?.derive || specByKey.get(key)?.external) return false
     if (e.status === "selected" || e.status === "download-failed") return true
     if (e.status !== "downloaded") return false
     if (opts.refresh) return e.outputs.length > 0 && Boolean(e.sourceUrls?.length || e.sourceUrl)

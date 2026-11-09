@@ -2,6 +2,8 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { sha256File, terrainSettings } from "../hash.ts"
 import { mirrorCurrent, mirrorSourceHash } from "./mirror.ts"
+import { deriveStale } from "./derive.ts"
+import { inspectExternal } from "./external.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type LockTerrainSettings, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
@@ -40,6 +42,7 @@ async function anyOutputModified(entry: LockEntry, spec: ResolvedSpec): Promise<
 function dependencies(spec: ResolvedSpec): ResolvedSpec[] {
   return [
     spec.mirror?.sourceSpec,
+    spec.derive?.source.kind === "asset" ? spec.derive.source.spec : undefined,
     spec.revision?.sourceSpec,
     spec.character?.parentSpec,
     spec.character?.motionLeader?.spec,
@@ -186,10 +189,15 @@ export async function buildPlan(
     const changedConnection = entry ? changedTerrainConnection(spec, entry, lock) : null
     const changedMotion = entry ? changedMotionLeader(spec, entry, lock) : null
     const changedSettings = entry ? changedTerrainSettings(spec, entry) : null
+    const derivedStale = spec.derive && entry ? await deriveStale(spec, entry, lock) : null
     const revision = await inspectRevisionReadiness(spec, lock)
     if (revision && !revision.ready) {
       state = "blocked"
       reason = revision.reason
+    } else if (spec.external) {
+      // Built outside pixelkiln, so never actionable: not under --force, not
+      // when missing. The plan reports what to do by hand instead.
+      ;({ state, reason } = await inspectExternal(spec, entry))
     } else if (opts.force) {
       state = "missing"
       reason = "--force"
@@ -220,11 +228,23 @@ export async function buildPlan(
         state = "missing"
         reason = spec.mirror
           ? `not made yet; flipped from ${spec.mirror.sourceAssetId} (no generation cost)`
-          : "not in lockfile"
+          : spec.derive
+            ? `not made yet; derived from ${spec.derive.source.kind === "asset" ? spec.derive.source.assetId : spec.derive.source.file} (${spec.derive.transform}, no generation cost)`
+            : "not in lockfile"
       }
     } else if (entry.specHash !== spec.specHash) {
       state = "stale"
-      reason = "prompt, size, or style changed"
+      reason = spec.derive
+        ? "transform, its parameters, or the source file changed; derive it again (no generation cost)"
+        : "prompt, size, or style changed"
+    } else if (derivedStale) {
+      state = "stale"
+      reason = `${derivedStale}; derive it again (no generation cost)`
+    } else if (spec.derive && entry.status === "downloaded" && entry.outputs.some((_output, index) =>
+      !existsSync(currentEntryOutputPath(entry, spec, index)))
+    ) {
+      state = "stale"
+      reason = "derived output missing on disk; derive it again (no generation cost)"
     } else if (spec.mirror && !mirrorCurrent(entry, lock.entries[lockKey(spec.styleId, spec.mirror.sourceAssetId)])) {
       state = "stale"
       reason = `mirror source ${spec.mirror.sourceAssetId} changed; flip it again (no generation cost)`
@@ -312,6 +332,11 @@ export async function buildPlan(
       // is reported rather than silently overwritten.
       state = "orphaned"
       reason = "output modified since download"
+    } else if (spec.derive) {
+      // Its bytes are the transform's, not a provider's, so the style's
+      // palette enforcement has nothing to re-apply.
+      state = "ok"
+      reason = "up to date"
     } else if (spec.mirror && !postprocessCurrent(entry, spec)) {
       // A mirror has no raw bytes of its own; the source is snapped or
       // restored first and the mirror flipped from the result.
@@ -351,7 +376,7 @@ export async function buildPlan(
         item.reason = `parent ${parentKey} is being generated in this run; this follows in the next wave`
         break
       }
-      if (item.spec.mirror && (parentState === "recoverable" || parentState === "in-flight")) {
+      if ((item.spec.mirror || item.spec.derive) && (parentState === "recoverable" || parentState === "in-flight")) {
         // A mirror flips whatever bytes its source has now; wait for the
         // fetch or poll that is about to change them.
         item.state = "blocked"
@@ -380,6 +405,14 @@ export async function buildPlan(
     const provider = item.spec.provider
     const costUnit = item.spec.costUnit ?? "generations"
     const group = groupsByProvider.get(provider)
+    // A derived asset costs nothing in any unit, so it neither sets nor
+    // disputes the unit the paid work in its group is priced in.
+    if (group && item.spec.derive) {
+      group.actionable.push(item)
+      group.candidates += item.spec.candidates
+      continue
+    }
+    if (group && group.cost === 0 && group.actionable.every((other) => other.spec.derive)) group.costUnit = costUnit
     if (group && group.costUnit !== costUnit) {
       throw new Error(
         `Provider "${provider}" returned mixed cost units (${group.costUnit}, ${costUnit})`,

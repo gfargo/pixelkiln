@@ -82,10 +82,14 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
         throw err
       }
       const balances = new Map<string, BalanceInfo | null>()
+      // A group made only of derived assets is local pixel work: no balance to
+      // read, nothing to confirm, nothing a budget could stop.
+      const localOnly = (group: (typeof plan.groups)[number]) => group.actionable.every((item) => item.spec.derive)
       // Validate every ceiling and available balance before the first provider
       // can spend. A later group must never reveal that the whole run was
       // unaffordable only after an earlier group already submitted work.
       for (const group of plan.groups) {
+        if (localOnly(group)) continue
         const groupProvider = providerFor(group.provider)
         const balance = groupProvider.balance ? await groupProvider.balance() : null
         balances.set(group.provider, balance)
@@ -125,9 +129,10 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
         }
       }
       const spendSummary = plan.groups
+        .filter((group) => !localOnly(group))
         .map((group) => `${group.provider} ${formatCost(group.costUnit, group.cost)}`)
         .join("; ")
-      const ok = await confirm(
+      const ok = plan.groups.every(localOnly) || await confirm(
         `  Spend ${spendSummary} on ${plan.actionable.length} asset(s)${wave > 1 ? ` (wave ${wave})` : ""}?`,
         args.yes,
       )
@@ -148,6 +153,7 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
         )
         submitted += res.submitted
         spent.set(group.provider, (spent.get(group.provider) ?? 0) + res.spent)
+        if (localOnly(group)) continue
         try {
           const before = balances.get(group.provider)
           const after = before && groupProvider.balance ? await groupProvider.balance() : null
@@ -275,7 +281,7 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
     // asset may just have drawn (a scene, an effect's sprite).
     return args.command === "gen" && submitted > 0 && total.downloaded > 0 && !total.failed &&
       specs.some((spec) =>
-        spec.character?.parentSpec || spec.character?.styleAnchor || spec.revision || spec.mirror || spec.scene ||
+        spec.character?.parentSpec || spec.character?.styleAnchor || spec.revision || spec.mirror || spec.derive || spec.scene ||
         (spec.vfx?.sprite && "file" in spec.vfx.sprite))
   }
   return false
