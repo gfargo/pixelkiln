@@ -112,12 +112,41 @@ export function handEditMembers(loaded: LoadedManifest, spec: ResolvedSpec, lock
  * nothing, so "open my edit again" and "start editing" are one action. A
  * set gets one file per member; a member already there is kept.
  */
+/**
+ * A hand edit declares the retouched file as the asset's `source`. An asset
+ * made from another asset, or built outside pixelkiln, cannot also declare
+ * one, so editing it would write a manifest that does not validate. Say what
+ * to do instead, before anything is created.
+ */
+function refuseUneditable(spec: ResolvedSpec): void {
+  const key = `${spec.styleId}/${spec.assetId}`
+  if (spec.derive) {
+    const from = spec.derive.source.kind === "asset" ? spec.derive.source.assetId : spec.derive.source.file
+    throw new ManifestEditError(
+      `${key} is derived from ${from} (${spec.derive.transform}), so it has no hand edit of its own; ` +
+        "edit its source, or change the derive transform in the manifest",
+    )
+  }
+  if (spec.external) {
+    throw new ManifestEditError(
+      `${key} is built outside pixelkiln (${spec.external.builder}); change it there, ` +
+        "then run pixelkiln adopt --local --force to record the new file",
+    )
+  }
+  if (spec.mirror) {
+    throw new ManifestEditError(
+      `${key} is a flip of ${spec.mirror.sourceAssetId}, so it has no hand edit of its own; edit ${spec.mirror.sourceAssetId} and flip it again`,
+    )
+  }
+}
+
 export async function startHandEdit(
   loaded: LoadedManifest,
   lock: Lock,
   spec: ResolvedSpec,
   opts: { expectedSha256?: string } = {},
 ): Promise<HandEditStart> {
+  refuseUneditable(spec)
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
   if (entry && entry.outputs.length > 1 && !isMemberSetEntry(entry)) {
     throw new ManifestEditError(
@@ -303,6 +332,7 @@ export async function saveHandEdit(
   spec: ResolvedSpec,
   input: HandEditSaveInput,
 ): Promise<HandEditSave> {
+  refuseUneditable(spec)
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
   const memberSet = entry ? isMemberSetEntry(entry) : false
   const incoming = input.frames ?? (input.png ? [{ role: null, png: input.png }] : [])
