@@ -1,3 +1,10 @@
+# [0.94.0](https://github.com/gfargo/pixelkiln/compare/v0.93.0...v0.94.0) (2026-11-09)
+
+
+### Features
+
+* **cli:** lenient plan/hash/doctor, --strict, and an install-version check ([2f18d92](https://github.com/gfargo/pixelkiln/commit/2f18d92d9cf92fc3023dc75c7c59067eacd4ca53))
+
 # [0.93.0](https://github.com/gfargo/pixelkiln/compare/v0.92.3...v0.93.0) (2026-11-09)
 
 
