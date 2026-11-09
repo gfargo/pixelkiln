@@ -1,3 +1,10 @@
+# [0.95.0](https://github.com/gfargo/pixelkiln/compare/v0.94.0...v0.95.0) (2026-11-09)
+
+
+### Features
+
+* **manifest:** derive and external asset kinds ([b90bb56](https://github.com/gfargo/pixelkiln/commit/b90bb56a2617f70268075eae25cb979430143249))
+
 # [0.94.0](https://github.com/gfargo/pixelkiln/compare/v0.93.0...v0.94.0) (2026-11-09)
 
 
