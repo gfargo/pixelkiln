@@ -1,7 +1,7 @@
 import path from "node:path"
 import { loadEnvFiles } from "./env.ts"
 import { loadLock, saveLock } from "./lock.ts"
-import { loadManifest, resolveSpecs, type LoadedManifest } from "./manifest.ts"
+import { loadManifest, resolveSpecs, type InvalidManifestEntry, type LoadedManifest } from "./manifest.ts"
 import { normalizeLockOutputPaths } from "./outputs.ts"
 import { buildPlan, type Plan } from "./pipeline/plan.ts"
 import type { Provider } from "./provider.ts"
@@ -24,6 +24,11 @@ export interface OpenProjectOptions {
   styles?: string[]
   /** Keep only these asset ids. Empty or omitted keeps every asset. */
   assets?: string[]
+  /**
+   * Set invalid entries aside (see `loaded.invalid`) instead of failing the
+   * whole open. For read-only reports; leave off for anything that spends.
+   */
+  lenient?: boolean
   /**
    * Read `.env.local` and `.env` from the manifest's directory, and from the
    * working directory when that differs, into `process.env` before anything
@@ -73,8 +78,14 @@ export async function openProject(
     if (path.resolve(process.cwd()) !== root) loadEnvFiles(process.cwd())
   }
   const lockPath = path.resolve(opts.lockPath ?? path.join(root, "pixelkiln.lock.json"))
-  const loaded = await loadManifest(absolute)
-  const specs = await resolveSpecs(loaded, { styles: opts.styles ?? [], assets: opts.assets ?? [] })
+  let loaded = await loadManifest(absolute, { lenient: opts.lenient })
+  const unresolved: InvalidManifestEntry[] = []
+  const specs = await resolveSpecs(loaded, {
+    styles: opts.styles ?? [],
+    assets: opts.assets ?? [],
+    ...(opts.lenient ? { onInvalid: (entry: InvalidManifestEntry) => unresolved.push(entry) } : {}),
+  })
+  if (unresolved.length) loaded = { ...loaded, invalid: [...(loaded.invalid ?? []), ...unresolved] }
   const lock = await loadLock(lockPath)
   normalizeLockOutputPaths(lock, specs)
 

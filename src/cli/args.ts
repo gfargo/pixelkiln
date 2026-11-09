@@ -27,6 +27,8 @@ export interface Args {
   edit: boolean
   /** gallery: do not offer the in-browser editor even with --edit. */
   noEditor: boolean
+  /** plan/hash: fail on any invalid manifest entry instead of listing it and carrying on. */
+  strict: boolean
   /** adopt: record local files as lock entries offline, with no provider key. */
   local: boolean
   /** adopt --local: where the art came from (mcp, hand, a tool name). */
@@ -125,7 +127,7 @@ const VALUE_FLAGS = [
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh", "--no-editor", "--game-pack", "--local",
+  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict",
 ] as const
 
 export const COMMANDS = [
@@ -414,6 +416,7 @@ export function parseArgs(argv: string[]): Args {
     noEditor: rest.includes("--no-editor"),
     refresh: rest.includes("--refresh"),
     local: rest.includes("--local"),
+    strict: rest.includes("--strict"),
     source: get("--source"),
     objectId: get("--object-id"),
     from: get("--from"),
