@@ -1,3 +1,10 @@
+## [0.96.1](https://github.com/gfargo/pixelkiln/compare/v0.96.0...v0.96.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **edit:** refuse derived, external and mirror assets before writing anything ([18eb72c](https://github.com/gfargo/pixelkiln/commit/18eb72c92d727bcd85f35eb4b6c9e67437dcc15d))
+
 # [0.96.0](https://github.com/gfargo/pixelkiln/compare/v0.95.0...v0.96.0) (2026-11-09)
 
 
