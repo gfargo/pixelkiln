@@ -115,6 +115,7 @@ export async function runPlan(args: Args): Promise<void> {
               }
             : {}),
           ...(quality ? { quality: { state: quality.state, reason: quality.reason } } : {}),
+          ...(entry?.imported ? { imported: entry.imported, ...(entry.origin ? { origin: entry.origin } : {}) } : {}),
           // The estimate a wave budget spent against; present alongside the
           // provider's actual charge only when `poll` has read one and it
           // differs, since that is the only time the gap is worth a look.

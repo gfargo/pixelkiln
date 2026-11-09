@@ -2167,6 +2167,31 @@ export const PostprocessSchema = z.object({
 })
 export type Postprocess = z.infer<typeof PostprocessSchema>
 
+/**
+ * Where art brought in with `adopt --local` came from, beyond `imported`: the
+ * tool that made it, the prompt and seed it was rolled with, the steps applied
+ * afterwards (free text; pixelkiln does not run them), and the hash of the
+ * unprocessed original. A separate object so `imported`, which older versions
+ * read strictly, never gains keys; unknown keys here are ignored on read.
+ */
+export const LockOriginSchema = z.object({
+  tool: z.string().min(1).optional(),
+  prompt: z.string().optional(),
+  seed: z.number().int().optional(),
+  steps: z.array(z.string().min(1)).optional(),
+  raw: z.object({ sha256: z.string().regex(/^[0-9a-f]{64}$/) }).optional(),
+})
+export type LockOrigin = z.infer<typeof LockOriginSchema>
+
+/** What `imported` records; see LockEntrySchema.imported. */
+const LockImportedSchema = z
+  .object({
+    source: z.string().min(1),
+    note: z.string().optional(),
+    importedAt: z.string(),
+  })
+  .strict()
+
 const LockSourceSchema = z.object({
   url: z.string(),
   role: z.string().optional(),
@@ -2245,6 +2270,9 @@ export const LockHistoryEntrySchema = z.object({
   motionShare: LockMotionShareSchema.optional(),
   /** A terrain set's settings outside specHash; see LockEntrySchema.terrainSettings. */
   terrainSettings: LockTerrainSettingsSchema.optional(),
+  /** Imported art keeps its provenance when it is replaced and when it comes back. */
+  imported: LockImportedSchema.optional(),
+  origin: LockOriginSchema.optional(),
   /** When the replacement was submitted. */
   retiredAt: z.string(),
 })
@@ -2448,14 +2476,9 @@ export const LockEntrySchema = z.object({
    * hand edit, another tool) and brought in with `adopt --local`: nothing was
    * submitted, so jobId and cost are empty. Absent on generated entries.
    */
-  imported: z
-    .object({
-      source: z.string().min(1),
-      note: z.string().optional(),
-      importedAt: z.string(),
-    })
-    .strict()
-    .optional(),
+  imported: LockImportedSchema.optional(),
+  /** More on imported art: tool, prompt, seed, post-process steps, raw original. See LockOriginSchema. */
+  origin: LockOriginSchema.optional(),
   /**
    * For a derived asset: what it was made from, and a hash of that input when
    * this was made. Compared with the input's current bytes by the plan, so a

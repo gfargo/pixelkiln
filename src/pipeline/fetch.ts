@@ -406,7 +406,7 @@ async function readCachedMedia(
   }
 }
 
-async function cacheMedia(
+export async function cacheMedia(
   cacheDir: string,
   buf: Buffer,
   mediaType: MediaKind,

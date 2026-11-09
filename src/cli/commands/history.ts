@@ -7,6 +7,13 @@ import { openProject } from "../project.ts"
 import { log } from "../io.ts"
 import type { Args } from "../args.ts"
 
+/** ` [imported: mcp, downscale 0.75]` for art brought in with adopt --local; blank otherwise. */
+function importedNote(entry: { imported?: { source: string }; origin?: { tool?: string; steps?: string[] } }): string {
+  if (!entry.imported) return ""
+  const parts = [entry.imported.source, entry.origin?.tool, ...(entry.origin?.steps ?? [])].filter(Boolean)
+  return `  [imported: ${parts.join(", ")}]`
+}
+
 /** ` (billed N)` when the provider's actual charge differs from the estimate; blank otherwise. */
 function billedNote(cost: number, costUnit: string, billed: { amount: number; unit: string } | null): string {
   if (!billed || (billed.unit === costUnit && billed.amount === cost)) return ""
@@ -23,7 +30,7 @@ export async function runHistory(args: Args): Promise<void> {
       limit,
       assets: selected.map(({ spec, entry }) => ({
         key: lockKey(spec.styleId, spec.assetId),
-        current: entry ? { objectId: entry.objectId, outputs: entry.outputs, downloadedAt: entry.downloadedAt, cost: entry.cost, costUnit: entry.costUnit, billed: entry.billed } : null,
+        current: entry ? { objectId: entry.objectId, outputs: entry.outputs, downloadedAt: entry.downloadedAt, cost: entry.cost, costUnit: entry.costUnit, billed: entry.billed, ...(entry.imported ? { imported: entry.imported, ...(entry.origin ? { origin: entry.origin } : {}) } : {}) } : null,
         history: entry?.history ?? [],
       })),
     }, null, 2))
@@ -37,10 +44,10 @@ export async function runHistory(args: Args): Promise<void> {
     shown++
     const key = lockKey(spec.styleId, spec.assetId)
     log(`\n  ${key}`)
-    log(`    current  ${entry.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${entry.downloadedAt ?? ""}  ${entry.objectId ?? ""}${billedNote(entry.cost, entry.costUnit, entry.billed)}`)
+    log(`    current  ${entry.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${entry.downloadedAt ?? ""}  ${entry.objectId ?? ""}${billedNote(entry.cost, entry.costUnit, entry.billed)}${importedNote(entry)}`)
     for (const [i, generation] of entry.history.entries()) {
       const changed = generation.prompt !== entry.prompt ? "  (different prompt)" : ""
-      log(`    #${String(i + 1).padEnd(2)}      ${generation.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${generation.downloadedAt ?? ""}  ${generation.objectId ?? ""}${changed}${billedNote(generation.cost, generation.costUnit, generation.billed)}`)
+      log(`    #${String(i + 1).padEnd(2)}      ${generation.outputs[0]?.sha256.slice(0, 12) ?? "—"}  ${generation.downloadedAt ?? ""}  ${generation.objectId ?? ""}${changed}${billedNote(generation.cost, generation.costUnit, generation.billed)}${importedNote(generation)}`)
     }
   }
   if (!shown) log(`  no asset has a previous generation recorded${selected.length ? "" : " (nothing selected)"}`)
