@@ -97,6 +97,17 @@ pixelkiln plan
 pixelkiln plan --style neon --only anvil,hammer --json --check
 ```
 
+`plan`, `hash` and `doctor` tolerate a manifest with broken entries: a style or
+asset that fails validation, or that a provider rejects (a size outside its
+limits), is left out, listed as `invalid` with the reason, and everything else
+is still planned. Entries that depend on a dropped one (an asset in a dropped
+style, a revision of a dropped asset) are listed too. With `--only` or
+`--style`, entries outside the selection are counted, not listed. `--check`
+treats any invalid entry as unsafe, and `--strict` restores the old
+all-or-nothing failure. Commands that spend (`gen`, `submit`, and the rest)
+always fail on an invalid manifest. A problem in the manifest's own top-level
+fields still fails every command.
+
 `--check` exits nonzero unless every selected entry is current. For styles with
 `quality`, current raw output is not enough: each derived PNG must also have a
 current named approval.
@@ -126,7 +137,11 @@ Validate the manifest, references, lockfile recovery sources, raw and quality
 output paths, stale jobs, current plan, credential configuration, and provider
 connectivity. A pending or stale quality profile is reported as a warning.
 `--dry-run` skips only live connectivity. Supports `--json` and exits nonzero
-for unsafe state.
+for unsafe state. Invalid entries are reported as errors, one per entry, so every
+problem shows at once. When the project's `package.json` pins pixelkiln, doctor
+also compares the pin, the copy in `node_modules`, and the CLI that is running,
+and warns when they differ: an older install rejects a manifest written for the
+pin with errors that look like a broken manifest.
 
 ### `gen`
 
@@ -1290,6 +1305,7 @@ Print the package version. `-v` is an alias.
 | `--dry-run` | supported mutating commands, adopt --local, quality snapshot --only | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/normal-map/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
+| `--strict` | plan/hash/doctor | Fail on any invalid manifest entry instead of listing it and continuing. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser (`open`, `xdg-open`, or `start`, by platform), or the editor for `edit`. |
 | `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor. |

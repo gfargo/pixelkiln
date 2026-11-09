@@ -149,6 +149,7 @@ Options
                        and switches gallery to every registered project.
   --from <path>       Source for init/path-mode refine, or baseline for quality check
   --write-prompts     adopt: recover prompts into the manifest
+  --strict            plan/hash/doctor: fail on any invalid manifest entry instead of listing it and continuing
 
 Examples
   pixelkiln plan

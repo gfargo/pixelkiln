@@ -4,8 +4,10 @@ import path from "node:path"
 import type { ZodIssue } from "zod"
 import { ProjectError, UsageError } from "./errors.ts"
 import {
+  AssetSchema,
   ManifestInputSchema,
   ManifestSchema,
+  StyleInputSchema,
   StyleSchema,
   candidateCount,
   countNumberedDescriptions,
@@ -57,9 +59,33 @@ export interface LoadedManifest {
    * and the asset ids each expanded into. Absent when the manifest has none.
    */
   loopFamilies?: Record<string, string[]>
+  /**
+   * Entries a lenient load set aside because they do not validate or resolve,
+   * so one bad entry does not hide the rest. Absent when everything loaded.
+   */
+  invalid?: InvalidManifestEntry[]
 }
 
-export async function loadManifest(manifestPath: string): Promise<LoadedManifest> {
+/** A style or asset a lenient load could not use, and why. */
+export interface InvalidManifestEntry {
+  kind: "style" | "asset"
+  id: string
+  issues: string[]
+}
+
+export interface LoadManifestOptions {
+  /**
+   * Set invalid styles and assets aside, and everything that depends on them,
+   * instead of rejecting the whole file. Problems in the manifest's own
+   * top-level fields still throw. Read-only commands use this; anything that
+   * spends should not.
+   */
+  lenient?: boolean
+}
+
+type Expansion = ReturnType<typeof expandLoopDirections>
+
+export async function loadManifest(manifestPath: string, opts: LoadManifestOptions = {}): Promise<LoadedManifest> {
   const abs = path.resolve(manifestPath)
   if (!existsSync(abs)) throw new ProjectError(`No manifest at ${abs}`)
   // One loop declared for several directions becomes the explicit assets it
@@ -68,6 +94,74 @@ export async function loadManifest(manifestPath: string): Promise<LoadedManifest
   if (expansion.issues.length) {
     throw new ProjectError(`Manifest at ${abs} is invalid:\n${expansion.issues.map((i) => `  ${i}`).join("\n")}`)
   }
+  if (!opts.lenient) return loadExpanded(abs, expansion)
+
+  const invalid: InvalidManifestEntry[] = []
+  const raw = pruneInvalidEntries(expansion.raw, invalid)
+  // Entries that validate alone can still fail together: a style whose parent
+  // was dropped, an asset whose style or revision source was. Each round
+  // drops whatever the error names and tries again.
+  for (let round = 0; ; round++) {
+    try {
+      const loaded = await loadExpanded(abs, { ...expansion, raw })
+      return invalid.length ? { ...loaded, invalid } : loaded
+    } catch (error) {
+      const culprits = round < 50 && error instanceof ProjectError ? culpritEntries(error.message) : []
+      const fresh = culprits.filter((entry) => dropEntry(raw, entry))
+      if (!fresh.length) throw error
+      invalid.push(...fresh)
+    }
+  }
+}
+
+function entryRecord(raw: unknown, kind: "style" | "asset"): Record<string, unknown> | null {
+  const record = (raw as { styles?: unknown; assets?: unknown } | null)?.[kind === "style" ? "styles" : "assets"]
+  return record && typeof record === "object" && !Array.isArray(record) ? (record as Record<string, unknown>) : null
+}
+
+function dropEntry(raw: unknown, entry: InvalidManifestEntry): boolean {
+  const record = entryRecord(raw, entry.kind)
+  if (!record || !(entry.id in record)) return false
+  delete record[entry.id]
+  return true
+}
+
+/** Validates each style and asset on its own and removes the ones that fail. */
+function pruneInvalidEntries(raw: unknown, invalid: InvalidManifestEntry[]): unknown {
+  for (const [kind, schema] of [["style", StyleInputSchema], ["asset", AssetSchema]] as const) {
+    const record = entryRecord(raw, kind)
+    if (!record) continue
+    for (const [id, value] of Object.entries(record)) {
+      const parsed = schema.safeParse(value)
+      if (parsed.success) continue
+      const prefix = `${kind === "style" ? "styles" : "assets"}.${id}`
+      const lines = flattenManifestIssues(parsed.error.issues).lines.map((line) => {
+        const [fieldPath, ...rest] = line.trim().split(": ")
+        return `${prefix}${fieldPath === "(manifest)" || !fieldPath ? "" : `.${fieldPath}`}: ${rest.join(": ")}`
+      })
+      invalid.push({ kind, id, issues: lines.length ? lines : [`${prefix}: invalid`] })
+      delete record[id]
+    }
+  }
+  return raw
+}
+
+/** The styles and assets a manifest error message points at, one per line it names. */
+function culpritEntries(message: string): InvalidManifestEntry[] {
+  const found = new Map<string, InvalidManifestEntry>()
+  for (const line of message.split("\n")) {
+    const match = /^ {2}(assets|styles)\.([^.:\s]+)[.:]/.exec(line)
+    if (!match) continue
+    const kind = match[1] === "styles" ? "style" : "asset"
+    const key = `${kind}:${match[2]}`
+    const entry = found.get(key) ?? { kind, id: match[2]!, issues: [] }
+    entry.issues.push(line.trim())
+    found.set(key, entry)
+  }
+  return [...found.values()]
+}
+
+async function loadExpanded(abs: string, expansion: Expansion): Promise<LoadedManifest> {
   const input = ManifestInputSchema.safeParse(expansion.raw)
   if (!input.success) {
     const issues = formatManifestIssues(input.error.issues)
@@ -352,6 +446,12 @@ export async function resolveSpecs(
   filter?: {
     styles?: string[]
     assets?: string[]
+    /**
+     * Called instead of throwing when one asset cannot be resolved (a size the
+     * provider rejects, a bad reference). The asset is left out. Without it,
+     * the first failure rejects the whole resolution.
+     */
+    onInvalid?: (entry: InvalidManifestEntry) => void
     /** Optional provider makes offline plan cost/candidate estimates adapter-owned. */
     provider?: Pick<
       Provider,
@@ -1289,7 +1389,16 @@ export async function resolveSpecs(
     if (!emitStyles.has(styleId)) continue
     for (const assetId of Object.keys(manifest.assets)) {
       if (!requestedAssetIds.has(assetId) || !styleSpecs.has(assetId)) continue
-      specs.push(await finalize(assetId))
+      if (!filter?.onInvalid) {
+        specs.push(await finalize(assetId))
+        continue
+      }
+      try {
+        specs.push(await finalize(assetId))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        filter.onInvalid({ kind: "asset", id: assetId, issues: [message] })
+      }
     }
   }
 

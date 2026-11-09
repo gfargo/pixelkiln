@@ -1,6 +1,7 @@
 /** Terminal output shared by every command. */
 import { formatCost } from "../provider.ts"
 import type { Lock, ResolvedSpec } from "../types.ts"
+import type { InvalidManifestEntry } from "../manifest.ts"
 import { resumeActions, summarize, type Plan } from "../pipeline/plan.ts"
 import type { ReviewReadyInfo } from "../pick/server.ts"
 
@@ -52,7 +53,22 @@ export function announceGalleryReady(
 }
 
 
-export function printPlan(plan: Plan): void {
+/**
+ * The invalid entries a command should show for its --only/--style selection.
+ * An entry outside the selection is not the user's concern right now, so it is
+ * counted rather than listed; with no selection everything is shown.
+ */
+export function selectInvalid(
+  invalid: InvalidManifestEntry[],
+  selection: { assets: string[]; styles: string[] },
+): { shown: InvalidManifestEntry[]; hidden: number } {
+  if (!selection.assets.length && !selection.styles.length) return { shown: invalid, hidden: 0 }
+  const shown = invalid.filter((entry) =>
+    entry.kind === "asset" ? selection.assets.includes(entry.id) : selection.styles.includes(entry.id))
+  return { shown, hidden: invalid.length - shown.length }
+}
+
+export function printPlan(plan: Plan, invalid: InvalidManifestEntry[] = [], hiddenInvalid = 0): void {
   const counts = summarize(plan)
   const order = [
     "blocked", "missing", "untracked", "stale", "failed", "recoverable", "in-flight", "orphaned", "ok",
@@ -66,10 +82,21 @@ export function printPlan(plan: Plan): void {
     }
     if (items.length > 40) log(`    … and ${items.length - 40} more`)
   }
+  if (invalid.length) {
+    log(`\n  invalid  (${invalid.length})  not planned; fix the entry or pass --strict to stop here`)
+    for (const entry of invalid.slice(0, 40)) {
+      const clip = (text: string) => (text.length > 160 ? `${text.slice(0, 157)}…` : text)
+      log(`    ${`${entry.kind === "style" ? "styles" : "assets"}.${entry.id}`.padEnd(42)} ${clip(entry.issues[0] ?? "")}`)
+      for (const extra of entry.issues.slice(1, 3)) log(`    ${"".padEnd(42)} ${clip(extra)}`)
+    }
+    if (invalid.length > 40) log(`    … and ${invalid.length - 40} more`)
+  }
+  if (hiddenInvalid) log(`\n  ${hiddenInvalid} other invalid entr${hiddenInvalid === 1 ? "y" : "ies"} outside this selection; run without --only/--style to see them`)
   log(
     `\n  totals: ${counts.ok} ok · ${counts.blocked} blocked · ${counts.missing} missing · ${counts.untracked} untracked · ` +
       `${counts.stale} stale · ${counts["in-flight"]} in-flight · ${counts.orphaned} orphaned · ` +
-      `${counts.recoverable} recoverable · ${counts.failed} failed`,
+      `${counts.recoverable} recoverable · ${counts.failed} failed` +
+      (invalid.length ? ` · ${invalid.length} invalid` : ""),
   )
   if (plan.actionable.length) {
     for (const group of plan.groups) {

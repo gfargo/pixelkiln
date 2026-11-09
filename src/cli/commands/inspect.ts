@@ -11,7 +11,7 @@ import { doctor } from "../../pipeline/doctor.ts"
 import { auditStyle, evaluateAudit, hex } from "../../pipeline/audit.ts"
 import { reportSpecHashes } from "../../pipeline/import.ts"
 import { openProject } from "../project.ts"
-import { log, printPlan } from "../io.ts"
+import { log, printPlan, selectInvalid } from "../io.ts"
 import { UsageError } from "../../errors.ts"
 import type { Args } from "../args.ts"
 
@@ -74,11 +74,14 @@ export async function runDoctor(args: Args): Promise<void> {
 }
 
 export async function runPlan(args: Args): Promise<void> {
-  const { specs, lock } = await openProject(args)
+  const { loaded, specs, lock } = await openProject(args)
+  const { shown: invalid, hidden: hiddenInvalid } = selectInvalid(loaded.invalid ?? [], args)
   const plan = await buildPlan(specs, lock, { force: args.force })
   if (args.json) {
     log(JSON.stringify({
       totals: summarize(plan),
+      invalid,
+      hiddenInvalid,
       cost: plan.cost,
       costUnit: plan.costUnit,
       candidates: plan.candidates,
@@ -120,12 +123,12 @@ export async function runPlan(args: Args): Promise<void> {
       }),
     }, null, 2))
   } else {
-    printPlan(plan)
+    printPlan(plan, invalid, hiddenInvalid)
   }
   if (
-    args.check && plan.items.some(
+    args.check && (invalid.length > 0 || plan.items.some(
       (item) => item.state !== "ok" || (item.quality && item.quality.state !== "approved"),
-    )
+    ))
   ) process.exitCode = 1
 }
 
@@ -186,14 +189,17 @@ export async function runAudit(args: Args): Promise<void> {
 
 /** `hash`: the spec hash, file hash, and would-be import entry for each asset, offline. */
 export async function runHash(args: Args): Promise<void> {
-  const { specs, lock } = await openProject(args)
+  const { loaded, specs, lock } = await openProject(args)
   if (!args.assets.length && !args.styles.length && !args.all) {
     throw new UsageError("hash needs --only <asset>, --style <style>, or --all.")
   }
   const reports = await reportSpecHashes(specs, lock)
   if (args.json) {
-    log(JSON.stringify({ items: reports }, null, 2))
+    log(JSON.stringify({ items: reports, invalid: selectInvalid(loaded.invalid ?? [], args).shown }, null, 2))
     return
+  }
+  for (const entry of selectInvalid(loaded.invalid ?? [], args).shown) {
+    log(`  invalid ${entry.kind === "style" ? "styles" : "assets"}.${entry.id}: ${entry.issues[0] ?? ""}`)
   }
   for (const report of reports) {
     const state = !report.lock ? "no lock entry" : report.lock.matches ? "lock matches" : "lock differs"

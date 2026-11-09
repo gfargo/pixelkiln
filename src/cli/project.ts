@@ -174,7 +174,10 @@ async function open(args: Args): Promise<CliProject & Partial<CliAccountProject>
       `No manifest at ${path.resolve(args.manifest)}. Pass --manifest, or run \`pixelkiln init --from <dir>\`.`,
     )
   }
-  const project = await openLibraryProject(args.manifest, { lockPath: args.lock, styles: args.styles, assets: args.assets })
+  // Read-only reports list a broken entry and carry on; anything that spends
+  // stays all-or-nothing, so a skipped asset never goes unnoticed in a run.
+  const lenient = (args.command === "plan" || args.command === "hash" || args.command === "doctor") && !args.strict
+  const project = await openLibraryProject(args.manifest, { lockPath: args.lock, styles: args.styles, assets: args.assets, lenient })
   const { loaded, lock } = project
   let specs = project.specs
   const accountProvider = ACCOUNT_COMMANDS.has(args.command) && !args.local

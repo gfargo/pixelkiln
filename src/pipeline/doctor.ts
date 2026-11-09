@@ -8,6 +8,8 @@ import { sha256File } from "../hash.ts"
 import { currentEntryOutputPath, resolveOutputPath } from "../outputs.ts"
 import { cacheFileName, MediaType } from "../media.ts"
 import { buildPlan, resumeActions, summarize } from "./plan.ts"
+import { checkInstall, readInstallFacts } from "./install-check.ts"
+import { pixelkilnVersion } from "../version.ts"
 
 export type DoctorLevel = "ok" | "warning" | "error"
 
@@ -30,6 +32,8 @@ export interface DoctorOptions {
   offline?: boolean
   apiKeyPresent?: boolean
   credentialEnv?: string
+  /** The running CLI's version, for the install check. Defaults to this package's own. */
+  runningVersion?: string | null
 }
 
 export interface DoctorProviderTarget {
@@ -42,8 +46,9 @@ export interface DoctorProviderTarget {
 
 /**
  * Checks the whole project without changing it. Loading/resolving the manifest
- * and loading the lock happen before this function, so schema, style-image,
- * filter, and output-collision validation have already passed if it runs.
+ * and loading the lock happen before this function. Entries a lenient load set
+ * aside are reported here as errors; everything else has already passed schema,
+ * style-image, filter, and output-collision validation if this runs.
  */
 export async function doctor(
   loaded: LoadedManifest,
@@ -61,6 +66,15 @@ export async function doctor(
     `${Object.keys(loaded.manifest.styles).length} style(s), ` +
       `${Object.keys(loaded.manifest.assets).length} asset(s), ${specs.length} resolved spec(s)`,
   )
+  for (const entry of loaded.invalid ?? []) {
+    add(
+      "invalid-entry",
+      "error",
+      `${entry.kind === "style" ? "styles" : "assets"}.${entry.id} was left out: ${entry.issues.join("; ")}`,
+    )
+  }
+  const facts = readInstallFacts(path.dirname(loaded.path), opts.runningVersion !== undefined ? opts.runningVersion : pixelkilnVersion())
+  if (facts) for (const finding of checkInstall(facts)) add("install", finding.level, finding.message)
   add("lock", "ok", `${Object.keys(lock.entries).length} valid v2 lock entr(ies)`)
 
   const dirs = [...new Set(specs.flatMap((spec) => [
