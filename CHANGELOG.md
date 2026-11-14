@@ -1,3 +1,5 @@
+## [0.104.1](https://github.com/gfargo/pixelkiln/compare/v0.104.0...v0.104.1) (2026-11-14)
+
 # [0.104.0](https://github.com/gfargo/pixelkiln/compare/v0.103.0...v0.104.0) (2026-11-14)
 
 
