@@ -279,7 +279,8 @@ pixelkiln normal-map --from art/knight.png --mode pro --kind character
     summary:
       "PixelLab opened up the upkeep its website does to an asset. `pixelkiln asset` imports your own art, expands it to 8 directions, resizes its canvas, and exports it, and `pixelate --pro` reaches the strongest converter. The knight below was imported as one PNG; the other seven directions billed exactly 10 generations.",
     features: [
-      "`asset import` stores your PNG as an object, exactly as drawn, for free.",
+      "`asset import` stores your PNG as an object, exactly as drawn, for free. With `--kind tileset` or `--kind tiles` it stores a tileset sheet or tile images you drew, ready for maps.",
+      "`asset save` writes pixels you edited by hand back over a stored sprite, loop, gallery image or tileset, and keeps what it replaced so you can undo it.",
       "`asset expand` draws the 7 missing directions for 10 to 25 generations. `asset review` downloads them first, then `--keep` or `--discard`.",
       "`asset export` writes a ZIP, a spritesheet with its layout, an `.aseprite` file, or a turning GIF. All free.",
       "`asset canvas` adds or trims transparent margin without scaling the art, and PixelLab's own reason is shown when it refuses.",

@@ -142,7 +142,15 @@ export interface Args {
   detailSoftness?: number
   /** asset: object (default) or character. */
   kind?: string
-  /** asset canvas: the new canvas, "<width>x<height>". */
+  /** asset save --target: where the pixels go, e.g. object:<id>:south or gallery:new. */
+  saveTarget?: string
+  /** asset import --kind tiles: the tile shape. */
+  tileType?: string
+  /** asset import --kind tileset: the lower terrain, the upper terrain, and the strip between them. */
+  lower?: string
+  upper?: string
+  transition?: string
+  /** asset canvas: the new canvas, "<width>x<height>". asset import --kind tileset/tiles: the tile size. */
   size?: string
   /** asset mirror/export: an animation group id. */
   animation?: string
@@ -199,7 +207,7 @@ const VALUE_FLAGS = [
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
-  "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
+  "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle",
 ] as const
@@ -224,7 +232,7 @@ const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
 const VFX_SUBCOMMANDS = ["make", "presets", "parts"] as const
 const MUSIC_SUBCOMMANDS = ["make", "style", "lyrics"] as const
-const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "expand", "review", "export"] as const
+const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "save", "expand", "review", "export"] as const
 const UI_SUBCOMMANDS = ["show", "split", "states", "nine-slice", "pull"] as const
 
 /**
@@ -591,6 +599,11 @@ export function parseArgs(argv: string[]): Args {
     detailSoftness: numberOption("--detail-softness", { min: 0.6, max: 3 }),
     kind: get("--kind"),
     size: get("--size"),
+    saveTarget: get("--target"),
+    tileType: get("--tile-type"),
+    lower: get("--lower"),
+    upper: get("--upper"),
+    transition: get("--transition"),
     animation: get("--animation"),
     direction: get("--direction"),
     keep: rest.includes("--keep"),

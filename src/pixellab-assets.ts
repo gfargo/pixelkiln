@@ -5,9 +5,9 @@
  * PixelLab id; the manifest's generators still make the assets.
  */
 import { existsSync } from "node:fs"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises"
 import path from "node:path"
-import type { PixelLabAssetKind, PixelLabClient, PixelLabExportFormat } from "./client.ts"
+import { PixelLabError, type PixelLabAssetKind, type PixelLabClient, type PixelLabExportFormat } from "./client.ts"
 import { imageMetadata, MediaType, validateMedia } from "./media.ts"
 
 export const ASSET_KINDS = ["object", "character"] as const
@@ -161,4 +161,254 @@ export async function pullExpansionReview(
     await writeFile(files[index]!.file, bytes)
   }
   return { dir, existingDirection: review.existing_direction ?? null, files }
+}
+
+// Free imports of your own tiles, and saving edited pixels back.
+
+export const TILESET_MODES = ["topdown", "sidescroller"] as const
+export const IMPORT_TILE_TYPES = ["square_topdown", "isometric", "oblique", "hex", "hex_pointy", "octagon"] as const
+export const IMPORT_TILE_VIEWS = ["top-down", "high top-down", "low top-down", "side"] as const
+/** Tile sizes a sheet can be cut into. PixelLab reads a 48px compact sheet but has no way to be told 48. */
+const SHEET_TILE_SIZES = [16, 24, 32, 48, 64]
+export const IMPORT_MAX_TILES = 32
+
+export interface TilesetSheetReading {
+  tileSize: number
+  /** `compact` is the 4-wide sheet a tileset download gives; `native` is PixelLab's 8-wide one. */
+  layout: "compact" | "native"
+}
+
+/**
+ * Every way PixelLab could cut a sheet of this size: 4 tiles wide (4 or 8
+ * rows) or 8 wide (8 or 16 rows). 128, 192 and 256px sheets read both ways,
+ * and PixelLab takes the 4-wide reading unless told the tile size (measured:
+ * a 16px native sheet sent without one came back as sixteen 32px tiles).
+ */
+export function tilesetSheetReadings(width: number, height: number): TilesetSheetReading[] {
+  if (height !== width && height !== width * 2) return []
+  const readings: TilesetSheetReading[] = []
+  if (SHEET_TILE_SIZES.includes(width / 4)) readings.push({ tileSize: width / 4, layout: "compact" })
+  if (SHEET_TILE_SIZES.includes(width / 8)) readings.push({ tileSize: width / 8, layout: "native" })
+  return readings
+}
+
+/** Pick the reading for a sheet, refusing one that is no PixelLab layout or that reads two ways with no tile size given. */
+export function chooseTilesetSheetReading(file: string, width: number, height: number, tileSize?: number): TilesetSheetReading {
+  const readings = tilesetSheetReadings(width, height)
+  const describe = (reading: TilesetSheetReading) => `${reading.tileSize}px tiles (${reading.layout === "compact" ? "4 wide" : "8 wide"})`
+  if (readings.length === 0) {
+    throw new Error(
+      `${file} is ${width}x${height}, not a PixelLab tileset sheet: it takes a square sheet 4 or 8 tiles wide ` +
+        "(or twice as tall, for a set with transitions) of 16, 24, 32, 48 or 64px tiles",
+    )
+  }
+  if (tileSize === undefined) {
+    if (readings.length > 1) {
+      throw new Error(
+        `${file} is ${width}x${height}, which reads as ${readings.map(describe).join(" or ")}; ` +
+          `say which with --size ${readings.map((reading) => reading.tileSize).join(" or --size ")}`,
+      )
+    }
+    return readings[0]!
+  }
+  const chosen = readings.find((reading) => reading.tileSize === tileSize)
+  if (!chosen) throw new Error(`${file} is ${width}x${height}, which holds ${readings.map(describe).join(" or ")}, not ${tileSize}px tiles`)
+  return chosen
+}
+
+function readPng(bytes: Buffer, file: string): { width: number; height: number } {
+  const metadata = imageMetadata(bytes)
+  if (!metadata || metadata.format !== "png") throw new Error(`${file} is not a PNG`)
+  return metadata
+}
+
+export interface ImportTilesetOptions {
+  mode?: (typeof TILESET_MODES)[number]
+  tileSize?: number
+  lowerDescription?: string
+  upperDescription?: string
+  transitionDescription?: string
+  name?: string
+}
+
+/** Import a Wang sheet as a completed tileset. Free; the sheet is cut into its 16 (or 25) tiles with new ids. */
+export async function importTilesetFile(
+  client: Pick<PixelLabClient, "importTileset">,
+  file: string,
+  opts: ImportTilesetOptions = {},
+): Promise<{ tilesetId: string; mode: (typeof TILESET_MODES)[number]; tileSize: number; layout: TilesetSheetReading["layout"] }> {
+  const bytes = await readFile(file)
+  const { width, height } = readPng(bytes, file)
+  const reading = chooseTilesetSheetReading(file, width, height, opts.tileSize)
+  const mode = opts.mode ?? "topdown"
+  if (mode === "sidescroller" && opts.upperDescription) throw new Error("a sidescroller tileset has one terrain, the platform; drop the upper description")
+  const res = await client.importTileset({
+    spritesheet: { base64: bytes.toString("base64"), format: "png" },
+    mode,
+    // PixelLab cannot be told 48, and a 4-wide reading is the one it takes unprompted.
+    tileSize: reading.tileSize === 48 ? undefined : reading.tileSize,
+    lowerDescription: opts.lowerDescription,
+    upperDescription: opts.upperDescription,
+    transitionDescription: opts.transitionDescription,
+    name: opts.name,
+  })
+  return { tilesetId: res.tileset_id, mode, tileSize: reading.tileSize, layout: reading.layout }
+}
+
+/** The PNGs `from` names, in name order: the file itself, or every PNG in a directory. */
+export async function pngFilesAt(from: string): Promise<string[]> {
+  if (!existsSync(from)) throw new Error(`${from} does not exist`)
+  if (!(await stat(from)).isDirectory()) return [from]
+  const names = (await readdir(from)).filter((name) => /\.png$/i.test(name)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  if (names.length === 0) throw new Error(`${from} holds no PNG files`)
+  return names.map((name) => path.join(from, name))
+}
+
+/**
+ * The height a tile of this type may have, by PixelLab's import rule: square
+ * and octagon tiles are exactly the tile size, isometric and hex tiles half
+ * to twice it, oblique tiles one to twice it. Every tile is the tile size wide.
+ */
+export function importTileHeights(tileType: string, tileSize: number): { min: number; max: number } {
+  if (tileType === "square_topdown" || tileType === "octagon") return { min: tileSize, max: tileSize }
+  if (tileType === "oblique") return { min: tileSize, max: tileSize * 2 }
+  return { min: tileSize / 2, max: tileSize * 2 }
+}
+
+/** Import tile PNGs (a file, or a directory's PNGs in name order) as one completed tile group. Free. */
+export async function importTilesFiles(
+  client: Pick<PixelLabClient, "importTilesPro">,
+  from: string,
+  opts: { tileType: string; tileSize: number; description?: string; tileView?: string },
+): Promise<{ tileId: string; tiles: number; files: string[] }> {
+  if (!(IMPORT_TILE_TYPES as readonly string[]).includes(opts.tileType)) throw new Error(`tile type must be one of ${IMPORT_TILE_TYPES.join(", ")}`)
+  if (!Number.isInteger(opts.tileSize) || opts.tileSize < 16 || opts.tileSize > 256) throw new Error("tile size is a whole number from 16 to 256")
+  const files = await pngFilesAt(from)
+  if (files.length > IMPORT_MAX_TILES) throw new Error(`${from} holds ${files.length} PNGs; PixelLab imports at most ${IMPORT_MAX_TILES} tiles in one group`)
+  const heights = importTileHeights(opts.tileType, opts.tileSize)
+  const frames = []
+  for (const file of files) {
+    const bytes = await readFile(file)
+    const { width, height } = readPng(bytes, file)
+    if (width !== opts.tileSize || height < heights.min || height > heights.max) {
+      const tall = heights.min === heights.max ? `${heights.min}` : `${heights.min} to ${heights.max}`
+      throw new Error(`${file} is ${width}x${height}; a ${opts.tileSize}px ${opts.tileType} tile is ${opts.tileSize} wide and ${tall} tall`)
+    }
+    frames.push({ base64: bytes.toString("base64"), format: "png" as const })
+  }
+  const res = await client.importTilesPro({ frames, tileType: opts.tileType, tileSize: opts.tileSize, description: opts.description, tileView: opts.tileView })
+  return { tileId: res.tile_id, tiles: files.length, files }
+}
+
+/** `character:<id>:<direction>`, `object:<id>[:<direction>]`, either with `:<group id>`, `gallery:<id>`, `gallery:new`, or `tileset:<id>`. */
+export function checkSaveTarget(target: string): void {
+  if (!/^(character:[^:]+:[^:]+(:[^:]+)?|object:[^:]+(:[^:]+){0,2}|gallery:[^:]+|tileset:[^:]+)$/.test(target)) {
+    throw new Error(
+      `--target "${target}" is not a place PixelLab can save to. Use character:<id>:<direction>, object:<id>[:<direction>], ` +
+        "either with :<animation group id> added, gallery:<id>, gallery:new, or tileset:<id>",
+    )
+  }
+}
+
+/** Where the replaced frames go when `--out` names no directory: beside the work, named for the target and the time. */
+export function saveUndoDir(target: string, now = new Date()): string {
+  const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")
+  return path.resolve("pixelkiln-undo", `${target.replace(/[^a-zA-Z0-9-]+/g, "_")}-${stamp}`)
+}
+
+export interface SaveToAssetResult {
+  action: "saved" | "added" | "unchanged"
+  target: string
+  kind: string
+  width: number
+  height: number
+  frames: number
+  changedPixels: number
+  /** The replaced frames as written to disk, in order; empty for a new image or an unchanged save. */
+  undo: string[]
+  note: string | null
+  maps: string | null
+}
+
+async function writeUndo(frames: Array<{ base64: string }>, dir: string): Promise<string[]> {
+  await mkdir(dir, { recursive: true })
+  const files: string[] = []
+  for (const [index, frame] of frames.entries()) {
+    const file = path.join(dir, frames.length === 1 ? "previous.png" : `previous-${String(index).padStart(2, "0")}.png`)
+    await writeFile(file, Buffer.from(frame.base64, "base64"))
+    files.push(file)
+  }
+  return files
+}
+
+/**
+ * Save a PNG, a GIF, or a directory of PNG frames into `target`, and write
+ * what it replaced to `undoDir` before returning. A save that fails partway
+ * (PixelLab's 500) still hands back the old frames; they are written too,
+ * and the error names where.
+ */
+export async function saveToAssetFile(
+  client: Pick<PixelLabClient, "saveToAsset">,
+  target: string,
+  from: string,
+  opts: { name?: string; description?: string; undoDir?: string } = {},
+): Promise<SaveToAssetResult> {
+  checkSaveTarget(target)
+  if ((opts.name || opts.description) && target !== "gallery:new") throw new Error("a name and a description belong to a new gallery image: --target gallery:new")
+  const files = await pngFilesAt(from).catch(async (error: unknown) => {
+    // A single GIF is the other accepted form.
+    if (existsSync(from) && /\.gif$/i.test(from)) return [from]
+    throw error
+  })
+  let image: { base64: string; format: "png" | "gif" } | undefined
+  let frames: Array<{ base64: string; format: "png" }> | undefined
+  if (files.length === 1) {
+    const bytes = await readFile(files[0]!)
+    const gif = bytes.subarray(0, 4).toString("ascii") === "GIF8"
+    if (!gif) readPng(bytes, files[0]!)
+    image = { base64: bytes.toString("base64"), format: gif ? "gif" : "png" }
+  } else {
+    if (files.length > 128) throw new Error(`${from} holds ${files.length} PNGs; PixelLab takes at most 128 frames`)
+    let size: string | undefined
+    frames = []
+    for (const file of files) {
+      const bytes = await readFile(file)
+      const { width, height } = readPng(bytes, file)
+      if (size && size !== `${width}x${height}`) throw new Error(`${file} is ${width}x${height}, but the frames before it are ${size}; an animation's frames share one size`)
+      size = `${width}x${height}`
+      frames.push({ base64: bytes.toString("base64"), format: "png" })
+    }
+  }
+  const undoDir = opts.undoDir ? path.resolve(opts.undoDir) : saveUndoDir(target)
+  let res: Awaited<ReturnType<PixelLabClient["saveToAsset"]>>
+  try {
+    res = await client.saveToAsset({ target, image, frames, name: opts.name, description: opts.description })
+  } catch (error) {
+    if (error instanceof PixelLabError && error.body.startsWith("{")) {
+      let previous: unknown
+      try {
+        previous = (JSON.parse(error.body) as { detail?: { previous_frames?: unknown } }).detail?.previous_frames
+      } catch {
+        previous = undefined
+      }
+      if (Array.isArray(previous) && previous.length && previous.every((frame) => typeof (frame as { base64?: unknown })?.base64 === "string")) {
+        const written = await writeUndo(previous as Array<{ base64: string }>, undoDir)
+        throw new Error(`${error.message}. The save failed partway; what was stored before is in ${undoDir} (${written.length} frame(s)). Save it back to ${target} to restore it`)
+      }
+    }
+    throw error
+  }
+  const undo = res.action === "saved" && res.previous_frames?.length ? await writeUndo(res.previous_frames, undoDir) : []
+  return {
+    action: res.action,
+    target: res.target,
+    kind: res.kind,
+    width: res.width,
+    height: res.height,
+    frames: res.frame_count,
+    changedPixels: res.changed_pixels,
+    undo,
+    note: res.note ?? null,
+    maps: res.maps ?? null,
+  }
 }
