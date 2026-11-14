@@ -1,3 +1,12 @@
+# [0.102.0](https://github.com/gfargo/pixelkiln/compare/v0.101.0...v0.102.0) (2026-11-14)
+
+
+### Features
+
+* **asset:** import your own tileset or tiles, and save edited pixels back ([704aa3d](https://github.com/gfargo/pixelkiln/commit/704aa3dc2469453b140d92265c5cae8c4b83e8af))
+* **talk:** talking portraits with free lip-sync ([263120e](https://github.com/gfargo/pixelkiln/commit/263120ef72e17719ac5457a58d34c12d45da7390))
+* **vfx:** animated sprites for the VFX artist ([426b7d1](https://github.com/gfargo/pixelkiln/commit/426b7d1a287fc2738b9d9fe8af16ebaa2d2a9669))
+
 # [0.101.0](https://github.com/gfargo/pixelkiln/compare/v0.100.0...v0.101.0) (2026-11-14)
 
 
