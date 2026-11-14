@@ -226,6 +226,9 @@ export async function runVfx(args: Args): Promise<void> {
   if (!args.out) throw new UsageError("vfx needs --out <base>: <base>.png, .gif, .json, and .vfx.json are written")
   if (args.description !== undefined) return runVfxArtist(args, args.out)
   if (args.artist) throw new UsageError("--artist picks who draws a vfx --description; add one")
+  if (args.spriteFrames !== undefined || args.spriteFps !== undefined) {
+    throw new UsageError("--sprite-frames and --sprite-fps describe the sprite sent to PixelLab's VFX artist; add a --description")
+  }
   const starts = [args.preset, args.recipe, args.effect].filter(Boolean)
   if (starts.length > 1) throw new UsageError("vfx takes one of --preset, --recipe, or --effect, not several")
   if (starts.length === 0 && args.parts.length === 0) {
@@ -297,13 +300,21 @@ async function runVfxArtist(args: Args, out: string): Promise<void> {
   }
   if (args.name && args.name.length > 80) throw new UsageError("vfx --description takes a --name of at most 80 characters")
   const paths = vfxOutputPaths(out)
-  const side = args.sprite ? vfxArtistSprite(await readFile(args.sprite), args.sprite).side : "none"
+  if ((args.spriteFrames !== undefined || args.spriteFps !== undefined) && !args.sprite) {
+    throw new UsageError("--sprite-frames and --sprite-fps describe a --sprite; add one")
+  }
+  const taken = args.sprite ? vfxArtistSprite(await readFile(args.sprite), args.sprite, args.spriteFrames ?? 1) : undefined
+  if (args.spriteFps !== undefined && !taken?.animated) {
+    throw new UsageError("--sprite-fps is the speed of an animated sprite: a GIF, or a PNG strip with --sprite-frames 2 or more")
+  }
+  const side = taken?.side ?? "none"
   const conversation = args.effect ? await readVfxConversation(paths.provenance, args.effect) : undefined
   // A change keeps the saved effect's own sprite, whose size is not known here.
-  const quote = vfxArtistQuote(artist, args.effect && !args.sprite ? "unknown" : side, Boolean(conversation))
+  const quote = vfxArtistQuote(artist, args.effect && !args.sprite ? "unknown" : side, Boolean(conversation), Boolean(taken?.animated))
   const ceiling = vfxArtistCeiling(quote)
   log(
     `  vfx by PixelLab's ${artist} artist: "${description}"${args.sprite ? ` around ${args.sprite}` : ""}` +
+      `${taken?.animated ? (taken.image.format === "gif" ? " (an animated GIF)" : ` (a strip of ${args.spriteFrames} frames)`) : ""}` +
       ` → ${paths.sheet} (+ .gif, .json, .vfx.json${args.gamePack ? ", -game.zip" : ""})`,
   )
   if (args.effect) {
@@ -329,6 +340,8 @@ async function runVfxArtist(args: Args, out: string): Promise<void> {
     description,
     artist,
     sprite: args.sprite,
+    spriteFrames: args.spriteFrames,
+    spriteFps: args.spriteFps,
     effect: args.effect,
     conversation,
     name: args.name,

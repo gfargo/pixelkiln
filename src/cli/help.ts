@@ -169,6 +169,8 @@ Options
   --part <name>       vfx: add a part (repeatable; vfx parts lists them)
   --sprite <ref>      vfx: build around a sprite: a file, a URL, or character:<id>:<dir>
   --fps <n>           vfx: frames per second, 1-60
+  --sprite-frames <n> vfx --description: --sprite is a strip of n equal frames (2-32)
+  --sprite-fps <n>    vfx --description: how fast the sprite animation plays (default 12)
   --game-pack         vfx: also download the game-pack ZIP
   --glyph-px <n>      font: native glyph size, 8, 16 (default), 32, or 64
   --prune             cache: remove invalid/unreferenced local cache data

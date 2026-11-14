@@ -19,6 +19,7 @@ import {
   vfxArtistCeiling,
   vfxArtistFiles,
   vfxArtistQuote,
+  vfxArtistSprite,
 } from "../src/pixellab-vfx.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 import { PixelLabProvider } from "../src/providers/pixellab.ts"
@@ -352,6 +353,93 @@ describe("pixelkiln vfx --description", () => {
     await expect(runVfx(parseArgs(["vfx", "--description", "x", "--sprite", "character:a:south", "--out", "o"]))).rejects.toThrow(/local PNG/)
     await expect(runVfx(parseArgs(["vfx", "--preset", "explosion", "--artist", "pro", "--out", "o"]))).rejects.toThrow(/add one/)
     expect(api.posts).toHaveLength(0)
+    vi.restoreAllMocks()
+  })
+})
+
+describe("an animated sprite for the VFX artist", () => {
+  const strip = (frames: number, cell: number) => encodeRgbaPng(cell * frames, cell, Buffer.alloc(cell * frames * cell * 4, 9))
+  /** A GIF header with a logical screen size; the artist path reads no further. */
+  const gif = (width: number, height: number) => {
+    const bytes = Buffer.alloc(16)
+    bytes.write("GIF89a", 0, "ascii")
+    bytes.writeUInt16LE(width, 6)
+    bytes.writeUInt16LE(height, 8)
+    return bytes
+  }
+
+  it("is priced with the animated extra read from live quotes", () => {
+    expect([vfxArtistQuote("lite", 108, false, true), vfxArtistQuote("lite", 200, false, true), vfxArtistQuote("lite", 400, false, true)]).toEqual([2, 4, 6])
+    expect([vfxArtistQuote("pro", 108, false, true), vfxArtistQuote("pro", 200, false, true), vfxArtistQuote("pro", 400, false, true)]).toEqual([9, 16, 33])
+    // No sprite, nothing to animate.
+    expect(vfxArtistQuote("lite", "none", false, true)).toBe(1)
+  })
+
+  it("sizes a strip by one frame, and refuses one that cannot be cut or is too wide", () => {
+    expect(vfxArtistSprite(strip(4, 108), "walk.png", 4)).toMatchObject({ side: 108, animated: true, image: { format: "png" } })
+    expect(vfxArtistSprite(strip(1, 108), "still.png")).toMatchObject({ side: 108, animated: false })
+    expect(() => vfxArtistSprite(strip(4, 108), "walk.png", 5)).toThrow(/does not divide into 5 equal frames/)
+    expect(() => vfxArtistSprite(strip(12, 108), "walk.png", 12)).toThrow(/strip up to 1024px wide.*as a GIF/)
+    expect(() => vfxArtistSprite(strip(1, 520), "big.png")).toThrow(/takes up to 512x512/)
+    expect(vfxArtistSprite(gif(108, 96), "walk.gif")).toMatchObject({ side: 108, animated: true, image: { format: "gif" } })
+    expect(() => vfxArtistSprite(gif(108, 96), "walk.gif", 4)).toThrow(/brings its own frames/)
+    expect(() => vfxArtistSprite(gif(600, 96), "walk.gif")).toThrow(/takes up to 512x512/)
+  })
+
+  it("belongs to a described effect with a sprite, and a strip is checked when the manifest resolves", async () => {
+    await expect(project({ a: { vfx: { preset: "explosion", spriteFrames: 4 } } })).rejects.toThrow(/add a description/)
+    await expect(project({ a: { vfx: { description: "an aura", spriteFrames: 4 } } })).rejects.toThrow(/add a sprite/)
+    await expect(project({ a: { vfx: { description: "an aura", sprite: "walk.png", spriteFps: 8 } } })).rejects.toThrow(/set spriteFrames to 2 or more/)
+    await expect(project({ a: { vfx: { description: "an aura", sprite: "walk.png", spriteFrames: 33 } } })).rejects.toThrow()
+    await writeFile(path.join(dir, "walk.png"), strip(4, 108))
+    await expect(resolveSpecs(await project({ a: { vfx: { description: "an aura", sprite: "walk.png", spriteFrames: 5 } } })))
+      .rejects.toThrow(/assets\.a\.vfx\.sprite.*does not divide into 5/)
+  })
+
+  it("plans by one frame's size plus the extra, and enters identity only when set", async () => {
+    await writeFile(path.join(dir, "walk.png"), strip(4, 108))
+    const resolve = async (vfx: Record<string, unknown>) => (await resolveSpecs(await project({ a: { vfx } }), { provider: PixelLabProvider.forOffline() }))[0]!
+    // The whole strip is 432px wide: priced as a still it would sit in the 512px tier.
+    const still = await resolve({ description: "an aura", sprite: "walk.png" })
+    const moving = await resolve({ description: "an aura", sprite: "walk.png", spriteFrames: 4 })
+    expect([still.cost, moving.cost]).toEqual([10, 4])
+    expect((await resolve({ description: "an aura", artist: "pro", sprite: "walk.png", spriteFrames: 4 })).cost).toBe(18)
+    expect(moving.specHash).not.toBe(still.specHash)
+    // One frame is a still: same request, same hash.
+    expect((await resolve({ description: "an aura", sprite: "walk.png", spriteFrames: 1 })).specHash).toBe(still.specHash)
+    expect((await resolve({ description: "an aura", sprite: "walk.png", spriteFrames: 4, spriteFps: 8 })).specHash).not.toBe(moving.specHash)
+  })
+
+  it("sends sprite_frames and sprite_fps from a manifest", async () => {
+    await writeFile(path.join(dir, "walk.png"), strip(4, 8))
+    const loaded = await project({ a: { vfx: { description: "an aura", sprite: "walk.png", spriteFrames: 4, spriteFps: 8 } } })
+    const specs = await resolveSpecs(loaded)
+    const lock: Lock = { version: 2, entries: {} }
+    await submit(new PixelLabProvider(new PixelLabClient("key")), loaded, (await buildPlan(specs, lock, {})).actionable, lock, path.join(dir, "pixelkiln.lock.json"), { spacingMs: 0 })
+    expect(api.posts[0]).toMatchObject({ description: "an aura", sprite_frames: 4, sprite_fps: 8, sprite: { format: "png" } })
+  })
+
+  it("sends a strip or a GIF from the command, records it, and prices it before sending", async () => {
+    await writeFile(path.join(dir, "walk.png"), strip(4, 8))
+    await writeFile(path.join(dir, "walk.gif"), gif(8, 8))
+    const client = new PixelLabClient("key")
+    await makeVfxWithArtist(client, { description: "an aura", sprite: path.join(dir, "walk.png"), spriteFrames: 4, spriteFps: 8, out: path.join(dir, "a"), sleep: async () => {} })
+    expect(api.posts[0]).toMatchObject({ sprite_frames: 4, sprite_fps: 8, sprite: { format: "png" } })
+    expect(JSON.parse(await readFile(path.join(dir, "a.vfx.json"), "utf8")).source).toEqual({ sprite: "walk.png", spriteFrames: 4, spriteFps: 8 })
+    await makeVfxWithArtist(client, { description: "an aura", sprite: path.join(dir, "walk.gif"), out: path.join(dir, "b"), sleep: async () => {} })
+    expect(api.posts[1]!.sprite).toMatchObject({ format: "gif" })
+    expect(api.posts[1]).not.toHaveProperty("sprite_frames")
+
+    const lines: string[] = []
+    vi.spyOn(console, "log").mockImplementation((line: string) => void lines.push(line))
+    const base = ["vfx", "--description", "an aura", "--out", path.join(dir, "c"), "--dry-run"]
+    await runVfx(parseArgs([...base, "--sprite", path.join(dir, "walk.png"), "--sprite-frames", "4", "--sprite-fps", "8"]))
+    expect(lines.join("\n")).toMatch(/a strip of 4 frames[\s\S]*about 2 generations .* at most 4/)
+    await runVfx(parseArgs([...base, "--sprite", path.join(dir, "walk.gif")]))
+    expect(lines.join("\n")).toMatch(/an animated GIF/)
+    await expect(runVfx(parseArgs([...base, "--sprite-frames", "4"]))).rejects.toThrow(/add one/)
+    await expect(runVfx(parseArgs([...base, "--sprite", path.join(dir, "walk.png"), "--sprite-fps", "8"]))).rejects.toThrow(/animated sprite/)
+    await expect(runVfx(parseArgs(["vfx", "--preset", "explosion", "--sprite-frames", "4", "--out", "o"]))).rejects.toThrow(/add a --description/)
     vi.restoreAllMocks()
   })
 })

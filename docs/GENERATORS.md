@@ -662,6 +662,35 @@ each time.
   character's own output file instead. JPEG is refused too.
 - `name` is capped at 80 characters, and the default is cut to fit.
 
+#### Animated sprites
+
+Give the artist a walk cycle and the effect follows it frame by frame:
+
+```jsonc
+"walk.trail": {
+  "vfx": {
+    "description": "a fiery orange trail that streams behind the robot as it walks",
+    "sprite": "art/chars/robot-walk.png",
+    "spriteFrames": 8,
+    "spriteFps": 10
+  }
+}
+```
+
+- `spriteFrames` (2 to 32) says the sprite PNG is a horizontal strip of that
+  many equal frames. The strip must divide evenly, each frame may be up to
+  512×512, and the whole strip at most 1,024 pixels wide; a strip that
+  breaks a rule is refused when the manifest is resolved, once the file
+  exists. `spriteFrames: 1` is a still and changes nothing.
+- `spriteFps` (1 to 60) is how fast the strip plays. PixelLab's default is
+  12. It needs `spriteFrames` of 2 or more.
+- Both need a `description` and a `sprite`. A manifest takes a PNG strip
+  only; to send a GIF, use `pixelkiln vfx --description`.
+- The plan sizes the sprite by one frame, not the strip, and adds the
+  animated extra: 1 for lite, and 1, 2 or 5 for pro by size tier.
+- Both fields are part of the asset's identity when set. An effect without
+  them keeps the identity it had.
+
 **Cost.** PixelLab quotes each job when it is submitted and bills on
 delivery: the quote, or more when the effect ran long, never more than twice
 the quote. The quote comes from this table (generations):
@@ -676,8 +705,9 @@ the quote. The quote comes from this table (generations):
 a budget is never overrun. A sprite that is another asset's output not drawn
 yet is priced at the 512 px tier until it exists. The lock records PixelLab's
 own quote (`quotedGenerations`) and the bill read from the finished job.
-These prices are PixelLab's published table; no artist bill has been
-measured here yet.
+The table is PixelLab's published one. Measured so far: a lite effect with
+no sprite billed 1, and lite effects around an animated sprite were quoted 2
+and billed 2, 2, 2 and 4 ([ENDPOINTS.md](./ENDPOINTS.md#vfx-animated-sprites-measured)).
 
 **Outputs and identity.** The artist's spritesheet is cut into the same
 ordered frame set as the workbench's, with its fps and loop flag. The lock

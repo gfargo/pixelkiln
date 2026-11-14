@@ -122,6 +122,10 @@ export interface Args {
   sprite?: string
   /** vfx: frames per second. */
   fps?: number
+  /** vfx --description: how many equal frames the --sprite strip holds. */
+  spriteFrames?: number
+  /** vfx --description: how fast the --sprite animation plays. */
+  spriteFps?: number
   /** vfx: also export the game-pack ZIP. */
   gamePack: boolean
   /** normal-map: lite (default) or pro. */
@@ -194,7 +198,7 @@ const VALUE_FLAGS = [
   "--reviewer", "--note", "--source", "--object-id", "--tool", "--prompt", "--seed", "--cost", "--step", "--raw",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
-  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--artist", "--convention",
+  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
   "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle",
@@ -576,6 +580,8 @@ export function parseArgs(argv: string[]): Args {
     parts: list("--part"),
     sprite: get("--sprite"),
     fps: numberOption("--fps", { min: 1, max: 60, integer: true }),
+    spriteFrames: numberOption("--sprite-frames", { min: 1, max: 32, integer: true }),
+    spriteFps: numberOption("--sprite-fps", { min: 1, max: 60, integer: true }),
     gamePack: rest.includes("--game-pack"),
     mode: get("--mode"),
     strength: numberOption("--strength", { min: 0, max: 2 }),

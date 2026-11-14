@@ -683,6 +683,9 @@ export const VfxPartSchema = z.object({ name: z.string().min(1) }).catchall(z.un
  * build the effect from plain words, with `artist` picking lite or pro. It
  * replaces the workbench's preset, recipe, parts, and fps, and its sprite
  * must be a local PNG: the endpoint takes pixels, not a PixelLab reference.
+ * `spriteFrames` says that PNG is a horizontal strip of that many equal
+ * frames, so the effect follows the animation, and `spriteFps` how fast it
+ * plays (PixelLab's default is 12).
  */
 export const AssetVfxSchema = z
   .object({
@@ -694,9 +697,22 @@ export const AssetVfxSchema = z
     name: z.string().min(1).optional(),
     description: z.string().trim().min(1).max(8000).optional(),
     artist: z.enum(["lite", "pro"]).optional(),
+    spriteFrames: z.number().int().min(1).max(32).optional(),
+    spriteFps: z.number().int().min(1).max(60).optional(),
   })
   .strict()
   .superRefine((vfx, context) => {
+    for (const key of ["spriteFrames", "spriteFps"] as const) {
+      if (vfx[key] === undefined) continue
+      if (vfx.description === undefined) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: `${key} describes the sprite sent to PixelLab's VFX artist; add a description`, path: [key] })
+      } else if (!vfx.sprite) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: `${key} describes a sprite strip; add a sprite`, path: [key] })
+      }
+    }
+    if (vfx.spriteFps !== undefined && vfx.sprite && vfx.description !== undefined && (vfx.spriteFrames ?? 1) < 2) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "spriteFps is the speed of a sprite strip; set spriteFrames to 2 or more", path: ["spriteFps"] })
+    }
     if (vfx.description !== undefined) {
       // The artist builds the whole effect from the words. Nothing of the
       // workbench's reaches it, so a mix would hash settings that never render.
@@ -2716,6 +2732,10 @@ export interface ResolvedVfx {
   description?: string
   /** The artist's tier, set with `description` only; lite unless the manifest says pro. */
   artist?: "lite" | "pro"
+  /** The artist's sprite as a horizontal strip of this many frames; absent for a still. */
+  spriteFrames?: number
+  /** How fast that strip plays; absent leaves PixelLab's 12. */
+  spriteFps?: number
 }
 
 export interface ResolvedMirror {

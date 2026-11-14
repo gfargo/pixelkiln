@@ -56,6 +56,65 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "pixellab-vfx-animated-sprites",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "Effects that follow a walk cycle, not just a still",
+    summary:
+      "PixelLab's VFX artist takes an animated sprite and builds the effect around every frame of it. PixelKiln sends one from `pixelkiln vfx --description` as a GIF or a PNG strip, and from a manifest's `vfx` block with `spriteFrames`. Both effects below were billed 2 generations.",
+    features: [
+      "Pass a GIF as `--sprite`, or a horizontal PNG strip with `--sprite-frames`. `--sprite-fps` sets how fast it plays.",
+      "The effect comes back with the sprite's own frame count, so the trail stays in step with the feet.",
+      "The lite artist's quote goes up by 1 generation for an animated sprite, at every size and length we asked about.",
+      "PixelLab refuses a strip wider than 1,024 pixels. PixelKiln catches that before anything is sent and points you to a GIF.",
+    ],
+    figures: [
+      {
+        src: "/showcase/effects/walk-input.gif",
+        still: "/showcase/effects/walk-input-still.png",
+        alt: "An orange robot walking in place, eight frames",
+        width: 108,
+        height: 108,
+        title: "the sprite",
+        caption: "an 8-frame walk, sent as one PNG strip.",
+      },
+      {
+        src: "/showcase/effects/walk-trail.gif",
+        still: "/showcase/effects/walk-trail-still.png",
+        alt: "The same robot walking with a trail of orange embers streaming behind its feet",
+        width: 160,
+        height: 120,
+        title: "a fiery trail",
+        caption: "`--sprite-frames 8 --sprite-fps 10`, lite artist. 2 generations.",
+      },
+      {
+        src: "/showcase/effects/walk-aura.gif",
+        still: "/showcase/effects/walk-aura-still.png",
+        alt: "The robot walking inside a pulsing pale blue ring, with small sparks rising from the ground",
+        width: 108,
+        height: 108,
+        title: "a pulsing aura",
+        caption: "the same walk as a 12-frame GIF, lite artist. 2 generations.",
+      },
+    ],
+    code: {
+      title: "terminal",
+      language: "shell",
+      copyId: "updates_vfx_animated_cli",
+      code: `
+pixelkiln vfx \\
+  --description "a fiery orange trail that streams behind the robot as it walks" \\
+  --sprite art/robot-walk.png --sprite-frames 8 --sprite-fps 10 \\
+  --out fx/walk-trail
+`,
+    },
+    links: [
+      { id: "updates_vfx_animated_cli_docs", label: "Read the vfx reference", href: "/docs/cli#described-effects-paid" },
+      { id: "updates_vfx_animated_manifest", label: "Animated sprites in a manifest", href: "/docs/generators#animated-sprites" },
+      { id: "updates_vfx_animated_measured", label: "See what was measured", href: "/docs/endpoints#vfx-animated-sprites-measured" },
+    ],
+  },
+  {
     id: "pixellab-init-images",
     provider: "PixelLab",
     date: "November 2026",

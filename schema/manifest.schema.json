@@ -1840,6 +1840,16 @@
                       "lite",
                       "pro"
                     ]
+                  },
+                  "spriteFrames": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 32
+                  },
+                  "spriteFps": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
                   }
                 },
                 "additionalProperties": false
