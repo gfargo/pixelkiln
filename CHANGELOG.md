@@ -1,3 +1,10 @@
+# [0.103.0](https://github.com/gfargo/pixelkiln/compare/v0.102.2...v0.103.0) (2026-11-14)
+
+
+### Features
+
+* **pixflux:** textGuidanceScale for pixflux styles ([60f2938](https://github.com/gfargo/pixelkiln/commit/60f293890cac85e62c616f46265b33a834f8fddd))
+
 ## [0.102.2](https://github.com/gfargo/pixelkiln/compare/v0.102.1...v0.102.2) (2026-11-14)
 
 
