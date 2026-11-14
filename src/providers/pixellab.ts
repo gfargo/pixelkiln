@@ -936,6 +936,7 @@ export class PixelLabProvider implements Provider {
         "flat shading", "basic shading", "medium shading", "detailed shading", "highly detailed shading",
       ])
       requirePixelLabOption("pixflux", "detail", spec.detail, ["low detail", "medium detail", "highly detailed"])
+      requirePixelLabOption("pixflux", "view", spec.styleView, ["side", "low top-down", "high top-down"])
     }
     if (spec.generator === "terrain") {
       if (spec.outline) {
@@ -2016,6 +2017,8 @@ export class PixelLabProvider implements Provider {
         outline: spec.outline,
         shading: spec.shading,
         detail: spec.detail,
+        // Only a view the style states: the resolved default would steer every scene and banner top-down.
+        view: spec.styleView,
         seed: spec.seed,
         ...(await initImageArgs(spec)),
       })

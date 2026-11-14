@@ -1519,6 +1519,8 @@ export class PixelLabClient {
     outline?: string
     shading?: string
     detail?: string
+    /** Camera angle, weakly guiding: side, low top-down or high top-down. */
+    view?: string
     seed?: number
   }): Promise<{ png: Buffer; usage: unknown }> {
     const body: Record<string, unknown> = {
@@ -1536,6 +1538,7 @@ export class PixelLabClient {
     if (args.outline) body.outline = args.outline
     if (args.shading) body.shading = args.shading
     if (args.detail) body.detail = args.detail
+    if (args.view) body.view = args.view
     if (args.seed != null) body.seed = args.seed
 
     const res = validateResponse(
