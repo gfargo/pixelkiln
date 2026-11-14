@@ -1,3 +1,10 @@
+# [0.98.0](https://github.com/gfargo/pixelkiln/compare/v0.97.0...v0.98.0) (2026-11-14)
+
+
+### Features
+
+* **terrain:** tileset reference images, sidescroller modes and the new shape options ([46382a8](https://github.com/gfargo/pixelkiln/commit/46382a8785d5e7287abbb9209f20ea943832b568))
+
 # [0.97.0](https://github.com/gfargo/pixelkiln/compare/v0.96.1...v0.97.0) (2026-11-14)
 
 
