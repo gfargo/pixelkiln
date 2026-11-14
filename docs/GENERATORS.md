@@ -190,6 +190,26 @@ hard `palette` constraint:
 A palette prompt is a request; `pixflux`'s swatch is a constraint. Measured
 two- and four-color outputs contained exactly the supplied colors.
 
+A `pixflux` style's `outline`, `shading` and `detail` are sent to PixelLab
+when set:
+
+| Field | Values |
+|---|---|
+| `outline` | `single color black outline`, `single color outline`, `selective outline`, `lineless` |
+| `shading` | `flat shading`, `basic shading`, `medium shading`, `detailed shading`, `highly detailed shading` |
+| `detail` | `low detail`, `medium detail`, `highly detailed` |
+
+Any other value is refused at `plan`. Note `detail`'s top value is `highly
+detailed` here, where `map` takes `high detail`.
+
+**Before November 2026 these three fields were not sent for `pixflux`.**
+They were already part of the asset's identity, so no hash or lock entry
+changed when that was fixed, and files already generated are untouched. A
+`pixflux` asset in a style that sets them will look different the next time
+it is regenerated, because PixelLab now sees the style. One prompt and seed
+run three ways (no fields, flat ones, rich ones) gave three different
+images, 1 generation each.
+
 Trade-offs:
 
 - rendering is flatter than `1dir`;
