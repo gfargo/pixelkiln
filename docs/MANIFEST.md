@@ -147,6 +147,11 @@ One asset using the fields most projects reach for:
 | `tileType` | enum | `hex`, `hex_pointy`, `isometric`, `oblique`, `octagon`, or `square_topdown`. |
 | `tileView` | enum | `top-down`, `high top-down`, `low top-down`, or `side`. |
 | `tileFeature` | enum | Connectable `roads`, `tileset`, or `building` structural set. |
+| `tileElevation` | `0` | `tiles`, `tileFeature: "tileset"` on square_topdown, isometric or oblique tiles. Plateau height in pixels: raises the first terrain with a cliff face down to the second. Up to 12, but the API caps it by tile size and view: 2 px for a 16px tile seen straight down, 4 px at 32px. |
+| `tileStepSlope` | `0` | `tiles`, with `tileElevation` above 0. How far the drop spreads: 0 a cliff, 2 a gentle slope. |
+| `tileBoundaryAmplitude` | `0` | `tiles`, `tileFeature: "tileset"`. How far the border between the terrains meanders, 0–0.3. |
+| `tileBoundarySeed` | `0` | `tiles`, with `tileBoundaryAmplitude`. Which meander, an integer. |
+| `buildingRoofProfile` | `gable` | `tiles`, `tileFeature: "building"` with `buildingLayout: "materials"`. Roof edge shape: `gable` (straight) or `round`. |
 | `outlineMode` | enum | `outline` or `segmentation`; segmentation avoids quilted ground seams. |
 | `terrainOrientation` | `top-down` | `terrain` only. `sidescroller` makes a platform set: prompt `1). <platform body> 2). <top layer>`, 16 or 32px, no mode, view, or shape controls. |
 | `terrainMode` | `standard` | `terrain` only. `standard` or `pro`. |

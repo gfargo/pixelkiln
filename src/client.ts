@@ -1062,6 +1062,14 @@ export class PixelLabClient {
     buildingFloorDescription?: string
     buildingFloor2Description?: string
     buildingWallAngle?: number
+    /** A materials-layout building kit: `gable` or `round` roof edges. */
+    roofProfile?: string
+    /** A `tileset` feature: plateau height in pixels (0-12), and how the drop spreads (0-2). */
+    elevation?: number
+    stepSlope?: number
+    /** A `tileset` feature: how far the border meanders (0-0.3), and which meander. */
+    boundaryAmplitude?: number
+    boundarySeed?: number
     outlineMode?: string
     seed?: number
     styleImages?: { base64: string; width: number; height: number }[]
@@ -1083,6 +1091,11 @@ export class PixelLabClient {
     if (args.buildingFloorDescription) body.building_floor_description = args.buildingFloorDescription
     if (args.buildingFloor2Description) body.building_floor2_description = args.buildingFloor2Description
     if (args.buildingWallAngle != null) body.building_wall_angle = args.buildingWallAngle
+    if (args.roofProfile) body.roof_profile = args.roofProfile
+    if (args.elevation != null) body.elevation = args.elevation
+    if (args.stepSlope != null) body.step_slope = args.stepSlope
+    if (args.boundaryAmplitude != null) body.boundary_amplitude = args.boundaryAmplitude
+    if (args.boundarySeed != null) body.boundary_seed = args.boundarySeed
     if (args.outlineMode) body.outline_mode = args.outlineMode
     if (args.seed != null) body.seed = args.seed
     if (args.styleImages?.length) body.style_images = args.styleImages

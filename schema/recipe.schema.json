@@ -261,6 +261,32 @@
               "minimum": 5,
               "maximum": 90
             },
+            "buildingRoofProfile": {
+              "type": "string",
+              "enum": [
+                "gable",
+                "round"
+              ]
+            },
+            "tileElevation": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 12
+            },
+            "tileStepSlope": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "tileBoundaryAmplitude": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.3
+            },
+            "tileBoundarySeed": {
+              "type": "integer",
+              "minimum": 0
+            },
             "outlineMode": {
               "type": "string",
               "enum": [
