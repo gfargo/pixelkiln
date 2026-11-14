@@ -56,6 +56,68 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "pixellab-tileset-options",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "Tilesets take your own textures, and platform sets cost a third",
+    summary:
+      "PixelLab replaced its sidescroller tileset model and added controls to both tileset endpoints. PixelKiln sends them from a manifest, and `plan` now prices a standard platform set at 1 generation, where it was 3. Every set below was generated for this page and billed what is shown.",
+    features: [
+      "`terrainReferences` hands PixelLab a PNG per terrain. It is used almost as the texture itself: the two striped swatches at right became the fill.",
+      "A sidescroller set takes `terrainMode`: standard for 1 generation, pro for 15. A standard set cannot connect to another, and `plan` says so before spending.",
+      "`terrainSideWallThickness` and `terrainSideWallPlacement` shape the wall on a raised bank; `terrainShapeSeed` reshuffles a ragged border.",
+      "`terrainEnhance: false` uses your terrain descriptions as written, and the walkable flags are stored with the set for maps and exports.",
+      "None of this moves an existing lockfile: each option enters a set's identity only when you set it.",
+    ],
+    figures: [
+      {
+        src: "/showcase/tilesets/references.png",
+        alt: "A sixteen-tile set of teal striped pools in a purple striped floor, beside the two small striped swatches it was made from",
+        width: 849,
+        height: 169,
+        title: "your texture, their borders",
+        caption: "a standard set from two hand-made 16×16 swatches (right). 1 generation.",
+        wide: true,
+        fill: true,
+      },
+      {
+        src: "/showcase/tilesets/sidescroller-modes.png",
+        alt: "Two sixteen-tile platform sets: light mossy stonework above, denser earth with a bright grass cap below",
+        width: 667,
+        height: 345,
+        title: "standard above, pro below",
+        caption: "the same prompt as a sidescroller set on each mode. 1 generation and 15.",
+        wide: true,
+        fill: true,
+      },
+    ],
+    code: {
+      title: "pixelkiln.manifest.json",
+      language: "json",
+      copyId: "updates_tileset_manifest",
+      code: `
+"styles": {
+  "cave":  { "generator": "terrain", "size": 16, "outDir": "tiles/cave" },
+  "ledge": { "generator": "terrain", "size": 16, "outDir": "tiles/ledge",
+             "terrainOrientation": "sidescroller", "terrainTransitionSize": 0.25,
+             "terrainPlatformThickness": 0.8 }
+},
+"assets": {
+  "pool": {
+    "prompt": "1). teal slime pool 2). purple crystal floor", "styles": ["cave"],
+    "terrainReferences": { "lower": "refs/slime.png", "upper": "refs/crystal.png" }
+  },
+  "moss": { "prompt": "1). mossy stone bricks 2). green grass", "styles": ["ledge"] }
+}
+`,
+    },
+    links: [
+      { id: "updates_tileset_references", label: "Terrain reference images", href: "/docs/tiles#terrain-reference-images" },
+      { id: "updates_tileset_fields", label: "Every terrain field", href: "/docs/manifest#style-fields" },
+      { id: "updates_tileset_measured", label: "See what was measured", href: "/docs/endpoints#tileset-options-november-2026-measured" },
+    ],
+  },
+  {
     id: "pixellab-asset-upkeep",
     provider: "PixelLab",
     date: "November 2026",

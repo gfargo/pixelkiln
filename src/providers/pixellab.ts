@@ -1029,6 +1029,26 @@ export class PixelLabProvider implements Provider {
     if (spec.terrainTileSize === 64 && spec.terrainMode !== "pro") {
       throw new Error('PixelLab terrain: a 64px tile needs terrainMode: "pro"')
     }
+    const standardOnly = {
+      terrainShapeSeed: spec.terrainShapeSeed,
+      terrainSideWallThickness: spec.terrainSideWallThickness,
+      terrainSideWallPlacement: spec.terrainSideWallPlacement,
+      terrainEnhance: spec.terrainEnhance,
+    }
+    const proSet = Object.entries(standardOnly).filter(([, value]) => value != null).map(([field]) => field)
+    if (pro && proSet.length) {
+      throw new Error(`PixelLab terrain: ${proSet.join(", ")} shape a standard set; terrainMode: "pro" ignores them`)
+    }
+    if (
+      (spec.terrainSideWallThickness != null || spec.terrainSideWallPlacement != null) &&
+      !(spec.terrainTransitionSize != null && spec.terrainTransitionSize > 0)
+    ) {
+      throw new Error("PixelLab terrain: terrainSideWallThickness and terrainSideWallPlacement shape the wall, which needs a terrainTransitionSize above 0")
+    }
+    if (spec.terrainPlatformThickness != null) {
+      throw new Error("PixelLab terrain: terrainPlatformThickness is a sidescroller control")
+    }
+    this.requireTerrainReferences(spec)
     if (
       spec.terrainShapeStyle &&
       spec.terrainTransitionSize != null &&
@@ -1057,7 +1077,6 @@ export class PixelLabProvider implements Provider {
    */
   private validateSidescrollerTerrain(spec: ResolvedSpec): void {
     const topDownOnly = {
-      terrainMode: spec.terrainMode,
       terrainShapeStyle: spec.terrainShapeStyle,
       terrainView: spec.terrainView,
       terrainSpreadX: spec.terrainSpreadX,
@@ -1068,6 +1087,11 @@ export class PixelLabProvider implements Provider {
       terrainBoundarySeed: spec.terrainBoundarySeed,
       terrainStepSlope: spec.terrainStepSlope,
       terrainConnectDiagonals: spec.terrainConnectDiagonals,
+      terrainShapeSeed: spec.terrainShapeSeed,
+      terrainSideWallThickness: spec.terrainSideWallThickness,
+      terrainSideWallPlacement: spec.terrainSideWallPlacement,
+      terrainLowerWalkable: spec.terrainLowerWalkable,
+      terrainUpperWalkable: spec.terrainUpperWalkable,
     }
     const set = Object.entries(topDownOnly).filter(([, value]) => value != null).map(([field]) => field)
     if (set.length) {
@@ -1076,9 +1100,27 @@ export class PixelLabProvider implements Provider {
     if (spec.terrainTileSize !== 16 && spec.terrainTileSize !== 32) {
       throw new Error(`PixelLab terrain: a sidescroller set's tiles are 16 or 32px, got ${spec.terrainTileSize}`)
     }
-    if (spec.terrainTransitionSize != null && ![0, 0.25, 0.5, 1].includes(spec.terrainTransitionSize)) {
-      throw new Error("PixelLab terrain: a sidescroller set's terrainTransitionSize must be 0, 0.25, 0.5, or 1")
+    // Since November 2026 both sidescroller pipelines stop at half a tile.
+    if (spec.terrainTransitionSize != null && ![0, 0.25, 0.5].includes(spec.terrainTransitionSize)) {
+      throw new Error("PixelLab terrain: a sidescroller set's terrainTransitionSize must be 0, 0.25, or 0.5 (the top layer stops at half a tile)")
     }
+    const pro = spec.terrainMode === "pro"
+    if (pro && (spec.terrainEnhance != null || spec.terrainPlatformThickness != null)) {
+      throw new Error('PixelLab terrain: terrainEnhance and terrainPlatformThickness shape a standard sidescroller set; terrainMode: "pro" ignores them')
+    }
+    if (spec.terrainConnect?.lower && !pro) {
+      throw new Error('PixelLab terrain: a sidescroller set connects to another set\'s platform only with terrainMode: "pro"')
+    }
+    if (spec.terrainReferences?.upper) {
+      throw new Error("PixelLab terrain: a sidescroller set's upper terrain is empty air; it takes no upper reference")
+    }
+    if (spec.terrainReferences?.lower && !pro) {
+      throw new Error('PixelLab terrain: a sidescroller set keeps a lower (platform body) reference only with terrainMode: "pro"')
+    }
+    if (spec.terrainReferences?.transition && pro) {
+      throw new Error('PixelLab terrain: a sidescroller set textures its top layer from a transition reference only on standard mode; drop it or terrainMode: "pro"')
+    }
+    this.requireTerrainReferences(spec, spec.terrainTileSize)
     if (spec.terrainConnect?.upper) {
       throw new Error(
         "PixelLab terrain: a sidescroller set's upper terrain is empty air; only its lower (platform) terrain can connect",
@@ -1090,6 +1132,20 @@ export class PixelLabProvider implements Provider {
       throw new Error(
         `PixelLab terrain: ${link.assetId}'s upper terrain is empty air; connect to its lower (platform) terrain`,
       )
+    }
+  }
+
+  /** Reference files must exist; a sidescroller's must be a square PNG of the tile size. */
+  private requireTerrainReferences(spec: ResolvedSpec, tileSize?: number): void {
+    for (const [side, reference] of Object.entries(spec.terrainReferences ?? {})) {
+      if (!reference?.sha256) {
+        throw new Error(`PixelLab terrain: the ${side} reference is missing or not a PNG: ${reference?.file}`)
+      }
+      if (tileSize != null && (reference.width !== tileSize || reference.height !== tileSize)) {
+        throw new Error(
+          `PixelLab terrain: a sidescroller set's ${side} reference must be a ${tileSize}x${tileSize} PNG; ${reference.file} is ${reference.width}x${reference.height}`,
+        )
+      }
     }
   }
 
@@ -1965,6 +2021,11 @@ export class PixelLabProvider implements Provider {
         shading: spec.shading,
         detail: spec.detail,
         seed: spec.seed,
+        mode: spec.terrainMode,
+        enhance: spec.terrainEnhance,
+        platformThickness: spec.terrainPlatformThickness,
+        lowerReferenceImage: await terrainReferenceImage(spec, "lower"),
+        transitionReferenceImage: await terrainReferenceImage(spec, "transition"),
       })
       return {
         jobId: res.tileset_id,
@@ -2001,6 +2062,15 @@ export class PixelLabProvider implements Provider {
         detail: spec.detail,
         seed: spec.seed,
         targetPalette: targetPaletteFor(spec),
+        shapeSeed: spec.terrainShapeSeed,
+        sideWallThickness: spec.terrainSideWallThickness,
+        sideWallPlacement: spec.terrainSideWallPlacement,
+        enhance: spec.terrainEnhance,
+        lowerWalkable: spec.terrainLowerWalkable,
+        upperWalkable: spec.terrainUpperWalkable,
+        lowerReferenceImage: await terrainReferenceImage(spec, "lower"),
+        upperReferenceImage: await terrainReferenceImage(spec, "upper"),
+        transitionReferenceImage: await terrainReferenceImage(spec, "transition"),
       })
       return {
         jobId: res.tileset_id,
@@ -3386,6 +3456,22 @@ export function sendsTargetPalette(spec: ResolvedSpec): boolean {
     default:
       return false
   }
+}
+
+/**
+ * A terrain set's reference PNG for one side, read at submit. The plan hashed
+ * it when the manifest was resolved; if the file has changed since, the
+ * request would not match what was planned and priced, so it is refused.
+ */
+async function terrainReferenceImage(spec: ResolvedSpec, side: "lower" | "upper" | "transition"): Promise<Base64Image | undefined> {
+  const reference = spec.terrainReferences?.[side]
+  if (!reference) return undefined
+  if (!existsSync(reference.file)) throw new Error(`terrain ${side} reference is missing: ${reference.file}`)
+  const bytes = readFileSync(reference.file)
+  if (sha256(bytes) !== reference.sha256) {
+    throw new Error(`terrain ${side} reference changed after the manifest was resolved: ${reference.file}; run the command again`)
+  }
+  return { base64: bytes.toString("base64"), format: "png" }
 }
 
 /** The style's palette, `paletteName` and `maxColors` as the one `target_palette` every wrapped endpoint takes; undefined when the route sends none or the style sets none. */

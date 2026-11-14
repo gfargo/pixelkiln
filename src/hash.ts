@@ -100,6 +100,23 @@ export function specHash(
       terrainBoundarySeed: spec.terrainBoundarySeed,
       terrainStepSlope: spec.terrainStepSlope,
       terrainConnectDiagonals: spec.terrainConnectDiagonals,
+      // Added after the fields above, each only when set, so no terrain entry
+      // written before them changes hash. The walkable flags change no pixel
+      // and are deliberately not here.
+      terrainShapeSeed: spec.terrainShapeSeed,
+      terrainSideWallThickness: spec.terrainSideWallThickness,
+      terrainSideWallPlacement: spec.terrainSideWallPlacement,
+      terrainEnhance: spec.terrainEnhance,
+      terrainPlatformThickness: spec.terrainPlatformThickness,
+      // Reference images enter as their bytes' hashes, never their paths.
+      terrainReferences: spec.terrainReferences && Object.keys(spec.terrainReferences).length
+        ? Object.fromEntries(
+            (["lower", "upper", "transition"] as const).flatMap((side) => {
+              const reference = spec.terrainReferences![side]
+              return reference ? [[side, reference.sha256]] : []
+            }),
+          )
+        : undefined,
       // "top-down" is the default and draws the same set as leaving it out.
       terrainOrientation: spec.terrainOrientation === "sidescroller" ? spec.terrainOrientation : undefined,
       // Which set and which of its terrains, not that terrain's id: the id

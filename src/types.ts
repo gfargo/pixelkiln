@@ -335,8 +335,9 @@ export function terrainTileCount(
  * Cost of one terrain set, in generations. Flat per set, not tiered by the
  * canvas the way `tiles` is:
  *
- *   sidescroller  3, measured (a 16px set at transitionSize 0.25 billed
- *                 exactly 3)
+ *   sidescroller  1 on standard (the default), 15 on pro. PixelLab retired
+ *                 the model this endpoint ran until November 2026, which
+ *                 billed 3 for a 16px set; see docs/ENDPOINTS.md
  *   pro           15 for tiles up to 32px, 25 at 64px, PixelLab's own quote
  *   standard      4, the top of PixelLab's quoted 1-4 (mean 3.1), so the
  *                 plan never under-reads
@@ -344,7 +345,7 @@ export function terrainTileCount(
  * The top-down prices are PixelLab's MCP tool description, not measurements.
  */
 export function terrainCost(mode: string | undefined, tileSize: number, orientation?: string): number {
-  if (orientation === "sidescroller") return 3
+  if (orientation === "sidescroller") return mode === "pro" ? 15 : 1
   if (mode === "pro") return tileSize <= 32 ? 15 : 25
   return 4
 }
@@ -1537,6 +1538,48 @@ const StyleObjectSchema = z
      */
     terrainConnectDiagonals: z.boolean().optional(),
     /**
+     * `terrain` generator only, standard mode, top-down. Which ragged border
+     * `terrainRaggedness` draws, 0 to 99 (the website's Reshuffle): another
+     * number gives a different boundary at the same raggedness. API default 0.
+     */
+    terrainShapeSeed: z.number().int().min(0).max(99).optional(),
+    /**
+     * `terrain` generator only, standard mode, top-down, with
+     * `terrainTransitionSize` above 0. How thick the wall reads on the top
+     * rim and down both sides of the front face, 0 to 1. The website starts
+     * at 0.1.
+     */
+    terrainSideWallThickness: z.number().min(0).max(1).optional(),
+    /**
+     * `terrain` generator only, standard mode, top-down, with
+     * `terrainTransitionSize` above 0. Which side of the border the wall sits
+     * on: 0 sticks out past the terrain (the API default), 1 is carved into
+     * it so the shape stays put. The website starts at 0.5.
+     */
+    terrainSideWallPlacement: z.number().min(0).max(1).optional(),
+    /**
+     * `terrain` generator only, standard mode. PixelLab rewrites the terrain
+     * descriptions and picks base colors before drawing unless this is
+     * false. On by default upstream; set false to have your wording used as
+     * written.
+     */
+    terrainEnhance: z.boolean().optional(),
+    /**
+     * `terrain` generator only, a standard sidescroller set. How thick the
+     * platform body is, 0 thin to 1 thick. Left out, PixelLab fits it to
+     * `terrainTransitionSize`.
+     */
+    terrainPlatformThickness: z.number().min(0).max(1).optional(),
+    /**
+     * `terrain` generator only, top-down. Whether each terrain can be walked
+     * on, stored with the set for PixelLab's maps and engine exports (left
+     * out, those guess from the terrain's name). They change no pixel, so
+     * they are sent when the set is generated and are not part of its
+     * identity: changing one later does not make the set stale.
+     */
+    terrainLowerWalkable: z.boolean().optional(),
+    terrainUpperWalkable: z.boolean().optional(),
+    /**
      * `terrain` generator only. Visual height of the step between lower and
      * upper terrain. Without `terrainShapeStyle`, only 0, 0.25, 0.5, or 1 are
      * accepted. Standard switches to the 25-tile cliff layout at 1, where
@@ -1983,6 +2026,21 @@ export const AssetSchema = z
      * (a sword hand, a parted fringe) comes out the other way round.
      */
     mirror: z.string().min(1).optional(),
+    /**
+     * `terrain` styles only: a PNG per terrain for PixelLab to take that
+     * terrain's look from, paths relative to the manifest. Top-down sets
+     * take `lower`, `upper` and `transition`. A sidescroller set takes
+     * `lower` (the platform body, pro mode) or `transition` (the surface
+     * layer, standard mode), each a square PNG of the tile size.
+     */
+    terrainReferences: z
+      .object({
+        lower: z.string().min(1).optional(),
+        upper: z.string().min(1).optional(),
+        transition: z.string().min(1).optional(),
+      })
+      .strict()
+      .optional(),
     /** Made from existing pixels by a local transform; see AssetDeriveSchema. Free; the provider is never called. */
     derive: AssetDeriveSchema.optional(),
     /** Built by a tool outside pixelkiln; see AssetExternalSchema. Never generated. */
@@ -2739,6 +2797,15 @@ export interface ResolvedSpec {
   terrainBoundarySeed?: number
   terrainStepSlope?: number
   terrainConnectDiagonals?: boolean
+  terrainShapeSeed?: number
+  terrainSideWallThickness?: number
+  terrainSideWallPlacement?: number
+  terrainEnhance?: boolean
+  terrainPlatformThickness?: number
+  terrainLowerWalkable?: boolean
+  terrainUpperWalkable?: boolean
+  /** `terrain` generator only: reference PNGs per terrain, hashed at resolve time. A missing file has no hash. */
+  terrainReferences?: Partial<Record<"lower" | "upper" | "transition", ResolvedTerrainReference>>
   terrainTransitionSize?: number
   terrainView?: string
   terrainOrientation?: string
@@ -2747,6 +2814,14 @@ export interface ResolvedSpec {
   /** `isometricTile` generator only. See StyleSchema for what each one means. */
   isometricTileSize?: number
   isometricTileShape?: string
+}
+
+export interface ResolvedTerrainReference {
+  /** Absolute path. */
+  file: string
+  sha256: string | null
+  width: number | null
+  height: number | null
 }
 
 /** A `connect` side resolved against the other set's spec in the same style. */

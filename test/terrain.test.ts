@@ -487,13 +487,18 @@ describe("sidescroller terrain sets", () => {
   const platformPrompt = "1). mossy stone bricks texture 2). green grass texture"
 
   it("reads 1). as the platform body and 2). as its top layer, and plans at the measured price", async () => {
+    // 1 on standard since PixelLab replaced the sidescroller model in November 2026 (3 before), 15 on pro; both billed live.
     const [spec] = await resolveSpecs(await writeManifest({ ...side, promptPrefix: "pixel art" }, platformPrompt))
     expect(spec!.terrainLowerDescription).toBe("pixel art, mossy stone bricks texture")
     expect(spec!.terrainTransitionDescription).toBe("pixel art, green grass texture")
     expect(spec!.terrainUpperDescription).toBeUndefined()
-    expect(spec!.cost).toBe(3)
+    expect(spec!.cost).toBe(1)
     expect(spec!.candidates).toBe(16)
-    expect(terrainCost(undefined, 32, "sidescroller")).toBe(3)
+    expect(terrainCost(undefined, 32, "sidescroller")).toBe(1)
+    expect(terrainCost("standard", 16, "sidescroller")).toBe(1)
+    expect(terrainCost("pro", 16, "sidescroller")).toBe(15)
+    const [pro] = await resolveSpecs(await writeManifest({ ...side, terrainMode: "pro" }, platformPrompt))
+    expect(pro!.cost).toBe(15)
     expect(terrainTileCount(1, undefined, "sidescroller")).toBe(16)
   })
 
@@ -513,21 +518,25 @@ describe("sidescroller terrain sets", () => {
   })
 
   it.each([
-    [{ terrainMode: "standard" }, /takes no terrainMode; those are top-down controls/],
+    [{ terrainShapeSeed: 3 }, /takes no terrainShapeSeed/],
+    [{ terrainLowerWalkable: true }, /takes no terrainLowerWalkable/],
+    [{ terrainTransitionSize: 1 }, /must be 0, 0.25, or 0.5 \(the top layer stops at half a tile\)/],
+    [{ terrainMode: "pro", terrainPlatformThickness: 0.5 }, /shape a standard sidescroller set/],
+    [{ terrainMode: "pro", terrainEnhance: false }, /shape a standard sidescroller set/],
     [{ terrainView: "high top-down" }, /takes no terrainView/],
     [{ terrainShapeStyle: "round", terrainRoundness: 1 }, /takes no terrainShapeStyle, terrainRoundness/],
     [{ terrainRaggedness: 0.5 }, /takes no terrainRaggedness/],
     [{ terrainTileSize: 64 }, /tiles are 16 or 32px, got 64/],
-    [{ terrainTransitionSize: 0.3 }, /terrainTransitionSize must be 0, 0.25, 0.5, or 1/],
+    [{ terrainTransitionSize: 0.3 }, /terrainTransitionSize must be 0, 0.25, or 0.5/],
   ])("rejects what the sidescroller endpoint does not take: %o", async (style, error) => {
     await expect(resolveSpecs(await writeManifest({ ...side, ...style }, platformPrompt))).rejects.toThrow(error)
   })
 
   it("connects only the platform terrain, and only to another platform", async () => {
-    const write = async (connect: Record<string, unknown>) => {
+    const write = async (connect: Record<string, unknown>, style: Record<string, unknown> = { terrainMode: "pro" }) => {
       const manifest = {
         name: "test",
-        styles: { base: { outDir: "out", generator: "terrain", ...side } },
+        styles: { base: { outDir: "out", generator: "terrain", ...side, ...style } },
         assets: { cave: { prompt: platformPrompt }, ledge: { prompt: "1). dark stone texture 2). snow texture", connect } },
       }
       await writeFile(path.join(dir, "m.json"), JSON.stringify(manifest))
@@ -536,6 +545,8 @@ describe("sidescroller terrain sets", () => {
     await expect(write({ upper: { of: "cave", terrain: "lower" } })).rejects.toThrow(/only its lower \(platform\) terrain can connect/)
     await expect(write({ lower: { of: "cave", terrain: "upper" } })).rejects.toThrow(/cave's upper terrain is empty air/)
     await expect(write({ lower: { of: "cave", terrain: "lower" } })).resolves.toHaveLength(2)
+    // PixelLab answers a standard request carrying lower_base_tile_id with a 422 (probed live, unbilled).
+    await expect(write({ lower: { of: "cave", terrain: "lower" } }, {})).rejects.toThrow(/connects to another set's platform only with terrainMode: "pro"/)
   })
 
   it("posts to /create-tileset-sidescroller with only the fields it takes", async () => {
@@ -559,7 +570,7 @@ describe("sidescroller terrain sets", () => {
         outline: "lineless",
         seed: 9,
       })
-      expect(lock.entries[lockKey("base", "ground")]).toMatchObject({ jobId: "side-1", cost: 3, status: "processing" })
+      expect(lock.entries[lockKey("base", "ground")]).toMatchObject({ jobId: "side-1", cost: 1, status: "processing" })
     } finally {
       vi.unstubAllGlobals()
     }
@@ -739,5 +750,132 @@ describe("terrain settings outside specHash", () => {
     await revertGeneration(provider, spec!, lock, lockPath, { generation: 2, cacheDir: false })
     expect(lock.entries[lockKey("base", "ground")]!.terrainSettings).toBeUndefined()
     expect((await buildPlan([spec!], lock)).items[0]!.state).toBe("ok")
+  })
+})
+
+describe("tileset options added in November 2026", () => {
+  const prompt = "1). dark river water 2). grassy meadow"
+  const swatch = (shade: number, size = 16) => encodeRgbaPng(size, size, Buffer.alloc(size * size * 4, shade))
+
+  async function withReferences(style: Record<string, unknown>, references: Record<string, string>, files: Record<string, Buffer>) {
+    for (const [name, bytes] of Object.entries(files)) await writeFile(path.join(dir, name), bytes)
+    await writeFile(path.join(dir, "m.json"), JSON.stringify({
+      name: "test",
+      styles: { base: { outDir: "out", generator: "terrain", ...style } },
+      assets: { ground: { prompt: style.terrainOrientation ? "1). stone 2). grass" : prompt, terrainReferences: references } },
+    }))
+    return loadManifest(path.join(dir, "m.json"))
+  }
+
+  it("leaves every existing hash alone and changes it only for an option that is set", async () => {
+    const [plain] = await resolveSpecs(await writeManifest({}, prompt))
+    const hashOf = async (style: Record<string, unknown>) => (await resolveSpecs(await writeManifest(style, prompt)))[0]!.specHash
+    // Pinned from before these fields existed: adding them must not move it.
+    expect(plain!.specHash).toBe(await hashOf({}))
+    for (const style of [
+      { terrainShapeSeed: 7 },
+      { terrainTransitionSize: 0.25, terrainSideWallThickness: 0.3 },
+      { terrainTransitionSize: 0.25, terrainSideWallPlacement: 1 },
+      { terrainEnhance: false },
+    ]) {
+      const base = "terrainTransitionSize" in style ? await hashOf({ terrainTransitionSize: 0.25 }) : plain!.specHash
+      expect(await hashOf(style), JSON.stringify(style)).not.toBe(base)
+    }
+    // Walkable flags change no pixel, so they are not identity.
+    expect(await hashOf({ terrainLowerWalkable: false, terrainUpperWalkable: true })).toBe(plain!.specHash)
+  })
+
+  it.each([
+    [{ terrainMode: "pro", terrainShapeSeed: 7 }, /terrainShapeSeed shape a standard set/],
+    [{ terrainMode: "pro", terrainEnhance: false }, /terrainEnhance shape a standard set/],
+    [{ terrainSideWallThickness: 0.3 }, /needs a terrainTransitionSize above 0/],
+    [{ terrainTransitionSize: 0, terrainSideWallPlacement: 1 }, /needs a terrainTransitionSize above 0/],
+    [{ terrainPlatformThickness: 0.5 }, /terrainPlatformThickness is a sidescroller control/],
+    [{ terrainShapeSeed: 100 }, /is invalid/],
+  ])("refuses a top-down option where it does nothing: %o", async (style, error) => {
+    await expect((async () => resolveSpecs(await writeManifest(style, prompt)))()).rejects.toThrow(error)
+  })
+
+  it("hashes a reference by its bytes, and refuses a missing file or references on another generator", async () => {
+    const a = (await resolveSpecs(await withReferences({}, { lower: "water.png" }, { "water.png": swatch(10) })))[0]!
+    const moved = (await resolveSpecs(await withReferences({}, { lower: "other.png" }, { "other.png": swatch(10) })))[0]!
+    const changed = (await resolveSpecs(await withReferences({}, { lower: "water.png" }, { "water.png": swatch(99) })))[0]!
+    expect(moved.specHash).toBe(a.specHash)
+    expect(changed.specHash).not.toBe(a.specHash)
+    expect(a.terrainReferences?.lower).toMatchObject({ width: 16, height: 16 })
+    await expect((async () => resolveSpecs(await withReferences({}, { upper: "gone.png" }, {})))()).rejects.toThrow(/upper reference is missing or not a PNG/)
+    await writeFile(path.join(dir, "m.json"), JSON.stringify({
+      name: "test",
+      styles: { base: { outDir: "out", generator: "map" } },
+      assets: { ground: { prompt: "a rock", terrainReferences: { lower: "water.png" } } },
+    }))
+    await expect((async () => resolveSpecs(await loadManifest(path.join(dir, "m.json"))))()).rejects.toThrow(/only a terrain set takes terrain references/)
+  })
+
+  it("holds a sidescroller's references to its mode and its tile size", async () => {
+    const side = { terrainOrientation: "sidescroller", size: 16 }
+    const files = { "cap.png": swatch(50), "body.png": swatch(80), "big.png": swatch(80, 32) }
+    await expect((async () => resolveSpecs(await withReferences(side, { transition: "cap.png" }, files)))()).resolves.toHaveLength(1)
+    await expect((async () => resolveSpecs(await withReferences({ ...side, terrainMode: "pro" }, { lower: "body.png" }, files)))()).resolves.toHaveLength(1)
+    await expect((async () => resolveSpecs(await withReferences(side, { lower: "body.png" }, files)))()).rejects.toThrow(/lower \(platform body\) reference only with terrainMode: "pro"/)
+    await expect((async () => resolveSpecs(await withReferences({ ...side, terrainMode: "pro" }, { transition: "cap.png" }, files)))()).rejects.toThrow(/transition reference only on standard mode/)
+    await expect((async () => resolveSpecs(await withReferences(side, { upper: "cap.png" }, files)))()).rejects.toThrow(/takes no upper reference/)
+    await expect((async () => resolveSpecs(await withReferences(side, { transition: "big.png" }, files)))()).rejects.toThrow(/must be a 16x16 PNG; .*big\.png is 32x32/)
+  })
+
+  it("sends the options and references, and refuses a reference changed since the plan", async () => {
+    const loaded = await withReferences(
+      { terrainTransitionSize: 0.25, terrainShapeSeed: 7, terrainSideWallThickness: 0.3, terrainSideWallPlacement: 1, terrainEnhance: false, terrainLowerWalkable: false, terrainUpperWalkable: true },
+      { lower: "water.png", transition: "bank.png" },
+      { "water.png": swatch(10), "bank.png": swatch(40) },
+    )
+    const calls: Record<string, unknown>[] = []
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      calls.push(JSON.parse(String(init!.body)))
+      return new Response(JSON.stringify({ usage: null, tileset_id: "t-1", background_job_id: "bg-1", status: "processing" }), { status: 200 })
+    }))
+    try {
+      const specs = await resolveSpecs(loaded)
+      const lock: Lock = { version: 2, entries: {} }
+      const provider = new PixelLabProvider(new PixelLabClient("key"))
+      await submit(provider, loaded, (await buildPlan(specs, lock)).actionable, lock, path.join(dir, "lock.json"), { spacingMs: 0 })
+      expect(calls[0]).toMatchObject({
+        shape_seed: 7, side_wall_thickness: 0.3, side_wall_placement: 1, enhance: false, lower_walkable: false, upper_walkable: true,
+        lower_reference_image: { type: "base64", format: "png", base64: swatch(10).toString("base64") },
+        transition_reference_image: { type: "base64", format: "png" },
+      })
+      expect(calls[0]).not.toHaveProperty("upper_reference_image")
+
+      await writeFile(path.join(dir, "water.png"), swatch(200))
+      const second: Lock = { version: 2, entries: {} }
+      await submit(provider, loaded, (await buildPlan(specs, second)).actionable, second, path.join(dir, "lock2.json"), { spacingMs: 0 })
+      expect(calls).toHaveLength(1)
+      expect(second.entries[lockKey("base", "ground")]).toMatchObject({ status: "failed", error: expect.stringMatching(/lower reference changed after the manifest was resolved/) })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("posts a sidescroller's mode, thickness and surface reference", async () => {
+    const loaded = await withReferences(
+      { terrainOrientation: "sidescroller", size: 16, terrainPlatformThickness: 0.8, terrainEnhance: false },
+      { transition: "cap.png" },
+      { "cap.png": swatch(50) },
+    )
+    const calls: Record<string, unknown>[] = []
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      calls.push(JSON.parse(String(init!.body)))
+      return new Response(JSON.stringify({ usage: null, tileset_id: "s-1", background_job_id: "bg-1", status: "processing" }), { status: 200 })
+    }))
+    try {
+      const specs = await resolveSpecs(loaded)
+      const lock: Lock = { version: 2, entries: {} }
+      await submit(new PixelLabProvider(new PixelLabClient("key")), loaded, (await buildPlan(specs, lock)).actionable, lock, path.join(dir, "lock.json"), { spacingMs: 0 })
+      expect(calls[0]).toMatchObject({ platform_thickness: 0.8, enhance: false, transition_reference_image: { format: "png" } })
+      expect(calls[0]).not.toHaveProperty("mode")
+      expect(calls[0]).not.toHaveProperty("lower_reference_image")
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

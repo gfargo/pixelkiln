@@ -759,14 +759,24 @@ export function parseProFlashQuote(raw: unknown): ProFlashQuote {
 /**
  * PixelLab explains a refused request in the body, `{"detail": "..."}`: the
  * art's bounds for a canvas that would crop it, the seconds a loop needs.
- * Worth showing; a bare status code leaves the user guessing. Only a plain
- * string on a 4xx is used, so a validation array or an HTML page is not.
+ * Worth showing; a bare status code leaves the user guessing. A validation
+ * refusal carries a list of messages instead, which are joined. Anything
+ * else on a 4xx (an HTML page, an unknown shape) adds nothing.
  */
 function refusalReason(status: number, body: string): string {
   if (status < 400 || status >= 500 || !body.startsWith("{")) return ""
   try {
     const detail = (JSON.parse(body) as { detail?: unknown }).detail
-    return typeof detail === "string" && detail ? `: ${detail.slice(0, 400)}` : ""
+    if (typeof detail === "string" && detail) return `: ${detail.slice(0, 400)}`
+    // A validation refusal is a list, each with a `msg` ("Value error, ...").
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => (item && typeof item === "object" && typeof (item as { msg?: unknown }).msg === "string" ? (item as { msg: string }).msg : ""))
+        .filter(Boolean)
+        .map((msg) => msg.replace(/^Value error, /, ""))
+      if (messages.length) return `: ${messages.join("; ").slice(0, 400)}`
+    }
+    return ""
   } catch {
     return ""
   }
@@ -1089,11 +1099,33 @@ export class PixelLabClient {
     seed?: number
     /** `mode: "pro"` only: standard sets take no palette (pixen picks its own colours). */
     targetPalette?: TargetPaletteArg
+    /** Standard only: which ragged border `raggedness` draws, 0-99. */
+    shapeSeed?: number
+    /** Standard only, with a transition size above 0. */
+    sideWallThickness?: number
+    sideWallPlacement?: number
+    /** Standard only: false sends the descriptions as written. */
+    enhance?: boolean
+    lowerWalkable?: boolean
+    upperWalkable?: boolean
+    lowerReferenceImage?: Base64Image
+    upperReferenceImage?: Base64Image
+    transitionReferenceImage?: Base64Image
   }): Promise<{ tileset_id: string; background_job_id: string; status: string }> {
     const body: Record<string, unknown> = {
       lower_description: args.lowerDescription,
       upper_description: args.upperDescription,
     }
+    const image = (value: Base64Image) => ({ type: "base64", base64: value.base64, format: value.format })
+    if (args.shapeSeed != null) body.shape_seed = args.shapeSeed
+    if (args.sideWallThickness != null) body.side_wall_thickness = args.sideWallThickness
+    if (args.sideWallPlacement != null) body.side_wall_placement = args.sideWallPlacement
+    if (args.enhance != null) body.enhance = args.enhance
+    if (args.lowerWalkable != null) body.lower_walkable = args.lowerWalkable
+    if (args.upperWalkable != null) body.upper_walkable = args.upperWalkable
+    if (args.lowerReferenceImage) body.lower_reference_image = image(args.lowerReferenceImage)
+    if (args.upperReferenceImage) body.upper_reference_image = image(args.upperReferenceImage)
+    if (args.transitionReferenceImage) body.transition_reference_image = image(args.transitionReferenceImage)
     if (args.transitionDescription) body.transition_description = args.transitionDescription
     if (args.lowerBaseTileId) body.lower_base_tile_id = args.lowerBaseTileId
     if (args.upperBaseTileId) body.upper_base_tile_id = args.upperBaseTileId
@@ -1140,8 +1172,23 @@ export class PixelLabClient {
     shading?: string
     detail?: string
     seed?: number
+    /** `standard` (the default, 1 generation) or `pro` (15). */
+    mode?: string
+    /** Standard only. */
+    enhance?: boolean
+    platformThickness?: number
+    /** Standard only: the surface layer's texture. */
+    transitionReferenceImage?: Base64Image
+    /** Pro only: the platform body to keep. */
+    lowerReferenceImage?: Base64Image
   }): Promise<{ tileset_id: string; background_job_id: string; status: string }> {
     const body: Record<string, unknown> = { lower_description: args.lowerDescription }
+    const image = (value: Base64Image) => ({ type: "base64", base64: value.base64, format: value.format })
+    if (args.mode) body.mode = args.mode
+    if (args.enhance != null) body.enhance = args.enhance
+    if (args.platformThickness != null) body.platform_thickness = args.platformThickness
+    if (args.transitionReferenceImage) body.transition_reference_image = image(args.transitionReferenceImage)
+    if (args.lowerReferenceImage) body.lower_reference_image = image(args.lowerReferenceImage)
     if (args.transitionDescription) body.transition_description = args.transitionDescription
     if (args.lowerBaseTileId) body.lower_base_tile_id = args.lowerBaseTileId
     if (args.tileSize != null) body.tile_size = { width: args.tileSize, height: args.tileSize }
