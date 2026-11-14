@@ -120,7 +120,17 @@ describe("a pixflux style's outline, shading and detail", () => {
     expect(await posted({ outline: "lineless", shading: "flat shading", detail: "highly detailed" }))
       .toMatchObject({ outline: "lineless", shading: "flat shading", detail: "highly detailed" })
     const bare = await posted({})
-    for (const key of ["outline", "shading", "detail"]) expect(bare).not.toHaveProperty(key)
+    for (const key of ["outline", "shading", "detail", "view"]) expect(bare).not.toHaveProperty(key)
+  })
+
+  it("sends a view only when the style states one, without moving the hash", async () => {
+    expect(await posted({ view: "side" })).toMatchObject({ view: "side" })
+    const hash = async (style: Record<string, unknown>) => (await resolveSpecs(await loadStyled(style)))[0]!.specHash
+    // No view and the default it resolves to were one identity before, and still are.
+    expect(await hash({ view: "high top-down" })).toBe(await hash({}))
+    expect(await hash({ view: "side" })).not.toBe(await hash({}))
+    const loaded = await loadStyled({ view: "top-down" })
+    await expect(resolveSpecs(loaded, { provider: new PixelLabProvider(new PixelLabClient("key")) })).rejects.toThrow(/pixflux view must be one of: side, low top-down, high top-down/)
   })
 
   it("keep the hash they always had", async () => {

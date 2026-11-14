@@ -2801,6 +2801,8 @@ export interface ResolvedSpec {
   width: number
   height: number
   view: string
+  /** The style's own `view`, absent when `view` above is the generator's default. Not part of identity; `view` is. */
+  styleView?: string
   size: number
   styleImagePaths: string[]
   outFile: string

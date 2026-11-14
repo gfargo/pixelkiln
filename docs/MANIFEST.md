@@ -132,7 +132,7 @@ One asset using the fields most projects reach for:
 | `promptSuffix` | `""` | Appended to every participating asset prompt. |
 | `styleImages` | `[]` | `{ "path": "..." }` reference images. Paths are manifest-relative. |
 | `size` | integer 16–8192 | Square size. Each provider and generator applies its own narrower limits. For PixelLab `1dir`, a style reference's dimensions take precedence. |
-| `view` | string | PixelLab `map`: `low top-down`, `high top-down`, or `side`. Other generators interpret this separately. |
+| `view` | string | PixelLab `map` and `pixflux`: `low top-down`, `high top-down`, or `side`. `pixflux` is sent it only when the style sets one. Other generators interpret this separately. |
 | `outline` | string | PixelLab `map`: `single color outline`, `selective outline`, or `lineless`. |
 | `shading` | string | PixelLab `map`: `flat shading`, `basic shading`, `medium shading`, or `detailed shading`. |
 | `detail` | string | PixelLab `map`: `low detail`, `medium detail`, or `high detail`. |
