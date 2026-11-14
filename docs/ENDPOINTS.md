@@ -86,8 +86,8 @@ not probed.
 | `GET /balance` | `doctor`, `gen` balance reads, gallery | Measured live | Free. Count is at `subscription.generations` ([Reproducing these numbers](#reproducing-these-numbers)). | Only the subscription shape is documented; a credit-only account's reply is not recorded. | Low |
 | `GET /pro-flash/cost` | Pro Flash estimates for `character` and `imageProFlash` | Measured live | Free quote. For `operation=character`: image 5 up to 96px, 6 to 208px, 9 above, plus rotations; two live jobs (7 and 2) billed exactly the quote ([Characters, measured](#characters-measured)). | Quotes for `create`, `edit` and `inpaint` are recorded from PixelLab's MCP `get_pro_flash_capabilities`, not from this route (roadmap, "Pro Flash for plain image create, edit, and inpaint"). | Low |
 | `GET /background-jobs/{id}` | every job poll; where the billed amount is read | Measured live | `usage` at the top level and again at `last_response.billing_usage`; confirmed for a `map` object (1), a standard character base (1) and the skeleton jobs ([Limits and billing](#limits-and-billing)). | Jobs are deleted 8 hours after finishing, so a bill not read in time is lost (the v3 base bill was). | Low |
-| `POST /create-image-pixflux` | `pixflux` | Measured live | 1 generation, PNG inline, about 10 s; `color_image` is a hard palette lock (130 badges, 65 of 65 in each set) ([Single-image generators, measured](#single-image-generators-measured)). Ran in `benchmarks/provider-environments/pixellab`. | None recorded. | Low |
-| `POST /map-objects` (+ `GET /map-objects/{id}`, falling back to `GET /objects`) | `map` | Measured live | 1 generation, job about 30 s; the job record expires after 8 hours but the image survives ([Object lifecycle](#object-lifecycle)). `color_image` returns 500. | The `scene` field (`background_image` + inpainting): "Unverified until a real call is billed" ([GENERATORS.md](./GENERATORS.md), `map`). | Low |
+| `POST /create-image-pixflux` | `pixflux` | Measured live | 1 generation, PNG inline, about 10 s; `color_image` is a hard palette lock (130 badges, 65 of 65 in each set) ([Single-image generators, measured](#single-image-generators-measured)). Ran in `benchmarks/provider-environments/pixellab`. `init_image` with `init_image_strength` 30, 100, 300 and 800 each billed the usual 1 (November 2026; see [Init images](#init-images-measured)). | None recorded. | Low |
+| `POST /map-objects` (+ `GET /map-objects/{id}`, falling back to `GET /objects`) | `map` | Measured live | 1 generation, job about 30 s; the job record expires after 8 hours but the image survives ([Object lifecycle](#object-lifecycle)). `color_image` returns 500. `init_image` at the same four strengths billed 1 each (November 2026; see [Init images](#init-images-measured)). | The `scene` field (`background_image` + inpainting): "Unverified until a real call is billed" ([GENERATORS.md](./GENERATORS.md), `map`). | Low |
 | `POST /generate-image-v2` | `imagePro` | Measured live | A 64×64 call billed 10 (40 before the cut) and 10 again with `target_palette`; the completed job was read and a candidate downloaded through `gen` ([October 2026 Pro price cut](#october-2026-pro-price-cut), [Target palette](#target-palette-target_palette)). | Canvases above 65536px² (15 and 25 tiers) are priced from the shared Pro ladder, not measured here; `reference_images` and `style_image` are unmodeled. | High |
 | `POST /create-image-pro-flash` | `imageProFlash` | Measured live | A 32×32 still with a four-colour `target_palette` billed 5, in only those colours (November 2026; [GENERATORS.md](./GENERATORS.md#target-palette)). | Larger canvases (quote 9 at 256px) and the style-image path were never billed. | Medium |
 | `POST /edit-image-pro-flash` | revision `engine: "pro-flash"`, `image-to-image` | Mock only | Quote 5 at 64px, provisional, from MCP (roadmap, "Pro Flash for plain image create, edit, and inpaint"). | Never billed; completed-job shape never read live; the `reference` edit method is unmodeled. | Medium |
@@ -119,7 +119,7 @@ not probed.
 | `POST /create-tiles-pro` (+ `GET /tiles-pro/{id}`) | `tiles` | Measured live | One numbered description, 4 tiles at 16px, with a Game Boy `target_palette`, billed 10, every candidate in the palette (November 2026). `GET` has no `status`: 423 while drawing ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind)). | `tile_feature` sets (`roads`, `tileset`, `building`) and `tile_rules`; large tile-size × variation canvases that reach the top tier. | High |
 | `POST /create-tileset` (+ `GET /tilesets/{id}`) | `terrain`, top-down | Measured live | Pro 32px billed 15 (three sets, one connected through `lower_base_tile_id`, one with edge slope); Pro 64px billed 25 and returned 25 tiles at transition 0.5; standard sets billed 3 each (planned 4), one connected through `upper_base_tile_id` ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind), October 2026). `target_palette` on Pro, mock only. In November 2026 five standard 16px sets billed 1 each, with `shape_seed`, side walls, `enhance: false`, walkable flags, and reference images ([Tileset options, November 2026](#tileset-options-november-2026-measured)). | Pro below 32px; standard above 32px; a standard set cannot connect to a Pro set. | High |
 | `POST /create-tileset-sidescroller` | `terrain`, `terrainOrientation: "sidescroller"` | Measured live | Since November 2026: a standard 16px set billed 1 and a pro 16px set billed 15; 16 tiles each; a standard request with `lower_base_tile_id` is refused with a 422. The older model billed 3 ([Tileset options, November 2026](#tileset-options-november-2026-measured)). | `lower_reference_image` (pro) and `transition_reference_image` (standard) are mock only; 32px. | High |
-| `POST /create-isometric-tile` (+ `GET /isometric-tiles/{id}`) | `isometricTile` | Measured live | One 32px `block` billed 1 generation, not the schema's `usd: 0.02` example ([Standalone isometric tile](#standalone-isometric-tile-schema-documented-cost-measured-once)). | Other sizes and shapes; flat pricing across 16 to 64px is an assumption. | Low |
+| `POST /create-isometric-tile` (+ `GET /isometric-tiles/{id}`) | `isometricTile` | Measured live | One 32px `block` billed 1 generation, not the schema's `usd: 0.02` example ([Standalone isometric tile](#standalone-isometric-tile-schema-documented-cost-measured-once)). | Other sizes and shapes; flat pricing across 16 to 64px is an assumption. `init_image` is sent but mock only. | Low |
 | `POST /create-ui-asset` (+ `GET /ui-assets/{id}`) | `uiAsset` | Measured live | One 256×192 call billed 20, the low end of the quoted 20 to 40; the plan prices 40 ([UI panels](#ui-panels-one-endpoint-schema-documented-cost-unverified), September 2026). | A second size; `pixelkiln plan` over-reads. | High |
 | `POST /ui-assets/{id}/split` | `pixelkiln ui split` | Measured live | Free; a 256×192 template split into the 3 elements its `split_preview` listed. A second split is refused client-side ([UI split, states and 9-slice](#ui-split-states-and-9-slice-measured)). | Custom `boxes` are mock only. | Low |
 | `POST /ui-assets/states` | `pixelkiln ui states` | Measured live | One 86×38 element in 2 states quoted and billed 10; about a minute. State images differ in size from their element. | The 15 and 25 tiers, several elements in one call, and `target_palette` are mock only. | High |
@@ -215,6 +215,33 @@ since billing lags; read it before the job record expires 8 hours later. Move
 the row's status, write the measurement and its month into "What is known",
 and remove the gap it closes. If a call ran but the bill was not captured,
 set the row to Run live, not measured rather than leaving it Mock only.
+
+---
+
+## Init images, measured
+
+`init_image` and `init_image_strength` (1 to 999, default 300) on
+`/create-image-pixflux`, `/map-objects` and `/create-isometric-tile`, wrapped
+as an asset's `initImage` and `initImageStrength`
+([manifest reference](./MANIFEST.md#starting-from-an-image)). Measured on 14
+November 2026 (Tier 3): a 64×64 knight as the starting image, the prompt "a
+knight in golden armor with a red cape", `seed` 77, on both `pixflux` and
+`map`. Ten calls, each billed 1 generation, the same as without an init image.
+
+| `init_image_strength` | Result, the same on both generators |
+|---|---|
+| none sent (no init image) | a gold knight with a red cape |
+| 30 | a new gold knight; the starting image sets only scale and placement |
+| 100 | the starting silhouette and armor with gold trim and a red cape |
+| 300 (the default) | the starting image lightly redrawn; the prompt's colors absent |
+| 800 | the starting image, all but unchanged |
+
+- The default holds far harder than a "300 of 999" suggests: at 300 the prompt
+  changed nothing visible. A restyle that keeps the shape wants about 100.
+- The starting image and the output were both 64×64. Whether a different size
+  is accepted, scaled or refused was not tried.
+- `/create-isometric-tile` takes the same two fields; PixelKiln sends them, with
+  mocked tests only.
 
 ---
 

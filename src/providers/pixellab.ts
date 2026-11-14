@@ -1975,6 +1975,7 @@ export class PixelLabProvider implements Provider {
         noBackground: spec.noBackground,
         paletteSwatchBase64: swatch,
         seed: spec.seed,
+        ...(await initImageArgs(spec)),
       })
       const jobId = randomUUID()
       writeFileSync(path.join(PixelLabProvider.cacheDir(), `${jobId}.png`), png)
@@ -2092,6 +2093,7 @@ export class PixelLabProvider implements Provider {
         shading: spec.shading,
         detail: spec.detail,
         seed: spec.seed,
+        ...(await initImageArgs(spec)),
       })
       return { jobId: res.tile_id, metadata: { backgroundJobId: res.background_job_id } }
     }
@@ -2143,6 +2145,7 @@ export class PixelLabProvider implements Provider {
       shading: spec.shading,
       detail: spec.detail,
       seed: spec.seed,
+      ...(await initImageArgs(spec)),
       scene: spec.scene ? mapScenePayload(spec) : undefined,
     })
     return { jobId: res.object_id, metadata: { backgroundJobId: res.background_job_id } }
@@ -3469,6 +3472,18 @@ export function sendsTargetPalette(spec: ResolvedSpec): boolean {
     default:
       return false
   }
+}
+
+/** The starting image and its strength as request arguments, read at submit and checked against the plan's hash. */
+async function initImageArgs(spec: ResolvedSpec): Promise<{ initImage?: Base64Image; initImageStrength?: number }> {
+  const init = spec.initImage
+  if (!init) return {}
+  if (!existsSync(init.file)) throw new Error(`init image is missing: ${init.file}`)
+  const bytes = readFileSync(init.file)
+  if (sha256(bytes) !== init.sha256) {
+    throw new Error(`init image changed after the manifest was resolved: ${init.file}; run the command again`)
+  }
+  return { initImage: { base64: bytes.toString("base64"), format: "png" }, ...(init.strength == null ? {} : { initImageStrength: init.strength }) }
 }
 
 /**
