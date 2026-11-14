@@ -1,3 +1,10 @@
+# [0.100.0](https://github.com/gfargo/pixelkiln/compare/v0.99.0...v0.100.0) (2026-11-14)
+
+
+### Features
+
+* **pixellab:** initImage and initImageStrength for pixflux, map and isometricTile ([f4e3cd9](https://github.com/gfargo/pixelkiln/commit/f4e3cd977c540d818431f8564b9ed5f722a5ac34))
+
 # [0.99.0](https://github.com/gfargo/pixelkiln/compare/v0.98.0...v0.99.0) (2026-11-14)
 
 
