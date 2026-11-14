@@ -1,3 +1,10 @@
+# [0.99.0](https://github.com/gfargo/pixelkiln/compare/v0.98.0...v0.99.0) (2026-11-14)
+
+
+### Features
+
+* **normal-map:** lite and pro modes, kind, strength and the shape controls ([8ef6aa3](https://github.com/gfargo/pixelkiln/commit/8ef6aa36bb8d3e60afeec95d0b7bb37c95b6a9fc))
+
 # [0.98.0](https://github.com/gfargo/pixelkiln/compare/v0.97.0...v0.98.0) (2026-11-14)
 
 
