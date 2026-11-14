@@ -56,6 +56,66 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "pixellab-pixflux-controls",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "The one-generation generator now listens to your style",
+    summary:
+      "`pixflux` is PixelLab's cheapest image generator: 1 generation, with a hard palette lock. PixelKiln was leaving most of its controls unsent. A `pixflux` style's `outline`, `shading`, `detail` and `view` now reach PixelLab, and four more options are new. Every image below is one call at 1 generation, same prompt and seed within each row.",
+    features: [
+      "`outline`, `shading` and `detail` were part of an asset's identity but never sent. They are now, and no hash or lockfile changed.",
+      "`isometric: true` draws in isometric view. It turned a front-on knight into a three-quarter stance.",
+      "`textGuidanceScale` (1 to 20) sets how closely the image follows the prompt.",
+      "`direction` on an asset nudges the way the subject faces. It is weak: say the facing in the prompt too.",
+      "`backgroundRemoval: \"complex\"` uses the slower cut-out for fine or busy edges. On a clean-edged sprite it changed almost nothing.",
+    ],
+    figures: [
+      {
+        src: "/showcase/pixflux/knight-options.png",
+        alt: "Four pixel art knights holding spears: one front-on, one turned slightly to the side, one in a three-quarter isometric stance with a red cape, and one almost identical to the first",
+        width: 1064,
+        height: 272,
+        title: "one prompt, one seed",
+        caption: "no options, `direction: \"east\"`, `isometric: true`, and `backgroundRemoval: \"complex\"`. 1 generation each.",
+        wide: true,
+        fill: true,
+      },
+      {
+        src: "/showcase/pixflux/anvil-guidance.png",
+        alt: "Two pixel art anvils with a hammer: a grey one with a plain wooden handle, and a darker purple one with an ornate hammer",
+        width: 536,
+        height: 272,
+        title: "prompt adherence",
+        caption: "`textGuidanceScale` 2, then 18. 1 generation each.",
+        wide: true,
+      },
+    ],
+    code: {
+      title: "pixelkiln.manifest.json",
+      language: "json",
+      copyId: "updates_pixflux_manifest",
+      code: `
+"styles": {
+  "props": {
+    "generator": "pixflux",
+    "outline": "single color black outline",
+    "shading": "medium shading",
+    "detail": "highly detailed",
+    "isometric": true,
+    "textGuidanceScale": 12
+  }
+},
+"assets": {
+  "guard": { "prompt": "a knight holding a spear, facing right", "direction": "east" }
+}
+`,
+    },
+    links: [
+      { id: "updates_pixflux_generators", label: "Read the pixflux reference", href: "/docs/generators#pixflux" },
+      { id: "updates_pixflux_measured", label: "See what was measured", href: "/docs/endpoints/pixflux-style-controls-measured" },
+    ],
+  },
+  {
     id: "pixellab-talking-portraits",
     provider: "PixelLab",
     date: "November 2026",
@@ -102,8 +162,8 @@ pixelkiln talk plan --from talk/smith.talk.json --text "Fire once." --out talk/h
 `,
     },
     links: [
-      { id: "updates_talk_reference", label: "Read the talk reference", href: "/docs/cli#talk" },
-      { id: "updates_talk_measured", label: "See what was measured", href: "/docs/endpoints#talking-portraits-measured" },
+      { id: "updates_talk_reference", label: "Read the talk reference", href: "/docs/cli/talk" },
+      { id: "updates_talk_measured", label: "See what was measured", href: "/docs/endpoints/talking-portraits-measured" },
     ],
   },
   {
@@ -160,9 +220,9 @@ pixelkiln vfx \\
 `,
     },
     links: [
-      { id: "updates_vfx_animated_cli_docs", label: "Read the vfx reference", href: "/docs/cli#described-effects-paid" },
+      { id: "updates_vfx_animated_cli_docs", label: "Read the vfx reference", href: "/docs/cli/vfx#described-effects-paid" },
       { id: "updates_vfx_animated_manifest", label: "Animated sprites in a manifest", href: "/docs/generators#animated-sprites" },
-      { id: "updates_vfx_animated_measured", label: "See what was measured", href: "/docs/endpoints#vfx-animated-sprites-measured" },
+      { id: "updates_vfx_animated_measured", label: "See what was measured", href: "/docs/endpoints/vfx-artist-post-vfx-measured-once#vfx-animated-sprites-measured" },
     ],
   },
   {
@@ -203,8 +263,8 @@ pixelkiln vfx \\
 `,
     },
     links: [
-      { id: "updates_init_image_manifest_docs", label: "Starting from an image", href: "/docs/manifest#starting-from-an-image" },
-      { id: "updates_init_image_measured", label: "See what was measured", href: "/docs/endpoints#init-images-measured" },
+      { id: "updates_init_image_manifest_docs", label: "Starting from an image", href: "/docs/manifest/starting-from-an-image" },
+      { id: "updates_init_image_measured", label: "See what was measured", href: "/docs/endpoints/init-images-measured" },
     ],
   },
   {
@@ -244,9 +304,9 @@ pixelkiln normal-map --from art/knight.png --mode pro --kind character
 `,
     },
     links: [
-      { id: "updates_normal_map_reference", label: "Read the normal-map reference", href: "/docs/cli#normal-map" },
+      { id: "updates_normal_map_reference", label: "Read the normal-map reference", href: "/docs/cli/normal-map" },
       { id: "updates_normal_map_revisions", label: "Normal maps in a manifest", href: "/docs/revisions#normal-maps" },
-      { id: "updates_normal_map_measured", label: "See what was measured", href: "/docs/endpoints#normal-map-post-normal-map-measured-once" },
+      { id: "updates_normal_map_measured", label: "See what was measured", href: "/docs/endpoints/normal-map-post-normal-map-measured-once" },
     ],
   },
   {
@@ -318,8 +378,8 @@ pixelkiln normal-map --from art/knight.png --mode pro --kind character
     },
     links: [
       { id: "updates_tileset_references", label: "Terrain reference images", href: "/docs/tiles#terrain-reference-images" },
-      { id: "updates_tileset_fields", label: "Every terrain field", href: "/docs/manifest#style-fields" },
-      { id: "updates_tileset_measured", label: "See what was measured", href: "/docs/endpoints#tileset-options-november-2026-measured" },
+      { id: "updates_tileset_fields", label: "Every terrain field", href: "/docs/manifest/style-fields" },
+      { id: "updates_tileset_measured", label: "See what was measured", href: "/docs/endpoints/tilesets-measured-once-per-kind#tileset-options-november-2026-measured" },
     ],
   },
   {
@@ -372,9 +432,9 @@ pixelkiln asset export --id <object id> --format aseprite --out art/knight
 `,
     },
     links: [
-      { id: "updates_asset_reference", label: "Read the asset reference", href: "/docs/cli#asset" },
-      { id: "updates_asset_pixelate", label: "Read the pixelate reference", href: "/docs/cli#pixelate" },
-      { id: "updates_asset_measured", label: "See what was measured", href: "/docs/endpoints#asset-upkeep-and-the-pro-converter-measured" },
+      { id: "updates_asset_reference", label: "Read the asset reference", href: "/docs/cli/asset" },
+      { id: "updates_asset_pixelate", label: "Read the pixelate reference", href: "/docs/cli/pixelate" },
+      { id: "updates_asset_measured", label: "See what was measured", href: "/docs/endpoints/asset-upkeep-and-the-pro-converter-measured" },
     ],
   },
   {
@@ -417,8 +477,8 @@ pixelkiln ui pull --id <template id> --out ui/dialog
 `,
     },
     links: [
-      { id: "updates_ui_reference", label: "Read the ui reference", href: "/docs/cli#ui" },
-      { id: "updates_ui_measured", label: "See what was measured", href: "/docs/endpoints#ui-split-states-and-9-slice-measured" },
+      { id: "updates_ui_reference", label: "Read the ui reference", href: "/docs/cli/ui" },
+      { id: "updates_ui_measured", label: "See what was measured", href: "/docs/endpoints/ui-split-states-and-9-slice-measured" },
     ],
   },
   {
@@ -454,9 +514,9 @@ pixelkiln sfx --description "a sci-fi laser gun firing a single shot" --seconds 
 `,
     },
     links: [
-      { id: "updates_audio_music", label: "Read the music reference", href: "/docs/cli#music" },
-      { id: "updates_audio_sfx", label: "Read the sfx reference", href: "/docs/cli#sfx" },
-      { id: "updates_audio_measured", label: "See what was measured", href: "/docs/endpoints#music-and-sound-effects-measured" },
+      { id: "updates_audio_music", label: "Read the music reference", href: "/docs/cli/music" },
+      { id: "updates_audio_sfx", label: "Read the sfx reference", href: "/docs/cli/sfx" },
+      { id: "updates_audio_measured", label: "See what was measured", href: "/docs/endpoints/music-and-sound-effects-measured" },
     ],
   },
   {
@@ -613,8 +673,8 @@ pixelkiln sfx --description "a sci-fi laser gun firing a single shot" --seconds 
       "`pixelkiln vfx` renders animated effects from presets and parts, free on a subscription.",
     ],
     links: [
-      { id: "updates_pixellab_0_4_128", label: "Pixelate reference", href: "/docs/cli#pixelate" },
-      { id: "updates_vfx", label: "vfx reference", href: "/docs/cli#vfx" },
+      { id: "updates_pixellab_0_4_128", label: "Pixelate reference", href: "/docs/cli/pixelate" },
+      { id: "updates_vfx", label: "vfx reference", href: "/docs/cli/vfx" },
     ],
   },
   {

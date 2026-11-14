@@ -86,7 +86,7 @@ not probed.
 | `GET /balance` | `doctor`, `gen` balance reads, gallery | Measured live | Free. Count is at `subscription.generations` ([Reproducing these numbers](#reproducing-these-numbers)). | Only the subscription shape is documented; a credit-only account's reply is not recorded. | Low |
 | `GET /pro-flash/cost` | Pro Flash estimates for `character` and `imageProFlash` | Measured live | Free quote. For `operation=character`: image 5 up to 96px, 6 to 208px, 9 above, plus rotations; two live jobs (7 and 2) billed exactly the quote ([Characters, measured](#characters-measured)). | Quotes for `create`, `edit` and `inpaint` are recorded from PixelLab's MCP `get_pro_flash_capabilities`, not from this route (roadmap, "Pro Flash for plain image create, edit, and inpaint"). | Low |
 | `GET /background-jobs/{id}` | every job poll; where the billed amount is read | Measured live | `usage` at the top level and again at `last_response.billing_usage`; confirmed for a `map` object (1), a standard character base (1) and the skeleton jobs ([Limits and billing](#limits-and-billing)). | Jobs are deleted 8 hours after finishing, so a bill not read in time is lost (the v3 base bill was). | Low |
-| `POST /create-image-pixflux` | `pixflux` | Measured live | 1 generation, PNG inline, about 10 s; `color_image` is a hard palette lock (130 badges, 65 of 65 in each set) ([Single-image generators, measured](#single-image-generators-measured)). Ran in `benchmarks/provider-environments/pixellab`. `init_image` with `init_image_strength` 30, 100, 300 and 800 each billed the usual 1 (November 2026; see [Init images](#init-images-measured)). | None recorded. | Low |
+| `POST /create-image-pixflux` | `pixflux` | Measured live | 1 generation, PNG inline, about 10 s; `color_image` is a hard palette lock (130 badges, 65 of 65 in each set) ([Single-image generators, measured](#single-image-generators-measured)). Ran in `benchmarks/provider-environments/pixellab`. `init_image` with `init_image_strength` 30, 100, 300 and 800 each billed the usual 1 (November 2026; see [Init images](#init-images-measured)). `outline`, `shading`, `detail`, `text_guidance_scale`, `direction`, `isometric` and `background_removal_task` each accepted at the usual 1 ([pixflux style controls](#pixflux-style-controls-measured)). | `view` is sent but its effect is unmeasured. | Low |
 | `POST /map-objects` (+ `GET /map-objects/{id}`, falling back to `GET /objects`) | `map` | Measured live | 1 generation, job about 30 s; the job record expires after 8 hours but the image survives ([Object lifecycle](#object-lifecycle)). `color_image` returns 500. `init_image` at the same four strengths billed 1 each (November 2026; see [Init images](#init-images-measured)). | The `scene` field (`background_image` + inpainting): "Unverified until a real call is billed" ([GENERATORS.md](./GENERATORS.md), `map`). | Low |
 | `POST /generate-image-v2` | `imagePro` | Measured live | A 64×64 call billed 10 (40 before the cut) and 10 again with `target_palette`; the completed job was read and a candidate downloaded through `gen` ([October 2026 Pro price cut](#october-2026-pro-price-cut), [Target palette](#target-palette-target_palette)). | Canvases above 65536px² (15 and 25 tiers) are priced from the shared Pro ladder, not measured here; `reference_images` and `style_image` are unmodeled. | High |
 | `POST /create-image-pro-flash` | `imageProFlash` | Measured live | A 32×32 still with a four-colour `target_palette` billed 5, in only those colours (November 2026; [GENERATORS.md](./GENERATORS.md#target-palette)). | Larger canvases (quote 9 at 256px) and the style-image path were never billed. | Medium |
@@ -251,6 +251,29 @@ knight in golden armor with a red cape", `seed` 77, on both `pixflux` and
   mocked tests only.
 
 ---
+
+## pixflux style controls, measured
+
+`POST /create-image-pixflux` takes more than PixelKiln sent before November
+2026. Measured on 14 November 2026 (Tier 3), every call at 64×64 with
+`seed` 4242, and every call billed the usual 1 generation.
+
+| Request | Result |
+|---|---|
+| An anvil with no style fields; with `outline` `lineless`, `shading` `flat shading`, `detail` `low detail`; with `single color black outline`, `highly detailed shading`, `highly detailed` | Three different images. The style difference was modest. Sent to the endpoint directly. |
+| The same anvil at `text_guidance_scale` 2 and 18, through `pixelkiln gen` | Two different images; both accepted. |
+| A knight with no options, through `pixelkiln gen` | Front-on. |
+| The knight with `direction` `east`, and `west` | `east` turned it slightly. `west` was all but identical to no direction. PixelLab calls the field weakly guiding. |
+| The knight with `isometric` `true` | A three-quarter stance: a clear change. |
+| The knight with `background_removal_task` `remove_complex_background` | Nearly the same as the default on this clean-edged sprite. |
+
+One sample per row, so these are observations, not rates. Not measured:
+`view` on `pixflux`, complex background removal on a subject with fine or
+busy edges, and `negative_description`, which PixelLab marks deprecated and
+PixelKiln does not send.
+
+How the fields map to a manifest is in
+[GENERATORS.md](./GENERATORS.md#pixflux).
 
 ## Single-image generators, measured
 
@@ -617,7 +640,7 @@ The two test tilesets and three test tile groups were deleted. The test
 gallery image was left in the account; the REST API has no route to remove
 a gallery image.
 
-### Talking portraits, measured
+## Talking portraits, measured
 
 Wrapped as `pixelkiln talk` ([CLI reference](./CLI.md#talk)). Measured on 14
 November 2026 (Tier 3).
