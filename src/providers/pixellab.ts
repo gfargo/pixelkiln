@@ -699,6 +699,7 @@ export class PixelLabProvider implements Provider {
           `${VFX_ARTIST_MAX_SPRITE}x${VFX_ARTIST_MAX_SPRITE} (crop or pad it; never rescale pixel art)`,
       )
     }
+    if (spec.generator === "tiles") this.validateTileOptions(spec)
     const members = spec.revision?.sourceMembers
     if (spec.revision && members && !MEMBER_SET_REVISION_MODES.includes(spec.revision.mode)) {
       throw new Error(
@@ -994,6 +995,32 @@ export class PixelLabProvider implements Provider {
         `${spec.styleId}/${spec.assetId} resolves to ${spec.tags.length} tags, ` +
           `but PixelLab allows at most 20`,
       )
+    }
+  }
+
+  /** Where `/create-tiles-pro`'s newer shape options apply; elsewhere the API ignores or refuses them. */
+  private validateTileOptions(spec: ResolvedSpec): void {
+    const tilesetOnly = {
+      tileElevation: spec.tileElevation,
+      tileStepSlope: spec.tileStepSlope,
+      tileBoundaryAmplitude: spec.tileBoundaryAmplitude,
+      tileBoundarySeed: spec.tileBoundarySeed,
+    }
+    const set = Object.entries(tilesetOnly).filter(([, value]) => value != null).map(([field]) => field)
+    if (set.length && spec.tileFeature !== "tileset") {
+      throw new Error(`PixelLab tiles: ${set.join(", ")} shape a connectable terrain set; set tileFeature: "tileset"`)
+    }
+    if (spec.tileElevation != null && spec.tileElevation > 0 && spec.tileType && !["square_topdown", "isometric", "oblique"].includes(spec.tileType)) {
+      throw new Error(`PixelLab tiles: tileElevation raises a plateau on square_topdown, isometric or oblique tiles, not "${spec.tileType}"`)
+    }
+    if (spec.tileStepSlope != null && !(spec.tileElevation != null && spec.tileElevation > 0)) {
+      throw new Error("PixelLab tiles: tileStepSlope spreads the drop of a raised terrain; set tileElevation above 0")
+    }
+    if (spec.tileBoundarySeed != null && spec.tileBoundaryAmplitude == null) {
+      throw new Error("PixelLab tiles: tileBoundarySeed picks tileBoundaryAmplitude's meander; set both or neither")
+    }
+    if (spec.buildingRoofProfile && !(spec.tileFeature === "building" && spec.buildingLayout === "materials")) {
+      throw new Error('PixelLab tiles: buildingRoofProfile shapes a building kit\'s roof pieces; set tileFeature: "building" with buildingLayout: "materials"')
     }
   }
 
@@ -2000,6 +2027,11 @@ export class PixelLabProvider implements Provider {
         buildingFloorDescription: spec.buildingFloorDescription,
         buildingFloor2Description: spec.buildingFloor2Description,
         buildingWallAngle: spec.buildingWallAngle,
+        roofProfile: spec.buildingRoofProfile,
+        elevation: spec.tileElevation,
+        stepSlope: spec.tileStepSlope,
+        boundaryAmplitude: spec.tileBoundaryAmplitude,
+        boundarySeed: spec.tileBoundarySeed,
         outlineMode: spec.outlineMode,
         seed: spec.seed,
         // TilesProStyleImage is flat and wants the reference's real dimensions,

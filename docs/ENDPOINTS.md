@@ -116,7 +116,7 @@ not probed.
 | `PATCH /objects/{id}/tags`, `PATCH /characters/{id}/tags` | tagging in `fetch`, `adopt`, `salvage` | Unknown | Only the negative is documented: pixflux, pixen and bitforge results "cannot be tagged" ([Object lifecycle](#object-lifecycle)). | A recorded live call. | Low |
 | `DELETE /objects/{id}`, `POST /objects/{id}/dismiss-review`, `DELETE /characters/{id}` | `salvage`, account cleanup | Unknown | Not discussed in the docs. | A recorded live call. | Low |
 | `DELETE /characters/{id}/animations` | replacing a loop's direction | Unknown | "Deleting one direction of a shared group has not been run live" ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured)). | Whether the rest of the group keeps its motion. | Low |
-| `POST /create-tiles-pro` (+ `GET /tiles-pro/{id}`) | `tiles` | Measured live | One numbered description, 4 tiles at 16px, with a Game Boy `target_palette`, billed 10, every candidate in the palette (November 2026). `GET` has no `status`: 423 while drawing ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind)). | `tile_feature` sets (`roads`, `tileset`, `building`) and `tile_rules`; large tile-size × variation canvases that reach the top tier. | High |
+| `POST /create-tiles-pro` (+ `GET /tiles-pro/{id}`) | `tiles` | Measured live | One numbered description, 4 tiles at 16px, with a Game Boy `target_palette`, billed 10, every candidate in the palette (November 2026). `GET` has no `status`: 423 while drawing ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind)). November 2026: a 32px `tileset` feature with `elevation` 4, `step_slope` 1 and `boundary_amplitude` 0.2 billed 10 (planned 25) and returned 16 tiles; `elevation` 6 was refused at 16px and 32px ([Tiles shape options](#tiles-shape-options-measured)). | `tile_feature` sets (`roads`, `tileset`, `building`) and `tile_rules`; large tile-size × variation canvases that reach the top tier. `roof_profile` is mock only. | High |
 | `POST /create-tileset` (+ `GET /tilesets/{id}`) | `terrain`, top-down | Measured live | Pro 32px billed 15 (three sets, one connected through `lower_base_tile_id`, one with edge slope); Pro 64px billed 25 and returned 25 tiles at transition 0.5; standard sets billed 3 each (planned 4), one connected through `upper_base_tile_id` ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind), October 2026). `target_palette` on Pro, mock only. In November 2026 five standard 16px sets billed 1 each, with `shape_seed`, side walls, `enhance: false`, walkable flags, and reference images ([Tileset options, November 2026](#tileset-options-november-2026-measured)). | Pro below 32px; standard above 32px; a standard set cannot connect to a Pro set. | High |
 | `POST /create-tileset-sidescroller` | `terrain`, `terrainOrientation: "sidescroller"` | Measured live | Since November 2026: a standard 16px set billed 1 and a pro 16px set billed 15; 16 tiles each; a standard request with `lower_base_tile_id` is refused with a 422. The older model billed 3 ([Tileset options, November 2026](#tileset-options-november-2026-measured)). | `lower_reference_image` (pro) and `transition_reference_image` (standard) are mock only; 32px. | High |
 | `POST /create-isometric-tile` (+ `GET /isometric-tiles/{id}`) | `isometricTile` | Measured live | One 32px `block` billed 1 generation, not the schema's `usd: 0.02` example ([Standalone isometric tile](#standalone-isometric-tile-schema-documented-cost-measured-once)). | Other sizes and shapes; flat pricing across 16 to 64px is an assumption. `init_image` is sent but mock only. | Low |
@@ -905,6 +905,30 @@ October 2026, through `pixelkiln gen` on the website's showcase project
   with matching colour. The second set's sand carries fewer pebbles, so the
   ring where it meets the first set's sand is visible up close. "plain smooth
   sand texture" still came back with pebbles in the first set.
+
+### Tiles shape options, measured
+
+`/create-tiles-pro` gained `elevation`, `step_slope`, `boundary_amplitude` and
+`boundary_seed` for a `tile_feature: "tileset"` set, and `roof_profile` for a
+materials-layout building kit. Wrapped as the `tiles` style fields
+`tileElevation`, `tileStepSlope`, `tileBoundaryAmplitude`, `tileBoundarySeed`
+and `buildingRoofProfile`. Measured on 14 November 2026 (Tier 3),
+`square_topdown` tiles seen at 90°.
+
+| Request | Planned | Billed | Result |
+|---|---|---|---|
+| 16px, `elevation` 6 | 25 | 0 | **422**: "elevation must be 0-2 px for a 16px tile (got 6) at a 90 degree view" |
+| 32px, `elevation` 6 | 25 | 0 | **422**: "elevation must be 0-4 px for a 32px tile" |
+| 32px, `elevation` 4, `step_slope` 1, `boundary_amplitude` 0.2, `boundary_seed` 3 | 25 | 10 | 16 tiles, a meandering shore with a dark bank on the raised edge |
+
+- **The elevation cap follows the tile, not the schema.** The schema allows 0
+  to 12; the API allows what fits the tile's top face and wall at its size and
+  view: 2 px at 16px and 4 px at 32px, both at 90°. A lower view angle should
+  allow more; that was not tried. The refusal is free and names the cap, and
+  PixelKiln passes it through.
+- **The plan over-read this set.** A 32px `tileset` feature billed 10 against a
+  planned 25. One data point, so the estimate is unchanged.
+- `roof_profile` was not run.
 
 ### Tileset options, November 2026, measured
 

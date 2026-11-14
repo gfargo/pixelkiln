@@ -84,6 +84,12 @@ export function specHash(
       tileType: spec.tileType,
       tileView: spec.tileView,
       tileFeature: spec.tileFeature,
+      // `tiles` shape options added in November 2026, each only when set.
+      buildingRoofProfile: spec.buildingRoofProfile,
+      tileElevation: spec.tileElevation,
+      tileStepSlope: spec.tileStepSlope,
+      tileBoundaryAmplitude: spec.tileBoundaryAmplitude,
+      tileBoundarySeed: spec.tileBoundarySeed,
       outlineMode: spec.outlineMode,
       isometricTileSize: spec.isometricTileSize,
       isometricTileShape: spec.isometricTileShape,
