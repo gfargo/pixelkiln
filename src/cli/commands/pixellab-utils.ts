@@ -1,7 +1,7 @@
 /** `unzoom`, `pixelate`, `normal-map`, `vfx`, and `font`: PixelLab utilities on loose files, outside the manifest and lockfile. */
 import { readFile } from "node:fs/promises"
 import path from "node:path"
-import { clientFromEnv, type NormalMapConvention } from "../../client.ts"
+import { clientFromEnv, NORMAL_MAP_KINDS, NORMAL_MAP_MODES, type NormalMapConvention, type NormalMapKind, type NormalMapMode } from "../../client.ts"
 import { loadEnvFiles } from "../../env.ts"
 import { UsageError } from "../../errors.ts"
 import { mcpClientFromEnv } from "../../pixellab-mcp.ts"
@@ -29,7 +29,7 @@ import {
   fontOutputPaths,
   generateFont,
   NORMAL_MAP_CONVENTIONS,
-  NORMAL_MAP_COST_GENERATIONS,
+  normalMapCost,
   normalMapFile,
   PIXELATE_COST_GENERATIONS,
   PIXELATE_MAX_SIDE,
@@ -168,21 +168,38 @@ export async function runNormalMap(args: Args): Promise<void> {
     `  normal-map ${args.from}${frames > 1 ? ` (a strip of ${frames} frames)` : ""} → ${out}, ` +
       `${convention} (green ${convention === "opengl" ? "up" : "down"})`,
   )
-  log(`  cost: ${NORMAL_MAP_COST_GENERATIONS} generation (PixelLab's documented price, charged on delivery)`)
-  if (args.budget !== undefined && args.budget < NORMAL_MAP_COST_GENERATIONS) {
-    throw new Error(`--budget ${args.budget} is below this normal map's ${NORMAL_MAP_COST_GENERATIONS}-generation cost`)
+  if (args.mode !== undefined && !(NORMAL_MAP_MODES as readonly string[]).includes(args.mode)) {
+    throw new UsageError(`--mode must be ${NORMAL_MAP_MODES.join(" or ")}, got "${args.mode}"`)
+  }
+  if (args.kind !== undefined && !(NORMAL_MAP_KINDS as readonly string[]).includes(args.kind)) {
+    throw new UsageError(`--kind must be one of ${NORMAL_MAP_KINDS.join(", ")}, got "${args.kind}"`)
+  }
+  const mode = args.mode as NormalMapMode | undefined
+  const cost = normalMapCost(mode)
+  log(`  cost: ${cost} generation (${mode === "pro" ? "pro" : "lite, PixelLab's default; --mode pro is 0.5"}, charged on delivery)`)
+  if (args.budget !== undefined && args.budget < cost) {
+    throw new Error(`--budget ${args.budget} is below this normal map's ${cost}-generation cost`)
   }
   if (args.dryRun) {
     log("  dry run: nothing sent")
     return
   }
-  if (!(await confirm(`  Spend ${NORMAL_MAP_COST_GENERATIONS} generation on this normal map?`, args.yes))) return
+  if (!(await confirm(`  Spend ${cost} generation on this normal map?`, args.yes))) return
   loadKeys(args)
   let last = ""
   const res = await normalMapFile(clientFromEnv(), args.from, {
     out,
     frames,
     convention: args.convention ? convention : undefined,
+    mode,
+    kind: args.kind as NormalMapKind | undefined,
+    shape: {
+      strength: args.strength,
+      outlineRounding: args.outlineRounding,
+      partShapes: args.partShapes,
+      surfaceDetail: args.surfaceDetail,
+      detailSoftness: args.detailSoftness,
+    },
     force: args.force,
     onProgress: (status) => {
       if (status !== last) log(`  ${status}…`)

@@ -1081,6 +1081,24 @@ export const RevisionSchema = z
     /** `normal-map` only: `opengl` (green up; PixelLab's default) or `directx` (green down, for Unreal). */
     convention: NormalMapConventionSchema.optional(),
     /**
+     * `normal-map` only: `lite` (PixelLab's default, 0.1 generation) makes the
+     * map from the art alone; `pro` (0.5) plans each part's shape, what is in
+     * front and what is sunk.
+     */
+    normalMapMode: z.enum(["lite", "pro"]).optional(),
+    /** `normal-map` only: what the picture is. Left out, PixelLab reads it from the picture; set it for sidescroller, isometric and UI art. */
+    normalMapKind: z.enum(["character", "object", "topdown", "side", "iso", "ui"]).optional(),
+    /** `normal-map` only: how far every pixel tilts away from facing the viewer, 0 to 2 (the API refuses more). */
+    normalMapStrength: z.number().min(0).max(2).optional(),
+    /** `normal-map` only: how much the outline rounds off, 0 to 3; 0 keeps it flat to the edge. */
+    outlineRounding: z.number().min(0).max(3).optional(),
+    /** `normal-map` only: how much the sprite's 3D parts (a round head, an arm) add, 0 to 2. */
+    partShapes: z.number().min(0).max(2).optional(),
+    /** `normal-map` only: the art's own light and dark as bumps, 0 to 2; 0 for a smooth surface. */
+    surfaceDetail: z.number().min(0).max(2).optional(),
+    /** `normal-map` only: how far that detail is blurred, 0.6 to 3 px. */
+    detailSoftness: z.number().min(0.6).max(3).optional(),
+    /**
      * `animate-skeleton`: what the character *looks like*, a noun
      * phrase (colours, clothing, held items) — distinct from the asset's
      * own `prompt`, which this mode sends as the motion's short label
@@ -1245,6 +1263,15 @@ export const RevisionSchema = z
         path: ["convention"],
       })
     }
+    for (const field of ["normalMapMode", "normalMapKind", "normalMapStrength", "outlineRounding", "partShapes", "surfaceDetail", "detailSoftness"] as const) {
+      if (revision[field] !== undefined && revision.mode !== "normal-map") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${field} applies to normal-map revisions only`,
+          path: [field],
+        })
+      }
+    }
     if (revision.description !== undefined && revision.mode !== "animate-skeleton" && revision.mode !== "remove-background") {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1345,6 +1372,13 @@ export interface ResolvedRevision {
   description?: string
   removalTask?: "simple" | "complex"
   convention?: "opengl" | "directx"
+  normalMapMode?: "lite" | "pro"
+  normalMapKind?: "character" | "object" | "topdown" | "side" | "iso" | "ui"
+  normalMapStrength?: number
+  outlineRounding?: number
+  partShapes?: number
+  surfaceDetail?: number
+  detailSoftness?: number
   driftThreshold?: number
   subjectDescription?: string
   initialPose?: string

@@ -1126,6 +1126,7 @@ the result as an asset's `source`, or use it as a `styleImages` or
 
 ```bash
 pixelkiln normal-map --from art/hero-walk.png --frames 6 --convention opengl --out art/hero-walk-normal.png
+pixelkiln normal-map --from art/hero.png --mode pro --kind character --surface-detail 0.5 --detail-softness 2
 ```
 
 Makes the normal map of a sprite with PixelLab's `/normal-map`, so a game
@@ -1141,9 +1142,25 @@ faces, and alpha is 255 where the sprite shows and 0 elsewhere.
   divide evenly by `--frames`. Both are checked before anything is sent.
 - `--convention opengl` (the default) is green up, for Godot, Unity, and
   Phaser; `--convention directx` is green down, for Unreal.
-- **0.5 generation** per call, a whole strip included, charged only when the
-  map is delivered (PixelLab's documented price; not yet measured here). The
-  command prints that and asks first; `--yes` skips the question,
+- `--mode lite` (PixelLab's default) makes the map from the art alone for
+  **0.1 generation**; `--mode pro` plans each part's shape, what is in front
+  and what is sunk, for **0.5**. Both prices were billed live (November 2026),
+  a whole strip included, charged only when the map is delivered. On a 64x64
+  knight the two were close, pro defining the limbs a little more. PixelLab
+  made lite the default when it added the mode, so a map that cost 0.5 before
+  now costs 0.1 unless you ask for pro.
+- `--kind` says what the picture is: `character`, `object`, `topdown`, `side`,
+  `iso`, or `ui`. Left out, PixelLab reads it from the picture; set it for
+  sidescroller, isometric and UI art.
+- Five controls shape how the flat sprite is read as a surface. Each is
+  optional, and PixelLab picks its own value for any you leave out:
+  `--strength` (0–2) is how far every pixel tilts away from the viewer;
+  `--outline-rounding` (0–3) rounds the silhouette's edge, 0 keeping it flat;
+  `--part-shapes` (0–2) is how much a round head or an arm's cylinder adds;
+  `--surface-detail` (0–2) turns the art's own light and dark into bumps, 0 for
+  smooth; `--detail-softness` (0.6–3 px) blurs that detail. With outline
+  rounding, part shapes and surface detail all at 0 the map is completely flat.
+- The command prints the cost and asks first; `--yes` skips the question,
   `--budget <n>` refuses when `n` is below it, and `--dry-run` sends nothing.
 - `--out` defaults to `<input>.normal.png` beside the input, and the input is
   never overwritten. An existing `--out` is replaced only with `--force`.
@@ -1508,6 +1525,12 @@ Print the package version. `-v` is an alias.
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
 | `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
 | `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
+| `--mode <lite\|pro>` | normal-map | `lite` (the default, 0.1 generation) or `pro` (0.5). |
+| `--strength <n>` | normal-map | How far every pixel tilts away from the viewer, 0–2. |
+| `--outline-rounding <n>` | normal-map | How much the outline rounds off, 0–3. |
+| `--part-shapes <n>` | normal-map | How much the sprite's 3D parts add, 0–2. |
+| `--surface-detail <n>` | normal-map | The art's light and dark as bumps, 0–2. |
+| `--detail-softness <n>` | normal-map | How far that detail is blurred, 0.6–3 px. |
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |
@@ -1572,7 +1595,7 @@ Print the package version. `-v` is an alias.
 | `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
 | `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
 | `--fps <n>` | vfx | Frame rate, 1–60. |
-| `--kind <object\|character>` | asset | Which PixelLab asset type `--id` names; default `object`. |
+| `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
 | `--size <WxH>` | asset canvas | The new canvas, in multiples of 4. |
 | `--animation <id>` | asset mirror/export | An animation group id. |
 | `--direction <dir>` | asset mirror/expand/export | The direction to flip, the way an object faces before expansion, or a GIF's direction. |

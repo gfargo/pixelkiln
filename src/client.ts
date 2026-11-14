@@ -841,6 +841,34 @@ export function targetPaletteBody(palette?: TargetPaletteArg): { target_palette?
   }
 }
 
+/**
+ * How `/normal-map` reads a flat sprite as a surface. Each is optional and
+ * PixelLab picks its own value when one is left out.
+ */
+export const NORMAL_MAP_MODES = ["lite", "pro"] as const
+export type NormalMapMode = (typeof NORMAL_MAP_MODES)[number]
+export const NORMAL_MAP_KINDS = ["character", "object", "topdown", "side", "iso", "ui"] as const
+export type NormalMapKind = (typeof NORMAL_MAP_KINDS)[number]
+
+export interface NormalMapShape {
+  /** How far every pixel tilts away from facing the viewer. */
+  strength?: number
+  /** How much the outline rounds off, 0 to 3; 0 keeps it flat to the edge. */
+  outlineRounding?: number
+  /** How much the sprite's 3D parts (a round head, an arm's cylinder) add, 0 to 2. */
+  partShapes?: number
+  /** The art's own light and dark as bumps, 0 to 2; 0 for a smooth surface. */
+  surfaceDetail?: number
+  /** How far that detail is blurred, 0.6 to 3 px: low follows every pixel, high only the big shapes. */
+  detailSoftness?: number
+}
+export const NORMAL_MAP_SHAPE_RANGES = {
+  outlineRounding: [0, 3],
+  partShapes: [0, 2],
+  surfaceDetail: [0, 2],
+  detailSoftness: [0.6, 3],
+} as const
+
 export class PixelLabClient {
   private readonly http: RetryingFetch
 
@@ -2351,10 +2379,22 @@ export class PixelLabClient {
     image: Base64Image
     frames?: number
     convention?: NormalMapConvention
+    shape?: NormalMapShape
+    /** `lite` (the API default, 0.1 generation) or `pro` (0.5): pro plans each part's shape and depth. */
+    mode?: NormalMapMode
+    /** What the picture is; left out, PixelLab reads it from the picture. */
+    kind?: NormalMapKind
   }): Promise<{ background_job_id: string; status: string }> {
     const body: Record<string, unknown> = { image: args.image }
+    if (args.mode) body.mode = args.mode
+    if (args.kind) body.kind = args.kind
+    if (args.shape?.strength != null) body.strength = args.shape.strength
     if (args.frames != null && args.frames !== 1) body.frames = args.frames
     if (args.convention) body.convention = args.convention
+    if (args.shape?.outlineRounding != null) body.outline_rounding = args.shape.outlineRounding
+    if (args.shape?.partShapes != null) body.part_shapes = args.shape.partShapes
+    if (args.shape?.surfaceDetail != null) body.surface_detail = args.shape.surfaceDetail
+    if (args.shape?.detailSoftness != null) body.detail_softness = args.shape.detailSoftness
     return validateResponse(
       RevisionJobSubmitSchema,
       await this.request<unknown>("/normal-map", { method: "POST", body: JSON.stringify(body) }),

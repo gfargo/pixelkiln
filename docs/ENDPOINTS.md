@@ -105,7 +105,7 @@ not probed.
 | `POST /reduce-colors` | revision `reduce-colors` | Measured live | 0.1 generations at 32×32, balance diff and `usage` agree ([Cleanup tier, measured](#cleanup-tier-measured), September 2026). | Larger canvases; the price of a multi-frame set call is unmeasured. | Low |
 | `POST /correct-pixelart` | revision `correct-pixelart` | Measured live | 0.1 generations at 32×32 ([Cleanup tier, measured](#cleanup-tier-measured)). | Larger canvases and multi-frame sets, as above. | Low |
 | `POST /unzoom` | `pixelkiln unzoom` | Unknown | "Cost unmeasured; PixelLab's MCP tool description claims 0.1" ([Cleanup tier, measured](#cleanup-tier-measured)). Nothing records a live run. | Everything. | Low |
-| `POST /normal-map` | revision `normal-map`, `pixelkiln normal-map` | Measured live | An 8-frame 1304×26 strip and a 64×64 revision each billed 0.5; the map comes back the input's size with matching alpha ([Normal map](#normal-map-post-normal-map-measured-once), October 2026). | The `directx` convention; strips near the 32-frame limit. | Low |
+| `POST /normal-map` | revision `normal-map`, `pixelkiln normal-map` | Measured live | An 8-frame 1304×26 strip and a 64×64 revision each billed 0.5; the map comes back the input's size with matching alpha ([Normal map](#normal-map-post-normal-map-measured-once), October 2026). November 2026: lite (now the default) billed 0.1 six times and pro 0.5 once, with the shape controls. | The `directx` convention; strips near the 32-frame limit. | Low |
 | `POST /generate-ui-v2` | `uiElement` | Measured live | A 32×32 call billed 10 and the review page showed 64 candidates at 32×32 (November 2026, Tier 3; the plan said 1 candidate and now follows `uiElementCandidateCount`). Planned on the 10/15/25 ladder ([GENERATORS.md](./GENERATORS.md#uielement)). `target_palette` sent, mock only. | Other sizes (the 15 and 25 tiers and the other candidate bands, which come from PixelLab's published grid), and the concept-image path. | High |
 | `POST /create-1-direction-object` (+ `GET /objects/{id}`) | `1dir` | Measured live | A 32px, 3-description `batch` billed 20 (the pre-cut floor) and `item_descriptions[0]` owned slot 0 ([Candidates](#candidates)); candidate counts follow size. `target_palette` sent, mock only. | No bill since the October 2026 cut (10 / 15 / 25 is PixelLab's published ladder); tiers above the floor under `item_descriptions`. | High |
 | `POST /objects/{id}/select-frames` | `1dir` and `batch` pick | Run live, not measured | Promoted three candidates in the live batch run ([Candidates](#candidates)); `indices` is plural. | Its cost was not recorded. | Low |
@@ -769,6 +769,33 @@ delivery.
 matched the source's pixel for pixel, so the strip cuts back into the same
 8 frames. Wired up as the `normal-map` revision mode and `pixelkiln
 normal-map` ([REVISIONS.md](./REVISIONS.md#normal-maps)).
+
+**Lite, pro and the shape controls, measured November 2026.** PixelLab added
+`mode` (`lite`, the default, or `pro`), `kind`, `strength`, and four shape
+fields, and made lite the default, so the same request now costs a fifth of
+what it did. On a 64×64 sprite (Tier 3):
+
+| Request | Billed |
+|---|---|
+| no options (lite) | 0.1 |
+| `outline_rounding` 0, `part_shapes` 0, `surface_detail` 0 | 0.1 |
+| `outline_rounding` 3, `part_shapes` 2, `surface_detail` 2, `detail_softness` 0.6 | 0.1 |
+| `detail_softness` 3 | 0.1 |
+| `strength` 0.3; `strength` 2 | 0.1 each |
+| `mode: "pro"`, `kind: "character"` | 0.5 |
+| `strength` 3 | 0, **422** |
+
+- With the three shape amounts at 0 the map is one flat color: no surface at
+  all. At their maximum it is deep relief; `detail_softness` 3 leaves a smooth
+  rounded form.
+- `strength` is capped at 2, which the schema does not say: 3 answered `422
+  Input should be less than or equal to 2`.
+- Lite and pro were close on this sprite; pro defined the limbs a little more.
+- The plan priced every normal map at 0.5. It now prices 0.1 unless the
+  revision sets `normalMapMode: "pro"`.
+
+Not measured: `kind` values other than `character`, a strip on pro, and these
+controls on anything but a single 64×64 sprite.
 
 ---
 

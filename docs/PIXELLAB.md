@@ -168,7 +168,7 @@ PixelLab 0.4.130 (October 2026) added four things. PixelKiln covers each:
   recipes still render free on the workbench. See
   [Generator selection](./GENERATORS.md#described-effects-the-paid-vfx-artist).
 - **Normal maps.** A `normal-map` revision makes one for a sprite or a whole
-  loop at 0.5 generations, and `pixelkiln normal-map` does it for a loose
+  loop at 0.1 generations (0.5 on pro), and `pixelkiln normal-map` does it for a loose
   file. See [Controlled asset revisions](./REVISIONS.md#normal-maps).
 
 Each has been billed live and matched the plan: Pro sets at 32px (15) and
