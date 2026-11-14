@@ -1525,6 +1525,73 @@ yet: the lockfile's outputs are images, and audio has no palette, size or
 candidates for a style to share. The record beside each file carries the
 provenance instead.
 
+### `talk`
+
+```bash
+pixelkiln talk visemes --from art/smith-portrait.png --out talk/smith
+pixelkiln talk gif --from talk/smith.talk.json --text "Fire once." --out talk/hello
+pixelkiln talk plan --from talk/smith.talk.json --text "Fire once." --out talk/hello
+```
+
+A talking portrait. PixelLab draws the portrait's mouth positions once, which
+costs generations, and then lip-syncs any line of text to them for free.
+
+**`talk visemes`** draws one expression's mouth positions (`/vocal-animation`)
+and writes `<out>.visemes.png`, a strip with one cell per position, and
+`<out>.talk.json`, a record of the order, the cell size, the engine, the mood
+and what was billed.
+
+- `--from <png>` is a portrait up to 256x256. Nothing is stored on PixelLab.
+  `--id <character id>` uses a character's stored portrait instead and saves
+  the set onto the character; the strip written is then the character's whole
+  grid, one row per expression.
+- `--visemes` is 3, 5, 7 (the default) or 12. PixelLab suggests 3 for tiny
+  portraits and 12 for large close-ups. Every expression on one character
+  must use the same count.
+- `--mood` is `neutral` (the default), `happy`, `angry`, `sad` or `surprised`,
+  held on the face throughout. Run the command once per expression.
+- `--engine v3` (the default) or `pixminimax`, a beta engine that keeps the
+  eyes, brows and head still while the mouth moves. `--seed` repeats a run.
+- **Cost.** For 7 positions PixelLab publishes 3 generations with
+  `pixminimax` at any size, and with `v3` 3 at 64px, 6 at 128px and 24 at
+  256px. Two 64px sets billed 3 each with `pixminimax` and one billed 3 with
+  `v3` (November 2026). Other counts are scaled by count/7, which is an
+  estimate, and a character's stored portrait is priced at 256px because its
+  size is not known here. The command prints the price and asks first
+  (`--yes`, `--budget`, `--dry-run`).
+- **Give the portrait a visible mouth.** A robot with no mouth came back
+  with seven frames that barely differ. A face with a closed mouth came back
+  with seven distinct shapes.
+- The background is removed from the frames. With `v3` the eyes and brows can
+  change between positions as well as the mouth.
+
+**`talk gif`** lip-syncs `--text` (up to 500 characters, any language in the
+latin alphabet) to a GIF at `--out`. Free, and it answers at once.
+
+- `--from <record.talk.json>` sends that record's mouth positions. `--id
+  <character id>` uses the positions stored on a character, and `--mood`
+  picks among its expressions.
+- `--frame-ms` is the time per mouth position (20 to 500, default 90) and
+  `--hold-ms` the pause on the closed mouth at the end (default 600), so a
+  looping GIF has a beat between takes. A GIF stores delays in steps of 10
+  ms, so the command prints the timing actually encoded.
+
+**`talk plan`** prints the frame-by-frame plan for a line instead of
+rendering it (`/lip-sync`): which cell of the strip to show, for how long,
+and how many characters of the text have been spoken by the end of each
+frame, which drives a karaoke-style highlight. Free. Use it when a game
+engine draws the mouth itself.
+
+- `--from <record.talk.json>`, `--id <character id>`, or `--visemes <n>` to
+  plan against a bare preset with no art. With `--out` the plan is written as
+  JSON; without it, it is printed.
+- Each frame is `{ viseme, column, durationMs, textOffset }`. `column` is the
+  cell of the strip, `row` the expression's row in a character's grid, and
+  `cell` the size of one cell. Timings are exact, unlike a GIF's.
+
+Like audio, a talking portrait is not a manifest generator: the output is a
+strip and a record, and the lines are free to make at any time.
+
 ### `estimate-skeleton`
 
 ```bash
@@ -1658,6 +1725,12 @@ Print the package version. `-v` is an alias.
 | `--sprite-fps <n>` | vfx | With `--description`: how fast an animated `--sprite` plays, 1 to 60. PixelLab's default is a GIF's own timing, else 12. |
 | `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
 | `--size <WxH>` | asset canvas/import | asset canvas: the new canvas, in multiples of 4. asset import `--kind tileset` or `tiles`: the tile size in pixels, e.g. `--size 32`. |
+| `--text <line>` | talk gif/plan | The line of dialogue to lip-sync, up to 500 characters. |
+| `--mood <mood>` | talk | `neutral` (the default), `happy`, `angry`, `sad` or `surprised`. For gif and plan it picks among a character's stored expressions. |
+| `--visemes <n>` | talk visemes/plan | How many mouth positions: 3, 5, 7 (the default) or 12. |
+| `--engine <engine>` | talk visemes | `v3` (the default) or `pixminimax`. |
+| `--frame-ms <n>` | talk gif/plan | Milliseconds per mouth position (default 90). |
+| `--hold-ms <n>` | talk gif/plan | Pause on the closed mouth at the end (default 600). |
 | `--target <target>` | asset save | Where the pixels go: `character:<id>:<direction>`, `object:<id>[:<direction>]`, either with `:<animation group id>`, `gallery:<id>`, `gallery:new`, or `tileset:<id>`. |
 | `--tile-type <type>` | asset import | With `--kind tiles`: `square_topdown`, `isometric`, `oblique`, `hex`, `hex_pointy` or `octagon`. |
 | `--lower <text>` | asset import | With `--kind tileset`: the lower terrain (a sidescroller's platform). |

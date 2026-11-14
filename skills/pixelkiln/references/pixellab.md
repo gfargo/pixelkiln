@@ -616,7 +616,10 @@ re-renders the same effect with `--recipe`. `pixelkiln vfx --description
 --out <base>` asks the paid VFX artist instead (a GIF or a PNG strip makes the
 effect follow the animation), prints
 the quote and its 2× ceiling, and asks first; with `--effect <id>` it changes
-that saved effect in place. `pixelkiln font --description <text> --out <base>` writes a
+that saved effect in place. `pixelkiln talk visemes --from <portrait.png> --out <base>` draws a
+portrait's mouth positions once (3 generations at 64px; asks first; the portrait needs a visible
+mouth), after which `pixelkiln talk gif` and `talk plan --from <base>.talk.json --text <line>`
+lip-sync any line for free. `pixelkiln font --description <text> --out <base>` writes a
 `.ttf` and an 80-glyph atlas for PixelLab's documented 15 generations, and
 asks first. `pixelkiln estimate-skeleton <image> --out <file>` starts an
 `animate-skeleton` keypoints file, and `pixelkiln skeleton-preview <asset>`

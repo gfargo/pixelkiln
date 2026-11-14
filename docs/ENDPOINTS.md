@@ -98,6 +98,9 @@ not probed.
 | `POST /tilesets/import` | `pixelkiln asset import --kind tileset` | Measured live | Free; a 16px 8-wide sheet imported with its tile size came back as 16 tiles pixel-identical to the source. Without the size it was cut into 32px tiles ([Free imports and saving back](#free-imports-and-saving-back-measured)). | A 4-wide sheet, a tall (transition) sheet, and a sidescroller import. | Low |
 | `POST /tiles-pro/import` | `pixelkiln asset import --kind tiles` | Measured live | Free; three and four 16px square tiles each became one tile group; wrong-size frames refused with a 422 naming the size. | Every tile type but `square_topdown` through the command; `tile_view`, angle and depth are not sent. | Low |
 | `POST /save-to-asset` | `pixelkiln asset save` | Measured live | Free; a gallery image was added, replaced, saved unchanged and restored from `previous_frames`. A wrong-size image and an unknown target were refused with 422s. | Character, object, animation and tileset targets with an accepted save; the 409 and the 500 that carries `previous_frames` (mock only). | Medium |
+| `POST /vocal-animation` (+ `GET /vocal-animation/{job}`) | `pixelkiln talk visemes` | Measured live | Three 64×64 portraits at 7 positions each billed 3: two with `pixminimax`, one with `v3` ([Talking portraits](#talking-portraits-measured)). The bill is on `GET /background-jobs/{job}`, not on the vocal-animation reply. | The character form (`character_id`, `grid_url`), counts other than 7, portraits above 64px, and moods other than neutral and happy. | Medium |
+| `POST /talking-gif` | `pixelkiln talk gif` | Measured live | Free; a 43-character line returned a 64×64 GIF of 35 frames, 3.75 s. An incomplete set and a 501-character line were refused with 422s. | The character form. | Low |
+| `POST /lip-sync` | `pixelkiln talk plan` | Measured live | Free; a plan against the 7-position and 3-position presets, with `frame_ms` and `hold_ms` honoured. | The character form (`grid_url`, `row`). | Low |
 | `POST /objects/{id}/expand-rotations` (+ `select-frames`, `dismiss-review`) | `pixelkiln asset expand`, `asset review` | Measured live | Two expansions each quoted and billed 10, at the review stage; one kept, one discarded. | The 15 and 25 tiers; a `description`-less call. | High |
 | `POST /{objects,characters}/{id}/canvas` | `pixelkiln asset canvas` | Measured live | Free on an object; a cropping size refused with a 400 that names the art's bounds. | The character route is mock only. | Low |
 | `POST /{objects,characters}/{id}/animations/{group}/mirror` | `pixelkiln asset mirror` | Mock only | Wrapped from the OpenAPI schema; needs an animated asset to run. | Everything. Free, so the exposure is a wrong request shape. | Low |
@@ -613,6 +616,50 @@ was free: the balance did not move.
 The two test tilesets and three test tile groups were deleted. The test
 gallery image was left in the account; the REST API has no route to remove
 a gallery image.
+
+### Talking portraits, measured
+
+Wrapped as `pixelkiln talk` ([CLI reference](./CLI.md#talk)). Measured on 14
+November 2026 (Tier 3).
+
+| Call | Request | Billed | Result |
+|---|---|---|---|
+| `/vocal-animation` | 64×64 robot portrait, 7 positions, `pixminimax`, neutral | 3 | 7 frames of 64×64, in about 40 s |
+| `/vocal-animation` | the same portrait, `pixminimax`, happy, via `talk visemes` | 3 | 7 frames that barely differ |
+| `/vocal-animation` | 64×64 face portrait, `v3`, neutral, via `talk visemes` | 3 | 7 distinct mouth shapes |
+| `/talking-gif` | a 43-character line, each set above | 0 | 64×64, 35 frames, 3.75 s |
+| `/lip-sync` | "Fire once.", `viseme_count` 7 | 0 | 9 frames, 1,410 ms |
+
+- All three paid calls billed PixelLab's published 3 generations for 7
+  positions at 64px. The `v3` prices at 128px (6) and 256px (24), and every
+  count but 7, are unmeasured; PixelKiln scales other counts by count/7 as
+  an estimate.
+- **The bill is not on the vocal-animation reply.** `GET
+  /vocal-animation/{job}` returned `usage: null` when completed. `GET
+  /background-jobs/{job}` for the same id carried `usage` with 3
+  generations, so `talk visemes` reads it there.
+- The stateless (`portrait`) job returned `visemes` as a map whose key order
+  is not the column order. `completed_visemes` listed them in the order
+  `/lip-sync` reports as `viseme_order` (`rest`, `closed`, `small_open`,
+  `medium_open`, `wide_open`, `round`, `teeth`), and PixelKiln writes the
+  strip in that order.
+- **A portrait needs a mouth.** The robot has none. One run drew small
+  mouths onto it and the next returned seven frames with no visible
+  difference. The face portrait, drawn with its mouth closed, returned seven
+  clearly different shapes. With `v3` the eyes and brows changed between
+  positions too, and the portrait's background was removed.
+- `/talking-gif` refuses a partial set with a 422 that lists each preset's
+  ids: 3 is `open`, `rest`, `round`; 5 adds `smile` and `teeth`; 12 is
+  `closed`, `hiss`, `jaw_drop`, `medium_open`, `pucker`, `rest`,
+  `round_small`, `small_open`, `smile`, `teeth`, `tongue`, `wide_open`.
+- `/lip-sync` with `frame_ms` 50 and `hold_ms` 0 returned 9 frames in 450
+  ms: exactly 50 ms each. With neither `character_id` nor `viseme_count` it
+  is a 422.
+
+Not measured: anything through a character (`character_id`), since no
+character with a stored portrait was at hand. That path, including cutting
+one expression's row out of the stored grid, rests on the OpenAPI schema and
+mocks. `DELETE /characters/{id}/vocal-animation/{mood}` is not wrapped.
 
 ## UI split, states and 9-slice, measured
 
