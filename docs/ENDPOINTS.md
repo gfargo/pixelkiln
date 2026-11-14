@@ -117,8 +117,8 @@ not probed.
 | `DELETE /objects/{id}`, `POST /objects/{id}/dismiss-review`, `DELETE /characters/{id}` | `salvage`, account cleanup | Unknown | Not discussed in the docs. | A recorded live call. | Low |
 | `DELETE /characters/{id}/animations` | replacing a loop's direction | Unknown | "Deleting one direction of a shared group has not been run live" ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured)). | Whether the rest of the group keeps its motion. | Low |
 | `POST /create-tiles-pro` (+ `GET /tiles-pro/{id}`) | `tiles` | Measured live | One numbered description, 4 tiles at 16px, with a Game Boy `target_palette`, billed 10, every candidate in the palette (November 2026). `GET` has no `status`: 423 while drawing ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind)). | `tile_feature` sets (`roads`, `tileset`, `building`) and `tile_rules`; large tile-size × variation canvases that reach the top tier. | High |
-| `POST /create-tileset` (+ `GET /tilesets/{id}`) | `terrain`, top-down | Measured live | Pro 32px billed 15 (three sets, one connected through `lower_base_tile_id`, one with edge slope); Pro 64px billed 25 and returned 25 tiles at transition 0.5; standard sets billed 3 each (planned 4), one connected through `upper_base_tile_id` ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind), October 2026). `target_palette` on Pro, mock only. | Pro below 32px; standard above 32px; a standard set cannot connect to a Pro set. | High |
-| `POST /create-tileset-sidescroller` | `terrain`, `terrainOrientation: "sidescroller"` | Measured live | One 16px set at transition 0.25 billed 3; 16 tiles; `usage` is null on the `GET`, so the bill comes from the job ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind)). | 32px tiles and other transition sizes (tile counts assumed 16); the call returned `metadata.transition_size: 0.0` for 0.25. | Low |
+| `POST /create-tileset` (+ `GET /tilesets/{id}`) | `terrain`, top-down | Measured live | Pro 32px billed 15 (three sets, one connected through `lower_base_tile_id`, one with edge slope); Pro 64px billed 25 and returned 25 tiles at transition 0.5; standard sets billed 3 each (planned 4), one connected through `upper_base_tile_id` ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind), October 2026). `target_palette` on Pro, mock only. In November 2026 five standard 16px sets billed 1 each, with `shape_seed`, side walls, `enhance: false`, walkable flags, and reference images ([Tileset options, November 2026](#tileset-options-november-2026-measured)). | Pro below 32px; standard above 32px; a standard set cannot connect to a Pro set. | High |
+| `POST /create-tileset-sidescroller` | `terrain`, `terrainOrientation: "sidescroller"` | Measured live | Since November 2026: a standard 16px set billed 1 and a pro 16px set billed 15; 16 tiles each; a standard request with `lower_base_tile_id` is refused with a 422. The older model billed 3 ([Tileset options, November 2026](#tileset-options-november-2026-measured)). | `lower_reference_image` (pro) and `transition_reference_image` (standard) are mock only; 32px. | High |
 | `POST /create-isometric-tile` (+ `GET /isometric-tiles/{id}`) | `isometricTile` | Measured live | One 32px `block` billed 1 generation, not the schema's `usd: 0.02` example ([Standalone isometric tile](#standalone-isometric-tile-schema-documented-cost-measured-once)). | Other sizes and shapes; flat pricing across 16 to 64px is an assumption. | Low |
 | `POST /create-ui-asset` (+ `GET /ui-assets/{id}`) | `uiAsset` | Measured live | One 256×192 call billed 20, the low end of the quoted 20 to 40; the plan prices 40 ([UI panels](#ui-panels-one-endpoint-schema-documented-cost-unverified), September 2026). | A second size; `pixelkiln plan` over-reads. | High |
 | `POST /ui-assets/{id}/split` | `pixelkiln ui split` | Measured live | Free; a 256×192 template split into the 3 elements its `split_preview` listed. A second split is refused client-side ([UI split, states and 9-slice](#ui-split-states-and-9-slice-measured)). | Custom `boxes` are mock only. | Low |
@@ -852,7 +852,59 @@ October 2026, through `pixelkiln gen` on the website's showcase project
   ring where it meets the first set's sand is visible up close. "plain smooth
   sand texture" still came back with pebbles in the first set.
 
+### Tileset options, November 2026, measured
+
+PixelLab replaced the sidescroller model and added options to both tileset
+endpoints. Measured on 14 November 2026 (Tier 3), all at 16px tiles, each bill
+read from the finished job.
+
+| Set | Request | Planned | Billed |
+|---|---|---|---|
+| sidescroller, standard | `transition_size` 0.25, `platform_thickness` 0.8 | 1 | 1 |
+| sidescroller, pro | `mode: "pro"`, `transition_size` 0.25 | 15 | 15 |
+| top-down, standard | `shape_style` round, `raggedness` 0.5, `shape_seed` 7, `side_wall_thickness` 0.3, `side_wall_placement` 1, `enhance: false`, both walkable flags | 4 | 1 |
+| top-down, standard | the same with `shape_seed` 42 | 4 | 1 |
+| top-down, standard | both of the above again with `seed` 1234 | 4 | 1 each |
+| top-down, standard | `lower_reference_image` and `upper_reference_image` | 4 | 1 |
+| sidescroller, standard | `lower_base_tile_id` (raw request) | n/a | 0, **422** |
+
+- **The sidescroller endpoint has modes now.** `standard` (the default) is
+  1 generation and about 37 s; `pro` is 15 and took about 40 s here. The model
+  measured below at 3 generations is retired. `terrainCost` now plans 1 and
+  15. `transition_size` stops at 0.5 on both, so the `1` PixelKiln used to
+  accept is refused.
+- **A standard sidescroller set cannot connect.** `lower_base_tile_id` without
+  `mode: "pro"` answers `422`: "standard draws the new top around every edge of
+  a chained platform instead of only on top". PixelKiln refuses a `connect` on
+  a standard sidescroller set before sending.
+- **Standard top-down sets billed 1, five times.** The earlier measurement was
+  3 and PixelLab quotes 1 to 4, so the plan still prices 4; over-reading is
+  the safe direction for `--budget`.
+- **A reference image is used nearly verbatim.** Two hand-made striped 16×16
+  swatches became the fill of both terrains, stripes intact.
+- **`enhance: false` is visible.** With it, plain descriptions ("dark river
+  water", "grassy meadow") gave flat, literal colors.
+- **The side wall controls drew a wall.** Thickness 0.3 at placement 1 put a
+  dark rim along the bank.
+- **`shape_seed` changes the border modestly.** With the generation `seed`
+  pinned, seeds 7 and 42 shared a palette and layout while all 16 tiles
+  differed and the bank's edge wobbled differently. One comparison.
+- The walkable flags were accepted; whether a map or export reads them was not
+  checked. They change no pixel, so PixelKiln keeps them out of the spec hash.
+- `tile_strength`, `tileset_adherence` and `tileset_adherence_freedom` are
+  documented by PixelLab as having no effect on either endpoint. PixelKiln
+  does not send them.
+
+Not measured: 32px sets, a sidescroller's `transition_reference_image`
+(standard) and `lower_reference_image` (pro), `transition_reference_image` on a
+top-down set, and any of these options on a top-down pro set, which ignores
+the standard-only ones.
+
 ### Sidescroller, measured
+
+**Superseded in November 2026**: the model this section measured is retired;
+see [Tileset options, November 2026](#tileset-options-november-2026-measured)
+for current prices. The response shape below still holds.
 
 One `POST /create-tileset-sidescroller` call, 16px tiles,
 `transition_size: 0.25`, `lower_description` "mossy stone bricks texture",

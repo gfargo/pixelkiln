@@ -35,6 +35,35 @@ Provider keys can contain gaps when a set includes stamp-only images. Output
 roles therefore retain the original numeric key (`tile-07`) rather than being
 renumbered by array position.
 
+### Terrain reference images
+
+A `terrain` asset can hand PixelLab a PNG for each terrain instead of leaving
+its look to the description alone:
+
+```json
+"cave": {
+  "prompt": "1). teal slime pool 2). purple crystal floor",
+  "terrainReferences": { "lower": "refs/slime.png", "upper": "refs/crystal.png" }
+}
+```
+
+Paths are relative to the manifest. Each file is hashed into the asset's
+identity, so replacing a reference marks the set stale and renaming it does
+not. A missing file is a manifest error, and a file changed between `plan` and
+`gen` is refused at submit so the request always matches what was priced.
+
+**A reference is used almost as the texture itself.** Two hand-made 16x16
+striped swatches came back as the fill of both terrains, stripes intact, with
+PixelLab drawing only the border between them (November 2026, a standard 16px
+set, billed 1). Give it a tile you would be happy to see repeated, not a mood
+board.
+
+A top-down set takes `lower`, `upper` and `transition`. A sidescroller set
+takes one, and which one depends on its mode: `transition` (the surface
+layer's texture) on standard, `lower` (the platform body to keep) on pro. Each
+must be a square PNG of the tile size, and `upper` is refused, since a
+sidescroller's upper terrain is empty air.
+
 ### The `terrain` generator's shape
 
 `terrain` (`/create-tileset`, or `/create-tileset-sidescroller` for a

@@ -164,8 +164,10 @@ describe("client requests", () => {
   it("puts PixelLab's own reason in a refusal, and says a 423 is still generating", async () => {
     const refused = recording({ detail: "Canvas 8x8 would crop the object: the artwork spans 16x20" }, 400)
     await expect(refused.client.setCanvasSize("object", "o1", { width: 8, height: 8 })).rejects.toThrow(/→ 400: Canvas 8x8 would crop the object: the artwork spans 16x20/)
-    const validation = recording({ detail: [{ loc: ["body"], msg: "bad" }] }, 422)
-    await expect(validation.client.setCanvasSize("object", "o1", { width: 8, height: 8 })).rejects.toThrow(/→ 422$/)
+    const validation = recording({ detail: [{ loc: ["body"], msg: "Value error, lower_base_tile_id needs mode=\"pro\"" }, { loc: ["body", "x"], msg: "too small" }] }, 422)
+    await expect(validation.client.setCanvasSize("object", "o1", { width: 8, height: 8 })).rejects.toThrow(/→ 422: lower_base_tile_id needs mode="pro"; too small$/)
+    const unknown = recording({ detail: { code: 7 } }, 422)
+    await expect(unknown.client.setCanvasSize("object", "o1", { width: 8, height: 8 })).rejects.toThrow(/→ 422$/)
     const locked = recording("{}", 423)
     await expect(locked.client.exportAsset("object", "o1", "zip")).rejects.toThrow(/423; the asset or one of its animations is still generating/)
   })

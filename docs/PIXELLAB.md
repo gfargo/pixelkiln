@@ -71,7 +71,7 @@ unapproved files. See [Manifest quality profiles](./MANIFEST.md#quality-profiles
 | `pixflux` | You need a closed palette or a full-bleed background | 1 generation |
 | `1dir` | You need references or several candidates for human review | 10 to 25 generations |
 | `tiles` | You need ground variations or a connected structural set | 10 to 25 generations |
-| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff), sets that share a terrain, or a sidescroller platform set | Pro 15 at 32px, 25 at 64px, standard 3, sidescroller 3 (all measured; standard plans at 4) |
+| `terrain` | You need a two-terrain Wang tileset (grass to water, floor to cliff), sets that share a terrain, or a sidescroller platform set | Pro 15 at 32px, 25 at 64px, standard 1 to 3, sidescroller 1 on standard and 15 on pro (all measured; standard plans at 4) |
 | `isometricTile` | You need one standalone isometric tile, 16 to 64px | 1 generation (measured once) |
 | `imagePro` | You need a larger or non-square scene, up to 792 wide and 688 tall, optionally held to the style's `palette` | 10 to 25 generations |
 | `imageProFlash` | You need a still on the Pro Flash model, optionally styled from one image, 16 to 256px | 5 to 9 generations (provisional quote) |

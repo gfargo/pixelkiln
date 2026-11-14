@@ -70,6 +70,7 @@ not merely a label edit.
 | `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
 | `outfit` | object | `character` styles: an existing loop's frames re-clothed from an outfit image, `{ "of": "<loop asset>", "reference": "<image>" }`, with optional `additionalInstructions`. See [Outfit transfer](./CHARACTERS.md#outfit-transfer). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
+| `terrainReferences` | object | `terrain` styles: a PNG per terrain to take that terrain's look from, `{ "lower": "refs/water.png", "upper": "refs/sand.png", "transition": "refs/foam.png" }`, paths relative to the manifest. See [Terrain reference images](./TILES.md#terrain-reference-images). |
 | `derive` | object | Made from existing pixels by one local transform, at no cost, with no provider. See [Derived and external assets](#derived-and-external-assets). |
 | `external` | object | Built by a script or tool outside pixelkiln; pixelkiln records and tracks the file but never builds it. See [Derived and external assets](#derived-and-external-assets). |
 | `vfx` | object | `vfx` styles, PixelLab only: the effect to render. `{ "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "sprite": "art/chars/hero.png", "fps": 12 }`; start from one `preset` or one `recipe` (a recipe JSON or a `.vfx.json` record), with optional `parts`, `sprite`, `fps`, and `name`. Or give a `description` (with optional `artist`: `lite` or `pro`, a local PNG `sprite`, and `name`) for PixelLab's paid VFX artist instead; it excludes `preset`, `recipe`, `parts`, and `fps`. Replaces `prompt` as the required field. See [`vfx`](./GENERATORS.md#vfx) and [Described effects](./GENERATORS.md#described-effects-the-paid-vfx-artist). |
@@ -157,6 +158,12 @@ One asset using the fields most projects reach for:
 | `terrainBoundarySeed` | `0` | `terrain`, with `terrainBoundaryAmplitude`. Which meander, an integer. |
 | `terrainStepSlope` | `0` | `terrain`, `pro` at `terrainTransitionSize` 0.25 only. 0 a cliff to 2 a gentle slope. |
 | `terrainConnectDiagonals` | `false` | `terrain`, `pro` only. Join the diagonal tiles' upper corners into one area. |
+| `terrainShapeSeed` | `0` | `terrain`, standard, top-down. Which ragged border `terrainRaggedness` draws, 0–99; another number gives a different edge. |
+| `terrainSideWallThickness` | | `terrain`, standard, top-down, `terrainTransitionSize` above 0. How thick the wall reads on the rim and the front face, 0–1. |
+| `terrainSideWallPlacement` | `0` | `terrain`, standard, top-down, `terrainTransitionSize` above 0. 0 sticks the wall out past the terrain, 1 carves it in so the shape stays put. |
+| `terrainEnhance` | `true` | `terrain`, standard. PixelLab rewrites the terrain descriptions and picks base colors first; `false` uses your wording as written. |
+| `terrainPlatformThickness` | | `terrain`, a standard sidescroller set. Platform body thickness, 0 thin to 1 thick; left out, PixelLab fits it to the top layer. |
+| `terrainLowerWalkable` / `terrainUpperWalkable` | | `terrain`, top-down. Whether each terrain can be walked on, stored with the set for PixelLab's maps and engine exports. Sent when the set is generated; they change no pixel, so changing one later does not make the set stale. |
 | `terrainSpreadX` / `terrainSlopeSize` | | Deprecated: PixelLab ignores both. Still accepted. Changing any `terrain*` field marks the set stale: the older ones (mode, transition size, view, shape style, raggedness, these two) and the descriptions as sent are recorded per lock entry as `terrainSettings` rather than hashed, compared as written (an explicit default counts as a change), and absent on sets generated before that record existed, which stay current. |
 | `mode` | `standard` | `character` only. `standard`, `v3`, `pro`, or `pro-flash`; see [Characters](./CHARACTERS.md). |
 | `directions` | `8` | `character` only. `4` or `8`; every engine but `standard` draws 8. |

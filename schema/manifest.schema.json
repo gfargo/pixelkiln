@@ -256,6 +256,35 @@
                   "terrainConnectDiagonals": {
                     "type": "boolean"
                   },
+                  "terrainShapeSeed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 99
+                  },
+                  "terrainSideWallThickness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainSideWallPlacement": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainEnhance": {
+                    "type": "boolean"
+                  },
+                  "terrainPlatformThickness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainLowerWalkable": {
+                    "type": "boolean"
+                  },
+                  "terrainUpperWalkable": {
+                    "type": "boolean"
+                  },
                   "terrainTransitionSize": {
                     "type": "number",
                     "minimum": 0,
@@ -752,6 +781,35 @@
                     "maximum": 2
                   },
                   "terrainConnectDiagonals": {
+                    "type": "boolean"
+                  },
+                  "terrainShapeSeed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 99
+                  },
+                  "terrainSideWallThickness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainSideWallPlacement": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainEnhance": {
+                    "type": "boolean"
+                  },
+                  "terrainPlatformThickness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "terrainLowerWalkable": {
+                    "type": "boolean"
+                  },
+                  "terrainUpperWalkable": {
                     "type": "boolean"
                   },
                   "terrainTransitionSize": {
@@ -1824,6 +1882,24 @@
               "mirror": {
                 "type": "string",
                 "minLength": 1
+              },
+              "terrainReferences": {
+                "type": "object",
+                "properties": {
+                  "lower": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "upper": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "transition": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
               },
               "derive": {
                 "type": "object",

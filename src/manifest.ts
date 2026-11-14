@@ -872,6 +872,13 @@ export async function resolveSpecs(
         terrainBoundarySeed: generator === "terrain" ? style.terrainBoundarySeed : undefined,
         terrainStepSlope: generator === "terrain" ? style.terrainStepSlope : undefined,
         terrainConnectDiagonals: generator === "terrain" ? style.terrainConnectDiagonals : undefined,
+        terrainShapeSeed: generator === "terrain" ? style.terrainShapeSeed : undefined,
+        terrainSideWallThickness: generator === "terrain" ? style.terrainSideWallThickness : undefined,
+        terrainSideWallPlacement: generator === "terrain" ? style.terrainSideWallPlacement : undefined,
+        terrainEnhance: generator === "terrain" ? style.terrainEnhance : undefined,
+        terrainPlatformThickness: generator === "terrain" ? style.terrainPlatformThickness : undefined,
+        terrainLowerWalkable: generator === "terrain" ? style.terrainLowerWalkable : undefined,
+        terrainUpperWalkable: generator === "terrain" ? style.terrainUpperWalkable : undefined,
         terrainTransitionSize: generator === "terrain" ? style.terrainTransitionSize : undefined,
         terrainView: generator === "terrain" ? style.terrainView : undefined,
         terrainOrientation: generator === "terrain" ? style.terrainOrientation : undefined,
@@ -1420,6 +1427,20 @@ export async function resolveSpecs(
           links[side] = { assetId: link.of, terrain: link.terrain, spec: linkedSpec }
         }
         resolved.terrainConnect = links
+      }
+      if (asset.terrainReferences) {
+        if (resolved.generator !== "terrain") {
+          throw new Error(`assets.${assetId}.terrainReferences: only a terrain set takes terrain references; style "${styleId}" uses "${resolved.generator}"`)
+        }
+        const references: NonNullable<ResolvedSpec["terrainReferences"]> = {}
+        for (const side of ["lower", "upper", "transition"] as const) {
+          const relative = asset.terrainReferences[side]
+          if (!relative) continue
+          const file = path.resolve(root, relative)
+          const image = await optionalRevisionImage(file, `terrain ${side} reference`, "png")
+          references[side] = { file, sha256: image?.hash ?? null, width: image?.width ?? null, height: image?.height ?? null }
+        }
+        if (Object.keys(references).length) resolved.terrainReferences = references
       }
       if (asset.scene) resolved.scene = await resolveMapScene(root, styleId, assetId, resolved.generator, asset.scene, activeProvider)
       resolved.specHash = specHash(
