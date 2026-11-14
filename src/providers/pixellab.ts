@@ -111,12 +111,13 @@ export function pixelLabObjectUrl(generator: Generator, objectId: string | null)
  */
 function vfxArtistSpecQuote(spec: ResolvedSpec): number {
   const sprite = spec.vfx?.sprite
+  const frames = spec.vfx?.spriteFrames ?? 1
   const side = !sprite
     ? "none"
     : "file" in sprite && sprite.width != null && sprite.height != null
-      ? Math.max(sprite.width, sprite.height)
+      ? Math.max(Math.ceil(sprite.width / frames), sprite.height)
       : "unknown"
-  return vfxArtistQuote(spec.vfx?.artist ?? "lite", side)
+  return vfxArtistQuote(spec.vfx?.artist ?? "lite", side, false, frames > 1)
 }
 
 /** A workbench export's spritesheet and atlas URLs, from its download folder and file names. */
@@ -2683,11 +2684,21 @@ export class PixelLabProvider implements Provider {
       if (sha256(bytes) !== vfx.sprite.sha256) {
         throw new Error(`vfx sprite changed after the manifest was resolved: ${file}; run the command again`)
       }
-      sprite = vfxArtistSprite(bytes, `vfx sprite ${file}`).image
+      const taken = vfxArtistSprite(bytes, `vfx sprite ${file}`, vfx.spriteFrames ?? 1).image
+      // The manifest tracks a PNG; a GIF renamed .png would bring frames the plan never priced.
+      if (taken.format !== "png") throw new Error(`vfx sprite must be a PNG: ${file}`)
+      sprite = { base64: taken.base64, format: "png" }
     }
     const previous = (context?.replacedMetadata?.vfx ?? context?.lastGenerationMetadata?.vfx) as { effectId?: unknown } | undefined
     const artist = vfx.artist ?? "lite"
-    const submitted = await this.client.createVfx({ description: vfx.description!, artist, sprite, name: vfx.name })
+    const submitted = await this.client.createVfx({
+      description: vfx.description!,
+      artist,
+      sprite,
+      spriteFrames: vfx.spriteFrames,
+      spriteFps: vfx.spriteFps,
+      name: vfx.name,
+    })
     return {
       jobId: submitted.background_job_id,
       metadata: {

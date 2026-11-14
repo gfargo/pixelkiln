@@ -148,7 +148,8 @@ not probed.
 | `POST /interpolation-v2` | revision `interpolate` | Measured live | A 64×64 start sprite with a `lastFrame` keyframe and the default frame count billed 10 and returned 14 frames at 64×64 (November 2026, Tier 3; [REVISIONS.md](./REVISIONS.md#interpolate-between-two-keyframes)). The planner said 25, a 2.5× over-read, and now prices the canvas on the 10/15/25 ladder. `target_palette` sent, mock only. | Canvases above 65536px² (15 and 25 tiers, unbilled) and other frame counts. | High |
 | `POST /edit-animation-v2` | revision `edit-animation` | Measured live | One text edit of a 9-frame 64×64 set billed 10 and the edited set was accepted into review (November 2026, Tier 3). The planner said 25 and now prices the packed grid (nine 64×64 frames: 192×192) on the same ladder. `target_palette` sent, mock only. | Larger sets and canvases, where the packed grid crosses 65536px² (unbilled, assumed to follow the ladder). | High |
 | `POST /vfx`, lite artist, no sprite | `pixelkiln vfx --description`, `vfx` block `description` | Measured live | One effect billed 1 (balance 5104 to 5103); 163×26, 8 frames, sheet and atlas cut into 8 correct frames ([VFX artist](#vfx-artist-post-vfx-measured-once), October 2026). | The `files` shape (list or map) is undocumented; PixelKiln reads three. | Low |
-| `POST /vfx`, sprite, pro artist, `effect_id` change or `game_pack` | same | Mock only | Quoted from the OpenAPI table: pro 6 (8 with a sprite), 14 and 28 for larger sprites; plans count twice the quote ([VFX artist](#vfx-artist-post-vfx-measured-once)). | Every variant above. | High |
+| `POST /vfx`, lite artist, animated sprite | `pixelkiln vfx --description --sprite-frames`, `vfx` block `spriteFrames` | Measured live | Four effects around a 108px walk cycle (4-, 8- and 12-frame, strip and GIF) were each quoted 2 and billed 2, 2, 2 and 4, the last at the 2× ceiling ([Animated sprites](#vfx-animated-sprites-measured), November 2026). | Pro bills; a still sprite's bill. | Low |
+| `POST /vfx`, still sprite, pro artist, `effect_id` change or `game_pack` | same | Mock only | Quoted from the OpenAPI table: pro 6 (8 with a sprite), 14 and 28 for larger sprites; plans count twice the quote ([VFX artist](#vfx-artist-post-vfx-measured-once)). | Every variant above. | High |
 | MCP `tools/call` `vfx_workbench` at `api.pixellab.ai/mcp` | `pixelkiln vfx`, `vfx` block `preset` or `recipe` | Measured live | Free on a subscription; same recipe re-rendered byte-identical; exports a sheet, GIF, atlas and optional game pack ([VFX workbench (MCP only), measured](#vfx-workbench-mcp-only-measured), October 2026). | "Busy, retry" is the only recorded error; sprites by asset are not wired. | Low |
 | `POST /create-image-pixen`, `/create-image-bitforge` | none | Not wrapped | Each 1 generation; bitforge returned blobs for a simple prompt ([Single-image generators, measured](#single-image-generators-measured)). | n/a | n/a |
 | `POST /rotate`, `/resize`, `/image-to-pixelart` | none | Not wrapped | Each 1 generation; all three break a locked palette ([Post-processing utilities, measured](#post-processing-utilities-measured)). | n/a | n/a |
@@ -170,7 +171,7 @@ uncertainty per generation.
    per direction, so an 8-direction loop is eight bills no one has recorded.
 3. **`/create-character-state`** (Run live, not measured). One rough bill
    (about 22) taken beside other jobs and before the cut.
-4. **`/vfx` with a sprite, the pro artist, a change or a game pack** (Mock
+4. **`/vfx` with a still sprite, the pro artist, a change or a game pack** (Mock
    only). Up to 28 generations a call, and plans reserve twice the quote.
 5. **`/edit-image-pro-flash`, `/inpaint-image-pro-flash`** (Mock only). 5 to 6
    per call on provisional quotes, no completed response seen.
@@ -739,7 +740,8 @@ pack remain unmeasured.
 **Request** (`VfxRequest`): `description` (required, up to 8000 characters;
 with `effect_id`, what to change), `sprite` (optional base64 PNG or GIF, up
 to 512×512 per frame; an animation is a GIF or a horizontal strip of
-`sprite_frames`, 1–32), `sprite_fps` (1–60), `artist` (`lite`, the default,
+`sprite_frames`, 1–32; PixelKiln sends both, see
+[Animated sprites](#vfx-animated-sprites-measured)), `sprite_fps` (1–60), `artist` (`lite`, the default,
 or `pro`), `effect_id` (change a saved effect in place; it keeps its own
 sprite), `conversation` (from a previous result, with its `effect_id`:
 priced as a change), `name` (up to 80 characters), and `game_pack`.
@@ -771,13 +773,62 @@ quote), never more than twice the quote.
 | sprite up to 256 px | 3 (change 2) | 14 (change 5) |
 | sprite up to 512 px | 5 (change 2) | 28 (change 8) |
 
-An animated sprite adds "a little per frame", unpriced; pixelkiln sends
-still PNG sprites only. Plans and `--budget` count twice the quote, the most
-a job can bill, and the lock records `quotedGenerations` beside the bill read
-from the finished job's `usage`.
+PixelLab says an animated sprite adds "a little per frame"; the quotes it
+gave are [below](#vfx-animated-sprites-measured). Plans and `--budget` count
+twice the quote, the most a job can bill, and the lock records
+`quotedGenerations` beside the bill read from the finished job's `usage`.
 
 Wired up as `pixelkiln vfx --description` ([CLI](./CLI.md#described-effects-paid))
 and as a `vfx` block's `description` ([GENERATORS.md](./GENERATORS.md#described-effects-the-paid-vfx-artist)).
+
+### VFX animated sprites, measured
+
+November 2026, Tier 3 account. The sprite was a 108×108 robot walk cycle,
+sent as a PNG strip with `sprite_frames` or as a GIF.
+
+**Quotes.** `quoted_generations` was read from the 202 for each request
+below, and every job except the four billed ones was cancelled at once with
+`DELETE /background-jobs/{id}`. A cancelled job reported a bill of 0.
+
+| Frame size | Frames | lite | pro |
+|---|---|---|---|
+| 108px (128 tier) | 1 | 1 | not asked |
+| 108px | 2, 3, 4, 8, 12, 16, 24, 32 | 2 | 9 (asked at 4, 12 and 32) |
+| 200px (256 tier) | 1 | 3 | not asked |
+| 200px | 2, 4, 32 | 4 | 15 at 2 and 8, 16 at 32 |
+| 400px (512 tier) | 2, 32 | 6 | 29 at 2 and 4, 30 at 8, 31 at 16, 33 at 32 |
+
+So lite adds a flat 1 for an animated sprite. Pro adds 1 at the smallest
+tier and more with size and frame count, up to 2 and 5 at 32 frames, the
+most a sprite may hold. PixelKiln prices pro at those 32-frame figures, so
+a shorter pro animation is quoted at or under the plan. The frames in each
+tier were padded copies of the same walk, so the tier boundaries themselves
+(128 and 256) were not probed.
+
+**A strip has a width limit the spec does not state.** A PNG strip wider
+than 1,024 pixels is refused with a free 422 ("exceeds the pixel tools
+budget (max side 1024px…)"), even at 12 frames of 108px. The same frames as
+a GIF are accepted up to 32. PixelKiln refuses a wider strip before sending
+and suggests a GIF.
+
+**Bills.** Four lite effects were delivered, each quoted 2:
+
+| Sprite | Result | Billed |
+|---|---|---|
+| 4-frame strip | 89×97, 12 frames at 12 fps | 4 |
+| 8-frame strip | 130×130, 8 frames at 12 fps | 2 |
+| 12-frame GIF, via `pixelkiln vfx` | 108×108, 12 frames at 12 fps | 2 |
+| 8-frame strip, `sprite_fps` 10, via `pixelkiln vfx` | 160×120, 8 frames at 10 fps, plus a normal map | 2 |
+
+The 4 is the first bill above its quote recorded here, and it sits exactly
+at the twice-the-quote ceiling that plans reserve. In three of four the
+effect kept the sprite's frame count, and `sprite_fps` 10 came back as 10
+fps. The 4-frame walk came back as 12 frames. Both effects made through the
+command were looked at: the trail and the aura follow the robot's steps.
+
+Not measured: any pro bill, an animated sprite with an `effect_id` change,
+and the manifest path against the live API (it shares the request code with
+the command and is covered by mocks).
 
 ---
 

@@ -47,7 +47,7 @@ import { validateCostEstimate, type Provider } from "./provider.ts"
 import { createProvider } from "./providers/registry.ts"
 import { parseSkeletonSet, type SkeletonSet } from "./skeleton.ts"
 import { pixelkilnVersion } from "./version.ts"
-import { isVfxReference, readVfxRecipe, vfxRecipeSha256 } from "./pixellab-vfx.ts"
+import { isVfxReference, readVfxRecipe, vfxArtistFrameSide, vfxRecipeSha256 } from "./pixellab-vfx.ts"
 
 export interface LoadedManifest {
   manifest: Manifest
@@ -1629,6 +1629,10 @@ async function resolveVfxShape(root: string, assetId: string, vfx: AssetVfx, def
     // The VFX artist takes PNG (or GIF) pixels; the workbench also reads JPEG.
     const image = await optionalRevisionImage(spriteRef, `assets.${assetId}.vfx.sprite`, vfx.description ? "png" : undefined)
     sprite = { file: spriteRef, sha256: image?.hash ?? null, width: image?.width ?? null, height: image?.height ?? null, format: image?.format ?? null }
+    // A strip that cannot be cut into its frames is refused here, before a plan prices it.
+    if (image && vfx.description && (vfx.spriteFrames ?? 1) > 1) {
+      vfxArtistFrameSide(image.width, image.height, vfx.spriteFrames!, `assets.${assetId}.vfx.sprite`)
+    }
   }
   return {
     ...(vfx.preset ? { preset: vfx.preset } : {}),
@@ -1639,6 +1643,9 @@ async function resolveVfxShape(root: string, assetId: string, vfx: AssetVfx, def
     // The artist caps a name at 80 characters; a long default is cut, not refused.
     name: vfx.name ?? (vfx.description ? defaultName.slice(0, 80) : defaultName),
     ...(vfx.description ? { description: vfx.description, artist: vfx.artist ?? "lite" } : {}),
+    // A strip of one frame is a still: it is sent, priced and hashed as one.
+    ...(vfx.spriteFrames !== undefined && vfx.spriteFrames > 1 ? { spriteFrames: vfx.spriteFrames } : {}),
+    ...(vfx.spriteFps !== undefined ? { spriteFps: vfx.spriteFps } : {}),
   }
 }
 

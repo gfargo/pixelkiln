@@ -486,15 +486,29 @@ export const VFX_ARTIST_MAX_SPRITE = 512
  * a request with an `effect_id` and that effect's `conversation`; without
  * the conversation PixelLab prices a change as a new effect.
  */
-export function vfxArtistQuote(artist: VfxArtist, sprite: number | "none" | "unknown", change = false): number {
+export function vfxArtistQuote(artist: VfxArtist, sprite: number | "none" | "unknown", change = false, animated = false): number {
   // Columns: no sprite, a sprite up to 128px, up to 256px, up to 512px.
   const table = {
     lite: { new: [1, 1, 3, 5], change: [1, 1, 2, 2] },
     pro: { new: [6, 8, 14, 28], change: [4, 4, 5, 8] },
   }
   const tier = sprite === "none" ? 0 : sprite === "unknown" ? 3 : sprite <= 128 ? 1 : sprite <= 256 ? 2 : 3
-  return table[artist][change ? "change" : "new"][tier]!
+  const base = table[artist][change ? "change" : "new"][tier]!
+  return animated && tier > 0 ? base + VFX_ARTIST_ANIMATED_EXTRA[artist][tier - 1]! : base
 }
+
+/**
+ * What an animated sprite adds to a new effect's quote, by size tier (up to
+ * 128px, 256px, 512px a frame). Read from live quotes on 2026-11-14: lite
+ * added 1 at every size and length; pro added 1 to 5, growing with frame
+ * count and size, and these are its quotes at 32 frames, the most a sprite
+ * may hold, so a shorter pro animation is quoted at or under this.
+ */
+export const VFX_ARTIST_ANIMATED_EXTRA = { lite: [1, 1, 1], pro: [1, 2, 5] } as const
+/** A sprite animation holds at most this many frames. */
+export const VFX_ARTIST_MAX_FRAMES = 32
+/** PixelLab refuses a PNG strip wider than this (measured: a free 422); a longer animation goes as a GIF. */
+export const VFX_ARTIST_MAX_STRIP = 1024
 
 /**
  * The most one artist job can bill. PixelLab charges the quote, more when
@@ -506,18 +520,71 @@ export function vfxArtistCeiling(quote: number): number {
   return quote * 2
 }
 
-/** A sprite file's bytes as the artist takes them: a PNG up to 512px a side. */
-export function vfxArtistSprite(bytes: Buffer, label: string): { image: { base64: string; format: "png" }; side: number } {
-  const metadata = imageMetadata(bytes)
-  if (metadata?.format !== "png") throw new Error(`${label}: PixelLab's VFX artist takes a PNG sprite`)
-  const side = Math.max(metadata.width, metadata.height)
+/** A GIF's logical screen size, from its header; null when the bytes are not a GIF. */
+export function gifSize(bytes: Buffer): { width: number; height: number } | null {
+  if (bytes.length < 10) return null
+  const magic = bytes.toString("ascii", 0, 6)
+  if (magic !== "GIF87a" && magic !== "GIF89a") return null
+  return { width: bytes.readUInt16LE(6), height: bytes.readUInt16LE(8) }
+}
+
+/**
+ * The size rules for a PNG the artist takes, checked on its dimensions alone
+ * so a plan can run them before the bytes are read again: one frame up to
+ * 512px a side, or a horizontal strip of `frames` equal frames no wider than
+ * 1024px. Returns one frame's longer side.
+ */
+export function vfxArtistFrameSide(width: number, height: number, frames: number, label: string): number {
+  if (!Number.isInteger(frames) || frames < 1 || frames > VFX_ARTIST_MAX_FRAMES) {
+    throw new Error(`${label}: a sprite strip holds 1 to ${VFX_ARTIST_MAX_FRAMES} frames, got ${frames}`)
+  }
+  if (width % frames !== 0) {
+    throw new Error(`${label} is ${width}px wide, which does not divide into ${frames} equal frames`)
+  }
+  if (frames > 1 && width > VFX_ARTIST_MAX_STRIP) {
+    throw new Error(
+      `${label} is a ${width}px-wide strip; PixelLab's VFX artist takes a strip up to ${VFX_ARTIST_MAX_STRIP}px wide. ` +
+        "Send fewer frames, or the animation as a GIF",
+    )
+  }
+  const frameWidth = width / frames
+  const side = Math.max(frameWidth, height)
   if (side > VFX_ARTIST_MAX_SPRITE) {
     throw new Error(
-      `${label} is ${metadata.width}x${metadata.height}; PixelLab's VFX artist takes up to ${VFX_ARTIST_MAX_SPRITE}x${VFX_ARTIST_MAX_SPRITE} ` +
+      `${label} is ${frameWidth}x${height}${frames > 1 ? " a frame" : ""}; PixelLab's VFX artist takes up to ${VFX_ARTIST_MAX_SPRITE}x${VFX_ARTIST_MAX_SPRITE} ` +
         "(crop or pad it; never rescale pixel art)",
     )
   }
-  return { image: { base64: bytes.toString("base64"), format: "png" }, side }
+  return side
+}
+
+/**
+ * A sprite file's bytes as the artist takes them: a PNG up to 512px a side,
+ * a horizontal PNG strip of `frames` equal frames, or a GIF, whose own
+ * frames are used. `side` is one frame's longer side; `animated` says the
+ * quote carries the animated-sprite extra (a GIF always counts as one).
+ */
+export function vfxArtistSprite(
+  bytes: Buffer,
+  label: string,
+  frames = 1,
+): { image: { base64: string; format: "png" | "gif" }; side: number; animated: boolean } {
+  const gif = gifSize(bytes)
+  if (gif) {
+    if (frames !== 1) throw new Error(`${label} is a GIF, which brings its own frames; drop the frame count`)
+    const side = Math.max(gif.width, gif.height)
+    if (side > VFX_ARTIST_MAX_SPRITE) {
+      throw new Error(
+        `${label} is ${gif.width}x${gif.height}; PixelLab's VFX artist takes up to ${VFX_ARTIST_MAX_SPRITE}x${VFX_ARTIST_MAX_SPRITE} ` +
+          "(crop or pad it; never rescale pixel art)",
+      )
+    }
+    return { image: { base64: bytes.toString("base64"), format: "gif" }, side, animated: true }
+  }
+  const metadata = imageMetadata(bytes)
+  if (metadata?.format !== "png") throw new Error(`${label}: PixelLab's VFX artist takes a PNG or GIF sprite`)
+  const side = vfxArtistFrameSide(metadata.width, metadata.height, frames, label)
+  return { image: { base64: bytes.toString("base64"), format: "png" }, side, animated: frames > 1 }
 }
 
 export interface VfxArtistFile {
@@ -651,8 +718,12 @@ export function vfxArtistFrameFacts(
 export interface MakeVfxWithArtistOptions {
   description: string
   artist?: VfxArtist
-  /** A local PNG the effect is built around, up to 512px a side. */
+  /** A local PNG or GIF the effect is built around, up to 512px a side per frame. */
   sprite?: string
+  /** How many equal frames a PNG strip holds; a GIF brings its own. */
+  spriteFrames?: number
+  /** How fast the sprite's animation plays; PixelLab defaults to a GIF's own timing, else 12. */
+  spriteFps?: number
   /** A My effects id to change in place; `description` then says what to change. */
   effect?: string
   /** The `conversation` an earlier result for `effect` handed back; prices the change as a change. */
@@ -678,7 +749,7 @@ export interface VfxArtistProvenance {
   effectId: string
   editUrl: string | null
   message: string | null
-  source: { sprite?: string; changed?: string }
+  source: { sprite?: string; spriteFrames?: number; spriteFps?: number; changed?: string }
   width: number
   height: number
   frames: number
@@ -727,7 +798,7 @@ export async function makeVfxWithArtist(
     }
   }
   const progress = opts.onProgress ?? (() => {})
-  const sprite = opts.sprite ? vfxArtistSprite(await readFile(opts.sprite), opts.sprite).image : undefined
+  const sprite = opts.sprite ? vfxArtistSprite(await readFile(opts.sprite), opts.sprite, opts.spriteFrames ?? 1).image : undefined
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
   const interval = opts.intervalMs ?? 6000
   const timeout = opts.timeoutMs ?? 10 * 60_000
@@ -736,6 +807,8 @@ export async function makeVfxWithArtist(
     description: opts.description,
     artist: opts.artist,
     sprite,
+    spriteFrames: sprite ? opts.spriteFrames : undefined,
+    spriteFps: sprite ? opts.spriteFps : undefined,
     effectId: opts.effect,
     conversation: opts.effect ? opts.conversation : undefined,
     name: opts.name,
@@ -796,6 +869,8 @@ export async function makeVfxWithArtist(
     message: result.message,
     source: {
       ...(opts.sprite ? { sprite: path.relative(path.dirname(paths.provenance), path.resolve(opts.sprite)).split(path.sep).join("/") } : {}),
+      ...(opts.sprite && opts.spriteFrames && opts.spriteFrames > 1 ? { spriteFrames: opts.spriteFrames } : {}),
+      ...(opts.sprite && opts.spriteFps ? { spriteFps: opts.spriteFps } : {}),
       ...(opts.effect ? { changed: opts.effect } : {}),
     },
     ...facts,

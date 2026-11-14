@@ -1227,6 +1227,7 @@ client such as Claude Code. Then pull the result into the project with
 ```bash
 pixelkiln vfx --description "a blue lightning strike that leaves sparks" --out fx/zap
 pixelkiln vfx --description "a green healing aura" --artist pro --sprite sprites/hero.png --out fx/heal
+pixelkiln vfx --description "a fiery trail behind the robot as it walks" --sprite sprites/walk.png --sprite-frames 8 --out fx/trail
 pixelkiln vfx --description "make it red and faster" --effect <effect id> --out fx/zap --force
 ```
 
@@ -1237,9 +1238,17 @@ and needs no MCP.
 
 - `--artist lite` (the default) or `--artist pro`, the stronger artist for
   detailed effects.
-- `--sprite` must be a local PNG up to 512×512; the artist takes pixels, not
-  a URL or a `character:` reference. `--preset`, `--recipe`, `--part`, and
-  `--fps` are refused with `--description`.
+- `--sprite` must be a local PNG or GIF up to 512×512 a frame; the artist
+  takes pixels, not a URL or a `character:` reference. `--preset`,
+  `--recipe`, `--part`, and `--fps` are refused with `--description`.
+- **An animated sprite.** Pass a GIF, or a horizontal PNG strip with
+  `--sprite-frames <n>` (2 to 32 equal frames), and the effect is built
+  around every frame, with the sprite's own frame count. `--sprite-fps <n>`
+  sets how fast the sprite plays (PixelLab uses a GIF's own timing, else
+  12). A strip must divide evenly into its frames and be at most 1,024
+  pixels wide, which PixelLab enforces and the command checks first; send a
+  longer animation as a GIF. `--sprite-frames` is refused with a GIF, which
+  brings its own frames.
 - `--effect <id>` changes that saved effect in place, with `--description`
   saying what to change. When `<base>.vfx.json` is that effect's record from
   an earlier run, its `conversation` is sent too, which PixelLab prices as a
@@ -1248,7 +1257,9 @@ and needs no MCP.
   quote when the effect runs long. Its table: lite 1 generation (3 with a
   sprite over 128 px, 5 over 256 px; a change 1–2), pro 6 (8 with a sprite,
   14 over 128 px, 28 over 256 px; a change 4–8). The command prints the quote
-  and the twice-the-quote ceiling and asks first. `--budget <n>` refuses when
+  and the twice-the-quote ceiling and asks first. An animated sprite adds 1
+  to the lite quote and 1, 2 or 5 to the pro quote by size tier
+  ([measured](./ENDPOINTS.md#vfx-animated-sprites-measured)). `--budget <n>` refuses when
   `n` is below the ceiling, `--yes` skips the question, and `--dry-run` sends
   nothing. A change prices the saved effect's sprite at the top tier unless
   you pass `--sprite`, since its size is not known here.
@@ -1595,6 +1606,8 @@ Print the package version. `-v` is an alias.
 | `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
 | `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
 | `--fps <n>` | vfx | Frame rate, 1–60. |
+| `--sprite-frames <n>` | vfx | With `--description`: `--sprite` is a horizontal PNG strip of `n` equal frames (2 to 32). |
+| `--sprite-fps <n>` | vfx | With `--description`: how fast an animated `--sprite` plays, 1 to 60. PixelLab's default is a GIF's own timing, else 12. |
 | `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
 | `--size <WxH>` | asset canvas | The new canvas, in multiples of 4. |
 | `--animation <id>` | asset mirror/export | An animation group id. |

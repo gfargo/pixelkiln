@@ -234,6 +234,10 @@ export function specHash(
               : undefined,
             description: spec.vfx.description,
             artist: spec.vfx.description ? spec.vfx.artist : undefined,
+            // Absent for a still sprite, so every effect made before strips
+            // existed keeps its hash.
+            spriteFrames: spec.vfx.spriteFrames,
+            spriteFps: spec.vfx.spriteFps,
           }
         : undefined,
       // A mirror's bytes come from its source's recorded outputs; the plan

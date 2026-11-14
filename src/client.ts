@@ -2572,7 +2572,11 @@ export class PixelLabClient {
   async createVfx(args: {
     description: string
     artist?: "lite" | "pro"
-    sprite?: { base64: string; format: "png" }
+    sprite?: { base64: string; format: "png" | "gif" }
+    /** How many equal frames a PNG strip holds (1-32); a GIF's own frames are used. */
+    spriteFrames?: number
+    /** How fast the sprite's animation plays (1-60). */
+    spriteFps?: number
     effectId?: string
     conversation?: string
     name?: string
@@ -2581,6 +2585,8 @@ export class PixelLabClient {
     const body: Record<string, unknown> = { description: args.description }
     if (args.artist) body.artist = args.artist
     if (args.sprite) body.sprite = { type: "base64", base64: args.sprite.base64, format: args.sprite.format }
+    if (args.sprite && args.spriteFrames != null && args.spriteFrames > 1) body.sprite_frames = args.spriteFrames
+    if (args.sprite && args.spriteFps != null) body.sprite_fps = args.spriteFps
     if (args.effectId) body.effect_id = args.effectId
     if (args.conversation) body.conversation = args.conversation
     if (args.name) body.name = args.name
