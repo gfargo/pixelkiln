@@ -1,3 +1,10 @@
+## [0.102.2](https://github.com/gfargo/pixelkiln/compare/v0.102.1...v0.102.2) (2026-11-14)
+
+
+### Bug Fixes
+
+* **pixflux:** send the style's view when it states one ([2c97a8b](https://github.com/gfargo/pixelkiln/commit/2c97a8bb96a0813b3803436b97c61e1cbbb0ec46))
+
 ## [0.102.1](https://github.com/gfargo/pixelkiln/compare/v0.102.0...v0.102.1) (2026-11-14)
 
 
