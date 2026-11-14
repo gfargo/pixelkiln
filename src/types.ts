@@ -1478,6 +1478,33 @@ const StyleObjectSchema = z
      *  decoupled from the ground's pitch. */
     buildingWallAngle: z.number().min(5).max(90).optional(),
     /**
+     * `tileFeature: "building"` with `buildingLayout: "materials"` only. The
+     * shape of the roof pieces' edges: `gable` (a straight slope, the API
+     * default) or `round` (curved).
+     */
+    buildingRoofProfile: z.enum(["gable", "round"]).optional(),
+    /**
+     * `tileFeature: "tileset"` on square_topdown, isometric or oblique tiles.
+     * Terrain height in pixels, 0 to 12: raises the first terrain into a
+     * plateau with a cliff face down to the second. The API refuses a height
+     * that does not fit the tile's top face and wall at its size and view.
+     */
+    tileElevation: z.number().int().min(0).max(12).optional(),
+    /**
+     * `tileFeature: "tileset"` with `tileElevation` above 0. How far the drop
+     * spreads sideways: 0 a cliff straight down (the default) to 2 a gentle
+     * slope.
+     */
+    tileStepSlope: z.number().min(0).max(2).optional(),
+    /**
+     * `tileFeature: "tileset"` only. How far the border between the terrains
+     * meanders instead of running straight, 0 (the default) to 0.3. Tiles
+     * still connect seamlessly.
+     */
+    tileBoundaryAmplitude: z.number().min(0).max(0.3).optional(),
+    /** `tileFeature: "tileset"` with `tileBoundaryAmplitude`. Which meander: another number gives a different border. */
+    tileBoundarySeed: z.number().int().min(0).optional(),
+    /**
      * `tiles` generator only. How tile edges are drawn.
      *
      * The API default is `outline`, which draws a dark border around every
@@ -2833,6 +2860,11 @@ export interface ResolvedSpec {
   buildingFloorDescription?: string
   buildingFloor2Description?: string
   buildingWallAngle?: number
+  buildingRoofProfile?: string
+  tileElevation?: number
+  tileStepSlope?: number
+  tileBoundaryAmplitude?: number
+  tileBoundarySeed?: number
   outlineMode?: string
   /** `terrain` generator only. See StyleSchema for what each one means. */
   terrainLowerDescription?: string
