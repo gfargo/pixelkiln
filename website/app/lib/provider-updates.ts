@@ -56,6 +56,57 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "pixellab-talking-portraits",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "Portraits that speak any line, after one paid step",
+    summary:
+      "PixelLab draws a portrait's mouth positions once, then lip-syncs any text to them for free. `pixelkiln talk visemes` makes the set and keeps it as a strip beside a record. `talk gif` and `talk plan` turn a line of dialogue into a GIF or into frame timings for your engine. The set below was billed 3 generations.",
+    features: [
+      "`talk visemes` takes a portrait PNG up to 256 pixels and writes 3, 5, 7 or 12 mouth positions as one strip. Nothing is stored on PixelLab.",
+      "`talk gif --text` writes a talking GIF of any line up to 500 characters. It costs nothing, however many lines you make.",
+      "`talk plan --text` prints which cell to show, for how long, and how far through the text each frame lands, so a game can draw the mouth and a subtitle highlight itself.",
+      "Give the portrait a visible mouth. A robot with none came back with seven nearly identical frames.",
+    ],
+    figures: [
+      {
+        src: "/showcase/talk/smith-visemes.png",
+        alt: "Seven copies of a young blacksmith's portrait, each with a different mouth shape: closed, slightly open, wide open, rounded, and teeth showing",
+        width: 448,
+        height: 64,
+        title: "seven mouth positions",
+        caption: "`talk visemes` on a 64 pixel portrait, default engine. 3 generations.",
+        wide: true,
+        fill: true,
+      },
+      {
+        src: "/showcase/talk/smith-line.gif",
+        still: "/showcase/talk/smith-line-still.png",
+        alt: "The blacksmith portrait speaking, his mouth moving through the shapes",
+        width: 64,
+        height: 64,
+        title: "a spoken line",
+        caption: "`talk gif --text \"Fire once. Ship every sprite with receipts.\"` Free.",
+      },
+    ],
+    code: {
+      title: "terminal",
+      language: "shell",
+      copyId: "updates_talk_commands",
+      code: `
+pixelkiln talk visemes --from art/smith-portrait.png --out talk/smith
+# writes talk/smith.visemes.png  .talk.json
+
+pixelkiln talk gif --from talk/smith.talk.json --text "Fire once." --out talk/hello
+pixelkiln talk plan --from talk/smith.talk.json --text "Fire once." --out talk/hello
+`,
+    },
+    links: [
+      { id: "updates_talk_reference", label: "Read the talk reference", href: "/docs/cli#talk" },
+      { id: "updates_talk_measured", label: "See what was measured", href: "/docs/endpoints#talking-portraits-measured" },
+    ],
+  },
+  {
     id: "pixellab-vfx-animated-sprites",
     provider: "PixelLab",
     date: "November 2026",

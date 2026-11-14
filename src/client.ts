@@ -287,6 +287,45 @@ const SaveToAssetSchema = z
     maps: z.string().nullable().optional(),
   })
   .passthrough()
+const VocalAnimationSubmitSchema = z.object({ background_job_id: z.string().min(1), status: z.string().default("processing") }).passthrough()
+const VocalAnimationJobSchema = z
+  .object({
+    status: z.string(),
+    mood: z.string().optional(),
+    viseme_count: z.number().optional(),
+    character_id: z.string().nullable().optional(),
+    completed_visemes: z.array(z.string()).default([]),
+    visemes: z.record(z.string(), z.object({ base64: z.string().min(1) }).passthrough()).nullable().optional(),
+    moods_on_character: z.array(z.string()).nullable().optional(),
+    grid_url: z.string().nullable().optional(),
+    viseme_order: z.array(z.string()).nullable().optional(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
+const TalkingGifSchema = z
+  .object({
+    gif_base64: z.string().min(1),
+    frames: z.number(),
+    duration_ms: z.number(),
+    frame_ms: z.number(),
+    hold_ms: z.number(),
+    width: z.number(),
+    height: z.number(),
+    mood: z.string().nullable().optional(),
+  })
+  .passthrough()
+const LipSyncSchema = z
+  .object({
+    text: z.string(),
+    total_ms: z.number(),
+    viseme_order: z.array(z.string()),
+    frames: z.array(z.object({ viseme: z.string(), column: z.number(), duration_ms: z.number(), text_offset: z.number() }).passthrough()),
+    mood: z.string().nullable().optional(),
+    grid_url: z.string().nullable().optional(),
+    row: z.number().nullable().optional(),
+    rows: z.number().nullable().optional(),
+  })
+  .passthrough()
 const ExpandRotationsSchema = z
   .object({
     object_id: z.string().min(1),
@@ -2775,6 +2814,77 @@ export class PixelLabClient {
       await this.request<unknown>("/objects/import", { method: "POST", body: JSON.stringify(body) }),
       "objects/import",
     )
+  }
+
+  /**
+   * `POST /vocal-animation`: one expression's mouth positions for a portrait,
+   * from an image (nothing stored; the frames come back inline) or from a
+   * character's stored portrait (saved onto it). Paid; `pixminimax` costs 3
+   * generations for 7 positions at any size, `v3` 3 to 24 by size.
+   */
+  async createVocalAnimation(args: {
+    portrait?: Base64Image
+    characterId?: string
+    mood?: string
+    visemeCount?: number
+    engine?: "v3" | "pixminimax"
+    seed?: number
+  }): Promise<z.output<typeof VocalAnimationSubmitSchema>> {
+    const body: Record<string, unknown> = {}
+    if (args.portrait) body.portrait = { type: "base64", base64: args.portrait.base64, format: args.portrait.format }
+    if (args.characterId) body.character_id = args.characterId
+    if (args.mood) body.mood = args.mood
+    if (args.visemeCount != null) body.viseme_count = args.visemeCount
+    if (args.engine) body.engine = args.engine
+    if (args.seed != null) body.seed = args.seed
+    return validateResponse(
+      VocalAnimationSubmitSchema,
+      await this.request<unknown>("/vocal-animation", { method: "POST", body: JSON.stringify(body) }),
+      "vocal-animation",
+    )
+  }
+
+  /** `GET /vocal-animation/{job}`: the job's status, and its mouth positions once completed. Its bill is on `getBackgroundJob`. */
+  async getVocalAnimation(jobId: string): Promise<z.output<typeof VocalAnimationJobSchema>> {
+    return validateResponse(VocalAnimationJobSchema, await this.request<unknown>(`/vocal-animation/${encodeURIComponent(jobId)}`), "vocal-animation/{job}")
+  }
+
+  /** `POST /talking-gif`: a line of text lip-synced to a GIF from mouth positions already made. Free; answers at once. */
+  async createTalkingGif(args: {
+    text: string
+    visemes?: Record<string, Base64Image>
+    characterId?: string
+    mood?: string
+    frameMs?: number
+    holdMs?: number
+  }): Promise<z.output<typeof TalkingGifSchema>> {
+    const body: Record<string, unknown> = { text: args.text }
+    if (args.visemes) {
+      body.visemes = Object.fromEntries(Object.entries(args.visemes).map(([id, image]) => [id, { type: "base64", base64: image.base64, format: image.format }]))
+    }
+    if (args.characterId) body.character_id = args.characterId
+    if (args.mood) body.mood = args.mood
+    if (args.frameMs != null) body.frame_ms = args.frameMs
+    if (args.holdMs != null) body.hold_ms = args.holdMs
+    return validateResponse(TalkingGifSchema, await this.request<unknown>("/talking-gif", { method: "POST", body: JSON.stringify(body) }), "talking-gif")
+  }
+
+  /** `POST /lip-sync`: which mouth position to show and for how long, for a line of text. Free; nothing is rendered. */
+  async getLipSync(args: {
+    text: string
+    characterId?: string
+    mood?: string
+    visemeCount?: number
+    frameMs?: number
+    holdMs?: number
+  }): Promise<z.output<typeof LipSyncSchema>> {
+    const body: Record<string, unknown> = { text: args.text }
+    if (args.characterId) body.character_id = args.characterId
+    if (args.mood) body.mood = args.mood
+    if (args.visemeCount != null) body.viseme_count = args.visemeCount
+    if (args.frameMs != null) body.frame_ms = args.frameMs
+    if (args.holdMs != null) body.hold_ms = args.holdMs
+    return validateResponse(LipSyncSchema, await this.request<unknown>("/lip-sync", { method: "POST", body: JSON.stringify(body) }), "lip-sync")
   }
 
   /**

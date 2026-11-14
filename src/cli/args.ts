@@ -142,6 +142,17 @@ export interface Args {
   detailSoftness?: number
   /** asset: object (default) or character. */
   kind?: string
+  /** talk gif/plan: the line of dialogue to lip-sync. */
+  text?: string
+  /** talk: the expression, neutral (default), happy, angry, sad or surprised. */
+  mood?: string
+  /** talk visemes/plan: how many mouth positions, 3, 5, 7 (default) or 12. */
+  visemes?: number
+  /** talk visemes: v3 (default) or pixminimax. */
+  engine?: string
+  /** talk gif/plan: milliseconds per mouth position, and the pause on the closed mouth at the end. */
+  frameMs?: number
+  holdMs?: number
   /** asset save --target: where the pixels go, e.g. object:<id>:south or gallery:new. */
   saveTarget?: string
   /** asset import --kind tiles: the tile shape. */
@@ -207,7 +218,7 @@ const VALUE_FLAGS = [
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
-  "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
+  "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle",
 ] as const
@@ -220,7 +231,7 @@ export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
-  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -232,6 +243,7 @@ const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
 const VFX_SUBCOMMANDS = ["make", "presets", "parts"] as const
 const MUSIC_SUBCOMMANDS = ["make", "style", "lyrics"] as const
+const TALK_SUBCOMMANDS = ["visemes", "gif", "plan"] as const
 const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "save", "expand", "review", "export"] as const
 const UI_SUBCOMMANDS = ["show", "split", "states", "nine-slice", "pull"] as const
 
@@ -339,6 +351,15 @@ export function parseArgs(argv: string[]): Args {
       throw new UsageError(`Unknown vfx subcommand "${subcommand}". Known: ${VFX_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
+  } else if (command === "talk") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new UsageError(`talk needs a subcommand: ${TALK_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(TALK_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown talk subcommand "${subcommand}". Known: ${TALK_SUBCOMMANDS.join(", ")}`)
+    }
+    rest = rest.slice(1)
   } else if (command === "asset") {
     subcommand = rest[0]
     if (subcommand === undefined || subcommand.startsWith("-")) {
@@ -600,6 +621,12 @@ export function parseArgs(argv: string[]): Args {
     kind: get("--kind"),
     size: get("--size"),
     saveTarget: get("--target"),
+    text: get("--text"),
+    mood: get("--mood"),
+    visemes: numberOption("--visemes", { min: 3, max: 12, integer: true }),
+    engine: get("--engine"),
+    frameMs: numberOption("--frame-ms", { min: 1, max: 5000, integer: true }),
+    holdMs: numberOption("--hold-ms", { min: 0, max: 10000, integer: true }),
     tileType: get("--tile-type"),
     lower: get("--lower"),
     upper: get("--upper"),

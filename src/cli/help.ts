@@ -102,6 +102,11 @@ Commands
             downloads them, then --keep or --discard; asset canvas resizes
             the canvas; asset mirror flips a loop's direction; asset export
             writes a zip, spritesheet, .aseprite or gif. All but expand free.
+  talk    PixelLab: a talking portrait. talk visemes draws a portrait's mouth
+            positions once (--from <png> or --id <character>; 3-24
+            generations; asks first) and writes a strip and a .talk.json
+            record; talk gif lip-syncs --text to a GIF and talk plan prints
+            the frame plan for a game engine, both free.
   sfx     PixelLab: a sound effect (--description, --seconds, --out); writes
             a WAV and a .sfx.json record. From 1 generation, by length.
 
@@ -145,6 +150,12 @@ Options
   --detail-softness <n>  normal-map: blur of that detail in px, 0.6-3
   --size <WxH>        asset canvas: the new canvas, in multiples of 4;
                       asset import --kind tileset/tiles: the tile size, e.g. 32
+  --text <line>       talk gif/plan: the line of dialogue, up to 500 characters
+  --mood <mood>       talk: neutral (default), happy, angry, sad or surprised
+  --visemes <n>       talk visemes/plan: mouth positions, 3, 5, 7 (default) or 12
+  --engine <e>        talk visemes: v3 (default) or pixminimax
+  --frame-ms <n>      talk gif/plan: milliseconds per mouth position (default 90)
+  --hold-ms <n>       talk gif/plan: pause on the closed mouth at the end (default 600)
   --target <target>   asset save: character:<id>:<dir>, object:<id>[:<dir>],
                       gallery:<id>, gallery:new, or tileset:<id>
   --tile-type <type>  asset import --kind tiles: square_topdown, isometric,
