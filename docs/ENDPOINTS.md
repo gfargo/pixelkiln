@@ -93,6 +93,12 @@ not probed.
 | `POST /edit-image-pro-flash` | revision `engine: "pro-flash"`, `image-to-image` | Mock only | Quote 5 at 64px, provisional, from MCP (roadmap, "Pro Flash for plain image create, edit, and inpaint"). | Never billed; completed-job shape never read live; the `reference` edit method is unmodeled. | Medium |
 | `POST /inpaint-image-pro-flash` | revision `engine: "pro-flash"`, `inpaint` | Mock only | Quotes 5 at 64px and 6 at 128px, provisional, from MCP (same roadmap entry). | Never billed; completed-job shape never read live; `context_image` and `output_methods` unmodeled. | Medium |
 | `POST /image-to-pixelart-pro-flash` | `pixelkiln pixelate` | Measured live | A 256×256 and a 384×384 render each billed 6; the image is `last_response.images[0]`; the result is opaque on a near-white field ([Image to Pixel Art Pro Flash, measured](#image-to-pixel-art-pro-flash-measured)). | Whether 6 is flat above 384px or with a larger source. | Medium |
+| `POST /image-to-pixelart-pro` | `pixelkiln pixelate --pro` | Measured live | One 256×256 render billed 20; 42 s; the image is `last_response.image` (not a list) with a `quantized_image` beside it ([Asset upkeep and the Pro converter](#asset-upkeep-and-the-pro-converter-measured)). | `target_palette`, `description`, and other source sizes are mock only. | High |
+| `POST /objects/import` | `pixelkiln asset import` | Measured live | Free; a 32×32 and a 64×64 PNG each became a completed 1-direction object. | Refusal of a JPEG or an oversize PNG is client-side only. | Low |
+| `POST /objects/{id}/expand-rotations` (+ `select-frames`, `dismiss-review`) | `pixelkiln asset expand`, `asset review` | Measured live | Two expansions each quoted and billed 10, at the review stage; one kept, one discarded. | The 15 and 25 tiers; a `description`-less call. | High |
+| `POST /{objects,characters}/{id}/canvas` | `pixelkiln asset canvas` | Measured live | Free on an object; a cropping size refused with a 400 that names the art's bounds. | The character route is mock only. | Low |
+| `POST /{objects,characters}/{id}/animations/{group}/mirror` | `pixelkiln asset mirror` | Mock only | Wrapped from the OpenAPI schema; needs an animated asset to run. | Everything. Free, so the exposure is a wrong request shape. | Low |
+| `GET /{objects,characters}/{id}/{zip,spritesheet,aseprite,gif}` | `pixelkiln asset export` | Measured live | Free; all four formats downloaded for an 8-direction object, and the three non-GIF ones for a 1-direction object. | Character routes, an animation GIF, and the 423 while generating are mock only. | Low |
 | `POST /inpaint-v3` | revision `inpaint` | Measured live | Nine pre-cut points from 32×32 to 512×512 (20 / 25 / 40); after the cut 256, 288, 352 and 384px billed 10, 15, 25, 25. `last_response.image` is a single object ([Limits and billing](#limits-and-billing), [October 2026 Pro price cut](#october-2026-pro-price-cut)). | The 20-to-25 break sits in (65536px², 82944px²] and 25-to-40 in (102400px², 123904px²]; 32px to 128px and 512px were not re-measured after the cut. | High |
 | `POST /edit-images-v2` | revision `image-to-image` | Measured live | One 32×32 call billed 20 (before the cut); `images` is an array of `{type, base64, width, height}` ([Limits and billing](#limits-and-billing)). | Nothing above 32×32 and nothing after the cut; the plan borrows `proTierCost`. | High |
 | `POST /remove-background` | revision `remove-background` | Measured live | 1 generation, synchronous `{usage, image}`; keeps the palette ([Post-processing utilities, measured](#post-processing-utilities-measured)). Measured as a loose call in the July 2026 reference. | The `complex` task and the foreground text hint (roadmap, "Remove background"). | Low |
@@ -147,7 +153,7 @@ not probed.
 | `POST /create-image-pixen`, `/create-image-bitforge` | none | Not wrapped | Each 1 generation; bitforge returned blobs for a simple prompt ([Single-image generators, measured](#single-image-generators-measured)). | n/a | n/a |
 | `POST /rotate`, `/resize`, `/image-to-pixelart` | none | Not wrapped | Each 1 generation; all three break a locked palette ([Post-processing utilities, measured](#post-processing-utilities-measured)). | n/a | n/a |
 | `POST /inpaint`, `/edit-image` (not v2 or v3) | none | Not wrapped | "Untouched by any of this" ([Not yet explored](#not-yet-explored)). | n/a | n/a |
-| `POST /generate-with-style-v2`, `/image-to-pixelart-pro`, `/create-8-direction-object` | none | Not wrapped | Style transfer at 20 before the cut, not re-measured; `objectPro` covers the 8-direction object. | n/a | n/a |
+| `POST /generate-with-style-v2`, `/create-8-direction-object` | none | Not wrapped | Style transfer at 20 before the cut, not re-measured; `objectPro` covers the 8-direction object. | n/a | n/a |
 | `POST /animate-with-text-v2`, `/generate-8-rotations-v2`, `/tilesets`, `/tilesets-sidescroller`, legacy `/animate-with-skeleton` | none | Not wrapped | PixelKiln calls the `/create-tileset*` aliases, not `/tilesets*`; the legacy skeleton route takes exactly 3 frames (roadmap, "The legacy `/animate-with-skeleton`"). | n/a | n/a |
 | Character lip-sync, vocal animation, talking GIF, `portrait_to_character` | none | Not wrapped | Named out of scope in [PIXELLAB.md](./PIXELLAB.md). | n/a | n/a |
 
@@ -479,6 +485,59 @@ other 14 routes PixelKiln sends it to are mock only. PixelKiln never sends `smar
 and `/animate-pixminimax` have no such field. Every request body is built by
 one helper (`targetPaletteBody` in `src/client.ts`), so the field is spelled
 once.
+
+---
+
+## Asset upkeep and the Pro converter, measured
+
+Wrapped as `pixelkiln asset` and `pixelkiln pixelate --pro`
+([CLI reference](./CLI.md#asset)). Measured on 14 November 2026 (Tier 3).
+
+| Call | Request | Quoted | Billed | Result |
+|---|---|---|---|---|
+| `POST /objects/import` | a 32×32 PNG, then a 64×64 PNG | free | 0 | a completed 1-direction object each |
+| `POST /objects/{id}/canvas` | 8×8 on art spanning 16×20 | free | 0 | **400**, with the art's bounds |
+| `POST /objects/{id}/canvas` | 32×32 to 48×48 | free | 0 | 1 rotation re-centred |
+| `GET /objects/{id}/zip`, `/spritesheet`, `/aseprite` | a 1-direction object | free | 0 | 1.1 KB, 1.3 KB, 0.6 KB |
+| `POST /objects/{id}/expand-rotations` | the 32×32 icon on its 48×48 canvas, `south` | 10 | 10 | 8 directions in review, 98 s |
+| `POST /objects/{id}/dismiss-review` | that review | free | 0 | object back to `completed`, 1-direction |
+| `POST /objects/{id}/expand-rotations` | the 64×64 sprite, `south` | 10 | 10 | 8 directions in review |
+| `POST /objects/{id}/select-frames` | no `indices` | free | 0 | object 8-direction, canvas 68×68 |
+| `GET /objects/{id}/gif`, `/aseprite`, `/spritesheet` | the 8-direction object | free | 0 | 9.4 KB, 11.7 KB, 15.8 KB |
+| `POST /image-to-pixelart-pro` | a 256×256 render | none | 20 | 161×151, 42 s |
+
+What the measurements showed:
+
+- **An expansion is billed at review, not at acceptance.** The job's `usage`
+  read 10 while the object was still `review-expansion`, and the first
+  expansion was then dismissed. Discarding does not refund.
+- **`min_generations` and `max_generations` were equal** (10 and 10) on both
+  submits, so the price was exact before the job ran, despite the docs calling
+  it a range settled later.
+- **The new directions are drawn to the canvas, not to the original.** A 16×20
+  icon padded to a 48×48 canvas came back with seven large, detailed drawings
+  and the original icon untouched: the same subject at a different scale and
+  level of detail. A 64×64 sprite that filled its canvas came back consistent.
+  One data point each, so the cause is an inference; `asset review` exists so
+  the result is looked at before it is kept.
+- `expansion_review` on `GET /objects/{id}` carries `existing_direction`,
+  `rotation_urls` (all 8, by direction name), `width`, `height` and
+  `description`. Keeping the review grew the canvas from 64×64 to 68×68.
+- **A refusal explains itself.** The cropping canvas answered `400 {"detail":
+  "Canvas 8x8 would crop the object: the artwork spans 16x20 ..."}`. The client
+  now appends a string `detail` to every 4xx message.
+- **Pro's completed job is not Pro Flash's.** `last_response.image` is a single
+  object, where Pro Flash answers `images: [...]`, and beside it sits
+  `quantized_image` with `original_image_n_colors` (141) and
+  `quantized_image_n_colors` (40). `pixelate --pro` writes both files.
+- Pro returned 161×151 for the render Pro Flash turned into 108×109: about
+  twice the pixels, closer to the source. Both are opaque on a white field.
+
+Not measured: the mirror routes, anything on a character, `target_palette` and
+`description` on the Pro converter, an animation GIF, and the 423 an export
+answers while an asset is generating. PixelLab also added
+`POST /tiles-pro/import` and `/tilesets/import`, `/objects/{id}/duplicate` and
+`/ungroup`, and `/save-to-asset`; PixelKiln does not wrap them.
 
 ---
 

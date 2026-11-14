@@ -27,6 +27,14 @@ export type UpdateFigure = {
   fill?: boolean;
 };
 
+export type UpdateAudio = {
+  /** An MP3 or WAV under `public/`, made by a real call the docs record. */
+  src: string
+  /** A bold lead-in, then the rest of the caption (`backticks` mark code). */
+  title: string;
+  caption: string;
+};
+
 export type ProviderUpdate = {
   id: string;
   provider: UpdateProvider;
@@ -40,11 +48,67 @@ export type ProviderUpdate = {
   /** One line each, as a checklist on the newest entry and a list on the rest. `Backticks` mark code. */
   features: string[];
   figures?: UpdateFigure[];
+  /** Clips to play, for an update about sound. Nothing loads until one is pressed. */
+  audio?: UpdateAudio[];
   code?: { title: string; language: "shell" | "json"; copyId: string; code: string };
   links: { id: string; label: string; href: string }[];
 };
 
 export const providerUpdates: ProviderUpdate[] = [
+  {
+    id: "pixellab-asset-upkeep",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "Bring your own sprite, turn it eight ways, take it to your editor",
+    summary:
+      "PixelLab opened up the upkeep its website does to an asset. `pixelkiln asset` imports your own art, expands it to 8 directions, resizes its canvas, and exports it, and `pixelate --pro` reaches the strongest converter. The knight below was imported as one PNG; the other seven directions billed exactly 10 generations.",
+    features: [
+      "`asset import` stores your PNG as an object, exactly as drawn, for free.",
+      "`asset expand` draws the 7 missing directions for 10 to 25 generations. `asset review` downloads them first, then `--keep` or `--discard`.",
+      "`asset export` writes a ZIP, a spritesheet with its layout, an `.aseprite` file, or a turning GIF. All free.",
+      "`asset canvas` adds or trims transparent margin without scaling the art, and PixelLab's own reason is shown when it refuses.",
+      "`pixelate --pro` is the careful converter: 20 generations, a larger and more faithful result, plus the same image on a reduced palette.",
+    ],
+    figures: [
+      {
+        src: "/showcase/assets/knight-8dir.png",
+        alt: "An armored knight with a blue cape seen from eight directions in a row, starting from the front",
+        width: 1128,
+        height: 568,
+        title: "one sprite in, eight directions out",
+        caption: "top left is the imported PNG, unchanged; the other seven came from `asset expand`. 10 generations.",
+        wide: true,
+        fill: true,
+      },
+      {
+        src: "/showcase/assets/pixelate-compare.png",
+        alt: "The same knight three times: a smooth render, a chunky pixel art version, and a finer pixel art version",
+        width: 1016,
+        height: 348,
+        title: "render, Pro Flash, Pro",
+        caption: "the source, `pixelate` (108×109, 6 generations), and `pixelate --pro` (161×151, 20 generations).",
+        wide: true,
+        fill: true,
+      },
+    ],
+    code: {
+      title: "terminal",
+      language: "shell",
+      copyId: "updates_asset_commands",
+      code: `
+pixelkiln asset import --from art/knight.png --name knight
+pixelkiln asset expand --id <object id> --direction south
+pixelkiln asset review --id <object id> --out review/
+pixelkiln asset expand --id <object id> --keep
+pixelkiln asset export --id <object id> --format aseprite --out art/knight
+`,
+    },
+    links: [
+      { id: "updates_asset_reference", label: "Read the asset reference", href: "/docs/cli#asset" },
+      { id: "updates_asset_pixelate", label: "Read the pixelate reference", href: "/docs/cli#pixelate" },
+      { id: "updates_asset_measured", label: "See what was measured", href: "/docs/endpoints#asset-upkeep-and-the-pro-converter-measured" },
+    ],
+  },
   {
     id: "pixellab-ui-states",
     provider: "PixelLab",
@@ -102,6 +166,11 @@ pixelkiln ui pull --id <template id> --out ui/dialog
       "`music style` turns a short idea into a full style and `music lyrics` drafts two sets of lyrics, at 0.05 generations each.",
       "A loop needs 36 seconds of music between the intro and the ending, so `--loop` on a shorter song is refused before anything is sent.",
       "Audio stays outside the manifest for now: each file gets a `.music.json` or `.sfx.json` record with its id, hash, length, and bill.",
+    ],
+    audio: [
+      { src: "/showcase/audio/town-theme.mp3", title: "town theme", caption: "\"Calm chiptune town theme\", 30 seconds at 100 BPM, take 1 of 2. 10 generations for both." },
+      { src: "/showcase/audio/laser.wav", title: "laser shot", caption: "`sfx --seconds 1`. 1 generation." },
+      { src: "/showcase/audio/chest.wav", title: "chest opening", caption: "`sfx --seconds 3`. 2 generations." },
     ],
     code: {
       title: "terminal",

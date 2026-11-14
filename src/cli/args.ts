@@ -124,7 +124,21 @@ export interface Args {
   fps?: number
   /** vfx: also export the game-pack ZIP. */
   gamePack: boolean
-  /** ui: the PixelLab UI asset to work on (a template, element or state). */
+  /** asset: object (default) or character. */
+  kind?: string
+  /** asset canvas: the new canvas, "<width>x<height>". */
+  size?: string
+  /** asset mirror/export: an animation group id. */
+  animation?: string
+  /** asset mirror: the direction to flip. asset expand: the way the object faces now. asset export gif: the direction. */
+  direction?: string
+  /** asset expand: keep a reviewed expansion. */
+  keep: boolean
+  /** asset expand: discard a pending expansion. */
+  discard: boolean
+  /** pixelate: use the Pro converter. */
+  pro: boolean
+  /** ui/asset: the PixelLab asset to work on (a template, element or state). */
   id?: string
   /** ui states: one "name=description" per state. */
   uiStates: string[]
@@ -169,19 +183,19 @@ const VALUE_FLAGS = [
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--artist", "--convention",
-  "--id", "--state", "--element", "--insets", "--box",
+  "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear",
+  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro",
 ] as const
 
 export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
-  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -193,6 +207,7 @@ const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
 const VFX_SUBCOMMANDS = ["make", "presets", "parts"] as const
 const MUSIC_SUBCOMMANDS = ["make", "style", "lyrics"] as const
+const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "expand", "review", "export"] as const
 const UI_SUBCOMMANDS = ["show", "split", "states", "nine-slice", "pull"] as const
 
 /**
@@ -299,6 +314,15 @@ export function parseArgs(argv: string[]): Args {
       throw new UsageError(`Unknown vfx subcommand "${subcommand}". Known: ${VFX_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
+  } else if (command === "asset") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new UsageError(`asset needs a subcommand: ${ASSET_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(ASSET_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown asset subcommand "${subcommand}". Known: ${ASSET_SUBCOMMANDS.join(", ")}`)
+    }
+    rest = rest.slice(1)
   } else if (command === "ui") {
     subcommand = rest[0]
     if (subcommand === undefined || subcommand.startsWith("-")) {
@@ -428,7 +452,9 @@ export function parseArgs(argv: string[]): Args {
   // Tilesets take generic, tiled, or godot; sheets take generic, aseprite,
   // or godot. Each command checks its own set once it knows what it is.
   const rawFormat = get("--format")
-  const formats = command === "export" ? ["generic", "tiled", "godot"] : ["generic", "aseprite", "godot"]
+  const formats = command === "export" ? ["generic", "tiled", "godot"]
+    : command === "asset" ? ["zip", "spritesheet", "aseprite", "gif"]
+    : ["generic", "aseprite", "godot"]
   if (rawFormat && !formats.includes(rawFormat)) {
     throw new UsageError(`--format must be ${formats.slice(0, -1).join(", ")}, or ${formats.at(-1)}, got "${rawFormat}"`)
   }
@@ -538,6 +564,13 @@ export function parseArgs(argv: string[]): Args {
     sprite: get("--sprite"),
     fps: numberOption("--fps", { min: 1, max: 60, integer: true }),
     gamePack: rest.includes("--game-pack"),
+    kind: get("--kind"),
+    size: get("--size"),
+    animation: get("--animation"),
+    direction: get("--direction"),
+    keep: rest.includes("--keep"),
+    discard: rest.includes("--discard"),
+    pro: rest.includes("--pro"),
     id: get("--id"),
     // Free text with commas and "=" of its own, so neither is split.
     uiStates: rest.flatMap((token, i) => (token === "--state" && rest[i + 1] ? [rest[i + 1]!.trim()] : [])),

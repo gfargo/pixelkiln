@@ -1102,8 +1102,16 @@ which recovers the grid instead of redrawing it.
   when you need a cut-out sprite.
 - `--description` optionally steers the style, e.g. `"retro vibes with light
   dithering"`.
-- A flat **6 generations**, confirmed against a live bill. The command prints
-  that and asks first; `--yes` skips the question, `--budget <n>` refuses when
+- `--pro` uses Image to Pixel Art Pro (`/image-to-pixelart-pro`) instead: the
+  most careful redraw, a flat **20 generations** (billed exactly that live,
+  November 2026, in 42 s). On the same 256x256 render Pro returned 161x151
+  where Pro Flash returned 108x109: finer pixels and closer to the source, where
+  Pro Flash is chunkier and more stylised. Pro also returns the result on a
+  reduced palette, written beside `--out` as `<out>.quantized.png` (141 colors
+  down to 40 on that call). `--palette` and `--max-colors` constrain the
+  colors, and work only with `--pro`.
+- Without `--pro`, a flat **6 generations**, confirmed against a live bill. The command prints
+  the cost and asks first; `--yes` skips the question, `--budget <n>` refuses when
   `n` is below it, and `--dry-run` sends nothing.
 - `--out` defaults to `<input>.pixel.png` beside the input, and the input is
   never overwritten. An existing `--out` is replaced only with `--force`.
@@ -1263,6 +1271,62 @@ writes the same two files.
 A font is deliberately not a manifest generator: it has no style suffix to
 share, no prompt-per-asset, no candidates to pick, and its main output is not
 an image, so there is nothing for the lockfile's provenance model to hold.
+
+### `asset`
+
+```bash
+pixelkiln asset import --from art/knight.png --name knight
+pixelkiln asset expand --id <object id> --direction south
+pixelkiln asset review --id <object id> --out review/
+pixelkiln asset expand --id <object id> --keep
+pixelkiln asset canvas --id <id> --kind character --size 64x64
+pixelkiln asset mirror --id <id> --animation <animation group id> --direction east
+pixelkiln asset export --id <id> --format aseprite --out art/knight
+```
+
+Upkeep for an object or character that already exists on PixelLab, by its
+PixelLab id (a lock entry's `objectId`). `--kind` is `object` (the default) or
+`character`. Everything except `expand` is free.
+
+- `asset import` stores your own PNG as a completed 1-direction object, exactly
+  as drawn. PNG only, at most 256x256. It prints the new object's id.
+- `asset expand` draws the 7 missing directions of a 1-direction object.
+  `--direction` says which way its image faces now; that image is kept
+  unchanged as that direction. `--description` guides the new angles. It costs
+  10 to 25 generations by the padded canvas; the command asks first (`--yes`,
+  `--budget` below 25 is refused, `--dry-run`), and prints PixelLab's quote when
+  the job is accepted. Two 10-generation expansions were measured (November
+  2026), each about 100 s.
+- The new directions then wait for review, and the object stays 1-direction
+  until you decide. `asset review --out <dir>` downloads one PNG per direction
+  so you can look; `asset expand --keep` makes the object 8-direction, and
+  `asset expand --discard` drops them and leaves the object as it was.
+  **PixelLab bills the expansion when the review is ready, not when you keep
+  it**, so discarding does not refund it.
+- **Look before you keep.** The new angles are drawn to suit the canvas, not
+  matched to the original's size. A 16x20 icon on a 48x48 canvas came back as
+  seven large, detailed drawings beside the untouched small original, which is
+  not a usable set; a sprite that fills its canvas (a 64x64 knight) came back
+  consistent. Trim the canvas to the art before expanding.
+- `asset canvas --size <width>x<height>` adds or removes transparent margin
+  around every rotation, re-centred on the pivot. Sides are multiples of 4,
+  from 8 to 256 for a character or 400 for an object. The art is never scaled
+  or cropped: a size that would crop it is refused, with the art's own bounds
+  in the message. Existing animations keep the canvas they were made on.
+  Keeping an expansion also grows the canvas (64x64 became 68x68).
+- `asset mirror` flips one direction of a loop into its missing opposite on
+  PixelLab (east and west, and the diagonal pairs; south and north have no
+  mirror). It is refused when that direction already exists. This is
+  PixelLab's own copy of the loop; a manifest `mirror` asset is flipped
+  locally and needs none of it.
+- `asset export --format zip|spritesheet|aseprite|gif --out <file>` downloads
+  the website's exports. `zip` (the default) is the PNGs with a
+  `metadata.json`; `spritesheet` is a ZIP of one sheet and its layout JSON;
+  `aseprite` is one `.aseprite` file with a tag per rotation set and animation
+  direction; `gif` turns through the rotations, or plays one loop with
+  `--animation` and `--direction`. A 1-direction object has no rotations to
+  turn through, so its GIF needs an animation. The extension is added when
+  `--out` has none.
 
 ### `ui`
 
@@ -1508,7 +1572,14 @@ Print the package version. `-v` is an alias.
 | `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
 | `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
 | `--fps <n>` | vfx | Frame rate, 1–60. |
-| `--id <ui asset id>` | ui | The PixelLab UI template, element or state to work on. |
+| `--kind <object\|character>` | asset | Which PixelLab asset type `--id` names; default `object`. |
+| `--size <WxH>` | asset canvas | The new canvas, in multiples of 4. |
+| `--animation <id>` | asset mirror/export | An animation group id. |
+| `--direction <dir>` | asset mirror/expand/export | The direction to flip, the way an object faces before expansion, or a GIF's direction. |
+| `--keep` | asset expand | Keep the reviewed directions; the object becomes 8-direction. |
+| `--discard` | asset expand | Discard the pending directions; the object is unchanged. |
+| `--pro` | pixelate | Use Image to Pixel Art Pro (20 generations). |
+| `--id <id>` | ui/asset | The PixelLab asset to work on: a UI template, element or state, or an object or character. |
 | `--state <name=description>` | ui states | One state to draw; repeatable. |
 | `--element <ids>` | ui states | Only these elements of a template; repeatable and comma-separated. |
 | `--insets <n\|l,r,t,b>` | ui nine-slice | 9-slice border insets in pixels. |

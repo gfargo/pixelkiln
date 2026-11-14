@@ -33,6 +33,7 @@ import {
   normalMapFile,
   PIXELATE_COST_GENERATIONS,
   PIXELATE_MAX_SIDE,
+  PIXELATE_PRO_COST_GENERATIONS,
   pixelateFile,
   unzoomFile,
   type FontGlyphSize,
@@ -115,20 +116,27 @@ export async function runPixelate(args: Args): Promise<void> {
   if (!args.from) throw new UsageError("pixelate needs --from <image>: the photo, painting, or render to convert")
   const out = args.out ?? defaultPixelateOut(args.from)
   log(`  pixelate ${args.from} → ${out}${args.description ? ` ("${args.description}")` : ""}; PixelLab picks the output size`)
-  log(`  cost: ${PIXELATE_COST_GENERATIONS} generations (Image to Pixel Art Pro Flash, flat)`)
-  if (args.budget !== undefined && args.budget < PIXELATE_COST_GENERATIONS) {
-    throw new Error(`--budget ${args.budget} is below this conversion's ${PIXELATE_COST_GENERATIONS}-generation cost`)
+  const cost = args.pro ? PIXELATE_PRO_COST_GENERATIONS : PIXELATE_COST_GENERATIONS
+  if (!args.pro && (args.palette.length || args.maxColors !== undefined)) {
+    throw new UsageError("--palette and --max-colors need the Pro converter; add --pro")
+  }
+  log(`  cost: ${cost} generations (Image to Pixel Art ${args.pro ? "Pro" : "Pro Flash"}, flat)`)
+  if (args.budget !== undefined && args.budget < cost) {
+    throw new Error(`--budget ${args.budget} is below this conversion's ${cost}-generation cost`)
   }
   if (args.dryRun) {
     log("  dry run: nothing sent")
     return
   }
-  if (!(await confirm(`  Spend ${PIXELATE_COST_GENERATIONS} generations on this conversion?`, args.yes))) return
+  if (!(await confirm(`  Spend ${cost} generations on this conversion?`, args.yes))) return
   loadKeys(args)
   let last = ""
   const res = await pixelateFile(clientFromEnv(), args.from, {
     out,
     description: args.description,
+    pro: args.pro,
+    palette: args.palette,
+    maxColors: args.maxColors,
     force: args.force,
     onProgress: (status) => {
       if (status !== last) log(`  ${status}…`)
@@ -143,6 +151,9 @@ export async function runPixelate(args: Args): Promise<void> {
   log(
     `  ${res.original.width}x${res.original.height}${scaled} → ${res.pixelated.width}x${res.pixelated.height}; wrote ${res.out}`,
   )
+  if (res.quantized) {
+    log(`  wrote ${res.quantized.out}: the same image on ${res.quantized.colors ?? "fewer"} colors${res.colors ? ` (the main result has ${res.colors})` : ""}`)
+  }
 }
 
 export async function runNormalMap(args: Args): Promise<void> {
