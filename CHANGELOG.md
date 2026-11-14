@@ -1,3 +1,10 @@
+# [0.104.0](https://github.com/gfargo/pixelkiln/compare/v0.103.0...v0.104.0) (2026-11-14)
+
+
+### Features
+
+* **pixflux:** direction, isometric and backgroundRemoval ([d6012ec](https://github.com/gfargo/pixelkiln/commit/d6012ecea6e125cc64ae15f16c110fae17398e02))
+
 # [0.103.0](https://github.com/gfargo/pixelkiln/compare/v0.102.2...v0.103.0) (2026-11-14)
 
 
