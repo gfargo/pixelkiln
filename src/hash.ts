@@ -115,6 +115,9 @@ export function specHash(
       terrainEnhance: spec.terrainEnhance,
       // Absent unless a pixflux style sets it, so every older hash stands.
       textGuidanceScale: spec.textGuidanceScale,
+      subjectDirection: spec.subjectDirection,
+      isometric: spec.isometric,
+      backgroundRemoval: spec.backgroundRemoval,
       terrainPlatformThickness: spec.terrainPlatformThickness,
       // Reference images enter as their bytes' hashes, never their paths.
       // The starting image by its bytes, with its strength only when set.

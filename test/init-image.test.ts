@@ -94,21 +94,21 @@ describe("initImage", () => {
 })
 
 describe("a pixflux style's outline, shading and detail", () => {
-  async function loadStyled(style: Record<string, unknown>) {
+  async function loadStyled(style: Record<string, unknown>, asset: Record<string, unknown> = {}) {
     await writeFile(path.join(dir, "m.json"), JSON.stringify({
       name: "t",
       styles: { s: { generator: "pixflux", size: 32, outDir: "out", ...style } },
-      assets: { a: { prompt: "an anvil" } },
+      assets: { a: { prompt: "an anvil", ...asset } },
     }))
     return loadManifest(path.join(dir, "m.json"))
   }
-  async function posted(style: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async function posted(style: Record<string, unknown>, asset: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     const bodies: Array<Record<string, unknown>> = []
     vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
       if (init?.body) bodies.push(JSON.parse(String(init.body)))
       return new Response(JSON.stringify({ image: { base64: png(1).toString("base64") }, usage: { type: "generations", generations: 1 } }), { status: 200 })
     }))
-    const loaded = await loadStyled(style)
+    const loaded = await loadStyled(style, asset)
     const specs = await resolveSpecs(loaded, { provider: new PixelLabProvider(new PixelLabClient("key")) })
     const lock: Lock = { version: 2, entries: {} }
     await submit(new PixelLabProvider(new PixelLabClient("key")), loaded, (await buildPlan(specs, lock)).actionable, lock, path.join(dir, "lock.json"), { spacingMs: 0 })
@@ -150,6 +150,30 @@ describe("a pixflux style's outline, shading and detail", () => {
     await expect(loadStyled({ textGuidanceScale: 21 })).rejects.toThrow()
     // Other generators ignore it, as they always have: no refusal, no hash change.
     expect(await hash({ generator: "map", textGuidanceScale: 12 })).toBe(await hash({ generator: "map" }))
+  })
+
+  it("sends a facing, isometric view and the background-removal task only when set", async () => {
+    expect(await posted({ isometric: true, backgroundRemoval: "complex" }, { direction: "east" }))
+      .toMatchObject({ direction: "east", isometric: true, background_removal_task: "remove_complex_background" })
+    expect(await posted({ backgroundRemoval: "simple" })).toMatchObject({ background_removal_task: "remove_simple_background" })
+    const bare = await posted({ isometric: false })
+    for (const key of ["direction", "isometric", "background_removal_task"]) expect(bare).not.toHaveProperty(key)
+  })
+
+  it("hashes each of them only when set, and refuses them where they do nothing", async () => {
+    const hash = async (style: Record<string, unknown>, asset: Record<string, unknown> = {}) => (await resolveSpecs(await loadStyled(style, asset)))[0]!.specHash
+    const bare = "90a7723fb651ef7a9af6c736368fd436662de5ab3f34ca19c3ec61b72aea25b6"
+    expect(await hash({})).toBe(bare)
+    expect(await hash({ isometric: false })).toBe(bare)
+    const variants = [await hash({ isometric: true }), await hash({ backgroundRemoval: "complex" }), await hash({ backgroundRemoval: "simple" }), await hash({}, { direction: "east" }), await hash({}, { direction: "west" })]
+    expect(new Set([bare, ...variants]).size).toBe(6)
+    // Character styles have always taken isometric; a map style ignores it, as before.
+    expect(await hash({ generator: "map", isometric: true })).toBe(await hash({ generator: "map" }))
+    await expect(loadStyled({ generator: "map", backgroundRemoval: "complex" })).rejects.toThrow(/taken by pixflux styles; this one uses "map"/)
+    await expect(loadStyled({ backgroundRemoval: "complex", noBackground: false })).rejects.toThrow(/keeps its background/)
+    await expect(loadStyled({ backgroundRemoval: "thorough" })).rejects.toThrow()
+    await expect(loadStyled({}, { direction: "up" })).rejects.toThrow()
+    await expect(resolveSpecs(await loadStyled({ generator: "map" }, { direction: "east" }))).rejects.toThrow(/assets\.a\.direction: a facing is taken by pixflux styles; style "s" uses "map"/)
   })
 
   it("refuse a value the endpoint does not know, at plan", async () => {

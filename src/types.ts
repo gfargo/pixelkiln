@@ -1750,8 +1750,18 @@ const StyleObjectSchema = z
      * it. Part of a `pixflux` asset's identity only when set.
      */
     textGuidanceScale: z.number().min(1).max(20).optional(),
-    /** `character` only. Draw `standard` bases and every loop in isometric view. */
+    /**
+     * `character` and `pixflux`. Draw `standard` character bases and every
+     * loop, or a `pixflux` image, in isometric view. PixelLab calls it weakly
+     * guiding on `pixflux`. Part of a `pixflux` asset's identity only when true.
+     */
     isometric: z.boolean().optional(),
+    /**
+     * `pixflux` only, with `noBackground`: how the background is cut away.
+     * `simple` is PixelLab's default and faster; `complex` handles fine or
+     * busy edges better. Part of the asset's identity only when set.
+     */
+    backgroundRemoval: z.enum(["simple", "complex"]).optional(),
     /** `character` only, `v3` bases: let PixelLab expand the prompt into a fuller one before drawing. */
     enhancePrompt: z.boolean().optional(),
     /**
@@ -1844,6 +1854,20 @@ export const StyleSchema = StyleObjectSchema
     path: ["tileFeature"],
   })
   .superRefine((style, ctx) => {
+    if (style.backgroundRemoval !== undefined && style.generator !== "pixflux") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `backgroundRemoval is taken by pixflux styles; this one uses "${style.generator}"`,
+        path: ["backgroundRemoval"],
+      })
+    }
+    if (style.backgroundRemoval !== undefined && !style.noBackground) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "backgroundRemoval chooses how the background is cut away; this style keeps its background (noBackground is false)",
+        path: ["backgroundRemoval"],
+      })
+    }
     if (style.quality && (style.generator === "tiles" || style.generator === "terrain" || style.generator === "animation" || style.generator === "vfx")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -2110,6 +2134,12 @@ export const AssetSchema = z
      * instead of starting from nothing.
      */
     initImage: z.string().min(1).optional(),
+    /**
+     * `pixflux` styles: the way the subject faces. PixelLab calls it weakly
+     * guiding, so treat it as a nudge. Part of the asset's identity only
+     * when set.
+     */
+    direction: CharacterDirectionSchema.optional(),
     /**
      * With `initImage`: how strongly the starting image holds, 1 to 999.
      * PixelLab's default is 300.
@@ -2910,6 +2940,10 @@ export interface ResolvedSpec {
   terrainEnhance?: boolean
   /** `pixflux` only: prompt adherence, 1 to 20. Absent leaves PixelLab's 8. */
   textGuidanceScale?: number
+  /** `pixflux` only, each absent unless the manifest sets it: the subject's facing, isometric view, and the background-removal task. */
+  subjectDirection?: CharacterDirection
+  isometric?: true
+  backgroundRemoval?: "simple" | "complex"
   terrainPlatformThickness?: number
   terrainLowerWalkable?: boolean
   terrainUpperWalkable?: boolean

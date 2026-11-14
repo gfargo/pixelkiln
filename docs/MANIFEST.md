@@ -72,6 +72,7 @@ not merely a label edit.
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
 | `initImage` | string | `pixflux`, `map` and `isometricTile` styles: a PNG to start the drawing from, relative to the manifest. See [Starting from an image](#starting-from-an-image). |
 | `initImageStrength` | integer 1–999, default 300 | With `initImage`: how strongly the starting image holds. About 100 blends it with the prompt; 300 and up mostly returns it. |
+| `direction` | string | `pixflux` styles: the way the subject faces, one of the 8 compass directions. Weakly guiding. Part of the asset's identity only when set. |
 | `terrainReferences` | object | `terrain` styles: a PNG per terrain to take that terrain's look from, `{ "lower": "refs/water.png", "upper": "refs/sand.png", "transition": "refs/foam.png" }`, paths relative to the manifest. See [Terrain reference images](./TILES.md#terrain-reference-images). |
 | `derive` | object | Made from existing pixels by one local transform, at no cost, with no provider. See [Derived and external assets](#derived-and-external-assets). |
 | `external` | object | Built by a script or tool outside pixelkiln; pixelkiln records and tracks the file but never builds it. See [Derived and external assets](#derived-and-external-assets). |
@@ -177,7 +178,8 @@ One asset using the fields most projects reach for:
 | `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`; `custom` for `pro-flash`. |
 | `proportions` | | `character` only, `standard` humanoid bases. A preset (`default`, `chibi`, `cartoon`, `stylized`, `realistic_male`, `realistic_female`, `heroic`) or multipliers `{ headSize, armsLength, legsLength, shoulderWidth, hipWidth }`, each 0.5 to 2. An asset may override it. |
 | `textGuidanceScale` | `8` | `character` and `pixflux`. How closely a `standard` character base and a template loop, or a `pixflux` image, follow their text, 1 to 20. Part of a `pixflux` asset's identity only when set. Other generators ignore it. |
-| `isometric` | `false` | `character` only. Draw `standard` bases and every loop in isometric view. |
+| `backgroundRemoval` | `simple` | `pixflux` with `noBackground`: `simple` or `complex` background removal. Part of the asset's identity only when set. |
+| `isometric` | `false` | `character` and `pixflux`. Draw `standard` character bases and every loop, or a `pixflux` image, in isometric view. Part of a `pixflux` asset's identity only when true. Other generators ignore it. |
 | `enhancePrompt` | `false` | `character` only, `v3` bases. Let PixelLab expand the prompt into a fuller one before drawing. |
 | `styleCharacter` | | `character` only, `pro` bases. The asset id of a generated 8-direction character in this style whose look bases drawn from text or a concept follow. An asset may override it. |
 | `styleTraits` | all true | `character` `pro-flash` bases and `imageProFlash` styles, with a style image. `{ palette, outline, detail, shading }` booleans: which traits the style image lends. |

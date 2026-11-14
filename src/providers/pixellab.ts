@@ -2020,6 +2020,9 @@ export class PixelLabProvider implements Provider {
         // Only a view the style states: the resolved default would steer every scene and banner top-down.
         view: spec.styleView,
         textGuidanceScale: spec.textGuidanceScale,
+        direction: spec.subjectDirection,
+        isometric: spec.isometric,
+        backgroundRemoval: spec.backgroundRemoval,
         seed: spec.seed,
         ...(await initImageArgs(spec)),
       })

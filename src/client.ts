@@ -1523,6 +1523,11 @@ export class PixelLabClient {
     view?: string
     /** How closely to follow the description, 1 to 20; the API default is 8. */
     textGuidanceScale?: number
+    /** The subject's facing and isometric view, both weakly guiding. */
+    direction?: string
+    isometric?: boolean
+    /** How the background is cut away when `noBackground` is on; the API default is simple. */
+    backgroundRemoval?: "simple" | "complex"
     seed?: number
   }): Promise<{ png: Buffer; usage: unknown }> {
     const body: Record<string, unknown> = {
@@ -1542,6 +1547,11 @@ export class PixelLabClient {
     if (args.detail) body.detail = args.detail
     if (args.view) body.view = args.view
     if (args.textGuidanceScale != null) body.text_guidance_scale = args.textGuidanceScale
+    if (args.direction) body.direction = args.direction
+    if (args.isometric) body.isometric = true
+    if (args.backgroundRemoval) {
+      body.background_removal_task = args.backgroundRemoval === "complex" ? "remove_complex_background" : "remove_simple_background"
+    }
     if (args.seed != null) body.seed = args.seed
 
     const res = validateResponse(

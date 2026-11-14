@@ -524,6 +524,13 @@
             "isometric": {
               "type": "boolean"
             },
+            "backgroundRemoval": {
+              "type": "string",
+              "enum": [
+                "simple",
+                "complex"
+              ]
+            },
             "enhancePrompt": {
               "type": "boolean"
             },
