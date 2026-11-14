@@ -338,7 +338,9 @@ starts a skeleton file from an image. Pro Flash stills are the
 `objectPro` generator, UI panels and elements are `uiAsset` and `uiElement`,
 and fonts, unzooming reference art, and normal maps for loose files are the
 standalone `pixelkiln font`, `pixelkiln unzoom`, and `pixelkiln normal-map`
-commands. Map Workshop
+commands. Music and sound effects are `pixelkiln music` and `pixelkiln sfx`,
+also standalone: they write audio files with a provenance record beside them,
+not lockfile entries. Map Workshop
 scene composition (placing objects and characters into a map, in-scene
 inpainting, export) is a separate PixelLab product surface this adapter does
 not model at all — including PixelKiln's own `map` generator, which is

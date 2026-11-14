@@ -124,6 +124,28 @@ export interface Args {
   fps?: number
   /** vfx: also export the game-pack ZIP. */
   gamePack: boolean
+  /** music: tempo, 60-180. */
+  bpm?: number
+  /** music: length to aim for, 10-360. sfx: clip length, 0.5-30. */
+  seconds?: number
+  /** music: a file of lyrics to sing (makes it a song with vocals). */
+  lyrics?: string
+  /** music: have the lyrics written for the song. */
+  autoLyrics: boolean
+  /** music: with --auto-lyrics, what the song is about. `music lyrics`: the topic. */
+  about?: string
+  /** music: the singing voice, e.g. "warm female voice". */
+  voice?: string
+  /** music: how closely to follow the style, 0-1. */
+  styleWeight?: number
+  /** music: also make seamless loops of take 1. */
+  loop: boolean
+  /** music: loop this finished song instead of making a new one. */
+  loopOf?: string
+  /** music: make this song again in the new style. */
+  restyle?: string
+  /** music: expand a short idea into a full style first. */
+  improve: boolean
 }
 
 const VALUE_FLAGS = [
@@ -135,17 +157,18 @@ const VALUE_FLAGS = [
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--artist", "--convention",
+  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict",
+  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve",
 ] as const
 
 export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
-  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -156,6 +179,7 @@ const EDIT_SUBCOMMANDS = ["start", "detach"] as const
 const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
 const VFX_SUBCOMMANDS = ["make", "presets", "parts"] as const
+const MUSIC_SUBCOMMANDS = ["make", "style", "lyrics"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -259,6 +283,12 @@ export function parseArgs(argv: string[]): Args {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "make" : rest[0]
     if (!(VFX_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
       throw new UsageError(`Unknown vfx subcommand "${subcommand}". Known: ${VFX_SUBCOMMANDS.join(", ")}`)
+    }
+    if (rest[0] === subcommand) rest = rest.slice(1)
+  } else if (command === "music") {
+    subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "make" : rest[0]
+    if (!(MUSIC_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown music subcommand "${subcommand}". Known: ${MUSIC_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
   } else if (command === "refine") {
@@ -485,5 +515,18 @@ export function parseArgs(argv: string[]): Args {
     sprite: get("--sprite"),
     fps: numberOption("--fps", { min: 1, max: 60, integer: true }),
     gamePack: rest.includes("--game-pack"),
+    bpm: numberOption("--bpm", { min: 60, max: 180, integer: true }),
+    seconds: command === "music"
+      ? numberOption("--seconds", { min: 10, max: 360, integer: true })
+      : numberOption("--seconds", { min: 0.5, max: 30 }),
+    lyrics: get("--lyrics"),
+    autoLyrics: rest.includes("--auto-lyrics"),
+    about: get("--about"),
+    voice: get("--voice"),
+    styleWeight: numberOption("--style-weight", { min: 0, max: 1 }),
+    loop: rest.includes("--loop"),
+    loopOf: get("--loop-of"),
+    restyle: get("--restyle"),
+    improve: rest.includes("--improve"),
   }
 }

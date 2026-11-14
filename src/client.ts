@@ -366,6 +366,63 @@ const FontJobSchema = z
     usage: z.unknown().optional(),
   })
   .passthrough()
+/**
+ * A song as `/music` reports it, from the submit reply through to completion.
+ * A request makes two takes; a loop is a song of its own that points back at
+ * the one it loops and carries the two loop points.
+ */
+const SongSchema = z
+  .object({
+    id: z.string().min(1),
+    status: z.string(),
+    error: z.string().nullable().optional(),
+    name: z.string().default(""),
+    audio_url: z.string().nullable().optional(),
+    duration_ms: z.number().nullable().optional(),
+    style: z.string().default(""),
+    instrumental: z.boolean().default(true),
+    lyrics: z.string().default(""),
+    take: z.number().int().default(1),
+    request_id: z.string().optional(),
+    loop_of: z.string().nullable().optional(),
+    loop_start_s: z.number().nullable().optional(),
+    loop_end_s: z.number().nullable().optional(),
+  })
+  .passthrough()
+export type PixelLabSong = z.output<typeof SongSchema>
+const MusicSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    songs: z.array(SongSchema).min(1),
+    quoted_generations: z.number().nullable().optional(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
+const SoundEffectSchema = z
+  .object({
+    id: z.string().min(1),
+    status: z.string(),
+    error: z.string().nullable().optional(),
+    name: z.string().default(""),
+    audio_url: z.string().nullable().optional(),
+    duration_ms: z.number().nullable().optional(),
+    prompt: z.string().default(""),
+    seconds: z.number().optional(),
+  })
+  .passthrough()
+export type PixelLabSoundEffect = z.output<typeof SoundEffectSchema>
+const SoundEffectSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    sound_effect: SoundEffectSchema,
+    quoted_generations: z.number().nullable().optional(),
+    usage: z.unknown().optional(),
+  })
+  .passthrough()
+const ImproveStyleSchema = z.object({ style: z.string().min(1), usage: z.unknown().optional() }).passthrough()
+const WriteLyricsSchema = z.object({ lyrics: z.array(z.string()).min(1), usage: z.unknown().optional() }).passthrough()
 const SelectFramesSchema = z.object({ created_object_ids: z.array(z.string()) }).passthrough()
 
 /**
@@ -2241,6 +2298,111 @@ export class PixelLabClient {
       VfxSubmitSchema,
       await this.request<unknown>("/vfx", { method: "POST", body: JSON.stringify(body) }),
       "vfx",
+    )
+  }
+
+  /**
+   * `POST /music`: two takes of a song from a style description, instrumental
+   * unless lyrics are sent or `autoLyrics` is set. A background job whose 202
+   * carries the pending takes and `quoted_generations` (10 for the pair);
+   * PixelLab bills when the takes are made. Poll each take with `getMusic`.
+   */
+  async createMusic(args: {
+    style: string
+    instrumental?: boolean
+    lyrics?: string
+    autoLyrics?: boolean
+    about?: string
+    lengthS?: number
+    bpm?: number
+    voice?: string
+    exclude?: string
+    styleWeight?: number
+    name?: string
+    restyleSongId?: string
+  }): Promise<z.output<typeof MusicSubmitSchema>> {
+    const body: Record<string, unknown> = { style: args.style }
+    if (args.instrumental !== undefined) body.instrumental = args.instrumental
+    if (args.lyrics) body.lyrics = args.lyrics
+    if (args.autoLyrics) body.auto_lyrics = true
+    if (args.about) body.about = args.about
+    if (args.lengthS != null) body.length_s = args.lengthS
+    if (args.bpm != null) body.bpm = args.bpm
+    if (args.voice) body.voice = args.voice
+    if (args.exclude) body.exclude = args.exclude
+    if (args.styleWeight != null) body.style_weight = args.styleWeight
+    if (args.name) body.name = args.name
+    if (args.restyleSongId) body.restyle_song_id = args.restyleSongId
+    return validateResponse(
+      MusicSubmitSchema,
+      await this.request<unknown>("/music", { method: "POST", body: JSON.stringify(body) }),
+      "music",
+    )
+  }
+
+  /** `GET /music/{song_id}`: status, then a no-auth MP3 URL and, for a loop, its loop points. */
+  async getMusic(songId: string): Promise<PixelLabSong> {
+    return validateResponse(SongSchema, await this.request<unknown>(`/music/${encodeURIComponent(songId)}`), "music/{song_id}")
+  }
+
+  /**
+   * `POST /music/{song_id}/loop`: a finished instrumental song made again so
+   * the part between its intro and ending repeats without a seam. Two new
+   * takes, each a song with `loop_start_s` and `loop_end_s`; 4 generations.
+   */
+  async loopMusic(songId: string): Promise<z.output<typeof MusicSubmitSchema>> {
+    return validateResponse(
+      MusicSubmitSchema,
+      await this.request<unknown>(`/music/${encodeURIComponent(songId)}/loop`, { method: "POST", body: "{}" }),
+      "music/{song_id}/loop",
+    )
+  }
+
+  /** `POST /music/improve-style`: a short idea written out as a full style for `createMusic`. Synchronous. */
+  async improveMusicStyle(args: { style: string; instrumental?: boolean; bpm?: number }): Promise<{ style: string; usage: unknown }> {
+    const body: Record<string, unknown> = { style: args.style }
+    if (args.instrumental !== undefined) body.instrumental = args.instrumental
+    if (args.bpm != null) body.bpm = args.bpm
+    const res = validateResponse(
+      ImproveStyleSchema,
+      await this.request<unknown>("/music/improve-style", { method: "POST", body: JSON.stringify(body) }),
+      "music/improve-style",
+    )
+    return { style: res.style, usage: res.usage }
+  }
+
+  /** `POST /music/lyrics`: two lyric drafts with section tags, for `createMusic`'s `lyrics`. Synchronous. */
+  async writeMusicLyrics(topic: string): Promise<{ lyrics: string[]; usage: unknown }> {
+    const res = validateResponse(
+      WriteLyricsSchema,
+      await this.request<unknown>("/music/lyrics", { method: "POST", body: JSON.stringify({ topic }) }),
+      "music/lyrics",
+    )
+    return { lyrics: res.lyrics, usage: res.usage }
+  }
+
+  /**
+   * `POST /sound-effects`: one clip (WAV) from a description, 0.5 to 30
+   * seconds. A background job whose 202 carries the pending clip and
+   * `quoted_generations`, priced by length; billed when the clip is made.
+   */
+  async createSoundEffect(args: { prompt: string; seconds?: number; name?: string }): Promise<z.output<typeof SoundEffectSubmitSchema>> {
+    const body: Record<string, unknown> = { prompt: args.prompt }
+    if (args.seconds != null) body.seconds = args.seconds
+    if (args.name) body.name = args.name
+    return validateResponse(
+      SoundEffectSubmitSchema,
+      await this.request<unknown>("/sound-effects", { method: "POST", body: JSON.stringify(body) }),
+      "sound-effects",
+    )
+  }
+
+  /** `GET /sound-effects/{id}`: status, then a no-auth WAV URL once completed. */
+  async getSoundEffect(id: string): Promise<PixelLabSoundEffect> {
+    return validateResponse(
+      SoundEffectSchema,
+      await this.request<unknown>(`/sound-effects/${encodeURIComponent(id)}`),
+      "sound-effects/{id}",
     )
   }
 
