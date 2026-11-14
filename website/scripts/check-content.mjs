@@ -50,6 +50,50 @@ for (const { file, source } of routeSources) {
   }
 }
 
+// Every docs link in the provider updates must land on its section. A guide
+// with `split` is one page per heading at that depth, so its sections are
+// `/docs/<slug>/<section>`; `/docs/<slug>#<section>` opens the index instead.
+const headingId = (value) => value.toLowerCase().replace(/[`*_]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const guides = new Map(
+  [...registry.matchAll(/\{\s*slug:\s*"([^"]+)"[\s\S]*?file:\s*"([^"]+\.md)"([\s\S]*?)\}/g)].map((match) => {
+    const split = Number(/split:\s*(\d)/.exec(match[3])?.[1] ?? 0);
+    const file = path.join(repoRoot, match[2]);
+    const headings = existsSync(file)
+      ? [...readFileSync(file, "utf8").replace(/```[\s\S]*?```/g, "").matchAll(/^(#{2,4})\s+(.+)$/gm)].map((heading) => ({ depth: heading[1].length, id: headingId(heading[2]) }))
+      : [];
+    return [match[1], { split, headings }];
+  }),
+);
+const updates = readFileSync(path.join(websiteRoot, "app/lib/provider-updates.ts"), "utf8");
+for (const [, href] of updates.matchAll(/href:\s*"(\/docs\/[^"]+)"/g)) {
+  const [, slug, child, anchor] = /^\/docs\/([^/#]+)(?:\/([^#]+))?(?:#(.+))?$/.exec(href) ?? [];
+  const guide = guides.get(slug);
+  if (!guide) {
+    failures.push(`provider update links to an unregistered guide: ${href}`);
+    continue;
+  }
+  if (!guide.split) {
+    if (child) failures.push(`provider update links to a section page of a guide that is one page: ${href}`);
+    else if (anchor && !guide.headings.some((heading) => heading.id === anchor)) failures.push(`provider update links to a missing heading: ${href}`);
+    continue;
+  }
+  if (!child) {
+    if (anchor) failures.push(`provider update links to ${href}, but that guide is one page per section; link /docs/${slug}/<section> instead`);
+    continue;
+  }
+  const start = guide.headings.findIndex((heading) => heading.depth === guide.split && heading.id === child);
+  if (start < 0) {
+    failures.push(`provider update links to a missing section page: ${href}`);
+    continue;
+  }
+  if (anchor) {
+    const rest = guide.headings.slice(start + 1);
+    const end = rest.findIndex((heading) => heading.depth <= guide.split);
+    const inside = end < 0 ? rest : rest.slice(0, end);
+    if (!inside.some((heading) => heading.id === anchor)) failures.push(`provider update links to a heading that is not on that section page: ${href}`);
+  }
+}
+
 const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
 const cli = readFileSync(path.join(repoRoot, "src/cli/args.ts"), "utf8");
 const commandsMatch = cli.match(/export const COMMANDS = \[([\s\S]*?)\]\s+as const/);
