@@ -1,3 +1,10 @@
+# [0.101.0](https://github.com/gfargo/pixelkiln/compare/v0.100.0...v0.101.0) (2026-11-14)
+
+
+### Features
+
+* **tiles:** elevation, step slope, boundary meander and roof profile ([b35b544](https://github.com/gfargo/pixelkiln/commit/b35b544b3313272ce958669676959f8ede1d2915))
+
 # [0.100.0](https://github.com/gfargo/pixelkiln/compare/v0.99.0...v0.100.0) (2026-11-14)
 
 
