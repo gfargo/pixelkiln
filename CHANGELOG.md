@@ -1,3 +1,12 @@
+# [0.97.0](https://github.com/gfargo/pixelkiln/compare/v0.96.1...v0.97.0) (2026-11-14)
+
+
+### Features
+
+* **pixellab:** `pixelkiln asset` for import, 8-direction expansion, canvas, mirror and export; `pixelate --pro` ([5ce4d09](https://github.com/gfargo/pixelkiln/commit/5ce4d0955f861a7ec0edef6b87b9135f65fd4f1b))
+* **pixellab:** `pixelkiln ui` for splitting UI panels, element states and 9-slice ([9817b82](https://github.com/gfargo/pixelkiln/commit/9817b822baed32199b283a271cae0ff63fa3d371))
+* **pixellab:** music and sound effects as `pixelkiln music` and `pixelkiln sfx` ([61689e4](https://github.com/gfargo/pixelkiln/commit/61689e4743082fe28350603be97341ddd8837b7c))
+
 ## [0.96.1](https://github.com/gfargo/pixelkiln/compare/v0.96.0...v0.96.1) (2026-11-09)
 
 
