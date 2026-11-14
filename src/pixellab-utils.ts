@@ -13,7 +13,7 @@
 import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import type { NormalMapConvention, PixelLabClient } from "./client.ts"
+import type { NormalMapConvention, NormalMapKind, NormalMapMode, NormalMapShape, PixelLabClient } from "./client.ts"
 import { imageMetadata } from "./media.ts"
 
 /** PixelLab's own limits for `/unzoom`: grid detection needs at least 256x256, and the area is capped at 2048x2048. */
@@ -298,7 +298,16 @@ export async function pixelateFile(
   }
 }
 
-/** `/normal-map`'s price: 0.5 generation per call, an animation strip included, charged only when the map is delivered. */
+/**
+ * `/normal-map`'s price, charged only when the map is delivered, an animation
+ * strip included: 0.1 generation on `lite` (PixelLab's default since it added
+ * the mode; four 64x64 maps billed exactly 0.1 each in November 2026) and 0.5
+ * on `pro` (the documented price, and what every map cost before the mode).
+ */
+export function normalMapCost(mode?: NormalMapMode): number {
+  return mode === "pro" ? 0.5 : 0.1
+}
+/** The `pro` price; kept for callers that priced a normal map before `lite` existed. */
 export const NORMAL_MAP_COST_GENERATIONS = 0.5
 export const NORMAL_MAP_MIN_SIDE = 8
 export const NORMAL_MAP_MAX_SIDE = 512
@@ -333,6 +342,11 @@ export interface NormalMapOptions {
   /** How many equal frames the input's horizontal strip holds; 1 for a single sprite. */
   frames?: number
   convention?: NormalMapConvention
+  /** How the flat sprite is read as a surface; see NormalMapShape. */
+  shape?: NormalMapShape
+  /** `lite` (default, 0.1 generation) or `pro` (0.5). */
+  mode?: NormalMapMode
+  kind?: NormalMapKind
   force?: boolean
   /** Poll interval and ceiling. PixelLab quotes 15 to 60 s. */
   intervalMs?: number
@@ -394,6 +408,9 @@ export async function normalMapFile(
     image: { base64: bytes.toString("base64"), format: "png" },
     frames,
     convention: opts.convention,
+    shape: opts.shape,
+    mode: opts.mode,
+    kind: opts.kind,
   })
   const jobId = submitted.background_job_id
   const started = Date.now()

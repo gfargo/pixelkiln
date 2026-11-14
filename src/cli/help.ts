@@ -72,8 +72,10 @@ Commands
             generations; asks first.
   normal-map PixelLab: make the normal map of a PNG sprite (--from), or of a
             horizontal strip of --frames equal frames, so an engine can light
-            it. --convention opengl (default) or directx. 0.5 generation;
-            asks first.
+            it. --convention opengl (default) or directx. 0.1 generation on
+            lite (default), 0.5 with --mode pro; shape it with --strength,
+            --outline-rounding, --part-shapes, --surface-detail and
+            --detail-softness. Asks first.
   vfx       PixelLab: build an animated pixel-art effect with the VFX
             workbench (free) from a --preset, a --recipe file, a saved
             --effect, and/or --part; writes <out>.png/.gif/.json and a
@@ -128,7 +130,14 @@ Options
   --artist <a>        vfx --description: lite (default) or pro
   --weight <w>        font: Bold or Regular (default)
   --id <id>           ui/asset: the PixelLab asset to work on
-  --kind <kind>       asset: object (default) or character
+  --kind <kind>       asset: object (default) or character; normal-map: what the
+                      picture is (character, object, topdown, side, iso, ui)
+  --mode <mode>       normal-map: lite (default, 0.1 generation) or pro (0.5)
+  --strength <n>      normal-map: how far pixels tilt from the viewer, 0-2
+  --outline-rounding <n>  normal-map: how much the outline rounds off, 0-3
+  --part-shapes <n>   normal-map: how much the sprite's 3D parts add, 0-2
+  --surface-detail <n>  normal-map: the art's light and dark as bumps, 0-2
+  --detail-softness <n>  normal-map: blur of that detail in px, 0.6-3
   --size <WxH>        asset canvas: the new canvas, in multiples of 4
   --animation <id>    asset mirror/export: an animation group id
   --direction <dir>   asset mirror: the direction to flip; asset expand: the

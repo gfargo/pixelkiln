@@ -21,7 +21,7 @@ import {
 } from "../pixellab-vfx.ts"
 import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
-import { NORMAL_MAP_COST_GENERATIONS, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
+import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
 import { joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
@@ -560,7 +560,7 @@ export class PixelLabProvider implements Provider {
     if (spec.revision?.mode === "normal-map") {
       // PixelLab's documented flat price, per call: a loop's frames go as one
       // strip, so a whole loop costs the same as one sprite. Not yet measured.
-      return { unit: "generations", amount: NORMAL_MAP_COST_GENERATIONS, candidates: 1 }
+      return { unit: "generations", amount: normalMapCost(spec.revision.normalMapMode), candidates: 1 }
     }
     if (spec.revision?.mode === "reduce-colors" || spec.revision?.mode === "correct-pixelart") {
       // Confirmed live: a flat 0.1 generations for both, on a 32x32 source,
@@ -2277,7 +2277,20 @@ export class PixelLabProvider implements Provider {
       const strip: Base64Image = roles
         ? { base64: joinStripPng(images.map((member) => Buffer.from(member.base64, "base64"))).toString("base64"), format: "png" }
         : image
-      const res = await this.client.normalMap({ image: strip, frames: roles?.length ?? 1, convention: revision.convention })
+      const res = await this.client.normalMap({
+        image: strip,
+        frames: roles?.length ?? 1,
+        convention: revision.convention,
+        mode: revision.normalMapMode,
+        kind: revision.normalMapKind,
+        shape: {
+          strength: revision.normalMapStrength,
+          outlineRounding: revision.outlineRounding,
+          partShapes: revision.partShapes,
+          surfaceDetail: revision.surfaceDetail,
+          detailSoftness: revision.detailSoftness,
+        },
+      })
       return {
         jobId: res.background_job_id,
         metadata: roles

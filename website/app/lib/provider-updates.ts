@@ -56,6 +56,48 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "pixellab-normal-map-controls",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "Normal maps for a fifth of the price, shaped the way you want",
+    summary:
+      "PixelLab added a lite mode to its normal maps and made it the default, so a map that billed 0.5 generation now bills 0.1. It also added controls for how a flat sprite is read as a surface. `pixelkiln normal-map` and the `normal-map` revision send them, and `plan` prices the new default.",
+    features: [
+      "`--mode lite` is 0.1 generation and `--mode pro` 0.5. Both were billed live; on this knight the two maps were close.",
+      "`--surface-detail`, `--part-shapes` and `--outline-rounding` set how much relief the map has. All at 0 gives a completely flat map.",
+      "`--detail-softness` blurs the detail into a smooth form, and `--strength` scales the tilt, up to 2.",
+      "`--kind` tells PixelLab what the picture is, for sidescroller, isometric and UI art.",
+      "In a manifest these are fields on a `normal-map` revision, and a map made before them is not stale.",
+    ],
+    figures: [
+      {
+        src: "/showcase/normals/knight-controls.png",
+        alt: "A knight sprite and four normal maps of it: moderately detailed, completely flat, deeply sculpted, and smooth",
+        width: 1328,
+        height: 272,
+        title: "one sprite, four maps",
+        caption: "the sprite, then PixelLab's defaults, every control at 0, every control at its maximum, and maximum softness. 0.1 generation each.",
+        wide: true,
+        fill: true,
+      },
+    ],
+    code: {
+      title: "terminal",
+      language: "shell",
+      copyId: "updates_normal_map_commands",
+      code: `
+pixelkiln normal-map --from art/knight.png
+pixelkiln normal-map --from art/knight.png --surface-detail 2 --part-shapes 2 --detail-softness 0.6
+pixelkiln normal-map --from art/knight.png --mode pro --kind character
+`,
+    },
+    links: [
+      { id: "updates_normal_map_reference", label: "Read the normal-map reference", href: "/docs/cli#normal-map" },
+      { id: "updates_normal_map_revisions", label: "Normal maps in a manifest", href: "/docs/revisions#normal-maps" },
+      { id: "updates_normal_map_measured", label: "See what was measured", href: "/docs/endpoints#normal-map-post-normal-map-measured-once" },
+    ],
+  },
+  {
     id: "pixellab-tileset-options",
     provider: "PixelLab",
     date: "November 2026",

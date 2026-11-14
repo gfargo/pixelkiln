@@ -12,7 +12,8 @@ import { buildPlan } from "../src/pipeline/plan.ts"
 import { poll } from "../src/pipeline/poll.ts"
 import { fetchAssets } from "../src/pipeline/fetch.ts"
 import { submit } from "../src/pipeline/submit.ts"
-import { normalMapFile, normalMapSizeProblem } from "../src/pixellab-utils.ts"
+import { normalMapCost, normalMapFile, normalMapSizeProblem } from "../src/pixellab-utils.ts"
+import { parseArgs } from "../src/cli/args.ts"
 import { decodePng, encodeRgbaPng, joinStripPng, splitStripPng } from "../src/png.ts"
 import { PixelLabProvider } from "../src/providers/pixellab.ts"
 import { CHARACTER_DIRECTIONS_8, RevisionSchema, type Lock, type ResolvedSpec } from "../src/types.ts"
@@ -150,10 +151,13 @@ describe("normal-map revisions", () => {
     return spec!
   }
 
-  it("makes one sprite's normal map as a background job, at 0.5 generation", async () => {
+  it("makes one sprite's normal map as a background job, at lite's 0.1 generation unless pro is asked for", async () => {
+    // Lite is PixelLab's default since it added the mode; four live maps billed 0.1 each, a pro map 0.5 (November 2026).
+    expect((await child(await single({ mode: "normal-map", from: "source", normalMapMode: "pro" }))).cost).toBe(0.5)
+    expect((await child(await single({ mode: "normal-map", from: "source", normalMapMode: "lite" }))).cost).toBe(0.1)
     const loaded = await single({ mode: "normal-map", from: "source", convention: "directx" })
     const spec = await child(loaded)
-    expect(spec.cost).toBe(0.5)
+    expect(spec.cost).toBe(0.1)
     const lock: Lock = { version: 2, entries: {} }
     const plan = await buildPlan([spec], lock)
     const map = png(128)
@@ -170,7 +174,7 @@ describe("normal-map revisions", () => {
   it("sends a loop as one strip and cuts the map back into its frames", async () => {
     const { loaded, lock } = await set({ mode: "normal-map", from: "hero" }, frames(4))
     const spec = await child(loaded)
-    expect(spec.cost).toBe(0.5)
+    expect(spec.cost).toBe(0.1)
     const plan = await buildPlan([spec], lock)
     const maps = [png(100), png(110), png(120), png(130)]
     const bodies = stubNormalMap(() => joinStripPng(maps))
@@ -217,6 +221,47 @@ describe("normal-map revisions", () => {
     const opengl = await child(await single({ mode: "normal-map", from: "source", convention: "opengl" }))
     expect(plain.revision).not.toHaveProperty("convention")
     expect(opengl.specHash).not.toBe(plain.specHash)
+  })
+})
+
+describe("normal-map shape controls", () => {
+  it("accepts them on normal-map only, within PixelLab's ranges", () => {
+    const ok = { mode: "normal-map", from: "a", normalMapMode: "pro", normalMapKind: "iso", normalMapStrength: 2, outlineRounding: 3, partShapes: 2, surfaceDetail: 0, detailSoftness: 0.6 }
+    expect(RevisionSchema.safeParse(ok).success).toBe(true)
+    for (const bad of [{ normalMapStrength: 2.1 }, { outlineRounding: 3.1 }, { partShapes: -1 }, { detailSoftness: 0.5 }, { normalMapMode: "ultra" }, { normalMapKind: "portrait" }]) {
+      expect(RevisionSchema.safeParse({ mode: "normal-map", from: "a", ...bad }).success, JSON.stringify(bad)).toBe(false)
+    }
+    for (const field of ["normalMapMode", "normalMapKind", "normalMapStrength", "outlineRounding", "partShapes", "surfaceDetail", "detailSoftness"]) {
+      const value = field === "normalMapMode" ? "pro" : field === "normalMapKind" ? "ui" : 1
+      const parsed = RevisionSchema.safeParse({ mode: "reduce-colors", from: "a", [field]: value })
+      expect(parsed.success, field).toBe(false)
+    }
+  })
+
+  it("sends only what is set, as the API's field names", async () => {
+    const bodies: Record<string, unknown>[] = []
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init!.body)))
+      return new Response(JSON.stringify({ background_job_id: "nm-1", status: "processing" }), { status: 202 })
+    }))
+    try {
+      const client = new PixelLabClient("key")
+      const image = { base64: "U1BSSVRF", format: "png" as const }
+      await client.normalMap({ image })
+      await client.normalMap({ image, mode: "pro", kind: "side", shape: { strength: 1.5, outlineRounding: 0, partShapes: 2, surfaceDetail: 0.5, detailSoftness: 3 } })
+      expect(bodies[0]).toEqual({ image })
+      expect(bodies[1]).toEqual({ image, mode: "pro", kind: "side", strength: 1.5, outline_rounding: 0, part_shapes: 2, surface_detail: 0.5, detail_softness: 3 })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("prices by mode and reads the command's flags", () => {
+    expect([normalMapCost(), normalMapCost("lite"), normalMapCost("pro")]).toEqual([0.1, 0.1, 0.5])
+    expect(parseArgs(["normal-map", "--from", "a.png", "--mode", "pro", "--kind", "iso", "--strength", "2", "--surface-detail", "0", "--detail-softness", "0.6"]))
+      .toMatchObject({ mode: "pro", kind: "iso", strength: 2, surfaceDetail: 0, detailSoftness: 0.6 })
+    expect(() => parseArgs(["normal-map", "--from", "a.png", "--strength", "3"])).toThrow(/--strength/)
+    expect(() => parseArgs(["normal-map", "--from", "a.png", "--detail-softness", "0.2"])).toThrow(/--detail-softness/)
   })
 })
 

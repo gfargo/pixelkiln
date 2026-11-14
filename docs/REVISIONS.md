@@ -263,6 +263,14 @@ strip each billed exactly 0.5).
 - `convention` is `opengl` (PixelLab's default: green up, for Godot, Unity,
   and Phaser) or `directx` (green down, for Unreal). It is rejected on other
   modes and enters the spec hash only when set. `strength` is refused.
+- `normalMapMode` is `lite` (PixelLab's default, 0.1 generation) or `pro`
+  (0.5). `normalMapKind` says what the picture is (`character`, `object`,
+  `topdown`, `side`, `iso`, `ui`). `normalMapStrength` (0–2),
+  `outlineRounding` (0–3), `partShapes` (0–2), `surfaceDetail` (0–2) and
+  `detailSoftness` (0.6–3) shape the surface; see
+  [the command's reference](./CLI.md#normal-map) for what each does. All are
+  rejected on other modes and enter the spec hash only when set, so a normal
+  map made before them is not stale.
 - The parent must be a PNG, 8 to 512 pixels per side; both are checked at
   plan time.
 - **A loop goes as one strip.** When the parent is an animation (its
@@ -271,7 +279,7 @@ strip each billed exactly 0.5).
   carries it to the rest, so the light holds steady across the loop instead
   of flickering. The returned strip is cut back into `-frame-NN.png` files
   under the parent's roles, keeping its playback rate. A whole loop is one
-  call, so it costs 0.5 too.
+  call, so it costs the same as one sprite: 0.1 on lite, 0.5 on pro.
 - **A character's directions are refused.** They are separate views, not
   frames of one motion: sent as a strip, each would be shaped from the first
   direction, and one call per direction would put several paid jobs behind

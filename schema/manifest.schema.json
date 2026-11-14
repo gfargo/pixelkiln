@@ -1263,6 +1263,49 @@
                       "directx"
                     ]
                   },
+                  "normalMapMode": {
+                    "type": "string",
+                    "enum": [
+                      "lite",
+                      "pro"
+                    ]
+                  },
+                  "normalMapKind": {
+                    "type": "string",
+                    "enum": [
+                      "character",
+                      "object",
+                      "topdown",
+                      "side",
+                      "iso",
+                      "ui"
+                    ]
+                  },
+                  "normalMapStrength": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "outlineRounding": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3
+                  },
+                  "partShapes": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "surfaceDetail": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "detailSoftness": {
+                    "type": "number",
+                    "minimum": 0.6,
+                    "maximum": 3
+                  },
                   "description": {
                     "type": "string",
                     "minLength": 1

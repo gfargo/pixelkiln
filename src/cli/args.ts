@@ -124,6 +124,18 @@ export interface Args {
   fps?: number
   /** vfx: also export the game-pack ZIP. */
   gamePack: boolean
+  /** normal-map: lite (default) or pro. */
+  mode?: string
+  /** normal-map: how far every pixel tilts away from the viewer. */
+  strength?: number
+  /** normal-map: how much the outline rounds off, 0-3. */
+  outlineRounding?: number
+  /** normal-map: how much the sprite's 3D parts add, 0-2. */
+  partShapes?: number
+  /** normal-map: the art's light and dark as bumps, 0-2. */
+  surfaceDetail?: number
+  /** normal-map: how far that detail is blurred, 0.6-3 px. */
+  detailSoftness?: number
   /** asset: object (default) or character. */
   kind?: string
   /** asset canvas: the new canvas, "<width>x<height>". */
@@ -184,6 +196,7 @@ const VALUE_FLAGS = [
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--artist", "--convention",
   "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
+  "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle",
 ] as const
 const BOOL_FLAGS = [
@@ -564,6 +577,12 @@ export function parseArgs(argv: string[]): Args {
     sprite: get("--sprite"),
     fps: numberOption("--fps", { min: 1, max: 60, integer: true }),
     gamePack: rest.includes("--game-pack"),
+    mode: get("--mode"),
+    strength: numberOption("--strength", { min: 0, max: 2 }),
+    outlineRounding: numberOption("--outline-rounding", { min: 0, max: 3 }),
+    partShapes: numberOption("--part-shapes", { min: 0, max: 2 }),
+    surfaceDetail: numberOption("--surface-detail", { min: 0, max: 2 }),
+    detailSoftness: numberOption("--detail-softness", { min: 0.6, max: 3 }),
     kind: get("--kind"),
     size: get("--size"),
     animation: get("--animation"),
