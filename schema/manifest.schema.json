@@ -449,6 +449,13 @@
                   "isometric": {
                     "type": "boolean"
                   },
+                  "backgroundRemoval": {
+                    "type": "string",
+                    "enum": [
+                      "simple",
+                      "complex"
+                    ]
+                  },
                   "enhancePrompt": {
                     "type": "boolean"
                   },
@@ -1001,6 +1008,13 @@
                   },
                   "isometric": {
                     "type": "boolean"
+                  },
+                  "backgroundRemoval": {
+                    "type": "string",
+                    "enum": [
+                      "simple",
+                      "complex"
+                    ]
                   },
                   "enhancePrompt": {
                     "type": "boolean"
@@ -1991,6 +2005,19 @@
               "initImage": {
                 "type": "string",
                 "minLength": 1
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "south",
+                  "south-east",
+                  "east",
+                  "north-east",
+                  "north",
+                  "north-west",
+                  "west",
+                  "south-west"
+                ]
               },
               "initImageStrength": {
                 "type": "integer",

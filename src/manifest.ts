@@ -823,6 +823,8 @@ export async function resolveSpecs(
         view: style.view ?? (generator === "1dir" ? "top-down" : generator === "character" ? "low top-down" : "high top-down"),
         ...(style.view !== undefined ? { styleView: style.view } : {}),
         ...(generator === "pixflux" && style.textGuidanceScale !== undefined ? { textGuidanceScale: style.textGuidanceScale } : {}),
+        ...(generator === "pixflux" && style.isometric ? { isometric: true as const } : {}),
+        ...(generator === "pixflux" && style.backgroundRemoval ? { backgroundRemoval: style.backgroundRemoval } : {}),
         styleImagePaths: style.styleImages.map((s) => s.path),
         outline: style.outline,
         shading: style.shading,
@@ -1441,6 +1443,12 @@ export async function resolveSpecs(
           links[side] = { assetId: link.of, terrain: link.terrain, spec: linkedSpec }
         }
         resolved.terrainConnect = links
+      }
+      if (asset.direction) {
+        if (resolved.generator !== "pixflux") {
+          throw new Error(`assets.${assetId}.direction: a facing is taken by pixflux styles; style "${styleId}" uses "${resolved.generator}"`)
+        }
+        resolved.subjectDirection = asset.direction
       }
       if (asset.initImage) {
         if (!["pixflux", "map", "isometricTile"].includes(resolved.generator)) {

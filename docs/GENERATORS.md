@@ -220,6 +220,30 @@ stale once, because the request is now different.
 }
 ```
 
+Three more `pixflux` options, each sent and hashed only when set:
+
+- **`isometric: true`** on the style draws in isometric view. In one test
+  it clearly changed the result: the same knight came back in a
+  three-quarter stance.
+- **`direction`** on an asset (`south`, `east`, `north-west` and so on) is
+  the way the subject faces. PixelLab calls it weakly guiding, and it was
+  weak in testing: `east` turned a front-facing knight only slightly, and
+  `west` came back all but identical to no direction at all. Say the facing
+  in the prompt as well if it matters.
+- **`backgroundRemoval: "complex"`** on the style uses PixelLab's slower
+  background removal, meant for fine or busy edges; `"simple"` is its
+  default. On a clean-edged knight the two results were nearly the same.
+  It needs `noBackground` (on by default) and is refused without it.
+
+```jsonc
+"props_iso": { "generator": "pixflux", "isometric": true, "backgroundRemoval": "complex", "outDir": "art/props" }
+// and on an asset:
+"guard": { "prompt": "a knight holding a spear, facing right", "direction": "east" }
+```
+
+A `pixflux` style that already carried `isometric: true`, which was ignored
+until now, will plan as stale once.
+
 **Before November 2026 these four fields were not sent for `pixflux`.**
 They were already part of the asset's identity, so no hash or lock entry
 changed when that was fixed, and files already generated are untouched. A
