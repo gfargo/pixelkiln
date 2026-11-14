@@ -92,3 +92,46 @@ describe("initImage", () => {
     expect(lock.entries[lockKey("s", "a")]).toMatchObject({ status: "failed", error: expect.stringMatching(/init image changed after the manifest was resolved/) })
   })
 })
+
+describe("a pixflux style's outline, shading and detail", () => {
+  async function loadStyled(style: Record<string, unknown>) {
+    await writeFile(path.join(dir, "m.json"), JSON.stringify({
+      name: "t",
+      styles: { s: { generator: "pixflux", size: 32, outDir: "out", ...style } },
+      assets: { a: { prompt: "an anvil" } },
+    }))
+    return loadManifest(path.join(dir, "m.json"))
+  }
+  async function posted(style: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const bodies: Array<Record<string, unknown>> = []
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.body) bodies.push(JSON.parse(String(init.body)))
+      return new Response(JSON.stringify({ image: { base64: png(1).toString("base64") }, usage: { type: "generations", generations: 1 } }), { status: 200 })
+    }))
+    const loaded = await loadStyled(style)
+    const specs = await resolveSpecs(loaded, { provider: new PixelLabProvider(new PixelLabClient("key")) })
+    const lock: Lock = { version: 2, entries: {} }
+    await submit(new PixelLabProvider(new PixelLabClient("key")), loaded, (await buildPlan(specs, lock)).actionable, lock, path.join(dir, "lock.json"), { spacingMs: 0 })
+    expect(lock.entries[lockKey("s", "a")]?.status).not.toBe("failed")
+    return bodies[0]!
+  }
+
+  it("are sent when the style sets them and left out when it does not", async () => {
+    expect(await posted({ outline: "lineless", shading: "flat shading", detail: "highly detailed" }))
+      .toMatchObject({ outline: "lineless", shading: "flat shading", detail: "highly detailed" })
+    const bare = await posted({})
+    for (const key of ["outline", "shading", "detail"]) expect(bare).not.toHaveProperty(key)
+  })
+
+  it("keep the hash they always had", async () => {
+    const hash = async (style: Record<string, unknown>) => (await resolveSpecs(await loadStyled(style)))[0]!.specHash
+    // Pinned from main before the fields were sent.
+    expect(await hash({})).toBe("90a7723fb651ef7a9af6c736368fd436662de5ab3f34ca19c3ec61b72aea25b6")
+    expect(await hash({ outline: "lineless", shading: "flat shading", detail: "highly detailed" })).toBe("791dcd4f77078ced566be672889d55b3ecef3f390c253586c1da9f6509cc5d5b")
+  })
+
+  it("refuse a value the endpoint does not know, at plan", async () => {
+    const loaded = await loadStyled({ detail: "high detail" })
+    await expect(resolveSpecs(loaded, { provider: new PixelLabProvider(new PixelLabClient("key")) })).rejects.toThrow(/pixflux detail must be one of: low detail, medium detail, highly detailed/)
+  })
+})

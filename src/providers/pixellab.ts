@@ -926,6 +926,17 @@ export class PixelLabProvider implements Provider {
         "low detail", "medium detail", "high detail",
       ])
     }
+    if (spec.generator === "pixflux") {
+      // These were hashed but never sent until November 2026; a value the
+      // endpoint does not know is refused here rather than as a paid-path 422.
+      requirePixelLabOption("pixflux", "outline", spec.outline, [
+        "single color black outline", "single color outline", "selective outline", "lineless",
+      ])
+      requirePixelLabOption("pixflux", "shading", spec.shading, [
+        "flat shading", "basic shading", "medium shading", "detailed shading", "highly detailed shading",
+      ])
+      requirePixelLabOption("pixflux", "detail", spec.detail, ["low detail", "medium detail", "highly detailed"])
+    }
     if (spec.generator === "terrain") {
       if (spec.outline) {
         requirePixelLabOption("terrain", "outline", spec.outline, [
@@ -2002,6 +2013,9 @@ export class PixelLabProvider implements Provider {
         height: spec.height,
         noBackground: spec.noBackground,
         paletteSwatchBase64: swatch,
+        outline: spec.outline,
+        shading: spec.shading,
+        detail: spec.detail,
         seed: spec.seed,
         ...(await initImageArgs(spec)),
       })

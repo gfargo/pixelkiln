@@ -1515,6 +1515,10 @@ export class PixelLabClient {
     /** A PNG to start from, and how strongly it holds (1-999; the API default is 300). */
     initImage?: Base64Image
     initImageStrength?: number
+    /** The style's look, sent only when set: PixelLab's `Outline`, `Shading` and `Detail` enums. */
+    outline?: string
+    shading?: string
+    detail?: string
     seed?: number
   }): Promise<{ png: Buffer; usage: unknown }> {
     const body: Record<string, unknown> = {
@@ -1529,6 +1533,9 @@ export class PixelLabClient {
       body.init_image = { type: "base64", base64: args.initImage.base64, format: args.initImage.format }
       if (args.initImageStrength != null) body.init_image_strength = args.initImageStrength
     }
+    if (args.outline) body.outline = args.outline
+    if (args.shading) body.shading = args.shading
+    if (args.detail) body.detail = args.detail
     if (args.seed != null) body.seed = args.seed
 
     const res = validateResponse(
