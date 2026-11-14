@@ -70,6 +70,8 @@ not merely a label edit.
 | `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
 | `outfit` | object | `character` styles: an existing loop's frames re-clothed from an outfit image, `{ "of": "<loop asset>", "reference": "<image>" }`, with optional `additionalInstructions`. See [Outfit transfer](./CHARACTERS.md#outfit-transfer). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
+| `initImage` | string | `pixflux`, `map` and `isometricTile` styles: a PNG to start the drawing from, relative to the manifest. See [Starting from an image](#starting-from-an-image). |
+| `initImageStrength` | integer 1–999, default 300 | With `initImage`: how strongly the starting image holds. About 100 blends it with the prompt; 300 and up mostly returns it. |
 | `terrainReferences` | object | `terrain` styles: a PNG per terrain to take that terrain's look from, `{ "lower": "refs/water.png", "upper": "refs/sand.png", "transition": "refs/foam.png" }`, paths relative to the manifest. See [Terrain reference images](./TILES.md#terrain-reference-images). |
 | `derive` | object | Made from existing pixels by one local transform, at no cost, with no provider. See [Derived and external assets](#derived-and-external-assets). |
 | `external` | object | Built by a script or tool outside pixelkiln; pixelkiln records and tracks the file but never builds it. See [Derived and external assets](#derived-and-external-assets). |
@@ -525,6 +527,43 @@ their own page: [Characters](./CHARACTERS.md) and
   }
 }
 ```
+
+## Starting from an image
+
+A `pixflux`, `map` or `isometricTile` asset can start from a PNG instead of
+from nothing:
+
+```json
+"gold_knight": {
+  "prompt": "a knight in golden armor with a red cape",
+  "initImage": "art/knight.png",
+  "initImageStrength": 100
+}
+```
+
+PixelLab reworks the image toward the prompt. `initImageStrength` (1 to 999)
+sets how strongly the starting image holds, and its default of 300 holds much
+harder than the number suggests. Measured on a 64x64 knight with the prompt
+above (November 2026, the same on `pixflux` and `map`):
+
+| Strength | Result |
+|---|---|
+| 30 | The prompt wins: a new gold knight at about the same scale and placement. |
+| 100 | A blend: the original silhouette and armor, with gold trim and a red cape. |
+| 300 (default) | The starting image, lightly redrawn. No gold, no red. |
+| 800 | The starting image, all but unchanged. |
+
+So to restyle a sprite while keeping its shape, set about 100; leave the
+default only when you want a faithful redraw. For a controlled edit of an
+existing asset, with a parent the plan tracks, a
+[revision](./REVISIONS.md) is the better tool; `initImage` is for a loose
+starting file.
+
+The file is hashed into the asset's identity, with the strength when it is
+set, so replacing it marks the asset stale and renaming it does not. A missing
+file is a manifest error, and a file changed between `plan` and `gen` is
+refused at submit. It costs nothing extra: each of these billed the
+generator's usual 1 generation.
 
 ## Controlled revisions
 

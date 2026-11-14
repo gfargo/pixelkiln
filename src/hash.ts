@@ -109,6 +109,8 @@ export function specHash(
       terrainEnhance: spec.terrainEnhance,
       terrainPlatformThickness: spec.terrainPlatformThickness,
       // Reference images enter as their bytes' hashes, never their paths.
+      // The starting image by its bytes, with its strength only when set.
+      initImage: spec.initImage ? { sha256: spec.initImage.sha256, strength: spec.initImage.strength } : undefined,
       terrainReferences: spec.terrainReferences && Object.keys(spec.terrainReferences).length
         ? Object.fromEntries(
             (["lower", "upper", "transition"] as const).flatMap((side) => {

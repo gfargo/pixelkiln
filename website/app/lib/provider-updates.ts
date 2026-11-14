@@ -56,6 +56,48 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "pixellab-init-images",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "Start from your own sprite, and choose how much of it survives",
+    summary:
+      "PixelLab's `pixflux`, map object and isometric tile generators take a starting image. PixelKiln sends one from an asset's `initImage`, and `initImageStrength` sets how hard it holds. Each image below is one call at the generator's usual 1 generation.",
+    features: [
+      "At strength 30 the prompt wins and the starting image only sets scale and placement.",
+      "At about 100 you get a restyle: the original silhouette, in the prompt's colors.",
+      "PixelLab's default of 300 holds much harder than it sounds. It returned the starting knight with none of the prompt's gold.",
+      "The file is hashed into the asset, so replacing it marks the asset stale, and a file changed after `plan` is refused before anything is spent.",
+    ],
+    figures: [
+      {
+        src: "/showcase/init/strength-ladder.png",
+        alt: "Six knights in a row: a steel one, a gold one with a red cape, then four that move step by step from gold back to the original steel",
+        width: 1592,
+        height: 272,
+        title: "one prompt, one starting sprite",
+        caption: "the starting sprite, the prompt alone, then `initImageStrength` 30, 100, 300 and 800. 1 generation each.",
+        wide: true,
+        fill: true,
+      },
+    ],
+    code: {
+      title: "pixelkiln.manifest.json",
+      language: "json",
+      copyId: "updates_init_image_manifest",
+      code: `
+"gold_knight": {
+  "prompt": "a knight in golden armor with a red cape",
+  "initImage": "art/knight.png",
+  "initImageStrength": 100
+}
+`,
+    },
+    links: [
+      { id: "updates_init_image_manifest_docs", label: "Starting from an image", href: "/docs/manifest#starting-from-an-image" },
+      { id: "updates_init_image_measured", label: "See what was measured", href: "/docs/endpoints#init-images-measured" },
+    ],
+  },
+  {
     id: "pixellab-normal-map-controls",
     provider: "PixelLab",
     date: "November 2026",

@@ -2061,6 +2061,17 @@ export const AssetSchema = z
      */
     mirror: z.string().min(1).optional(),
     /**
+     * `pixflux`, `map` and `isometricTile` styles: a PNG to start the drawing
+     * from, relative to the manifest. PixelLab reworks it toward the prompt
+     * instead of starting from nothing.
+     */
+    initImage: z.string().min(1).optional(),
+    /**
+     * With `initImage`: how strongly the starting image holds, 1 to 999.
+     * PixelLab's default is 300.
+     */
+    initImageStrength: z.number().int().min(1).max(999).optional(),
+    /**
      * `terrain` styles only: a PNG per terrain for PixelLab to take that
      * terrain's look from, paths relative to the manifest. Top-down sets
      * take `lower`, `upper` and `transition`. A sidescroller set takes
@@ -2128,6 +2139,13 @@ export const AssetSchema = z
         code: z.ZodIssueCode.custom,
         message: `${shapes.join(" and ")} are mutually exclusive`,
         path: [shapes[1] as string],
+      })
+    }
+    if (asset.initImageStrength !== undefined && !asset.initImage) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "initImageStrength sets how strongly initImage holds; add an initImage or drop it",
+        path: ["initImageStrength"],
       })
     }
     for (const shape of ["derive", "external"] as const) {
@@ -2838,6 +2856,8 @@ export interface ResolvedSpec {
   terrainPlatformThickness?: number
   terrainLowerWalkable?: boolean
   terrainUpperWalkable?: boolean
+  /** `pixflux`, `map` and `isometricTile`: the image the drawing starts from, hashed at resolve time. */
+  initImage?: ResolvedTerrainReference & { strength?: number }
   /** `terrain` generator only: reference PNGs per terrain, hashed at resolve time. A missing file has no hash. */
   terrainReferences?: Partial<Record<"lower" | "upper" | "transition", ResolvedTerrainReference>>
   terrainTransitionSize?: number

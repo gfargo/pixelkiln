@@ -991,6 +991,9 @@ export class PixelLabClient {
     outline?: string
     shading?: string
     detail?: string
+    /** A PNG to start from, and how strongly it holds (1-999; the API default is 300). */
+    initImage?: Base64Image
+    initImageStrength?: number
     seed?: number
     /**
      * Style matching: the scene the object should match, and where in it
@@ -1010,6 +1013,10 @@ export class PixelLabClient {
     if (args.outline) body.outline = args.outline
     if (args.shading) body.shading = args.shading
     if (args.detail) body.detail = args.detail
+    if (args.initImage) {
+      body.init_image = { type: "base64", base64: args.initImage.base64, format: args.initImage.format }
+      if (args.initImageStrength != null) body.init_image_strength = args.initImageStrength
+    }
     if (args.seed != null) body.seed = args.seed
     if (args.scene) {
       const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
@@ -1262,6 +1269,9 @@ export class PixelLabClient {
     outline?: string
     shading?: string
     detail?: string
+    /** A PNG to start from, and how strongly it holds (1-999; the API default is 300). */
+    initImage?: Base64Image
+    initImageStrength?: number
     seed?: number
   }): Promise<{ tile_id: string; background_job_id: string; status: string }> {
     const body: Record<string, unknown> = { description: args.description }
@@ -1273,6 +1283,10 @@ export class PixelLabClient {
     if (args.outline) body.outline = args.outline
     if (args.shading) body.shading = args.shading
     if (args.detail) body.detail = args.detail
+    if (args.initImage) {
+      body.init_image = { type: "base64", base64: args.initImage.base64, format: args.initImage.format }
+      if (args.initImageStrength != null) body.init_image_strength = args.initImageStrength
+    }
     if (args.seed != null) body.seed = args.seed
     return validateResponse(
       IsometricTileSubmitSchema,
@@ -1430,6 +1444,9 @@ export class PixelLabClient {
     height: number
     noBackground?: boolean
     paletteSwatchBase64?: string
+    /** A PNG to start from, and how strongly it holds (1-999; the API default is 300). */
+    initImage?: Base64Image
+    initImageStrength?: number
     seed?: number
   }): Promise<{ png: Buffer; usage: unknown }> {
     const body: Record<string, unknown> = {
@@ -1439,6 +1456,10 @@ export class PixelLabClient {
     }
     if (args.paletteSwatchBase64) {
       body.color_image = { type: "base64", base64: args.paletteSwatchBase64, format: "png" }
+    }
+    if (args.initImage) {
+      body.init_image = { type: "base64", base64: args.initImage.base64, format: args.initImage.format }
+      if (args.initImageStrength != null) body.init_image_strength = args.initImageStrength
     }
     if (args.seed != null) body.seed = args.seed
 

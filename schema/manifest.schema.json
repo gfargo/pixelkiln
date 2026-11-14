@@ -1926,6 +1926,15 @@
                 "type": "string",
                 "minLength": 1
               },
+              "initImage": {
+                "type": "string",
+                "minLength": 1
+              },
+              "initImageStrength": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 999
+              },
               "terrainReferences": {
                 "type": "object",
                 "properties": {

@@ -1435,6 +1435,23 @@ export async function resolveSpecs(
         }
         resolved.terrainConnect = links
       }
+      if (asset.initImage) {
+        if (!["pixflux", "map", "isometricTile"].includes(resolved.generator)) {
+          throw new Error(
+            `assets.${assetId}.initImage: a starting image is taken by pixflux, map and isometricTile styles; style "${styleId}" uses "${resolved.generator}"`,
+          )
+        }
+        const file = path.resolve(root, asset.initImage)
+        const image = await optionalRevisionImage(file, "init image", "png")
+        if (!image) throw new Error(`assets.${assetId}.initImage: ${asset.initImage} is missing or not a PNG`)
+        resolved.initImage = {
+          file,
+          sha256: image?.hash ?? null,
+          width: image?.width ?? null,
+          height: image?.height ?? null,
+          ...(asset.initImageStrength == null ? {} : { strength: asset.initImageStrength }),
+        }
+      }
       if (asset.terrainReferences) {
         if (resolved.generator !== "terrain") {
           throw new Error(`assets.${assetId}.terrainReferences: only a terrain set takes terrain references; style "${styleId}" uses "${resolved.generator}"`)
