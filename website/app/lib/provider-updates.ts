@@ -46,6 +46,39 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "pixellab-audio",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "Music and sound effects, from the same account as your art",
+    summary:
+      "PixelLab now makes game music and sound effects. `pixelkiln music` and `pixelkiln sfx` write the audio beside a record of what made it. Every price below was read from a real bill.",
+    features: [
+      "`music` returns two takes of a song as MP3 for 10 generations. `--loop` adds seamless loops with a loop start and loop end for 4 more.",
+      "`sfx` writes one WAV, 0.5 to 30 seconds, from 1 generation: a 1 second laser shot billed 1 and a 3 second clip billed 2.",
+      "`music style` turns a short idea into a full style and `music lyrics` drafts two sets of lyrics, at 0.05 generations each.",
+      "A loop needs 36 seconds of music between the intro and the ending, so `--loop` on a shorter song is refused before anything is sent.",
+      "Audio stays outside the manifest for now: each file gets a `.music.json` or `.sfx.json` record with its id, hash, length, and bill.",
+    ],
+    code: {
+      title: "terminal",
+      language: "shell",
+      copyId: "updates_audio_commands",
+      code: `
+pixelkiln music --description "Upbeat 8-bit dungeon theme: a fast square-wave lead, a pulsing triangle bass, crisp noise drums" \\
+  --bpm 140 --seconds 60 --loop --out audio/dungeon
+# writes audio/dungeon.mp3  .take2.mp3  .loop.mp3  .loop.take2.mp3  .music.json
+
+pixelkiln sfx --description "a sci-fi laser gun firing a single shot" --seconds 1 --out audio/laser
+# writes audio/laser.wav  .sfx.json
+`,
+    },
+    links: [
+      { id: "updates_audio_music", label: "Read the music reference", href: "/docs/cli#music" },
+      { id: "updates_audio_sfx", label: "Read the sfx reference", href: "/docs/cli#sfx" },
+      { id: "updates_audio_measured", label: "See what was measured", href: "/docs/endpoints#music-and-sound-effects-measured" },
+    ],
+  },
+  {
     id: "pixellab-skeleton-v3-custom",
     provider: "PixelLab",
     date: "October 2026",

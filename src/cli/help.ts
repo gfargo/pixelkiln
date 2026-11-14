@@ -82,6 +82,12 @@ Commands
             words instead (lite 1-5, pro 6-28 generations); asks first.
   font    PixelLab: generate a pixel font (--description, --out); writes a
             .ttf and a glyph atlas PNG. 15 generations; asks first.
+  music   PixelLab: a song from a style (--description, --out); writes two
+            takes as MP3 and a .music.json record. 10 generations; --loop adds
+            seamless loops (4 more); --loop-of loops an existing song.
+            music style / music lyrics draft a style or lyrics. Asks first.
+  sfx     PixelLab: a sound effect (--description, --seconds, --out); writes
+            a WAV and a .sfx.json record. From 1 generation, by length.
 
 Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
@@ -110,6 +116,17 @@ Options
                       what to change)
   --artist <a>        vfx --description: lite (default) or pro
   --weight <w>        font: Bold or Regular (default)
+  --seconds <n>       music: length to aim for, 10-360; sfx: clip length, 0.5-30 (default 2)
+  --bpm <n>           music: tempo, 60-180
+  --loop              music: also make seamless loops of take 1 (instrumental only)
+  --loop-of <id>      music: loop this finished song instead of making one
+  --restyle <id>      music: make this song again in the new style
+  --improve           music: expand a short idea into a full style first
+  --lyrics <file>     music: lyrics to sing (makes it a song with vocals)
+  --auto-lyrics       music: have the lyrics written for the song
+  --about <text>      music: what an --auto-lyrics song is about; music lyrics: the topic
+  --voice <text>      music: the singing voice, e.g. "warm female voice"
+  --style-weight <n>  music: how closely to follow the style, 0-1
   --frames <n>        estimate-skeleton: poses to scaffold, 3-15;
                       normal-map: equal frames in the --from strip, 1-32
   --convention <c>    normal-map: opengl (green up, default) or directx (green down)
@@ -184,6 +201,8 @@ Examples
   pixelkiln vfx --preset explosion --part scorch_mark --out fx/explosion --game-pack
   pixelkiln vfx --description "a blue lightning strike that leaves sparks" --out fx/zap
   pixelkiln font --description "warm orange arcade font" --weight Bold --out fonts/arcade
+  pixelkiln music --description "calm chiptune town theme" --improve --seconds 60 --loop --out audio/town
+  pixelkiln sfx --description "a heavy sword slash hitting metal armor" --seconds 1 --out audio/slash
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json
   pixelkiln salvage --workspace pixelkiln.workspace.json

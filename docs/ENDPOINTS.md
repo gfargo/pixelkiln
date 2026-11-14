@@ -4,7 +4,8 @@ Every cost here was **measured against a live Tier 2 account**, not read from
 documentation. Where a figure came from docs rather than a meter, it says so.
 
 Source of truth for shapes: `https://api.pixellab.ai/v2/openapi.json`
-(79 paths, 56 of them POST). A concise index lives at `GET /v2/llms.txt`.
+(139 paths, 95 of them POST, as of 14 November 2026; 79 and 56 when this file
+was first written). A concise index lives at `GET /v2/llms.txt`.
 
 Auth is one long-term key for everything: `Authorization: Bearer $PIXELLAB_API_KEY`.
 
@@ -21,9 +22,11 @@ Auth is one long-term key for everything: `Authorization: Bearer $PIXELLAB_API_K
 | animation | 9 | skeleton and text-driven animation, interpolation |
 | ui / fonts | 6 | UI panels, pixel fonts |
 | account | 5 | balance, listing, tags, background jobs |
+| audio | 9 | music (two takes, loops, style and lyrics helpers) and sound effects |
 
 pixelkiln uses the **single images** and **objects** families. The rest are
-listed so it is obvious what exists.
+listed so it is obvious what exists. The per-family counts above date from the
+79-path spec and were not recounted when the audio family was added.
 
 ---
 
@@ -113,6 +116,10 @@ not probed.
 | `POST /create-isometric-tile` (+ `GET /isometric-tiles/{id}`) | `isometricTile` | Measured live | One 32px `block` billed 1 generation, not the schema's `usd: 0.02` example ([Standalone isometric tile](#standalone-isometric-tile-schema-documented-cost-measured-once)). | Other sizes and shapes; flat pricing across 16 to 64px is an assumption. | Low |
 | `POST /create-ui-asset` (+ `GET /ui-assets/{id}`) | `uiAsset` | Measured live | One 256×192 call billed 20, the low end of the quoted 20 to 40; the plan prices 40 ([UI panels](#ui-panels-one-endpoint-schema-documented-cost-unverified), September 2026). | A second size; `pixelkiln plan` over-reads. | High |
 | `POST /generate-font-pro` (+ `GET /generate-font-pro/{id}`) | `pixelkiln font` | Unknown | Documented at 15 since the cut; "its cost is not yet measured" ([Not yet explored](#not-yet-explored)). Nothing records a live run. | Price and the non-`{usage, image}` response shape. | Medium |
+| `POST /music` (+ `GET /music/{id}`) | `pixelkiln music` | Measured live | Two instrumental requests billed 10 each, as quoted; two MP3 takes per request, a 60 s request returning 60.6 s and 61.2 s ([Music and sound effects](#music-and-sound-effects-measured)). | Vocals (`lyrics`, `auto_lyrics`), `restyle_song_id`, and lengths above 60 s are mock only. | Medium |
+| `POST /music/{id}/loop` | `pixelkiln music --loop`, `--loop-of` | Measured live | One loop billed 4, as quoted; two takes with `loop_start_s`/`loop_end_s`. A 30 s song was refused with a 422 (a loop needs 36 s between intro and ending), unbilled. | The shortest song that loops is bracketed only as above 30 s and at most 60 s. | Medium |
+| `POST /music/improve-style`, `POST /music/lyrics` | `pixelkiln music style`, `music lyrics`, `--improve` | Measured live | Each billed 0.05; synchronous. | None known. | Low |
+| `POST /sound-effects` (+ `GET /sound-effects/{id}`) | `pixelkiln sfx` | Measured live | A 1 s clip billed 1 and a 3 s clip billed 2, matching 0.614 per second rounded up; 16-bit stereo 44.1 kHz WAV. | The 6 s, 10 s and 30 s steps are PixelLab's published figures, not measured. | Medium |
 | `POST /create-character-with-8-directions`, `/create-character-with-4-directions` | `character` base, `mode: standard` | Measured live | 1 generation (read from the job's `usage`); canvas 28px larger than `image_size` ([Limits and billing](#limits-and-billing), [Characters, measured](#characters-measured), September 2026). | The 4-direction body and quadruped templates are not recorded. | Low |
 | `POST /create-character-v3` | `character` base, `mode: v3` | Run live, not measured | A base once recorded `billed: {amount: 0, unit: "usd"}` against an estimate of 2 while the submit reported 1 generation; the job had expired, so the real bill is unseen ([Limits and billing](#limits-and-billing)). | The real bill at any size. | Low (Medium at 256px, 9) |
 | `POST /create-character-pro` | `character` base, `mode: pro` | Unknown | Planned 10 to 25 by canvas ([GENERATORS.md](./GENERATORS.md)). No bill recorded in the docs. `target_palette` sent, mock only. | Everything. | High |
@@ -469,6 +476,54 @@ other 14 routes PixelKiln sends it to are mock only. PixelKiln never sends `smar
 and `/animate-pixminimax` have no such field. Every request body is built by
 one helper (`targetPaletteBody` in `src/client.ts`), so the field is spelled
 once.
+
+---
+
+## Music and sound effects, measured
+
+Wrapped as the standalone `pixelkiln music` and `pixelkiln sfx` commands
+([CLI reference](./CLI.md#music)), outside the manifest: PixelKiln's lockfile
+outputs are images. All figures below were billed on a Tier 3 account on 14
+November 2026 and read from each finished job's `usage`.
+
+| Call | Request | Quoted | Billed | Result |
+|---|---|---|---|---|
+| `POST /sound-effects` | 1 s | 1 | 1 | WAV, 1022 ms, 176 KB, about 10 s to make |
+| `POST /sound-effects` | 3 s | 2 | 2 | WAV, 2972 ms |
+| `POST /music/improve-style` | a three-word idea, `bpm` 96 | none | 0.05 | one paragraph of style text, synchronous |
+| `POST /music/lyrics` | one topic | none | 0.05 | two drafts with section tags, synchronous |
+| `POST /music` | instrumental, `length_s` 30, `bpm` 100 | 10 | 10 | two MP3 takes (709 KB, 678 KB), 37 s to make |
+| `POST /music` | instrumental, `length_s` 60, `bpm` 140 | 10 | 10 | two MP3 takes, 60.6 s and 61.2 s |
+| `POST /music/{id}/loop` | the 30 s song | none | 0 | **422**, see below |
+| `POST /music/{id}/loop` | the 60 s song | 4 | 4 | two loop takes, 122.2 s and 135.6 s, about 2 minutes to make |
+
+What the measurements showed that PixelLab's docs do not say:
+
+- **A loop needs 36 seconds between the intro and the ending.** Looping the
+  30 s song was refused: `422 {"detail": "A loop needs at least 36 seconds of
+  music between the intro and the ending; this song has 30. Make a longer song
+  to loop."}`. The refusal is free. The shortest song that does loop is
+  somewhere above 30 s and no more than 60 s; `music --loop` refuses a
+  `--seconds` of 36 or less up front and the docs recommend 60.
+- **A loop take is a longer file than its song.** Both loop takes of the 60 s
+  song ran about two minutes, with `loop_start_s` 31.65 on both and
+  `loop_end_s` 93.23 and 106.60, so the looped region is 62 to 75 s.
+- **The submit reply already carries the takes.** `songs` (or `sound_effect`)
+  arrives pending with its final id, so each is polled by its own `GET` and
+  the background job is read once, at the end, only for the bill.
+- **Billing follows the quote.** `quoted_generations` matched the bill on every
+  call, and both submit replies and the job agree. Unlike `POST /vfx`, nothing
+  here billed above its quote.
+- MP3s are 64 kbps, 48 kHz stereo with an ID3v2.4 tag; WAVs are 16-bit stereo
+  PCM at 44.1 kHz. Both URLs are no-auth, like every other PixelLab storage
+  URL.
+
+Not measured: songs with vocals (`lyrics`, `auto_lyrics`, `voice`),
+`restyle_song_id`, `style_weight`, `exclude`, lengths above 60 s, and sound
+effects longer than 3 s. Those requests are built from the OpenAPI schema and
+covered by mocked tests only. The MCP also exposes rename, delete and list
+calls for both libraries (`PATCH`/`DELETE /music/{id}`, `GET /music`, and the
+same for `/sound-effects`); PixelKiln does not wrap them.
 
 ---
 

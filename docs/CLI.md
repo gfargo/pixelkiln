@@ -1264,6 +1264,79 @@ A font is deliberately not a manifest generator: it has no style suffix to
 share, no prompt-per-asset, no candidates to pick, and its main output is not
 an image, so there is nothing for the lockfile's provenance model to hold.
 
+### `music`
+
+```bash
+pixelkiln music --description "Calm chiptune town theme: a soft square-wave melody over a bouncy bass, light noise drums" --bpm 100 --seconds 60 --loop --out audio/town
+pixelkiln music --loop-of <song id> --out audio/town
+pixelkiln music style --description "cozy farming village" --bpm 96
+pixelkiln music lyrics --about "a blacksmith waking the forge at dawn"
+```
+
+Makes a song with PixelLab's `/music`. Every request returns two takes, so it
+writes `<out>.mp3` (take 1), `<out>.take2.mp3`, and `<out>.music.json`, a record
+of the request, each take's PixelLab song id, hash and length, and what was
+billed. A trailing `.mp3` or `.music.json` on `--out` is treated as part of the
+base. Needs a PixelLab Tier 2 subscription or higher.
+
+- `--description` is the style: a sentence or two that gives each instrument a
+  role, the mood, and how it ends. A bare list of tags comes out flat, and
+  PixelLab refuses artist names. `--improve` first expands a short idea
+  ("spooky swamp level") into a full style and prints it; `music style` does
+  only that.
+- `--bpm` is 60-180; `--seconds` is the length to aim for, 10-360 (PixelLab
+  fits it to the song; a 60 s request came back as 60.6 s and 61.2 s).
+  `--exclude` keeps sounds out (`--exclude "fade out, electric guitar"`),
+  `--style-weight` is 0-1, and `--name` names it in your PixelLab library.
+- A song is instrumental unless it has words: `--lyrics <file>` sings a text
+  file (section tags such as `[Verse]` and `[Chorus]` on their own lines), or
+  `--auto-lyrics` has them written, optionally `--about "<topic>"`. `--voice`
+  describes the singer. `music lyrics --about "<topic>"` prints two drafts.
+- `--loop` also makes seamless loops of take 1: `<out>.loop.mp3` and
+  `<out>.loop.take2.mp3`, each with a loop start and loop end in the record.
+  Play to the loop end, then jump back to the loop start; the intro plays once
+  and the ending never does. A loop take is a longer file than the song (two
+  loops of a 60 s song were 122 s and 136 s). `--loop-of <song id>` loops a song
+  you already have instead of making one. Instrumental songs only.
+- A loop needs at least 36 seconds of music between the song's intro and its
+  ending, so a short song cannot be looped: `--loop` with `--seconds` of 36 or
+  less is refused before anything is sent, and 60 or more is safe. If PixelLab
+  refuses a loop anyway, the song's takes and record are kept and nothing is
+  charged for the loop.
+- `--restyle <song id>` makes one of your songs again in the new style, keeping
+  its melody.
+- Costs 10 generations for the two takes and 4 for a loop, both confirmed
+  against live bills (November 2026); `music style` and `music lyrics` bill
+  0.05 each. The command prints the cost and asks first; `--yes` skips the
+  question, `--budget <n>` refuses when `n` is below it, and `--dry-run` sends
+  nothing. PixelLab charges only once the takes are made.
+- It waits for the takes (about 35 s for a song, about 2 minutes for a loop)
+  and downloads them. Existing files are replaced only with `--force`.
+
+### `sfx`
+
+```bash
+pixelkiln sfx --description "a heavy sword slash hitting metal armor" --seconds 1 --out audio/slash
+```
+
+Makes one sound effect with PixelLab's `/sound-effects` and writes `<out>.wav`
+(16-bit stereo, 44.1 kHz) and `<out>.sfx.json`, a record of the prompt, the
+clip's PixelLab id, hash and length, and what was billed. Run it again for
+another take. Needs a PixelLab Tier 2 subscription or higher.
+
+- `--description` is the sound in plain words; `--seconds` is 0.5-30 (default
+  2). About 1 s suits a shot or hit, 3 s an explosion, 10-30 s an ambience.
+- Costs 0.614 generations per second, rounded up, at least 1: 1 up to 1.6 s, 2
+  up to 3.2 s, 4 at 6 s, 7 at 10 s, 19 at 30 s. A 1 s clip billed 1 and a 3 s
+  clip billed 2 live (November 2026); the longer steps are PixelLab's published
+  figures. `--yes`, `--budget` and `--dry-run` work as for `music`.
+- A clip takes about 10 s. Existing files are replaced only with `--force`.
+
+Like a font, music and sound effects are deliberately not manifest generators
+yet: the lockfile's outputs are images, and audio has no palette, size or
+candidates for a style to share. The record beside each file carries the
+provenance instead.
+
 ### `estimate-skeleton`
 
 ```bash
@@ -1387,6 +1460,17 @@ Print the package version. `-v` is an alias.
 | `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
 | `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
 | `--fps <n>` | vfx | Frame rate, 1–60. |
+| `--seconds <n>` | music/sfx | music: length to aim for, 10–360. sfx: clip length, 0.5–30 (default 2). |
+| `--bpm <n>` | music | Tempo, 60–180. |
+| `--loop` | music | Also make seamless loops of take 1 (instrumental only; 4 more generations). |
+| `--loop-of <id>` | music | Loop this finished song instead of making a new one. |
+| `--restyle <id>` | music | Make this song again in the new style. |
+| `--improve` | music | Expand a short idea into a full style first (about 0.05 generations). |
+| `--lyrics <file>` | music | A text file of lyrics to sing; makes it a song with vocals. |
+| `--auto-lyrics` | music | Have the lyrics written for the song. |
+| `--about <text>` | music | What an `--auto-lyrics` song is about; the topic for `music lyrics`. |
+| `--voice <text>` | music | The singing voice, e.g. "warm female voice". |
+| `--style-weight <n>` | music | How closely to follow the style, 0–1. |
 | `--game-pack` | vfx | Also download the game-pack ZIP (one clip per piece plus a manifest). |
 | `--generation <n\|hash>` | restore | Bring a replaced generation back: `1` is the most recently replaced, or a prefix of one of its output hashes. One asset at a time. |
 
