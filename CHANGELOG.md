@@ -1,3 +1,10 @@
+## [0.102.1](https://github.com/gfargo/pixelkiln/compare/v0.102.0...v0.102.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **pixflux:** send the style's outline, shading and detail ([4f5c3fe](https://github.com/gfargo/pixelkiln/commit/4f5c3fe7c2d3a61a71a0863e715cc41ea49e4106))
+
 # [0.102.0](https://github.com/gfargo/pixelkiln/compare/v0.101.0...v0.102.0) (2026-11-14)
 
 
