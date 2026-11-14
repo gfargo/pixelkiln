@@ -113,6 +113,8 @@ export function specHash(
       terrainSideWallThickness: spec.terrainSideWallThickness,
       terrainSideWallPlacement: spec.terrainSideWallPlacement,
       terrainEnhance: spec.terrainEnhance,
+      // Absent unless a pixflux style sets it, so every older hash stands.
+      textGuidanceScale: spec.textGuidanceScale,
       terrainPlatformThickness: spec.terrainPlatformThickness,
       // Reference images enter as their bytes' hashes, never their paths.
       // The starting image by its bytes, with its strength only when set.

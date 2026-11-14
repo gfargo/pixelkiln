@@ -140,6 +140,18 @@ describe("a pixflux style's outline, shading and detail", () => {
     expect(await hash({ outline: "lineless", shading: "flat shading", detail: "highly detailed" })).toBe("791dcd4f77078ced566be672889d55b3ecef3f390c253586c1da9f6509cc5d5b")
   })
 
+  it("sends textGuidanceScale when set, hashes it only then, and belongs to pixflux", async () => {
+    expect(await posted({ textGuidanceScale: 12 })).toMatchObject({ text_guidance_scale: 12 })
+    expect(await posted({})).not.toHaveProperty("text_guidance_scale")
+    const hash = async (style: Record<string, unknown>) => (await resolveSpecs(await loadStyled(style)))[0]!.specHash
+    expect(await hash({})).toBe("90a7723fb651ef7a9af6c736368fd436662de5ab3f34ca19c3ec61b72aea25b6")
+    expect(await hash({ textGuidanceScale: 12 })).not.toBe(await hash({}))
+    expect(await hash({ textGuidanceScale: 12 })).not.toBe(await hash({ textGuidanceScale: 4 }))
+    await expect(loadStyled({ textGuidanceScale: 21 })).rejects.toThrow()
+    // Other generators ignore it, as they always have: no refusal, no hash change.
+    expect(await hash({ generator: "map", textGuidanceScale: 12 })).toBe(await hash({ generator: "map" }))
+  })
+
   it("refuse a value the endpoint does not know, at plan", async () => {
     const loaded = await loadStyled({ detail: "high detail" })
     await expect(resolveSpecs(loaded, { provider: new PixelLabProvider(new PixelLabClient("key")) })).rejects.toThrow(/pixflux detail must be one of: low detail, medium detail, highly detailed/)

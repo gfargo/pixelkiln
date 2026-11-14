@@ -205,6 +205,21 @@ with no `view` is not pushed top-down:
 Any other value is refused at `plan`. Note `detail`'s top value is `highly
 detailed` here, where `map` takes `high detail`.
 
+`textGuidanceScale` (1 to 20, PixelLab's default 8) sets how closely the
+image follows its prompt: lower leaves the model more freedom, higher holds
+it to the words. It enters a `pixflux` asset's identity only when set, so
+adding it to one style leaves every other hash alone. Before November 2026
+`pixflux` ignored it; a `pixflux` style that already carried one will plan as
+stale once, because the request is now different.
+
+```jsonc
+"icons": {
+  "generator": "pixflux",
+  "textGuidanceScale": 12,
+  "outDir": "art/icons"
+}
+```
+
 **Before November 2026 these four fields were not sent for `pixflux`.**
 They were already part of the asset's identity, so no hash or lock entry
 changed when that was fixed, and files already generated are untouched. A

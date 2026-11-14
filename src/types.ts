@@ -1744,9 +1744,10 @@ const StyleObjectSchema = z
     /** `character` only, `standard` humanoid bases. A preset or multipliers; an asset may override it. */
     proportions: CharacterProportionsSchema.optional(),
     /**
-     * `character` only. How closely a `standard` base and a template loop
-     * follow their text, 1 to 20; PixelLab's default is 8. The v3 and pro
-     * engines do not take it.
+     * `character` and `pixflux`. How closely a `standard` character base
+     * and a template loop, or a `pixflux` image, follow their text, 1 to 20;
+     * PixelLab's default is 8. The v3 and pro character engines do not take
+     * it. Part of a `pixflux` asset's identity only when set.
      */
     textGuidanceScale: z.number().min(1).max(20).optional(),
     /** `character` only. Draw `standard` bases and every loop in isometric view. */
@@ -2907,6 +2908,8 @@ export interface ResolvedSpec {
   terrainSideWallThickness?: number
   terrainSideWallPlacement?: number
   terrainEnhance?: boolean
+  /** `pixflux` only: prompt adherence, 1 to 20. Absent leaves PixelLab's 8. */
+  textGuidanceScale?: number
   terrainPlatformThickness?: number
   terrainLowerWalkable?: boolean
   terrainUpperWalkable?: boolean
