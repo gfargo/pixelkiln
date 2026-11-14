@@ -1,5 +1,5 @@
 import type React from "react";
-import { providerUpdates, type ProviderUpdate, type UpdateFigure } from "@/app/lib/provider-updates";
+import { providerUpdates, type ProviderUpdate, type UpdateAudio, type UpdateFigure } from "@/app/lib/provider-updates";
 import { CodeWindow } from "@/app/ui/code-window";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
@@ -40,6 +40,22 @@ function Figure({ figure }: { figure: UpdateFigure }) {
   );
 }
 
+/** Clips made by real calls. `preload="none"` keeps them off the page weight until one is played. */
+function Clips({ clips }: { clips: UpdateAudio[] }) {
+  return (
+    <div className="updates-audio">
+      {clips.map((clip) => (
+        <figure key={clip.src}>
+          <audio controls preload="none" src={clip.src} aria-label={clip.title} />
+          <figcaption>
+            <b>{clip.title}</b> <Inline text={clip.caption} />
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
 function Links({ update }: { update: ProviderUpdate }) {
   return (
     <div className="review-links">
@@ -69,6 +85,7 @@ function Featured({ update }: { update: ProviderUpdate }) {
           ))}
         </div>
       ) : null}
+      {update.audio?.length ? <Clips clips={update.audio} /> : null}
       <div className="effects-bottom">
         {update.code ? (
           <CodeWindow
@@ -119,6 +136,7 @@ function Earlier({ update }: { update: ProviderUpdate }) {
             ))}
           </div>
         ) : null}
+        {update.audio?.length ? <Clips clips={update.audio} /> : null}
         <Links update={update} />
       </div>
     </article>

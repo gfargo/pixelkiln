@@ -246,6 +246,42 @@ const UiAssetGetSchema = z
     eta_seconds: z.number().nullable().optional(),
   })
   .passthrough()
+const CanvasChangeSchema = z
+  .object({
+    id: z.string(),
+    previous: z.object({ width: z.number(), height: z.number() }).passthrough(),
+    canvas: z.object({ width: z.number(), height: z.number() }).passthrough(),
+    rotations_moved: z.number().int().default(0),
+    placements_moved: z.number().int().nullable().optional(),
+  })
+  .passthrough()
+const MirrorAnimationSchema = z
+  .object({
+    animation_group_id: z.string(),
+    source_direction: z.string(),
+    target_direction: z.string(),
+    frames_created: z.number().int(),
+  })
+  .passthrough()
+const ImportObjectSchema = z
+  .object({
+    object_id: z.string().min(1),
+    name: z.string().nullable().optional(),
+    size: z.object({ width: z.number(), height: z.number() }).passthrough(),
+    image_url: z.string(),
+  })
+  .passthrough()
+const ExpandRotationsSchema = z
+  .object({
+    object_id: z.string().min(1),
+    background_job_id: z.string().min(1),
+    status: z.string().default("expanding"),
+    min_generations: z.number(),
+    max_generations: z.number(),
+  })
+  .passthrough()
+export type PixelLabAssetKind = "object" | "character"
+export type PixelLabExportFormat = "zip" | "spritesheet" | "aseprite" | "gif"
 const UiNineSliceSchema = z.object({ left: z.number().int(), right: z.number().int(), top: z.number().int(), bottom: z.number().int() }).passthrough()
 const UiSplitBoxSchema = z
   .object({ label: z.string().default(""), x: z.number().int(), y: z.number().int(), width: z.number().int(), height: z.number().int() })
@@ -720,6 +756,22 @@ export function parseProFlashQuote(raw: unknown): ProFlashQuote {
   throw new Error(`GET /pro-flash/cost returned no price: ${JSON.stringify(raw).slice(0, 200)}`)
 }
 
+/**
+ * PixelLab explains a refused request in the body, `{"detail": "..."}`: the
+ * art's bounds for a canvas that would crop it, the seconds a loop needs.
+ * Worth showing; a bare status code leaves the user guessing. Only a plain
+ * string on a 4xx is used, so a validation array or an HTML page is not.
+ */
+function refusalReason(status: number, body: string): string {
+  if (status < 400 || status >= 500 || !body.startsWith("{")) return ""
+  try {
+    const detail = (JSON.parse(body) as { detail?: unknown }).detail
+    return typeof detail === "string" && detail ? `: ${detail.slice(0, 400)}` : ""
+  } catch {
+    return ""
+  }
+}
+
 export class PixelLabError extends ProviderError {
   constructor(
     message: string,
@@ -810,7 +862,7 @@ export class PixelLabClient {
         res.status === 500 && text.includes("Failed to start any animation jobs")
           ? "; a skeleton-v3 loop needs a character with a stored 3D skeleton (a v3 base), use mode: \"template\" on a standard one"
           : ""
-      throw new PixelLabError(`${init?.method ?? "GET"} ${path} → ${res.status}${hint}`, res.status, text)
+      throw new PixelLabError(`${init?.method ?? "GET"} ${path} → ${res.status}${hint}${refusalReason(res.status, text)}`, res.status, text)
     }
     if (!text) return {} as T
     try {
@@ -2522,6 +2574,117 @@ export class PixelLabClient {
       await this.request<unknown>(`/sound-effects/${encodeURIComponent(id)}`),
       "sound-effects/{id}",
     )
+  }
+
+  /**
+   * `POST /image-to-pixelart-pro`: the strongest of the three converters. Like
+   * Pro Flash the output size is picked from the picture; 20 generations at
+   * any source size. A plain background job.
+   */
+  async imageToPixelartPro(args: {
+    image: Base64Image
+    description?: string
+    seed?: number
+    targetPalette?: TargetPaletteArg
+  }): Promise<{ background_job_id: string; status: string }> {
+    const body: Record<string, unknown> = { image: args.image }
+    if (args.description) body.description = args.description
+    if (args.seed != null) body.seed = args.seed
+    Object.assign(body, targetPaletteBody(args.targetPalette))
+    return validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/image-to-pixelart-pro", { method: "POST", body: JSON.stringify(body) }),
+      "image-to-pixelart-pro",
+    )
+  }
+
+  /**
+   * `POST /{objects|characters}/{id}/canvas`: add or remove transparent margin
+   * around every rotation. Never scales or crops; a size smaller than the art
+   * is refused with the art's bounds. Free.
+   */
+  async setCanvasSize(kind: PixelLabAssetKind, id: string, size: { width: number; height: number }): Promise<z.output<typeof CanvasChangeSchema>> {
+    return validateResponse(
+      CanvasChangeSchema,
+      await this.request<unknown>(`/${kind}s/${encodeURIComponent(id)}/canvas`, { method: "POST", body: JSON.stringify({ image_size: size }) }),
+      `${kind}s/{id}/canvas`,
+    )
+  }
+
+  /** `POST /{objects|characters}/{id}/animations/{group}/mirror`: flip one direction of a loop into its missing opposite. Free. */
+  async mirrorAnimation(kind: PixelLabAssetKind, id: string, animationGroupId: string, sourceDirection: string): Promise<z.output<typeof MirrorAnimationSchema>> {
+    return validateResponse(
+      MirrorAnimationSchema,
+      await this.request<unknown>(
+        `/${kind}s/${encodeURIComponent(id)}/animations/${encodeURIComponent(animationGroupId)}/mirror`,
+        { method: "POST", body: JSON.stringify({ source_direction: sourceDirection }) },
+      ),
+      `${kind}s/{id}/animations/{group}/mirror`,
+    )
+  }
+
+  /** `POST /objects/import`: your own PNG (at most 256x256) as a completed 1-direction object. Stored exactly; free. */
+  async importObject(args: { image: Base64Image; name?: string }): Promise<z.output<typeof ImportObjectSchema>> {
+    const body: Record<string, unknown> = { image: { type: "base64", base64: args.image.base64, format: args.image.format } }
+    if (args.name) body.name = args.name
+    return validateResponse(
+      ImportObjectSchema,
+      await this.request<unknown>("/objects/import", { method: "POST", body: JSON.stringify(body) }),
+      "objects/import",
+    )
+  }
+
+  /**
+   * `POST /objects/{id}/expand-rotations`: draw the 7 missing directions of a
+   * 1-direction object. The object then waits in `review-expansion` until
+   * `acceptObjectExpansion` or `dismissObjectReview`. 10 to 25 generations.
+   */
+  async expandObjectRotations(id: string, args: { existingDirection: string; description?: string }): Promise<z.output<typeof ExpandRotationsSchema>> {
+    const body: Record<string, unknown> = { existing_direction: args.existingDirection }
+    if (args.description) body.description = args.description
+    return validateResponse(
+      ExpandRotationsSchema,
+      await this.request<unknown>(`/objects/${encodeURIComponent(id)}/expand-rotations`, { method: "POST", body: JSON.stringify(body) }),
+      "objects/{id}/expand-rotations",
+    )
+  }
+
+  /** Keep a reviewed 8-direction expansion: `select-frames` with no indices. The object becomes 8-direction. */
+  async acceptObjectExpansion(id: string): Promise<unknown> {
+    return this.request(`/objects/${encodeURIComponent(id)}/select-frames`, { method: "POST", body: "{}" })
+  }
+
+  /** Discard a pending expansion (or a review pack); the object itself is kept as it was. */
+  async dismissObjectReview(id: string): Promise<unknown> {
+    return this.request(`/objects/${encodeURIComponent(id)}/dismiss-review`, { method: "POST", body: "{}" })
+  }
+
+  /**
+   * `GET /{objects|characters}/{id}/{zip|spritesheet|aseprite|gif}`: the
+   * website's exports as bytes. Answers 423 while the asset or one of its
+   * animations is still generating.
+   */
+  async exportAsset(
+    kind: PixelLabAssetKind,
+    id: string,
+    format: PixelLabExportFormat,
+    opts: { animationGroupId?: string; direction?: string } = {},
+  ): Promise<Buffer> {
+    const query = new URLSearchParams()
+    if (opts.animationGroupId) query.set("animation_group_id", opts.animationGroupId)
+    if (opts.direction) query.set("direction", opts.direction)
+    const suffix = query.size ? `?${query}` : ""
+    const pathname = `/${kind}s/${encodeURIComponent(id)}/${format}${suffix}`
+    const auth = this.apiKey.startsWith("Bearer ") ? this.apiKey : `Bearer ${this.apiKey}`
+    const res = await this.http(`${BASE}${pathname}`, { headers: { Authorization: auth } })
+    if (!res.ok) {
+      const text = await res.text()
+      const hint = res.status === 423 ? "; the asset or one of its animations is still generating, try again shortly" : ""
+      throw new PixelLabError(`GET ${pathname} → ${res.status}${hint}`, res.status, text)
+    }
+    const bytes = Buffer.from(await res.arrayBuffer())
+    if (bytes.length > MAX_DOWNLOAD_BYTES) throw new Error(`export ${pathname} exceeds the ${MAX_DOWNLOAD_BYTES}-byte safety limit`)
+    return bytes
   }
 
   /** `GET /generate-font-pro/{job_id}`: status, then no-auth atlas and `.ttf` URLs once completed. */

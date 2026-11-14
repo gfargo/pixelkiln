@@ -91,6 +91,12 @@ Commands
             ui states draws hover/pressed/... for them (10-25 generations; asks
             first); ui nine-slice sets stretch insets (free); ui pull downloads
             every image with a ui.json record.
+  asset   PixelLab: upkeep for an object or character by --id. asset import
+            stores your own PNG as an object; asset expand draws a 1-direction
+            object's other 7 (10-25 generations; asks first), asset review
+            downloads them, then --keep or --discard; asset canvas resizes
+            the canvas; asset mirror flips a loop's direction; asset export
+            writes a zip, spritesheet, .aseprite or gif. All but expand free.
   sfx     PixelLab: a sound effect (--description, --seconds, --out); writes
             a WAV and a .sfx.json record. From 1 generation, by length.
 
@@ -121,7 +127,14 @@ Options
                       what to change)
   --artist <a>        vfx --description: lite (default) or pro
   --weight <w>        font: Bold or Regular (default)
-  --id <ui asset id>  ui: the template, element or state to work on
+  --id <id>           ui/asset: the PixelLab asset to work on
+  --kind <kind>       asset: object (default) or character
+  --size <WxH>        asset canvas: the new canvas, in multiples of 4
+  --animation <id>    asset mirror/export: an animation group id
+  --direction <dir>   asset mirror: the direction to flip; asset expand: the
+                      way the object faces now; asset export gif: the direction
+  --keep, --discard   asset expand: keep or discard the reviewed directions
+  --pro               pixelate: the Pro converter (20 generations)
   --state <n=desc>    ui states: one state as "name=description" (repeatable)
   --element <ids>     ui states: only these elements of a template
   --insets <n|l,r,t,b>  ui nine-slice: border insets in pixels
@@ -214,6 +227,8 @@ Examples
   pixelkiln font --description "warm orange arcade font" --weight Bold --out fonts/arcade
   pixelkiln music --description "calm chiptune town theme" --improve --seconds 60 --loop --out audio/town
   pixelkiln ui states --id <template id> --state "hover=brighter, a soft glow" --state "pressed=darker, 1 px lower"
+  pixelkiln asset import --from art/knight.png --name knight
+  pixelkiln asset expand --id <object id> --direction south
   pixelkiln sfx --description "a heavy sword slash hitting metal armor" --seconds 1 --out audio/slash
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json

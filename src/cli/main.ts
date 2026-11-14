@@ -15,6 +15,7 @@ import { runExport, runMount, runPack } from "./commands/pack.ts"
 import { runFont, runNormalMap, runPixelate, runUnzoom, runVfx } from "./commands/pixellab-utils.ts"
 import { runMusic, runSfx } from "./commands/audio.ts"
 import { runUi } from "./commands/ui.ts"
+import { runAsset } from "./commands/asset.ts"
 import { runQuality } from "./commands/quality.ts"
 import { runRecipe } from "./commands/recipe.ts"
 import { runRefine } from "./commands/refine.ts"
@@ -95,6 +96,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   music: runMusic,
   sfx: runSfx,
   ui: runUi,
+  asset: runAsset,
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {

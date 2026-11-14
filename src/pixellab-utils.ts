@@ -162,6 +162,8 @@ export async function generateFont(
   }
 }
 
+/** `/image-to-pixelart-pro`'s flat price at any source size (PixelLab's published figure). */
+export const PIXELATE_PRO_COST_GENERATIONS = 20
 /** `/image-to-pixelart-pro-flash`'s flat price, billed exactly this live in October 2026. */
 export const PIXELATE_COST_GENERATIONS = 6
 /** Sources longer than this on either side are scaled down by PixelLab before conversion; they are not refused. */
@@ -173,6 +175,12 @@ export interface PixelateOptions {
   /** Optional style steer, e.g. "retro vibes with light dithering". */
   description?: string
   seed?: number
+  /** Use the Pro converter: the most careful redraw, 20 generations. */
+  pro?: boolean
+  /** Pro only: colors every pixel must use, as hex strings. */
+  palette?: string[]
+  /** Pro only: at most this many colors. */
+  maxColors?: number
   force?: boolean
   /** Poll interval and ceiling. Conversions measured at about 30 s. */
   intervalMs?: number
@@ -186,8 +194,12 @@ export interface PixelateResult {
   out: string
   original: { width: number; height: number }
   pixelated: { width: number; height: number }
-  /** PixelLab's gallery id for the result, reusable as a Pro Flash `source_image_id`. */
-  imageId: string
+  /** PixelLab's gallery id for the result, reusable as a Pro Flash `source_image_id`. Pro Flash only. */
+  imageId?: string
+  /** Pro only: the same result reduced to fewer colors, written beside `out` as `<out>.quantized.png`. */
+  quantized?: { out: string; colors: number | null }
+  /** Pro only: distinct colors in the main result. */
+  colors?: number | null
   usage: unknown
 }
 
@@ -208,7 +220,7 @@ export function defaultPixelateOut(input: string): string {
  * `unzoomFile` instead: it recovers the grid rather than redrawing.
  */
 export async function pixelateFile(
-  client: Pick<PixelLabClient, "imageToPixelartProFlash" | "getBackgroundJob">,
+  client: Pick<PixelLabClient, "imageToPixelartProFlash" | "imageToPixelartPro" | "getBackgroundJob">,
   input: string,
   opts: PixelateOptions = {},
 ): Promise<PixelateResult> {
@@ -222,11 +234,20 @@ export async function pixelateFile(
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
   const interval = opts.intervalMs ?? 5000
   const timeout = opts.timeoutMs ?? 10 * 60_000
-  const submitted = await client.imageToPixelartProFlash({
-    image: { base64: bytes.toString("base64"), format },
-    description: opts.description,
-    seed: opts.seed,
-  })
+  const image = { base64: bytes.toString("base64"), format }
+  if (!opts.pro && (opts.palette?.length || opts.maxColors != null)) {
+    throw new Error("a palette or color cap needs the Pro converter; add --pro")
+  }
+  const submitted: { background_job_id: string; image_id?: string } = opts.pro
+    ? await client.imageToPixelartPro({
+        image,
+        description: opts.description,
+        seed: opts.seed,
+        targetPalette: opts.palette?.length || opts.maxColors != null
+          ? { ...(opts.palette?.length ? { colors: opts.palette } : {}), ...(opts.maxColors != null ? { maxColors: opts.maxColors } : {}) }
+          : undefined,
+      })
+    : await client.imageToPixelartProFlash({ image, description: opts.description, seed: opts.seed })
   const jobId = submitted.background_job_id
   const started = Date.now()
   for (;;) {
@@ -234,21 +255,36 @@ export async function pixelateFile(
     opts.onProgress?.(job.status)
     if (job.status === "failed") throw new Error(`PixelLab pixelate job ${jobId} failed upstream`)
     if (job.status === "completed") {
+      // Pro Flash answers `images: [...]`; Pro may answer a single `image`.
       const images = job.last_response?.images
-      const first = Array.isArray(images) ? (images[0] as { base64?: unknown; width?: unknown; height?: unknown } | undefined) : undefined
+      const first = (Array.isArray(images) ? images[0] : job.last_response?.image) as { base64?: unknown; width?: unknown; height?: unknown } | undefined
       if (!first || typeof first.base64 !== "string" || !first.base64) {
-        throw new Error(`PixelLab pixelate job ${jobId} completed without an image at last_response.images[0]`)
+        throw new Error(`PixelLab pixelate job ${jobId} completed without an image at last_response.images[0] or last_response.image`)
       }
       const png = Buffer.from(first.base64, "base64")
       const size = imageMetadata(png)
       await mkdir(path.dirname(out), { recursive: true })
       await writeFile(out, png)
+      // Pro also answers `quantized_image`, the result on a reduced palette
+      // (141 colors down to 40 on the one live call), with both counts.
+      const reduced = job.last_response?.quantized_image as { base64?: unknown } | undefined
+      const count = (value: unknown) => (typeof value === "number" ? value : null)
+      let quantized: PixelateResult["quantized"]
+      if (reduced && typeof reduced.base64 === "string" && reduced.base64) {
+        const quantizedOut = out.replace(/(\.png)?$/i, ".quantized.png")
+        if (!existsSync(quantizedOut) || opts.force) {
+          await writeFile(quantizedOut, Buffer.from(reduced.base64, "base64"))
+          quantized = { out: quantizedOut, colors: count(job.last_response?.quantized_image_n_colors) }
+        }
+      }
       return {
         jobId,
         out,
         original: { width, height },
         pixelated: { width: size?.width ?? Number(first.width), height: size?.height ?? Number(first.height) },
-        imageId: submitted.image_id,
+        ...(submitted.image_id ? { imageId: submitted.image_id } : {}),
+        ...(quantized ? { quantized } : {}),
+        ...(opts.pro ? { colors: count(job.last_response?.original_image_n_colors) } : {}),
         usage: job.usage ?? null,
       }
     }
