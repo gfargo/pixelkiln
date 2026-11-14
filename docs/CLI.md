@@ -1304,6 +1304,9 @@ an image, so there is nothing for the lockfile's provenance model to hold.
 
 ```bash
 pixelkiln asset import --from art/knight.png --name knight
+pixelkiln asset import --kind tileset --from art/meadow-sheet.png --size 16 --lower grass --upper stone
+pixelkiln asset import --kind tiles --from art/floor-tiles/ --tile-type square_topdown --size 32
+pixelkiln asset save --target object:<object id>:south --from art/knight-edited.png
 pixelkiln asset expand --id <object id> --direction south
 pixelkiln asset review --id <object id> --out review/
 pixelkiln asset expand --id <object id> --keep
@@ -1314,10 +1317,55 @@ pixelkiln asset export --id <id> --format aseprite --out art/knight
 
 Upkeep for an object or character that already exists on PixelLab, by its
 PixelLab id (a lock entry's `objectId`). `--kind` is `object` (the default) or
-`character`. Everything except `expand` is free.
+`character`; `asset import` also takes `tileset` and `tiles`. Everything
+except `expand` is free.
 
 - `asset import` stores your own PNG as a completed 1-direction object, exactly
   as drawn. PNG only, at most 256x256. It prints the new object's id.
+- `asset import --kind tileset` stores a Wang sheet you drew as a completed
+  tileset, cut into its 16 (or 25) tiles with new ids, so it works in maps
+  and chaining like a generated one. The sheet must be in one of PixelLab's
+  two layouts: 4 tiles wide (what a tileset download gives) or 8 wide (its
+  native sheet), square or twice as tall, with 16, 24, 32, 48 or 64px tiles.
+  `--mode sidescroller` imports a platform set instead of a top-down one.
+  `--lower`, `--upper` and `--transition` describe the terrains and `--name`
+  names the set.
+  **Give `--size` when the sheet reads two ways.** A 128, 192 or 256px-wide
+  sheet is both a 4-wide sheet and an 8-wide one at half the tile size, and
+  PixelLab takes the 4-wide reading unless told: a 16px native sheet sent
+  without a size came back as sixteen 32px tiles, each a quarter of the
+  sheet. The command refuses such a sheet until `--size` says which.
+- `asset import --kind tiles` stores 1 to 32 tile PNGs as one tile group,
+  ready for maps. `--from` is one PNG or a directory, whose PNGs are sent in
+  name order (`tile-2` before `tile-10`). `--tile-type` is `square_topdown`,
+  `isometric`, `oblique`, `hex`, `hex_pointy` or `octagon`, and `--size` is
+  the tiles' width, 16 to 256. Every tile is that wide; square and octagon
+  tiles are exactly that tall, isometric and hex tiles half to twice it, and
+  oblique tiles one to twice it. A tile of the wrong size is refused before
+  anything is sent. `--description` says what the tiles are. The view the
+  tiles are drawn in is left at PixelLab's default, low top-down.
+- `asset save` writes edited pixels back into something PixelLab already
+  stores, so its website, maps, exports and game projects show your edit.
+  `--target` says where:
+
+  | Target | What it replaces |
+  |---|---|
+  | `character:<id>:<direction>` | One rotation of a character. |
+  | `object:<id>` or `object:<id>:<direction>` | An object's image, or one rotation of an 8-direction object. |
+  | either, with `:<animation group id>` added | One direction of an animation. |
+  | `gallery:<id>` | A gallery image. |
+  | `gallery:new` | Nothing: the image is added to the gallery. `--name` and `--description` label it. |
+  | `tileset:<id>` | A tileset's whole sheet, in the 4-wide layout. |
+
+  `--from` is a PNG, an animated GIF, or a directory of PNG frames sent in
+  name order. The image must match what it replaces in size and frame count;
+  PixelLab refuses otherwise and names the size it wants. Pad or crop with
+  transparent pixels, never rescale.
+  **Every save can be undone.** The pixels it replaced are written to
+  `--out <dir>`, or to `pixelkiln-undo/<target>-<time>/` when you give none,
+  and the command prints the line that saves them back. The command asks
+  before replacing anything (`--yes` skips the question, `--dry-run` sends
+  nothing). A save that changes no pixel writes nothing.
 - `asset expand` draws the 7 missing directions of a 1-direction object.
   `--direction` says which way its image faces now; that image is kept
   unchanged as that direction. `--description` guides the new angles. It costs
@@ -1536,7 +1584,7 @@ Print the package version. `-v` is an alias.
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
 | `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
 | `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
-| `--mode <lite\|pro>` | normal-map | `lite` (the default, 0.1 generation) or `pro` (0.5). |
+| `--mode <mode>` | normal-map/asset import | normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. |
 | `--strength <n>` | normal-map | How far every pixel tilts away from the viewer, 0–2. |
 | `--outline-rounding <n>` | normal-map | How much the outline rounds off, 0–3. |
 | `--part-shapes <n>` | normal-map | How much the sprite's 3D parts add, 0–2. |
@@ -1608,8 +1656,13 @@ Print the package version. `-v` is an alias.
 | `--fps <n>` | vfx | Frame rate, 1–60. |
 | `--sprite-frames <n>` | vfx | With `--description`: `--sprite` is a horizontal PNG strip of `n` equal frames (2 to 32). |
 | `--sprite-fps <n>` | vfx | With `--description`: how fast an animated `--sprite` plays, 1 to 60. PixelLab's default is a GIF's own timing, else 12. |
-| `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
-| `--size <WxH>` | asset canvas | The new canvas, in multiples of 4. |
+| `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
+| `--size <WxH>` | asset canvas/import | asset canvas: the new canvas, in multiples of 4. asset import `--kind tileset` or `tiles`: the tile size in pixels, e.g. `--size 32`. |
+| `--target <target>` | asset save | Where the pixels go: `character:<id>:<direction>`, `object:<id>[:<direction>]`, either with `:<animation group id>`, `gallery:<id>`, `gallery:new`, or `tileset:<id>`. |
+| `--tile-type <type>` | asset import | With `--kind tiles`: `square_topdown`, `isometric`, `oblique`, `hex`, `hex_pointy` or `octagon`. |
+| `--lower <text>` | asset import | With `--kind tileset`: the lower terrain (a sidescroller's platform). |
+| `--upper <text>` | asset import | With `--kind tileset`: the upper terrain. Top-down only. |
+| `--transition <text>` | asset import | With `--kind tileset`: the strip between the terrains, if the sheet has one. |
 | `--animation <id>` | asset mirror/export | An animation group id. |
 | `--direction <dir>` | asset mirror/expand/export | The direction to flip, the way an object faces before expansion, or a GIF's direction. |
 | `--keep` | asset expand | Keep the reviewed directions; the object becomes 8-direction. |

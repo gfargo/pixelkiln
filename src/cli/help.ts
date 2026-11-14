@@ -94,7 +94,10 @@ Commands
             first); ui nine-slice sets stretch insets (free); ui pull downloads
             every image with a ui.json record.
   asset   PixelLab: upkeep for an object or character by --id. asset import
-            stores your own PNG as an object; asset expand draws a 1-direction
+            stores your own PNG as an object (--kind tileset: a Wang sheet as
+            a tileset; --kind tiles: tile PNGs as a tile group); asset save
+            writes edited pixels back over a stored asset (--target) and
+            keeps what it replaced; asset expand draws a 1-direction
             object's other 7 (10-25 generations; asks first), asset review
             downloads them, then --keep or --discard; asset canvas resizes
             the canvas; asset mirror flips a loop's direction; asset export
@@ -130,15 +133,24 @@ Options
   --artist <a>        vfx --description: lite (default) or pro
   --weight <w>        font: Bold or Regular (default)
   --id <id>           ui/asset: the PixelLab asset to work on
-  --kind <kind>       asset: object (default) or character; normal-map: what the
+  --kind <kind>       asset: object (default) or character; asset import also
+                      takes tileset and tiles; normal-map: what the
                       picture is (character, object, topdown, side, iso, ui)
-  --mode <mode>       normal-map: lite (default, 0.1 generation) or pro (0.5)
+  --mode <mode>       normal-map: lite (default, 0.1 generation) or pro (0.5);
+                      asset import --kind tileset: topdown (default) or sidescroller
   --strength <n>      normal-map: how far pixels tilt from the viewer, 0-2
   --outline-rounding <n>  normal-map: how much the outline rounds off, 0-3
   --part-shapes <n>   normal-map: how much the sprite's 3D parts add, 0-2
   --surface-detail <n>  normal-map: the art's light and dark as bumps, 0-2
   --detail-softness <n>  normal-map: blur of that detail in px, 0.6-3
-  --size <WxH>        asset canvas: the new canvas, in multiples of 4
+  --size <WxH>        asset canvas: the new canvas, in multiples of 4;
+                      asset import --kind tileset/tiles: the tile size, e.g. 32
+  --target <target>   asset save: character:<id>:<dir>, object:<id>[:<dir>],
+                      gallery:<id>, gallery:new, or tileset:<id>
+  --tile-type <type>  asset import --kind tiles: square_topdown, isometric,
+                      oblique, hex, hex_pointy or octagon
+  --lower, --upper, --transition <text>
+                      asset import --kind tileset: the terrains' descriptions
   --animation <id>    asset mirror/export: an animation group id
   --direction <dir>   asset mirror: the direction to flip; asset expand: the
                       way the object faces now; asset export gif: the direction

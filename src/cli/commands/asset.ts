@@ -1,5 +1,7 @@
 /** `asset`: upkeep for a PixelLab character or object by id: canvas, mirror, import, expand, export. */
+import { readFile } from "node:fs/promises"
 import path from "node:path"
+import { imageMetadata } from "../../media.ts"
 import { clientFromEnv, type PixelLabAssetKind, type PixelLabExportFormat } from "../../client.ts"
 import { loadEnvFiles } from "../../env.ts"
 import { UsageError } from "../../errors.ts"
@@ -12,8 +14,16 @@ import {
   expandObject,
   exportAssetFile,
   exportOutPath,
+  IMPORT_TILE_TYPES,
   importObjectFile,
+  importTilesetFile,
+  importTilesFiles,
   MIRROR_DIRECTIONS,
+  saveToAssetFile,
+  saveUndoDir,
+  checkSaveTarget,
+  chooseTilesetSheetReading,
+  TILESET_MODES,
   parseCanvasSize,
   pullExpansionReview,
 } from "../../pixellab-assets.ts"
@@ -39,7 +49,18 @@ function requireId(args: Args): string {
 export async function runAsset(args: Args): Promise<void> {
   const emit = (value: Record<string, unknown>) => log(JSON.stringify({ version: 1, ...value }, null, 2))
 
+  if (args.subcommand === "import" && (args.kind === "tileset" || args.kind === "tiles")) {
+    await runTileImport(args, emit)
+    return
+  }
+
+  if (args.subcommand === "save") {
+    await runSave(args, emit)
+    return
+  }
+
   if (args.subcommand === "import") {
+    if (args.kind && args.kind !== "object") throw new UsageError(`asset import takes --kind object (the default), tileset or tiles, got "${args.kind}"`)
     if (!args.from) throw new UsageError("asset import needs --from <png>: your own sprite, at most 256x256")
     if (args.dryRun) {
       log(`  would import ${args.from} as a 1-direction object; nothing sent`)
@@ -167,4 +188,100 @@ export async function runAsset(args: Args): Promise<void> {
   })
   if (args.json) emit({ ...res, format })
   else log(`  wrote ${res.out}  (${format}, ${res.bytes} bytes, free)`)
+}
+
+/** `--size 32` for a tile import: a whole number of pixels. */
+function tileSizeOf(args: Args): number | undefined {
+  if (args.size === undefined) return undefined
+  if (!/^\d+$/.test(args.size.trim())) throw new UsageError(`--size is the tile size in pixels for a tile import, e.g. --size 32; got "${args.size}"`)
+  return Number(args.size)
+}
+
+/** Turn a library refusal about the user's own files or flags into a usage error. */
+async function usage<T>(work: () => Promise<T> | T): Promise<T> {
+  try {
+    return await work()
+  } catch (error) {
+    if (error instanceof Error && !(error instanceof UsageError) && error.name === "Error") throw new UsageError(error.message)
+    throw error
+  }
+}
+
+async function runTileImport(args: Args, emit: (value: Record<string, unknown>) => void): Promise<void> {
+  const tileSize = tileSizeOf(args)
+  if (args.kind === "tileset") {
+    if (!args.from) throw new UsageError("asset import --kind tileset needs --from <png>: a Wang sheet in PixelLab's layout")
+    const mode = (args.mode ?? "topdown") as (typeof TILESET_MODES)[number]
+    if (!(TILESET_MODES as readonly string[]).includes(mode)) throw new UsageError(`--mode must be ${TILESET_MODES.join(" or ")} for a tileset import, got "${args.mode}"`)
+    if (args.tileType) throw new UsageError("--tile-type belongs to --kind tiles; a tileset is a Wang sheet")
+    const opts = { mode, tileSize, lowerDescription: args.lower, upperDescription: args.upper, transitionDescription: args.transition, name: args.name }
+    if (args.dryRun) {
+      const metadata = imageMetadata(await readFile(args.from))
+      if (!metadata || metadata.format !== "png") throw new UsageError(`${args.from} is not a PNG`)
+      const reading = await usage(() => chooseTilesetSheetReading(args.from!, metadata.width, metadata.height, tileSize))
+      log(`  would import ${args.from} as a ${mode} tileset of ${reading.tileSize}px tiles (${reading.layout === "compact" ? "4 wide" : "8 wide"}); nothing sent`)
+      return
+    }
+    loadKeys(args)
+    const client = clientFromEnv()
+    const res = await usage(() => importTilesetFile(client, args.from!, opts))
+    if (args.json) emit(res)
+    else log(`  imported ${args.from} as ${mode} tileset ${res.tilesetId} (${res.tileSize}px tiles, ${res.layout === "compact" ? "4 wide" : "8 wide"}, free)`)
+    return
+  }
+  if (!args.from) throw new UsageError("asset import --kind tiles needs --from <png or directory>: one PNG per tile, up to 32")
+  if (!args.tileType || !(IMPORT_TILE_TYPES as readonly string[]).includes(args.tileType)) {
+    throw new UsageError(`asset import --kind tiles needs --tile-type, one of ${IMPORT_TILE_TYPES.join(", ")}`)
+  }
+  if (tileSize === undefined) throw new UsageError("asset import --kind tiles needs --size <pixels>: the tiles' width, 16 to 256")
+  if (args.lower || args.upper || args.transition) throw new UsageError("--lower, --upper and --transition describe a tileset; describe tiles with --description")
+  const opts = { tileType: args.tileType, tileSize, description: args.description }
+  if (args.dryRun) {
+    // Every check runs; only the upload is held back.
+    const res = await usage(() => importTilesFiles({ importTilesPro: async () => ({ tile_id: "dry-run", status: "completed" }) }, args.from!, opts))
+    log(`  would import ${res.tiles} ${args.tileType} tile(s) of ${tileSize}px from ${args.from} as one group; nothing sent`)
+    return
+  }
+  loadKeys(args)
+  const client = clientFromEnv()
+  const res = await usage(() => importTilesFiles(client, args.from!, opts))
+  if (args.json) emit(res)
+  else log(`  imported ${res.tiles} tile(s) from ${args.from} as tile group ${res.tileId} (${args.tileType}, ${tileSize}px, free)`)
+}
+
+async function runSave(args: Args, emit: (value: Record<string, unknown>) => void): Promise<void> {
+  const target = args.saveTarget
+  if (!target) {
+    throw new UsageError("asset save needs --target: character:<id>:<direction>, object:<id>[:<direction>], gallery:<id>, gallery:new, or tileset:<id>")
+  }
+  if (!args.from) throw new UsageError("asset save needs --from: a PNG, an animated GIF, or a directory of PNG frames")
+  await usage(() => checkSaveTarget(target))
+  const adding = target === "gallery:new"
+  const undoDir = args.out ? path.resolve(args.out) : saveUndoDir(target)
+  if (adding) log(`  add ${args.from} to your PixelLab gallery as a new image (free)`)
+  else {
+    log(`  save ${args.from} over ${target} on PixelLab (free)`)
+    log(`  it must match what is stored in size and frame count; what it replaces is written to ${undoDir}`)
+  }
+  if (args.dryRun) {
+    log("  dry run: nothing sent")
+    return
+  }
+  if (!adding && !(await confirm(`  Replace the stored pixels of ${target}?`, args.yes))) return
+  loadKeys(args)
+  const client = clientFromEnv()
+  const res = await usage(() => saveToAssetFile(client, target, args.from!, { name: args.name, description: args.description, undoDir }))
+  if (args.json) {
+    emit({ ...res })
+    return
+  }
+  if (res.action === "unchanged") log(`  ${res.target}: no pixel differed, nothing written`)
+  else if (res.action === "added") log(`  added as ${res.target} (${res.width}x${res.height})`)
+  else {
+    log(`  ${res.target}: ${res.kind} saved, ${res.width}x${res.height}, ${res.frames} frame(s), ${res.changedPixels} pixel(s) changed`)
+    for (const file of res.undo) log(`  kept the old pixels: ${file}`)
+    if (res.undo.length) log(`  undo: pixelkiln asset save --target ${res.target} --from ${res.undo.length === 1 ? res.undo[0] : path.dirname(res.undo[0]!)} --yes`)
+  }
+  if (res.note) log(`  ${res.note}`)
+  if (res.maps) log(`  ${res.maps}`)
 }

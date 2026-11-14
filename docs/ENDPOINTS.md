@@ -95,6 +95,9 @@ not probed.
 | `POST /image-to-pixelart-pro-flash` | `pixelkiln pixelate` | Measured live | A 256×256 and a 384×384 render each billed 6; the image is `last_response.images[0]`; the result is opaque on a near-white field ([Image to Pixel Art Pro Flash, measured](#image-to-pixel-art-pro-flash-measured)). | Whether 6 is flat above 384px or with a larger source. | Medium |
 | `POST /image-to-pixelart-pro` | `pixelkiln pixelate --pro` | Measured live | One 256×256 render billed 20; 42 s; the image is `last_response.image` (not a list) with a `quantized_image` beside it ([Asset upkeep and the Pro converter](#asset-upkeep-and-the-pro-converter-measured)). | `target_palette`, `description`, and other source sizes are mock only. | High |
 | `POST /objects/import` | `pixelkiln asset import` | Measured live | Free; a 32×32 and a 64×64 PNG each became a completed 1-direction object. | Refusal of a JPEG or an oversize PNG is client-side only. | Low |
+| `POST /tilesets/import` | `pixelkiln asset import --kind tileset` | Measured live | Free; a 16px 8-wide sheet imported with its tile size came back as 16 tiles pixel-identical to the source. Without the size it was cut into 32px tiles ([Free imports and saving back](#free-imports-and-saving-back-measured)). | A 4-wide sheet, a tall (transition) sheet, and a sidescroller import. | Low |
+| `POST /tiles-pro/import` | `pixelkiln asset import --kind tiles` | Measured live | Free; three and four 16px square tiles each became one tile group; wrong-size frames refused with a 422 naming the size. | Every tile type but `square_topdown` through the command; `tile_view`, angle and depth are not sent. | Low |
+| `POST /save-to-asset` | `pixelkiln asset save` | Measured live | Free; a gallery image was added, replaced, saved unchanged and restored from `previous_frames`. A wrong-size image and an unknown target were refused with 422s. | Character, object, animation and tileset targets with an accepted save; the 409 and the 500 that carries `previous_frames` (mock only). | Medium |
 | `POST /objects/{id}/expand-rotations` (+ `select-frames`, `dismiss-review`) | `pixelkiln asset expand`, `asset review` | Measured live | Two expansions each quoted and billed 10, at the review stage; one kept, one discarded. | The 15 and 25 tiers; a `description`-less call. | High |
 | `POST /{objects,characters}/{id}/canvas` | `pixelkiln asset canvas` | Measured live | Free on an object; a cropping size refused with a 400 that names the art's bounds. | The character route is mock only. | Low |
 | `POST /{objects,characters}/{id}/animations/{group}/mirror` | `pixelkiln asset mirror` | Mock only | Wrapped from the OpenAPI schema; needs an animated asset to run. | Everything. Free, so the exposure is a wrong request shape. | Low |
@@ -568,6 +571,48 @@ answers while an asset is generating. PixelLab also added
 `/ungroup`, and `/save-to-asset`; PixelKiln does not wrap them.
 
 ---
+
+### Free imports and saving back, measured
+
+Wrapped as `pixelkiln asset import --kind tileset`, `--kind tiles` and
+`pixelkiln asset save`. Measured on 14 November 2026 (Tier 3). Every call
+was free: the balance did not move.
+
+- **`POST /tilesets/import` reads an ambiguous sheet the wrong way unless
+  told.** A stored 16px tileset was rebuilt as its 8-wide native sheet
+  (128×128) from the tiles' `original_position` and sent back. With no
+  `tile_size` it was accepted (201) and cut into sixteen **32px** tiles, none
+  matching the source. With `tile_size` `{ "width": 16, "height": 16 }` it
+  came back as 16 tiles, each pixel-identical to the source tile with the
+  same corners. PixelKiln therefore refuses a 128, 192 or 256px-wide sheet
+  until `--size` says which reading is meant.
+- `tile_size` is an object. A bare `16` is a 422.
+- A 50×50 sheet was refused with a 422 listing the sizes: a compact sheet of
+  64, 96, 128, 192 or 256px square for 16, 24, 32, 48 or 64px tiles, "plus
+  double-height ×2 for transitions", or a native 8-wide sheet. The request
+  schema's `tile_size` has no 48, so PixelKiln sends none for a 48px sheet.
+- **`POST /tiles-pro/import`** took three 16×16 PNGs as `square_topdown`
+  tiles of size 16 and returned a `tile_id`; `GET /tiles-pro/{id}` then
+  listed three stored tiles. The same frames at `tile_size` 32 were refused:
+  "Each frame must be 32×32px; got 16×16px". As `isometric` tiles of size 16
+  they were accepted, since an isometric tile may be half to twice its width
+  tall.
+- **`POST /save-to-asset`** with `gallery:new` returned `action: "added"`
+  and the new `gallery:<id>`. Saving a different 16×16 image to that id
+  returned `saved`, `changed_pixels: 64` and one `previous_frames` PNG;
+  saving the same image again returned `unchanged` with no previous frames;
+  saving the previous frame back restored it (`saved`, 64 pixels).
+- A 20×16 image sent to the 16×16 gallery image was refused with a 422 that
+  names both sizes. An unknown object id was a 422, not the documented 404.
+- **A tileset takes its 4-wide sheet.** Saving the 128×128 native sheet to
+  the 16px tileset it was imported from was refused: "image is 128x128;
+  tileset:… is 64x64". `GET /tilesets/{id}` returns the tiles one by one and
+  a null `sheet`, so the 4-wide sheet has to come from PixelLab's download
+  or be assembled; no accepted tileset save was made.
+
+The two test tilesets and three test tile groups were deleted. The test
+gallery image was left in the account; the REST API has no route to remove
+a gallery image.
 
 ## UI split, states and 9-slice, measured
 

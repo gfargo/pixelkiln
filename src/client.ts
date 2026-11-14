@@ -271,6 +271,22 @@ const ImportObjectSchema = z
     image_url: z.string(),
   })
   .passthrough()
+const ImportTilesetSchema = z.object({ tileset_id: z.string().min(1), status: z.string().default("completed") }).passthrough()
+const ImportTilesProSchema = z.object({ tile_id: z.string().min(1), status: z.string().default("completed") }).passthrough()
+const SaveToAssetSchema = z
+  .object({
+    action: z.enum(["saved", "added", "unchanged"]),
+    target: z.string().min(1),
+    kind: z.string(),
+    width: z.number(),
+    height: z.number(),
+    frame_count: z.number(),
+    changed_pixels: z.number().default(0),
+    previous_frames: z.array(z.object({ base64: z.string().min(1) }).passthrough()).nullable().optional(),
+    note: z.string().nullable().optional(),
+    maps: z.string().nullable().optional(),
+  })
+  .passthrough()
 const ExpandRotationsSchema = z
   .object({
     object_id: z.string().min(1),
@@ -2758,6 +2774,85 @@ export class PixelLabClient {
       ImportObjectSchema,
       await this.request<unknown>("/objects/import", { method: "POST", body: JSON.stringify(body) }),
       "objects/import",
+    )
+  }
+
+  /**
+   * `POST /tilesets/import`: your own Wang sheet as a completed tileset, in
+   * PixelLab's compact 4x4 layout or its 8-wide native one. Free. Send
+   * `tileSize` whenever the sheet reads two ways: omitted, PixelLab takes the
+   * 4x4 reading and cuts a native sheet into the wrong tiles.
+   */
+  async importTileset(args: {
+    spritesheet: Base64Image
+    mode?: "topdown" | "sidescroller"
+    tileSize?: number
+    lowerDescription?: string
+    upperDescription?: string
+    transitionDescription?: string
+    name?: string
+  }): Promise<z.output<typeof ImportTilesetSchema>> {
+    const body: Record<string, unknown> = {
+      spritesheet: { type: "base64", base64: args.spritesheet.base64, format: args.spritesheet.format },
+    }
+    if (args.mode) body.tileset_mode = args.mode
+    if (args.tileSize != null) body.tile_size = { width: args.tileSize, height: args.tileSize }
+    if (args.lowerDescription) body.lower_description = args.lowerDescription
+    if (args.upperDescription) body.upper_description = args.upperDescription
+    if (args.transitionDescription) body.transition_description = args.transitionDescription
+    if (args.name) body.name = args.name
+    return validateResponse(
+      ImportTilesetSchema,
+      await this.request<unknown>("/tilesets/import", { method: "POST", body: JSON.stringify(body) }),
+      "tilesets/import",
+    )
+  }
+
+  /** `POST /tiles-pro/import`: 1 to 32 of your own tile PNGs as one completed tile group. Free. */
+  async importTilesPro(args: {
+    frames: Base64Image[]
+    tileType: string
+    tileSize: number
+    description?: string
+    tileView?: string
+  }): Promise<z.output<typeof ImportTilesProSchema>> {
+    const body: Record<string, unknown> = {
+      frames: args.frames.map((frame) => ({ type: "base64", base64: frame.base64, format: frame.format })),
+      tile_type: args.tileType,
+      tile_size: args.tileSize,
+    }
+    if (args.description) body.description = args.description
+    if (args.tileView) body.tile_view = args.tileView
+    return validateResponse(
+      ImportTilesProSchema,
+      await this.request<unknown>("/tiles-pro/import", { method: "POST", body: JSON.stringify(body) }),
+      "tiles-pro/import",
+    )
+  }
+
+  /**
+   * `POST /save-to-asset`: write edited pixels back into a stored character
+   * or object rotation, one direction of an animation, a gallery image or a
+   * tileset sheet, or add a new gallery image (`gallery:new`). Free. The
+   * image must match what it replaces in size and frame count. What was
+   * there comes back as `previous_frames`; saving those again is the undo.
+   */
+  async saveToAsset(args: {
+    target: string
+    image?: { base64: string; format: "png" | "gif" }
+    frames?: Base64Image[]
+    name?: string
+    description?: string
+  }): Promise<z.output<typeof SaveToAssetSchema>> {
+    const body: Record<string, unknown> = { target: args.target }
+    if (args.image) body.image = { type: "base64", base64: args.image.base64, format: args.image.format }
+    if (args.frames) body.frames = args.frames.map((frame) => ({ type: "base64", base64: frame.base64, format: frame.format }))
+    if (args.name) body.name = args.name
+    if (args.description) body.description = args.description
+    return validateResponse(
+      SaveToAssetSchema,
+      await this.request<unknown>("/save-to-asset", { method: "POST", body: JSON.stringify(body) }),
+      "save-to-asset",
     )
   }
 
