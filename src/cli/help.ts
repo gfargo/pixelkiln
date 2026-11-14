@@ -86,6 +86,11 @@ Commands
             takes as MP3 and a .music.json record. 10 generations; --loop adds
             seamless loops (4 more); --loop-of loops an existing song.
             music style / music lyrics draft a style or lyrics. Asks first.
+  ui      PixelLab: work on a generated UI panel by --id. ui show lists its
+            elements and states; ui split cuts a template into elements (free);
+            ui states draws hover/pressed/... for them (10-25 generations; asks
+            first); ui nine-slice sets stretch insets (free); ui pull downloads
+            every image with a ui.json record.
   sfx     PixelLab: a sound effect (--description, --seconds, --out); writes
             a WAV and a .sfx.json record. From 1 generation, by length.
 
@@ -116,6 +121,12 @@ Options
                       what to change)
   --artist <a>        vfx --description: lite (default) or pro
   --weight <w>        font: Bold or Regular (default)
+  --id <ui asset id>  ui: the template, element or state to work on
+  --state <n=desc>    ui states: one state as "name=description" (repeatable)
+  --element <ids>     ui states: only these elements of a template
+  --insets <n|l,r,t,b>  ui nine-slice: border insets in pixels
+  --clear             ui nine-slice: remove the insets
+  --box <l:x,y,w,h>   ui split: a custom crop box in template pixels (repeatable)
   --seconds <n>       music: length to aim for, 10-360; sfx: clip length, 0.5-30 (default 2)
   --bpm <n>           music: tempo, 60-180
   --loop              music: also make seamless loops of take 1 (instrumental only)
@@ -202,6 +213,7 @@ Examples
   pixelkiln vfx --description "a blue lightning strike that leaves sparks" --out fx/zap
   pixelkiln font --description "warm orange arcade font" --weight Bold --out fonts/arcade
   pixelkiln music --description "calm chiptune town theme" --improve --seconds 60 --loop --out audio/town
+  pixelkiln ui states --id <template id> --state "hover=brighter, a soft glow" --state "pressed=darker, 1 px lower"
   pixelkiln sfx --description "a heavy sword slash hitting metal armor" --seconds 1 --out audio/slash
   pixelkiln workspace add ../other-game/pixelkiln.manifest.json
   pixelkiln workspace status --json
