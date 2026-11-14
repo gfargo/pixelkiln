@@ -1264,6 +1264,54 @@ A font is deliberately not a manifest generator: it has no style suffix to
 share, no prompt-per-asset, no candidates to pick, and its main output is not
 an image, so there is nothing for the lockfile's provenance model to hold.
 
+### `ui`
+
+```bash
+pixelkiln ui show --id <ui asset id>
+pixelkiln ui split --id <template id>
+pixelkiln ui nine-slice --id <element id> --insets 8,8,6,6
+pixelkiln ui states --id <template or element id> --state "hover=brighter, a soft glow on the rim" --state "pressed=pushed in: darker, the face one pixel lower"
+pixelkiln ui pull --id <template id> --out ui/dialog
+```
+
+Works on a UI panel PixelLab has already generated, by its PixelLab id: what the
+`uiAsset` generator makes is a template (its id is the lock entry's
+`objectId`). The generator draws the panel; `ui` turns it into the pieces a
+game uses.
+
+- `ui show` prints the asset's kind, size and 9-slice, its elements and their
+  states, and, for a template not split yet, the boxes a split would cut.
+- `ui split` cuts a template into one element per shape it was generated from.
+  Free; nothing is generated. `--box "label:x,y,width,height"` (repeatable, in
+  template pixels) cuts your own boxes instead. A template splits once: to
+  split it differently, delete its elements on PixelLab first. Elements with
+  no label are named `element 1`, `element 2` by PixelLab.
+- `ui nine-slice` sets the border insets that stay crisp when a panel or
+  button is stretched: `--insets 6` for every side or
+  `--insets left,right,top,bottom`, or `--clear` to remove them. Free. The
+  insets must leave a middle (left + right below the width, top + bottom below
+  the height), which is checked before anything is sent.
+- `ui states` draws every chosen element in every `--state "name=description"`
+  in one generation, so a set stays consistent. `--id` is a split template
+  (every element, or only `--element <ids>`) or one element. Up to 64 elements
+  and 16 states. `--palette` and `--max-colors` constrain the colors.
+  PixelLab prices the grid it lays out: 10 generations up to 256 px on a side,
+  15 up to 341, 25 above. The command cannot work that grid out in advance, so
+  it prints the three prices, asks before spending (`--yes` skips, `--budget`
+  below 25 is refused, `--dry-run` sends nothing), and prints PixelLab's quote
+  as soon as the job is accepted. One 86x38 element in two states was quoted
+  and billed 10 (November 2026), in about a minute.
+- `ui pull` downloads the asset into `--out <dir>`: the whole image, each
+  element as `elements/<name>.png`, each state as
+  `elements/<name>.<state>.png`, and `ui.json`, which records every file's
+  PixelLab id, hash, size, 9-slice insets, and where each element sits in the
+  template. Existing files are replaced only with `--force`.
+
+A state image is not the same size as its element. The 86x38 button above
+came back as an 85x46 hover and an 82x42 pressed state, because a glow or a
+shifted face changes the outline. Anchor states by their centre, not their
+top-left corner, and read each size from `ui.json`.
+
 ### `music`
 
 ```bash
@@ -1460,6 +1508,12 @@ Print the package version. `-v` is an alias.
 | `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
 | `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
 | `--fps <n>` | vfx | Frame rate, 1–60. |
+| `--id <ui asset id>` | ui | The PixelLab UI template, element or state to work on. |
+| `--state <name=description>` | ui states | One state to draw; repeatable. |
+| `--element <ids>` | ui states | Only these elements of a template; repeatable and comma-separated. |
+| `--insets <n\|l,r,t,b>` | ui nine-slice | 9-slice border insets in pixels. |
+| `--clear` | ui nine-slice | Remove the 9-slice insets. |
+| `--box <label:x,y,w,h>` | ui split | A custom crop box in template pixels; repeatable. |
 | `--seconds <n>` | music/sfx | music: length to aim for, 10–360. sfx: clip length, 0.5–30 (default 2). |
 | `--bpm <n>` | music | Tempo, 60–180. |
 | `--loop` | music | Also make seamless loops of take 1 (instrumental only; 4 more generations). |

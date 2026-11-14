@@ -246,6 +246,59 @@ const UiAssetGetSchema = z
     eta_seconds: z.number().nullable().optional(),
   })
   .passthrough()
+const UiNineSliceSchema = z.object({ left: z.number().int(), right: z.number().int(), top: z.number().int(), bottom: z.number().int() }).passthrough()
+const UiSplitBoxSchema = z
+  .object({ label: z.string().default(""), x: z.number().int(), y: z.number().int(), width: z.number().int(), height: z.number().int() })
+  .passthrough()
+const UiSizeSchema = z.object({ width: z.number().int(), height: z.number().int() }).passthrough()
+const UiStatePartSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().nullable().optional(),
+    kind: z.string().default("state"),
+    size: UiSizeSchema,
+    image_url: z.string(),
+    nine_slice: UiNineSliceSchema.nullable().optional(),
+  })
+  .passthrough()
+/** An element split from a template, with the states made for it. */
+const UiElementPartSchema = UiStatePartSchema.extend({
+  template_box: UiSplitBoxSchema.nullable().optional(),
+  states: z.array(UiStatePartSchema).default([]),
+}).passthrough()
+export type PixelLabUiPart = z.output<typeof UiElementPartSchema>
+/**
+ * `GET /ui-assets/{id}` in full. A template lists the elements split from it
+ * (or, before it is split, the boxes a split would cut); an element lists its
+ * states. Shape confirmed against two live templates (November 2026).
+ */
+const UiAssetDetailSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().nullable().optional(),
+    prompt: z.string().default(""),
+    size: UiSizeSchema,
+    image_url: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+    kind: z.string().nullable().optional(),
+    template_id: z.string().nullable().optional(),
+    parent_id: z.string().nullable().optional(),
+    nine_slice: UiNineSliceSchema.nullable().optional(),
+    elements: z.array(UiElementPartSchema).default([]),
+    states: z.array(UiStatePartSchema).default([]),
+    split_preview: z.array(UiSplitBoxSchema).default([]),
+  })
+  .passthrough()
+export type PixelLabUiAsset = z.output<typeof UiAssetDetailSchema>
+const UiSplitResponseSchema = z.object({ elements: z.array(UiElementPartSchema) }).passthrough()
+const UiStatesSubmitSchema = z
+  .object({
+    background_job_id: z.string().min(1),
+    status: z.string().default("processing"),
+    generations: z.number(),
+    count: z.number().int(),
+  })
+  .passthrough()
 /** Shared by /inpaint-v3 and /edit-images-v2: both hand back a generic background job. */
 const RevisionJobSubmitSchema = z
   .object({
@@ -1153,6 +1206,71 @@ export class PixelLabClient {
       "create ui asset",
     )
     return { ui_asset_id: res.ui_asset_id, background_job_id: res.background_job_id, usage: res.usage }
+  }
+
+  /** `GET /ui-assets/{id}` with everything it reports: kind, elements and their states, 9-slice, and the default split boxes. */
+  async getUiAssetDetail(uiAssetId: string): Promise<PixelLabUiAsset> {
+    return validateResponse(
+      UiAssetDetailSchema,
+      await this.request<unknown>(`/ui-assets/${encodeURIComponent(uiAssetId)}`),
+      "ui-assets/{id}",
+    )
+  }
+
+  /**
+   * `POST /ui-assets/{id}/split`: cut a template into one UI asset per shape.
+   * Free; nothing is generated. A template splits once. Without `boxes` it
+   * cuts along the shapes the template was generated from (`split_preview`).
+   */
+  async splitUiAsset(
+    uiAssetId: string,
+    boxes?: Array<{ label?: string; x: number; y: number; width: number; height: number }>,
+  ): Promise<PixelLabUiPart[]> {
+    const res = validateResponse(
+      UiSplitResponseSchema,
+      await this.request<unknown>(`/ui-assets/${encodeURIComponent(uiAssetId)}/split`, {
+        method: "POST",
+        body: JSON.stringify(boxes?.length ? { boxes } : {}),
+      }),
+      "ui-assets/{id}/split",
+    )
+    return res.elements
+  }
+
+  /**
+   * `POST /ui-assets/states`: draw every listed element in every listed state
+   * in one generation, so the set matches. A background job; the 202 carries
+   * the price (`generations`: 10, 15 or 25 by the size of the grid PixelLab
+   * lays out) and is charged when the states are saved.
+   */
+  async createUiStates(args: {
+    elementIds: string[]
+    states: Array<{ name: string; description: string }>
+    targetPalette?: TargetPaletteArg
+  }): Promise<z.output<typeof UiStatesSubmitSchema>> {
+    const body: Record<string, unknown> = { element_ids: args.elementIds, states: args.states }
+    Object.assign(body, targetPaletteBody(args.targetPalette))
+    return validateResponse(
+      UiStatesSubmitSchema,
+      await this.request<unknown>("/ui-assets/states", { method: "POST", body: JSON.stringify(body) }),
+      "ui-assets/states",
+    )
+  }
+
+  /** `PATCH /ui-assets/{id}`: rename, or set or clear the 9-slice insets. Free. */
+  async updateUiAsset(
+    uiAssetId: string,
+    args: { name?: string; nineSlice?: { left: number; right: number; top: number; bottom: number }; clearNineSlice?: boolean },
+  ): Promise<PixelLabUiAsset> {
+    const body: Record<string, unknown> = {}
+    if (args.name) body.name = args.name
+    if (args.nineSlice) body.nine_slice = args.nineSlice
+    if (args.clearNineSlice) body.clear_nine_slice = true
+    return validateResponse(
+      UiAssetDetailSchema,
+      await this.request<unknown>(`/ui-assets/${encodeURIComponent(uiAssetId)}`, { method: "PATCH", body: JSON.stringify(body) }),
+      "ui-assets/{id}",
+    )
   }
 
   async getUiAsset(uiAssetId: string): Promise<{

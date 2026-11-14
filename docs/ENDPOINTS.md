@@ -115,6 +115,9 @@ not probed.
 | `POST /create-tileset-sidescroller` | `terrain`, `terrainOrientation: "sidescroller"` | Measured live | One 16px set at transition 0.25 billed 3; 16 tiles; `usage` is null on the `GET`, so the bill comes from the job ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind)). | 32px tiles and other transition sizes (tile counts assumed 16); the call returned `metadata.transition_size: 0.0` for 0.25. | Low |
 | `POST /create-isometric-tile` (+ `GET /isometric-tiles/{id}`) | `isometricTile` | Measured live | One 32px `block` billed 1 generation, not the schema's `usd: 0.02` example ([Standalone isometric tile](#standalone-isometric-tile-schema-documented-cost-measured-once)). | Other sizes and shapes; flat pricing across 16 to 64px is an assumption. | Low |
 | `POST /create-ui-asset` (+ `GET /ui-assets/{id}`) | `uiAsset` | Measured live | One 256×192 call billed 20, the low end of the quoted 20 to 40; the plan prices 40 ([UI panels](#ui-panels-one-endpoint-schema-documented-cost-unverified), September 2026). | A second size; `pixelkiln plan` over-reads. | High |
+| `POST /ui-assets/{id}/split` | `pixelkiln ui split` | Measured live | Free; a 256×192 template split into the 3 elements its `split_preview` listed. A second split is refused client-side ([UI split, states and 9-slice](#ui-split-states-and-9-slice-measured)). | Custom `boxes` are mock only. | Low |
+| `POST /ui-assets/states` | `pixelkiln ui states` | Measured live | One 86×38 element in 2 states quoted and billed 10; about a minute. State images differ in size from their element. | The 15 and 25 tiers, several elements in one call, and `target_palette` are mock only. | High |
+| `PATCH /ui-assets/{id}` | `pixelkiln ui nine-slice` | Measured live | Free; insets set on an element and returned on the next `GET`. | `clear_nine_slice` and rename are mock only. | Low |
 | `POST /generate-font-pro` (+ `GET /generate-font-pro/{id}`) | `pixelkiln font` | Unknown | Documented at 15 since the cut; "its cost is not yet measured" ([Not yet explored](#not-yet-explored)). Nothing records a live run. | Price and the non-`{usage, image}` response shape. | Medium |
 | `POST /music` (+ `GET /music/{id}`) | `pixelkiln music` | Measured live | Two instrumental requests billed 10 each, as quoted; two MP3 takes per request, a 60 s request returning 60.6 s and 61.2 s ([Music and sound effects](#music-and-sound-effects-measured)). | Vocals (`lyrics`, `auto_lyrics`), `restyle_song_id`, and lengths above 60 s are mock only. | Medium |
 | `POST /music/{id}/loop` | `pixelkiln music --loop`, `--loop-of` | Measured live | One loop billed 4, as quoted; two takes with `loop_start_s`/`loop_end_s`. A 30 s song was refused with a 422 (a loop needs 36 s between intro and ending), unbilled. | The shortest song that loops is bracketed only as above 30 s and at most 60 s. | Medium |
@@ -476,6 +479,47 @@ other 14 routes PixelKiln sends it to are mock only. PixelKiln never sends `smar
 and `/animate-pixminimax` have no such field. Every request body is built by
 one helper (`targetPaletteBody` in `src/client.ts`), so the field is spelled
 once.
+
+---
+
+## UI split, states and 9-slice, measured
+
+Wrapped as the standalone `pixelkiln ui` command ([CLI reference](./CLI.md#ui)).
+Measured on 14 November 2026 (Tier 3) against a 256×192 template the
+`uiAsset` generator made in September.
+
+| Call | Request | Quoted | Billed | Result |
+|---|---|---|---|---|
+| `GET /ui-assets/{id}` | an unsplit template | free | 0 | `kind: "template"`, empty `elements`, and a 3-box `split_preview` |
+| `POST /ui-assets/{id}/split` | no `boxes` | free | 0 | 3 elements: 166×19, 86×38, 38×38 |
+| `PATCH /ui-assets/{id}` | `nine_slice` 8,8,6,6 on the 86×38 element | free | 0 | the asset, with the insets |
+| `POST /ui-assets/states` | that element, 2 states | 10 | 10 | 2 state images, 62 s |
+
+What the measurements showed:
+
+- **A split names what the template left unnamed.** `split_preview` labelled
+  one box `Button` and left two blank; the elements came back named
+  `element 1`, `Button`, `element 3`, with the label moved into `name` and
+  `template_box.label` empty on all three.
+- **A state is not the size of its element.** The 86×38 element's `hover`
+  state is 85×46 and its `pressed` state 82×42. PixelLab draws the states on
+  one labelled grid and crops each to its own outline, so a glow grows the
+  image and a darker, tighter face shrinks it. A game must anchor states by
+  their centre and read each size; `pixelkiln ui pull` records them.
+- **The price is on the submit reply, not before it.** `generations` (here 10)
+  and `count` arrive with the 202, and the job's `usage` matched. The grid's
+  side decides the tier (10 up to 256 px, 15 up to 341, 25 above; each element
+  plus an 18 px margin and a 24 px label per state, by PixelLab's description).
+  PixelKiln does not reproduce that layout, so `ui states` asks against the 25
+  ceiling and prints the quote once it has it.
+- A template splits once. PixelKiln checks `elements` first and refuses a
+  second split itself, so the API's own answer to one was not observed.
+- Split and 9-slice never touched the balance.
+
+Not measured: custom split `boxes`, the 15 and 25 states tiers, several
+elements in one states call, `target_palette` on states, clearing a 9-slice,
+renaming, and `GET /ui-assets/{id}/zip` (PixelKiln downloads each image from
+its own URL instead of the ZIP).
 
 ---
 
@@ -888,7 +932,7 @@ is wrapped by pixelkiln's `uiAsset` generator (docs/GENERATORS.md). A broad
 search of the live OpenAPI document for "ui-asset", "element", "split", and
 "template" paths found **only these three callable endpoints** — no separate
 batch-icon endpoint, no states endpoint, no nine-slice endpoint, contrary to
-tutorial-based descriptions elsewhere.
+tutorial-based descriptions elsewhere. (True in September 2026; no longer.)
 
 Request fields: `description`, `image_size` (`{width, height}`, 192-688px per
 axis, aspect-gated rather than a free rectangle — square tops out at
@@ -913,15 +957,11 @@ carry no per-piece sub-images, no bounding-box data, and no nine-slice
 metadata at all, regardless of how many `pieces`/`elements` the request
 listed.
 
-The `delete_ui_asset` MCP tool's own description says it removes "a UI panel
-(and, for a template, its split elements + their states)", which hints
-PixelLab's internal product model has a real split/states concept somewhere.
-Nothing found in the public REST surface reaches it — "states" and "splitting
-into individual elements" are not buildable from any endpoint listed here,
-whatever the product does internally. A themed panel variant (e.g. an empty
-vs. full health bar) still costs nothing extra to build: pixelkiln's existing
-`revision` mechanism (image-to-image on any generator's output) already does
-exactly that.
+That was the whole surface when this section was written (September 2026).
+PixelLab has since added split, states and 9-slice endpoints, and `GET
+/ui-assets/{id}` now reports `kind`, `elements`, `states`, `nine_slice` and
+`split_preview`; see [UI split, states and 9-slice](#ui-split-states-and-9-slice-measured).
+The paragraph above describes the response as it was then.
 
 **Cost: confirmed live at one data point, and it overturned the borrowed
 formula.** A real 256x192 (49152px²) call against a Tier 2 subscription

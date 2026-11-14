@@ -46,6 +46,50 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "pixellab-ui-states",
+    provider: "PixelLab",
+    date: "November 2026",
+    title: "UI panels become buttons with states and 9-slice",
+    summary:
+      "A generated UI panel used to be one flat image. PixelLab now splits it into elements, draws their states, and stores stretch insets, and `pixelkiln ui` does all three and pulls the pieces down. The states below billed exactly 10 generations.",
+    features: [
+      "`ui split` cuts a template into one element per shape, free. `ui show` lists the boxes before you commit.",
+      "`ui states` draws hover, pressed, or any state you describe for every element in one generation, so a set matches: 10, 15 or 25 generations by size.",
+      "`ui nine-slice` sets the border insets that stay crisp when a panel or button is stretched, free.",
+      "`ui pull` writes every image and a `ui.json` with each piece's box, size, insets and hash.",
+      "A state is not the size of its element: an 86x38 button came back 85x46 hovered and 82x42 pressed, so anchor by the centre.",
+    ],
+    figures: [
+      {
+        src: "/showcase/ui/button-states.png",
+        alt: "The same parchment panel piece three times: as generated, brighter with a glowing rim, and darker",
+        width: 1076,
+        height: 216,
+        title: "one element, two states",
+        caption: "the split element, then `hover` and `pressed` from one call. 10 generations.",
+        wide: true,
+        fill: true,
+      },
+    ],
+    code: {
+      title: "terminal",
+      language: "shell",
+      copyId: "updates_ui_commands",
+      code: `
+pixelkiln ui split --id <template id>
+pixelkiln ui nine-slice --id <element id> --insets 8,8,6,6
+pixelkiln ui states --id <template id> \\
+  --state "hover=brighter, a soft glow on the rim" \\
+  --state "pressed=pushed in: darker, the face one pixel lower"
+pixelkiln ui pull --id <template id> --out ui/dialog
+`,
+    },
+    links: [
+      { id: "updates_ui_reference", label: "Read the ui reference", href: "/docs/cli#ui" },
+      { id: "updates_ui_measured", label: "See what was measured", href: "/docs/endpoints#ui-split-states-and-9-slice-measured" },
+    ],
+  },
+  {
     id: "pixellab-audio",
     provider: "PixelLab",
     date: "November 2026",
