@@ -822,6 +822,7 @@ export async function resolveSpecs(
         size,
         view: style.view ?? (generator === "1dir" ? "top-down" : generator === "character" ? "low top-down" : "high top-down"),
         ...(style.view !== undefined ? { styleView: style.view } : {}),
+        ...(generator === "pixflux" && style.textGuidanceScale !== undefined ? { textGuidanceScale: style.textGuidanceScale } : {}),
         styleImagePaths: style.styleImages.map((s) => s.path),
         outline: style.outline,
         shading: style.shading,

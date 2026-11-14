@@ -1521,6 +1521,8 @@ export class PixelLabClient {
     detail?: string
     /** Camera angle, weakly guiding: side, low top-down or high top-down. */
     view?: string
+    /** How closely to follow the description, 1 to 20; the API default is 8. */
+    textGuidanceScale?: number
     seed?: number
   }): Promise<{ png: Buffer; usage: unknown }> {
     const body: Record<string, unknown> = {
@@ -1539,6 +1541,7 @@ export class PixelLabClient {
     if (args.shading) body.shading = args.shading
     if (args.detail) body.detail = args.detail
     if (args.view) body.view = args.view
+    if (args.textGuidanceScale != null) body.text_guidance_scale = args.textGuidanceScale
     if (args.seed != null) body.seed = args.seed
 
     const res = validateResponse(

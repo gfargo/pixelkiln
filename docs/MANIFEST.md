@@ -176,7 +176,7 @@ One asset using the fields most projects reach for:
 | `directions` | `8` | `character` only. `4` or `8`; every engine but `standard` draws 8. |
 | `template` | `mannequin` | `character` only. Body template: `mannequin`, or `bear`, `cat`, `dog`, `horse`, `lion`; `custom` for `pro-flash`. |
 | `proportions` | | `character` only, `standard` humanoid bases. A preset (`default`, `chibi`, `cartoon`, `stylized`, `realistic_male`, `realistic_female`, `heroic`) or multipliers `{ headSize, armsLength, legsLength, shoulderWidth, hipWidth }`, each 0.5 to 2. An asset may override it. |
-| `textGuidanceScale` | `8` | `character` only. How closely a `standard` base and a template loop follow their text, 1 to 20. |
+| `textGuidanceScale` | `8` | `character` and `pixflux`. How closely a `standard` character base and a template loop, or a `pixflux` image, follow their text, 1 to 20. Part of a `pixflux` asset's identity only when set. Other generators ignore it. |
 | `isometric` | `false` | `character` only. Draw `standard` bases and every loop in isometric view. |
 | `enhancePrompt` | `false` | `character` only, `v3` bases. Let PixelLab expand the prompt into a fuller one before drawing. |
 | `styleCharacter` | | `character` only, `pro` bases. The asset id of a generated 8-direction character in this style whose look bases drawn from text or a concept follow. An asset may override it. |
