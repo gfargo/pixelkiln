@@ -22,7 +22,7 @@ import {
 import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
 import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
-import { buildLayerSheet, cutLayerFrames, type LayerFrame } from "../paperdoll.ts"
+import { buildLayerSheet, cutLayerFrames, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
 import { decodePng, joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
@@ -458,6 +458,7 @@ interface LayerLayout {
   width: number
   height: number
   key?: string
+  region?: LayerRegion
   keyedSha256: string
   maskSha256: string
   frames: LayerFrame[]
@@ -1569,6 +1570,8 @@ export class PixelLabProvider implements Provider {
         minSide: 32,
         maxSide: LAYER_SHEET_MAX_SIDE,
         columns: layer.columns,
+        region: layer.region,
+        padding: layer.padding,
         key: layer.key,
         skin: layer.skin,
         reference: layer.clean ? sources.filter((source) => source.still).map((source) => source.png) : [],
@@ -1599,6 +1602,7 @@ export class PixelLabProvider implements Provider {
         width,
         height,
         ...(layer.key ? { key: layer.key } : {}),
+        region: layer.region,
         keyedSha256: sha256(prepared.keyed),
         maskSha256: sha256(prepared.mask),
         frames: prepared.frames,
@@ -1931,7 +1935,7 @@ export class PixelLabProvider implements Provider {
       return { status: "failed", error: `layer job ${jobId} returned a ${size.width}x${size.height} image for a ${layout.width}x${layout.height} sheet` }
     }
     writeFileSync(path.join(dir, "result.png"), result)
-    const frames = cutLayerFrames(result, { keyed, mask, frames: layout.frames }, { key: layout.key })
+    const frames = cutLayerFrames(result, { keyed, mask, frames: layout.frames }, { key: layout.key, region: layout.region })
     const cache = PixelLabProvider.cacheDir("layer")
     const counters = new Map<string, number>()
     const sources: OutputSource[] = frames.map((png, index) => {

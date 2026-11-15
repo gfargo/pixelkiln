@@ -1273,6 +1273,8 @@ export async function resolveSpecs(
             ...(asset.layer.key ? { key: asset.layer.key } : {}),
             clean: asset.layer.clean ?? true,
             ...(asset.layer.columns ? { columns: asset.layer.columns } : {}),
+            region: asset.layer.region ?? "body",
+            padding: asset.layer.padding ?? ((asset.layer.region ?? "body") === "body" ? 0 : 8),
           },
         }
         resolved.generator = first.generator

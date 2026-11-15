@@ -546,6 +546,10 @@ returns it as transparent PNGs that sit on top of them: one bare character,
 any number of outfits, and every outfit lines up with every frame because it
 was painted onto that frame.
 
+This section is the reference for outfits. Hats, held items, composing
+layers in a game, and what each was measured to do are in the
+[Paperdoll layers guide](./PAPERDOLL.md).
+
 ```json
 "hero":            { "prompt": "bald bare humanoid base body, plain skin, no clothing" },
 "hero.walk.south": { "animation": { "of": "hero", "template": "walking", "direction": "south", "clean": true } },
@@ -602,6 +606,8 @@ frames), `keyed.png` and `mask.png` (what the provider was sent), `result.png`
 | `key` | The stand-in colour. Default `#00ffff`. Change it for an outfit that is itself cyan. |
 | `clean` | `false` skips step 1. |
 | `columns` | Sheet columns. Chosen to fit in the smallest area when omitted. |
+| `region` | What may be repainted: `body` (default; the figure below the neck, for clothing), `head` (the cell down to the neck, for hats and hair), or `around` (everything below the neck, for held items and capes). |
+| `padding` | Empty pixels around every figure, for a layer that reaches past it. Layer frames come back larger by this much on every side. Default 0 for `body`, 8 otherwise. |
 
 **When a step goes wrong, replace its file.** The computed mask finds the neck
 as the narrowest row in the upper part of each figure, which holds for a bald

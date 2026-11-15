@@ -209,6 +209,9 @@ export function specHash(
                   key: spec.character.layer.key ? normalizeHex(spec.character.layer.key) : undefined,
                   clean: spec.character.layer.clean,
                   columns: spec.character.layer.columns,
+                  // Omitted at their defaults so a layer made before these existed keeps its identity.
+                  region: spec.character.layer.region === "body" ? undefined : spec.character.layer.region,
+                  padding: spec.character.layer.padding || undefined,
                 }
               : undefined,
             outfit: spec.character.outfit

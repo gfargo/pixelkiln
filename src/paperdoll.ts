@@ -235,21 +235,35 @@ export function neckRow(image: DecodedPng, cell: SheetCell = whole(image)): numb
 }
 
 /**
- * The inpaint mask for a sheet: white (repaint) on every opaque pixel below
- * each cell's neck, black (keep) on the head and on everything empty. Keeping
- * the head black is what stops the provider redrawing the pose: it cannot
- * move a head it may not touch.
+ * Which part of each figure a layer may repaint.
+ *
+ * - `body`: the figure's own pixels below the neck. Clothing: it cannot grow
+ *   past the silhouette, and the head stays put.
+ * - `head`: everything from the top of the cell down to the neck, empty space
+ *   included. Hats, hair, helmets: they need room above and beside the head.
+ * - `around`: everything below the neck, empty space included. Held items,
+ *   capes, packs: they need room beside the body, and the head stays put.
  */
-export function bodyMask(sheet: Buffer, cells?: SheetCell[]): Buffer {
+export type LayerRegion = "body" | "head" | "around"
+
+/**
+ * The inpaint mask for a sheet: white (repaint) on each cell's `region`,
+ * black (keep) everywhere else. Whatever the region, part of the figure is
+ * always kept, and that is what stops the provider redrawing the pose: it
+ * cannot move a head, or a body, that it may not touch.
+ */
+export function bodyMask(sheet: Buffer, cells?: SheetCell[], region: LayerRegion = "body"): Buffer {
   const image = decodePng(sheet)
   const out = Buffer.alloc(image.width * image.height * 4)
   for (let i = 3; i < out.length; i += 4) out[i] = 255
   for (const cell of cells ?? [whole(image)]) {
     const neck = neckRow(image, cell)
     if (neck === null) continue
-    for (let y = neck + 1; y < cell.y + cell.height; y++) {
+    const from = region === "head" ? cell.y : neck + 1
+    const to = region === "head" ? neck + 1 : cell.y + cell.height
+    for (let y = from; y < to; y++) {
       for (let x = cell.x; x < cell.x + cell.width; x++) {
-        if (!opaque(image, x, y)) continue
+        if (region === "body" && !opaque(image, x, y)) continue
         out.fill(255, at(image, x, y), at(image, x, y) + 3)
       }
     }
@@ -478,6 +492,8 @@ export interface LayerFrame {
   /** Where the cell's top-left corner falls in the frame; negative when the frame is smaller than the cell on that side. */
   offsetX: number
   offsetY: number
+  /** Empty space the cell holds beyond the figures' own bounds on every side, which the layer's canvas grows by. */
+  padding?: number
   cell: SheetCell
 }
 
@@ -500,6 +516,14 @@ export interface LayerSheetOptions {
   minSide?: number
   /** Sheet columns; chosen to fit `maxSide` in the smallest area when omitted. */
   columns?: number
+  /** Which part of each figure may be repainted. Default `body`. */
+  region?: LayerRegion
+  /**
+   * Empty pixels added around every cell, for things that reach past the
+   * figure: a hat above it, a sword beside it. Each layer frame comes back on
+   * its source frame's canvas grown by this much on every side.
+   */
+  padding?: number
   key?: string
   skin?: string[]
   /** Stills to clean every other frame against; cleaning is skipped when empty. */
@@ -568,8 +592,11 @@ export function buildLayerSheet(
     }
   }
   if (right < 0) throw new Error("every source frame is fully transparent")
-  const cellWidth = right - left + 1
-  const cellHeight = bottom - top + 1
+  const padding = options.padding ?? 0
+  left -= padding
+  top -= padding
+  const cellWidth = right - left + 1 + padding
+  const cellHeight = bottom - top + 1 + padding
 
   const fits = (columns: number) => {
     const rows = Math.ceil(placed.length / columns)
@@ -625,6 +652,7 @@ export function buildLayerSheet(
       height: frame.image.height,
       offsetX,
       offsetY,
+      ...(padding ? { padding } : {}),
       cell,
     }
   })
@@ -639,32 +667,118 @@ export function buildLayerSheet(
   return {
     sheet: sheetPng,
     keyed: options.keyed ? sized("keyed sheet", options.keyed) : keySkin(sheetPng, { key: options.key, skin: options.skin }),
-    mask: options.mask ? sized("mask", options.mask) : bodyMask(sheetPng, frames.map((frame) => frame.cell)),
+    mask: options.mask ? sized("mask", options.mask) : bodyMask(sheetPng, frames.map((frame) => frame.cell), options.region),
     frames,
     cleaned,
   }
 }
 
 /**
+ * Cleans an item layer (a hat, a held sword) in place. Given room around the
+ * figure, a provider does two things an outfit mask never lets it do:
+ *
+ * - It redraws stretches of the figure's own outline a pixel off, which come
+ *   back as changed dark pixels and so as thin scribbles in the layer. A dark
+ *   pixel is kept only when it borders a coloured layer pixel (it is the
+ *   item's outline) or sits in a solid 2x2 block of layer pixels (it is part
+ *   of a dark item, or of a thick outline).
+ * - It lets a long item run past its cell, so the tip turns up in the next
+ *   one, and it leaves the odd stray pixel. A fragment that touches its
+ *   cell's edge is dropped when it is under 20 pixels, and any fragment when
+ *   it is under 8. An item smaller than that (a stud earring) does not
+ *   survive this; give it a hand-made mask and the `body` region instead.
+ * - It redraws the figure's dark details (an eye, a navel, a deep shadow) as
+ *   small solid blots. A fragment with no coloured pixel at all is dropped
+ *   when it is under 40 pixels.
+ */
+const SPECK = 8
+const BLEED = 20
+const SHADOW = 40
+
+function tidyItemLayer(layer: DecodedPng, cells: SheetCell[], outlineBelow = 60): void {
+  const px = layer.pixels
+  const on = (x: number, y: number, cell: SheetCell) => inside(cell, x, y) && px[at(layer, x, y) + 3]! > 0
+  const dark = (i: number) => Math.max(px[i]!, px[i + 1]!, px[i + 2]!) < outlineBelow
+  for (const cell of cells) {
+    const drop: number[] = []
+    for (let y = cell.y; y < cell.y + cell.height; y++) {
+      for (let x = cell.x; x < cell.x + cell.width; x++) {
+        const i = at(layer, x, y)
+        if (px[i + 3] === 0 || !dark(i)) continue
+        let keep = false
+        for (let dy = -1; dy <= 1 && !keep; dy++) {
+          for (let dx = -1; dx <= 1 && !keep; dx++) {
+            if (on(x + dx, y + dy, cell) && !dark(at(layer, x + dx, y + dy))) keep = true
+          }
+        }
+        // Any of the four 2x2 blocks this pixel is a corner of.
+        for (const [bx, by] of [[0, 0], [-1, 0], [0, -1], [-1, -1]] as const) {
+          if (keep) break
+          keep = on(x + bx, y + by, cell) && on(x + bx + 1, y + by, cell) && on(x + bx, y + by + 1, cell) && on(x + bx + 1, y + by + 1, cell)
+        }
+        if (!keep) drop.push(i)
+      }
+    }
+    for (const i of drop) px.fill(0, i, i + 4)
+
+    const seen = new Uint8Array(cell.width * cell.height)
+    const local = (x: number, y: number) => (y - cell.y) * cell.width + (x - cell.x)
+    for (let y = cell.y; y < cell.y + cell.height; y++) {
+      for (let x = cell.x; x < cell.x + cell.width; x++) {
+        if (!on(x, y, cell) || seen[local(x, y)]) continue
+        const run: Array<[number, number]> = [[x, y]]
+        seen[local(x, y)] = 1
+        let edge = false
+        let coloured = false
+        for (let n = 0; n < run.length; n++) {
+          const [cx, cy] = run[n]!
+          if (!dark(at(layer, cx, cy))) coloured = true
+          if (cx === cell.x || cy === cell.y || cx === cell.x + cell.width - 1 || cy === cell.y + cell.height - 1) edge = true
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (!on(cx + dx, cy + dy, cell) || seen[local(cx + dx, cy + dy)]) continue
+              seen[local(cx + dx, cy + dy)] = 1
+              run.push([cx + dx, cy + dy])
+            }
+          }
+        }
+        if (run.length < SPECK || (edge && run.length < BLEED) || (!coloured && run.length < SHADOW)) for (const [cx, cy] of run) px.fill(0, at(layer, cx, cy), at(layer, cx, cy) + 4)
+      }
+    }
+  }
+}
+
+/**
  * Turns a provider's repainted sheet into one layer PNG per source frame,
- * each on its frame's own canvas so it drops straight over that frame.
+ * each on its frame's own canvas so it drops straight over that frame. A
+ * padded sheet returns each layer on that canvas grown by the padding on
+ * every side, so the two share a centre.
  */
 export function cutLayerFrames(
   result: Buffer,
   prepared: { keyed: Buffer; mask: Buffer; frames: LayerFrame[] },
-  options: { key?: string } = {},
+  options: { key?: string; region?: LayerRegion } = {},
 ): Buffer[] {
   const layer = decodePng(extractLayer(result, prepared.keyed, prepared.mask, options))
+  if (options.region && options.region !== "body") tidyItemLayer(layer, prepared.frames.map((frame) => frame.cell))
   return prepared.frames.map((frame) => {
-    const out: DecodedPng = { width: frame.width, height: frame.height, pixels: Buffer.alloc(frame.width * frame.height * 4) }
+    const pad = frame.padding ?? 0
+    const out: DecodedPng = {
+      width: frame.width + pad * 2,
+      height: frame.height + pad * 2,
+      pixels: Buffer.alloc((frame.width + pad * 2) * (frame.height + pad * 2) * 4),
+    }
+    // Where the cell's corner lands on the grown canvas.
+    const dx = frame.offsetX + pad
+    const dy = frame.offsetY + pad
     for (let y = 0; y < frame.cell.height; y++) {
-      const ty = frame.offsetY + y
-      if (ty < 0 || ty >= frame.height) continue
-      const x0 = Math.max(0, -frame.offsetX)
-      const x1 = Math.min(frame.cell.width, frame.width - frame.offsetX)
+      const ty = dy + y
+      if (ty < 0 || ty >= out.height) continue
+      const x0 = Math.max(0, -dx)
+      const x1 = Math.min(frame.cell.width, out.width - dx)
       if (x1 <= x0) continue
       const from = at(layer, frame.cell.x + x0, frame.cell.y + y)
-      layer.pixels.copy(out.pixels, at(out, frame.offsetX + x0, ty), from, from + (x1 - x0) * 4)
+      layer.pixels.copy(out.pixels, at(out, dx + x0, ty), from, from + (x1 - x0) * 4)
     }
     return encodeRgbaPng(out.width, out.height, out.pixels)
   })

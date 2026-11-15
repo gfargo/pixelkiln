@@ -798,6 +798,20 @@ export const CharacterLayerSchema = z
     clean: z.boolean().optional(),
     /** Sheet columns. Chosen to fit the provider's limit in the smallest area when omitted. */
     columns: z.number().int().min(1).max(64).optional(),
+    /**
+     * Which part of each figure may be repainted. `body` (default): the
+     * figure's own pixels below the neck, for clothing. `head`: everything
+     * from the top of the cell to the neck, for hats, hair and helmets.
+     * `around`: everything below the neck, empty space included, for held
+     * items, capes and packs.
+     */
+    region: z.enum(["body", "head", "around"]).optional(),
+    /**
+     * Empty pixels added around every figure on the sheet, for a layer that
+     * reaches past it. Each layer frame comes back on its source frame's
+     * canvas grown by this much on every side. Default 0 for `body`, 8 otherwise.
+     */
+    padding: z.number().int().min(0).max(64).optional(),
   })
   .strict()
 export type CharacterLayer = z.infer<typeof CharacterLayerSchema>
@@ -1017,6 +1031,8 @@ export interface ResolvedCharacter {
     key?: string
     clean: boolean
     columns?: number
+    region: "body" | "head" | "around"
+    padding: number
   }
   animation?: {
     mode: CharacterAnimationMode

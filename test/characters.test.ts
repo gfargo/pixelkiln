@@ -1797,6 +1797,34 @@ describe("paperdoll layer", () => {
     expect(settled.actionable).toEqual([])
   })
 
+  it("pads the sheet and widens the mask for a hat, and returns layers on a grown canvas", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const plain = await withSources(await layeredManifest(), client, provider)
+    expect(plain.specs.find((s) => s.assetId === "mira.armor")!.character!.layer).toMatchObject({ region: "body", padding: 0 })
+    await submit(provider, plain.loaded, (await plain.plan()).actionable, plain.lock, plain.lockPath, { spacingMs: 0 })
+    const body = client.inpaints.at(-1)!
+
+    const p = await openProject(await layeredManifest({ region: "head", padding: 4 }), { env: false })
+    expect(p.specs.find((s) => s.assetId === "mira.armor")!.character!.layer).toMatchObject({ region: "head", padding: 4 })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const hat = client.inpaints.at(-1)!
+    expect(hat.width * hat.height).toBeGreaterThan(body.width * body.height)
+    // The cell's top-left corner is empty padding: black for a body layer's mask, white for a head layer's.
+    expect(decodePng(body.mask).pixels[0]).toBe(0)
+    expect(decodePng(hat.mask).pixels[0]).toBe(255)
+
+    const jobId = p.lock.entries["cast/mira.armor"]!.jobId!
+    client.completeInpaint(jobId, painted(hat))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const entry = p.lock.entries["cast/mira.armor"]!
+    const layer = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
+    const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+    expect(layer).toMatchObject({ width: source.width + 8, height: source.height + 8 })
+    expect(openProject(await layeredManifest({ region: "around" }), { env: false }).then((q) => q.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.padding)).resolves.toBe(8)
+  })
+
   it("goes stale when any source is regenerated", async () => {
     const file = await layeredManifest()
     const client = fakeClient()

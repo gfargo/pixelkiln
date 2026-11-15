@@ -276,4 +276,54 @@ describe("layer sheets", () => {
     expect(buildLayerSheet(sources, { maxSide: 512, minSide: 1, mask: built.mask }).mask.equals(built.mask)).toBe(true)
     expect(() => buildLayerSheet(sources, { maxSide: 512, minSide: 1, mask: draw(["#"]) })).toThrow(/the mask is 1x1; this layer's sheet is 15x10/)
   })
+
+  it("masks the head with the space above it, or everything below the neck with the space beside it", () => {
+    const figure = draw(FIGURE)
+    const head = bodyMask(figure, undefined, "head")
+    expect(pixel(head, 0, 0)).toEqual([255, 255, 255, 255])
+    expect(pixel(head, 3, 3)).toEqual([255, 255, 255, 255])
+    expect(pixel(head, 3, 4)).toEqual([0, 0, 0, 255])
+    const around = bodyMask(figure, undefined, "around")
+    expect(pixel(around, 0, 6)).toEqual([255, 255, 255, 255])
+    expect(pixel(around, 3, 1)).toEqual([0, 0, 0, 255])
+  })
+
+  it("pads every cell and returns each layer on a canvas grown by the padding", () => {
+    const built = buildLayerSheet([sources[0]!], { maxSide: 512, minSide: 1, padding: 3, region: "head" })
+    expect(built.frames[0]).toMatchObject({ padding: 3, offsetX: -2, offsetY: -3, cell: { width: 11, height: 16 } })
+    // A hat: a solid block in the padding above the head, which the source canvas has no room for.
+    const result = decodePng(built.keyed)
+    for (let y = 0; y < 3; y++) for (let x = 2; x < 9; x++) Buffer.from(LEATHER).copy(result.pixels, (y * result.width + x) * 4)
+    const [layer] = cutLayerFrames(encodeRgbaPng(result.width, result.height, result.pixels), built, { region: "head" })
+    expect(decodePng(layer!)).toMatchObject({ width: 13, height: 16 })
+    // Sheet (3,0) is frame (1,-3), which is (4,0) on the canvas grown by 3.
+    expect(pixel(layer!, 4, 0)).toEqual(LEATHER)
+    expect(pixel(layer!, 2, 0)).toEqual(CLEAR)
+  })
+
+  it("tidies an item layer: outline scribbles, stray specks and dark blots go, the item stays", () => {
+    const INK4: Pixel = [0, 0, 0, 255]
+    const cell = { x: 0, y: 0, width: 12, height: 8 }
+    const keyed = draw(Array.from({ length: 8 }, () => "............"))
+    const mask = draw(Array.from({ length: 8 }, () => "oooooooooooo"), { o: [255, 255, 255, 255] })
+    const result = draw([
+      "............",
+      ".####.....#.",   // the item's outline, and a lone scribble pixel
+      ".#ll#.....#.",
+      ".#ll#.......",
+      ".####..##...",   // a 2x2 dark blot with no colour in it
+      ".......##...",
+      "...l........",   // a stray coloured speck
+      "............",
+    ], { l: LEATHER, "#": INK4 })
+    const frames = [{ assetId: "a", width: 12, height: 8, offsetX: 0, offsetY: 0, cell }]
+    const [tidy] = cutLayerFrames(result, { keyed, mask, frames }, { region: "around" })
+    expect(pixel(tidy!, 2, 2)).toEqual(LEATHER)
+    expect(pixel(tidy!, 1, 1)).toEqual(INK4)
+    expect(pixel(tidy!, 10, 1)).toEqual(CLEAR)
+    expect(pixel(tidy!, 7, 4)).toEqual(CLEAR)
+    expect(pixel(tidy!, 3, 6)).toEqual(CLEAR)
+    const [raw] = cutLayerFrames(result, { keyed, mask, frames })
+    expect(pixel(raw!, 10, 1)).toEqual(INK4)
+  })
 })
