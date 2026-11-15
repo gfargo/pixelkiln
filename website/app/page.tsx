@@ -491,6 +491,88 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="cast-section paperdoll-section" id="paperdoll">
+          <div className="shell">
+            <figure className="cast-strip" aria-label="A base, three layers, and the dressed character">
+              <div className="cast-strip-row">
+                <Image src="/sprites/paperdoll/stack-south.png" alt="A cyan mannequin, a leather outfit with no body in it, a feathered hat, a sword, and the four stacked into a dressed ranger" width={476} height={92} unoptimized />
+                <SpriteLoop strip="/sprites/paperdoll/dressed-8dir.png" width={764} frames={8} cell={92} stride={96} scale={2} seconds={2.4} label="The dressed character turning through its eight directions" />
+              </div>
+              <figcaption>Left to right: the base with its skin keyed cyan, an outfit layer, a hat layer, a sword layer, and all four drawn in order. Each layer is its own asset and its own PNG per frame.</figcaption>
+            </figure>
+            <div className="cast-grid">
+              <div className="section-heading cast-copy">
+                <h2>One bare character.<br />Every outfit is a layer.</h2>
+                <p className="section-deck">
+                  A <code>layer</code> asset draws its prompt over frames you
+                  already have and returns only what it added: a transparent
+                  PNG for every frame of every animation, each one lined up
+                  with the frame it was painted on. Outfits, hats and held
+                  items are separate layers, so a game can mix them.
+                </p>
+                <p className="section-deck">
+                  Every frame goes onto one sheet and is repainted in one
+                  masked inpaint, which is what keeps an outfit the same
+                  across a walk and across eight directions. The skin is
+                  keyed cyan first so it can be told from the clothes
+                  afterwards, and part of every figure is masked off so the
+                  poses cannot move. Each step leaves its file on disk, and a
+                  mask you paint yourself replaces the computed one.
+                </p>
+                <ul className="check-list cast-list">
+                  <li><span>✓</span> 56 frames dressed by one request: 8 rotations and a walk in 8 directions, for 25 generations.</li>
+                  <li><span>✓</span> <code>region</code> picks what may change: the body for clothing, the head for hats, the space around the body for held items.</li>
+                  <li><span>✓</span> <code>clean</code> on a loop strips the ghost pixels an animation model leaves, at download, for nothing: 608 stray pixels down to 2 on this walk.</li>
+                  <li><span>✓</span> Regenerate the base or a loop and its layers go stale, like everything else drawn from it.</li>
+                </ul>
+                <div className="review-links">
+                  <TrackedLink className="text-link" id="paperdoll_guide_docs" section="paperdoll" href="/docs/paperdoll">
+                    Read the paperdoll guide
+                  </TrackedLink>
+                  <TrackedLink className="text-link" id="paperdoll_limits_docs" section="paperdoll" href="/docs/paperdoll/cost-and-limits">
+                    What it costs and where it stops
+                  </TrackedLink>
+                </div>
+              </div>
+              <div className="cast-visuals">
+                <div className="lock-visual cast-manifest" aria-label="A base, a cleaned walk, and two layers in the manifest">
+                  <div className="lock-label">pixelkiln.manifest.json</div>
+                  <CodeBody language="json" code={`
+"hero": {
+  "prompt": "bald bare humanoid base body, plain skin" },
+"hero.walk": {
+  "animation": { "of": "hero", "template": "walking",
+    "clean": true, "directions": ["south", "east"] } },
+
+"hero.leather": {
+  "prompt": "Dress every masked cyan mannequin in the
+    same leather ranger armour. Keep the skin cyan.",
+  "layer": { "of": ["hero", "hero.walk.south",
+    "hero.walk.east"] } },
+"hero.hat": {
+  "prompt": "The same feathered ranger hat on every head.",
+  "layer": { "of": ["hero", "hero.walk.south",
+    "hero.walk.east"], "region": "head", "padding": 10 } }
+`} />
+                  <div className="lock-callout top"><span>◇</span> one request per layer</div>
+                  <div className="lock-callout bottom"><span>◇</span> one PNG per frame</div>
+                </div>
+                <figure className="cast-loop" aria-label="The same walk as the base and with layers added">
+                  <SpriteCarousel
+                    slides={[
+                      { id: "outfit, hat and sword", label: "outfit, hat and sword", strip: "/sprites/paperdoll/walk-east-dressed.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "outfit and hat", label: "outfit and hat", strip: "/sprites/paperdoll/walk-south-dressed.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "outfit", label: "outfit", strip: "/sprites/paperdoll/walk-east-outfit.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "base", label: "base", strip: "/sprites/paperdoll/walk-east-mannequin.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                    ]}
+                  />
+                  <figcaption>One template walk, drawn once, then layered. The outfit, hat and sword are three assets generated separately and drawn over the same six frames. A held item is the least reliable layer: on the south-facing walk the sword changed hands in two of six frames, so that slide leaves it out.</figcaption>
+                </figure>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="effects-section" id="effects">
           <div className="shell">
             <div className="section-heading split-heading">

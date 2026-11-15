@@ -23,6 +23,7 @@ provider you are using. These Markdown files also render at
 | Guide | Use it for |
 |---|---|
 | [Characters](./CHARACTERS.md) | A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, portraits, outfit transfer, the four PixelLab engines, and what each costs. |
+| [Paperdoll layers](./PAPERDOLL.md) | One bare character and any number of outfits, hats and held items as transparent layers that match every frame: how it works, a base built for it, masks, cleaning loops, measured cost, and limits. |
 | [Generators](./GENERATORS.md) | Choose between still, tile, character, hosted animation, and ComfyUI frame-set workflows. |
 | [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and native-grid recovery. |
 | [Controlled asset revisions](./REVISIONS.md) | Image-to-image and inpaint edits, PixelLab palette cleanup, animation, skeleton posing, and interpolation from a parent asset; masks, approval gates, side-by-side review, and ComfyUI bindings. |

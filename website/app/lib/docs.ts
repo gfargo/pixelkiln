@@ -88,9 +88,17 @@ export const docs: DocEntry[] = [
   {
     slug: "characters",
     title: "Characters",
-    description: "A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, portraits, outfit transfer, and what each PixelLab engine costs.",
+    description: "A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, portraits, outfit transfer, paperdoll layers, and what each PixelLab engine costs.",
     file: "docs/CHARACTERS.md",
     group: "Guides",
+  },
+  {
+    slug: "paperdoll",
+    title: "Paperdoll layers",
+    description: "One bare character and any number of outfits, hats and held items as transparent layers that match every frame of every animation.",
+    file: "docs/PAPERDOLL.md",
+    group: "Guides",
+    split: 2,
   },
   {
     slug: "generators",

@@ -14,6 +14,7 @@ export type CtaSection =
   | "review"
   | "gallery"
   | "characters"
+  | "paperdoll"
   | "effects"
   | "provider_updates"
   | "safety"
