@@ -373,6 +373,14 @@ export async function submit(
             referenceSha256: spec.character.outfit!.reference.sha256,
           }
         : null,
+      layer: spec.character?.kind === "layer"
+        ? {
+            sources: spec.character.layer!.sources.map((source) => ({
+              assetId: source.assetId,
+              sha256: mirrorSourceHash(lock.entries[lockKey(source.spec.styleId, source.spec.assetId)] ?? { outputs: [] }),
+            })),
+          }
+        : undefined,
       terrainConnect: spec.terrainConnect ? terrainConnect : undefined,
       motionShare: motionLeader
         ? { sourceAssetId: motionLeader.assetId, animationGroupId: motionGroup?.animationGroupId ?? null }
@@ -424,7 +432,18 @@ export async function submit(
             path: currentEntryOutputPath(parentEntry, spec.character!.parentSpec!, index),
             role: output.role,
           }))
-        : undefined
+        : spec.character?.kind === "layer"
+          // Every frame of every source, in `of` order; requireRevisionReady proved each one downloaded.
+          ? spec.character.layer!.sources.flatMap((source) => {
+              const sourceEntry = lock.entries[lockKey(source.spec.styleId, source.spec.assetId)]!
+              return sourceEntry.outputs.map((output, index) => ({
+                path: currentEntryOutputPath(sourceEntry, source.spec, index),
+                role: output.role,
+                assetId: source.assetId,
+                still: source.spec.character?.kind !== "animation",
+              }))
+            })
+          : undefined
       const referenceSourceImageId = ownedReferenceImageId(spec, lock, provider.id)
       const { jobId, metadata } = await provider.submit(spec, refs, {
         ...(previousJobId ? { previousJobId } : {}),

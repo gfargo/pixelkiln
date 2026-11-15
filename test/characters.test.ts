@@ -13,7 +13,7 @@ import { fetchAssets, pushTags } from "../src/pipeline/fetch.ts"
 import { packStyle } from "../src/pipeline/pack.ts"
 import { renderGodotSpriteFrames } from "../src/pipeline/sheet-formats.ts"
 import { openProject } from "../src/project.ts"
-import { encodeRgbaPng } from "../src/png.ts"
+import { decodePng, encodeRgbaPng } from "../src/png.ts"
 import { upsert } from "../src/lock.ts"
 import { sha256File } from "../src/hash.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
@@ -940,6 +940,26 @@ function fakeClient() {
       baseJobs.set(jobId, "processing")
       return { background_job_id: jobId, status: "processing", usage: null }
     },
+    inpaints: [] as { description: string; image: Buffer; mask: Buffer; width: number; height: number; noBackground?: boolean }[],
+    async inpaintV3(args: { description: string; image: { base64: string }; maskImage: { base64: string }; width: number; height: number; noBackground?: boolean }) {
+      const jobId = `inpaint-job-${++counter}`
+      client.calls.push(`inpaint:${args.width}x${args.height}`)
+      client.inpaints.push({
+        description: args.description,
+        image: Buffer.from(args.image.base64, "base64"),
+        mask: Buffer.from(args.maskImage.base64, "base64"),
+        width: args.width,
+        height: args.height,
+        noBackground: args.noBackground,
+      })
+      baseJobs.set(jobId, "processing")
+      return { background_job_id: jobId, status: "processing" }
+    },
+    /** Test hook: land an inpaint job with the image the provider "painted". */
+    completeInpaint(jobId: string, png: Buffer) {
+      baseJobResponse.set(jobId, { image: { type: "base64", base64: png.toString("base64") } })
+      baseJobs.set(jobId, "completed")
+    },
     /** Test hook: land an outfit job with `count` resulting frame images, inline as base64. */
     completeOutfit(jobId: string, count: number) {
       const images = Array.from({ length: count }, (_, i) => ({ type: "base64", base64: px(8, 60 + i).toString("base64"), width: 8, height: 8 }))
@@ -1662,5 +1682,164 @@ describe("packing a cast", () => {
     const tres = renderGodotSpriteFrames(atlas, { imageName: "cast-sheet.png" })
     expect(tres).toContain('"name": &"mira.fireman_spin",\n"speed": 10.0')
     expect(tres).toContain('"name": &"mira/south",\n"speed": 5.0')
+  })
+})
+
+describe("paperdoll layer", () => {
+  const LEATHER = [90, 60, 40, 255]
+
+  function layeredManifest(layer: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) {
+    return writeManifest({
+      assets: {
+        mira: { prompt: "small young woman" },
+        "mira.walk": { prompt: "walking forward", animation: { of: "mira", direction: "south", frames: 4, fps: 8 } },
+        "mira.armor": { prompt: "leather ranger armour", layer: { of: ["mira", "mira.walk"], ...layer } },
+        ...overrides,
+      },
+    })
+  }
+
+  /** Generates and downloads the base and its loop, leaving only the layer to plan. */
+  async function withSources(file: string, client: ReturnType<typeof fakeClient>, provider: PixelLabProvider) {
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "pixelkiln:cast/mira.walk", "south", 4)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    const entry = p.lock.entries["cast/mira.walk"]!
+    const spec = p.specs.find((candidate) => candidate.assetId === "mira.walk")
+    const state = await provider.poll(entry.reviewObjectId!, entry.generator, { spec, metadata: entry.providerMetadata?.pixellab })
+    if (state.status !== "review-set") throw new Error("the loop is not ready for review")
+    upsert(p.lock, "cast/mira.walk", { status: "selected", objectId: state.objectId, sourceUrl: state.sources[0]?.url ?? null, sourceUrls: state.sources })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    return openProject(file, { env: false })
+  }
+
+  /** What a provider would return: the keyed sheet with every masked pixel painted leather. */
+  function painted(sent: { image: Buffer; mask: Buffer }) {
+    const image = decodePng(sent.image)
+    const mask = decodePng(sent.mask)
+    const out = Buffer.from(image.pixels)
+    for (let i = 0; i < out.length; i += 4) if (mask.pixels[i] === 255) Buffer.from(LEATHER).copy(out, i)
+    return encodeRgbaPng(image.width, image.height, out)
+  }
+
+  it("resolves a layer over several assets, keeps the prompt unwrapped, and waits for its sources", async () => {
+    const p = await openProject(await layeredManifest(), { env: false })
+    const layer = p.specs.find((s) => s.assetId === "mira.armor")!
+    expect(layer.character).toMatchObject({ kind: "layer", parentAssetId: "mira" })
+    expect(layer.character!.layer!.sources.map((source) => source.assetId)).toEqual(["mira", "mira.walk"])
+    expect(layer.character!.layer!.clean).toBe(true)
+    expect(layer.prompt).toBe("leather ranger armour")
+    const plan = await p.plan()
+    expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira"])
+    expect(plan.items.find((i) => i.key === "cast/mira.armor")).toMatchObject({ state: "blocked" })
+  })
+
+  it("refuses a layer of itself, of a portrait, of a repeated asset, and in a style that is not a character's", async () => {
+    await expect(openProject(await layeredManifest({ of: ["mira", "mira.armor"] }), { env: false })).rejects.toThrow(/a layer cannot dress itself/)
+    await expect(openProject(await layeredManifest({ of: ["mira", "mira"] }), { env: false })).rejects.toThrow(/names an asset twice/)
+    await expect(openProject(await layeredManifest({ of: "mira.face" }, { "mira.face": { portrait: { of: "mira", size: 16 } } }), { env: false }))
+      .rejects.toThrow(/layer source "mira.face" is not a character base, state, or loop/)
+    await expect(openProject(await layeredManifest({}, { "mira.armor": { layer: { of: "mira" } } }), { env: false })).rejects.toThrow(/prompt/)
+  })
+
+  it("sends one keyed sheet and mask, then cuts one layer per source frame named after it", async () => {
+    const file = await layeredManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(file, client, provider)
+
+    const plan = await p.plan()
+    expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.armor"])
+    expect(plan.groups[0]!.cost).toBe(25)
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(p.lock.entries["cast/mira.armor"]).toMatchObject({ status: "processing", error: null })
+    const sources = p.lock.entries["cast/mira"]!.outputs.length + p.lock.entries["cast/mira.walk"]!.outputs.length
+    const sent = client.inpaints.at(-1)!
+    expect(sent.description).toBe("leather ranger armour")
+    expect(sent.noBackground).toBe(true)
+    expect(decodePng(sent.image)).toMatchObject({ width: sent.width, height: sent.height })
+    expect(decodePng(sent.mask)).toMatchObject({ width: sent.width, height: sent.height })
+    expect(Math.min(sent.width, sent.height)).toBeGreaterThanOrEqual(32)
+
+    const work = path.join(dir, ".pixelkiln", "layers", "cast", "mira.armor")
+    for (const name of ["sheet.png", "keyed.png", "mask.png", "layout.json"]) expect(existsSync(path.join(work, name))).toBe(true)
+    expect((await readFile(path.join(work, "keyed.png"))).equals(sent.image)).toBe(true)
+
+    const jobId = p.lock.entries["cast/mira.armor"]!.jobId!
+    client.completeInpaint(jobId, painted(sent))
+    client.setJobUsage(jobId, { type: "generations", generations: 10 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.armor"]).toMatchObject({ status: "selected", billed: { amount: 10, unit: "generations" } })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    const entry = p.lock.entries["cast/mira.armor"]!
+    expect(entry.status).toBe("downloaded")
+    expect(entry.outputs).toHaveLength(sources)
+    expect(entry.outputs[0]!.role).toBe("mira.south")
+    expect(entry.outputs.at(-1)!.role).toBe("mira.walk.frame-03")
+    expect(entry.layer!.sources.map((source) => source.assetId)).toEqual(["mira", "mira.walk"])
+    expect(existsSync(path.join(work, "result.png"))).toBe(true)
+
+    // Each layer frame is its source frame's size, leather below the neck and clear above it.
+    const first = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
+    const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+    expect(first).toMatchObject({ width: source.width, height: source.height })
+    expect([...first.pixels.subarray(0, 4)]).toEqual([0, 0, 0, 0])
+    expect([...first.pixels.subarray(first.pixels.length - 4)]).toEqual(LEATHER)
+
+    const settled = await (await openProject(file, { env: false })).plan()
+    expect(settled.actionable).toEqual([])
+  })
+
+  it("goes stale when any source is regenerated", async () => {
+    const file = await layeredManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(file, client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const jobId = p.lock.entries["cast/mira.armor"]!.jobId!
+    client.completeInpaint(jobId, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    // A regenerated loop: new bytes on disk, and the lock records them.
+    const walk = p.lock.entries["cast/mira.walk"]!
+    const redrawn = path.resolve(dir, walk.outputs[0]!.path)
+    await writeFile(redrawn, px(8, 77))
+    upsert(p.lock, "cast/mira.walk", {
+      outputs: await Promise.all(walk.outputs.map(async (output, index) => (index === 0 ? { ...output, sha256: await sha256File(redrawn) } : output))),
+    })
+    const plan = await p.plan()
+    expect(plan.items.find((i) => i.key === "cast/mira.armor")).toMatchObject({
+      state: "stale",
+      reason: expect.stringContaining("layer source mira.walk changed"),
+    })
+  })
+
+  it("uses a supplied mask in place of the computed one, and refuses one of the wrong size", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(await layeredManifest(), client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const { width, height } = client.inpaints.at(-1)!
+
+    const pixels = Buffer.alloc(width * height * 4, 255)
+    for (let i = 0; i < pixels.length; i += 4) if (i >= 16) pixels.fill(0, i, i + 3)
+    const mask = encodeRgbaPng(width, height, pixels)
+    await writeFile(path.join(dir, "armor-mask.png"), mask)
+    let masked = await openProject(await layeredManifest({ mask: "armor-mask.png" }), { env: false })
+    await submit(provider, masked.loaded, (await masked.plan()).actionable, masked.lock, masked.lockPath, { spacingMs: 0 })
+    expect(client.inpaints.at(-1)!.mask.equals(mask)).toBe(true)
+
+    await writeFile(path.join(dir, "armor-mask.png"), px(8, 255))
+    masked = await openProject(await layeredManifest({ mask: "armor-mask.png" }), { env: false })
+    await submit(provider, masked.loaded, (await masked.plan()).actionable, masked.lock, masked.lockPath, { spacingMs: 0 })
+    expect(masked.lock.entries["cast/mira.armor"]).toMatchObject({ status: "failed", error: expect.stringContaining("the mask is 8x8") })
   })
 })

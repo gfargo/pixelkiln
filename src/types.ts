@@ -767,6 +767,41 @@ export const CharacterOutfitSchema = z
   .strict()
 export type CharacterOutfit = z.infer<typeof CharacterOutfitSchema>
 
+/**
+ * A paperdoll layer: the asset's prompt, drawn as clothing over existing
+ * frames and returned as transparent PNGs that sit on top of them. Every
+ * frame of every `of` asset is repainted in one inpaint, on one sheet, which
+ * is what keeps the outfit the same from frame to frame. See
+ * `src/paperdoll.ts` for the steps and docs/CHARACTERS.md for the workflow.
+ */
+export const CharacterLayerSchema = z
+  .object({
+    /** The assets to dress, in the same style: a base, its states, its loops. Their frames share one sheet, in this order. */
+    of: z.union([z.string().min(1), z.array(z.string().min(1)).min(1).max(64)]),
+    /**
+     * Manifest-relative black-and-white PNG the size of the sheet, replacing
+     * the computed mask (white below each figure's neck). The escape hatch for
+     * hair, hats and raised arms, where the neck is not the narrowest row.
+     */
+    mask: z.string().min(1).optional(),
+    /** Manifest-relative PNG the size of the sheet, replacing the computed keyed sheet. */
+    keyed: z.string().min(1).optional(),
+    /** The colours that are skin. Omit on a bare base, where everything that is not outline is skin. */
+    skin: z.array(HexColorSchema).min(1).max(64).optional(),
+    /** The stand-in colour skin is painted before the provider sees it. Default cyan. */
+    key: HexColorSchema.optional(),
+    /**
+     * Remove animation ghosts from the loops before dressing them, judged
+     * against the stills among `of` (bases and states). Default true; it has
+     * nothing to judge against, and is skipped, when `of` holds no still.
+     */
+    clean: z.boolean().optional(),
+    /** Sheet columns. Chosen to fit the provider's limit in the smallest area when omitted. */
+    columns: z.number().int().min(1).max(64).optional(),
+  })
+  .strict()
+export type CharacterLayer = z.infer<typeof CharacterLayerSchema>
+
 /** A loop of one character in one direction. One asset per direction. */
 export const CharacterAnimationSchema = z
   .object({
@@ -802,6 +837,14 @@ export const CharacterAnimationSchema = z
     fps: z.number().int().min(1).max(60).default(8),
     /** v3 only: keep the resting pose as frame 0, so `frames` generated frames land as `frames + 1` files. */
     keepFirstFrame: z.boolean().default(true),
+    /**
+     * `character` loops: strip the ghost pixels an animation model leaves
+     * around a figure (pale arcs beside the head, fragments off a limb) from
+     * each frame as it is downloaded, judged against the parent's rotations.
+     * Applied to the downloaded bytes, so turning it on or off re-processes
+     * the frames without generating them again.
+     */
+    clean: z.boolean().optional(),
     /**
      * `template` when a template is named, otherwise `v3`; `skeleton-v3`
      * poses a template with PixelLab's skeleton model instead, or, with no
@@ -918,7 +961,7 @@ export interface ResolvedStyleAnchor {
 
 /** How a resolved spec describes its place in a character family. */
 export interface ResolvedCharacter {
-  kind: "base" | "state" | "animation" | "portrait" | "outfit"
+  kind: "base" | "state" | "animation" | "portrait" | "outfit" | "layer"
   /** Creation engine for a base; states inherit the parent's. */
   mode: CharacterMode
   /** Rotations a base or state has. */
@@ -964,6 +1007,17 @@ export interface ResolvedCharacter {
     reference: ResolvedReferenceImage
     additionalInstructions?: string
   }
+  /** For a layer: the assets whose frames it dresses, and how the sheet is prepared. */
+  layer?: {
+    sources: Array<{ assetId: string; spec: ResolvedSpec }>
+    /** Absolute path and hash of a mask the author supplied; null hash while the file does not exist. */
+    mask?: { path: string; sha256: string | null }
+    keyed?: { path: string; sha256: string | null }
+    skin?: string[]
+    key?: string
+    clean: boolean
+    columns?: number
+  }
   animation?: {
     mode: CharacterAnimationMode
     template?: string
@@ -972,6 +1026,8 @@ export interface ResolvedCharacter {
     frames: number
     fps: number
     keepFirstFrame: boolean
+    /** Strip animation ghosts from each frame at download, judged against the parent's rotations. */
+    clean?: boolean
     /** v3: the pose to start from, and the pose to reach. */
     startFrame?: ResolvedReferenceImage
     endFrame?: ResolvedReferenceImage
@@ -1946,7 +2002,7 @@ export const AssetDeriveSchema = z
     from: z.string().min(1).optional(),
     /** A committed PNG, relative to the manifest, as the input. */
     file: z.string().min(1).optional(),
-    transform: z.enum(["recolor", "palette-snap", "scale"]),
+    transform: z.enum(["recolor", "palette-snap", "scale", "key-skin", "despeckle"]),
     /** recolor: exact replacements, `#rrggbb` to `#rrggbb`. Unmapped colors and every alpha value stay. */
     map: z.record(HexColorSchema, HexColorSchema).optional(),
     /** palette-snap: the closed palette every visible pixel moves to. */
@@ -1956,6 +2012,14 @@ export const AssetDeriveSchema = z
     height: z.number().int().min(1).max(4096).optional(),
     /** scale: `nearest` (default) keeps hard edges; `box` averages the covered pixels. */
     mode: z.enum(["nearest", "box"]).optional(),
+    /** key-skin: the colours that are skin; every pixel that is not outline when omitted. */
+    skin: z.array(HexColorSchema).min(1).max(64).optional(),
+    /** key-skin: the stand-in colour. Default cyan. */
+    key: HexColorSchema.optional(),
+    /** despeckle: committed PNGs, relative to the manifest, whose colours are known good (the character's stills). */
+    reference: z.array(z.string().min(1)).min(1).max(64).optional(),
+    /** key-skin: how far a pixel may sit from a `skin` colour. despeckle: how near a reference colour must be to vouch for a pixel. */
+    tolerance: z.number().min(0).max(442).optional(),
   })
   .strict()
   .superRefine((derive, context) => {
@@ -1968,8 +2032,10 @@ export const AssetDeriveSchema = z
       recolor: ["map"],
       "palette-snap": ["palette"],
       scale: ["width", "height", "mode"],
+      "key-skin": ["skin", "key", "tolerance"],
+      despeckle: ["reference", "tolerance"],
     }[derive.transform]
-    for (const field of ["map", "palette", "width", "height", "mode"] as const) {
+    for (const field of ["map", "palette", "width", "height", "mode", "skin", "key", "reference", "tolerance"] as const) {
       if (derive[field] !== undefined && !own.includes(field)) {
         issue(`${field} does not apply to ${derive.transform}`, field)
       }
@@ -1977,6 +2043,7 @@ export const AssetDeriveSchema = z
     if (derive.transform === "recolor" && !Object.keys(derive.map ?? {}).length) issue("recolor needs a non-empty map", "map")
     if (derive.transform === "palette-snap" && !derive.palette) issue("palette-snap needs a palette", "palette")
     if (derive.transform === "scale" && (!derive.width || !derive.height)) issue("scale needs width and height", "width")
+    if (derive.transform === "despeckle" && !derive.reference) issue("despeckle needs reference stills to judge colours against", "reference")
   })
 export type AssetDerive = z.infer<typeof AssetDeriveSchema>
 
@@ -2085,6 +2152,8 @@ export const AssetSchema = z
     portrait: CharacterPortraitSchema.optional(),
     /** `character` styles: this asset re-clothes an existing loop's frames with a reference outfit. */
     outfit: CharacterOutfitSchema.optional(),
+    /** `character` styles: this asset's prompt, drawn as a clothing layer over existing frames. See CharacterLayerSchema. */
+    layer: CharacterLayerSchema.optional(),
     /** `map` styles only: draw this object in the style of a scene image. See `MapSceneSchema`. */
     scene: MapSceneSchema.optional(),
     /** `vfx` styles only: the effect to render. See `AssetVfxSchema`. */
@@ -2207,7 +2276,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.derive && "derive", asset.external && "external", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene", asset.vfx && "vfx", asset.connect && "connect"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.derive && "derive", asset.external && "external", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.layer && "layer", asset.scene && "scene", asset.vfx && "vfx", asset.connect && "connect"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -2268,6 +2337,13 @@ export const AssetSchema = z
         code: z.ZodIssueCode.custom,
         message: "a concept image belongs on a base; a state, animation, mirror, portrait, or outfit takes its look from its parent",
         path: ["concept"],
+      })
+    }
+    if (asset.layer && (asset.reference || asset.concept)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "a layer is drawn over the frames it dresses; it takes no reference or concept image",
+        path: [asset.reference ? "reference" : "concept"],
       })
     }
     if (asset.concept && asset.reference) {
@@ -2340,6 +2416,12 @@ const LockOutputSchema = z.object({
  * and `restore` can reproduce the recorded hash from the raw bytes.
  */
 export const PostprocessSchema = z.object({
+  /**
+   * Ghost pixels were removed from each frame, judged against the rotations
+   * of this asset in the same style. Which bytes those rotations held is not
+   * recorded here: a regenerated parent already makes its loops stale.
+   */
+  despeckle: z.object({ of: z.string().min(1) }).optional(),
   palette: z
     .object({
       /** Canonical lowercase `#rrggbb` values, in manifest order. */
@@ -2540,6 +2622,17 @@ export const LockEntrySchema = z.object({
     .strict()
     .nullable()
     .default(null),
+  /**
+   * For a layer: each asset it dressed and a hash over that asset's output
+   * hashes when this was made. Tracked the way `outfit` is: the sources'
+   * current frame bytes are only in the lockfile.
+   */
+  layer: z
+    .object({
+      sources: z.array(z.object({ assetId: z.string().min(1), sha256: z.string().regex(/^[0-9a-f]{64}$/) }).strict()).min(1),
+    })
+    .strict()
+    .optional(),
   /**
    * For a connected terrain set: per side of this set, the set it shares
    * that terrain with and that set's provider id when this was submitted.
@@ -2782,6 +2875,11 @@ export interface ResolvedDerive {
   width?: number
   height?: number
   mode?: "nearest" | "box"
+  skin?: string[]
+  key?: string
+  tolerance?: number
+  /** despeckle: the stills, relative to the manifest, with each one's hash when it exists. */
+  reference?: Array<{ file: string; sha256: string | null }>
   source:
     | { kind: "asset"; assetId: string; spec: ResolvedSpec }
     | { kind: "file"; /** Relative to the manifest. */ file: string; sha256: string | null }

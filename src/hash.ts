@@ -173,6 +173,9 @@ export function specHash(
             animation: spec.character.animation
               ? {
                   ...spec.character.animation,
+                  // Applied to downloaded bytes and tracked by the lock's
+                  // `postprocess` record, so it is not part of what is generated.
+                  clean: undefined,
                   startFrame: spec.character.animation.startFrame?.sha256,
                   endFrame: spec.character.animation.endFrame?.sha256,
                 }
@@ -194,6 +197,20 @@ export function specHash(
             // compares those directly (like a mirror), so only the choice of
             // parent, the reference image's bytes, and any extra guidance
             // are identity here.
+            // A layer's sources' bytes are compared in the plan, like an
+            // outfit's; which assets, in which order, and how the sheet is
+            // prepared are identity here. The prompt is hashed with the spec.
+            layer: spec.character.layer
+              ? {
+                  of: spec.character.layer.sources.map((source) => source.assetId),
+                  mask: spec.character.layer.mask?.sha256,
+                  keyed: spec.character.layer.keyed?.sha256,
+                  skin: spec.character.layer.skin?.map(normalizeHex),
+                  key: spec.character.layer.key ? normalizeHex(spec.character.layer.key) : undefined,
+                  clean: spec.character.layer.clean,
+                  columns: spec.character.layer.columns,
+                }
+              : undefined,
             outfit: spec.character.outfit
               ? {
                   of: spec.character.parentAssetId,
@@ -263,6 +280,10 @@ export function specHash(
             width: spec.derive.width,
             height: spec.derive.height,
             mode: spec.derive.transform === "scale" ? spec.derive.mode ?? "nearest" : undefined,
+            skin: spec.derive.skin?.map(normalizeHex),
+            key: spec.derive.key ? normalizeHex(spec.derive.key) : undefined,
+            tolerance: spec.derive.tolerance,
+            reference: spec.derive.reference?.map((still) => still.sha256),
             from: spec.derive.source.kind === "asset" ? spec.derive.source.assetId : undefined,
             fileSha256: spec.derive.source.kind === "file" ? spec.derive.source.sha256 : undefined,
           }

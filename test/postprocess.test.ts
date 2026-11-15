@@ -297,3 +297,39 @@ describe("enforcePalette through the pipeline", () => {
     expect(existsSync(manifestPath)).toBe(true)
   })
 })
+
+describe("cleaning a loop", () => {
+  const SKIN = [200, 150, 110, 255]
+  const row = (pixels: number[][]) => encodeRgbaPng(pixels.length, 1, Buffer.from(pixels.flat()))
+  const still = row([SKIN, SKIN, SKIN, [0, 0, 0, 0]])
+  const ghosted = row([SKIN, SKIN, [249, 247, 248, 255], [0, 0, 0, 0]])
+  const loop = (clean: boolean | undefined, enforcePalette = false) => ({
+    palette: ["#c8966e", "#000000"],
+    enforcePalette,
+    character: { kind: "animation", parentAssetId: "hero", animation: { ...(clean === undefined ? {} : { clean }) } },
+  }) as never
+
+  it("is asked for by a loop with clean, named after the parent, and combines with a palette", () => {
+    expect(postprocessFor(loop(true))).toEqual({ despeckle: { of: "hero" } })
+    expect(postprocessFor(loop(false))).toBeUndefined()
+    expect(postprocessFor(loop(undefined))).toBeUndefined()
+    expect(Object.keys(postprocessFor(loop(true, true))!).sort()).toEqual(["despeckle", "palette"])
+    expect(postprocessFor({ palette: [], enforcePalette: false, character: { kind: "base", animation: undefined } } as never)).toBeUndefined()
+  })
+
+  it("makes a downloaded loop out of date when it is turned on or off", () => {
+    expect(postprocessCurrent({ postprocess: undefined }, loop(true))).toBe(false)
+    expect(postprocessCurrent({ postprocess: { despeckle: { of: "hero" } } }, loop(true))).toBe(true)
+    expect(postprocessCurrent({ postprocess: { despeckle: { of: "hero" } } }, loop(false))).toBe(false)
+    expect(samePostprocess({ despeckle: { of: "hero" } }, { despeckle: { of: "villain" } })).toBe(false)
+  })
+
+  it("removes ghosts against the stills, leaves a clean frame's bytes alone, and refuses to run without stills", () => {
+    const record = { despeckle: { of: "hero" } }
+    const cleaned = applyPostprocess(ghosted, MediaType.PNG, record, [still])
+    expect(cleaned).toMatchObject({ changed: true, removed: 1 })
+    expect(decodePng(cleaned.bytes).pixels[11]).toBe(0)
+    expect(applyPostprocess(still, MediaType.PNG, record, [still])).toEqual({ bytes: still, changed: false })
+    expect(() => applyPostprocess(ghosted, MediaType.PNG, record)).toThrow(/needs the rotations of hero/)
+  })
+})

@@ -6,6 +6,7 @@ import { sha256, sha256File } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import {
   expectedOutputPath,
+  currentEntryOutputPath,
   currentOutputPath,
   normalizeLockOutputPaths,
   portableOutputPath,
@@ -182,6 +183,21 @@ export async function fetchAssets(
       const wanted = postprocessFor(spec)
       const reapply = entry.status === "downloaded" && !postprocessCurrent(entry, spec)
       try {
+        // A loop that asks to be cleaned is judged against its parent's
+        // rotations as they are on disk now.
+        const reference: Buffer[] = []
+        if (wanted?.despeckle) {
+          const parentSpec = spec.character?.parentSpec
+          const parentEntry = parentSpec ? lock.entries[lockKey(parentSpec.styleId, parentSpec.assetId)] : undefined
+          if (!parentSpec || !parentEntry?.outputs.length) {
+            throw new Error(`cannot clean ${key}: ${wanted.despeckle.of} has no downloaded rotations to judge against`)
+          }
+          for (let index = 0; index < parentEntry.outputs.length; index++) {
+            const file = currentEntryOutputPath(parentEntry, parentSpec, index)
+            if (!existsSync(file)) throw new Error(`cannot clean ${key}: ${wanted.despeckle.of}'s rotation is missing on disk: ${file}`)
+            reference.push(await readFile(file))
+          }
+        }
         for (let index = 0; index < sources.length; index++) {
           const source = sources[index]!
           const recorded = entry.outputs.find((o) =>
@@ -315,12 +331,11 @@ export async function fetchAssets(
             // The provider's bytes are cached under their own hash so the
             // post-processing can be undone or redone later without a download.
             if (cacheDir) await cacheMedia(cacheDir, raw!, mediaType)
-            const processed = applyPostprocess(raw!, mediaType, wanted)
+            const processed = applyPostprocess(raw!, mediaType, wanted, reference)
             buf = processed.bytes
-            if (processed.changed) {
-              rawHash = sha256(raw!)
-              log(`  snapped ${path.relative(process.cwd(), target)} to ${wanted!.palette!.colors.length} colours`)
-            }
+            if (processed.changed) rawHash = sha256(raw!)
+            if (processed.removed) log(`  cleaned ${path.relative(process.cwd(), target)} (${processed.removed} ghost pixels)`)
+            if (processed.snapped) log(`  snapped ${path.relative(process.cwd(), target)} to ${wanted!.palette!.colors.length} colours`)
           }
           if (cacheDir) await cacheMedia(cacheDir, buf, mediaType)
           await mkdir(path.dirname(target), { recursive: true })

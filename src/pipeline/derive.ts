@@ -6,6 +6,7 @@ import { saveLock, upsert } from "../lock.ts"
 import { MediaType } from "../media.ts"
 import { currentEntryOutputPath, expectedOutputPath, portableOutputPath } from "../outputs.ts"
 import { normalizePalette, quantize } from "../palette.ts"
+import { despeckle, keySkin } from "../paperdoll.ts"
 import { decodePng, encodeRgbaPng, parseHex } from "../png.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedDerive, type ResolvedSpec } from "../types.ts"
 
@@ -95,11 +96,18 @@ export function scale(png: Buffer, width: number, height: number, mode: "nearest
   return encodeRgbaPng(width, height, out)
 }
 
-export function applyDerive(png: Buffer, derive: Pick<ResolvedDerive, "transform" | "map" | "palette" | "width" | "height" | "mode">): Buffer {
+export function applyDerive(
+  png: Buffer,
+  derive: Pick<ResolvedDerive, "transform" | "map" | "palette" | "width" | "height" | "mode" | "skin" | "key" | "tolerance">,
+  /** despeckle: the reference stills' bytes, read by the caller. */
+  reference: Buffer[] = [],
+): Buffer {
   switch (derive.transform) {
     case "recolor": return recolor(png, derive.map!)
     case "palette-snap": return paletteSnap(png, derive.palette!)
     case "scale": return scale(png, derive.width!, derive.height!, derive.mode)
+    case "key-skin": return keySkin(png, { skin: derive.skin, key: derive.key, tolerance: derive.tolerance })
+    case "despeckle": return despeckle(png, { reference, tolerance: derive.tolerance }).png
   }
 }
 
@@ -155,7 +163,13 @@ export async function deriveAsset(
   const source = await sourceFile(spec, lock)
   if ("notReady" in source) throw new Error(source.notReady)
 
-  const bytes = applyDerive(await readFile(source.file), derive)
+  const reference: Buffer[] = []
+  for (const still of derive.reference ?? []) {
+    const file = path.resolve(spec.root, still.file)
+    if (!existsSync(file)) throw new Error(`reference still ${still.file} does not exist`)
+    reference.push(await readFile(file))
+  }
+  const bytes = applyDerive(await readFile(source.file), derive, reference)
   const target = expectedOutputPath(spec, undefined, 0, 1, MediaType.PNG)
   await mkdir(path.dirname(target), { recursive: true })
   const tmp = `${target}.pixelkiln.tmp`

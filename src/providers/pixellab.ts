@@ -22,7 +22,8 @@ import {
 import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
 import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
-import { joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
+import { buildLayerSheet, cutLayerFrames, type LayerFrame } from "../paperdoll.ts"
+import { decodePng, joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
   CHARACTER_DIRECTIONS_8,
@@ -178,6 +179,13 @@ export function characterCost(spec: ResolvedSpec): number {
     // formula; `billed` reports the real amount once a job completes. The
     // floor itself fell from 20 to 10 in PixelLab's October 2026 Pro cut.
     return PRO_TIER_PRICES[0]
+  }
+  if (character.kind === "layer") {
+    // One /inpaint-v3 call over the whole sheet, priced by the sheet's
+    // canvas (10, 15 or 25). The sheet is cut to the frames' own opaque
+    // bounds, which are bytes the plan does not read, so this is the top
+    // tier: a ceiling for --budget. `billed` reports the real amount.
+    return PRO_TIER_PRICES[2]
   }
   if (character.mode === "standard") return 1
   if (character.mode === "v3") {
@@ -441,6 +449,29 @@ function decodeObjectAnimationJob(jobId: string): ObjectAnimationJob | null {
   return null
 }
 
+/** /inpaint-v3 takes 32 to 512px a side (docs/REVISIONS.md). */
+const LAYER_SHEET_MAX_SIDE = 512
+
+/** What submit records about a layer's sheet for the download step to cut against. */
+interface LayerLayout {
+  jobId: string
+  width: number
+  height: number
+  key?: string
+  keyedSha256: string
+  maskSha256: string
+  frames: LayerFrame[]
+}
+
+/**
+ * Where a layer's intermediate files live: `sheet.png` (the frames as they
+ * are, cleaned), `keyed.png` and `mask.png` (what the provider was sent),
+ * `result.png` (what it returned), and `layout.json`.
+ */
+export function layerWorkDir(spec: Pick<ResolvedSpec, "root" | "styleId" | "assetId">): string {
+  return path.join(spec.root, ".pixelkiln", "layers", spec.styleId, spec.assetId)
+}
+
 export class PixelLabProvider implements Provider {
   readonly id = "pixellab"
 
@@ -534,7 +565,7 @@ export class PixelLabProvider implements Provider {
    * the id is the filename, polling is an existence check, and downloading
    * is a file read.
    */
-  private static cacheDir(namespace: "pixflux" | "outfit" | "vfx" = "pixflux"): string {
+  private static cacheDir(namespace: "pixflux" | "outfit" | "vfx" | "layer" = "pixflux"): string {
     const dir = path.join(os.tmpdir(), `pixelkiln-${namespace}`)
     mkdirSync(dir, { recursive: true })
     return dir
@@ -1515,6 +1546,75 @@ export class PixelLabProvider implements Provider {
         },
       }
     }
+    if (character.kind === "layer") {
+      // Dresses frames PixelKiln already holds, like an outfit, but as one
+      // masked inpaint over a sheet of all of them (see src/paperdoll.ts).
+      const layer = character.layer!
+      const label = `${spec.styleId}/${spec.assetId}`
+      const outputs = context?.parentOutputs ?? []
+      if (!outputs.length) throw new Error(`${label}: its layer sources have no downloaded frames`)
+      const sources = outputs.map((output) => ({
+        assetId: output.assetId ?? character.parentAssetId!,
+        ...(output.role ? { role: output.role } : {}),
+        png: readFileSync(output.path),
+        still: output.still === true,
+      }))
+      const supplied = (name: string, file: { path: string; sha256: string | null } | undefined) => {
+        if (!file) return undefined
+        const bytes = readFileSync(file.path)
+        if (sha256(bytes) !== file.sha256) throw new Error(`${label}: layer ${name} changed after the manifest was resolved: ${file.path}`)
+        return bytes
+      }
+      const prepared = buildLayerSheet(sources, {
+        minSide: 32,
+        maxSide: LAYER_SHEET_MAX_SIDE,
+        columns: layer.columns,
+        key: layer.key,
+        skin: layer.skin,
+        reference: layer.clean ? sources.filter((source) => source.still).map((source) => source.png) : [],
+        mask: supplied("mask", layer.mask),
+        keyed: supplied("keyed sheet", layer.keyed),
+      })
+      // Every step's file is kept beside the project so a poor result can be
+      // traced to the step that caused it, and so the download step, which
+      // may run in another process, can cut the layer from the same inputs.
+      const dir = layerWorkDir(spec)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(path.join(dir, "sheet.png"), prepared.sheet)
+      writeFileSync(path.join(dir, "keyed.png"), prepared.keyed)
+      writeFileSync(path.join(dir, "mask.png"), prepared.mask)
+      const { width, height } = decodePng(prepared.keyed)
+      const res = await this.client.inpaintV3({
+        description: spec.prompt,
+        image: { base64: prepared.keyed.toString("base64"), format: "png" },
+        width,
+        height,
+        maskImage: { base64: prepared.mask.toString("base64"), format: "png" },
+        // The frames are transparent sprites; without this the masked area comes back on an opaque box.
+        noBackground: true,
+        seed: spec.seed,
+      })
+      const layout: LayerLayout = {
+        jobId: res.background_job_id,
+        width,
+        height,
+        ...(layer.key ? { key: layer.key } : {}),
+        keyedSha256: sha256(prepared.keyed),
+        maskSha256: sha256(prepared.mask),
+        frames: prepared.frames,
+      }
+      writeFileSync(path.join(dir, "layout.json"), `${JSON.stringify(layout, null, 2)}\n`)
+      return {
+        jobId: res.background_job_id,
+        metadata: {
+          character: {
+            kind: "layer",
+            backgroundJobId: res.background_job_id,
+            sheet: { width, height, frames: prepared.frames.length, cleanedPixels: prepared.cleaned },
+          },
+        },
+      }
+    }
     const parentId = context?.parentObjectId
     if (!parentId) {
       throw new Error(
@@ -1709,6 +1809,7 @@ export class PixelLabProvider implements Provider {
     const kind = (context?.metadata?.character as { kind?: string } | undefined)?.kind ?? context?.spec?.character?.kind
     if (kind === "portrait") return this.pollCharacterPortrait(jobId, context)
     if (kind === "outfit") return this.pollCharacterOutfit(jobId, context)
+    if (kind === "layer") return this.pollCharacterLayer(jobId, context)
     const character = await this.client.getCharacter(jobId)
     if (character.status === "failed") return { status: "failed", error: "character generation failed upstream" }
     if (character.status !== "completed" || !character.rotation_urls) return { status: "processing" }
@@ -1799,6 +1900,49 @@ export class PixelLabProvider implements Provider {
       sources,
       billed: await this.billedForJob(meta?.backgroundJobId),
     }
+  }
+
+  /**
+   * A layer's job is a plain /inpaint-v3 background job returning the
+   * repainted sheet. The layer is cut from it here, against the keyed sheet
+   * and mask that submit left in the layer's work folder, and each frame is
+   * cached under its source asset and role so fetch names the files after
+   * the frames they sit over.
+   */
+  private async pollCharacterLayer(jobId: string, context?: PollContext): Promise<JobState> {
+    const state = await this.pollRevision(jobId)
+    if (state.status !== "ready") return state
+    const spec = context?.spec
+    if (!spec) return { status: "failed", error: `layer job ${jobId} was polled without its spec, so its work folder cannot be found` }
+    const dir = layerWorkDir(spec)
+    const layoutFile = path.join(dir, "layout.json")
+    if (!existsSync(layoutFile)) {
+      return { status: "failed", error: `layer work folder is missing ${layoutFile}; the keyed sheet and mask this job was cut against are gone, so generate the layer again` }
+    }
+    const layout = JSON.parse(readFileSync(layoutFile, "utf8")) as LayerLayout
+    const keyed = readFileSync(path.join(dir, "keyed.png"))
+    const mask = readFileSync(path.join(dir, "mask.png"))
+    if (layout.jobId !== jobId || sha256(keyed) !== layout.keyedSha256 || sha256(mask) !== layout.maskSha256) {
+      return { status: "failed", error: `layer work folder ${dir} no longer holds the sheet job ${jobId} was submitted with; generate the layer again` }
+    }
+    const result = await this.download(state.sourceUrl!)
+    const size = decodePng(result)
+    if (size.width !== layout.width || size.height !== layout.height) {
+      return { status: "failed", error: `layer job ${jobId} returned a ${size.width}x${size.height} image for a ${layout.width}x${layout.height} sheet` }
+    }
+    writeFileSync(path.join(dir, "result.png"), result)
+    const frames = cutLayerFrames(result, { keyed, mask, frames: layout.frames }, { key: layout.key })
+    const cache = PixelLabProvider.cacheDir("layer")
+    const counters = new Map<string, number>()
+    const sources: OutputSource[] = frames.map((png, index) => {
+      const frame = layout.frames[index]!
+      const ordinal = counters.get(frame.assetId) ?? 0
+      counters.set(frame.assetId, ordinal + 1)
+      const file = path.join(cache, `${jobId}-${index}.png`)
+      writeFileSync(file, png)
+      return { url: `file://${file}`, role: `${frame.assetId}.${frame.role ?? String(ordinal).padStart(2, "0")}` }
+    })
+    return { status: "ready", objectId: jobId, sourceUrl: sources[0]!.url, sources, billed: state.billed }
   }
 
   /**

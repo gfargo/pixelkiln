@@ -107,7 +107,14 @@ export interface SubmitContext {
    * re-clothing a loop's frames). The pipeline proved the parent current
    * before calling.
    */
-  parentOutputs?: { path: string; role?: string }[]
+  parentOutputs?: {
+    path: string
+    role?: string
+    /** Which asset the file belongs to, when the spec reads several (a layer). */
+    assetId?: string
+    /** True for a base or state's rotation, false for a loop's frame. */
+    still?: boolean
+  }[]
   /**
    * For a terrain set that shares a terrain with another set (`connect`),
    * per side of this set: the other set's provider id, which of its

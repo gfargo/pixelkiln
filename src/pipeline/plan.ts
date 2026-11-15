@@ -8,7 +8,7 @@ import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type LockTerrainSettings, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
 import { inspectQualityProfile, type QualityProfileInspection } from "./quality-profile.ts"
-import { postprocessCurrent } from "./postprocess.ts"
+import { postprocessCurrent, postprocessFor } from "./postprocess.ts"
 import { inspectRevisionReadiness, recordedAnimationGroup } from "./revision.ts"
 
 export type PlanState =
@@ -279,6 +279,9 @@ export async function buildPlan(
       // need their own check, the same way a mirror's source does.
       state = "stale"
       reason = `outfit source ${spec.character.parentAssetId} changed; re-clothe the loop again`
+    } else if (spec.character?.kind === "layer" && changedLayerSource(spec, entry, lock)) {
+      state = "stale"
+      reason = `layer source ${changedLayerSource(spec, entry, lock)} changed; dress the frames again`
     } else if (changedConnection) {
       // Which set and terrain this connects to is in specHash above; the
       // other set's current generation is only in the lockfile.
@@ -356,15 +359,22 @@ export async function buildPlan(
       // A mirror has no raw bytes of its own; the source is snapped or
       // restored first and the mirror flipped from the result.
       state = "stale"
-      reason = "palette enforcement changed; flip the source again once it is refreshed (no generation cost)"
+      reason = "post-processing changed; flip the source again once it is refreshed (no generation cost)"
     } else if (!postprocessCurrent(entry, spec)) {
       // The bytes are PixelKiln's and the provider work stands; only the
       // post-processing the manifest asks for changed. Re-applying it needs
       // the raw bytes, not a generation.
       state = "recoverable"
-      reason = spec.enforcePalette
-        ? "palette enforcement turned on; run pixelkiln fetch to snap the file (no generation cost)"
-        : "palette enforcement turned off; run pixelkiln fetch to restore the provider's bytes (no generation cost)"
+      const wanted = postprocessFor(spec)
+      if (Boolean(wanted?.despeckle) !== Boolean(entry.postprocess?.despeckle)) {
+        reason = wanted?.despeckle
+          ? "frame cleaning turned on; run pixelkiln fetch to clean the frames (no generation cost)"
+          : "frame cleaning turned off; run pixelkiln fetch to restore the provider's bytes (no generation cost)"
+      } else {
+        reason = spec.enforcePalette
+          ? "palette enforcement turned on; run pixelkiln fetch to snap the file (no generation cost)"
+          : "palette enforcement turned off; run pixelkiln fetch to restore the provider's bytes (no generation cost)"
+      }
     } else {
       state = "ok"
       reason = "up to date"
@@ -470,4 +480,11 @@ export function summarize(plan: Plan): Record<PlanState, number> {
   } as Record<PlanState, number>
   for (const item of plan.items) counts[item.state]++
   return counts
+}
+
+/** The first of a layer's sources whose frames are not the ones it was made from, or undefined. */
+function changedLayerSource(spec: ResolvedSpec, entry: LockEntry, lock: Lock): string | undefined {
+  const recorded = new Map((entry.layer?.sources ?? []).map((source) => [source.assetId, source.sha256]))
+  return spec.character!.layer!.sources.find((source) =>
+    recorded.get(source.assetId) !== mirrorSourceHash(lock.entries[lockKey(spec.styleId, source.assetId)] ?? { outputs: [] }))?.assetId
 }

@@ -324,6 +324,7 @@ function dependencyAssetIds(asset: Asset | undefined, styleAnchors: string[] = [
       asset?.animation?.motionFrom,
       asset?.mirror,
       asset?.derive?.from,
+      ...[asset?.layer?.of ?? []].flat(),
       asset?.styleCharacter,
       ...(asset?.styleCharacter ? [] : styleAnchors),
     ].filter((id): id is string => Boolean(id)),
@@ -734,6 +735,9 @@ export async function resolveSpecs(
           `assets.${assetId}: ${asset.portrait ? "portrait" : "outfit"} needs a character style; "${styleId}" generates ${generator}`,
         )
       }
+      if (asset.layer && generator !== "character") {
+        throw new Error(`assets.${assetId}: layer needs a character style; "${styleId}" generates ${generator}`)
+      }
       if (asset.connect && generator !== "terrain") {
         throw new Error(`assets.${assetId}: connect needs a terrain style; "${styleId}" generates ${generator}`)
       }
@@ -1029,6 +1033,17 @@ export async function resolveSpecs(
           ...(derive.width ? { width: derive.width } : {}),
           ...(derive.height ? { height: derive.height } : {}),
           ...(derive.mode ? { mode: derive.mode } : {}),
+          ...(derive.skin ? { skin: derive.skin } : {}),
+          ...(derive.key ? { key: derive.key } : {}),
+          ...(derive.tolerance === undefined ? {} : { tolerance: derive.tolerance }),
+          ...(derive.reference
+            ? {
+                reference: await Promise.all(derive.reference.map(async (file) => {
+                  const absolute = path.resolve(root, file)
+                  return { file, sha256: existsSync(absolute) ? await sha256File(absolute) : null }
+                })),
+              }
+            : {}),
           source,
         }
         resolved.prompt = ""
@@ -1219,6 +1234,54 @@ export async function resolveSpecs(
         resolved.height = sourceSpec.height
         resolved.size = sourceSpec.size
         resolved.prompt = ""
+      }
+      if (asset.layer) {
+        // A layer dresses whole frame sets, several assets' worth on one
+        // sheet, so like an outfit it resolves its sources itself. What their
+        // frames hold is only in the lockfile; the plan compares that.
+        const ids = [asset.layer.of].flat()
+        if (new Set(ids).size !== ids.length) throw new Error(`assets.${assetId}: layer.of names an asset twice`)
+        const sources: Array<{ assetId: string; spec: ResolvedSpec }> = []
+        for (const id of ids) {
+          if (id === assetId) throw new Error(`assets.${assetId}: a layer cannot dress itself`)
+          const sourceSpec = await finalize(id)
+          if (!sourceSpec.character || sourceSpec.character.kind === "portrait" || sourceSpec.character.kind === "layer") {
+            throw new Error(`assets.${assetId}: layer source "${id}" is not a character base, state, or loop`)
+          }
+          sources.push({ assetId: id, spec: sourceSpec })
+        }
+        const first = sources[0]!.spec
+        const override = async (file: string | undefined) => {
+          if (!file) return undefined
+          const absolute = path.resolve(root, file)
+          return { path: absolute, sha256: existsSync(absolute) ? await sha256File(absolute) : null }
+        }
+        const mask = await override(asset.layer.mask)
+        const keyed = await override(asset.layer.keyed)
+        resolved.character = {
+          kind: "layer",
+          mode: first.character!.mode,
+          directions: first.character!.directions,
+          template: first.character!.template,
+          parentAssetId: sources[0]!.assetId,
+          parentSpec: first,
+          layer: {
+            sources,
+            ...(mask ? { mask } : {}),
+            ...(keyed ? { keyed } : {}),
+            ...(asset.layer.skin ? { skin: asset.layer.skin } : {}),
+            ...(asset.layer.key ? { key: asset.layer.key } : {}),
+            clean: asset.layer.clean ?? true,
+            ...(asset.layer.columns ? { columns: asset.layer.columns } : {}),
+          },
+        }
+        resolved.generator = first.generator
+        resolved.width = first.width
+        resolved.height = first.height
+        resolved.size = first.size
+        // The outfit in the author's words. The style's prefix and suffix
+        // describe the character, who is already on the sheet.
+        resolved.prompt = (asset.promptByStyle[styleId] ?? asset.prompt ?? "").trim()
       }
       if (asset.revision) {
         if (!activeProvider.supportsRevision?.(asset.revision.mode)) {
@@ -1829,6 +1892,7 @@ async function resolveCharacterShape(
       frames: asset.animation.frames ?? 8,
       fps: asset.animation.fps,
       keepFirstFrame: asset.animation.keepFirstFrame,
+      ...(asset.animation.clean ? { clean: true } : {}),
       ...(asset.animation.startFrame ? { startFrame: await pose(asset.animation.startFrame, "Animation start frame") } : {}),
       ...(asset.animation.endFrame ? { endFrame: await pose(asset.animation.endFrame, "Animation end frame") } : {}),
       ...(asset.animation.subject ? { subject: asset.animation.subject } : {}),
@@ -1893,6 +1957,9 @@ async function resolveObjectProShape(
             "describe the motion in the asset's own prompt instead",
         )
       }
+    }
+    if (asset.animation.clean !== undefined) {
+      throw new Error(`assets.${assetId}: animation.clean applies to character loops; objectPro loops are not cleaned`)
     }
     if (asset.animation.mode === "template" || asset.animation.mode === "skeleton-v3") {
       throw new Error(`assets.${assetId}: objectPro animations have no "${asset.animation.mode}" mode; use "v3" or "pro"`)

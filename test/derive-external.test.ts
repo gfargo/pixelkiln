@@ -7,7 +7,7 @@ import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { loadLock } from "../src/lock.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { importLocal } from "../src/pipeline/import.ts"
-import { paletteSnap, recolor, scale } from "../src/pipeline/derive.ts"
+import { applyDerive, paletteSnap, recolor, scale } from "../src/pipeline/derive.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import { FakeProvider } from "../src/providers/fake.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
@@ -25,6 +25,20 @@ describe("transforms", () => {
     const out = decodePng(recolor(png, { "#808080": "#c06020" })).pixels
     expect([...out.subarray(0, 4)]).toEqual([192, 96, 32, 200])
     expect([...out.subarray(4, 8)]).toEqual([10, 20, 30, 255])
+  })
+
+  it("key-skin and despeckle run as derive transforms", async () => {
+    const SKIN: [number, number, number, number] = [200, 150, 110, 255]
+    const still = rgba(3, 1, () => SKIN)
+    // Skin, skin, a ghost pixel, then open space for the ghost to be exposed to.
+    const ghosted = rgba(4, 1, (x) => (x === 3 ? [0, 0, 0, 0] : x === 2 ? [249, 247, 248, 255] : SKIN))
+    expect([...decodePng(applyDerive(still, { transform: "key-skin" })).pixels.subarray(0, 4)]).toEqual([30, 200, 200, 255])
+    const cleaned = decodePng(applyDerive(ghosted, { transform: "despeckle" }, [still])).pixels
+    expect([...cleaned.subarray(0, 4)]).toEqual(SKIN)
+    expect([...cleaned.subarray(8, 12)]).toEqual([0, 0, 0, 0])
+    expect(AssetSchema.safeParse({ derive: { from: "a", transform: "despeckle" } }).success).toBe(false)
+    expect(AssetSchema.safeParse({ derive: { from: "a", transform: "despeckle", reference: ["still.png"] } }).success).toBe(true)
+    expect(AssetSchema.safeParse({ derive: { from: "a", transform: "key-skin", reference: ["still.png"] } }).success).toBe(false)
   })
 
   it("palette-snap moves every visible pixel onto the palette", () => {

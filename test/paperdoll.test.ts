@@ -1,0 +1,279 @@
+import { describe, expect, it } from "vitest"
+import { bodyMask, buildLayerSheet, cutLayerFrames, despeckle, extractLayer, isKeyColor, keySkin, neckRow, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
+import { decodePng, encodeRgbaPng } from "../src/png.ts"
+
+type Pixel = [number, number, number, number]
+const CLEAR: Pixel = [0, 0, 0, 0]
+const INK: Pixel = [0, 0, 0, 255]
+const SKIN: Pixel = [200, 150, 110, 255]
+const HAZE: Pixel = [249, 247, 248, 255]
+
+/** Draws rows of characters: `.` clear, `#` outline, `s` skin, `w` haze, or any key of `extra`. */
+const draw = (rows: string[], extra: Record<string, Pixel> = {}) => {
+  const legend: Record<string, Pixel> = { ".": CLEAR, "#": INK, s: SKIN, w: HAZE, ...extra }
+  const width = rows[0]!.length
+  const buf = Buffer.alloc(width * rows.length * 4)
+  rows.forEach((row, y) => [...row].forEach((ch, x) => Buffer.from(legend[ch]!).copy(buf, (y * width + x) * 4)))
+  return encodeRgbaPng(width, rows.length, buf)
+}
+const pixel = (png: Buffer, x: number, y: number) => {
+  const image = decodePng(png)
+  return [...image.pixels.subarray((y * image.width + x) * 4, (y * image.width + x) * 4 + 4)]
+}
+
+// A 7x10 figure: a 3-wide head, a 1-wide neck on row 3 that opens into a 5-wide body.
+const FIGURE = [
+  "..###..",
+  "..#s#..",
+  "..###..",
+  "...s...",
+  ".##s##.",
+  ".#sss#.",
+  ".#sss#.",
+  ".#sss#.",
+  ".#sss#.",
+  ".#####.",
+]
+
+describe("sheets", () => {
+  it("packs frames left to right then down, and unpacks to the same bytes", () => {
+    const frames = [SKIN, INK, HAZE].map((p) => draw(["ss", "ss"], { s: p }))
+    const sheet = packSheet(frames, { columns: 2 })
+    expect(sheet.cells).toEqual([
+      { x: 0, y: 0, width: 2, height: 2 },
+      { x: 2, y: 0, width: 2, height: 2 },
+      { x: 0, y: 2, width: 2, height: 2 },
+    ])
+    expect(pixel(sheet.png, 2, 0)).toEqual(INK)
+    expect(pixel(sheet.png, 3, 3)).toEqual(CLEAR)
+    expect(unpackSheet(sheet.png, sheet.cells).map((f) => decodePng(f).pixels)).toEqual(frames.map((f) => decodePng(f).pixels))
+  })
+
+  it("cuts frames of different canvases to one cell", () => {
+    const small = draw([".s.", ".s."])
+    const large = draw([".....", "..s..", "..s..", "....."])
+    const sheet = packSheet([small, large], {
+      columns: 2,
+      crop: [{ x: 1, y: 0, width: 1, height: 2 }, { x: 2, y: 1, width: 1, height: 2 }],
+    })
+    expect(decodePng(sheet.png)).toMatchObject({ width: 2, height: 2 })
+    expect(pixel(sheet.png, 1, 1)).toEqual(SKIN)
+  })
+
+  it("refuses a crop that does not fit and frames cut to different sizes", () => {
+    const frame = draw(["ss", "ss"])
+    expect(() => packSheet([frame], { columns: 1, crop: { x: 1, y: 0, width: 2, height: 2 } })).toThrow(/does not fit/)
+    expect(() => packSheet([frame, draw(["sss"])], { columns: 2 })).toThrow(/cut to 3x1/)
+  })
+
+  it("finds the box that holds every frame's opaque pixels", () => {
+    expect(unionBounds([draw(["....", ".s..", "...."]), draw(["....", "....", "..s."])])).toEqual({ x: 1, y: 1, width: 2, height: 2 })
+  })
+})
+
+describe("keySkin", () => {
+  it("keys every non-outline pixel of a bare base and keeps its brightness", () => {
+    const keyed = keySkin(draw(["#s."]))
+    expect(pixel(keyed, 0, 0)).toEqual(INK)
+    expect(pixel(keyed, 1, 0)).toEqual([30, 200, 200, 255])
+    expect(pixel(keyed, 2, 0)).toEqual(CLEAR)
+    expect(isKeyColor(30, 200, 200)).toBe(true)
+  })
+
+  it("keys only the named skin colours when given them", () => {
+    const keyed = keySkin(draw(["sc"], { c: [60, 90, 200, 255] }), { skin: ["#c8966e"] })
+    expect(pixel(keyed, 0, 0)).toEqual([30, 200, 200, 255])
+    expect(pixel(keyed, 1, 0)).toEqual([60, 90, 200, 255])
+  })
+
+  it("reads shades of the key as key, and leather or steel as not", () => {
+    expect(isKeyColor(40, 170, 190)).toBe(true)
+    expect(isKeyColor(20, 90, 95)).toBe(true)
+    expect(isKeyColor(90, 60, 40)).toBe(false)
+    expect(isKeyColor(150, 170, 175)).toBe(false)
+  })
+
+  it("reads skin in deep shadow as key, and dark teal cloth as cloth", () => {
+    expect(isKeyColor(8, 55, 55)).toBe(true)
+    expect(isKeyColor(38, 55, 55)).toBe(false)
+  })
+})
+
+describe("bodyMask", () => {
+  it("finds the neck and whitens only the opaque pixels below it", () => {
+    const figure = draw(FIGURE)
+    expect(neckRow(decodePng(figure))).toBe(3)
+    const mask = bodyMask(figure)
+    expect(pixel(mask, 3, 1)).toEqual([0, 0, 0, 255])
+    expect(pixel(mask, 3, 3)).toEqual([0, 0, 0, 255])
+    expect(pixel(mask, 3, 6)).toEqual([255, 255, 255, 255])
+    expect(pixel(mask, 0, 6)).toEqual([0, 0, 0, 255])
+  })
+
+  it("masks each cell from its own neck and leaves an empty cell black", () => {
+    const sheet = packSheet([draw(FIGURE), draw(FIGURE.map(() => "......."))], { columns: 2 })
+    const white = (png: Buffer) => decodePng(png).pixels.filter((v, i) => i % 4 === 0 && v === 255).length
+    expect(white(bodyMask(sheet.png, sheet.cells))).toBe(white(bodyMask(draw(FIGURE))))
+  })
+})
+
+describe("extractLayer", () => {
+  it("keeps repainted pixels and drops key skin, unchanged pixels, and anything outside the mask", () => {
+    const LEATHER: Pixel = [90, 60, 40, 255]
+    const KEY: Pixel = [30, 200, 200, 255]
+    const legend = { k: KEY, l: LEATHER }
+    const keyed = draw(["kkkk"], legend)
+    const mask = draw(["#ooo"], { o: [255, 255, 255, 255] })
+    //                  outside mask ─┐┌─ repainted  ┌─ still skin (a shade of key)  ┌─ erased
+    const result = draw(["llx."], { ...legend, x: [40, 170, 190, 255] })
+    const layer = extractLayer(result, keyed, mask)
+    expect(pixel(layer, 0, 0)).toEqual(CLEAR)
+    expect(pixel(layer, 1, 0)).toEqual(LEATHER)
+    expect(pixel(layer, 2, 0)).toEqual(CLEAR)
+    expect(pixel(layer, 3, 0)).toEqual(CLEAR)
+  })
+
+  it("drops a masked outline pixel the provider left exactly as it was", () => {
+    const white = draw(["o"], { o: [255, 255, 255, 255] })
+    expect(pixel(extractLayer(draw(["#"]), draw(["#"]), white), 0, 0)).toEqual(CLEAR)
+  })
+
+  it("refuses a mask of another size", () => {
+    expect(() => extractLayer(draw(["ss"]), draw(["ss"]), draw(["s"]))).toThrow(/mask is 1x1/)
+  })
+})
+
+describe("despeckle", () => {
+  const reference = [draw(FIGURE)]
+
+  it("removes a haze sliver beside the head and the outline that framed it", () => {
+    const ghosted = draw([
+      "..###w.",
+      "..#s#w#",
+      "..###w.",
+      "...s...",
+      ".##s##.",
+      ".#sss#.",
+      ".#sss#.",
+      ".#sss#.",
+      ".#sss#.",
+      ".#####.",
+    ])
+    const cleaned = despeckle(ghosted, { reference })
+    expect(cleaned.removed).toBe(4)
+    expect(decodePng(cleaned.png).pixels).toEqual(decodePng(draw(FIGURE)).pixels)
+  })
+
+  it("peels foreign colours off the body's own edge", () => {
+    const fringed = draw(FIGURE.map((row, y) => (y === 6 ? "w#sss#." : row)).map((row, y) => (y === 6 ? ".wsss#." : row)))
+    const cleaned = despeckle(fringed, { reference })
+    expect(pixel(cleaned.png, 1, 6)).toEqual(CLEAR)
+    expect(pixel(cleaned.png, 2, 6)).toEqual(SKIN)
+  })
+
+  it("leaves a clean figure alone", () => {
+    expect(despeckle(draw(FIGURE), { reference }).removed).toBe(0)
+  })
+
+  it("keeps a thin detached part in the body's own colours, and drops it in a ghost's", () => {
+    const finger = ["sss#sss", "sss#...", "sss#..."]
+    expect(despeckle(draw(finger), { reference }).removed).toBe(0)
+    const ghost = despeckle(draw(finger.map((row, y) => (y === 0 ? "sss#www" : row))), { reference })
+    expect(pixel(ghost.png, 5, 0)).toEqual(CLEAR)
+    expect(pixel(ghost.png, 3, 0)).toEqual(INK)
+  })
+
+  it("keeps an eye sealed inside the head and drops a sealed ghost beside it", () => {
+    const EYE: Pixel = [200, 198, 187, 255]
+    const head = [
+      "#######...",
+      "#sssss#...",
+      "#s###s###.",
+      "#s#e#s#e#.",
+      "#s###s###.",
+      "#sssss#...",
+      "#######...",
+    ]
+    const still = draw(head.map((row) => row.slice(0, 7) + "..."), { e: EYE })
+    // One eye pixel is a large share of a fixture this small, so raise the bar a real sprite clears easily.
+    const cleaned = despeckle(draw(head, { e: EYE }), { reference: [still], minShare: 0.1 })
+    expect(pixel(cleaned.png, 3, 3)).toEqual(EYE)
+    expect(pixel(cleaned.png, 7, 3)).toEqual(CLEAR)
+    expect(pixel(cleaned.png, 8, 3)).toEqual(CLEAR)
+    expect(pixel(cleaned.png, 6, 3)).toEqual(INK)
+  })
+
+  it("leaves thick outline alone when nothing beside it was debris", () => {
+    const thick = ["#####", "#####", "##s##", "#sss#", "##s##", "#####"]
+    expect(despeckle(draw(thick), { reference: [draw(thick)] }).removed).toBe(0)
+  })
+})
+
+describe("layer sheets", () => {
+  const LEATHER: Pixel = [90, 60, 40, 255]
+  // The figure alone on its 7x10 canvas, and the same figure centred on a padded 11x14 one.
+  const still = draw(FIGURE)
+  const padded = draw(["...........", "...........", ...FIGURE.map((row) => `..${row}..`), "...........", "..........."])
+  const sources = [
+    { assetId: "hero", role: "south", png: still },
+    { assetId: "hero.walk", role: "frame-00", png: padded },
+    { assetId: "hero.walk", role: "frame-01", png: padded },
+  ]
+  const paint = (keyed: Buffer, mask: Buffer) => {
+    const image = decodePng(keyed)
+    const allowed = decodePng(mask)
+    const out = Buffer.from(image.pixels)
+    for (let i = 0; i < out.length; i += 4) if (allowed.pixels[i] === 255) Buffer.from(LEATHER).copy(out, i)
+    return encodeRgbaPng(image.width, image.height, out)
+  }
+
+  it("centres frames of different canvases on one cell and remembers where each came from", () => {
+    const built = buildLayerSheet(sources, { maxSide: 512, minSide: 1 })
+    expect(built.frames.map((frame) => frame.cell.width)).toEqual([5, 5, 5])
+    expect(built.frames.map((frame) => [frame.width, frame.height, frame.offsetX, frame.offsetY])).toEqual([
+      [7, 10, 1, 0],
+      [11, 14, 3, 2],
+      [11, 14, 3, 2],
+    ])
+    const cells = unpackSheet(built.sheet, built.frames.map((frame) => frame.cell))
+    expect(decodePng(cells[0]!).pixels).toEqual(decodePng(cells[1]!).pixels)
+  })
+
+  it("returns each layer on its source frame's own canvas", () => {
+    const built = buildLayerSheet(sources, { maxSide: 512, minSide: 1 })
+    const layers = cutLayerFrames(paint(built.keyed, built.mask), built)
+    expect(decodePng(layers[0]!)).toMatchObject({ width: 7, height: 10 })
+    expect(decodePng(layers[1]!)).toMatchObject({ width: 11, height: 14 })
+    // The body's top-left outline pixel: (1,4) on the still, (3,6) on the padded frame.
+    expect(pixel(layers[0]!, 1, 4)).toEqual(LEATHER)
+    expect(pixel(layers[1]!, 3, 6)).toEqual(LEATHER)
+    expect(pixel(layers[0]!, 3, 1)).toEqual(CLEAR)
+    expect(pixel(layers[1]!, 0, 0)).toEqual(CLEAR)
+  })
+
+  it("picks the smallest sheet that fits, pads up to the provider's floor, and says when nothing fits", () => {
+    const eight = Array.from({ length: 8 }, (_, index) => ({ assetId: "hero", role: String(index), png: still }))
+    const built = buildLayerSheet(eight, { maxSide: 20, minSide: 1 })
+    expect(decodePng(built.sheet)).toMatchObject({ width: 20, height: 20 })
+    expect(decodePng(buildLayerSheet([sources[0]!], { maxSide: 512 }).sheet)).toMatchObject({ width: 32, height: 32 })
+    expect(() => buildLayerSheet(eight, { maxSide: 12, minSide: 1 })).toThrow(/8 frames of 5x10 do not fit one 12px sheet/)
+    expect(() => buildLayerSheet(eight, { maxSide: 20, minSide: 1, columns: 8 })).toThrow(/make a 40x10 sheet/)
+  })
+
+  it("cleans loop frames against the stills and leaves the stills alone", () => {
+    const ghosted = draw(FIGURE.map((row, y) => (y === 1 ? "..#s#w." : row)))
+    const built = buildLayerSheet(
+      [{ assetId: "hero", role: "south", png: still }, { assetId: "hero.walk", role: "frame-00", png: ghosted }],
+      { maxSide: 512, minSide: 1, reference: [still] },
+    )
+    expect(built.cleaned).toBe(1)
+    const cells = unpackSheet(built.sheet, built.frames.map((frame) => frame.cell))
+    expect(decodePng(cells[1]!).pixels).toEqual(decodePng(cells[0]!).pixels)
+  })
+
+  it("takes a supplied mask of the sheet's size and refuses any other", () => {
+    const built = buildLayerSheet(sources, { maxSide: 512, minSide: 1 })
+    expect(buildLayerSheet(sources, { maxSide: 512, minSide: 1, mask: built.mask }).mask.equals(built.mask)).toBe(true)
+    expect(() => buildLayerSheet(sources, { maxSide: 512, minSide: 1, mask: draw(["#"]) })).toThrow(/the mask is 1x1; this layer's sheet is 15x10/)
+  })
+})

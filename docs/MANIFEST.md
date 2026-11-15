@@ -74,6 +74,7 @@ not merely a label edit.
 | `initImageStrength` | integer 1–999, default 300 | With `initImage`: how strongly the starting image holds. About 100 blends it with the prompt; 300 and up mostly returns it. |
 | `direction` | string | `pixflux` styles: the way the subject faces, one of the 8 compass directions. Weakly guiding. Part of the asset's identity only when set. |
 | `terrainReferences` | object | `terrain` styles: a PNG per terrain to take that terrain's look from, `{ "lower": "refs/water.png", "upper": "refs/sand.png", "transition": "refs/foam.png" }`, paths relative to the manifest. See [Terrain reference images](./TILES.md#terrain-reference-images). |
+| `layer` | object | `character` styles, PixelLab only: the prompt drawn as a clothing layer over existing frames, returned as transparent PNGs that sit on them. `{ "of": ["hero", "hero.walk.south"] }`. See [Paperdoll layers](./CHARACTERS.md#paperdoll-layers). |
 | `derive` | object | Made from existing pixels by one local transform, at no cost, with no provider. See [Derived and external assets](#derived-and-external-assets). |
 | `external` | object | Built by a script or tool outside pixelkiln; pixelkiln records and tracks the file but never builds it. See [Derived and external assets](#derived-and-external-assets). |
 | `vfx` | object | `vfx` styles, PixelLab only: the effect to render. `{ "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "sprite": "art/chars/hero.png", "fps": 12 }`; start from one `preset` or one `recipe` (a recipe JSON or a `.vfx.json` record), with optional `parts`, `sprite`, `fps`, and `name`. Or give a `description` (with optional `artist`: `lite` or `pro`, a local PNG `sprite`, `spriteFrames` and `spriteFps` when that PNG is an animation strip, and `name`) for PixelLab's paid VFX artist instead; it excludes `preset`, `recipe`, `parts`, and `fps`. Replaces `prompt` as the required field. See [`vfx`](./GENERATORS.md#vfx) and [Described effects](./GENERATORS.md#described-effects-the-paid-vfx-artist). |
@@ -472,6 +473,8 @@ transform is one of:
 | `recolor` | `map` | Replaces exact `#rrggbb` colors. Unmapped colors and every alpha value stay. |
 | `palette-snap` | `palette` (2 to 256 colors) | Moves every visible pixel to the nearest palette color. |
 | `scale` | `width`, `height`, `mode` | Resizes to the exact size. `nearest` (default) keeps hard edges; `box` averages the covered pixels, weighted by alpha. |
+| `key-skin` | `skin`, `key`, `tolerance` | Repaints skin in a stand-in colour (`key`, default cyan), keeping its shading. `skin` lists the skin colours and `tolerance` how far a pixel may sit from one; with no `skin`, every pixel that is not outline is keyed. |
+| `despeckle` | `reference` (1 to 64 PNGs), `tolerance` | Removes the ghost pixels an animation model leaves around a figure. `reference` names committed stills whose colours are the figure's own; a colour they barely use, on the outside of the figure, is removed. |
 
 `gen` writes the file in the wave after its source lands, calls no provider, and
 costs nothing in any unit. The plan reports a derived asset `stale`, free to fix,

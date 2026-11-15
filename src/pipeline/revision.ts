@@ -30,6 +30,7 @@ export async function inspectRevisionReadiness(
   // family shares parentAssetId plumbing), but there is no single
   // south-facing file for inspectCharacterParent to look for.
   if (spec.character?.kind === "outfit") return inspectOutfit(spec, lock, new Set())
+  if (spec.character?.kind === "layer") return inspectLayer(spec, lock, new Set())
   if (spec.character?.parentSpec) {
     const parent = await inspectCharacterParent(spec, lock, new Set())
     return parent.ready && spec.character.motionLeader ? inspectMotionLeader(spec, lock, new Set()) : parent
@@ -176,6 +177,29 @@ async function inspectDerive(spec: ResolvedSpec, lock: Lock, seen: Set<string>):
  * mirror's dependency, not a single south-facing file) and needs its own
  * reference image current too.
  */
+/**
+ * A layer dresses every frame of every source, so each source's whole frame
+ * set must be downloaded and current, and a mask or keyed sheet the author
+ * supplied must be on disk and unchanged since the manifest was resolved.
+ */
+async function inspectLayer(spec: ResolvedSpec, lock: Lock, seen: Set<string>): Promise<RevisionReadiness> {
+  const layer = spec.character!.layer!
+  for (const source of layer.sources) {
+    const dependency = await inspectParent(source.spec, lock, seen)
+    if (!dependency.ready) {
+      return { ready: false, reason: `layer source ${spec.styleId}/${source.assetId} is not ready: ${dependency.reason}` }
+    }
+  }
+  for (const [name, file] of [["mask", layer.mask], ["keyed sheet", layer.keyed]] as const) {
+    if (!file) continue
+    if (!existsSync(file.path)) return { ready: false, reason: `layer ${name} is missing: ${file.path}` }
+    if ((await sha256File(file.path)) !== file.sha256) {
+      return { ready: false, reason: `layer ${name} changed after the manifest was resolved` }
+    }
+  }
+  return { ready: true, reason: "layer sources are current" }
+}
+
 async function inspectOutfit(spec: ResolvedSpec, lock: Lock, seen: Set<string>): Promise<RevisionReadiness> {
   const character = spec.character!
   const outfit = character.outfit!
@@ -351,6 +375,9 @@ async function inspectParent(
   }
   if (spec.character?.kind === "outfit") {
     const inputs = await inspectOutfit(spec, lock, nextSeen)
+    if (!inputs.ready) return inputs
+  } else if (spec.character?.kind === "layer") {
+    const inputs = await inspectLayer(spec, lock, nextSeen)
     if (!inputs.ready) return inputs
   } else if (spec.character?.parentSpec) {
     const inputs = await inspectCharacterParent(spec, lock, nextSeen)
