@@ -53,6 +53,11 @@ file, and stay `blocked` until both exist.
   each walk is one row of the sheet, and every prompt says which way each row
   faces. On a sheet whose rows mixed directions, hair, a helmet and a
   backpack came back back-to-front on some front-facing frames.
+- **Nothing is done about the heads.** Skin is keyed cyan only where a layer
+  may paint, so under a clothing mask each head keeps its own colours and its
+  face. On the site's run `hero.robe` was the layer that showed why: sent with
+  cyan heads it came back with a front-facing frame drawn from behind three
+  times in a row.
 - **Padding is 10 at most on those sheets.** Six rows of a 64px figure with
   12 pixels of padding is 516 pixels tall, and the limit is 512.
 - **`hero.wizardhat` and `hero.helm` set `offset`**, per source asset: the

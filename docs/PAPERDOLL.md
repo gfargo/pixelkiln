@@ -36,8 +36,9 @@ A layer avoids the problem by painting the item onto the body's own frames:
    leaves around a figure. See [Cleaning loops](#cleaning-loops).
 2. **Sheet.** Every frame of every source asset is centred on a common canvas,
    cut to the one box that holds them all, and laid on a single sheet.
-3. **Key.** Skin is repainted cyan, keeping its shading.
-4. **Mask.** White where the provider may paint, black where it may not.
+3. **Mask.** White where the provider may paint, black where it may not.
+4. **Key.** Inside the mask, skin is repainted cyan, keeping its shading.
+   Outside it the frame keeps its own colours.
 5. **Inpaint.** One masked inpaint over the whole sheet.
 6. **Cut.** Pixels the provider repainted, that are not still cyan, are the
    layer. It is split back into one PNG per source frame.
@@ -45,6 +46,9 @@ A layer avoids the problem by painting the item onto the body's own frames:
 | What the provider is sent | The mask | What it returns |
 |---|---|---|
 | ![56 cyan figures on one sheet](../website/public/sprites/paperdoll/sheet-keyed.png) | ![The same sheet as white bodies on black](../website/public/sprites/paperdoll/sheet-mask.png) | ![The 56 figures dressed, heads and hands still cyan](../website/public/sprites/paperdoll/sheet-result.png) |
+
+Those three images are from a run made when the whole figure was keyed; a
+sheet built now keeps the heads in their own colours.
 
 Three choices carry the result:
 
@@ -59,6 +63,10 @@ Three choices carry the result:
 - **Cyan skin.** Asked to keep the skin, a model returns skin tones that
   overlap leather, hair and wood, and the body can no longer be told from the
   outfit. Cyan comes back as shades of cyan, and dropping it is a hue test.
+  Only the part the provider may repaint is keyed. The rest comes back
+  identical whatever colour it went in as, and in its own colours it tells
+  the provider things cyan does not: under an outfit's mask it is the head,
+  and a head with a face on it is a figure seen from the front.
 
 ## Quick start
 
@@ -718,6 +726,9 @@ changes together: the loops listed first and `"columns": 6`, so that each walk
 is one row of the sheet, and a prompt that says which way each row faces
 ("every figure in the first row walks toward the viewer and is seen from the
 front, face visible ..."). Which of the two did the work was not separated.
+A third change came later and may matter more than either: keying only
+inside the mask, so that heads keep their faces. See the robe in the table
+below.
 The cost is a taller sheet: 258×444 billed 25 where 344×296 had billed 15.
 
 Do this for anything that looks different from the front and the back and is
@@ -754,7 +765,8 @@ not held in place by the body it covers: hair, helmets, masks, packs.
 | A base in underwear | Not used. Underwear as its own layer under everything keeps the base bare for keying and the unclothed character decent. |
 | Twenty layers on one base for a character builder | 32 frames each, every sheet laid out a walk to a row. The fifteen drawn layers billed 285 in all: 15 each for seven clothing layers, a head of hair and a cowl, 25 each for a mohawk, a horned helm, a wizard hat, wings, a cape and a quiver. Five held items were 10 each as objects and 3.2 to anchor; four of them then took a 25-generation grip pass. Every combination a visitor can pick is a stack of files that were generated without knowing about each other. |
 | The same set, checked frame by frame | Two layers still had one frame facing the wrong way: a cape drawn from the front on the first frame of the walk away, and a robe drawn from behind on the last frame of the walk toward the viewer. The row layout made this rare, not impossible. Look at every loop. |
-| Regenerating those two | The cape came back right in every frame. The robe came back with the same frame wrong, and on a third try with three frames in a different cut from the other three; the second was restored from history, for nothing. That frame of that walk reads as a back view to the model, and a new roll does not change it. It would take a mask or a hand edit. |
+| Regenerating those two | The cape came back right in every frame. The robe came back with the same frame wrong, and on a third try with three frames in a different cut from the other three; the second was restored from history, for nothing. That frame of that walk read as a back view to the model, and a new roll did not change it. |
+| The robe again, with the heads left in their own colours | Right in all 32 frames, first try, 15 billed. The sheet had been sent with every figure cyan from head to foot, so the only sign of a front view was a few dark pixels of eyes on a cyan head. Supplied as a `keyed` override in which everything outside the mask kept its real colours, each front-facing figure had a face. Layers are now keyed this way by default. It is one run: the three earlier attempts at the same robe, fully keyed, each had a frame wrong. |
 | A wizard hat low over the eyes, a helm that left the crown bare on one walk | Both were per-asset problems: right on some of the layer's source assets, a few pixels off on others. `offset` with a pair per asset fixed both in a `fetch`. |
 | A template walk away from the viewer | Came back with dark red shadow on an arm and a leg in most of its frames, in colours the base itself uses, so cleaning does not see them. Regenerated with `gen --force`, reviewed in `pick` beside the one it replaced, it came back clean. Every layer over it went stale and was drawn again. |
 | `grasp` on a greatsword, a staff, a dagger and a torch | Each billed 25 on a 496×376 sheet of 32 frames. The fingers land on the handle in the views where the hand shows, in skin colours that match, and sit correctly over armour. The change is a few pixels: it reads as a hand on a grip, not as a new pose. |
