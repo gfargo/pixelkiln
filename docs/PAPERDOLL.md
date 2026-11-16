@@ -232,6 +232,36 @@ minus `padding` in both axes.
 Padding makes the sheet bigger, so fewer frames fit. See
 [Cost and limits](#cost-and-limits).
 
+### Nudging a layer into place
+
+A provider does not always seat a hat where you would. `offset` moves a
+layer by whole pixels, x to the right and y down:
+
+```json
+"layer": { "of": ["hero", "hero.walk.south"], "region": "head", "padding": 10, "offset": [0, -2] }
+```
+
+It can also seat it differently per source asset, which is what a hat that
+sits right on the stills and low on one walk needs. `"*"` is every asset not
+named:
+
+```json
+"offset": { "*": [0, -1], "hero.walk.south": [0, -3] }
+```
+
+On a drawn layer the move is applied when the frames are downloaded, not
+when they are generated. Changing it shows in `plan` as `recoverable`, and
+`pixelkiln fetch` moves the frames again from the provider's own bytes at no
+cost, so trying a pixel either way is free. Pixels pushed off the canvas are
+lost, and `fetch` says how many; `padding` is the room they have.
+
+On a held item `offset` moves the item on the hand, and placing it again is
+free. With `grasp` it is one more grip pass, since the fist has to be drawn
+around the item where it now is.
+
+The move is the same in every frame of an asset. It cannot fix one frame
+that differs from its neighbours.
+
 ## Held items and accessories
 
 There are two ways to put something in a character's hand, and they suit
@@ -629,6 +659,7 @@ A `layer` asset needs a `prompt` and a `layer` object. It takes no
 | `skin` | all but outline | The colours that are skin, for a character that is not bare. |
 | `key` | `#00ffff` | The stand-in colour. Change it for an item that is itself cyan. |
 | `clean` | `true` | Clean loop frames against the stills among `of` before sheeting them. |
+| `offset` | none | `[x, y]` pixels to move every frame by, or `{ "<of asset>": [x, y], "*": [x, y] }`. Free to change on a drawn layer. |
 | `columns` | fitted | Sheet columns. |
 
 Plan states: `blocked` until every source is downloaded and current, `stale`
@@ -722,7 +753,9 @@ not held in place by the body it covers: hair, helmets, masks, packs.
 | Pro Flash inpainting for a layer | Left 3 of 18 frames undressed and erased props. |
 | A base in underwear | Not used. Underwear as its own layer under everything keeps the base bare for keying and the unclothed character decent. |
 | Twenty layers on one base for a character builder | 32 frames each, every sheet laid out a walk to a row. The fifteen drawn layers billed 285 in all: 15 each for seven clothing layers, a head of hair and a cowl, 25 each for a mohawk, a horned helm, a wizard hat, wings, a cape and a quiver. Five held items were 10 each as objects and 3.2 to anchor; four of them then took a 25-generation grip pass. Every combination a visitor can pick is a stack of files that were generated without knowing about each other. |
-| The same set, checked frame by frame | Two layers still have one frame facing the wrong way: a cape drawn from the front on the first frame of the walk away, and a robe drawn from behind on the last frame of the walk toward the viewer. The row layout made this rare, not impossible. Look at every loop. |
+| The same set, checked frame by frame | Two layers still had one frame facing the wrong way: a cape drawn from the front on the first frame of the walk away, and a robe drawn from behind on the last frame of the walk toward the viewer. The row layout made this rare, not impossible. Look at every loop. |
+| Regenerating those two | The cape came back right in every frame. The robe came back with the same frame wrong, and on a third try with three frames in a different cut from the other three; the second was restored from history, for nothing. That frame of that walk reads as a back view to the model, and a new roll does not change it. It would take a mask or a hand edit. |
+| A wizard hat low over the eyes, a helm that left the crown bare on one walk | Both were per-asset problems: right on some of the layer's source assets, a few pixels off on others. `offset` with a pair per asset fixed both in a `fetch`. |
 | A template walk away from the viewer | Came back with dark red shadow on an arm and a leg in most of its frames, in colours the base itself uses, so cleaning does not see them. Regenerated with `gen --force`, reviewed in `pick` beside the one it replaced, it came back clean. Every layer over it went stale and was drawn again. |
 | `grasp` on a greatsword, a staff, a dagger and a torch | Each billed 25 on a 496×376 sheet of 32 frames. The fingers land on the handle in the views where the hand shows, in skin colours that match, and sit correctly over armour. The change is a few pixels: it reads as a hand on a grip, not as a new pose. |
 | Padding of 12 or 14 with a walk to a row | Refused before any request: six rows of a 64px figure with 12 pixels of padding is 516 pixels tall, 4 over the limit. 10 fit. |
@@ -745,6 +778,7 @@ That one was not tried.
 | The outfit differs between two loops | They were dressed by two layers. | Put both loops in one layer's `of`. |
 | Old clothes show at the edges | The base is not bare. | Use a bare base, or accept it. |
 | A fringe in the key colour at wrists or collar | Shades of the key the cut did not recognise. | Change `key` to a colour further from the outfit's, or open an issue with `result.png`. |
+| A hat sits too low or too high, on every frame or on one loop | The provider seated it there. | Set `offset`, per asset if it differs, and run `pixelkiln fetch`. |
 | A hat is cut off at the top | Not enough room in the cell. | Raise `padding`. |
 | A blade tip appears beside a neighbouring frame | The item ran past its cell. | Raise `padding`. |
 | A sword changes hands mid-walk | The model, not the mask. | Make it a placed item with `attach`. |

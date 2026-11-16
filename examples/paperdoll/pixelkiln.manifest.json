@@ -179,7 +179,13 @@
         ],
         "columns": 6,
         "region": "head",
-        "padding": 10
+        "padding": 10,
+        "offset": {
+          "hero.walk.south": [
+            0,
+            -2
+          ]
+        }
       }
     },
     "hero.wizardhat": {
@@ -194,7 +200,13 @@
         ],
         "columns": 6,
         "region": "head",
-        "padding": 10
+        "padding": 10,
+        "offset": {
+          "hero": [
+            0,
+            -3
+          ]
+        }
       }
     },
     "hero.cowl": {

@@ -55,6 +55,10 @@ file, and stay `blocked` until both exist.
   backpack came back back-to-front on some front-facing frames.
 - **Padding is 10 at most on those sheets.** Six rows of a 64px figure with
   12 pixels of padding is 516 pixels tall, and the limit is 512.
+- **`hero.wizardhat` and `hero.helm` set `offset`**, per source asset: the
+  hat came back low over the eyes on the eight rotations and the helm low on
+  the walk toward the viewer. Those numbers fit one run; a new run needs its
+  own, and changing them is free (`pixelkiln fetch`).
 - **Nothing is cyan or teal.** That is the colour skin is keyed to, and a
   layer drops it.
 - **No gloves.** `grasp` draws fingers in the base's skin colour.
