@@ -749,6 +749,54 @@ a { color: inherit; text-decoration: none; }
 }
 .sprite-carousel-dots button:hover { border-color: var(--ember-light); }
 .sprite-carousel-dots button.active { background: var(--ember); border-color: var(--ember); }
+.builder-block { margin-top: 88px; }
+.builder-block h3 { margin: 0 0 12px; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+.builder-block > p { max-width: 640px; margin: 0 0 36px; color: var(--cream-muted); font-size: 15px; line-height: 1.65; }
+.builder { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 56px; align-items: start; }
+.builder-stage-column { display: grid; gap: 18px; min-width: 0; }
+.builder-stage {
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+  border: 1px solid var(--line);
+  background: #100f0c;
+  overflow: hidden;
+}
+.builder-figure { position: relative; width: var(--builder-cell); height: var(--builder-cell); }
+.builder-layer {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: var(--builder-size);
+  background-position: var(--builder-at);
+  image-rendering: pixelated;
+}
+.builder-motion { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.builder-arrow, .builder-toggle, .builder-option, .builder-action {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--cream-muted);
+  font-family: var(--font-geist-mono), monospace;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+.builder-arrow { width: 40px; height: 40px; display: grid; place-items: center; font-size: 20px; line-height: 1; }
+.builder-toggle { min-width: 96px; height: 40px; padding: 0 18px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.builder-arrow:hover, .builder-arrow:focus-visible,
+.builder-toggle:hover, .builder-toggle:focus-visible,
+.builder-option:hover, .builder-option:focus-visible,
+.builder-action:hover, .builder-action:focus-visible { color: var(--ember-light); border-color: var(--ember-light); outline: none; }
+.builder-toggle[aria-pressed="true"], .builder-option[aria-pressed="true"] { color: var(--ink); background: var(--ember); border-color: var(--ember); }
+.builder-readout { margin: 0; color: #8d8474; font-family: var(--font-geist-mono), monospace; font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
+.builder-readout span { margin-right: 10px; color: var(--lime); }
+.builder-controls { display: grid; gap: 18px; min-width: 0; }
+.builder-slot { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.builder-slot-label { color: var(--cream-muted); font-family: var(--font-geist-mono), monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.builder-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.builder-option { display: inline-flex; align-items: baseline; gap: 10px; padding: 9px 14px; font-size: 12px; }
+.builder-option small { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.65; }
+.builder-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 4px; }
+.builder-action { padding: 9px 14px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
 .cast-visuals { display: grid; gap: 40px; min-width: 0; }
 .cast-visuals > * { min-width: 0; }
 .cast-manifest { box-shadow: 22px 22px 0 rgba(255, 107, 53, .08); }
@@ -1370,6 +1418,9 @@ a { color: inherit; text-decoration: none; }
   .cast-manifest { box-shadow: 10px 10px 0 rgba(255, 107, 53, .08); }
   .cast-manifest .lock-callout { display: none; }
   .cast-strip-row { flex-direction: column; align-items: flex-start; gap: 20px; }
+  .builder { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .builder-stage { min-height: 340px; }
+  .builder-slot { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .sprite-carousel-stage { min-height: 230px; padding: 14px; gap: 10px; }
   .sprite-carousel-arrow { width: 32px; height: 32px; font-size: 17px; }
   .safety-grid { gap: 60px; }

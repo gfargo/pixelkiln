@@ -5,6 +5,7 @@ import { CopyCommand } from "@/app/ui/copy-command";
 import { JsonLd } from "@/app/ui/json-ld";
 import { ProviderUpdates } from "@/app/ui/provider-updates";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
+import { CharacterBuilder } from "@/app/ui/character-builder";
 import { SpriteCarousel } from "@/app/ui/sprite-carousel";
 import { SpriteLoop } from "@/app/ui/sprite-loop";
 import { TrackedLink } from "@/app/ui/tracked-link";
@@ -495,10 +496,10 @@ export default function Home() {
           <div className="shell">
             <figure className="cast-strip" aria-label="A base, three layers, and the dressed character">
               <div className="cast-strip-row">
-                <Image src="/sprites/paperdoll/stack-south.png" alt="A cyan mannequin, a leather outfit with no body in it, a feathered hat, a sword, and the four stacked into a dressed ranger" width={476} height={92} unoptimized />
-                <SpriteLoop strip="/sprites/paperdoll/dressed-8dir.png" width={764} frames={8} cell={92} stride={96} scale={2} seconds={2.4} label="The dressed character turning through its eight directions" />
+                <Image src="/sprites/paperdoll/showcase-stack.png" alt="A bare figure in underwear, a tunic and trousers with no body in them, a cloak, hair and hat with no body in them, a sword, and all of them stacked into a dressed ranger" width={476} height={92} unoptimized />
+                <SpriteLoop strip="/sprites/paperdoll/showcase-8dir.png" width={764} frames={8} cell={92} stride={96} scale={2} seconds={2.4} label="The dressed character turning through its eight directions" />
               </div>
-              <figcaption>Left to right: the base with its skin keyed cyan, an outfit layer, a hat layer, a sword layer, and all four drawn in order. Each layer is its own asset and its own PNG per frame.</figcaption>
+              <figcaption>Left to right: the bare base in its underwear layer; a tunic and trousers; a cloak, hair and a hat; a sword; and all of them drawn in order. Eight layers, each its own asset and its own PNG per frame.</figcaption>
             </figure>
             <div className="cast-grid">
               <div className="section-heading cast-copy">
@@ -522,6 +523,7 @@ export default function Home() {
                 </p>
                 <ul className="check-list cast-list">
                   <li><span>✓</span> 56 frames dressed by one request: 8 rotations and a walk in 8 directions, for 25 generations.</li>
+                  <li><span>✓</span> The character on this page: a base, four walks, ten drawn layers and three held items, 32 frames each, for about 205 generations.</li>
                   <li><span>✓</span> <code>region</code> picks what may change: the body for clothing, the head for hats, the space around the body for capes and packs.</li>
                   <li><span>✓</span> <code>attach</code> pins a sprite you already have to the hand in every frame, for nothing: the same sword in all 56 frames, always in the right hand.</li>
                   <li><span>✓</span> <code>clean</code> on a loop strips the ghost pixels an animation model leaves, at download, for nothing: 608 stray pixels down to 2 on this walk.</li>
@@ -567,17 +569,28 @@ export default function Home() {
                 <figure className="cast-loop" aria-label="The same walk as the base and with layers added">
                   <SpriteCarousel
                     slides={[
-                      { id: "pieces and a placed sword", label: "pieces and a placed sword", strip: "/sprites/paperdoll/walk-south-held.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
-                      { id: "pieces, facing east", label: "pieces, facing east", strip: "/sprites/paperdoll/walk-east-held.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
-                      { id: "outfit, hat and sword", label: "outfit, hat and sword", strip: "/sprites/paperdoll/walk-east-dressed.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
-                      { id: "outfit and hat", label: "outfit and hat", strip: "/sprites/paperdoll/walk-south-dressed.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
-                      { id: "outfit", label: "outfit", strip: "/sprites/paperdoll/walk-east-outfit.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
-                      { id: "base", label: "base", strip: "/sprites/paperdoll/walk-east-mannequin.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "ranger", label: "ranger", strip: "/sprites/paperdoll/showcase-walk-ranger.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "traveller", label: "traveller", strip: "/sprites/paperdoll/showcase-walk-traveller.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "guard", label: "guard", strip: "/sprites/paperdoll/showcase-walk-guard.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "base", label: "base", strip: "/sprites/paperdoll/showcase-walk-base.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
                     ]}
                   />
-                  <figcaption>One template walk, drawn once, then layered. The first two slides are four assets: trousers, a shirt and a hat, each drawn by its own request, and a sword that was drawn once as an object and pinned to the hand. The others are a whole outfit as one layer. A sword drawn onto the frames changed hands in two of the six south-facing frames, so that slide leaves it out; the pinned one cannot.</figcaption>
+                  <figcaption>One template walk, drawn once, then dressed three ways from the same thirteen layers. Clothing, hair, headwear, the cloak and the backpack were each drawn by one masked inpaint over all 32 frames. The sword, shield and lantern were each drawn once as an object and pinned to a hand, which is why they never change sides.</figcaption>
                 </figure>
               </div>
+            </div>
+            <div className="builder-block" id="paperdoll-builder">
+              <h3>Dress one yourself.</h3>
+              <p>
+                Every button below switches one layer on or off. Each layer
+                is its own asset in the manifest and its own PNG per frame,
+                made without knowing about the others: clothing, hair, hats
+                and what is worn on the back were each drawn by one masked
+                inpaint, and what is held is one sprite pinned to the hand.
+                The page stacks them and steps them through the same 32
+                frames, which is all a game has to do.
+              </p>
+              <CharacterBuilder />
             </div>
           </div>
         </section>

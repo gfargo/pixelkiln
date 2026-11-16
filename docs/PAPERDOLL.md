@@ -9,6 +9,10 @@ frame, for free.
 
 ![A cyan mannequin, a leather outfit layer, a hat layer, a sword layer, and the four stacked into a dressed character](../website/public/sprites/paperdoll/stack-south.png)
 
+The [home page](https://pixelkiln.griffen.codes/#paperdoll-builder) has a character you
+can dress from thirteen such layers, and
+[`examples/paperdoll`](../examples/paperdoll) is its manifest.
+
 Everything on this page was measured on one PixelLab account in November
 2026, on a 64px bare base with an 8-direction walk. Where a number is a
 measurement it says so, and [Cost and limits](#cost-and-limits) lists what
@@ -390,6 +394,21 @@ its straps, which a placed item cannot do. In the east-facing walk it was
 drawn edge-on in 1 frame and face-on, as if seen from the front, in the other
 5.
 
+**Worn items are where this works best.** A cloak and a backpack were each
+inpainted over the same 20 frames (15 generations each, quoted) and came back
+right in every one: the cloak covering the back from behind, showing only its
+clasp and edges from the front, and swaying with the walk; the pack on the
+back, its straps across the chest from the front, standing out behind in
+profile. The body fixes where a worn thing goes, so the model has nothing to
+guess.
+
+**Small held items look natural and are not reliable.** A lantern in the left
+hand (15 generations, quoted) was drawn well wherever it was drawn once, hung
+from the hand and lit. It was also on the other side for part of the
+south-facing walk, and drawn twice in a few frames, the last two of the
+east-facing walk among them. Nothing tells a model which hand, so it is the sword's
+problem again.
+
 **Layers are tidied.** Given room around the figure, a provider redraws
 stretches of the body's outline a pixel off, leaves dark blots where it
 redrew an eye or a shadow, and lets a long blade run into the next cell. The
@@ -596,10 +615,87 @@ is free.
 
 On a loop, `animation.clean` (default off) cleans its frames at download.
 
+## Field notes
+
+What was tried while building this, including what did not ship. Everything
+here ran on one PixelLab account in November 2026 at 64px; a result from one
+run is one result.
+
+**What decides whether a layer comes out well**
+
+| Kind of item | Best made by | Why |
+|---|---|---|
+| Clothing, whole or one garment | Inpaint, `body` | The mask is the body, so it cannot go anywhere else. |
+| Hats, helmets, hair | Inpaint, `head` | The head is fixed and the body is masked off. |
+| Cloaks, packs, anything worn | Inpaint, `around` | The body fixes where it sits. |
+| Swords, shields, tools | Place with `attach` | A model guesses the hand and the viewing angle per frame, and guesses differently. |
+| Small things carried in a hand | Either; expect to check every frame of an inpaint | Looks most natural inpainted, swaps hands like a sword. |
+
+**Sheet layout**
+
+A model works out which way a 64px figure faces from a face a few pixels
+wide, and on a sheet that mixes front and back views it gets some wrong. On a
+32-frame sheet holding walks toward and away from the viewer, laid out 8 to a
+row so that rows mixed directions, three layers came back back-to-front on
+front-facing walk frames: hair over the face in 3 of 6, a backpack on the
+chest in 2 of 6, a helmet without its nose guard in 3 of 6. Clothing, a hat
+and a cloak on the same sheet were right.
+
+All three were right in every frame of all four walks when run again with two
+changes together: the loops listed first and `"columns": 6`, so that each walk
+is one row of the sheet, and a prompt that says which way each row faces
+("every figure in the first row walks toward the viewer and is seen from the
+front, face visible ..."). Which of the two did the work was not separated.
+The cost is a taller sheet: 258×444 billed 25 where 344×296 had billed 15.
+
+Do this for anything that looks different from the front and the back and is
+not held in place by the body it covers: hair, helmets, masks, packs.
+
+**Prompts**
+
+- A base's proportions follow its nouns. "Mannequin" and "doll-like" gave a
+  toddler at 64px. "Adult human figure with adult proportions, slim and lean
+  with a small head and long legs" gave an adult. "Artist's wooden figure ...
+  athletic" gave a bodybuilder with a wood-grain tan.
+- "Soft simple shading and no muscle definition" is what made a base read as
+  a clean figure to dress and not an anatomy study.
+- One garment at a time needs both halves said: what it covers, and "only the
+  shirt: leave the hips, legs, feet, hands, neck and head bare cyan".
+- An object for the hand has to be described as held, "leans forward at 45
+  degrees, tip pointing forward and up", or it stands straight up out of the
+  fist. Its eight rotations then lean the way the holder faces.
+- An object generator fills its canvas. Ask for 24 or 32 pixels and it comes
+  back that big whatever the item is; `scale` or a redraw brings it down.
+
+**Tried, and what happened**
+
+| Idea | Result |
+|---|---|
+| Split an outfit with a waist-line mask | Not needed. One body mask and a prompt that names the garment did it, and a row cut would have put the hands in the trousers' half. |
+| Inpaint a sword on the sheet | Consistent shape; changed hands in 2 of 6 south-walk frames. |
+| Inpaint a shield on the sheet | Right from the front; drawn face-on in 5 of 6 east-walk frames. |
+| Place an upright sword | Correct and stiff: it stood straight up out of the hand. |
+| Place a sword drawn leaning | Reads as held in all 8 directions. |
+| Turn a placed sword with each frame's forearm bone | It swings with the arm, which adds life. The skeleton's noise shows: the estimated swing ran from -23 to +37 degrees across six frames of one walk, one frame jumping 60 degrees, and a thin blade turned by odd angles breaks into dashes. Would need smoothing, a clamp, and angles snapped to steps to ship. |
+| Place a sword, then inpaint only a 7px disc around the hand | The hand closed around the grip in all 20 frames while the blade, outside the mask, stayed identical. In front views the redrawn fist sat a pixel or two lower than the original. Not in PixelKiln: the redrawn hand is skin, so a layer would have to carry skin pixels back from cyan and cover the original hand. |
+| Pro Flash inpainting for a layer | Left 3 of 18 frames undressed and erased props. |
+| A base in underwear | Not used. Underwear as its own layer under everything keeps the base bare for keying and the unclothed character decent. |
+| Thirteen layers on one base for a character builder | 32 frames each. The ten drawn layers billed 165 in all: 10 each for five clothing layers, 15 for a cloak, 25 each for a hat, a helmet, hair and a backpack. Three held items were 10 each as objects, 3.2 to anchor, nothing to place. Every combination a visitor can pick is a stack of files that were generated without knowing about each other. |
+| A template walk away from the viewer | Came back with dark red shadow on an arm and a leg in most of its frames, in colours the base itself uses, so cleaning does not see them. Clothing covers most of it. Regenerating the loop would make every layer over it stale. |
+
+**On extending the skeleton to the item.** PixelLab's skeleton is a fixed set
+of 18 body joints; its endpoints refuse any other label, so an item cannot be
+a bone the provider animates. What the skeleton does give, for nothing more
+than the anchors already paid for, is the forearm's direction in every frame,
+which is the row above. The other use is upstream: pose the arm for carrying
+with a skeleton animation, empty-handed, and place the item on the result.
+That one was not tried.
+
 ## Troubleshooting
 
 | What you see | Why | Do |
 |---|---|---|
+| Hair covers the face, or a pack is on the chest, in some frames | The model read a front view as a back view. | Give each loop its own sheet row with `columns` and say in the prompt which way each row faces. See [Field notes](#field-notes). |
 | Pale specks around the dressed character | The loop's own files were never cleaned; the layer is fine. | Set `"clean": true` on the loop and run `pixelkiln fetch`. |
 | Sleeves or collar missing where an arm is raised | The computed mask put the neck in the wrong row for that frame. | Supply a `mask`. |
 | The outfit differs between two loops | They were dressed by two layers. | Put both loops in one layer's `of`. |
