@@ -2167,7 +2167,11 @@ export const AssetDeriveSchema = z
     skin: z.array(HexColorSchema).min(1).max(64).optional(),
     /** key-skin: the stand-in colour. Default cyan. */
     key: HexColorSchema.optional(),
-    /** despeckle: committed PNGs, relative to the manifest, whose colours are known good (the character's stills). */
+    /**
+     * despeckle: committed PNGs, relative to the manifest, whose colours are known good (the character's stills).
+     * hue-shift: only pixels in a colour one of these PNGs uses are changed, which
+     * is how skin on a layer (the fingers of a grip) is told from the item in it.
+     */
     reference: z.array(z.string().min(1)).min(1).max(64).optional(),
     /** key-skin: how far a pixel may sit from a `skin` colour. despeckle: how near a reference colour must be to vouch for a pixel. */
     tolerance: z.number().min(0).max(442).optional(),
@@ -2182,7 +2186,7 @@ export const AssetDeriveSchema = z
     const own = {
       recolor: ["map"],
       "palette-snap": ["palette"],
-      "hue-shift": ["degrees", "hue", "saturation", "brightness"],
+      "hue-shift": ["degrees", "hue", "saturation", "brightness", "reference"],
       scale: ["width", "height", "mode"],
       "key-skin": ["skin", "key", "tolerance"],
       despeckle: ["reference", "tolerance"],

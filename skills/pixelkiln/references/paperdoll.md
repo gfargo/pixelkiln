@@ -73,7 +73,8 @@ hands mid-walk and an inpainted shield was drawn face-on in a side view.
   recolours of the layer are stale and rebuild free.
 - Skin tones are free: derive the base and each loop with `hue-shift`,
   `"hue": [0, 45]` and a `brightness` under 1. Drawn layers go over them
-  unchanged. A `grasp` layer keeps the first skin's fingers.
+  unchanged. A `grasp` layer holds fingers: derive it the same way with
+  `reference` listing the base's frames, so only skin colours change.
 - `layer.offset` moves a drawn layer by whole pixels: `[0, -2]` for every
   frame, or `{ "hero.walk.south": [0, -2], "*": [0, 0] }` per source asset.
   A changed offset is `recoverable`; `pixelkiln fetch` re-applies it at no

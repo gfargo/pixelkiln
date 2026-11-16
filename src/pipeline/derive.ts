@@ -66,10 +66,19 @@ const HUELESS = 0.12
  * they are while the cloth around them changes colour. Shading survives:
  * each pixel keeps its own distance from its neighbours in brightness.
  */
-export function hueShift(png: Buffer, options: HueShift): Buffer {
+export function hueShift(png: Buffer, options: HueShift, only: Buffer[] = []): Buffer {
   const { width, height, pixels } = decodePng(png)
   const out = Buffer.from(pixels)
   const turn = options.degrees ?? 0
+  // With `only`, a pixel is touched when its exact colour is one those images use.
+  let allowed: Set<number> | undefined
+  if (only.length) {
+    allowed = new Set()
+    for (const image of only) {
+      const { pixels: px } = decodePng(image)
+      for (let i = 0; i < px.length; i += 4) if (px[i + 3]) allowed.add((px[i]! << 16) | (px[i + 1]! << 8) | px[i + 2]!)
+    }
+  }
   const within = (h: number) => {
     if (!options.hue) return true
     const [from, to] = options.hue
@@ -77,6 +86,7 @@ export function hueShift(png: Buffer, options: HueShift): Buffer {
   }
   for (let i = 0; i < out.length; i += 4) {
     if (out[i + 3] === 0) continue
+    if (allowed && !allowed.has((out[i]! << 16) | (out[i + 1]! << 8) | out[i + 2]!)) continue
     const r = out[i]! / 255, g = out[i + 1]! / 255, b = out[i + 2]! / 255
     const max = Math.max(r, g, b), min = Math.min(r, g, b)
     const delta = max - min
@@ -154,13 +164,13 @@ export function scale(png: Buffer, width: number, height: number, mode: "nearest
 export function applyDerive(
   png: Buffer,
   derive: Pick<ResolvedDerive, "transform" | "map" | "palette" | "degrees" | "hue" | "saturation" | "brightness" | "width" | "height" | "mode" | "skin" | "key" | "tolerance">,
-  /** despeckle: the reference stills' bytes, read by the caller. */
+  /** despeckle and hue-shift: the reference images' bytes, read by the caller. */
   reference: Buffer[] = [],
 ): Buffer {
   switch (derive.transform) {
     case "recolor": return recolor(png, derive.map!)
     case "palette-snap": return paletteSnap(png, derive.palette!)
-    case "hue-shift": return hueShift(png, derive)
+    case "hue-shift": return hueShift(png, derive, reference)
     case "scale": return scale(png, derive.width!, derive.height!, derive.mode)
     case "key-skin": return keySkin(png, { skin: derive.skin, key: derive.key, tolerance: derive.tolerance })
     case "despeckle": return despeckle(png, { reference, tolerance: derive.tolerance }).png

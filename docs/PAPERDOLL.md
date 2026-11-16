@@ -241,16 +241,29 @@ each of its loops with the same numbers:
 Tried on this page's base: `brightness` 0.86, 0.64 and 0.44 with
 `saturation` 1.2 to 1.3 gave tan, brown and deep brown that read as skin,
 and turning the hue instead gave an orc green (`degrees` 78) and a frost
-blue (185). Every drawn layer goes over them unchanged, because a layer has
-no skin in it. Two things do not follow:
+blue (-175). Every drawn layer goes over them unchanged, because a layer has
+no skin in it.
 
-- A `grasp` layer holds the fingers in the first base's skin colour. Derive
-  it too and the item's own warm colours turn with them: a torch's flame
-  and a gold crossguard went green with the orc. Use the placed item without
-  `grasp` on other skins, or accept the fingers.
-- A near-white highlight has no hue, so it is left alone, and a sheen that
-  was invisible on pale skin shows as white specks on dark. The stills had
-  none; one walk frame did.
+A `grasp` layer does have skin in it: the fingers, in the first base's
+colours. Derive it with the same numbers and the item's own warm colours
+turn too; a torch's flame and a gold crossguard went green with the orc.
+`reference` prevents that. It limits the change to pixels in a colour the
+named PNGs use, and the base's own frames use only skin and outline:
+
+```json
+"hero.torch.orc": { "derive": { "from": "hero.torch", "transform": "hue-shift", "hue": [0, 45],
+                                "degrees": 78, "saturation": 0.95, "brightness": 0.82,
+                                "reference": ["art/hero-south.png", "art/hero.walk.south-frame-00.png"] } }
+```
+
+List every frame of the base and its loops, up to 64 files; the fingers
+were coloured from all of them. On the four gripped items here that moved
+the fingers and left the items alone, since each item sprite shared at most
+one warm colour with the base.
+
+One thing does not follow: a near-white highlight has no hue, so it is left
+alone, and a sheen that was invisible on pale skin shows as white specks on
+dark. The stills had none; one walk frame did.
 
 Layers are keyed against the base they were generated over, so make them on
 the original and put them over any of its recolours.
@@ -880,7 +893,7 @@ not held in place by the body it covers: hair, helmets, masks, packs.
 | A backpack on a compact sheet, heads in their own colours, no row layout | Wrong again: on the chest in 2 of 6 front-facing frames, the same as the first time. 15 billed on 336×296. So leaving heads unkeyed is not enough alone; the robe was fixed by that and a walk to a row together. Keep the row layout for anything that differs front to back. |
 | Repairing one frame with its neighbours as context | Worked, for 10. The six frames of one walk went on a 174×59 sheet: five with the robe they already had painted on and masked off, the sixth bare and masked open, and a prompt saying to dress it like the others. It came back in the same robe, same trim, facing the right way. This became `redraw`. |
 | `redraw` on one frame of the same robe, through the CLI | 10 billed on a 90×118 sheet, three frames to a row. The frame came back in the same purple robe with the same gold belt and collar, facing the right way. The cut differed slightly: the hem ended above the ankle where its neighbours' reached the foot. Good enough to replace a wrong frame, not identical to a right one. |
-| Skin tones by recolouring the bare base | Worked, for nothing. Six tones from one base with `hue-shift` over hues 0 to 45, and every clothing layer sat over them unchanged. Grip layers keep the first skin's fingers, and recolouring them turns the item's warm colours too. See [Colours for nothing](#colours-for-nothing). |
+| Skin tones by recolouring the bare base | Worked, for nothing. Six tones from one base with `hue-shift` over hues 0 to 45, and every clothing layer sat over them unchanged. Grip layers hold the first skin's fingers; recolouring them with `reference` set to the base's frames moved the fingers and left the items' own colours alone. Five tones of the base, its walks and four gripped items are 45 derived assets, one free `gen`. See [Colours for nothing](#colours-for-nothing). |
 | A voxel model carved from an object's eight views | Half works. Each view's silhouette cuts a block of voxels down; the camera's height and each view's centre were fitted by how well the result matched the views. A lantern, a round shield and a kite shield matched their eight silhouettes 92 to 96%, with the camera fitted at 20 to 30 degrees above level. A sword, a greatsword and a torch matched 39 to 68%: their diagonal views are drawn tilted in the picture, not turned in space, so the views disagree and most of the object is carved away. Even where the shape held, the surface was ragged and the colours noisy, since eight hand-drawn views do not agree pixel for pixel. A rough shape for blocking, not art. Done with a script, not PixelKiln. |
 | A walk posed for carrying, from a sentence | Not usable. A `skeleton-v3` loop described as walking with the right forearm raised drew a weapon into the hand the first time; told the hands were empty, it bent the arms a little and redrew the whole figure darker and more muscular than its base, on a 96px canvas. A layer over it would not match the stills. 4 generations each. Posing from explicit keypoints is the untested alternative, and those loops are not yet something a layer can dress. |
 | Regenerating those two | The cape came back right in every frame. The robe came back with the same frame wrong, and on a third try with three frames in a different cut from the other three; the second was restored from history, for nothing. That frame of that walk read as a back view to the model, and a new roll did not change it. |

@@ -89,6 +89,19 @@ describe("hue-shift", () => {
   })
 })
 
+describe("hue-shift limited to a reference's colours", () => {
+  it("changes a pixel only when its exact colour is one the reference uses", () => {
+    const px = (png: Buffer, i = 0) => [...decodePng(png).pixels.subarray(i * 4, i * 4 + 4)]
+    // Skin and a torch flame, both warm; the reference holds the skin colour only.
+    const layer = rgba(2, 1, (x) => (x ? [255, 120, 20, 255] : [230, 170, 130, 255]))
+    const skin = rgba(1, 1, () => [230, 170, 130, 255])
+    const out = hueShift(layer, { brightness: 0.5 }, [skin])
+    expect(px(out, 0)).toEqual([115, 85, 65, 255])
+    expect(px(out, 1)).toEqual([255, 120, 20, 255])
+    expect(AssetSchema.safeParse({ derive: { from: "a", transform: "hue-shift", brightness: 0.5, reference: ["art/hero-south.png"] } }).success).toBe(true)
+  })
+})
+
 describe("schema", () => {
   const ok = { derive: { from: "a", transform: "recolor", map: { "#000000": "#ffffff" } } }
   it("accepts each transform and an external asset", () => {

@@ -10,11 +10,13 @@ import {
   BUILDER_DRAW_ORDER,
   BUILDER_LOOKS,
   BUILDER_ROWS,
+  BUILDER_SKINS,
   BUILDER_SLOTS,
   BUILDER_WALK_FPS,
   BUILDER_WALK_FRAMES,
   BUILDER_WALK_ROWS,
   builderAtlas,
+  builderLayer,
 } from "@/app/lib/paperdoll-builder";
 
 type Choices = Record<string, string | null>;
@@ -47,6 +49,7 @@ export function CharacterBuilder() {
   const [frame, setFrame] = useState(0);
   // What `layer.offset` does in a manifest, tried live on the headwear: whole pixels, down is positive.
   const [nudge, setNudge] = useState(0);
+  const [skin, setSkin] = useState("");
   const reducedMotion = useSyncExternalStore(
     subscribeReducedMotion,
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -125,7 +128,8 @@ export function CharacterBuilder() {
     "--builder-at": `${-column * cell}px ${-row * cell}px`,
   } as CSSProperties;
 
-  const description = `The character facing ${direction}${moving ? ", walking" : ""}, wearing ${
+  const skinLabel = BUILDER_SKINS.find((option) => option.id === skin)?.label.toLowerCase() ?? "peach";
+  const description = `The character with ${skinLabel} skin facing ${direction}${moving ? ", walking" : ""}, wearing ${
     worn.length ? worn.map((id) => id.replace("hero.", "")).join(", ") : "nothing but the base"
   }`;
 
@@ -139,7 +143,7 @@ export function CharacterBuilder() {
                 key={id}
                 className="builder-layer"
                 style={{
-                  backgroundImage: `url(${builderAtlas(id)})`,
+                  backgroundImage: `url(${builderAtlas(builderLayer(id, skin))})`,
                   ...(id === headwear && nudge ? { transform: `translateY(${nudge * scale}px)` } : {}),
                 }}
               />
@@ -154,10 +158,28 @@ export function CharacterBuilder() {
           <button type="button" className="builder-arrow" onClick={() => turn(-1)} aria-label="Turn right">›</button>
         </div>
         <p className="builder-readout" aria-live="polite">
-          <span>{layers.length} layers</span> {layers.join(" + ")}
+          <span>{layers.length} layers</span> {layers.map((id) => builderLayer(id, skin)).join(" + ")}
         </p>
       </div>
       <div className="builder-controls">
+        <div className="builder-slot" role="group" aria-label="Skin">
+          <span className="builder-slot-label">Skin</span>
+          <div className="builder-options">
+            {BUILDER_SKINS.map((option) => (
+              <button
+                key={option.id || "base"}
+                type="button"
+                className="builder-option builder-skin"
+                aria-pressed={skin === option.id}
+                onClick={() => setSkin(option.id)}
+              >
+                <i style={{ background: option.swatch }} aria-hidden="true" />
+                {option.label}
+                <small>{option.id ? "recoloured" : "generated"}</small>
+              </button>
+            ))}
+          </div>
+        </div>
         {BUILDER_SLOTS.map((slot) => (
           <div key={slot.id} className="builder-slot" role="group" aria-label={slot.label}>
             <span className="builder-slot-label">{slot.label}</span>

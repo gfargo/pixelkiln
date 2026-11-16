@@ -591,7 +591,9 @@ export default function Home() {
                 masked inpaint, and what is held is one sprite pinned to the
                 hand, most with the fingers redrawn around it. The ones marked
                 recoloured cost nothing: they are a drawn layer with its hue
-                turned. The page
+                turned. So do the skins: the bare base recoloured, with every
+                layer going over it unchanged and the fingers on a held item
+                recoloured to match. The page
                 stacks them and steps them through the same 32 frames, which
                 is all a game has to do. The nudge moves the headwear by whole
                 pixels, the way <code>offset</code> does in a manifest.

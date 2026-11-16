@@ -145,6 +145,27 @@ export const BUILDER_ALWAYS = ["hero", "hero.briefs"];
  */
 export const BUILDER_DRAW_ORDER = ["legs", "top", "back", "hair", "left", "right", "head"];
 
+/**
+ * Skins: the base and its walks with their hue turned, which costs nothing.
+ * The first is the base as generated and has no atlas of its own.
+ */
+export const BUILDER_SKINS: Array<{ id: string; label: string; swatch: string }> = [
+  { id: "", label: "Peach", swatch: "#f3b581" },
+  { id: "tan", label: "Tan", swatch: "#d1915b" },
+  { id: "brown", label: "Brown", swatch: "#9c623d" },
+  { id: "deep", label: "Deep", swatch: "#6b432c" },
+  { id: "orc", label: "Orc", swatch: "#84c76e" },
+  { id: "frost", label: "Frost", swatch: "#9bbee7" },
+];
+
+/** Layers with skin in them: a gripped item holds the fingers, so each has a recolour per skin. */
+const BUILDER_SKINNED = new Set(["hero", "hero.greatsword", "hero.staff", "hero.dagger", "hero.torch"]);
+
+/** The atlas a layer is drawn from on a given skin. */
+export function builderLayer(id: string, skin: string): string {
+  return skin && BUILDER_SKINNED.has(id) ? `${id}.${skin}` : id;
+}
+
 export function builderAtlas(id: string): string {
   return `/sprites/paperdoll/builder/${id}.png`;
 }
