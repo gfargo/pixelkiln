@@ -546,9 +546,10 @@ returns it as transparent PNGs that sit on top of them: one bare character,
 any number of outfits, and every outfit lines up with every frame because it
 was painted onto that frame.
 
-This section is the reference for outfits. Hats, held items, composing
-layers in a game, and what each was measured to do are in the
-[Paperdoll layers guide](./PAPERDOLL.md).
+This section is the reference for outfits. Hats, an outfit split into
+pieces, held items (drawn, or a sprite pinned to the hand for free with
+`attach`), composing layers in a game, and what each was measured to do are
+in the [Paperdoll layers guide](./PAPERDOLL.md).
 
 ```json
 "hero":            { "prompt": "bald bare humanoid base body, plain skin, no clothing" },

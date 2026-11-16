@@ -161,7 +161,7 @@ export default function Home() {
             <span>generation providers</span>
           </div>
           <div>
-            <strong>44</strong>
+            <strong>45</strong>
             <span>composable commands</span>
           </div>
           <div>
@@ -507,8 +507,9 @@ export default function Home() {
                   A <code>layer</code> asset draws its prompt over frames you
                   already have and returns only what it added: a transparent
                   PNG for every frame of every animation, each one lined up
-                  with the frame it was painted on. Outfits, hats and held
-                  items are separate layers, so a game can mix them.
+                  with the frame it was painted on. A shirt, trousers, a hat
+                  and a sword are four separate layers, so a game can switch
+                  each one on its own.
                 </p>
                 <p className="section-deck">
                   Every frame goes onto one sheet and is repainted in one
@@ -521,7 +522,8 @@ export default function Home() {
                 </p>
                 <ul className="check-list cast-list">
                   <li><span>✓</span> 56 frames dressed by one request: 8 rotations and a walk in 8 directions, for 25 generations.</li>
-                  <li><span>✓</span> <code>region</code> picks what may change: the body for clothing, the head for hats, the space around the body for held items.</li>
+                  <li><span>✓</span> <code>region</code> picks what may change: the body for clothing, the head for hats, the space around the body for capes and packs.</li>
+                  <li><span>✓</span> <code>attach</code> pins a sprite you already have to the hand in every frame, for nothing: the same sword in all 56 frames, always in the right hand.</li>
                   <li><span>✓</span> <code>clean</code> on a loop strips the ghost pixels an animation model leaves, at download, for nothing: 608 stray pixels down to 2 on this walk.</li>
                   <li><span>✓</span> Regenerate the base or a loop and its layers go stale, like everything else drawn from it.</li>
                 </ul>
@@ -535,7 +537,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="cast-visuals">
-                <div className="lock-visual cast-manifest" aria-label="A base, a cleaned walk, and two layers in the manifest">
+                <div className="lock-visual cast-manifest" aria-label="A base, a cleaned walk, two drawn layers and a placed sword in the manifest">
                   <div className="lock-label">pixelkiln.manifest.json</div>
                   <CodeBody language="json" code={`
 "hero": {
@@ -552,7 +554,12 @@ export default function Home() {
 "hero.hat": {
   "prompt": "The same feathered ranger hat on every head.",
   "layer": { "of": ["hero", "hero.walk.south",
-    "hero.walk.east"], "region": "head", "padding": 10 } }
+    "hero.walk.east"], "region": "head", "padding": 10 } },
+"hero.sword": {
+  "layer": { "of": ["hero", "hero.walk.south",
+    "hero.walk.east"], "attach": {
+      "item": "items/sword-{direction}.png",
+      "anchors": "anchors/hero.json" } } }
 `} />
                   <div className="lock-callout top"><span>◇</span> one request per layer</div>
                   <div className="lock-callout bottom"><span>◇</span> one PNG per frame</div>
@@ -560,13 +567,15 @@ export default function Home() {
                 <figure className="cast-loop" aria-label="The same walk as the base and with layers added">
                   <SpriteCarousel
                     slides={[
+                      { id: "pieces and a placed sword", label: "pieces and a placed sword", strip: "/sprites/paperdoll/walk-south-held.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "pieces, facing east", label: "pieces, facing east", strip: "/sprites/paperdoll/walk-east-held.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
                       { id: "outfit, hat and sword", label: "outfit, hat and sword", strip: "/sprites/paperdoll/walk-east-dressed.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
                       { id: "outfit and hat", label: "outfit and hat", strip: "/sprites/paperdoll/walk-south-dressed.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
                       { id: "outfit", label: "outfit", strip: "/sprites/paperdoll/walk-east-outfit.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
                       { id: "base", label: "base", strip: "/sprites/paperdoll/walk-east-mannequin.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
                     ]}
                   />
-                  <figcaption>One template walk, drawn once, then layered. The outfit, hat and sword are three assets generated separately and drawn over the same six frames. A held item is the least reliable layer: on the south-facing walk the sword changed hands in two of six frames, so that slide leaves it out.</figcaption>
+                  <figcaption>One template walk, drawn once, then layered. The first two slides are four assets: trousers, a shirt and a hat, each drawn by its own request, and a sword that was drawn once as an object and pinned to the hand. The others are a whole outfit as one layer. A sword drawn onto the frames changed hands in two of the six south-facing frames, so that slide leaves it out; the pinned one cannot.</figcaption>
                 </figure>
               </div>
             </div>

@@ -7,7 +7,7 @@ pixelkiln <command> [options]
 Unknown commands, positional arguments, and flags are errors. The only
 positional words accepted are a command's own subcommands (`refine approve`,
 `workspace add <manifest>`, and the like), `estimate-skeleton`'s one image
-path, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
+path, `anchors`'s asset id, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
 accumulate; comma-separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
@@ -58,6 +58,7 @@ Which command:
 | make a pixel-art effect (spell, hit, explosion, aura), free | `pixelkiln vfx --preset explosion --out fx/explosion` |
 | generate a pixel font (`.ttf` plus glyph atlas) | `pixelkiln font --description "warm orange arcade font" --out fonts/arcade` |
 | start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
+| find the hands in every frame so a held item can be pinned to one | `pixelkiln anchors hero.sword` |
 | see a keypoints file's poses over the source before paying | `pixelkiln skeleton-preview hero-swing` |
 | work across several projects | `pixelkiln workspace add ../other/pixelkiln.manifest.json`, then `--workspace` on `gallery` and `salvage` |
 
@@ -1633,6 +1634,31 @@ fails with the same message `plan` would give.
 Use it after `estimate-skeleton` and after every hand edit: PixelKiln cannot
 check that the starting pose matches what the image shows, and a mismatch
 degrades every generated frame without an error.
+
+### `anchors`
+
+```bash
+pixelkiln anchors <asset> [--style <id>] [--force] [--dry-run]
+```
+
+Writes the anchors file of a held item, a `layer` asset with `attach`: the
+skeleton of every frame of the layer's `of` assets, which is where the item
+is pinned. PixelLab only. Each frame is one `/estimate-skeleton` call at 0.1
+generation, a direct account call outside the plan, the lockfile and
+`--budget`, like `estimate-skeleton`.
+
+The file is the one the asset's `attach.anchors` names. Frames whose entry
+already matches their bytes are skipped, so running it again after adding or
+regenerating a loop pays only for what changed, and entries other held items
+rely on are left alone. `--force` estimates every frame again. `--dry-run`
+counts the frames and their cost and calls nothing. A hand-made `place` on a
+frame is kept until that frame's own bytes change.
+
+The sources must be downloaded first. A frame that is not one of the sizes
+the endpoint takes (square, 16, 32, 64, 128 or 256) is sent on the next size
+up and its joints scaled back; a frame over 256 pixels a side is refused.
+
+See [Paperdoll layers](./PAPERDOLL.md#held-items-and-accessories).
 
 ## Utility commands
 

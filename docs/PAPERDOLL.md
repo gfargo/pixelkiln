@@ -3,7 +3,9 @@
 One bare character, any number of outfits, hats and held items, each a
 transparent layer that lines up with every frame of every animation. A
 `layer` asset draws its prompt over frames you already have and hands back
-only what it added.
+only what it added. A rigid item, a sword or a shield, can skip the drawing:
+a layer with `attach` pins a sprite you already have to the hand in every
+frame, for free.
 
 ![A cyan mannequin, a leather outfit layer, a hat layer, a sword layer, and the four stacked into a dressed character](../website/public/sprites/paperdoll/stack-south.png)
 
@@ -162,6 +164,43 @@ tried it).
 "layer": { "of": ["mira", "mira.walk.south"], "skin": ["#f6b58a", "#e58a62", "#f2a076", "#d87855"] }
 ```
 
+### One piece at a time
+
+An outfit does not have to be one layer. Ask for a single garment and say
+what stays bare, and the same mask gives a layer holding only that garment:
+whatever the provider leaves cyan is dropped, so nothing marks where the
+shirt ends but the shirt.
+
+```json
+"hero.shirt": {
+  "prompt": "Dress every cyan mannequin on this spritesheet in the same red long-sleeved tunic shirt with a darker red hem, covering the chest, back, shoulders and arms down to the wrists and ending at the hips. Keep the shirt the same colour and cut in every cell. Only the shirt: leave the hips, legs, feet, hands, neck and head bare cyan exactly as they are. Do not add trousers, shorts, underwear, belts, shoes, gloves, hats, hair or items.",
+  "layer": { "of": ["hero", "hero.walk.south", "hero.walk.east"] }
+},
+"hero.trousers": {
+  "prompt": "Dress every cyan mannequin on this spritesheet in the same pair of brown trousers with a dark leather belt, covering the hips and both legs from the waist down to the ankles. Keep the trousers the same colour and cut in every cell. Only the trousers: leave the chest, back, shoulders, arms, hands, feet, neck and head bare cyan exactly as they are. Do not add shirts, shoes, boots, gloves, hats, hair or items.",
+  "layer": { "of": ["hero", "hero.walk.south", "hero.walk.east"] }
+}
+```
+
+![Trousers, a shirt, a hat and a sword as four separate layers, and the character wearing all four](../website/public/sprites/paperdoll/pieces-south.png)
+
+Measured on 20 frames: both runs dressed every frame with only the garment
+asked for, and the two stack, trousers first, with the shirt's hem over the
+waistband. Each cost 10 generations as quoted, the sheet being small.
+
+Draw the pieces in the order they are worn: trousers, shirt, coat. Two pieces
+are two requests, so they are consistent with themselves and not designed
+together; name colours that go with each other.
+
+**The wire figure.** Asked for part of an outfit, a provider still redraws
+the outline of the limbs it left bare, slightly changed, and those pixels
+would come back as a thin outline of the whole body in every layer. The cut
+step removes them: a dark pixel stays only when it borders a coloured layer
+pixel or sits in a solid 2×2 block. On the two runs above that removed 1,623
+and 2,265 outline pixels and 1 coloured one. On the 56-frame full outfit it
+removed 551, the outline around the bare hands and neck, and no coloured
+ones.
+
 ## Hats and hair
 
 `"region": "head"` masks everything from the top of each cell down to the
@@ -191,9 +230,123 @@ Padding makes the sheet bigger, so fewer frames fit. See
 
 ## Held items and accessories
 
+There are two ways to put something in a character's hand, and they suit
+different things.
+
+| | Placed (`attach`) | Inpainted (`region: "around"`) |
+|---|---|---|
+| Good for | Rigid items: swords, shields, tools, lanterns | Soft or worn ones: capes, packs, scarves |
+| The item across frames | The same pixels in every frame | Redrawn per frame; consistent, with drift |
+| Which hand | The one you name, always | Whichever the model draws; it can swap |
+| Cost | Free once the item and the anchors exist | 10 to 25 generations per item |
+| Reuse on another character | Yes, the same item files | No, redrawn for each |
+| Fingers over the grip, an arm that reaches | No. The item sits on the hand | Sometimes |
+
+### Placed: a sprite pinned to the hand
+
+A layer with `attach` draws nothing. It takes a sprite of the item for each
+direction, finds the hand in every frame, and writes the same per-frame layer
+files an inpainted layer does.
+
+```json
+"hero.sword": {
+  "layer": {
+    "of": ["hero", "hero.walk.south", "hero.walk.east"],
+    "attach": { "item": "items/sword-{direction}.png", "anchors": "anchors/hero.json" }
+  }
+}
+```
+
+It needs two things on disk first.
+
+**The item**, one PNG per direction the frames face, named with the
+direction: `items/sword-south.png`, `items/sword-south-east.png` and so on.
+The run on this page used PixelLab's 8-direction object tool at 32px (10
+generations, quoted) and its exported rotations as they came. Any sprites
+will do, including ones you drew. Without `{direction}` in the path, one
+image is used for every direction.
+
+Draw the item **the way it is held**. An object generated upright stands
+straight up out of the fist. The description that worked:
+
+```text
+steel longsword with a brown leather grip and brass crossguard, held at an
+angle: the grip is at the bottom and the blade leans forward at 45 degrees,
+tip pointing forward and up, no hand, no character
+```
+
+It came back leaning toward each of its 8 facings, which is the way the
+character holding it faces:
+
+![The dressed character turning through eight directions, the sword leaning the way it faces](../website/public/sprites/paperdoll/held-8dir.png)
+
+**The anchors file**, which is every frame's skeleton and so where its hands
+are:
+
+```bash
+pixelkiln anchors hero.sword
+```
+
+That is one PixelLab skeleton estimate per frame at 0.1 generation each, a
+direct call outside the plan and budget like `estimate-skeleton`. It is paid
+once per character, not per item: every item the character holds reads the
+same file. Run it again after adding or regenerating a loop and it estimates
+only the frames that are new or changed. `--dry-run` counts them first.
+
+Then `pixelkiln gen` places the item, at no cost. Measured: 56 frames (8
+rotations, a 6-frame walk in 8 directions) cost 5.6 generations to anchor by
+the published price and nothing to place, and the sword stayed in the right
+hand in all 56.
+
+![Six frames of the dressed character walking south with the sword in its right hand](../website/public/sprites/paperdoll/walk-south-held.png)
+
+How it is placed, and what to change when it is wrong:
+
+- **The hand** is a little past the skeleton's wrist, along the forearm.
+  `joint` picks `right-hand` (default) or `left-hand`.
+- **The grip** is the point of the item that goes on the hand. By default it
+  is the middle of the item's lowest fifth, which is the handle of anything
+  drawn handle-down, upright or leaning. A shield held by its centre needs
+  `"grip": [16, 16]`, in item pixels; give one per direction as
+  `{ "south": [16, 16], "east": [12, 16] }` when they differ.
+- **In front or behind.** The skeleton says whether each hand is on the near
+  or far side of the body. On the far side, the item's pixels under the
+  figure are left out of the layer, so the body covers it. `depth` forces
+  `"front"` or `"behind"` for every frame.
+- **`tilt` and `lean`** turn an item that was drawn upright, in degrees,
+  nearest-neighbour so no new colours appear. `tilt` leans it the way the
+  figure faces, which shows from the side; `lean` tips it outward from the
+  body, which shows from the front and back. `"tilt": 40, "lean": 15` made
+  an upright sword read as held. A sprite drawn already leaning is crisper
+  than a turned one, and wants both left at 0.
+- **One frame is off.** Open the anchors file, find the frame under its asset
+  and role, and add a `place` for the joint, in frame pixels:
+
+  ```json
+  "frame-03": { "sha256": "…", "width": 64, "height": 64, "keypoints": [ … ],
+                "place": { "right-hand": { "x": 19, "y": 41, "behind": false, "angle": -10 } } }
+  ```
+
+  `angle` turns the item for that frame alone. The correction survives
+  re-running `pixelkiln anchors` for as long as the frame itself does.
+
+The layer fails, naming the frame, when a frame has no anchor or has changed
+since its anchor was estimated: an item pinned where the old pose had its
+hand is worse than no item.
+
+A placed item's canvas is its source frame's grown by `padding`, 12 by
+default. When part of the item falls outside it, `gen` says how many pixels
+were lost; raise `padding`.
+
+What a placed item cannot do: the hand does not close around it, and the arm
+does not move to carry it. For a swing or a block, animate the character
+making the motion empty-handed, and the item follows the hand.
+
+### Inpainted: drawn onto the frames
+
 `"region": "around"` masks everything below the neck, empty space included,
-and leaves the head black: room beside the body for a sword, a shield, a
-cape or a pack.
+and leaves the head black: room beside the body for a cape or a pack, or for
+an item you want the model to fit to the pose.
 
 ```json
 "hero.sword": {
@@ -202,46 +355,50 @@ cape or a pack.
 }
 ```
 
-Measured on the same 20 frames with 12px of padding: the sword kept its
-length, shape and colours in all 20, and was drawn correctly for each of the
-8 directions.
+Measured on 20 frames with 12px of padding: the sword kept its length, shape
+and colours in all 20, and was drawn correctly for each of the 8 directions.
 
 **Which hand is not reliable.** In the south-facing walk the sword was in the
 character's right hand for 4 frames and its left for 2. The east walk held it
-on one side for all 6. Check a held item's loop frame by frame. When it swaps,
-generate the layer again, or move the offending loop into a layer of its own
-so that only it is redone. This is the same handedness problem PixelLab's animation tools have,
-and a mask does not fix it.
+on one side for all 6. This is the same handedness problem PixelLab's
+animation tools have, and a mask does not fix it. A placed item does.
 
-**Item layers are tidied.** Given room around the figure, a provider redraws
+**Layers are tidied.** Given room around the figure, a provider redraws
 stretches of the body's outline a pixel off, leaves dark blots where it
-redrew an eye or a shadow, and lets a long blade run into the next cell. For
-`head` and `around` layers the cut step drops:
+redrew an eye or a shadow, and lets a long blade run into the next cell. The
+cut step drops:
 
 - dark pixels that neither border a coloured layer pixel nor sit in a solid
-  2×2 block (outline scribbles),
+  2×2 block (outline scribbles; this is also what removes
+  [the wire figure](#one-piece-at-a-time) from a partial outfit),
 - fragments with no coloured pixel at all, under 40 pixels (blots),
-- fragments under 8 pixels, and fragments under 20 that touch their cell's
-  edge (specks, and tips bleeding in from the next cell).
+- for `head` and `around` layers, fragments under 8 pixels, and fragments
+  under 20 that touch their cell's edge (specks, and tips bleeding in from
+  the next cell). A `body` layer's cells are cut to the figures, so there it
+  is only fragments under 4 pixels.
 
-An item smaller than 8 pixels does not survive that. Give it a hand-made
-`mask` and the `body` region instead, which is not tidied.
+An item smaller than 8 pixels does not survive an `around` layer. Give it a
+hand-made `mask` and the `body` region instead.
 
 A blade longer than the padding still crosses into the next cell, and one
 such fragment survived in 20 frames. Raise `padding` until the item fits.
 
 ## Composing layers in a game
 
-Layers from separate `layer` assets stack. The outfit, hat and sword on this
-page are three assets, generated separately, drawn over one base:
+Layers from separate `layer` assets stack, and each one is a switch: draw
+it or do not. The outfit, hat and sword here are three assets, generated
+separately, drawn over one base; the trousers, shirt, hat and placed sword
+further up are four.
 
 ![The dressed character turning through eight directions](../website/public/sprites/paperdoll/dressed-8dir.png)
 
-- **Order.** Body, then outfit, then held items, then hat is a workable
-  default. A cape or a sword on the back wants to be drawn behind the body
-  when the character faces the viewer and in front when it faces away; keep
-  a small table of order per direction in your game, the way Ultima Online
-  and Flare do.
+- **Order.** Body, then clothing from the inside out, then held items, then
+  hat is a workable default. A placed item that belongs behind the body
+  already has the covered part left out, so it still goes on top. A cape or a
+  sword on the back, inpainted, wants to be drawn behind the body when the
+  character faces the viewer and in front when it faces away; keep a small
+  table of order per direction in your game, the way Ultima Online and Flare
+  do.
 - **Position.** An unpadded layer has its source frame's canvas: same
   position. A padded one is larger by `padding` on every side: same centre.
 - **Frame for frame.** Layer frame N belongs to source frame N. There is one
@@ -252,7 +409,9 @@ page are three assets, generated separately, drawn over one base:
   one beneath.
 - **Mirrors.** A layer over a mirrored loop is painted on the flipped frames,
   so anything one-sided (a sword, a shoulder strap) is drawn for that side
-  rather than flipped. Dress the mirror, do not mirror the layer.
+  rather than flipped. Dress the mirror, do not mirror the layer. A placed
+  item on a mirrored loop is pinned by that loop's own anchors, to the hand
+  you named.
 
 `layout.json` in the layer's work folder lists every frame's asset, role,
 canvas, padding and cell, for a build step that wants to pack layers itself.
@@ -330,7 +489,17 @@ frame count.
 | 304×434 | 56 (8 rotations, walk in 8 directions) | outfit | 25, billed |
 | 384×320 | 38 (clothed character, mixed loops) | outfit | 25, quoted |
 | 290×328 | 20, 10px padding | hat | 15, quoted |
-| 310×344 | 20, 12px padding | sword | 25, quoted |
+| 310×344 | 20, 12px padding | sword, inpainted | 25, quoted |
+| 190×248 | 20 | shirt only | 10, quoted |
+| 190×248 | 20 | trousers only | 10, quoted |
+
+A placed item is priced differently:
+
+| What | Paid | Generations |
+|---|---|---|
+| The item, a 32px 8-direction object | once per item | 10, quoted |
+| Anchors for 56 frames | once per character | 5.6, at the published 0.1 a frame |
+| Placing it on those 56 frames | every time | 0 |
 
 "Billed" was read back from the finished job; "quoted" is what PixelLab
 stated when the job was submitted.
@@ -352,7 +521,11 @@ stated when the job was submitted.
 
 Not tested: sizes other than 64px, quadrupeds, more than 56 frames,
 attack animations (where limbs cross the head and the neck detection is
-weakest), hair, capes, shields, and two held items at once.
+weakest), hair, capes, shields, and two held items at once. For placed
+items: the left hand, a `grip` set by hand, a frame size the skeleton
+endpoint does not take directly (such a frame is sent on the next size up
+and its joints scaled back), and an item made with PixelKiln's own
+`objectPro` generator rather than PixelLab's 8-direction object tool.
 
 ## Field reference
 
@@ -375,6 +548,23 @@ Plan states: `blocked` until every source is downloaded and current, `stale`
 when a source is regenerated or re-processed, or when the prompt or any
 field above changes.
 
+A layer with `attach` is a placed item. It needs no `prompt`, costs nothing,
+and takes only `of` and `padding` (default 12) from the table above.
+
+| `attach` field | Default | Does |
+|---|---|---|
+| `item` | required | Manifest-relative PNG. `{direction}` in the path names one file per direction the frames face. |
+| `anchors` | required | Manifest-relative anchors file, written by `pixelkiln anchors <asset>`. |
+| `joint` | `right-hand` | `right-hand` or `left-hand`. |
+| `grip` | lowest fifth | `[x, y]` in item pixels, or one per direction. |
+| `tilt` | 0 | Degrees to lean an upright item the way the figure faces. |
+| `lean` | 0 | Degrees to tip an upright item outward from the body. |
+| `depth` | `auto` | `auto` follows each frame's skeleton; `front` or `behind` for every frame. |
+
+It is `blocked` until the item files and the anchors file exist, and `stale`
+when any of them, a source frame, or a field above changes. Placing it again
+is free.
+
 On a loop, `animation.clean` (default off) cleans its frames at download.
 
 ## Troubleshooting
@@ -388,6 +578,11 @@ On a loop, `animation.clean` (default off) cleans its frames at download.
 | A fringe in the key colour at wrists or collar | Shades of the key the cut did not recognise. | Change `key` to a colour further from the outfit's, or open an issue with `result.png`. |
 | A hat is cut off at the top | Not enough room in the cell. | Raise `padding`. |
 | A blade tip appears beside a neighbouring frame | The item ran past its cell. | Raise `padding`. |
-| A sword changes hands mid-walk | The model, not the mask. | Generate the layer again, or give that loop its own layer. |
+| A sword changes hands mid-walk | The model, not the mask. | Make it a placed item with `attach`. |
+| A thin outline of the body in a partial outfit's layer | It was generated before layers were tidied. | Generate the layer again. |
+| A placed item stands straight up | The sprite was drawn upright. | Draw it leaning, or set `tilt` and `lean`. |
+| A placed item floats beside the hand | The grip default missed, or the skeleton did. | Set `grip`, or add a `place` to that frame in the anchors file. |
+| "changed since its anchor was estimated" | A source frame was regenerated or cleaned. | Run `pixelkiln anchors <asset>` again; only changed frames are paid for. |
+| A placed item is cut off | It reaches past the padded canvas. | Raise `padding`. |
 | "do not fit one 512px sheet" | Too many frames, or too much padding. | Lower `padding`, or split the layer. |
 | The layer is `stale` after turning on `clean` | Its sources' bytes changed. | Turn `clean` on first next time; regenerate the layer. |
