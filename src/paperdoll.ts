@@ -799,6 +799,32 @@ export function cutLayerFrames(
 }
 
 /**
+ * Moves a layer's pixels within its canvas: positive x to the right, positive
+ * y down. Pixels pushed past an edge are lost and counted; padding on the
+ * layer is what gives them somewhere to go.
+ */
+export function shiftPixels(png: Buffer, dx: number, dy: number): { png: Buffer; clipped: number } {
+  if (!dx && !dy) return { png, clipped: 0 }
+  const image = decodePng(png)
+  const out = Buffer.alloc(image.pixels.length)
+  let clipped = 0
+  for (let y = 0; y < image.height; y++) {
+    for (let x = 0; x < image.width; x++) {
+      const from = at(image, x, y)
+      if (image.pixels[from + 3] === 0) continue
+      const tx = x + dx
+      const ty = y + dy
+      if (tx < 0 || ty < 0 || tx >= image.width || ty >= image.height) {
+        clipped++
+        continue
+      }
+      image.pixels.copy(out, at(image, tx, ty), from, from + 4)
+    }
+  }
+  return { png: encodeRgbaPng(image.width, image.height, out), clipped }
+}
+
+/**
  * The grip pass. A placed item sits on the hand; nothing holds it. One small
  * inpaint fixes that without giving up what placing bought: the item is
  * pasted onto the keyed sheet where it was placed, and only a disc around

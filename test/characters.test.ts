@@ -1877,6 +1877,40 @@ describe("paperdoll layer", () => {
     expect(masked.lock.entries["cast/mira.armor"]).toMatchObject({ status: "failed", error: expect.stringContaining("the mask is 8x8") })
   })
 
+  it("moves a drawn layer by its offset at download, and again for free when the offset changes", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let file = await layeredManifest({ offset: [0, -1] })
+    let p = await withSources(file, client, provider)
+    expect(p.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.offset).toEqual({ x: 0, y: -1 })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const entry = () => p.lock.entries["cast/mira.armor"]!
+    expect(entry()).toMatchObject({ status: "downloaded", postprocess: { offset: { x: 0, y: -1 } } })
+    const read = async () => decodePng(await readFile(path.resolve(dir, entry().outputs[0]!.path)))
+    const bottomRow = (image: { width: number; height: number; pixels: Buffer }) => [...image.pixels.subarray(image.pixels.length - 4)]
+    // Unmoved, the layer's last pixel is leather (see the test above); moved up one, that row is empty.
+    expect(bottomRow(await read())).toEqual([0, 0, 0, 0])
+    const jobs = client.inpaints.length
+    // A pair per source asset, and a name that is not one of them refused.
+    const perAsset = await openProject(await layeredManifest({ offset: { "*": [0, -1], "mira.walk": [0, -3] } }), { env: false })
+    expect(perAsset.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.offset).toEqual({ x: 0, y: -1, per: { "mira.walk": { x: 0, y: -3 } } })
+    await expect(openProject(await layeredManifest({ offset: { "mira.run": [0, -1] } }), { env: false })).rejects.toThrow(/layer.offset names "mira.run"/)
+
+    // Dropping the offset is a different spec hash for nothing: the same layer, re-processed by fetch.
+    file = await layeredManifest()
+    p = await openProject(file, { env: false })
+    const plan = await p.plan()
+    expect(plan.actionable).toEqual([])
+    expect(plan.items.find((item) => item.key === "cast/mira.armor")).toMatchObject({ state: "recoverable", reason: expect.stringContaining("layer offset changed") })
+    expect(await fetchAssets(provider, p.specs, p.lock, p.lockPath)).toMatchObject({ failed: 0 })
+    expect(bottomRow(await read())).toEqual(LEATHER)
+    expect(client.inpaints).toHaveLength(jobs)
+    expect((await (await openProject(file, { env: false })).plan()).items.find((item) => item.key === "cast/mira.armor")!.state).toBe("ok")
+  })
+
   describe("held items", () => {
     const STEEL = [180, 190, 200, 255]
 
@@ -1981,6 +2015,19 @@ describe("paperdoll layer", () => {
 
       p = await openProject(file, { env: false })
       expect((await p.plan()).actionable).toEqual([])
+
+      // An offset moves the item on the hand: a different layer, placed again for nothing.
+      const nudged = await openProject(await heldManifest({}, { offset: [2, 0] }), { env: false })
+      const again = await nudged.plan()
+      expect(again.actionable.map((item) => item.key)).toEqual(["cast/mira.sword"])
+      await submit(provider, nudged.loaded, again.actionable, nudged.lock, nudged.lockPath, { spacingMs: 0, budget: 0 })
+      const shifted = decodePng(await readFile(path.resolve(dir, nudged.lock.entries["cast/mira.sword"]!.outputs[0]!.path)))
+      const px = (x: number, y: number) => [...shifted.pixels.subarray((y * shifted.width + x) * 4, (y * shifted.width + x) * 4 + 4)]
+      expect(px(hand.x + 2, hand.y)).toEqual(STEEL)
+      expect(px(hand.x, hand.y)).toEqual([0, 0, 0, 0])
+      await writeFile(file, await readFile(file, "utf8"))
+      p = await openProject(await heldManifest(), { env: false })
+      await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0, budget: 0 })
 
       // A changed item is a changed layer, placed again for nothing.
       await writeFile(path.join(dir, "items", "sword-south.png"), encodeRgbaPng(3, 5, Buffer.alloc(3 * 5 * 4, 255)))

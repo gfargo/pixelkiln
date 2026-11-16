@@ -26,6 +26,7 @@ import {
   type Asset,
   type AssetVfx,
   type CharacterDirection,
+  type LayerOffset,
   type Generator,
   type Manifest,
   type MapScene,
@@ -1259,6 +1260,22 @@ export async function resolveSpecs(
         }
         const mask = await override(asset.layer.mask)
         const keyed = await override(asset.layer.keyed)
+        // One pair for every frame, or a pair per source asset with "*" for the rest. Zeroes are no move.
+        let offset: LayerOffset | undefined
+        if (Array.isArray(asset.layer.offset)) {
+          const [x, y] = asset.layer.offset
+          if (x || y) offset = { x, y }
+        } else if (asset.layer.offset) {
+          const per: NonNullable<LayerOffset["per"]> = {}
+          let all = { x: 0, y: 0 }
+          for (const [id, [x, y]] of Object.entries(asset.layer.offset)) {
+            if (id === "*") all = { x, y }
+            else if (!ids.includes(id)) throw new Error(`assets.${assetId}: layer.offset names "${id}", which is not one of its \`of\` assets`)
+            else per[id] = { x, y }
+          }
+          const moved = Object.fromEntries(Object.entries(per).filter(([, pair]) => pair.x !== all.x || pair.y !== all.y))
+          if (all.x || all.y || Object.keys(moved).length) offset = { ...all, ...(Object.keys(moved).length ? { per: moved } : {}) }
+        }
         // A held item needs its sprite in every direction a frame faces: all
         // of a base's or state's, and a loop's one.
         let attach: NonNullable<NonNullable<ResolvedSpec["character"]>["layer"]>["attach"]
@@ -1307,6 +1324,7 @@ export async function resolveSpecs(
             ...(asset.layer.columns ? { columns: asset.layer.columns } : {}),
             region: asset.layer.region ?? "body",
             padding: asset.layer.padding ?? (attach ? 12 : (asset.layer.region ?? "body") === "body" ? 0 : 8),
+            ...(offset ? { offset } : {}),
             ...(attach ? { attach } : {}),
           },
         }

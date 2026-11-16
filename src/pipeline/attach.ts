@@ -8,7 +8,7 @@ import { MediaType } from "../media.ts"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import { ESTIMATE_SKELETON_SIZES, SkeletonFrameSchema, type SkeletonKeypoint } from "../skeleton.ts"
 import { currentEntryOutputPath, expectedOutputPath, portableOutputPath } from "../outputs.ts"
-import { lockKey, type CharacterDirection, type Lock, type LockEntry, type LockOutput, type ResolvedSpec } from "../types.ts"
+import { layerOffsetFor, lockKey, type CharacterDirection, type Lock, type LockEntry, type LockOutput, type ResolvedSpec } from "../types.ts"
 import { mirrorSourceHash } from "./mirror.ts"
 
 /**
@@ -108,6 +108,11 @@ export async function placeHeldFrames(spec: ResolvedSpec, frames: HeldFrame[]): 
     if (!item) throw new Error(`no item image for ${frame.direction}, which ${name} faces`)
     const placement = handPlacement(anchor, attach.joint)
     if (attach.depth !== "auto") placement.behind = attach.depth === "behind"
+    const hand = { x: placement.x, y: placement.y }
+    // The nudge moves the item, not where the hand is: a grip pass still opens its disc on the hand.
+    const nudge = layerOffsetFor(layer.offset, frame.assetId)
+    placement.x += nudge.x
+    placement.y += nudge.y
     const grip = attach.grip === "center" || Array.isArray(attach.grip) ? attach.grip : attach.grip?.[frame.direction]
     const result = attachFrame(bytes, item, {
       placement,
@@ -116,7 +121,7 @@ export async function placeHeldFrames(spec: ResolvedSpec, frames: HeldFrame[]): 
       scale: attach.scale,
       padding: layer.padding,
     })
-    placed.push({ png: result.png, hand: { x: placement.x, y: placement.y }, behind: placement.behind, clipped: result.clipped })
+    placed.push({ png: result.png, hand, behind: placement.behind, clipped: result.clipped })
   }
   return placed
 }

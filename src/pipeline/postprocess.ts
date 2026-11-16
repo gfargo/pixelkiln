@@ -1,6 +1,6 @@
 import { normalizePalette, quantize } from "../palette.ts"
 import { MediaType, type MediaType as MediaKind } from "../media.ts"
-import { despeckle } from "../paperdoll.ts"
+import { despeckle, shiftPixels } from "../paperdoll.ts"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { LockEntry, Postprocess, ResolvedSpec } from "../types.ts"
 
@@ -23,6 +23,9 @@ export function postprocessFor(spec: PostprocessSpec): Postprocess | undefined {
   const clean = character?.kind === "animation" && character.animation?.clean && character.parentAssetId
     ? { despeckle: { of: character.parentAssetId } }
     : {}
+  // A drawn layer's nudge. A held item's offset moves it on the hand when it is placed instead.
+  const layer = character?.kind === "layer" && !character.layer?.attach ? character.layer : undefined
+  const offset = layer?.offset ? { offset: layer.offset } : {}
   const palette = spec.enforcePalette && spec.palette.length >= 2
     ? {
         palette: {
@@ -32,13 +35,23 @@ export function postprocessFor(spec: PostprocessSpec): Postprocess | undefined {
         },
       }
     : {}
-  const record = { ...clean, ...palette }
+  const record = { ...clean, ...offset, ...palette }
   return Object.keys(record).length ? record : undefined
+}
+
+/** A layer offset as one comparable string; no offset and all zeroes read the same. */
+export function offsetKey(offset: Postprocess["offset"]): string {
+  const per = Object.entries(offset?.per ?? {})
+    .filter(([, pair]) => pair.x !== (offset?.x ?? 0) || pair.y !== (offset?.y ?? 0))
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([id, pair]) => `${id}:${pair.x},${pair.y}`)
+  return [`${offset?.x ?? 0},${offset?.y ?? 0}`, ...per].join("|")
 }
 
 /** Two records ask for the same work. Absent and empty both mean none. */
 export function samePostprocess(a: Postprocess | undefined, b: Postprocess | undefined): boolean {
   if (a?.despeckle?.of !== b?.despeckle?.of) return false
+  if (offsetKey(a?.offset) !== offsetKey(b?.offset)) return false
   const pa = a?.palette
   const pb = b?.palette
   if (!pa && !pb) return true
@@ -60,6 +73,8 @@ export interface PostprocessResult {
   removed?: number
   /** True when the palette snap moved at least one pixel. */
   snapped?: boolean
+  /** Set when the record moved the layer: how many pixels fell off the canvas. */
+  moved?: { clipped: number }
 }
 
 /**
@@ -75,8 +90,10 @@ export function applyPostprocess(
   mediaType: MediaKind,
   record: Postprocess | undefined,
   reference: Buffer[] = [],
+  /** The output's role. A layer's is `<source asset>.<frame>`, which picks a per-asset offset. */
+  role?: string,
 ): PostprocessResult {
-  if (mediaType !== MediaType.PNG || (!record?.palette && !record?.despeckle)) return { bytes, changed: false }
+  if (mediaType !== MediaType.PNG || (!record?.palette && !record?.despeckle && !record?.offset)) return { bytes, changed: false }
   let out = bytes
   let removed = 0
   if (record.despeckle) {
@@ -87,6 +104,19 @@ export function applyPostprocess(
       removed = cleaned.removed
     }
   }
+  let moved: { clipped: number } | undefined
+  if (record.offset) {
+    // The longest source asset id the role starts with, so `hero.walk.south.frame-00` is not taken for `hero`.
+    const owner = Object.keys(record.offset.per ?? {})
+      .filter((id) => role?.startsWith(`${id}.`))
+      .sort((a, b) => b.length - a.length)[0]
+    const pair = (owner && record.offset.per![owner]) || record.offset
+    const shifted = shiftPixels(out, pair.x, pair.y)
+    if (shifted.png !== out) {
+      out = shifted.png
+      moved = { clipped: shifted.clipped }
+    }
+  }
   let snapped = false
   if (record.palette) {
     const result = quantize(decodePng(out), record.palette.colors)
@@ -95,6 +125,6 @@ export function applyPostprocess(
       snapped = true
     }
   }
-  if (!removed && !snapped) return { bytes, changed: false }
-  return { bytes: out, changed: true, ...(removed ? { removed } : {}), ...(snapped ? { snapped } : {}) }
+  if (!removed && !snapped && !moved) return { bytes, changed: false }
+  return { bytes: out, changed: true, ...(removed ? { removed } : {}), ...(snapped ? { snapped } : {}), ...(moved ? { moved } : {}) }
 }

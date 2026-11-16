@@ -133,7 +133,9 @@ export async function fetchAssets(
         ? entry.sourceUrls
         : entry.sourceUrl
           ? [{ url: entry.sourceUrl }]
-          : opts.repair && entry.outputs.length
+          // A layer's frames are cut locally, so it has no URL to keep. Re-applying
+          // its post-processing starts from the cached raw bytes, like a repair.
+          : (opts.repair || (entry.status === "downloaded" && !postprocessCurrent(entry, spec))) && entry.outputs.length
             ? entry.outputs.map((o) => ({ url: "", role: o.role, mediaType: o.mediaType }))
           : []
       let sources = recordedSources
@@ -334,9 +336,10 @@ export async function fetchAssets(
             // The provider's bytes are cached under their own hash so the
             // post-processing can be undone or redone later without a download.
             if (cacheDir) await cacheMedia(cacheDir, raw!, mediaType)
-            const processed = applyPostprocess(raw!, mediaType, wanted, reference)
+            const processed = applyPostprocess(raw!, mediaType, wanted, reference, source.role)
             buf = processed.bytes
             if (processed.changed) rawHash = sha256(raw!)
+            if (processed.moved?.clipped) log(`  moved   ${path.relative(process.cwd(), target)}: ${processed.moved.clipped} pixels fell off the canvas; raise layer.padding to keep them`)
             if (processed.removed) log(`  cleaned ${path.relative(process.cwd(), target)} (${processed.removed} ghost pixels)`)
             if (processed.snapped) log(`  snapped ${path.relative(process.cwd(), target)} to ${wanted!.palette!.colors.length} colours`)
           }

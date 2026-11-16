@@ -767,6 +767,20 @@ export const CharacterOutfitSchema = z
   .strict()
 export type CharacterOutfit = z.infer<typeof CharacterOutfitSchema>
 
+const LayerOffsetPairSchema = z.tuple([z.number().int().min(-32).max(32), z.number().int().min(-32).max(32)])
+
+/** A layer's nudge once resolved: the pair for every frame, and any per-asset pairs over it. */
+export interface LayerOffset {
+  x: number
+  y: number
+  per?: Record<string, { x: number; y: number }>
+}
+
+/** The pair that applies to one source asset's frames. */
+export function layerOffsetFor(offset: LayerOffset | undefined, assetId: string): { x: number; y: number } {
+  return offset?.per?.[assetId] ?? { x: offset?.x ?? 0, y: offset?.y ?? 0 }
+}
+
 export const ATTACH_JOINTS = ["right-hand", "left-hand"] as const
 export type AttachJoint = (typeof ATTACH_JOINTS)[number]
 
@@ -878,6 +892,16 @@ export const CharacterLayerSchema = z
      */
     padding: z.number().int().min(0).max(64).optional(),
     /**
+     * Nudge the layer by `[x, y]` pixels, x to the right and y down: a hat a
+     * pixel or two higher, a mask lower on the face. One pair moves every
+     * frame; an object moves the frames of each `of` asset it names by that
+     * asset's own pair, with `"*"` for the rest, since a provider can seat a
+     * hat a little differently on a walk than on the stills. On a drawn layer
+     * it is applied at download and changing it costs nothing; on a held item
+     * it moves the item on the hand.
+     */
+    offset: z.union([LayerOffsetPairSchema, z.record(z.string().min(1), LayerOffsetPairSchema)]).optional(),
+    /**
      * Make this layer a held item instead of an inpaint: a sprite you already
      * have, pinned to a hand in every frame. Free and local. See
      * CharacterAttachSchema.
@@ -887,7 +911,7 @@ export const CharacterLayerSchema = z
   .strict()
   .superRefine((layer, context) => {
     if (!layer.attach) return
-    for (const field of ["mask", "keyed", "skin", "key", "clean", "columns", "region"] as const) {
+    for (const field of ["mask", "keyed", "skin", "key", "clean", "region"] as const) {
       if (layer[field] !== undefined) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -1116,6 +1140,8 @@ export interface ResolvedCharacter {
     columns?: number
     region: "body" | "head" | "around"
     padding: number
+    /** Pixels the layer's frames are moved by; absent when none are. */
+    offset?: LayerOffset
     /** For a held item: its files, the anchors file, and how it is turned. Hashes are null while a file does not exist. */
     attach?: {
       item: Array<{ direction: CharacterDirection; path: string; sha256: string | null }>
@@ -2534,6 +2560,14 @@ export const PostprocessSchema = z.object({
    * recorded here: a regenerated parent already makes its loops stale.
    */
   despeckle: z.object({ of: z.string().min(1) }).optional(),
+  /** A layer's frames were moved by this many pixels, with per-source-asset pairs over the default. */
+  offset: z
+    .object({
+      x: z.number().int(),
+      y: z.number().int(),
+      per: z.record(z.string(), z.object({ x: z.number().int(), y: z.number().int() })).optional(),
+    })
+    .optional(),
   palette: z
     .object({
       /** Canonical lowercase `#rrggbb` values, in manifest order. */

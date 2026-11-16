@@ -333,3 +333,42 @@ describe("cleaning a loop", () => {
     expect(() => applyPostprocess(ghosted, MediaType.PNG, record)).toThrow(/needs the rotations of hero/)
   })
 })
+
+describe("a layer's offset", () => {
+  const RED = [200, 30, 30, 255]
+  const CLEAR = [0, 0, 0, 0]
+
+  it("moves every pixel, counts what falls off, and leaves a zero move as the provider's bytes", () => {
+    // 3x2: red at (0,0) and (2,1).
+    const layer = png(3, 2, RED, CLEAR, CLEAR, CLEAR, CLEAR, RED)
+    expect(applyPostprocess(layer, MediaType.PNG, { offset: { x: 0, y: 0 } })).toEqual({ bytes: layer, changed: false })
+    const moved = applyPostprocess(layer, MediaType.PNG, { offset: { x: 1, y: 0 } })
+    expect(moved.changed).toBe(true)
+    expect(moved.moved).toEqual({ clipped: 1 })
+    expect(pixelsOf(moved.bytes)).toEqual([CLEAR, RED, CLEAR, CLEAR, CLEAR, CLEAR])
+    expect(pixelsOf(applyPostprocess(layer, MediaType.PNG, { offset: { x: 0, y: 1 } }).bytes)).toEqual([CLEAR, CLEAR, CLEAR, RED, CLEAR, CLEAR])
+  })
+
+  it("moves each source asset's frames by that asset's own pair", () => {
+    const layer = png(3, 2, RED, CLEAR, CLEAR, CLEAR, CLEAR, CLEAR)
+    const record = { offset: { x: 1, y: 0, per: { "hero.walk": { x: 0, y: 1 }, hero: { x: 2, y: 0 } } } }
+    const at = (role: string) => pixelsOf(applyPostprocess(layer, MediaType.PNG, record, [], role).bytes).findIndex((pixel) => pixel[3])
+    // `hero.walk.frame-00` belongs to hero.walk, not to hero, though it starts with both.
+    expect(at("hero.walk.frame-00")).toBe(3)
+    expect(at("hero.south")).toBe(2)
+    expect(at("hero.jump.frame-00")).toBe(2)
+    expect(at("other.south")).toBe(1)
+    // A per-asset pair equal to the default is no different from leaving it out.
+    expect(samePostprocess({ offset: { x: 1, y: 0, per: { hero: { x: 1, y: 0 } } } }, { offset: { x: 1, y: 0 } })).toBe(true)
+    expect(samePostprocess(record, { offset: { x: 1, y: 0 } })).toBe(false)
+  })
+
+  it("is asked for by a drawn layer and not by a held item, and differs from no offset", () => {
+    const layer = (extra: object) => ({ palette: [], enforcePalette: false, character: { kind: "layer", layer: { offset: { x: 0, y: -2 }, ...extra } } }) as never
+    expect(postprocessFor(layer({}))).toEqual({ offset: { x: 0, y: -2 } })
+    expect(postprocessFor(layer({ attach: {} }))).toBeUndefined()
+    expect(samePostprocess({ offset: { x: 0, y: -2 } }, undefined)).toBe(false)
+    expect(samePostprocess({ offset: { x: 0, y: 0 } }, undefined)).toBe(true)
+    expect(samePostprocess({ offset: { x: 1, y: 2 } }, { offset: { x: 1, y: 2 } })).toBe(true)
+  })
+})

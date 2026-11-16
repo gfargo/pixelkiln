@@ -9,7 +9,7 @@ import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type LockTerrainSettings, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
 import { inspectQualityProfile, type QualityProfileInspection } from "./quality-profile.ts"
-import { postprocessCurrent, postprocessFor } from "./postprocess.ts"
+import { postprocessCurrent, postprocessFor, offsetKey } from "./postprocess.ts"
 import { inspectRevisionReadiness, recordedAnimationGroup } from "./revision.ts"
 
 export type PlanState =
@@ -378,7 +378,9 @@ export async function buildPlan(
       // the raw bytes, not a generation.
       state = "recoverable"
       const wanted = postprocessFor(spec)
-      if (Boolean(wanted?.despeckle) !== Boolean(entry.postprocess?.despeckle)) {
+      if (offsetKey(wanted?.offset) !== offsetKey(entry.postprocess?.offset)) {
+        reason = "layer offset changed; run pixelkiln fetch to move the frames (no generation cost)"
+      } else if (Boolean(wanted?.despeckle) !== Boolean(entry.postprocess?.despeckle)) {
         reason = wanted?.despeckle
           ? "frame cleaning turned on; run pixelkiln fetch to clean the frames (no generation cost)"
           : "frame cleaning turned off; run pixelkiln fetch to restore the provider's bytes (no generation cost)"
