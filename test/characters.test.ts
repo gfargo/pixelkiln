@@ -1828,6 +1828,8 @@ describe("paperdoll layer", () => {
     const layer = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
     const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
     expect(layer).toMatchObject({ width: source.width + 8, height: source.height + 8 })
+    // A padded layer shares its frame's centre, so it is drawn that much up and to the left.
+    expect(packStyle(p.lock, "cast", dir, { pivot: "bottom-center" }).atlas.layers![0]!.frames[0]).toMatchObject({ over: "mira/south", dx: -4, dy: -4 })
     expect(openProject(await layeredManifest({ region: "around" }), { env: false }).then((q) => q.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.padding)).resolves.toBe(8)
   })
 
@@ -1909,6 +1911,47 @@ describe("paperdoll layer", () => {
     expect(bottomRow(await read())).toEqual(LEATHER)
     expect(client.inpaints).toHaveLength(jobs)
     expect((await (await openProject(file, { env: false })).plan()).items.find((item) => item.key === "cast/mira.armor")!.state).toBe("ok")
+  })
+
+  it("recolours a whole layer for nothing: one frame out per frame in, under the same names", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const manifest = () => layeredManifest({}, { "mira.armor.blue": { derive: { from: "mira.armor", transform: "hue-shift", degrees: 180 } } })
+    let p = await withSources(await manifest(), client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(await manifest(), { env: false })
+    const plan = await p.plan()
+    expect(plan.actionable.map((item) => item.key)).toEqual(["cast/mira.armor.blue"])
+    expect(plan.groups[0]!.cost).toBe(0)
+    const jobs = client.inpaints.length
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0, budget: 0 })
+    expect(client.inpaints).toHaveLength(jobs)
+    const layer = p.lock.entries["cast/mira.armor"]!
+    const blue = p.lock.entries["cast/mira.armor.blue"]!
+    expect(blue).toMatchObject({ status: "downloaded", cost: 0 })
+    expect(blue.outputs.map((output) => output.role)).toEqual(layer.outputs.map((output) => output.role))
+    // Leather is an orange-brown; half a turn of hue makes it blue, at the same brightness.
+    const frame = decodePng(await readFile(path.resolve(dir, blue.outputs[0]!.path)))
+    const last = [...frame.pixels.subarray(frame.pixels.length - 4)]
+    expect(Math.max(...last.slice(0, 3))).toBe(Math.max(...LEATHER.slice(0, 3)))
+    expect(last[2]).toBeGreaterThan(last[0]!)
+    expect((await (await openProject(await manifest(), { env: false })).plan()).actionable).toEqual([])
+    // Packed, the atlas pairs every frame of the layer and of its recolour with the frame beneath it.
+    const packed = packStyle(p.lock, "cast", dir, { pivot: "bottom-center" })
+    const layers = packed.atlas.layers!
+    expect(layers.map((entry) => entry.id)).toEqual(["mira.armor", "mira.armor.blue"])
+    expect(layers[0]!.of).toEqual(["mira", "mira.walk"])
+    expect(layers[0]!.frames).toHaveLength(layer.outputs.length)
+    expect(layers[0]!.frames[0]).toEqual({ frame: "mira.armor/mira.south", over: "mira/south", dx: 0, dy: 0 })
+    expect(layers[0]!.frames.at(-1)).toEqual({ frame: "mira.armor/mira.walk.frame-03", over: "mira.walk/frame-03", dx: 0, dy: 0 })
+    expect(layers[1]!.frames[0]).toMatchObject({ frame: "mira.armor.blue/mira.south", over: "mira/south" })
+    // A transform that needs one image says so when the manifest loads.
+    await expect(openProject(await layeredManifest({}, { "mira.small": { derive: { from: "mira.armor", transform: "scale", width: 4, height: 4 } } }), { env: false }))
+      .rejects.toThrow(/mira.armor is a set of frames; scale takes a single image/)
   })
 
   describe("held items", () => {

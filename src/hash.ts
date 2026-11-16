@@ -298,6 +298,10 @@ export function specHash(
                   .sort(([a], [b]) => a!.localeCompare(b!))
               : undefined,
             palette: spec.derive.palette?.map(normalizeHex),
+            degrees: spec.derive.degrees,
+            hue: spec.derive.hue,
+            saturation: spec.derive.saturation,
+            brightness: spec.derive.brightness,
             width: spec.derive.width,
             height: spec.derive.height,
             mode: spec.derive.transform === "scale" ? spec.derive.mode ?? "nearest" : undefined,

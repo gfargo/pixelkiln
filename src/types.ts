@@ -2140,7 +2140,20 @@ export const AssetDeriveSchema = z
     from: z.string().min(1).optional(),
     /** A committed PNG, relative to the manifest, as the input. */
     file: z.string().min(1).optional(),
-    transform: z.enum(["recolor", "palette-snap", "scale", "key-skin", "despeckle"]),
+    transform: z.enum(["recolor", "palette-snap", "hue-shift", "scale", "key-skin", "despeckle"]),
+    /** hue-shift: degrees to turn each pixel's hue by, -180 to 180. */
+    degrees: z.number().min(-180).max(180).optional(),
+    /**
+     * hue-shift: only pixels whose hue lies in this window, `[from, to]` in
+     * degrees going clockwise (so `[330, 30]` is the reds), are changed.
+     * Everything is, when omitted. Greys and near-blacks have no hue to speak
+     * of and are left alone either way.
+     */
+    hue: z.tuple([z.number().min(0).max(360), z.number().min(0).max(360)]).optional(),
+    /** hue-shift: multiply saturation by this, 0 to 4. Default 1. */
+    saturation: z.number().min(0).max(4).optional(),
+    /** hue-shift: multiply brightness by this, 0 to 4. Default 1. */
+    brightness: z.number().min(0).max(4).optional(),
     /** recolor: exact replacements, `#rrggbb` to `#rrggbb`. Unmapped colors and every alpha value stay. */
     map: z.record(HexColorSchema, HexColorSchema).optional(),
     /** palette-snap: the closed palette every visible pixel moves to. */
@@ -2169,17 +2182,21 @@ export const AssetDeriveSchema = z
     const own = {
       recolor: ["map"],
       "palette-snap": ["palette"],
+      "hue-shift": ["degrees", "hue", "saturation", "brightness"],
       scale: ["width", "height", "mode"],
       "key-skin": ["skin", "key", "tolerance"],
       despeckle: ["reference", "tolerance"],
     }[derive.transform]
-    for (const field of ["map", "palette", "width", "height", "mode", "skin", "key", "reference", "tolerance"] as const) {
+    for (const field of ["map", "palette", "degrees", "hue", "saturation", "brightness", "width", "height", "mode", "skin", "key", "reference", "tolerance"] as const) {
       if (derive[field] !== undefined && !own.includes(field)) {
         issue(`${field} does not apply to ${derive.transform}`, field)
       }
     }
     if (derive.transform === "recolor" && !Object.keys(derive.map ?? {}).length) issue("recolor needs a non-empty map", "map")
     if (derive.transform === "palette-snap" && !derive.palette) issue("palette-snap needs a palette", "palette")
+    if (derive.transform === "hue-shift" && derive.degrees === undefined && derive.saturation === undefined && derive.brightness === undefined) {
+      issue("hue-shift needs degrees, saturation or brightness", "degrees")
+    }
     if (derive.transform === "scale" && (!derive.width || !derive.height)) issue("scale needs width and height", "width")
     if (derive.transform === "despeckle" && !derive.reference) issue("despeckle needs reference stills to judge colours against", "reference")
   })
@@ -3018,6 +3035,10 @@ export interface ResolvedDerive {
   transform: AssetDerive["transform"]
   map?: Record<string, string>
   palette?: string[]
+  degrees?: number
+  hue?: [number, number]
+  saturation?: number
+  brightness?: number
   width?: number
   height?: number
   mode?: "nearest" | "box"

@@ -1,4 +1,5 @@
 import { isHeldItem } from "./attach.ts"
+import { SET_DERIVES } from "./pipeline/derive.ts"
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
@@ -1010,6 +1011,15 @@ export async function resolveSpecs(
           if (sourceSpec.generator === "tiles" || sourceSpec.generator === "terrain") {
             throw new Error(`assets.${assetId}: a tile set is several images; derive takes a single image`)
           }
+          // A layer, a loop or a set of rotations is several images of one
+          // thing. The transforms that treat every pixel alike take the whole
+          // set; the rest need one image and say so when they run.
+          if (sourceSpec.character && !SET_DERIVES.includes(derive.transform) && sourceSpec.character.kind !== "portrait") {
+            throw new Error(
+              `assets.${assetId}: ${derive.from} is a set of frames; ${derive.transform} takes a single image ` +
+                `(${SET_DERIVES.join(", ")} take a set)`,
+            )
+          }
           source = { kind: "asset", assetId: derive.from, spec: sourceSpec }
         } else {
           const file = path.resolve(root, derive.file!)
@@ -1032,6 +1042,10 @@ export async function resolveSpecs(
           transform: derive.transform,
           ...(derive.map ? { map: derive.map } : {}),
           ...(derive.palette ? { palette: derive.palette } : {}),
+          ...(derive.degrees === undefined ? {} : { degrees: derive.degrees }),
+          ...(derive.hue ? { hue: derive.hue } : {}),
+          ...(derive.saturation === undefined ? {} : { saturation: derive.saturation }),
+          ...(derive.brightness === undefined ? {} : { brightness: derive.brightness }),
           ...(derive.width ? { width: derive.width } : {}),
           ...(derive.height ? { height: derive.height } : {}),
           ...(derive.mode ? { mode: derive.mode } : {}),

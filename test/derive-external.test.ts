@@ -7,7 +7,7 @@ import { loadManifest, resolveSpecs } from "../src/manifest.ts"
 import { loadLock } from "../src/lock.ts"
 import { buildPlan } from "../src/pipeline/plan.ts"
 import { importLocal } from "../src/pipeline/import.ts"
-import { applyDerive, paletteSnap, recolor, scale } from "../src/pipeline/derive.ts"
+import { applyDerive, hueShift, paletteSnap, recolor, scale } from "../src/pipeline/derive.ts"
 import { submit } from "../src/pipeline/submit.ts"
 import { FakeProvider } from "../src/providers/fake.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
@@ -55,6 +55,37 @@ describe("transforms", () => {
     const box = decodePng(scale(stripes, 1, 1, "box"))
     expect(box.pixels[0]).toBe(128)
     expect(scale(stripes, 3, 3, "box").equals(scale(stripes, 3, 3, "box"))).toBe(true)
+  })
+})
+
+describe("hue-shift", () => {
+  const px = (png: Buffer, i = 0) => [...decodePng(png).pixels.subarray(i * 4, i * 4 + 4)]
+  // Four pixels: pure red, a darker red, a mid grey, and near-black outline.
+  const sample = rgba(4, 1, (x) => ([[255, 0, 0, 255], [128, 0, 0, 255], [128, 128, 128, 255], [10, 4, 4, 255]] as const)[x] as never)
+
+  it("turns hue and keeps each pixel's brightness, leaving greys and outline alone", () => {
+    const blue = hueShift(sample, { degrees: -120 })
+    expect(px(blue, 0)).toEqual([0, 0, 255, 255])
+    expect(px(blue, 1)).toEqual([0, 0, 128, 255])
+    expect(px(blue, 2)).toEqual([128, 128, 128, 255])
+    expect(px(blue, 3)).toEqual([10, 4, 4, 255])
+  })
+
+  it("changes only the hues in its window, which may cross zero", () => {
+    // A green pixel beside the red one.
+    const two = rgba(2, 1, (x) => (x ? [0, 200, 0, 255] : [255, 0, 0, 255]))
+    const reds = hueShift(two, { degrees: 60, hue: [330, 30] })
+    expect(px(reds, 0)).toEqual([255, 255, 0, 255])
+    expect(px(reds, 1)).toEqual([0, 200, 0, 255])
+    const greens = hueShift(two, { degrees: 120, hue: [90, 150] })
+    expect(px(greens, 0)).toEqual([255, 0, 0, 255])
+    expect(px(greens, 1)).toEqual([0, 0, 200, 255])
+  })
+
+  it("scales saturation and brightness without turning anything", () => {
+    expect(px(hueShift(sample, { brightness: 0.5 }), 0)).toEqual([128, 0, 0, 255])
+    expect(px(hueShift(sample, { saturation: 0.5 }), 0)).toEqual([255, 128, 128, 255])
+    expect(decodePng(hueShift(sample, {})).pixels.equals(decodePng(sample).pixels)).toBe(true)
   })
 })
 

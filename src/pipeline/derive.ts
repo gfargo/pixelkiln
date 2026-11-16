@@ -8,7 +8,8 @@ import { currentEntryOutputPath, expectedOutputPath, portableOutputPath } from "
 import { normalizePalette, quantize } from "../palette.ts"
 import { despeckle, keySkin } from "../paperdoll.ts"
 import { decodePng, encodeRgbaPng, parseHex } from "../png.ts"
-import { lockKey, type Lock, type LockEntry, type ResolvedDerive, type ResolvedSpec } from "../types.ts"
+import { lockKey, type Lock, type LockEntry, type LockOutput, type ResolvedDerive, type ResolvedSpec } from "../types.ts"
+import { mirrorSourceHash } from "./mirror.ts"
 
 /**
  * A derived asset is existing pixels put through one local transform. Nothing
@@ -40,6 +41,60 @@ export function recolor(png: Buffer, map: Record<string, string>): Buffer {
       out[i + 1] = hit[1]
       out[i + 2] = hit[2]
     }
+  }
+  return encodeRgbaPng(width, height, out)
+}
+
+/** The transforms that treat every pixel alike, and so can be run over every image of a set. */
+export const SET_DERIVES: ReadonlyArray<ResolvedDerive["transform"]> = ["recolor", "palette-snap", "hue-shift"]
+
+export interface HueShift {
+  degrees?: number
+  /** `[from, to]` in degrees, clockwise; a window that crosses 0 (the reds) is `[330, 30]`. */
+  hue?: [number, number]
+  saturation?: number
+  brightness?: number
+}
+
+/** Below this saturation or brightness a pixel is a grey or an outline, and has no hue worth turning. */
+const HUELESS = 0.12
+
+/**
+ * Turns hue, and scales saturation and brightness, of every visible pixel
+ * whose hue is in the window (all of them, without one). Greys and
+ * near-blacks are never touched, so an outline and a steel buckle stay as
+ * they are while the cloth around them changes colour. Shading survives:
+ * each pixel keeps its own distance from its neighbours in brightness.
+ */
+export function hueShift(png: Buffer, options: HueShift): Buffer {
+  const { width, height, pixels } = decodePng(png)
+  const out = Buffer.from(pixels)
+  const turn = options.degrees ?? 0
+  const within = (h: number) => {
+    if (!options.hue) return true
+    const [from, to] = options.hue
+    return from <= to ? h >= from && h <= to : h >= from || h <= to
+  }
+  for (let i = 0; i < out.length; i += 4) {
+    if (out[i + 3] === 0) continue
+    const r = out[i]! / 255, g = out[i + 1]! / 255, b = out[i + 2]! / 255
+    const max = Math.max(r, g, b), min = Math.min(r, g, b)
+    const delta = max - min
+    const s = max === 0 ? 0 : delta / max
+    if (s < HUELESS || max < HUELESS) continue
+    let h = max === r ? ((g - b) / delta) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4
+    h = (h * 60 + 360) % 360
+    if (!within(h)) continue
+    const nh = (((h + turn) % 360) + 360) % 360
+    const ns = Math.min(1, s * (options.saturation ?? 1))
+    const nv = Math.min(1, max * (options.brightness ?? 1))
+    const c = nv * ns
+    const x = c * (1 - Math.abs(((nh / 60) % 2) - 1))
+    const m = nv - c
+    const [rr, gg, bb] = nh < 60 ? [c, x, 0] : nh < 120 ? [x, c, 0] : nh < 180 ? [0, c, x] : nh < 240 ? [0, x, c] : nh < 300 ? [x, 0, c] : [c, 0, x]
+    out[i] = Math.round((rr + m) * 255)
+    out[i + 1] = Math.round((gg + m) * 255)
+    out[i + 2] = Math.round((bb + m) * 255)
   }
   return encodeRgbaPng(width, height, out)
 }
@@ -98,37 +153,52 @@ export function scale(png: Buffer, width: number, height: number, mode: "nearest
 
 export function applyDerive(
   png: Buffer,
-  derive: Pick<ResolvedDerive, "transform" | "map" | "palette" | "width" | "height" | "mode" | "skin" | "key" | "tolerance">,
+  derive: Pick<ResolvedDerive, "transform" | "map" | "palette" | "degrees" | "hue" | "saturation" | "brightness" | "width" | "height" | "mode" | "skin" | "key" | "tolerance">,
   /** despeckle: the reference stills' bytes, read by the caller. */
   reference: Buffer[] = [],
 ): Buffer {
   switch (derive.transform) {
     case "recolor": return recolor(png, derive.map!)
     case "palette-snap": return paletteSnap(png, derive.palette!)
+    case "hue-shift": return hueShift(png, derive)
     case "scale": return scale(png, derive.width!, derive.height!, derive.mode)
     case "key-skin": return keySkin(png, { skin: derive.skin, key: derive.key, tolerance: derive.tolerance })
     case "despeckle": return despeckle(png, { reference, tolerance: derive.tolerance }).png
   }
 }
 
-/** The file a derived asset reads, or why it cannot be read yet. */
-async function sourceFile(spec: ResolvedSpec, lock: Lock): Promise<{ file: string; recorded: string } | { notReady: string }> {
+/** What a derived asset's record hashes of its source: the one output's hash, or a hash over a set's. */
+function recordedSource(entry: Pick<LockEntry, "outputs">): string {
+  return entry.outputs.length === 1 ? entry.outputs[0]!.sha256 : mirrorSourceHash(entry)
+}
+
+/** The files a derived asset reads (one, or every member of a set), or why they cannot be read yet. */
+async function sourceFiles(
+  spec: ResolvedSpec,
+  lock: Lock,
+): Promise<{ files: Array<{ file: string; role?: string }>; recorded: string } | { notReady: string }> {
   const derive = spec.derive!
   if (derive.source.kind === "file") {
     const file = path.resolve(spec.root, derive.source.file)
-    return existsSync(file) ? { file, recorded: await sha256File(file) } : { notReady: `source file ${derive.source.file} does not exist` }
+    return existsSync(file)
+      ? { files: [{ file }], recorded: await sha256File(file) }
+      : { notReady: `source file ${derive.source.file} does not exist` }
   }
   const sourceKey = lockKey(spec.styleId, derive.source.assetId)
   const entry = lock.entries[sourceKey]
   if (!entry || entry.status !== "downloaded" || !entry.outputs.length) {
     return { notReady: `source ${sourceKey} has no downloaded output` }
   }
-  if (entry.outputs.length !== 1) {
-    return { notReady: `source ${sourceKey} has ${entry.outputs.length} outputs; derive takes a single image` }
+  if (entry.outputs.length !== 1 && !SET_DERIVES.includes(derive.transform)) {
+    return { notReady: `source ${sourceKey} has ${entry.outputs.length} outputs; ${derive.transform} takes a single image` }
   }
-  const file = currentEntryOutputPath(entry, derive.source.spec, 0)
-  if (!existsSync(file)) return { notReady: `source ${sourceKey} is missing on disk: ${file}` }
-  return { file, recorded: entry.outputs[0]!.sha256 }
+  const files: Array<{ file: string; role?: string }> = []
+  for (const [index, output] of entry.outputs.entries()) {
+    const file = currentEntryOutputPath(entry, derive.source.spec, index)
+    if (!existsSync(file)) return { notReady: `source ${sourceKey} is missing on disk: ${file}` }
+    files.push({ file, ...(output.role ? { role: output.role } : {}) })
+  }
+  return { files, recorded: recordedSource(entry) }
 }
 
 /** Why a derived asset's record no longer matches its input, or null when it does. */
@@ -142,7 +212,7 @@ export async function deriveStale(spec: ResolvedSpec, entry: LockEntry, lock: Lo
     return entry.derive?.sourceSha256 === (await sha256File(file)) ? null : `source file ${derive.source.file} changed`
   }
   const source = lock.entries[lockKey(spec.styleId, derive.source.assetId)]
-  const current = source?.outputs.length === 1 ? source.outputs[0]!.sha256 : undefined
+  const current = source?.outputs.length ? recordedSource(source) : undefined
   return entry.derive?.sourceSha256 && entry.derive.sourceSha256 === current ? null : `source ${derive.source.assetId} changed`
 }
 
@@ -160,7 +230,7 @@ export async function deriveAsset(
   const log = opts.onProgress ?? (() => {})
   const derive = spec.derive!
   const entryKey = lockKey(spec.styleId, spec.assetId)
-  const source = await sourceFile(spec, lock)
+  const source = await sourceFiles(spec, lock)
   if ("notReady" in source) throw new Error(source.notReady)
 
   const reference: Buffer[] = []
@@ -169,13 +239,25 @@ export async function deriveAsset(
     if (!existsSync(file)) throw new Error(`reference still ${still.file} does not exist`)
     reference.push(await readFile(file))
   }
-  const bytes = applyDerive(await readFile(source.file), derive, reference)
-  const target = expectedOutputPath(spec, undefined, 0, 1, MediaType.PNG)
-  await mkdir(path.dirname(target), { recursive: true })
-  const tmp = `${target}.pixelkiln.tmp`
-  await writeFile(tmp, bytes)
-  await rename(tmp, target)
-  const out = decodePng(bytes)
+  // One output per source image, under the source's own roles, so a recoloured
+  // layer's frames pair with the frames they sit over exactly as the layer's do.
+  const outputs: LockOutput[] = []
+  let out = { width: spec.width, height: spec.height }
+  for (const [index, member] of source.files.entries()) {
+    const bytes = applyDerive(await readFile(member.file), derive, reference)
+    const target = expectedOutputPath(spec, member.role, index, source.files.length, MediaType.PNG)
+    await mkdir(path.dirname(target), { recursive: true })
+    const tmp = `${target}.pixelkiln.tmp`
+    await writeFile(tmp, bytes)
+    await rename(tmp, target)
+    if (index === 0) out = decodePng(bytes)
+    outputs.push({
+      path: portableOutputPath(target, spec.root),
+      sha256: sha256(bytes),
+      ...(member.role ? { role: member.role } : {}),
+      mediaType: MediaType.PNG,
+    })
+  }
 
   const now = new Date().toISOString()
   const entry = upsert(lock, entryKey, {
@@ -199,7 +281,7 @@ export async function deriveAsset(
     candidateIndex: null,
     status: "downloaded",
     error: null,
-    outputs: [{ path: portableOutputPath(target, spec.root), sha256: sha256(bytes), mediaType: MediaType.PNG }],
+    outputs,
     sourceUrl: null,
     sourceUrls: [],
     submittedAt: now,

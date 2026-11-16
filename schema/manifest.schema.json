@@ -2288,10 +2288,43 @@
                     "enum": [
                       "recolor",
                       "palette-snap",
+                      "hue-shift",
                       "scale",
                       "key-skin",
                       "despeckle"
                     ]
+                  },
+                  "degrees": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "hue": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 360
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 360
+                      }
+                    ]
+                  },
+                  "saturation": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 4
+                  },
+                  "brightness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 4
                   },
                   "map": {
                     "type": "object",
