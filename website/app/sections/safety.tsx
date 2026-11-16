@@ -13,12 +13,12 @@ export function SafetySection() {
                 recoverable work, not a reason to pay twice.
               </p>
               <ul className="check-list">
-                <li><span>✓</span> Remote identity saved before polling</li>
-                <li><span>✓</span> Content-addressed local recovery cache</li>
-                <li><span>✓</span> Hand edits kept beside the generated file</li>
-                <li><span>✓</span> Replaced generations kept, restorable at no cost</li>
-                <li><span>✓</span> Manual-edit and overwrite protection</li>
-                <li><span>✓</span> Transactional atlas and export writes</li>
+                <li><span className="tick" aria-hidden="true" /> Remote identity saved before polling</li>
+                <li><span className="tick" aria-hidden="true" /> Content-addressed local recovery cache</li>
+                <li><span className="tick" aria-hidden="true" /> Hand edits kept beside the generated file</li>
+                <li><span className="tick" aria-hidden="true" /> Replaced generations kept, restorable at no cost</li>
+                <li><span className="tick" aria-hidden="true" /> Manual-edit and overwrite protection</li>
+                <li><span className="tick" aria-hidden="true" /> Transactional atlas and export writes</li>
               </ul>
               <TrackedLink className="text-link" id="safety_recovery" section="safety" href="/docs/recovery">
                 Explore recovery guarantees

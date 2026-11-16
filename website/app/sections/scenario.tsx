@@ -7,7 +7,7 @@ export function ScenarioSection() {
         <section className="scenario-section shell" id="scenario">
           <div className="section-heading split-heading">
             <div>
-              <h2>Scenario, measured: ten models, one chain, and where it fails.</h2>
+              <h2>Scenario, measured.</h2>
             </div>
             <p className="section-deck">
               We ran Scenario&apos;s catalogue through PixelKiln: ten text-to-image

@@ -6,7 +6,7 @@ export function CostsSection() {
           <div className="shell">
             <div className="section-heading split-heading">
               <div>
-                <h2>The same sprite can cost 1 generation or 25.</h2>
+                <h2>One sprite, 1 to 25 generations.</h2>
               </div>
               <p className="section-deck">Measured PixelLab costs vary by up to 25×. Retro Diffusion bills in USD, Scenario in compute units, and self-hosted ComfyUI has no provider charge. PixelKiln keeps those units separate.</p>
             </div>

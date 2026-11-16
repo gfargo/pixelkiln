@@ -16,7 +16,7 @@ export function CharactersSection() {
             </figure>
             <div className="cast-grid">
               <div className="section-heading cast-copy">
-                <h2>Draw the base once.<br />Everything else follows it.</h2>
+                <h2>Draw the base once.</h2>
                 <p className="section-deck">
                   A <code>character</code> style holds a base drawn facing 4 or 8
                   directions, states that apply a pose or an outfit to every
@@ -37,10 +37,10 @@ export function CharactersSection() {
                   direction, mirrors with their source.
                 </p>
                 <ul className="check-list cast-list">
-                  <li><span>✓</span> A loop facing east is the west loop flipped. <code>mirror</code> makes it locally for nothing; eight directions of one walk cost 5, not 8.</li>
-                  <li><span>✓</span> Poses from a text edit, loops from a template or from text, with start and end poses you supply.</li>
-                  <li><span>✓</span> Concept images and style anchors on pro, style images with chosen traits on pro-flash.</li>
-                  <li><span>✓</span> Bust portraits and outfit transfer onto a loop, and one <code>directions</code> list that declares a loop and mirrors the rest.</li>
+                  <li><span className="tick" aria-hidden="true" /> A loop facing east is the west loop flipped. <code>mirror</code> makes it locally for nothing; eight directions of one walk cost 5, not 8.</li>
+                  <li><span className="tick" aria-hidden="true" /> Poses from a text edit, loops from a template or from text, with start and end poses you supply.</li>
+                  <li><span className="tick" aria-hidden="true" /> Concept images and style anchors on pro, style images with chosen traits on pro-flash.</li>
+                  <li><span className="tick" aria-hidden="true" /> Bust portraits and outfit transfer onto a loop, and one <code>directions</code> list that declares a loop and mirrors the rest.</li>
                 </ul>
                 <div className="review-links">
                   <TrackedLink className="text-link" id="cast_manifest_docs" section="characters" href="/docs/characters">

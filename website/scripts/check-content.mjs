@@ -119,7 +119,7 @@ if (!commandsMatch) {
 }
 const providerRegistry = readFileSync(path.join(repoRoot, "src/providers/registry.ts"), "utf8");
 const providerCount = [...providerRegistry.matchAll(/registerProvider\(\{/g)].length;
-const displayedProviderCount = String(providerCount).padStart(2, "0");
+const displayedProviderCount = String(providerCount);
 if (!home.includes(`<strong>${displayedProviderCount}</strong>`) || !home.includes("generation providers")) {
   failures.push(`home page does not report the current ${providerCount}-provider surface`);
 }

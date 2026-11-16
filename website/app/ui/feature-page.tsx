@@ -3,6 +3,7 @@ import { feature, type Feature } from "@/app/lib/features";
 import { absoluteUrl } from "@/app/lib/metadata";
 import { HubSection } from "@/app/sections/hub";
 import { InstallSection } from "@/app/sections/install";
+import { FeatureArt } from "@/app/ui/feature-art";
 import { JsonLd } from "@/app/ui/json-ld";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
 import { TrackedLink } from "@/app/ui/tracked-link";
@@ -27,7 +28,11 @@ export function FeaturePage({ id, children }: { id: Feature["id"]; children: Rea
           <div className="feature-hero-copy">
             <h1>{entry.title}</h1>
             <p>{entry.deck}</p>
+            <TrackedLink className="button button-primary" id={`feature_${id}_start`} section="feature_page" href={entry.docs[0]!.href}>
+              {entry.docs[0]!.label}
+            </TrackedLink>
           </div>
+          <FeatureArt id={id} />
           <nav className="feature-jump" aria-label="On this page">
             <div>
               <h2>On this page</h2>

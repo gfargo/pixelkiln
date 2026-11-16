@@ -7,7 +7,7 @@ export function EffectsSection() {
           <div className="shell">
             <div className="section-heading split-heading">
               <div>
-                <h2>Effects on your own sprites,<br />rendered for free.</h2>
+                <h2>Free effects on your sprites.</h2>
               </div>
               <p className="section-deck">
                 <code>pixelkiln vfx</code> drives PixelLab&apos;s VFX workbench. Start
@@ -62,9 +62,9 @@ pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
 `}
               />
               <ul className="check-list effects-list">
-                <li><span>✓</span> 17 presets and about 90 parts: explosions, slashes, auras, shields, status icons, weather.</li>
-                <li><span>✓</span> Every effect is saved to your PixelLab account, where its sliders can be moved; <code>--effect</code> pulls the edit back down.</li>
-                <li><span>✓</span> A <code>.vfx.json</code> record keeps the full recipe; re-rendering one gave a byte-identical sheet.</li>
+                <li><span className="tick" aria-hidden="true" /> 17 presets and about 90 parts: explosions, slashes, auras, shields, status icons, weather.</li>
+                <li><span className="tick" aria-hidden="true" /> Every effect is saved to your PixelLab account, where its sliders can be moved; <code>--effect</code> pulls the edit back down.</li>
+                <li><span className="tick" aria-hidden="true" /> A <code>.vfx.json</code> record keeps the full recipe; re-rendering one gave a byte-identical sheet.</li>
               </ul>
             </div>
             <div className="review-links">

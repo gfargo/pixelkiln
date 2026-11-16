@@ -6,10 +6,8 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
   switch (id) {
     case "pipeline":
       return (
-        <div className="feature-art feature-art-glyphs" aria-hidden="true">
-          {["/sprites/workflow/declare.png", "/sprites/workflow/plan.png", "/sprites/spark.png", "/sprites/workflow/review.png", "/sprites/workflow/ship.png"].map((src) => (
-            <Image key={src} src={src} alt="" width={64} height={64} />
-          ))}
+        <div className="feature-art feature-art-shot">
+          <Image src="/review-ui-showcase.jpg" alt="The local review sheet: candidates for one sprite side by side, one chosen" width={1280} height={720} sizes="(max-width: 980px) 100vw, 560px" />
         </div>
       );
     case "review":
@@ -20,8 +18,8 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
       );
     case "characters":
       return (
-        <div className="feature-art feature-art-strip">
-          <Image src="/sprites/characters/robot-8dir.png" alt="A small orange robot drawn from eight directions" width={796} height={96} unoptimized />
+        <div className="feature-art feature-art-sheet">
+          <Image src="/showcase/assets/knight-8dir.png" alt="A knight in plate armour and a blue cape drawn from eight directions" width={1128} height={568} unoptimized />
         </div>
       );
     case "paperdoll":

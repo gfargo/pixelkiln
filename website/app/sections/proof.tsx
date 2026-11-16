@@ -5,7 +5,7 @@ export function ProofSection() {
         <section className="proof-strip" aria-label="PixelKiln at a glance">
         <div className="shell proof-grid">
           <div>
-            <strong>04</strong>
+            <strong>4</strong>
             <span>generation providers</span>
           </div>
           <div>
@@ -13,7 +13,7 @@ export function ProofSection() {
             <span>composable commands</span>
           </div>
           <div>
-            <strong>00</strong>
+            <strong>0</strong>
             <span>LLM calls in the loop</span>
           </div>
           <p>

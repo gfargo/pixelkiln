@@ -6,7 +6,7 @@ export function ReviewSection() {
         <section className="review-section" id="review">
           <div className="shell review-grid">
             <div className="section-heading review-copy">
-              <h2>Pick the image.<br />Approve the pixels.</h2>
+              <h2>Pick, then approve.</h2>
               <p className="section-deck">
                 <code>pixelkiln pick</code> opens a local page with every
                 candidate. It preserves native aspect ratios and stays readable on

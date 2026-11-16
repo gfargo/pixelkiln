@@ -27,7 +27,6 @@ export default function DocsIndex() {
       <SiteHeader compact />
       <main className="docs-index shell">
         <div className="docs-index-hero">
-          <p className="eyebrow">Built from the Markdown in the repository</p>
           <h1>Start with a manifest.</h1>
           <p>
             These pages render from the Markdown shipped with PixelKiln. Start
@@ -43,9 +42,8 @@ export default function DocsIndex() {
           href="/docs/getting-started"
         >
           <div>
-            <span>Recommended first read</span>
             <h2>Go from a manifest to reviewed output.</h2>
-            <p>Install PixelKiln, plan without spending, and cap the first generation.</p>
+            <p>The recommended first read: install PixelKiln, plan without spending, and cap the first generation.</p>
           </div>
           <strong aria-hidden="true">↗</strong>
         </TrackedLink>

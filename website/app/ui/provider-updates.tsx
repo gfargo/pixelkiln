@@ -99,7 +99,7 @@ function Featured({ update }: { update: ProviderUpdate }) {
         <ul className="check-list effects-list">
           {update.features.map((feature) => (
             <li key={feature}>
-              <span>✓</span> <Inline text={feature} />
+              <span className="tick" aria-hidden="true" /> <Inline text={feature} />
             </li>
           ))}
         </ul>

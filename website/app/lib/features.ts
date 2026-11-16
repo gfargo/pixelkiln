@@ -48,7 +48,7 @@ export const FEATURES: Feature[] = [
     name: "Review and gallery",
     group: "Run the pipeline",
     summary: "Pick candidates, touch sprites up in the browser, and approve the exact pixels.",
-    title: "Pick, edit and approve in the browser.",
+    title: "Pick, edit, approve.",
     deck: "A local page shows every candidate, loop and file in the project. You choose, retouch and approve; the lockfile records what you decided.",
     description: "PixelKiln's local review sheet and project gallery: choose candidates, edit sprites and approve final pixels.",
     sections: [

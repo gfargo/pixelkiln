@@ -6,7 +6,7 @@ export function GallerySection() {
         <section className="gallery-section" id="gallery">
           <div className="shell">
             <div className="section-heading">
-              <h2>Open the whole project in one local page.</h2>
+              <h2>The whole project, one page.</h2>
               <p className="section-deck gallery-deck">
                 <code>pixelkiln gallery</code> shows every generation the lockfile
                 knows about, plus the assets you declared and have not made yet. It

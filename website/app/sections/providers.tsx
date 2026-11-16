@@ -61,8 +61,8 @@ export function ProvidersSection() {
             <article className="provider-card">
               <div className="provider-card-header">
                 <div>
-                  <span className="provider-badge production">Production</span>
                   <h3>PixelLab</h3>
+                  <span className="provider-badge production">Production</span>
                 </div>
                 <span className="provider-unit">Generations</span>
               </div>
@@ -111,8 +111,8 @@ export function ProvidersSection() {
             <article className="provider-card">
               <div className="provider-card-header">
                 <div>
-                  <span className="provider-badge experimental">Experimental</span>
                   <h3>Retro Diffusion</h3>
+                  <span className="provider-badge experimental">Experimental</span>
                 </div>
                 <span className="provider-unit">USD</span>
               </div>
@@ -160,8 +160,8 @@ export function ProvidersSection() {
             <article className="provider-card">
               <div className="provider-card-header">
                 <div>
-                  <span className="provider-badge experimental">Experimental</span>
                   <h3>ComfyUI</h3>
+                  <span className="provider-badge experimental">Experimental</span>
                 </div>
                 <span className="provider-unit">Self-hosted</span>
               </div>
@@ -228,8 +228,8 @@ export function ProvidersSection() {
             <article className="provider-card">
               <div className="provider-card-header">
                 <div>
-                  <span className="provider-badge experimental">Experimental</span>
                   <h3>Scenario</h3>
+                  <span className="provider-badge experimental">Experimental</span>
                 </div>
                 <span className="provider-unit">Compute Units</span>
               </div>

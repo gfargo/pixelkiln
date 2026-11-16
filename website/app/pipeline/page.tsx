@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { feature } from "@/app/lib/features";
 import { pageMetadata } from "@/app/lib/metadata";
 import { WorkflowSection } from "@/app/sections/workflow";
+import { OutputsSection } from "@/app/sections/outputs";
 import { SafetySection } from "@/app/sections/safety";
 import { FeaturePage } from "@/app/ui/feature-page";
 
@@ -17,6 +18,7 @@ export default function Page() {
   return (
     <FeaturePage id="pipeline">
       <WorkflowSection />
+      <OutputsSection />
       <SafetySection />
     </FeaturePage>
   );
