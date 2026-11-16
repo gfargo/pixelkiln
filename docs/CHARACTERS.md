@@ -350,6 +350,12 @@ It applies to `character` loops; `objectPro` loops refuse it. A loop the
 cleaning changed makes anything built from its frames (a mirror, an outfit, a
 layer) stale, so turn it on before generating those.
 
+Cleaning goes by colour, so look at the limbs afterwards. A model sometimes
+shades a far arm or leg in a dark colour the rotations never use. A whole
+limb drawn that way, in its own outline, is recognised by its size and left
+alone; an edge of such colour on the body itself is still peeled, which can
+thin an arm. Regenerate a loop that comes back like that.
+
 ### How the family depends on the base
 
 States and animations depend on their parent the way a revision does. The
@@ -546,10 +552,12 @@ returns it as transparent PNGs that sit on top of them: one bare character,
 any number of outfits, and every outfit lines up with every frame because it
 was painted onto that frame.
 
-This section is the reference for outfits. Hats, an outfit split into
-pieces, held items (drawn, or a sprite pinned to the hand for free with
-`attach`), composing layers in a game, and what each was measured to do are
-in the [Paperdoll layers guide](./PAPERDOLL.md).
+This section is the reference for outfits. The
+[Paperdoll layers guide](./PAPERDOLL.md) has the rest, and what each was
+measured to do: hats and hair, an outfit split into pieces, `offset` to nudge
+a layer by a pixel or two for free, held items drawn or pinned to the hand
+with `attach`, `grasp` to close the hand around one, composing layers in a
+game, and field notes on what works for which kind of item.
 
 ```json
 "hero":            { "prompt": "bald bare humanoid base body, plain skin, no clothing" },

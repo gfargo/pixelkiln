@@ -526,6 +526,7 @@ export default function Home() {
                   <li><span>✓</span> The character on this page: a base, four walks, fifteen drawn layers and five held items, 32 frames each, for about 445 generations.</li>
                   <li><span>✓</span> <code>region</code> picks what may change: the body for clothing, the head for hats, the space around the body for capes and packs.</li>
                   <li><span>✓</span> <code>attach</code> pins a sprite you already have to the hand in every frame, for nothing, so it is the same item in every frame and always in the same hand. <code>grasp</code> adds one small inpaint that closes the fingers around it.</li>
+                  <li><span>✓</span> <code>offset</code> nudges a layer by the pixel, for every frame or one loop, and changing it costs nothing: the frames are moved again at download.</li>
                   <li><span>✓</span> <code>clean</code> on a loop strips the ghost pixels an animation model leaves, at download, for nothing: 608 stray pixels down to 2 on this walk.</li>
                   <li><span>✓</span> Regenerate the base or a loop and its layers go stale, like everything else drawn from it.</li>
                 </ul>
@@ -589,7 +590,8 @@ export default function Home() {
                 masked inpaint, and what is held is one sprite pinned to the
                 hand, most with the fingers redrawn around it. The page
                 stacks them and steps them through the same 32 frames, which
-                is all a game has to do.
+                is all a game has to do. The nudge moves the headwear by whole
+                pixels, the way <code>offset</code> does in a manifest.
               </p>
               <CharacterBuilder />
             </div>

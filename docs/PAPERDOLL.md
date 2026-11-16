@@ -7,14 +7,16 @@ only what it added. A rigid item, a sword or a shield, can skip the drawing:
 a layer with `attach` pins a sprite you already have to the hand in every
 frame, for free.
 
-![A cyan mannequin, a leather outfit layer, a hat layer, a sword layer, and the four stacked into a dressed character](../website/public/sprites/paperdoll/stack-south.png)
+![A bare figure in underwear, plate armour with no body in it, a horned helm and a war cape, a greatsword and a shield, and all of them stacked into a dark knight](../website/public/sprites/paperdoll/showcase-stack.png)
 
 The [home page](https://pixelkiln.griffen.codes/#paperdoll-builder) has a character you
 can dress from twenty such layers, and
 [`examples/paperdoll`](../examples/paperdoll) is its manifest.
 
 Everything on this page was measured on one PixelLab account in November
-2026, on a 64px bare base with an 8-direction walk. Where a number is a
+2026, at 64px, on two bare bases: a first one with an 8-direction walk, which
+most of the numbers come from, and the one in the pictures, with a walk in
+four directions. Where a number is a
 measurement it says so, and [Cost and limits](#cost-and-limits) lists what
 was not tested.
 
@@ -45,10 +47,7 @@ A layer avoids the problem by painting the item onto the body's own frames:
 
 | What the provider is sent | The mask | What it returns |
 |---|---|---|
-| ![56 cyan figures on one sheet](../website/public/sprites/paperdoll/sheet-keyed.png) | ![The same sheet as white bodies on black](../website/public/sprites/paperdoll/sheet-mask.png) | ![The 56 figures dressed, heads and hands still cyan](../website/public/sprites/paperdoll/sheet-result.png) |
-
-Those three images are from a run made when the whole figure was keyed; a
-sheet built now keeps the heads in their own colours.
+| ![32 figures on one sheet, a walk to a row, bodies cyan and heads in their own colours](../website/public/sprites/paperdoll/sheet-keyed.png) | ![The same sheet as white bodies on black](../website/public/sprites/paperdoll/sheet-mask.png) | ![The 32 figures in a purple robe, hands and feet still cyan](../website/public/sprites/paperdoll/sheet-result.png) |
 
 Three choices carry the result:
 
@@ -115,7 +114,7 @@ art/hero.leather-hero-walk-south-frame-00.png   its layer
 
 Draw the source frame, then the layer at the same position.
 
-![Six frames of the dressed character walking east with a sword](../website/public/sprites/paperdoll/walk-east-dressed.png)
+![Six frames of a character in a robe, a wizard hat and silver hair walking east with a staff](../website/public/sprites/paperdoll/showcase-walk-mage.png)
 
 ## A base built for layers
 
@@ -194,9 +193,9 @@ shirt ends but the shirt.
 }
 ```
 
-![Trousers, a shirt, a hat and a sword as four separate layers, and the character wearing all four](../website/public/sprites/paperdoll/pieces-south.png)
+![Leg armour, a cuirass, a horned helm and a cape as four separate layers, and the character wearing all four](../website/public/sprites/paperdoll/pieces-south.png)
 
-Measured on 20 frames: both runs dressed every frame with only the garment
+The shirt and trousers above, measured on 20 frames: both runs dressed every frame with only the garment
 asked for, and the two stack, trousers first, with the shirt's hem over the
 waistband. Each cost 10 generations as quoted, the sheet being small.
 
@@ -321,7 +320,7 @@ tip pointing forward and up, no hand, no character
 It came back leaning toward each of its 8 facings, which is the way the
 character holding it faces:
 
-![The dressed character turning through eight directions, the sword leaning the way it faces](../website/public/sprites/paperdoll/held-8dir.png)
+![An armoured character turning through eight directions, its greatsword leaning the way it faces](../website/public/sprites/paperdoll/showcase-8dir.png)
 
 **The anchors file**, which is every frame's skeleton and so where its hands
 are:
@@ -341,7 +340,7 @@ rotations, a 6-frame walk in 8 directions) cost 5.6 generations to anchor by
 the published price and nothing to place, and the sword stayed in the right
 hand in all 56.
 
-![Six frames of the dressed character walking south with the sword in its right hand](../website/public/sprites/paperdoll/walk-south-held.png)
+![Six frames of the armoured character walking toward the viewer, the greatsword in its right hand and a shield in its left](../website/public/sprites/paperdoll/showcase-walk-knight.png)
 
 How it is placed, and what to change when it is wrong:
 
@@ -509,7 +508,7 @@ it or do not. The outfit, hat and sword here are three assets, generated
 separately, drawn over one base; the trousers, shirt, hat and placed sword
 further up are four.
 
-![The dressed character turning through eight directions](../website/public/sprites/paperdoll/dressed-8dir.png)
+![A character in a war kilt with dragon wings, a mohawk, a torch and a greatsword turning through eight directions](../website/public/sprites/paperdoll/showcase-8dir-dragonborn.png)
 
 - **Order.** Body, then clothing from the inside out, then held items, then
   hat is a workable default. A placed item that belongs behind the body
@@ -581,15 +580,26 @@ so clean those too:
 "hero.walk.south": { "animation": { "of": "hero", "template": "walking", "direction": "south", "clean": true } }
 ```
 
-![One walk frame before cleaning, with a pale halo beside the head and arm, and after](../website/public/sprites/paperdoll/clean-before-after.png)
+![One walk frame of the first test character, shown keyed cyan, before cleaning with a pale halo beside the head and arm, and after](../website/public/sprites/paperdoll/clean-before-after.png)
 
 Each frame is judged against the parent's rotations. A colour the rotations
 barely use, on the outside of the figure, is debris; so is a fragment in such
 colours that outline has sealed off beside the figure. Colours the rotations
 do use are never removed.
 
-Measured on the walk above: 608 stray near-white pixels across 48 frames
-before, 2 after. Run over the 8 rotations themselves, it removed 1 pixel.
+Measured on that character's walk: 608 stray near-white pixels across 48
+frames before, 2 after. Run over the 8 rotations themselves, it removed 1
+pixel.
+
+**Check the limbs afterwards.** Cleaning goes by colour, and a model
+sometimes shades a far arm or leg in a dark colour the rotations never use.
+On the second character's walk away from the viewer one frame had a whole
+leg drawn that way, sealed in its own outline, and cleaning erased it: 93
+pixels. That case is now left alone, since a sealed patch bigger than 24
+pixels or 6% of the body is taken for a limb, and the 48 frames above clean
+exactly as before. A smaller case is not caught: the same walk had an arm
+edged in that dark colour, and cleaning shaved 19 pixels off it. A loop that
+comes back like that is better regenerated than cleaned.
 
 Cleaning is post-processing. Turning it on for a loop that is already
 downloaded shows in `plan` as `recoverable`, and `pixelkiln fetch`
@@ -768,6 +778,7 @@ not held in place by the body it covers: hair, helmets, masks, packs.
 | Regenerating those two | The cape came back right in every frame. The robe came back with the same frame wrong, and on a third try with three frames in a different cut from the other three; the second was restored from history, for nothing. That frame of that walk read as a back view to the model, and a new roll did not change it. |
 | The robe again, with the heads left in their own colours | Right in all 32 frames, first try, 15 billed. The sheet had been sent with every figure cyan from head to foot, so the only sign of a front view was a few dark pixels of eyes on a cyan head. Supplied as a `keyed` override in which everything outside the mask kept its real colours, each front-facing figure had a face. Layers are now keyed this way by default. It is one run: the three earlier attempts at the same robe, fully keyed, each had a frame wrong. |
 | A wizard hat low over the eyes, a helm that left the crown bare on one walk | Both were per-asset problems: right on some of the layer's source assets, a few pixels off on others. `offset` with a pair per asset fixed both in a `fetch`. |
+| `clean` on a limb in deep shadow | Erased a leg that the model had drawn in a dark red the stills never use. Fixed for a limb in its own outline; an edge of such colour on the body itself is still peeled. See [Cleaning loops](#cleaning-loops). |
 | A template walk away from the viewer | Came back with dark red shadow on an arm and a leg in most of its frames, in colours the base itself uses, so cleaning does not see them. Regenerated with `gen --force`, reviewed in `pick` beside the one it replaced, it came back clean. Every layer over it went stale and was drawn again. |
 | `grasp` on a greatsword, a staff, a dagger and a torch | Each billed 25 on a 496×376 sheet of 32 frames. The fingers land on the handle in the views where the hand shows, in skin colours that match, and sit correctly over armour. The change is a few pixels: it reads as a hand on a grip, not as a new pose. |
 | Padding of 12 or 14 with a walk to a row | Refused before any request: six rows of a 64px figure with 12 pixels of padding is 516 pixels tall, 4 over the limit. 10 fit. |
@@ -785,6 +796,7 @@ That one was not tried.
 | What you see | Why | Do |
 |---|---|---|
 | Hair covers the face, or a pack is on the chest, in some frames | The model read a front view as a back view. | Give each loop its own sheet row with `columns` and say in the prompt which way each row faces. See [Field notes](#field-notes). |
+| Part of an arm or leg is missing after cleaning | It was shaded in a colour the rotations do not use. | Regenerate the loop (`gen --force --only <loop>`), or turn `clean` off for it. |
 | Pale specks around the dressed character | The loop's own files were never cleaned; the layer is fine. | Set `"clean": true` on the loop and run `pixelkiln fetch`. |
 | Sleeves or collar missing where an arm is raised | The computed mask put the neck in the wrong row for that frame. | Supply a `mask`. |
 | The outfit differs between two loops | They were dressed by two layers. | Put both loops in one layer's `of`. |

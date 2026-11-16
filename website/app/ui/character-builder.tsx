@@ -45,6 +45,8 @@ export function CharacterBuilder() {
   const [facing, setFacing] = useState(0);
   const [walking, setWalking] = useState(false);
   const [frame, setFrame] = useState(0);
+  // What `layer.offset` does in a manifest, tried live on the headwear: whole pixels, down is positive.
+  const [nudge, setNudge] = useState(0);
   const reducedMotion = useSyncExternalStore(
     subscribeReducedMotion,
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -111,6 +113,7 @@ export function CharacterBuilder() {
     () => BUILDER_DRAW_ORDER.map((slot) => choices[slot]).filter((id): id is string => Boolean(id)),
     [choices],
   );
+  const headwear = choices.head;
   const layers = [...BUILDER_ALWAYS, ...worn];
 
   const column = moving ? (reducedMotion ? 0 : frame) : facing;
@@ -132,7 +135,14 @@ export function CharacterBuilder() {
         <div className="builder-stage" style={stage}>
           <div className="builder-figure" role="img" aria-label={description}>
             {layers.map((id) => (
-              <div key={id} className="builder-layer" style={{ backgroundImage: `url(${builderAtlas(id)})` }} />
+              <div
+                key={id}
+                className="builder-layer"
+                style={{
+                  backgroundImage: `url(${builderAtlas(id)})`,
+                  ...(id === headwear && nudge ? { transform: `translateY(${nudge * scale}px)` } : {}),
+                }}
+              />
             ))}
           </div>
         </div>
@@ -167,6 +177,18 @@ export function CharacterBuilder() {
             </div>
           </div>
         ))}
+        <div className="builder-slot" role="group" aria-label="Headwear offset">
+          <span className="builder-slot-label">Nudge</span>
+          <div className="builder-options builder-nudge">
+            <button type="button" className="builder-action" disabled={!headwear || nudge <= -4} onClick={() => setNudge((value) => value - 1)} aria-label="Move the headwear up one pixel">
+              ↑
+            </button>
+            <button type="button" className="builder-action" disabled={!headwear || nudge >= 4} onClick={() => setNudge((value) => value + 1)} aria-label="Move the headwear down one pixel">
+              ↓
+            </button>
+            <code aria-live="polite">{headwear ? `"offset": [0, ${nudge}]` : "pick some headwear"}</code>
+          </div>
+        </div>
         <div className="builder-slot" role="group" aria-label="Looks">
           <span className="builder-slot-label">Looks</span>
           <div className="builder-options">
