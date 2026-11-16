@@ -22,7 +22,9 @@ import {
 import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
 import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
-import { buildLayerSheet, cutLayerFrames, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
+import { isDirection } from "../attach.ts"
+import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
+import { placeHeldFrames } from "../pipeline/attach.ts"
 import { decodePng, joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
@@ -462,7 +464,20 @@ interface LayerLayout {
   keyedSha256: string
   maskSha256: string
   frames: LayerFrame[]
+  /** Set for a grip pass: the layer is each placed frame with its hand's disc redrawn. */
+  grasp?: { radius: number; hands: number }
 }
+
+/**
+ * What a grip pass asks for when the asset has no prompt of its own. The
+ * item is already on the sheet; only the fist is to be drawn.
+ */
+const GRASP_PROMPT =
+  "Every cyan mannequin on this spritesheet carries the same item. In each small masked area, draw that figure's " +
+  "cyan hand closed in a fist around the item's handle, with cyan fingers wrapped over the handle, and join the " +
+  "handle cleanly to the rest of the item, which is already there. Keep the item exactly where it is and the same " +
+  "in every cell. Keep the skin cyan. Do not add anything else: no clothes, gloves, extra items, effects, " +
+  "backgrounds or text. Keep the transparent background and crisp pixel-art style with a black outline."
 
 /**
  * Where a layer's intermediate files live: `sheet.png` (the frames as they
@@ -1566,7 +1581,7 @@ export class PixelLabProvider implements Provider {
         if (sha256(bytes) !== file.sha256) throw new Error(`${label}: layer ${name} changed after the manifest was resolved: ${file.path}`)
         return bytes
       }
-      const prepared = buildLayerSheet(sources, {
+      const built = buildLayerSheet(sources, {
         minSide: 32,
         maxSide: LAYER_SHEET_MAX_SIDE,
         columns: layer.columns,
@@ -1578,17 +1593,41 @@ export class PixelLabProvider implements Provider {
         mask: supplied("mask", layer.mask),
         keyed: supplied("keyed sheet", layer.keyed),
       })
+      const dir = layerWorkDir(spec)
+      mkdirSync(dir, { recursive: true })
+      let prepared = built
+      let grasp: LayerLayout["grasp"]
+      if (layer.attach?.grasp) {
+        // A grip pass: place the item on every frame as a free held item is,
+        // put it on the sheet, and open only a disc at each hand that shows.
+        const placed = await placeHeldFrames(spec, outputs.map((output, index) => {
+          const assetId = output.assetId ?? character.parentAssetId!
+          const direction = isDirection(output.role)
+            ? output.role
+            : layer.sources.find((source) => source.assetId === assetId)?.spec.character?.animation?.direction
+          if (!direction) throw new Error(`${label}: cannot tell which way ${assetId} frame ${output.role ?? index} faces`)
+          return { assetId, role: built.frames[index]!.role ?? String(index).padStart(2, "0"), direction, file: output.path }
+        }))
+        const hands = placed.map((frame) => (frame.behind ? null : frame.hand))
+        const held = hands.filter(Boolean).length
+        if (!held) throw new Error(`${label}: the body covers the hand in every frame, so there is no grip to draw; drop grasp`)
+        const gripped = graspSheet(built, placed.map((frame) => frame.png), hands, layer.attach.grasp.radius)
+        // The sheet as keyed, before the item went on it: where each figure's skin colours are read from at download.
+        writeFileSync(path.join(dir, "keyed-bare.png"), built.keyed)
+        mkdirSync(path.join(dir, "placed"), { recursive: true })
+        placed.forEach((frame, index) => writeFileSync(path.join(dir, "placed", `${String(index).padStart(3, "0")}.png`), frame.png))
+        prepared = { ...built, keyed: gripped.keyed, mask: gripped.mask }
+        grasp = { radius: layer.attach.grasp.radius, hands: held }
+      }
       // Every step's file is kept beside the project so a poor result can be
       // traced to the step that caused it, and so the download step, which
       // may run in another process, can cut the layer from the same inputs.
-      const dir = layerWorkDir(spec)
-      mkdirSync(dir, { recursive: true })
       writeFileSync(path.join(dir, "sheet.png"), prepared.sheet)
       writeFileSync(path.join(dir, "keyed.png"), prepared.keyed)
       writeFileSync(path.join(dir, "mask.png"), prepared.mask)
       const { width, height } = decodePng(prepared.keyed)
       const res = await this.client.inpaintV3({
-        description: spec.prompt,
+        description: grasp ? (spec.prompt ? `The item each figure carries: ${spec.prompt}. ${GRASP_PROMPT}` : GRASP_PROMPT) : spec.prompt,
         image: { base64: prepared.keyed.toString("base64"), format: "png" },
         width,
         height,
@@ -1606,6 +1645,7 @@ export class PixelLabProvider implements Provider {
         keyedSha256: sha256(prepared.keyed),
         maskSha256: sha256(prepared.mask),
         frames: prepared.frames,
+        ...(grasp ? { grasp } : {}),
       }
       writeFileSync(path.join(dir, "layout.json"), `${JSON.stringify(layout, null, 2)}\n`)
       return {
@@ -1935,7 +1975,21 @@ export class PixelLabProvider implements Provider {
       return { status: "failed", error: `layer job ${jobId} returned a ${size.width}x${size.height} image for a ${layout.width}x${layout.height} sheet` }
     }
     writeFileSync(path.join(dir, "result.png"), result)
-    const frames = cutLayerFrames(result, { keyed, mask, frames: layout.frames }, { key: layout.key, region: layout.region })
+    let frames: Buffer[]
+    if (layout.grasp) {
+      const bare = path.join(dir, "keyed-bare.png")
+      const placed = layout.frames.map((_frame, index) => path.join(dir, "placed", `${String(index).padStart(3, "0")}.png`))
+      const missing = [path.join(dir, "sheet.png"), bare, ...placed].find((file) => !existsSync(file))
+      if (missing) return { status: "failed", error: `layer work folder is missing ${missing}; generate the layer again` }
+      frames = cutGraspFrames(
+        result,
+        { sheet: readFileSync(path.join(dir, "sheet.png")), keyed: readFileSync(bare), mask, frames: layout.frames },
+        placed.map((file) => readFileSync(file)),
+        { key: layout.key },
+      )
+    } else {
+      frames = cutLayerFrames(result, { keyed, mask, frames: layout.frames }, { key: layout.key, region: layout.region })
+    }
     const cache = PixelLabProvider.cacheDir("layer")
     const counters = new Map<string, number>()
     const sources: OutputSource[] = frames.map((png, index) => {

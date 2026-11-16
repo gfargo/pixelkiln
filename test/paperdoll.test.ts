@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { bodyMask, buildLayerSheet, cutLayerFrames, despeckle, extractLayer, isKeyColor, keySkin, neckRow, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
+import { bodyMask, buildLayerSheet, cutGraspFrames, cutLayerFrames, despeckle, extractLayer, graspSheet, isKeyColor, keySkin, neckRow, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 
 type Pixel = [number, number, number, number]
@@ -333,5 +333,47 @@ describe("layer sheets", () => {
     expect(pixel(body!, 3, 6)).toEqual(CLEAR)
     expect(pixel(body!, 9, 7)).toEqual(LEATHER)
     expect(pixel(body!, 2, 2)).toEqual(LEATHER)
+  })
+
+  it("cuts a grip pass: fingers over the handle in skin, the body's own skin left out, the blade untouched", () => {
+    const SKIN_DARK: Pixel = [150, 100, 80, 255]
+    const SKIN_LIGHT: Pixel = [230, 180, 150, 255]
+    const STEEL: Pixel = [180, 190, 200, 255]
+    const INK4: Pixel = [0, 0, 0, 255]
+    const LEATHER: Pixel = [90, 60, 40, 255]
+    // One 6x8 cell: a body column on the left, an item column at x=4 running the cell's height.
+    const sheet = draw([
+      "......", "d.....", "l.....", "d.....", "l.....", "d.....", "l.....", "......",
+    ], { d: SKIN_DARK, l: SKIN_LIGHT })
+    const keyed = keySkin(sheet)
+    const cell = { x: 0, y: 0, width: 6, height: 8 }
+    const frames = [{ assetId: "a", width: 6, height: 8, offsetX: 0, offsetY: 0, cell }]
+    const placed = draw(Array.from({ length: 8 }, () => "....s."), { s: STEEL })
+    const sent = graspSheet({ keyed, frames }, [placed], [{ x: 4, y: 4 }], 2)
+    // The item is on the sheet, and only the disc at the hand is open.
+    expect(pixel(sent.keyed, 4, 0)).toEqual(STEEL)
+    expect(pixel(sent.mask, 4, 4)).toEqual([255, 255, 255, 255])
+    expect(pixel(sent.mask, 4, 1)).toEqual([0, 0, 0, 255])
+    expect(pixel(sent.mask, 0, 4)).toEqual([0, 0, 0, 255])
+
+    // What comes back: a bright cyan finger across the handle at (4,4), cyan
+    // beside the item at (3,4) (the hand itself), a lone dark pixel at (2,4),
+    // and the handle redrawn in leather at (4,5) with its outline at (5,5).
+    const cyan = (value: number): Pixel => [Math.floor(value * 0.15), value, value, 255]
+    const result = decodePng(sent.keyed)
+    const put = (x: number, y: number, colour: Pixel) => Buffer.from(colour).copy(result.pixels, (y * result.width + x) * 4)
+    put(4, 4, cyan(228))
+    put(3, 4, cyan(150))
+    put(2, 4, INK4)
+    put(4, 5, LEATHER)
+    put(5, 5, INK4)
+    const [layer] = cutGraspFrames(encodeRgbaPng(result.width, result.height, result.pixels), { sheet, keyed, mask: sent.mask, frames }, [placed])
+    expect(pixel(layer!, 4, 4)).toEqual(SKIN_LIGHT)   // a finger, in the figure's own nearest skin colour
+    expect(pixel(layer!, 3, 4)).toEqual(CLEAR)        // the hand beside the item is the frame's, not the layer's
+    expect(pixel(layer!, 2, 4)).toEqual(CLEAR)        // dark with nothing kept beside it
+    expect(pixel(layer!, 4, 5)).toEqual(LEATHER)      // the handle as redrawn
+    expect(pixel(layer!, 5, 5)).toEqual(INK4)         // its outline
+    expect(pixel(layer!, 4, 0)).toEqual(STEEL)        // outside the disc: the placed sprite
+    expect(pixel(layer!, 4, 3)).toEqual(STEEL)        // in the disc and returned unchanged
   })
 })

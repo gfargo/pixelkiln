@@ -13,7 +13,7 @@
 import { z } from "zod"
 import { decodePng, encodeRgbaPng, type DecodedPng } from "./png.ts"
 import { SkeletonFrameSchema, type SkeletonKeypoint } from "./skeleton.ts"
-import { ATTACH_JOINTS, CHARACTER_DIRECTIONS_8, type AttachJoint, type CharacterDirection } from "./types.ts"
+import { ATTACH_JOINTS, CHARACTER_DIRECTIONS_8, type AttachJoint, type CharacterDirection, type ResolvedSpec } from "./types.ts"
 
 /** Where an item sits in one frame: the hand in frame pixels, and whether the body covers it. */
 export interface Placement {
@@ -279,4 +279,14 @@ export function attachFrame(frame: Buffer, item: Buffer, options: AttachOptions)
     }
   }
   return { png: encodeRgbaPng(width, height, out), clipped }
+}
+
+/**
+ * True for a layer made here, without a provider: an item placed and left as
+ * it lands. One whose grip is redrawn (`grasp`) is placed here too, but then
+ * goes to the provider like any other layer, and is not this.
+ */
+export function isHeldItem(spec: Pick<ResolvedSpec, "character">): boolean {
+  const attach = spec.character?.layer?.attach
+  return Boolean(attach && !attach.grasp)
 }

@@ -1990,6 +1990,61 @@ describe("paperdoll layer", () => {
       expect(changed.actionable[0]!.reason).toMatch(/the item, the anchors file, or how it is held changed/)
     })
 
+    it("redraws the hand around a placed item with one small inpaint when asked to grasp", async () => {
+      const file = await heldManifest({ grasp: { radius: 2 } })
+      await writeItems()
+      const client = fakeClient()
+      const provider = new PixelLabProvider(client as never)
+      let p = await withSources(file, client, provider)
+      const sword = () => p.specs.find((s) => s.assetId === "mira.sword")!
+      expect(sword().character!.layer!.attach!.grasp).toEqual({ radius: 2 })
+      await writeAnchors(sword(), p.lock, estimator())
+
+      // No longer free: it is one inpaint, priced like any other layer.
+      p = await openProject(file, { env: false })
+      const plan = await p.plan()
+      expect(plan.actionable.map((item) => item.key)).toEqual(["cast/mira.sword"])
+      expect(plan.groups[0]!.cost).toBe(25)
+      await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+      expect(p.lock.entries["cast/mira.sword"]).toMatchObject({ status: "processing", error: null })
+
+      // The sheet went out with the sword already on it and only a disc at each hand open.
+      const sent = client.inpaints.at(-1)!
+      expect(sent.description).toMatch(/fist around the item's handle/)
+      const mask = decodePng(sent.mask)
+      let open = 0
+      for (let i = 0; i < mask.pixels.length; i += 4) if (mask.pixels[i] === 255) open++
+      const frames = p.lock.entries["cast/mira"]!.outputs.length + p.lock.entries["cast/mira.walk"]!.outputs.length
+      expect(open).toBeGreaterThan(0)
+      expect(open).toBeLessThanOrEqual(frames * 13)
+      const image = decodePng(sent.image)
+      let steel = 0
+      for (let i = 0; i < image.pixels.length; i += 4) if (image.pixels[i] === STEEL[0] && image.pixels[i + 1] === STEEL[1]) steel++
+      expect(steel).toBeGreaterThan(0)
+      const work = path.join(dir, ".pixelkiln", "layers", "cast", "mira.sword")
+      for (const name of ["sheet.png", "keyed.png", "keyed-bare.png", "mask.png", "layout.json", path.join("placed", "000.png")]) {
+        expect(existsSync(path.join(work, name))).toBe(true)
+      }
+
+      const jobId = p.lock.entries["cast/mira.sword"]!.jobId!
+      client.completeInpaint(jobId, painted(sent))
+      await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+      await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+      const entry = p.lock.entries["cast/mira.sword"]!
+      expect(entry.status).toBe("downloaded")
+      expect(entry.outputs).toHaveLength(frames)
+      expect(entry.outputs[0]!.role).toBe("mira.south")
+
+      // Inside the disc the layer is what the provider drew; the blade above it is the placed sprite, untouched.
+      const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+      const layer = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
+      const hand = { x: Math.round(source.width * 0.5 - 1) + 1 + 12, y: Math.round(source.height * (0.5 + 0.25 * 0.35) - 4) + 4 + 12 }
+      const at = (x: number, y: number) => [...layer.pixels.subarray((y * layer.width + x) * 4, (y * layer.width + x) * 4 + 4)]
+      expect(at(hand.x, hand.y)).toEqual(LEATHER)
+      expect(at(hand.x, hand.y - 4)).toEqual(STEEL)
+      expect((await (await openProject(file, { env: false })).plan()).actionable).toEqual([])
+    })
+
     it("refuses to place an item by an anchor estimated from a different frame", async () => {
       const file = await heldManifest()
       await writeItems()

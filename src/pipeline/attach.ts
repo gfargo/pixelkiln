@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { attachFrame, handPlacement, heldAngle, isDirection, parseAnchorsFile, type AnchorsFile } from "../attach.ts"
+import { attachFrame, handPlacement, heldAngle, isDirection, isHeldItem, parseAnchorsFile, type AnchorsFile } from "../attach.ts"
 import { sha256 } from "../hash.ts"
 import { saveLock, upsert } from "../lock.ts"
 import { MediaType } from "../media.ts"
@@ -18,10 +18,7 @@ import { mirrorSourceHash } from "./mirror.ts"
  * is made again whenever a source, the item, or the anchors file changes.
  */
 
-/** True for a layer that places an item instead of inpainting one. */
-export function isHeldItem(spec: Pick<ResolvedSpec, "character">): boolean {
-  return Boolean(spec.character?.layer?.attach)
-}
+export { isHeldItem }
 
 /** One frame a held item is placed on. */
 export interface HeldFrame {
@@ -69,19 +66,24 @@ export interface HeldItemOptions {
   onProgress?: (msg: string) => void
 }
 
-/** Write a held item's layer frames and record the asset as downloaded. */
-export async function heldItemAsset(
-  spec: ResolvedSpec,
-  lock: Lock,
-  lockPath: string,
-  opts: HeldItemOptions = {},
-): Promise<LockEntry> {
-  const log = opts.onProgress ?? (() => {})
+/** One frame's item, placed: the layer bytes, where the hand is, and whether the body covers it. */
+export interface PlacedFrame {
+  png: Buffer
+  hand: { x: number; y: number }
+  behind: boolean
+  /** Item pixels that fell outside the padded canvas. */
+  clipped: number
+}
+
+/**
+ * Places a held item on each frame, from the item files and anchors file the
+ * spec names. Fails, naming the frame, when a frame has no anchor or has
+ * changed since its anchor was estimated.
+ */
+export async function placeHeldFrames(spec: ResolvedSpec, frames: HeldFrame[]): Promise<PlacedFrame[]> {
   const layer = spec.character!.layer!
   const attach = layer.attach!
-  const key = lockKey(spec.styleId, spec.assetId)
   const relative = (file: string) => path.relative(spec.root, file) || file
-
   if (!existsSync(attach.anchors.path)) {
     throw new Error(`anchors file ${relative(attach.anchors.path)} does not exist; write it with: pixelkiln anchors ${spec.assetId}`)
   }
@@ -91,11 +93,8 @@ export async function heldItemAsset(
     if (!existsSync(file.path)) throw new Error(`item image ${relative(file.path)} does not exist (${file.direction})`)
     items.set(file.direction, await readFile(file.path))
   }
-
-  const frames = heldFrames(spec, lock)
-  const outputs: LockOutput[] = []
-  let clipped = 0
-  for (const [index, frame] of frames.entries()) {
+  const placed: PlacedFrame[] = []
+  for (const frame of frames) {
     const anchor = anchors.frames[frame.assetId]?.[frame.role]
     const name = `${frame.assetId} ${frame.role}`
     if (!anchor) {
@@ -110,21 +109,43 @@ export async function heldItemAsset(
     const placement = handPlacement(anchor, attach.joint)
     if (attach.depth !== "auto") placement.behind = attach.depth === "behind"
     const grip = attach.grip === "center" || Array.isArray(attach.grip) ? attach.grip : attach.grip?.[frame.direction]
-    const placed = attachFrame(bytes, item, {
+    const result = attachFrame(bytes, item, {
       placement,
       angle: heldAngle(frame.direction, attach.joint, attach.tilt, attach.lean),
       ...(grip ? { grip: grip === "center" ? grip : { x: grip[0], y: grip[1] } } : {}),
       scale: attach.scale,
       padding: layer.padding,
     })
-    clipped += placed.clipped
+    placed.push({ png: result.png, hand: { x: placement.x, y: placement.y }, behind: placement.behind, clipped: result.clipped })
+  }
+  return placed
+}
+
+/** Write a held item's layer frames and record the asset as downloaded. */
+export async function heldItemAsset(
+  spec: ResolvedSpec,
+  lock: Lock,
+  lockPath: string,
+  opts: HeldItemOptions = {},
+): Promise<LockEntry> {
+  const log = opts.onProgress ?? (() => {})
+  const layer = spec.character!.layer!
+  const attach = layer.attach!
+  const key = lockKey(spec.styleId, spec.assetId)
+  const frames = heldFrames(spec, lock)
+  const placed = await placeHeldFrames(spec, frames)
+  const outputs: LockOutput[] = []
+  let clipped = 0
+  for (const [index, frame] of frames.entries()) {
+    const bytes = placed[index]!.png
+    clipped += placed[index]!.clipped
     const role = `${frame.assetId}.${frame.role}`
     const target = expectedOutputPath(spec, role, index, frames.length, MediaType.PNG)
     await mkdir(path.dirname(target), { recursive: true })
     const tmp = `${target}.pixelkiln.tmp`
-    await writeFile(tmp, placed.png)
+    await writeFile(tmp, bytes)
     await rename(tmp, target)
-    outputs.push({ path: portableOutputPath(target, spec.root), sha256: sha256(placed.png), role, mediaType: MediaType.PNG })
+    outputs.push({ path: portableOutputPath(target, spec.root), sha256: sha256(bytes), role, mediaType: MediaType.PNG })
   }
 
   const now = new Date().toISOString()

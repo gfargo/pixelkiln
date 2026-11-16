@@ -820,6 +820,14 @@ export const CharacterAttachSchema = z
      * skeleton: the item goes behind the figure when its hand is.
      */
     depth: z.enum(["auto", "front", "behind"]).optional(),
+    /**
+     * Redraw the hand around the item so it is held, not resting on the
+     * hand: one inpaint over a small disc at each hand, the rest of the item
+     * untouched. `true`, or `{ "radius": 9 }` for the disc in pixels. This
+     * makes the layer a paid one (one inpaint, priced by the sheet); the
+     * asset's `prompt`, when it has one, tells the provider what the item is.
+     */
+    grasp: z.union([z.boolean(), z.object({ radius: z.number().int().min(2).max(32).optional() }).strict()]).optional(),
   })
   .strict()
 export type CharacterAttach = z.infer<typeof CharacterAttachSchema>
@@ -1118,6 +1126,8 @@ export interface ResolvedCharacter {
       tilt: number
       lean: number
       depth: "auto" | "front" | "behind"
+      /** Set when the hand is redrawn around the item; the disc's radius in pixels. */
+      grasp?: { radius: number }
     }
   }
   animation?: {

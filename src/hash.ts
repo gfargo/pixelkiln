@@ -224,6 +224,7 @@ export function specHash(
                         tilt: spec.character.layer.attach.tilt,
                         lean: spec.character.layer.attach.lean,
                         depth: spec.character.layer.attach.depth,
+                        grasp: spec.character.layer.attach.grasp?.radius,
                       }
                     : undefined,
                 }

@@ -1,3 +1,4 @@
+import { isHeldItem } from "./attach.ts"
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
@@ -1283,6 +1284,10 @@ export async function resolveSpecs(
             tilt: declared.tilt ?? 0,
             lean: declared.lean ?? 0,
             depth: declared.depth ?? "auto",
+            // About a ninth of the frame: the hand and the handle through it, and little else.
+            ...(declared.grasp
+              ? { grasp: { radius: (declared.grasp === true ? undefined : declared.grasp.radius) ?? Math.max(2, Math.round(first.width * 0.11)) } }
+              : {}),
           }
         }
         resolved.character = {
@@ -1312,7 +1317,7 @@ export async function resolveSpecs(
         // The outfit in the author's words. The style's prefix and suffix
         // describe the character, who is already on the sheet.
         // A held item is placed, not drawn: nothing reads a prompt.
-        resolved.prompt = attach ? "" : (asset.promptByStyle[styleId] ?? asset.prompt ?? "").trim()
+        resolved.prompt = attach && !attach.grasp ? "" : (asset.promptByStyle[styleId] ?? asset.prompt ?? "").trim()
       }
       if (asset.revision) {
         if (!activeProvider.supportsRevision?.(asset.revision.mode)) {
@@ -1598,7 +1603,7 @@ export async function resolveSpecs(
         )
       }
       // A held item is composited locally from files already on disk.
-      resolved.cost = resolved.character?.layer?.attach ? 0 : estimate.amount
+      resolved.cost = isHeldItem(resolved) ? 0 : estimate.amount
       resolved.costUnit = estimate.unit
       resolved.candidates = estimate.candidates
       finalized.add(assetId)

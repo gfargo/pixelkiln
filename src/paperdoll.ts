@@ -797,3 +797,158 @@ export function cutLayerFrames(
     return encodeRgbaPng(out.width, out.height, out.pixels)
   })
 }
+
+/**
+ * The grip pass. A placed item sits on the hand; nothing holds it. One small
+ * inpaint fixes that without giving up what placing bought: the item is
+ * pasted onto the keyed sheet where it was placed, and only a disc around
+ * each holding hand is opened to the provider. The rest of the item is
+ * outside the mask, so it comes back identical, and the provider has only a
+ * fist to draw around a handle that is already there.
+ *
+ * `placed` is each frame's item layer on that frame's padded canvas; `hands`
+ * is where each is held, in frame pixels, or null for a frame to leave alone
+ * (a hand the body covers has nothing to show).
+ */
+export function graspSheet(
+  prepared: { keyed: Buffer; frames: LayerFrame[] },
+  placed: Buffer[],
+  hands: Array<{ x: number; y: number } | null>,
+  radius: number,
+): { keyed: Buffer; mask: Buffer } {
+  const keyed = decodePng(prepared.keyed)
+  const mask = Buffer.alloc(keyed.pixels.length)
+  for (let i = 0; i < mask.length; i += 4) mask[i + 3] = 255
+  for (const [index, frame] of prepared.frames.entries()) {
+    const item = decodePng(placed[index]!)
+    const pad = frame.padding ?? 0
+    const hand = hands[index]
+    for (let y = 0; y < frame.cell.height; y++) {
+      for (let x = 0; x < frame.cell.width; x++) {
+        const to = at(keyed, frame.cell.x + x, frame.cell.y + y)
+        const lx = frame.offsetX + pad + x
+        const ly = frame.offsetY + pad + y
+        if (lx >= 0 && ly >= 0 && lx < item.width && ly < item.height && item.pixels[at(item, lx, ly) + 3]! > 0) {
+          item.pixels.copy(keyed.pixels, to, at(item, lx, ly), at(item, lx, ly) + 4)
+        }
+        if (hand && Math.hypot(x + frame.offsetX - hand.x, y + frame.offsetY - hand.y) <= radius) {
+          mask[to] = mask[to + 1] = mask[to + 2] = 255
+        }
+      }
+    }
+  }
+  return { keyed: encodeRgbaPng(keyed.width, keyed.height, keyed.pixels), mask: encodeRgbaPng(keyed.width, keyed.height, mask) }
+}
+
+/**
+ * Cuts the gripped item out of a grip-pass result: one layer per frame, the
+ * placed item with the disc around its hand replaced by what the provider
+ * drew there. Inside the disc:
+ *
+ * - a pixel that is not skin is the item, redrawn where the fist meets it;
+ * - a skin pixel where the placed item was is a finger over the handle, and
+ *   goes into the layer in the figure's own skin colour, matched by
+ *   brightness, since the layer has to cover the item beneath it;
+ * - any other skin pixel is the hand and body the frame already has, and is
+ *   left out, so the layer never paints skin over clothing;
+ * - a dark pixel survives only beside something that did (a finger's or the
+ *   handle's outline), not as a redrawn stretch of the body's own.
+ *
+ * `sheet` is the frames before keying, which is where each figure's skin
+ * colours are read from.
+ */
+export function cutGraspFrames(
+  result: Buffer,
+  prepared: { sheet: Buffer; keyed: Buffer; mask: Buffer; frames: LayerFrame[] },
+  placed: Buffer[],
+  options: { key?: string; outlineBelow?: number } = {},
+): Buffer[] {
+  const out = decodePng(result)
+  const sheet = decodePng(prepared.sheet)
+  const keyed = decodePng(prepared.keyed)
+  const mask = decodePng(prepared.mask)
+  for (const [name, image] of [["sheet", sheet], ["keyed sheet", keyed], ["mask", mask]] as const) {
+    if (image.width !== out.width || image.height !== out.height) {
+      throw new Error(`the ${name} is ${image.width}x${image.height}; the result is ${out.width}x${out.height}`)
+    }
+  }
+  const outlineBelow = options.outlineBelow ?? 60
+  const brightest = (image: DecodedPng, i: number) => Math.max(image.pixels[i]!, image.pixels[i + 1]!, image.pixels[i + 2]!)
+  return prepared.frames.map((frame, index) => {
+    const layer = decodePng(placed[index]!)
+    const pad = frame.padding ?? 0
+    // This figure's skin, darkest to lightest: every colour keying changed.
+    const ramp: Array<[number, number, number]> = []
+    const seen = new Set<number>()
+    for (let y = 0; y < frame.cell.height; y++) {
+      for (let x = 0; x < frame.cell.width; x++) {
+        const i = at(sheet, frame.cell.x + x, frame.cell.y + y)
+        if (sheet.pixels[i + 3] === 0 || sheet.pixels.compare(keyed.pixels, i, i + 3, i, i + 3) === 0) continue
+        if (!isKeyColor(keyed.pixels[i]!, keyed.pixels[i + 1]!, keyed.pixels[i + 2]!, options.key)) continue
+        const packed = (sheet.pixels[i]! << 16) | (sheet.pixels[i + 1]! << 8) | sheet.pixels[i + 2]!
+        if (seen.has(packed)) continue
+        seen.add(packed)
+        ramp.push([sheet.pixels[i]!, sheet.pixels[i + 1]!, sheet.pixels[i + 2]!])
+      }
+    }
+    const skin = (value: number) => ramp.reduce((best, colour) => (Math.abs(Math.max(...colour) - value) < Math.abs(Math.max(...best) - value) ? colour : best))
+
+    // First pass: what each disc pixel is. 0 nothing, 1 coloured item, 2 finger, 3 dark.
+    const kind = new Uint8Array(frame.cell.width * frame.cell.height)
+    const local = (x: number, y: number) => y * frame.cell.width + x
+    const onCanvas = (x: number, y: number) => {
+      const lx = frame.offsetX + pad + x
+      const ly = frame.offsetY + pad + y
+      return lx >= 0 && ly >= 0 && lx < layer.width && ly < layer.height ? at(layer, lx, ly) : -1
+    }
+    const inDisc = (x: number, y: number) => mask.pixels[at(mask, frame.cell.x + x, frame.cell.y + y)] === 255
+    for (let y = 0; y < frame.cell.height; y++) {
+      for (let x = 0; x < frame.cell.width; x++) {
+        if (!inDisc(x, y)) continue
+        const i = at(out, frame.cell.x + x, frame.cell.y + y)
+        if (out.pixels[i + 3] === 0) continue
+        const target = onCanvas(x, y)
+        if (isKeyColor(out.pixels[i]!, out.pixels[i + 1]!, out.pixels[i + 2]!, options.key)) {
+          if (ramp.length && target >= 0 && layer.pixels[target + 3]! > 0) kind[local(x, y)] = 2
+        } else {
+          kind[local(x, y)] = brightest(out, i) < outlineBelow ? 3 : 1
+        }
+      }
+    }
+    // Second pass: write the disc. A dark pixel needs a kept, non-dark neighbour, or to be on the placed item.
+    for (let y = 0; y < frame.cell.height; y++) {
+      for (let x = 0; x < frame.cell.width; x++) {
+        if (!inDisc(x, y)) continue
+        const target = onCanvas(x, y)
+        if (target < 0) continue
+        const i = at(out, frame.cell.x + x, frame.cell.y + y)
+        const what = kind[local(x, y)]!
+        let keep = what === 1 || what === 2
+        if (what === 3) {
+          keep = layer.pixels[target + 3]! > 0
+          for (let dy = -1; dy <= 1 && !keep; dy++) {
+            for (let dx = -1; dx <= 1 && !keep; dx++) {
+              const nx = x + dx
+              const ny = y + dy
+              if (nx < 0 || ny < 0 || nx >= frame.cell.width || ny >= frame.cell.height) continue
+              const near = kind[local(nx, ny)]!
+              if (near === 1 || near === 2) keep = true
+            }
+          }
+        }
+        if (!keep) {
+          layer.pixels.fill(0, target, target + 4)
+        } else if (what === 2) {
+          const [r, g, b] = skin(brightest(out, i))
+          layer.pixels[target] = r
+          layer.pixels[target + 1] = g
+          layer.pixels[target + 2] = b
+          layer.pixels[target + 3] = 255
+        } else {
+          out.pixels.copy(layer.pixels, target, i, i + 4)
+        }
+      }
+    }
+    return encodeRgbaPng(layer.width, layer.height, layer.pixels)
+  })
+}

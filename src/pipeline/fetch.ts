@@ -1,3 +1,4 @@
+import { isHeldItem } from "../attach.ts"
 import { existsSync, readFileSync } from "node:fs"
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
@@ -80,7 +81,7 @@ export async function fetchAssets(
     // A derived or external asset has no provider object to download.
     if (specByKey.get(key)?.derive || specByKey.get(key)?.external) return false
     // A held item is placed locally from files on disk; gen makes it again.
-    if (specByKey.get(key)?.character?.layer?.attach) return false
+    if (specByKey.get(key) && isHeldItem(specByKey.get(key)!)) return false
     if (e.status === "selected" || e.status === "download-failed") return true
     if (e.status !== "downloaded") return false
     if (opts.refresh) return e.outputs.length > 0 && Boolean(e.sourceUrls?.length || e.sourceUrl)

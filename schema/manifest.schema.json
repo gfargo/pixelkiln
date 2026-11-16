@@ -1896,6 +1896,24 @@
                           "front",
                           "behind"
                         ]
+                      },
+                      "grasp": {
+                        "anyOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "radius": {
+                                "type": "integer",
+                                "minimum": 2,
+                                "maximum": 32
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
                       }
                     },
                     "required": [
