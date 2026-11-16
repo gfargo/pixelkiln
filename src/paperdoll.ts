@@ -674,8 +674,14 @@ export function buildLayerSheet(
 }
 
 /**
- * Cleans an item layer (a hat, a held sword) in place. Given room around the
- * figure, a provider does two things an outfit mask never lets it do:
+ * Cleans a layer in place. A provider repaints more than it was asked for:
+ *
+ * - Asked for part of an outfit (only a shirt), it still redraws the outline
+ *   of the bare limbs, which comes back as changed dark pixels: a wire figure
+ *   in the layer. The first rule below removes it.
+ *
+ * And given room around the figure (a hat, a held sword), it does things an
+ * outfit mask never lets it do:
  *
  * - It redraws stretches of the figure's own outline a pixel off, which come
  *   back as changed dark pixels and so as thin scribbles in the layer. A dark
@@ -694,8 +700,9 @@ export function buildLayerSheet(
 const SPECK = 8
 const BLEED = 20
 const SHADOW = 40
+const BODY_SPECK = 4
 
-function tidyItemLayer(layer: DecodedPng, cells: SheetCell[], outlineBelow = 60): void {
+function tidyItemLayer(layer: DecodedPng, cells: SheetCell[], limits = { speck: SPECK, bleed: BLEED }, outlineBelow = 60): void {
   const px = layer.pixels
   const on = (x: number, y: number, cell: SheetCell) => inside(cell, x, y) && px[at(layer, x, y) + 3]! > 0
   const dark = (i: number) => Math.max(px[i]!, px[i + 1]!, px[i + 2]!) < outlineBelow
@@ -742,7 +749,7 @@ function tidyItemLayer(layer: DecodedPng, cells: SheetCell[], outlineBelow = 60)
             }
           }
         }
-        if (run.length < SPECK || (edge && run.length < BLEED) || (!coloured && run.length < SHADOW)) for (const [cx, cy] of run) px.fill(0, at(layer, cx, cy), at(layer, cx, cy) + 4)
+        if (run.length < limits.speck || (edge && run.length < limits.bleed) || (!coloured && run.length < SHADOW)) for (const [cx, cy] of run) px.fill(0, at(layer, cx, cy), at(layer, cx, cy) + 4)
       }
     }
   }
@@ -760,7 +767,14 @@ export function cutLayerFrames(
   options: { key?: string; region?: LayerRegion } = {},
 ): Buffer[] {
   const layer = decodePng(extractLayer(result, prepared.keyed, prepared.mask, options))
-  if (options.region && options.region !== "body") tidyItemLayer(layer, prepared.frames.map((frame) => frame.cell))
+  // A body layer's cells are cropped to the figures, so clothing reaches their
+  // edges honestly and nothing bleeds in from next door: no edge rule, and a
+  // smaller speck limit so a cuff or a buckle survives.
+  tidyItemLayer(
+    layer,
+    prepared.frames.map((frame) => frame.cell),
+    !options.region || options.region === "body" ? { speck: BODY_SPECK, bleed: 0 } : { speck: SPECK, bleed: BLEED },
+  )
   return prepared.frames.map((frame) => {
     const pad = frame.padding ?? 0
     const out: DecodedPng = {

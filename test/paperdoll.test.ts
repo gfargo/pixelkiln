@@ -301,7 +301,7 @@ describe("layer sheets", () => {
     expect(pixel(layer!, 2, 0)).toEqual(CLEAR)
   })
 
-  it("tidies an item layer: outline scribbles, stray specks and dark blots go, the item stays", () => {
+  it("tidies a layer: outline scribbles, stray specks and dark blots go, the item stays", () => {
     const INK4: Pixel = [0, 0, 0, 255]
     const cell = { x: 0, y: 0, width: 12, height: 8 }
     const keyed = draw(Array.from({ length: 8 }, () => "............"))
@@ -314,7 +314,7 @@ describe("layer sheets", () => {
       ".####..##...",   // a 2x2 dark blot with no colour in it
       ".......##...",
       "...l........",   // a stray coloured speck
-      "............",
+      ".......lllll",   // a small piece at the cell's edge
     ], { l: LEATHER, "#": INK4 })
     const frames = [{ assetId: "a", width: 12, height: 8, offsetX: 0, offsetY: 0, cell }]
     const [tidy] = cutLayerFrames(result, { keyed, mask, frames }, { region: "around" })
@@ -323,7 +323,15 @@ describe("layer sheets", () => {
     expect(pixel(tidy!, 10, 1)).toEqual(CLEAR)
     expect(pixel(tidy!, 7, 4)).toEqual(CLEAR)
     expect(pixel(tidy!, 3, 6)).toEqual(CLEAR)
-    const [raw] = cutLayerFrames(result, { keyed, mask, frames })
-    expect(pixel(raw!, 10, 1)).toEqual(INK4)
+    expect(pixel(tidy!, 9, 7)).toEqual(CLEAR)
+    // A clothing layer loses the same scribbles, which is what removes the
+    // outline of the limbs a partial outfit leaves bare, but its cells are
+    // cropped to the figure, so a small piece at the edge is a cuff, not bleed.
+    const [body] = cutLayerFrames(result, { keyed, mask, frames })
+    expect(pixel(body!, 10, 1)).toEqual(CLEAR)
+    expect(pixel(body!, 7, 4)).toEqual(CLEAR)
+    expect(pixel(body!, 3, 6)).toEqual(CLEAR)
+    expect(pixel(body!, 9, 7)).toEqual(LEATHER)
+    expect(pixel(body!, 2, 2)).toEqual(LEATHER)
   })
 })
