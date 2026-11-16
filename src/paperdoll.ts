@@ -1012,3 +1012,53 @@ export function cutGraspFrames(
     return encodeRgbaPng(layer.width, layer.height, layer.pixels)
   })
 }
+
+/**
+ * Turns a layer sheet into one that redraws only some of its frames. The
+ * frames marked for redrawing stay keyed and open. Every other frame becomes
+ * a guide: its finished layer is painted over it and its mask is closed, so
+ * the provider sees the outfit as it should look, facing every other way,
+ * and has one figure left to dress.
+ *
+ * `layers` holds each frame's layer as `cutLayerFrames` returned it (on the
+ * frame's canvas grown by its padding), or null for a frame with none.
+ */
+export function redrawSheet(
+  prepared: Pick<LayerSheet, "keyed" | "mask" | "frames">,
+  layers: Array<Buffer | null>,
+  redraw: boolean[],
+): { keyed: Buffer; mask: Buffer } {
+  if (layers.length !== prepared.frames.length || redraw.length !== prepared.frames.length) {
+    throw new Error(`a sheet of ${prepared.frames.length} frames was given ${layers.length} layers and ${redraw.length} marks`)
+  }
+  const keyed = decodePng(prepared.keyed)
+  const mask = decodePng(prepared.mask)
+  prepared.frames.forEach((frame, index) => {
+    if (redraw[index]) return
+    const { cell } = frame
+    const pad = frame.padding ?? 0
+    const layer = layers[index] ? decodePng(layers[index]!) : null
+    if (layer && (layer.width !== frame.width + pad * 2 || layer.height !== frame.height + pad * 2)) {
+      throw new Error(
+        `the layer over ${frame.assetId} ${frame.role ?? index} is ${layer.width}x${layer.height}; ` +
+          `its frame's canvas is ${frame.width + pad * 2}x${frame.height + pad * 2}`,
+      )
+    }
+    for (let y = 0; y < cell.height; y++) {
+      for (let x = 0; x < cell.width; x++) {
+        const to = at(keyed, cell.x + x, cell.y + y)
+        mask.pixels[to] = mask.pixels[to + 1] = mask.pixels[to + 2] = 0
+        if (!layer) continue
+        const lx = x + frame.offsetX + pad
+        const ly = y + frame.offsetY + pad
+        if (lx < 0 || ly < 0 || lx >= layer.width || ly >= layer.height) continue
+        const from = at(layer, lx, ly)
+        if (layer.pixels[from + 3]) layer.pixels.copy(keyed.pixels, to, from, from + 4)
+      }
+    }
+  })
+  return {
+    keyed: encodeRgbaPng(keyed.width, keyed.height, keyed.pixels),
+    mask: encodeRgbaPng(mask.width, mask.height, mask.pixels),
+  }
+}

@@ -18,6 +18,7 @@ import { upsert } from "../src/lock.ts"
 import { sha256File } from "../src/hash.ts"
 import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
 import { writeAnchors } from "../src/pipeline/attach.ts"
+import { redrawLayerFrames } from "../src/pipeline/redraw.ts"
 import { SKELETON_LABELS } from "../src/skeleton.ts"
 
 /** The directions a held item needs files for: every one its base faces. */
@@ -1911,6 +1912,93 @@ describe("paperdoll layer", () => {
     expect(bottomRow(await read())).toEqual(LEATHER)
     expect(client.inpaints).toHaveLength(jobs)
     expect((await (await openProject(file, { env: false })).plan()).items.find((item) => item.key === "cast/mira.armor")!.state).toBe("ok")
+  })
+
+  it("redraws one frame beside the others shown dressed, and records it as the layer's own", async () => {
+    const GREEN = [40, 140, 60, 255]
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await withSources(await layeredManifest({ offset: [0, -1] }), client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject((await layeredManifest({ offset: [0, -1] })), { env: false })
+    const spec = p.specs.find((s) => s.assetId === "mira.armor")!
+    const entry = () => p.lock.entries["cast/mira.armor"]!
+    const before = entry()
+    const jobs = client.inpaints.length
+    // A provider that lands at once, painting what it may in green.
+    const painter = {
+      async paintSheet(args: Parameters<PixelLabProvider["paintSheet"]>[0]) {
+        const jobId = await provider.paintSheet(args)
+        const sent = client.inpaints.at(-1)!
+        const image = decodePng(sent.image)
+        const mask = decodePng(sent.mask)
+        const out = Buffer.from(image.pixels)
+        for (let i = 0; i < out.length; i += 4) if (mask.pixels[i] === 255) Buffer.from(GREEN).copy(out, i)
+        client.completeInpaint(jobId, encodeRgbaPng(image.width, image.height, out))
+        client.setJobUsage(jobId, { type: "generations", generations: 10 })
+        return jobId
+      },
+      paintedSheet: (jobId: string) => provider.paintedSheet(jobId),
+    }
+    const options = { lockPath: p.lockPath, pollMs: 0 }
+
+    await expect(redrawLayerFrames(spec, p.lock, painter, { ...options, frames: [] })).rejects.toThrow(/needs at least one --frame.*mira\.walk\.frame-02/)
+    await expect(redrawLayerFrames(spec, p.lock, painter, { ...options, frames: ["frame-09"] })).rejects.toThrow(/has no frame "frame-09"/)
+    await expect(redrawLayerFrames(spec, p.lock, painter, { ...options, frames: ["frame-00", "frame-01", "frame-02", "frame-03"] }))
+      .rejects.toThrow(/leaves none to copy the outfit from/)
+    expect(await redrawLayerFrames(spec, p.lock, painter, { ...options, frames: ["frame-02"], dryRun: true }))
+      .toMatchObject({ roles: ["mira.walk.frame-02"], guides: 3, cost: 10, written: [] })
+    expect(client.inpaints).toHaveLength(jobs)
+
+    const result = await redrawLayerFrames(spec, p.lock, painter, { ...options, frames: ["frame-02"] })
+    expect(result).toMatchObject({ roles: ["mira.walk.frame-02"], guides: 3, billed: { amount: 10, unit: "generations" } })
+    expect(result.written).toHaveLength(1)
+    expect(client.inpaints).toHaveLength(jobs + 1)
+    // Only the loop's four frames went, three of them wearing the leather they already had, and one left open.
+    const sent = client.inpaints.at(-1)!
+    expect(sent.description).toMatch(/^leather ranger armour\. Every figure but one already wears it/)
+    const keyed = decodePng(sent.image)
+    const mask = decodePng(sent.mask)
+    // The open part of the mask fits inside one frame.
+    const box = { left: Infinity, right: -1, top: Infinity, bottom: -1 }
+    let leather = 0
+    for (let i = 0; i < mask.pixels.length; i += 4) {
+      const x = (i / 4) % mask.width
+      const y = Math.floor(i / 4 / mask.width)
+      if (mask.pixels[i] === 255) Object.assign(box, { left: Math.min(box.left, x), right: Math.max(box.right, x), top: Math.min(box.top, y), bottom: Math.max(box.bottom, y) })
+      if (keyed.pixels.compare(Buffer.from(LEATHER), 0, 4, i, i + 4) === 0) leather++
+    }
+    const frame = decodePng(await readFile(path.resolve(dir, before.outputs[0]!.path)))
+    expect(box.right).toBeGreaterThanOrEqual(box.left)
+    expect(box.right - box.left).toBeLessThan(frame.width)
+    expect(box.bottom - box.top).toBeLessThan(frame.height)
+    expect(leather).toBeGreaterThan(0)
+
+    // The frame is green, its neighbours untouched, and the record is the file's.
+    const colours = async (role: string) => {
+      const output = entry().outputs.find((o) => o.role === role)!
+      const file = path.resolve(dir, output.path)
+      expect(await sha256File(file)).toBe(output.sha256)
+      const { pixels } = decodePng(await readFile(file))
+      const seen = new Set<string>()
+      for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 3]) seen.add([...pixels.subarray(i, i + 4)].join())
+      return [...seen]
+    }
+    expect(await colours("mira.walk.frame-02")).toEqual([GREEN.join()])
+    expect(await colours("mira.walk.frame-01")).toEqual([LEATHER.join()])
+    expect(entry().outputs.find((o) => o.role === "mira.walk.frame-02")!.raw).toMatch(/^[0-9a-f]{64}$/)
+    expect(entry().outputs.find((o) => o.role === "mira.walk.frame-01")).toEqual(before.outputs.find((o) => o.role === "mira.walk.frame-01"))
+    expect(entry().cost).toBe(before.cost + 10)
+    expect((await (await openProject(await layeredManifest({ offset: [0, -1] }), { env: false })).plan()).items.find((item) => item.key === "cast/mira.armor")!.state).toBe("ok")
+
+    // A later change of offset starts from the redrawn frame, not the one it replaced.
+    p = await openProject(await layeredManifest(), { env: false })
+    expect(await fetchAssets(provider, p.specs, p.lock, p.lockPath)).toMatchObject({ failed: 0 })
+    expect(await colours("mira.walk.frame-02")).toEqual([GREEN.join()])
+    expect(client.inpaints).toHaveLength(jobs + 1)
   })
 
   it("recolours a whole layer for nothing: one frame out per frame in, under the same names", async () => {

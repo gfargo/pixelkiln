@@ -12,6 +12,8 @@ export interface Args {
   lock: string
   styles: string[]
   assets: string[]
+  /** redraw --frame: the layer frames to draw again. */
+  redrawFrames: string[]
   force: boolean
   yes: boolean
   budget?: number
@@ -220,7 +222,7 @@ const VALUE_FLAGS = [
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
   "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
-  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle",
+  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -230,7 +232,7 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors",
+  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
   "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "help", "--help", "-h", "--version", "-v",
 ] as const
 
@@ -342,6 +344,10 @@ export function parseArgs(argv: string[]): Args {
   } else if (command === "anchors") {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (target === undefined) throw new UsageError("anchors needs a held item's asset id: pixelkiln anchors <asset>")
+    rest = rest.slice(1)
+  } else if (command === "redraw") {
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (target === undefined) throw new UsageError("redraw needs a layer's asset id: pixelkiln redraw <asset> --frame <name>")
     rest = rest.slice(1)
   } else if (command === "skeleton-preview") {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
@@ -542,6 +548,7 @@ export function parseArgs(argv: string[]): Args {
     explicitLock: get("--lock"),
     styles: list("--style"),
     assets: list("--only"),
+    redrawFrames: list("--frame"),
     force: rest.includes("--force"),
     yes: rest.includes("--yes") || rest.includes("-y"),
     budget,

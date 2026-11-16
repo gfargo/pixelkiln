@@ -65,6 +65,15 @@ hands mid-walk and an inpainted shield was drawn face-on in a side view.
 
 ## Adjusting without paying
 
+- One frame of a drawn layer wrong, the rest right: `pixelkiln redraw
+  <layer> --frame <name>` (run it without `--frame` for the names, with
+  `--dry-run` for the price). One small inpaint, 10 to 25 generations,
+  outside the plan and `--budget`, so ask before running it. Do not
+  regenerate the whole layer for one frame. Run `pixelkiln gen` afterwards:
+  recolours of the layer are stale and rebuild free.
+- Skin tones are free: derive the base and each loop with `hue-shift`,
+  `"hue": [0, 45]` and a `brightness` under 1. Drawn layers go over them
+  unchanged. A `grasp` layer keeps the first skin's fingers.
 - `layer.offset` moves a drawn layer by whole pixels: `[0, -2]` for every
   frame, or `{ "hero.walk.south": [0, -2], "*": [0, 0] }` per source asset.
   A changed offset is `recoverable`; `pixelkiln fetch` re-applies it at no

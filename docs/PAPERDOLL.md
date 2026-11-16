@@ -227,6 +227,34 @@ page took one free `gen`.
 It recolours; it does not redesign. A layer whose parts share a hue all turn
 together.
 
+**Skin tones.** The same transform on the bare base gives other skins, since
+a base built for layers is nothing but skin and outline. Derive the base and
+each of its loops with the same numbers:
+
+```json
+"hero.brown":            { "derive": { "from": "hero", "transform": "hue-shift", "hue": [0, 45],
+                                       "degrees": -4, "saturation": 1.3, "brightness": 0.64 } },
+"hero.walk.south.brown": { "derive": { "from": "hero.walk.south", "transform": "hue-shift", "hue": [0, 45],
+                                       "degrees": -4, "saturation": 1.3, "brightness": 0.64 } }
+```
+
+Tried on this page's base: `brightness` 0.86, 0.64 and 0.44 with
+`saturation` 1.2 to 1.3 gave tan, brown and deep brown that read as skin,
+and turning the hue instead gave an orc green (`degrees` 78) and a frost
+blue (185). Every drawn layer goes over them unchanged, because a layer has
+no skin in it. Two things do not follow:
+
+- A `grasp` layer holds the fingers in the first base's skin colour. Derive
+  it too and the item's own warm colours turn with them: a torch's flame
+  and a gold crossguard went green with the orc. Use the placed item without
+  `grasp` on other skins, or accept the fingers.
+- A near-white highlight has no hue, so it is left alone, and a sheen that
+  was invisible on pale skin shows as white specks on dark. The stills had
+  none; one walk frame did.
+
+Layers are keyed against the base they were generated over, so make them on
+the original and put them over any of its recolours.
+
 **The wire figure.** Asked for part of an outfit, a provider still redraws
 the outline of the limbs it left bare, slightly changed, and those pixels
 would come back as a thin outline of the whole body in every layer. The cut
@@ -291,7 +319,47 @@ free. With `grasp` it is one more grip pass, since the fist has to be drawn
 around the item where it now is.
 
 The move is the same in every frame of an asset. It cannot fix one frame
-that differs from its neighbours.
+that differs from its neighbours; [`redraw`](#redrawing-one-frame) can.
+
+### Redrawing one frame
+
+A layer is one inpaint over every frame, and now and then one frame of it
+comes back wrong: a robe drawn from behind on a figure walking toward the
+viewer, a pack on the chest. Generating the whole layer again pays for every
+frame to fix one, and can break a different one. `redraw` draws only the
+frames you name:
+
+```bash
+pixelkiln redraw hero.robe                                   # lists the frame names
+pixelkiln redraw hero.robe --frame hero.walk.south.frame-05 --dry-run
+pixelkiln redraw hero.robe --frame hero.walk.south.frame-05
+```
+
+It puts the named frame on a small sheet with the other frames of the same
+source asset (the other five of that walk, or the other seven rotations).
+Those go on the sheet wearing the layer they already have, with their masks
+closed; the named frame goes bare, with its mask open. The provider has the
+outfit in front of it from every other side and one figure left to dress. A
+frame name can be shortened to any ending that picks out one frame:
+`walk.south.frame-05`.
+
+The new frame replaces the old one as the layer's own: its hash goes in the
+lockfile, the same `offset` is applied, and a later change of `offset`
+starts from it. Anything derived from the layer goes `stale` and is rebuilt
+by the next `gen` for nothing. The frame it replaced stays in the content
+cache. The sheet, mask and result are kept in
+`.pixelkiln/layers/<style>/<layer>/redraw/`.
+
+It is a direct call, outside the plan and `--budget`, at the Pro price of
+its sheet: six 64px frames make about a 90×118 sheet, which is 10. The
+amount billed is added to the layer's entry. Several frames of one asset can
+go in one call as long as at least one stays as a guide; frames of two
+assets go on one sheet together.
+
+What it does not do: it ignores a hand-made `mask` or `keyed` override,
+which are the size of the whole layer's sheet; it is not for held items,
+which are placed; and the new frame is drawn again, not copied, so a hem or
+a fold can differ a little from its neighbours. Look at it before moving on.
 
 ## Held items and accessories
 
@@ -810,7 +878,10 @@ not held in place by the body it covers: hair, helmets, masks, packs.
 | Twenty layers on one base for a character builder | 32 frames each, every sheet laid out a walk to a row. The fifteen drawn layers billed 285 in all: 15 each for seven clothing layers, a head of hair and a cowl, 25 each for a mohawk, a horned helm, a wizard hat, wings, a cape and a quiver. Five held items were 10 each as objects and 3.2 to anchor; four of them then took a 25-generation grip pass. Every combination a visitor can pick is a stack of files that were generated without knowing about each other. |
 | The same set, checked frame by frame | Two layers still had one frame facing the wrong way: a cape drawn from the front on the first frame of the walk away, and a robe drawn from behind on the last frame of the walk toward the viewer. The row layout made this rare, not impossible. Look at every loop. |
 | A backpack on a compact sheet, heads in their own colours, no row layout | Wrong again: on the chest in 2 of 6 front-facing frames, the same as the first time. 15 billed on 336×296. So leaving heads unkeyed is not enough alone; the robe was fixed by that and a walk to a row together. Keep the row layout for anything that differs front to back. |
-| Repairing one frame with its neighbours as context | Worked, for 10. The six frames of one walk went on a 174×59 sheet: five with the robe they already had painted on and masked off, the sixth bare and masked open, and a prompt saying to dress it like the others. It came back in the same robe, same trim, facing the right way. Not in PixelKiln yet; it was done by hand with the library and PixelLab's own tool. |
+| Repairing one frame with its neighbours as context | Worked, for 10. The six frames of one walk went on a 174×59 sheet: five with the robe they already had painted on and masked off, the sixth bare and masked open, and a prompt saying to dress it like the others. It came back in the same robe, same trim, facing the right way. This became `redraw`. |
+| `redraw` on one frame of the same robe, through the CLI | 10 billed on a 90×118 sheet, three frames to a row. The frame came back in the same purple robe with the same gold belt and collar, facing the right way. The cut differed slightly: the hem ended above the ankle where its neighbours' reached the foot. Good enough to replace a wrong frame, not identical to a right one. |
+| Skin tones by recolouring the bare base | Worked, for nothing. Six tones from one base with `hue-shift` over hues 0 to 45, and every clothing layer sat over them unchanged. Grip layers keep the first skin's fingers, and recolouring them turns the item's warm colours too. See [Colours for nothing](#colours-for-nothing). |
+| A voxel model carved from an object's eight views | Half works. Each view's silhouette cuts a block of voxels down; the camera's height and each view's centre were fitted by how well the result matched the views. A lantern, a round shield and a kite shield matched their eight silhouettes 92 to 96%, with the camera fitted at 20 to 30 degrees above level. A sword, a greatsword and a torch matched 39 to 68%: their diagonal views are drawn tilted in the picture, not turned in space, so the views disagree and most of the object is carved away. Even where the shape held, the surface was ragged and the colours noisy, since eight hand-drawn views do not agree pixel for pixel. A rough shape for blocking, not art. Done with a script, not PixelKiln. |
 | A walk posed for carrying, from a sentence | Not usable. A `skeleton-v3` loop described as walking with the right forearm raised drew a weapon into the hand the first time; told the hands were empty, it bent the arms a little and redrew the whole figure darker and more muscular than its base, on a 96px canvas. A layer over it would not match the stills. 4 generations each. Posing from explicit keypoints is the untested alternative, and those loops are not yet something a layer can dress. |
 | Regenerating those two | The cape came back right in every frame. The robe came back with the same frame wrong, and on a third try with three frames in a different cut from the other three; the second was restored from history, for nothing. That frame of that walk read as a back view to the model, and a new roll did not change it. |
 | The robe again, with the heads left in their own colours | Right in all 32 frames, first try, 15 billed. The sheet had been sent with every figure cyan from head to foot, so the only sign of a front view was a few dark pixels of eyes on a cyan head. Supplied as a `keyed` override in which everything outside the mask kept its real colours, each front-facing figure had a face. Layers are now keyed this way by default. It is one run: the three earlier attempts at the same robe, fully keyed, each had a frame wrong. |
@@ -848,6 +919,7 @@ That one was not tried.
 | A placed item is too big for the character | An object fills its canvas. | Set `scale`, or draw it smaller. |
 | A placed item floats beside the hand | The grip default missed, or the skeleton did. | Set `grip`, or add a `place` to that frame in the anchors file. |
 | "changed since its anchor was estimated" | A source frame was regenerated or cleaned. | Run `pixelkiln anchors <asset>` again; only changed frames are paid for. |
+| One frame of a layer is wrong and the rest are right | The model misread which way that figure faces. | `pixelkiln redraw <layer> --frame <name>`; see [Redrawing one frame](#redrawing-one-frame). |
 | A placed item is cut off | It reaches past the padded canvas. | Raise `padding`. |
 | "do not fit one 512px sheet" | Too many frames, or too much padding. | Lower `padding`, or split the layer. |
 | The layer is `stale` after turning on `clean` | Its sources' bytes changed. | Turn `clean` on first next time; regenerate the layer. |

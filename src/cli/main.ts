@@ -21,6 +21,7 @@ import { runQuality } from "./commands/quality.ts"
 import { runRecipe } from "./commands/recipe.ts"
 import { runRefine } from "./commands/refine.ts"
 import { runAnchors } from "./commands/anchors.ts"
+import { runRedraw } from "./commands/redraw.ts"
 import { runEstimateSkeleton, runSkeletonPreview } from "./commands/skeleton.ts"
 import { runTools } from "./commands/tools.ts"
 import { runWorkspace } from "./commands/workspace.ts"
@@ -90,6 +91,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   workspace: runWorkspace,
   "estimate-skeleton": runEstimateSkeleton,
   anchors: runAnchors,
+  redraw: runRedraw,
   "skeleton-preview": runSkeletonPreview,
   unzoom: runUnzoom,
   pixelate: runPixelate,

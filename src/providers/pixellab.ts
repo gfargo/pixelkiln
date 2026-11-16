@@ -452,7 +452,7 @@ function decodeObjectAnimationJob(jobId: string): ObjectAnimationJob | null {
 }
 
 /** /inpaint-v3 takes 32 to 512px a side (docs/REVISIONS.md). */
-const LAYER_SHEET_MAX_SIDE = 512
+export const LAYER_SHEET_MAX_SIDE = 512
 
 /** What submit records about a layer's sheet for the download step to cut against. */
 interface LayerLayout {
@@ -3586,6 +3586,34 @@ export class PixelLabProvider implements Provider {
   async download(url: string): Promise<Buffer> {
     if (url.startsWith("file://")) return readFileSync(url.slice("file://".length))
     return this.client.download(url)
+  }
+
+  /**
+   * One masked inpaint over a sheet, outside the plan and the lockfile: what
+   * `redraw` uses to draw single frames of a layer again. `paintedSheet`
+   * reads the job, and returns the repainted sheet once it has landed.
+   */
+  async paintSheet(args: { description: string; keyed: Buffer; mask: Buffer; seed?: number }): Promise<string> {
+    const { width, height } = decodePng(args.keyed)
+    const res = await this.client.inpaintV3({
+      description: args.description,
+      image: { base64: args.keyed.toString("base64"), format: "png" },
+      width,
+      height,
+      maskImage: { base64: args.mask.toString("base64"), format: "png" },
+      noBackground: true,
+      ...(args.seed != null ? { seed: args.seed } : {}),
+    })
+    return res.background_job_id
+  }
+
+  async paintedSheet(jobId: string): Promise<
+    { status: "processing" } | { status: "failed"; error: string } | { status: "ready"; png: Buffer; billed: BilledAmount | null }
+  > {
+    const state = await this.pollRevision(jobId)
+    if (state.status === "failed") return { status: "failed", error: state.error ?? "the job failed upstream" }
+    if (state.status !== "ready") return { status: "processing" }
+    return { status: "ready", png: await this.download(state.sourceUrl!), billed: state.billed ?? null }
   }
 
   async balance(): Promise<BalanceInfo> {
