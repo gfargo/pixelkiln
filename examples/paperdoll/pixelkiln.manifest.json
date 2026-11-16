@@ -47,81 +47,128 @@
       }
     },
     "hero.briefs": {
-      "prompt": "Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Dress every one in the same pair of plain dark grey fitted underwear briefs, covering only the hips from the waist to the very top of the thighs. Draw it correctly for the direction each figure faces: front, side and back. Keep it the same colour and cut in every cell. Only that garment: leave the chest, belly, back, shoulders, arms, hands, thighs, legs, feet, neck and head bare cyan exactly as they are. Do not add shirts, trousers, belts, shoes, gloves, hats, hair or items. Keep every body, arm, leg and pose exactly as it is. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Dress every one in the same pair of plain dark grey fitted underwear briefs, covering only the hips from the waist to the very top of the thighs. Draw it correctly for the way each figure faces. Keep it the same design and colours in every cell. Only that: leave the chest, belly, back, shoulders, arms, hands, thighs, legs, feet, neck and head bare cyan exactly as they are. Keep every body, arm, leg and pose exactly as it is. Do not add shirts, trousers, belts, shoes, gloves, hats, hair or items. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
       "layer": {
         "of": [
-          "hero",
           "hero.walk.south",
           "hero.walk.east",
           "hero.walk.north",
-          "hero.walk.west"
-        ]
-      }
-    },
-    "hero.trousers": {
-      "prompt": "Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Dress every one in the same pair of brown trousers with a dark leather belt, covering the hips and both legs from the waist down to the ankles. Draw it correctly for the direction each figure faces: front, side and back. Keep it the same colour and cut in every cell. Only that garment: leave the chest, belly above the waist, back, shoulders, arms, hands, feet, neck and head bare cyan exactly as they are. Do not add shirts, shoes, boots, gloves, hats, hair or items. Keep every body, arm, leg and pose exactly as it is. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
-      "layer": {
-        "of": [
-          "hero",
-          "hero.walk.south",
-          "hero.walk.east",
-          "hero.walk.north",
-          "hero.walk.west"
-        ]
-      }
-    },
-    "hero.shorts": {
-      "prompt": "Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Dress every one in the same pair of dark green knee-length shorts with a tan drawstring waistband, covering the hips and thighs from the waist down to just above the knees. Draw it correctly for the direction each figure faces: front, side and back. Keep it the same colour and cut in every cell. Only that garment: leave the chest, belly above the waist, back, shoulders, arms, hands, knees, shins, feet, neck and head bare cyan exactly as they are. Do not add shirts, long trousers, shoes, boots, gloves, hats, hair or items. Keep every body, arm, leg and pose exactly as it is. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
-      "layer": {
-        "of": [
-          "hero",
-          "hero.walk.south",
-          "hero.walk.east",
-          "hero.walk.north",
-          "hero.walk.west"
-        ]
-      }
-    },
-    "hero.tunic": {
-      "prompt": "Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Dress every one in the same red long-sleeved tunic shirt with a darker red hem, covering the chest, back, shoulders and arms down to the wrists and ending at the hips. Draw it correctly for the direction each figure faces: front, side and back. Keep it the same colour and cut in every cell. Only that garment: leave the hips, legs, feet, hands, neck and head bare cyan exactly as they are. Do not add trousers, shorts, underwear, belts, shoes, gloves, hats, hair or items. Keep every body, arm, leg and pose exactly as it is. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
-      "layer": {
-        "of": [
-          "hero",
-          "hero.walk.south",
-          "hero.walk.east",
-          "hero.walk.north",
-          "hero.walk.west"
-        ]
-      }
-    },
-    "hero.shirt": {
-      "prompt": "Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Dress every one in the same pale blue short-sleeved linen shirt with a small open collar, covering the chest, back and shoulders, with sleeves ending above the elbows, and ending at the waist. Draw it correctly for the direction each figure faces: front, side and back. Keep it the same colour and cut in every cell. Only that garment: leave the forearms, elbows, hands, hips, legs, feet, neck and head bare cyan exactly as they are. Do not add trousers, shorts, underwear, belts, shoes, gloves, hats, hair or items. Keep every body, arm, leg and pose exactly as it is. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
-      "layer": {
-        "of": [
-          "hero",
-          "hero.walk.south",
-          "hero.walk.east",
-          "hero.walk.north",
-          "hero.walk.west"
-        ]
-      }
-    },
-    "hero.hat": {
-      "prompt": "Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Put the same wide-brimmed brown leather ranger hat with a small red feather on the head of every one. It follows the direction each head faces: front, side, back and diagonals. Keep it the same shape, size and colours in every cell. Keep each head exactly where it is and keep the cyan face, ears and neck that would still show cyan. Do not add hair. Do not add bodies, clothes, weapons, backgrounds, text or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
-      "layer": {
-        "of": [
-          "hero",
-          "hero.walk.south",
-          "hero.walk.east",
-          "hero.walk.north",
-          "hero.walk.west"
+          "hero.walk.west",
+          "hero"
         ],
+        "columns": 6
+      }
+    },
+    "hero.greaves": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Dress every one in the same dark steel plate leg armour over black leather trousers: a studded war belt, steel thigh plates, spiked knee guards and tall armoured boots with gold trim that cover the feet. Draw it correctly for the way each figure faces. Keep it the same design and colours in every cell. Only that: leave the chest, belly above the waist, back, shoulders, arms, hands, neck and head bare cyan exactly as they are. Keep every body, arm, leg and pose exactly as it is. Do not add chest armour, shirts, gloves, capes, hats, hair or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6
+      }
+    },
+    "hero.wraps": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Dress every one in the same pair of dark charcoal assassin trousers with crossed leather straps and a knife sheath on the thighs, pale bandage wraps around the shins, and soft black boots that cover the feet. Draw it correctly for the way each figure faces. Keep it the same design and colours in every cell. Only that: leave the chest, belly above the waist, back, shoulders, arms, hands, neck and head bare cyan exactly as they are. Keep every body, arm, leg and pose exactly as it is. Do not add shirts, chest armour, gloves, capes, hoods, hats, hair or weapons in the hands. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6
+      }
+    },
+    "hero.kilt": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Dress every one in the same crimson barbarian battle kilt of layered leather strips with brass studs and a wide brass-buckled belt, hanging from the waist to the knees, with grey fur-topped leather boots that cover the feet and shins. Draw it correctly for the way each figure faces. Keep it the same design and colours in every cell. Only that: leave the chest, belly above the waist, back, shoulders, arms, hands, knees, neck and head bare cyan exactly as they are. Keep every body, arm, leg and pose exactly as it is. Do not add shirts, chest armour, trousers, gloves, capes, hats, hair or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6
+      }
+    },
+    "hero.plate": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Dress every one in the same black steel plate cuirass with gold trim and a gold dragon crest on the chest, layered black steel shoulder plates, and black steel arm guards down to the wrists, ending at the waist. Draw it correctly for the way each figure faces. Keep it the same design and colours in every cell. Only that: leave the hands, hips, legs, feet, neck and head bare cyan exactly as they are. Keep every body, arm, leg and pose exactly as it is. Do not add leg armour, trousers, gloves, gauntlets, capes, helmets, hats, hair or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6
+      }
+    },
+    "hero.robe": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Dress every one in the same deep purple archmage robe with gold embroidered trim, a wide gold sash at the waist and long loose sleeves to the wrists, its skirt hanging down to the knees. Draw it correctly for the way each figure faces. Keep it the same design and colours in every cell. Only that: leave the hands, shins, feet, neck and head bare cyan exactly as they are. Keep every body, arm, leg and pose exactly as it is. Do not add trousers, boots, gloves, capes, hoods, hats, hair, staffs or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6
+      }
+    },
+    "hero.jerkin": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Dress every one in the same sleeveless dark leather assassin jerkin with two crossed bandolier belts holding small steel throwing knives, and black leather bracers on the forearms, ending at the waist. Draw it correctly for the way each figure faces. Keep it the same design and colours in every cell. Only that: leave the shoulders, upper arms, hands, hips, legs, feet, neck and head bare cyan exactly as they are. Keep every body, arm, leg and pose exactly as it is. Do not add trousers, gloves, capes, hoods, hats, hair or weapons in the hands. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6
+      }
+    },
+    "hero.silver": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Put the same long silver-white hair swept back from the forehead and falling to the nape of the neck on the head of every one. It follows the way each head faces: front, side and back. Keep it the same shape, size and colours in every cell. Keep each head exactly where it is and keep the cyan skin that would still show cyan. Do not add hats, helmets, beards, bodies, clothes or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6,
+        "region": "head",
+        "padding": 6
+      }
+    },
+    "hero.mohawk": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Put the same tall spiky crimson-red mohawk, with the sides of the head shaved on the head of every one. It follows the way each head faces: front, side and back. Keep it the same shape, size and colours in every cell. Keep each head exactly where it is and keep the cyan skin that would still show cyan. Do not add hats, helmets, beards, bodies, clothes or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6,
         "region": "head",
         "padding": 10
       }
     },
-    "hero.helmet": {
-      "prompt": "The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Put the same round steel helmet with a nose guard and a riveted rim, covering the top, back and sides of the head on the head of every one. It follows the direction each head faces: front, side, back and diagonals. Keep it the same shape, size and colours in every cell. Keep each head exactly where it is and keep the cyan face, ears and neck that would still show cyan. Do not add hair, plumes or horns. Do not add bodies, clothes, weapons, backgrounds, text or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+    "hero.helm": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Put the same black steel great helm with two long curved horns and a narrow glowing red eye slit, covering the whole head on the head of every one. It follows the way each head faces: front, side and back. Keep it the same shape, size and colours in every cell. Keep each head exactly where it is and keep the cyan skin that would still show cyan. Do not add hair, plumes, capes, bodies, clothes or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
       "layer": {
         "of": [
           "hero.walk.south",
@@ -130,13 +177,13 @@
           "hero.walk.west",
           "hero"
         ],
+        "columns": 6,
         "region": "head",
-        "padding": 8,
-        "columns": 6
+        "padding": 10
       }
     },
-    "hero.hair": {
-      "prompt": "The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Put the same short tousled chestnut-brown hair, covering the top and back of the head with a short fringe above the eyes on the head of every one. It follows the direction each head faces: front, side, back and diagonals. Keep it the same shape, size and colours in every cell. Keep each head exactly where it is and keep the cyan face, ears and neck that would still show cyan. Do not add hats, beards or moustaches. Do not add bodies, clothes, weapons, backgrounds, text or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+    "hero.wizardhat": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Put the same tall crooked midnight-blue wizard hat with a wide floppy brim and a gold band with a gold star on the head of every one. It follows the way each head faces: front, side and back. Keep it the same shape, size and colours in every cell. Keep each head exactly where it is and keep the cyan skin that would still show cyan. Do not add hair, beards, capes, bodies, clothes or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
       "layer": {
         "of": [
           "hero.walk.south",
@@ -145,27 +192,28 @@
           "hero.walk.west",
           "hero"
         ],
+        "columns": 6,
         "region": "head",
-        "padding": 6,
-        "columns": 6
+        "padding": 10
       }
     },
-    "hero.cape": {
-      "prompt": "Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Give every one the same long dark-green travelling cloak with a brass clasp at the throat, hanging from the shoulders down the back to the knees. Draw it correctly for the direction each figure faces: from the front only the clasp, the collar over the shoulders and the cloak's edges hanging behind the arms and legs show; from behind the cloak covers the whole back; from the side it hangs behind the body. Let it sway slightly with the walking poses. Keep it the same size, shape and colours in every cell. Do not change the cyan bodies: keep every body, arm, leg and pose exactly as it is and keep the skin cyan. Do not add other clothes, armour, hats, hair, weapons, effects, backgrounds, text or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+    "hero.cowl": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Put the same dark charcoal assassin cowl hood pulled over the head, with a black cloth mask covering the nose and mouth so that only the eyes show on the head of every one. It follows the way each head faces: front, side and back. Keep it the same shape, size and colours in every cell. Keep each head exactly where it is and keep the cyan skin that would still show cyan. Do not add hair, horns, capes, bodies, clothes or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
       "layer": {
         "of": [
-          "hero",
           "hero.walk.south",
           "hero.walk.east",
           "hero.walk.north",
-          "hero.walk.west"
+          "hero.walk.west",
+          "hero"
         ],
-        "region": "around",
+        "columns": 6,
+        "region": "head",
         "padding": 6
       }
     },
-    "hero.pack": {
-      "prompt": "The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Every cyan mannequin on this spritesheet is the same figure seen from a different direction or in a different walking pose. Give every one the same brown leather backpack with a rolled grey blanket strapped on top, worn on its back with two leather shoulder straps. Draw it correctly for the direction each figure faces: from the front only the two straps over the shoulders and chest show; from behind the pack covers the upper back; from the side it sticks out behind the body. Keep it the same size, shape and colours in every cell. Do not change the cyan bodies: keep every body, arm, leg and pose exactly as it is and keep the skin cyan. Do not add other clothes, armour, hats, hair, weapons, effects, backgrounds, text or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+    "hero.wings": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Give every one the same pair of folded dark red dragon wings with black membranes and bone-white claws at the tips, growing from the shoulder blades. From behind the two wings cover most of the back; from the front only the wing tips and upper edges show past the shoulders and beside the body; from the side one folded wing shows behind the back. Keep it the same size, shape and colours in every cell. Do not change the cyan bodies: keep every body, arm, leg and pose exactly as it is and keep the skin cyan. Do not add other clothes, armour, hats, hair or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
       "layer": {
         "of": [
           "hero.walk.south",
@@ -174,67 +222,169 @@
           "hero.walk.west",
           "hero"
         ],
+        "columns": 6,
         "region": "around",
-        "padding": 6,
-        "columns": 6
+        "padding": 10
       }
     },
-    "hero.sword": {
+    "hero.warcape": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Give every one the same tattered crimson war cape with a thick grey wolf-fur collar over the shoulders, hanging down the back to the calves with a ragged hem. From the front only the fur collar and the cape's edges hanging behind the arms and legs show; from behind the cape covers the whole back; from the side it hangs behind the body. Let it sway slightly with the walking poses. Keep it the same size, shape and colours in every cell. Do not change the cyan bodies: keep every body, arm, leg and pose exactly as it is and keep the skin cyan. Do not add other clothes, armour, hats, hair or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
       "layer": {
         "of": [
-          "hero",
           "hero.walk.south",
           "hero.walk.east",
           "hero.walk.north",
-          "hero.walk.west"
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6,
+        "region": "around",
+        "padding": 8
+      }
+    },
+    "hero.quiver": {
+      "prompt": "Every cyan mannequin on this spritesheet is the same figure. The sheet has six figures per row. Every figure in the first row walks toward the viewer and is seen from the front, face visible. Every figure in the second row walks to the right and is seen from its side. Every figure in the third row walks away from the viewer and is seen from behind, face hidden. Every figure in the fourth row walks to the left and is seen from its side. The last two rows show the figure standing, turning through eight directions. Give every one the same brown leather quiver full of red-fletched arrows on a strap across the chest, with a dark wooden recurve bow slung across the back. From the front only the diagonal strap across the chest and the arrow fletchings and bow tips above the shoulders show; from behind the quiver and bow lie across the back; from the side they stick out behind the body. Keep it the same size, shape and colours in every cell. Do not change the cyan bodies: keep every body, arm, leg and pose exactly as it is and keep the skin cyan. Do not add other clothes, armour, hats, hair or weapons. Do not add backgrounds, text, effects or extra characters. Keep the transparent background and crisp 64px pixel-art style with a black outline.",
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "columns": 6,
+        "region": "around",
+        "padding": 8
+      }
+    },
+    "hero.greatsword": {
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
         ],
         "padding": 16,
         "attach": {
-          "item": "items/sword-{direction}.png",
-          "anchors": "anchors/hero.json"
+          "item": "items/greatsword-{direction}.png",
+          "anchors": "anchors/hero.json",
+          "scale": 0.8,
+          "grasp": true
         }
-      }
+      },
+      "prompt": "a black steel greatsword with glowing red runes, a gold crossguard and a red leather grip"
     },
-    "hero.shield": {
+    "hero.staff": {
       "layer": {
         "of": [
-          "hero",
           "hero.walk.south",
           "hero.walk.east",
           "hero.walk.north",
-          "hero.walk.west"
+          "hero.walk.west",
+          "hero"
         ],
         "padding": 16,
         "attach": {
-          "item": "items/shield-{direction}.png",
+          "item": "items/staff-{direction}.png",
+          "anchors": "anchors/hero.json",
+          "scale": 0.8,
+          "grip": {
+            "south": [
+              34.0,
+              46
+            ],
+            "south-east": [
+              26.5,
+              46
+            ],
+            "east": [
+              33.0,
+              46
+            ],
+            "north-east": [
+              34.0,
+              46
+            ],
+            "north": [
+              33.5,
+              46
+            ],
+            "north-west": [
+              32.0,
+              46
+            ],
+            "west": [
+              34.0,
+              46
+            ],
+            "south-west": [
+              41.5,
+              46
+            ]
+          },
+          "grasp": true
+        }
+      },
+      "prompt": "a tall gnarled dark wooden wizard staff topped with a purple crystal, held by the middle of its shaft"
+    },
+    "hero.dagger": {
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "padding": 16,
+        "attach": {
+          "item": "items/dagger-{direction}.png",
+          "anchors": "anchors/hero.json",
+          "grasp": true
+        }
+      },
+      "prompt": "a curved black dagger with a red-wrapped grip"
+    },
+    "hero.kiteshield": {
+      "layer": {
+        "of": [
+          "hero.walk.south",
+          "hero.walk.east",
+          "hero.walk.north",
+          "hero.walk.west",
+          "hero"
+        ],
+        "padding": 16,
+        "attach": {
+          "item": "items/kiteshield-{direction}.png",
           "anchors": "anchors/hero.json",
           "joint": "left-hand",
           "grip": "center",
-          "scale": 0.7
+          "scale": 0.8
         }
       }
     },
-    "hero.lantern": {
+    "hero.torch": {
       "layer": {
         "of": [
-          "hero",
           "hero.walk.south",
           "hero.walk.east",
           "hero.walk.north",
-          "hero.walk.west"
+          "hero.walk.west",
+          "hero"
         ],
         "padding": 16,
         "attach": {
-          "item": "items/lantern-{direction}.png",
+          "item": "items/torch-{direction}.png",
           "anchors": "anchors/hero.json",
           "joint": "left-hand",
-          "grip": [
-            12,
-            2
-          ],
-          "scale": 0.5
+          "scale": 0.75,
+          "grasp": true
         }
-      }
+      },
+      "prompt": "a burning wooden torch held by the bottom of its handle"
     }
   }
 }

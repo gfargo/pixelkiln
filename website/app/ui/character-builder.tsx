@@ -8,6 +8,7 @@ import {
   BUILDER_COLUMNS,
   BUILDER_DIRECTIONS,
   BUILDER_DRAW_ORDER,
+  BUILDER_LOOKS,
   BUILDER_ROWS,
   BUILDER_SLOTS,
   BUILDER_WALK_FPS,
@@ -18,7 +19,10 @@ import {
 
 type Choices = Record<string, string | null>;
 
-const INITIAL: Choices = Object.fromEntries(BUILDER_SLOTS.map((slot) => [slot.id, slot.initial]));
+const lookChoices = (wears: Record<string, string>): Choices =>
+  Object.fromEntries(BUILDER_SLOTS.map((slot) => [slot.id, wears[slot.id] ?? null]));
+
+const INITIAL: Choices = lookChoices(BUILDER_LOOKS[0]!.wears);
 
 function subscribeQuery(query: string) {
   return (callback: () => void) => {
@@ -163,6 +167,16 @@ export function CharacterBuilder() {
             </div>
           </div>
         ))}
+        <div className="builder-slot" role="group" aria-label="Looks">
+          <span className="builder-slot-label">Looks</span>
+          <div className="builder-options">
+            {BUILDER_LOOKS.map((look) => (
+              <button key={look.id} type="button" className="builder-action" onClick={() => setChoices(lookChoices(look.wears))}>
+                {look.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="builder-actions">
           <button type="button" className="builder-action" onClick={shuffle}>Shuffle</button>
           <button type="button" className="builder-action" onClick={strip}>Take it all off</button>

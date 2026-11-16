@@ -496,10 +496,10 @@ export default function Home() {
           <div className="shell">
             <figure className="cast-strip" aria-label="A base, three layers, and the dressed character">
               <div className="cast-strip-row">
-                <Image src="/sprites/paperdoll/showcase-stack.png" alt="A bare figure in underwear, a tunic and trousers with no body in them, a cloak, hair and hat with no body in them, a sword, and all of them stacked into a dressed ranger" width={476} height={92} unoptimized />
+                <Image src="/sprites/paperdoll/showcase-stack.png" alt="A bare figure in underwear, black plate armour with no body in it, a horned helm and a fur-collared cape with no body in them, a runed greatsword and a shield, and all of them stacked into a dark knight" width={476} height={92} unoptimized />
                 <SpriteLoop strip="/sprites/paperdoll/showcase-8dir.png" width={764} frames={8} cell={92} stride={96} scale={2} seconds={2.4} label="The dressed character turning through its eight directions" />
               </div>
-              <figcaption>Left to right: the bare base in its underwear layer; a tunic and trousers; a cloak, hair and a hat; a sword; and all of them drawn in order. Eight layers, each its own asset and its own PNG per frame.</figcaption>
+              <figcaption>Left to right: the bare base in its underwear layer; plate armour for the legs and the chest; a horned helm and a war cape; a greatsword and a shield; and all of them drawn in order. Eight layers, each its own asset and its own PNG per frame.</figcaption>
             </figure>
             <div className="cast-grid">
               <div className="section-heading cast-copy">
@@ -523,9 +523,9 @@ export default function Home() {
                 </p>
                 <ul className="check-list cast-list">
                   <li><span>✓</span> 56 frames dressed by one request: 8 rotations and a walk in 8 directions, for 25 generations.</li>
-                  <li><span>✓</span> The character on this page: a base, four walks, ten drawn layers and three held items, 32 frames each, for about 205 generations.</li>
+                  <li><span>✓</span> The character on this page: a base, four walks, fifteen drawn layers and five held items, 32 frames each, for about 445 generations.</li>
                   <li><span>✓</span> <code>region</code> picks what may change: the body for clothing, the head for hats, the space around the body for capes and packs.</li>
-                  <li><span>✓</span> <code>attach</code> pins a sprite you already have to the hand in every frame, for nothing: the same sword in all 56 frames, always in the right hand.</li>
+                  <li><span>✓</span> <code>attach</code> pins a sprite you already have to the hand in every frame, for nothing, so it is the same item in every frame and always in the same hand. <code>grasp</code> adds one small inpaint that closes the fingers around it.</li>
                   <li><span>✓</span> <code>clean</code> on a loop strips the ghost pixels an animation model leaves, at download, for nothing: 608 stray pixels down to 2 on this walk.</li>
                   <li><span>✓</span> Regenerate the base or a loop and its layers go stale, like everything else drawn from it.</li>
                 </ul>
@@ -569,13 +569,13 @@ export default function Home() {
                 <figure className="cast-loop" aria-label="The same walk as the base and with layers added">
                   <SpriteCarousel
                     slides={[
-                      { id: "ranger", label: "ranger", strip: "/sprites/paperdoll/showcase-walk-ranger.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
-                      { id: "traveller", label: "traveller", strip: "/sprites/paperdoll/showcase-walk-traveller.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
-                      { id: "guard", label: "guard", strip: "/sprites/paperdoll/showcase-walk-guard.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
-                      { id: "base", label: "base", strip: "/sprites/paperdoll/showcase-walk-base.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "dark knight", label: "dark knight", strip: "/sprites/paperdoll/showcase-walk-knight.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "archmage", label: "archmage", strip: "/sprites/paperdoll/showcase-walk-mage.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "assassin", label: "assassin", strip: "/sprites/paperdoll/showcase-walk-assassin.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
+                      { id: "dragonborn", label: "dragonborn", strip: "/sprites/paperdoll/showcase-walk-dragonborn.png", width: 572, frames: 6, start: 0, generated: 6, cell: 92, stride: 96, fps: 8 },
                     ]}
                   />
-                  <figcaption>One template walk, drawn once, then dressed three ways from the same thirteen layers. Clothing, hair, headwear, the cloak and the backpack were each drawn by one masked inpaint over all 32 frames. The sword, shield and lantern were each drawn once as an object and pinned to a hand, which is why they never change sides.</figcaption>
+                  <figcaption>One template walk, drawn once, then dressed four ways from the same twenty layers. Armour, robes, hair, headwear, wings, capes and the quiver were each drawn by one masked inpaint over all 32 frames. The greatsword, staff, dagger, shield and torch were each drawn once as an object and pinned to a hand, which is why they never change sides; four of them then had the hand redrawn around the handle.</figcaption>
                 </figure>
               </div>
             </div>
@@ -584,11 +584,12 @@ export default function Home() {
               <p>
                 Every button below switches one layer on or off. Each layer
                 is its own asset in the manifest and its own PNG per frame,
-                made without knowing about the others: clothing, hair, hats
-                and what is worn on the back were each drawn by one masked
-                inpaint, and what is held is one sprite pinned to the hand.
-                The page stacks them and steps them through the same 32
-                frames, which is all a game has to do.
+                made without knowing about the others: armour, robes, hair,
+                headwear and what is worn on the back were each drawn by one
+                masked inpaint, and what is held is one sprite pinned to the
+                hand, most with the fingers redrawn around it. The page
+                stacks them and steps them through the same 32 frames, which
+                is all a game has to do.
               </p>
               <CharacterBuilder />
             </div>

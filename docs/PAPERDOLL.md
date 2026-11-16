@@ -10,7 +10,7 @@ frame, for free.
 ![A cyan mannequin, a leather outfit layer, a hat layer, a sword layer, and the four stacked into a dressed character](../website/public/sprites/paperdoll/stack-south.png)
 
 The [home page](https://pixelkiln.griffen.codes/#paperdoll-builder) has a character you
-can dress from thirteen such layers, and
+can dress from twenty such layers, and
 [`examples/paperdoll`](../examples/paperdoll) is its manifest.
 
 Everything on this page was measured on one PixelLab account in November
@@ -242,9 +242,10 @@ different things.
 | Good for | Rigid items: swords, shields, tools, lanterns | Soft or worn ones: capes, packs, scarves |
 | The item across frames | The same pixels in every frame | Redrawn per frame; consistent, with drift |
 | Which hand | The one you name, always | Whichever the model draws; it can swap |
-| Cost | Free once the item and the anchors exist | 10 to 25 generations per item |
+| Cost | Free once the item and the anchors exist; one inpaint more with `grasp` | 10 to 25 generations per item |
 | Reuse on another character | Yes, the same item files | No, redrawn for each |
-| Fingers over the grip, an arm that reaches | No. The item sits on the hand | Sometimes |
+| Fingers over the grip | With `grasp`, for one inpaint | Sometimes |
+| An arm that reaches | No | Sometimes |
 
 ### Placed: a sprite pinned to the hand
 
@@ -363,8 +364,42 @@ the left arm is on the far side, so the body hides all but a sliver of the
 shield through that whole walk, which is correct and may not be what you
 want; `"depth": "front"` overrides it.
 
-What a placed item cannot do: the hand does not close around it, and the arm
-does not move to carry it. For a swing or a block, animate the character
+**Closing the hand around it.** A placed item rests on the hand. `grasp`
+has the provider draw the grip, and nothing else:
+
+```json
+"hero.sword": {
+  "prompt": "a black greatsword with a red leather grip",
+  "layer": {
+    "of": ["hero", "hero.walk.south", "hero.walk.east"],
+    "attach": { "item": "items/sword-{direction}.png", "anchors": "anchors/hero.json", "grasp": true }
+  }
+}
+```
+
+The item is placed as before and pasted onto the keyed sheet. The mask is a
+small disc at each hand, 7 pixels in radius on a 64px frame, and black
+everywhere else, so the blade, the body and every other frame's item come
+back exactly as they went in. Inside the disc the provider draws a fist on a
+handle that is already there. The layer is then the placed item with each
+disc replaced by what came back:
+
+- pixels that are not skin are the item, redrawn where the fist meets it;
+- skin drawn where the item was is a finger across the handle, and goes into
+  the layer in the figure's own skin colour, matched by brightness;
+- any other skin is the hand and body the frame already has, and is left
+  out, so the layer never paints skin over a sleeve or a trouser leg.
+
+A frame whose hand is behind the body gets no disc and keeps its placed item.
+
+`grasp` makes the layer a paid one: one inpaint, priced by the sheet like any
+other layer, and `stale` whenever the item, the anchors or a source frame
+changes. The optional `prompt` tells the provider what the item is.
+`"grasp": { "radius": 9 }` widens the disc for a bigger hand or a thicker
+handle. The fingers are skin: over a layer that puts a glove on that hand
+they will not match it.
+
+What a placed item still cannot do: the arm does not move to carry it. For a swing or a block, animate the character
 making the motion empty-handed, and the item follows the hand.
 
 ### Inpainted: drawn onto the frames
@@ -546,6 +581,7 @@ A placed item is priced differently:
 | The item, a 32px 8-direction object | once per item | 10, quoted |
 | Anchors for 56 frames | once per character | 5.6, at the published 0.1 a frame |
 | Placing it on those 56 frames | every time | 0 |
+| A grip pass over 32 frames (`grasp`) | when the item, anchors or frames change | 25, billed |
 
 "Billed" was read back from the finished job; "quoted" is what PixelLab
 stated when the job was submitted.
@@ -553,6 +589,9 @@ stated when the job was submitted.
 - **The plan prices every layer at 25**, the top tier, because the sheet's
   size depends on the frames' own pixels and planning does not read them.
   The lock records what was billed.
+- **A walk to a row costs a tier.** 32 frames of clothing billed 10 on a
+  248×248 sheet and 15 on the 180×372 one that keeps each walk on its own
+  row; see [Field notes](#field-notes) for why it is worth it.
 - **PixelLab's tiers**: 10 up to a 256×256 square, 15 up to about 341×341,
   25 above, with other aspect ratios measured against their own ceilings.
 - **Everything must fit one 512px sheet.** 56 unpadded frames of a 64px
@@ -569,7 +608,8 @@ Not tested: sizes other than 64px, quadrupeds, more than 56 frames,
 attack animations (where limbs cross the head and the neck detection is
 weakest), hair, capes, shields, and two held items at once. For placed
 items: `tilt` and `lean` through the pipeline (they were tried in a script),
-a `place` correction, a frame size the skeleton
+a `place` correction, `grasp` on the left hand's far side or with a `radius`
+other than the default, a frame size the skeleton
 endpoint does not take directly (such a frame is sent on the next size up
 and its joints scaled back), and an item made with PixelKiln's own
 `objectPro` generator rather than PixelLab's 8-direction object tool.
@@ -608,6 +648,7 @@ and takes only `of` and `padding` (default 12) from the table above.
 | `tilt` | 0 | Degrees to lean an upright item the way the figure faces. |
 | `lean` | 0 | Degrees to tip an upright item outward from the body. |
 | `depth` | `auto` | `auto` follows each frame's skeleton; `front` or `behind` for every frame. |
+| `grasp` | off | `true`, or `{ "radius": n }`: redraw the hand around the item with one inpaint over a disc at each hand. Makes the layer a paid one. |
 
 It is `blocked` until the item files and the anchors file exist, and `stale`
 when any of them, a source frame, or a field above changes. Placing it again
@@ -677,11 +718,14 @@ not held in place by the body it covers: hair, helmets, masks, packs.
 | Place an upright sword | Correct and stiff: it stood straight up out of the hand. |
 | Place a sword drawn leaning | Reads as held in all 8 directions. |
 | Turn a placed sword with each frame's forearm bone | It swings with the arm, which adds life. The skeleton's noise shows: the estimated swing ran from -23 to +37 degrees across six frames of one walk, one frame jumping 60 degrees, and a thin blade turned by odd angles breaks into dashes. Would need smoothing, a clamp, and angles snapped to steps to ship. |
-| Place a sword, then inpaint only a 7px disc around the hand | The hand closed around the grip in all 20 frames while the blade, outside the mask, stayed identical. In front views the redrawn fist sat a pixel or two lower than the original. Not in PixelKiln: the redrawn hand is skin, so a layer would have to carry skin pixels back from cyan and cover the original hand. |
+| Place a sword, then inpaint only a 7px disc around the hand | The hand closed around the grip in all 20 frames while the blade, outside the mask, stayed identical. This became `grasp`. Taking every redrawn skin pixel into the layer painted a patch of hip over the trousers; keeping only the skin that landed on the item itself, the fingers, did not. |
 | Pro Flash inpainting for a layer | Left 3 of 18 frames undressed and erased props. |
 | A base in underwear | Not used. Underwear as its own layer under everything keeps the base bare for keying and the unclothed character decent. |
-| Thirteen layers on one base for a character builder | 32 frames each. The ten drawn layers billed 165 in all: 10 each for five clothing layers, 15 for a cloak, 25 each for a hat, a helmet, hair and a backpack. Three held items were 10 each as objects, 3.2 to anchor, nothing to place. Every combination a visitor can pick is a stack of files that were generated without knowing about each other. |
-| A template walk away from the viewer | Came back with dark red shadow on an arm and a leg in most of its frames, in colours the base itself uses, so cleaning does not see them. Clothing covers most of it. Regenerating the loop would make every layer over it stale. |
+| Twenty layers on one base for a character builder | 32 frames each, every sheet laid out a walk to a row. The fifteen drawn layers billed 285 in all: 15 each for seven clothing layers, a head of hair and a cowl, 25 each for a mohawk, a horned helm, a wizard hat, wings, a cape and a quiver. Five held items were 10 each as objects and 3.2 to anchor; four of them then took a 25-generation grip pass. Every combination a visitor can pick is a stack of files that were generated without knowing about each other. |
+| The same set, checked frame by frame | Two layers still have one frame facing the wrong way: a cape drawn from the front on the first frame of the walk away, and a robe drawn from behind on the last frame of the walk toward the viewer. The row layout made this rare, not impossible. Look at every loop. |
+| A template walk away from the viewer | Came back with dark red shadow on an arm and a leg in most of its frames, in colours the base itself uses, so cleaning does not see them. Regenerated with `gen --force`, reviewed in `pick` beside the one it replaced, it came back clean. Every layer over it went stale and was drawn again. |
+| `grasp` on a greatsword, a staff, a dagger and a torch | Each billed 25 on a 496×376 sheet of 32 frames. The fingers land on the handle in the views where the hand shows, in skin colours that match, and sit correctly over armour. The change is a few pixels: it reads as a hand on a grip, not as a new pose. |
+| Padding of 12 or 14 with a walk to a row | Refused before any request: six rows of a 64px figure with 12 pixels of padding is 516 pixels tall, 4 over the limit. 10 fit. |
 
 **On extending the skeleton to the item.** PixelLab's skeleton is a fixed set
 of 18 body joints; its endpoints refuse any other label, so an item cannot be

@@ -32,15 +32,13 @@ export type BuilderOption = {
   id: string;
   label: string;
   /** How the layer was made, for the readout. */
-  made: "inpainted" | "placed";
+  made: "inpainted" | "placed" | "placed, gripped";
 };
 
 export type BuilderSlot = {
   id: string;
   label: string;
   options: BuilderOption[];
-  /** The option worn when the page loads; null for nothing. */
-  initial: string | null;
 };
 
 /** Slots in the order the controls list them. */
@@ -48,59 +46,87 @@ export const BUILDER_SLOTS: BuilderSlot[] = [
   {
     id: "legs",
     label: "Legs",
-    initial: "hero.trousers",
     options: [
-      { id: "hero.trousers", label: "Trousers", made: "inpainted" },
-      { id: "hero.shorts", label: "Shorts", made: "inpainted" },
+      { id: "hero.greaves", label: "Plate greaves", made: "inpainted" },
+      { id: "hero.wraps", label: "Assassin wraps", made: "inpainted" },
+      { id: "hero.kilt", label: "War kilt", made: "inpainted" },
     ],
   },
   {
     id: "top",
     label: "Top",
-    initial: "hero.tunic",
     options: [
-      { id: "hero.tunic", label: "Tunic", made: "inpainted" },
-      { id: "hero.shirt", label: "Shirt", made: "inpainted" },
+      { id: "hero.plate", label: "Dragon plate", made: "inpainted" },
+      { id: "hero.robe", label: "Archmage robe", made: "inpainted" },
+      { id: "hero.jerkin", label: "Assassin jerkin", made: "inpainted" },
     ],
   },
   {
     id: "hair",
     label: "Hair",
-    initial: "hero.hair",
-    options: [{ id: "hero.hair", label: "Short hair", made: "inpainted" }],
+    options: [
+      { id: "hero.silver", label: "Silver", made: "inpainted" },
+      { id: "hero.mohawk", label: "Mohawk", made: "inpainted" },
+    ],
   },
   {
     id: "head",
     label: "Headwear",
-    initial: null,
     options: [
-      { id: "hero.hat", label: "Ranger hat", made: "inpainted" },
-      { id: "hero.helmet", label: "Helmet", made: "inpainted" },
+      { id: "hero.helm", label: "Horned helm", made: "inpainted" },
+      { id: "hero.wizardhat", label: "Wizard hat", made: "inpainted" },
+      { id: "hero.cowl", label: "Cowl and mask", made: "inpainted" },
     ],
   },
   {
     id: "back",
     label: "Back",
-    initial: "hero.cape",
     options: [
-      { id: "hero.cape", label: "Cloak", made: "inpainted" },
-      { id: "hero.pack", label: "Backpack", made: "inpainted" },
+      { id: "hero.wings", label: "Dragon wings", made: "inpainted" },
+      { id: "hero.warcape", label: "War cape", made: "inpainted" },
+      { id: "hero.quiver", label: "Bow and quiver", made: "inpainted" },
     ],
   },
   {
     id: "right",
     label: "Right hand",
-    initial: "hero.sword",
-    options: [{ id: "hero.sword", label: "Sword", made: "placed" }],
+    options: [
+      { id: "hero.greatsword", label: "Runed greatsword", made: "placed, gripped" },
+      { id: "hero.staff", label: "Crystal staff", made: "placed, gripped" },
+      { id: "hero.dagger", label: "Dagger", made: "placed, gripped" },
+    ],
   },
   {
     id: "left",
     label: "Left hand",
-    initial: null,
     options: [
-      { id: "hero.shield", label: "Shield", made: "placed" },
-      { id: "hero.lantern", label: "Lantern", made: "placed" },
+      { id: "hero.kiteshield", label: "Dragon shield", made: "placed" },
+      { id: "hero.torch", label: "Torch", made: "placed, gripped" },
     ],
+  },
+];
+
+/** Whole outfits, as a place to start. Slots a look leaves out are empty. */
+export const BUILDER_LOOKS: Array<{ id: string; label: string; wears: Record<string, string> }> = [
+  {
+    id: "knight",
+    label: "Dark knight",
+    wears: { legs: "hero.greaves", top: "hero.plate", head: "hero.helm", back: "hero.warcape", right: "hero.greatsword", left: "hero.kiteshield" },
+  },
+  {
+    id: "mage",
+    label: "Archmage",
+    wears: { top: "hero.robe", hair: "hero.silver", head: "hero.wizardhat", right: "hero.staff" },
+  },
+  {
+    id: "assassin",
+    label: "Assassin",
+    wears: { legs: "hero.wraps", top: "hero.jerkin", head: "hero.cowl", back: "hero.quiver", right: "hero.dagger" },
+  },
+  {
+    id: "dragonborn",
+    label: "Dragonborn",
+    wears: { legs: "hero.kilt", hair: "hero.mohawk", back: "hero.wings", right: "hero.greatsword", left: "hero.torch" },
   },
 ];
 
