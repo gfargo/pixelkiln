@@ -203,6 +203,30 @@ Draw the pieces in the order they are worn: trousers, shirt, coat. Two pieces
 are two requests, so they are consistent with themselves and not designed
 together; name colours that go with each other.
 
+### Colours for nothing
+
+A drawn layer can be recoloured locally, every frame at once, with a
+[`derive`](./MANIFEST.md#derived-and-external-assets) asset. `hue-shift`
+turns the hue and keeps each pixel's shading, and `hue` limits it to one
+range of colour so that trim in another colour stays put:
+
+```json
+"hero.warcape.blue":  { "derive": { "from": "hero.warcape", "transform": "hue-shift", "degrees": -120, "hue": [320, 20] } },
+"hero.robe.crimson":  { "derive": { "from": "hero.robe", "transform": "hue-shift", "degrees": 72, "hue": [240, 320],
+                                    "saturation": 1.5, "brightness": 1.3 } }
+```
+
+The first turns a crimson cape blue and leaves its grey fur collar alone,
+since grey has no hue to turn. The second takes a purple robe to red and
+leaves the gold trim gold; dark purple turned to red comes out brown until
+it is brightened, hence the two multipliers. Each writes one frame per frame
+of its source under the same names, costs nothing, and is `stale` when the
+layer it came from is regenerated. Five such variants of the layers on this
+page took one free `gen`.
+
+It recolours; it does not redesign. A layer whose parts share a hue all turn
+together.
+
 **The wire figure.** Asked for part of an outfit, a provider still redraws
 the outline of the limbs it left bare, slightly changed, and those pixels
 would come back as a thin outline of the whole body in every layer. The cut
@@ -531,6 +555,14 @@ further up are four.
   item on a mirrored loop is pinned by that loop's own anchors, to the hand
   you named.
 
+**One sheet for the game.** `pixelkiln pack --style <style>` puts the
+character and every layer on one sheet, and its atlas pairs them up: a
+`layers` section names, for each frame of each layer, the frame it goes over
+and the offset to draw it at. See
+[Derived artifacts](./ARTIFACTS.md). The set on this page packs to one
+3360×3360 sheet of 1,216 frames with 37 layers listed, recolours included.
+Draw order between layers is left to the game.
+
 `layout.json` in the layer's work folder lists every frame's asset, role,
 canvas, padding and cell, for a build step that wants to pack layers itself.
 
@@ -649,6 +681,8 @@ stated when the job was submitted.
 - **Split when you must.** Two layers over different loops are two requests
   and may not match each other. Put the base's rotations in both so each has
   the same anchor, and compare the results.
+- **A recoloured layer is free.** So is placing an item, and moving a layer
+  with `offset`.
 - **PixelLab only.** The layer uses `/inpaint-v3`. Pro Flash inpainting was
   tried and left 3 of 18 frames undressed and erased props in others.
 
@@ -775,6 +809,9 @@ not held in place by the body it covers: hair, helmets, masks, packs.
 | A base in underwear | Not used. Underwear as its own layer under everything keeps the base bare for keying and the unclothed character decent. |
 | Twenty layers on one base for a character builder | 32 frames each, every sheet laid out a walk to a row. The fifteen drawn layers billed 285 in all: 15 each for seven clothing layers, a head of hair and a cowl, 25 each for a mohawk, a horned helm, a wizard hat, wings, a cape and a quiver. Five held items were 10 each as objects and 3.2 to anchor; four of them then took a 25-generation grip pass. Every combination a visitor can pick is a stack of files that were generated without knowing about each other. |
 | The same set, checked frame by frame | Two layers still had one frame facing the wrong way: a cape drawn from the front on the first frame of the walk away, and a robe drawn from behind on the last frame of the walk toward the viewer. The row layout made this rare, not impossible. Look at every loop. |
+| A backpack on a compact sheet, heads in their own colours, no row layout | Wrong again: on the chest in 2 of 6 front-facing frames, the same as the first time. 15 billed on 336×296. So leaving heads unkeyed is not enough alone; the robe was fixed by that and a walk to a row together. Keep the row layout for anything that differs front to back. |
+| Repairing one frame with its neighbours as context | Worked, for 10. The six frames of one walk went on a 174×59 sheet: five with the robe they already had painted on and masked off, the sixth bare and masked open, and a prompt saying to dress it like the others. It came back in the same robe, same trim, facing the right way. Not in PixelKiln yet; it was done by hand with the library and PixelLab's own tool. |
+| A walk posed for carrying, from a sentence | Not usable. A `skeleton-v3` loop described as walking with the right forearm raised drew a weapon into the hand the first time; told the hands were empty, it bent the arms a little and redrew the whole figure darker and more muscular than its base, on a 96px canvas. A layer over it would not match the stills. 4 generations each. Posing from explicit keypoints is the untested alternative, and those loops are not yet something a layer can dress. |
 | Regenerating those two | The cape came back right in every frame. The robe came back with the same frame wrong, and on a third try with three frames in a different cut from the other three; the second was restored from history, for nothing. That frame of that walk read as a back view to the model, and a new roll did not change it. |
 | The robe again, with the heads left in their own colours | Right in all 32 frames, first try, 15 billed. The sheet had been sent with every figure cyan from head to foot, so the only sign of a front view was a few dark pixels of eyes on a cyan head. Supplied as a `keyed` override in which everything outside the mask kept its real colours, each front-facing figure had a face. Layers are now keyed this way by default. It is one run: the three earlier attempts at the same robe, fully keyed, each had a frame wrong. |
 | A wizard hat low over the eyes, a helm that left the crown bare on one walk | Both were per-asset problems: right on some of the layer's source assets, a few pixels off on others. `offset` with a pair per asset fixed both in a `fetch`. |

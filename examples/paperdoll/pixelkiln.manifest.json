@@ -397,6 +397,64 @@
         }
       },
       "prompt": "a burning wooden torch held by the bottom of its handle"
+    },
+    "hero.robe.crimson": {
+      "derive": {
+        "from": "hero.robe",
+        "transform": "hue-shift",
+        "degrees": 72,
+        "hue": [
+          240,
+          320
+        ],
+        "saturation": 1.5,
+        "brightness": 1.3
+      }
+    },
+    "hero.warcape.blue": {
+      "derive": {
+        "from": "hero.warcape",
+        "transform": "hue-shift",
+        "degrees": -120,
+        "hue": [
+          320,
+          20
+        ]
+      }
+    },
+    "hero.wings.frost": {
+      "derive": {
+        "from": "hero.wings",
+        "transform": "hue-shift",
+        "degrees": -150,
+        "hue": [
+          330,
+          30
+        ],
+        "brightness": 1.15
+      }
+    },
+    "hero.kilt.green": {
+      "derive": {
+        "from": "hero.kilt",
+        "transform": "hue-shift",
+        "degrees": 120,
+        "hue": [
+          320,
+          20
+        ]
+      }
+    },
+    "hero.mohawk.green": {
+      "derive": {
+        "from": "hero.mohawk",
+        "transform": "hue-shift",
+        "degrees": 110,
+        "hue": [
+          330,
+          30
+        ]
+      }
     }
   }
 }

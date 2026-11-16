@@ -32,7 +32,7 @@ export type BuilderOption = {
   id: string;
   label: string;
   /** How the layer was made, for the readout. */
-  made: "inpainted" | "placed" | "placed, gripped";
+  made: "inpainted" | "placed" | "placed, gripped" | "recoloured";
 };
 
 export type BuilderSlot = {
@@ -50,6 +50,7 @@ export const BUILDER_SLOTS: BuilderSlot[] = [
       { id: "hero.greaves", label: "Plate greaves", made: "inpainted" },
       { id: "hero.wraps", label: "Assassin wraps", made: "inpainted" },
       { id: "hero.kilt", label: "War kilt", made: "inpainted" },
+      { id: "hero.kilt.green", label: "Green kilt", made: "recoloured" },
     ],
   },
   {
@@ -58,6 +59,7 @@ export const BUILDER_SLOTS: BuilderSlot[] = [
     options: [
       { id: "hero.plate", label: "Dragon plate", made: "inpainted" },
       { id: "hero.robe", label: "Archmage robe", made: "inpainted" },
+      { id: "hero.robe.crimson", label: "Crimson robe", made: "recoloured" },
       { id: "hero.jerkin", label: "Assassin jerkin", made: "inpainted" },
     ],
   },
@@ -67,6 +69,7 @@ export const BUILDER_SLOTS: BuilderSlot[] = [
     options: [
       { id: "hero.silver", label: "Silver", made: "inpainted" },
       { id: "hero.mohawk", label: "Mohawk", made: "inpainted" },
+      { id: "hero.mohawk.green", label: "Green mohawk", made: "recoloured" },
     ],
   },
   {
@@ -83,7 +86,9 @@ export const BUILDER_SLOTS: BuilderSlot[] = [
     label: "Back",
     options: [
       { id: "hero.wings", label: "Dragon wings", made: "inpainted" },
+      { id: "hero.wings.frost", label: "Frost wings", made: "recoloured" },
       { id: "hero.warcape", label: "War cape", made: "inpainted" },
+      { id: "hero.warcape.blue", label: "Blue cape", made: "recoloured" },
       { id: "hero.quiver", label: "Bow and quiver", made: "inpainted" },
     ],
   },

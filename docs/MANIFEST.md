@@ -464,14 +464,19 @@ makes itself, one it only keeps track of.
 "tile_snapped": { "derive": { "file": "art/tile.png", "transform": "palette-snap", "palette": ["#000000", "#ffffff"] } }
 ```
 
-The input is `from` (another asset of the same style, which must be a single
-image) or `file` (a committed PNG, relative to the manifest), never both. The
-transform is one of:
+The input is `from` (another asset of the same style) or `file` (a committed
+PNG, relative to the manifest), never both. `recolor`, `palette-snap` and
+`hue-shift` treat every pixel alike, so their `from` may be a set, a
+character's rotations, a loop or a paperdoll layer: every image is
+transformed and written under the same role, which is how one drawn layer
+becomes several colours of it for nothing. The others take a single image.
+The transform is one of:
 
 | `transform` | Fields | Does |
 |---|---|---|
 | `recolor` | `map` | Replaces exact `#rrggbb` colors. Unmapped colors and every alpha value stay. |
 | `palette-snap` | `palette` (2 to 256 colors) | Moves every visible pixel to the nearest palette color. |
+| `hue-shift` | `degrees`, `hue`, `saturation`, `brightness` | Turns each pixel's hue by `degrees` (-180 to 180) and multiplies its saturation and brightness, keeping its shading. `hue: [from, to]` limits it to hues in that window, clockwise, so `[330, 30]` is the reds. Greys and near-blacks are never touched, so outlines and steel stay as they are. |
 | `scale` | `width`, `height`, `mode` | Resizes to the exact size. `nearest` (default) keeps hard edges; `box` averages the covered pixels, weighted by alpha. |
 | `key-skin` | `skin`, `key`, `tolerance` | Repaints skin in a stand-in colour (`key`, default cyan), keeping its shading. `skin` lists the skin colours and `tolerance` how far a pixel may sit from one; with no `skin`, every pixel that is not outline is keyed. |
 | `despeckle` | `reference` (1 to 64 PNGs), `tolerance` | Removes the ghost pixels an animation model leaves around a figure. `reference` names committed stills whose colours are the figure's own; a colour they barely use, on the outside of the figure, is removed. |

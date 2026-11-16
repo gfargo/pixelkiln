@@ -52,6 +52,24 @@ The generic atlas lists `sets` when a multi-output asset is on the sheet:
 ]
 ```
 
+It lists `layers` when the style has [paperdoll layers](./PAPERDOLL.md): for
+every frame of every layer, the frame it is drawn over and where.
+
+```json
+"layers": [
+  { "id": "hero.helm", "of": ["hero", "hero.walk.south"], "frames": [
+    { "frame": "hero.helm/hero.south", "over": "hero/south", "dx": -10, "dy": -10 },
+    { "frame": "hero.helm/hero.walk.south.frame-00", "over": "hero.walk.south/frame-00", "dx": -10, "dy": -10 }
+  ] }
+]
+```
+
+Draw the `over` frame at a point, then the layer's `frame` at that point plus
+(`dx`, `dy`). They are zero for a layer the size of its source frame and
+negative for a padded one, which shares its frame's centre. A recoloured
+layer (a `derive` of a layer) is listed as a layer over the same assets. The
+Aseprite and Godot formats do not carry this section; use the generic one.
+
 `--format aseprite` writes that same information as Aseprite's sheet JSON
 (each set a `frameTag`, frame durations from the fps) and `--format godot`
 as a `SpriteFrames` `.tres` (each frame set a looping animation at its fps,

@@ -45,6 +45,16 @@ file, and stay `blocked` until both exist.
    `grasp`, so each is one more inpaint that redraws the hand around the
    handle: 25 billed each here.
 
+## The colour variants
+
+`hero.robe.crimson`, `hero.warcape.blue`, `hero.wings.frost`,
+`hero.kilt.green` and `hero.mohawk.green` are `derive` assets: each is a
+drawn layer with its hue turned, every frame at once, for nothing. They
+appear in the next `gen` after the layer they come from.
+
+`pixelkiln pack --style cast` then puts everything on one sheet, with an
+atlas that pairs every layer frame with the frame it goes over.
+
 ## Things this manifest does on purpose
 
 - **`hero.briefs` is a layer.** The base stays bare, which is what keying its

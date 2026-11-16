@@ -69,6 +69,14 @@ hands mid-walk and an inpainted shield was drawn face-on in a side view.
   frame, or `{ "hero.walk.south": [0, -2], "*": [0, 0] }` per source asset.
   A changed offset is `recoverable`; `pixelkiln fetch` re-applies it at no
   cost. Use it for a hat that sits low, never regenerate for that.
+- A colour variant of a drawn layer is a `derive` asset, not a new layer:
+  `{ "derive": { "from": "hero.cape", "transform": "hue-shift", "degrees":
+  -120, "hue": [320, 20] } }` recolours every frame for nothing. `hue` limits
+  it to one range of colour so trim in another colour stays. Offer this
+  before generating a second layer that differs only in colour.
+- `pixelkiln pack --style <style>` puts the character and its layers on one
+  sheet; the generic atlas's `layers` section pairs each layer frame with
+  the frame it goes over and the offset to draw it at.
 - `mask` and `keyed` replace the computed sheet inputs with PNGs the person
   supplies. Every intermediate file is in
   `.pixelkiln/layers/<style>/<asset>/`.
