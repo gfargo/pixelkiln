@@ -288,6 +288,33 @@ describe("layer sheets", () => {
     expect(pixel(around, 3, 1)).toEqual([0, 0, 0, 255])
   })
 
+  it("keys skin only where the provider may paint, so a head under an outfit's mask keeps its face", () => {
+    const built = buildLayerSheet([sources[0]!], { maxSide: 512, minSide: 1 })
+    const sheet = decodePng(built.sheet)
+    const keyed = decodePng(built.keyed)
+    const mask = decodePng(built.mask)
+    let keyedInside = 0, keptOutside = 0, skinOutside = 0
+    for (let i = 0; i < sheet.pixels.length; i += 4) {
+      if (sheet.pixels[i + 3] === 0) continue
+      const same = sheet.pixels.compare(keyed.pixels, i, i + 4, i, i + 4) === 0
+      const skin = Math.max(sheet.pixels[i]!, sheet.pixels[i + 1]!, sheet.pixels[i + 2]!) >= 46
+      if (mask.pixels[i] === 255) {
+        if (skin && !same && isKeyColor(keyed.pixels[i]!, keyed.pixels[i + 1]!, keyed.pixels[i + 2]!)) keyedInside++
+      } else {
+        if (skin) skinOutside++
+        if (same) keptOutside++
+        else throw new Error("a pixel outside the mask was keyed")
+      }
+    }
+    expect(keyedInside).toBeGreaterThan(0)
+    expect(skinOutside).toBeGreaterThan(0)
+    expect(keptOutside).toBeGreaterThan(0)
+    // A head layer flips it: the body is outside the mask and keeps its colours.
+    const head = buildLayerSheet([sources[0]!], { maxSide: 512, minSide: 1, region: "head" })
+    const bottom = (decodePng(head.sheet).height - 2) * decodePng(head.sheet).width * 4
+    expect(decodePng(head.keyed).pixels.subarray(bottom, bottom + decodePng(head.sheet).width * 4).equals(decodePng(head.sheet).pixels.subarray(bottom, bottom + decodePng(head.sheet).width * 4))).toBe(true)
+  })
+
   it("pads every cell and returns each layer on a canvas grown by the padding", () => {
     const built = buildLayerSheet([sources[0]!], { maxSide: 512, minSide: 1, padding: 3, region: "head" })
     expect(built.frames[0]).toMatchObject({ padding: 3, offsetX: -2, offsetY: -3, cell: { width: 11, height: 16 } })

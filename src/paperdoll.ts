@@ -664,13 +664,31 @@ export function buildLayerSheet(
     }
     return png
   }
+  const mask = options.mask ? sized("mask", options.mask) : bodyMask(sheetPng, frames.map((frame) => frame.cell), options.region)
   return {
     sheet: sheetPng,
-    keyed: options.keyed ? sized("keyed sheet", options.keyed) : keySkin(sheetPng, { key: options.key, skin: options.skin }),
-    mask: options.mask ? sized("mask", options.mask) : bodyMask(sheetPng, frames.map((frame) => frame.cell), options.region),
+    keyed: options.keyed ? sized("keyed sheet", options.keyed) : keyInsideMask(sheetPng, mask, { key: options.key, skin: options.skin }),
+    mask,
     frames,
     cleaned,
   }
+}
+
+/**
+ * Keys skin only where the provider may paint. What it cannot repaint comes
+ * back identical whatever colour it was sent in, so keying it buys nothing,
+ * and costs the provider its best clue to which way a figure faces: under an
+ * outfit's mask that is the head, and a head in its own colours has a face
+ * on the front and none on the back. A cyan one barely does.
+ */
+function keyInsideMask(sheet: Buffer, mask: Buffer, options: KeyOptions): Buffer {
+  const original = decodePng(sheet)
+  const keyed = decodePng(keySkin(sheet, options))
+  const allowed = decodePng(mask)
+  for (let i = 0; i < keyed.pixels.length; i += 4) {
+    if (allowed.pixels[i] !== 255) original.pixels.copy(keyed.pixels, i, i, i + 4)
+  }
+  return encodeRgbaPng(keyed.width, keyed.height, keyed.pixels)
 }
 
 /**
