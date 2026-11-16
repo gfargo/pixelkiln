@@ -10,6 +10,8 @@ import { track } from "@vercel/analytics";
 export type CtaSection =
   | "header"
   | "hero"
+  | "hub"
+  | "feature_page"
   | "install"
   | "review"
   | "gallery"

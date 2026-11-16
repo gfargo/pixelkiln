@@ -17,7 +17,7 @@ here, minus everything template/skeleton-specific. See
 ## The three shapes
 
 A cast in full, with a base, a state, and two loops. This is the robot on
-the [site](https://pixelkiln.griffen.codes/#characters), drawn the way the
+the [site](https://pixelkiln.griffen.codes/characters), drawn the way the
 example says:
 
 ![The robot facing south, south-west, west, north-west, north, north-east, east, and south-east](../website/public/sprites/characters/robot-8dir.png)

@@ -9,7 +9,7 @@ frame, for free.
 
 ![A bare figure in underwear, plate armour with no body in it, a horned helm and a war cape, a greatsword and a shield, and all of them stacked into a dark knight](../website/public/sprites/paperdoll/showcase-stack.png)
 
-The [home page](https://pixelkiln.griffen.codes/#paperdoll-builder) has a character you
+The [site](https://pixelkiln.griffen.codes/paperdoll#paperdoll-builder) has a character you
 can dress from twenty such layers, and
 [`examples/paperdoll`](../examples/paperdoll) is its manifest.
 

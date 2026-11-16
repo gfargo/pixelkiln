@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { docs } from "@/app/lib/docs";
 import { splitDoc } from "@/app/lib/doc-sections";
+import { FEATURES } from "@/app/lib/features";
 import { siteUrl } from "@/app/lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -45,6 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         `${siteUrl}/benchmarks/provider-scenario-smoke/mountain-keep.png`,
       ],
     },
+    ...FEATURES.map((entry) => ({ url: `${siteUrl}${entry.href}`, changeFrequency: "monthly" as const, priority: 0.9 })),
     { url: `${siteUrl}/docs`, changeFrequency: "weekly", priority: 0.9 },
     ...docs.map((doc) => ({
       url: `${siteUrl}/docs/${doc.slug}`,

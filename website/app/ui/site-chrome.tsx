@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DocSearch } from "@/app/ui/doc-search";
+import { SiteNav } from "@/app/ui/site-nav";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
 export function KilnMark() {
@@ -22,20 +23,7 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
         <KilnMark />
         <span>pixelkiln</span>
       </Link>
-      <nav aria-label="Primary navigation">
-        <TrackedLink id="nav_workflow" section="header" href="/#workflow">How it works</TrackedLink>
-        <TrackedLink id="nav_gallery" section="header" href="/#gallery">Gallery</TrackedLink>
-        <TrackedLink id="nav_providers" section="header" href="/#providers">Providers</TrackedLink>
-        <TrackedLink id="nav_docs" section="header" href="/docs">Docs</TrackedLink>
-        <TrackedLink
-          id="nav_github"
-          section="header"
-          href="https://github.com/gfargo/pixelkiln"
-          external
-        >
-          GitHub
-        </TrackedLink>
-      </nav>
+      <SiteNav />
       <div className="header-actions">
         <DocSearch />
         <TrackedLink
@@ -67,14 +55,17 @@ export function SiteFooter() {
             <span>Learn</span>
             <TrackedLink id="footer_docs" section="footer" href="/docs">Documentation</TrackedLink>
             <TrackedLink id="footer_quickstart" section="footer" href="/docs/getting-started">Quickstart</TrackedLink>
-            <TrackedLink id="footer_workflow" section="footer" href="/#workflow">How it works</TrackedLink>
-            <TrackedLink id="footer_gallery" section="footer" href="/#gallery">The gallery</TrackedLink>
+            <TrackedLink id="footer_workflow" section="footer" href="/pipeline">How it works</TrackedLink>
+            <TrackedLink id="footer_gallery" section="footer" href="/review#gallery">The gallery</TrackedLink>
+            <TrackedLink id="footer_characters" section="footer" href="/characters">Characters</TrackedLink>
+            <TrackedLink id="footer_paperdoll" section="footer" href="/paperdoll">Paperdoll layers</TrackedLink>
+            <TrackedLink id="footer_effects" section="footer" href="/effects">Effects</TrackedLink>
             <TrackedLink id="footer_generators" section="footer" href="/docs/generators">Generators</TrackedLink>
             <TrackedLink id="footer_benchmark" section="footer" href="/docs/provider-benchmark">Benchmark</TrackedLink>
           </div>
           <div>
             <span>Providers</span>
-            <TrackedLink id="footer_providers" section="footer" href="/#providers">Provider results</TrackedLink>
+            <TrackedLink id="footer_providers" section="footer" href="/providers">Provider results</TrackedLink>
             <TrackedLink id="footer_pixellab" section="footer" href="/docs/pixellab">Set up PixelLab</TrackedLink>
             <TrackedLink id="footer_retro" section="footer" href="/docs/retro-diffusion">Set up Retro Diffusion</TrackedLink>
             <TrackedLink id="footer_comfyui" section="footer" href="/docs/comfyui">Set up ComfyUI</TrackedLink>

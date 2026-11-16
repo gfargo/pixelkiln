@@ -40,10 +40,14 @@ if (files.length !== slugs.length) {
 const routeSources = [
   "app/page.tsx",
   "app/ui/site-chrome.tsx",
+  "app/ui/site-nav.tsx",
+  "app/ui/feature-page.tsx",
+  "app/lib/features.ts",
+  ...readdirSync(path.join(websiteRoot, "app/sections")).map((file) => `app/sections/${file}`),
 ].map((file) => ({ file, source: readFileSync(path.join(websiteRoot, file), "utf8") }));
 const registeredSlugs = new Set(slugs);
 for (const { file, source } of routeSources) {
-  for (const match of source.matchAll(/href="\/docs\/([^"#?/]+)[^\"]*"/g)) {
+  for (const match of source.matchAll(/href:?=?\s*"\/docs\/([^"#?/]+)[^\"]*"/g)) {
     if (!registeredSlugs.has(match[1])) {
       failures.push(`${file} links to unregistered documentation route: /docs/${match[1]}`);
     }
@@ -94,7 +98,12 @@ for (const [, href] of updates.matchAll(/href:\s*"(\/docs\/[^"]+)"/g)) {
   }
 }
 
-const home = routeSources.find(({ file }) => file === "app/page.tsx").source;
+// The home page is assembled from section files, and the provider results
+// have a page of their own; the facts below may be stated in any of them.
+const sectionDir = path.join(websiteRoot, "app/sections");
+const home = readdirSync(sectionDir)
+  .map((file) => readFileSync(path.join(sectionDir, file), "utf8"))
+  .join("\n");
 const cli = readFileSync(path.join(repoRoot, "src/cli/args.ts"), "utf8");
 const commandsMatch = cli.match(/export const COMMANDS = \[([\s\S]*?)\]\s+as const/);
 if (!commandsMatch) {
