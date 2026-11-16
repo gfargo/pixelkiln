@@ -219,6 +219,8 @@ export function specHash(
                         anchors: spec.character.layer.attach.anchors.sha256,
                         joint: spec.character.layer.attach.joint,
                         grip: spec.character.layer.attach.grip,
+                        // Omitted at 1 so an item placed before scale existed keeps its identity.
+                        scale: spec.character.layer.attach.scale === 1 ? undefined : spec.character.layer.attach.scale,
                         tilt: spec.character.layer.attach.tilt,
                         lean: spec.character.layer.attach.lean,
                         depth: spec.character.layer.attach.depth,

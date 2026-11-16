@@ -795,11 +795,18 @@ export const CharacterAttachSchema = z
     /** Which hand holds it. Default `right-hand`. */
     joint: z.enum(ATTACH_JOINTS).optional(),
     /**
-     * The point of the item the hand holds, in item pixels: one `[x, y]` for
-     * every direction, or one per direction. Default: the middle of the
-     * item's lowest fifth, which is the handle of anything drawn handle-down.
+     * The point of the item the hand holds: `"center"` (a shield), or item
+     * pixels as drawn, one `[x, y]` for every direction or one per direction.
+     * Default: the middle of the item's lowest fifth, which is the handle of
+     * anything drawn handle-down.
      */
-    grip: z.union([PixelPointSchema, z.record(CharacterDirectionSchema, PixelPointSchema)]).optional(),
+    grip: z.union([z.literal("center"), PixelPointSchema, z.record(CharacterDirectionSchema, PixelPointSchema)]).optional(),
+    /**
+     * Resize the item by this factor before placing it, nearest neighbour.
+     * An object generator fills its canvas, so an item often comes back
+     * larger than the hand it goes in. Default 1.
+     */
+    scale: z.number().min(0.1).max(4).optional(),
     /**
      * Degrees to lean an upright item the way the figure faces, turned
      * locally. Shows from the side, not from the front or back. Default 0:
@@ -1106,7 +1113,8 @@ export interface ResolvedCharacter {
       item: Array<{ direction: CharacterDirection; path: string; sha256: string | null }>
       anchors: { path: string; sha256: string | null }
       joint: AttachJoint
-      grip?: [number, number] | Partial<Record<CharacterDirection, [number, number]>>
+      grip?: "center" | [number, number] | Partial<Record<CharacterDirection, [number, number]>>
+      scale: number
       tilt: number
       lean: number
       depth: "auto" | "front" | "behind"

@@ -1279,6 +1279,7 @@ export async function resolveSpecs(
             anchors: (await override(declared.anchors))!,
             joint: declared.joint ?? "right-hand",
             ...(declared.grip ? { grip: declared.grip } : {}),
+            scale: declared.scale ?? 1,
             tilt: declared.tilt ?? 0,
             lean: declared.lean ?? 0,
             depth: declared.depth ?? "auto",

@@ -1828,6 +1828,10 @@
                       "grip": {
                         "anyOf": [
                           {
+                            "type": "string",
+                            "const": "center"
+                          },
+                          {
                             "type": "array",
                             "minItems": 2,
                             "maxItems": 2,
@@ -1869,6 +1873,11 @@
                             }
                           }
                         ]
+                      },
+                      "scale": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 4
                       },
                       "tilt": {
                         "type": "number",

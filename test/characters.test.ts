@@ -1916,7 +1916,11 @@ describe("paperdoll layer", () => {
       const sword = p.specs.find((s) => s.assetId === "mira.sword")!
       expect(sword).toMatchObject({ prompt: "", cost: 0 })
       const attach = sword.character!.layer!.attach!
-      expect(attach).toMatchObject({ joint: "right-hand", tilt: 0, lean: 0, depth: "auto" })
+      expect(attach).toMatchObject({ joint: "right-hand", scale: 1, tilt: 0, lean: 0, depth: "auto" })
+      // Resizing it, or holding it by its centre, is a different layer.
+      const resized = (await openProject(await heldManifest({ scale: 0.75, grip: "center" }), { env: false })).specs.find((s) => s.assetId === "mira.sword")!
+      expect(resized.character!.layer!.attach).toMatchObject({ scale: 0.75, grip: "center" })
+      expect(resized.specHash).not.toBe(sword.specHash)
       expect(sword.character!.layer!.padding).toBe(12)
       expect(attach.item.map((file) => file.direction)).toEqual(characterDirectionsOf(sword))
       expect(attach.item[0]).toMatchObject({ path: path.join(dir, "items", "sword-south.png"), sha256: null })

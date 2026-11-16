@@ -193,12 +193,44 @@ export function rotateAbout(image: DecodedPng, pivot: { x: number; y: number }, 
   return { image: out, pivot: { x: reach, y: reach } }
 }
 
+/** The middle of an item's opaque pixels: where a shield or a buckler is held. */
+export function centerPoint(item: DecodedPng): { x: number; y: number } {
+  const bounds = opaqueBounds(item)
+  if (!bounds) throw new Error("the item has no opaque pixels")
+  return { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 }
+}
+
+/**
+ * Resizes an image by a factor, nearest neighbour, so every output pixel is
+ * one of the input's own colours. Shrinking pixel art drops rows and columns
+ * outright: fine for bringing an item down a size, rough on fine detail.
+ */
+export function scaleBy(image: DecodedPng, factor: number): DecodedPng {
+  if (factor === 1) return image
+  const width = Math.max(1, Math.round(image.width * factor))
+  const height = Math.max(1, Math.round(image.height * factor))
+  const pixels = Buffer.alloc(width * height * 4)
+  for (let y = 0; y < height; y++) {
+    const sy = Math.min(image.height - 1, Math.floor((y + 0.5) / factor))
+    for (let x = 0; x < width; x++) {
+      const sx = Math.min(image.width - 1, Math.floor((x + 0.5) / factor))
+      image.pixels.copy(pixels, (y * width + x) * 4, (sy * image.width + sx) * 4, (sy * image.width + sx) * 4 + 4)
+    }
+  }
+  return { width, height, pixels }
+}
+
 export interface AttachOptions {
   placement: Placement
   /** Clockwise degrees to turn the item about its grip. */
   angle?: number
-  /** The point of the item the hand holds, in item pixels. Default `gripPoint`. */
-  grip?: { x: number; y: number }
+  /**
+   * The point of the item the hand holds: `center`, or a point in the item's
+   * own pixels as drawn (before `scale`). Default `gripPoint`.
+   */
+  grip?: { x: number; y: number } | "center"
+  /** Resize the item by this factor before placing it. Default 1. */
+  scale?: number
   /** Empty pixels around the frame on the layer's canvas. */
   padding: number
 }
@@ -212,8 +244,15 @@ export interface AttachOptions {
  */
 export function attachFrame(frame: Buffer, item: Buffer, options: AttachOptions): { png: Buffer; clipped: number } {
   const body = decodePng(frame)
-  const drawn = decodePng(item)
-  const turned = rotateAbout(drawn, options.grip ?? gripPoint(drawn), (options.angle ?? 0) + (options.placement.angle ?? 0))
+  const factor = options.scale ?? 1
+  const drawn = scaleBy(decodePng(item), factor)
+  const grip = options.grip === "center"
+    ? centerPoint(drawn)
+    : options.grip
+      // The centre of the named pixel, carried to where that pixel went.
+      ? { x: (options.grip.x + 0.5) * factor - 0.5, y: (options.grip.y + 0.5) * factor - 0.5 }
+      : gripPoint(drawn)
+  const turned = rotateAbout(drawn, grip, (options.angle ?? 0) + (options.placement.angle ?? 0))
   const pad = options.padding
   const width = body.width + pad * 2
   const height = body.height + pad * 2

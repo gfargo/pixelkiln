@@ -109,11 +109,12 @@ export async function heldItemAsset(
     if (!item) throw new Error(`no item image for ${frame.direction}, which ${name} faces`)
     const placement = handPlacement(anchor, attach.joint)
     if (attach.depth !== "auto") placement.behind = attach.depth === "behind"
-    const grip = Array.isArray(attach.grip) ? attach.grip : attach.grip?.[frame.direction]
+    const grip = attach.grip === "center" || Array.isArray(attach.grip) ? attach.grip : attach.grip?.[frame.direction]
     const placed = attachFrame(bytes, item, {
       placement,
       angle: heldAngle(frame.direction, attach.joint, attach.tilt, attach.lean),
-      ...(grip ? { grip: { x: grip[0], y: grip[1] } } : {}),
+      ...(grip ? { grip: grip === "center" ? grip : { x: grip[0], y: grip[1] } } : {}),
+      scale: attach.scale,
       padding: layer.padding,
     })
     clipped += placed.clipped

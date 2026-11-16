@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { attachFrame, gripPoint, handPlacement, heldAngle, parseAnchorsFile, rotateAbout } from "../src/attach.ts"
+import { attachFrame, centerPoint, gripPoint, handPlacement, heldAngle, parseAnchorsFile, rotateAbout, scaleBy } from "../src/attach.ts"
 import { decodePng, encodeRgbaPng, type DecodedPng } from "../src/png.ts"
 import { SKELETON_LABELS } from "../src/skeleton.ts"
 
@@ -92,6 +92,31 @@ describe("held items", () => {
     expect(pixel(behind, 1, 1)).toEqual(CLEAR)
     expect(pixel(behind, 1, 2)).toEqual(CLEAR)
     expect(pixel(behind, 1, 4)).toEqual(GRIP)
+  })
+
+  it("holds a shield by its centre and shrinks an item with no new colours", () => {
+    // A 4x4 disc on a 6x6 canvas: opaque from (1,1) to (4,4).
+    const DISC = draw(["......", ".wwww.", ".wwww.", ".wwww.", ".wwww.", "......"], { w: GRIP })
+    expect(centerPoint(decodePng(DISC))).toEqual({ x: 2.5, y: 2.5 })
+    const body = draw(Array.from({ length: 10 }, () => ".........."), {})
+    const whole = decodePng(attachFrame(body, DISC, { placement: { x: 5, y: 5, behind: false }, grip: "center", padding: 0 }).png)
+    const count = (image: DecodedPng) => { let n = 0; for (let i = 3; i < image.pixels.length; i += 4) if (image.pixels[i]) n++; return n }
+    expect(count(whole)).toBe(16)
+    // The disc's centre sits on the hand: opaque from 3 or 4 through 6 or 7 on both axes.
+    expect(pixel(whole, 5, 5)).toEqual(GRIP)
+    expect(pixel(whole, 8, 5)).toEqual(CLEAR)
+
+    const half = scaleBy(decodePng(DISC), 0.5)
+    expect(half).toMatchObject({ width: 3, height: 3 })
+    expect(count(half)).toBe(4)
+    expect(scaleBy(decodePng(DISC), 1)).toMatchObject({ width: 6, height: 6 })
+    const small = decodePng(attachFrame(body, DISC, { placement: { x: 5, y: 5, behind: false }, grip: "center", scale: 0.5, padding: 0 }).png)
+    expect(count(small)).toBe(4)
+    expect(pixel(small, 5, 5)).toEqual(GRIP)
+    // A grip named in the item's own pixels is carried to where that pixel went.
+    const cornered = decodePng(attachFrame(body, DISC, { placement: { x: 5, y: 5, behind: false }, grip: { x: 1, y: 1 }, scale: 2, padding: 0 }).png)
+    expect(pixel(cornered, 5, 5)).toEqual(GRIP)
+    expect(pixel(cornered, 3, 5)).toEqual(CLEAR)
   })
 
   it("refuses an anchors file that is not one, naming where", () => {

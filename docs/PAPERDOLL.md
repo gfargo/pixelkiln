@@ -306,9 +306,15 @@ How it is placed, and what to change when it is wrong:
   `joint` picks `right-hand` (default) or `left-hand`.
 - **The grip** is the point of the item that goes on the hand. By default it
   is the middle of the item's lowest fifth, which is the handle of anything
-  drawn handle-down, upright or leaning. A shield held by its centre needs
-  `"grip": [16, 16]`, in item pixels; give one per direction as
-  `{ "south": [16, 16], "east": [12, 16] }` when they differ.
+  drawn handle-down, upright or leaning. A shield is held by its middle:
+  `"grip": "center"`. For anything else, name the point in the item's own
+  pixels, `"grip": [16, 20]`, or one per direction as
+  `{ "south": [16, 20], "east": [12, 20] }` when they differ.
+- **The size.** An object generator fills its canvas, so an item often comes
+  back bigger than the hand it goes in. `"scale": 0.7` resizes it before
+  placing, nearest-neighbour, so no new colours appear. Shrinking drops rows
+  and columns outright: fine for taking an item down a size, rough on fine
+  detail. An item drawn at the size you want is crisper.
 - **In front or behind.** The skeleton says whether each hand is on the near
   or far side of the body. On the far side, the item's pixels under the
   figure are left out of the layer, so the body covers it. `depth` forces
@@ -338,14 +344,20 @@ A placed item's canvas is its source frame's grown by `padding`, 12 by
 default. When part of the item falls outside it, `gen` says how many pixels
 were lost; raise `padding`.
 
-A shield in the left hand was run the same way, with `"joint": "left-hand"`
-and a `grip` at the centre of each rotation: placed on all 56 frames for
-nothing, face-on from the front, its back and straps from behind. Two things
-it showed. An object fills its canvas, so a 32px shield came back 28 pixels
-across on a figure about 25 wide: ask for the size you want, or expect to
-redraw it smaller. And facing east the left arm is on the far side, so the
-body hides all but a sliver of the shield through that whole walk, which is
-correct and may not be what you want; `"depth": "front"` overrides it.
+A shield in the left hand was run the same way:
+
+```json
+"attach": { "item": "items/shield-{direction}.png", "anchors": "anchors/hero.json",
+            "joint": "left-hand", "grip": "center", "scale": 0.7 }
+```
+
+It was placed on all 56 frames for nothing, face-on from the front, its back
+and straps from behind. Two things it showed. The 32px object came back 28
+pixels across on a figure about 25 wide, which is what `scale` is for; at 0.7
+it sits on the arm in proportion, its rim a little rougher. And facing east
+the left arm is on the far side, so the body hides all but a sliver of the
+shield through that whole walk, which is correct and may not be what you
+want; `"depth": "front"` overrides it.
 
 What a placed item cannot do: the hand does not close around it, and the arm
 does not move to carry it. For a swing or a block, animate the character
@@ -572,7 +584,8 @@ and takes only `of` and `padding` (default 12) from the table above.
 | `item` | required | Manifest-relative PNG. `{direction}` in the path names one file per direction the frames face. |
 | `anchors` | required | Manifest-relative anchors file, written by `pixelkiln anchors <asset>`. |
 | `joint` | `right-hand` | `right-hand` or `left-hand`. |
-| `grip` | lowest fifth | `[x, y]` in item pixels, or one per direction. |
+| `grip` | lowest fifth | `"center"`, or `[x, y]` in the item's own pixels, or one per direction. |
+| `scale` | 1 | Resize the item before placing it, 0.1 to 4, nearest-neighbour. |
 | `tilt` | 0 | Degrees to lean an upright item the way the figure faces. |
 | `lean` | 0 | Degrees to tip an upright item outward from the body. |
 | `depth` | `auto` | `auto` follows each frame's skeleton; `front` or `behind` for every frame. |
@@ -597,6 +610,7 @@ On a loop, `animation.clean` (default off) cleans its frames at download.
 | A sword changes hands mid-walk | The model, not the mask. | Make it a placed item with `attach`. |
 | A thin outline of the body in a partial outfit's layer | It was generated before layers were tidied. | Generate the layer again. |
 | A placed item stands straight up | The sprite was drawn upright. | Draw it leaning, or set `tilt` and `lean`. |
+| A placed item is too big for the character | An object fills its canvas. | Set `scale`, or draw it smaller. |
 | A placed item floats beside the hand | The grip default missed, or the skeleton did. | Set `grip`, or add a `place` to that frame in the anchors file. |
 | "changed since its anchor was estimated" | A source frame was regenerated or cleaned. | Run `pixelkiln anchors <asset>` again; only changed frames are paid for. |
 | A placed item is cut off | It reaches past the padded canvas. | Raise `padding`. |
