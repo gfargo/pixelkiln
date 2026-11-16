@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { existsSync } from "node:fs"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
@@ -16,7 +16,13 @@ import { openProject } from "../src/project.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 import { upsert } from "../src/lock.ts"
 import { sha256File } from "../src/hash.ts"
-import { lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
+import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
+import { writeAnchors } from "../src/pipeline/attach.ts"
+import { SKELETON_LABELS } from "../src/skeleton.ts"
+
+/** The directions a held item needs files for: every one its base faces. */
+const characterDirectionsOf = (spec: ResolvedSpec) =>
+  CHARACTER_DIRECTIONS_8.filter((direction) => spec.character!.directions === 8 || ["south", "west", "east", "north"].includes(direction))
 
 let dir: string
 beforeEach(async () => {
@@ -1869,5 +1875,140 @@ describe("paperdoll layer", () => {
     masked = await openProject(await layeredManifest({ mask: "armor-mask.png" }), { env: false })
     await submit(provider, masked.loaded, (await masked.plan()).actionable, masked.lock, masked.lockPath, { spacingMs: 0 })
     expect(masked.lock.entries["cast/mira.armor"]).toMatchObject({ status: "failed", error: expect.stringContaining("the mask is 8x8") })
+  })
+
+  describe("held items", () => {
+    const STEEL = [180, 190, 200, 255]
+
+    /** A layer that pins `items/sword-<direction>.png` to the right hand of the base and its loop. */
+    function heldManifest(attach: Record<string, unknown> = {}, layer: Record<string, unknown> = {}) {
+      return layeredManifest({}, {
+        "mira.armor": undefined,
+        "mira.sword": { layer: { of: ["mira", "mira.walk"], attach: { item: "items/sword-{direction}.png", anchors: "anchors/mira.json", ...attach }, ...layer } },
+      })
+    }
+
+    /** One 3x5 upright sword per direction. */
+    async function writeItems() {
+      await mkdir(path.join(dir, "items"), { recursive: true })
+      const pixels = Buffer.alloc(3 * 5 * 4)
+      for (let y = 0; y < 5; y++) Buffer.from(STEEL).copy(pixels, (y * 3 + 1) * 4)
+      for (const direction of CHARACTER_DIRECTIONS_8) await writeFile(path.join(dir, "items", `sword-${direction}.png`), encodeRgbaPng(3, 5, pixels))
+    }
+
+    /** Every skeleton the same: right wrist at the centre, elbow straight above it, in front of the body. */
+    function estimator() {
+      const calls: string[] = []
+      return {
+        calls,
+        estimateSkeleton: async (args: { image: { base64: string } }) => {
+          calls.push(args.image.base64)
+          return {
+            // The fake's 8px frames go up on a 16px canvas, so these are halved from frame fractions.
+            keypoints: SKELETON_LABELS.map((label) => ({ label, x: 0.25, y: label === "RIGHT ELBOW" ? 0.125 : 0.25, z_index: 0 })),
+          }
+        },
+      }
+    }
+
+    it("resolves without a prompt, at no cost, one item file per direction the frames face", async () => {
+      const p = await openProject(await heldManifest(), { env: false })
+      const sword = p.specs.find((s) => s.assetId === "mira.sword")!
+      expect(sword).toMatchObject({ prompt: "", cost: 0 })
+      const attach = sword.character!.layer!.attach!
+      expect(attach).toMatchObject({ joint: "right-hand", tilt: 0, lean: 0, depth: "auto" })
+      expect(sword.character!.layer!.padding).toBe(12)
+      expect(attach.item.map((file) => file.direction)).toEqual(characterDirectionsOf(sword))
+      expect(attach.item[0]).toMatchObject({ path: path.join(dir, "items", "sword-south.png"), sha256: null })
+      await expect(openProject(await heldManifest({}, { region: "around" }), { env: false })).rejects.toThrow(/a held item is placed, not inpainted; region/)
+    })
+
+    it("waits for its anchors, then places the item on every frame for free", async () => {
+      const file = await heldManifest()
+      await writeItems()
+      const client = fakeClient()
+      const provider = new PixelLabProvider(client as never)
+      let p = await withSources(file, client, provider)
+
+      // No anchors file yet: the plan says how to make one, and gen does not fail an asset over it.
+      let plan = await p.plan()
+      expect(plan.items.find((item) => item.key === "cast/mira.sword")).toMatchObject({ state: "blocked", reason: expect.stringContaining("pixelkiln anchors mira.sword") })
+
+      const sword = () => p.specs.find((s) => s.assetId === "mira.sword")!
+      const frames = p.lock.entries["cast/mira"]!.outputs.length + p.lock.entries["cast/mira.walk"]!.outputs.length
+      const estimate = estimator()
+      expect(await writeAnchors(sword(), p.lock, estimate, { dryRun: true })).toMatchObject({ estimated: frames, current: 0 })
+      expect(estimate.calls).toHaveLength(0)
+      expect(await writeAnchors(sword(), p.lock, estimate)).toMatchObject({ estimated: frames, current: 0 })
+      // A second run has nothing to pay for.
+      expect(await writeAnchors(sword(), p.lock, estimate)).toMatchObject({ estimated: 0, current: frames })
+      expect(estimate.calls).toHaveLength(frames)
+      expect(decodePng(Buffer.from(estimate.calls[0]!, "base64"))).toMatchObject({ width: 16, height: 16 })
+      const written = JSON.parse(await readFile(path.join(dir, "anchors", "mira.json"), "utf8"))
+      expect(written.frames.mira.south).toMatchObject({ width: 8, height: 8 })
+      expect(written.frames.mira.south.keypoints.find((joint: { label: string }) => joint.label === "RIGHT ARM")).toMatchObject({ x: 0.5, y: 0.5 })
+
+      p = await openProject(file, { env: false })
+      plan = await p.plan()
+      expect(plan.actionable.map((item) => item.key)).toEqual(["cast/mira.sword"])
+      expect(plan.groups[0]!.cost).toBe(0)
+      const inpaints = client.inpaints.length
+      await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0, budget: 0 })
+      expect(client.inpaints).toHaveLength(inpaints)
+
+      const entry = p.lock.entries["cast/mira.sword"]!
+      expect(entry).toMatchObject({ status: "downloaded", cost: 0, error: null })
+      expect(entry.outputs).toHaveLength(frames)
+      expect(entry.outputs[0]!.role).toBe("mira.south")
+      expect(entry.outputs.at(-1)!.role).toBe("mira.walk.frame-03")
+      expect(entry.layer!.sources.map((source) => source.assetId)).toEqual(["mira", "mira.walk"])
+
+      // The layer is its frame grown by the padding, steel at the hand and nowhere near a corner.
+      const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+      const layer = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
+      expect(layer).toMatchObject({ width: source.width + 24, height: source.height + 24 })
+      // The palm is 35% of the forearm past the wrist; the grip is the sword's lowest pixel.
+      const hand = { x: Math.round(source.width * 0.5 - 1) + 1 + 12, y: Math.round(source.height * (0.5 + 0.25 * 0.35) - 4) + 4 + 12 }
+      const at = (x: number, y: number) => [...layer.pixels.subarray((y * layer.width + x) * 4, (y * layer.width + x) * 4 + 4)]
+      expect(at(hand.x, hand.y)).toEqual(STEEL)
+      expect(at(hand.x, hand.y - 4)).toEqual(STEEL)
+      expect(at(hand.x, hand.y + 1)).toEqual([0, 0, 0, 0])
+      expect(at(0, 0)).toEqual([0, 0, 0, 0])
+
+      p = await openProject(file, { env: false })
+      expect((await p.plan()).actionable).toEqual([])
+
+      // A changed item is a changed layer, placed again for nothing.
+      await writeFile(path.join(dir, "items", "sword-south.png"), encodeRgbaPng(3, 5, Buffer.alloc(3 * 5 * 4, 255)))
+      p = await openProject(file, { env: false })
+      const changed = await p.plan()
+      expect(changed.actionable.map((item) => item.key)).toEqual(["cast/mira.sword"])
+      expect(changed.actionable[0]!.reason).toMatch(/the item, the anchors file, or how it is held changed/)
+    })
+
+    it("refuses to place an item by an anchor estimated from a different frame", async () => {
+      const file = await heldManifest()
+      await writeItems()
+      const client = fakeClient()
+      const provider = new PixelLabProvider(client as never)
+      let p = await withSources(file, client, provider)
+      await writeAnchors(p.specs.find((s) => s.assetId === "mira.sword")!, p.lock, estimator())
+      const anchorsFile = path.join(dir, "anchors", "mira.json")
+      const anchors = JSON.parse(await readFile(anchorsFile, "utf8"))
+      anchors.frames.mira.south.sha256 = "0".repeat(64)
+      await writeFile(anchorsFile, JSON.stringify(anchors))
+
+      p = await openProject(file, { env: false })
+      await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+      expect(p.lock.entries["cast/mira.sword"]).toMatchObject({
+        status: "failed",
+        error: expect.stringMatching(/mira south changed since its anchor was estimated.*pixelkiln anchors mira\.sword/),
+      })
+
+      // The command estimates that one frame again and leaves the rest alone.
+      const estimate = estimator()
+      expect(await writeAnchors(p.specs.find((s) => s.assetId === "mira.sword")!, p.lock, estimate)).toMatchObject({ estimated: 1 })
+      expect(estimate.calls).toHaveLength(1)
+    })
   })
 })

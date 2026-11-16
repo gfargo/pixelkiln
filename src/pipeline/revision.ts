@@ -197,6 +197,25 @@ async function inspectLayer(spec: ResolvedSpec, lock: Lock, seen: Set<string>): 
       return { ready: false, reason: `layer ${name} changed after the manifest was resolved` }
     }
   }
+  if (layer.attach) {
+    const files = [
+      ...layer.attach.item.map((file) => [`item image (${file.direction})`, file] as const),
+      ["anchors file", layer.attach.anchors] as const,
+    ]
+    for (const [name, file] of files) {
+      if (!existsSync(file.path)) {
+        return {
+          ready: false,
+          reason: name === "anchors file"
+            ? `held item anchors file is missing: ${file.path}; write it with: pixelkiln anchors ${spec.assetId}`
+            : `held item ${name} is missing: ${file.path}`,
+        }
+      }
+      if ((await sha256File(file.path)) !== file.sha256) {
+        return { ready: false, reason: `held item ${name} changed after the manifest was resolved` }
+      }
+    }
+  }
   return { ready: true, reason: "layer sources are current" }
 }
 

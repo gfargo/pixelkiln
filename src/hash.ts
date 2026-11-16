@@ -212,6 +212,18 @@ export function specHash(
                   // Omitted at their defaults so a layer made before these existed keeps its identity.
                   region: spec.character.layer.region === "body" ? undefined : spec.character.layer.region,
                   padding: spec.character.layer.padding || undefined,
+                  // A held item's identity is its files' bytes and how it is placed.
+                  attach: spec.character.layer.attach
+                    ? {
+                        item: spec.character.layer.attach.item.map((file) => [file.direction, file.sha256]),
+                        anchors: spec.character.layer.attach.anchors.sha256,
+                        joint: spec.character.layer.attach.joint,
+                        grip: spec.character.layer.attach.grip,
+                        tilt: spec.character.layer.attach.tilt,
+                        lean: spec.character.layer.attach.lean,
+                        depth: spec.character.layer.attach.depth,
+                      }
+                    : undefined,
                 }
               : undefined,
             outfit: spec.character.outfit

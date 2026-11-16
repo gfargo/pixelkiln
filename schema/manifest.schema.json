@@ -1806,6 +1806,94 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 64
+                  },
+                  "attach": {
+                    "type": "object",
+                    "properties": {
+                      "item": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "anchors": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "joint": {
+                        "type": "string",
+                        "enum": [
+                          "right-hand",
+                          "left-hand"
+                        ]
+                      },
+                      "grip": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "array",
+                              "minItems": 2,
+                              "maxItems": 2,
+                              "items": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "propertyNames": {
+                              "enum": [
+                                "south",
+                                "south-east",
+                                "east",
+                                "north-east",
+                                "north",
+                                "north-west",
+                                "west",
+                                "south-west"
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "tilt": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "lean": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "depth": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "front",
+                          "behind"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "item",
+                      "anchors"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [

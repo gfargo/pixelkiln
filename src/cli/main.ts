@@ -20,6 +20,7 @@ import { runTalk } from "./commands/talk.ts"
 import { runQuality } from "./commands/quality.ts"
 import { runRecipe } from "./commands/recipe.ts"
 import { runRefine } from "./commands/refine.ts"
+import { runAnchors } from "./commands/anchors.ts"
 import { runEstimateSkeleton, runSkeletonPreview } from "./commands/skeleton.ts"
 import { runTools } from "./commands/tools.ts"
 import { runWorkspace } from "./commands/workspace.ts"
@@ -88,6 +89,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   recipe: runRecipe,
   workspace: runWorkspace,
   "estimate-skeleton": runEstimateSkeleton,
+  anchors: runAnchors,
   "skeleton-preview": runSkeletonPreview,
   unzoom: runUnzoom,
   pixelate: runPixelate,

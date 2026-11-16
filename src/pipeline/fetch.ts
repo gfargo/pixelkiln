@@ -79,6 +79,8 @@ export async function fetchAssets(
     if (specByKey.get(key)?.mirror) return false
     // A derived or external asset has no provider object to download.
     if (specByKey.get(key)?.derive || specByKey.get(key)?.external) return false
+    // A held item is placed locally from files on disk; gen makes it again.
+    if (specByKey.get(key)?.character?.layer?.attach) return false
     if (e.status === "selected" || e.status === "download-failed") return true
     if (e.status !== "downloaded") return false
     if (opts.refresh) return e.outputs.length > 0 && Boolean(e.sourceUrls?.length || e.sourceUrl)

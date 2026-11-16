@@ -767,6 +767,56 @@ export const CharacterOutfitSchema = z
   .strict()
 export type CharacterOutfit = z.infer<typeof CharacterOutfitSchema>
 
+export const ATTACH_JOINTS = ["right-hand", "left-hand"] as const
+export type AttachJoint = (typeof ATTACH_JOINTS)[number]
+
+const PixelPointSchema = z.tuple([z.number(), z.number()])
+
+/**
+ * A held item: a rigid sprite (a sword, a shield, a lantern) pinned to a hand
+ * in every frame of the layer's `of` assets. The item is drawn once and
+ * placed, never redrawn, so it is the same pixels in every frame and cannot
+ * change hands. See `src/attach.ts` and docs/PAPERDOLL.md.
+ */
+export const CharacterAttachSchema = z
+  .object({
+    /**
+     * Manifest-relative PNG of the item. With `{direction}` in the path, one
+     * file per direction the frames face (an 8-direction object's rotations);
+     * without it, the same image in every direction.
+     */
+    item: z.string().min(1),
+    /**
+     * Manifest-relative anchors file: every frame's skeleton, which is where
+     * its hands are. `pixelkiln anchors <asset>` writes it; one file serves
+     * every item the character holds.
+     */
+    anchors: z.string().min(1),
+    /** Which hand holds it. Default `right-hand`. */
+    joint: z.enum(ATTACH_JOINTS).optional(),
+    /**
+     * The point of the item the hand holds, in item pixels: one `[x, y]` for
+     * every direction, or one per direction. Default: the middle of the
+     * item's lowest fifth, which is the handle of anything drawn handle-down.
+     */
+    grip: z.union([PixelPointSchema, z.record(CharacterDirectionSchema, PixelPointSchema)]).optional(),
+    /**
+     * Degrees to lean an upright item the way the figure faces, turned
+     * locally. Shows from the side, not from the front or back. Default 0:
+     * the item is used as drawn, which is right for one drawn already leaning.
+     */
+    tilt: z.number().min(-180).max(180).optional(),
+    /** Degrees to tip an upright item outward from the body, seen from the front and back. Default 0. */
+    lean: z.number().min(-180).max(180).optional(),
+    /**
+     * Whether the body covers the item. `auto` (default) follows each frame's
+     * skeleton: the item goes behind the figure when its hand is.
+     */
+    depth: z.enum(["auto", "front", "behind"]).optional(),
+  })
+  .strict()
+export type CharacterAttach = z.infer<typeof CharacterAttachSchema>
+
 /**
  * A paperdoll layer: the asset's prompt, drawn as clothing over existing
  * frames and returned as transparent PNGs that sit on top of them. Every
@@ -812,8 +862,26 @@ export const CharacterLayerSchema = z
      * canvas grown by this much on every side. Default 0 for `body`, 8 otherwise.
      */
     padding: z.number().int().min(0).max(64).optional(),
+    /**
+     * Make this layer a held item instead of an inpaint: a sprite you already
+     * have, pinned to a hand in every frame. Free and local. See
+     * CharacterAttachSchema.
+     */
+    attach: CharacterAttachSchema.optional(),
   })
   .strict()
+  .superRefine((layer, context) => {
+    if (!layer.attach) return
+    for (const field of ["mask", "keyed", "skin", "key", "clean", "columns", "region"] as const) {
+      if (layer[field] !== undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `a held item is placed, not inpainted; ${field} has nothing to act on`,
+          path: [field],
+        })
+      }
+    }
+  })
 export type CharacterLayer = z.infer<typeof CharacterLayerSchema>
 
 /** A loop of one character in one direction. One asset per direction. */
@@ -1033,6 +1101,16 @@ export interface ResolvedCharacter {
     columns?: number
     region: "body" | "head" | "around"
     padding: number
+    /** For a held item: its files, the anchors file, and how it is turned. Hashes are null while a file does not exist. */
+    attach?: {
+      item: Array<{ direction: CharacterDirection; path: string; sha256: string | null }>
+      anchors: { path: string; sha256: string | null }
+      joint: AttachJoint
+      grip?: [number, number] | Partial<Record<CharacterDirection, [number, number]>>
+      tilt: number
+      lean: number
+      depth: "auto" | "front" | "behind"
+    }
   }
   animation?: {
     mode: CharacterAnimationMode
@@ -2327,7 +2405,7 @@ export const AssetSchema = z
     }
     // A template loop is described by its template; v3 and pro loops still
     // need the motion in words, which the provider checks.
-    if (asset.prompt === undefined && !asset.mirror && !asset.derive && !asset.external && !asset.portrait && !asset.outfit && !asset.animation?.template && !asset.vfx) {
+    if (asset.prompt === undefined && !asset.mirror && !asset.derive && !asset.external && !asset.portrait && !asset.outfit && !asset.layer?.attach && !asset.animation?.template && !asset.vfx) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Required",

@@ -1258,6 +1258,32 @@ export async function resolveSpecs(
         }
         const mask = await override(asset.layer.mask)
         const keyed = await override(asset.layer.keyed)
+        // A held item needs its sprite in every direction a frame faces: all
+        // of a base's or state's, and a loop's one.
+        let attach: NonNullable<NonNullable<ResolvedSpec["character"]>["layer"]>["attach"]
+        if (asset.layer.attach) {
+          const declared = asset.layer.attach
+          const facing = new Set<CharacterDirection>()
+          for (const source of sources) {
+            const character = source.spec.character!
+            if (character.animation) facing.add(character.animation.direction)
+            else for (const direction of characterDirections(character.directions)) facing.add(direction)
+          }
+          const item: NonNullable<typeof attach>["item"] = []
+          for (const direction of CHARACTER_DIRECTIONS_8.filter((candidate) => facing.has(candidate))) {
+            const file = (await override(declared.item.replaceAll("{direction}", direction)))!
+            item.push({ direction, ...file })
+          }
+          attach = {
+            item,
+            anchors: (await override(declared.anchors))!,
+            joint: declared.joint ?? "right-hand",
+            ...(declared.grip ? { grip: declared.grip } : {}),
+            tilt: declared.tilt ?? 0,
+            lean: declared.lean ?? 0,
+            depth: declared.depth ?? "auto",
+          }
+        }
         resolved.character = {
           kind: "layer",
           mode: first.character!.mode,
@@ -1274,7 +1300,8 @@ export async function resolveSpecs(
             clean: asset.layer.clean ?? true,
             ...(asset.layer.columns ? { columns: asset.layer.columns } : {}),
             region: asset.layer.region ?? "body",
-            padding: asset.layer.padding ?? ((asset.layer.region ?? "body") === "body" ? 0 : 8),
+            padding: asset.layer.padding ?? (attach ? 12 : (asset.layer.region ?? "body") === "body" ? 0 : 8),
+            ...(attach ? { attach } : {}),
           },
         }
         resolved.generator = first.generator
@@ -1283,7 +1310,8 @@ export async function resolveSpecs(
         resolved.size = first.size
         // The outfit in the author's words. The style's prefix and suffix
         // describe the character, who is already on the sheet.
-        resolved.prompt = (asset.promptByStyle[styleId] ?? asset.prompt ?? "").trim()
+        // A held item is placed, not drawn: nothing reads a prompt.
+        resolved.prompt = attach ? "" : (asset.promptByStyle[styleId] ?? asset.prompt ?? "").trim()
       }
       if (asset.revision) {
         if (!activeProvider.supportsRevision?.(asset.revision.mode)) {
@@ -1568,7 +1596,8 @@ export async function resolveSpecs(
           { cause: error },
         )
       }
-      resolved.cost = estimate.amount
+      // A held item is composited locally from files already on disk.
+      resolved.cost = resolved.character?.layer?.attach ? 0 : estimate.amount
       resolved.costUnit = estimate.unit
       resolved.candidates = estimate.candidates
       finalized.add(assetId)

@@ -15,6 +15,7 @@ import { lockKey, type Lock, type LockEntry, type ResolvedSpec, type ResolvedSty
 import type { PlanItem } from "./plan.ts"
 import { recordedAnimationGroup, requireRevisionReady } from "./revision.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
+import { heldItemAsset, isHeldItem } from "./attach.ts"
 import { deriveMirror, mirrorSourceHash } from "./mirror.ts"
 import { deriveAsset } from "./derive.ts"
 
@@ -76,7 +77,7 @@ export async function submit(
   // nothing, in whatever unit the rest of the batch is priced in.
   const estimates = new Map(items.map((item) => [
     item.key,
-    item.spec.mirror || item.spec.derive
+    item.spec.mirror || item.spec.derive || isHeldItem(item.spec)
       ? { amount: 0, unit: item.spec.costUnit, candidates: 1 }
       : validateCostEstimate(provider.id, provider.estimate(item.spec)),
   ]))
@@ -215,10 +216,11 @@ export async function submit(
       // loop reaches them in), from the leader's single submitted job.
       continue
     }
-    if (spec.mirror || spec.derive) {
+    if (spec.mirror || spec.derive || isHeldItem(spec)) {
       try {
         await requireRevisionReady(spec, lock)
         if (spec.derive) await deriveAsset(spec, lock, lockPath, { onProgress: log })
+        else if (isHeldItem(spec)) await heldItemAsset(spec, lock, lockPath, { onProgress: log })
         else await deriveMirror(spec, lock, lockPath, { onProgress: log })
         submitted++
       } catch (err) {

@@ -243,6 +243,8 @@ export async function buildPlan(
         state = "missing"
         reason = spec.mirror
           ? `not made yet; flipped from ${spec.mirror.sourceAssetId} (no generation cost)`
+          : spec.character?.layer?.attach
+            ? `not made yet; a held item placed on ${spec.character.layer.sources.map((source) => source.assetId).join(", ")} (no generation cost)`
           : spec.derive
             ? `not made yet; derived from ${spec.derive.source.kind === "asset" ? spec.derive.source.assetId : spec.derive.source.file} (${spec.derive.transform}, no generation cost)`
             : "not in lockfile"
@@ -251,7 +253,9 @@ export async function buildPlan(
       state = "stale"
       reason = spec.derive
         ? "transform, its parameters, or the source file changed; derive it again (no generation cost)"
-        : "prompt, size, or style changed"
+        : spec.character?.layer?.attach
+          ? "the item, the anchors file, or how it is held changed; place it again (no generation cost)"
+          : "prompt, size, or style changed"
     } else if (derivedStale) {
       state = "stale"
       reason = `${derivedStale}; derive it again (no generation cost)`
@@ -281,7 +285,14 @@ export async function buildPlan(
       reason = `outfit source ${spec.character.parentAssetId} changed; re-clothe the loop again`
     } else if (spec.character?.kind === "layer" && changedLayerSource(spec, entry, lock)) {
       state = "stale"
-      reason = `layer source ${changedLayerSource(spec, entry, lock)} changed; dress the frames again`
+      reason = spec.character.layer?.attach
+        ? `layer source ${changedLayerSource(spec, entry, lock)} changed; place the item again (no generation cost)`
+        : `layer source ${changedLayerSource(spec, entry, lock)} changed; dress the frames again`
+    } else if (spec.character?.layer?.attach && entry.status === "downloaded" && entry.outputs.some((_output, index) =>
+      !existsSync(currentEntryOutputPath(entry, spec, index)))
+    ) {
+      state = "stale"
+      reason = "held item output missing on disk; place it again (no generation cost)"
     } else if (changedConnection) {
       // Which set and terrain this connects to is in specHash above; the
       // other set's current generation is only in the lockfile.
@@ -350,9 +361,9 @@ export async function buildPlan(
       // is reported rather than silently overwritten.
       state = "orphaned"
       reason = await modifiedReason(entry, spec)
-    } else if (spec.derive) {
-      // Its bytes are the transform's, not a provider's, so the style's
-      // palette enforcement has nothing to re-apply.
+    } else if (spec.derive || spec.character?.layer?.attach) {
+      // Its bytes are the transform's (or the author's item), not a
+      // provider's, so the style's palette enforcement has nothing to re-apply.
       state = "ok"
       reason = "up to date"
     } else if (spec.mirror && !postprocessCurrent(entry, spec)) {
@@ -401,7 +412,7 @@ export async function buildPlan(
         item.reason = `parent ${parentKey} is being generated in this run; this follows in the next wave`
         break
       }
-      if ((item.spec.mirror || item.spec.derive) && (parentState === "recoverable" || parentState === "in-flight")) {
+      if ((item.spec.mirror || item.spec.derive || item.spec.character?.layer?.attach) && (parentState === "recoverable" || parentState === "in-flight")) {
         // A mirror flips whatever bytes its source has now; wait for the
         // fetch or poll that is about to change them.
         item.state = "blocked"

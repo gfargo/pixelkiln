@@ -230,7 +230,7 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton",
+  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors",
   "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "help", "--help", "-h", "--version", "-v",
 ] as const
 
@@ -338,6 +338,10 @@ export function parseArgs(argv: string[]): Args {
   } else if (command === "estimate-skeleton") {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (target === undefined) throw new UsageError("estimate-skeleton needs an image path")
+    rest = rest.slice(1)
+  } else if (command === "anchors") {
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (target === undefined) throw new UsageError("anchors needs a held item's asset id: pixelkiln anchors <asset>")
     rest = rest.slice(1)
   } else if (command === "skeleton-preview") {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
