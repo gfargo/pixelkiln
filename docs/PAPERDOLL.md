@@ -338,6 +338,15 @@ A placed item's canvas is its source frame's grown by `padding`, 12 by
 default. When part of the item falls outside it, `gen` says how many pixels
 were lost; raise `padding`.
 
+A shield in the left hand was run the same way, with `"joint": "left-hand"`
+and a `grip` at the centre of each rotation: placed on all 56 frames for
+nothing, face-on from the front, its back and straps from behind. Two things
+it showed. An object fills its canvas, so a 32px shield came back 28 pixels
+across on a figure about 25 wide: ask for the size you want, or expect to
+redraw it smaller. And facing east the left arm is on the far side, so the
+body hides all but a sliver of the shield through that whole walk, which is
+correct and may not be what you want; `"depth": "front"` overrides it.
+
 What a placed item cannot do: the hand does not close around it, and the arm
 does not move to carry it. For a swing or a block, animate the character
 making the motion empty-handed, and the item follows the hand.
@@ -362,6 +371,12 @@ and colours in all 20, and was drawn correctly for each of the 8 directions.
 character's right hand for 4 frames and its left for 2. The east walk held it
 on one side for all 6. This is the same handedness problem PixelLab's
 animation tools have, and a mask does not fix it. A placed item does.
+
+**Nor is which way the item faces.** A shield inpainted on the same 20 frames
+(25 generations, quoted) was right from the front, with the arm drawn through
+its straps, which a placed item cannot do. In the east-facing walk it was
+drawn edge-on in 1 frame and face-on, as if seen from the front, in the other
+5.
 
 **Layers are tidied.** Given room around the figure, a provider redraws
 stretches of the body's outline a pixel off, leaves dark blots where it
@@ -522,7 +537,8 @@ stated when the job was submitted.
 Not tested: sizes other than 64px, quadrupeds, more than 56 frames,
 attack animations (where limbs cross the head and the neck detection is
 weakest), hair, capes, shields, and two held items at once. For placed
-items: the left hand, a `grip` set by hand, a frame size the skeleton
+items: `tilt` and `lean` through the pipeline (they were tried in a script),
+a `place` correction, a frame size the skeleton
 endpoint does not take directly (such a frame is sent on the next size up
 and its joints scaled back), and an item made with PixelKiln's own
 `objectPro` generator rather than PixelLab's 8-direction object tool.
