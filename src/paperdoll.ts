@@ -324,7 +324,9 @@ export interface DespeckleOptions {
  *   or mostly in colours the reference barely uses,
  * - any other run in such colours that outline has sealed off, unless the body
  *   lies beyond it in all four directions (which is what tells an eye, inside
- *   the head, from a ghost with its own outline, beside it),
+ *   the head, from a ghost with its own outline, beside it), or it is bigger
+ *   than a ghost gets (24 pixels, or 6% of the body), which is a limb the
+ *   model shaded in colours the stills do not use,
  * - such colours on the body's own exposed edge, peeled up to four deep, and
  * - outline pixels left with nothing but outline or transparency around them.
  *
@@ -333,6 +335,10 @@ export interface DespeckleOptions {
  * finger or a far hand looks like. A ghost in the body's own colours
  * therefore survives.
  */
+/** A sealed, strange-coloured run above both of these is a limb, not a ghost: pixels, and share of the body. */
+const LIMB_FLOOR = 24
+const LIMB_SHARE = 0.06
+
 export function despeckle(png: Buffer, options: DespeckleOptions): { png: Buffer; removed: number } {
   const image = decodePng(png)
   const tolerance = options.tolerance ?? 30
@@ -403,12 +409,21 @@ export function despeckle(png: Buffer, options: DespeckleOptions): { png: Buffer
     const main = runs.reduce((best, run, index) => (run.length > runs[best]!.length ? index : best), 0)
     const open = (x: number, y: number) => !inside(cell, x, y) || src[at(image, x, y) + 3] === 0
 
+    // A ghost that outline has sealed off is small. A sealed run this big in
+    // strange colours is a limb the model shaded badly, a leg in deep shadow
+    // with its own outline, and erasing it takes the leg.
+    const limb = Math.max(LIMB_FLOOR, runs[main]!.length * LIMB_SHARE)
     const dropped = new Set<number>()
+    const limbs = new Set<number>()
     for (const [index, run] of runs.entries()) {
       if (index === main) continue
       const strange = run.filter(([x, y]) => foreign(at(image, x, y))).length / run.length > 0.5
       let debris: boolean
-      if (run.some(([x, y]) => STEPS.some(([dx, dy]) => open(x + dx, y + dy)))) {
+      const exposed = run.some(([x, y]) => STEPS.some(([dx, dy]) => open(x + dx, y + dy)))
+      if (strange && !exposed && run.length > limb) {
+        debris = false
+        limbs.add(index)
+      } else if (exposed) {
         debris = strange || run.length <= 2
       } else {
         // Sealed by outline. Walk out from the run in each direction through
@@ -430,7 +445,8 @@ export function despeckle(png: Buffer, options: DespeckleOptions): { png: Buffer
     // Every run that stays, not only the body: a soft outline is a run of its
     // own, and a ghost pixel can hang off it without touching the skin.
     const peeled = new Set<number>()
-    const kept = runs.flatMap((run, index) => (dropped.has(index) ? [] : run))
+    // A limb kept for its size is not peeled either: its whole surface is in those colours.
+    const kept = runs.flatMap((run, index) => (dropped.has(index) || limbs.has(index) ? [] : run))
     for (let round = 0; round < 4; round++) {
       const next = kept.filter(([x, y]) =>
         !peeled.has(local(x, y)) && foreign(at(image, x, y)) &&

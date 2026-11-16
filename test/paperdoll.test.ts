@@ -288,6 +288,27 @@ describe("layer sheets", () => {
     expect(pixel(around, 3, 1)).toEqual([0, 0, 0, 255])
   })
 
+  it("keeps a limb the model shaded in strange colours, while still clearing a small sealed ghost", () => {
+    const MAROON: Pixel = [143, 54, 53, 255]
+    const W = 32, H = 30
+    const paint = (rects: Array<[number, number, number, number, Pixel]>) => {
+      const buf = Buffer.alloc(W * H * 4)
+      for (const [x0, y0, x1, y1, colour] of rects) {
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) Buffer.from(colour).copy(buf, (y * W + x) * 4)
+      }
+      return encodeRgbaPng(W, H, buf)
+    }
+    // A 20x24 body in its outline. The still is only that.
+    const body: Array<[number, number, number, number, Pixel]> = [[1, 1, 22, 26, INK], [2, 2, 21, 25, SKIN]]
+    const still = paint(body)
+    // The frame adds, each sealed in its own outline beside the body: a 5x7 leg and a 3x3 ghost, both maroon.
+    const frame = paint([...body, [23, 4, 29, 12, INK], [24, 5, 28, 11, MAROON], [23, 15, 27, 19, INK], [24, 16, 26, 18, MAROON]])
+    const cleaned = despeckle(frame, { reference: [still] })
+    expect(pixel(cleaned.png, 26, 8)).toEqual(MAROON)   // 35 pixels: more than a ghost gets, so a limb
+    expect(pixel(cleaned.png, 25, 17)).toEqual(CLEAR)   // 9 pixels: a ghost
+    expect(pixel(cleaned.png, 10, 10)).toEqual(SKIN)
+  })
+
   it("keys skin only where the provider may paint, so a head under an outfit's mask keeps its face", () => {
     const built = buildLayerSheet([sources[0]!], { maxSide: 512, minSide: 1 })
     const sheet = decodePng(built.sheet)
