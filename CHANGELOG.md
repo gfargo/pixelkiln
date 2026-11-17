@@ -1,3 +1,31 @@
+# [0.105.0](https://github.com/gfargo/pixelkiln/compare/v0.104.1...v0.105.0) (2026-11-17)
+
+
+### Bug Fixes
+
+* **character:** cleaning no longer erases a limb drawn in deep shadow ([2e8e747](https://github.com/gfargo/pixelkiln/commit/2e8e7472010981a2bc6ff19ac45a3040cc719398))
+* **docs:** the provider check reads the section the provider results moved to ([ac00bfe](https://github.com/gfargo/pixelkiln/commit/ac00bfecd9dd6ed1091696e2b487b4e49657eb2d))
+
+
+### Features
+
+* **character:** grasp, a grip pass for placed items ([2a9b897](https://github.com/gfargo/pixelkiln/commit/2a9b897eada57d3abc1aca6b29d544876f97ba91))
+* **character:** held items pinned to a hand, and an anchors command ([45de908](https://github.com/gfargo/pixelkiln/commit/45de90872f4ffa35a996c91685cec534304c8c5f))
+* **character:** key skin only inside a layer's mask ([783a8ff](https://github.com/gfargo/pixelkiln/commit/783a8ff7f6529886e32678c708396e9e072388ab))
+* **character:** layer regions and padding for hats and held items ([bf06981](https://github.com/gfargo/pixelkiln/commit/bf069814b7627a41d87ddffaad3f33095301643a))
+* **character:** offset, a per-layer pixel nudge ([8e92d19](https://github.com/gfargo/pixelkiln/commit/8e92d19793cf2be6635734f8f22c161c8bc33980))
+* **character:** paperdoll layers and loop cleaning ([a7b3e25](https://github.com/gfargo/pixelkiln/commit/a7b3e25d5ce0e80d3d535c937bcc3c2d97f02922))
+* **character:** scale and a centre grip for placed items ([e1afe7f](https://github.com/gfargo/pixelkiln/commit/e1afe7f2530c8567fff16631eef1cc80453596db))
+* **character:** tidy clothing layers so one garment comes out alone ([e34f336](https://github.com/gfargo/pixelkiln/commit/e34f3366423d8fe3a3367497f65926338bccf6c9))
+* recolour a whole layer for free, and pair layers with frames in the packed atlas ([3ed531e](https://github.com/gfargo/pixelkiln/commit/3ed531ec98d5b486d984a0ad80ad8b826cf07c33))
+* redraw single frames of a paperdoll layer ([b11c707](https://github.com/gfargo/pixelkiln/commit/b11c707bde374fb9e9f23e92436771dd808919ae))
+* **site:** a character builder from thirteen paperdoll layers ([547fd8a](https://github.com/gfargo/pixelkiln/commit/547fd8a23804056d3ea329086fabcd4cdb895071))
+* **site:** a hero that shows a real character and its receipt ([d269ea0](https://github.com/gfargo/pixelkiln/commit/d269ea087f7b2bf6103f462cf70eed8698eaa919))
+* **site:** fantasy layer set for the character builder, with looks ([74a937a](https://github.com/gfargo/pixelkiln/commit/74a937a711bf3d868e3c5af284b19a39b8171b79))
+* **site:** feature pages, a hub on the home page, and header menus ([687f424](https://github.com/gfargo/pixelkiln/commit/687f4244dd8bf8096f7e8c270086422c262aaa84))
+* **site:** restyle every section to the design rules, and give each feature page a picture ([4ae7a91](https://github.com/gfargo/pixelkiln/commit/4ae7a9162910c097bd9c3a4669660007892ff977))
+* skin tones in the character builder, and hue-shift limited to a reference's colours ([5080a2c](https://github.com/gfargo/pixelkiln/commit/5080a2cfd66329dce50b71a33486b1e527815386))
+
 ## [0.104.1](https://github.com/gfargo/pixelkiln/compare/v0.104.0...v0.104.1) (2026-11-14)
 
 # [0.104.0](https://github.com/gfargo/pixelkiln/compare/v0.103.0...v0.104.0) (2026-11-14)
