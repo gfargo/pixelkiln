@@ -96,7 +96,9 @@ def reference(v):
     sprite = Image.open(f'{sprite_dir}/{name}-{D[v]}.png').convert('RGBA')
     sprite = sprite.crop(sprite.getbbox())
     scale = min(440 // sprite.width, 440 // sprite.height)
-    if env('REF', 'hard') == 'smooth':
+    if scale < 1:  # a redrawn, large reference (redraw.py): shrink it to fit, smoothly
+        k = 440 / max(sprite.size); sprite = sprite.resize((round(sprite.width * k), round(sprite.height * k)), Image.LANCZOS)
+    elif env('REF', 'hard') == 'smooth':
         pre = np.array(sprite).astype(np.float32); pre[..., :3] *= pre[..., 3:4] / 255
         big = np.array(Image.fromarray(pre.astype(np.uint8), 'RGBA').resize((sprite.width * scale, sprite.height * scale), Image.BICUBIC)).astype(np.float32)
         big[..., :3] = big[..., :3] / np.maximum(big[..., 3:4], 1) * 255

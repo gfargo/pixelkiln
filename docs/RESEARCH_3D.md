@@ -39,6 +39,7 @@ Last updated 17 November 2026.
 | 29 | Paint the body and each worn mesh before cutting the item out | Hunyuan3D paint stage, our bake | Clean armour, cape and skin in place of speckle; colours drift cooler and the gold is duller | Keep. The colour drift is handled in step 30. |
 | 30 | Hide the skin under what is worn, and bake each item in its own colours | Our script | The body is six pieces, each hidden while its item is on; orange flecks in the walk turned out to be dulled gold snapped to skin colour, and are gone | Keep. |
 | 31 | Draw the character as sprite cards on the skeleton, with no textured mesh shown | Our script, three.js | Crisp drawn pixels from any angle, walking, with items that switch off | Keep as a second way to show a character. Eight directions and open joints are the limits. |
+| 32 | Redraw the sprites large with a local image model, and paint from those | SDXL with a tile control model, Hunyuan3D paint stage | Painted armour with real detail in place of enlarged pixels; 768 pixel views fit in 12 GB | Keep. The eight redraws do not agree on details, and colours move. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -766,6 +767,37 @@ Not checked: sixteen directions (step 13 could supply them), any engine other th
 
 **Verdict.** Keep, beside the painted mesh and not instead of it. The cards are sharper today; the mesh is the only one that can be lit, seen from above, or posed freely.
 
+## 32. Larger references, redrawn locally
+
+**Question.** The goal from here is the best painted surface, not pixel art. The survey says the reference picture is the first cap: the paint stage has been shown a 46 pixel figure enlarged with hard edges. Can the sprites be redrawn large, for nothing, and does the paint improve?
+
+**Setup.**
+
+- *Redraw.* [`scripts/redraw.py`](../research/scripts/redraw.py) cuts the figure out of each sprite, enlarges it smoothly to 1024 pixels and has SDXL redraw it on the ComfyUI already used for meshes. The checkpoint (`sd_xl_base_1.0`) and a tile control model (`controlnet-union-sdxl-promax`) were already on the machine, so nothing was downloaded and no generations were spent. About 25 seconds a direction.
+- *Settings.* A tile control held at 0.8 for every step, with the model allowed to change half the picture, returned the blurry enlargement unchanged. Letting the model change 90% while the control applies at 0.6 for the first half of the steps gives a redraw that keeps the layout. Left to right: the sprite, a cautious setting, the setting kept, and an anime checkpoint that flattened it.
+
+![The sprite and three redraws of it](../website/public/research/3d/hd-redraw-settings.png)
+
+- *Paint.* The body wearing the cuirass, the same mesh as step 29, painted from the eight redraws and baked at 2048 pixels. Once with 512 pixel views as before, once with 768.
+
+**Result.** The eight redraws:
+
+![Eight redrawn directions of the body wearing the cuirass](../website/public/research/3d/hd-redraws.png)
+
+The mesh painted from the sprites (step 29), from the redraws at 512 pixel views, and from the redraws at 768:
+
+![The same mesh painted from sprites, from redraws, and from redraws with larger views](../website/public/research/3d/hd-painted.png)
+
+- **The paint now has things in it:** plate edges, a collar, a crest with a shape, a face with brows and ears. Before, it was the sprite's pixels enlarged.
+- **768 pixel views fit in 12 GB** and are a little sharper, at about 110 seconds a direction against 40.
+- **The redraws do not agree with each other.** Each direction is redrawn alone, so the crest, the shoulder plates and the face differ from view to view, and the bake averages them. The back view came back still pixelated.
+- **Colours move.** The black armour became grey steel and the skin paler. Nothing ties a redraw to the sprite's palette.
+- **The mesh is now the limit you see.** Flat facets show on the head and limbs under a detailed texture.
+
+Not done: the other items, the bare body, and the assembled model in the viewer, which still carries step 30's textures.
+
+**Verdict.** Keep. The largest gain in texture quality so far, for no cost but GPU time. The next gains are in making the eight redraws agree and in a smoother mesh.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -795,7 +827,8 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
 - **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
 - **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
-- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, at higher resolution, and pixelate afterwards if wanted. Not started. Candidates: larger and upscaled reference pictures for the paint stage, more views, a newer paint model, and repacking each item's texture so it uses the whole picture.
+- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Still to do: redraws that agree across directions (redraw all eight on one sheet, or feed each redraw the last as a guide), holding the sprite's colours, the remaining parts, a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture.
+- **A smoother mesh under the paint.** More triangles or smoothed normals, now that facets show (step 32).
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
@@ -926,6 +959,11 @@ ITEMS="Helm=<helm.glb>:Head;Cape=<cape.glb>:Hips,Spine;Cuirass=<cuirass.glb>" py
 # Sprite cards (step 31): the bone that owns each vertex, then the sprites cut into pieces per bone.
 SKIN=<skin.npz> python3 research/scripts/rig.py <body.textured.glb> <body.rig.json> - - <skeleton.glb>
 LAYERS="Body=<body>;Cape=<cape>:Spine:behind;Helm=<helm>:Head" python3 research/scripts/cards.py <skin.npz> <body.camera.json> <sprites> <out-prefix>
+
+# Redraw sprites large with a local image model, then paint from the redraws with larger views (step 32).
+python3 research/scripts/redraw.py <sprites> <name> <redraw-folder> "<what the character is>"
+VIEW=768 SPREAD=22 STAGE=paint python3 research/scripts/hunyuan3d_paint_turn.py <name.textured.glb> <redraw-folder> <name> <out-folder>
+python3 research/scripts/bake.py <name.textured.glb> <out-folder>/<name>.views.json <bake-folder> <name> 2048
 
 # Draw textured meshes large, one row each.
 python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>
