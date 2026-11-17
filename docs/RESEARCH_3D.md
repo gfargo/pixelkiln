@@ -40,6 +40,8 @@ Last updated 17 November 2026.
 | 30 | Hide the skin under what is worn, and bake each item in its own colours | Our script | The body is six pieces, each hidden while its item is on; orange flecks in the walk turned out to be dulled gold snapped to skin colour, and are gone | Keep. |
 | 31 | Draw the character as sprite cards on the skeleton, with no textured mesh shown | Our script, three.js | Crisp drawn pixels from any angle, walking, with items that switch off | Keep as a second way to show a character. Eight directions and open joints are the limits. |
 | 32 | Redraw the sprites large with a local image model, and paint from those | SDXL with a tile control model, Hunyuan3D paint stage | Painted armour with real detail in place of enlarged pixels; 768 pixel views fit in 12 GB | Keep. The eight redraws do not agree on details, and colours move. |
+| 33 | Make the redraws agree: one sheet for all eight, or each alone with the sprite's colours held | SDXL with a tile control model | Holding colours fixes the drift and keeps the detail; the one-sheet redraw agrees but is soft | Keep the colour hold. Drop the sheet. |
+| 34 | Mesh from redrawn pictures in place of smoothed sprites | SDXL redraw, Hunyuan3D-2mv | A round skull, a face, ears, arms and legs with shape, where there were flat facets | Keep. The largest gain in the mesh since step 22. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -798,6 +800,46 @@ Not done: the other items, the bare body, and the assembled model in the viewer,
 
 **Verdict.** Keep. The largest gain in texture quality so far, for no cost but GPU time. The next gains are in making the eight redraws agree and in a smoother mesh.
 
+## 33. Making the redraws agree
+
+**Question.** Step 32's eight redraws each invent their own details and their own colours. Two fixes were tried.
+
+**Setup.** Both are options of [`scripts/redraw.py`](../research/scripts/redraw.py).
+
+- *One sheet* (`SHEET=1`). All eight figures are put on one 2048 by 1024 picture and redrawn together, so the model sees one character from eight angles. Each figure is then enlarged and sharpened alone, with the model allowed to change 35%.
+- *Colours held* (`COLOUR=1`, now the default). The redraw's broad colour is swapped for the sprite's, region by region: a blurred copy of the redraw is taken out and a blurred copy of the enlarged sprite put in, leaving only the redraw's detail. The blur is a fortieth of the picture wide.
+
+**Result.** The same mesh painted from: step 32's redraws; redraws made alone with colours held; one-sheet redraws with colours held.
+
+![The mesh painted from three sets of redraws](../website/public/research/3d/hd-painted-agree.png)
+
+- **Holding the colours is the fix.** The armour is black again and the skin is the sprite's, with the plates, crest and face of step 32 intact. Because every view now shares the sprite's colours, the views also disagree less where they meet.
+- **The sheet agrees and loses the rest.** At a quarter of the pixels a figure, the model drew a soft suit with gold swirls in place of plates, and a child's face. The sharpening pass cannot put back a design that was never drawn.
+
+**Verdict.** Keep the colour hold, drop the sheet. Details still differ between directions; the bake blends them.
+
+## 34. A mesh from redrawn pictures
+
+**Question.** The mesh model has been shown the sprites, enlarged smoothly (step 22). Its meshes have a faceted skull and lumpy limbs. Is that the model, or the pictures it is given?
+
+**Setup.** The bare body's front, left, back and right sprites were redrawn at 1024 pixels as in step 32, with `OUTLINE=own`. By default a redraw is cut with the sprite's own enlarged outline, which keeps its stair steps: a head drawn in a dozen pixels has corners. `OUTLINE=own` keeps the outline the model drew, taking as ground whatever is near the ground colour and joined to the picture's border. The four redraws went to Hunyuan3D-2mv with nothing else changed.
+
+Top: what the mesh model was given before. Bottom: the redraws.
+
+![The four smoothed sprites, and the four redraws, given to the mesh model](../website/public/research/3d/hd-mesh-inputs.png)
+
+**Result.** Top: the mesh of step 26. Bottom: the mesh from the redraws.
+
+![The body mesh from smoothed sprites and from redrawn pictures](../website/public/research/3d/hd-mesh.png)
+
+- **It was the pictures.** The new mesh has a round skull, a brow, nose and ears, a chest, shoulder blades, arms that taper, calves. The old one is a figure of flat panels.
+- **The redraw's outline matters as much as its inside.** The model builds what the outline shows, and the sprite's outline is a staircase.
+- **The back view's outline is still partly stepped,** where the redraw kept the sprite's edge.
+
+Not done: fitting this mesh to the sprites, painting it, the worn meshes, or anything in the viewer. The redraws are no longer pixel for pixel on the sprites, so the fit of step 9 and the item cut of step 27 need checking against them.
+
+**Verdict.** Keep. Next is to rebuild the body and items from redrawn pictures end to end.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -827,8 +869,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
 - **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
 - **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
-- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Still to do: redraws that agree across directions (redraw all eight on one sheet, or feed each redraw the last as a guide), holding the sprite's colours, the remaining parts, a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture.
-- **A smoother mesh under the paint.** More triangles or smoothed normals, now that facets show (step 32).
+- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Steps 33 and 34 continue it. Still to do: rebuild the body and every item from redrawn pictures end to end (mesh, fit, paint, cut) and put the result in the viewer, a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture.
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
