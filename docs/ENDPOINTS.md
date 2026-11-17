@@ -156,7 +156,7 @@ not probed.
 | `POST /vfx`, lite artist, no sprite | `pixelkiln vfx --description`, `vfx` block `description` | Measured live | One effect billed 1 (balance 5104 to 5103); 163×26, 8 frames, sheet and atlas cut into 8 correct frames ([VFX artist](#vfx-artist-post-vfx-measured-once), October 2026). | The `files` shape (list or map) is undocumented; PixelKiln reads three. | Low |
 | `POST /vfx`, lite artist, animated sprite | `pixelkiln vfx --description --sprite-frames`, `vfx` block `spriteFrames` | Measured live | Four effects around a 108px walk cycle (4-, 8- and 12-frame, strip and GIF) were each quoted 2 and billed 2, 2, 2 and 4, the last at the 2× ceiling ([Animated sprites](#vfx-animated-sprites-measured), November 2026). | Pro bills; a still sprite's bill. | Low |
 | `POST /vfx`, still sprite, pro artist, `effect_id` change or `game_pack` | same | Mock only | Quoted from the OpenAPI table: pro 6 (8 with a sprite), 14 and 28 for larger sprites; plans count twice the quote ([VFX artist](#vfx-artist-post-vfx-measured-once)). | Every variant above. | High |
-| MCP `tools/call` `vfx_workbench` at `api.pixellab.ai/mcp` | `pixelkiln vfx`, `vfx` block `preset` or `recipe` | Measured live | Free on a subscription; same recipe re-rendered byte-identical; exports a sheet, GIF, atlas and optional game pack ([VFX workbench (MCP only), measured](#vfx-workbench-mcp-only-measured), October 2026). | "Busy, retry" is the only recorded error; sprites by asset are not wired. | Low |
+| MCP `tools/call` `vfx_workbench` at `api.pixellab.ai/mcp` | `pixelkiln vfx`, `vfx` block `preset` or `recipe` | Measured live | Free on a subscription; same recipe re-rendered byte-identical; exports a sheet, GIF, atlas and optional game pack ([VFX workbench (MCP only), measured](#vfx-workbench-mcp-only-measured), October 2026). | "Busy, retry" is the only recorded error; a `character:` or `gallery:` sprite reference (an `object:<id>` reference and local prop sprites rendered, November 2026). | Low |
 | `POST /create-image-pixen`, `/create-image-bitforge` | none | Not wrapped | Each 1 generation; bitforge returned blobs for a simple prompt ([Single-image generators, measured](#single-image-generators-measured)). | n/a | n/a |
 | `POST /rotate`, `/resize`, `/image-to-pixelart` | none | Not wrapped | Each 1 generation; all three break a locked palette ([Post-processing utilities, measured](#post-processing-utilities-measured)). | n/a | n/a |
 | `POST /inpaint`, `/edit-image` (not v2 or v3) | none | Not wrapped | "Untouched by any of this" ([Not yet explored](#not-yet-explored)). | n/a | n/a |
@@ -813,6 +813,16 @@ The tool takes one `argv` list per call:
   URLs need no auth.
 - `describe presets|parts|recipe|edits|...` documents the rest: 17 presets
   and about 90 parts as of October 2026.
+  `describe presets` listed 41 on 17 November 2026.
+
+**Sprites that are not characters (17 November 2026).** Four presets were
+rendered around props, each free: `rim_glow`, `lightning_strike` and
+`firelight` around local 32px PNGs, and `shield_bubble` around
+`object:<id>` (an 8-direction object; PixelLab chose the view). All four
+exported normally. `shield_bubble` set `subject.align` to `center`, the
+others to `feet`. One `lightning_strike` call answered "this took longer
+than 120s and was stopped; nothing was saved" and the same call succeeded on
+the next try.
 
 **Two gaps a wrapper has to cover:**
 

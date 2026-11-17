@@ -389,6 +389,52 @@ Godot exporters translate supported 4-edge and 4-corner rule sets and reject
 unknown semantics rather than emitting plausible but incorrect adjacency.
 See [TILES.md](./TILES.md) for file contracts and engine details.
 
+## Render effects
+
+`pixelkiln vfx` is a thin layer over exported functions. The local source,
+[pixelfx](https://github.com/patch-gg/pixelfx), is not a dependency of
+PixelKiln: install it yourself with `npm i github:patch-gg/pixelfx`.
+
+```ts
+import { loadPixelfx, listPixelfxEffects, makePixelfxVfx, renderPixelfx } from "pixelkiln"
+
+const lib = await loadPixelfx()
+const standalone = listPixelfxEffects(lib).filter((effect) => !effect.needsCharacter)
+
+const made = await makePixelfxVfx(lib, {
+  effect: "fire/torch",
+  fps: 12,
+  options: { seed: 4, palette: ["#102", "#43a", "#8cf", "#fff"] },
+  out: "fx/torch",
+})
+console.log(made.paths.sheet, made.anchor, made.frames, made.sheetSha256)
+
+const { frames, width, height, anchor } = renderPixelfx(lib, { effect: "pickups/coin-spin", margin: 4 })
+```
+
+- `loadPixelfx(from?)` looks for the library from the working directory, then
+  from PixelKiln's own install, and throws a `PixelKilnError` with code
+  `capability` and the install line as its `hint` when it is missing. Pass
+  directories to look from somewhere else.
+- `listPixelfxEffects(lib)` returns each effect's id, category, frame size,
+  duration, `loop`, default `fps`, declared `options`, and `needsCharacter`.
+- `renderPixelfx(lib, recipe)` renders in process and writes nothing. It
+  returns `frames` (one RGBA `Buffer` per frame, straight alpha), `width`,
+  `height`, `fps`, `loop`, and `anchor`, the effect's pivot on a frame.
+- `makePixelfxVfx(lib, { ...recipe, out, name?, force? })` writes
+  `<out>.png`, `<out>.json`, and `<out>.vfx.json` and returns their paths and
+  the frame facts. `readPixelfxRecipe(file)` reads a recipe back from that
+  record, or returns `null` for a file that is not a pixelfx recipe.
+- A recipe is `{ effect, fps?, margin?, options? }`. `options` goes to the
+  effect over its defaults: `palette`, `seed`, `flip`, `angle`, `light`, and
+  the effect's own. Effects drawn around pixelfx's stock character are
+  refused with a `usage` error.
+
+The PixelLab side has the same shape: `makeVfx(mcpClientFromEnv(), { preset,
+parts, sprite, fps, out })` drives the free workbench, and
+`makeVfxWithArtist(clientFromEnv(), { description, out })` asks the paid
+artist. Both write the files [`vfx`](./CLI.md#vfx) documents.
+
 ## Provider integrations
 
 `Provider` is the capability boundary. Generation pipelines accept that

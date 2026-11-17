@@ -402,6 +402,43 @@ a { color: inherit; text-decoration: none; }
   line-height: 1.4;
 }
 .effects-strip figcaption b { display: block; color: var(--ember-light); font-weight: 600; }
+.effects-strip .fx-stage {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 300px;
+  padding: 28px 12px 18px;
+  overflow: hidden;
+}
+.fx-section { padding-block: 110px; }
+.effects-strip.fx-strip-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fx-section-alt { background: #201d17; }
+.fx-subhead { margin: 90px 0 0; color: var(--cream); font-size: 26px; font-weight: 650; letter-spacing: -0.02em; }
+.fx-subdeck { max-width: 620px; margin-top: 16px; }
+.fx-subdeck + .effects-strip { margin-top: 40px; }
+.fx-section .effects-bottom { align-items: start; margin-bottom: 0; }
+.fx-section .effects-bottom.fx-top { margin-top: 70px; }
+.fx-section .effects-list { margin-top: 0; }
+.fx-section .review-links { margin-top: 8px; }
+.fx-ways {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 70px;
+  background: var(--line);
+}
+.fx-ways article { padding: 34px 34px 38px; background: #1b1913; }
+.fx-ways h3 { margin: 0 0 14px; color: var(--cream); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.fx-ways p { margin: 0; color: var(--cream-muted); font-size: 15px; line-height: 1.7; }
+.fx-ways .check-list { margin-top: 22px; }
+.fx-steps { display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; color: var(--cream-muted); font-size: 15px; line-height: 1.65; }
+.fx-steps b { color: var(--cream); font-weight: 600; }
+.provider-table.fx-controls td:nth-child(2), .provider-table.fx-controls td:nth-child(3) { white-space: normal; }
+.provider-table.fx-controls tbody th { white-space: normal; width: 22%; }
+.provider-table.fx-controls thead th { width: 39%; }
+.provider-table.fx-controls thead th:first-child { width: 22%; }
+.fx-section code { overflow-wrap: anywhere; }
 .updates-featured { margin-top: 70px; }
 .updates-meta {
   margin: 0 0 14px;
@@ -1156,6 +1193,8 @@ a { color: inherit; text-decoration: none; }
   .updates-mini { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .updates-featured h3 { font-size: 22px; }
   .effects-bottom { grid-template-columns: minmax(0, 1fr); }
+  .fx-ways { grid-template-columns: minmax(0, 1fr); }
+  .effects-strip.fx-strip-3 { grid-template-columns: minmax(0, 1fr); }
   .hero { grid-template-columns: 1fr; gap: 44px; }
   .hero-copy { max-width: 720px; }
   .proof-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1185,6 +1224,9 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 680px) {
   .shell { width: min(100% - 30px, 1180px); }
   .effects-section { padding-block: 90px; }
+  .fx-section { padding-block: 80px; }
+  .fx-ways article { padding: 26px 22px 30px; }
+  .effects-strip .fx-stage { min-height: 220px; padding: 18px 8px 12px; }
   .effects-strip picture { min-height: 220px; padding: 18px 8px 12px; }
   .code-window-body { padding: 18px 16px 16px; font-size: 12.5px; }
   .doc-child-grid, .doc-siblings { grid-template-columns: 1fr; }

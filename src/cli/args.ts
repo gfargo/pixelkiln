@@ -124,6 +124,10 @@ export interface Args {
   sprite?: string
   /** vfx: frames per second. */
   fps?: number
+  /** vfx: where the effect comes from: pixellab (default) or pixelfx, the local effects library. */
+  lib?: string
+  /** vfx --lib pixelfx: transparent pixels added on every side of the effect's canvas. */
+  margin?: number
   /** vfx --description: how many equal frames the --sprite strip holds. */
   spriteFrames?: number
   /** vfx --description: how fast the --sprite animation plays. */
@@ -219,7 +223,7 @@ const VALUE_FLAGS = [
   "--reviewer", "--note", "--source", "--object-id", "--tool", "--prompt", "--seed", "--cost", "--step", "--raw",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
-  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
+  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--lib", "--margin", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
   "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame",
@@ -243,7 +247,7 @@ const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 const EDIT_SUBCOMMANDS = ["start", "detach"] as const
 const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
-const VFX_SUBCOMMANDS = ["make", "presets", "parts"] as const
+const VFX_SUBCOMMANDS = ["make", "presets", "parts", "effects"] as const
 const MUSIC_SUBCOMMANDS = ["make", "style", "lyrics"] as const
 const TALK_SUBCOMMANDS = ["visemes", "gif", "plan"] as const
 const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "save", "expand", "review", "export"] as const
@@ -620,6 +624,8 @@ export function parseArgs(argv: string[]): Args {
     parts: list("--part"),
     sprite: get("--sprite"),
     fps: numberOption("--fps", { min: 1, max: 60, integer: true }),
+    lib: get("--lib"),
+    margin: numberOption("--margin", { min: 0, max: 256, integer: true }),
     spriteFrames: numberOption("--sprite-frames", { min: 1, max: 32, integer: true }),
     spriteFps: numberOption("--sprite-fps", { min: 1, max: 60, integer: true }),
     gamePack: rest.includes("--game-pack"),

@@ -1182,6 +1182,7 @@ pixelkiln vfx --preset explosion --part scorch_mark --out fx/explosion --game-pa
 pixelkiln vfx --preset heal_pillar --sprite sprites/hero.png --out fx/hero-heal
 pixelkiln vfx --recipe fx/explosion.vfx.json --out fx/explosion-v2
 pixelkiln vfx --effect <saved effect id> --out fx/explosion --force
+pixelkiln vfx --lib pixelfx --effect fire/torch --out fx/torch
 ```
 
 Builds an animated pixel-art effect with PixelLab's VFX workbench (Create
@@ -1223,6 +1224,40 @@ For effects that need more than presets and parts (your own layers, exact
 timing, a projectile you drew), use the `vfx_workbench` tool from an MCP
 client such as Claude Code. Then pull the result into the project with
 `pixelkiln vfx --effect <id>`.
+
+For effects with no account at all, see
+[Local effects with pixelfx](#local-effects-with-pixelfx) below.
+
+#### Effects around objects
+
+```bash
+pixelkiln vfx --preset rim_glow --sprite props/kiln.png --out fx/kiln-glow
+pixelkiln vfx --preset shield_bubble --sprite object:<id> --out fx/chest-shield
+pixelkiln vfx --preset lightning_strike --sprite props/anvil.png --out fx/anvil-strike
+```
+
+`--sprite` is not limited to characters. The workbench fits the effect to
+whatever image it is given. Measured on 17 November 2026, each run free:
+
+- A local 32px PNG of a prop rendered with `rim_glow` (64x64, 8 frames,
+  loops), `lightning_strike` (96x128, 10 frames, plays once), and
+  `firelight` (64x64, 8 frames, loops).
+- `object:<id>`, an object stored in the PixelLab account, rendered with
+  `shield_bubble` (96x96, 8 frames, loops) with no download first. The
+  object was an 8-direction one and PixelLab chose the view.
+- Each preset places the sprite itself. `shield_bubble` centred the prop;
+  the other three stood it on the preset's ground line. The record's
+  `recipe.subject` holds the position and alignment used.
+- A preset's canvas does not shrink to the sprite. A small prop under a
+  96x128 lightning strike stays small.
+- Lighting presets (`firelight`, `rim_glow`, `light_sweep`) are written for
+  any sprite and show a sample asteroid when given none. `firelight` changes
+  only the sprite's own pixels, which is hard to see on a 32px prop.
+- One `lightning_strike` run failed with PixelLab's "took longer than 120s
+  and was stopped; nothing was saved" and succeeded unchanged on the next
+  try. Nothing is billed either way; run it again.
+
+`vfx presets` listed 41 presets on that date.
 
 #### Described effects (paid)
 
@@ -1275,6 +1310,71 @@ and needs no MCP.
 To plan, lock, and pack effects with the rest of a project's art, declare
 them in the manifest instead, with the [`vfx` generator](./GENERATORS.md#vfx).
 A `.vfx.json` record from this command works there as a `recipe`.
+
+#### Local effects with pixelfx
+
+```bash
+npm i github:patch-gg/pixelfx
+pixelkiln vfx effects
+pixelkiln vfx --lib pixelfx --effect fire/torch --out fx/torch
+pixelkiln vfx --lib pixelfx --effect explosions/small-explosion --palette "#102,#215,#43a,#8cf,#fff" --seed 3 --fps 12 --out fx/boom
+pixelkiln vfx --recipe fx/boom.vfx.json --out fx/boom-again
+```
+
+`--lib pixelfx` renders an effect from
+[pixelfx](https://github.com/patch-gg/pixelfx), a library of code-drawn
+pixel-art effects, on this machine. No key is read, nothing is sent, and
+nothing is billed. Its randomness is seeded, so the same recipe and library
+version write the same bytes every time.
+
+- pixelfx is not on the npm registry, so PixelKiln does not install it.
+  Install it beside your project with the line above. It is looked for in the
+  working directory first, then beside PixelKiln; a run without it fails
+  with that install line (exit code 7).
+- `vfx effects` lists the library's categories and effect ids with each
+  effect's frame size and length; `--json` prints the same as data, with every
+  effect's options and defaults. `vfx presets --lib pixelfx` is the same list.
+- `--effect <category>/<name>` picks the effect. `--palette` replaces its
+  color ramp with your own, dark to bright, as comma-separated hex colors
+  (quote it: `#` starts a shell comment); the library resamples a ramp of any
+  length to the steps the effect uses. `--seed <n>` rolls its randomness
+  differently. `--fps <n>` (1–60) sets the frame rate, and with it the frame
+  count: simulated effects step at the same rate inside whatever you pick.
+- An effect's canvas is the library's own and is not resized. `--margin <px>`
+  adds transparent pixels on every side, for glow or particles that the
+  canvas would cut off. Without a margin, glow is eased out over the last
+  8 pixels of the canvas, as the library's own sheets do.
+- `--out <base>` writes `<base>.png` (a transparent spritesheet, frames in a
+  row-major grid), `<base>.json` (an Aseprite-style frame atlas with the
+  effect's pivot in `meta.anchor` and the grid in `meta.pixelfx`), and
+  `<base>.vfx.json`. No GIF is written. Existing files are replaced only with
+  `--force`.
+- `<base>.vfx.json` records the library and its version, the effect id, the
+  frame facts, the sheet's SHA-256, and the **recipe** (effect, fps, margin,
+  options). Pass it back as `--recipe` to render the same pixels again; no
+  `--lib` is needed, the file says what it is. Flags given with it override
+  the recorded value. A recipe can also carry options the flags do not cover,
+  such as `flip`, `angle`, `light`, or an effect's own, under `options`. If
+  the installed library's version differs from the recorded one, the run says
+  so, because a newer version may draw the effect differently.
+- `--dry-run` prints the frame facts and writes nothing; `--json` prints the
+  facts and paths.
+- An effect goes over a character or an object the same way: draw each
+  frame's top-left at `target − meta.anchor`, after the sprite to put it in
+  front or before it to put it behind. A coin spinning above a 64px chest
+  (`pickups/coin-spin`, pivot 28,48, target 64,62, so the frame lands at
+  36,14) and a `holy/sunburst` drawn behind the same chest are on the
+  website's Effects page.
+- About 70 of the library's effects (status effects, auras, whole attack
+  moves) are drawn around its stock character and are refused: PixelKiln has
+  no way to hand them your sprite yet. `vfx effects` marks them.
+- PixelLab's flags (`--preset`, `--part`, `--sprite`, `--description`,
+  `--game-pack`) are refused with `--lib pixelfx`, and `--palette`, `--seed`,
+  and `--margin` are refused without it. These effects are not yet a
+  manifest generator.
+
+pixelfx is MIT licensed, Copyright (c) 2026 Patch and Hugo Duprez; see
+[Third-party notices](./THIRD_PARTY.md).
 
 ### `font`
 
@@ -1740,7 +1840,7 @@ Print the package version. `-v` is an alias.
 | `--object-id <id>` | adopt --local | The provider object id of the single asset being imported. |
 | `--tool <name>` | adopt --local | The tool call that made the art, recorded under `origin`. |
 | `--prompt <text>` | adopt --local | The prompt the art was rolled with; becomes the entry's prompt. |
-| `--seed <n>` | adopt --local | The seed it was rolled with. |
+| `--seed <n>` | adopt --local, vfx | adopt: the seed it was rolled with. vfx `--lib pixelfx`: the effect's random seed. |
 | `--cost <n>` | adopt --local | Credits spent making it, in the asset's cost unit; counts toward recorded spend. |
 | `--step <text>` | adopt --local | One post-generation step, in order; repeatable, free text, recorded and never run. |
 | `--raw <png>` | adopt --local | The unprocessed original, for one asset; its hash is recorded and its bytes cached. |
@@ -1756,7 +1856,7 @@ Print the package version. `-v` is an alias.
 | `--max-colors <n>` | audit | Maximum distinct opaque colors. |
 | `--sigma <n>` | audit | Relative outlier cutoff; defaults to 1.5. |
 | `--prune` | cache | Remove invalid and unreferenced cache data. |
-| `--palette <hexes>` | refine | Final `#rrggbb` colors; repeatable and comma-separated. Requires 2–256 unique colors. |
+| `--palette <hexes>` | refine, vfx | refine: final `#rrggbb` colors; repeatable and comma-separated. Requires 2–256 unique colors. vfx `--lib pixelfx`: the effect's color ramp, dark to bright, two or more hex colors. |
 | `--fixer-python <path>` | refine | One-run Python override containing Pixel Art Fixer. Manifest mode otherwise uses `quality.fixerPython`, then `PIXELKILN_PIXEL_FIXER_PYTHON`, then `python3`. |
 | `--fixer-revision <sha>` | refine | Revision recorded in the quality companion. Defaults to PixelKiln's tested pin. |
 | `--min-grid-confidence <level>` | refine | Minimum accepted detector confidence: `high` (default), `medium`, or `low`. |
@@ -1769,11 +1869,13 @@ Print the package version. `-v` is an alias.
 | `--weight <w>` | font | `Bold` or `Regular` (default). |
 | `--glyph-px <n>` | font | Native glyph size: `8`, `16` (default), `32`, or `64`. |
 | `--preset <name>` | vfx | Start from one of PixelLab's whole-effect presets; `pixelkiln vfx presets` lists them. |
-| `--recipe <file>` | vfx | Render a recipe: a bare recipe JSON or a `.vfx.json` record from an earlier run. |
-| `--effect <id>` | vfx | Start from an effect saved in your PixelLab My effects, and export over it. |
+| `--recipe <file>` | vfx | Render a recipe: a bare recipe JSON or a `.vfx.json` record from an earlier run, PixelLab's or pixelfx's. |
+| `--effect <id>` | vfx | Start from an effect saved in your PixelLab My effects, and export over it. With `--lib pixelfx`: the effect to render, `<category>/<name>`; `pixelkiln vfx effects` lists them. |
 | `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
 | `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
 | `--fps <n>` | vfx | Frame rate, 1–60. |
+| `--lib <name>` | vfx | Where the effect comes from: `pixellab` (default) or `pixelfx`, a local effects library you install yourself. |
+| `--margin <px>` | vfx | With `--lib pixelfx`: transparent pixels added on every side of the effect's canvas, 0–256. |
 | `--sprite-frames <n>` | vfx | With `--description`: `--sprite` is a horizontal PNG strip of `n` equal frames (2 to 32). |
 | `--sprite-fps <n>` | vfx | With `--description`: how fast an animated `--sprite` plays, 1 to 60. PixelLab's default is a GIF's own timing, else 12. |
 | `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
