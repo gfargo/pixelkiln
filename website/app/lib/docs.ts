@@ -207,6 +207,13 @@ export const docs: DocEntry[] = [
     file: "SECURITY.md",
     group: "Policies",
   },
+  {
+    slug: "third-party",
+    title: "Third-party notices",
+    description: "Credit and license text for other people's work that PixelKiln builds on, such as the pixelfx effects library.",
+    file: "docs/THIRD_PARTY.md",
+    group: "Policies",
+  },
 ];
 
 export const docGroups: DocGroup[] = ["Start here", "Providers", "Guides", "Reference", "Research", "Policies"];

@@ -68,7 +68,7 @@ pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
               </ul>
             </div>
             <div className="review-links">
-              <TrackedLink className="text-link" id="effects_cli_docs" section="effects" href="/docs/cli#vfx">
+              <TrackedLink className="text-link" id="effects_cli_docs" section="effects" href="/docs/cli/vfx">
                 Read the vfx reference
               </TrackedLink>
             </div>
