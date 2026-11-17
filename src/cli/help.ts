@@ -94,6 +94,10 @@ Commands
             .vfx.json recipe record. vfx presets / vfx parts list options.
             With --description, PixelLab's paid VFX artist builds it from
             words instead (lite 1-5, pro 6-28 generations); asks first.
+            With --lib pixelfx, renders an --effect <category>/<name> from
+            the pixelfx library on this machine instead (free, nothing
+            sent; install it with: npm i github:patch-gg/pixelfx); vfx
+            effects lists them.
   font    PixelLab: generate a pixel font (--description, --out); writes a
             .ttf and a glyph atlas PNG. 15 generations; asks first.
   music   PixelLab: a song from a style (--description, --out); writes two
@@ -200,10 +204,13 @@ Options
   --convention <c>    normal-map: opengl (green up, default) or directx (green down)
   --preset <name>     vfx: start from a whole-effect preset (vfx presets lists them)
   --recipe <file>     vfx: render a recipe or an earlier run's .vfx.json record
-  --effect <id>       vfx: start from a saved My effects id and export over it
+  --effect <id>       vfx: start from a saved My effects id and export over it;
+                      with --lib pixelfx, the effect to render (fire/torch)
   --part <name>       vfx: add a part (repeatable; vfx parts lists them)
   --sprite <ref>      vfx: build around a sprite: a file, a URL, or character:<id>:<dir>
   --fps <n>           vfx: frames per second, 1-60
+  --lib <name>        vfx: pixellab (default) or pixelfx, the local effects library
+  --margin <px>       vfx --lib pixelfx: transparent pixels around the effect's canvas
   --sprite-frames <n> vfx --description: --sprite is a strip of n equal frames (2-32)
   --sprite-fps <n>    vfx --description: how fast the sprite animation plays (default 12)
   --game-pack         vfx: also download the game-pack ZIP
