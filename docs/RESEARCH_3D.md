@@ -16,7 +16,7 @@ Last updated 16 November 2026.
 | 6 | Triangulate a 3D skeleton from 2D joints | PixelLab skeleton estimate + our script | 18 joints, 1.3 px mean error | Keep. This is a rig. |
 | 7 | Build the body from tubes around the bones | Our script | 79% | Drop. Carving is better. |
 | 8 | Generate a mesh from four views | Hunyuan3D-2mv in ComfyUI, RTX 3060 12 GB | About two minutes a mesh; 70 to 83% | Cleaner geometry, looser match. Needs its own texture step. |
-| 9 | Unwrap the mesh and texture it from the sprites | Not built yet | | Next. See [What is next](#what-is-next). |
+| 9 | Unwrap the mesh and texture it from the sprites, in stages | Our script, with xatlas for the unwrap | Colour error down by a fifth to a half against one-pass colouring, on all five | Keep. The texture is now a picture that can be repaired. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -174,20 +174,70 @@ Tubes matched 79% against carving's 95%. The result is a blob with limbs: no han
 
 **Verdict.** Use it when clean geometry matters more than matching the sprite exactly. It needs a texture step of its own.
 
+## 9. Texturing in stages
+
+**Question.** Steps 4 and 8 coloured the model in one pass, straight from the sprites onto voxels. Does splitting the work into stages (fit, unwrap, project, fill, render) give a better result on the Hunyuan3D meshes?
+
+**Setup.** Script: [`scripts/texture.py`](../research/scripts/texture.py). It takes about six seconds a mesh on a laptop. Libraries: trimesh, xatlas, fast-simplification, numpy, scipy.
+
+1. **Fit.** The mesh is simplified to 30,000 triangles, then lined up with the sprites' cameras by searching for the turn, the camera height, a scale for each of the three axes, and a one or two pixel shift per view that make its outline match the sprites best. Step 8 only tried quarter turns and one scale.
+2. **Unwrap.** xatlas flattens the surface into a 256×256 texture.
+3. **Project.** Every texel is given the colour of the sprite pixel it lands on, from the one view that faces it most squarely and can see it. Outline pixels are never used. Texels then agree with their neighbours on which view to use, so the surface does not speckle where two views meet.
+4. **Fill.** A texel no view could see takes the colour of the nearest texel that was seen, measured across the surface in 3D.
+5. **Render.** Unlit, at sprite size, each pixel taking the most common colour among the texels in front, with a drawn outline.
+
+It also writes a textured `.glb` that opens in Blender or any glTF viewer.
+
+**Result.** Four rows per subject: the sprites; the same mesh coloured in one pass (step 8); the mesh textured in stages; and the staged model from the eight directions in between.
+
+![Sprites, one-pass colouring, staged texture, and staged texture from between views, for five subjects](../website/public/research/3d/texture-staged.png)
+
+The texture itself, for the chest. Left: the unwrapped texture. Right: which of the eight sprites each texel took its colour from, one colour per view; dark grey was seen by none and filled in.
+
+![The chest's unwrapped texture and its view map](../website/public/research/3d/texture-atlas-chest.png)
+
+Three numbers per method. *Shape* is the outline match used throughout. *Colour error* is the mean difference per colour channel, out of 255, over the pixels where model and sprite overlap; lower is better. *Close* is the share of those pixels within 24 of the sprite's colour on every channel. All three are measured on the rendered pictures by [`scripts/score.py`](../research/scripts/score.py), which first slides each render to where it overlaps its sprite best, so the shape numbers here are a little lower than the ones in the earlier steps.
+
+| Subject | Method | Shape | Colour error | Close |
+|---|---|---|---|---|
+| Character | Carved, one pass | 92% | 40.5 | 42% |
+| | Mesh, one pass | 85% | 49.4 | 37% |
+| | Mesh, staged | 88% | 42.9 | 46% |
+| Chest | Carved, one pass | 92% | 42.3 | 41% |
+| | Mesh, one pass | 85% | 49.2 | 30% |
+| | Mesh, staged | 90% | 32.0 | 54% |
+| Sword | Carved, one pass | 91% | 36.3 | 50% |
+| | Mesh, one pass | 79% | 52.2 | 37% |
+| | Mesh, staged | 89% | 31.3 | 60% |
+| Torch | Carved, one pass | 89% | 35.4 | 48% |
+| | Mesh, one pass | 76% | 53.3 | 25% |
+| | Mesh, staged | 83% | 28.6 | 59% |
+| Greatsword | Carved, one pass | 94% | 18.4 | 72% |
+| | Mesh, one pass | 71% | 22.3 | 70% |
+| | Mesh, staged | 89% | 13.9 | 81% |
+
+- **The better fit closed most of the shape gap.** The meshes went from 71 to 85% to 83 to 90%, with no change to the meshes themselves. Carving is still ahead on shape by 2 to 6 points.
+- **Staged texturing beat one-pass colouring on every subject,** and beat the carved model's colour on four of five. The character is the exception: the mesh's hands, head and chest are a different shape from the sprite's, so muscle lines land in the wrong place.
+- **The torch has a flame again.** The mesh has no flame, but the sprite's flame pixels land on the top of the basket.
+- **The greatsword's two tilted views were left out,** and the model is upright from those directions with the runes in place.
+- **A mirror image cannot be told apart by outline.** For every subject the mirrored fit scored within a tenth of a point of the true one. The script assumes the mesh is not mirrored, which held for all five. Front and back are nearly as close on symmetric objects (83.2 against 83.1 for the chest), so the result should be looked at, not trusted.
+
+**Tried and dropped,** on the character, none of which moved the colour error by more than a point or two:
+
+- Blending views by weight and snapping to the palette, instead of one view per texel: 48% close against 54%. Blending muddies the pixel art.
+- Letting a texel that lands just outside the sprite take the nearest pixel inside it: slightly worse.
+- Refusing colour from pixels beside a jump in the mesh's depth (its outer edge, an arm in front of the body): no better, and a quarter of the texels left to fill.
+
+The remaining error on the character is the mesh's shape, not the texturing.
+
+**Verdict.** Keep. Staging is the better way to colour a mesh, and it leaves a texture file that can be repaired as an ordinary picture.
+
 ## What is next
 
-Step 9 is to stop colouring the model in one pass and split the work into stages, the way the pipeline in the Discord thread does:
-
-1. **Shape.** A carved model or a Hunyuan3D mesh.
-2. **Unwrap.** Flatten the surface into a 2D texture, like unfolding a paper model.
-3. **Project.** Paint each sprite onto the texture from its own direction, blending where views overlap, leaving out outline pixels and baked-in shading.
-4. **Fix the texture as a picture.** The texture is now an ordinary image: snap it to the sprite's palette, fill the gaps no view could see, and repaint seams. This is where an image model can help, since repairing a 2D image is what they are good at.
-5. **Render.** Flat lighting and a drawn outline, at sprite size.
-
-Open questions for that work:
-
-- Does a better fit of the mesh to the sprites (a proper search over scale, turn and shift) bring the Hunyuan3D match up to carving's?
-- Does projecting onto a texture at a higher resolution than the sprite avoid the stretching seen between views in step 4?
+- **Texture the carved shape the same way.** Carving matches the sprite best, and staged texturing colours best. Turning the carved voxels into a mesh and running step 9 on it should combine the two, and is the obvious next experiment.
+- **Repair the texture as a picture.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. Fewer, larger pieces (a simpler mesh, or one piece per view like a folded paper model) would make inpainting the filled areas and seams practical.
+- **Remove baked shading.** The sprites are drawn lit from one side, and that light is now painted on the model. Nothing here removes it yet.
+- **Use the rig.** The skeleton from step 6 has not been attached to a mesh.
 - Can the eight-view input of the hosted Hunyuan3D 3.1 use all eight sprites? (Unverified; see below.)
 
 ## What other people are doing
@@ -218,7 +268,7 @@ No report was found of any of these being tested on pixel art.
 - [Voxify3D](https://arxiv.org/abs/2512.07834). Turns a mesh into voxel art with a small palette.
 - [Blender to Pixels](https://astropulse.itch.io/blender-to-pixels). Renders a 3D scene as pixel art.
 
-**The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, and step 9 is the unwrap-and-retexture part.
+**The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, and step 9 the unwrap and texture part, without the image model.
 
 No public tool was found that takes several directional pixel sprites and returns a mesh.
 
@@ -227,6 +277,7 @@ No public tool was found that takes several directional pixel sprites and return
 - Six upright objects at 10 generations each: 60 PixelLab generations.
 - Carving, tilt check, skeleton and rendering: nothing. They run locally in seconds.
 - Hunyuan3D: nothing but about two minutes of GPU time per mesh, after a 4.93 GB download.
+- Staged texturing: nothing. About six seconds a mesh on a laptop.
 
 ## Running the scripts
 
@@ -247,4 +298,10 @@ python3 research/scripts/tilt.py <folder> <name>
 
 # Four views to a mesh, through a ComfyUI server (address at the top of the script).
 python3 research/scripts/hunyuan3d.py <folder> <name> <out-folder>
+
+# Fit, unwrap, texture and render a mesh from the sprites. Writes the texture, a textured .glb and a sheet.
+python3 research/scripts/texture.py <folder> <name> <mesh.glb> <out-folder>
+
+# Score the second row of a sheet against the first.
+python3 research/scripts/score.py <sheet.png>
 ```
