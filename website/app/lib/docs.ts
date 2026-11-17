@@ -3,7 +3,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export type DocGroup = "Start here" | "Providers" | "Guides" | "Reference" | "Policies";
+export type DocGroup = "Start here" | "Providers" | "Guides" | "Reference" | "Research" | "Policies";
 
 export type DocEntry = {
   slug: string;
@@ -115,6 +115,13 @@ export const docs: DocEntry[] = [
     group: "Providers",
   },
   {
+    slug: "research-3d",
+    title: "Research: 3D models from sprites",
+    description: "Every attempt to turn eight directional sprites into a 3D model, with pictures: carving, upright prompting, a triangulated skeleton, and Hunyuan3D meshes.",
+    file: "docs/RESEARCH_3D.md",
+    group: "Research",
+  },
+  {
     slug: "recipes",
     title: "Versioned recipes",
     description: "Install and verify pinned workflows, model hashes, and quality contracts.",
@@ -202,7 +209,7 @@ export const docs: DocEntry[] = [
   },
 ];
 
-export const docGroups: DocGroup[] = ["Start here", "Providers", "Guides", "Reference", "Policies"];
+export const docGroups: DocGroup[] = ["Start here", "Providers", "Guides", "Reference", "Research", "Policies"];
 
 export function getDoc(slug: string) {
   return docs.find((doc) => doc.slug === slug);

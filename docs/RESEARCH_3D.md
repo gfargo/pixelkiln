@@ -1,6 +1,6 @@
 # 3D models from directional sprites
 
-PixelKiln already generates an object or a character from eight directions. This note records every attempt to turn those eight pictures into a 3D model: what was tried, with what, and what came out.
+This is a research note, not a feature: nothing here is a PixelKiln command, and the scripts are rough. PixelKiln already generates an object or a character from eight directions. This note records every attempt to turn those eight pictures into a 3D model: what was tried, with what, and what came out.
 
 Last updated 16 November 2026.
 
@@ -30,11 +30,11 @@ Last updated 16 November 2026.
 
 **Question.** Is the shape recoverable from the outlines alone, with no model?
 
-**Setup.** Start with a solid 64×64×64 block of voxels. For each of the eight views, remove every voxel that falls outside that view's outline. What is left is the largest shape consistent with all eight views (a visual hull). The camera height and a small per-view shift are fitted by trying values and keeping the best score. Script: [`scripts/carve.ts`](scripts/carve.ts).
+**Setup.** Start with a solid 64×64×64 block of voxels. For each of the eight views, remove every voxel that falls outside that view's outline. What is left is the largest shape consistent with all eight views (a visual hull). The camera height and a small per-view shift are fitted by trying values and keeping the best score. Script: [`scripts/carve.ts`](../research/scripts/carve.ts).
 
 **Result.** Each block of three rows is one object: the sprites, the model from the same eight directions, and the model from the eight directions in between.
 
-![First carving attempt: lantern, round shield, kite shield, torch, sword and greatsword](img/carve-first-attempt.png)
+![First carving attempt: lantern, round shield, kite shield, torch, sword and greatsword](../website/public/research/3d/carve-first-attempt.png)
 
 | Object | Match |
 |---|---|
@@ -57,7 +57,7 @@ The surfaces are also ragged and the colours speckled, because eight hand-drawn 
 
 **Result.** The inputs, one row per object:
 
-![Upright inputs: sword, ornate greatsword, torch, chest](img/upright-inputs.png)
+![Upright inputs: sword, ornate greatsword, torch, chest](../website/public/research/3d/upright-inputs.png)
 
 The sword, torch and chest stand upright in every view. The ornate greatsword (second row) ignored the wording and leans on all four diagonals.
 
@@ -77,13 +77,13 @@ The sword, torch and chest stand upright in every view. The ornate greatsword (s
 
 **Setup.** Two parts.
 
-- *Tilt check.* For each view, find the long axis of the outline and measure how far it leans from vertical. Script: [`scripts/tilt.py`](scripts/tilt.py). Good objects leaned 0 to 2 degrees in every view. Every bad view leaned 36 to 46 degrees. There is nothing in between, so a threshold anywhere around 10 to 20 degrees separates them.
+- *Tilt check.* For each view, find the long axis of the outline and measure how far it leans from vertical. Script: [`scripts/tilt.py`](../research/scripts/tilt.py). Good objects leaned 0 to 2 degrees in every view. Every bad view leaned 36 to 46 degrees. There is nothing in between, so a threshold anywhere around 10 to 20 degrees separates them.
 - *Second greatsword.* Generated again with the good sword passed as `style_object_id`. It came back upright in six views and tilted in two. (The first try at this failed outright: the new object's size must be at least the style object's content size.)
 - *Carving with views left out.* The script takes a list of views to skip. A skipped view neither carves nor gives colour.
 
 **Result.** The greatsword carved from its six upright views. Top row: the sprites, with the two tilted ones still shown. Below: the model from the same directions and from in between.
 
-![Greatsword carved from six upright views](img/carve-six-views.png)
+![Greatsword carved from six upright views](../website/public/research/3d/carve-six-views.png)
 
 It matched the six views it was built from 98%. Rendered from the two directions that were left out, it stands upright there as well.
 
@@ -101,7 +101,7 @@ It matched the six views it was built from 98%. Rendered from the two directions
 
 **Result.** All the upright subjects, three rows each as before:
 
-![Carved models from upright views: sword, greatsword, torch, chest, character](img/carve-upright.png)
+![Carved models from upright views: sword, greatsword, torch, chest, character](../website/public/research/3d/carve-upright.png)
 
 The directions that have a sprite come out close to it. The directions in between are recognisable but rougher: the colour there is borrowed from a neighbouring view and stretched.
 
@@ -133,7 +133,7 @@ The directions that have a sprite come out close to it. The directions in betwee
 
 **Result.** Top three rows are carving, bottom three are tubes:
 
-![Character: carving above, tubes below](img/character-carve-vs-tubes.png)
+![Character: carving above, tubes below](../website/public/research/3d/character-carve-vs-tubes.png)
 
 Tubes matched 79% against carving's 95%. The result is a blob with limbs: no hands, feet, face or shoulders.
 
@@ -148,14 +148,14 @@ Tubes matched 79% against carving's 95%. The result is a blob with limbs: no han
 - *Model.* Tencent Hunyuan3D-2mv, the `hunyuan3d-dit-v2-mv` checkpoint in fp16, 4.93 GB, from the `tencent/Hunyuan3D-2mv` repository on Hugging Face.
 - *Runner.* ComfyUI 0.34.0, which has Hunyuan3D nodes built in. No custom nodes. PyTorch 2.13 with CUDA.
 - *Hardware.* A desktop with an RTX 3060, 12 GB.
-- *Graph.* `ImageOnlyCheckpointLoader` → `ModelSamplingAuraFlow` (shift 1.0). Four `LoadImage` → `CLIPVisionEncode` (crop none) → `Hunyuan3Dv2ConditioningMultiView`. `EmptyLatentHunyuan3Dv2` (resolution 3072) → `KSampler` (30 steps, cfg 5, euler, normal) → `VAEDecodeHunyuan3D` (8000 chunks, octree 256) → `VoxelToMesh` (surface net, threshold 0.6) → `SaveGLB`. Script: [`scripts/hunyuan3d.py`](scripts/hunyuan3d.py).
+- *Graph.* `ImageOnlyCheckpointLoader` → `ModelSamplingAuraFlow` (shift 1.0). Four `LoadImage` → `CLIPVisionEncode` (crop none) → `Hunyuan3Dv2ConditioningMultiView`. `EmptyLatentHunyuan3Dv2` (resolution 3072) → `KSampler` (30 steps, cfg 5, euler, normal) → `VAEDecodeHunyuan3D` (8000 chunks, octree 256) → `VoxelToMesh` (surface net, threshold 0.6) → `SaveGLB`. Script: [`scripts/hunyuan3d.py`](../research/scripts/hunyuan3d.py).
 - *Inputs.* The model takes four views: front, left, back, right. Those are south, west, north and east of the eight. Each 64px sprite was scaled to 512px with hard pixel edges and put on white:
 
-![The four inputs for the character](img/hunyuan-inputs.png)
+![The four inputs for the character](../website/public/research/3d/hunyuan-inputs.png)
 
 **Result.** 106 to 119 seconds per mesh. Each block of three rows below is one subject (character, chest, sword, torch; the greatsword is not pictured): the sprites, the carved model, and the Hunyuan3D mesh. The mesh was turned into voxels and coloured from the sprites the same way as the carved model, so the two can be compared directly.
 
-![Sprites, carved model, and Hunyuan3D mesh for each subject](img/mesh-vs-carve.png)
+![Sprites, carved model, and Hunyuan3D mesh for each subject](../website/public/research/3d/mesh-vs-carve.png)
 
 | Subject | Carved | Hunyuan3D mesh |
 |---|---|---|

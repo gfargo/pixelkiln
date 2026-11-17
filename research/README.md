@@ -1,22 +1,20 @@
-# Research notes
+# Research scripts
 
-Working notes on experiments that are not PixelKiln features yet. Each note says what was tried, with which model or tool, what came out, and what it cost, with pictures of the actual output.
+The scripts behind the research notes in the docs. They are rough, take paths as arguments, and are not part of PixelKiln or its npm package.
 
-These are notes, not documentation. Nothing here is a supported command. The scripts in [`scripts/`](scripts) are the ones that produced the pictures; they are rough.
+| Note | Scripts |
+|---|---|
+| [3D models from directional sprites](../docs/RESEARCH_3D.md) | `scripts/carve.ts`, `scripts/tilt.py`, `scripts/hunyuan3d.py` |
 
-| Note | Question | Where it stands |
-|---|---|---|
-| [3D models from directional sprites](sprites-to-3d.md) | Can the eight views PixelKiln already generates for an object or a character become a 3D model? | Shape works two ways. Texture is the open step. |
+## Writing a research note
 
-The paperdoll layer experiments (clothing layers, held items, loop cleaning, one-frame redraws, skin tones) are written up as field notes at the end of the [paperdoll guide](../docs/PAPERDOLL.md#field-notes).
-
-## Adding to a note
+Notes live in `docs/` as `RESEARCH_<TOPIC>.md`, are registered in `website/app/lib/docs.ts` under the Research group, and keep their pictures in `website/public/research/<topic>/`.
 
 Add a numbered experiment in the order it was run. For each one, write:
 
 - **Question**: what the experiment was meant to find out.
 - **Setup**: the model, tool, version, settings and inputs, exact enough to run again.
-- **Result**: the numbers, and a picture in `img/` of what came out.
+- **Result**: the numbers, and a picture of what came out.
 - **Verdict**: keep, drop, or needs another step, and why.
 
-Say how each number was measured. Mark anything that was read somewhere and not checked here as unverified.
+Say how each number was measured. Mark anything that was read somewhere and not checked as unverified.
