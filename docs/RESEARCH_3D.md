@@ -36,7 +36,8 @@ Last updated 17 November 2026.
 | 26 | A leaner bare body, with each item drawn as its own layer | PixelLab v3 character, PixelKiln layers | A slim figure in underwear and four clean item layers; the mesh is still stocky | Keep. The mesh inherits the sprite's four-heads-tall build. |
 | 27 | Mesh each item on its own, or mesh the body wearing it and cut the item out | Hunyuan3D-2mv, our scripts | Alone, thin items collapse into slabs; cut from the worn mesh, all four hold their shape | Cut from the worn mesh. |
 | 28 | The body and four items as separate meshes on one skeleton | Our script | One .glb, items switch on and off, all walk together | Keep. Painted in step 29. |
-| 29 | Paint the body and each worn mesh before cutting the item out | Hunyuan3D paint stage, our bake | Clean armour, cape and skin in place of speckle; colours drift cooler and the gold is duller | Keep. Skin shows through the leg armour during the walk. |
+| 29 | Paint the body and each worn mesh before cutting the item out | Hunyuan3D paint stage, our bake | Clean armour, cape and skin in place of speckle; colours drift cooler and the gold is duller | Keep. The colour drift is handled in step 30. |
+| 30 | Hide the skin under what is worn, and bake each item in its own colours | Our script | The body is six pieces, each hidden while its item is on; orange flecks in the walk turned out to be dulled gold snapped to skin colour, and are gone | Keep. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -695,10 +696,44 @@ The assembled character, stitched and then painted:
 - **The speckle is gone.** The armour has plates and trim, the cape has folds, the helm is one metal, and the body's black outline flecks are gone.
 - **Colours drift.** The helm and underwear turn blue-grey, and the gold is duller with the chest crest fainter. Step 23's colour correction is on and does not hold them. The viewer's palette snap pulls them part of the way back.
 - **Painting the worn mesh paints the item in context,** so the cuirass is shaded as something on a chest. The price is that each item's texture is 1024 pixels of which the item uses a third.
-- **Skin shows through the leg armour during the walk** in the viewer, as flecks at the knees and thighs. Standing, nothing shows.
+- **Orange flecks appear on the leg armour during the walk** in the viewer with the pixel look on. They were first taken for skin showing through. Step 30 shows they are not.
 - **The file grew to 5.6 MB** with five 512 pixel textures. It passes the glTF validator with no errors or warnings.
 
-**Verdict.** Keep the painted parts. Next is hiding the body under what covers it.
+**Verdict.** Keep the painted parts.
+
+## 30. Hiding the skin under an item
+
+**Question.** Games hide the body under clothing so that skin cannot show through it in motion. Can the file say which skin each item hides?
+
+**Setup.** `rig.py` now writes the body as one mesh per set of items that cover it.
+
+- *Covered.* A body vertex is covered by an item when the item's surface is within 1.2 sprite pixels of it (`COVER`). A triangle is hidden by the item only when its corners and all their neighbours are covered, which leaves a rim of skin under the item's edge.
+- *Loose items.* A third field in an item's entry, `loose`, marks one that hides nothing. The cape is loose: it swings away from the back it hangs behind.
+- *In the file.* Each body piece is a node whose extras carry `"hiddenBy": ["Cuirass"]`. A piece is hidden while any item in its list is worn. The pieces share one material and texture.
+
+**Result.** The body came out as six pieces:
+
+| Piece | Triangles |
+|---|---|
+| Never hidden (face, neck, hands, edges) | 6,359 |
+| Under the leg armour | 9,222 |
+| Under the cuirass | 8,988 |
+| Under both | 1,602 |
+| Under the helm | 3,714 |
+| Under the cuirass and the helm | 115 |
+
+- **It works in the viewer.** With everything worn, 79% of the body is not drawn. Taking the cuirass and helm off brings the chest and head back.
+- **The orange flecks of step 29 were still there,** which showed they were never skin. With the pixel look off there were none. The paint stage had dulled the gold trim, and the viewer's palette snap moved the dulled gold to the nearest stored colour, which was a skin tone.
+- **Baking each item in its own colours fixes that.** `bake.py` already had `PALETTE`; each worn mesh is baked snapped to the 32 colours of that item's own layer, so the item carries no colour its sprite lacks. Top row: before. Bottom row: after. The helm is steel again and not blue.
+
+![The assembled knight before and after baking each item in its own sprite colours](../website/public/research/3d/parts-own-colours.png)
+
+- **The gold is darker than the sprite's** after the snap, closer to olive on the arms. The paint stage's drift is reduced, not undone.
+- **The file is 5.4 MB.**
+
+Not checked: whether the rim of skin kept under an item's edge is enough when a limb bends far, and whether an engine reads the extras (three.js does; Godot and Unity each have their own way).
+
+**Verdict.** Keep both. A wrong guess about the flecks cost a step, and the test that settled it was turning the pixel look off.
 
 ## What has not worked, in one place
 
@@ -727,7 +762,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 
 - **Hold the paint stage's colours** to the sprites' (step 29): the gold dulls and the dark metal turns blue.
 - **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
-- **Hide the body under an item,** as games do, so skin cannot show through in motion, and tidy the cut's edge.
+- **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
 - **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
 - **Sprite cards on the skeleton.** The approach in the Cor Mundi Studios short (see below): show each body part as a card with a sixteen-direction sheet, placed by the bones, and keep the mesh for lighting only. It would sidestep the rough textures, since the pixels shown are the drawn ones.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.

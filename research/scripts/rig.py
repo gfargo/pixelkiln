@@ -19,6 +19,8 @@ Environment:
   ITEMS    separate meshes the character wears, in the body's frame, each put on the same skeleton as its own
            mesh: "Helm=helm.glb:Head;Cape=cape.glb:Hips,Spine;Cuirass=cuirass.glb". The names after the colon are
            the only bones that item may follow; with none it follows whatever the body under it follows.
+           A third field, "loose" ("Cape=cape.glb:Hips,Spine:loose"), marks an item that hides no skin.
+  COVER    how near an item's surface must be for the skin to count as covered, in sprite pixels (default 1.2)
   FIT      how far above the skin an item is moved when it lands inside the body, in sprite pixels (default 0.6; 0 is off)
   BURIED   how deep an inward-facing item triangle must be to be dropped (default 1.5)
   TEX      shrink textures to this many pixels a side
@@ -145,7 +147,7 @@ if os.environ.get("ITEMS") and GEODESIC:
         return d, n / (np.linalg.norm(n, axis=1, keepdims=True) + 1e-9)
 for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
     if not GEODESIC: sys.exit("ITEMS needs the weights measured through the mesh: pass - for the voxels")
-    label, rest = spec.split("=", 1); file, _, allowed = rest.partition(":")
+    label, rest = spec.split("=", 1); file, _, allowed = rest.partition(":"); allowed, _, fit_kind = allowed.partition(":")
     part = trimesh.load(file, force="mesh", process=False)
     pg = np.asarray(part.vertices, np.float64); pw = np.stack([pg[:, 0], -pg[:, 2], pg[:, 1]], 1)
     pf = np.asarray(part.faces); puv = np.asarray(part.visual.uv, np.float64)
@@ -172,7 +174,13 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
     pj, pwt = skin(pd)
     ptex = part.visual.material.baseColorTexture.convert("RGBA")
     if os.environ.get("TEX"): ptex = ptex.resize((int(os.environ["TEX"]),) * 2, Image.LANCZOS)
-    ITEMS.append({"name": label, "world": pw, "faces": pf, "uv": puv, "joints": pj, "weights": pwt, "texture": ptex})
+    # Which of the body's vertices this item covers: those with the item's surface within COVER sprite pixels.
+    # A loose item (a cape) covers nothing, since it swings away from what is behind it.
+    covers = np.zeros(len(world), bool)
+    if fit_kind != "loose":
+        cloud = trimesh.sample.sample_surface(trimesh.Trimesh(pw, pf, process=False), 300000, seed=5)[0]
+        covers = cKDTree(cloud).query(world)[0] < float(os.environ.get("COVER", "1.2"))
+    ITEMS.append({"name": label, "covers": covers, "world": pw, "faces": pf, "uv": puv, "joints": pj, "weights": pwt, "texture": ptex})
 
 # ---- to metres, y up, facing +z
 height = world[:, 2].max() - world[:, 2].min(); S = 1.8 / height; floor = world[:, 2].min()
@@ -251,7 +259,25 @@ def add(arr, target=None, minmax=False, ctype=5126, kind="SCALAR"):
     a = {"bufferView": len(views) - 1, "componentType": ctype, "count": len(arr), "type": kind}
     if minmax: a["min"] = np.atleast_1d(np.asarray(arr).min(0)).tolist(); a["max"] = np.atleast_1d(np.asarray(arr).max(0)).tolist()
     accessors.append(a); return len(accessors) - 1
-PARTS = [{"name": "Character", "pos": pos, "normals": normals, "uv": uv, "faces": faces, "joints": joints_attr, "weights": weights_attr, "texture": texture}]
+# The body is written as one mesh per set of items that cover it, so a game can hide the skin under what is
+# worn and nothing can show through. A triangle counts as covered by an item only when its three corners and
+# all their neighbours are, which keeps a rim of skin under the item's edge. Each piece lists, in its node's
+# extras, the items that hide it: hide the piece while any of them is worn.
+signature = np.zeros(len(faces), int)
+for bit, item in enumerate(ITEMS):
+    inner = item["covers"].copy()
+    open_edge = np.zeros(len(world), bool)
+    for a, b in ((0, 1), (1, 2), (2, 0)):
+        np.logical_or.at(open_edge, faces[:, a], ~item["covers"][faces[:, b]]); np.logical_or.at(open_edge, faces[:, b], ~item["covers"][faces[:, a]])
+    inner &= ~open_edge
+    signature |= inner[faces].all(1).astype(int) << bit
+PARTS = []
+for sig in np.unique(signature):
+    piece = faces[signature == sig]; used, index = np.unique(piece, return_inverse=True)
+    hidden_by = [item["name"] for bit, item in enumerate(ITEMS) if sig >> bit & 1]
+    PARTS.append({"name": "Character" if sig == 0 else "Character under " + " and ".join(hidden_by), "extras": {"body": True, "hiddenBy": hidden_by},
+                  "pos": pos[used], "normals": normals[used], "uv": uv[used], "faces": index.reshape(-1, 3), "joints": joints_attr[used], "weights": weights_attr[used], "texture": texture, "image_of": 0})
+BODY_PARTS = len(PARTS)
 for item in ITEMS:
     ipos = gl(item["world"]).astype(np.float32)
     PARTS.append({**item, "pos": ipos, "normals": trimesh.Trimesh(ipos, item["faces"], process=False).vertex_normals.astype(np.float32)})
@@ -264,21 +290,24 @@ ibm = np.tile(np.eye(4, dtype=np.float32), (len(BONES), 1, 1)); ibm[:, 3, :3] = 
 a_ibm = add(ibm.reshape(-1, 16), kind="MAT4")
 a_time = add(times, minmax=True)
 for part in PARTS:
+    if part.get("image_of") is not None and "image" in PARTS[part["image_of"]]: part["image"] = PARTS[part["image_of"]]["image"]; continue
     png = io.BytesIO(); part["texture"].save(png, "PNG"); data = png.getvalue(); off = sum(len(c) for c in chunks)
     chunks.append(data + b"\x00" * ((4 - len(data) % 4) % 4)); views.append({"buffer": 0, "byteOffset": off, "byteLength": len(data)}); part["image"] = len(views) - 1
 nodes = [{"name": n, "translation": (jpos[i] - (jpos[parent[i]] if parent[i] >= 0 else 0)).tolist()} for i, n in enumerate(names)]
 for i, p in enumerate(parent):
     if p >= 0: nodes[p].setdefault("children", []).append(i)
-for i, part in enumerate(PARTS): nodes.append({"name": part["name"], "mesh": i, "skin": 0})
+for i, part in enumerate(PARTS): nodes.append({"name": part["name"], "mesh": i, "skin": 0, **({"extras": part["extras"]} if part.get("extras") else {})})
+MATERIAL = [0 if i < BODY_PARTS else i - BODY_PARTS + 1 for i in range(len(PARTS))]  # the body's pieces share one material
+SKINS = [PARTS[0]] + PARTS[BODY_PARTS:]
 samplers, channels = [], []
 for n, q in tracks.items():
     samplers.append({"input": a_time, "output": add(np.array(q, np.float32), kind="VEC4"), "interpolation": "LINEAR"})
     channels.append({"sampler": len(samplers) - 1, "target": {"node": names.index(n), "path": "rotation"}})
 gltf = {"asset": {"version": "2.0", "generator": "pixelkiln research rig.py"}, "scene": 0, "scenes": [{"nodes": [0] + [len(BONES) + i for i in range(len(PARTS))]}], "nodes": nodes,
-        "meshes": [{"name": p["name"], "primitives": [{"attributes": p["attributes"], "indices": p["indices"], "material": i}]} for i, p in enumerate(PARTS)],
+        "meshes": [{"name": p["name"], "primitives": [{"attributes": p["attributes"], "indices": p["indices"], "material": MATERIAL[i]}]} for i, p in enumerate(PARTS)],
         "skins": [{"joints": list(range(len(BONES))), "skeleton": 0, "inverseBindMatrices": a_ibm}],
-        "materials": [{"name": "Sprite" if i == 0 else p["name"], **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": i}, "metallicFactor": 0, "roughnessFactor": 1}} for i, p in enumerate(PARTS)],
-        "textures": [{"source": i, "sampler": 0} for i in range(len(PARTS))], "images": [{"bufferView": p["image"], "mimeType": "image/png"} for p in PARTS],
+        "materials": [{"name": "Sprite" if i == 0 else p["name"], **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": i}, "metallicFactor": 0, "roughnessFactor": 1}} for i, p in enumerate(SKINS)],
+        "textures": [{"source": i, "sampler": 0} for i in range(len(SKINS))], "images": [{"bufferView": p["image"], "mimeType": "image/png"} for p in SKINS],
         "samplers": [{"magFilter": 9728, "minFilter": 9728, "wrapS": 33071, "wrapT": 33071}],
         "animations": [{"name": "Walk", "samplers": samplers, "channels": channels}],
         "accessors": accessors, "bufferViews": views, "buffers": [{"byteLength": sum(len(c) for c in chunks)}]}
@@ -344,5 +373,5 @@ if preview:
     owner = joints_attr[np.arange(len(pos)), weights_attr.argmax(1)]
     rgb = palette[owner % 8][faces[pick][:, 0]].astype(np.int64)
     Image.fromarray(np.hstack([draw(pos.astype(np.float64), math.radians(a)) for a in (0, 60, 180, 240)])).save(preview.replace(".png", ".weights.png"))
-print(json.dumps({"out": out, "vertices": len(pos), "triangles": len(faces), "items": {i["name"]: len(i["faces"]) for i in ITEMS}, "bones": names, "heightMetres": 1.8, "animation": "Walk", "keys": KEYS,
+print(json.dumps({"out": out, "vertices": len(pos), "triangles": len(faces), "items": {i["name"]: len(i["faces"]) for i in ITEMS}, "bodyPieces": {p["name"]: len(p["faces"]) for p in PARTS[:BODY_PARTS]}, "bones": names, "heightMetres": 1.8, "animation": "Walk", "keys": KEYS,
                   "bytes": 12 + 8 + len(js) + 8 + len(binary), "maxInfluences": int((weights_attr > 0).sum(1).max())}))

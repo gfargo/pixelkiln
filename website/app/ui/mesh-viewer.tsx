@@ -145,6 +145,10 @@ export function MeshViewer() {
       let action: import("three").AnimationAction | null = null;
       let helper: import("three").SkeletonHelper | null = null;
       const parts = new Map<string, import("three").Object3D>();
+      // Pieces of the body, each with the names of the items that cover it. A piece is hidden while any of them is worn.
+      const skin: Array<{ piece: import("three").Object3D; hiddenBy: string[] }> = [];
+      const wornNow = new Map<string, boolean>();
+      const showSkin = () => { for (const { piece, hiddenBy } of skin) piece.visible = !hiddenBy.some((item) => wornNow.get(item) ?? true); };
       let pixelOn = true;
       let playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -192,8 +196,11 @@ export function MeshViewer() {
           mesh.material = new THREE.MeshToonMaterial({ map: source.map, gradientMap: ramp });
           mesh.frustumCulled = false;
           // Every mesh but the body is something the character wears, on the same skeleton.
-          if (mesh.name !== "Character") parts.set(mesh.name, mesh);
+          const hiddenBy: unknown = mesh.userData?.hiddenBy;
+          if (Array.isArray(hiddenBy)) skin.push({ piece: mesh, hiddenBy: hiddenBy.map((item) => String(item).replaceAll(" ", "_")) });
+          else if (mesh.name !== "Character") parts.set(mesh.name, mesh);
         });
+        showSkin();
         setItems([...parts.keys()]);
         setWorn(Object.fromEntries([...parts.keys()].map((name) => [name, true])));
         scene.add(gltf.scene);
@@ -242,7 +249,7 @@ export function MeshViewer() {
         setSpinning: (on) => { orbit.autoRotate = on; },
         setPixel: (on) => { pixelOn = on; canvas.classList.toggle("mesh-canvas-smooth", !on); resize(); },
         setBones: (on) => { if (helper) helper.visible = on; },
-        setWorn: (item, on) => { const part = parts.get(item); if (part) part.visible = on; },
+        setWorn: (item, on) => { const part = parts.get(item); if (part) part.visible = on; wornNow.set(item, on); showSkin(); },
         dispose: () => {},
       };
       // Bring a freshly loaded model in line with the switches as they stand.
@@ -350,8 +357,8 @@ export function MeshViewer() {
             and the item cut out of the result wherever its layer has
             pixels. Items are moved to just above the skin and follow the
             body&apos;s bones. Every part is painted by a second model
-            from its own sprites. Skin can still show through the armour
-            while it walks.
+            from its own sprites. The skin under an item is hidden while
+            the item is worn, so nothing shows through.
           </p>
         ) : (
           <p className="spin-note">
