@@ -1,3 +1,10 @@
+## [0.105.1](https://github.com/gfargo/pixelkiln/compare/v0.105.0...v0.105.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* **gallery:** the studio focuses its id field at once, not on a timer ([2d6d74b](https://github.com/gfargo/pixelkiln/commit/2d6d74bc4a01868c26ca385d63440b1c40aab33d))
+
 # [0.105.0](https://github.com/gfargo/pixelkiln/compare/v0.104.1...v0.105.0) (2026-11-17)
 
 
