@@ -10,6 +10,13 @@ const LOCAL_EFFECTS = [
   { id: "pickups/coin-spin", strip: "/effects/pixelfx-coin.png", cell: 56, frames: 19, scale: 3, note: "loops, pivot under the coin", label: "A spinning gold coin" },
 ] as const;
 
+/** Rendered live on 17 November 2026 with the commands in the section below; each cost nothing. */
+const OBJECT_EFFECTS = [
+  { name: "object-kiln-rim", width: 64, height: 64, scale: 3, title: "rim_glow", note: "a 32px kiln, from a local PNG", alt: "A small kiln with a pulsing purple glow behind it" },
+  { name: "object-chest-shield", width: 96, height: 96, scale: 2, title: "shield_bubble", note: "a 68px chest, by object:<id>", alt: "A wooden chest inside a shimmering blue bubble shield" },
+  { name: "object-anvil-strike", width: 96, height: 128, scale: 2, title: "lightning_strike", note: "a 32px anvil, one-shot", alt: "A lightning bolt striking a small anvil, with a shockwave ring on the ground" },
+] as const;
+
 const CONTROLS: Array<[string, string, string]> = [
   ["List what exists", "`vfx presets`, `vfx parts`", "`vfx effects` (add `--json` for every option and default)"],
   ["Pick the effect", "`--preset <name>`, plus `--part <name>` as often as you like", "`--effect <category>/<name>`"],
@@ -36,6 +43,93 @@ function Marked({ text }: { text: string }) {
 export function EffectsGuideSections() {
   return (
     <>
+      <section className="fx-section" id="objects">
+        <div className="shell">
+          <div className="section-heading split-heading">
+            <div>
+              <h2>Objects take effects the same way.</h2>
+            </div>
+            <p className="section-deck">
+              The workbench fits an effect to whatever image it is given. It
+              does not ask whether that image is a character. These three
+              were rendered around props with the same presets, for nothing.
+            </p>
+          </div>
+          <div className="effects-strip fx-strip-3">
+            {OBJECT_EFFECTS.map((effect) => (
+              <figure key={effect.name}>
+                <picture>
+                  <source media="(prefers-reduced-motion: reduce)" srcSet={`/effects/${effect.name}-still.png`} />
+                  <img src={`/effects/${effect.name}.gif`} alt={effect.alt} width={effect.width * effect.scale} height={effect.height * effect.scale} loading="lazy" />
+                </picture>
+                <figcaption><b>{effect.title}</b> {effect.note}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <div className="effects-bottom">
+            <CodeWindow
+              title="terminal"
+              language="shell"
+              copyId="effects_object_commands"
+              section="effects"
+              code={`
+# a local PNG of the prop
+pixelkiln vfx --preset rim_glow --sprite props/kiln.png --out fx/kiln-glow
+
+# an object already in your PixelLab account
+pixelkiln vfx --preset shield_bubble --sprite object:<id> --out fx/chest-shield
+
+pixelkiln vfx --preset lightning_strike --sprite props/anvil.png --out fx/anvil-strike
+`}
+            />
+            <ul className="check-list effects-list">
+              <li><span className="tick" aria-hidden="true" /> A local PNG and an <code>object:&lt;id&gt;</code> reference both worked. The reference needs no download first.</li>
+              <li><span className="tick" aria-hidden="true" /> Each preset places the prop itself: the bubble centred the chest, the strike and the glow stood the others on the ground line.</li>
+              <li><span className="tick" aria-hidden="true" /> A preset&apos;s canvas does not shrink to the sprite. The strike is 96×128 whatever stands under it, so a 32px prop looks small beneath it.</li>
+              <li><span className="tick" aria-hidden="true" /> Lighting presets such as <code>firelight</code> change only the sprite&apos;s own pixels. On a 32px prop the change was too slight to show here.</li>
+            </ul>
+          </div>
+          <div className="effects-bottom fx-top">
+            <CodeWindow
+              title="pixelkiln.manifest.json"
+              language="json"
+              copyId="effects_object_manifest"
+              section="effects"
+              code={`
+{
+  "styles": {
+    "props": { "generator": "map", "outDir": "art/props" },
+    "fx": { "generator": "vfx", "outDir": "art/fx" }
+  },
+  "assets": {
+    "chest": { "prompt": "a wooden treasure chest", "file": "chest.png", "styles": ["props"] },
+    "chest.shield": {
+      "vfx": { "preset": "shield_bubble", "sprite": "art/props/chest.png" }
+    }
+  }
+}
+`}
+            />
+            <ul className="check-list effects-list">
+              <li><span className="tick" aria-hidden="true" /> In a manifest, <code>sprite</code> can be another asset&apos;s output. The effect waits until that file exists, then renders in a later wave of the same <code>gen</code>.</li>
+              <li><span className="tick" aria-hidden="true" /> Regenerate the prop and the effect goes stale with it, because the sprite&apos;s content is part of the effect&apos;s identity.</li>
+              <li><span className="tick" aria-hidden="true" /> The frames include the prop. Add <code>--game-pack</code> on the command line when the game draws the prop itself and needs the layers apart.</li>
+            </ul>
+          </div>
+          <div className="review-links">
+            <TrackedLink className="text-link" id="effects_object_cli_docs" section="effects" href="/docs/cli/vfx#effects-around-objects">
+              Objects in the vfx reference
+            </TrackedLink>
+            <TrackedLink className="text-link" id="effects_object_generator_docs" section="effects" href="/docs/generators#vfx">
+              The manifest vfx block
+            </TrackedLink>
+            <TrackedLink className="text-link" id="effects_object_source" section="effects" href="https://github.com/gfargo/pixelkiln/blob/main/src/pixellab-vfx.ts">
+              Read the source
+            </TrackedLink>
+          </div>
+        </div>
+      </section>
+
       <section className="fx-section fx-section-alt" id="placement">
         <div className="shell">
           <div className="section-heading split-heading">
@@ -55,7 +149,8 @@ export function EffectsGuideSections() {
                 effect is drawn to fit it: an aura follows its outline, a
                 shield wraps it, lightning lands on it. The sprite can be a
                 character or an object, as a local PNG, a URL, or a PixelLab
-                reference such as <code>character:&lt;id&gt;:south</code>.
+                reference such as <code>character:&lt;id&gt;:south</code> or{" "}
+                <code>object:&lt;id&gt;</code>.
               </p>
               <ul className="check-list effects-list">
                 <li><span className="tick" aria-hidden="true" /> The sheet and GIF show the sprite with the effect behind and in front of it, as in the four above.</li>

@@ -412,6 +412,7 @@ a { color: inherit; text-decoration: none; }
   overflow: hidden;
 }
 .fx-section { padding-block: 110px; }
+.effects-strip.fx-strip-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .fx-section-alt { background: #201d17; }
 .fx-section .effects-bottom { align-items: start; margin-bottom: 0; }
 .fx-section .effects-bottom.fx-top { margin-top: 70px; }
@@ -1190,6 +1191,7 @@ a { color: inherit; text-decoration: none; }
   .updates-featured h3 { font-size: 22px; }
   .effects-bottom { grid-template-columns: minmax(0, 1fr); }
   .fx-ways { grid-template-columns: minmax(0, 1fr); }
+  .effects-strip.fx-strip-3 { grid-template-columns: minmax(0, 1fr); }
   .hero { grid-template-columns: 1fr; gap: 44px; }
   .hero-copy { max-width: 720px; }
   .proof-grid { grid-template-columns: repeat(3, 1fr); }

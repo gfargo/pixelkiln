@@ -69,6 +69,13 @@ pixelkiln vfx --effect <saved effect id> --out fx/explosion --force
 - Every run saves to My effects. When the person tunes the sliders on
   pixellab.ai, pull the change down with `--effect <id> --out <base>
   --force`; never rebuild it from the preset.
+- The sprite does not have to be a character. A prop works the same way,
+  as a local PNG or as `object:<id>` (both measured, November 2026). The
+  preset places it: most stand it on a ground line, `shield_bubble` centres
+  it. A preset's canvas does not shrink to a small sprite, so check the
+  sheet before calling a 32px prop under a 96x128 strike good.
+- "Took longer than 120s and was stopped; nothing was saved" is PixelLab
+  timing out a render. Nothing is billed; run the same command again.
 - "The pixel tools are busy" means another render is running on the account;
   the command retries on its own.
 

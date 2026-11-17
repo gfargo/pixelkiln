@@ -105,6 +105,7 @@ export const FEATURES: Feature[] = [
     description: "Free pixel-art effects with PixelKiln's vfx command: built around your sprite by PixelLab's workbench, or rendered locally from the pixelfx library. Controls, output files, and library calls.",
     sections: [
       { href: "#effects", label: "Effects around a sprite" },
+      { href: "#objects", label: "Effects around objects" },
       { href: "#placement", label: "Around a sprite, or on its own" },
       { href: "#local", label: "Local effects with pixelfx" },
       { href: "#in-your-game", label: "Playing one in your game" },

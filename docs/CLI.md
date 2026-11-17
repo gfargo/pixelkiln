@@ -1228,6 +1228,37 @@ client such as Claude Code. Then pull the result into the project with
 For effects with no account at all, see
 [Local effects with pixelfx](#local-effects-with-pixelfx) below.
 
+#### Effects around objects
+
+```bash
+pixelkiln vfx --preset rim_glow --sprite props/kiln.png --out fx/kiln-glow
+pixelkiln vfx --preset shield_bubble --sprite object:<id> --out fx/chest-shield
+pixelkiln vfx --preset lightning_strike --sprite props/anvil.png --out fx/anvil-strike
+```
+
+`--sprite` is not limited to characters. The workbench fits the effect to
+whatever image it is given. Measured on 17 November 2026, each run free:
+
+- A local 32px PNG of a prop rendered with `rim_glow` (64x64, 8 frames,
+  loops), `lightning_strike` (96x128, 10 frames, plays once), and
+  `firelight` (64x64, 8 frames, loops).
+- `object:<id>`, an object stored in the PixelLab account, rendered with
+  `shield_bubble` (96x96, 8 frames, loops) with no download first. The
+  object was an 8-direction one and PixelLab chose the view.
+- Each preset places the sprite itself. `shield_bubble` centred the prop;
+  the other three stood it on the preset's ground line. The record's
+  `recipe.subject` holds the position and alignment used.
+- A preset's canvas does not shrink to the sprite. A small prop under a
+  96x128 lightning strike stays small.
+- Lighting presets (`firelight`, `rim_glow`, `light_sweep`) are written for
+  any sprite and show a sample asteroid when given none. `firelight` changes
+  only the sprite's own pixels, which is hard to see on a 32px prop.
+- One `lightning_strike` run failed with PixelLab's "took longer than 120s
+  and was stopped; nothing was saved" and succeeded unchanged on the next
+  try. Nothing is billed either way; run it again.
+
+`vfx presets` listed 41 presets on that date.
+
 #### Described effects (paid)
 
 ```bash
