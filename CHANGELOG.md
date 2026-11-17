@@ -1,3 +1,13 @@
+# [0.107.0](https://github.com/gfargo/pixelkiln/compare/v0.106.0...v0.107.0) (2026-11-17)
+
+
+### Features
+
+* **site:** effects around objects, measured, on the effects page ([29d94c4](https://github.com/gfargo/pixelkiln/commit/29d94c4ff16ffbea1814b67d1cd1d6b047da22dd))
+* **site:** pixelfx effects placed on an object, on the effects page ([9747989](https://github.com/gfargo/pixelkiln/commit/9747989e76c66d851454b2d8643a3f1e680e32c5))
+* **site:** the effects page covers placement, controls, files and library calls ([8a26d12](https://github.com/gfargo/pixelkiln/commit/8a26d126ea92ad67b91bd7e075972ebbccc698b3))
+* **vfx:** render effects locally from the pixelfx library ([5b9334e](https://github.com/gfargo/pixelkiln/commit/5b9334ebb9034aa43e37153fbde0728cfb8d88d0))
+
 # [0.106.0](https://github.com/gfargo/pixelkiln/compare/v0.105.1...v0.106.0) (2026-11-17)
 
 
