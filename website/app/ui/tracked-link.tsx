@@ -16,6 +16,7 @@ type TrackedLinkProps = {
   children: ReactNode;
   external?: boolean;
   "aria-label"?: string;
+  "aria-current"?: "page";
 };
 
 export function TrackedLink({

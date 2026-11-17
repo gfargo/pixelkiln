@@ -2,13 +2,14 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { sha256File, terrainSettings } from "../hash.ts"
 import { mirrorCurrent, mirrorSourceHash } from "./mirror.ts"
+import { isHeldItem } from "../attach.ts"
 import { deriveStale } from "./derive.ts"
 import { inspectExternal } from "./external.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type LockTerrainSettings, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
 import { inspectQualityProfile, type QualityProfileInspection } from "./quality-profile.ts"
-import { postprocessCurrent } from "./postprocess.ts"
+import { postprocessCurrent, postprocessFor, offsetKey } from "./postprocess.ts"
 import { inspectRevisionReadiness, recordedAnimationGroup } from "./revision.ts"
 
 export type PlanState =
@@ -243,6 +244,8 @@ export async function buildPlan(
         state = "missing"
         reason = spec.mirror
           ? `not made yet; flipped from ${spec.mirror.sourceAssetId} (no generation cost)`
+          : isHeldItem(spec)
+            ? `not made yet; a held item placed on ${spec.character!.layer!.sources.map((source) => source.assetId).join(", ")} (no generation cost)`
           : spec.derive
             ? `not made yet; derived from ${spec.derive.source.kind === "asset" ? spec.derive.source.assetId : spec.derive.source.file} (${spec.derive.transform}, no generation cost)`
             : "not in lockfile"
@@ -251,7 +254,9 @@ export async function buildPlan(
       state = "stale"
       reason = spec.derive
         ? "transform, its parameters, or the source file changed; derive it again (no generation cost)"
-        : "prompt, size, or style changed"
+        : isHeldItem(spec)
+          ? "the item, the anchors file, or how it is held changed; place it again (no generation cost)"
+          : "prompt, size, or style changed"
     } else if (derivedStale) {
       state = "stale"
       reason = `${derivedStale}; derive it again (no generation cost)`
@@ -279,6 +284,16 @@ export async function buildPlan(
       // need their own check, the same way a mirror's source does.
       state = "stale"
       reason = `outfit source ${spec.character.parentAssetId} changed; re-clothe the loop again`
+    } else if (spec.character?.kind === "layer" && changedLayerSource(spec, entry, lock)) {
+      state = "stale"
+      reason = isHeldItem(spec)
+        ? `layer source ${changedLayerSource(spec, entry, lock)} changed; place the item again (no generation cost)`
+        : `layer source ${changedLayerSource(spec, entry, lock)} changed; dress the frames again`
+    } else if (isHeldItem(spec) && entry.status === "downloaded" && entry.outputs.some((_output, index) =>
+      !existsSync(currentEntryOutputPath(entry, spec, index)))
+    ) {
+      state = "stale"
+      reason = "held item output missing on disk; place it again (no generation cost)"
     } else if (changedConnection) {
       // Which set and terrain this connects to is in specHash above; the
       // other set's current generation is only in the lockfile.
@@ -347,24 +362,33 @@ export async function buildPlan(
       // is reported rather than silently overwritten.
       state = "orphaned"
       reason = await modifiedReason(entry, spec)
-    } else if (spec.derive) {
-      // Its bytes are the transform's, not a provider's, so the style's
-      // palette enforcement has nothing to re-apply.
+    } else if (spec.derive || isHeldItem(spec)) {
+      // Its bytes are the transform's (or the author's item), not a
+      // provider's, so the style's palette enforcement has nothing to re-apply.
       state = "ok"
       reason = "up to date"
     } else if (spec.mirror && !postprocessCurrent(entry, spec)) {
       // A mirror has no raw bytes of its own; the source is snapped or
       // restored first and the mirror flipped from the result.
       state = "stale"
-      reason = "palette enforcement changed; flip the source again once it is refreshed (no generation cost)"
+      reason = "post-processing changed; flip the source again once it is refreshed (no generation cost)"
     } else if (!postprocessCurrent(entry, spec)) {
       // The bytes are PixelKiln's and the provider work stands; only the
       // post-processing the manifest asks for changed. Re-applying it needs
       // the raw bytes, not a generation.
       state = "recoverable"
-      reason = spec.enforcePalette
-        ? "palette enforcement turned on; run pixelkiln fetch to snap the file (no generation cost)"
-        : "palette enforcement turned off; run pixelkiln fetch to restore the provider's bytes (no generation cost)"
+      const wanted = postprocessFor(spec)
+      if (offsetKey(wanted?.offset) !== offsetKey(entry.postprocess?.offset)) {
+        reason = "layer offset changed; run pixelkiln fetch to move the frames (no generation cost)"
+      } else if (Boolean(wanted?.despeckle) !== Boolean(entry.postprocess?.despeckle)) {
+        reason = wanted?.despeckle
+          ? "frame cleaning turned on; run pixelkiln fetch to clean the frames (no generation cost)"
+          : "frame cleaning turned off; run pixelkiln fetch to restore the provider's bytes (no generation cost)"
+      } else {
+        reason = spec.enforcePalette
+          ? "palette enforcement turned on; run pixelkiln fetch to snap the file (no generation cost)"
+          : "palette enforcement turned off; run pixelkiln fetch to restore the provider's bytes (no generation cost)"
+      }
     } else {
       state = "ok"
       reason = "up to date"
@@ -391,7 +415,7 @@ export async function buildPlan(
         item.reason = `parent ${parentKey} is being generated in this run; this follows in the next wave`
         break
       }
-      if ((item.spec.mirror || item.spec.derive) && (parentState === "recoverable" || parentState === "in-flight")) {
+      if ((item.spec.mirror || item.spec.derive || isHeldItem(item.spec)) && (parentState === "recoverable" || parentState === "in-flight")) {
         // A mirror flips whatever bytes its source has now; wait for the
         // fetch or poll that is about to change them.
         item.state = "blocked"
@@ -470,4 +494,11 @@ export function summarize(plan: Plan): Record<PlanState, number> {
   } as Record<PlanState, number>
   for (const item of plan.items) counts[item.state]++
   return counts
+}
+
+/** The first of a layer's sources whose frames are not the ones it was made from, or undefined. */
+function changedLayerSource(spec: ResolvedSpec, entry: LockEntry, lock: Lock): string | undefined {
+  const recorded = new Map((entry.layer?.sources ?? []).map((source) => [source.assetId, source.sha256]))
+  return spec.character!.layer!.sources.find((source) =>
+    recorded.get(source.assetId) !== mirrorSourceHash(lock.entries[lockKey(spec.styleId, source.assetId)] ?? { outputs: [] }))?.assetId
 }

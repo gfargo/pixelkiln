@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { existsSync } from "node:fs"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { loadManifest, resolveSpecs } from "../src/manifest.ts"
@@ -13,10 +13,17 @@ import { fetchAssets, pushTags } from "../src/pipeline/fetch.ts"
 import { packStyle } from "../src/pipeline/pack.ts"
 import { renderGodotSpriteFrames } from "../src/pipeline/sheet-formats.ts"
 import { openProject } from "../src/project.ts"
-import { encodeRgbaPng } from "../src/png.ts"
+import { decodePng, encodeRgbaPng } from "../src/png.ts"
 import { upsert } from "../src/lock.ts"
 import { sha256File } from "../src/hash.ts"
-import { lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
+import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
+import { writeAnchors } from "../src/pipeline/attach.ts"
+import { redrawLayerFrames } from "../src/pipeline/redraw.ts"
+import { SKELETON_LABELS } from "../src/skeleton.ts"
+
+/** The directions a held item needs files for: every one its base faces. */
+const characterDirectionsOf = (spec: ResolvedSpec) =>
+  CHARACTER_DIRECTIONS_8.filter((direction) => spec.character!.directions === 8 || ["south", "west", "east", "north"].includes(direction))
 
 let dir: string
 beforeEach(async () => {
@@ -940,6 +947,26 @@ function fakeClient() {
       baseJobs.set(jobId, "processing")
       return { background_job_id: jobId, status: "processing", usage: null }
     },
+    inpaints: [] as { description: string; image: Buffer; mask: Buffer; width: number; height: number; noBackground?: boolean }[],
+    async inpaintV3(args: { description: string; image: { base64: string }; maskImage: { base64: string }; width: number; height: number; noBackground?: boolean }) {
+      const jobId = `inpaint-job-${++counter}`
+      client.calls.push(`inpaint:${args.width}x${args.height}`)
+      client.inpaints.push({
+        description: args.description,
+        image: Buffer.from(args.image.base64, "base64"),
+        mask: Buffer.from(args.maskImage.base64, "base64"),
+        width: args.width,
+        height: args.height,
+        noBackground: args.noBackground,
+      })
+      baseJobs.set(jobId, "processing")
+      return { background_job_id: jobId, status: "processing" }
+    },
+    /** Test hook: land an inpaint job with the image the provider "painted". */
+    completeInpaint(jobId: string, png: Buffer) {
+      baseJobResponse.set(jobId, { image: { type: "base64", base64: png.toString("base64") } })
+      baseJobs.set(jobId, "completed")
+    },
     /** Test hook: land an outfit job with `count` resulting frame images, inline as base64. */
     completeOutfit(jobId: string, count: number) {
       const images = Array.from({ length: count }, (_, i) => ({ type: "base64", base64: px(8, 60 + i).toString("base64"), width: 8, height: 8 }))
@@ -1662,5 +1689,563 @@ describe("packing a cast", () => {
     const tres = renderGodotSpriteFrames(atlas, { imageName: "cast-sheet.png" })
     expect(tres).toContain('"name": &"mira.fireman_spin",\n"speed": 10.0')
     expect(tres).toContain('"name": &"mira/south",\n"speed": 5.0')
+  })
+})
+
+describe("paperdoll layer", () => {
+  const LEATHER = [90, 60, 40, 255]
+
+  function layeredManifest(layer: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) {
+    return writeManifest({
+      assets: {
+        mira: { prompt: "small young woman" },
+        "mira.walk": { prompt: "walking forward", animation: { of: "mira", direction: "south", frames: 4, fps: 8 } },
+        "mira.armor": { prompt: "leather ranger armour", layer: { of: ["mira", "mira.walk"], ...layer } },
+        ...overrides,
+      },
+    })
+  }
+
+  /** Generates and downloads the base and its loop, leaving only the layer to plan. */
+  async function withSources(file: string, client: ReturnType<typeof fakeClient>, provider: PixelLabProvider) {
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "pixelkiln:cast/mira.walk", "south", 4)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    const entry = p.lock.entries["cast/mira.walk"]!
+    const spec = p.specs.find((candidate) => candidate.assetId === "mira.walk")
+    const state = await provider.poll(entry.reviewObjectId!, entry.generator, { spec, metadata: entry.providerMetadata?.pixellab })
+    if (state.status !== "review-set") throw new Error("the loop is not ready for review")
+    upsert(p.lock, "cast/mira.walk", { status: "selected", objectId: state.objectId, sourceUrl: state.sources[0]?.url ?? null, sourceUrls: state.sources })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    return openProject(file, { env: false })
+  }
+
+  /** What a provider would return: the keyed sheet with every masked pixel painted leather. */
+  function painted(sent: { image: Buffer; mask: Buffer }) {
+    const image = decodePng(sent.image)
+    const mask = decodePng(sent.mask)
+    const out = Buffer.from(image.pixels)
+    for (let i = 0; i < out.length; i += 4) if (mask.pixels[i] === 255) Buffer.from(LEATHER).copy(out, i)
+    return encodeRgbaPng(image.width, image.height, out)
+  }
+
+  it("resolves a layer over several assets, keeps the prompt unwrapped, and waits for its sources", async () => {
+    const p = await openProject(await layeredManifest(), { env: false })
+    const layer = p.specs.find((s) => s.assetId === "mira.armor")!
+    expect(layer.character).toMatchObject({ kind: "layer", parentAssetId: "mira" })
+    expect(layer.character!.layer!.sources.map((source) => source.assetId)).toEqual(["mira", "mira.walk"])
+    expect(layer.character!.layer!.clean).toBe(true)
+    expect(layer.prompt).toBe("leather ranger armour")
+    const plan = await p.plan()
+    expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira"])
+    expect(plan.items.find((i) => i.key === "cast/mira.armor")).toMatchObject({ state: "blocked" })
+  })
+
+  it("refuses a layer of itself, of a portrait, of a repeated asset, and in a style that is not a character's", async () => {
+    await expect(openProject(await layeredManifest({ of: ["mira", "mira.armor"] }), { env: false })).rejects.toThrow(/a layer cannot dress itself/)
+    await expect(openProject(await layeredManifest({ of: ["mira", "mira"] }), { env: false })).rejects.toThrow(/names an asset twice/)
+    await expect(openProject(await layeredManifest({ of: "mira.face" }, { "mira.face": { portrait: { of: "mira", size: 16 } } }), { env: false }))
+      .rejects.toThrow(/layer source "mira.face" is not a character base, state, or loop/)
+    await expect(openProject(await layeredManifest({}, { "mira.armor": { layer: { of: "mira" } } }), { env: false })).rejects.toThrow(/prompt/)
+  })
+
+  it("sends one keyed sheet and mask, then cuts one layer per source frame named after it", async () => {
+    const file = await layeredManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(file, client, provider)
+
+    const plan = await p.plan()
+    expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.armor"])
+    expect(plan.groups[0]!.cost).toBe(25)
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(p.lock.entries["cast/mira.armor"]).toMatchObject({ status: "processing", error: null })
+    const sources = p.lock.entries["cast/mira"]!.outputs.length + p.lock.entries["cast/mira.walk"]!.outputs.length
+    const sent = client.inpaints.at(-1)!
+    expect(sent.description).toBe("leather ranger armour")
+    expect(sent.noBackground).toBe(true)
+    expect(decodePng(sent.image)).toMatchObject({ width: sent.width, height: sent.height })
+    expect(decodePng(sent.mask)).toMatchObject({ width: sent.width, height: sent.height })
+    expect(Math.min(sent.width, sent.height)).toBeGreaterThanOrEqual(32)
+
+    const work = path.join(dir, ".pixelkiln", "layers", "cast", "mira.armor")
+    for (const name of ["sheet.png", "keyed.png", "mask.png", "layout.json"]) expect(existsSync(path.join(work, name))).toBe(true)
+    expect((await readFile(path.join(work, "keyed.png"))).equals(sent.image)).toBe(true)
+
+    const jobId = p.lock.entries["cast/mira.armor"]!.jobId!
+    client.completeInpaint(jobId, painted(sent))
+    client.setJobUsage(jobId, { type: "generations", generations: 10 })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.armor"]).toMatchObject({ status: "selected", billed: { amount: 10, unit: "generations" } })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    const entry = p.lock.entries["cast/mira.armor"]!
+    expect(entry.status).toBe("downloaded")
+    expect(entry.outputs).toHaveLength(sources)
+    expect(entry.outputs[0]!.role).toBe("mira.south")
+    expect(entry.outputs.at(-1)!.role).toBe("mira.walk.frame-03")
+    expect(entry.layer!.sources.map((source) => source.assetId)).toEqual(["mira", "mira.walk"])
+    expect(existsSync(path.join(work, "result.png"))).toBe(true)
+
+    // Each layer frame is its source frame's size, leather below the neck and clear above it.
+    const first = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
+    const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+    expect(first).toMatchObject({ width: source.width, height: source.height })
+    expect([...first.pixels.subarray(0, 4)]).toEqual([0, 0, 0, 0])
+    expect([...first.pixels.subarray(first.pixels.length - 4)]).toEqual(LEATHER)
+
+    const settled = await (await openProject(file, { env: false })).plan()
+    expect(settled.actionable).toEqual([])
+  })
+
+  it("pads the sheet and widens the mask for a hat, and returns layers on a grown canvas", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const plain = await withSources(await layeredManifest(), client, provider)
+    expect(plain.specs.find((s) => s.assetId === "mira.armor")!.character!.layer).toMatchObject({ region: "body", padding: 0 })
+    await submit(provider, plain.loaded, (await plain.plan()).actionable, plain.lock, plain.lockPath, { spacingMs: 0 })
+    const body = client.inpaints.at(-1)!
+
+    const p = await openProject(await layeredManifest({ region: "head", padding: 4 }), { env: false })
+    expect(p.specs.find((s) => s.assetId === "mira.armor")!.character!.layer).toMatchObject({ region: "head", padding: 4 })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const hat = client.inpaints.at(-1)!
+    expect(hat.width * hat.height).toBeGreaterThan(body.width * body.height)
+    // The cell's top-left corner is empty padding: black for a body layer's mask, white for a head layer's.
+    expect(decodePng(body.mask).pixels[0]).toBe(0)
+    expect(decodePng(hat.mask).pixels[0]).toBe(255)
+
+    const jobId = p.lock.entries["cast/mira.armor"]!.jobId!
+    client.completeInpaint(jobId, painted(hat))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const entry = p.lock.entries["cast/mira.armor"]!
+    const layer = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
+    const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+    expect(layer).toMatchObject({ width: source.width + 8, height: source.height + 8 })
+    // A padded layer shares its frame's centre, so it is drawn that much up and to the left.
+    expect(packStyle(p.lock, "cast", dir, { pivot: "bottom-center" }).atlas.layers![0]!.frames[0]).toMatchObject({ over: "mira/south", dx: -4, dy: -4 })
+    expect(openProject(await layeredManifest({ region: "around" }), { env: false }).then((q) => q.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.padding)).resolves.toBe(8)
+  })
+
+  it("goes stale when any source is regenerated", async () => {
+    const file = await layeredManifest()
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(file, client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const jobId = p.lock.entries["cast/mira.armor"]!.jobId!
+    client.completeInpaint(jobId, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    // A regenerated loop: new bytes on disk, and the lock records them.
+    const walk = p.lock.entries["cast/mira.walk"]!
+    const redrawn = path.resolve(dir, walk.outputs[0]!.path)
+    await writeFile(redrawn, px(8, 77))
+    upsert(p.lock, "cast/mira.walk", {
+      outputs: await Promise.all(walk.outputs.map(async (output, index) => (index === 0 ? { ...output, sha256: await sha256File(redrawn) } : output))),
+    })
+    const plan = await p.plan()
+    expect(plan.items.find((i) => i.key === "cast/mira.armor")).toMatchObject({
+      state: "stale",
+      reason: expect.stringContaining("layer source mira.walk changed"),
+    })
+  })
+
+  it("uses a supplied mask in place of the computed one, and refuses one of the wrong size", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(await layeredManifest(), client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const { width, height } = client.inpaints.at(-1)!
+
+    const pixels = Buffer.alloc(width * height * 4, 255)
+    for (let i = 0; i < pixels.length; i += 4) if (i >= 16) pixels.fill(0, i, i + 3)
+    const mask = encodeRgbaPng(width, height, pixels)
+    await writeFile(path.join(dir, "armor-mask.png"), mask)
+    let masked = await openProject(await layeredManifest({ mask: "armor-mask.png" }), { env: false })
+    await submit(provider, masked.loaded, (await masked.plan()).actionable, masked.lock, masked.lockPath, { spacingMs: 0 })
+    expect(client.inpaints.at(-1)!.mask.equals(mask)).toBe(true)
+
+    await writeFile(path.join(dir, "armor-mask.png"), px(8, 255))
+    masked = await openProject(await layeredManifest({ mask: "armor-mask.png" }), { env: false })
+    await submit(provider, masked.loaded, (await masked.plan()).actionable, masked.lock, masked.lockPath, { spacingMs: 0 })
+    expect(masked.lock.entries["cast/mira.armor"]).toMatchObject({ status: "failed", error: expect.stringContaining("the mask is 8x8") })
+  })
+
+  it("moves a drawn layer by its offset at download, and again for free when the offset changes", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let file = await layeredManifest({ offset: [0, -1] })
+    let p = await withSources(file, client, provider)
+    expect(p.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.offset).toEqual({ x: 0, y: -1 })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const entry = () => p.lock.entries["cast/mira.armor"]!
+    expect(entry()).toMatchObject({ status: "downloaded", postprocess: { offset: { x: 0, y: -1 } } })
+    const read = async () => decodePng(await readFile(path.resolve(dir, entry().outputs[0]!.path)))
+    const bottomRow = (image: { width: number; height: number; pixels: Buffer }) => [...image.pixels.subarray(image.pixels.length - 4)]
+    // Unmoved, the layer's last pixel is leather (see the test above); moved up one, that row is empty.
+    expect(bottomRow(await read())).toEqual([0, 0, 0, 0])
+    const jobs = client.inpaints.length
+    // A pair per source asset, and a name that is not one of them refused.
+    const perAsset = await openProject(await layeredManifest({ offset: { "*": [0, -1], "mira.walk": [0, -3] } }), { env: false })
+    expect(perAsset.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.offset).toEqual({ x: 0, y: -1, per: { "mira.walk": { x: 0, y: -3 } } })
+    await expect(openProject(await layeredManifest({ offset: { "mira.run": [0, -1] } }), { env: false })).rejects.toThrow(/layer.offset names "mira.run"/)
+
+    // Dropping the offset is a different spec hash for nothing: the same layer, re-processed by fetch.
+    file = await layeredManifest()
+    p = await openProject(file, { env: false })
+    const plan = await p.plan()
+    expect(plan.actionable).toEqual([])
+    expect(plan.items.find((item) => item.key === "cast/mira.armor")).toMatchObject({ state: "recoverable", reason: expect.stringContaining("layer offset changed") })
+    expect(await fetchAssets(provider, p.specs, p.lock, p.lockPath)).toMatchObject({ failed: 0 })
+    expect(bottomRow(await read())).toEqual(LEATHER)
+    expect(client.inpaints).toHaveLength(jobs)
+    expect((await (await openProject(file, { env: false })).plan()).items.find((item) => item.key === "cast/mira.armor")!.state).toBe("ok")
+  })
+
+  it("redraws one frame beside the others shown dressed, and records it as the layer's own", async () => {
+    const GREEN = [40, 140, 60, 255]
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await withSources(await layeredManifest({ offset: [0, -1] }), client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject((await layeredManifest({ offset: [0, -1] })), { env: false })
+    const spec = p.specs.find((s) => s.assetId === "mira.armor")!
+    const entry = () => p.lock.entries["cast/mira.armor"]!
+    const before = entry()
+    const jobs = client.inpaints.length
+    // A provider that lands at once, painting what it may in green.
+    const painter = {
+      async paintSheet(args: Parameters<PixelLabProvider["paintSheet"]>[0]) {
+        const jobId = await provider.paintSheet(args)
+        const sent = client.inpaints.at(-1)!
+        const image = decodePng(sent.image)
+        const mask = decodePng(sent.mask)
+        const out = Buffer.from(image.pixels)
+        for (let i = 0; i < out.length; i += 4) if (mask.pixels[i] === 255) Buffer.from(GREEN).copy(out, i)
+        client.completeInpaint(jobId, encodeRgbaPng(image.width, image.height, out))
+        client.setJobUsage(jobId, { type: "generations", generations: 10 })
+        return jobId
+      },
+      paintedSheet: (jobId: string) => provider.paintedSheet(jobId),
+    }
+    const options = { lockPath: p.lockPath, pollMs: 0 }
+
+    await expect(redrawLayerFrames(spec, p.lock, painter, { ...options, frames: [] })).rejects.toThrow(/needs at least one --frame.*mira\.walk\.frame-02/)
+    await expect(redrawLayerFrames(spec, p.lock, painter, { ...options, frames: ["frame-09"] })).rejects.toThrow(/has no frame "frame-09"/)
+    await expect(redrawLayerFrames(spec, p.lock, painter, { ...options, frames: ["frame-00", "frame-01", "frame-02", "frame-03"] }))
+      .rejects.toThrow(/leaves none to copy the outfit from/)
+    expect(await redrawLayerFrames(spec, p.lock, painter, { ...options, frames: ["frame-02"], dryRun: true }))
+      .toMatchObject({ roles: ["mira.walk.frame-02"], guides: 3, cost: 10, written: [] })
+    expect(client.inpaints).toHaveLength(jobs)
+
+    const result = await redrawLayerFrames(spec, p.lock, painter, { ...options, frames: ["frame-02"] })
+    expect(result).toMatchObject({ roles: ["mira.walk.frame-02"], guides: 3, billed: { amount: 10, unit: "generations" } })
+    expect(result.written).toHaveLength(1)
+    expect(client.inpaints).toHaveLength(jobs + 1)
+    // Only the loop's four frames went, three of them wearing the leather they already had, and one left open.
+    const sent = client.inpaints.at(-1)!
+    expect(sent.description).toMatch(/^leather ranger armour\. Every figure but one already wears it/)
+    const keyed = decodePng(sent.image)
+    const mask = decodePng(sent.mask)
+    // The open part of the mask fits inside one frame.
+    const box = { left: Infinity, right: -1, top: Infinity, bottom: -1 }
+    let leather = 0
+    for (let i = 0; i < mask.pixels.length; i += 4) {
+      const x = (i / 4) % mask.width
+      const y = Math.floor(i / 4 / mask.width)
+      if (mask.pixels[i] === 255) Object.assign(box, { left: Math.min(box.left, x), right: Math.max(box.right, x), top: Math.min(box.top, y), bottom: Math.max(box.bottom, y) })
+      if (keyed.pixels.compare(Buffer.from(LEATHER), 0, 4, i, i + 4) === 0) leather++
+    }
+    const frame = decodePng(await readFile(path.resolve(dir, before.outputs[0]!.path)))
+    expect(box.right).toBeGreaterThanOrEqual(box.left)
+    expect(box.right - box.left).toBeLessThan(frame.width)
+    expect(box.bottom - box.top).toBeLessThan(frame.height)
+    expect(leather).toBeGreaterThan(0)
+
+    // The frame is green, its neighbours untouched, and the record is the file's.
+    const colours = async (role: string) => {
+      const output = entry().outputs.find((o) => o.role === role)!
+      const file = path.resolve(dir, output.path)
+      expect(await sha256File(file)).toBe(output.sha256)
+      const { pixels } = decodePng(await readFile(file))
+      const seen = new Set<string>()
+      for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 3]) seen.add([...pixels.subarray(i, i + 4)].join())
+      return [...seen]
+    }
+    expect(await colours("mira.walk.frame-02")).toEqual([GREEN.join()])
+    expect(await colours("mira.walk.frame-01")).toEqual([LEATHER.join()])
+    expect(entry().outputs.find((o) => o.role === "mira.walk.frame-02")!.raw).toMatch(/^[0-9a-f]{64}$/)
+    expect(entry().outputs.find((o) => o.role === "mira.walk.frame-01")).toEqual(before.outputs.find((o) => o.role === "mira.walk.frame-01"))
+    expect(entry().cost).toBe(before.cost + 10)
+    expect((await (await openProject(await layeredManifest({ offset: [0, -1] }), { env: false })).plan()).items.find((item) => item.key === "cast/mira.armor")!.state).toBe("ok")
+
+    // A later change of offset starts from the redrawn frame, not the one it replaced.
+    p = await openProject(await layeredManifest(), { env: false })
+    expect(await fetchAssets(provider, p.specs, p.lock, p.lockPath)).toMatchObject({ failed: 0 })
+    expect(await colours("mira.walk.frame-02")).toEqual([GREEN.join()])
+    expect(client.inpaints).toHaveLength(jobs + 1)
+  })
+
+  it("recolours a whole layer for nothing: one frame out per frame in, under the same names", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const manifest = () => layeredManifest({}, { "mira.armor.blue": { derive: { from: "mira.armor", transform: "hue-shift", degrees: 180 } } })
+    let p = await withSources(await manifest(), client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(await manifest(), { env: false })
+    const plan = await p.plan()
+    expect(plan.actionable.map((item) => item.key)).toEqual(["cast/mira.armor.blue"])
+    expect(plan.groups[0]!.cost).toBe(0)
+    const jobs = client.inpaints.length
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0, budget: 0 })
+    expect(client.inpaints).toHaveLength(jobs)
+    const layer = p.lock.entries["cast/mira.armor"]!
+    const blue = p.lock.entries["cast/mira.armor.blue"]!
+    expect(blue).toMatchObject({ status: "downloaded", cost: 0 })
+    expect(blue.outputs.map((output) => output.role)).toEqual(layer.outputs.map((output) => output.role))
+    // Leather is an orange-brown; half a turn of hue makes it blue, at the same brightness.
+    const frame = decodePng(await readFile(path.resolve(dir, blue.outputs[0]!.path)))
+    const last = [...frame.pixels.subarray(frame.pixels.length - 4)]
+    expect(Math.max(...last.slice(0, 3))).toBe(Math.max(...LEATHER.slice(0, 3)))
+    expect(last[2]).toBeGreaterThan(last[0]!)
+    expect((await (await openProject(await manifest(), { env: false })).plan()).actionable).toEqual([])
+    // Packed, the atlas pairs every frame of the layer and of its recolour with the frame beneath it.
+    const packed = packStyle(p.lock, "cast", dir, { pivot: "bottom-center" })
+    const layers = packed.atlas.layers!
+    expect(layers.map((entry) => entry.id)).toEqual(["mira.armor", "mira.armor.blue"])
+    expect(layers[0]!.of).toEqual(["mira", "mira.walk"])
+    expect(layers[0]!.frames).toHaveLength(layer.outputs.length)
+    expect(layers[0]!.frames[0]).toEqual({ frame: "mira.armor/mira.south", over: "mira/south", dx: 0, dy: 0 })
+    expect(layers[0]!.frames.at(-1)).toEqual({ frame: "mira.armor/mira.walk.frame-03", over: "mira.walk/frame-03", dx: 0, dy: 0 })
+    expect(layers[1]!.frames[0]).toMatchObject({ frame: "mira.armor.blue/mira.south", over: "mira/south" })
+    // A transform that needs one image says so when the manifest loads.
+    await expect(openProject(await layeredManifest({}, { "mira.small": { derive: { from: "mira.armor", transform: "scale", width: 4, height: 4 } } }), { env: false }))
+      .rejects.toThrow(/mira.armor is a set of frames; scale takes a single image/)
+  })
+
+  describe("held items", () => {
+    const STEEL = [180, 190, 200, 255]
+
+    /** A layer that pins `items/sword-<direction>.png` to the right hand of the base and its loop. */
+    function heldManifest(attach: Record<string, unknown> = {}, layer: Record<string, unknown> = {}) {
+      return layeredManifest({}, {
+        "mira.armor": undefined,
+        "mira.sword": { layer: { of: ["mira", "mira.walk"], attach: { item: "items/sword-{direction}.png", anchors: "anchors/mira.json", ...attach }, ...layer } },
+      })
+    }
+
+    /** One 3x5 upright sword per direction. */
+    async function writeItems() {
+      await mkdir(path.join(dir, "items"), { recursive: true })
+      const pixels = Buffer.alloc(3 * 5 * 4)
+      for (let y = 0; y < 5; y++) Buffer.from(STEEL).copy(pixels, (y * 3 + 1) * 4)
+      for (const direction of CHARACTER_DIRECTIONS_8) await writeFile(path.join(dir, "items", `sword-${direction}.png`), encodeRgbaPng(3, 5, pixels))
+    }
+
+    /** Every skeleton the same: right wrist at the centre, elbow straight above it, in front of the body. */
+    function estimator() {
+      const calls: string[] = []
+      return {
+        calls,
+        estimateSkeleton: async (args: { image: { base64: string } }) => {
+          calls.push(args.image.base64)
+          return {
+            // The fake's 8px frames go up on a 16px canvas, so these are halved from frame fractions.
+            keypoints: SKELETON_LABELS.map((label) => ({ label, x: 0.25, y: label === "RIGHT ELBOW" ? 0.125 : 0.25, z_index: 0 })),
+          }
+        },
+      }
+    }
+
+    it("resolves without a prompt, at no cost, one item file per direction the frames face", async () => {
+      const p = await openProject(await heldManifest(), { env: false })
+      const sword = p.specs.find((s) => s.assetId === "mira.sword")!
+      expect(sword).toMatchObject({ prompt: "", cost: 0 })
+      const attach = sword.character!.layer!.attach!
+      expect(attach).toMatchObject({ joint: "right-hand", scale: 1, tilt: 0, lean: 0, depth: "auto" })
+      // Resizing it, or holding it by its centre, is a different layer.
+      const resized = (await openProject(await heldManifest({ scale: 0.75, grip: "center" }), { env: false })).specs.find((s) => s.assetId === "mira.sword")!
+      expect(resized.character!.layer!.attach).toMatchObject({ scale: 0.75, grip: "center" })
+      expect(resized.specHash).not.toBe(sword.specHash)
+      expect(sword.character!.layer!.padding).toBe(12)
+      expect(attach.item.map((file) => file.direction)).toEqual(characterDirectionsOf(sword))
+      expect(attach.item[0]).toMatchObject({ path: path.join(dir, "items", "sword-south.png"), sha256: null })
+      await expect(openProject(await heldManifest({}, { region: "around" }), { env: false })).rejects.toThrow(/a held item is placed, not inpainted; region/)
+    })
+
+    it("waits for its anchors, then places the item on every frame for free", async () => {
+      const file = await heldManifest()
+      await writeItems()
+      const client = fakeClient()
+      const provider = new PixelLabProvider(client as never)
+      let p = await withSources(file, client, provider)
+
+      // No anchors file yet: the plan says how to make one, and gen does not fail an asset over it.
+      let plan = await p.plan()
+      expect(plan.items.find((item) => item.key === "cast/mira.sword")).toMatchObject({ state: "blocked", reason: expect.stringContaining("pixelkiln anchors mira.sword") })
+
+      const sword = () => p.specs.find((s) => s.assetId === "mira.sword")!
+      const frames = p.lock.entries["cast/mira"]!.outputs.length + p.lock.entries["cast/mira.walk"]!.outputs.length
+      const estimate = estimator()
+      expect(await writeAnchors(sword(), p.lock, estimate, { dryRun: true })).toMatchObject({ estimated: frames, current: 0 })
+      expect(estimate.calls).toHaveLength(0)
+      expect(await writeAnchors(sword(), p.lock, estimate)).toMatchObject({ estimated: frames, current: 0 })
+      // A second run has nothing to pay for.
+      expect(await writeAnchors(sword(), p.lock, estimate)).toMatchObject({ estimated: 0, current: frames })
+      expect(estimate.calls).toHaveLength(frames)
+      expect(decodePng(Buffer.from(estimate.calls[0]!, "base64"))).toMatchObject({ width: 16, height: 16 })
+      const written = JSON.parse(await readFile(path.join(dir, "anchors", "mira.json"), "utf8"))
+      expect(written.frames.mira.south).toMatchObject({ width: 8, height: 8 })
+      expect(written.frames.mira.south.keypoints.find((joint: { label: string }) => joint.label === "RIGHT ARM")).toMatchObject({ x: 0.5, y: 0.5 })
+
+      p = await openProject(file, { env: false })
+      plan = await p.plan()
+      expect(plan.actionable.map((item) => item.key)).toEqual(["cast/mira.sword"])
+      expect(plan.groups[0]!.cost).toBe(0)
+      const inpaints = client.inpaints.length
+      await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0, budget: 0 })
+      expect(client.inpaints).toHaveLength(inpaints)
+
+      const entry = p.lock.entries["cast/mira.sword"]!
+      expect(entry).toMatchObject({ status: "downloaded", cost: 0, error: null })
+      expect(entry.outputs).toHaveLength(frames)
+      expect(entry.outputs[0]!.role).toBe("mira.south")
+      expect(entry.outputs.at(-1)!.role).toBe("mira.walk.frame-03")
+      expect(entry.layer!.sources.map((source) => source.assetId)).toEqual(["mira", "mira.walk"])
+
+      // The layer is its frame grown by the padding, steel at the hand and nowhere near a corner.
+      const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+      const layer = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
+      expect(layer).toMatchObject({ width: source.width + 24, height: source.height + 24 })
+      // The palm is 35% of the forearm past the wrist; the grip is the sword's lowest pixel.
+      const hand = { x: Math.round(source.width * 0.5 - 1) + 1 + 12, y: Math.round(source.height * (0.5 + 0.25 * 0.35) - 4) + 4 + 12 }
+      const at = (x: number, y: number) => [...layer.pixels.subarray((y * layer.width + x) * 4, (y * layer.width + x) * 4 + 4)]
+      expect(at(hand.x, hand.y)).toEqual(STEEL)
+      expect(at(hand.x, hand.y - 4)).toEqual(STEEL)
+      expect(at(hand.x, hand.y + 1)).toEqual([0, 0, 0, 0])
+      expect(at(0, 0)).toEqual([0, 0, 0, 0])
+
+      p = await openProject(file, { env: false })
+      expect((await p.plan()).actionable).toEqual([])
+
+      // An offset moves the item on the hand: a different layer, placed again for nothing.
+      const nudged = await openProject(await heldManifest({}, { offset: [2, 0] }), { env: false })
+      const again = await nudged.plan()
+      expect(again.actionable.map((item) => item.key)).toEqual(["cast/mira.sword"])
+      await submit(provider, nudged.loaded, again.actionable, nudged.lock, nudged.lockPath, { spacingMs: 0, budget: 0 })
+      const shifted = decodePng(await readFile(path.resolve(dir, nudged.lock.entries["cast/mira.sword"]!.outputs[0]!.path)))
+      const px = (x: number, y: number) => [...shifted.pixels.subarray((y * shifted.width + x) * 4, (y * shifted.width + x) * 4 + 4)]
+      expect(px(hand.x + 2, hand.y)).toEqual(STEEL)
+      expect(px(hand.x, hand.y)).toEqual([0, 0, 0, 0])
+      await writeFile(file, await readFile(file, "utf8"))
+      p = await openProject(await heldManifest(), { env: false })
+      await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0, budget: 0 })
+
+      // A changed item is a changed layer, placed again for nothing.
+      await writeFile(path.join(dir, "items", "sword-south.png"), encodeRgbaPng(3, 5, Buffer.alloc(3 * 5 * 4, 255)))
+      p = await openProject(file, { env: false })
+      const changed = await p.plan()
+      expect(changed.actionable.map((item) => item.key)).toEqual(["cast/mira.sword"])
+      expect(changed.actionable[0]!.reason).toMatch(/the item, the anchors file, or how it is held changed/)
+    })
+
+    it("redraws the hand around a placed item with one small inpaint when asked to grasp", async () => {
+      const file = await heldManifest({ grasp: { radius: 2 } })
+      await writeItems()
+      const client = fakeClient()
+      const provider = new PixelLabProvider(client as never)
+      let p = await withSources(file, client, provider)
+      const sword = () => p.specs.find((s) => s.assetId === "mira.sword")!
+      expect(sword().character!.layer!.attach!.grasp).toEqual({ radius: 2 })
+      await writeAnchors(sword(), p.lock, estimator())
+
+      // No longer free: it is one inpaint, priced like any other layer.
+      p = await openProject(file, { env: false })
+      const plan = await p.plan()
+      expect(plan.actionable.map((item) => item.key)).toEqual(["cast/mira.sword"])
+      expect(plan.groups[0]!.cost).toBe(25)
+      await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+      expect(p.lock.entries["cast/mira.sword"]).toMatchObject({ status: "processing", error: null })
+
+      // The sheet went out with the sword already on it and only a disc at each hand open.
+      const sent = client.inpaints.at(-1)!
+      expect(sent.description).toMatch(/fist around the item's handle/)
+      const mask = decodePng(sent.mask)
+      let open = 0
+      for (let i = 0; i < mask.pixels.length; i += 4) if (mask.pixels[i] === 255) open++
+      const frames = p.lock.entries["cast/mira"]!.outputs.length + p.lock.entries["cast/mira.walk"]!.outputs.length
+      expect(open).toBeGreaterThan(0)
+      expect(open).toBeLessThanOrEqual(frames * 13)
+      const image = decodePng(sent.image)
+      let steel = 0
+      for (let i = 0; i < image.pixels.length; i += 4) if (image.pixels[i] === STEEL[0] && image.pixels[i + 1] === STEEL[1]) steel++
+      expect(steel).toBeGreaterThan(0)
+      const work = path.join(dir, ".pixelkiln", "layers", "cast", "mira.sword")
+      for (const name of ["sheet.png", "keyed.png", "keyed-bare.png", "mask.png", "layout.json", path.join("placed", "000.png")]) {
+        expect(existsSync(path.join(work, name))).toBe(true)
+      }
+
+      const jobId = p.lock.entries["cast/mira.sword"]!.jobId!
+      client.completeInpaint(jobId, painted(sent))
+      await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+      await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+      const entry = p.lock.entries["cast/mira.sword"]!
+      expect(entry.status).toBe("downloaded")
+      expect(entry.outputs).toHaveLength(frames)
+      expect(entry.outputs[0]!.role).toBe("mira.south")
+
+      // Inside the disc the layer is what the provider drew; the blade above it is the placed sprite, untouched.
+      const source = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+      const layer = decodePng(await readFile(path.resolve(dir, entry.outputs[0]!.path)))
+      const hand = { x: Math.round(source.width * 0.5 - 1) + 1 + 12, y: Math.round(source.height * (0.5 + 0.25 * 0.35) - 4) + 4 + 12 }
+      const at = (x: number, y: number) => [...layer.pixels.subarray((y * layer.width + x) * 4, (y * layer.width + x) * 4 + 4)]
+      expect(at(hand.x, hand.y)).toEqual(LEATHER)
+      expect(at(hand.x, hand.y - 4)).toEqual(STEEL)
+      expect((await (await openProject(file, { env: false })).plan()).actionable).toEqual([])
+    })
+
+    it("refuses to place an item by an anchor estimated from a different frame", async () => {
+      const file = await heldManifest()
+      await writeItems()
+      const client = fakeClient()
+      const provider = new PixelLabProvider(client as never)
+      let p = await withSources(file, client, provider)
+      await writeAnchors(p.specs.find((s) => s.assetId === "mira.sword")!, p.lock, estimator())
+      const anchorsFile = path.join(dir, "anchors", "mira.json")
+      const anchors = JSON.parse(await readFile(anchorsFile, "utf8"))
+      anchors.frames.mira.south.sha256 = "0".repeat(64)
+      await writeFile(anchorsFile, JSON.stringify(anchors))
+
+      p = await openProject(file, { env: false })
+      await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+      expect(p.lock.entries["cast/mira.sword"]).toMatchObject({
+        status: "failed",
+        error: expect.stringMatching(/mira south changed since its anchor was estimated.*pixelkiln anchors mira\.sword/),
+      })
+
+      // The command estimates that one frame again and leaves the rest alone.
+      const estimate = estimator()
+      expect(await writeAnchors(p.specs.find((s) => s.assetId === "mira.sword")!, p.lock, estimate)).toMatchObject({ estimated: 1 })
+      expect(estimate.calls).toHaveLength(1)
+    })
   })
 })

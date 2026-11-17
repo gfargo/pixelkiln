@@ -7,7 +7,7 @@ pixelkiln <command> [options]
 Unknown commands, positional arguments, and flags are errors. The only
 positional words accepted are a command's own subcommands (`refine approve`,
 `workspace add <manifest>`, and the like), `estimate-skeleton`'s one image
-path, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
+path, `anchors`'s and `redraw`'s asset id, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
 accumulate; comma-separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
@@ -58,6 +58,8 @@ Which command:
 | make a pixel-art effect (spell, hit, explosion, aura), free | `pixelkiln vfx --preset explosion --out fx/explosion` |
 | generate a pixel font (`.ttf` plus glyph atlas) | `pixelkiln font --description "warm orange arcade font" --out fonts/arcade` |
 | start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
+| find the hands in every frame so a held item can be pinned to one | `pixelkiln anchors hero.sword` |
+| draw one wrong frame of a paperdoll layer again, not the whole layer | `pixelkiln redraw hero.robe --frame walk.south.frame-05` |
 | see a keypoints file's poses over the source before paying | `pixelkiln skeleton-preview hero-swing` |
 | work across several projects | `pixelkiln workspace add ../other/pixelkiln.manifest.json`, then `--workspace` on `gallery` and `salvage` |
 
@@ -1633,6 +1635,57 @@ fails with the same message `plan` would give.
 Use it after `estimate-skeleton` and after every hand edit: PixelKiln cannot
 check that the starting pose matches what the image shows, and a mismatch
 degrades every generated frame without an error.
+
+### `anchors`
+
+```bash
+pixelkiln anchors <asset> [--style <id>] [--force] [--dry-run]
+```
+
+Writes the anchors file of a held item, a `layer` asset with `attach`: the
+skeleton of every frame of the layer's `of` assets, which is where the item
+is pinned. PixelLab only. Each frame is one `/estimate-skeleton` call at 0.1
+generation, a direct account call outside the plan, the lockfile and
+`--budget`, like `estimate-skeleton`.
+
+The file is the one the asset's `attach.anchors` names. Frames whose entry
+already matches their bytes are skipped, so running it again after adding or
+regenerating a loop pays only for what changed, and entries other held items
+rely on are left alone. `--force` estimates every frame again. `--dry-run`
+counts the frames and their cost and calls nothing. A hand-made `place` on a
+frame is kept until that frame's own bytes change.
+
+The sources must be downloaded first. A frame that is not one of the sizes
+the endpoint takes (square, 16, 32, 64, 128 or 256) is sent on the next size
+up and its joints scaled back; a frame over 256 pixels a side is refused.
+
+See [Paperdoll layers](./PAPERDOLL.md#held-items-and-accessories).
+
+### `redraw`
+
+```bash
+pixelkiln redraw <layer> --frame <name> [--frame <name>...] [--style <id>] [--seed <n>] [--dry-run]
+```
+
+Draws named frames of a paperdoll layer again, in one small `/inpaint-v3`
+call. PixelLab only. The other frames of the same source asset go on the
+sheet wearing the layer they already have, masked off, so the provider
+copies the outfit onto the frames left open.
+
+`--frame` takes an output role of the layer (`hero.walk.south.frame-05`) or
+any ending of one that matches a single frame, and repeats or takes commas.
+Without it the command lists the names and stops. At least one frame of
+each asset involved must stay as it is. `--seed` rolls differently;
+`--dry-run` reports the sheet size and price and calls nothing.
+
+Like `anchors` it is a direct account call outside the plan and `--budget`,
+priced by the sheet's canvas (10, 15 or 25). Unlike `anchors` its result
+lands in the lockfile: the new frame's hash replaces the old, the layer's
+recorded `offset` is applied to it, and the billed amount is added to the
+layer's entry. Assets derived from the layer become `stale`. The layer must
+be downloaded and unchanged in the manifest since; a held item is refused.
+
+See [Redrawing one frame](./PAPERDOLL.md#redrawing-one-frame).
 
 ## Utility commands
 

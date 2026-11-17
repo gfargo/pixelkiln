@@ -119,7 +119,8 @@ if (JSON.stringify(expectedProviderIds) !== JSON.stringify(registeredProviderIds
   )
 }
 
-const website = readFileSync(path.join(root, "website", "app", "page.tsx"), "utf8")
+// The provider results moved off the home page into their own section file.
+const website = readFileSync(path.join(root, "website", "app", "sections", "providers.tsx"), "utf8")
 for (const provider of providerCatalog) {
   const guidePath = path.join(root, "docs", provider.guide)
   if (!existsSync(guidePath)) {

@@ -187,7 +187,7 @@ function renderFamily() {
   const body = el('div', 'family-body');
   body.append(turntable(root, turnables, source, order));
   body.append(loopGrid(root, members, order));
-  const extras = members.filter((m) => m.character!.kind === 'portrait' || m.character!.kind === 'outfit');
+  const extras = members.filter((m) => m.character!.kind === 'portrait' || m.character!.kind === 'outfit' || m.character!.kind === 'layer');
   if (extras.length) body.append(extrasStrip(extras));
   panel.append(body);
   host.append(scrim, panel);
@@ -577,7 +577,7 @@ function loopCell(item, parent, direction) {
 
 function extrasStrip(extras) {
   const wrap = el('section', 'family-extras');
-  wrap.append(el('h3', null, extras.some((e) => e.character.kind === 'outfit') ? 'Portraits and outfits' : extras.length === 1 ? 'Portrait' : 'Portraits'));
+  wrap.append(el('h3', null, extras.some((e) => e.character.kind === 'layer') ? 'Portraits, outfits and layers' : extras.some((e) => e.character.kind === 'outfit') ? 'Portraits and outfits' : extras.length === 1 ? 'Portrait' : 'Portraits'));
   const strip = el('div', 'fx-strip');
   for (const item of extras) {
     const b = el('button', 'lg-cell tone-' + (STATE_TONE[item.state] || 'dim'));

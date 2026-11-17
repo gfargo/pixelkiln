@@ -767,6 +767,162 @@ export const CharacterOutfitSchema = z
   .strict()
 export type CharacterOutfit = z.infer<typeof CharacterOutfitSchema>
 
+const LayerOffsetPairSchema = z.tuple([z.number().int().min(-32).max(32), z.number().int().min(-32).max(32)])
+
+/** A layer's nudge once resolved: the pair for every frame, and any per-asset pairs over it. */
+export interface LayerOffset {
+  x: number
+  y: number
+  per?: Record<string, { x: number; y: number }>
+}
+
+/** The pair that applies to one source asset's frames. */
+export function layerOffsetFor(offset: LayerOffset | undefined, assetId: string): { x: number; y: number } {
+  return offset?.per?.[assetId] ?? { x: offset?.x ?? 0, y: offset?.y ?? 0 }
+}
+
+export const ATTACH_JOINTS = ["right-hand", "left-hand"] as const
+export type AttachJoint = (typeof ATTACH_JOINTS)[number]
+
+const PixelPointSchema = z.tuple([z.number(), z.number()])
+
+/**
+ * A held item: a rigid sprite (a sword, a shield, a lantern) pinned to a hand
+ * in every frame of the layer's `of` assets. The item is drawn once and
+ * placed, never redrawn, so it is the same pixels in every frame and cannot
+ * change hands. See `src/attach.ts` and docs/PAPERDOLL.md.
+ */
+export const CharacterAttachSchema = z
+  .object({
+    /**
+     * Manifest-relative PNG of the item. With `{direction}` in the path, one
+     * file per direction the frames face (an 8-direction object's rotations);
+     * without it, the same image in every direction.
+     */
+    item: z.string().min(1),
+    /**
+     * Manifest-relative anchors file: every frame's skeleton, which is where
+     * its hands are. `pixelkiln anchors <asset>` writes it; one file serves
+     * every item the character holds.
+     */
+    anchors: z.string().min(1),
+    /** Which hand holds it. Default `right-hand`. */
+    joint: z.enum(ATTACH_JOINTS).optional(),
+    /**
+     * The point of the item the hand holds: `"center"` (a shield), or item
+     * pixels as drawn, one `[x, y]` for every direction or one per direction.
+     * Default: the middle of the item's lowest fifth, which is the handle of
+     * anything drawn handle-down.
+     */
+    grip: z.union([z.literal("center"), PixelPointSchema, z.record(CharacterDirectionSchema, PixelPointSchema)]).optional(),
+    /**
+     * Resize the item by this factor before placing it, nearest neighbour.
+     * An object generator fills its canvas, so an item often comes back
+     * larger than the hand it goes in. Default 1.
+     */
+    scale: z.number().min(0.1).max(4).optional(),
+    /**
+     * Degrees to lean an upright item the way the figure faces, turned
+     * locally. Shows from the side, not from the front or back. Default 0:
+     * the item is used as drawn, which is right for one drawn already leaning.
+     */
+    tilt: z.number().min(-180).max(180).optional(),
+    /** Degrees to tip an upright item outward from the body, seen from the front and back. Default 0. */
+    lean: z.number().min(-180).max(180).optional(),
+    /**
+     * Whether the body covers the item. `auto` (default) follows each frame's
+     * skeleton: the item goes behind the figure when its hand is.
+     */
+    depth: z.enum(["auto", "front", "behind"]).optional(),
+    /**
+     * Redraw the hand around the item so it is held, not resting on the
+     * hand: one inpaint over a small disc at each hand, the rest of the item
+     * untouched. `true`, or `{ "radius": 9 }` for the disc in pixels. This
+     * makes the layer a paid one (one inpaint, priced by the sheet); the
+     * asset's `prompt`, when it has one, tells the provider what the item is.
+     */
+    grasp: z.union([z.boolean(), z.object({ radius: z.number().int().min(2).max(32).optional() }).strict()]).optional(),
+  })
+  .strict()
+export type CharacterAttach = z.infer<typeof CharacterAttachSchema>
+
+/**
+ * A paperdoll layer: the asset's prompt, drawn as clothing over existing
+ * frames and returned as transparent PNGs that sit on top of them. Every
+ * frame of every `of` asset is repainted in one inpaint, on one sheet, which
+ * is what keeps the outfit the same from frame to frame. See
+ * `src/paperdoll.ts` for the steps and docs/CHARACTERS.md for the workflow.
+ */
+export const CharacterLayerSchema = z
+  .object({
+    /** The assets to dress, in the same style: a base, its states, its loops. Their frames share one sheet, in this order. */
+    of: z.union([z.string().min(1), z.array(z.string().min(1)).min(1).max(64)]),
+    /**
+     * Manifest-relative black-and-white PNG the size of the sheet, replacing
+     * the computed mask (white below each figure's neck). The escape hatch for
+     * hair, hats and raised arms, where the neck is not the narrowest row.
+     */
+    mask: z.string().min(1).optional(),
+    /** Manifest-relative PNG the size of the sheet, replacing the computed keyed sheet. */
+    keyed: z.string().min(1).optional(),
+    /** The colours that are skin. Omit on a bare base, where everything that is not outline is skin. */
+    skin: z.array(HexColorSchema).min(1).max(64).optional(),
+    /** The stand-in colour skin is painted before the provider sees it. Default cyan. */
+    key: HexColorSchema.optional(),
+    /**
+     * Remove animation ghosts from the loops before dressing them, judged
+     * against the stills among `of` (bases and states). Default true; it has
+     * nothing to judge against, and is skipped, when `of` holds no still.
+     */
+    clean: z.boolean().optional(),
+    /** Sheet columns. Chosen to fit the provider's limit in the smallest area when omitted. */
+    columns: z.number().int().min(1).max(64).optional(),
+    /**
+     * Which part of each figure may be repainted. `body` (default): the
+     * figure's own pixels below the neck, for clothing. `head`: everything
+     * from the top of the cell to the neck, for hats, hair and helmets.
+     * `around`: everything below the neck, empty space included, for held
+     * items, capes and packs.
+     */
+    region: z.enum(["body", "head", "around"]).optional(),
+    /**
+     * Empty pixels added around every figure on the sheet, for a layer that
+     * reaches past it. Each layer frame comes back on its source frame's
+     * canvas grown by this much on every side. Default 0 for `body`, 8 otherwise.
+     */
+    padding: z.number().int().min(0).max(64).optional(),
+    /**
+     * Nudge the layer by `[x, y]` pixels, x to the right and y down: a hat a
+     * pixel or two higher, a mask lower on the face. One pair moves every
+     * frame; an object moves the frames of each `of` asset it names by that
+     * asset's own pair, with `"*"` for the rest, since a provider can seat a
+     * hat a little differently on a walk than on the stills. On a drawn layer
+     * it is applied at download and changing it costs nothing; on a held item
+     * it moves the item on the hand.
+     */
+    offset: z.union([LayerOffsetPairSchema, z.record(z.string().min(1), LayerOffsetPairSchema)]).optional(),
+    /**
+     * Make this layer a held item instead of an inpaint: a sprite you already
+     * have, pinned to a hand in every frame. Free and local. See
+     * CharacterAttachSchema.
+     */
+    attach: CharacterAttachSchema.optional(),
+  })
+  .strict()
+  .superRefine((layer, context) => {
+    if (!layer.attach) return
+    for (const field of ["mask", "keyed", "skin", "key", "clean", "region"] as const) {
+      if (layer[field] !== undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `a held item is placed, not inpainted; ${field} has nothing to act on`,
+          path: [field],
+        })
+      }
+    }
+  })
+export type CharacterLayer = z.infer<typeof CharacterLayerSchema>
+
 /** A loop of one character in one direction. One asset per direction. */
 export const CharacterAnimationSchema = z
   .object({
@@ -802,6 +958,14 @@ export const CharacterAnimationSchema = z
     fps: z.number().int().min(1).max(60).default(8),
     /** v3 only: keep the resting pose as frame 0, so `frames` generated frames land as `frames + 1` files. */
     keepFirstFrame: z.boolean().default(true),
+    /**
+     * `character` loops: strip the ghost pixels an animation model leaves
+     * around a figure (pale arcs beside the head, fragments off a limb) from
+     * each frame as it is downloaded, judged against the parent's rotations.
+     * Applied to the downloaded bytes, so turning it on or off re-processes
+     * the frames without generating them again.
+     */
+    clean: z.boolean().optional(),
     /**
      * `template` when a template is named, otherwise `v3`; `skeleton-v3`
      * poses a template with PixelLab's skeleton model instead, or, with no
@@ -918,7 +1082,7 @@ export interface ResolvedStyleAnchor {
 
 /** How a resolved spec describes its place in a character family. */
 export interface ResolvedCharacter {
-  kind: "base" | "state" | "animation" | "portrait" | "outfit"
+  kind: "base" | "state" | "animation" | "portrait" | "outfit" | "layer"
   /** Creation engine for a base; states inherit the parent's. */
   mode: CharacterMode
   /** Rotations a base or state has. */
@@ -964,6 +1128,34 @@ export interface ResolvedCharacter {
     reference: ResolvedReferenceImage
     additionalInstructions?: string
   }
+  /** For a layer: the assets whose frames it dresses, and how the sheet is prepared. */
+  layer?: {
+    sources: Array<{ assetId: string; spec: ResolvedSpec }>
+    /** Absolute path and hash of a mask the author supplied; null hash while the file does not exist. */
+    mask?: { path: string; sha256: string | null }
+    keyed?: { path: string; sha256: string | null }
+    skin?: string[]
+    key?: string
+    clean: boolean
+    columns?: number
+    region: "body" | "head" | "around"
+    padding: number
+    /** Pixels the layer's frames are moved by; absent when none are. */
+    offset?: LayerOffset
+    /** For a held item: its files, the anchors file, and how it is turned. Hashes are null while a file does not exist. */
+    attach?: {
+      item: Array<{ direction: CharacterDirection; path: string; sha256: string | null }>
+      anchors: { path: string; sha256: string | null }
+      joint: AttachJoint
+      grip?: "center" | [number, number] | Partial<Record<CharacterDirection, [number, number]>>
+      scale: number
+      tilt: number
+      lean: number
+      depth: "auto" | "front" | "behind"
+      /** Set when the hand is redrawn around the item; the disc's radius in pixels. */
+      grasp?: { radius: number }
+    }
+  }
   animation?: {
     mode: CharacterAnimationMode
     template?: string
@@ -972,6 +1164,8 @@ export interface ResolvedCharacter {
     frames: number
     fps: number
     keepFirstFrame: boolean
+    /** Strip animation ghosts from each frame at download, judged against the parent's rotations. */
+    clean?: boolean
     /** v3: the pose to start from, and the pose to reach. */
     startFrame?: ResolvedReferenceImage
     endFrame?: ResolvedReferenceImage
@@ -1946,7 +2140,20 @@ export const AssetDeriveSchema = z
     from: z.string().min(1).optional(),
     /** A committed PNG, relative to the manifest, as the input. */
     file: z.string().min(1).optional(),
-    transform: z.enum(["recolor", "palette-snap", "scale"]),
+    transform: z.enum(["recolor", "palette-snap", "hue-shift", "scale", "key-skin", "despeckle"]),
+    /** hue-shift: degrees to turn each pixel's hue by, -180 to 180. */
+    degrees: z.number().min(-180).max(180).optional(),
+    /**
+     * hue-shift: only pixels whose hue lies in this window, `[from, to]` in
+     * degrees going clockwise (so `[330, 30]` is the reds), are changed.
+     * Everything is, when omitted. Greys and near-blacks have no hue to speak
+     * of and are left alone either way.
+     */
+    hue: z.tuple([z.number().min(0).max(360), z.number().min(0).max(360)]).optional(),
+    /** hue-shift: multiply saturation by this, 0 to 4. Default 1. */
+    saturation: z.number().min(0).max(4).optional(),
+    /** hue-shift: multiply brightness by this, 0 to 4. Default 1. */
+    brightness: z.number().min(0).max(4).optional(),
     /** recolor: exact replacements, `#rrggbb` to `#rrggbb`. Unmapped colors and every alpha value stay. */
     map: z.record(HexColorSchema, HexColorSchema).optional(),
     /** palette-snap: the closed palette every visible pixel moves to. */
@@ -1956,6 +2163,18 @@ export const AssetDeriveSchema = z
     height: z.number().int().min(1).max(4096).optional(),
     /** scale: `nearest` (default) keeps hard edges; `box` averages the covered pixels. */
     mode: z.enum(["nearest", "box"]).optional(),
+    /** key-skin: the colours that are skin; every pixel that is not outline when omitted. */
+    skin: z.array(HexColorSchema).min(1).max(64).optional(),
+    /** key-skin: the stand-in colour. Default cyan. */
+    key: HexColorSchema.optional(),
+    /**
+     * despeckle: committed PNGs, relative to the manifest, whose colours are known good (the character's stills).
+     * hue-shift: only pixels in a colour one of these PNGs uses are changed, which
+     * is how skin on a layer (the fingers of a grip) is told from the item in it.
+     */
+    reference: z.array(z.string().min(1)).min(1).max(64).optional(),
+    /** key-skin: how far a pixel may sit from a `skin` colour. despeckle: how near a reference colour must be to vouch for a pixel. */
+    tolerance: z.number().min(0).max(442).optional(),
   })
   .strict()
   .superRefine((derive, context) => {
@@ -1967,16 +2186,23 @@ export const AssetDeriveSchema = z
     const own = {
       recolor: ["map"],
       "palette-snap": ["palette"],
+      "hue-shift": ["degrees", "hue", "saturation", "brightness", "reference"],
       scale: ["width", "height", "mode"],
+      "key-skin": ["skin", "key", "tolerance"],
+      despeckle: ["reference", "tolerance"],
     }[derive.transform]
-    for (const field of ["map", "palette", "width", "height", "mode"] as const) {
+    for (const field of ["map", "palette", "degrees", "hue", "saturation", "brightness", "width", "height", "mode", "skin", "key", "reference", "tolerance"] as const) {
       if (derive[field] !== undefined && !own.includes(field)) {
         issue(`${field} does not apply to ${derive.transform}`, field)
       }
     }
     if (derive.transform === "recolor" && !Object.keys(derive.map ?? {}).length) issue("recolor needs a non-empty map", "map")
     if (derive.transform === "palette-snap" && !derive.palette) issue("palette-snap needs a palette", "palette")
+    if (derive.transform === "hue-shift" && derive.degrees === undefined && derive.saturation === undefined && derive.brightness === undefined) {
+      issue("hue-shift needs degrees, saturation or brightness", "degrees")
+    }
     if (derive.transform === "scale" && (!derive.width || !derive.height)) issue("scale needs width and height", "width")
+    if (derive.transform === "despeckle" && !derive.reference) issue("despeckle needs reference stills to judge colours against", "reference")
   })
 export type AssetDerive = z.infer<typeof AssetDeriveSchema>
 
@@ -2085,6 +2311,8 @@ export const AssetSchema = z
     portrait: CharacterPortraitSchema.optional(),
     /** `character` styles: this asset re-clothes an existing loop's frames with a reference outfit. */
     outfit: CharacterOutfitSchema.optional(),
+    /** `character` styles: this asset's prompt, drawn as a clothing layer over existing frames. See CharacterLayerSchema. */
+    layer: CharacterLayerSchema.optional(),
     /** `map` styles only: draw this object in the style of a scene image. See `MapSceneSchema`. */
     scene: MapSceneSchema.optional(),
     /** `vfx` styles only: the effect to render. See `AssetVfxSchema`. */
@@ -2207,7 +2435,7 @@ export const AssetSchema = z
         path: ["revision"],
       })
     }
-    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.derive && "derive", asset.external && "external", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.scene && "scene", asset.vfx && "vfx", asset.connect && "connect"].filter(Boolean)
+    const shapes = [asset.revision && "revision", asset.state && "state", asset.animation && "animation", asset.mirror && "mirror", asset.derive && "derive", asset.external && "external", asset.batch && "batch", asset.portrait && "portrait", asset.outfit && "outfit", asset.layer && "layer", asset.scene && "scene", asset.vfx && "vfx", asset.connect && "connect"].filter(Boolean)
     if (shapes.length > 1) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -2242,7 +2470,7 @@ export const AssetSchema = z
     }
     // A template loop is described by its template; v3 and pro loops still
     // need the motion in words, which the provider checks.
-    if (asset.prompt === undefined && !asset.mirror && !asset.derive && !asset.external && !asset.portrait && !asset.outfit && !asset.animation?.template && !asset.vfx) {
+    if (asset.prompt === undefined && !asset.mirror && !asset.derive && !asset.external && !asset.portrait && !asset.outfit && !asset.layer?.attach && !asset.animation?.template && !asset.vfx) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Required",
@@ -2268,6 +2496,13 @@ export const AssetSchema = z
         code: z.ZodIssueCode.custom,
         message: "a concept image belongs on a base; a state, animation, mirror, portrait, or outfit takes its look from its parent",
         path: ["concept"],
+      })
+    }
+    if (asset.layer && (asset.reference || asset.concept)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "a layer is drawn over the frames it dresses; it takes no reference or concept image",
+        path: [asset.reference ? "reference" : "concept"],
       })
     }
     if (asset.concept && asset.reference) {
@@ -2340,6 +2575,20 @@ const LockOutputSchema = z.object({
  * and `restore` can reproduce the recorded hash from the raw bytes.
  */
 export const PostprocessSchema = z.object({
+  /**
+   * Ghost pixels were removed from each frame, judged against the rotations
+   * of this asset in the same style. Which bytes those rotations held is not
+   * recorded here: a regenerated parent already makes its loops stale.
+   */
+  despeckle: z.object({ of: z.string().min(1) }).optional(),
+  /** A layer's frames were moved by this many pixels, with per-source-asset pairs over the default. */
+  offset: z
+    .object({
+      x: z.number().int(),
+      y: z.number().int(),
+      per: z.record(z.string(), z.object({ x: z.number().int(), y: z.number().int() })).optional(),
+    })
+    .optional(),
   palette: z
     .object({
       /** Canonical lowercase `#rrggbb` values, in manifest order. */
@@ -2540,6 +2789,17 @@ export const LockEntrySchema = z.object({
     .strict()
     .nullable()
     .default(null),
+  /**
+   * For a layer: each asset it dressed and a hash over that asset's output
+   * hashes when this was made. Tracked the way `outfit` is: the sources'
+   * current frame bytes are only in the lockfile.
+   */
+  layer: z
+    .object({
+      sources: z.array(z.object({ assetId: z.string().min(1), sha256: z.string().regex(/^[0-9a-f]{64}$/) }).strict()).min(1),
+    })
+    .strict()
+    .optional(),
   /**
    * For a connected terrain set: per side of this set, the set it shares
    * that terrain with and that set's provider id when this was submitted.
@@ -2779,9 +3039,18 @@ export interface ResolvedDerive {
   transform: AssetDerive["transform"]
   map?: Record<string, string>
   palette?: string[]
+  degrees?: number
+  hue?: [number, number]
+  saturation?: number
+  brightness?: number
   width?: number
   height?: number
   mode?: "nearest" | "box"
+  skin?: string[]
+  key?: string
+  tolerance?: number
+  /** despeckle: the stills, relative to the manifest, with each one's hash when it exists. */
+  reference?: Array<{ file: string; sha256: string | null }>
   source:
     | { kind: "asset"; assetId: string; spec: ResolvedSpec }
     | { kind: "file"; /** Relative to the manifest. */ file: string; sha256: string | null }

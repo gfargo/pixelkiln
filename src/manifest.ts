@@ -1,3 +1,5 @@
+import { isHeldItem } from "./attach.ts"
+import { SET_DERIVES } from "./pipeline/derive.ts"
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
@@ -25,6 +27,7 @@ import {
   type Asset,
   type AssetVfx,
   type CharacterDirection,
+  type LayerOffset,
   type Generator,
   type Manifest,
   type MapScene,
@@ -324,6 +327,7 @@ function dependencyAssetIds(asset: Asset | undefined, styleAnchors: string[] = [
       asset?.animation?.motionFrom,
       asset?.mirror,
       asset?.derive?.from,
+      ...[asset?.layer?.of ?? []].flat(),
       asset?.styleCharacter,
       ...(asset?.styleCharacter ? [] : styleAnchors),
     ].filter((id): id is string => Boolean(id)),
@@ -734,6 +738,9 @@ export async function resolveSpecs(
           `assets.${assetId}: ${asset.portrait ? "portrait" : "outfit"} needs a character style; "${styleId}" generates ${generator}`,
         )
       }
+      if (asset.layer && generator !== "character") {
+        throw new Error(`assets.${assetId}: layer needs a character style; "${styleId}" generates ${generator}`)
+      }
       if (asset.connect && generator !== "terrain") {
         throw new Error(`assets.${assetId}: connect needs a terrain style; "${styleId}" generates ${generator}`)
       }
@@ -1004,6 +1011,15 @@ export async function resolveSpecs(
           if (sourceSpec.generator === "tiles" || sourceSpec.generator === "terrain") {
             throw new Error(`assets.${assetId}: a tile set is several images; derive takes a single image`)
           }
+          // A layer, a loop or a set of rotations is several images of one
+          // thing. The transforms that treat every pixel alike take the whole
+          // set; the rest need one image and say so when they run.
+          if (sourceSpec.character && !SET_DERIVES.includes(derive.transform) && sourceSpec.character.kind !== "portrait") {
+            throw new Error(
+              `assets.${assetId}: ${derive.from} is a set of frames; ${derive.transform} takes a single image ` +
+                `(${SET_DERIVES.join(", ")} take a set)`,
+            )
+          }
           source = { kind: "asset", assetId: derive.from, spec: sourceSpec }
         } else {
           const file = path.resolve(root, derive.file!)
@@ -1026,9 +1042,24 @@ export async function resolveSpecs(
           transform: derive.transform,
           ...(derive.map ? { map: derive.map } : {}),
           ...(derive.palette ? { palette: derive.palette } : {}),
+          ...(derive.degrees === undefined ? {} : { degrees: derive.degrees }),
+          ...(derive.hue ? { hue: derive.hue } : {}),
+          ...(derive.saturation === undefined ? {} : { saturation: derive.saturation }),
+          ...(derive.brightness === undefined ? {} : { brightness: derive.brightness }),
           ...(derive.width ? { width: derive.width } : {}),
           ...(derive.height ? { height: derive.height } : {}),
           ...(derive.mode ? { mode: derive.mode } : {}),
+          ...(derive.skin ? { skin: derive.skin } : {}),
+          ...(derive.key ? { key: derive.key } : {}),
+          ...(derive.tolerance === undefined ? {} : { tolerance: derive.tolerance }),
+          ...(derive.reference
+            ? {
+                reference: await Promise.all(derive.reference.map(async (file) => {
+                  const absolute = path.resolve(root, file)
+                  return { file, sha256: existsSync(absolute) ? await sha256File(absolute) : null }
+                })),
+              }
+            : {}),
           source,
         }
         resolved.prompt = ""
@@ -1219,6 +1250,106 @@ export async function resolveSpecs(
         resolved.height = sourceSpec.height
         resolved.size = sourceSpec.size
         resolved.prompt = ""
+      }
+      if (asset.layer) {
+        // A layer dresses whole frame sets, several assets' worth on one
+        // sheet, so like an outfit it resolves its sources itself. What their
+        // frames hold is only in the lockfile; the plan compares that.
+        const ids = [asset.layer.of].flat()
+        if (new Set(ids).size !== ids.length) throw new Error(`assets.${assetId}: layer.of names an asset twice`)
+        const sources: Array<{ assetId: string; spec: ResolvedSpec }> = []
+        for (const id of ids) {
+          if (id === assetId) throw new Error(`assets.${assetId}: a layer cannot dress itself`)
+          const sourceSpec = await finalize(id)
+          if (!sourceSpec.character || sourceSpec.character.kind === "portrait" || sourceSpec.character.kind === "layer") {
+            throw new Error(`assets.${assetId}: layer source "${id}" is not a character base, state, or loop`)
+          }
+          sources.push({ assetId: id, spec: sourceSpec })
+        }
+        const first = sources[0]!.spec
+        const override = async (file: string | undefined) => {
+          if (!file) return undefined
+          const absolute = path.resolve(root, file)
+          return { path: absolute, sha256: existsSync(absolute) ? await sha256File(absolute) : null }
+        }
+        const mask = await override(asset.layer.mask)
+        const keyed = await override(asset.layer.keyed)
+        // One pair for every frame, or a pair per source asset with "*" for the rest. Zeroes are no move.
+        let offset: LayerOffset | undefined
+        if (Array.isArray(asset.layer.offset)) {
+          const [x, y] = asset.layer.offset
+          if (x || y) offset = { x, y }
+        } else if (asset.layer.offset) {
+          const per: NonNullable<LayerOffset["per"]> = {}
+          let all = { x: 0, y: 0 }
+          for (const [id, [x, y]] of Object.entries(asset.layer.offset)) {
+            if (id === "*") all = { x, y }
+            else if (!ids.includes(id)) throw new Error(`assets.${assetId}: layer.offset names "${id}", which is not one of its \`of\` assets`)
+            else per[id] = { x, y }
+          }
+          const moved = Object.fromEntries(Object.entries(per).filter(([, pair]) => pair.x !== all.x || pair.y !== all.y))
+          if (all.x || all.y || Object.keys(moved).length) offset = { ...all, ...(Object.keys(moved).length ? { per: moved } : {}) }
+        }
+        // A held item needs its sprite in every direction a frame faces: all
+        // of a base's or state's, and a loop's one.
+        let attach: NonNullable<NonNullable<ResolvedSpec["character"]>["layer"]>["attach"]
+        if (asset.layer.attach) {
+          const declared = asset.layer.attach
+          const facing = new Set<CharacterDirection>()
+          for (const source of sources) {
+            const character = source.spec.character!
+            if (character.animation) facing.add(character.animation.direction)
+            else for (const direction of characterDirections(character.directions)) facing.add(direction)
+          }
+          const item: NonNullable<typeof attach>["item"] = []
+          for (const direction of CHARACTER_DIRECTIONS_8.filter((candidate) => facing.has(candidate))) {
+            const file = (await override(declared.item.replaceAll("{direction}", direction)))!
+            item.push({ direction, ...file })
+          }
+          attach = {
+            item,
+            anchors: (await override(declared.anchors))!,
+            joint: declared.joint ?? "right-hand",
+            ...(declared.grip ? { grip: declared.grip } : {}),
+            scale: declared.scale ?? 1,
+            tilt: declared.tilt ?? 0,
+            lean: declared.lean ?? 0,
+            depth: declared.depth ?? "auto",
+            // About a ninth of the frame: the hand and the handle through it, and little else.
+            ...(declared.grasp
+              ? { grasp: { radius: (declared.grasp === true ? undefined : declared.grasp.radius) ?? Math.max(2, Math.round(first.width * 0.11)) } }
+              : {}),
+          }
+        }
+        resolved.character = {
+          kind: "layer",
+          mode: first.character!.mode,
+          directions: first.character!.directions,
+          template: first.character!.template,
+          parentAssetId: sources[0]!.assetId,
+          parentSpec: first,
+          layer: {
+            sources,
+            ...(mask ? { mask } : {}),
+            ...(keyed ? { keyed } : {}),
+            ...(asset.layer.skin ? { skin: asset.layer.skin } : {}),
+            ...(asset.layer.key ? { key: asset.layer.key } : {}),
+            clean: asset.layer.clean ?? true,
+            ...(asset.layer.columns ? { columns: asset.layer.columns } : {}),
+            region: asset.layer.region ?? "body",
+            padding: asset.layer.padding ?? (attach ? 12 : (asset.layer.region ?? "body") === "body" ? 0 : 8),
+            ...(offset ? { offset } : {}),
+            ...(attach ? { attach } : {}),
+          },
+        }
+        resolved.generator = first.generator
+        resolved.width = first.width
+        resolved.height = first.height
+        resolved.size = first.size
+        // The outfit in the author's words. The style's prefix and suffix
+        // describe the character, who is already on the sheet.
+        // A held item is placed, not drawn: nothing reads a prompt.
+        resolved.prompt = attach && !attach.grasp ? "" : (asset.promptByStyle[styleId] ?? asset.prompt ?? "").trim()
       }
       if (asset.revision) {
         if (!activeProvider.supportsRevision?.(asset.revision.mode)) {
@@ -1503,7 +1634,8 @@ export async function resolveSpecs(
           { cause: error },
         )
       }
-      resolved.cost = estimate.amount
+      // A held item is composited locally from files already on disk.
+      resolved.cost = isHeldItem(resolved) ? 0 : estimate.amount
       resolved.costUnit = estimate.unit
       resolved.candidates = estimate.candidates
       finalized.add(assetId)
@@ -1829,6 +1961,7 @@ async function resolveCharacterShape(
       frames: asset.animation.frames ?? 8,
       fps: asset.animation.fps,
       keepFirstFrame: asset.animation.keepFirstFrame,
+      ...(asset.animation.clean ? { clean: true } : {}),
       ...(asset.animation.startFrame ? { startFrame: await pose(asset.animation.startFrame, "Animation start frame") } : {}),
       ...(asset.animation.endFrame ? { endFrame: await pose(asset.animation.endFrame, "Animation end frame") } : {}),
       ...(asset.animation.subject ? { subject: asset.animation.subject } : {}),
@@ -1893,6 +2026,9 @@ async function resolveObjectProShape(
             "describe the motion in the asset's own prompt instead",
         )
       }
+    }
+    if (asset.animation.clean !== undefined) {
+      throw new Error(`assets.${assetId}: animation.clean applies to character loops; objectPro loops are not cleaned`)
     }
     if (asset.animation.mode === "template" || asset.animation.mode === "skeleton-v3") {
       throw new Error(`assets.${assetId}: objectPro animations have no "${asset.animation.mode}" mode; use "v3" or "pro"`)

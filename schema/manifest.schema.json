@@ -1491,6 +1491,9 @@
                     "type": "boolean",
                     "default": true
                   },
+                  "clean": {
+                    "type": "boolean"
+                  },
                   "mode": {
                     "type": "string",
                     "enum": [
@@ -1739,6 +1742,233 @@
                 "required": [
                   "of",
                   "reference"
+                ],
+                "additionalProperties": false
+              },
+              "layer": {
+                "type": "object",
+                "properties": {
+                  "of": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "minItems": 1,
+                        "maxItems": 64
+                      }
+                    ]
+                  },
+                  "mask": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "keyed": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "skin": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^#?[0-9a-f]{6}$"
+                    },
+                    "minItems": 1,
+                    "maxItems": 64
+                  },
+                  "key": {
+                    "type": "string",
+                    "pattern": "^#?[0-9a-f]{6}$"
+                  },
+                  "clean": {
+                    "type": "boolean"
+                  },
+                  "columns": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 64
+                  },
+                  "region": {
+                    "type": "string",
+                    "enum": [
+                      "body",
+                      "head",
+                      "around"
+                    ]
+                  },
+                  "padding": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 64
+                  },
+                  "offset": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": [
+                          {
+                            "type": "integer",
+                            "minimum": -32,
+                            "maximum": 32
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": -32,
+                            "maximum": 32
+                          }
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "array",
+                          "minItems": 2,
+                          "maxItems": 2,
+                          "items": [
+                            {
+                              "type": "integer",
+                              "minimum": -32,
+                              "maximum": 32
+                            },
+                            {
+                              "type": "integer",
+                              "minimum": -32,
+                              "maximum": 32
+                            }
+                          ]
+                        },
+                        "propertyNames": {
+                          "minLength": 1
+                        }
+                      }
+                    ]
+                  },
+                  "attach": {
+                    "type": "object",
+                    "properties": {
+                      "item": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "anchors": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "joint": {
+                        "type": "string",
+                        "enum": [
+                          "right-hand",
+                          "left-hand"
+                        ]
+                      },
+                      "grip": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "const": "center"
+                          },
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "array",
+                              "minItems": 2,
+                              "maxItems": 2,
+                              "items": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "propertyNames": {
+                              "enum": [
+                                "south",
+                                "south-east",
+                                "east",
+                                "north-east",
+                                "north",
+                                "north-west",
+                                "west",
+                                "south-west"
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "scale": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 4
+                      },
+                      "tilt": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "lean": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "depth": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "front",
+                          "behind"
+                        ]
+                      },
+                      "grasp": {
+                        "anyOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "radius": {
+                                "type": "integer",
+                                "minimum": 2,
+                                "maximum": 32
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "item",
+                      "anchors"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "of"
                 ],
                 "additionalProperties": false
               },
@@ -2058,8 +2288,43 @@
                     "enum": [
                       "recolor",
                       "palette-snap",
-                      "scale"
+                      "hue-shift",
+                      "scale",
+                      "key-skin",
+                      "despeckle"
                     ]
+                  },
+                  "degrees": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "hue": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 360
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 360
+                      }
+                    ]
+                  },
+                  "saturation": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 4
+                  },
+                  "brightness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 4
                   },
                   "map": {
                     "type": "object",
@@ -2096,6 +2361,33 @@
                       "nearest",
                       "box"
                     ]
+                  },
+                  "skin": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^#?[0-9a-f]{6}$"
+                    },
+                    "minItems": 1,
+                    "maxItems": 64
+                  },
+                  "key": {
+                    "type": "string",
+                    "pattern": "^#?[0-9a-f]{6}$"
+                  },
+                  "reference": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1,
+                    "maxItems": 64
+                  },
+                  "tolerance": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 442
                   }
                 },
                 "required": [

@@ -74,6 +74,7 @@ not merely a label edit.
 | `initImageStrength` | integer 1–999, default 300 | With `initImage`: how strongly the starting image holds. About 100 blends it with the prompt; 300 and up mostly returns it. |
 | `direction` | string | `pixflux` styles: the way the subject faces, one of the 8 compass directions. Weakly guiding. Part of the asset's identity only when set. |
 | `terrainReferences` | object | `terrain` styles: a PNG per terrain to take that terrain's look from, `{ "lower": "refs/water.png", "upper": "refs/sand.png", "transition": "refs/foam.png" }`, paths relative to the manifest. See [Terrain reference images](./TILES.md#terrain-reference-images). |
+| `layer` | object | `character` styles, PixelLab only: the prompt drawn as a clothing layer over existing frames, returned as transparent PNGs that sit on them. `{ "of": ["hero", "hero.walk.south"] }`. `offset` nudges it by whole pixels, for every frame or per source asset, free to change. With `attach` it draws nothing and needs no prompt: a sprite you already have is pinned to a hand in every frame (`joint`, `grip`, `scale`, `tilt`, `lean`, `depth`), free, or with `grasp` for one inpaint that closes the hand around it, by an anchors file `pixelkiln anchors` writes: `{ "of": ["hero"], "attach": { "item": "items/sword-{direction}.png", "anchors": "anchors/hero.json" } }`. See [Paperdoll layers](./CHARACTERS.md#paperdoll-layers) and the [guide](./PAPERDOLL.md#held-items-and-accessories). |
 | `derive` | object | Made from existing pixels by one local transform, at no cost, with no provider. See [Derived and external assets](#derived-and-external-assets). |
 | `external` | object | Built by a script or tool outside pixelkiln; pixelkiln records and tracks the file but never builds it. See [Derived and external assets](#derived-and-external-assets). |
 | `vfx` | object | `vfx` styles, PixelLab only: the effect to render. `{ "preset": "explosion", "parts": [{ "name": "scorch_mark" }], "sprite": "art/chars/hero.png", "fps": 12 }`; start from one `preset` or one `recipe` (a recipe JSON or a `.vfx.json` record), with optional `parts`, `sprite`, `fps`, and `name`. Or give a `description` (with optional `artist`: `lite` or `pro`, a local PNG `sprite`, `spriteFrames` and `spriteFps` when that PNG is an animation strip, and `name`) for PixelLab's paid VFX artist instead; it excludes `preset`, `recipe`, `parts`, and `fps`. Replaces `prompt` as the required field. See [`vfx`](./GENERATORS.md#vfx) and [Described effects](./GENERATORS.md#described-effects-the-paid-vfx-artist). |
@@ -463,15 +464,22 @@ makes itself, one it only keeps track of.
 "tile_snapped": { "derive": { "file": "art/tile.png", "transform": "palette-snap", "palette": ["#000000", "#ffffff"] } }
 ```
 
-The input is `from` (another asset of the same style, which must be a single
-image) or `file` (a committed PNG, relative to the manifest), never both. The
-transform is one of:
+The input is `from` (another asset of the same style) or `file` (a committed
+PNG, relative to the manifest), never both. `recolor`, `palette-snap` and
+`hue-shift` treat every pixel alike, so their `from` may be a set, a
+character's rotations, a loop or a paperdoll layer: every image is
+transformed and written under the same role, which is how one drawn layer
+becomes several colours of it for nothing. The others take a single image.
+The transform is one of:
 
 | `transform` | Fields | Does |
 |---|---|---|
 | `recolor` | `map` | Replaces exact `#rrggbb` colors. Unmapped colors and every alpha value stay. |
 | `palette-snap` | `palette` (2 to 256 colors) | Moves every visible pixel to the nearest palette color. |
+| `hue-shift` | `degrees`, `hue`, `saturation`, `brightness`, `reference` | Turns each pixel's hue by `degrees` (-180 to 180) and multiplies its saturation and brightness, keeping its shading. `hue: [from, to]` limits it to hues in that window, clockwise, so `[330, 30]` is the reds. Greys and near-blacks are never touched, so outlines and steel stay as they are. `reference`, a list of PNGs, limits it further to pixels in a colour one of them uses: a character's own frames pick out its skin on a layer that also holds an item. |
 | `scale` | `width`, `height`, `mode` | Resizes to the exact size. `nearest` (default) keeps hard edges; `box` averages the covered pixels, weighted by alpha. |
+| `key-skin` | `skin`, `key`, `tolerance` | Repaints skin in a stand-in colour (`key`, default cyan), keeping its shading. `skin` lists the skin colours and `tolerance` how far a pixel may sit from one; with no `skin`, every pixel that is not outline is keyed. |
+| `despeckle` | `reference` (1 to 64 PNGs), `tolerance` | Removes the ghost pixels an animation model leaves around a figure. `reference` names committed stills whose colours are the figure's own; a colour they barely use, on the outside of the figure, is removed. |
 
 `gen` writes the file in the wave after its source lands, calls no provider, and
 costs nothing in any unit. The plan reports a derived asset `stale`, free to fix,

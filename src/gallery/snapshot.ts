@@ -207,7 +207,7 @@ export interface GallerySkeleton {
 export interface GalleryCharacter {
   /** Which family this belongs to: a skeleton-based `character`, or a skeleton-free `objectPro`. */
   generator: "character" | "objectPro"
-  kind: "base" | "state" | "animation" | "portrait" | "outfit"
+  kind: "base" | "state" | "animation" | "portrait" | "outfit" | "layer"
   /** Lock key of the base or state this is drawn from; null for a base. */
   parentKey: string | null
   mode: string
@@ -455,9 +455,11 @@ function describeCharacter(spec: ResolvedSpec | undefined, entry: LockEntry | un
       ? "portrait"
       : recordedCharacter?.kind === "outfit"
         ? "outfit"
-        : recordedCharacter?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-"))
-          ? "animation"
-          : "base"
+        : recordedCharacter?.kind === "layer"
+          ? "layer"
+          : recordedCharacter?.kind === "animation" || entry.outputs.some((o) => o.role?.startsWith("frame-"))
+            ? "animation"
+            : "base"
     return {
       generator: "character",
       kind,

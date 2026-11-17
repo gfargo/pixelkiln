@@ -28,6 +28,28 @@ export interface AtlasSet {
   frames: string[]
 }
 
+/**
+ * A paperdoll layer on the sheet: which frame of it goes over which frame of
+ * the character, and where. A game draws the `over` frame at some point P and
+ * then the layer's `frame` at P plus (`dx`, `dy`); those are zero for a layer
+ * the size of its source frame and negative for a padded one, which shares
+ * its source's centre. Draw order between layers is the game's to decide.
+ */
+export interface AtlasLayer {
+  /** Asset id of the layer. */
+  id: string
+  /** The assets it sits over, in the layer's own order. */
+  of: string[]
+  frames: Array<{
+    /** Frame id of the layer's own image. */
+    frame: string
+    /** Frame id of the character frame it is drawn over. */
+    over: string
+    dx: number
+    dy: number
+  }>
+}
+
 /** What both writers need from a packed or mounted atlas. */
 export interface SheetAtlas {
   style: string

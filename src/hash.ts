@@ -173,6 +173,9 @@ export function specHash(
             animation: spec.character.animation
               ? {
                   ...spec.character.animation,
+                  // Applied to downloaded bytes and tracked by the lock's
+                  // `postprocess` record, so it is not part of what is generated.
+                  clean: undefined,
                   startFrame: spec.character.animation.startFrame?.sha256,
                   endFrame: spec.character.animation.endFrame?.sha256,
                 }
@@ -194,6 +197,41 @@ export function specHash(
             // compares those directly (like a mirror), so only the choice of
             // parent, the reference image's bytes, and any extra guidance
             // are identity here.
+            // A layer's sources' bytes are compared in the plan, like an
+            // outfit's; which assets, in which order, and how the sheet is
+            // prepared are identity here. The prompt is hashed with the spec.
+            layer: spec.character.layer
+              ? {
+                  of: spec.character.layer.sources.map((source) => source.assetId),
+                  mask: spec.character.layer.mask?.sha256,
+                  keyed: spec.character.layer.keyed?.sha256,
+                  skin: spec.character.layer.skin?.map(normalizeHex),
+                  key: spec.character.layer.key ? normalizeHex(spec.character.layer.key) : undefined,
+                  clean: spec.character.layer.clean,
+                  columns: spec.character.layer.columns,
+                  // Omitted at their defaults so a layer made before these existed keeps its identity.
+                  region: spec.character.layer.region === "body" ? undefined : spec.character.layer.region,
+                  padding: spec.character.layer.padding || undefined,
+                  // On a drawn layer the offset is post-processing, re-applied by fetch; on a
+                  // held item it is where the item sits, which is identity.
+                  offset: spec.character.layer.attach ? spec.character.layer.offset : undefined,
+                  // A held item's identity is its files' bytes and how it is placed.
+                  attach: spec.character.layer.attach
+                    ? {
+                        item: spec.character.layer.attach.item.map((file) => [file.direction, file.sha256]),
+                        anchors: spec.character.layer.attach.anchors.sha256,
+                        joint: spec.character.layer.attach.joint,
+                        grip: spec.character.layer.attach.grip,
+                        // Omitted at 1 so an item placed before scale existed keeps its identity.
+                        scale: spec.character.layer.attach.scale === 1 ? undefined : spec.character.layer.attach.scale,
+                        tilt: spec.character.layer.attach.tilt,
+                        lean: spec.character.layer.attach.lean,
+                        depth: spec.character.layer.attach.depth,
+                        grasp: spec.character.layer.attach.grasp?.radius,
+                      }
+                    : undefined,
+                }
+              : undefined,
             outfit: spec.character.outfit
               ? {
                   of: spec.character.parentAssetId,
@@ -260,9 +298,17 @@ export function specHash(
                   .sort(([a], [b]) => a!.localeCompare(b!))
               : undefined,
             palette: spec.derive.palette?.map(normalizeHex),
+            degrees: spec.derive.degrees,
+            hue: spec.derive.hue,
+            saturation: spec.derive.saturation,
+            brightness: spec.derive.brightness,
             width: spec.derive.width,
             height: spec.derive.height,
             mode: spec.derive.transform === "scale" ? spec.derive.mode ?? "nearest" : undefined,
+            skin: spec.derive.skin?.map(normalizeHex),
+            key: spec.derive.key ? normalizeHex(spec.derive.key) : undefined,
+            tolerance: spec.derive.tolerance,
+            reference: spec.derive.reference?.map((still) => still.sha256),
             from: spec.derive.source.kind === "asset" ? spec.derive.source.assetId : undefined,
             fileSha256: spec.derive.source.kind === "file" ? spec.derive.source.sha256 : undefined,
           }

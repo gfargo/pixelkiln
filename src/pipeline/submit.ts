@@ -15,6 +15,7 @@ import { lockKey, type Lock, type LockEntry, type ResolvedSpec, type ResolvedSty
 import type { PlanItem } from "./plan.ts"
 import { recordedAnimationGroup, requireRevisionReady } from "./revision.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
+import { heldItemAsset, isHeldItem } from "./attach.ts"
 import { deriveMirror, mirrorSourceHash } from "./mirror.ts"
 import { deriveAsset } from "./derive.ts"
 
@@ -76,7 +77,7 @@ export async function submit(
   // nothing, in whatever unit the rest of the batch is priced in.
   const estimates = new Map(items.map((item) => [
     item.key,
-    item.spec.mirror || item.spec.derive
+    item.spec.mirror || item.spec.derive || isHeldItem(item.spec)
       ? { amount: 0, unit: item.spec.costUnit, candidates: 1 }
       : validateCostEstimate(provider.id, provider.estimate(item.spec)),
   ]))
@@ -215,10 +216,11 @@ export async function submit(
       // loop reaches them in), from the leader's single submitted job.
       continue
     }
-    if (spec.mirror || spec.derive) {
+    if (spec.mirror || spec.derive || isHeldItem(spec)) {
       try {
         await requireRevisionReady(spec, lock)
         if (spec.derive) await deriveAsset(spec, lock, lockPath, { onProgress: log })
+        else if (isHeldItem(spec)) await heldItemAsset(spec, lock, lockPath, { onProgress: log })
         else await deriveMirror(spec, lock, lockPath, { onProgress: log })
         submitted++
       } catch (err) {
@@ -373,6 +375,14 @@ export async function submit(
             referenceSha256: spec.character.outfit!.reference.sha256,
           }
         : null,
+      layer: spec.character?.kind === "layer"
+        ? {
+            sources: spec.character.layer!.sources.map((source) => ({
+              assetId: source.assetId,
+              sha256: mirrorSourceHash(lock.entries[lockKey(source.spec.styleId, source.spec.assetId)] ?? { outputs: [] }),
+            })),
+          }
+        : undefined,
       terrainConnect: spec.terrainConnect ? terrainConnect : undefined,
       motionShare: motionLeader
         ? { sourceAssetId: motionLeader.assetId, animationGroupId: motionGroup?.animationGroupId ?? null }
@@ -424,7 +434,18 @@ export async function submit(
             path: currentEntryOutputPath(parentEntry, spec.character!.parentSpec!, index),
             role: output.role,
           }))
-        : undefined
+        : spec.character?.kind === "layer"
+          // Every frame of every source, in `of` order; requireRevisionReady proved each one downloaded.
+          ? spec.character.layer!.sources.flatMap((source) => {
+              const sourceEntry = lock.entries[lockKey(source.spec.styleId, source.spec.assetId)]!
+              return sourceEntry.outputs.map((output, index) => ({
+                path: currentEntryOutputPath(sourceEntry, source.spec, index),
+                role: output.role,
+                assetId: source.assetId,
+                still: source.spec.character?.kind !== "animation",
+              }))
+            })
+          : undefined
       const referenceSourceImageId = ownedReferenceImageId(spec, lock, provider.id)
       const { jobId, metadata } = await provider.submit(spec, refs, {
         ...(previousJobId ? { previousJobId } : {}),

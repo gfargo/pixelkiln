@@ -3,7 +3,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export type DocGroup = "Start here" | "Providers" | "Guides" | "Reference" | "Policies";
+export type DocGroup = "Start here" | "Providers" | "Guides" | "Reference" | "Research" | "Policies";
 
 export type DocEntry = {
   slug: string;
@@ -88,9 +88,17 @@ export const docs: DocEntry[] = [
   {
     slug: "characters",
     title: "Characters",
-    description: "A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, portraits, outfit transfer, and what each PixelLab engine costs.",
+    description: "A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, portraits, outfit transfer, paperdoll layers, and what each PixelLab engine costs.",
     file: "docs/CHARACTERS.md",
     group: "Guides",
+  },
+  {
+    slug: "paperdoll",
+    title: "Paperdoll layers",
+    description: "One bare character and any number of outfits, hats and held items as transparent layers that match every frame of every animation.",
+    file: "docs/PAPERDOLL.md",
+    group: "Guides",
+    split: 2,
   },
   {
     slug: "generators",
@@ -105,6 +113,13 @@ export const docs: DocEntry[] = [
     description: "Thirty provider outputs, including ComfyUI cleanup, native-grid limits, final-palette refinement, and measured quality findings.",
     file: "docs/PROVIDER_BENCHMARK.md",
     group: "Providers",
+  },
+  {
+    slug: "research-3d",
+    title: "Research: 3D models from sprites",
+    description: "Every attempt to turn eight directional sprites into a 3D model, with pictures: carving, upright prompting, a triangulated skeleton, and Hunyuan3D meshes.",
+    file: "docs/RESEARCH_3D.md",
+    group: "Research",
   },
   {
     slug: "recipes",
@@ -194,7 +209,7 @@ export const docs: DocEntry[] = [
   },
 ];
 
-export const docGroups: DocGroup[] = ["Start here", "Providers", "Guides", "Reference", "Policies"];
+export const docGroups: DocGroup[] = ["Start here", "Providers", "Guides", "Reference", "Research", "Policies"];
 
 export function getDoc(slug: string) {
   return docs.find((doc) => doc.slug === slug);

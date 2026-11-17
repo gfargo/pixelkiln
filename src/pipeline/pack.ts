@@ -3,7 +3,7 @@ import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
 import type { Lock } from "../types.ts"
 import { frameSetFps, frameSetLoop, resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceIsStem, sourceOutputPath } from "../outputs.ts"
-import type { AtlasSet } from "./sheet-formats.ts"
+import type { AtlasLayer, AtlasSet } from "./sheet-formats.ts"
 import { sha256 } from "../hash.ts"
 
 /** What a frame set plays at when its provider recorded no rate. */
@@ -50,6 +50,8 @@ export interface PackedSheet {
      * lockfile style was packed and had one.
      */
     sets?: AtlasSet[]
+    /** Paperdoll layers on the sheet, each frame paired with the character frame it goes over. */
+    layers?: AtlasLayer[]
   }
   /** Assets skipped because their file was missing or unreadable. */
   skipped: { id: string; reason: string }[]
@@ -281,6 +283,17 @@ export function packStyle(
   const noOutput: { id: string; reason: string }[] = []
   const locked = new Set<string>()
   const sets: AtlasSet[] = []
+  // A layer's entry names the assets it sits over. A recoloured layer is a
+  // derived asset with the layer's own frames under the layer's own roles,
+  // so it is a layer over the same assets.
+  const layerSources = (id: string, seen = new Set<string>()): string[] | undefined => {
+    const entry = lock.entries[`${prefix}${id}`]
+    if (!entry || seen.has(id)) return undefined
+    if (entry.layer) return entry.layer.sources.map((source) => source.assetId)
+    const parent = entry.derive?.sourceAssetId
+    return parent ? layerSources(parent, seen.add(id)) : undefined
+  }
+  const layered: Array<{ id: string; of: string[]; roles: string[] }> = []
 
   for (const [key, entry] of entries) {
     const id = key.slice(prefix.length)
@@ -315,6 +328,8 @@ export function packStyle(
       continue
     }
     for (const output of selected) inputs.push({ id: output.id, path: output.absolutePath })
+    const over = layerSources(id)
+    if (over) layered.push({ id, of: over, roles: selected.flatMap((output) => (output.role ? [output.role] : [])) })
     if (entry.outputs.length > 1) {
       // A ComfyUI frame set says so by generator; a PixelLab character
       // animation says so by recording its rate. Directions of a character
@@ -346,9 +361,39 @@ export function packStyle(
     .map((set) => ({ ...set, frames: set.frames.filter((frameId) => packedIds.has(frameId)) }))
     .filter((set) => set.frames.length)
     .sort((a, b) => a.id.localeCompare(b.id))
+  // Pair each layer frame with the character frame under it. A layer's role is
+  // `<source asset>.<that asset's role>`; the longest source id it starts with
+  // owns it, so `hero.walk.south.frame-00` is not taken for `hero`'s.
+  const frameById = new Map(packed.atlas.frames.map((frame) => [frame.id, frame]))
+  const layers: AtlasLayer[] = []
+  for (const layer of layered.sort((a, b) => a.id.localeCompare(b.id))) {
+    const frames: AtlasLayer["frames"] = []
+    for (const role of layer.roles) {
+      const owner = layer.of.filter((source) => role.startsWith(`${source}.`)).sort((a, b) => b.length - a.length)[0]
+      if (!owner) continue
+      const ownerOutputs = lock.entries[`${prefix}${owner}`]?.outputs.length ?? 0
+      const overId = ownerOutputs === 1 ? owner : `${owner}/${role.slice(owner.length + 1)}`
+      const mine = frameById.get(`${layer.id}/${role}`)
+      const under = frameById.get(overId)
+      if (!mine || !under) continue
+      frames.push({
+        frame: mine.id,
+        over: under.id,
+        // The two share a centre; a padded layer starts that much up and to the left.
+        dx: Math.round((under.width - mine.width) / 2),
+        dy: Math.round((under.height - mine.height) / 2),
+      })
+    }
+    if (frames.length) layers.push({ id: layer.id, of: layer.of, frames })
+  }
   return {
     ...packed,
-    atlas: { ...packed.atlas, style: styleId, ...(placed.length ? { sets: placed } : {}) },
+    atlas: {
+      ...packed.atlas,
+      style: styleId,
+      ...(placed.length ? { sets: placed } : {}),
+      ...(layers.length ? { layers } : {}),
+    },
     skipped: [...noOutput, ...packed.skipped],
   }
 }

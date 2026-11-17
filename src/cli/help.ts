@@ -45,6 +45,18 @@ Commands
             Prints, or writes with --out, a ready keypoints file for an
             animate-skeleton revision: the estimated pose plus --frames copies
             (default 4) to edit. --out refuses to replace a file without --force.
+  anchors <asset> [--style <id>] [--force] [--dry-run]
+            PixelLab only: write the anchors file of a held item (a layer with
+            attach), one skeleton estimate per frame of its sources, direct
+            and un-budgeted at 0.1 generation a frame. Frames whose anchor is
+            current are skipped; --force estimates them all again, --dry-run
+            counts them and calls nothing.
+  redraw <layer> --frame <name> [--frame <name>...] [--style <id>] [--seed <n>] [--dry-run]
+            PixelLab only: draw named frames of a paperdoll layer again, one
+            small inpaint with the other frames of the same loop shown dressed
+            beside them. Direct and un-budgeted, 10 to 25 generations by sheet
+            size. The new frames replace the old in the lockfile. Without
+            --frame it lists the names; --dry-run prices the call.
   skeleton-preview <keypoints.json | asset> [--from <image>] [--out <file>]
             Draw every pose of a keypoints file over its source image as one
             PNG, locally and free. Given an animate-skeleton asset id, reads

@@ -17,7 +17,7 @@ here, minus everything template/skeleton-specific. See
 ## The three shapes
 
 A cast in full, with a base, a state, and two loops. This is the robot on
-the [site](https://pixelkiln.griffen.codes/#characters), drawn the way the
+the [site](https://pixelkiln.griffen.codes/characters), drawn the way the
 example says:
 
 ![The robot facing south, south-west, west, north-west, north, north-east, east, and south-east](../website/public/sprites/characters/robot-8dir.png)
@@ -322,6 +322,40 @@ at submit time, like a base's `reference`.
 }
 ```
 
+### Cleaning a loop's frames
+
+An animation model leaves ghost pixels around a moving figure: pale arcs
+beside the head, fragments off a hand or foot. `clean` removes them from each
+frame as it is downloaded:
+
+```json
+"hero.walk.south": { "animation": { "of": "hero", "template": "walking", "direction": "south", "clean": true } }
+```
+
+Each frame is judged against the parent's rotations. A colour the rotations
+barely use, on the outside of the figure, is debris; so is a fragment in such
+colours that outline has sealed off beside the figure. Colours the rotations
+do use are never removed, however thin the part, so a ghost drawn in the
+body's own colours survives.
+
+Cleaning is post-processing, like `enforcePalette`: it changes the downloaded
+bytes, not what was generated. Turning it on or off for a loop that is
+already downloaded shows in `plan` as `recoverable`, and `pixelkiln fetch`
+re-processes the frames at no cost. A frame with nothing to remove keeps the
+provider's exact bytes. Measured on a 64px bare base with an 8-direction
+template walk: 608 stray near-white pixels across 48 frames before, 2 after,
+and 1 pixel removed from the 8 rotations themselves when run over them.
+
+It applies to `character` loops; `objectPro` loops refuse it. A loop the
+cleaning changed makes anything built from its frames (a mirror, an outfit, a
+layer) stale, so turn it on before generating those.
+
+Cleaning goes by colour, so look at the limbs afterwards. A model sometimes
+shades a far arm or leg in a dark colour the rotations never use. A whole
+limb drawn that way, in its own outline, is recognised by its size and left
+alone; an edge of such colour on the body itself is still peeled, which can
+thin an arm. Regenerate a loop that comes back like that.
+
 ### How the family depends on the base
 
 States and animations depend on their parent the way a revision does. The
@@ -510,6 +544,116 @@ set rather than one file — and goes `stale` when the source is
 regenerated. It takes no `state`, `animation`, `portrait`, `reference`, or
 `concept` (those describe a different shape or belong on a base); a
 reference image change alone also makes it stale.
+
+## Paperdoll layers
+
+A `layer` asset draws its prompt as clothing over frames you already have and
+returns it as transparent PNGs that sit on top of them: one bare character,
+any number of outfits, and every outfit lines up with every frame because it
+was painted onto that frame.
+
+This section is the reference for outfits. The
+[Paperdoll layers guide](./PAPERDOLL.md) has the rest, and what each was
+measured to do: hats and hair, an outfit split into pieces, `offset` to nudge
+a layer by a pixel or two for free, held items drawn or pinned to the hand
+with `attach`, `grasp` to close the hand around one, composing layers in a
+game, and field notes on what works for which kind of item.
+
+```json
+"hero":            { "prompt": "bald bare humanoid base body, plain skin, no clothing" },
+"hero.walk.south": { "animation": { "of": "hero", "template": "walking", "direction": "south", "clean": true } },
+"hero.walk.east":  { "animation": { "of": "hero", "template": "walking", "direction": "east", "clean": true } },
+"hero.leather": {
+  "prompt": "Dress every masked cyan figure in the same leather ranger armour: dark-brown cuirass, dark-red sash, cream sleeves, dark trousers, strapped boots. Keep every pose. Keep the cyan skin on hands and neck cyan. Do not alter heads.",
+  "layer": { "of": ["hero", "hero.walk.south", "hero.walk.east"] }
+}
+```
+
+`of` names the assets to dress, in the same style: a base, its states, its
+loops. Every frame of every one of them goes onto a single sheet and is
+repainted in a single masked inpaint, which is what keeps the outfit the same
+from frame to frame and from loop to loop. Put everything that should wear the
+outfit in one layer; two layers with the same prompt are two different
+outfits.
+
+What `gen` does with it:
+
+1. **Clean.** Loop frames are stripped of the ghost pixels an animation model
+   leaves around a figure (pale arcs beside the head, fragments off a limb),
+   judged against the stills among `of`: a colour the base and states barely
+   use, on the outside of the figure, is debris. Skipped when `of` holds no
+   still, or with `"clean": false`.
+2. **Sheet.** Frames are centred on a common canvas, cut to the one box that
+   holds every figure, and laid on a grid.
+3. **Key.** Skin is repainted cyan, keeping its shading. A provider asked to
+   keep the skin returns skin tones that overlap leather and hair; cyan comes
+   back as cyan and is easy to drop.
+4. **Mask.** White (repaint) below each figure's neck, black (keep) on the
+   head and on empty space. The head staying black is what stops the pose
+   being redrawn.
+5. **Inpaint.** One `/inpaint-v3` call on the keyed sheet.
+6. **Cut.** Pixels the provider repainted, that are not still cyan, are the
+   layer. It is split back into one PNG per source frame, each on that
+   frame's own canvas.
+
+The outputs are named after what they sit over: `hero.leather-hero-south.png`
+is the layer for `hero`'s south rotation, `hero.leather-hero-walk-south-frame-00.png`
+the layer for that loop's first frame. Draw the source frame, then the layer
+at the same position.
+
+Every step's file is kept in `.pixelkiln/layers/<style>/<asset>/` so a poor
+result can be traced to the step that caused it: `sheet.png` (the cleaned
+frames), `keyed.png` and `mask.png` (what the provider was sent), `result.png`
+(what it returned), and `layout.json` (which cell is which frame).
+
+| Field | Does |
+|---|---|
+| `of` | One asset id or a list: the frames to dress, in sheet order. |
+| `mask` | A black-and-white PNG the size of the sheet, used instead of the computed mask. |
+| `keyed` | A PNG the size of the sheet, sent instead of the computed keyed sheet. |
+| `skin` | The colours that are skin, for a character that is not bare. On a bare base, omit it: everything that is not outline is skin. |
+| `key` | The stand-in colour. Default `#00ffff`. Change it for an outfit that is itself cyan. |
+| `clean` | `false` skips step 1. |
+| `columns` | Sheet columns. Chosen to fit in the smallest area when omitted. |
+| `region` | What may be repainted: `body` (default; the figure below the neck, for clothing), `head` (the cell down to the neck, for hats and hair), or `around` (everything below the neck, for held items and capes). |
+| `padding` | Empty pixels around every figure, for a layer that reaches past it. Layer frames come back larger by this much on every side. Default 0 for `body`, 8 otherwise. |
+
+**When a step goes wrong, replace its file.** The computed mask finds the neck
+as the narrowest row in the upper part of each figure, which holds for a bald
+base with its arms down and fails for hair wider than the head or an arm
+raised beside it. Run the layer once, open `mask.png` from the work folder,
+repaint it in any pixel editor (white where the outfit may go, black
+elsewhere), save it into the project, and name it as `mask`. The same goes for `keyed`. A supplied file
+must be the sheet's exact size, so it stays valid only while `of`, `columns`
+and the frames themselves do; `layout.json` records the size.
+
+**Limits.**
+
+- The sheet must fit `/inpaint-v3`'s 512px side. 56 frames of a 64px
+  character fit (measured: 8 rotations and a 6-frame walk in 8 directions at
+  384×448). When the frames do not fit, the layer fails before any request
+  with the sizes involved; split it across two layers and accept that they
+  may differ.
+- The plan prices a layer at 25 generations, the top `/inpaint-v3` tier,
+  because the sheet's size depends on the frames' own pixels, which planning
+  does not read. A sheet up to 256×256 bills 10 and up to about 341×341 bills
+  15; the lock records what was billed.
+- Nothing hidden is recovered. Hair behind a head, a far arm behind the torso:
+  the layer covers what the frame shows.
+- A layer over a clothed character works, but the old clothes show at the
+  edges wherever the new outfit is narrower. Start from a bare base.
+
+The layer's own cleaning only affects the sheet it paints on. The loops' own
+files keep their ghosts unless the loops say [`"clean": true`](#cleaning-a-loops-frames),
+and those are the files the layers are drawn over in a game. Set `clean` on
+the loops first: the layer then reads frames that are already clean, and
+changing it afterwards makes the layer stale.
+
+A layer is `blocked` until every source is downloaded and current, and
+`stale` when any of them is regenerated or re-processed. It takes no `reference` or `concept`.
+
+Two of the steps are also plain [`derive` transforms](./MANIFEST.md#derived-and-external-assets)
+for single images: `despeckle` and `key-skin`.
 
 ## Working with a cast
 

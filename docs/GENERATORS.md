@@ -349,6 +349,7 @@ and regenerating the parent makes the child stale.
 | animation, `mode: pro` | animate-character | 10–25 by canvas |
 | portrait | portrait-character-pro | 10–25 by `size` (16px billed exactly 20 live, before the October 2026 cut) |
 | outfit | transfer-outfit-v2 | 20 (a 2-frame, 92×92 job billed exactly this live; not yet measured at other frame counts or canvases) |
+| layer | inpaint-v3, one call for every frame | 10–25 by the sheet's canvas; planned at 25 (56 frames at 384×448 billed 25) |
 
 The 10–25 tiers are PixelLab's (20–40 before its October 2026 cut); the tier
 is resolved from the canvas when the job runs and reserved against the floor,

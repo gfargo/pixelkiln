@@ -22,7 +22,10 @@ import {
 import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
 import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
-import { joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
+import { isDirection } from "../attach.ts"
+import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
+import { placeHeldFrames } from "../pipeline/attach.ts"
+import { decodePng, joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
   CHARACTER_DIRECTIONS_4,
   CHARACTER_DIRECTIONS_8,
@@ -178,6 +181,13 @@ export function characterCost(spec: ResolvedSpec): number {
     // formula; `billed` reports the real amount once a job completes. The
     // floor itself fell from 20 to 10 in PixelLab's October 2026 Pro cut.
     return PRO_TIER_PRICES[0]
+  }
+  if (character.kind === "layer") {
+    // One /inpaint-v3 call over the whole sheet, priced by the sheet's
+    // canvas (10, 15 or 25). The sheet is cut to the frames' own opaque
+    // bounds, which are bytes the plan does not read, so this is the top
+    // tier: a ceiling for --budget. `billed` reports the real amount.
+    return PRO_TIER_PRICES[2]
   }
   if (character.mode === "standard") return 1
   if (character.mode === "v3") {
@@ -441,6 +451,43 @@ function decodeObjectAnimationJob(jobId: string): ObjectAnimationJob | null {
   return null
 }
 
+/** /inpaint-v3 takes 32 to 512px a side (docs/REVISIONS.md). */
+export const LAYER_SHEET_MAX_SIDE = 512
+
+/** What submit records about a layer's sheet for the download step to cut against. */
+interface LayerLayout {
+  jobId: string
+  width: number
+  height: number
+  key?: string
+  region?: LayerRegion
+  keyedSha256: string
+  maskSha256: string
+  frames: LayerFrame[]
+  /** Set for a grip pass: the layer is each placed frame with its hand's disc redrawn. */
+  grasp?: { radius: number; hands: number }
+}
+
+/**
+ * What a grip pass asks for when the asset has no prompt of its own. The
+ * item is already on the sheet; only the fist is to be drawn.
+ */
+const GRASP_PROMPT =
+  "Every cyan mannequin on this spritesheet carries the same item. In each small masked area, draw that figure's " +
+  "cyan hand closed in a fist around the item's handle, with cyan fingers wrapped over the handle, and join the " +
+  "handle cleanly to the rest of the item, which is already there. Keep the item exactly where it is and the same " +
+  "in every cell. Keep the skin cyan. Do not add anything else: no clothes, gloves, extra items, effects, " +
+  "backgrounds or text. Keep the transparent background and crisp pixel-art style with a black outline."
+
+/**
+ * Where a layer's intermediate files live: `sheet.png` (the frames as they
+ * are, cleaned), `keyed.png` and `mask.png` (what the provider was sent),
+ * `result.png` (what it returned), and `layout.json`.
+ */
+export function layerWorkDir(spec: Pick<ResolvedSpec, "root" | "styleId" | "assetId">): string {
+  return path.join(spec.root, ".pixelkiln", "layers", spec.styleId, spec.assetId)
+}
+
 export class PixelLabProvider implements Provider {
   readonly id = "pixellab"
 
@@ -534,7 +581,7 @@ export class PixelLabProvider implements Provider {
    * the id is the filename, polling is an existence check, and downloading
    * is a file read.
    */
-  private static cacheDir(namespace: "pixflux" | "outfit" | "vfx" = "pixflux"): string {
+  private static cacheDir(namespace: "pixflux" | "outfit" | "vfx" | "layer" = "pixflux"): string {
     const dir = path.join(os.tmpdir(), `pixelkiln-${namespace}`)
     mkdirSync(dir, { recursive: true })
     return dir
@@ -1515,6 +1562,103 @@ export class PixelLabProvider implements Provider {
         },
       }
     }
+    if (character.kind === "layer") {
+      // Dresses frames PixelKiln already holds, like an outfit, but as one
+      // masked inpaint over a sheet of all of them (see src/paperdoll.ts).
+      const layer = character.layer!
+      const label = `${spec.styleId}/${spec.assetId}`
+      const outputs = context?.parentOutputs ?? []
+      if (!outputs.length) throw new Error(`${label}: its layer sources have no downloaded frames`)
+      const sources = outputs.map((output) => ({
+        assetId: output.assetId ?? character.parentAssetId!,
+        ...(output.role ? { role: output.role } : {}),
+        png: readFileSync(output.path),
+        still: output.still === true,
+      }))
+      const supplied = (name: string, file: { path: string; sha256: string | null } | undefined) => {
+        if (!file) return undefined
+        const bytes = readFileSync(file.path)
+        if (sha256(bytes) !== file.sha256) throw new Error(`${label}: layer ${name} changed after the manifest was resolved: ${file.path}`)
+        return bytes
+      }
+      const built = buildLayerSheet(sources, {
+        minSide: 32,
+        maxSide: LAYER_SHEET_MAX_SIDE,
+        columns: layer.columns,
+        region: layer.region,
+        padding: layer.padding,
+        key: layer.key,
+        skin: layer.skin,
+        reference: layer.clean ? sources.filter((source) => source.still).map((source) => source.png) : [],
+        mask: supplied("mask", layer.mask),
+        keyed: supplied("keyed sheet", layer.keyed),
+      })
+      const dir = layerWorkDir(spec)
+      mkdirSync(dir, { recursive: true })
+      let prepared = built
+      let grasp: LayerLayout["grasp"]
+      if (layer.attach?.grasp) {
+        // A grip pass: place the item on every frame as a free held item is,
+        // put it on the sheet, and open only a disc at each hand that shows.
+        const placed = await placeHeldFrames(spec, outputs.map((output, index) => {
+          const assetId = output.assetId ?? character.parentAssetId!
+          const direction = isDirection(output.role)
+            ? output.role
+            : layer.sources.find((source) => source.assetId === assetId)?.spec.character?.animation?.direction
+          if (!direction) throw new Error(`${label}: cannot tell which way ${assetId} frame ${output.role ?? index} faces`)
+          return { assetId, role: built.frames[index]!.role ?? String(index).padStart(2, "0"), direction, file: output.path }
+        }))
+        const hands = placed.map((frame) => (frame.behind ? null : frame.hand))
+        const held = hands.filter(Boolean).length
+        if (!held) throw new Error(`${label}: the body covers the hand in every frame, so there is no grip to draw; drop grasp`)
+        const gripped = graspSheet(built, placed.map((frame) => frame.png), hands, layer.attach.grasp.radius)
+        // The sheet as keyed, before the item went on it: where each figure's skin colours are read from at download.
+        writeFileSync(path.join(dir, "keyed-bare.png"), built.keyed)
+        mkdirSync(path.join(dir, "placed"), { recursive: true })
+        placed.forEach((frame, index) => writeFileSync(path.join(dir, "placed", `${String(index).padStart(3, "0")}.png`), frame.png))
+        prepared = { ...built, keyed: gripped.keyed, mask: gripped.mask }
+        grasp = { radius: layer.attach.grasp.radius, hands: held }
+      }
+      // Every step's file is kept beside the project so a poor result can be
+      // traced to the step that caused it, and so the download step, which
+      // may run in another process, can cut the layer from the same inputs.
+      writeFileSync(path.join(dir, "sheet.png"), prepared.sheet)
+      writeFileSync(path.join(dir, "keyed.png"), prepared.keyed)
+      writeFileSync(path.join(dir, "mask.png"), prepared.mask)
+      const { width, height } = decodePng(prepared.keyed)
+      const res = await this.client.inpaintV3({
+        description: grasp ? (spec.prompt ? `The item each figure carries: ${spec.prompt}. ${GRASP_PROMPT}` : GRASP_PROMPT) : spec.prompt,
+        image: { base64: prepared.keyed.toString("base64"), format: "png" },
+        width,
+        height,
+        maskImage: { base64: prepared.mask.toString("base64"), format: "png" },
+        // The frames are transparent sprites; without this the masked area comes back on an opaque box.
+        noBackground: true,
+        seed: spec.seed,
+      })
+      const layout: LayerLayout = {
+        jobId: res.background_job_id,
+        width,
+        height,
+        ...(layer.key ? { key: layer.key } : {}),
+        region: layer.region,
+        keyedSha256: sha256(prepared.keyed),
+        maskSha256: sha256(prepared.mask),
+        frames: prepared.frames,
+        ...(grasp ? { grasp } : {}),
+      }
+      writeFileSync(path.join(dir, "layout.json"), `${JSON.stringify(layout, null, 2)}\n`)
+      return {
+        jobId: res.background_job_id,
+        metadata: {
+          character: {
+            kind: "layer",
+            backgroundJobId: res.background_job_id,
+            sheet: { width, height, frames: prepared.frames.length, cleanedPixels: prepared.cleaned },
+          },
+        },
+      }
+    }
     const parentId = context?.parentObjectId
     if (!parentId) {
       throw new Error(
@@ -1709,6 +1853,7 @@ export class PixelLabProvider implements Provider {
     const kind = (context?.metadata?.character as { kind?: string } | undefined)?.kind ?? context?.spec?.character?.kind
     if (kind === "portrait") return this.pollCharacterPortrait(jobId, context)
     if (kind === "outfit") return this.pollCharacterOutfit(jobId, context)
+    if (kind === "layer") return this.pollCharacterLayer(jobId, context)
     const character = await this.client.getCharacter(jobId)
     if (character.status === "failed") return { status: "failed", error: "character generation failed upstream" }
     if (character.status !== "completed" || !character.rotation_urls) return { status: "processing" }
@@ -1799,6 +1944,63 @@ export class PixelLabProvider implements Provider {
       sources,
       billed: await this.billedForJob(meta?.backgroundJobId),
     }
+  }
+
+  /**
+   * A layer's job is a plain /inpaint-v3 background job returning the
+   * repainted sheet. The layer is cut from it here, against the keyed sheet
+   * and mask that submit left in the layer's work folder, and each frame is
+   * cached under its source asset and role so fetch names the files after
+   * the frames they sit over.
+   */
+  private async pollCharacterLayer(jobId: string, context?: PollContext): Promise<JobState> {
+    const state = await this.pollRevision(jobId)
+    if (state.status !== "ready") return state
+    const spec = context?.spec
+    if (!spec) return { status: "failed", error: `layer job ${jobId} was polled without its spec, so its work folder cannot be found` }
+    const dir = layerWorkDir(spec)
+    const layoutFile = path.join(dir, "layout.json")
+    if (!existsSync(layoutFile)) {
+      return { status: "failed", error: `layer work folder is missing ${layoutFile}; the keyed sheet and mask this job was cut against are gone, so generate the layer again` }
+    }
+    const layout = JSON.parse(readFileSync(layoutFile, "utf8")) as LayerLayout
+    const keyed = readFileSync(path.join(dir, "keyed.png"))
+    const mask = readFileSync(path.join(dir, "mask.png"))
+    if (layout.jobId !== jobId || sha256(keyed) !== layout.keyedSha256 || sha256(mask) !== layout.maskSha256) {
+      return { status: "failed", error: `layer work folder ${dir} no longer holds the sheet job ${jobId} was submitted with; generate the layer again` }
+    }
+    const result = await this.download(state.sourceUrl!)
+    const size = decodePng(result)
+    if (size.width !== layout.width || size.height !== layout.height) {
+      return { status: "failed", error: `layer job ${jobId} returned a ${size.width}x${size.height} image for a ${layout.width}x${layout.height} sheet` }
+    }
+    writeFileSync(path.join(dir, "result.png"), result)
+    let frames: Buffer[]
+    if (layout.grasp) {
+      const bare = path.join(dir, "keyed-bare.png")
+      const placed = layout.frames.map((_frame, index) => path.join(dir, "placed", `${String(index).padStart(3, "0")}.png`))
+      const missing = [path.join(dir, "sheet.png"), bare, ...placed].find((file) => !existsSync(file))
+      if (missing) return { status: "failed", error: `layer work folder is missing ${missing}; generate the layer again` }
+      frames = cutGraspFrames(
+        result,
+        { sheet: readFileSync(path.join(dir, "sheet.png")), keyed: readFileSync(bare), mask, frames: layout.frames },
+        placed.map((file) => readFileSync(file)),
+        { key: layout.key },
+      )
+    } else {
+      frames = cutLayerFrames(result, { keyed, mask, frames: layout.frames }, { key: layout.key, region: layout.region })
+    }
+    const cache = PixelLabProvider.cacheDir("layer")
+    const counters = new Map<string, number>()
+    const sources: OutputSource[] = frames.map((png, index) => {
+      const frame = layout.frames[index]!
+      const ordinal = counters.get(frame.assetId) ?? 0
+      counters.set(frame.assetId, ordinal + 1)
+      const file = path.join(cache, `${jobId}-${index}.png`)
+      writeFileSync(file, png)
+      return { url: `file://${file}`, role: `${frame.assetId}.${frame.role ?? String(ordinal).padStart(2, "0")}` }
+    })
+    return { status: "ready", objectId: jobId, sourceUrl: sources[0]!.url, sources, billed: state.billed }
   }
 
   /**
@@ -3384,6 +3586,34 @@ export class PixelLabProvider implements Provider {
   async download(url: string): Promise<Buffer> {
     if (url.startsWith("file://")) return readFileSync(url.slice("file://".length))
     return this.client.download(url)
+  }
+
+  /**
+   * One masked inpaint over a sheet, outside the plan and the lockfile: what
+   * `redraw` uses to draw single frames of a layer again. `paintedSheet`
+   * reads the job, and returns the repainted sheet once it has landed.
+   */
+  async paintSheet(args: { description: string; keyed: Buffer; mask: Buffer; seed?: number }): Promise<string> {
+    const { width, height } = decodePng(args.keyed)
+    const res = await this.client.inpaintV3({
+      description: args.description,
+      image: { base64: args.keyed.toString("base64"), format: "png" },
+      width,
+      height,
+      maskImage: { base64: args.mask.toString("base64"), format: "png" },
+      noBackground: true,
+      ...(args.seed != null ? { seed: args.seed } : {}),
+    })
+    return res.background_job_id
+  }
+
+  async paintedSheet(jobId: string): Promise<
+    { status: "processing" } | { status: "failed"; error: string } | { status: "ready"; png: Buffer; billed: BilledAmount | null }
+  > {
+    const state = await this.pollRevision(jobId)
+    if (state.status === "failed") return { status: "failed", error: state.error ?? "the job failed upstream" }
+    if (state.status !== "ready") return { status: "processing" }
+    return { status: "ready", png: await this.download(state.sourceUrl!), billed: state.billed ?? null }
   }
 
   async balance(): Promise<BalanceInfo> {
