@@ -844,6 +844,21 @@ No report was found of any of these being tested on pixel art.
 
 **The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, steps 9 to 11 the unwrap and texture part, and step 13 the image model, on the rendered views and not on the unwrapped texture.
 
+**Painting a mesh you already have.** From a second survey on 17 November 2026, for step 29's question of how to get a better texture. Nothing here was run; figures are as their sources give them, and several sources disagree.
+
+| Option | Runs where | What it takes | Licence | Fit for a 12 GB card |
+|---|---|---|---|---|
+| Hunyuan3D-Paint 2.0 | Local, installed (step 17) | One reference per pass, 512 pixel views | Tencent community licence, regional limits | Runs today |
+| [MV-Adapter](https://github.com/huanngzh/MV-Adapter), image to texture | Local, has ComfyUI nodes | A mesh and a reference image; 768 pixel views on SDXL, then RealESRGAN upscaling and LaMa inpainting | Apache-2.0 | README suggests the SD2.1 variant under 10 GB and SDXL above 16 GB |
+| [Hunyuan3D 2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1) paint | Local | Reference image; base colour, metal and roughness maps | Tencent community licence, regional limits | Official figure is 21 GB for texture. [A low-memory route exists](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper/issues/165) by offloading; no 12 GB report was found |
+| [TRELLIS.2](https://docs.comfy.org/tutorials/3d/trellis2), texture only | Local, native in ComfyUI | A mesh and one image | MIT | Claims range from 6 GB in a low-memory mode to 24 GB. *Unverified.* One image only, so the back is invented (the fault of step 17) |
+| [Meshy Retexture](https://docs.meshy.ai/api/retexture) | Hosted, paid | An uploaded mesh and reference images; 2K to 8K textures | Closed | No card needed. About 10 credits a task. *Unverified pricing.* |
+| UniTEX, MaterialMVP, MVPainter, RomanTex | Research code | Mesh and reference image | Not checked | Not checked |
+
+- **The reference is the first cap, whichever painter is used.** Every option paints what its reference shows, and ours is a 64 to 80 pixel sprite enlarged with hard edges. A redraw of each direction as a large, detailed picture would raise the ceiling for all of them.
+- **MV-Adapter is the likeliest local step up:** larger views, a permissive licence, and it sits on SDXL, so style models and edge or depth guides apply.
+- **The turn-per-sprite trick of step 20 should carry over** to any painter that takes a reference and a mesh, since it only decides which way the mesh faces. It does not carry over to TRELLIS.2, which paints the whole surface at once.
+
 **Sprite cards on a 3D skeleton.** [A short from Cor Mundi Studios](https://www.youtube.com/shorts/84clZXpwRc0) (28 seconds, read from its transcript on 17 November 2026) shows a 2.5D player character in Unreal Engine 5. Each body part is a flat card with its own sprite sheet in sixteen directions. Under the cards is a 3D mesh that is not what the player sees: it carries the lighting and the bones, and the bones tell each card where to be and which direction to show. The picture stays hand-drawn pixels and the motion comes from a rig. Step 31 tries it with eight directions and no lighting.
 
 No public tool was found that takes several directional pixel sprites and returns a mesh.
