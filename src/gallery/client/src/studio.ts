@@ -557,5 +557,7 @@ export function openStudio() {
     addLoopRow({ id: 'idle', what: 'breathing-idle', directions: ['south'] });
   }
   updatePrice();
-  setTimeout(() => baseId.focus(), 0);
+  // Focused now, not on a timer: the sheet is already in the page, and a
+  // deferred focus can land after typing has begun and pull it back here.
+  baseId.focus();
 }
