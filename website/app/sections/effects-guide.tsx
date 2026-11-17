@@ -177,6 +177,9 @@ const at = { x: target.x - coin.anchor.x, y: target.y - coin.anchor.y }
             </ul>
           </div>
           <div className="review-links">
+            <TrackedLink className="text-link" id="effects_catalog_objects" section="effects" href="/effects/catalog">
+              Pick another effect from the catalog
+            </TrackedLink>
             <TrackedLink className="text-link" id="effects_object_cli_docs" section="effects" href="/docs/cli/vfx#effects-around-objects">
               Objects in the vfx reference
             </TrackedLink>
@@ -290,6 +293,14 @@ pixelkiln vfx --recipe fx/torch.vfx.json --out fx/torch-again
               <li><span className="tick" aria-hidden="true" /> pixelfx is not on the npm registry, so you install it yourself. Without it the command stops and prints the install line.</li>
             </ul>
           </div>
+          <div className="review-links">
+            <TrackedLink className="text-link" id="effects_catalog_pixelfx" section="effects" href="/effects/catalog#pixelfx">
+              Browse every pixelfx effect
+            </TrackedLink>
+            <TrackedLink className="text-link" id="effects_catalog_presets_local" section="effects" href="/effects/catalog#presets">
+              Compare with PixelLab&apos;s presets
+            </TrackedLink>
+          </div>
         </div>
       </section>
 
@@ -386,6 +397,9 @@ pixelkiln vfx --recipe fx/torch.vfx.json --out fx/torch-again
             </table>
           </div>
           <div className="review-links">
+            <TrackedLink className="text-link" id="effects_catalog_controls" section="effects" href="/effects/catalog">
+              See every preset and effect
+            </TrackedLink>
             <TrackedLink className="text-link" id="effects_controls_cli_docs" section="effects" href="/docs/cli/vfx">
               Every flag in the vfx reference
             </TrackedLink>

@@ -1,0 +1,4537 @@
+{
+  "presets": {
+    "readOn": "2026-11-17",
+    "items": [
+      {
+        "name": "ash_embers",
+        "summary": "A field of sparks, glowing cinders and tumbling ash rising off an unseen fire, with a dithered heat band along the bottom.",
+        "width": 160,
+        "height": 120,
+        "frames": 32,
+        "loop": true
+      },
+      {
+        "name": "aura",
+        "summary": "A flickering aura of power around a standing character: flame tongues behind, sparks rising in front.",
+        "width": 96,
+        "height": 112,
+        "frames": 8,
+        "loop": true
+      },
+      {
+        "name": "black_hole",
+        "summary": "A black hole forms, swirls with a lensed glowing disk, swallows streaks and ground slabs, then implodes and bursts.",
+        "width": 232,
+        "height": 212,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "block_shatter",
+        "summary": "A faceted ice block rises, is struck from the left, cracks race over it, it flashes white and bursts into shards and chunks that settle.",
+        "width": 216,
+        "height": 100,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "chain_bolt",
+        "summary": "Lightning leaping from the hand along the ground through hop points, arcing over each, with sparks and scorch at every hop.",
+        "width": 262,
+        "height": 72,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "crystal_bloom",
+        "summary": "A cluster of seven faceted crystals pops up big-first, shimmers with a sweeping glint, then slumps and melts away dripping.",
+        "width": 144,
+        "height": 72,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "energy_orb",
+        "summary": "A crackling ball of energy (projectile head or charge-up) with orbiting sparks.",
+        "width": 48,
+        "height": 48,
+        "frames": 8,
+        "loop": true
+      },
+      {
+        "name": "explosion",
+        "summary": "Fireball explosion: flash, a billowing fire mass that burns out, a shockwave ring, debris.",
+        "width": 96,
+        "height": 96,
+        "frames": 12,
+        "loop": false
+      },
+      {
+        "name": "firefly_meadow",
+        "summary": "Fireflies over swaying grass: close ones fly loops with flapping wings and pulsing tails, far ones blink between the blades.",
+        "width": 160,
+        "height": 120,
+        "frames": 32,
+        "loop": true
+      },
+      {
+        "name": "firelight",
+        "summary": "Warm, flickering firelight from below, as from a campfire at the subject's feet; the far side sinks into the dark.",
+        "width": 64,
+        "height": 64,
+        "frames": 8,
+        "loop": true
+      },
+      {
+        "name": "flame",
+        "summary": "A burning flame (campfire, torch, brazier).",
+        "width": 48,
+        "height": 76,
+        "frames": 8,
+        "loop": true
+      },
+      {
+        "name": "glint_scatter",
+        "summary": "Four small glints catching one after another, each with mini glints, specks and tiny stars.",
+        "width": 168,
+        "height": 128,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "ground_blast",
+        "summary": "A big ground explosion: a flash, a fiery core under a shockwave ring, rocks flung out, then dark smoke columns that rise and drift away.",
+        "width": 224,
+        "height": 216,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "ground_sigil",
+        "summary": "Summoning circle on the ground (low top-down), turning, with light rising out of it.",
+        "width": 128,
+        "height": 112,
+        "frames": 12,
+        "loop": true
+      },
+      {
+        "name": "heal_pillar",
+        "summary": "A soft column of healing light with a ground ring and rising sparkles.",
+        "width": 80,
+        "height": 112,
+        "frames": 12,
+        "loop": true
+      },
+      {
+        "name": "hex_shield",
+        "summary": "A see-through dome of hexagon cells over the sprite: the far side behind it, the near side see-through in front, turning slowly, a pulse of light running down from the top each loop.",
+        "width": 136,
+        "height": 112,
+        "frames": 16,
+        "loop": true
+      },
+      {
+        "name": "ice_spike_line",
+        "summary": "Six faceted ice spikes erupt one after another along the ground, each taller than the last, stand, flash white and shatter in turn: a marching frost attack.",
+        "width": 272,
+        "height": 104,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "impact_burst",
+        "summary": "A hit spark: white flash, rays and a ring punching outward, sparks.",
+        "width": 64,
+        "height": 64,
+        "frames": 7,
+        "loop": false
+      },
+      {
+        "name": "light_sweep",
+        "summary": "A light circling the subject: sunlight moving across a rock, a planet turning, an asteroid tumbling past a star.",
+        "width": 64,
+        "height": 64,
+        "frames": 12,
+        "loop": true
+      },
+      {
+        "name": "lightning_strike",
+        "summary": "A bolt strikes down from above, flashes, hits the ground with a shockwave and sparks.",
+        "width": 96,
+        "height": 128,
+        "frames": 10,
+        "loop": false
+      },
+      {
+        "name": "magic_circle",
+        "summary": "Front-facing arcane circle: rings, a hexagram and a rune band that turn slowly, twinkling motes.",
+        "width": 128,
+        "height": 128,
+        "frames": 12,
+        "loop": true
+      },
+      {
+        "name": "night_fog",
+        "summary": "Three ground-fog banks drifting right at 15/20/24 px/s in flat posterised tones with thin lit crests, nearest bank in front of the feet.",
+        "width": 192,
+        "height": 100,
+        "frames": 32,
+        "loop": true
+      },
+      {
+        "name": "plasma_beam",
+        "summary": "A thick sustained beam fired from the hand: a wobbling banded body with racing pulses and a helix, an impact crown spraying plasma and smoke onto molten ground, tapering to a 1 px line.",
+        "width": 297,
+        "height": 84,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "plasma_globe",
+        "summary": "A hovering see-through glass globe: dithered sphere, six crackling filaments, a pulsing core, orbiting motes and a zap to the ground every ~1.3 s.",
+        "width": 100,
+        "height": 102,
+        "frames": 32,
+        "loop": true
+      },
+      {
+        "name": "portal",
+        "summary": "An upright swirling portal: churning core, glowing rim, orbiting motes.",
+        "width": 96,
+        "height": 112,
+        "frames": 12,
+        "loop": true
+      },
+      {
+        "name": "rim_glow",
+        "summary": "A pulsing rim of light around the subject's outline, as if something bright stands right behind it (a portal, a halo, an explosion).",
+        "width": 64,
+        "height": 64,
+        "frames": 8,
+        "loop": true
+      },
+      {
+        "name": "shield_bubble",
+        "summary": "A protective bubble: shimmering rim, glints running round it.",
+        "width": 96,
+        "height": 96,
+        "frames": 8,
+        "loop": true
+      },
+      {
+        "name": "shockwave",
+        "summary": "A stomp or landing: a ring of force racing out along the ground, kicking up dust.",
+        "width": 112,
+        "height": 64,
+        "frames": 8,
+        "loop": false
+      },
+      {
+        "name": "slam_pillar",
+        "summary": "A 3.4 s gold column slams down after a guide line and gathering sparks: hard bands, fibres, pulses, rising halos, two ground rings, stars and feathers, thinning to a thread.",
+        "width": 216,
+        "height": 204,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "slant_rain",
+        "summary": "Wind-slanted rain in three depths: far drops end mid-air, mid and near drops splash crowns and droplets, dithered mist along the ground.",
+        "width": 160,
+        "height": 120,
+        "frames": 32,
+        "loop": true
+      },
+      {
+        "name": "slash_arc",
+        "summary": "A sword slash: a crescent that sweeps open, then fades, with a few glints.",
+        "width": 96,
+        "height": 96,
+        "frames": 7,
+        "loop": false
+      },
+      {
+        "name": "smg_burst",
+        "summary": "Rapid fire: 9 shots, each a one-frame jagged star (a long jet and petals, white-hot core, orange rim; alternate shots smaller and redder), sparks per shot, brass casings tumbling back onto the floor and smoke gathering over the muzzle.",
+        "width": 112,
+        "height": 60,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "smoke_puff",
+        "summary": "A puff of smoke that billows up and thins away.",
+        "width": 64,
+        "height": 64,
+        "frames": 10,
+        "loop": false
+      },
+      {
+        "name": "snow_drift",
+        "summary": "Slow three-depth snow drifting right; 2×2 flakes and turning crystals land and lie on a wavy drift.",
+        "width": 160,
+        "height": 120,
+        "frames": 32,
+        "loop": true
+      },
+      {
+        "name": "spark_hit",
+        "summary": "A bullet-style hit from the left: a spiky white-hot star and a ring snap out, sparks spray back and fall, chips and shards drop.",
+        "width": 75,
+        "height": 51,
+        "frames": 31,
+        "loop": false
+      },
+      {
+        "name": "toxic_cloud",
+        "summary": "A flask smashes and green gas rolls out low along the floor in soft overlapping puffs (flat discs, no outline), bubbling and shedding glowing spores, then thins away.",
+        "width": 148,
+        "height": 80,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "toxic_puddle",
+        "summary": "A thin 88 px lens of venom on the ground with a shimmering top row, glints and a dark lip, bubbles swelling and popping into drops, spores and faint fumes.",
+        "width": 132,
+        "height": 66,
+        "frames": 32,
+        "loop": true
+      },
+      {
+        "name": "tracer_bolt",
+        "summary": "A charged one-shot: a brief charge at the hand, a hot head with a long tapered tracer at 550 px/s, then a hit with a flash, a cross of light and a dotted ring.",
+        "width": 246,
+        "height": 116,
+        "frames": 31,
+        "loop": false
+      },
+      {
+        "name": "turning_glint",
+        "summary": "One big gold 8-ray glint that pops, turns, pulses twice and shrinks, with warm and icy mini glints, twinkles and tiny stars.",
+        "width": 160,
+        "height": 120,
+        "frames": 32,
+        "loop": false
+      },
+      {
+        "name": "vent_bubbles",
+        "summary": "Underwater streams from vents: lit-rim bubbles wobbling up, popping at a glinting surface, specks sinking.",
+        "width": 160,
+        "height": 160,
+        "frames": 32,
+        "loop": true
+      },
+      {
+        "name": "volt_impact",
+        "summary": "Electric hit: a 7-bolt star that snaps out and shrinks, a dotted ring racing out, plasma spray and static.",
+        "width": 200,
+        "height": 120,
+        "frames": 32,
+        "loop": false
+      }
+    ]
+  },
+  "pixelfx": {
+    "version": "0.3.1",
+    "categories": [
+      {
+        "id": "moves",
+        "name": "moves",
+        "blurb": "whole attacks, wind-up to recovery, chained from the effects below"
+      },
+      {
+        "id": "fire",
+        "name": "fire",
+        "blurb": "torches, breath, pillars, walls of flame"
+      },
+      {
+        "id": "explosions",
+        "name": "explosions",
+        "blurb": "blasts, smoke, fireworks, mushroom clouds"
+      },
+      {
+        "id": "water",
+        "name": "water",
+        "blurb": "splashes, falls, fountains, waves"
+      },
+      {
+        "id": "ice",
+        "name": "ice",
+        "blurb": "spikes, novas, freezing, shattering"
+      },
+      {
+        "id": "lightning",
+        "name": "lightning",
+        "blurb": "strikes, arcs, coils, storms"
+      },
+      {
+        "id": "scifi",
+        "name": "sci-fi",
+        "blurb": "holograms, shields, scanners, warps"
+      },
+      {
+        "id": "melee",
+        "name": "melee",
+        "blurb": "slashes, smears, cleaves, combos"
+      },
+      {
+        "id": "impacts",
+        "name": "impacts",
+        "blurb": "hit sparks, shockwaves, landings"
+      },
+      {
+        "id": "projectiles",
+        "name": "projectiles",
+        "blurb": "bullets, rockets, lasers, arrows"
+      },
+      {
+        "id": "spawn",
+        "name": "spawn & death",
+        "blurb": "poofs, portals, souls, shatters"
+      },
+      {
+        "id": "arcane",
+        "name": "arcane",
+        "blurb": "portals, runes, missiles, beams"
+      },
+      {
+        "id": "holy",
+        "name": "holy",
+        "blurb": "heals, halos, pillars of light"
+      },
+      {
+        "id": "shadow",
+        "name": "shadow",
+        "blurb": "curses, voids, tendrils, souls"
+      },
+      {
+        "id": "status",
+        "name": "status",
+        "blurb": "burning, frozen, poisoned, asleep"
+      },
+      {
+        "id": "nature",
+        "name": "nature",
+        "blurb": "poison, vines, thorns, quakes"
+      },
+      {
+        "id": "weather",
+        "name": "weather",
+        "blurb": "rain, snow, fog, aurora"
+      },
+      {
+        "id": "ui",
+        "name": "ui",
+        "blurb": "level ups, numbers, toasts, countdowns"
+      },
+      {
+        "id": "pickups",
+        "name": "pickups",
+        "blurb": "coins, gems, chests, potions"
+      },
+      {
+        "id": "transitions",
+        "name": "transitions",
+        "blurb": "wipes, irises, dissolves"
+      },
+      {
+        "id": "critters",
+        "name": "critters",
+        "blurb": "slimes, bats, ghosts, frogs"
+      }
+    ],
+    "effects": [
+      {
+        "id": "moves/arrow-shot",
+        "category": "moves",
+        "name": "Arrow shot",
+        "description": "He raises the bow, draws to his cheek, holds his breath and looses: the string snaps forward, the arrow crosses the floor and thuds home.",
+        "width": 300,
+        "height": 74,
+        "duration": 1.9,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/dash-strike",
+        "category": "moves",
+        "name": "Dash strike",
+        "description": "A crouch, then he's across the floor in a blur of after-images and already cutting: a critical hit, a beat, and he hops back to where he started.",
+        "width": 372,
+        "height": 156,
+        "duration": 2.3,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/earth-stomp",
+        "category": "moves",
+        "name": "Earth stomp",
+        "description": "A knee comes up, the boot slams down, the floor heaves under the target and a stone spike rams up through it.",
+        "width": 290,
+        "height": 142,
+        "duration": 3.46,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/fireball-throw",
+        "category": "moves",
+        "name": "Fireball throw",
+        "description": "He gathers fire in his hand, leans back and hurls it: the ball flies, the target takes it in a blast and comes out charred.",
+        "width": 356,
+        "height": 244,
+        "duration": 6.81,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/ground-pound",
+        "category": "moves",
+        "name": "Ground pound",
+        "description": "He coils, leaps out of frame height, hangs, and comes down like a rock: the floor cracks, shock waves race out and throw the target about as they pass.",
+        "width": 304,
+        "height": 204,
+        "duration": 3.82,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/holy-smite",
+        "category": "moves",
+        "name": "Holy smite",
+        "description": "Both hands go up and a glint marks the target; he brings them down and a bolt of light drops like a hammer, leaving the target blanched.",
+        "width": 252,
+        "height": 182,
+        "duration": 2.8,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/ice-lance-throw",
+        "category": "moves",
+        "name": "Ice lance throw",
+        "description": "Frost gathers into a spear in his hand, he throws it like a javelin, and the target ices over in a burst of snowflakes and shivers.",
+        "width": 310,
+        "height": 136,
+        "duration": 4.34,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/lightning-call",
+        "category": "moves",
+        "name": "Lightning call",
+        "description": "An arm goes up, a sigil lights under the target, and on the downswing a thick bolt comes down on it; the target jolts through the aftershocks.",
+        "width": 290,
+        "height": 266,
+        "duration": 3,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/meteor-call",
+        "category": "moves",
+        "name": "Meteor call",
+        "description": "A long chant: a circle draws itself round him, it flares, he points, and a burning rock comes down on the target and flattens the scene.",
+        "width": 380,
+        "height": 240,
+        "duration": 6.43,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/pistol-shots",
+        "category": "moves",
+        "name": "Pistol shots",
+        "description": "Three aimed shots: the gun kicks up each time and settles, tracers cross the floor, and the target staggers under each hit.",
+        "width": 378,
+        "height": 76,
+        "duration": 2.6,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/rocket-launcher",
+        "category": "moves",
+        "name": "Rocket launcher",
+        "description": "He drops to one knee, shoulders the tube and fires: the kick shoves him back along the floor, the rocket crawls out on its jet and the target goes up.",
+        "width": 480,
+        "height": 244,
+        "duration": 6.56,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "moves/sword-combo",
+        "category": "moves",
+        "name": "Sword combo",
+        "description": "Three strokes walking forward: a slash, a crossing double cut, and a two-handed cleave into the floor that throws the target about.",
+        "width": 264,
+        "height": 150,
+        "duration": 2.98,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "seed"
+        ]
+      },
+      {
+        "id": "fire/brazier",
+        "category": "fire",
+        "name": "Brazier",
+        "description": "An iron bowl on a tripod heaped with glowing coals and a big roaring fire, sparks and embers streaming up off it, light on the iron and the floor.",
+        "width": 112,
+        "height": 148,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "iron",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-brazier.png"
+      },
+      {
+        "id": "fire/campfire",
+        "category": "fire",
+        "name": "Campfire",
+        "description": "Crossed logs on a bed of coals and a lively fire: tongues that lick and leap, popping sparks, embers drifting up, smoke curling off, a warm pool of light.",
+        "width": 128,
+        "height": 128,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "wood",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-campfire.png"
+      },
+      {
+        "id": "fire/candle",
+        "category": "fire",
+        "name": "Candle",
+        "description": "A wax candle in a brass dish: a calm flame with a blue root that sways and stretches, a halo of light, motes drifting in it, a bead of wax running down a drip.",
+        "width": 56,
+        "height": 76,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "root",
+          "wax",
+          "brass",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-candle.png"
+      },
+      {
+        "id": "fire/fire-breath",
+        "category": "fire",
+        "name": "Fire breath",
+        "description": "A roaring cone of fire streaming right from the mouth: white-hot at the lips, billowing out and cooling to red and smoke at its edges, sparks thrown out ahead.",
+        "width": 160,
+        "height": 116,
+        "duration": 1.5,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "spread",
+          "speed",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-fire-breath.png"
+      },
+      {
+        "id": "fire/fire-ring",
+        "category": "fire",
+        "name": "Fire ring",
+        "description": "A white flash at the feet, then flames race outward along the floor in a ring, flaring as the front passes and burning down behind it over a smouldering scorch.",
+        "width": 224,
+        "height": 128,
+        "duration": 3.9,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "reach",
+          "seed"
+        ]
+      },
+      {
+        "id": "fire/fire-tornado",
+        "category": "fire",
+        "name": "Fire tornado",
+        "description": "A spinning funnel of fire: spiral bands turning round it, licks flung off its sides, a ring of flame whirling at its foot, embers orbiting it in and out of view.",
+        "width": 120,
+        "height": 152,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-fire-tornado.png"
+      },
+      {
+        "id": "fire/fireball",
+        "category": "fire",
+        "name": "Fireball",
+        "description": "A fireball flying right: a churning white-hot head with a corona of flame, a long torn tail of flame puffs cooling into smoke, embers shed behind.",
+        "width": 136,
+        "height": 56,
+        "duration": 1.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "radius",
+          "speed",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-fireball.png"
+      },
+      {
+        "id": "fire/flame-pillar",
+        "category": "fire",
+        "name": "Flame pillar",
+        "description": "The floor cracks and glows, a column of fire erupts white-hot and roars, spewing embers and shedding flame, then collapses into rolling smoke.",
+        "width": 184,
+        "height": 256,
+        "duration": 5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-flame-pillar.png"
+      },
+      {
+        "id": "fire/flamethrower",
+        "category": "fire",
+        "name": "Flamethrower",
+        "description": "A pressurised jet shooting right: a blue pilot at the nozzle, a tight stream with surges racing down it, a sputter, burning drops falling off, a tip that curls up into smoke.",
+        "width": 184,
+        "height": 104,
+        "duration": 1.6,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "pilot",
+          "reach",
+          "speed",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-flamethrower.png"
+      },
+      {
+        "id": "fire/meteor",
+        "category": "fire",
+        "name": "Meteor",
+        "description": "A burning rock streaks in from the upper left in a comet of fire and smashes into the floor: a white flash, a fireball, rocks and brands thrown, a glowing crater that cools.",
+        "width": 272,
+        "height": 232,
+        "duration": 5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "rock",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-meteor.png"
+      },
+      {
+        "id": "fire/spirit-flame",
+        "category": "fire",
+        "name": "Spirit flame",
+        "description": "A cold blue-teal ghost fire floating in the air: a bright rim round a hollow dark heart, a wave climbing its wispy tail, curls breaking off, cold sparks rising.",
+        "width": 80,
+        "height": 124,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-spirit-flame.png"
+      },
+      {
+        "id": "fire/torch",
+        "category": "fire",
+        "name": "Torch",
+        "description": "A wall torch on an iron bracket: a licking flame leaping off a pitch-soaked wrap, licks and puffs torn off its tips, smoke, embers, a flickering light on the wall.",
+        "width": 72,
+        "height": 120,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "wood",
+          "iron",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/fire-torch.png"
+      },
+      {
+        "id": "explosions/barrel-explosion",
+        "category": "explosions",
+        "name": "Barrel explosion",
+        "description": "An explosive barrel shudders, its lid bulging and spitting flame, then blows: a fireball column, staves and the lid flying, burning fuel splashed over the floor.",
+        "width": 300,
+        "height": 240,
+        "duration": 5.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "barrel",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-barrel-explosion.png"
+      },
+      {
+        "id": "explosions/big-explosion",
+        "category": "explosions",
+        "name": "Big explosion",
+        "description": "A huge ground blast in three beats: a white dome, a rolling fireball that climbs into a mushrooming smoke column, heavy rocks, and fires left burning.",
+        "width": 360,
+        "height": 300,
+        "duration": 7.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-big-explosion.png"
+      },
+      {
+        "id": "explosions/cartoon-pow",
+        "category": "explosions",
+        "name": "Cartoon POW",
+        "description": "A comic-book hit: a jagged two-tone burst star slams in with a shake and boiling edges, POW! drops in letter by letter, action lines fly, then it all snaps away.",
+        "width": 184,
+        "height": 144,
+        "duration": 1.05,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "text",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-cartoon-pow.png"
+      },
+      {
+        "id": "explosions/dirt-explosion",
+        "category": "explosions",
+        "name": "Dirt explosion",
+        "description": "A buried charge goes off: a flash under the floor, a V of dirt clods and grit thrown high, a brown dust plume that billows and settles, and a crater left behind.",
+        "width": 260,
+        "height": 240,
+        "duration": 3.6,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "fire",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-dirt-explosion.png"
+      },
+      {
+        "id": "explosions/firework-burst",
+        "category": "explosions",
+        "name": "Firework burst",
+        "description": "A shell climbs, slows and bursts into a sphere of coloured trailing stars round a gold core; they droop, crackle into white pops and fade, leaving glitter.",
+        "width": 240,
+        "height": 248,
+        "duration": 3.6,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "core",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-firework-burst.png"
+      },
+      {
+        "id": "explosions/firework-rocket",
+        "category": "explosions",
+        "name": "Firework rocket",
+        "description": "A rocket fizzes off the ground on a sparkling gold trail, coasts, and bursts into a palm: heavy gold fronds arc out, droop on glittering trails and crackle at the tips.",
+        "width": 300,
+        "height": 300,
+        "duration": 3.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "tips",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-firework-rocket.png"
+      },
+      {
+        "id": "explosions/grenade",
+        "category": "explosions",
+        "name": "Grenade",
+        "description": "A grenade is lobbed in, bounces, rolls to a stop with its fuse fizzing, shudders, then blows: a white flash, shrapnel streaks, sparks, a small fireball and a scorch.",
+        "width": 300,
+        "height": 200,
+        "duration": 4.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "body",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-grenade.png"
+      },
+      {
+        "id": "explosions/implosion",
+        "category": "explosions",
+        "name": "Implosion",
+        "description": "Everything is sucked in: streaks and grit rush inward, rings contract and a dark sphere collapses onto a crushed white point; a beat of stillness, then a sharp pop.",
+        "width": 208,
+        "height": 184,
+        "duration": 1.65,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-implosion.png"
+      },
+      {
+        "id": "explosions/nuke",
+        "category": "explosions",
+        "name": "Nuke",
+        "description": "A blinding white frame, then a fireball lifts on a thin stem into a wide rolling cap that glows from inside; a white skirt flashes and a dust surge sweeps the floor.",
+        "width": 400,
+        "height": 320,
+        "duration": 9,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "dust",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-nuke.png"
+      },
+      {
+        "id": "explosions/plasma-explosion",
+        "category": "explosions",
+        "name": "Plasma explosion",
+        "description": "A blue-violet energy blast with no smoke: a white flash, a ball of plasma swelling into a thinning shell, shock rings in and out of depth, lightning arcs crackling off it.",
+        "width": 224,
+        "height": 200,
+        "duration": 1.7,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "accent",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-plasma-explosion.png"
+      },
+      {
+        "id": "explosions/small-explosion",
+        "category": "explosions",
+        "name": "Explosion",
+        "description": "A ground blast: a white flash and shock rings, fire that cools into a rolling smoke column, sparks, burning brands that land and keep burning, tumbling rocks and a glowing scorch.",
+        "width": 300,
+        "height": 240,
+        "duration": 5.4,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "size",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-small-explosion.png"
+      },
+      {
+        "id": "explosions/smoke-bomb",
+        "category": "explosions",
+        "name": "Smoke bomb",
+        "description": "A round canister clinks down, fuse sparking, and pops: thick grey-violet smoke gushes out, rolls along the floor, billows into a cloud that hides all, then thins to wisps.",
+        "width": 260,
+        "height": 176,
+        "duration": 5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "canister",
+          "sparks",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/explosions-smoke-bomb.png"
+      },
+      {
+        "id": "water/bubbles",
+        "category": "water",
+        "name": "Bubbles",
+        "description": "Bubbles stream up from a vent of pebbles, wobbling and swelling as they rise, flare as they cross shafts of light from the surface, then dome up and pop there.",
+        "width": 104,
+        "height": 112,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-bubbles.png"
+      },
+      {
+        "id": "water/drip",
+        "category": "water",
+        "name": "Drip",
+        "description": "A bead swells under a wet stone tip and catches the light, pinches off, falls stretched by its speed and plinks into a puddle with a crown, a ring and a tiny rebound.",
+        "width": 72,
+        "height": 88,
+        "duration": 1.6,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "source",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-drip.png"
+      },
+      {
+        "id": "water/fountain",
+        "category": "water",
+        "name": "Fountain",
+        "description": "A stone basin; a jet rises from its spout and blooms into glassy arcs that break into beads, fall back and plink into the water with rings.",
+        "width": 120,
+        "height": 104,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-fountain.png"
+      },
+      {
+        "id": "water/geyser",
+        "category": "water",
+        "name": "Geyser",
+        "description": "A pool heaves and burbles faster and faster, then blasts a white column of water skyward with a churning foam head; it rains back down in drops and steam, slumps and sputters out.",
+        "width": 184,
+        "height": 168,
+        "duration": 5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-geyser.png"
+      },
+      {
+        "id": "water/rain-splash",
+        "category": "water",
+        "name": "Rain splash",
+        "description": "A low close-up on one puddle in the rain: big drops land in crowns that throw beads and a rebound jet, rings spread and interfere, a lamp's reflection wobbles on the water.",
+        "width": 176,
+        "height": 80,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-rain-splash.png"
+      },
+      {
+        "id": "water/ripples",
+        "category": "water",
+        "name": "Ripples",
+        "description": "A drop plinks on still dark water and rings spread out across it at a low angle: the swell of each ring catches the light, crests glint, and they fade into the calm.",
+        "width": 136,
+        "height": 52,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-ripples.png"
+      },
+      {
+        "id": "water/splash",
+        "category": "water",
+        "name": "Splash",
+        "description": "A stone drops into still water: a white hit, a crown that tears into droplets arcing out to plink down with rings, a jet that bounces back, foam and drifting mist.",
+        "width": 176,
+        "height": 100,
+        "duration": 2.5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-splash.png"
+      },
+      {
+        "id": "water/water-jet",
+        "category": "water",
+        "name": "Water jet",
+        "description": "A pressurised stream blasts right: a tight glassy rod with surges running down it that swells, roughens, bends under its weight and breaks into chunks, spray and mist.",
+        "width": 188,
+        "height": 80,
+        "duration": 1,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "length",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-water-jet.png"
+      },
+      {
+        "id": "water/water-orb",
+        "category": "water",
+        "name": "Water orb",
+        "description": "A sphere of water floats and wobbles: a current circles inside it, the floor shows upside down through it, it shines, light gathers on the floor under it, and drips fall and plink.",
+        "width": 100,
+        "height": 108,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "radius",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-water-orb.png"
+      },
+      {
+        "id": "water/waterfall",
+        "category": "water",
+        "name": "Waterfall",
+        "description": "A river pours from a notch in a rock outcrop: a white curl, a deep sheet that splits into strands, churning foam, spray, drifting mist and rings on a dark pool.",
+        "width": 144,
+        "height": 136,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "width",
+          "ledge",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-waterfall.png"
+      },
+      {
+        "id": "water/wave-crash",
+        "category": "water",
+        "name": "Wave crash",
+        "description": "A swell rolls in and steepens, its lip throws forward and curls over a dark barrel, then crashes into a burst of white foam and spray that surges on and fades to lace.",
+        "width": 224,
+        "height": 104,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-wave-crash.png"
+      },
+      {
+        "id": "water/whirlpool",
+        "category": "water",
+        "name": "Whirlpool",
+        "description": "Seen from above, dark water winds into a vortex: foam arms spiral in, darkening as they're drawn down into a deep eye with a lit far rim, flecks of foam circling in after them.",
+        "width": 128,
+        "height": 84,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/water-whirlpool.png"
+      },
+      {
+        "id": "ice/blizzard-vortex",
+        "category": "ice",
+        "name": "Blizzard vortex",
+        "description": "A swirling snow tornado: wind bands spin up a leaning funnel, flakes and ice crystals orbit in front and behind, snow boils at its foot and cold light fills its throat.",
+        "width": 128,
+        "height": 116,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ice-blizzard-vortex.png"
+      },
+      {
+        "id": "ice/freeze",
+        "category": "ice",
+        "name": "Freeze",
+        "description": "Frost races in and climbs the character, turning it to ice; a faceted block crystallizes round it pane by pane, glints, cracks and bursts, and the character thaws free.",
+        "width": 176,
+        "height": 128,
+        "duration": 4,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "ice/frost-breath",
+        "category": "ice",
+        "name": "Frost breath",
+        "description": "A cone of icy wind blowing right: frost puffs billow out, swell and sink, wind streaks race through, ice crystals tumble and glint off a white-hot mouth.",
+        "width": 184,
+        "height": 104,
+        "duration": 1.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "spread",
+          "power",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ice-frost-breath.png"
+      },
+      {
+        "id": "ice/frost-nova",
+        "category": "ice",
+        "name": "Frost nova",
+        "description": "Frost spirals into a spinning snowflake, then a wave blooms three rings of ice crystals round the caster; snow drifts, frost creeps, and the ice melts back into the floor.",
+        "width": 288,
+        "height": 192,
+        "duration": 3.4,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "reach",
+          "seed"
+        ]
+      },
+      {
+        "id": "ice/ice-crystal",
+        "category": "ice",
+        "name": "Ice crystal",
+        "description": "A floating ice crystal turning slowly in its own cold light: its facets brighten and darken as they turn, glints flash on them, frost motes circle it.",
+        "width": 96,
+        "height": 100,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ice-ice-crystal.png"
+      },
+      {
+        "id": "ice/ice-lance",
+        "category": "ice",
+        "name": "Ice lance",
+        "description": "A faceted ice spear flying right: a light pulse runs through its core, rings of cold air shear off the tip, frost peels off into a wake and crystals shed behind it.",
+        "width": 176,
+        "height": 64,
+        "duration": 0.8,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "length",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ice-ice-lance.png"
+      },
+      {
+        "id": "ice/ice-shatter",
+        "category": "ice",
+        "name": "Ice shatter",
+        "description": "A block of ice takes a hit from the left: it jolts, cracks race over its faces, it flashes white and bursts into chunks that tumble, bounce and skid off in a roll of ice dust.",
+        "width": 224,
+        "height": 112,
+        "duration": 2.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ice-ice-shatter.png"
+      },
+      {
+        "id": "ice/ice-spikes",
+        "category": "ice",
+        "name": "Ice spikes",
+        "description": "A frost line races along the floor and clusters of jagged ice blades burst up behind it in a rising wave, glint, flash white together and shatter into toppling shards.",
+        "width": 264,
+        "height": 112,
+        "duration": 3,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "reach",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ice-ice-spikes.png"
+      },
+      {
+        "id": "ice/icicle-fall",
+        "category": "ice",
+        "name": "Icicle fall",
+        "description": "An icicle drips and trembles, snaps off its frosted root, drops, stabs the floor and bursts into skidding shards, splinters and rolling frost.",
+        "width": 152,
+        "height": 120,
+        "duration": 2.6,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ice-icicle-fall.png"
+      },
+      {
+        "id": "ice/snowflake-burst",
+        "category": "ice",
+        "name": "Snowflake burst",
+        "description": "A cold pop: frost gathers and flashes white in a ring, then crisp six-armed snowflakes spin out, slow, twinkle and drift down to settle and melt.",
+        "width": 140,
+        "height": 120,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "count",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ice-snowflake-burst.png"
+      },
+      {
+        "id": "lightning/ball-lightning",
+        "category": "lightning",
+        "name": "Ball lightning",
+        "description": "A crackling ball of plasma drifts on a wandering loop, spitting arcs off its skin and leaving a wake of fading motes, and zaps the floor when it dips low.",
+        "width": 136,
+        "height": 104,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/lightning-ball-lightning.png"
+      },
+      {
+        "id": "lightning/chain-lightning",
+        "category": "lightning",
+        "name": "Chain lightning",
+        "description": "A bolt leaps from the caster's hand through three targets in turn; each flashes, sparks and grounds itself to the floor while the arcs between them flicker, then the chain snaps.",
+        "width": 248,
+        "height": 104,
+        "duration": 1.8,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ]
+      },
+      {
+        "id": "lightning/charge-up",
+        "category": "lightning",
+        "name": "Charge up",
+        "description": "Sparks streak and arcs whip in to a crackling core at the caster's hand that swells and pulses faster, then it flashes and bursts: bolts every way, a ring, a spray of sparks.",
+        "width": 272,
+        "height": 184,
+        "duration": 2.7,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "charge",
+          "seed"
+        ]
+      },
+      {
+        "id": "lightning/electrified",
+        "category": "lightning",
+        "name": "Electrified",
+        "description": "Current runs through a character: arcs crawl over and leap across the body, sparks spit off, the body flares to an electric silhouette on each jolt, and the feet ground out.",
+        "width": 108,
+        "height": 92,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ]
+      },
+      {
+        "id": "lightning/lightning-strike",
+        "category": "lightning",
+        "name": "Lightning strike",
+        "description": "A targeted strike: a sigil charges on the floor, the scene darkens, a thick bolt slams into it, arcs race out along the cracks it splits, the channel crumbles to a scorch.",
+        "width": 240,
+        "height": 264,
+        "duration": 3,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/lightning-lightning-strike.png"
+      },
+      {
+        "id": "lightning/plasma-ball",
+        "category": "lightning",
+        "name": "Plasma ball",
+        "description": "A glass globe on a dark pedestal: wandering plasma tendrils reach from the core to the glass and fan out in bright feet where they touch it, lighting the stand and floor.",
+        "width": 112,
+        "height": 104,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "tendrils",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/lightning-plasma-ball.png"
+      },
+      {
+        "id": "lightning/spark-arc",
+        "category": "lightning",
+        "name": "Spark arc",
+        "description": "A climbing arc between two rods: it strikes white at their narrow foot, climbs on rising heat as it stretches and bows, sputters and snaps at the top, then strikes again.",
+        "width": 124,
+        "height": 120,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/lightning-spark-arc.png"
+      },
+      {
+        "id": "lightning/storm-cloud",
+        "category": "lightning",
+        "name": "Storm cloud",
+        "description": "A storm cloud boils overhead, billows lit from inside by flickering discharges, ragged scud under its flat dark base; rain slants down and once a loop a bolt cracks to the floor.",
+        "width": 168,
+        "height": 176,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "sparks",
+          "cloud",
+          "rain",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/lightning-storm-cloud.png"
+      },
+      {
+        "id": "lightning/tesla-coil",
+        "category": "lightning",
+        "name": "Tesla coil",
+        "description": "A copper coil under a steel torus throws branching arcs that lash out in volleys and now and then strike the floor in a spray of sparks, lighting the metal and the ground.",
+        "width": 224,
+        "height": 136,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "sparks",
+          "copper",
+          "steel",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/lightning-tesla-coil.png"
+      },
+      {
+        "id": "lightning/thunderclap",
+        "category": "lightning",
+        "name": "Thunderclap",
+        "description": "A thunderclap round the caster: a white flash, forked bolts burst out and stab the floor, a heavy shock ring tears across the ground raising dust and grit, sparks streak away.",
+        "width": 288,
+        "height": 156,
+        "duration": 1.9,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "reach",
+          "seed"
+        ]
+      },
+      {
+        "id": "lightning/zap-hit",
+        "category": "lightning",
+        "name": "Zap hit",
+        "description": "A contact zap: an arc snaps in from the left, the hit point overloads into a knot of tiny crackling zigzags, a fern of burn marks glows outward, sparks jink away, ozone puffs.",
+        "width": 144,
+        "height": 112,
+        "duration": 0.9,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/lightning-zap-hit.png"
+      },
+      {
+        "id": "scifi/emp-blast",
+        "category": "scifi",
+        "name": "EMP blast",
+        "description": "A disc charge ticks, pops white, and a bubble of rolling scanlines swells out with arcs crawling its skin; it strobes, tears and shorts out into falling dead pixels.",
+        "width": 152,
+        "height": 116,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "fringe",
+          "radius",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/scifi-emp-blast.png"
+      },
+      {
+        "id": "scifi/energy-core",
+        "category": "scifi",
+        "name": "Energy core",
+        "description": "A plasma core beating in a steel cage: it swells and throws a shock ring on each beat, two tilted rings orbit it, and arcs jump to the bars and spark.",
+        "width": 112,
+        "height": 100,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "metal",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/scifi-energy-core.png"
+      },
+      {
+        "id": "scifi/force-field",
+        "category": "scifi",
+        "name": "Force field",
+        "description": "A glassy dome of hex plates over the hero: plates glint, tracers from the right slam into it, a ripple and cracks of light race across, sparks glance off.",
+        "width": 184,
+        "height": 104,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "radius",
+          "seed"
+        ]
+      },
+      {
+        "id": "scifi/glitch",
+        "category": "scifi",
+        "name": "Glitch",
+        "description": "The hero's signal breaks up in bursts: an RGB split, slices torn sideways, rows smeared out, junk blocks and dead pixels, then snaps back clean.",
+        "width": 88,
+        "height": 64,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "scifi/hologram",
+        "category": "scifi",
+        "name": "Hologram",
+        "description": "A floor projector throws a cone of light holding a turning wireframe model: scanlines roll through it, a data ring circles it, and it flickers, tears and jitters.",
+        "width": 112,
+        "height": 104,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "metal",
+          "split",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/scifi-hologram.png"
+      },
+      {
+        "id": "scifi/jetpack",
+        "category": "scifi",
+        "name": "Jetpack",
+        "description": "Twin thrusters fire straight down: white-hot cores with shock diamonds inside ragged flames, puffs that cool into smoke billowing below, lit by the fire.",
+        "width": 96,
+        "height": 116,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "metal",
+          "length",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/scifi-jetpack.png"
+      },
+      {
+        "id": "scifi/laser-grid",
+        "category": "scifi",
+        "name": "Laser grid",
+        "description": "Security lasers between two steel posts: red beams slide and scissor across, dust and haze light up only where they cut through, and the floor sweepers scorch and spark.",
+        "width": 128,
+        "height": 84,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "metal",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/scifi-laser-grid.png"
+      },
+      {
+        "id": "scifi/scanner",
+        "category": "scifi",
+        "name": "Scanner",
+        "description": "Brackets snap onto the hero, a scan line sweeps head to toe leaving a cooling outline, and a readout counts up to OK before it all lets go.",
+        "width": 112,
+        "height": 78,
+        "duration": 3.2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "scifi/teleporter-pad",
+        "category": "scifi",
+        "name": "Teleporter pad",
+        "description": "A steel pad glows on the floor, its rings rippling outward; a soft column of light rises off it and rings of light lift away, sparkles drifting up through them.",
+        "width": 96,
+        "height": 104,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "metal",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/scifi-teleporter-pad.png"
+      },
+      {
+        "id": "scifi/tractor-beam",
+        "category": "scifi",
+        "name": "Tractor beam",
+        "description": "A hovering pod projects a cone of light to the floor; rocks tear loose in puffs of dust and spiral up spinning into the lens while rings of light climb the beam.",
+        "width": 120,
+        "height": 132,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "hull",
+          "stone",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/scifi-tractor-beam.png"
+      },
+      {
+        "id": "scifi/warp-in",
+        "category": "scifi",
+        "name": "Warp in",
+        "description": "A beam slams down, rings run down it and a scanline paints the hero in from head to toe, white-hot pixels cooling to their own colors; the beam pinches shut in sparks.",
+        "width": 192,
+        "height": 168,
+        "duration": 3,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "width",
+          "seed"
+        ]
+      },
+      {
+        "id": "scifi/warp-out",
+        "category": "scifi",
+        "name": "Warp out",
+        "description": "The hero's outline flickers on, they flash white and break into light from the head down, streaming up a beam that lifts off the floor and pinches shut.",
+        "width": 128,
+        "height": 168,
+        "duration": 2.6,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/claw-swipe",
+        "category": "melee",
+        "name": "Claw swipe",
+        "description": "Three claw marks rake down one after another, white-hot, cooling through orange to red, then close up from both ends and leave a dotted scar, with hot flecks and drips.",
+        "width": 128,
+        "height": 96,
+        "duration": 0.9,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/dagger-flurry",
+        "category": "melee",
+        "name": "Dagger flurry",
+        "description": "A flurry of small quick crescents at every angle in front of the fighter, each with a flick of sparks, finished by one big cut that glints and bursts.",
+        "width": 148,
+        "height": 104,
+        "duration": 0.95,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/double-slash",
+        "category": "melee",
+        "name": "Double slash",
+        "description": "A down cut, then an up cut that crosses it: the moment the X closes both strokes flash white, the crossing bursts with light and sparks, and a dotted X lingers.",
+        "width": 164,
+        "height": 108,
+        "duration": 0.8,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/hammer-smash",
+        "category": "melee",
+        "name": "Hammer smash",
+        "description": "A hammer drops in front in a wedge of motion: a white slam with rays, a dome of force, a dent with cracks, rocks thrown up that bounce and settle, and dust.",
+        "width": 208,
+        "height": 112,
+        "duration": 2,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "stone",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/heavy-cleave",
+        "category": "melee",
+        "name": "Heavy cleave",
+        "description": "A glint over the head, then a thick ember arc accelerates over the top into the floor: a white slam, glowing cracks, dust rolling both ways, grit and rising embers.",
+        "width": 208,
+        "height": 116,
+        "duration": 1.9,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "stone",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/scythe-reap",
+        "category": "melee",
+        "name": "Scythe reap",
+        "description": "A slow, huge dark crescent reaps round the front with a pale ghostly edge; it hangs, then tears away from the tail into curling wisps and cold vapour.",
+        "width": 184,
+        "height": 116,
+        "duration": 2.1,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/spear-sweep",
+        "category": "melee",
+        "name": "Spear sweep",
+        "description": "A wide low sweep at shin height: a long flat crescent swings from behind the legs round the front, and the wind of it kicks a wake of dust and grit along the floor.",
+        "width": 216,
+        "height": 84,
+        "duration": 1.5,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "stone",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/spin-slash",
+        "category": "melee",
+        "name": "Spin slash",
+        "description": "The blade whirls once round the waist on a tilted plane, behind the body and back in front; the closed ring flares white, dissolves into a dotted trace and throws sparks.",
+        "width": 208,
+        "height": 104,
+        "duration": 0.8,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "radius",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/sword-slash",
+        "category": "melee",
+        "name": "Sword slash",
+        "description": "A tilted crescent whips round in two frames, cools from white to deep blue as it trails off, glints at the tip and throws sparks.",
+        "width": 136,
+        "height": 104,
+        "duration": 0.75,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "radius",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/thrust",
+        "category": "melee",
+        "name": "Thrust",
+        "description": "A piercing stab: a bundle of streaks shoots out from the hand to a point, a long four-point star flares at the tip with a pierce ring, sparks and speed lines.",
+        "width": 196,
+        "height": 76,
+        "duration": 0.75,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "reach",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/uppercut",
+        "category": "melee",
+        "name": "Uppercut",
+        "description": "A crescent rises from the floor past the face, and at the top a comic impact star bursts: bold outline, hot core, burst lines, twinkles and sparks.",
+        "width": 132,
+        "height": 128,
+        "duration": 0.85,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "outline",
+          "sparks",
+          "seed"
+        ]
+      },
+      {
+        "id": "melee/whip-crack",
+        "category": "melee",
+        "name": "Whip crack",
+        "description": "A whip rolls out to the right as a loop running down its length, faster and faster, until the tip flips over and cracks: a white pop, a ring of air, sparks and a puff of smoke.",
+        "width": 192,
+        "height": 80,
+        "duration": 0.85,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "length",
+          "seed"
+        ]
+      },
+      {
+        "id": "impacts/blunt-hit",
+        "category": "impacts",
+        "name": "Blunt hit",
+        "description": "A heavy, soft thud: a white-hot lumpy blob cools to cream in a warm pool of light, inked wedges jab out and snap back, a squashed ring of dust puffs swells and drifts, clods drop.",
+        "width": 128,
+        "height": 88,
+        "duration": 0.9,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "warm",
+          "dust",
+          "clod",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/impacts-blunt-hit.png"
+      },
+      {
+        "id": "impacts/bullet-impact",
+        "category": "impacts",
+        "name": "Bullet impact",
+        "description": "A bullet hits a wall on the right: a hot half-star, sparks sprayed back in a cone, a puff of grit, chips that fall and bounce, a pock mark cooling to soot.",
+        "width": 152,
+        "height": 100,
+        "duration": 1.4,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/impacts-bullet-impact.png"
+      },
+      {
+        "id": "impacts/crit-hit",
+        "category": "impacts",
+        "name": "Critical hit",
+        "description": "A critical hit: a jagged starburst slams in white and overshoots, a ring breaks into flying arcs, sparks streak off, shards tumble to the floor under a big flare.",
+        "width": 216,
+        "height": 136,
+        "duration": 0.9,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "aim",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/impacts-crit-hit.png"
+      },
+      {
+        "id": "impacts/ground-slam",
+        "category": "impacts",
+        "name": "Ground slam",
+        "description": "Something lands hard: the floor flashes and cracks, two crescent shock waves race out along it, a dust wave and a tall dust cloud rise, rocks erupt, bounce and settle.",
+        "width": 288,
+        "height": 208,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "reach",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/impacts-ground-slam.png"
+      },
+      {
+        "id": "impacts/heavy-landing",
+        "category": "impacts",
+        "name": "Heavy landing",
+        "description": "A character lands hard: the floor dents and cracks under their feet, two rings of dust roll out along the floor one after the other, and pebbles hop away.",
+        "width": 176,
+        "height": 80,
+        "duration": 1.6,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "stone",
+          "seed"
+        ]
+      },
+      {
+        "id": "impacts/hit-flash",
+        "category": "impacts",
+        "name": "Hit flash",
+        "description": "The character takes damage: a white frame, then their own colors flushed red and blinking white, cooling off, while comic hit lines jab in at them.",
+        "width": 80,
+        "height": 64,
+        "duration": 0.5,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "lines",
+          "side",
+          "seed"
+        ]
+      },
+      {
+        "id": "impacts/hit-spark",
+        "category": "impacts",
+        "name": "Hit spark",
+        "description": "The everyday hit: a sharp, lopsided cross flare with one long ray along the blow round a white diamond core, then a cone of sparks and hot chips that fall and bounce.",
+        "width": 136,
+        "height": 80,
+        "duration": 0.5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "aim",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/impacts-hit-spark.png"
+      },
+      {
+        "id": "impacts/impact-frame",
+        "category": "impacts",
+        "name": "Impact frame",
+        "description": "An anime impact: two frames of white with black burst lines rushing at the hit, two frames inverted, then the lines pull out past the edges and vanish.",
+        "width": 320,
+        "height": 180,
+        "duration": 0.3,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "lines",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/impacts-impact-frame.png"
+      },
+      {
+        "id": "impacts/parry",
+        "category": "impacts",
+        "name": "Parry",
+        "description": "Two blades clash: their edges flash in an X, a white four-point star rings out, a ring breaks into arcs and a fan of gold sparks sprays up and rains down.",
+        "width": 200,
+        "height": 112,
+        "duration": 1,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/impacts-parry.png"
+      },
+      {
+        "id": "impacts/ricochet",
+        "category": "impacts",
+        "name": "Ricochet",
+        "description": "A tracer streaks down onto the floor, glances off with a white-hot star and skips away at an angle, leaving a glowing skid while sparks skitter along the ground.",
+        "width": 232,
+        "height": 84,
+        "duration": 1.1,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/impacts-ricochet.png"
+      },
+      {
+        "id": "impacts/shield-block",
+        "category": "impacts",
+        "name": "Shield block",
+        "description": "A blow is caught on a half-dome of energy in front of the character: its diamond lattice flashes, a ripple runs over it, sparks glance off, then it blinks out cell by cell.",
+        "width": 148,
+        "height": 104,
+        "duration": 1.1,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "sparks",
+          "seed"
+        ]
+      },
+      {
+        "id": "projectiles/arrow",
+        "category": "projectiles",
+        "name": "Arrow",
+        "description": "An arrow in flight: a steel broadhead catching the light, a wooden shaft, fletching fluttering in the wind, streaks of air peeling off its head and swirling off its feathers.",
+        "width": 112,
+        "height": 32,
+        "duration": 0.6,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "wood",
+          "steel",
+          "wind",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-arrow.png"
+      },
+      {
+        "id": "projectiles/bullet-tracer",
+        "category": "projectiles",
+        "name": "Bullet tracer",
+        "description": "A white-hot slug tearing along, its tracer burning behind it in a long streak that sputters and cools from white through gold to red, shedding sparks and a thread of smoke.",
+        "width": 200,
+        "height": 40,
+        "duration": 0.6,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "smoke",
+          "length",
+          "speed",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-bullet-tracer.png"
+      },
+      {
+        "id": "projectiles/cannonball",
+        "category": "projectiles",
+        "name": "Cannon shot",
+        "description": "A cannon fires from a muzzle `height` px above the floor (the origin): a white flash, a tongue of flame, the ball arcing off trailing smoke, a big gunsmoke cloud rolling out.",
+        "width": 208,
+        "height": 116,
+        "duration": 3.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "smoke",
+          "iron",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-cannonball.png"
+      },
+      {
+        "id": "projectiles/energy-disc",
+        "category": "projectiles",
+        "name": "Energy disc",
+        "description": "A sawblade of crackling energy spinning flat out as it flies: hooked teeth bright on their leading edges, a white hub, spiral arms churning, sparks flung off the teeth.",
+        "width": 120,
+        "height": 52,
+        "duration": 0.5,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "size",
+          "teeth",
+          "speed",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-energy-disc.png"
+      },
+      {
+        "id": "projectiles/flare",
+        "category": "projectiles",
+        "name": "Signal flare",
+        "description": "A signal flare streaks up off the ground trailing sparks and smoke, bursts, and hangs as a pulsing red star that drips sparks under its own red-lit smoke, then gutters out.",
+        "width": 152,
+        "height": 232,
+        "duration": 5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "smoke",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-flare.png"
+      },
+      {
+        "id": "projectiles/homing-missile",
+        "category": "projectiles",
+        "name": "Homing missile",
+        "description": "A missile kicks off, arcs up, rolls over and dives onto its target (the origin), its smoke trail left hanging in the air, and hits in a fiery blast of flame, sparks and rocks.",
+        "width": 248,
+        "height": 140,
+        "duration": 3.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "metal",
+          "smoke",
+          "stone",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-homing-missile.png"
+      },
+      {
+        "id": "projectiles/laser-bolt",
+        "category": "projectiles",
+        "name": "Laser bolt",
+        "description": "A red laser bolt: a white-hot core in a rounded head, red bands tapering back, pulses racing down it, a tail that shimmers apart into wavering dashes.",
+        "width": 128,
+        "height": 32,
+        "duration": 0.5,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "length",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-laser-bolt.png"
+      },
+      {
+        "id": "projectiles/magic-missile",
+        "category": "projectiles",
+        "name": "Magic missile",
+        "description": "Motes gather into an arcane orb at a hand `height` px above the floor (the origin); it weaves to its target trailing a twisting ribbon and bursts into a star of light.",
+        "width": 208,
+        "height": 112,
+        "duration": 1.9,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "height",
+          "reach",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-magic-missile.png"
+      },
+      {
+        "id": "projectiles/muzzle-pistol",
+        "category": "projectiles",
+        "name": "Pistol shot",
+        "description": "One pistol shot from a muzzle `height` px above the floor (the origin): a spiky white-cored flash, sparks, a curl of smoke hooking up and back, a casing that bounces and settles.",
+        "width": 96,
+        "height": 72,
+        "duration": 1.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "brass",
+          "smoke",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-muzzle-pistol.png"
+      },
+      {
+        "id": "projectiles/muzzle-shotgun",
+        "category": "projectiles",
+        "name": "Shotgun blast",
+        "description": "A shotgun blast from a muzzle `height` px above the floor (the origin): a wide ragged fan of flame, pellet streaks, a heavy rolling smoke cloud, a red shell kicked out on the pump.",
+        "width": 160,
+        "height": 88,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "smoke",
+          "shell",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-muzzle-shotgun.png"
+      },
+      {
+        "id": "projectiles/muzzle-smg",
+        "category": "projectiles",
+        "name": "SMG burst",
+        "description": "Sustained fire at twelve rounds a second: each shot a different spiky flash with a white core, sparks, smoke wisps piling up and drifting, brass casings bouncing on the floor.",
+        "width": 112,
+        "height": 72,
+        "duration": 1,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "brass",
+          "smoke",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-muzzle-smg.png"
+      },
+      {
+        "id": "projectiles/plasma-shot",
+        "category": "projectiles",
+        "name": "Plasma shot",
+        "description": "A glowing plasma blob: hot knots churning in its core, a corona crackling over its skin, its tail necking into droplets that tear off, cool and wink out behind.",
+        "width": 144,
+        "height": 60,
+        "duration": 0.8,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "size",
+          "speed",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-plasma-shot.png"
+      },
+      {
+        "id": "projectiles/rocket",
+        "category": "projectiles",
+        "name": "Rocket",
+        "description": "A steel rocket roars along: a flickering jet with shock diamonds and a white-hot nozzle, a thick billowing smoke trail lit by the flame, sparks shed behind.",
+        "width": 288,
+        "height": 76,
+        "duration": 1.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "metal",
+          "paint",
+          "smoke",
+          "speed",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/projectiles-rocket.png"
+      },
+      {
+        "id": "spawn/coin-drop",
+        "category": "spawn",
+        "name": "Coin drop",
+        "description": "An enemy goes up in a soft poof and gold coins spin out of it, bounce with a glint on each hit, settle on the floor, twinkle, and wink out one by one.",
+        "width": 160,
+        "height": 88,
+        "duration": 3,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "smoke",
+          "coins",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/spawn-coin-drop.png"
+      },
+      {
+        "id": "spawn/disintegrate",
+        "category": "spawn",
+        "name": "Disintegrate",
+        "description": "The character crackles with light, flashes white, then peels away from the head down: each pixel flares white-hot and streams off on the wind as a cooling mote of light.",
+        "width": 176,
+        "height": 100,
+        "duration": 3.4,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "accent",
+          "wind",
+          "seed"
+        ]
+      },
+      {
+        "id": "spawn/dissolve-burn",
+        "category": "spawn",
+        "name": "Dissolve burn",
+        "description": "An ember seam lights at the feet and climbs the body: above it the body scorches and smoulders, at it flames lick up, below it there's only falling ash, embers and smoke.",
+        "width": 96,
+        "height": 112,
+        "duration": 3.6,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "ash",
+          "seed"
+        ]
+      },
+      {
+        "id": "spawn/egg-hatch",
+        "category": "spawn",
+        "name": "Egg hatch",
+        "description": "A speckled egg rocks three times, each rock cracking it further with warm light leaking out, then pops: light pours out of the opening and lit shell halves tumble away.",
+        "width": 120,
+        "height": 96,
+        "duration": 3.1,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "glow",
+          "speckle",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/spawn-egg-hatch.png"
+      },
+      {
+        "id": "spawn/poof",
+        "category": "spawn",
+        "name": "Poof",
+        "description": "A cartoon death poof: a white pop, a ring of soft round smoke balls bursting out between speed lines, little stars spinning off, and the cloud lifting and thinning away.",
+        "width": 112,
+        "height": 92,
+        "duration": 1.6,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stars",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/spawn-poof.png"
+      },
+      {
+        "id": "spawn/respawn-beam",
+        "category": "spawn",
+        "name": "Respawn beam",
+        "description": "A guide line drops, a pillar of light slams onto the spot, and a scan bar climbs from the feet writing the character back in row by row, white-hot lines cooling to its colors.",
+        "width": 128,
+        "height": 150,
+        "duration": 2.5,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "width",
+          "seed"
+        ]
+      },
+      {
+        "id": "spawn/shatter-death",
+        "category": "spawn",
+        "name": "Shatter death",
+        "description": "Frost races up the body and seals it in faceted ice, a glint sweeps it, cracks spread from the chest, then it bursts into its own facets that tumble, bounce and melt.",
+        "width": 172,
+        "height": 96,
+        "duration": 3.3,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "spawn/soul-rise",
+        "category": "spawn",
+        "name": "Soul rise",
+        "description": "The body's outline flares and dims, then a pale glowing copy of it lifts out, stretching as its legs melt into a rippling wisp, shedding motes until it thins into light.",
+        "width": 96,
+        "height": 140,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "height",
+          "seed"
+        ]
+      },
+      {
+        "id": "spawn/spawn-portal",
+        "category": "spawn",
+        "name": "Spawn portal",
+        "description": "A rift tears open on the floor and swirls, belches violet smoke and sparks, spits a fountain of wisps up out of itself, then twists shut with a pop.",
+        "width": 208,
+        "height": 150,
+        "duration": 3.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "width",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/spawn-spawn-portal.png"
+      },
+      {
+        "id": "spawn/summon-rise",
+        "category": "spawn",
+        "name": "Summon rise",
+        "description": "A rune circle burns into the floor, the ground bursts, and a horned brute heaves up out of it through dust and rubble, lit from below, until its eyes flare.",
+        "width": 176,
+        "height": 116,
+        "duration": 4.6,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "body",
+          "horn",
+          "stone",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/spawn-summon-rise.png"
+      },
+      {
+        "id": "arcane/arcane-beam",
+        "category": "arcane",
+        "name": "Arcane beam",
+        "description": "A beam fires right from the hand: a white core, strands twisting round it, pulses running down it, a flaring source and an end that sprays sparks.",
+        "width": 264,
+        "height": 100,
+        "duration": 1.2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "arcane/arcane-missiles",
+        "category": "arcane",
+        "name": "Arcane missiles",
+        "description": "A volley of violet bolts fans out of the hand, curls round on twisting ribbons and pops on the target one after another.",
+        "width": 240,
+        "height": 116,
+        "duration": 1.75,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "arcane/arcane-orb",
+        "category": "arcane",
+        "name": "Arcane orb",
+        "description": "A floating orb of smoky violet glass with a swirl turning round a white-hot heart, two tilted rings of light orbiting behind and in front.",
+        "width": 136,
+        "height": 112,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/arcane-arcane-orb.png"
+      },
+      {
+        "id": "arcane/blink-in",
+        "category": "arcane",
+        "name": "Blink in",
+        "description": "Glittering bits spiral in to a point of light that opens into a line, then into a white silhouette that cools into the caster.",
+        "width": 136,
+        "height": 96,
+        "duration": 1.4,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "arcane/blink-out",
+        "category": "arcane",
+        "name": "Blink out",
+        "description": "The caster crackles with gathering light, flashes white, squeezes into a line of light that collapses and pops away in sparks.",
+        "width": 136,
+        "height": 96,
+        "duration": 1.6,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "arcane/magic-circle-cast",
+        "category": "arcane",
+        "name": "Magic circle cast",
+        "description": "A circle draws itself on the floor, runes ignite one by one, it flashes, and a column of light fires up and breaks apart into glints.",
+        "width": 200,
+        "height": 220,
+        "duration": 3.9,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/arcane-magic-circle-cast.png"
+      },
+      {
+        "id": "arcane/mana-burst",
+        "category": "arcane",
+        "name": "Mana burst",
+        "description": "Energy rushes into a point and blows out in a white flash and rings, flinging glowing runes that flare and pop into sparks one after another.",
+        "width": 208,
+        "height": 150,
+        "duration": 1.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/arcane-mana-burst.png"
+      },
+      {
+        "id": "arcane/portal",
+        "category": "arcane",
+        "name": "Portal",
+        "description": "An upright rift: fibrous spiral arms wind down into the dark, a lit rim wobbles, motes and streaks are pulled in, the floor glows.",
+        "width": 152,
+        "height": 116,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "width",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/arcane-portal.png"
+      },
+      {
+        "id": "arcane/rune-circle",
+        "category": "arcane",
+        "name": "Rune circle",
+        "description": "A rune circle turns on the floor in perspective: a carousel of runes lit by chasing light, a turning square, ticks, motes rising off it.",
+        "width": 136,
+        "height": 100,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/arcane-rune-circle.png"
+      },
+      {
+        "id": "arcane/spell-charge",
+        "category": "arcane",
+        "name": "Spell charge",
+        "description": "Energy gathers in the caster's hand: streaks and motes spiral in, rings collapse into a swelling orb that crackles with arcs, ready to fire.",
+        "width": 120,
+        "height": 86,
+        "duration": 1.6,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "arcane/star-fall",
+        "category": "arcane",
+        "name": "Star fall",
+        "description": "Stars streak down on long trails across an area, each landing with a white flash, a ring across the floor and a kick of sparks.",
+        "width": 232,
+        "height": 172,
+        "duration": 2.5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/arcane-star-fall.png"
+      },
+      {
+        "id": "arcane/time-stop",
+        "category": "arcane",
+        "name": "Time stop",
+        "description": "A clock face springs open, ticks slower and slower, freezes drained of colour, cracks, then shatters into falling shards.",
+        "width": 196,
+        "height": 136,
+        "duration": 3.6,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/arcane-time-stop.png"
+      },
+      {
+        "id": "holy/blessing",
+        "category": "holy",
+        "name": "Blessing",
+        "description": "A soft cone of light rests on the character from above; sparkles drift down through it, twinkling, and wink out where they land on the head and shoulders.",
+        "width": 80,
+        "height": 128,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "holy/divine-shield",
+        "category": "holy",
+        "name": "Divine shield",
+        "description": "A bubble of gold light round the character: a bright rim and a thin gold film, meridians turning like a slow globe, a sheen sweeping across and sparkles winking on it.",
+        "width": 88,
+        "height": 84,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "radius",
+          "seed"
+        ]
+      },
+      {
+        "id": "holy/feather-burst",
+        "category": "holy",
+        "name": "Feather burst",
+        "description": "A white puff pops and throws feathers that brake hard, then rock from side to side as they sink and fade, with down drifting after them.",
+        "width": 160,
+        "height": 160,
+        "duration": 3,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "glow",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/holy-feather-burst.png"
+      },
+      {
+        "id": "holy/halo",
+        "category": "holy",
+        "name": "Halo",
+        "description": "A ring of gold light floats over the head with a glint running round it; fine dust sifts down from it and the head catches its light.",
+        "width": 56,
+        "height": 80,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "holy/heal",
+        "category": "holy",
+        "name": "Heal",
+        "description": "Petals of light bloom under the feet, a hoop of light rises up the body restoring its colour and leaving sparkles, and motes spiral up and pop into tiny hearts.",
+        "width": 80,
+        "height": 104,
+        "duration": 1.9,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "holy/heal-aoe",
+        "category": "holy",
+        "name": "Healing ring",
+        "description": "A seed of green light sinks into the floor and a soft ring rolls out from it; the floor glows where it passes and plus signs sprout and float up.",
+        "width": 256,
+        "height": 136,
+        "duration": 2.9,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "reach",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/holy-heal-aoe.png"
+      },
+      {
+        "id": "holy/holy-pillar",
+        "category": "holy",
+        "name": "Holy pillar",
+        "description": "Light breaks through from above: a sun opens at the top and a fan of shafts converges on the mark, pulsing, while a sigil burns on the floor; then the fan folds shut.",
+        "width": 192,
+        "height": 232,
+        "duration": 3.5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "shafts",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/holy-holy-pillar.png"
+      },
+      {
+        "id": "holy/resurrection",
+        "category": "holy",
+        "name": "Resurrection",
+        "description": "Light pours down on the fallen and life climbs back up the body; wings of light unfold, a halo forms, one great wingbeat, then the wings scatter into feathers.",
+        "width": 192,
+        "height": 160,
+        "duration": 4.8,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "ash",
+          "seed"
+        ]
+      },
+      {
+        "id": "holy/smite",
+        "category": "holy",
+        "name": "Smite",
+        "description": "A glint marks the spot, then a bolt of light drops like a hammer: a white flash, a shockwave over the floor, stone chips flying and cracks that glow and cool.",
+        "width": 224,
+        "height": 176,
+        "duration": 2.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stone",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/holy-smite.png"
+      },
+      {
+        "id": "holy/sunburst",
+        "category": "holy",
+        "name": "Sunburst",
+        "description": "A white-hot core in a gold corona; long and short rays turn slowly round it, breathing, with glints running out along them that wink at the tips.",
+        "width": 128,
+        "height": 128,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "rays",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/holy-sunburst.png"
+      },
+      {
+        "id": "shadow/black-hole",
+        "category": "shadow",
+        "name": "Black hole",
+        "description": "A tilted disk of banded rings turns round a black hole, its far side bent up over the top and under the bottom; debris spirals in, stretches and is swallowed.",
+        "width": 184,
+        "height": 132,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "rock",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-black-hole.png"
+      },
+      {
+        "id": "shadow/curse",
+        "category": "shadow",
+        "name": "Curse",
+        "description": "Wisps gather over the head, a skull stamps down with a flash, its eyes burn as the curse floods the body violet, then it cracks and crumbles.",
+        "width": 112,
+        "height": 124,
+        "duration": 3.4,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "bone",
+          "seed"
+        ]
+      },
+      {
+        "id": "shadow/dark-explosion",
+        "category": "shadow",
+        "name": "Dark explosion",
+        "description": "Motes swirl into a pulsing core, a black star cuts across a violet-white flash, and a black sphere burns at the rim, throws lit shards and smoke, then collapses.",
+        "width": 280,
+        "height": 248,
+        "duration": 3.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-dark-explosion.png"
+      },
+      {
+        "id": "shadow/eclipse",
+        "category": "shadow",
+        "name": "Eclipse",
+        "description": "A black moon over the sun: a breathing pearl corona with long streamers, a thin white rim, and one diamond bead blazing on its edge.",
+        "width": 160,
+        "height": 144,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "pearl",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-eclipse.png"
+      },
+      {
+        "id": "shadow/grasping-hands",
+        "category": "shadow",
+        "name": "Grasping hands",
+        "description": "Shadow arms burst up out of a dark pool with a splash, clench their hands into claws, strain, and are dragged back under, fingers clawing at the air.",
+        "width": 200,
+        "height": 116,
+        "duration": 3.1,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-grasping-hands.png"
+      },
+      {
+        "id": "shadow/hex-sigil",
+        "category": "shadow",
+        "name": "Hex sigil",
+        "description": "A burning pen traces a cursed sigil in the air, its glyphs pop in one by one, then it flares white and crumbles into falling embers.",
+        "width": 168,
+        "height": 128,
+        "duration": 4.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-hex-sigil.png"
+      },
+      {
+        "id": "shadow/life-steal",
+        "category": "shadow",
+        "name": "Life steal",
+        "description": "A target on the right is struck and bleeds red orbs; they hang a moment, then whip home as comet streaks and flood the caster crimson.",
+        "width": 184,
+        "height": 100,
+        "duration": 2.2,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "dark",
+          "seed"
+        ]
+      },
+      {
+        "id": "shadow/necro-skulls",
+        "category": "shadow",
+        "name": "Necro skulls",
+        "description": "Spectral skulls circle a cold green flame on a tilted orbit, passing behind and before it, eyes lit, trailing curls of ghost smoke.",
+        "width": 136,
+        "height": 116,
+        "duration": 3,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "bone",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-necro-skulls.png"
+      },
+      {
+        "id": "shadow/shadow-flames",
+        "category": "shadow",
+        "name": "Shadow flames",
+        "description": "Inside-out fire on the floor: a black heart wrapped in violet flame with pale skin and tips, shedding embers and dark smoke.",
+        "width": 104,
+        "height": 112,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-shadow-flames.png"
+      },
+      {
+        "id": "shadow/shadow-tendrils",
+        "category": "shadow",
+        "name": "Shadow tendrils",
+        "description": "A dark pool opens on the floor; tentacles with lit rims and hooked tips lash up out of it with a splash, writhe, and sink back as it closes.",
+        "width": 208,
+        "height": 130,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-shadow-tendrils.png"
+      },
+      {
+        "id": "shadow/soul-drain",
+        "category": "shadow",
+        "name": "Soul drain",
+        "description": "Pale souls are torn loose on the right and dragged down a funnel of streaks into a black crystal vessel, which flares violet as each one lands.",
+        "width": 208,
+        "height": 120,
+        "duration": 3.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "soul",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-soul-drain.png"
+      },
+      {
+        "id": "shadow/void-orb",
+        "category": "shadow",
+        "name": "Void orb",
+        "description": "A black orb hangs in the air, a pale rim crawling round it; a dark vortex winds into it, motes and streaks are pulled in, and light bends round its edge.",
+        "width": 168,
+        "height": 160,
+        "duration": 3.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/shadow-void-orb.png"
+      },
+      {
+        "id": "status/bleeding",
+        "category": "status",
+        "name": "Bleeding",
+        "description": "Bleeding out: beads swell at three wounds, run, let go and fall to spatter into a glossy pool that ripples; each heartbeat spurts a little and flashes the body red.",
+        "width": 60,
+        "height": 56,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/burning",
+        "category": "status",
+        "name": "Burning",
+        "description": "Burning over time: small flames lick from four hot spots, trailing sparks and thin smoke; every 0.6 s they flare, the body flashes white then orange, scorch marks spread.",
+        "width": 72,
+        "height": 80,
+        "duration": 1.2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "char",
+          "smoke",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/charmed",
+        "category": "status",
+        "name": "Charmed",
+        "description": "Smitten: a big heart beats over the head, throwing a ring and a flush of light with every beat, little hearts float up, the eyes go pink and the cheeks blush.",
+        "width": 60,
+        "height": 76,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/confused",
+        "category": "status",
+        "name": "Confused",
+        "description": "Head in a spin: a glowing spiral whirls over the head, question marks pop up round it and bob, the eyes dart left and right.",
+        "width": 60,
+        "height": 78,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "marks",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/cursed",
+        "category": "status",
+        "name": "Cursed",
+        "description": "Hexed: violet smoke rises off the body in winding trails, a dark stain creeps up from the feet with a glowing edge, the eyes burn, a skull glitches in overhead.",
+        "width": 64,
+        "height": 84,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/frozen",
+        "category": "status",
+        "name": "Frozen",
+        "description": "Chilled to the bone: frost ferns creep over the body, icicles hang from chin and hands and drip, breath steams, snow settles, a shiver every second, frost spreads underfoot.",
+        "width": 72,
+        "height": 64,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/haste",
+        "category": "status",
+        "name": "Haste",
+        "description": "Sped up: striped after-images stream out behind, speed lines whip past, dust kicks off the heels and the leading edge catches the wind. Faces right.",
+        "width": 100,
+        "height": 56,
+        "duration": 1.2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "dust",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/petrified",
+        "category": "status",
+        "name": "Petrified",
+        "description": "Turned to stone: grey creeps up from the feet behind a crackling edge that spits grit, the statue holds, cracks run through it, and it bursts into tumbling chunks and dust.",
+        "width": 120,
+        "height": 74,
+        "duration": 3.8,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/poisoned",
+        "category": "status",
+        "name": "Poisoned",
+        "description": "Sick to the bone: green rolls up the body in waves, dark veins creep from a wound, toxic sweat drips and hisses; every 0.8 s it wobbles, blisters pop and a ring pulses out.",
+        "width": 72,
+        "height": 64,
+        "duration": 1.6,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "veins",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/rage",
+        "category": "status",
+        "name": "Rage",
+        "description": "Seething: the body judders on every heartbeat, an anger mark throbs at the temple, eyes burn, steam jets off the head, stress lines flash out and the floor cracks hot underfoot.",
+        "width": 80,
+        "height": 80,
+        "duration": 1.2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "heat",
+          "steam",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/sleep",
+        "category": "status",
+        "name": "Sleep",
+        "description": "Fast asleep: eyes shut, soft outlined Zs float up off the head one after another, swaying and growing as they rise, dream motes drift, a slow breathing glow.",
+        "width": 60,
+        "height": 82,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/slowed",
+        "category": "status",
+        "name": "Slowed",
+        "description": "Dragged through time: a glassy clock dial behind the head ticks round in heavy steps, flashing with each, while drops sink in slow motion and spread slow rings.",
+        "width": 64,
+        "height": 76,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "status/stunned",
+        "category": "status",
+        "name": "Stunned",
+        "description": "Seeing stars: three spinning stars and two little birds circle the head on a tilted ring, ducking behind it and sweeping round in front, trailing glitter.",
+        "width": 60,
+        "height": 64,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "birds",
+          "beak",
+          "seed"
+        ]
+      },
+      {
+        "id": "nature/acid-splash",
+        "category": "nature",
+        "name": "Acid splash",
+        "description": "A gob of acid bursts into a crown and spatters; it eats a glowing, smoking pit into the floor and boils down into it, spitting bright beads, pale steam curling off.",
+        "width": 184,
+        "height": 116,
+        "duration": 2.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-acid-splash.png"
+      },
+      {
+        "id": "nature/boulder",
+        "category": "nature",
+        "name": "Boulder",
+        "description": "A spinning boulder arcs right shedding dust and pebbles, smashes into the floor in a white flash and bursts into tumbling chunks, gravel and rolling dust.",
+        "width": 264,
+        "height": 120,
+        "duration": 2.3,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "sparks",
+          "size",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-boulder.png"
+      },
+      {
+        "id": "nature/earth-spike",
+        "category": "nature",
+        "name": "Earth spike",
+        "description": "The floor cracks with light and heaves, a faceted stone spike rams up with two side shards in a burst of chips, grit and dust; rubble rains, then it splits and crumbles.",
+        "width": 272,
+        "height": 150,
+        "duration": 3.4,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "glow",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-earth-spike.png"
+      },
+      {
+        "id": "nature/healing-bloom",
+        "category": "nature",
+        "name": "Healing bloom",
+        "description": "A sprout pushes up and unfurls, a bud swells and opens round a glowing golden heart in a flare of healing light; its petals lift away one by one as motes.",
+        "width": 124,
+        "height": 120,
+        "duration": 3.3,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "petal",
+          "heart",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-healing-bloom.png"
+      },
+      {
+        "id": "nature/leaf-storm",
+        "category": "nature",
+        "name": "Leaf storm",
+        "description": "Leaves tumble up a rising spiral round the character, passing behind and in front, turning and flipping, wrapped in bright bands of wind; litter swirls at their feet.",
+        "width": 112,
+        "height": 104,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "leaves",
+          "seed"
+        ]
+      },
+      {
+        "id": "nature/poison-cloud",
+        "category": "nature",
+        "name": "Poison cloud",
+        "description": "A miasma hugging the floor: ragged sheets of gas lit yellow-green from within, fading to violet, creep out in tongues that curl over at their tips; plumes twist up as ribbons.",
+        "width": 256,
+        "height": 100,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "spread",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-poison-cloud.png"
+      },
+      {
+        "id": "nature/quake",
+        "category": "nature",
+        "name": "Quake",
+        "description": "The ground jolts three times: a rift tears out along the floor glowing deep inside, slabs of floor heave up and drop back askew, pebbles hop and dust bursts out of the split.",
+        "width": 288,
+        "height": 104,
+        "duration": 3.1,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "glow",
+          "reach",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-quake.png"
+      },
+      {
+        "id": "nature/root-snare",
+        "category": "nature",
+        "name": "Root snare",
+        "description": "The floor cracks and roots burst up round the character, spiralling round its legs; they cinch tight with a snap, hold, then crack and crumble into bark and dust.",
+        "width": 128,
+        "height": 96,
+        "duration": 2.7,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "glow",
+          "seed"
+        ]
+      },
+      {
+        "id": "nature/spore-burst",
+        "category": "nature",
+        "name": "Spore burst",
+        "description": "A toadstool pushes up, swells and trembles as its gills glow, then squashes and puffs a lumpy cloud of glowing spores that billows up and drifts down twinkling.",
+        "width": 212,
+        "height": 132,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "cap",
+          "stem",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-spore-burst.png"
+      },
+      {
+        "id": "nature/thorns",
+        "category": "nature",
+        "name": "Thorns",
+        "description": "A seam races along the floor and hooked thorns punch up out of it one after another, each bigger than the last, in bursts of dirt and green light; they hold, then sink.",
+        "width": 232,
+        "height": 92,
+        "duration": 2.4,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "glow",
+          "soil",
+          "count",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-thorns.png"
+      },
+      {
+        "id": "nature/tornado",
+        "category": "nature",
+        "name": "Tornado",
+        "description": "A snaking funnel of spinning wind bands under a flared, churning top that flickers with lightning; leaves and debris whirl round it front and back, dust boils at its foot.",
+        "width": 196,
+        "height": 168,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "dust",
+          "leaves",
+          "height",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-tornado.png"
+      },
+      {
+        "id": "nature/toxic-puddle",
+        "category": "nature",
+        "name": "Toxic puddle",
+        "description": "Black tar lit from inside by chartreuse veins and a glowing rim, an oily sheen drifting on it; glossy bubbles dome, stretch and pop, vapour curls up in fraying ribbons.",
+        "width": 176,
+        "height": 100,
+        "duration": 4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "sheen",
+          "width",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-toxic-puddle.png"
+      },
+      {
+        "id": "nature/vine-whip",
+        "category": "nature",
+        "name": "Vine whip",
+        "description": "A thorny vine bursts from the floor, rears back coiled, then lashes out right in a whip crack that sprays sap and tears off leaves, before sliding back into the ground.",
+        "width": 216,
+        "height": 128,
+        "duration": 1.4,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "thorn",
+          "soil",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/nature-vine-whip.png"
+      },
+      {
+        "id": "weather/aurora",
+        "category": "weather",
+        "name": "Aurora",
+        "description": "Rippling curtains of green-to-violet light over a starfield: folding hems burn bright, rays shimmer up into violet, and the whole sky slowly breathes.",
+        "width": 320,
+        "height": 180,
+        "duration": 12,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "upper",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-aurora.png"
+      },
+      {
+        "id": "weather/blizzard",
+        "category": "weather",
+        "name": "Blizzard",
+        "description": "Snow driven almost flat by a gale: streaks at three depths race past, gusts throw translucent sheets of snow across the sky and spindrift streams off the drifts.",
+        "width": 320,
+        "height": 180,
+        "duration": 8,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-blizzard.png"
+      },
+      {
+        "id": "weather/cherry-blossoms",
+        "category": "weather",
+        "name": "Cherry blossoms",
+        "description": "Pink petals flutter down on a spring breeze, tumbling in little spirals and flashing as they catch the light, with a few whole blossoms spinning among them.",
+        "width": 320,
+        "height": 180,
+        "duration": 10,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-cherry-blossoms.png"
+      },
+      {
+        "id": "weather/clouds",
+        "category": "weather",
+        "name": "Clouds",
+        "description": "Layers of clouds drift past a bright moon at night: silver-lit tops, dark bellies, edges that flare where they cross the moon, forming and thinning as they go.",
+        "width": 320,
+        "height": 180,
+        "duration": 12,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-clouds.png"
+      },
+      {
+        "id": "weather/falling-leaves",
+        "category": "weather",
+        "name": "Falling leaves",
+        "description": "Autumn leaves swing down through the air, tilting and flipping to show their pale backs, ride a gust, land flat in the litter and fade.",
+        "width": 320,
+        "height": 180,
+        "duration": 10,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "reds",
+          "golds",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-falling-leaves.png"
+      },
+      {
+        "id": "weather/fireflies",
+        "category": "weather",
+        "name": "Fireflies",
+        "description": "Fireflies wander over a meadow at night, each glowing up and fading on its own rhythm, trailing light and lighting the grass tips beneath them.",
+        "width": 320,
+        "height": 180,
+        "duration": 12,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "grass",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-fireflies.png"
+      },
+      {
+        "id": "weather/fog",
+        "category": "weather",
+        "name": "Fog",
+        "description": "Slow banks of moonlit fog at three depths drift past each other, crests catching the light, while thin streaks of mist slide by in front.",
+        "width": 320,
+        "height": 180,
+        "duration": 12,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-fog.png"
+      },
+      {
+        "id": "weather/god-rays",
+        "category": "weather",
+        "name": "God rays",
+        "description": "Shafts of light slant down from high on the left, breathing and swaying, pooling on the floor, as drifting dust motes light up whenever they cross a beam.",
+        "width": 320,
+        "height": 180,
+        "duration": 10,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-god-rays.png"
+      },
+      {
+        "id": "weather/rain",
+        "category": "weather",
+        "name": "Rain",
+        "description": "Slanted rain at four depths: far drops fade into the dark, near ones glint and splash, drops ring the puddles and a low mist drifts over the wet floor.",
+        "width": 320,
+        "height": 180,
+        "duration": 8,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "density",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-rain.png"
+      },
+      {
+        "id": "weather/shooting-stars",
+        "category": "weather",
+        "name": "Shooting stars",
+        "description": "Meteors burn across a starry sky, white heads trailing gold and rose; the big ones flare and break up, and each leaves a glowing train that twists and fades.",
+        "width": 320,
+        "height": 180,
+        "duration": 10,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "sky",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-shooting-stars.png"
+      },
+      {
+        "id": "weather/snow",
+        "category": "weather",
+        "name": "Snow",
+        "description": "Snow at three depths in a gusty breeze: far specks, drifting flakes, big near crystals that spin and glow; they settle on a sparkling drift and melt away.",
+        "width": 320,
+        "height": 180,
+        "duration": 12,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-snow.png"
+      },
+      {
+        "id": "weather/storm",
+        "category": "weather",
+        "name": "Storm",
+        "description": "Driving rain at two depths under a churning cloud deck; a forked bolt strikes in a double flash that lights the sky and the rain, then sheet lightning glows in the clouds.",
+        "width": 320,
+        "height": 180,
+        "duration": 10,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "bolt",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/weather-storm.png"
+      },
+      {
+        "id": "ui/achievement",
+        "category": "ui",
+        "name": "Achievement",
+        "description": "A toast slides in on speed lines and settles; a gold medal pops onto it in a burst of sparkles, a shine sweeps the whole toast, then it slides away.",
+        "width": 220,
+        "height": 72,
+        "duration": 2.4,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "ribbon",
+          "title",
+          "text",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-achievement.png"
+      },
+      {
+        "id": "ui/coin-collect",
+        "category": "ui",
+        "name": "Coin collect",
+        "description": "A coin bursts into a fountain of spinning coins that hang, then zip one by one into a HUD counter that pops and ticks up, glints and folds away.",
+        "width": 176,
+        "height": 116,
+        "duration": 2.45,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "count",
+          "from",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-coin-collect.png"
+      },
+      {
+        "id": "ui/combo-counter",
+        "category": "ui",
+        "name": "Combo counter",
+        "description": "x5 COMBO rockets in on streaming speed lines, smearing, and slams to a stop: a white flash, a ring, sparks; it pulses while a timer bar drains, then whooshes out.",
+        "width": 208,
+        "height": 100,
+        "duration": 1.45,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "count",
+          "label",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-combo-counter.png"
+      },
+      {
+        "id": "ui/confetti",
+        "category": "ui",
+        "name": "Confetti",
+        "description": "Two party poppers bang one after the other: paper bits and curly streamers burst out, stall, then tumble and flutter down, flipping, and settle on the floor.",
+        "width": 200,
+        "height": 140,
+        "duration": 3.4,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-confetti.png"
+      },
+      {
+        "id": "ui/countdown",
+        "category": "ui",
+        "name": "Countdown",
+        "description": "3, 2, 1 slam into a timer ring that drains like a burning fuse, throwing sparks; then GO! bursts out as the ring blows into a shockwave with rays.",
+        "width": 152,
+        "height": 136,
+        "duration": 3.1,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "go",
+          "from",
+          "word",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-countdown.png"
+      },
+      {
+        "id": "ui/crit-number",
+        "category": "ui",
+        "name": "Crit number",
+        "description": "CRIT 128! slams in huge and white over a jagged starburst with a hard shake and speed lines, cools to fire, holds with a shine, then pops into sparks.",
+        "width": 152,
+        "height": 120,
+        "duration": 1.5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "text",
+          "label",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-crit-number.png"
+      },
+      {
+        "id": "ui/damage-number",
+        "category": "ui",
+        "name": "Damage number",
+        "description": "A red -27 punches out of a hit spark, white for a frame, arcs up, lands with a squash and a little hop, then fades as it lifts away.",
+        "width": 76,
+        "height": 68,
+        "duration": 1.05,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "text",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-damage-number.png"
+      },
+      {
+        "id": "ui/exclamation",
+        "category": "ui",
+        "name": "Exclamation",
+        "description": "A bold ! springs up off the hero's head, stretching as it shoots up and squashing as it lands; surprise ticks flick out, it wobbles, then pops away.",
+        "width": 84,
+        "height": 104,
+        "duration": 1.4,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "seed"
+        ]
+      },
+      {
+        "id": "ui/health-bar-hit",
+        "category": "ui",
+        "name": "Health bar hit",
+        "description": "A segmented health bar takes a hit: it jolts and dips, the lost chunk flashes white and sheds chips, holds, then drains away behind a sparking edge.",
+        "width": 160,
+        "height": 64,
+        "duration": 2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "from",
+          "to",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-health-bar-hit.png"
+      },
+      {
+        "id": "ui/heart-lost",
+        "category": "ui",
+        "name": "Heart lost",
+        "description": "A HUD heart is hit: it flashes white and jolts, a crack runs down it, it splits into two halves that tumble away, leaving an empty socket that fades.",
+        "width": 96,
+        "height": 88,
+        "duration": 1.5,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-heart-lost.png"
+      },
+      {
+        "id": "ui/level-up",
+        "category": "ui",
+        "name": "Level up",
+        "description": "Gold gathers at the feet and bursts up as a pillar of light round the hero; rings climb it, LEVEL UP! drops in letter by letter, a shine sweeps it, sparkles twinkle.",
+        "width": 176,
+        "height": 138,
+        "duration": 3.2,
+        "loop": false,
+        "needsCharacter": true,
+        "options": [
+          "palette",
+          "text",
+          "seed"
+        ]
+      },
+      {
+        "id": "ui/quest-complete",
+        "category": "ui",
+        "name": "Quest complete",
+        "description": "A stitched ribbon unrolls from the middle, QUEST COMPLETE types on letter by letter, a gold seal stamps down and ticks, stars pop; then it all rolls away.",
+        "width": 204,
+        "height": 92,
+        "duration": 2.6,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "ribbon",
+          "text",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/ui-quest-complete.png"
+      },
+      {
+        "id": "pickups/chest-open",
+        "category": "pickups",
+        "name": "Chest open",
+        "description": "A banded chest rattles with gold light leaking from its seam, the lid kicks open, rays fan up, and coins and gems arc out, bounce, glint and get collected.",
+        "width": 176,
+        "height": 112,
+        "duration": 4.6,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "wood",
+          "coins",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-chest-open.png"
+      },
+      {
+        "id": "pickups/coin-spin",
+        "category": "pickups",
+        "name": "Coin spin",
+        "description": "A thick gold coin turning on its edge: an embossed star face, a reeded rim showing as it goes edge-on, a flash sweeping the face, bobbing over its shadow.",
+        "width": 56,
+        "height": 56,
+        "duration": 1.6,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-coin-spin.png"
+      },
+      {
+        "id": "pickups/collect-burst",
+        "category": "pickups",
+        "name": "Collect burst",
+        "description": "The moment of pickup: a white flash and a cross of light, a thin ring snapping out ahead of a softer one, twinkles thrown wide on curving paths that brake, hang and wink out.",
+        "width": 112,
+        "height": 108,
+        "duration": 1.35,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-collect-burst.png"
+      },
+      {
+        "id": "pickups/crystal-shard",
+        "category": "pickups",
+        "name": "Crystal shard",
+        "description": "A broken amber shard hovers and sways: chipped uneven faces, its top sheared off, light pulsing up through glowing cracks and flaring out of the break; splinters orbit it.",
+        "width": 64,
+        "height": 76,
+        "duration": 3.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-crystal-shard.png"
+      },
+      {
+        "id": "pickups/gem-spin",
+        "category": "pickups",
+        "name": "Gem spin",
+        "description": "A brilliant-cut ruby turning on its axis: real facets catch the light in turn, flashes roll over the crown, refracted light slides across the floor, sparkles wink round it.",
+        "width": 64,
+        "height": 64,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-gem-spin.png"
+      },
+      {
+        "id": "pickups/heart-pickup",
+        "category": "pickups",
+        "name": "Heart pickup",
+        "description": "A plump glossy heart hovering over its shadow beats lub-dub: a big squash and stretch, a smaller echo, light and a thin ring pulsing out, tiny hearts drifting off.",
+        "width": 56,
+        "height": 60,
+        "duration": 1.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-heart-pickup.png"
+      },
+      {
+        "id": "pickups/key-glint",
+        "category": "pickups",
+        "name": "Key glint",
+        "description": "An ornate silver key hovering and rocking; a glint runs from its bow down the shaft to the teeth and bursts off the tip as falling sparks.",
+        "width": 72,
+        "height": 60,
+        "duration": 2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-key-glint.png"
+      },
+      {
+        "id": "pickups/loot-beam",
+        "category": "pickups",
+        "name": "Loot beam",
+        "description": "A dropped sword in a tall pillar of rarity light: a white core thinning to the sky, rings pulsing across the floor, motes streaming up, a glint racing up the shaft.",
+        "width": 96,
+        "height": 176,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-loot-beam.png"
+      },
+      {
+        "id": "pickups/potion",
+        "category": "pickups",
+        "name": "Potion",
+        "description": "A round glass flask of glowing brew rocks in the air: the brew sloshes behind the rock, bubbles rise and pop, light glows through the glass, wisps curl off the cork.",
+        "width": 56,
+        "height": 72,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-potion.png"
+      },
+      {
+        "id": "pickups/power-star",
+        "category": "pickups",
+        "name": "Power star",
+        "description": "A fat bevelled star rocks side to side and swells on each beat, rays of light turning slowly behind it, sparks spinning off its points.",
+        "width": 88,
+        "height": 84,
+        "duration": 1.6,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-power-star.png"
+      },
+      {
+        "id": "pickups/xp-orb",
+        "category": "pickups",
+        "name": "XP orb",
+        "description": "A small glowing orb races a figure-eight, a comet tail tapering behind it along its path, flecks shed from the tail winking out, its light following it over the floor.",
+        "width": 72,
+        "height": 56,
+        "duration": 1.8,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/pickups-xp-orb.png"
+      },
+      {
+        "id": "transitions/blinds",
+        "category": "transitions",
+        "name": "Blinds",
+        "description": "Slats catch the light edge-on, then tilt shut top to bottom, lit rims glinting as warm light squeezes through the closing gaps with dust in it; then they tilt open and fade.",
+        "width": 320,
+        "height": 180,
+        "duration": 2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette"
+        ],
+        "still": "/effects/pixelfx/transitions-blinds.png"
+      },
+      {
+        "id": "transitions/burn-away",
+        "category": "transitions",
+        "name": "Burn away",
+        "description": "The screen burns in from its edges behind a ragged ember line of licking flames, embers and smoke; then the black smoulders and burns open from the middle.",
+        "width": 320,
+        "height": 180,
+        "duration": 3,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette"
+        ],
+        "still": "/effects/pixelfx/transitions-burn-away.png"
+      },
+      {
+        "id": "transitions/crt-off",
+        "category": "transitions",
+        "name": "CRT off",
+        "description": "The picture squeezes into a white-hot glowing line, the line into a dot that lingers as a fading afterglow; then it switches back on, dot to line to picture, with a warm-up glow.",
+        "width": 320,
+        "height": 180,
+        "duration": 2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette"
+        ],
+        "still": "/effects/pixelfx/transitions-crt-off.png"
+      },
+      {
+        "id": "transitions/diamond-wipe",
+        "category": "transitions",
+        "name": "Diamond wipe",
+        "description": "A wave of faceted diamonds swells across the screen, rims bright and ridges lit, cooling to black as they lock; then they rise as gems again and shrink away with glints.",
+        "width": 320,
+        "height": 180,
+        "duration": 2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette"
+        ],
+        "still": "/effects/pixelfx/transitions-diamond-wipe.png"
+      },
+      {
+        "id": "transitions/glitch-wipe",
+        "category": "transitions",
+        "name": "Glitch wipe",
+        "description": "Torn bands of black stutter across the screen, freezing and jerking back, their ragged edges split into magenta and cyan ghosts spitting data slivers; then they tear on through.",
+        "width": 320,
+        "height": 180,
+        "duration": 1.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette",
+          "split"
+        ],
+        "still": "/effects/pixelfx/transitions-glitch-wipe.png"
+      },
+      {
+        "id": "transitions/iris",
+        "category": "transitions",
+        "name": "Iris",
+        "description": "A lit iris closes onto a warm spotlight where dust drifts, holds as its rim twinkles, snaps shut into a glint, then pops open from a flash with a white-hot rim throwing sparks.",
+        "width": 320,
+        "height": 180,
+        "duration": 2.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette",
+          "focus"
+        ],
+        "still": "/effects/pixelfx/transitions-iris.png"
+      },
+      {
+        "id": "transitions/pixel-dissolve",
+        "category": "transitions",
+        "name": "Pixel dissolve",
+        "description": "Clumps of blocks wink in, each drawn in a white outline that fills black and cools, with glints; then they wink out, outlines collapsing, the last small ones sparkling away.",
+        "width": 320,
+        "height": 180,
+        "duration": 2.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette"
+        ],
+        "still": "/effects/pixelfx/transitions-pixel-dissolve.png"
+      },
+      {
+        "id": "transitions/shatter-wipe",
+        "category": "transitions",
+        "name": "Shatter wipe",
+        "description": "A dark glass pane drops over the screen and bounces; cracks race out from an impact with a flash, then it bursts into tumbling glass shards with lit edges that fall away.",
+        "width": 320,
+        "height": 180,
+        "duration": 2.8,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette"
+        ],
+        "still": "/effects/pixelfx/transitions-shatter-wipe.png"
+      },
+      {
+        "id": "transitions/slash-wipe",
+        "category": "transitions",
+        "name": "Slash wipe",
+        "description": "A white-hot blade edge slices across the screen, light ahead of it and sparks spraying back over the cover; a second cut flashes through and the cover splits apart.",
+        "width": 320,
+        "height": 180,
+        "duration": 1.7,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette",
+          "sparks"
+        ],
+        "still": "/effects/pixelfx/transitions-slash-wipe.png"
+      },
+      {
+        "id": "transitions/star-iris",
+        "category": "transitions",
+        "name": "Star iris",
+        "description": "A five-point star iris spins shut on the middle of the screen, its gold rim lit and its tips twinkling and shedding motes; it closes on a glint and spins open again from a flash.",
+        "width": 320,
+        "height": 180,
+        "duration": 2.2,
+        "loop": false,
+        "needsCharacter": false,
+        "options": [
+          "color",
+          "seed",
+          "palette",
+          "focus"
+        ],
+        "still": "/effects/pixelfx/transitions-star-iris.png"
+      },
+      {
+        "id": "critters/bat",
+        "category": "critters",
+        "name": "Bat",
+        "description": "A bat flaps in four snappy wing frames along a figure-eight, its body lifting on each downbeat, moonlight on its wing bones, red eyes glowing and glinting.",
+        "width": 112,
+        "height": 80,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "eyes",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-bat.png"
+      },
+      {
+        "id": "critters/bird",
+        "category": "critters",
+        "name": "Bird",
+        "description": "A songbird flies in place: bursts of wingbeats that lift its body on each downstroke, a glide on spread wings, its tail fanning, a loose feather drifting away.",
+        "width": 112,
+        "height": 80,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "breast",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-bird.png"
+      },
+      {
+        "id": "critters/butterfly",
+        "category": "critters",
+        "name": "Butterfly",
+        "description": "An iridescent butterfly wanders a loop in bursts of quick wingbeats and open-winged glides, its veined, spotted wings shedding a twinkling trail of glowing dust.",
+        "width": 128,
+        "height": 88,
+        "duration": 3.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "spots",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-butterfly.png"
+      },
+      {
+        "id": "critters/eyeball",
+        "category": "critters",
+        "name": "Eyeball",
+        "description": "A bloodshot eyeball floats in its fleshy lids: its glowing iris snaps from one look to the next, it blinks, and its nerve sways behind it as it bobs.",
+        "width": 96,
+        "height": 108,
+        "duration": 3.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "flesh",
+          "iris",
+          "hover",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-eyeball.png"
+      },
+      {
+        "id": "critters/fish-school",
+        "category": "critters",
+        "name": "Fish school",
+        "description": "A school of fish holds station in two depth rows: bodies wag into swinging tails, one darts ahead now and then, bubbles rise and caustic light ripples over them.",
+        "width": 136,
+        "height": 80,
+        "duration": 4.8,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "stripe",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-fish-school.png"
+      },
+      {
+        "id": "critters/flying-skull",
+        "category": "critters",
+        "name": "Flying skull",
+        "description": "A cracked bone skull bobs in the air, jaw chattering, eyes burning, a fire roaring off its crown that sheds flame puffs, embers and smoke and throws warm light.",
+        "width": 96,
+        "height": 132,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "bone",
+          "hover",
+          "floor",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-flying-skull.png"
+      },
+      {
+        "id": "critters/frog",
+        "category": "critters",
+        "name": "Frog",
+        "description": "A frog puffs its throat, blinks, crouches and leaps to snap a buzzing fly out of the air, then lands with a squash and a puff of dust, gulps and settles.",
+        "width": 112,
+        "height": 88,
+        "duration": 2.6,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "belly",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-frog.png"
+      },
+      {
+        "id": "critters/ghost",
+        "category": "critters",
+        "name": "Ghost",
+        "description": "A sheet ghost bobs over the floor: its scalloped hem ripples and trails its drift, little arms flutter, it glances about and blinks, motes trickle off its hem.",
+        "width": 96,
+        "height": 100,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "hover",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-ghost.png"
+      },
+      {
+        "id": "critters/jellyfish",
+        "category": "critters",
+        "name": "Jellyfish",
+        "description": "A see-through jellyfish pulses: its bell squeezes to shove it up and relaxes as it sinks, frilled arms and long tentacles trailing, a glow inside, bubbles drifting by.",
+        "width": 96,
+        "height": 120,
+        "duration": 3.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "glow",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-jellyfish.png"
+      },
+      {
+        "id": "critters/slime",
+        "category": "critters",
+        "name": "Slime",
+        "description": "A glossy slime hops in place: it squashes to wind up, stretches into the jump, rounds out in the air, splats down flinging droplets that creep back, then wobbles and blinks.",
+        "width": 112,
+        "height": 88,
+        "duration": 1.8,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "hop",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-slime.png"
+      },
+      {
+        "id": "critters/snake",
+        "category": "critters",
+        "name": "Snake",
+        "description": "A snake slithers along the floor, head raised: humps rise and roll back down its patterned body to the tail, dust puffs where it touches down, its forked tongue flicks.",
+        "width": 136,
+        "height": 56,
+        "duration": 2.4,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "belly",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-snake.png"
+      },
+      {
+        "id": "critters/wisp",
+        "category": "critters",
+        "name": "Wisp",
+        "description": "A will-o'-the-wisp loops a figure-eight over the floor: a little soul-flame with a face, its flame tail licking up and streaming behind, shedding puffs and sparks.",
+        "width": 128,
+        "height": 104,
+        "duration": 3.2,
+        "loop": true,
+        "needsCharacter": false,
+        "options": [
+          "palette",
+          "hover",
+          "seed"
+        ],
+        "still": "/effects/pixelfx/critters-wisp.png"
+      }
+    ]
+  }
+}

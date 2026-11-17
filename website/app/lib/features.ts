@@ -112,6 +112,7 @@ export const FEATURES: Feature[] = [
       { href: "#controls", label: "Controls" },
       { href: "#recipes", label: "The .vfx.json record" },
       { href: "#library", label: "Library calls" },
+      { href: "/effects/catalog", label: "Catalog: every preset and effect" },
     ],
     docs: [
       { href: "/docs/cli/vfx", label: "The vfx command" },
