@@ -1359,6 +1359,12 @@ version write the same bytes every time.
   so, because a newer version may draw the effect differently.
 - `--dry-run` prints the frame facts and writes nothing; `--json` prints the
   facts and paths.
+- An effect goes over a character or an object the same way: draw each
+  frame's top-left at `target − meta.anchor`, after the sprite to put it in
+  front or before it to put it behind. A coin spinning above a 64px chest
+  (`pickups/coin-spin`, pivot 28,48, target 64,62, so the frame lands at
+  36,14) and a `holy/sunburst` drawn behind the same chest are on the
+  website's Effects page.
 - About 70 of the library's effects (status effects, auras, whole attack
   moves) are drawn around its stock character and are refused: PixelKiln has
   no way to hand them your sprite yet. `vfx effects` marks them.

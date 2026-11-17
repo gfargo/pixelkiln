@@ -17,6 +17,13 @@ const OBJECT_EFFECTS = [
   { name: "object-anvil-strike", width: 96, height: 128, scale: 2, title: "lightning_strike", note: "a 32px anvil, one-shot", alt: "A lightning bolt striking a small anvil, with a shockwave ring on the ground" },
 ] as const;
 
+/** pixelfx effects at 12 fps, drawn over a 64px chest at `target − anchor` in a 128px cell. */
+const PLACED_EFFECTS = [
+  { id: "pickups/coin-spin", strip: "/effects/pixelfx-chest-coin.png", frames: 19, note: "in front, pivot just above the lid", label: "A gold coin spinning above a green chest" },
+  { id: "pickups/collect-burst", strip: "/effects/pixelfx-chest-burst.png", frames: 17, note: "in front, plays once, pivot on the lid", label: "A ring of sparkles bursting from a green chest" },
+  { id: "holy/sunburst", strip: "/effects/pixelfx-chest-sunburst.png", frames: 48, note: "behind, pivot on the chest's centre", label: "Golden rays turning behind a green chest" },
+] as const;
+
 const CONTROLS: Array<[string, string, string]> = [
   ["List what exists", "`vfx presets`, `vfx parts`", "`vfx effects` (add `--json` for every option and default)"],
   ["Pick the effect", "`--preset <name>`, plus `--part <name>` as often as you like", "`--effect <category>/<name>`"],
@@ -114,6 +121,59 @@ pixelkiln vfx --preset lightning_strike --sprite props/anvil.png --out fx/anvil-
               <li><span className="tick" aria-hidden="true" /> In a manifest, <code>sprite</code> can be another asset&apos;s output. The effect waits until that file exists, then renders in a later wave of the same <code>gen</code>.</li>
               <li><span className="tick" aria-hidden="true" /> Regenerate the prop and the effect goes stale with it, because the sprite&apos;s content is part of the effect&apos;s identity.</li>
               <li><span className="tick" aria-hidden="true" /> The frames include the prop. Add <code>--game-pack</code> on the command line when the game draws the prop itself and needs the layers apart.</li>
+            </ul>
+          </div>
+          <h3 className="fx-subhead">The same chest, with effects from pixelfx.</h3>
+          <p className="section-deck fx-subdeck">
+            A pixelfx effect is never built around a sprite, so the game does
+            the placing. Each loop below is the chest and one effect, drawn in
+            the order named, with the effect&apos;s pivot on one point of the
+            chest.
+          </p>
+          <div className="effects-strip fx-strip-3">
+            {PLACED_EFFECTS.map((effect) => (
+              <figure key={effect.id}>
+                <div className="fx-stage">
+                  <SpriteLoop
+                    strip={effect.strip}
+                    width={128 * effect.frames}
+                    frames={effect.frames}
+                    cell={128}
+                    stride={128}
+                    scale={2}
+                    seconds={effect.frames / 12}
+                    label={effect.label}
+                  />
+                </div>
+                <figcaption><b>{effect.id}</b> {effect.note}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <div className="effects-bottom">
+            <CodeWindow
+              title="place-effect.ts"
+              language="json"
+              copyId="effects_object_pixelfx_code"
+              section="effects"
+              code={`
+import { loadPixelfx, renderPixelfx } from "pixelkiln"
+
+const lib = await loadPixelfx()
+const coin = renderPixelfx(lib, { effect: "pickups/coin-spin", fps: 12 })
+
+// the chest is drawn at (32, 60); the coin belongs just above its lid
+const target = { x: 64, y: 62 }
+const at = { x: target.x - coin.anchor.x, y: target.y - coin.anchor.y }
+
+// every tick: draw the chest, then coin.frames[i] at \`at\`
+// (draw the effect first to put it behind, as with holy/sunburst)
+`}
+            />
+            <ul className="check-list effects-list">
+              <li><span className="tick" aria-hidden="true" /> The coin&apos;s pivot is (28, 48) on its 56×56 frame, so a target of (64, 62) puts the frame at (36, 14).</li>
+              <li><span className="tick" aria-hidden="true" /> Draw order is yours: the coin and the burst go over the chest, the sunburst under it.</li>
+              <li><span className="tick" aria-hidden="true" /> pixelfx frames are sized for a small character. On a 64px prop they fit as they are; nothing was scaled here.</li>
+              <li><span className="tick" aria-hidden="true" /> From the command line the same effect is <code>pixelkiln vfx --lib pixelfx --effect pickups/coin-spin --out fx/coin</code>; the pivot is in <code>fx/coin.json</code>.</li>
             </ul>
           </div>
           <div className="review-links">

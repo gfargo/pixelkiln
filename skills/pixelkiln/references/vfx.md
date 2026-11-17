@@ -97,6 +97,10 @@ pixelkiln vfx --lib pixelfx --effect explosions/small-explosion --palette "#102,
 - About 70 effects are marked "needs a character" (status effects, auras,
   whole attack moves). They are refused. For those, use the workbench with
   `--sprite`.
+- To put one on a character or an object, the game draws it at
+  `target − meta.anchor`, after the sprite (in front) or before it (behind).
+  Frames are sized for a small character and are not scaled to the sprite;
+  check the frame size in `vfx effects` against the sprite before choosing.
 - Quote `--palette`: `#` starts a shell comment. A ramp of any length works;
   it is resampled to the steps the effect uses. An effect with no `palette`
   option refuses the flag.

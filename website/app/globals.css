@@ -414,6 +414,9 @@ a { color: inherit; text-decoration: none; }
 .fx-section { padding-block: 110px; }
 .effects-strip.fx-strip-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .fx-section-alt { background: #201d17; }
+.fx-subhead { margin: 90px 0 0; color: var(--cream); font-size: 26px; font-weight: 650; letter-spacing: -0.02em; }
+.fx-subdeck { max-width: 620px; margin-top: 16px; }
+.fx-subdeck + .effects-strip { margin-top: 40px; }
 .fx-section .effects-bottom { align-items: start; margin-bottom: 0; }
 .fx-section .effects-bottom.fx-top { margin-top: 70px; }
 .fx-section .effects-list { margin-top: 0; }
