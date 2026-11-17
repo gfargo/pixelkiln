@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { CodeBody } from "@/app/ui/code-window";
 import { CharacterBuilder } from "@/app/ui/character-builder";
+import { SpinViewer } from "@/app/ui/spin-viewer";
 import { SpriteCarousel } from "@/app/ui/sprite-carousel";
 import { SpriteLoop } from "@/app/ui/sprite-loop";
 import { TrackedLink } from "@/app/ui/tracked-link";
@@ -114,6 +115,19 @@ export function PaperdollSection() {
                 pixels, the way <code>offset</code> does in a manifest.
               </p>
               <CharacterBuilder />
+            </div>
+            <div className="builder-block" id="turnaround">
+              <h3>Turn it all the way round.</h3>
+              <p>
+                The generator draws eight directions. This is sixteen. The
+                eight extra come from an experiment: carve a 3D model out of
+                the eight drawn views, render it from the angles between, and
+                have an image model redraw each rough render. It is research,
+                not a PixelKiln command yet, and the{" "}
+                <TrackedLink className="text-link" id="paperdoll_research_3d" section="paperdoll" href="/docs/research-3d">research notes</TrackedLink>{" "}
+                show every step, including what did not work.
+              </p>
+              <SpinViewer />
             </div>
           </div>
         </section>

@@ -636,6 +636,13 @@ a { color: inherit; text-decoration: none; }
 .builder-action:disabled:hover { color: var(--cream-muted); border-color: var(--line-strong); }
 .builder-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 4px; }
 .builder-action { padding: 9px 14px; font-size: 13px; }
+.spin { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 56px; align-items: start; }
+.spin-stage-column { display: grid; gap: 18px; min-width: 0; }
+.spin-stage { display: grid; place-items: center; min-height: 420px; background: #100f0c; overflow: hidden; cursor: grab; touch-action: pan-y; user-select: none; }
+.spin-stage:active { cursor: grabbing; }
+.spin-figure { width: var(--spin-cell); height: var(--spin-cell); background-repeat: no-repeat; background-size: var(--spin-size); background-position: var(--spin-at); image-rendering: pixelated; }
+.spin-note { max-width: 520px; margin: 6px 0 0; color: var(--cream-muted); font-size: 16px; line-height: 1.65; }
+@media (max-width: 980px) { .spin { grid-template-columns: minmax(0, 1fr); gap: 32px; } .spin-stage { min-height: 340px; } }
 .cast-visuals { display: grid; gap: 40px; min-width: 0; }
 .cast-visuals > * { min-width: 0; }
 .cast-manifest pre { font-size: 12.5px; }
