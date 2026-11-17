@@ -20,6 +20,8 @@ Last updated 16 November 2026.
 | 10 | Let the views vote on each texel's colour | Our script | Colour error down another 1 to 4 on every subject and shape | Keep, as the default. |
 | 11 | Texture the carved shape the same way | Our script, marching cubes | Better than the mesh on the character and torch, worse on the two swords | Keep both shapes. Which is better depends on the object. |
 | 12 | Carved shape cut back to the mesh | Our script | No better than carving alone | Drop. |
+| 13 | Have an image model redraw the model's rough renders | PixelLab `edit_image`, `inpaint_image`, `correct_pixelart` | Clean sprites at angles the generator never drew: sixteen directions from eight, for 10 generations | Keep. This is the best result so far, and it changes what the 3D model is for. |
+| 14 | Paint the redrawn views back onto the model | Our script | Smoother, still muddy | Drop for now. The model is a guide, not the final picture. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -301,6 +303,55 @@ These numbers come from `texture.py` itself, which scores its render in place, s
 
 **Verdict.** Drop. The gaps it was meant to open are small at this size, and the mesh does not line up closely enough with the sprite to cut safely.
 
+## 13. Redrawing the rough renders with an image model
+
+**Question.** Everything up to step 12 tries to make the textured model look right by itself. What if the model only has to be roughly right, and an image model draws the final sprite from it?
+
+**Setup.** The carved, vote-textured character from step 11, rendered from sixteen directions: the eight the generator drew and the eight halfway between. Four ways of repairing the sixteen rough renders, all through PixelLab:
+
+| Method | Call | Cost |
+|---|---|---|
+| Tidy | `correct_pixelart`, strength 0.4, 16 frames | 0.1 |
+| Edit by instruction | `edit_image`, 16 frames in one call, told to remove specks and torn patches and keep pose and direction | 10 |
+| Edit by reference | `edit_image` with the true south sprite as the reference, 15 frames | 10 |
+| Guide sheet | `inpaint_image` on a 256×256 sheet: each true sprite beside the rough view next to it, only the rough ones masked open | 10 |
+
+**Result.** Ten rows. 1: the true sprites. 2 to 5: the model at those same eight directions, as rendered, tidied, edited by instruction, edited by reference (which has no first frame; it was the reference). 6 to 10: the eight directions in between, as rendered, tidied, edited by instruction, edited by reference, and from the guide sheet.
+
+![Four repair methods on the character, at the drawn directions and between them](../website/public/research/3d/repair-methods.png)
+
+- **Tidying does nothing useful.** It is built for stray pixels, not for a torn surface.
+- **The two edits and the guide sheet all return clean sprites,** at directions the generator never drew, in the same style and proportions as the eight it did. These are the first in-between views in this note that look like finished art.
+- **The outline survives.** Each redraw kept 93 to 100% of the rough render's outline, so the model is deciding the pose and the image model the surface.
+- **Edits move the figure.** `edit_image` re-centred some frames by up to six pixels; the guide sheet moved none. A redrawn frame has to be slid back to where its render was.
+- **The score does not see the improvement.** Against the true sprites, the instruction edit scores 36.3 colour error where the rough render scores 37.6, and fewer pixels within tolerance (39% against 49%), because the image model picks its own shades. The number says "no better"; the picture says otherwise. Colour error against one drawing was the wrong measure for this step.
+
+**A dressed character.** The same thing on a clothed one: the bare base with greaves, plate, cape and helm composited from the paperdoll layers, on an 80px canvas. It carved at 92%. Held items had to be left off: a sword is held at a different angle in every view, so the carve removes it.
+
+Top pair of rows: directions 1 to 8 as rendered from the model, then after `edit_image` by instruction. Bottom pair: directions 9 to 16. Every second figure is one the generator drew; the ones between are new.
+
+![The dressed knight in sixteen directions, rough and redrawn](../website/public/research/3d/repair-knight-turnaround.png)
+
+The redrawn in-between views are a clean, recognisable knight. They are also a little squat next to the drawn ones: the carve loses some of the horns' height and the head sits lower, and the redraw keeps the model's proportions. Editing by reference cleaned less than editing by instruction here.
+
+The sixteen directions are on the website as a viewer that turns the character, on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#turnaround), with a switch to the raw model.
+
+**Verdict.** Keep, and change direction. The 3D model does not have to look good. It has to put the right shapes and rough colours in the right place from any angle, and an image model does the drawing. Eight new directions cost 10 generations.
+
+## 14. Painting the redrawn views back onto the model
+
+**Question.** If the redrawn in-between views are clean, does projecting all sixteen onto the model give a clean texture?
+
+**Setup.** `EXTRA` in `texture.py` adds the eight redrawn views as extra cameras, so each texel has sixteen views to vote among.
+
+**Result.** Pairs of rows (drawn directions, then between): the eight-view texture; with the guide-sheet views added; with the instruction edits added; with the reference edits added.
+
+![The model textured from eight views and from sixteen](../website/public/research/3d/repair-reprojected.png)
+
+Slightly smoother, still blotchy, and the score against the sprites got worse (colour error 39 against 34.5), since the new views bring their own shades.
+
+**Verdict.** Drop for now. Sixteen separate drawings disagree as much as eight did. A texture stitched from separate drawings of a 64-pixel figure comes out muddy however the stitching is done, which is the lesson of steps 9 to 14 together.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -312,12 +363,17 @@ So nobody repeats them:
 - Despeckling the texture by darkness (step 10).
 - Rounding the carved voxels more before meshing: no effect on the scores.
 - Intersecting the carved shape with the generated mesh (step 12).
+- `correct_pixelart` on a torn render (step 13).
+- Projecting image-model redraws back onto the model (step 14).
 
 Two bugs worth remembering, because both produced plausible wrong pictures: glTF's axes turned into ours by swapping two of them is a mirror image, which silhouettes cannot detect; and a mesh whose faces point inward gets no texture at all, only fill.
 
 ## What is next
 
-- **Repair the texture as a picture.** The colour error has stopped falling with better geometry or better picking: on the character it is 34 to 38 whatever the shape. What is left is the sprites disagreeing with each other. An image model repainting the texture, or the rendered views, is the untried step, and it is the one the Discord pipeline leans on.
+- **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
+- **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
+- **Held items.** Carve them separately, upright, and place them on the model the way the paperdoll layers place them on the sprite.
+- **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
 - **Remove baked shading.** The sprites are drawn lit from one side, and that light is now painted on the model.
@@ -352,7 +408,7 @@ No report was found of any of these being tested on pixel art.
 - [Voxify3D](https://arxiv.org/abs/2512.07834). Turns a mesh into voxel art with a small palette.
 - [Blender to Pixels](https://astropulse.itch.io/blender-to-pixels). Renders a 3D scene as pixel art.
 
-**The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, and steps 9 to 11 the unwrap and texture part, without the image model.
+**The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, steps 9 to 11 the unwrap and texture part, and step 13 the image model, on the rendered views and not on the unwrapped texture.
 
 No public tool was found that takes several directional pixel sprites and returns a mesh.
 
@@ -362,6 +418,7 @@ No public tool was found that takes several directional pixel sprites and return
 - Carving, tilt check, skeleton and rendering: nothing. They run locally in seconds.
 - Hunyuan3D: nothing but about two minutes of GPU time per mesh, after a 4.93 GB download.
 - Staged texturing: nothing. About six seconds a mesh on a laptop.
+- Image-model redraws in steps 13 and 14: 50.1 generations for six calls.
 
 ## Running the scripts
 

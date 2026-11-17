@@ -8,6 +8,7 @@ env:   SKIP=north-east,north-west   views to leave out (drawn tilted)
        SIGMA=0                      how much the carved voxels are blurred before meshing
        LEVEL=0.9                    where the surface is cut: 0.5 is half a voxel outside the voxel centres, near 1 is through them
        COVER=touch|centre           a rendered pixel is covered when the shape touches it, or only when it covers its centre
+       EXTRA=<dir>                  repaired in-between views to take colour from as well (see stage 3)
        TAG=carved                   added to the output file names
        FACES=30000                  triangle budget after simplifying
        MODE=best|vote|blend         one view per texel; the view nearest the consensus of all that see it; or a blend snapped to the palette
@@ -212,13 +213,26 @@ used = tex_face >= 0
 P = tex_pos[used]; N = wnormals[tex_face[used]]
 
 # ---- stage 3: project each sprite onto the texels it can see
+# The views colour is taken from: the sprites, plus any in-between views an image model has cleaned up
+# (EXTRA=<dir> holding <name>-mid-<v>.png, each the model's render halfway between view v and the next,
+# repaired and slid back to where the render was).
+def origin(v): return centre[v][0] + fit["off"][v][0], centre[v][1] + fit["off"][v][1]
+p_img = [sprites[v] for v in USE]; p_az = [v * math.pi / 4 for v in USE]; p_org = [origin(v) for v in USE]; p_name = [D[v] for v in USE]
+EXTRA = os.environ.get("EXTRA")
+if EXTRA:
+    for v in range(8):
+        f = f"{EXTRA}/{name}-mid-{v}.png"
+        if not os.path.exists(f): continue
+        a, c = origin(v), origin((v + 1) % 8)
+        p_img.append(np.array(Image.open(f).convert("RGBA"))); p_az.append((v + 0.5) * math.pi / 4); p_org.append(((a[0] + c[0]) / 2, (a[1] + c[1]) / 2)); p_name.append(f"mid-{v}")
+p_alpha = [im[:, :, 3] > 127 for im in p_img]; NP = len(p_img)
 dense, dense_face = trimesh.sample.sample_surface(wmesh, 600000, seed=11)
 dense = np.asarray(dense)
 Z = 3  # depth buffer cells per sprite pixel
-weights = np.full((len(P), 8), -np.inf); colours = np.zeros((len(P), 8, 3), np.uint8)
-for v in USE:
-    az = v * math.pi / 4; cam = to_camera(az, fit["theta"])
-    ox, oy = centre[v][0] + fit["off"][v][0], centre[v][1] + fit["off"][v][1]
+weights = np.full((len(P), NP), -np.inf); colours = np.zeros((len(P), NP, 3), np.uint8)
+for v in range(NP):
+    az = p_az[v]; cam = to_camera(az, fit["theta"])
+    ox, oy = p_org[v]
     u, s, d = project(dense, az, fit["theta"])
     zx = np.floor((u + ox) * Z).astype(int); zy = np.floor((-s + oy) * Z).astype(int)
     ok = (zx >= 0) & (zy >= 0) & (zx < size * Z) & (zy < size * Z)
@@ -236,20 +250,20 @@ for v in USE:
     zx, zy = np.clip(np.floor(fx * Z).astype(int), 0, size * Z - 1), np.clip(np.floor(fy * Z).astype(int), 0, size * Z - 1)
     inside = (px >= 0) & (py >= 0) & (px < size) & (py < size)
     pxc, pyc = np.clip(px, 0, size - 1), np.clip(py, 0, size - 1)
-    rgba = sprites[v][pyc, pxc]
+    rgba = p_img[v][pyc, pxc]
     opaque = inside & (rgba[:, 3] > 127)
     # The mesh is not the sprite's exact shape, so a texel near the edge can land on the outline or just
     # outside it. Within SNAP pixels, it takes the nearest pixel inside the sprite instead.
-    am = np.pad(alpha[v], 1); rim = ~(am[:-2, 1:-1] & am[2:, 1:-1] & am[1:-1, :-2] & am[1:-1, 2:])
-    interior = alpha[v] & ~(rim & (sprites[v][:, :, :3].max(2) < 70))
+    am = np.pad(p_alpha[v], 1); rim = ~(am[:-2, 1:-1] & am[2:, 1:-1] & am[1:-1, :-2] & am[1:-1, 2:])
+    interior = p_alpha[v] & ~(rim & (p_img[v][:, :, :3].max(2) < 70))
     dist, (iy, ix) = distance_transform_edt(~interior, return_indices=True)
     snap = dist[pyc, pxc]; near_ok = (snap > 0) & (snap <= SNAP) & (np.abs(fx - size / 2) < size) & (np.abs(fy - size / 2) < size)
-    rgba = np.where(near_ok[:, None], sprites[v][iy[pyc, pxc], ix[pyc, pxc]], rgba)
+    rgba = np.where(near_ok[:, None], p_img[v][iy[pyc, pxc], ix[pyc, pxc]], rgba)
     opaque = opaque | near_ok
     visible = d <= zbuf[zy * size * Z + zx] + 1.0
     facing = N @ cam
     # An outline pixel: dark, and touching the transparent background.
-    a = np.pad(alpha[v], 1)
+    a = np.pad(p_alpha[v], 1)
     edge = ~(a[:-2, 1:-1] & a[2:, 1:-1] & a[1:-1, :-2] & a[1:-1, 2:])
     outline = edge[pyc, pxc] & (rgba[:, :3].max(1) < 70) & ~near_ok
     # Outline pixels never give colour: the render draws its own outline.
@@ -260,8 +274,8 @@ owner = weights.argmax(1); seen = np.isfinite(weights.max(1))
 # at every boundary between two views. Each texel moves to the view most of its neighbours in 3D use.
 for _ in range(int(os.environ.get("SMOOTH", "2"))):
     idx = np.nonzero(seen)[0]; near = idx[cKDTree(P[idx]).query(P[idx], k=min(13, len(idx)))[1]]
-    votes = np.zeros((len(idx), 8), int)
-    for v in range(8): votes[:, v] = (owner[near] == v).sum(1)
+    votes = np.zeros((len(idx), NP), int)
+    for v in range(NP): votes[:, v] = (owner[near] == v).sum(1)
     votes = np.where(np.isfinite(weights[idx]), votes, -1)
     owner[idx] = votes.argmax(1)
 texel = colours[np.arange(len(P)), owner].astype(np.float64)
@@ -277,7 +291,7 @@ if MODE == "vote":
 if MODE == "blend":
     w = np.where(np.isfinite(weights), np.maximum(weights, 0) ** 4, 0)
     mix = (colours * w[:, :, None]).sum(1) / np.maximum(w.sum(1), 1e-9)[:, None]
-    palette = np.unique(np.concatenate([sprites[v][alpha[v]][:, :3] for v in USE]), axis=0).astype(np.float64)
+    palette = np.unique(np.concatenate([p_img[v][p_alpha[v]][:, :3] for v in range(NP)]), axis=0).astype(np.float64)
     texel = palette[cKDTree(palette).query(mix)[1]]
 
 # ---- stage 4: fill what no view could see from the nearest texel that was seen, in 3D
@@ -300,7 +314,7 @@ if len(pad):
     tex[~used, :3] = tex[used][cKDTree(flat_used).query(pad)[1], :3]
 Image.fromarray(np.dstack([tex[:, :, :3], np.where(used, 255, 0).astype(np.uint8)])[::-1]).save(f"{out}/{name}{TAG}.texture.png")
 VIEW_COLOURS = np.array([[230, 80, 80], [230, 160, 60], [220, 220, 70], [120, 210, 80], [70, 200, 200], [80, 130, 230], [150, 90, 220], [220, 90, 190]], np.uint8)
-vm = np.zeros((R, R, 4), np.uint8); vm[used, :3] = np.where(seen[:, None], VIEW_COLOURS[owner], 40); vm[used, 3] = 255
+vm = np.zeros((R, R, 4), np.uint8); vm[used, :3] = np.where(seen[:, None], VIEW_COLOURS[owner % 8], 40); vm[used, 3] = 255
 Image.fromarray(vm[::-1]).save(f"{out}/{name}{TAG}.views.png")
 
 # A mesh anyone can open: the fitted shape with its texture, z-up turned back to glTF's y-up.
@@ -351,4 +365,4 @@ print(json.dumps({"name": name + TAG, "faces": len(wfaces), "texture": R, "mode"
     "fit": {"mirror": fit["mirror"], "yawDeg": round(math.degrees(fit["yaw"]) % 360, 1), "elevationDeg": round(math.degrees(fit["theta"]), 1), "scale": [round(c, 2) for c in fit["sc"]], "coarseTop": coarse},
     "silhouetteMatch": round(sc[:, 0].mean() * 100, 1), "colourError": round(sc[:, 1].mean(), 1), "pixelsClose": round(sc[:, 2].mean() * 100, 1),
     "texelsUsed": int(used.sum()), "texelsSeen": round(seen.mean() * 100, 1),
-    "texelsPerView": {D[v]: int(((owner == v) & seen).sum()) for v in USE}}))
+    "texelsPerView": {p_name[v]: int(((owner == v) & seen).sum()) for v in range(NP)}}))
