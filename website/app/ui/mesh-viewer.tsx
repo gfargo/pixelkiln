@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const SUBJECTS = [
   { id: "parts", label: "Dressed from parts" },
+  { id: "cards", label: "Sprite cards on bones" },
   { id: "knight", label: "Dark knight, one piece" },
   { id: "hero", label: "Bare base" },
 ] as const;
@@ -19,6 +20,17 @@ function subscribeReducedMotion(callback: () => void) {
   list.addEventListener("change", callback);
   return () => list.removeEventListener("change", callback);
 }
+
+/** What research/scripts/cards.py writes: every sprite cut into one piece per bone, for each of eight views. */
+type CardSheet = {
+  atlas: [number, number];
+  metresPerPixel: number;
+  tilt: number;
+  layers: string[];
+  behind: string[];
+  axes: Record<string, [number, number, number]>;
+  pieces: Array<{ bone: string; layer: string; view: number; x: number; y: number; w: number; h: number; dx: number; dy: number }>;
+};
 
 type Controls = {
   setWalking: (on: boolean) => void;
@@ -149,6 +161,7 @@ export function MeshViewer() {
       const skin: Array<{ piece: import("three").Object3D; hiddenBy: string[] }> = [];
       const wornNow = new Map<string, boolean>();
       const showSkin = () => { for (const { piece, hiddenBy } of skin) piece.visible = !hiddenBy.some((item) => wornNow.get(item) ?? true); };
+      let updateCards: (() => void) | null = null;
       let pixelOn = true;
       let playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -203,6 +216,87 @@ export function MeshViewer() {
         showSkin();
         setItems([...parts.keys()]);
         setWorn(Object.fromEntries([...parts.keys()].map((name) => [name, true])));
+        if (subject === "cards") {
+          // The mesh is only here for its bones. What is drawn is the sprites themselves, cut into a piece per
+          // bone: each bone carries a flat card, turned to face the camera, showing the piece from whichever
+          // of the eight drawn views looks at that bone most nearly the way the camera does now.
+          const sheet = (await (await fetch("/models/cards.json")).json()) as CardSheet;
+          const atlas = await new THREE.TextureLoader().loadAsync("/models/cards.png");
+          if (cancelled) return;
+          atlas.magFilter = atlas.minFilter = THREE.NearestFilter;
+          atlas.generateMipmaps = false;
+          atlas.colorSpace = THREE.SRGBColorSpace;
+          gltf.scene.traverse((node) => { if ((node as import("three").Mesh).isMesh) node.visible = false; });
+          parts.clear();
+          skin.length = 0;
+          post.uniforms.count.value = 0; // these are the drawn pixels already
+          const paper = new THREE.MeshBasicMaterial({ map: atlas, alphaTest: 0.5, side: THREE.DoubleSide });
+          const unit = sheet.metresPerPixel;
+          const facing = Array.from({ length: 8 }, (_, view) => {
+            const turn = (view * Math.PI) / 4;
+            const right = new THREE.Vector3(Math.cos(turn), 0, Math.sin(turn));
+            const up = new THREE.Vector3(Math.sin(turn) * Math.sin(sheet.tilt), Math.cos(sheet.tilt), -Math.cos(turn) * Math.sin(sheet.tilt));
+            const toCamera = new THREE.Vector3().crossVectors(right, up);
+            return { toCamera, turned: new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, toCamera)) };
+          });
+          type Card = { mesh: import("three").Mesh; layer: string; order: number };
+          const carried = new Map<string, { bone: import("three").Object3D; axis: import("three").Vector3; index: number; views: Card[][] }>();
+          const cardRoot = new THREE.Group();
+          for (const piece of sheet.pieces) {
+            const bone = gltf.scene.getObjectByName(piece.bone);
+            if (!bone) continue;
+            if (!carried.has(piece.bone)) {
+              carried.set(piece.bone, { bone, axis: new THREE.Vector3(...sheet.axes[piece.bone]), index: carried.size, views: Array.from({ length: 8 }, () => []) });
+            }
+            const shape = new THREE.PlaneGeometry(piece.w * unit, piece.h * unit);
+            shape.translate((piece.dx + piece.w / 2) * unit, -(piece.dy + piece.h / 2) * unit, 0);
+            const left = piece.x / sheet.atlas[0], right = (piece.x + piece.w) / sheet.atlas[0];
+            const top = 1 - piece.y / sheet.atlas[1], bottom = 1 - (piece.y + piece.h) / sheet.atlas[1];
+            shape.setAttribute("uv", new THREE.Float32BufferAttribute([left, top, right, top, left, bottom, right, bottom], 2));
+            const mesh = new THREE.Mesh(shape, paper);
+            mesh.visible = false;
+            mesh.frustumCulled = false;
+            cardRoot.add(mesh);
+            carried.get(piece.bone)!.views[piece.view].push({ mesh, layer: piece.layer, order: sheet.layers.indexOf(piece.layer) });
+          }
+          scene.add(cardRoot);
+          const at = new THREE.Vector3(), eye = new THREE.Vector3(), seen = new THREE.Vector3(), normal = new THREE.Vector3(), back = new THREE.Vector3();
+          const turn = new THREE.Quaternion(), undo = new THREE.Quaternion(), face = new THREE.Quaternion(), final = new THREE.Quaternion();
+          updateCards = () => {
+            gltf.scene.updateMatrixWorld(true);
+            for (const { bone, axis, index, views } of carried.values()) {
+              bone.getWorldPosition(at);
+              bone.getWorldQuaternion(turn);
+              eye.copy(camera.position).sub(at).normalize();
+              seen.copy(eye).applyQuaternion(undo.copy(turn).invert());
+              // Prefer the view that sees the bone as end-on or side-on as the camera now does, then the nearest.
+              const lean = axis.dot(seen);
+              let best = 0, bestScore = -Infinity;
+              for (let view = 0; view < 8; view++) {
+                const score = seen.dot(facing[view].toCamera) - 3 * Math.abs(axis.dot(facing[view].toCamera) - lean);
+                if (score > bestScore) { bestScore = score; best = view; }
+              }
+              normal.copy(facing[best].toCamera).applyQuaternion(turn);
+              face.setFromUnitVectors(normal, eye);
+              final.copy(face).multiply(turn).multiply(facing[best].turned);
+              back.set(0, 0, -1).applyQuaternion(turn);
+              for (let view = 0; view < 8; view++) {
+                for (const card of views[view]) {
+                  const shown = view === best && (card.order === 0 || (wornNow.get(card.layer) ?? true));
+                  card.mesh.visible = shown;
+                  if (!shown) continue;
+                  // Later layers sit a few millimetres nearer the camera; a layer that hangs behind the body
+                  // moves back or forward with the side the camera is on.
+                  const nearer = 0.004 * card.order + 0.0003 * index + (sheet.behind.includes(card.layer) ? 0.12 * eye.dot(back) : 0);
+                  card.mesh.position.copy(at).addScaledVector(eye, nearer);
+                  card.mesh.quaternion.copy(final);
+                }
+              }
+            }
+          };
+          setItems(sheet.layers.slice(1));
+          setWorn(Object.fromEntries(sheet.layers.slice(1).map((name) => [name, true])));
+        }
         scene.add(gltf.scene);
         helper = new THREE.SkeletonHelper(gltf.scene);
         helper.visible = false;
@@ -226,6 +320,7 @@ export function MeshViewer() {
         const delta = clock.getDelta();
         mixer?.update(delta);
         orbit.update();
+        updateCards?.();
         if (pixelOn) {
           renderer.setRenderTarget(target);
           renderer.clear();
@@ -348,7 +443,18 @@ export function MeshViewer() {
             </button>
           </div>
         </div>
-        {subject === "parts" ? (
+        {subject === "cards" ? (
+          <p className="spin-note">
+            Drag to turn it. Nothing here is a textured mesh. Each bone
+            carries a flat card that faces you and shows a piece of the
+            drawn sprite, taken from whichever of the eight directions
+            fits how you see that bone now. A hidden mesh says which
+            pixels belong to which bone, and the same skeleton and walk
+            move the cards. The pixels are the sprites&apos; own. Joints
+            open and overlap as limbs turn, and only eight directions are
+            drawn.
+          </p>
+        ) : subject === "parts" ? (
           <p className="spin-note">
             Drag to turn it. The body and each thing it wears are separate
             meshes on one skeleton, in one file. Each item was drawn as its

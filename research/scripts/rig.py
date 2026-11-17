@@ -23,6 +23,7 @@ Environment:
   COVER    how near an item's surface must be for the skin to count as covered, in sprite pixels (default 1.2)
   FIT      how far above the skin an item is moved when it lands inside the body, in sprite pixels (default 0.6; 0 is off)
   BURIED   how deep an inward-facing item triangle must be to be dropped (default 1.5)
+  SKIN     also write this .npz for cards.py: the body in the sprites' frame and the bone that owns each vertex
   TEX      shrink textures to this many pixels a side
   PALETTE  <sprite-dir>:<name>, the sprites whose colours are stored on the materials; COLOURS of them (default 24)
   CELL     the size of each preview picture
@@ -186,6 +187,9 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
 height = world[:, 2].max() - world[:, 2].min(); S = 1.8 / height; floor = world[:, 2].min()
 def gl(p): p = np.atleast_2d(p); return np.stack([p[:, 0], p[:, 2] - floor, -p[:, 1]], 1) * S
 pos = gl(world).astype(np.float32); jpos = gl(head_pos)
+if os.environ.get("SKIN"):  # what cards.py needs: the body in the sprites' frame, and the bone that owns each vertex
+    np.savez(os.environ["SKIN"], world=world, faces=faces, owner=joints_attr[np.arange(len(world)), weights_attr.argmax(1)],
+             names=np.array(names), head=head_pos, tail=tail_pos, scale=S, floor=floor)
 normals = trimesh.Trimesh(pos, faces, process=False).vertex_normals.astype(np.float32)
 
 # ---- a walk: thighs and arms swing, knees bend on the back swing

@@ -38,6 +38,7 @@ Last updated 17 November 2026.
 | 28 | The body and four items as separate meshes on one skeleton | Our script | One .glb, items switch on and off, all walk together | Keep. Painted in step 29. |
 | 29 | Paint the body and each worn mesh before cutting the item out | Hunyuan3D paint stage, our bake | Clean armour, cape and skin in place of speckle; colours drift cooler and the gold is duller | Keep. The colour drift is handled in step 30. |
 | 30 | Hide the skin under what is worn, and bake each item in its own colours | Our script | The body is six pieces, each hidden while its item is on; orange flecks in the walk turned out to be dulled gold snapped to skin colour, and are gone | Keep. |
+| 31 | Draw the character as sprite cards on the skeleton, with no textured mesh shown | Our script, three.js | Crisp drawn pixels from any angle, walking, with items that switch off | Keep as a second way to show a character. Eight directions and open joints are the limits. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -735,6 +736,36 @@ Not checked: whether the rim of skin kept under an item's edge is enough when a 
 
 **Verdict.** Keep both. A wrong guess about the flecks cost a step, and the test that settled it was turning the pixel look off.
 
+## 31. Sprite cards on the skeleton
+
+**Question.** Steps 26 to 30 show a painted mesh, and every flaw in the paint is on screen. The Cor Mundi Studios short (see [what other people are doing](#what-other-people-are-doing)) shows the sprites themselves, as a flat card per body part moved by a rig, with a mesh underneath that is never seen. Do the pieces made so far add up to that?
+
+**Setup.** No new art and no generations.
+
+- *Cutting.* [`scripts/cards.py`](../research/scripts/cards.py) draws the body mesh into each of the eight sprite views, coloured by the bone that owns each point (`rig.py` writes that with `SKIN=<file>`). Every sprite pixel takes the bone of the mesh under it, or of the nearest pixel that has one. Each sprite and each item layer is then cut into one piece per bone, reaching two pixels into its neighbours to cover the joints. The helm goes whole on the head and the cape whole on the spine.
+- *The sheet.* 259 pieces from five layers pack into one 512 by 128 picture of 45 KB, with a list of where each piece is and how far its corner is from its bone's joint.
+
+![The packed pieces: capes and helms whole, then bodies, limbs and armour cut by bone](../website/public/research/3d/cards-atlas.png)
+
+- *Drawing.* In the viewer each bone carries a card turned to face the camera. The camera's direction is taken into the bone's own frame, and the card shows the piece from the drawn view that best matches it. A view is preferred when it sees the bone as end-on or as side-on as the camera now does: an arm drawn sticking out sideways and then lowered by the walk is seen side-on from the character's side, so it uses the front view's arm, turned to hang down. The plain "nearest direction" rule picked the side view's arm, which is a foreshortened stub.
+- *Order.* Cards sit at their bones, so the near arm is in front of the body and the far arm behind it with no rule. Item layers sit a few millimetres nearer the camera than the body. The cape moves behind or in front with the side the camera is on.
+- *Motion.* The same fifteen bones and walk as the mesh. The file that carries them is the body mesh with a 64 pixel texture, 1.3 MB, most of which a real use would drop.
+
+**Result.** Front, side and back standing, and the side walking, in the viewer with the pixel look on:
+
+![The knight drawn as sprite cards, from the front, side, back, and walking](../website/public/research/3d/cards-viewer.png)
+
+- **It is the sprite, in motion, from any angle.** The emblem, the trim and the helm's eyes are the drawn pixels, with none of the paint stage's blur or colour drift.
+- **Items switch on and off** as layers, as in the 2D builder, and the walk moves all of them.
+- **It worked on the first run,** which says the camera fit, the joints and the bone ownership from the earlier steps agree with each other.
+- **Between the eight directions the picture is one of the eight,** turned to face the camera, so the character snaps from view to view as it turns.
+- **Pieces are rotated pictures,** so a lowered arm is the raised arm's pixels on a slant, and the joints overlap or open a little as limbs swing.
+- **There is no lighting.** The short lights its cards from the hidden mesh; that was not tried.
+
+Not checked: sixteen directions (step 13 could supply them), any engine other than three.js, and poses far from the drawn one.
+
+**Verdict.** Keep, beside the painted mesh and not instead of it. The cards are sharper today; the mesh is the only one that can be lit, seen from above, or posed freely.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -764,7 +795,8 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
 - **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
 - **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
-- **Sprite cards on the skeleton.** The approach in the Cor Mundi Studios short (see below): show each body part as a card with a sixteen-direction sheet, placed by the bones, and keep the mesh for lighting only. It would sidestep the rough textures, since the pixels shown are the drawn ones.
+- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, at higher resolution, and pixelate afterwards if wanted. Not started. Candidates: larger and upscaled reference pictures for the paint stage, more views, a newer paint model, and repacking each item's texture so it uses the whole picture.
+- **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
 - **Held items.** Carve them separately, upright, and place them on the model the way the paperdoll layers place them on the sprite.
@@ -812,7 +844,7 @@ No report was found of any of these being tested on pixel art.
 
 **The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, steps 9 to 11 the unwrap and texture part, and step 13 the image model, on the rendered views and not on the unwrapped texture.
 
-**Sprite cards on a 3D skeleton.** [A short from Cor Mundi Studios](https://www.youtube.com/shorts/84clZXpwRc0) (28 seconds, read from its transcript on 17 November 2026) shows a 2.5D player character in Unreal Engine 5. Each body part is a flat card with its own sprite sheet in sixteen directions. Under the cards is a 3D mesh that is not what the player sees: it carries the lighting and the bones, and the bones tell each card where to be and which direction to show. The picture stays hand-drawn pixels and the motion comes from a rig. It was not tried here. The pieces exist: sixteen directions (step 13), parts as separate layers (step 26) and a skeleton (step 16).
+**Sprite cards on a 3D skeleton.** [A short from Cor Mundi Studios](https://www.youtube.com/shorts/84clZXpwRc0) (28 seconds, read from its transcript on 17 November 2026) shows a 2.5D player character in Unreal Engine 5. Each body part is a flat card with its own sprite sheet in sixteen directions. Under the cards is a 3D mesh that is not what the player sees: it carries the lighting and the bones, and the bones tell each card where to be and which direction to show. The picture stays hand-drawn pixels and the motion comes from a rig. Step 31 tries it with eight directions and no lighting.
 
 No public tool was found that takes several directional pixel sprites and returns a mesh.
 
@@ -875,6 +907,10 @@ TURNS=0 CAMERA=<body.camera.json> python3 research/scripts/texture.py <sprites> 
 TURNS=0 CAMERA=<body.camera.json> python3 research/scripts/texture.py <sprites> <mask> <mesh-folder>/worn-mv.glb <tex>
 python3 research/scripts/cut_item.py <tex>/<worn>.textured.glb <tex>/<mask>.textured.glb <item.glb>
 ITEMS="Helm=<helm.glb>:Head;Cape=<cape.glb>:Hips,Spine;Cuirass=<cuirass.glb>" python3 research/scripts/rig.py <body.textured.glb> <body.rig.json> - - <out.glb>
+
+# Sprite cards (step 31): the bone that owns each vertex, then the sprites cut into pieces per bone.
+SKIN=<skin.npz> python3 research/scripts/rig.py <body.textured.glb> <body.rig.json> - - <skeleton.glb>
+LAYERS="Body=<body>;Cape=<cape>:Spine:behind;Helm=<helm>:Head" python3 research/scripts/cards.py <skin.npz> <body.camera.json> <sprites> <out-prefix>
 
 # Draw textured meshes large, one row each.
 python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>
