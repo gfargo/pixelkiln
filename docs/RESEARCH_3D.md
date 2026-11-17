@@ -28,6 +28,11 @@ Last updated 16 November 2026.
 | 18 | Flat base with trusted sprite pixels laid back on top | Our script | Eyes and trim return; the tearing does not change | Drop. The tearing is in the shape, not the shading. |
 | 19 | Use the Hunyuan3D mesh for the knight, not the carved shape | Hunyuan3D-2mv | Real horns, separate arms and legs; the same texturing reads far better | Keep for complex characters. No gain on the bare character. |
 | 20 | Paint the mesh with the paint stage, once per sprite direction | Hunyuan3D-2 paint | Each sprite redrawn to fit the mesh; a clean texture from every side | Keep. The best texture in this note. |
+| 21 | Redraw the character in an A-pose before meshing | PixelLab character state | Arms clear of the body in all eight views, for 10 generations a character | Keep. The mesh and the rig both need it. |
+| 22 | Round the pixel edges off the pictures the mesh model sees | Our script, Hunyuan3D-2mv | The bare character goes from a figure made of boxes to a sculpted body with a face | Keep. The largest gain in shape since step 8. |
+| 23 | Bake the painted views on this machine, with side views and colour correction | Our script | 24 views from 8 passes, no visible seams; the rim and colour-matching ideas made it worse | Keep the side views and the correction. Drop the other two. |
+| 24 | Measure skin weights through the inside of the mesh | Our script | The cape hangs from the shoulders, not the legs; the walk lowers the arms | Keep. |
+| 25 | Carry the sprites' palette in the file and snap to it when drawing | Our script, a shader in the viewer | Renders at sprite size read as sprites; the colour score still prefers the stitched texture | Keep the look. The score is the wrong judge. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -479,6 +484,113 @@ The baked result against the stitched texture of step 10, on the same meshes, dr
 
 **Verdict.** Keep. A generated mesh, fitted to the sprites' camera, painted once per sprite and rigged is the best route found so far from eight sprites to an animated 3D character.
 
+## 21. An A-pose, drawn by the generator
+
+**Question.** Every mesh so far was made from a character standing with its arms at its sides, so the arms fuse to the body or sit against it, and the rig has to guess where one ends and the other begins. 3D characters are modelled with the arms held out for this reason. Can the generator redraw ours that way?
+
+**Setup.** PixelLab's `create_character_state` on each character, with the edit "standing in an A-pose: both arms straight and held out to the sides, 45 degrees away from the body, hands open and well clear of the hips, legs straight and slightly apart with a clear gap between them", and the palette locked to the source. The knight is a composite of paperdoll layers, not a PixelLab character, so its eight sprites were first imported as one with `create_character` (a reference image plus seven direction images; nothing is generated). Cost: 10 generations for each state, 0.25 for the import.
+
+**Result.** Each pair is the character as it was and its A-pose.
+
+![The knight and the bare character, standing and in an A-pose, in eight directions](../website/public/research/3d/apose-sprites.png)
+
+- **The character survives.** Helmet, horns, fur, cape, emblem and palette are the same; only the pose moved.
+- **The eight views do not agree on the pose.** The knight's back view came out as a T-pose, arms level, while the other seven have them at 45 degrees. Triangulating the joints shows it: about 1.8 pixels of mean error on both characters, against 1.3 to 1.4 standing, and 4.5 at the wrists.
+- **The generated mesh tolerates it.** Carving needs the views to agree; the mesh model reads four views as hints, and built one consistent pose from them.
+
+**Verdict.** Keep. It is cheap, and steps 22 and 24 depend on it.
+
+## 22. Smooth pictures for the mesh model
+
+**Question.** The first A-pose mesh of the bare character came out as a figure made of boxes, with a cube for a head. Why?
+
+**Setup.** Since step 8 the four input pictures have been the 64 pixel sprites enlarged with hard edges, so every sprite pixel is a square eight pixels wide. Here they are enlarged with bicubic filtering instead, and the outline is cut through a blurred copy of the transparency so the stair steps round off. Nothing else changes. The fit in [`scripts/texture.py`](../research/scripts/texture.py) also gained `TURNS=0`: a bare, symmetric figure has the same outline from the front and the back, and the fit put this one in backwards until it was told the mesh already faces the way the south sprite does.
+
+**Result.** Each pair is the mesh from hard-edged inputs, then from smooth ones. Top pair: the bare character. Bottom pair: the knight.
+
+![Meshes from hard-edged and from smoothed inputs, for both characters](../website/public/research/3d/mesh-hard-vs-smooth.png)
+
+- **The model took the squares literally.** Given blocks, it built a block figure, 0.56 units deep where the smooth one is 0.61, with flat panels for a chest. Given a smooth picture it sculpts a head with a brow, ears, a chest, hands with fingers.
+- **The knight changes less,** because its hard-edged mesh was already recognisable, but the cape gains folds and the limbs round off.
+- **This was true all along.** The bare character's mesh in steps 8 and 19 was the block figure; step 19's finding that the generated mesh was "no gain" for it was measured on that.
+
+**Verdict.** Keep. One resize, and the largest gain in shape since step 8.
+
+## 23. Baking the painted views here, with side views
+
+**Question.** Step 20 left three faults in the texture: light rims on the cape, seams where two views meet, and only eight views to cover the whole surface. Baking was done inside the paint node, which offers no control over any of them.
+
+**Setup.** [`scripts/bake.py`](../research/scripts/bake.py) does the bake on this machine in seconds. It finds where the mesh sits in each painted view from the node's own render of it (the two agree on 99% of pixels), then gives each texel a blend of the views that see it, weighted by how squarely the surface faces each view. Four things were tried on top:
+
+- **Side views.** The paint model always paints six views at once, and step 20 threw five away. With `SPREAD=22` in [`scripts/hunyuan3d_paint_turn.py`](../research/scripts/hunyuan3d_paint_turn.py) two of the six cameras sit 22 degrees to either side of the sprite's own, and those are kept too: 24 views from the same eight passes, at no extra time.
+- **Colour correction.** Each painted view is moved back to its sprite's mean and spread per channel, because the model redraws the sprite a little lighter and warmer than it is.
+- **Rims.** Give a view no weight within a few pixels of its outline or of a jump in depth.
+- **Colour matching.** Shift each view's colour so views agree where they overlap.
+
+**Result.** The knight from the front, a diagonal, the side and the back. Top: eight views, colour corrected. Middle: 24 views. Bottom: eight views with the rim rule.
+
+![The knight baked from eight views, from 24 views, and with the rim rule](../website/public/research/3d/bake-settings.png)
+
+- **Side views smooth the joins.** With 24 views no two neighbours are more than 23 degrees apart, and the cape and collar lose the blocks that did not line up.
+- **The rim rule made it worse.** It pushes good views out near every edge and what replaces them is a view from the side, which has only its dark outline to offer there: speckles on the legs and helmet. The light rims of step 20 are gone without it. They came from the node's bake, not from the views.
+- **Colour matching made it worse too.** The sprites are lit from the front, so back views are darker on purpose. Matching them moved colours by up to 34 levels, and the bare character's colour error went from 36.5 to 38.5.
+- **Colour correction is a small gain:** colour error 37.4 to 36.5 on the bare character.
+
+The result against step 20's, each pair the old model then the new, from the front, a diagonal, the side and the back:
+
+![Step 20's painted models and the new ones, for both characters](../website/public/research/3d/apose-painted.png)
+
+**Verdict.** Keep the local bake, the side views and the colour correction. Rims and matching are still in the script, off.
+
+## 24. Skin weights measured through the mesh
+
+**Question.** Step 16 bound each vertex to the nearest bones in a straight line, with a penalty when the line left the carved shape. The cape, which hangs beside the legs, followed the legs. And the rest pose is now an A-pose, so a walk that only swings the arms walks with them held out.
+
+**Setup.** Three changes to [`scripts/rig.py`](../research/scripts/rig.py), used when it is given `-` in place of the carved voxels:
+
+- **The mesh is filled in** on a grid of half sprite pixels, and distance from a vertex to a bone is the shortest path through the inside of the body. A cape is a long way from a leg by that measure: up to the collar and back down.
+- **Elbows, wrists, knees and ankles move to the middle of the mesh's own limbs.** The joints were found on the sprites and the mesh is a redraw of them.
+- **The walk lowers the arms first,** turning each upper arm from where it rests to hanging 12 degrees out from straight down, and swings them from there.
+
+**Result.** Top row: which bone owns each part, by straight-line distance. Second row: through the mesh. Below: the walk from the front, three-quarters and the side.
+
+![Skin weights by straight line and through the mesh, and the knight's walk](../website/public/research/3d/rig-through-the-mesh.png)
+
+- **The cape is one piece now,** owned by the spine at the top and the hips below, where the straight-line weights cut it into strips that followed each leg bone.
+- **It is also rigid.** A leg swinging back passes through it. It wants bones of its own.
+- **Both files pass the glTF validator** with no errors or warnings: 1.8 MB for the knight, 1.7 MB for the bare character.
+
+**Verdict.** Keep.
+
+## 25. The pixel look, in the renderer
+
+**Question.** The painted texture is a 512 pixel painting. Drawn small it should still read as pixel art, in the sprites' colours. Does that belong in the texture or in the renderer?
+
+**Setup.**
+
+- *In the file.* `PALETTE=<dir>:<name>` in `rig.py` stores 24 of the sprites' colours on the material, as glTF extras. The colours are picked by spreading them across everything the sprites use. Pillow's median cut was tried first and gave the knight eight near-blacks and no gold.
+- *In the viewer.* The pixel look draws the scene into a small picture, then onto the screen with each pixel moved to the nearest stored colour and a dark line drawn inside the outline.
+- *In the score.* [`scripts/render.py`](../research/scripts/render.py) gained `SAMPLE=mean`: each sprite-size pixel is the average of the surface under it, then snapped to the palette, which is what a renderer that filters its texture shows. Before, it took the commonest single colour, which is noise on a detailed texture.
+
+**Result.** The bare character at sprite size. Row 1: the drawn sprites. Row 2: the stitched texture of step 10. Rows 3 and 4: the painted texture from the drawn directions and from the eight between.
+
+![The bare character at sprite size: sprites, stitched texture, painted texture](../website/public/research/3d/sprite-size-hero.png)
+
+The knight: sprites, the painted model from the same directions, and from the eight between.
+
+![The knight at sprite size: sprites and the painted model](../website/public/research/3d/sprite-size-knight.png)
+
+| | Stitched | Painted, commonest colour | Painted, averaged and snapped |
+|---|---|---|---|
+| Bare character, colour error | 30.0 | 36.7 | 35.1 |
+| Knight, colour error | 30.7 | 37.3 | 36.7 |
+
+- **The painted renders are shaded like sprites,** with a face and a lit side, in directions nobody drew. The stitched ones are flat.
+- **The score still says the opposite.** It compares pixel against pixel, and the mesh's arms are not where the sprite's arms are (the outlines agree 83% and 78%), so a clean shaded arm one pixel over scores worse than a flat smear in the right place.
+- **Snapping the texture itself was not pursued.** The texture's islands lie at every angle on the surface, so texture pixels cannot line up with screen pixels. The renderer is the place for it.
+
+**Verdict.** Keep the palette in the file and the snap in the renderer. The score needs replacing before it can steer anything.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -496,6 +608,9 @@ So nobody repeats them:
 - Laying trusted sprite pixels over a flat base (step 18).
 - Asking the paint stage for a single view (step 20): grey noise.
 - Letting the paint stage invent the sides from one front reference (step 17).
+- Enlarging sprites with hard pixel edges for the mesh model (step 22): it builds a figure out of boxes.
+- Keeping painted views away from their own outlines, and shifting views to agree in colour (step 23).
+- Median cut for a sprite palette (step 25): most of the colours go to near-blacks.
 
 Two bugs worth remembering, because both produced plausible wrong pictures: glTF's axes turned into ours by swapping two of them is a mirror image, which silhouettes cannot detect; and a mesh whose faces point inward gets no texture at all, only fill.
 
@@ -510,8 +625,10 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Remove baked shading.** The sprites are drawn lit from one side, and that light is now painted on the model.
 - **Open the rigged file in real engines.** Blender, Godot, Unity and Unreal each have their own expectations of a humanoid.
 - **More animations, and bones for capes and held items.**
-- **Clean up the painted texture.** Keep the grey ground off the silhouette, choose one view per region instead of blending where two disagree, and snap the result to the sprites' palette.
-- **A render of the painted mesh that reads as pixel art** at sprite size, which would also give in-between directions without the redraw of step 13.
+- **Bones for the cape,** now that it is one piece (step 24), and a check that a leg swinging back does not pass through it.
+- **A pose the eight views agree on.** The knight's A-pose has one view in a T-pose (step 21). Drawing the pose from a skeleton, not a sentence, might fix it.
+- **A score that forgives a pixel of offset** (step 25), so a clean render is not marked below a smear.
+- **A licence-clean route.** TRELLIS or TripoSG for the mesh, MV-Adapter for the paint, UniRig for the bones. Their licences were not checked here.
 - **Paint the carved shape too,** for the simple subjects where carving beats the generated mesh.
 - **Sprite normal maps.** PixelLab can draw a normal map for a sprite. Baked onto the mesh the same way, it would add surface relief the low-polygon mesh lacks. Not tried.
 - Can the eight-view input of the hosted Hunyuan3D 3.1 use all eight sprites? (Unverified; see below.)
@@ -556,6 +673,7 @@ No public tool was found that takes several directional pixel sprites and return
 - Staged texturing: nothing. About six seconds a mesh on a laptop.
 - Image-model redraws in steps 13 and 14: 50.1 generations for six calls.
 - The paint stage: no generations. A 9.2 GB download, then about six minutes of GPU time per character.
+- A-poses in step 21: 20 generations for the two states, 0.25 for importing the knight, 1.6 for sixteen joint estimates.
 
 ## Running the scripts
 
@@ -589,6 +707,16 @@ python3 research/scripts/rig.py <name.textured.glb> <name.rig.json> <name.vox> <
 
 # Texture a mesh with Hunyuan3D's paint stage, one pass per sprite direction. Needs the second ComfyUI of step 17.
 python3 research/scripts/hunyuan3d_paint_turn.py <name.textured.glb> <folder> <name> <out-folder>
+
+# The same, keeping two side views from each pass and leaving the bake to bake.py.
+SPREAD=22 STAGE=paint python3 research/scripts/hunyuan3d_paint_turn.py <name.textured.glb> <folder> <name> <out-folder>
+python3 research/scripts/bake.py <name.textured.glb> <out-folder>/<name>.views.json <bake-folder> <name>
+
+# Rig a mesh through its own inside, with the sprites' palette stored in the file.
+PALETTE=<folder>:<name> TEX=512 python3 research/scripts/rig.py <name.baked.glb> <name.rig.json> - - <out.glb> <preview.png>
+
+# Draw textured meshes large, one row each.
+python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>
 
 # The paint stage as published: one front reference, six invented views.
 python3 research/scripts/hunyuan3d_paint.py <mesh.glb> <reference.png> <out-folder> <name>

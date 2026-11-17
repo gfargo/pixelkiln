@@ -19,6 +19,7 @@ env:   SKIP=north-east,north-west   views to leave out (drawn tilted)
        SNAP=0                       how far, in sprite pixels, a texel may reach for the nearest pixel inside the sprite
        EDGE=0                       a depth jump, in sprite pixels, that marks a contour to keep colour away from; 0 turns it off
        SMOOTH=2                     rounds of agreeing with neighbouring texels on which view to use
+       TURNS=0,45,...               which eighth-turns of the mesh the fit may start from; 0 when the mesh is known to face south
 
 Needs numpy, scipy, pillow, trimesh, xatlas, fast-simplification.
 Writes <name>.texture.png, <name>.views.png, <name>.textured.glb, <name>.textured.png (a sheet:
@@ -118,12 +119,14 @@ if camera:
     if camera["elevation"] == 0:
         for v in range(8): cam_off[v][1] = math.floor(centre[v][1] + cam_off[v][1] + 0.5) - centre[v][1]
 coarse = []
+# A bare, symmetric figure looks the same from the front and the back in outline. TURNS=0 says the mesh already faces the way the south sprite does.
+TURNS = [int(t) // 45 for t in os.environ.get("TURNS", "0,45,90,135,180,225,270,315").split(",")]
 if has_mesh:
     height = np.mean([np.ptp(np.nonzero(alpha[v].any(1))[0]) + 1 for v in USE])
     extent = verts.max(0) - verts.min(0)
     best, best_s, tried = None, -1, []
     for mirror in (1, -1):
-        for turn in range(8):
+        for turn in TURNS:
             for deg in ([math.degrees(camera["elevation"])] if camera else (0, 10, 20, 30)):
                 th = math.radians(deg)
                 depth = max(extent[0], extent[2])

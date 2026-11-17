@@ -10,6 +10,7 @@ render slid to where it overlaps its sprite best.
 Environment:
   TOON=1   add three flat bands of light from the upper left
   COLOURS  reduce each render to this many colours taken from the sprites (default 0, off)
+  SAMPLE   mean: each pixel is the average of the surface under it, then snapped to COLOURS (default: its commonest colour)
 """
 import json, math, os, sys
 import numpy as np
@@ -39,11 +40,30 @@ if os.environ.get('TOON') == '1':
     smooth = soft.face_normals[faces]
     normal = np.stack([smooth[:, 0], -smooth[:, 2], smooth[:, 1]], 1)
 
+def pick_palette(pixels, count):
+    """Colours spread across everything the sprites use. Median cut spends most of its colours on the
+    commonest ones, which here are near-blacks; this starts from the distinct colours and keeps the ones
+    furthest apart, then settles each on the middle of the colours nearest it."""
+    distinct, uses = np.unique(pixels.reshape(-1, 3), axis=0, return_counts=True)
+    distinct = distinct.astype(np.float64)
+    if len(distinct) <= count: return distinct
+    chosen = [int(uses.argmax())]; gap = np.linalg.norm(distinct - distinct[chosen[0]], axis=1)
+    while len(chosen) < count:
+        chosen.append(int(gap.argmax())); gap = np.minimum(gap, np.linalg.norm(distinct - distinct[chosen[-1]], axis=1))
+    centres = distinct[chosen]
+    for _ in range(8):
+        nearest = np.linalg.norm(distinct[:, None] - centres[None], axis=2).argmin(1)
+        for k in range(count):
+            mine = nearest == k
+            if mine.any(): centres[k] = (distinct[mine] * uses[mine, None]).sum(0) / uses[mine].sum()
+    return centres
+
+
 palette = None
+WEIGH = np.array([0.55, 1.0, 0.4])  # green counts most when judging which palette colour is nearest
 if int(os.environ.get('COLOURS', '0')) > 0:
     pixels = np.concatenate([s[s[:, :, 3] > 127][:, :3] for s in sprites])
-    image = Image.fromarray(pixels[None].astype(np.uint8)).quantize(int(os.environ['COLOURS']), method=Image.MEDIANCUT)
-    palette = np.array(image.getpalette()[:3 * int(os.environ['COLOURS'])]).reshape(-1, 3).astype(np.float64)
+    palette = pick_palette(pixels.astype(np.uint8), int(os.environ['COLOURS']))
 
 
 def render(az):
@@ -67,6 +87,21 @@ def render(az):
         lit = normal[ok][front] @ (light / np.linalg.norm(light))
         band = np.where(lit > 0.55, 1.0, np.where(lit > 0.1, 0.8, 0.58))
         col = (col * band[:, None]).astype(np.int64)
+    if os.environ.get('SAMPLE') == 'mean':
+        # A detailed texture has many colours under one pixel. Their average, moved to the nearest palette colour,
+        # is what a renderer that filters its texture shows; the commonest single colour is noise.
+        total = np.zeros((size * size, 3)); np.add.at(total, cell, col)
+        count = np.bincount(cell, minlength=size * size)
+        image = np.zeros((size * size, 4), np.uint8); has = count > 0
+        rgb = total[has] / count[has, None]
+        if palette is not None:
+            rgb = palette[cKDTree(palette * WEIGH).query(rgb * WEIGH)[1]]
+        image[has, :3] = rgb; image[has, 3] = 255
+        image = image.reshape(size, size, 4)
+        alpha = np.pad(image[:, :, 3] > 0, 1)
+        edge = (image[:, :, 3] > 0) & ~(alpha[:-2, 1:-1] & alpha[2:, 1:-1] & alpha[1:-1, :-2] & alpha[1:-1, 2:])
+        image[edge, :3] = (image[edge, :3] * 0.3).astype(np.uint8)
+        return image
     # Each pixel takes its commonest colour, sorted into coarse bins, not the average: averages are mud.
     key = cell * 4096 + (col[:, 0] >> 4) * 256 + (col[:, 1] >> 4) * 16 + (col[:, 2] >> 4)
     keys, inverse, counts = np.unique(key, return_inverse=True, return_counts=True)

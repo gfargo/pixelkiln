@@ -21,8 +21,10 @@ Environment:
   STEPS    sampling steps (default 25)
   SEED     (default 1024)
   TEXTURE  texture size (default 1024)
-  POWER    how sharply a view's weight falls as the surface turns away from it (the node's own value is 4)
-  STAGE    paint, bake or both (default both)
+  SPREAD   also keep the views this many degrees to either side of each sprite's (default 0, off)
+  REF      hard (default) enlarges the sprite with hard pixel edges for the reference; smooth rounds them
+  STAGE    paint, bake or both (default both). The bake here is the node's own; bake.py does it on
+           this machine from the <name>.views.json this script writes, with control over rims and seams.
 """
 import io, json, math, os, subprocess, sys, time, urllib.error, urllib.parse, urllib.request, uuid
 import numpy as np
@@ -38,6 +40,11 @@ dirs = [D.index(d) for d in env('DIRS', ','.join(D)).split(',')]
 SIGN = int(env('SIGN', '-1'))
 VIEW = int(env('VIEW', '512'))
 STAGE = env('STAGE', 'both')
+SPREAD = int(env('SPREAD', '0'))  # the camera node takes whole degrees
+# The model paints six views at once. The first faces the sprite; with SPREAD the next two sit to either side of it.
+CAMERAS = [0, SPREAD, 360 - SPREAD, 180, 90, 270] if SPREAD else [0, 90, 180, 270, 0, 180]
+ELEVATIONS = [0, 0, 0, 0, 0, 0] if SPREAD else [0, 0, 0, 0, 90, -90]
+KEEP = 3 if SPREAD else 1
 os.makedirs(out, exist_ok=True)
 
 
@@ -89,7 +96,14 @@ def reference(v):
     sprite = Image.open(f'{sprite_dir}/{name}-{D[v]}.png').convert('RGBA')
     sprite = sprite.crop(sprite.getbbox())
     scale = min(440 // sprite.width, 440 // sprite.height)
-    sprite = sprite.resize((sprite.width * scale, sprite.height * scale), Image.NEAREST)
+    if env('REF', 'hard') == 'smooth':
+        pre = np.array(sprite).astype(np.float32); pre[..., :3] *= pre[..., 3:4] / 255
+        big = np.array(Image.fromarray(pre.astype(np.uint8), 'RGBA').resize((sprite.width * scale, sprite.height * scale), Image.BICUBIC)).astype(np.float32)
+        big[..., :3] = big[..., :3] / np.maximum(big[..., 3:4], 1) * 255
+        big[..., 3] = np.clip((big[..., 3] - 96) * 4, 0, 255)
+        sprite = Image.fromarray(big.clip(0, 255).astype(np.uint8), 'RGBA')
+    else:
+        sprite = sprite.resize((sprite.width * scale, sprite.height * scale), Image.NEAREST)
     ground = Image.new('RGBA', (512, 512), (204, 204, 204, 255))
     ground.alpha_composite(sprite, ((512 - sprite.width) // 2, (512 - sprite.height) // 2))
     path = f'{out}/{name}-ref-{v}.png'
@@ -115,7 +129,7 @@ if STAGE in ('paint', 'both'):
             'uv': {'class_type': 'Hy3DMeshUVWrap', 'inputs': {'trimesh': ['mesh', 0]}},
             # The model was trained to paint six views together; asked for one alone it returns grey noise. Only the first is kept.
             'cam': {'class_type': 'Hy3DCameraConfig', 'inputs': {
-                'camera_azimuths': '0, 90, 180, 270, 0, 180', 'camera_elevations': '0, 0, 0, 0, 90, -90',
+                'camera_azimuths': ', '.join(f'{a:g}' for a in CAMERAS), 'camera_elevations': ', '.join(str(e) for e in ELEVATIONS),
                 'view_weights': '1, 0.1, 0.5, 0.1, 0.05, 0.05', 'camera_distance': 1.45, 'ortho_scale': 1.2}},
             'render': {'class_type': 'Hy3DRenderMultiView', 'inputs': {
                 'trimesh': ['uv', 0], 'render_size': 1024, 'texture_size': 1024, 'camera_config': ['cam', 0], 'normal_space': 'world'}},
@@ -128,14 +142,24 @@ if STAGE in ('paint', 'both'):
             'view': {'class_type': 'SaveImage', 'inputs': {'images': ['paint', 0], 'filename_prefix': f'paint/{name}_turn{v}'}},
             'normal': {'class_type': 'SaveImage', 'inputs': {'images': ['render', 0], 'filename_prefix': f'paint/{name}_turnnormal{v}'}},
         })
-        open(f'{out}/{name}-view-{v}.png', 'wb').write(fetch(outputs['view']['images'][0]))
-        open(f'{out}/{name}-normal-{v}.png', 'wb').write(fetch(outputs['normal']['images'][0]))
+        for k in range(KEEP):
+            tag = f'{v}' if k == 0 else f'{v}{"ab"[k - 1]}'
+            open(f'{out}/{name}-view-{tag}.png', 'wb').write(fetch(outputs['view']['images'][k]))
+            open(f'{out}/{name}-normal-{tag}.png', 'wb').write(fetch(outputs['normal']['images'][k]))
         print(D[v], f'{time.time() - started:.0f}s', flush=True)
     strip = Image.new('RGB', (256 * len(dirs), 768), (204, 204, 204))
     for index, v in enumerate(dirs):
         for row, kind in enumerate(('ref', 'normal', 'view')):
             strip.paste(Image.open(f'{out}/{name}-{kind}-{v}.png').convert('RGB').resize((256, 256), Image.LANCZOS), (256 * index, 256 * row))
     strip.save(f'{out}/{name}.turn.png')
+    # For bake.py: each kept view, and how far the mesh was turned for it. A camera at azimuth a sees what a
+    # camera at the front sees of a mesh turned a further -a degrees.
+    listing = []
+    for v in dirs:
+        for k in range(KEEP):
+            tag = f'{v}' if k == 0 else f'{v}{"ab"[k - 1]}'
+            listing.append({'view': f'{name}-view-{tag}.png', 'normal': f'{name}-normal-{tag}.png', 'ref': f'{name}-ref-{v}.png', 'turn': SIGN * v * 45 - CAMERAS[k]})
+    json.dump(listing, open(f'{out}/{name}.views.json', 'w'), indent=1)
 
 if STAGE in ('bake', 'both'):
     plain = base.copy()

@@ -10,6 +10,8 @@ type SubjectId = (typeof SUBJECTS)[number]["id"];
 
 /** Screen pixels per rendered pixel when the pixel look is on. */
 const PIXEL = 3;
+/** The most colours the pixel look snaps to. */
+const PALETTE_MAX = 32;
 
 function subscribeReducedMotion(callback: () => void) {
   const list = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -93,6 +95,46 @@ export function MeshViewer() {
       ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
       ramp.needsUpdate = true;
 
+      // The pixel look is drawn in two steps: the scene into a small picture, then that picture onto the
+      // canvas with each pixel moved to the nearest of the sprites' own colours and a dark line drawn
+      // inside the outline, the way the sprites are drawn.
+      const target = new THREE.WebGLRenderTarget(1, 1, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+      const post = new THREE.ShaderMaterial({
+        transparent: true,
+        depthTest: false,
+        uniforms: {
+          frame: { value: target.texture },
+          texel: { value: new THREE.Vector2(1, 1) },
+          palette: { value: Array.from({ length: PALETTE_MAX }, () => new THREE.Vector3()) },
+          count: { value: 0 },
+        },
+        vertexShader: "varying vec2 at; void main() { at = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+        fragmentShader: `
+          uniform sampler2D frame; uniform vec2 texel; uniform vec3 palette[${PALETTE_MAX}]; uniform int count; varying vec2 at;
+          void main() {
+            vec4 here = texture2D(frame, at);
+            if (here.a < 0.5) discard;
+            vec3 colour = pow(here.rgb, vec3(1.0 / 2.2));
+            if (count > 0) {
+              vec3 best = colour; float nearest = 1e9;
+              for (int i = 0; i < ${PALETTE_MAX}; i++) {
+                if (i >= count) break;
+                vec3 gap = (palette[i] - colour) * vec3(0.55, 1.0, 0.4);
+                float d = dot(gap, gap);
+                if (d < nearest) { nearest = d; best = palette[i]; }
+              }
+              colour = best;
+            }
+            float around = min(min(texture2D(frame, at + vec2(texel.x, 0.0)).a, texture2D(frame, at - vec2(texel.x, 0.0)).a),
+                               min(texture2D(frame, at + vec2(0.0, texel.y)).a, texture2D(frame, at - vec2(0.0, texel.y)).a));
+            if (around < 0.5) colour *= 0.3;
+            gl_FragColor = vec4(colour, 1.0);
+          }`,
+      });
+      const postScene = new THREE.Scene();
+      postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post));
+      const postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
       let mixer: import("three").AnimationMixer | null = null;
       let action: import("three").AnimationAction | null = null;
       let helper: import("three").SkeletonHelper | null = null;
@@ -103,7 +145,11 @@ export function MeshViewer() {
         const width = element.clientWidth;
         const height = element.clientHeight;
         const step = pixelOn ? PIXEL : 1 / Math.min(window.devicePixelRatio || 1, 2);
-        renderer.setSize(Math.max(1, Math.round(width / step)), Math.max(1, Math.round(height / step)), false);
+        const across = Math.max(1, Math.round(width / step));
+        const down = Math.max(1, Math.round(height / step));
+        renderer.setSize(across, down, false);
+        target.setSize(across, down);
+        post.uniforms.texel.value.set(1 / across, 1 / down);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
       };
@@ -125,6 +171,16 @@ export function MeshViewer() {
             source.map.minFilter = THREE.LinearMipmapLinearFilter;
             source.map.generateMipmaps = true;
             source.map.needsUpdate = true;
+          }
+          // The model carries the sprites' colours with it, as hex strings on its material.
+          const colours: unknown = source.userData?.palette;
+          if (Array.isArray(colours)) {
+            const list = colours.filter((entry): entry is string => typeof entry === "string").slice(0, PALETTE_MAX);
+            list.forEach((hex, index) => {
+              const value = Number.parseInt(hex.replace("#", ""), 16);
+              post.uniforms.palette.value[index].set(((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255);
+            });
+            post.uniforms.count.value = list.length;
           }
           mesh.material = new THREE.MeshToonMaterial({ map: source.map, gradientMap: ramp });
           mesh.frustumCulled = false;
@@ -152,7 +208,15 @@ export function MeshViewer() {
         const delta = clock.getDelta();
         mixer?.update(delta);
         orbit.update();
-        renderer.render(scene, camera);
+        if (pixelOn) {
+          renderer.setRenderTarget(target);
+          renderer.clear();
+          renderer.render(scene, camera);
+          renderer.setRenderTarget(null);
+          renderer.render(postScene, postCamera);
+        } else {
+          renderer.render(scene, camera);
+        }
       };
       tick();
 
@@ -179,6 +243,8 @@ export function MeshViewer() {
         cancelAnimationFrame(frame);
         observer.disconnect();
         orbit.dispose();
+        target.dispose();
+        post.dispose();
         renderer.dispose();
         canvas.remove();
         controls.current = null;
@@ -252,11 +318,13 @@ export function MeshViewer() {
         </div>
         <p className="spin-note">
           Drag to turn it. This is one mesh, not
-          frames. Its shape is generated from four of the eight sprites. Its
-          surface is painted by a second model, shown each sprite in turn with
-          the mesh turned to face it. Fifteen bones are placed from the joints
-          found in each view, and the walk turns those bones. Seams still show
-          where two painted views meet.
+          frames. The character was first redrawn with its arms out, and its
+          shape generated from four of those eight sprites. Its surface is
+          painted by a second model, shown each sprite in turn with the mesh
+          turned to face it. Fifteen bones are placed from the joints found
+          in each view, and the walk lowers the arms and turns those bones.
+          The pixel look snaps every pixel to the sprites&apos; own colours.
+          The cape is still rigid.
         </p>
       </div>
     </div>

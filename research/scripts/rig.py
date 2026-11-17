@@ -7,12 +7,20 @@ estimates in each view, triangulated to 3D), the voxels and camera from carve.ts
 Needs numpy, pillow, trimesh.
 
 The skeleton is fifteen bones named the way game engines name a humanoid (Hips, Spine, Head, LeftUpperArm ...).
-Skin weights come from distance to each bone, with a penalty when the straight line from a vertex to a bone
-leaves the body, so an arm hanging beside the torso is not pulled along by the spine.
+Skin weights come from distance to each bone. Given the carved voxels, that is straight-line distance with a
+penalty when the line leaves the body, so an arm hanging beside the torso is not pulled along by the spine.
+Given "-" for the voxels, the mesh itself is filled in and distance is measured through the inside of the body:
+a cape then belongs to the shoulders it hangs from, not to the legs it hangs beside. The limb joints are also
+moved to the middle of the mesh's own limbs, since the joints were found on the sprites and the mesh is a redraw.
+The rest pose is whatever pose the mesh is in. The walk lowers raised arms to the sides first.
 The file is in metres, y up, facing +z, about 1.8 m tall, with one animation called Walk.
 """
 import io, json, math, os, struct, sys
 import numpy as np
+from scipy.ndimage import binary_fill_holes
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import dijkstra
+from scipy.spatial import cKDTree
 from PIL import Image
 import trimesh
 
@@ -26,9 +34,25 @@ texture = mesh.visual.material.baseColorTexture.convert("RGBA")
 if os.environ.get("TEX"):  # shrink the texture to this many pixels a side, to keep the file small
     texture = texture.resize((int(os.environ["TEX"]),) * 2, Image.LANCZOS)
 world = np.stack([g[:, 0], -g[:, 2], g[:, 1]], 1)  # glTF (x, up, -y) back to the sprites' frame (x, y, up)
-cam = json.load(open(cam_file)); N = cam["size"]
-vox = np.fromfile(vox_file, np.uint8).reshape(N, N, N) > 0
+GEODESIC = vox_file == "-"
 J = {j["label"]: np.array([j["x"], j["y"], j["z"]]) for j in json.load(open(rig_file))["joints"]}
+if GEODESIC:
+    # Fill the mesh in on a grid of half sprite pixels: mark the cells its surface passes through, then the cells they enclose.
+    G = 0.5; low = world.min(0) - 2
+    shape = np.ceil((world.max(0) + 2 - low) / G).astype(int)
+    surface, _ = trimesh.sample.sample_surface(trimesh.Trimesh(world, faces, process=False), 3000000, seed=4)
+    solid = np.zeros(shape, bool); cells = ((surface - low) / G).astype(int); solid[cells[:, 0], cells[:, 1], cells[:, 2]] = True
+    solid = binary_fill_holes(solid)
+    solid_at = np.argwhere(solid); centres = (solid_at + 0.5) * G + low; solid_tree = cKDTree(centres)
+    for label in J:  # move elbows, wrists, knees and ankles to the middle of the limb they are in
+        if label.split()[-1] in ("ELBOW", "ARM", "KNEE", "LEG"):
+            for _ in range(4):
+                near = solid_tree.query_ball_point(J[label], 4.0)
+                if len(near) < 20: near = solid_tree.query(J[label], 60)[1]
+                J[label] = centres[near].mean(0)
+else:
+    cam = json.load(open(cam_file)); N = cam["size"]
+    vox = np.fromfile(vox_file, np.uint8).reshape(N, N, N) > 0
 mid = lambda a, b: (a + b) / 2
 hips, neck = mid(J["LEFT HIP"], J["RIGHT HIP"]), J["NECK"]
 head = mid(J["LEFT EAR"], J["RIGHT EAR"])
@@ -53,7 +77,26 @@ def inside(p):
     ok = ((i >= 0) & (i < N)).all(-1); i = i.clip(0, N - 1)
     return vox[i[..., 2], i[..., 1], i[..., 0]] & ok
 dist = np.zeros((len(world), len(BONES)))
-for b in range(len(BONES)):
+if GEODESIC:
+    number = -np.ones(shape, int); number[solid] = np.arange(len(solid_at))
+    rows, cols, steps_len = [], [], []
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            for dz in (0, 1):
+                if (dz, dy, dx) <= (0, 0, 0): continue
+                a = number[max(0, -dx):shape[0] - max(0, dx), max(0, -dy):shape[1] - max(0, dy), :shape[2] - dz]
+                c = number[max(0, dx):shape[0] - max(0, -dx), max(0, dy):shape[1] - max(0, -dy), dz:]
+                both = (a >= 0) & (c >= 0)
+                rows.append(a[both]); cols.append(c[both]); steps_len.append(np.full(both.sum(), G * math.sqrt(dx * dx + dy * dy + dz * dz)))
+    graph = coo_matrix((np.concatenate(steps_len), (np.concatenate(rows), np.concatenate(cols))), shape=(len(solid_at),) * 2).tocsr()
+    at = solid_tree.query(world)[1]
+    for b in range(len(BONES)):
+        along = head_pos[b] + (tail_pos[b] - head_pos[b]) * np.linspace(0, 1, 24)[:, None]
+        gap, seeds = solid_tree.query(along)
+        seeds = np.unique(seeds[gap < 1.5]) if (gap < 1.5).any() else np.unique(seeds)
+        dist[:, b] = dijkstra(graph, directed=False, indices=seeds, min_only=True)[at] + 0.5
+    dist[~np.isfinite(dist)] = 1e6
+for b in range(len(BONES) if not GEODESIC else 0):
     a, c = head_pos[b], tail_pos[b]; ab = c - a
     t = np.clip(((world - a) @ ab) / (ab @ ab + 1e-9), 0, 1)
     closest = a + t[:, None] * ab
@@ -79,6 +122,22 @@ normals = trimesh.Trimesh(pos, faces, process=False).vertex_normals.astype(np.fl
 
 # ---- a walk: thighs and arms swing, knees bend on the back swing
 def quat_x(deg): r = math.radians(deg) / 2; return [math.sin(r), 0.0, 0.0, math.cos(r)]
+def quat_mul(p, q):  # the rotation q, then the rotation p
+    px, py, pz, pw = p; qx, qy, qz, qw = q
+    return [pw * qx + px * qw + py * qz - pz * qy, pw * qy - px * qz + py * qw + pz * qx, pw * qz + px * qy - py * qx + pz * qw, pw * qw - px * qx - py * qy - pz * qz]
+def quat_between(a, b):
+    a, b = a / np.linalg.norm(a), b / np.linalg.norm(b); axis = np.cross(a, b); s = np.linalg.norm(axis)
+    if s < 1e-6: return [0.0, 0.0, 0.0, 1.0]
+    half = math.atan2(s, float(a @ b)) / 2; axis = axis / s * math.sin(half)
+    return [float(axis[0]), float(axis[1]), float(axis[2]), math.cos(half)]
+# A mesh made in an A-pose or T-pose walks with its arms out unless they are lowered first: turn each upper arm
+# from where it rests to hanging 12 degrees out from straight down.
+lower = {}
+for side, sg in (("Left", 1), ("Right", -1)):
+    i = names.index(side + "UpperArm"); rest = gl(tail_pos[i])[0] - gl(head_pos[i])[0]
+    out_sign = 1.0 if rest[0] >= 0 else -1.0
+    hang = np.array([out_sign * math.sin(math.radians(12)), -math.cos(math.radians(12)), 0.0])
+    lower[side] = quat_between(rest, hang) if math.degrees(math.acos(np.clip(rest @ hang / np.linalg.norm(rest), -1, 1))) > 15 else [0.0, 0.0, 0.0, 1.0]
 KEYS = 9; DURATION = 0.9
 times = np.linspace(0, DURATION, KEYS).astype(np.float32)
 tracks = {}
@@ -88,8 +147,38 @@ for k, t in enumerate(times):
         swing = math.sin(ph) * sg
         tracks.setdefault(side + "UpperLeg", []).append(quat_x(-28 * swing))
         tracks.setdefault(side + "LowerLeg", []).append(quat_x(32 * max(0.0, math.sin(ph + sg * math.pi / 2 + (0 if sg > 0 else math.pi)))))
-        tracks.setdefault(side + "UpperArm", []).append(quat_x(22 * swing))
-        tracks.setdefault(side + "LowerArm", []).append(quat_x(-10 - 8 * max(0.0, swing)))
+        tracks.setdefault(side + "UpperArm", []).append(quat_mul(quat_x(22 * swing), lower[side]))
+        down = lower[side]; up = [-down[0], -down[1], -down[2], down[3]]  # the elbow bends forward as seen with the arm lowered
+        tracks.setdefault(side + "LowerArm", []).append(quat_mul(up, quat_mul(quat_x(-10 - 8 * max(0.0, swing)), down)))
+
+def pick_palette(pixels, count):
+    """Colours spread across everything the sprites use. Median cut spends most of its colours on the
+    commonest ones, which here are near-blacks; this starts from the distinct colours and keeps the ones
+    furthest apart, then settles each on the middle of the colours nearest it."""
+    distinct, uses = np.unique(pixels.reshape(-1, 3), axis=0, return_counts=True)
+    distinct = distinct.astype(np.float64)
+    if len(distinct) <= count: return distinct
+    chosen = [int(uses.argmax())]; gap = np.linalg.norm(distinct - distinct[chosen[0]], axis=1)
+    while len(chosen) < count:
+        chosen.append(int(gap.argmax())); gap = np.minimum(gap, np.linalg.norm(distinct - distinct[chosen[-1]], axis=1))
+    centres = distinct[chosen]
+    for _ in range(8):
+        nearest = np.linalg.norm(distinct[:, None] - centres[None], axis=2).argmin(1)
+        for k in range(count):
+            mine = nearest == k
+            if mine.any(): centres[k] = (distinct[mine] * uses[mine, None]).sum(0) / uses[mine].sum()
+    return centres
+
+
+# PALETTE=<sprite-dir>:<name> stores the sprites' colours on the material (COLOURS of them, default 24), so a
+# renderer can snap its pixels to them.
+PALETTE = None
+if os.environ.get("PALETTE"):
+    sprite_dir, sprite_name = os.environ["PALETTE"].split(":")
+    px = np.concatenate([(lambda a: a[a[:, :, 3] > 127][:, :3])(np.array(Image.open(os.path.join(sprite_dir, f)).convert("RGBA")))
+                         for f in sorted(os.listdir(sprite_dir)) if f.startswith(sprite_name + "-") and f.endswith(".png")])
+    count = int(os.environ.get("COLOURS", "24"))
+    PALETTE = sorted({"#%02x%02x%02x" % tuple(int(round(v)) for v in c) for c in pick_palette(px, count)})
 
 # ---- write the .glb
 chunks, views, accessors = [], [], []
@@ -122,7 +211,7 @@ for n, q in tracks.items():
 gltf = {"asset": {"version": "2.0", "generator": "pixelkiln research rig.py"}, "scene": 0, "scenes": [{"nodes": [0, len(BONES)]}], "nodes": nodes,
         "meshes": [{"primitives": [{"attributes": {"POSITION": a_pos, "NORMAL": a_nrm, "TEXCOORD_0": a_uv, "JOINTS_0": a_j, "WEIGHTS_0": a_w}, "indices": a_idx, "material": 0}]}],
         "skins": [{"joints": list(range(len(BONES))), "skeleton": 0, "inverseBindMatrices": a_ibm}],
-        "materials": [{"name": "Sprite", "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}],
+        "materials": [{"name": "Sprite", **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}],
         "textures": [{"source": 0, "sampler": 0}], "images": [{"bufferView": image_view, "mimeType": "image/png"}],
         "samplers": [{"magFilter": 9728, "minFilter": 9728, "wrapS": 33071, "wrapT": 33071}],
         "animations": [{"name": "Walk", "samplers": samplers, "channels": channels}],
@@ -150,7 +239,7 @@ def pose(k):
             out[m] += wt[m, None] * (pos[m] @ skin[:3, :3].T + skin[:3, 3])
     return out
 if preview:
-    CELL = 96; rng = np.random.default_rng(3)
+    CELL = int(os.environ.get("CELL", "96")); rng = np.random.default_rng(3)  # CELL: the size of each preview picture
     tex = np.array(texture); TH, TW = tex.shape[:2]
     area = trimesh.Trimesh(pos, faces, process=False).area_faces
     pick = rng.choice(len(faces), 500000, p=area / area.sum()); bary = rng.dirichlet((1, 1, 1), 500000)
