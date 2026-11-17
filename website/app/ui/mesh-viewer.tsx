@@ -349,8 +349,9 @@ export function MeshViewer() {
             above does it. The body was then meshed wearing that one item,
             and the item cut out of the result wherever its layer has
             pixels. Items are moved to just above the skin and follow the
-            body&apos;s bones. The textures are stitched from the sprites
-            and still rough.
+            body&apos;s bones. Every part is painted by a second model
+            from its own sprites. Skin can still show through the armour
+            while it walks.
           </p>
         ) : (
           <p className="spin-note">

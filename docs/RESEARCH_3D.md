@@ -35,7 +35,8 @@ Last updated 17 November 2026.
 | 25 | Carry the sprites' palette in the file and snap to it when drawing | Our script, a shader in the viewer | Renders at sprite size read as sprites; the colour score still prefers the stitched texture | Keep the look. The score is the wrong judge. |
 | 26 | A leaner bare body, with each item drawn as its own layer | PixelLab v3 character, PixelKiln layers | A slim figure in underwear and four clean item layers; the mesh is still stocky | Keep. The mesh inherits the sprite's four-heads-tall build. |
 | 27 | Mesh each item on its own, or mesh the body wearing it and cut the item out | Hunyuan3D-2mv, our scripts | Alone, thin items collapse into slabs; cut from the worn mesh, all four hold their shape | Cut from the worn mesh. |
-| 28 | The body and four items as separate meshes on one skeleton | Our script | One .glb, items switch on and off, all walk together | Keep. Textures are stitched and rough; nothing is painted yet. |
+| 28 | The body and four items as separate meshes on one skeleton | Our script | One .glb, items switch on and off, all walk together | Keep. Painted in step 29. |
+| 29 | Paint the body and each worn mesh before cutting the item out | Hunyuan3D paint stage, our bake | Clean armour, cape and skin in place of speckle; colours drift cooler and the gold is duller | Keep. Skin shows through the leg armour during the walk. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -671,11 +672,33 @@ The two outline columns are not like for like: alone, the mesh is compared with 
 - **It reads as the knight,** from parts that were never meshed together. Nothing pokes through in the rest pose.
 - **Items come off one at a time** in the viewer on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#mesh), and the body under them is whole.
 - **The file is 3.6 MB:** five meshes of up to 30,000 triangles and five 256 pixel textures. It passes the glTF validator with no errors or warnings.
-- **The textures are the stitched ones of step 10,** noisy on the armour. The paint stage of steps 20 and 23 has not been run on parts.
+- **The textures are the stitched ones of step 10,** noisy on the armour. Step 29 paints them.
 
 Not checked: whether skin shows through armour at the extremes of the walk, an item on a second body, two items in the same slot, and any engine other than three.js.
 
 **Verdict.** Keep. This is the shape a game can use: a body, a rack of items, one skeleton.
+
+## 29. Painting the parts
+
+**Question.** Step 28's textures are stitched from the sprites and noisy. Does the paint stage of steps 20 and 23 work on parts?
+
+**Setup.** The body and each of the four worn meshes went through `hunyuan3d_paint_turn.py` with `SPREAD=22` and `bake.py` at 1024 pixels, exactly as in step 23, each with its own sprites as references. The item is cut out afterwards with the same mask as before: painting changes the texture and not the triangles, so `cut_item.py` takes the painted mesh and the mask mesh from step 27 unchanged. About 40 seconds a direction, five to six minutes a mesh.
+
+**Result.** The body, stitched and then painted:
+
+![The body with a stitched texture and with a painted one](../website/public/research/3d/parts-body-painted.png)
+
+The assembled character, stitched and then painted:
+
+![The assembled knight with stitched textures and with painted ones](../website/public/research/3d/parts-painted.png)
+
+- **The speckle is gone.** The armour has plates and trim, the cape has folds, the helm is one metal, and the body's black outline flecks are gone.
+- **Colours drift.** The helm and underwear turn blue-grey, and the gold is duller with the chest crest fainter. Step 23's colour correction is on and does not hold them. The viewer's palette snap pulls them part of the way back.
+- **Painting the worn mesh paints the item in context,** so the cuirass is shaded as something on a chest. The price is that each item's texture is 1024 pixels of which the item uses a third.
+- **Skin shows through the leg armour during the walk** in the viewer, as flecks at the knees and thighs. Standing, nothing shows.
+- **The file grew to 5.6 MB** with five 512 pixel textures. It passes the glTF validator with no errors or warnings.
+
+**Verdict.** Keep the painted parts. Next is hiding the body under what covers it.
 
 ## What has not worked, in one place
 
@@ -702,9 +725,11 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 
 ## What is next
 
-- **Paint the parts.** Run the paint stage (steps 20 and 23) on the body and on each worn mesh before the cut, so items carry painted textures.
+- **Hold the paint stage's colours** to the sprites' (step 29): the gold dulls and the dark metal turns blue.
+- **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
 - **Hide the body under an item,** as games do, so skin cannot show through in motion, and tidy the cut's edge.
 - **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
+- **Sprite cards on the skeleton.** The approach in the Cor Mundi Studios short (see below): show each body part as a card with a sixteen-direction sheet, placed by the bones, and keep the mesh for lighting only. It would sidestep the rough textures, since the pixels shown are the drawn ones.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
 - **Held items.** Carve them separately, upright, and place them on the model the way the paperdoll layers place them on the sprite.
@@ -752,6 +777,8 @@ No report was found of any of these being tested on pixel art.
 
 **The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, steps 9 to 11 the unwrap and texture part, and step 13 the image model, on the rendered views and not on the unwrapped texture.
 
+**Sprite cards on a 3D skeleton.** [A short from Cor Mundi Studios](https://www.youtube.com/shorts/84clZXpwRc0) (28 seconds, read from its transcript on 17 November 2026) shows a 2.5D player character in Unreal Engine 5. Each body part is a flat card with its own sprite sheet in sixteen directions. Under the cards is a 3D mesh that is not what the player sees: it carries the lighting and the bones, and the bones tell each card where to be and which direction to show. The picture stays hand-drawn pixels and the motion comes from a rig. It was not tried here. The pieces exist: sixteen directions (step 13), parts as separate layers (step 26) and a skeleton (step 16).
+
 No public tool was found that takes several directional pixel sprites and returns a mesh.
 
 ## Cost so far
@@ -764,7 +791,7 @@ No public tool was found that takes several directional pixel sprites and return
 - The paint stage: no generations. A 9.2 GB download, then about six minutes of GPU time per character.
 - A-poses in step 21: 20 generations for the two states, 0.25 for importing the knight, 1.6 for sixteen joint estimates.
 - The body and its five layers in step 26: 52.8 generations (2 for the body, 10 for each layer, 0.8 for the joints), read from the balance before and after.
-- Nine meshes in step 27: about two minutes of GPU time each.
+- Nine meshes in step 27: about two minutes of GPU time each. Five paint runs in step 29: five to six minutes each.
 
 ## Running the scripts
 
