@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { CodeBody } from "@/app/ui/code-window";
 import { CharacterBuilder } from "@/app/ui/character-builder";
+import { MeshViewer } from "@/app/ui/mesh-viewer";
 import { SpinViewer } from "@/app/ui/spin-viewer";
 import { SpriteCarousel } from "@/app/ui/sprite-carousel";
 import { SpriteLoop } from "@/app/ui/sprite-loop";
@@ -128,6 +129,17 @@ export function PaperdollSection() {
                 show every step, including what did not work.
               </p>
               <SpinViewer />
+            </div>
+            <div className="builder-block" id="mesh">
+              <h3>The same character, as a mesh with bones.</h3>
+              <p>
+                Further along the same experiment: one 3D model you can turn
+                freely, with a skeleton inside it and a walk made by moving
+                the bones. The file is a standard .glb, the kind a 3D game
+                engine imports with its rig and animation. It is rougher than
+                the sprites, and the research notes say where and why.
+              </p>
+              <MeshViewer />
             </div>
           </div>
         </section>

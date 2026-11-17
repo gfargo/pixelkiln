@@ -53,6 +53,8 @@ if (process.env.DUMP) {
 const [anchorsFile, anchorsKey, tubeMode = "hybrid"] = process.argv.slice(7)
 let rig: Array<{ label: string; x: number; y: number; z: number; residual: number }> | undefined
 if (anchorsFile) {
+  // KP_SHIFT moves the joints when the sprites sit on a larger canvas than the one the joints were estimated on.
+  const KP_SHIFT = Number(process.env.KP_SHIFT ?? 0)
   const frames = JSON.parse(readFileSync(anchorsFile, "utf8")).frames[anchorsKey!]
   const labels: string[] = frames.south.keypoints.map((k: { label: string }) => k.label)
   const swapName = (l: string) => l.startsWith("LEFT ") ? "RIGHT " + l.slice(5) : l.startsWith("RIGHT ") ? "LEFT " + l.slice(6) : l
@@ -69,7 +71,7 @@ if (anchorsFile) {
     let res = 0
     for (const o of obs) { const q = proj(best.theta, AZ(o.v), p[0]!, p[1]!, p[2]!); res += Math.hypot(q.u + centre[o.v]!.x + best.off[o.v]!.x - o.px, -q.s + centre[o.v]!.y + best.off[o.v]!.y - o.py) }
     return { p, residual: res / obs.length } }
-  const kp = (v: number, label: string) => { const f = frames[D[v]!]; const k = f.keypoints.find((e: { label: string }) => e.label === label); return { v, px: k.x * f.width, py: k.y * f.height } }
+  const kp = (v: number, label: string) => { const f = frames[D[v]!]; const k = f.keypoints.find((e: { label: string }) => e.label === label); return { v, px: k.x * f.width + KP_SHIFT, py: k.y * f.height + KP_SHIFT } }
   // The estimator names left and right by the picture, not the body, in some views: per view, keep whichever naming agrees with the rest.
   const flipped = D.map(() => false)
   for (let round = 0; round < 2; round++) for (let v = 1; v < 8; v++) { const err = (flip: boolean) => { let e = 0

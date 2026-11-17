@@ -22,6 +22,9 @@ Last updated 16 November 2026.
 | 12 | Carved shape cut back to the mesh | Our script | No better than carving alone | Drop. |
 | 13 | Have an image model redraw the model's rough renders | PixelLab `edit_image`, `inpaint_image`, `correct_pixelart` | Clean sprites at angles the generator never drew: sixteen directions from eight, for 10 generations | Keep. This is the best result so far, and it changes what the 3D model is for. |
 | 14 | Paint the redrawn views back onto the model | Our script | Smoother, still muddy | Drop for now. The model is a guide, not the final picture. |
+| 15 | Flatten the texture to a few materials and light it in the renderer | Our script | No blotches, and no detail either | Partly. The lighting is worth keeping; the flattening loses too much. |
+| 16 | Put the skeleton in the mesh, skin it, add a walk, export a rigged `.glb` | Our script | Valid glTF with 15 bones and a walk, for both characters | Keep. This is the first file here a 3D game can import and animate. |
+| 17 | Generate the texture with Hunyuan3D's paint stage | Scoped on the RTX 3060, not run | Needs a second ComfyUI install and about 20 GB of downloads; may not fit in 12 GB | Waiting on a decision. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -352,6 +355,67 @@ Slightly smoother, still blotchy, and the score against the sprites got worse (c
 
 **Verdict.** Drop for now. Sixteen separate drawings disagree as much as eight did. A texture stitched from separate drawings of a 64-pixel figure comes out muddy however the stitching is done, which is the lesson of steps 9 to 14 together.
 
+## 15. Flat materials and light from the renderer
+
+**Question.** The blotches on the stitched texture are each sprite's own hand-drawn shading. If the texture is reduced to flat colour and the light is added by the renderer instead, the same from every side, do they go?
+
+**Setup.** `FLAT=<k>` in `texture.py` sorts the texels into k materials by colour (mostly hue, a little brightness), lets neighbours on the surface agree, and paints each material one colour taken from its lit side. The render then adds three flat bands of light from the upper left, using normals from a smoothed copy of the mesh, since the carved surface is bumpy at the scale of a voxel and raw normals break the bands into noise. `TOON=1` adds the same light without flattening.
+
+**Result.** Each pair of rows is the model from the eight drawn directions and the eight between. Top pair: the bare character as two materials. Middle pair: the knight as nine materials. Bottom pair: the knight with its full stitched texture and the same light.
+
+![Flat materials with toon lighting, and the full texture with the same lighting](../website/public/research/3d/flat-toon.png)
+
+- **The blotches are gone, and so is everything else.** The bare character is a clean clay figure with no face or muscle. The knight keeps its cape and fur and loses its trim, eyes and armour detail; skin and gold run together as orange patches.
+- **Black armour came out brown at five materials** and dark grey at nine. Sorting by hue has little to work with on dark, unsaturated colours.
+- **The full texture with renderer light (bottom pair) reads best of the three.** The light gives the form a consistent shape that helps hide the stitching.
+
+**Verdict.** Keep the lighting, drop the flattening as a default. Flat colour would suit a simple object or a deliberately flat style. For a character, the detail has to come from somewhere better than eight disagreeing drawings, which is what step 17 is for.
+
+## 16. A skeleton in the mesh
+
+**Question.** Can the carved, textured character leave here as something a 3D game can animate?
+
+**Setup.** [`scripts/rig.py`](../research/scripts/rig.py).
+
+- **Bones.** The 18 joints from step 6 become fifteen bones named the way engines name a humanoid: Hips, Spine, Head, and Upper Arm, Lower Arm, Hand, Upper Leg, Lower Leg, Foot on each side. For the knight, the joints estimated on the bare character were triangulated again in the knight's own frame (mean error 1.4 pixels).
+- **Skin weights.** Each vertex follows up to four bones, weighted by how close it is to each. Distance alone would bind an arm hanging at the side to the spine, so a bone is penalised when the straight line from the vertex to it leaves the body.
+- **A walk.** One nine-key loop: thighs and upper arms swing against each other, knees bend on the back swing.
+- **The file.** A `.glb` in metres, y up, 1.8 m tall, with the texture inside it set to hard pixel edges, the skin, and the animation named `Walk`.
+
+**Result.** Which bone each part of the surface follows most, from four sides:
+
+![Skin weights on the bare character, one colour per bone](../website/public/research/3d/rig-weights.png)
+
+The walk, posed here with the file's own bones and weights and drawn from the front, three-quarters and side. Top three rows: the bare character. Bottom three: the knight.
+
+![Eight frames of the walk for both characters from three angles](../website/public/research/3d/rig-walk.png)
+
+- **Both files pass the Khronos glTF validator** with no errors or warnings.
+- **Sizes:** the bare character is 7,571 vertices and 10,460 triangles in 562 KB; the knight is 10,433 vertices and 15,120 triangles.
+- **They load and play in three.js**, which is what the viewer on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#mesh) uses. They were not opened in Blender, Unity, Godot or Unreal here.
+- **The knight's cape follows the legs,** because it is bound to the nearest bones like everything else. A cape wants bones of its own or cloth simulation.
+- **Dark patches open up on the inner thighs** as the legs part: that surface was never seen by any sprite and was filled in.
+- **The hands, feet and head are single bones.** There are no fingers, toes, jaw or eyes.
+
+**Verdict.** Keep. The rig is the part of this note closest to the goal: characters that can be animated and imported into 3D games. The mesh and skeleton are sound. The texture is what is holding the result back.
+
+## 17. Hunyuan3D's paint stage, scoped
+
+**Question.** Hunyuan3D has a second stage that textures a mesh from a reference image, consistently from every side. Can it run on the RTX 3060 used in step 8?
+
+**Setup.** A read-only look at the machine and at the published requirements. Nothing was installed or downloaded.
+
+**Result.**
+
+- **The ComfyUI already installed cannot run it.** Its built-in Hunyuan3D nodes make shapes only. The community node that adds the paint stage ships its compiled renderer for Python 3.12 and PyTorch 2.6; this install is Python 3.13 and PyTorch 2.13, and the machine has no CUDA toolkit to compile it.
+- **A second ComfyUI install beside the first would be needed,** on Python 3.12 with PyTorch 2.6, plus the community node and its prebuilt renderer.
+- **Downloads:** the paint model (9.2 GB) and the delight model that removes baked lighting from the reference (4.3 GB), about 20 GB in all with PyTorch. The disk has room.
+- **Memory is the risk.** The published figure is 16 GB for shape and texture together; one source says 12 GB. No report was found of it running on a 12 GB card. The newer 2.1 paint model states 21 GB and is out of reach.
+- **Also found on the machine:** hosted texturing nodes for Meshy and Tripo, which need paid API keys, and local texture nodes built for a different model (Trellis) that take a colour field, not reference images.
+- **Licence:** the same regional exclusion as the shape model.
+
+**Verdict.** Feasible to try, with a real chance it does not fit. It needs a go-ahead, since it means installing software and downloading about 20 GB onto that machine.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -365,6 +429,7 @@ So nobody repeats them:
 - Intersecting the carved shape with the generated mesh (step 12).
 - `correct_pixelart` on a torn render (step 13).
 - Projecting image-model redraws back onto the model (step 14).
+- Flattening a character's texture to a few materials (step 15).
 
 Two bugs worth remembering, because both produced plausible wrong pictures: glTF's axes turned into ours by swapping two of them is a mirror image, which silhouettes cannot detect; and a mesh whose faces point inward gets no texture at all, only fill.
 
@@ -377,7 +442,9 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
 - **Remove baked shading.** The sprites are drawn lit from one side, and that light is now painted on the model.
-- **Use the rig.** The skeleton from step 6 has not been attached to a mesh.
+- **Open the rigged file in real engines.** Blender, Godot, Unity and Unreal each have their own expectations of a humanoid.
+- **More animations, and bones for capes and held items.**
+- **A better texture for the mesh,** from step 17 or a hosted texturing service.
 - Can the eight-view input of the hosted Hunyuan3D 3.1 use all eight sprites? (Unverified; see below.)
 
 ## What other people are doing
@@ -446,6 +513,9 @@ python3 research/scripts/texture.py <folder> <name> <mesh.glb> <out-folder>
 # The same stages on the carved shape: export the carve, then texture it. MODE=vote lets the views vote.
 DUMP=1 node --experimental-strip-types research/scripts/carve.ts <folder> <name> <out-folder>
 MODE=vote VOX=<out-folder>/<name>.vox CAMERA=<out-folder>/<name>.camera.json python3 research/scripts/texture.py <folder> <name> - <out-folder>
+
+# A rigged, animated .glb. The rig file comes from carve.ts run with an anchors file.
+python3 research/scripts/rig.py <name.textured.glb> <name.rig.json> <name.vox> <name.camera.json> <out.glb> <preview.png>
 
 # Score the second row of a sheet against the first.
 python3 research/scripts/score.py <sheet.png>

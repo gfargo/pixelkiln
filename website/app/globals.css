@@ -641,6 +641,12 @@ a { color: inherit; text-decoration: none; }
 .spin-stage { display: grid; place-items: center; min-height: 420px; background: #100f0c; overflow: hidden; cursor: grab; touch-action: pan-y; user-select: none; }
 .spin-stage:active { cursor: grabbing; }
 .spin-figure { width: var(--spin-cell); height: var(--spin-cell); background-repeat: no-repeat; background-size: var(--spin-size); background-position: var(--spin-at); image-rendering: pixelated; }
+.mesh-stage { position: relative; min-height: 420px; height: 420px; background: #100f0c; overflow: hidden; cursor: grab; touch-action: none; }
+.mesh-stage:active { cursor: grabbing; }
+.mesh-canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; image-rendering: pixelated; }
+.mesh-canvas-smooth { image-rendering: auto; }
+.mesh-status { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--cream-muted); font-size: 16px; }
+@media (max-width: 980px) { .mesh-stage { min-height: 340px; height: 340px; } }
 .spin-note { max-width: 520px; margin: 6px 0 0; color: var(--cream-muted); font-size: 16px; line-height: 1.65; }
 @media (max-width: 980px) { .spin { grid-template-columns: minmax(0, 1fr); gap: 32px; } .spin-stage { min-height: 340px; } }
 .cast-visuals { display: grid; gap: 40px; min-width: 0; }

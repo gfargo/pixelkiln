@@ -9,6 +9,7 @@ env:   SKIP=north-east,north-west   views to leave out (drawn tilted)
        LEVEL=0.9                    where the surface is cut: 0.5 is half a voxel outside the voxel centres, near 1 is through them
        COVER=touch|centre           a rendered pixel is covered when the shape touches it, or only when it covers its centre
        EXTRA=<dir>                  repaired in-between views to take colour from as well (see stage 3)
+       FLAT=6                       paint the texture as this many flat materials and light it in the renderer; 0 is off
        TAG=carved                   added to the output file names
        FACES=30000                  triangle budget after simplifying
        MODE=best|vote|blend         one view per texel; the view nearest the consensus of all that see it; or a blend snapped to the palette
@@ -307,6 +308,30 @@ if GAP > 0:
         stray = lum < med - GAP
         choice = near[np.arange(len(P)), np.abs(nl - med[:, None]).argmin(1)]
         texel[stray] = texel[choice[stray]]
+# Flatten: every sprite was shaded by hand, each a little differently, and that painted-on light is what makes
+# the stitched surface blotchy. FLAT=<k> sorts the texels into k materials by colour (mostly hue, a little
+# brightness), lets neighbours on the surface agree, and paints each material one flat colour. Light is then
+# added by the renderer, the same from every side.
+FLAT = int(os.environ.get("FLAT", "0"))
+if FLAT > 0:
+    rgb = texel / 255.0; mx, mn = rgb.max(1), rgb.min(1); lum = rgb @ np.array([0.299, 0.587, 0.114])
+    sat = (mx - mn) / np.maximum(mx, 1e-6)
+    hue = np.arctan2(math.sqrt(3) * (rgb[:, 1] - rgb[:, 2]), 2 * rgb[:, 0] - rgb[:, 1] - rgb[:, 2])
+    feat = np.stack([np.cos(hue) * sat, np.sin(hue) * sat, float(os.environ.get("FLAT_LIGHT", "0.45")) * lum], 1)
+    cen = feat[rng.choice(len(feat), 1)]
+    while len(cen) < FLAT:  # spread the starting centres out
+        d2 = ((feat[:, None, :] - cen[None]) ** 2).sum(2).min(1); cen = np.vstack([cen, feat[rng.choice(len(feat), p=d2 / d2.sum())]])
+    for _ in range(25):
+        lab = ((feat[:, None, :] - cen[None]) ** 2).sum(2).argmin(1)
+        cen = np.stack([feat[lab == k].mean(0) if (lab == k).any() else cen[k] for k in range(FLAT)])
+    near = cKDTree(P).query(P, k=min(25, len(P)))[1]
+    for _ in range(int(os.environ.get("FLAT_SMOOTH", "3"))):
+        votes = np.stack([(lab[near] == k).sum(1) for k in range(FLAT)], 1); lab = votes.argmax(1)
+    for k in range(FLAT):
+        m = lab == k
+        if not m.any(): continue
+        # The material's lit colour: a real texel about three quarters of the way up its brightness range.
+        order = np.argsort(lum[m]); texel[m] = texel[m][order[int(len(order) * 0.72)]]
 tex = np.zeros((R, R, 4), np.uint8); tex[used, :3] = texel.astype(np.uint8); tex[used, 3] = 255
 # Pad the islands so sampling at their edges does not pick up empty texels.
 flat_used = np.argwhere(used); pad = np.argwhere(~used)
@@ -327,14 +352,29 @@ textured.export(f"{out}/{name}{TAG}.textured.glb")
 bary = rng.dirichlet((1, 1, 1), 900000); pick = rng.choice(len(uv_faces), 900000, p=wmesh.area_faces / wmesh.area_faces.sum())
 r_pos = np.einsum("ij,ijk->ik", bary, world[vmap][uv_faces][pick]); r_uv = np.einsum("ij,ijk->ik", bary, uvs[uv_faces][pick])
 tx, ty = np.clip((r_uv[:, 0] * R).astype(int), 0, R - 1), np.clip((r_uv[:, 1] * R).astype(int), 0, R - 1)
-r_rgb = tex[ty, tx, :3].astype(np.int64); r_key = (r_rgb[:, 0] << 16) | (r_rgb[:, 1] << 8) | r_rgb[:, 2]
+r_rgb = tex[ty, tx, :3].astype(np.int64)
+TOON = os.environ.get("TOON", "1" if FLAT > 0 else "0") == "1"
+# Light the model with normals from a smoothed copy of it: the carved surface is bumpy at the scale of a
+# voxel, and bands of light drawn from the raw normals break up into noise.
+soft = wmesh.copy(); trimesh.smoothing.filter_taubin(soft, iterations=int(os.environ.get("SOFT", "40")))
+soft_normals = np.asarray(soft.vertex_normals)
+r_nrm = np.einsum("ij,ijk->ik", bary, soft_normals[vmap][uv_faces][pick]); r_nrm /= np.linalg.norm(r_nrm, axis=1, keepdims=True) + 1e-9
+def keys(rgb): return (rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2]
+def toon(az, theta):
+    """Three flat bands of light from the upper left of the camera, the usual sprite lighting."""
+    cam = to_camera(az, theta); right = np.array([math.cos(az), -math.sin(az), 0.0]); up = np.cross(right, -cam)
+    light = cam * 0.55 - right * 0.5 + up * 0.67; light /= np.linalg.norm(light)
+    lit = r_nrm @ light
+    band = np.where(lit > 0.35, 1.0, np.where(lit > -0.1, 0.8, 0.62))
+    return keys(np.clip(r_rgb * band[:, None], 0, 255).astype(np.int64))
+r_key = keys(r_rgb)
 def render(az, theta, ox, oy):
     u, s, d = project(r_pos, az, theta)
     px, py = np.floor(u + ox).astype(int), np.floor(-s + oy).astype(int)
     ok = (px >= 0) & (py >= 0) & (px < size) & (py < size)
     covered = np.zeros(size * size, bool); hit = ok & centre_hit(u + ox, -s + oy); covered[py[hit] * size + px[hit]] = True
     ok &= covered[np.clip(py, 0, size - 1) * size + np.clip(px, 0, size - 1)]
-    cell = py[ok] * size + px[ok]; dd = d[ok]; key = r_key[ok]
+    cell = py[ok] * size + px[ok]; dd = d[ok]; key = (toon(az, theta) if TOON else r_key)[ok]
     zmin = np.full(size * size, np.inf); np.minimum.at(zmin, cell, dd)
     front = dd <= zmin[cell] + 1.2
     combo, counts = np.unique(cell[front] * (1 << 24) + key[front], return_counts=True)
