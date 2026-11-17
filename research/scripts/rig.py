@@ -14,10 +14,20 @@ a cape then belongs to the shoulders it hangs from, not to the legs it hangs bes
 moved to the middle of the mesh's own limbs, since the joints were found on the sprites and the mesh is a redraw.
 The rest pose is whatever pose the mesh is in. The walk lowers raised arms to the sides first.
 The file is in metres, y up, facing +z, about 1.8 m tall, with one animation called Walk.
+
+Environment:
+  ITEMS    separate meshes the character wears, in the body's frame, each put on the same skeleton as its own
+           mesh: "Helm=helm.glb:Head;Cape=cape.glb:Hips,Spine;Cuirass=cuirass.glb". The names after the colon are
+           the only bones that item may follow; with none it follows whatever the body under it follows.
+  FIT      how far above the skin an item is moved when it lands inside the body, in sprite pixels (default 0.6; 0 is off)
+  BURIED   how deep an inward-facing item triangle must be to be dropped (default 1.5)
+  TEX      shrink textures to this many pixels a side
+  PALETTE  <sprite-dir>:<name>, the sprites whose colours are stored on the materials; COLOURS of them (default 24)
+  CELL     the size of each preview picture
 """
 import io, json, math, os, struct, sys
 import numpy as np
-from scipy.ndimage import binary_fill_holes
+from scipy.ndimage import binary_fill_holes, distance_transform_edt, map_coordinates
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import dijkstra
 from scipy.spatial import cKDTree
@@ -90,12 +100,14 @@ if GEODESIC:
                 rows.append(a[both]); cols.append(c[both]); steps_len.append(np.full(both.sum(), G * math.sqrt(dx * dx + dy * dy + dz * dz)))
     graph = coo_matrix((np.concatenate(steps_len), (np.concatenate(rows), np.concatenate(cols))), shape=(len(solid_at),) * 2).tocsr()
     at = solid_tree.query(world)[1]
+    through = np.zeros((len(BONES), len(solid_at)))  # from every cell inside the body to each bone, for the items
     for b in range(len(BONES)):
         along = head_pos[b] + (tail_pos[b] - head_pos[b]) * np.linspace(0, 1, 24)[:, None]
         gap, seeds = solid_tree.query(along)
         seeds = np.unique(seeds[gap < 1.5]) if (gap < 1.5).any() else np.unique(seeds)
-        dist[:, b] = dijkstra(graph, directed=False, indices=seeds, min_only=True)[at] + 0.5
-    dist[~np.isfinite(dist)] = 1e6
+        through[b] = dijkstra(graph, directed=False, indices=seeds, min_only=True)
+        dist[:, b] = through[b][at] + 0.5
+    dist[~np.isfinite(dist)] = 1e6; through[~np.isfinite(through)] = 1e6
 for b in range(len(BONES) if not GEODESIC else 0):
     a, c = head_pos[b], tail_pos[b]; ab = c - a
     t = np.clip(((world - a) @ ab) / (ab @ ab + 1e-9), 0, 1)
@@ -108,11 +120,59 @@ for b in range(len(BONES) if not GEODESIC else 0):
     dist[:, b] = d * (1 + 4 * outside)
 # Anything above the ears is head: horns and hats reach out past the body and would otherwise follow an arm.
 dist[world[:, 2] > head[2], names.index("Head")] = 1e-3
-order = np.argsort(dist, 1)[:, :4]
-w = 1.0 / (np.take_along_axis(dist, order, 1) ** 4 + 1e-6)
-w[w < w.max(1, keepdims=True) * 0.05] = 0
-w /= w.sum(1, keepdims=True)
-joints_attr = np.where(w > 0, order, 0).astype(np.uint8); weights_attr = w.astype(np.float32)
+def skin(dist):
+    order = np.argsort(dist, 1)[:, :4]
+    w = 1.0 / (np.take_along_axis(dist, order, 1) ** 4 + 1e-6)
+    w[w < w.max(1, keepdims=True) * 0.05] = 0
+    w /= w.sum(1, keepdims=True)
+    return np.where(w > 0, order, 0).astype(np.uint8), w.astype(np.float32)
+joints_attr, weights_attr = skin(dist)
+
+# ---- items: separate meshes in the body's frame, skinned to the body's bones
+# ITEMS="helm=helm.textured.glb:Head;cape=cape.textured.glb:Hips,Spine". An item vertex takes its distances from
+# the nearest point inside the body, plus the gap to it, and may only follow the bones its slot names: a cape
+# hangs from the spine however close it comes to a leg.
+ITEMS = []
+FIT = float(os.environ.get("FIT", "0.6")); BURIED = float(os.environ.get("BURIED", "1.5"))
+if os.environ.get("ITEMS") and GEODESIC:
+    # How far each point is outside the body (negative inside), on the same grid, and which way is out.
+    sdf = (distance_transform_edt(~solid) - distance_transform_edt(solid)) * G
+    slope = np.gradient(sdf, G)
+    def body_distance(p):
+        at_cell = ((p - low) / G - 0.5).T
+        d = map_coordinates(sdf, at_cell, order=1, mode="nearest")
+        n = np.stack([map_coordinates(s_, at_cell, order=1, mode="nearest") for s_ in slope], 1)
+        return d, n / (np.linalg.norm(n, axis=1, keepdims=True) + 1e-9)
+for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
+    if not GEODESIC: sys.exit("ITEMS needs the weights measured through the mesh: pass - for the voxels")
+    label, rest = spec.split("=", 1); file, _, allowed = rest.partition(":")
+    part = trimesh.load(file, force="mesh", process=False)
+    pg = np.asarray(part.vertices, np.float64); pw = np.stack([pg[:, 0], -pg[:, 2], pg[:, 1]], 1)
+    pf = np.asarray(part.faces); puv = np.asarray(part.visual.uv, np.float64)
+    if FIT > 0:
+        # An item is drawn a pixel outside the body and meshed on its own, so some of it lands inside the
+        # body's mesh. Drop the triangles buried deep in the body that face inward, which nobody can see, and move what is
+        # left out to just above the skin. FIT is how far above, in sprite pixels; 0 leaves the item alone.
+        depth, outward = body_distance(pw)
+        facing = np.einsum("ij,ij->i", trimesh.Trimesh(pw, pf, process=False).face_normals, outward[pf].mean(1))
+        # A buried triangle that faces the way out of the body is the item's outside, drawn too small: keep it.
+        pf = pf[~((depth[pf] < -BURIED).all(1) & (facing < 0.3))]
+        used, index = np.unique(pf, return_inverse=True); pw, puv, pf = pw[used], puv[used], index.reshape(-1, 3)
+        first = body_distance(pw)[0]
+        want = np.clip(FIT + 0.08 * first, 0.15, FIT)  # what was deeper stays underneath what was above it
+        for _ in range(6):
+            d, n = body_distance(pw); short = np.maximum(want - d, 0)
+            pw = pw + n * short[:, None]
+    gap, cell = solid_tree.query(pw)
+    pd = through[:, cell].T + gap[:, None] + 0.5
+    if allowed:
+        banned = [i for i, n in enumerate(names) if n not in allowed.split(",")]
+        if len(banned) == len(names): sys.exit(f"{label}: none of {allowed} is a bone; bones are {names}")
+        pd[:, banned] = 1e9
+    pj, pwt = skin(pd)
+    ptex = part.visual.material.baseColorTexture.convert("RGBA")
+    if os.environ.get("TEX"): ptex = ptex.resize((int(os.environ["TEX"]),) * 2, Image.LANCZOS)
+    ITEMS.append({"name": label, "world": pw, "faces": pf, "uv": puv, "joints": pj, "weights": pwt, "texture": ptex})
 
 # ---- to metres, y up, facing +z
 height = world[:, 2].max() - world[:, 2].min(); S = 1.8 / height; floor = world[:, 2].min()
@@ -191,28 +251,34 @@ def add(arr, target=None, minmax=False, ctype=5126, kind="SCALAR"):
     a = {"bufferView": len(views) - 1, "componentType": ctype, "count": len(arr), "type": kind}
     if minmax: a["min"] = np.atleast_1d(np.asarray(arr).min(0)).tolist(); a["max"] = np.atleast_1d(np.asarray(arr).max(0)).tolist()
     accessors.append(a); return len(accessors) - 1
-a_pos = add(pos, 34962, True, kind="VEC3"); a_nrm = add(normals, 34962, kind="VEC3")
-a_uv = add(np.stack([uv[:, 0], 1 - uv[:, 1]], 1).astype(np.float32), 34962, kind="VEC2")
-a_j = add(joints_attr, 34962, ctype=5121, kind="VEC4"); a_w = add(weights_attr, 34962, kind="VEC4")
-a_idx = add(faces.astype(np.uint32).reshape(-1), 34963, ctype=5125)
+PARTS = [{"name": "Character", "pos": pos, "normals": normals, "uv": uv, "faces": faces, "joints": joints_attr, "weights": weights_attr, "texture": texture}]
+for item in ITEMS:
+    ipos = gl(item["world"]).astype(np.float32)
+    PARTS.append({**item, "pos": ipos, "normals": trimesh.Trimesh(ipos, item["faces"], process=False).vertex_normals.astype(np.float32)})
+for part in PARTS:
+    part["attributes"] = {"POSITION": add(part["pos"], 34962, True, kind="VEC3"), "NORMAL": add(part["normals"], 34962, kind="VEC3"),
+                          "TEXCOORD_0": add(np.stack([part["uv"][:, 0], 1 - part["uv"][:, 1]], 1).astype(np.float32), 34962, kind="VEC2"),
+                          "JOINTS_0": add(part["joints"], 34962, ctype=5121, kind="VEC4"), "WEIGHTS_0": add(part["weights"], 34962, kind="VEC4")}
+    part["indices"] = add(part["faces"].astype(np.uint32).reshape(-1), 34963, ctype=5125)
 ibm = np.tile(np.eye(4, dtype=np.float32), (len(BONES), 1, 1)); ibm[:, 3, :3] = -jpos  # column-major: translation in the last row
 a_ibm = add(ibm.reshape(-1, 16), kind="MAT4")
 a_time = add(times, minmax=True)
-png = io.BytesIO(); texture.save(png, "PNG"); data = png.getvalue(); off = sum(len(c) for c in chunks)
-chunks.append(data + b"\x00" * ((4 - len(data) % 4) % 4)); views.append({"buffer": 0, "byteOffset": off, "byteLength": len(data)}); image_view = len(views) - 1
+for part in PARTS:
+    png = io.BytesIO(); part["texture"].save(png, "PNG"); data = png.getvalue(); off = sum(len(c) for c in chunks)
+    chunks.append(data + b"\x00" * ((4 - len(data) % 4) % 4)); views.append({"buffer": 0, "byteOffset": off, "byteLength": len(data)}); part["image"] = len(views) - 1
 nodes = [{"name": n, "translation": (jpos[i] - (jpos[parent[i]] if parent[i] >= 0 else 0)).tolist()} for i, n in enumerate(names)]
 for i, p in enumerate(parent):
     if p >= 0: nodes[p].setdefault("children", []).append(i)
-nodes.append({"name": "Character", "mesh": 0, "skin": 0})
+for i, part in enumerate(PARTS): nodes.append({"name": part["name"], "mesh": i, "skin": 0})
 samplers, channels = [], []
 for n, q in tracks.items():
     samplers.append({"input": a_time, "output": add(np.array(q, np.float32), kind="VEC4"), "interpolation": "LINEAR"})
     channels.append({"sampler": len(samplers) - 1, "target": {"node": names.index(n), "path": "rotation"}})
-gltf = {"asset": {"version": "2.0", "generator": "pixelkiln research rig.py"}, "scene": 0, "scenes": [{"nodes": [0, len(BONES)]}], "nodes": nodes,
-        "meshes": [{"primitives": [{"attributes": {"POSITION": a_pos, "NORMAL": a_nrm, "TEXCOORD_0": a_uv, "JOINTS_0": a_j, "WEIGHTS_0": a_w}, "indices": a_idx, "material": 0}]}],
+gltf = {"asset": {"version": "2.0", "generator": "pixelkiln research rig.py"}, "scene": 0, "scenes": [{"nodes": [0] + [len(BONES) + i for i in range(len(PARTS))]}], "nodes": nodes,
+        "meshes": [{"name": p["name"], "primitives": [{"attributes": p["attributes"], "indices": p["indices"], "material": i}]} for i, p in enumerate(PARTS)],
         "skins": [{"joints": list(range(len(BONES))), "skeleton": 0, "inverseBindMatrices": a_ibm}],
-        "materials": [{"name": "Sprite", **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}],
-        "textures": [{"source": 0, "sampler": 0}], "images": [{"bufferView": image_view, "mimeType": "image/png"}],
+        "materials": [{"name": "Sprite" if i == 0 else p["name"], **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": i}, "metallicFactor": 0, "roughnessFactor": 1}} for i, p in enumerate(PARTS)],
+        "textures": [{"source": i, "sampler": 0} for i in range(len(PARTS))], "images": [{"bufferView": p["image"], "mimeType": "image/png"} for p in PARTS],
         "samplers": [{"magFilter": 9728, "minFilter": 9728, "wrapS": 33071, "wrapT": 33071}],
         "animations": [{"name": "Walk", "samplers": samplers, "channels": channels}],
         "accessors": accessors, "bufferViews": views, "buffers": [{"byteLength": sum(len(c) for c in chunks)}]}
@@ -278,5 +344,5 @@ if preview:
     owner = joints_attr[np.arange(len(pos)), weights_attr.argmax(1)]
     rgb = palette[owner % 8][faces[pick][:, 0]].astype(np.int64)
     Image.fromarray(np.hstack([draw(pos.astype(np.float64), math.radians(a)) for a in (0, 60, 180, 240)])).save(preview.replace(".png", ".weights.png"))
-print(json.dumps({"out": out, "vertices": len(pos), "triangles": len(faces), "bones": names, "heightMetres": 1.8, "animation": "Walk", "keys": KEYS,
+print(json.dumps({"out": out, "vertices": len(pos), "triangles": len(faces), "items": {i["name"]: len(i["faces"]) for i in ITEMS}, "bones": names, "heightMetres": 1.8, "animation": "Walk", "keys": KEYS,
                   "bytes": 12 + 8 + len(js) + 8 + len(binary), "maxInfluences": int((weights_attr > 0).sum(1).max())}))

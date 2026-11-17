@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const SUBJECTS = [
-  { id: "knight", label: "Dark knight" },
+  { id: "parts", label: "Dressed from parts" },
+  { id: "knight", label: "Dark knight, one piece" },
   { id: "hero", label: "Bare base" },
 ] as const;
 type SubjectId = (typeof SUBJECTS)[number]["id"];
@@ -24,6 +25,7 @@ type Controls = {
   setSpinning: (on: boolean) => void;
   setPixel: (on: boolean) => void;
   setBones: (on: boolean) => void;
+  setWorn: (item: string, on: boolean) => void;
   dispose: () => void;
 };
 
@@ -37,7 +39,10 @@ type Controls = {
 export function MeshViewer() {
   const host = useRef<HTMLDivElement>(null);
   const controls = useRef<Controls | null>(null);
-  const [subject, setSubject] = useState<SubjectId>("knight");
+  const [subject, setSubject] = useState<SubjectId>("parts");
+  // The separate meshes the loaded file holds besides the body, and which of them are shown.
+  const [items, setItems] = useState<string[]>([]);
+  const [worn, setWorn] = useState<Record<string, boolean>>({});
   const [walking, setWalking] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [pixel, setPixel] = useState(true);
@@ -55,6 +60,7 @@ export function MeshViewer() {
     let cancelled = false;
     let cleanup = () => {};
     setStatus("loading");
+    setItems([]);
 
     (async () => {
       const THREE = await import("three");
@@ -138,6 +144,7 @@ export function MeshViewer() {
       let mixer: import("three").AnimationMixer | null = null;
       let action: import("three").AnimationAction | null = null;
       let helper: import("three").SkeletonHelper | null = null;
+      const parts = new Map<string, import("three").Object3D>();
       let pixelOn = true;
       let playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -184,7 +191,11 @@ export function MeshViewer() {
           }
           mesh.material = new THREE.MeshToonMaterial({ map: source.map, gradientMap: ramp });
           mesh.frustumCulled = false;
+          // Every mesh but the body is something the character wears, on the same skeleton.
+          if (mesh.name !== "Character") parts.set(mesh.name, mesh);
         });
+        setItems([...parts.keys()]);
+        setWorn(Object.fromEntries([...parts.keys()].map((name) => [name, true])));
         scene.add(gltf.scene);
         helper = new THREE.SkeletonHelper(gltf.scene);
         helper.visible = false;
@@ -231,6 +242,7 @@ export function MeshViewer() {
         setSpinning: (on) => { orbit.autoRotate = on; },
         setPixel: (on) => { pixelOn = on; canvas.classList.toggle("mesh-canvas-smooth", !on); resize(); },
         setBones: (on) => { if (helper) helper.visible = on; },
+        setWorn: (item, on) => { const part = parts.get(item); if (part) part.visible = on; },
         dispose: () => {},
       };
       // Bring a freshly loaded model in line with the switches as they stand.
@@ -261,6 +273,7 @@ export function MeshViewer() {
   useEffect(() => { controls.current?.setSpinning(spinning && !reducedMotion); }, [spinning, reducedMotion, status]);
   useEffect(() => { controls.current?.setPixel(pixel); }, [pixel, status]);
   useEffect(() => { controls.current?.setBones(bones); }, [bones, status]);
+  useEffect(() => { for (const [item, on] of Object.entries(worn)) controls.current?.setWorn(item, on); }, [worn, status]);
 
   const subjectLabel = SUBJECTS.find((entry) => entry.id === subject)!.label.toLowerCase();
 
@@ -305,6 +318,18 @@ export function MeshViewer() {
             ))}
           </div>
         </div>
+        {items.length > 0 ? (
+          <div className="builder-slot" role="group" aria-label="What the character wears">
+            <span className="builder-slot-label">Wearing</span>
+            <div className="builder-options">
+              {items.map((item) => (
+                <button key={item} type="button" className="builder-option" aria-pressed={worn[item] ?? true} onClick={() => setWorn((current) => ({ ...current, [item]: !(current[item] ?? true) }))}>
+                  {item.replaceAll("_", " ")}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <div className="builder-slot" role="group" aria-label="How it is drawn">
           <span className="builder-slot-label">Show</span>
           <div className="builder-options">
@@ -316,16 +341,29 @@ export function MeshViewer() {
             </button>
           </div>
         </div>
-        <p className="spin-note">
-          Drag to turn it. This is one mesh, not
-          frames. The character was first redrawn with its arms out, and its
-          shape generated from four of those eight sprites. Its surface is
-          painted by a second model, shown each sprite in turn with the mesh
-          turned to face it. Fifteen bones are placed from the joints found
-          in each view, and the walk lowers the arms and turns those bones.
-          The pixel look snaps every pixel to the sprites&apos; own colours.
-          The cape is still rigid.
-        </p>
+        {subject === "parts" ? (
+          <p className="spin-note">
+            Drag to turn it. The body and each thing it wears are separate
+            meshes on one skeleton, in one file. Each item was drawn as its
+            own sprite layer over the bare body, the way the 2D builder
+            above does it. The body was then meshed wearing that one item,
+            and the item cut out of the result wherever its layer has
+            pixels. Items are moved to just above the skin and follow the
+            body&apos;s bones. The textures are stitched from the sprites
+            and still rough.
+          </p>
+        ) : (
+          <p className="spin-note">
+            Drag to turn it. This is one mesh, not
+            frames. The character was first redrawn with its arms out, and its
+            shape generated from four of those eight sprites. Its surface is
+            painted by a second model, shown each sprite in turn with the mesh
+            turned to face it. Fifteen bones are placed from the joints found
+            in each view, and the walk lowers the arms and turns those bones.
+            The pixel look snaps every pixel to the sprites&apos; own colours.
+            The cape is still rigid.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -9,3 +9,6 @@ pixelkiln.cache.json
 
 # Local agent notes — pointer documentation, deliberately not a project artifact
 CLAUDE.md
+
+# Python caches
+__pycache__/

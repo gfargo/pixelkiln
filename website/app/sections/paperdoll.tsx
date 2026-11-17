@@ -133,11 +133,13 @@ export function PaperdollSection() {
             <div className="builder-block" id="mesh">
               <h3>The same character, as a mesh with bones.</h3>
               <p>
-                Further along the same experiment: one 3D model you can turn
+                Further along the same experiment: a 3D model you can turn
                 freely, with a skeleton inside it and a walk made by moving
-                the bones. The file is a standard .glb, the kind a 3D game
-                engine imports with its rig and animation. It is rougher than
-                the sprites, and the research notes say where and why.
+                the bones. The first one is a bare body and four items, each
+                its own mesh, that you can take off one at a time. The file
+                is a standard .glb, the kind a 3D game engine imports with
+                its rig and animation. It is rougher than the sprites, and
+                the research notes say where and why.
               </p>
               <MeshViewer />
             </div>

@@ -2,7 +2,7 @@
 
 This is a research note, not a feature: nothing here is a PixelKiln command, and the scripts are rough. PixelKiln already generates an object or a character from eight directions. This note records every attempt to turn those eight pictures into a 3D model: what was tried, with what, and what came out.
 
-Last updated 16 November 2026.
+Last updated 17 November 2026.
 
 ## Summary
 
@@ -33,6 +33,9 @@ Last updated 16 November 2026.
 | 23 | Bake the painted views on this machine, with side views and colour correction | Our script | 24 views from 8 passes, no visible seams; the rim and colour-matching ideas made it worse | Keep the side views and the correction. Drop the other two. |
 | 24 | Measure skin weights through the inside of the mesh | Our script | The cape hangs from the shoulders, not the legs; the walk lowers the arms | Keep. |
 | 25 | Carry the sprites' palette in the file and snap to it when drawing | Our script, a shader in the viewer | Renders at sprite size read as sprites; the colour score still prefers the stitched texture | Keep the look. The score is the wrong judge. |
+| 26 | A leaner bare body, with each item drawn as its own layer | PixelLab v3 character, PixelKiln layers | A slim figure in underwear and four clean item layers; the mesh is still stocky | Keep. The mesh inherits the sprite's four-heads-tall build. |
+| 27 | Mesh each item on its own, or mesh the body wearing it and cut the item out | Hunyuan3D-2mv, our scripts | Alone, thin items collapse into slabs; cut from the worn mesh, all four hold their shape | Cut from the worn mesh. |
+| 28 | The body and four items as separate meshes on one skeleton | Our script | One .glb, items switch on and off, all walk together | Keep. Textures are stitched and rough; nothing is painted yet. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -591,6 +594,89 @@ The knight: sprites, the painted model from the same directions, and from the ei
 
 **Verdict.** Keep the palette in the file and the snap in the renderer. The score needs replacing before it can steer anything.
 
+## 26. A body made to be dressed
+
+**Question.** Steps 19 to 25 meshed the knight with its armour on, as one piece. A game that swaps gear needs the reverse: one bare body, and each item a mesh of its own that any body can wear. That starts with a body. The bare character used so far also read as an infant once meshed: short, round and unclothed.
+
+**Setup.**
+
+- *The body.* PixelLab's v3 character at 64 pixels, through a PixelKiln manifest, with the base prompt from the [paperdoll guide](./PAPERDOLL.md) plus the pose: "bald adult human figure with adult proportions, slim and lean with a small head, broad shoulders and long legs ... standing straight in an A-pose with both arms held straight and out to the sides at 45 degrees". 2 generations.
+- *The items.* Five PixelKiln `layer` assets over the body's eight directions: underwear, leg armour, a cuirass, a horned helm and a cape. Each is one masked inpaint that returns only the pixels it added. 10 generations each. The helm's first job failed at PixelLab and passed on a retry.
+- *The joints.* `pixelkiln anchors`, 0.8 generations for the eight views.
+
+**Result.** Row 1 is the body, rows 2 to 5 the layers for underwear, leg armour, cuirass and cape, and row 6 the body wearing the first three.
+
+![The bare body in eight directions, four item layers, and the body dressed](../website/public/research/3d/parts-layers.png)
+
+- **The arms came out level in all eight views,** a T-pose and not the 45 degrees asked for. The views agree with each other, which step 21 could not get from an edit.
+- **The layers are clean.** Nothing but the item in each, in every direction.
+
+The body in underwear, meshed from smoothed inputs (step 22) and textured by stitching (step 10):
+
+![The body mesh from five directions](../website/public/research/3d/parts-body.png)
+
+- **It no longer reads as an infant,** but it is stockier than the sprite. The sprite is about four heads tall, as pixel characters are so that a face fits in a dozen pixels, and the mesh model fills that build out. The outline matches the sprites 82.1%.
+
+**Verdict.** Keep the body. An adult's seven or eight heads would need a sprite too tall to be a game sprite, so the build is the style's, not a fault to fix here.
+
+## 27. An item as its own mesh: alone, or cut from the body wearing it
+
+**Question.** What is the best way to get a mesh of one item that fits the body?
+
+**Setup.** Two routes, on the same four items.
+
+- *Alone.* The item's layer, with no body, enlarged to fill the picture ([`scripts/smooth_inputs.py`](../research/scripts/smooth_inputs.py) with `FILL=1`), meshed by Hunyuan3D-2mv.
+- *Cut from the worn mesh.* The body wearing that one item is meshed. A second set of sprites with the same outline is painted green where the item's layer has a pixel and magenta elsewhere. Texturing the mesh from those says which triangles are the item, and [`scripts/cut_item.py`](../research/scripts/cut_item.py) keeps them.
+
+Every mesh is fitted in the body's camera frame, so each lands where it is worn. `texture.py` now starts a fit at the point in space where the item's sprites are, since a helm is nowhere near the middle of the frame.
+
+The cut for the helm: the worn mesh, the same mesh textured from the mask sprites, and what is kept.
+
+![The body wearing the helm, the same mesh in green and magenta, and the helm alone](../website/public/research/3d/parts-cut-helm.png)
+
+**Result.** Left: each item meshed alone. Right: each cut from the worn mesh. Rows are helm, cuirass, leg armour, cape.
+
+![Four items meshed alone, and the same four cut from the body wearing them](../website/public/research/3d/parts-alone-vs-cut.png)
+
+| Item | Outline match, alone | Outline match, worn | Triangles kept by the cut |
+|---|---|---|---|
+| Helm | 71.2% | 74.9% | 8,992 of 29,999 |
+| Cuirass | 76.5% | 81.4% | 10,811 |
+| Leg armour | 62.5% | 82.3% | 11,830 |
+| Cape | 61.7% | 84.3% | 15,427 |
+
+The two outline columns are not like for like: alone, the mesh is compared with the item's layer, and worn, the whole dressed figure with its sprites.
+
+- **Alone, the model does not know what it is looking at.** The leg armour became two flat boards and the cape three separate slabs. The helm became a box with horns, and the cuirass a solid torso.
+- **Worn, the body tells it.** The leg armour wraps two legs, the cape hangs as one sheet from a collar, and the helm is round.
+- **The cut is ragged at the edges** and leaves a fringe of skin-coloured triangles where an outline pixel was shared. Each cut also leaves 25 to 40 loose pieces, most of them crumbs.
+- **A cut item is a shell.** It has no inside, which is what a game wants from clothing.
+
+**Verdict.** Cut from the worn mesh. It costs one mesh per item either way, about two minutes each.
+
+## 28. A character assembled from parts
+
+**Question.** Do a body and items made separately go together, and move together?
+
+**Setup.** [`scripts/rig.py`](../research/scripts/rig.py) gained `ITEMS`: a list of item meshes to put on the body's skeleton.
+
+- *Fit.* An item is drawn one pixel outside the body and meshed from a different run, so parts of it land inside the body's mesh: the first helm showed the face through its front. Each item vertex closer than 0.6 sprite pixels to the skin is moved out along the body's surface direction until it is that far above it. Triangles buried deep in the body that face inward are dropped.
+- *Weights.* An item vertex takes the bone distances of the nearest point inside the body (step 24), so tight armour moves as the skin under it does. A slot can name the bones it may follow: the helm follows the head only, the cape the hips and spine only.
+- *File.* One .glb with five meshes on one skeleton and one walk. The viewer shows a switch per mesh.
+
+**Result.**
+
+![The body wearing all four items, from five directions](../website/public/research/3d/parts-assembled.png)
+
+- **It reads as the knight,** from parts that were never meshed together. Nothing pokes through in the rest pose.
+- **Items come off one at a time** in the viewer on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#mesh), and the body under them is whole.
+- **The file is 3.6 MB:** five meshes of up to 30,000 triangles and five 256 pixel textures. It passes the glTF validator with no errors or warnings.
+- **The textures are the stitched ones of step 10,** noisy on the armour. The paint stage of steps 20 and 23 has not been run on parts.
+
+Not checked: whether skin shows through armour at the extremes of the walk, an item on a second body, two items in the same slot, and any engine other than three.js.
+
+**Verdict.** Keep. This is the shape a game can use: a body, a rack of items, one skeleton.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -616,6 +702,9 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 
 ## What is next
 
+- **Paint the parts.** Run the paint stage (steps 20 and 23) on the body and on each worn mesh before the cut, so items carry painted textures.
+- **Hide the body under an item,** as games do, so skin cannot show through in motion, and tidy the cut's edge.
+- **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
 - **Held items.** Carve them separately, upright, and place them on the model the way the paperdoll layers place them on the sprite.
@@ -674,6 +763,8 @@ No public tool was found that takes several directional pixel sprites and return
 - Image-model redraws in steps 13 and 14: 50.1 generations for six calls.
 - The paint stage: no generations. A 9.2 GB download, then about six minutes of GPU time per character.
 - A-poses in step 21: 20 generations for the two states, 0.25 for importing the knight, 1.6 for sixteen joint estimates.
+- The body and its five layers in step 26: 52.8 generations (2 for the body, 10 for each layer, 0.8 for the joints), read from the balance before and after.
+- Nine meshes in step 27: about two minutes of GPU time each.
 
 ## Running the scripts
 
@@ -714,6 +805,14 @@ python3 research/scripts/bake.py <name.textured.glb> <out-folder>/<name>.views.j
 
 # Rig a mesh through its own inside, with the sprites' palette stored in the file.
 PALETTE=<folder>:<name> TEX=512 python3 research/scripts/rig.py <name.baked.glb> <name.rig.json> - - <out.glb> <preview.png>
+
+# A character from parts (steps 26 to 28). Sprites and layers share one canvas size; the camera is the body's.
+python3 research/scripts/smooth_inputs.py <art> <base> <in> worn base,<underwear-layer>,<item-layer>
+python3 research/scripts/hunyuan3d.py <in> worn <mesh-folder>
+TURNS=0 CAMERA=<body.camera.json> python3 research/scripts/texture.py <sprites> <worn> <mesh-folder>/worn-mv.glb <tex>
+TURNS=0 CAMERA=<body.camera.json> python3 research/scripts/texture.py <sprites> <mask> <mesh-folder>/worn-mv.glb <tex>
+python3 research/scripts/cut_item.py <tex>/<worn>.textured.glb <tex>/<mask>.textured.glb <item.glb>
+ITEMS="Helm=<helm.glb>:Head;Cape=<cape.glb>:Hips,Spine;Cuirass=<cuirass.glb>" python3 research/scripts/rig.py <body.textured.glb> <body.rig.json> - - <out.glb>
 
 # Draw textured meshes large, one row each.
 python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>

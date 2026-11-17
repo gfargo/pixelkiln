@@ -125,13 +125,23 @@ if has_mesh:
     height = np.mean([np.ptp(np.nonzero(alpha[v].any(1))[0]) + 1 for v in USE])
     extent = verts.max(0) - verts.min(0)
     best, best_s, tried = None, -1, []
+    start = [0.0, 0.0, 0.0]
+    if camera:
+        # A part of a character (a helmet, a cape) is not at the middle of the camera's frame. Start it where
+        # its sprites are: the point in space whose picture in each view is the middle of that view's drawing.
+        rows, want = [], []
+        for v in USE:
+            az, th0 = v * math.pi / 4, camera["elevation"]; bx, by = bbox_centre(alpha[v])
+            rows.append([math.cos(az), -math.sin(az), 0]); want.append(bx - centre[v][0] - cam_off[v][0])
+            rows.append([math.sin(az) * math.sin(th0), math.cos(az) * math.sin(th0), math.cos(th0)]); want.append(-(by - centre[v][1] - cam_off[v][1]))
+        start = [float(c) for c in np.linalg.lstsq(np.array(rows), np.array(want), rcond=None)[0]]
     for mirror in (1, -1):
         for turn in TURNS:
             for deg in ([math.degrees(camera["elevation"])] if camera else (0, 10, 20, 30)):
                 th = math.radians(deg)
                 depth = max(extent[0], extent[2])
                 s0 = height / (extent[1] * math.cos(th) + depth * math.sin(th))
-                p = {"yaw": turn * math.pi / 4, "mirror": mirror, "theta": th, "sc": [s0, s0, s0], "shift": [0, 0, 0],
+                p = {"yaw": turn * math.pi / 4, "mirror": mirror, "theta": th, "sc": [s0, s0, s0], "shift": list(start),
                      "off": [list(o) for o in cam_off] if camera else [[0, 0] for _ in range(8)]}
                 s = iou(p); tried.append((round(s * 100, 1), mirror, turn * 45, round(deg)))
                 # A silhouette cannot tell an object from its mirror image, so a mirrored fit has to win clearly.
