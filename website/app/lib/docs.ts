@@ -117,7 +117,7 @@ export const docs: DocEntry[] = [
   {
     slug: "research-3d",
     title: "Research: 3D models from sprites",
-    description: "Every attempt to turn eight directional sprites into a 3D model, with pictures: carving, upright prompting, a triangulated skeleton, Hunyuan3D meshes, and texturing them in stages.",
+    description: "Every attempt to turn eight directional sprites into a 3D model, with pictures: carving, upright prompting, a triangulated skeleton, Hunyuan3D meshes, and texturing both shapes in stages.",
     file: "docs/RESEARCH_3D.md",
     group: "Research",
   },

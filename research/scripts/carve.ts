@@ -45,6 +45,11 @@ for (let round = 0; round < 2; round++) { const next = new Uint8Array(vox)
     for (let dz = -1; dz <= 1; dz++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) n += vox[idx(x + dx, y + dy, z + dz)]!
     next[idx(x, y, z)] = vox[idx(x, y, z)] ? (n >= 9 ? 1 : 0) : (n >= 17 ? 1 : 0) }
   vox = next }
+// DUMP=1 writes the smoothed voxels and the fitted camera, for texture.py to mesh and texture.
+if (process.env.DUMP) {
+  writeFileSync(`${out}/${name}.vox`, vox)
+  writeFileSync(`${out}/${name}.camera.json`, JSON.stringify({ size, elevation: best.theta, centre, off: best.off, skip: [...SKIP] }))
+}
 const [anchorsFile, anchorsKey, tubeMode = "hybrid"] = process.argv.slice(7)
 let rig: Array<{ label: string; x: number; y: number; z: number; residual: number }> | undefined
 if (anchorsFile) {
