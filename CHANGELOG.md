@@ -1,3 +1,10 @@
+# [0.106.0](https://github.com/gfargo/pixelkiln/compare/v0.105.1...v0.106.0) (2026-11-17)
+
+
+### Features
+
+* **site:** a sixteen-direction turnaround viewer, and the research behind it ([d13621c](https://github.com/gfargo/pixelkiln/commit/d13621c6c27d17d52770e042913627354f333f60))
+
 ## [0.105.1](https://github.com/gfargo/pixelkiln/compare/v0.105.0...v0.105.1) (2026-11-17)
 
 
