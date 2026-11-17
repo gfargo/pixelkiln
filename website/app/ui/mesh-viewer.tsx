@@ -9,7 +9,7 @@ const SUBJECTS = [
 type SubjectId = (typeof SUBJECTS)[number]["id"];
 
 /** Screen pixels per rendered pixel when the pixel look is on. */
-const PIXEL = 4;
+const PIXEL = 3;
 
 function subscribeReducedMotion(callback: () => void) {
   const list = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -26,8 +26,9 @@ type Controls = {
 };
 
 /**
- * A real mesh in the page: the character carved from its eight sprites,
- * textured from them, hung on a fifteen-bone skeleton and given a walk. The
+ * A real mesh in the page: the character's shape generated from its sprites,
+ * painted from them by a second model, hung on a fifteen-bone skeleton and
+ * given a walk. The
  * file it loads is the .glb a game engine would import. three.js is fetched
  * only when this mounts.
  */
@@ -118,9 +119,12 @@ export function MeshViewer() {
           if (!mesh.isMesh) return;
           const source = mesh.material as import("three").MeshStandardMaterial;
           if (source.map) {
-            source.map.magFilter = THREE.NearestFilter;
-            source.map.minFilter = THREE.NearestFilter;
-            source.map.generateMipmaps = false;
+            // The texture holds more detail than the low-resolution render has pixels. Averaging it down
+            // gives clean pixels; picking single texels gives noise.
+            source.map.magFilter = THREE.LinearFilter;
+            source.map.minFilter = THREE.LinearMipmapLinearFilter;
+            source.map.generateMipmaps = true;
+            source.map.needsUpdate = true;
           }
           mesh.material = new THREE.MeshToonMaterial({ map: source.map, gradientMap: ramp });
           mesh.frustumCulled = false;
@@ -248,10 +252,11 @@ export function MeshViewer() {
         </div>
         <p className="spin-note">
           Drag to turn it. This is one mesh, not
-          frames: carved from the eight sprites, coloured from them, bound to
-          fifteen bones placed from the joints found in each view, and given a
-          walk by turning those bones. The texture is still rough where the
-          sprites disagree with each other.
+          frames. Its shape is generated from four of the eight sprites. Its
+          surface is painted by a second model, shown each sprite in turn with
+          the mesh turned to face it. Fifteen bones are placed from the joints
+          found in each view, and the walk turns those bones. Seams still show
+          where two painted views meet.
         </p>
       </div>
     </div>

@@ -10,6 +10,8 @@ env:   SKIP=north-east,north-west   views to leave out (drawn tilted)
        COVER=touch|centre           a rendered pixel is covered when the shape touches it, or only when it covers its centre
        EXTRA=<dir>                  repaired in-between views to take colour from as well (see stage 3)
        FLAT=6                       paint the texture as this many flat materials and light it in the renderer; 0 is off
+       OVERLAY=0.4                  with FLAT: put sprite pixels back where the surface faces the view at least this squarely
+       AGREE=90, DEV=0              with OVERLAY: how far views may disagree, and how far a pixel must differ from its flat colour
        TAG=carved                   added to the output file names
        FACES=30000                  triangle budget after simplifying
        MODE=best|vote|blend         one view per texel; the view nearest the consensus of all that see it; or a blend snapped to the palette
@@ -22,7 +24,7 @@ Needs numpy, scipy, pillow, trimesh, xatlas, fast-simplification.
 Writes <name>.texture.png, <name>.views.png, <name>.textured.glb, <name>.textured.png (a sheet:
 sprites, the model from the same eight directions, the model from the eight in between) and prints scores.
 """
-import json, os, sys, math
+import warnings, json, os, sys, math
 import numpy as np
 from PIL import Image
 import trimesh, xatlas, fast_simplification
@@ -230,7 +232,7 @@ p_alpha = [im[:, :, 3] > 127 for im in p_img]; NP = len(p_img)
 dense, dense_face = trimesh.sample.sample_surface(wmesh, 600000, seed=11)
 dense = np.asarray(dense)
 Z = 3  # depth buffer cells per sprite pixel
-weights = np.full((len(P), NP), -np.inf); colours = np.zeros((len(P), NP, 3), np.uint8)
+weights = np.full((len(P), NP), -np.inf); colours = np.zeros((len(P), NP, 3), np.uint8); risk = np.zeros((len(P), NP), bool)
 for v in range(NP):
     az = p_az[v]; cam = to_camera(az, fit["theta"])
     ox, oy = p_org[v]
@@ -270,6 +272,12 @@ for v in range(NP):
     # Outline pixels never give colour: the render draws its own outline.
     w = np.where(opaque & visible & (facing > 0.15) & ~outline & ~(jump[pyc, pxc] & (EDGE > 0)), facing - np.where(near_ok, 0.08 * snap, 0), -np.inf)
     weights[:, v] = w; colours[:, v] = rgba[:, :3]
+    # For OVERLAY: a texel that lands on the sprite's rim, or beside a jump in the mesh's depth, is one a
+    # small misfit would colour from the wrong surface.
+    with np.errstate(invalid="ignore"):
+        step = np.zeros((size, size), bool)
+        for nb in (dp[:-2, 1:-1], dp[2:, 1:-1], dp[1:-1, :-2], dp[1:-1, 2:]): step |= ~(np.abs(nb - depth) <= 2.5)
+    risk[:, v] = step[pyc, pxc] | rim[pyc, pxc]
 owner = weights.argmax(1); seen = np.isfinite(weights.max(1))
 # Neighbouring texels should take their colour from the same sprite where they can, or the surface speckles
 # at every boundary between two views. Each texel moves to the view most of its neighbours in 3D use.
@@ -313,6 +321,7 @@ if GAP > 0:
 # brightness), lets neighbours on the surface agree, and paints each material one flat colour. Light is then
 # added by the renderer, the same from every side.
 FLAT = int(os.environ.get("FLAT", "0"))
+detail = texel.copy()
 if FLAT > 0:
     rgb = texel / 255.0; mx, mn = rgb.max(1), rgb.min(1); lum = rgb @ np.array([0.299, 0.587, 0.114])
     sat = (mx - mn) / np.maximum(mx, 1e-6)
@@ -332,6 +341,23 @@ if FLAT > 0:
         if not m.any(): continue
         # The material's lit colour: a real texel about three quarters of the way up its brightness range.
         order = np.argsort(lum[m]); texel[m] = texel[m][order[int(len(order) * 0.72)]]
+# Overlay: the flat materials are a clean base with no detail. The sprites' own pixels go back on top only
+# where they can be trusted: the surface faces the view squarely (OVERLAY is how squarely, 0 to 1), it is not
+# at a rim or a depth jump, the views that see it agree within AGREE, and the pixel differs from its
+# material's flat colour by at least DEV, so soft painted shading stays out and eyes and trim come back.
+OVERLAY = float(os.environ.get("OVERLAY", "0"))
+kept = np.zeros(len(P), bool)
+if FLAT > 0 and OVERLAY > 0:
+    ar = np.arange(len(P)); own = weights[ar, owner]; ok = np.isfinite(weights); cnt = ok.sum(1)
+    cand = np.where(ok[:, :, None], colours.astype(np.float64), np.nan)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore"); mid = np.nan_to_num(np.nanmedian(cand, axis=1))
+    spread = np.abs(colours[ar, owner].astype(np.float64) - mid).sum(1)
+    agree = np.where(cnt >= 2, spread <= float(os.environ.get("AGREE", "90")), own >= 0.8)
+    sure = seen & (own >= OVERLAY) & ~risk[ar, owner] & agree
+    kept = sure & (np.abs(detail - texel).sum(1) >= float(os.environ.get("DEV", "0")))
+    texel[kept] = detail[kept]
+    print(f"overlay: {kept.mean():.0%} of texels carry sprite detail, {sure.mean():.0%} were trusted")
 tex = np.zeros((R, R, 4), np.uint8); tex[used, :3] = texel.astype(np.uint8); tex[used, 3] = 255
 # Pad the islands so sampling at their edges does not pick up empty texels.
 flat_used = np.argwhere(used); pad = np.argwhere(~used)

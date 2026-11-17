@@ -24,7 +24,10 @@ Last updated 16 November 2026.
 | 14 | Paint the redrawn views back onto the model | Our script | Smoother, still muddy | Drop for now. The model is a guide, not the final picture. |
 | 15 | Flatten the texture to a few materials and light it in the renderer | Our script | No blotches, and no detail either | Partly. The lighting is worth keeping; the flattening loses too much. |
 | 16 | Put the skeleton in the mesh, skin it, add a walk, export a rigged `.glb` | Our script | Valid glTF with 15 bones and a walk, for both characters | Keep. This is the first file here a 3D game can import and animate. |
-| 17 | Generate the texture with Hunyuan3D's paint stage | Scoped on the RTX 3060, not run | Needs a second ComfyUI install and about 20 GB of downloads; may not fit in 12 GB | Waiting on a decision. |
+| 17 | Install Hunyuan3D's paint stage on the RTX 3060 | Second ComfyUI, community node | Runs in 12 GB after one patch; about 40 seconds a pass | Keep. |
+| 18 | Flat base with trusted sprite pixels laid back on top | Our script | Eyes and trim return; the tearing does not change | Drop. The tearing is in the shape, not the shading. |
+| 19 | Use the Hunyuan3D mesh for the knight, not the carved shape | Hunyuan3D-2mv | Real horns, separate arms and legs; the same texturing reads far better | Keep for complex characters. No gain on the bare character. |
+| 20 | Paint the mesh with the paint stage, once per sprite direction | Hunyuan3D-2 paint | Each sprite redrawn to fit the mesh; a clean texture from every side | Keep. The best texture in this note. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -399,22 +402,82 @@ The walk, posed here with the file's own bones and weights and drawn from the fr
 
 **Verdict.** Keep. The rig is the part of this note closest to the goal: characters that can be animated and imported into 3D games. The mesh and skeleton are sound. The texture is what is holding the result back.
 
-## 17. Hunyuan3D's paint stage, scoped
+## 17. Hunyuan3D's paint stage, installed
 
 **Question.** Hunyuan3D has a second stage that textures a mesh from a reference image, consistently from every side. Can it run on the RTX 3060 used in step 8?
 
-**Setup.** A read-only look at the machine and at the published requirements. Nothing was installed or downloaded.
+**Setup.** The ComfyUI already on that machine could not run it: its built-in Hunyuan3D nodes make shapes only, and the community node that adds the paint stage, [ComfyUI-Hunyuan3DWrapper](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper), ships its compiled renderer for Python 3.12, where that install is Python 3.13. So a second ComfyUI went in beside the first, which was not touched:
+
+- Python 3.12 in its own virtual environment, PyTorch 2.6.0 for CUDA 12.6, and the node's renderer wheel built for that pair.
+- ComfyUI pinned to v0.3.27. The current release needs a newer PyTorch than the wheel was built for and fails on start.
+- The paint model, `hunyuan3d-paint-v2-0`, which the node downloads on first use: 9.2 GB. The delight model was not used; the sprites carry no photographic lighting to remove.
 
 **Result.**
 
-- **The ComfyUI already installed cannot run it.** Its built-in Hunyuan3D nodes make shapes only. The community node that adds the paint stage ships its compiled renderer for Python 3.12 and PyTorch 2.6; this install is Python 3.13 and PyTorch 2.13, and the machine has no CUDA toolkit to compile it.
-- **A second ComfyUI install beside the first would be needed,** on Python 3.12 with PyTorch 2.6, plus the community node and its prebuilt renderer.
-- **Downloads:** the paint model (9.2 GB) and the delight model that removes baked lighting from the reference (4.3 GB), about 20 GB in all with PyTorch. The disk has room.
-- **Memory is the risk.** The published figure is 16 GB for shape and texture together; one source says 12 GB. No report was found of it running on a 12 GB card. The newer 2.1 paint model states 21 GB and is out of reach.
-- **Also found on the machine:** hosted texturing nodes for Meshy and Tripo, which need paid API keys, and local texture nodes built for a different model (Trellis) that take a colour field, not reference images.
-- **Licence:** the same regional exclusion as the shape model.
+- **The prebuilt renderer has no GPU code for this card.** It fails with "no kernel image is available for execution on the device": the wheel was compiled for a newer GPU generation. The same library has a CPU path that gives the same result, so one line in `custom_rasterizer/render.py` was changed to move its inputs to the CPU and its outputs back. Rasterising a 1024-pixel view on the CPU takes well under a second. No compiler or CUDA toolkit was installed.
+- **It fits in 12 GB.** A full pass, six views at 512 pixels and 25 steps, takes about 40 seconds once the model is loaded, and about two minutes cold.
+- **Given one front view, it invents the rest, and gets the back wrong.** The six views it painted for the knight from the south sprite alone: front, side, back, side, top, bottom. The back has a second face and chest where the cape should be.
 
-**Verdict.** Feasible to try, with a real chance it does not fit. It needs a go-ahead, since it means installing software and downloading about 20 GB onto that machine.
+![Six views painted from one front reference; the back view shows a second face](../website/public/research/3d/paint-single-reference.png)
+
+**Verdict.** Keep. It runs, it is fast, and its front view is the first picture in this note that is both faithful to the sprite and fitted to the mesh. Step 20 uses that.
+
+## 18. A flat base with the sprites laid back on top
+
+**Question.** Step 15's flat materials were clean and featureless. If the flat texture is the base, and the sprites' own pixels are put back only where they can be trusted, is the result both clean and detailed?
+
+**Setup.** `OVERLAY=<0 to 1>` in `texture.py`, with `FLAT`. A texel takes its sprite colour back when the surface faces the view at least that squarely, it is not on the sprite's rim or beside a jump in depth, the views that see it agree within `AGREE`, and its colour differs from the flat material by at least `DEV` (so soft painted shading stays out and eyes and trim come back).
+
+**Result.** On the carved knight, 58% of texels were trusted. Colour error: 22.5 for the full stitched texture, 30.6 flat, 24.6 with the overlay.
+
+- **The eyes, belt and gold trim come back** over a cleaner cape.
+- **The torn areas look the same as before.** They sit exactly where the overlay trusts the sprites least, so they fall back to flat patches of the wrong material.
+- **The flat row shows why.** With the detail gone, the carved knight is a lump: arms fused to the torso, legs fused together, horns reduced to stubs. Eight silhouettes cannot carve the gap between an arm and the body. No way of laying colour on that shape gives a clean arm.
+
+**Verdict.** Drop. The tearing is in the shape, not the shading. This sent the work back to the mesh, in step 19.
+
+## 19. The generated mesh for the knight
+
+**Question.** Step 11 found the carved shape better than the Hunyuan3D mesh for bulky subjects. Is that still true for a character with horns, a cape and limbs?
+
+**Setup.** The knight's south, west, north and east sprites through the Hunyuan3D-2mv graph from step 8 (147 seconds), then the same staged texturing, fitted into the carve's camera.
+
+**Result.** The drawn sprite, then the model from the front, a drawn diagonal and three in-between directions. Row 1: carved shape. Row 2: generated mesh. Row 3: generated mesh, flat. Row 4: generated mesh with step 18's overlay.
+
+![The knight on the carved shape and on the generated mesh, with full, flat and overlaid textures](../website/public/research/3d/mesh-source-overlay.png)
+
+- **The generated mesh has what carving cannot give:** curved horns, arms away from the body, two legs, a cape that hangs behind.
+- **The same texturing reads far better on it,** though it scores lower on shape (82% against 87%), because the model's proportions are its own.
+- **On the bare character there is no gain.** Shape 86.8% against 90.5%, colour error 36.3 against 34.5, and more stray dark specks. A simple body carves well.
+- **The rig script needed one fix for it.** Horns that reach past the carved hull were following the arm bones; everything above the ears is now bound to the head.
+
+**Verdict.** Keep, for anything with parts that stand away from the body. The carved shape stays the better choice for simple, solid subjects, and its camera is still what fits the mesh to the sprites.
+
+## 20. The paint stage, once for each sprite
+
+**Question.** Step 17's model paints a faithful, well-fitted front and a wrong everything else. There are eight sprites. Can each one be the front?
+
+**Setup.** [`scripts/hunyuan3d_paint_turn.py`](../research/scripts/hunyuan3d_paint_turn.py). For each of the eight directions the mesh is turned to face the camera, that direction's sprite is the reference, the model paints its six views, and only the first is kept. Asked for one view alone the model returns grey noise; it was trained to paint six together. The eight kept views are then baked onto the unturned mesh with the node's own baking, each from the angle it was painted at, and the gaps are filled. About six minutes for a character.
+
+**Result.** Top row: the eight sprites. Middle: the mesh turned to face each. Bottom: what the model painted.
+
+![Eight sprites, the mesh turned to each, and the eight painted views](../website/public/research/3d/paint-turn-views.png)
+
+Every painted view is its sprite, redrawn to sit exactly on the mesh: the cape is on the back, the emblem is on the chest, the arms are where the mesh's arms are. This is the image-model redraw of step 13 with one thing added, which is that the model is told the shape.
+
+The baked result against the stitched texture of step 10, on the same meshes, drawn large from the front, an in-between angle, a diagonal, the side, an in-between angle and the back. Top of each pair: stitched. Bottom: painted.
+
+![Stitched and painted textures on the knight and the bare character from six angles](../website/public/research/3d/paint-vs-stitched.png)
+
+- **The tearing is gone.** Armour, belt, face and limbs are continuous from every angle, including the ones no sprite was drawn from.
+- **The scores do not show it.** At sprite size, against the drawn sprites, the painted knight scores a colour error of 37.8 where the stitched one scores 31.1. The painted texture is a redraw, not a copy, and a render of it shrunk to 80 pixels picks up noise the stitched texture, made at that size, does not. The measure rewards copying pixels; step 13 met the same limit.
+- **It is no longer pixel art on the surface.** The views are 512 pixels with soft-edged blocks. The texture is 1024 pixels, shrunk to 512 in the rigged files.
+- **Light rims on the cape's edges,** where the grey ground of a painted view was baked onto the silhouette.
+- **Seams where two views meet,** most visible on the bare character's arms and head, as blocks that do not line up.
+- **Both characters were rigged again from the painted meshes** and pass the glTF validator: 23,565 vertices and 2.0 MB for the knight, 21,327 vertices and 1.9 MB for the bare character. These are the files in the viewer on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#mesh).
+- **Licence.** The paint model is published with the shape model, under the same Tencent licence and regional exclusion. The source files of its renderer name a non-commercial licence in their headers. Which terms apply to textures made with it was not settled here: treat these as a research result, and read the licence before shipping one in a game.
+
+**Verdict.** Keep. A generated mesh, fitted to the sprites' camera, painted once per sprite and rigged is the best route found so far from eight sprites to an animated 3D character.
 
 ## What has not worked, in one place
 
@@ -430,6 +493,9 @@ So nobody repeats them:
 - `correct_pixelart` on a torn render (step 13).
 - Projecting image-model redraws back onto the model (step 14).
 - Flattening a character's texture to a few materials (step 15).
+- Laying trusted sprite pixels over a flat base (step 18).
+- Asking the paint stage for a single view (step 20): grey noise.
+- Letting the paint stage invent the sides from one front reference (step 17).
 
 Two bugs worth remembering, because both produced plausible wrong pictures: glTF's axes turned into ours by swapping two of them is a mirror image, which silhouettes cannot detect; and a mesh whose faces point inward gets no texture at all, only fill.
 
@@ -444,7 +510,10 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Remove baked shading.** The sprites are drawn lit from one side, and that light is now painted on the model.
 - **Open the rigged file in real engines.** Blender, Godot, Unity and Unreal each have their own expectations of a humanoid.
 - **More animations, and bones for capes and held items.**
-- **A better texture for the mesh,** from step 17 or a hosted texturing service.
+- **Clean up the painted texture.** Keep the grey ground off the silhouette, choose one view per region instead of blending where two disagree, and snap the result to the sprites' palette.
+- **A render of the painted mesh that reads as pixel art** at sprite size, which would also give in-between directions without the redraw of step 13.
+- **Paint the carved shape too,** for the simple subjects where carving beats the generated mesh.
+- **Sprite normal maps.** PixelLab can draw a normal map for a sprite. Baked onto the mesh the same way, it would add surface relief the low-polygon mesh lacks. Not tried.
 - Can the eight-view input of the hosted Hunyuan3D 3.1 use all eight sprites? (Unverified; see below.)
 
 ## What other people are doing
@@ -486,6 +555,7 @@ No public tool was found that takes several directional pixel sprites and return
 - Hunyuan3D: nothing but about two minutes of GPU time per mesh, after a 4.93 GB download.
 - Staged texturing: nothing. About six seconds a mesh on a laptop.
 - Image-model redraws in steps 13 and 14: 50.1 generations for six calls.
+- The paint stage: no generations. A 9.2 GB download, then about six minutes of GPU time per character.
 
 ## Running the scripts
 
@@ -516,6 +586,15 @@ MODE=vote VOX=<out-folder>/<name>.vox CAMERA=<out-folder>/<name>.camera.json pyt
 
 # A rigged, animated .glb. The rig file comes from carve.ts run with an anchors file.
 python3 research/scripts/rig.py <name.textured.glb> <name.rig.json> <name.vox> <name.camera.json> <out.glb> <preview.png>
+
+# Texture a mesh with Hunyuan3D's paint stage, one pass per sprite direction. Needs the second ComfyUI of step 17.
+python3 research/scripts/hunyuan3d_paint_turn.py <name.textured.glb> <folder> <name> <out-folder>
+
+# The paint stage as published: one front reference, six invented views.
+python3 research/scripts/hunyuan3d_paint.py <mesh.glb> <reference.png> <out-folder> <name>
+
+# Render any textured mesh from sixteen directions at sprite size and score it.
+python3 research/scripts/render.py <textured.glb> <folder> <name> <sheet.png>
 
 # Score the second row of a sheet against the first.
 python3 research/scripts/score.py <sheet.png>

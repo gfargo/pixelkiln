@@ -11,7 +11,7 @@ Skin weights come from distance to each bone, with a penalty when the straight l
 leaves the body, so an arm hanging beside the torso is not pulled along by the spine.
 The file is in metres, y up, facing +z, about 1.8 m tall, with one animation called Walk.
 """
-import io, json, math, struct, sys
+import io, json, math, os, struct, sys
 import numpy as np
 from PIL import Image
 import trimesh
@@ -23,6 +23,8 @@ mesh = trimesh.load(glb_in, force="mesh", process=False)
 g = np.asarray(mesh.vertices, np.float64); faces = np.asarray(mesh.faces)
 uv = np.asarray(mesh.visual.uv, np.float64)
 texture = mesh.visual.material.baseColorTexture.convert("RGBA")
+if os.environ.get("TEX"):  # shrink the texture to this many pixels a side, to keep the file small
+    texture = texture.resize((int(os.environ["TEX"]),) * 2, Image.LANCZOS)
 world = np.stack([g[:, 0], -g[:, 2], g[:, 1]], 1)  # glTF (x, up, -y) back to the sprites' frame (x, y, up)
 cam = json.load(open(cam_file)); N = cam["size"]
 vox = np.fromfile(vox_file, np.uint8).reshape(N, N, N) > 0
@@ -61,6 +63,8 @@ for b in range(len(BONES)):
     pts = world[:, None, :] + (closest - world)[:, None, :] * steps[None, :, None]
     outside = (~inside(pts)).mean(1)
     dist[:, b] = d * (1 + 4 * outside)
+# Anything above the ears is head: horns and hats reach out past the body and would otherwise follow an arm.
+dist[world[:, 2] > head[2], names.index("Head")] = 1e-3
 order = np.argsort(dist, 1)[:, :4]
 w = 1.0 / (np.take_along_axis(dist, order, 1) ** 4 + 1e-6)
 w[w < w.max(1, keepdims=True) * 0.05] = 0

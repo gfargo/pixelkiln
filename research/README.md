@@ -4,7 +4,7 @@ The scripts behind the research notes in the docs. They are rough, take paths as
 
 | Note | Scripts |
 |---|---|
-| [3D models from directional sprites](../docs/RESEARCH_3D.md) | `scripts/carve.ts`, `scripts/tilt.py`, `scripts/hunyuan3d.py`, `scripts/texture.py`, `scripts/rig.py`, `scripts/score.py` |
+| [3D models from directional sprites](../docs/RESEARCH_3D.md) | `scripts/carve.ts`, `scripts/tilt.py`, `scripts/hunyuan3d.py`, `scripts/texture.py`, `scripts/hunyuan3d_paint.py`, `scripts/hunyuan3d_paint_turn.py`, `scripts/render.py`, `scripts/rig.py`, `scripts/score.py` |
 
 ## Writing a research note
 
