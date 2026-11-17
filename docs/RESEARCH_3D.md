@@ -17,6 +17,9 @@ Last updated 16 November 2026.
 | 7 | Build the body from tubes around the bones | Our script | 79% | Drop. Carving is better. |
 | 8 | Generate a mesh from four views | Hunyuan3D-2mv in ComfyUI, RTX 3060 12 GB | About two minutes a mesh; 70 to 83% | Cleaner geometry, looser match. Needs its own texture step. |
 | 9 | Unwrap the mesh and texture it from the sprites, in stages | Our script, with xatlas for the unwrap | Colour error down by a fifth to a half against one-pass colouring, on all five | Keep. The texture is now a picture that can be repaired. |
+| 10 | Let the views vote on each texel's colour | Our script | Colour error down another 1 to 4 on every subject and shape | Keep, as the default. |
+| 11 | Texture the carved shape the same way | Our script, marching cubes | Better than the mesh on the character and torch, worse on the two swords | Keep both shapes. Which is better depends on the object. |
+| 12 | Carved shape cut back to the mesh | Our script | No better than carving alone | Drop. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -232,11 +235,92 @@ The remaining error on the character is the mesh's shape, not the texturing.
 
 **Verdict.** Keep. Staging is the better way to colour a mesh, and it leaves a texture file that can be repaired as an ordinary picture.
 
+## 10. Letting the views vote
+
+**Question.** After step 9 the remaining flaws are dark specks where one sprite has a contour line and its neighbour has plain colour. The eight sprites are eight separate drawings and do not agree. Can the texture take the consensus instead of trusting one view?
+
+**Setup.** Three rules for choosing a texel's colour, all in `texture.py`:
+
+- `MODE=best` (step 9): the one view that faces the texel most squarely.
+- `MODE=vote`: when three or more views can see the texel, take the colour closest to the middle of what they all say, leaning toward views that face it. Colours still come straight from a sprite, so the palette is kept.
+- `DESPECKLE`: after colouring, replace any texel much darker than the surface around it.
+
+**Result.** Voting lowered the colour error on all five subjects, on both shapes, by 1 to 4 points (table under step 11). It loses a little crispness on a face seen head-on. Despeckling made the numbers slightly worse at every threshold tried (25, 40, 60) and removed wanted detail with the specks.
+
+**Verdict.** Vote is the better default. Despeckle is dropped.
+
+## 11. Texturing the carved shape
+
+**Question.** Carving matches the sprite's outline best and staged texturing colours best. Do they combine?
+
+**Setup.** `carve.ts` with `DUMP=1` writes its voxels and its fitted camera. `texture.py` with `VOX` and `CAMERA` turns the voxels into a mesh with marching cubes and runs the same unwrap, project, fill and render on it, using the carve's camera so nothing needs fitting.
+
+Two things had to be right before the numbers meant anything, and both are easy to get wrong again:
+
+- **Where the surface is cut.** The carve treats each voxel as a point at its centre. A mesh cut half a voxel outside those centres (the usual setting) renders a pixel fatter than the sprite all round. The surface is cut through the outermost centres instead (`LEVEL=0.9`).
+- **Half a pixel.** The carve drops a voxel into a pixel by rounding down. In views whose centre falls on a half pixel, that puts every voxel half a pixel to the right of where its cube really is. The camera is corrected for this on import. Before the fix the carved sword scored 84%; after, 89%.
+
+**Result.** Four rows per subject: the sprites; the Hunyuan3D mesh with one view per texel (step 9); the same mesh with voting (step 10); the carved shape with voting.
+
+![Sprites, mesh with one view per texel, mesh with voting, and carved shape with voting](../website/public/research/3d/texture-shapes.png)
+
+These numbers come from `texture.py` itself, which scores its render in place, so they differ by a point or two from the table in step 9.
+
+| Subject | Shape and rule | Shape | Colour error | Close |
+|---|---|---|---|---|
+| Character | Mesh, one view | 88.0% | 37.7 | 54% |
+| | Mesh, vote | 88.0% | 35.9 | 56% |
+| | Carved, vote | 90.5% | 34.5 | 53% |
+| Chest | Mesh, one view | 91.2% | 31.1 | 56% |
+| | Mesh, vote | 91.2% | 28.5 | 56% |
+| | Carved, vote | 91.0% | 28.1 | 57% |
+| Sword | Mesh, one view | 89.6% | 32.7 | 56% |
+| | Mesh, vote | 89.6% | 29.1 | 58% |
+| | Carved, vote | 88.6% | 32.7 | 52% |
+| Torch | Mesh, one view | 82.2% | 28.2 | 59% |
+| | Mesh, vote | 82.2% | 25.7 | 60% |
+| | Carved, vote | 88.0% | 25.6 | 58% |
+| Greatsword | Mesh, one view | 88.7% | 14.4 | 79% |
+| | Mesh, vote | 88.7% | 13.5 | 81% |
+| | Carved, vote | 86.9% | 21.9 | 70% |
+
+- **Carving wins where the object is bulky or not solid.** The character gains 2.5 points of shape and the best colour so far. The torch gains 6 points of shape and gets its whole flame back, because carving keeps anything the sprites show.
+- **The mesh wins on thin, flat objects.** Both swords are better as Hunyuan3D meshes. A blade two voxels thick is at the limit of what a 64-voxel grid can hold, and the greatsword was carved from only six views.
+- **The chest is a tie.**
+- Neither shape is better everywhere, so the choice should be made per object, by score.
+
+**Verdict.** Keep both. The useful rule so far: carve characters, soft or hollow things and anything with parts that are not solid; use a generated mesh for thin rigid objects.
+
+## 12. Carved shape, cut back to the mesh
+
+**Question.** Carving cannot see a gap that no view looks through, such as between the legs. The generated mesh has those gaps. Does keeping only the carved voxels that are near the mesh give the best of both?
+
+**Setup.** `HYBRID=2`: the Hunyuan3D mesh is fitted into the carve's camera and filled in, grown by two voxels, and intersected with the carved voxels. Also tried at one and three voxels.
+
+**Result.** No gain. On the character it changed the scores by a tenth of a point. On both swords the grown mesh covered the whole carved shape, so the result was identical to carving. On the torch it cut part of the flame away (shape 86.3% against 88.0%).
+
+**Verdict.** Drop. The gaps it was meant to open are small at this size, and the mesh does not line up closely enough with the sprite to cut safely.
+
+## What has not worked, in one place
+
+So nobody repeats them:
+
+- Tubes around a skeleton as the body (step 7).
+- Blending colours between views (step 9).
+- Reaching inward for a colour when a texel lands just outside the sprite (step 9).
+- Refusing colour near jumps in depth (step 9).
+- Despeckling the texture by darkness (step 10).
+- Rounding the carved voxels more before meshing: no effect on the scores.
+- Intersecting the carved shape with the generated mesh (step 12).
+
+Two bugs worth remembering, because both produced plausible wrong pictures: glTF's axes turned into ours by swapping two of them is a mirror image, which silhouettes cannot detect; and a mesh whose faces point inward gets no texture at all, only fill.
+
 ## What is next
 
-- **Texture the carved shape the same way.** Carving matches the sprite best, and staged texturing colours best. Turning the carved voxels into a mesh and running step 9 on it should combine the two, and is the obvious next experiment.
-- **Repair the texture as a picture.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. Fewer, larger pieces (a simpler mesh, or one piece per view like a folded paper model) would make inpainting the filled areas and seams practical.
-- **Remove baked shading.** The sprites are drawn lit from one side, and that light is now painted on the model. Nothing here removes it yet.
+- **Repair the texture as a picture.** The colour error has stopped falling with better geometry or better picking: on the character it is 34 to 38 whatever the shape. What is left is the sprites disagreeing with each other. An image model repainting the texture, or the rendered views, is the untried step, and it is the one the Discord pipeline leans on.
+- **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
+- **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
+- **Remove baked shading.** The sprites are drawn lit from one side, and that light is now painted on the model.
 - **Use the rig.** The skeleton from step 6 has not been attached to a mesh.
 - Can the eight-view input of the hosted Hunyuan3D 3.1 use all eight sprites? (Unverified; see below.)
 
@@ -268,7 +352,7 @@ No report was found of any of these being tested on pixel art.
 - [Voxify3D](https://arxiv.org/abs/2512.07834). Turns a mesh into voxel art with a small palette.
 - [Blender to Pixels](https://astropulse.itch.io/blender-to-pixels). Renders a 3D scene as pixel art.
 
-**The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, and step 9 the unwrap and texture part, without the image model.
+**The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, and steps 9 to 11 the unwrap and texture part, without the image model.
 
 No public tool was found that takes several directional pixel sprites and returns a mesh.
 
@@ -301,6 +385,10 @@ python3 research/scripts/hunyuan3d.py <folder> <name> <out-folder>
 
 # Fit, unwrap, texture and render a mesh from the sprites. Writes the texture, a textured .glb and a sheet.
 python3 research/scripts/texture.py <folder> <name> <mesh.glb> <out-folder>
+
+# The same stages on the carved shape: export the carve, then texture it. MODE=vote lets the views vote.
+DUMP=1 node --experimental-strip-types research/scripts/carve.ts <folder> <name> <out-folder>
+MODE=vote VOX=<out-folder>/<name>.vox CAMERA=<out-folder>/<name>.camera.json python3 research/scripts/texture.py <folder> <name> - <out-folder>
 
 # Score the second row of a sheet against the first.
 python3 research/scripts/score.py <sheet.png>
