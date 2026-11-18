@@ -71,6 +71,70 @@ function fetchDoc(url: string): Promise<GlbDocument> {
 const modelOf = (id: string | null): GalleryModel | undefined => S.snap.models.find((m) => m.id === id);
 const canWrite = () => EDITABLE;
 
+// ---- card thumbnails ----
+// Each model is drawn once, at rest, by one hidden viewer shared by every
+// card (a page may hold only a handful of WebGL contexts), and kept as an
+// image keyed by the file's url, which carries its hash: a new save or
+// rebuild draws a new one. A card shows what ships, so an edit when there is one.
+
+const thumbs = new Map<string, string>();
+const queued: GalleryModel[] = [];
+let thumbViewer: ModelViewer | null | undefined;
+let drawing = false;
+
+const thumbSource = (model: GalleryModel) => model.edit ?? model.file;
+
+function thumbFor(model: GalleryModel): string | null {
+  if (model.error) return null;
+  const url = thumbs.get(thumbSource(model).url);
+  if (url) return url;
+  if (!queued.some((m) => thumbSource(m).url === thumbSource(model).url)) queued.push(model);
+  void drainThumbs();
+  return null;
+}
+
+async function drainThumbs() {
+  if (drawing) return;
+  drawing = true;
+  try {
+    while (queued.length) {
+      const model = queued.shift()!;
+      const source = thumbSource(model).url;
+      if (thumbs.has(source)) continue;
+      if (thumbViewer === undefined) {
+        const host = el('div', 'model-thumb-host');
+        host.setAttribute('aria-hidden', 'true');
+        document.body.append(host);
+        try { thumbViewer = createModelViewer(host); } catch { thumbViewer = null; }
+      }
+      if (!thumbViewer) return;
+      try {
+        await thumbViewer.show(await fetchDoc(source));
+        // The first frame of its idle (or first) animation, still.
+        const clip = thumbViewer.clip();
+        thumbViewer.setPlaying(false);
+        thumbViewer.setClip(null);
+        thumbViewer.setClip(clip);
+        thumbViewer.resetCamera();
+        thumbs.set(source, thumbViewer.snapshot());
+      } catch {
+        continue;
+      }
+      const card = document.querySelector<HTMLElement>('.card.model-card[data-key="' + CSS.escape(model.id) + '"] .cell');
+      if (card && !card.querySelector('img.model-thumb')) {
+        const img = el('img', 'model-thumb'); img.src = thumbs.get(source)!; img.alt = model.name;
+        card.prepend(img);
+        card.querySelector<HTMLElement>('.model-glyph')!.hidden = true;
+      }
+    }
+  } finally {
+    drawing = false;
+  }
+}
+
+/** For browser tests: how many thumbnails are drawn. */
+export const thumbCount = () => thumbs.size;
+
 // ---- on the grid ----
 
 function visibleModels(): GalleryModel[] {
@@ -85,7 +149,13 @@ function modelCard(model: GalleryModel) {
   c.dataset.key = model.id;
   c.setAttribute('aria-label', '3D model ' + model.name + (model.edit ? ', edited' : ''));
   const cell = el('div', 'cell');
+  const thumbUrl = thumbFor(model);
+  if (thumbUrl) {
+    const img = el('img', 'model-thumb'); img.src = thumbUrl; img.alt = model.name;
+    cell.append(img);
+  }
   const glyph = el('div', 'model-glyph');
+  if (thumbUrl) glyph.hidden = true;
   glyph.append(el('b', null, '.glb'));
   if (model.summary) {
     const tris = model.summary.meshes.reduce((sum, mesh) => sum + mesh.triangles, 0);

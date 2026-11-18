@@ -773,6 +773,8 @@ cost, `gen` never touches it, and `--only` (which names assets) hides the
 section. `edits/`, dot folders, and `node_modules` are not searched.
 `gallery --json` lists them under `models`, each with what the file holds
 (meshes, bones, animations, images and what each is used for) and its edit.
+Each card shows the model drawn once at rest (the edited copy when there
+is one), by the page, so it costs nothing on the server.
 
 ```text
 art/characters/models/knight.glb          the model as built; never written

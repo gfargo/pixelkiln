@@ -175,6 +175,8 @@ export interface ModelViewer {
   image(index: number): ImageBitmap | null
   /** Swap one image's pixels in place, e.g. as it is painted; the model, pose and camera stay. */
   setImage(index: number, source: ImageBitmap | HTMLCanvasElement): void
+  /** Draw now and return the frame as a PNG data URL (same task as the draw, so no preserved buffer is needed). */
+  snapshot(): string
   dispose(): void
 }
 
@@ -584,6 +586,7 @@ function buildViewer(host: HTMLElement, canvas: HTMLCanvasElement, gl: WebGL2Ren
       return pixels.length ? covered / (pixels.length / 4) : 0
     },
     image: (index) => bitmaps[index] ?? null,
+    snapshot: () => { resize(); draw(); return canvas.toDataURL('image/png') },
     setImage: (index, source) => {
       for (const t of byImage.get(index) ?? []) {
         gl.bindTexture(gl.TEXTURE_2D, t)

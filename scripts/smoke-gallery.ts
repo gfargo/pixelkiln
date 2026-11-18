@@ -125,7 +125,7 @@ try {
   const consoleErrors: string[] = []
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()) })
   page.on("pageerror", (error) => consoleErrors.push(String(error)))
-  page.on("requestfailed", (request) => consoleErrors.push(`request failed: ${request.url()}`))
+  page.on("requestfailed", (request) => consoleErrors.push(`request failed: ${request.url()} (${request.failure()?.errorText}) on ${page.url()}`))
   page.on("response", (response) => { if (response.status() >= 400) consoleErrors.push(`${response.status()} ${response.url()}`) })
 
   await page.setViewport({ width: 1280, height: 900 })
@@ -642,6 +642,8 @@ try {
     }
     check(notes.length === 1 && /^Generated characters\/mira\.idle\.south$/.test(notes[0]!.body ?? ""), `a job finishing in a background tab raises a notification (${JSON.stringify(notes)})`)
   } finally {
+    // Leave the page first: a refresh it still has scheduled would hit a closed server.
+    await page.goto("about:blank")
     await studioServer.close()
   }
 
@@ -695,6 +697,15 @@ try {
     await page.goto(modelServer.url, { waitUntil: "networkidle0" })
     check(await page.$(".card.model-card") !== null, "a .glb under a style's output folder gets a card")
     check((await page.$$(".card:not(.model-card)")).length === 1, "the model is not counted among the manifest's assets")
+    if (await page.evaluate(() => typeof WebGL2RenderingContext !== "undefined")) {
+      let drawn = 0
+      for (let i = 0; i < 50 && !drawn; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        drawn = await page.evaluate(() => (__pixelkiln as unknown as { thumbs: () => number }).thumbs())
+      }
+      const src = await page.evaluate(() => document.querySelector<HTMLImageElement>(".card.model-card img.model-thumb")?.src ?? "")
+      check(drawn === 1 && src.startsWith("data:image/png"), "the model's card shows a rendered thumbnail")
+    }
     await page.click(".card.model-card")
     await page.waitForSelector(".model-drawer", { timeout: 5_000 })
     const hasWebgl = await page.evaluate(() => document.querySelector(".model-drawer canvas.model-canvas") !== null)

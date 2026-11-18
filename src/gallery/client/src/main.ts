@@ -11,7 +11,7 @@ import { setSelecting } from "./selection.ts"
 import { openShortcuts } from "./keys.ts"
 import { installUndo, undoLast } from "./undo.ts"
 import { closeEditorSheet } from "./sheet.ts"
-import { closeModel, modelState } from "./models.ts"
+import { closeModel, modelState, thumbCount } from "./models.ts"
 
 loadPrefs();
 installUndo();
@@ -106,4 +106,4 @@ if (ui.compare.length >= 2 && !ui.open) openCompare();
 // A read-only handle for browser tests and the devtools console: the page's
 // state lives inside the bundle, where a script evaluated in the page cannot
 // otherwise see it.
-(window as unknown as { __pixelkiln: unknown }).__pixelkiln = { S, ui, family: familyState, model: modelState };
+(window as unknown as { __pixelkiln: unknown }).__pixelkiln = { S, ui, family: familyState, model: modelState, thumbs: thumbCount };
