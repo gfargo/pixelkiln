@@ -1,3 +1,23 @@
+# [0.110.0](https://github.com/gfargo/pixelkiln/compare/v0.109.0...v0.110.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* **gallery:** model thumbnails are cropped to the model ([30ff3c9](https://github.com/gfargo/pixelkiln/commit/30ff3c9638f9160f30b4a4f59d5bc66935dab940))
+
+
+### Features
+
+* **cli:** pixelkiln model, and the agent skill for 3D models ([efafcfb](https://github.com/gfargo/pixelkiln/commit/efafcfb7b10b5ca7046462c1925eee0d730d2c8d))
+* **editor:** guide layers in the editor bridge (protocol 5) ([be649bd](https://github.com/gfargo/pixelkiln/commit/be649bd816d0b77f68a20dbebda0c20d882bfcd1))
+* **editor:** pin the protocol 5 build (editor-pixelorama-v1.2.2-pk.31) ([1315320](https://github.com/gfargo/pixelkiln/commit/131532040224ddf7802729473e90c365a26da632))
+* **gallery:** a live 3D view beside the texture editor, with draggable widths ([89f89cc](https://github.com/gfargo/pixelkiln/commit/89f89cc58aa0d80bfbf49be929bc05a450be3e08))
+* **gallery:** model cards show the model, rendered ([62dfc6d](https://github.com/gfargo/pixelkiln/commit/62dfc6da2444068691886ff0c2f43d6ea3972275))
+* **gallery:** preview a 3D model, paint its textures, open it in Blender ([0b5c53c](https://github.com/gfargo/pixelkiln/commit/0b5c53c3c8e7cf276aa67d12fc81fcaaa381ec8f))
+* **models:** normal map detail from PixelLab ([36f9bee](https://github.com/gfargo/pixelkiln/commit/36f9beec23bbdbfb5248714d782006c952bd9609))
+* **models:** normal map detail from the figure's own sprites, and posing ([c4f4e52](https://github.com/gfargo/pixelkiln/commit/c4f4e52962a6680cf0168137aa6ef996f721ab2e))
+* **models:** paint a model's normal maps ([bebd888](https://github.com/gfargo/pixelkiln/commit/bebd8883a61cc434b4b33c452636c7ed5478d1d0))
+
 # [0.109.0](https://github.com/gfargo/pixelkiln/compare/v0.108.1...v0.109.0) (2026-11-18)
 
 
