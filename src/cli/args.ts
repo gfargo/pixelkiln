@@ -126,8 +126,16 @@ export interface Args {
   fps?: number
   /** vfx: where the effect comes from: pixellab (default) or pixelfx, the local effects library. */
   lib?: string
-  /** vfx --lib pixelfx: transparent pixels added on every side of the effect's canvas. */
+  /** vfx --lib pixelfx or codex: transparent pixels added on every side of the effect's canvas. */
   margin?: number
+  /** vfx --lib codex: the camera, 2d (default), 25d or 3d. */
+  camera?: string
+  /** vfx --lib codex: degrees to turn the effect's colors around the color wheel. */
+  hue?: number
+  /** vfx --lib codex: `name=value` effect parameters, repeatable. */
+  param: string[]
+  /** vfx --lib codex: `name=value` shared knobs (size, gain, density, ...), repeatable. */
+  tune: string[]
   /** vfx --description: how many equal frames the --sprite strip holds. */
   spriteFrames?: number
   /** vfx --description: how fast the --sprite animation plays. */
@@ -235,7 +243,7 @@ const VALUE_FLAGS = [
   "--reviewer", "--note", "--source", "--object-id", "--tool", "--prompt", "--seed", "--cost", "--step", "--raw",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
-  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--lib", "--margin", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
+  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--lib", "--margin", "--camera", "--hue", "--param", "--tune", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
   "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
@@ -649,6 +657,10 @@ export function parseArgs(argv: string[]): Args {
     sprite: get("--sprite"),
     fps: numberOption("--fps", { min: 1, max: 60, integer: true }),
     lib: get("--lib"),
+    camera: get("--camera"),
+    hue: numberOption("--hue", { min: -360, max: 360 }),
+    param: list("--param"),
+    tune: list("--tune"),
     margin: numberOption("--margin", { min: 0, max: 256, integer: true }),
     spriteFrames: numberOption("--sprite-frames", { min: 1, max: 32, integer: true }),
     spriteFps: numberOption("--sprite-fps", { min: 1, max: 60, integer: true }),

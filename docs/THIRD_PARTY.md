@@ -46,3 +46,23 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## pixel-vfx-codex
+
+[pixel-vfx-codex](https://github.com/888wing/pixel-vfx-codex) is a library of
+138 code-drawn pixel-art effects by 888wing and contributors.
+`pixelkiln vfx --lib codex` renders its effects (see the
+[CLI reference](./CLI.md#local-effects-with-pixel-vfx-codex)).
+
+- PixelKiln does not bundle or redistribute it. You install it yourself
+  (`npm i github:888wing/pixel-vfx-codex`) and it is loaded at run time. It is
+  a development dependency of this repository, pinned to a commit, so the
+  tests can render with it.
+- Its own notices say its effects are pixel-art reinterpretations of the
+  [00GameDevs](https://00gamedevs.com/) VFX library, whose exported code is
+  MIT licensed (Copyright (c) 2026 00GameDevs), and that its engine adapts
+  techniques from [pixel-plays](https://github.com/amirmushichge/pixel-plays)
+  (MIT). Its own licence is MIT, Copyright (c) 2026 Pixel VFX Codex
+  contributors, with those notices appended.
+- `src/codex-vfx.ts` adapts the frame loop of the package's `tools/snap.mjs`:
+  the timing layer, `frameTime`, and `renderAt` into a transparent buffer.

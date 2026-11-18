@@ -102,6 +102,9 @@ Commands
             the pixelfx library on this machine instead (free, nothing
             sent; install it with: npm i github:patch-gg/pixelfx); vfx
             effects lists them.
+            With --lib codex, renders an --effect <id> from pixel-vfx-codex
+            the same way (npm i github:888wing/pixel-vfx-codex), through a
+            --camera 2d, 25d or 3d; vfx effects --lib codex lists them.
   font    PixelLab: generate a pixel font (--description, --out); writes a
             .ttf and a glyph atlas PNG. 15 generations; asks first.
   music   PixelLab: a song from a style (--description, --out); writes two
@@ -209,12 +212,16 @@ Options
   --preset <name>     vfx: start from a whole-effect preset (vfx presets lists them)
   --recipe <file>     vfx: render a recipe or an earlier run's .vfx.json record
   --effect <id>       vfx: start from a saved My effects id and export over it;
-                      with --lib pixelfx, the effect to render (fire/torch)
+                      with --lib pixelfx or codex, the effect to render (fire/torch, fireball)
   --part <name>       vfx: add a part (repeatable; vfx parts lists them)
   --sprite <ref>      vfx: build around a sprite: a file, a URL, or character:<id>:<dir>
   --fps <n>           vfx: frames per second, 1-60
-  --lib <name>        vfx: pixellab (default) or pixelfx, the local effects library
-  --margin <px>       vfx --lib pixelfx: transparent pixels around the effect's canvas
+  --lib <name>        vfx: pixellab (default), or pixelfx or codex, local effects libraries
+  --margin <px>       vfx --lib pixelfx or codex: transparent pixels around the effect
+  --camera <view>     vfx --lib codex: 2d (default), 25d or 3d
+  --hue <degrees>     vfx --lib codex: turn the effect's colors, -360 to 360
+  --param <name=n>    vfx --lib codex: an effect's own parameter (repeatable)
+  --tune <name=n>     vfx --lib codex: a shared knob such as size or density
   --sprite-frames <n> vfx --description: --sprite is a strip of n equal frames (2-32)
   --sprite-fps <n>    vfx --description: how fast the sprite animation plays (default 12)
   --game-pack         vfx: also download the game-pack ZIP

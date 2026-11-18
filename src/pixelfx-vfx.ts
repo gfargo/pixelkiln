@@ -23,14 +23,12 @@
  * keeps `composite`'s straight alpha, which is what a PNG holds.
  */
 import { existsSync, readFileSync } from "node:fs"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { PixelKilnError, UsageError } from "./errors.ts"
-import { sha256 } from "./hash.ts"
-import { encodeRgbaPng } from "./png.ts"
-import { vfxOutputPaths } from "./pixellab-vfx.ts"
+import { assertFreshOutputs, localSheet, writeLocalVfx } from "./local-vfx.ts"
 
 export const PIXELFX_TOOL = "pixelfx"
 export const PIXELFX_REPOSITORY = "https://github.com/patch-gg/pixelfx"
@@ -358,26 +356,7 @@ export function renderPixelfx(lib: PixelfxLibrary, recipe: PixelfxRecipe): Pixel
 }
 
 /** The frames in a row-major grid, in pixelfx's own near-square layout. */
-export function pixelfxSheet(render: Pick<PixelfxRender, "width" | "height" | "frames">): {
-  png: Buffer
-  columns: number
-  rows: number
-  rects: Array<{ x: number; y: number; w: number; h: number }>
-} {
-  const { width, height, frames } = render
-  const columns = Math.min(frames.length, Math.max(1, Math.ceil(Math.sqrt((frames.length * height) / width))))
-  const rows = Math.ceil(frames.length / columns)
-  const sheet = Buffer.alloc(columns * width * rows * height * 4)
-  const rects = frames.map((rgba, index) => {
-    const x = (index % columns) * width
-    const y = Math.floor(index / columns) * height
-    for (let row = 0; row < height; row++) {
-      rgba.copy(sheet, ((y + row) * columns * width + x) * 4, row * width * 4, (row + 1) * width * 4)
-    }
-    return { x, y, w: width, h: height }
-  })
-  return { png: encodeRgbaPng(columns * width, rows * height, sheet), columns, rows, rects }
-}
+export const pixelfxSheet = localSheet
 
 export interface PixelfxProvenance {
   version: 1
@@ -460,7 +439,6 @@ export interface MakePixelfxVfxResult {
  * written: PixelKiln has no GIF encoder, and PixelLab's GIFs are downloads.
  */
 export async function makePixelfxVfx(lib: PixelfxLibrary, opts: MakePixelfxVfxOptions): Promise<MakePixelfxVfxResult> {
-  const paths = vfxOutputPaths(opts.out)
   const recipe: PixelfxRecipe = {
     effect: opts.effect,
     ...(opts.fps !== undefined ? { fps: opts.fps } : {}),
@@ -468,82 +446,29 @@ export async function makePixelfxVfx(lib: PixelfxLibrary, opts: MakePixelfxVfxOp
     ...(opts.options && Object.keys(opts.options).length ? { options: opts.options } : {}),
   }
   checkPixelfxRecipe(lib, recipe)
-  if (!opts.force) {
-    for (const file of [paths.sheet, paths.atlas, paths.provenance]) {
-      if (existsSync(file)) throw new Error(`${file} already exists; pass --force to replace it`)
-    }
-  }
+  const paths = assertFreshOutputs(opts.out, opts.force)
   const render = renderPixelfx(lib, recipe)
-  const sheet = pixelfxSheet(render)
-  const name = opts.name ?? render.effect.name
-  const clip = path.basename(paths.sheet, ".png")
-  const anchor = { kind: "origin" as const, ...render.anchor }
-  const size = { w: render.width, h: render.height }
-  const atlas = {
-    frames: sheet.rects.map((frame, index) => ({
-      filename: `${clip} ${index}`,
-      frame,
-      rotated: false,
-      trimmed: false,
-      spriteSourceSize: { x: 0, y: 0, ...size },
-      sourceSize: size,
-      duration: Math.round(1000 / render.fps),
-    })),
-    meta: {
-      app: "pixelkiln",
-      version: "1",
-      image: path.basename(paths.sheet),
-      format: "RGBA8888",
-      size: { w: sheet.columns * render.width, h: sheet.rows * render.height },
-      scale: "1",
-      frameTags: [{ name: clip, from: 0, to: render.frames.length - 1, direction: "forward" }],
-      anchor,
-      pixelfx: {
-        id: opts.effect,
-        name,
-        version: lib.version,
-        fps: render.fps,
-        loop: render.loop,
-        frames: render.frames.length,
-        frameSize: [render.width, render.height],
-        pivot: [anchor.x, anchor.y],
-        columns: sheet.columns,
-      },
-    },
-  }
-  const sheetSha256 = sha256(sheet.png)
-  const facts = {
-    name,
+  const written = await writeLocalVfx({
+    paths,
+    name: opts.name ?? render.effect.name,
     effect: opts.effect,
-    width: render.width,
-    height: render.height,
-    frames: render.frames.length,
-    fps: render.fps,
-    loop: render.loop,
-    anchor,
-  }
-  const provenance: PixelfxProvenance = {
-    version: 1,
-    provider: "pixelfx",
-    tool: PIXELFX_TOOL,
-    library: { name: "pixelfx", version: lib.version, repository: PIXELFX_REPOSITORY, license: "MIT" },
-    ...facts,
-    files: { sheet: path.basename(paths.sheet), atlas: path.basename(paths.atlas) },
-    sheetSha256,
-    exportedAt: new Date().toISOString(),
+    render,
+    atlasKey: "pixelfx",
+    atlasFacts: { version: lib.version },
+    record: {
+      provider: "pixelfx",
+      tool: PIXELFX_TOOL,
+      library: { name: "pixelfx", version: lib.version, repository: PIXELFX_REPOSITORY, license: "MIT" },
+    },
     recipe,
-  }
-  await mkdir(path.dirname(paths.sheet), { recursive: true })
-  await writeFile(paths.sheet, sheet.png)
-  await writeFile(paths.atlas, `${JSON.stringify(atlas, null, 2)}\n`)
-  await writeFile(paths.provenance, `${JSON.stringify(provenance, null, 2)}\n`)
+  })
   return {
     provider: "pixelfx",
     library: { name: "pixelfx", version: lib.version },
-    ...facts,
-    columns: sheet.columns,
-    sheetSha256,
-    paths: { sheet: paths.sheet, atlas: paths.atlas, provenance: paths.provenance },
+    ...written.facts,
+    columns: written.columns,
+    sheetSha256: written.sheetSha256,
+    paths: written.paths,
     recipe,
   }
 }

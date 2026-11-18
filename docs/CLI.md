@@ -1586,12 +1586,76 @@ version write the same bytes every time.
   moves) are drawn around its stock character and are refused: PixelKiln has
   no way to hand them your sprite yet. `vfx effects` marks them.
 - PixelLab's flags (`--preset`, `--part`, `--sprite`, `--description`,
-  `--game-pack`) are refused with `--lib pixelfx`, and `--palette`, `--seed`,
-  and `--margin` are refused without it. These effects are not yet a
-  manifest generator.
+  `--game-pack`) are refused with `--lib pixelfx`, and `--palette` and
+  `--seed` are refused without it. `--margin` works with `--lib pixelfx` and
+  `--lib codex`. These effects are not yet a manifest generator.
 
 pixelfx is MIT licensed, Copyright (c) 2026 Patch and Hugo Duprez; see
 [Third-party notices](./THIRD_PARTY.md).
+
+#### Local effects with pixel-vfx-codex
+
+```bash
+npm i github:888wing/pixel-vfx-codex
+pixelkiln vfx effects --lib codex
+pixelkiln vfx --lib codex --effect fireball --out fx/fireball
+pixelkiln vfx --lib codex --effect fireball --camera 25d --param tailLength=1.6 --hue 40 --out fx/fireball-iso
+pixelkiln vfx --recipe fx/fireball-iso.vfx.json --out fx/fireball-again
+```
+
+`--lib codex` renders an effect from
+[pixel-vfx-codex](https://github.com/888wing/pixel-vfx-codex), a second
+library of 138 code-drawn effects, on this machine. Like pixelfx it needs no
+key, sends nothing and costs nothing, and the same recipe and package files
+write the same bytes. It differs from pixelfx in how it draws: each effect is
+defined once in a 3D world and rendered through a camera, so one effect has a
+side-on look and an isometric one.
+
+- It is not on the npm registry and is not a package with exports, so
+  PixelKiln does not install it. Install it beside your project with the line
+  above. It is looked for in the working directory first, then beside
+  PixelKiln; without it the command stops with that line (exit code 7). Its
+  files run in a separate `vm` context, so its global never reaches the
+  process. That is not a security boundary: treat the package as code you run.
+- `vfx effects --lib codex` lists the effects by category (projectiles, beams,
+  areas, bursts, vortices, shields, summons, domains and more); `--json` adds
+  each effect's parameters with their ranges and defaults.
+- `--camera <2d|25d|3d>` picks the view. `2d` (the default) is front-on at 12
+  frames a second, `25d` is a fixed isometric view at 20, and `3d` orbits at
+  30. `--fps <n>` (1–60) sets the rate, but each camera steps its effect at
+  its own rate, so asking for more than that only repeats frames.
+- `--param name=value` sets an effect's own parameters (repeatable, or comma
+  separated): `fireball` takes `tailLength`, `sparks`, `debris` and
+  `ringSize`. A value outside the listed range is refused. `--tune
+  name=value` sets a shared knob: `size`, `gain`, `density`, `dither`,
+  `outline`, `hitstop`, `shake`, `flash` or `snap`. `--hue <degrees>` turns
+  every color around the color wheel, which is how to recolor an effect:
+  these effects have no palette option, and `--seed` and `--palette` are
+  refused.
+- Frames are rendered with the diorama and its props off, on transparency,
+  then cropped to the smallest box that holds every frame and the pivot.
+  `--margin <px>` (0–64) adds transparent space around that box.
+- The effect's own timing is kept, including its hit-stop and pacing, so the
+  frame count is the effect's length times the frame rate, not a fixed
+  number. Every effect is one cast that ends where it began, so the atlas
+  marks it as looping.
+- `--out <base>` writes `<base>.png`, `<base>.json` (an Aseprite-style atlas
+  with the pivot in `meta.anchor`, the world origin the effect is built around:
+  where a projectile lands, the middle of a ground ring) and
+  `<base>.vfx.json`. No GIF is written. Existing files are replaced only with
+  `--force`.
+- `<base>.vfx.json` records the package version, a short hash of its engine
+  (the package stays at 1.0.0 while its code changes), the effect id, the frame
+  facts, the sheet's SHA-256, and the recipe. Pass it back as `--recipe`; no
+  `--lib` is needed. If the engine hash differs from the one recorded, the run
+  says so. Flags given with it override the recorded value.
+- `--dry-run` prints the camera, frame rate and frame count and writes
+  nothing; `--json` prints the facts and paths.
+- Effects that draw a figure or a diorama (the ultimates' caster, a ground
+  stage) draw only the effect here. They are not yet a manifest generator.
+
+pixel-vfx-codex is MIT licensed and rebuilds work from two other MIT
+projects; see [Third-party notices](./THIRD_PARTY.md).
 
 ### `font`
 
@@ -2093,12 +2157,16 @@ Print the package version. `-v` is an alias.
 | `--glyph-px <n>` | font | Native glyph size: `8`, `16` (default), `32`, or `64`. |
 | `--preset <name>` | vfx | Start from one of PixelLab's whole-effect presets; `pixelkiln vfx presets` lists them. |
 | `--recipe <file>` | vfx | Render a recipe: a bare recipe JSON or a `.vfx.json` record from an earlier run, PixelLab's or pixelfx's. |
-| `--effect <id>` | vfx | Start from an effect saved in your PixelLab My effects, and export over it. With `--lib pixelfx`: the effect to render, `<category>/<name>`; `pixelkiln vfx effects` lists them. |
+| `--effect <id>` | vfx | Start from an effect saved in your PixelLab My effects, and export over it. With `--lib pixelfx`: the effect to render, `<category>/<name>`. With `--lib codex`: its id, such as `fireball`. `pixelkiln vfx effects` lists them. |
 | `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
 | `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
 | `--fps <n>` | vfx | Frame rate, 1–60. |
-| `--lib <name>` | vfx | Where the effect comes from: `pixellab` (default) or `pixelfx`, a local effects library you install yourself. |
-| `--margin <px>` | vfx | With `--lib pixelfx`: transparent pixels added on every side of the effect's canvas, 0–256. |
+| `--lib <name>` | vfx | Where the effect comes from: `pixellab` (default), or `pixelfx` or `codex` (pixel-vfx-codex), local effects libraries you install yourself. |
+| `--margin <px>` | vfx | With `--lib pixelfx`: transparent pixels added on every side of the effect's canvas, 0–256. With `--lib codex`: added around the cropped effect, 0–64. |
+| `--camera <view>` | vfx | With `--lib codex`: `2d` (default), `25d` or `3d`. |
+| `--hue <degrees>` | vfx | With `--lib codex`: turn the effect's colors around the color wheel, -360 to 360. |
+| `--param <name=value>` | vfx | With `--lib codex`: an effect's own parameter; repeatable and comma-separated. |
+| `--tune <name=value>` | vfx | With `--lib codex`: a shared knob (`size`, `gain`, `density`, `dither`, `outline`, `hitstop`, `shake`, `flash`, `snap`); repeatable. |
 | `--sprite-frames <n>` | vfx | With `--description`: `--sprite` is a horizontal PNG strip of `n` equal frames (2 to 32). |
 | `--sprite-fps <n>` | vfx | With `--description`: how fast an animated `--sprite` plays, 1 to 60. PixelLab's default is a GIF's own timing, else 12. |
 | `--kind <kind>` | asset/normal-map/model normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map and model normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |

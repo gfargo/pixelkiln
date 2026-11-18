@@ -68,6 +68,7 @@
     "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/node": "^22.10.0",
     "esbuild": "^0.28.2",
+    "pixel-vfx-codex": "https://codeload.github.com/888wing/pixel-vfx-codex/tar.gz/7636ee640563ecdb018e3afb6e8a92f260e4f4bc",
     "pixelfx": "https://codeload.github.com/patch-gg/pixelfx/tar.gz/5294518ce7c72e48b6100a744596e0acf57f2826",
     "puppeteer-core": "^24.43.1",
     "semantic-release": "^25.0.9",
