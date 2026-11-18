@@ -129,7 +129,7 @@ export function SpinViewer() {
           </button>
           <button type="button" className="builder-arrow" onClick={() => turn(1)} aria-label="Turn right">›</button>
         </div>
-        <p className="builder-readout" aria-live="polite">
+        <p className="builder-readout spin-readout" aria-live="polite">
           <span>{frame + 1} of {FRAMES}</span> Facing {direction}: {source}.
         </p>
       </div>

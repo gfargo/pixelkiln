@@ -1,3 +1,11 @@
+# [0.109.0](https://github.com/gfargo/pixelkiln/compare/v0.108.1...v0.109.0) (2026-11-18)
+
+
+### Features
+
+* **site:** provider updates get their own page, a back-to-top button, and a steadier paperdoll builder ([630a602](https://github.com/gfargo/pixelkiln/commit/630a60253aa389e556463e9eb06aabb5ab7f4980))
+* **site:** the docs pages read and fit better ([ac8e05c](https://github.com/gfargo/pixelkiln/commit/ac8e05c01f4e48ac2023f43cbf8032e32e738fef))
+
 ## [0.108.1](https://github.com/gfargo/pixelkiln/compare/v0.108.0...v0.108.1) (2026-11-18)
 
 

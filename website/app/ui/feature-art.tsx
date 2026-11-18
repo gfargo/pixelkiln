@@ -40,6 +40,12 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
           ))}
         </div>
       );
+    case "updates":
+      return (
+        <div className="feature-art feature-art-sheet">
+          <Image src="/showcase/pixflux/knight-options.png" alt="Four pixel art knights drawn with different pixflux style controls" width={1064} height={272} unoptimized />
+        </div>
+      );
     case "providers":
       return (
         <div className="feature-art feature-art-samples">

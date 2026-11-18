@@ -48,6 +48,14 @@ if (readmeLines > 400) {
   failures.push(`README.md is ${readmeLines} lines; keep the landing page at or below 400 lines`)
 }
 
+// The README sends readers to the website's guides, so each of those links has to name a guide the site publishes.
+const siteSlugs = new Set(
+  [...readFileSync(path.join(root, "website", "app", "lib", "docs.ts"), "utf8").matchAll(/slug:\s*"([^"]+)"/g)].map((match) => match[1]),
+)
+for (const match of readme.matchAll(/https:\/\/pixelkiln\.griffen\.codes\/docs\/([a-z0-9-]+)/g)) {
+  if (!siteSlugs.has(match[1])) failures.push(`README.md links to /docs/${match[1]}, which the website does not publish`)
+}
+
 const docsIndex = readFileSync(path.join(root, "docs", "README.md"), "utf8")
 for (const file of markdownFiles(path.join(root, "docs"))) {
   if (path.basename(file) === "README.md") continue
