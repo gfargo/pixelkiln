@@ -1,3 +1,10 @@
+## [0.108.1](https://github.com/gfargo/pixelkiln/compare/v0.108.0...v0.108.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **site:** the effects catalog plays every pixelfx effect ([20e5529](https://github.com/gfargo/pixelkiln/commit/20e5529e0bd11a07b2caa4f79252e43b95c38c4b))
+
 # [0.108.0](https://github.com/gfargo/pixelkiln/compare/v0.107.0...v0.108.0) (2026-11-18)
 
 
