@@ -52,7 +52,7 @@ export function GallerySection() {
                   <li>Every write offers Undo, and is refused if the manifest changed on disk since the page loaded it.</li>
                   <li>Edit a sprite in your own editor, or in the built-in <a href="https://pixelorama.org" rel="noreferrer">Pixelorama</a>, a pinned build fetched once and verified by hash.</li>
                   <li>Hand edits save beside the generated file, never over it, with the generated art as a faint layer underneath.</li>
-                  <li>A <code>.glb</code> 3D model gets a live preview, and its textures open in the same editor with a guide that names each piece of the unwrap. The model updates beside the canvas as you paint, and Blender round trips land in an edited copy.</li>
+                  <li>A <code>.glb</code> 3D model gets a live preview, and its textures open in the same editor with a guide that names each piece of the unwrap. The model updates beside the canvas as you paint, normal maps included; PixelLab can add normal map detail at a price shown first; and Blender round trips land in an edited copy.</li>
                   <li>Draw a mask for an inpaint revision, or pose a skeleton for an animation.</li>
                 </ul>
               </article>
