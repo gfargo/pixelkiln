@@ -1516,11 +1516,13 @@ html.menu-open { overflow: hidden; }
 .hub-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; margin: 64px 0 0; padding: 0; list-style: none; }
 .hub-tile { grid-column: span 6; min-width: 0; }
 .hub-pipeline, .hub-characters, .hub-effects { grid-column: span 5; }
-.hub-review, .hub-paperdoll, .hub-providers { grid-column: span 7; }
+.hub-review, .hub-paperdoll, .hub-tiles { grid-column: span 7; }
+.hub-providers { grid-column: span 12; }
 .hub-paperdoll { order: 1; }
 .hub-characters { order: 2; }
 .hub-effects { order: 3; }
-.hub-providers { order: 4; }
+.hub-tiles { order: 4; }
+.hub-providers { order: 5; }
 .hub-tile a { display: grid; grid-template-rows: 250px auto; height: 100%; background: #1f1c15; transition: background 200ms ease, transform 200ms ease; }
 .hub-tile a:hover { background: #28241b; transform: translateY(-3px); }
 .hub-tile a:active { transform: translateY(0); }
@@ -1537,9 +1539,16 @@ html.menu-open { overflow: hidden; }
 .feature-art-samples img { width: 22%; max-width: 132px; height: auto; }
 .feature-art-shot { padding: 28px 0 0 28px; align-items: flex-start; justify-content: flex-start; }
 .feature-art-shot img { width: 118%; max-width: none; height: auto; image-rendering: auto; }
+/* The last row of the home hub is one wide tile: picture left, words right. */
+@media (min-width: 981px) {
+  .hub-section:not(.hub-more) .hub-providers a { grid-template-columns: 7fr 5fr; grid-template-rows: 250px; }
+  .hub-section:not(.hub-more) .hub-providers .hub-copy { align-content: center; }
+}
 .hub-more { padding-block: 130px 0; }
-.hub-more .hub-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 44px; }
-.hub-more .hub-tile { grid-column: auto; order: 0; }
+.hub-more .hub-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-top: 44px; }
+.hub-more .hub-tile { grid-column: span 2; order: 0; }
+/* Seven entries (under Provider updates) leave one alone on the last row: let it take the row. */
+.hub-more .hub-tile:last-child:nth-child(3n+1) { grid-column: 1 / -1; }
 .hub-more .hub-tile a { grid-template-rows: auto; }
 .hub-more .feature-art { display: none; }
 .hub-more .hub-copy { padding: 24px 22px 26px; }
