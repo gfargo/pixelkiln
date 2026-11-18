@@ -1,3 +1,15 @@
+# [0.112.0](https://github.com/gfargo/pixelkiln/compare/v0.111.0...v0.112.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* **export:** write LDtk names the way LDtk does, and record the check in LDtk ([4c13785](https://github.com/gfargo/pixelkiln/commit/4c137854fb01adb4bb5dc8bdaae5445446defa0a))
+
+
+### Features
+
+* **export:** LDtk project export for tilesets ([c10b5ce](https://github.com/gfargo/pixelkiln/commit/c10b5ce8171f636ed59cb4b841071325839cc96b))
+
 # [0.111.0](https://github.com/gfargo/pixelkiln/compare/v0.110.0...v0.111.0) (2026-11-18)
 
 

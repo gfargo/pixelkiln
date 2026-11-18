@@ -1,8 +1,9 @@
 import type { LockEntry, ResolvedSpec } from "../types.ts"
 import { fallbackOutputRole, resolveSpecEntryOutputs, sourceIsStem, sourceOutputPath } from "../outputs.ts"
+import { buildLdtk } from "./ldtk-export.ts"
 import { packSprites, type PackedFrame, type PackedSource } from "./pack.ts"
 
-export type TilesetFormat = "generic" | "tiled" | "godot"
+export type TilesetFormat = "generic" | "tiled" | "godot" | "ldtk"
 
 export interface NormalizedTileRules {
   ruleType: "edge" | "corner" | "outline"
@@ -42,7 +43,7 @@ export interface GenericTileset {
 
 export interface TilesetExport {
   png: Buffer
-  extension: ".json" | ".tsj" | ".tres"
+  extension: ".json" | ".tsj" | ".tres" | ".ldtk"
   document: string
   generic: GenericTileset
   sources: PackedSource[]
@@ -127,7 +128,7 @@ export function normalizeTerrainTiles(metadata: unknown): NormalizedTileRules | 
   }
 }
 
-/** Build an atlas plus generic, Tiled TSJ, or Godot 4 TileSet metadata. */
+/** Build an atlas plus generic, Tiled TSJ, Godot 4 TileSet, or LDtk project metadata. */
 export function exportTileset(
   entry: LockEntry,
   spec: ResolvedSpec,
@@ -211,6 +212,15 @@ export function exportTileset(
       png: packed.png,
       extension: ".tsj",
       document: JSON.stringify(buildTiled(generic), null, 2) + "\n",
+      generic,
+      sources: packed.sources,
+    }
+  }
+  if (options.format === "ldtk") {
+    return {
+      png: packed.png,
+      extension: ".ldtk",
+      document: buildLdtk(generic, spec.tileType),
       generic,
       sources: packed.sources,
     }
