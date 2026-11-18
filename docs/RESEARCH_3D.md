@@ -42,6 +42,7 @@ Last updated 17 November 2026.
 | 32 | Redraw the sprites large with a local image model, and paint from those | SDXL with a tile control model, Hunyuan3D paint stage | Painted armour with real detail in place of enlarged pixels; 768 pixel views fit in 12 GB | Keep. The eight redraws do not agree on details, and colours move. |
 | 33 | Make the redraws agree: one sheet for all eight, or each alone with the sprite's colours held | SDXL with a tile control model | Holding colours fixes the drift and keeps the detail; the one-sheet redraw agrees but is soft | Keep the colour hold. Drop the sheet. |
 | 34 | Mesh from redrawn pictures in place of smoothed sprites | SDXL redraw, Hunyuan3D-2mv | A round skull, a face, ears, arms and legs with shape, where there were flat facets | Keep. The largest gain in the mesh since step 22. |
+| 35 | Rebuild the body and all four items from redrawn pictures, end to end | SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | A sculpted body and detailed helm, armour and cape on the same skeleton; one sleeve short, a gap at the hip, a teal fur collar | Keep as the viewer's model. The item masks still come from the sprites and no longer fit exactly. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -840,6 +841,48 @@ Not done: fitting this mesh to the sprites, painting it, the worn meshes, or any
 
 **Verdict.** Keep. Next is to rebuild the body and items from redrawn pictures end to end.
 
+## 35. Everything rebuilt from redrawn pictures
+
+**Question.** Steps 32 to 34 each improved one piece. Does the whole chain of steps 26 to 30 still hold when it starts from redrawn pictures?
+
+**Setup.** One script ran, for the bare body and for the body wearing each of the four items:
+
+1. `redraw.py` on all eight directions, with the model's own outline and a white ground (`OUTLINE=own GROUND=255`). 25 to 45 seconds a direction.
+2. Hunyuan3D-2mv on the front, left, back and right redraws. About two minutes a mesh.
+3. `texture.py` to fit each mesh into the body's camera, against the sprites as before.
+4. The paint stage from the eight redraws with 768 pixel views, and `bake.py` at 2048 pixels. About 15 minutes a mesh.
+5. `cut_item.py` with the mask sprites of step 27, then `rig.py` as in step 30.
+
+About two hours of GPU time, unattended, and no generations.
+
+Two faults in our own scripts surfaced and were fixed:
+
+- **The cut was throwing away good triangles.** It drops loose crumbs by counting connected triangles, but the unwrap splits vertices along its seams, so every patch of the unwrap counted as a separate piece and small patches were dropped as crumbs. It now joins vertices that are in the same place first. The four items went from 25 to 60 "pieces" each to 1 to 3. Steps 27 to 30 had this fault too; their holes were blamed on a ragged cut.
+- **`rig.py` gained `ALIGN`,** which slides an item until it is evenly spaced round the body. Here it moved items less than half a sprite pixel, so the separate fits already agree; it is kept as a safeguard.
+
+**Result.** The bare body, before and after:
+
+![The body of step 29 and the body rebuilt from redrawn pictures](../website/public/research/3d/rebuilt-body.png)
+
+The cape, leg armour and helm, cut from their rebuilt worn meshes:
+
+![The rebuilt cape, leg armour and helm on their own](../website/public/research/3d/rebuilt-items.png)
+
+The assembled character with hidden skin left out, step 30 above and the rebuild below:
+
+![The assembled knight of step 30 and the rebuild](../website/public/research/3d/rebuilt-assembled.png)
+
+- **The body is sculpted and painted,** with a face, ears, muscle and a round skull. Dark smears run along the tops of the arms, where the redraws' outlines were baked in.
+- **The helm and leg armour are the best pieces so far:** plates, rivets, trim and a visor, on smooth shapes.
+- **One sleeve of the cuirass ends at mid forearm,** and there is bare skin at one hip between the cuirass and the leg armour. The item masks are still the sprites' layers, and a redrawn figure is not pixel for pixel where the sprite was, so the mask lands a pixel or two off on the new mesh.
+- **The fur collar is teal.** The colour hold of step 33 covers only pixels inside the sprite, and with the model's own outline the collar grew past it.
+- **The cuts carry scraps of skin** at the hands and neck, for the same reason as the short sleeve.
+- **The file is 6.0 MB** with 512 pixel textures (10.8 MB at 1024), and passes the glTF validator with no errors or warnings.
+
+In the viewer the rebuilt model loads, walks, and its items switch off. It is shown smooth by default now, with the pixel look as a switch.
+
+**Verdict.** Keep as the viewer's model. The next fault to fix is the masks: they should be made from the redraws, not the sprites.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -869,7 +912,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
 - **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
 - **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
-- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Steps 33 and 34 continue it. Still to do: rebuild the body and every item from redrawn pictures end to end (mesh, fit, paint, cut) and put the result in the viewer, a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture.
+- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Steps 33 to 35 continue it. Still to do: item masks made from the redraws (step 35's short sleeve and skin scraps), the colour hold outside the sprite's outline (the teal collar), a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture and the file shrinks.
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).

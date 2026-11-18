@@ -39,7 +39,9 @@ colour = texture[np.clip(((1 - points[..., 1]) * height).astype(int), 0, height 
 is_item = (colour[..., 1] > colour[..., 0]).mean(1) >= share
 
 faces = np.asarray(worn.faces)[is_item]
-kept = trimesh.Trimesh(worn.vertices, faces, process=False)
+# The unwrap splits vertices along its seams, so join the ones in the same place before asking what is connected.
+_, joined = np.unique(np.round(np.asarray(worn.vertices), 4), axis=0, return_inverse=True)
+kept = trimesh.Trimesh(worn.vertices, joined.reshape(-1)[faces], process=False)
 labels = trimesh.graph.connected_component_labels(kept.face_adjacency, node_count=len(faces))
 sizes = np.bincount(labels)
 faces = faces[sizes[labels] >= crumb]

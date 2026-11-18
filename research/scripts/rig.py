@@ -21,6 +21,7 @@ Environment:
            the only bones that item may follow; with none it follows whatever the body under it follows.
            A third field, "loose" ("Cape=cape.glb:Hips,Spine:loose"), marks an item that hides no skin.
   COVER    how near an item's surface must be for the skin to count as covered, in sprite pixels (default 1.2)
+  ALIGN    1 slides each item to sit evenly round the body before fitting it (default 1; loose items are left)
   FIT      how far above the skin an item is moved when it lands inside the body, in sprite pixels (default 0.6; 0 is off)
   BURIED   how deep an inward-facing item triangle must be to be dropped (default 1.5)
   SKIN     also write this .npz for cards.py: the body in the sprites' frame and the bone that owns each vertex
@@ -152,6 +153,17 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
     part = trimesh.load(file, force="mesh", process=False)
     pg = np.asarray(part.vertices, np.float64); pw = np.stack([pg[:, 0], -pg[:, 2], pg[:, 1]], 1)
     pf = np.asarray(part.faces); puv = np.asarray(part.visual.uv, np.float64)
+    if os.environ.get("ALIGN", "1") == "1" and fit_kind != "loose":
+        # The item came from a mesh fitted to the sprites on its own, and can sit a pixel or two off the body
+        # along an arm, where the outline barely changes. Slide it until it is the same distance from the skin
+        # all the way round: least squares on the distance of every vertex near the body.
+        moved = np.zeros(3)
+        for _ in range(8):
+            d, n = body_distance(pw); near = np.abs(d) < 4
+            if near.sum() < 50: break
+            step = np.linalg.lstsq(np.hstack([n[near], -np.ones((near.sum(), 1))]), -d[near], rcond=None)[0][:3]
+            step = np.clip(step, -1, 1); pw = pw + step; moved += step
+        print(f"{label}: slid {np.round(moved, 2).tolist()} sprite pixels to sit on the body", file=sys.stderr)
     if FIT > 0:
         # An item is drawn a pixel outside the body and meshed on its own, so some of it lands inside the
         # body's mesh. Drop the triangles buried deep in the body that face inward, which nobody can see, and move what is

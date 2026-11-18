@@ -29,6 +29,8 @@ Environment:
   OUTLINE   sprite (default) cuts the redraw with the sprite's own enlarged outline, so it lines up with the
             sprite pixel for pixel but keeps its stair steps. own lets the redraw keep the outline the model
             drew: whatever is not the plain ground, within a few sprite pixels of the sprite.
+  SIDE      how many sprite pixels across the square cut out for the model (default: just enough to hold the
+            figure in every direction). Give the sprite's full width to redraw several sets at one scale.
   DIRS      which directions (default all eight)
   STYLE     words added after the description (default "highly detailed digital painting, sharp focus, clean edges")
   GROUND    grey level behind the figure, 0 to 255 (default 128)
@@ -38,7 +40,7 @@ Needs numpy, pillow, scipy.
 import io, json, os, sys, time, urllib.parse, urllib.request, uuid
 import numpy as np
 from PIL import Image, ImageFilter
-from scipy.ndimage import binary_dilation, gaussian_filter, label
+from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter, label
 
 sprite_dir, name, out, what = sys.argv[1:5]
 env = os.environ.get
@@ -107,11 +109,12 @@ def keep_colours(drawn, page, edge):
     broad = lambda picture: np.stack([gaussian_filter(picture[..., c].astype(np.float32) * edge, sigma) / weight for c in range(3)], -1)
     return (drawn.astype(np.float32) - broad(drawn) + broad(page)).clip(0, 255).astype(np.uint8)
 
+GROUND_WORD = 'white' if GROUND >= 230 else 'dark' if GROUND <= 40 else 'grey'
 STYLE = env('STYLE', 'highly detailed digital painting, sharp focus, clean edges')
 DENOISE, HOLD, UNTIL = float(env('DENOISE', '0.9')), float(env('HOLD', '0.6')), float(env('UNTIL', '0.5'))
 wholes = {d: Image.open(f'{sprite_dir}/{name}-{d}.png').convert('RGBA') for d in dirs}
 boxes = {d: w.getbbox() for d, w in wholes.items()}
-side = max(max(b[2] - b[0], b[3] - b[1]) for b in boxes.values()) + 6  # one scale for every direction
+side = int(env('SIDE', '0')) or max(max(b[2] - b[0], b[3] - b[1]) for b in boxes.values()) + 6  # one scale for every direction
 corner = {d: ((b[0] + b[2] - side) // 2, (b[1] + b[3] - side) // 2) for d, b in boxes.items()}
 sprites = {d: wholes[d].crop((corner[d][0], corner[d][1], corner[d][0] + side, corner[d][1] + side)) for d in dirs}
 agreed = {}
@@ -121,14 +124,14 @@ if env('SHEET', '0') == '1':
     sheet = np.full((rows * cell, columns * cell, 3), GROUND, np.uint8)
     for i, d in enumerate(dirs):
         sheet[i // columns * cell:(i // columns + 1) * cell, i % columns * cell:(i % columns + 1) * cell] = enlarge(sprites[d], cell)[0]
-    words = f'character turnaround sheet, the same character seen from {len(dirs)} angles, {what}, {STYLE}, plain grey background'
+    words = f'character turnaround sheet, the same character seen from {len(dirs)} angles, {what}, {STYLE}, plain {GROUND_WORD} background'
     drawn = draw(sheet, words, DENOISE, HOLD, UNTIL, 'sheet')
     Image.fromarray(drawn).save(f'{out}/{name}-sheet.png')
     for i, d in enumerate(dirs):
         agreed[d] = Image.fromarray(drawn[i // columns * cell:(i // columns + 1) * cell, i % columns * cell:(i % columns + 1) * cell]).resize((SIZE, SIZE), Image.LANCZOS)
 for d in dirs:
     page, edge = enlarge(sprites[d], SIZE)
-    words = f'{what}, {FACING[d]}, {STYLE}, plain grey background'
+    words = f'{what}, {FACING[d]}, {STYLE}, plain {GROUND_WORD} background'
     if d in agreed:
         # Sharpen the sheet's small figure without letting the model redesign it.
         drawn = np.array(agreed[d]); refine = float(env('REFINE', '0.35'))
@@ -145,7 +148,8 @@ for d in dirs:
         border = np.unique(np.concatenate([regions[0], regions[-1], regions[:, 0], regions[:, -1]]))
         ground = np.isin(regions, border[border > 0])
         reach = binary_dilation(edge > 0.5, iterations=round(2.5 * SIZE / side))
-        alpha = gaussian_filter((~ground & reach).astype(np.float32), 1.2)
+        core = binary_erosion(edge > 0.5, iterations=round(1.5 * SIZE / side))  # well inside the sprite is always the figure
+        alpha = gaussian_filter(((~ground & reach) | core).astype(np.float32), 1.2)
         drawn = np.where((alpha > 0.05)[..., None] & (edge < 0.05)[..., None], raw, drawn)  # outside the sprite there is no sprite colour to keep
     cut = Image.fromarray(np.dstack([drawn, (alpha * 255).astype(np.uint8)]))
     grow = SIZE / side  # the whole frame at the same scale, with the figure back where it was

@@ -57,7 +57,7 @@ export function MeshViewer() {
   const [worn, setWorn] = useState<Record<string, boolean>>({});
   const [walking, setWalking] = useState(true);
   const [spinning, setSpinning] = useState(false);
-  const [pixel, setPixel] = useState(true);
+  const [pixel, setPixel] = useState(false);
   const [bones, setBones] = useState(false);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const reducedMotion = useSyncExternalStore(
@@ -414,7 +414,7 @@ export function MeshViewer() {
           <span className="builder-slot-label">Character</span>
           <div className="builder-options">
             {SUBJECTS.map((option) => (
-              <button key={option.id} type="button" className="builder-option" aria-pressed={subject === option.id} onClick={() => setSubject(option.id)}>
+              <button key={option.id} type="button" className="builder-option" aria-pressed={subject === option.id} onClick={() => { setSubject(option.id); setPixel(option.id !== "parts"); }}>
                 {option.label}
               </button>
             ))}
@@ -462,9 +462,11 @@ export function MeshViewer() {
             above does it. The body was then meshed wearing that one item,
             and the item cut out of the result wherever its layer has
             pixels. Items are moved to just above the skin and follow the
-            body&apos;s bones. Every part is painted by a second model
-            from its own sprites. The skin under an item is hidden while
-            the item is worn, so nothing shows through.
+            body&apos;s bones. Before any of that, every sprite was redrawn
+            large by an image model, and both the shapes and the paint
+            come from those redraws, so this is no longer pixel art unless
+            you switch the pixel look on. The skin under an item is hidden
+            while the item is worn.
           </p>
         ) : (
           <p className="spin-note">
