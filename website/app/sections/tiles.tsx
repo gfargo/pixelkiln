@@ -229,6 +229,7 @@ pixelkiln export --style ground --only terrain --format tiled
 pixelkiln export --style ground --only terrain --format godot
 pixelkiln export --style ground --only terrain --format ldtk
 pixelkiln export --style ground --only terrain --format generic
+pixelkiln export --style ground --format tiled --merge-connected
 `}
             />
             <ul className="check-list effects-list">
@@ -236,13 +237,14 @@ pixelkiln export --style ground --only terrain --format generic
               <li><span className="tick" aria-hidden="true" /> <b>Godot 4:</b> a <code>.tres</code> TileSet with terrain peering bits on every tile. A headless Godot 4.7.2 loads it in CI and reads a peering bit back.</li>
               <li><span className="tick" aria-hidden="true" /> <b>LDtk:</b> a <code>.ldtk</code> project with the tileset, a paint layer and an auto-rule layer, and a small Preview level that uses every rule. Corner sets paint on a grid shifted half a tile, so the brush works on the corners. LDtk 1.5.3 redrew the same tiles from the rules when we opened one.</li>
               <li><span className="tick" aria-hidden="true" /> <b>Anything else:</b> generic JSON with the atlas, each tile&apos;s rectangle and mask, and the provider&apos;s raw rules, for an importer of your own.</li>
+              <li><span className="tick" aria-hidden="true" /> <b>Connected sets:</b> add <code>--merge-connected</code> and the sets that share a surface export as one tileset. Ocean to sand, sand to grass and grass to forest become one Tiled Wang set, Godot terrain set or LDtk layer with four surfaces.</li>
               <li><span className="tick" aria-hidden="true" /> Each export has a record of its inputs and output hashes. An edited file stops the next export instead of being overwritten.</li>
             </ul>
           </div>
           <div className="tiles-limits">
             <h3>What it does not do yet.</h3>
             <ul>
-              <li>Connected sets export one at a time. Each becomes its own two-surface set in Tiled, Godot or LDtk; they are not merged into one terrain set.</li>
+              <li>Connected sets export one at a time unless you ask for <code>--merge-connected</code>. A sidescroller set connects only its platform, so it always exports alone.</li>
               <li>Six-edge hex masks stay in the generic JSON. Edge masks on isometric tiles do too, for Godot. LDtk takes square tiles only.</li>
               <li>Terrain sets are always square and top-down or side-on. Isometric ground comes from <code>tiles</code> or <code>isometricTile</code>.</li>
             </ul>

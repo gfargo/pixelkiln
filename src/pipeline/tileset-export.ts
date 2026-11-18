@@ -1,7 +1,10 @@
 import type { LockEntry, ResolvedSpec } from "../types.ts"
 import { fallbackOutputRole, resolveSpecEntryOutputs, sourceIsStem, sourceOutputPath } from "../outputs.ts"
+import { mergeConnectedTerrain, terrainColor, tileCorners, type ConnectedMember, type CornerTerrains } from "./connected-sets.ts"
 import { buildLdtk } from "./ldtk-export.ts"
 import { packSprites, type PackedFrame, type PackedSource } from "./pack.ts"
+
+export { terrainColor, tileCorners, type CornerTerrains } from "./connected-sets.ts"
 
 export type TilesetFormat = "generic" | "tiled" | "godot" | "ldtk"
 
@@ -12,6 +15,11 @@ export interface NormalizedTileRules {
   terrains: string[]
   /** Provider tile index to adjacency mask. Tiles absent here are stamp-only. */
   masks: Record<number, number>
+  /**
+   * Corner rules over more than two terrains (a merged connected group) name
+   * each tile's four corners directly, as an index into `terrains`, in place of a mask.
+   */
+  corners?: Record<number, CornerTerrains>
   raw: Record<string, unknown>
 }
 
@@ -21,6 +29,8 @@ export interface GenericTileset {
   name: string
   style: string
   asset: string
+  /** A merged group of connected sets: the assets it joins, in order. */
+  sets?: string[]
   image: string
   tile: { width: number; height: number }
   sheet: { width: number; height: number; columns: number }
@@ -34,6 +44,8 @@ export interface GenericTileset {
     width: number
     height: number
     bitmask?: number
+    /** NW, NE, SW, SE as indexes into `rules.terrains`; set instead of `bitmask` on a merged group. */
+    corners?: CornerTerrains
     stampOnly: boolean
   }>
   /** Complete provider object, even when its rule family is not normalized yet. */
@@ -162,7 +174,7 @@ export function exportTileset(
   const providerRules = isRecord(rawRules) ? rawRules : terrainRules ? metadata as Record<string, unknown> : null
   const frames = packed.atlas.frames
   const generic = buildGeneric(
-    spec,
+    { name: `${spec.styleId}/${spec.assetId}`, style: spec.styleId, asset: spec.assetId },
     options.imageName,
     packed.atlas,
     frames,
@@ -207,6 +219,16 @@ export function exportTileset(
     )
   }
 
+  return renderTileset(generic, packed, spec.tileType, options)
+}
+
+/** Write the document for an engine format from a built generic tileset. */
+function renderTileset(
+  generic: GenericTileset,
+  packed: { png: Buffer; sources: PackedSource[] },
+  tileType: string | undefined,
+  options: TilesetExportOptions,
+): TilesetExport {
   if (options.format === "tiled") {
     return {
       png: packed.png,
@@ -220,7 +242,7 @@ export function exportTileset(
     return {
       png: packed.png,
       extension: ".ldtk",
-      document: buildLdtk(generic, spec.tileType),
+      document: buildLdtk(generic, tileType),
       generic,
       sources: packed.sources,
     }
@@ -228,31 +250,83 @@ export function exportTileset(
   return {
     png: packed.png,
     extension: ".tres",
-    document: buildGodot(generic, spec),
+    document: buildGodot(generic, tileType),
     generic,
     sources: packed.sources,
   }
 }
 
+/**
+ * Build one tileset from a connected group of terrain sets (`members` in the
+ * order `connectedGroup` returns). Each terrain the sets share is one terrain
+ * in the result, and every tile's corners are named in those terms, so an
+ * engine paints with all of the group's terrains from one tileset.
+ */
+export function exportMergedTilesets(members: ConnectedMember[], options: TilesetExportOptions): TilesetExport {
+  const merged = mergeConnectedTerrain(members, options.manifestDir)
+  const packed = packSprites(
+    merged.tiles.map((tile) => ({ id: tile.id, path: tile.path })),
+    { columns: options.columns, order: "input" },
+  )
+  if (packed.skipped.length) {
+    throw new Error(
+      `Cannot export ${merged.assets.join(" + ")}: ` + packed.skipped.map((item) => `${item.id}: ${item.reason}`).join("; "),
+    )
+  }
+  const rules: NormalizedTileRules = {
+    ruleType: "corner",
+    arity: 4,
+    terrains: merged.terrains,
+    masks: {},
+    corners: Object.fromEntries(merged.tiles.map((tile, index) => [index, tile.corners])),
+    raw: merged.providerRules,
+  }
+  const styleId = members[0]!.spec.styleId
+  const asset = merged.assets.join("+")
+  const generic = buildGeneric(
+    { name: `${styleId}/${asset}`, style: styleId, asset, sets: merged.assets },
+    options.imageName,
+    packed.atlas,
+    packed.atlas.frames,
+    merged.providerRules,
+    rules,
+    new Map(merged.tiles.map((tile, index) => [tile.id, index] as const)),
+  )
+  if (options.format === "generic") {
+    return {
+      png: packed.png,
+      extension: ".json",
+      document: JSON.stringify(generic, null, 2) + "\n",
+      generic,
+      sources: packed.sources,
+    }
+  }
+  assertUniformTiles(generic)
+  return renderTileset(generic, packed, merged.tileType, options)
+}
+
 function buildGeneric(
-  spec: ResolvedSpec,
+  identity: { name: string; style: string; asset: string; sets?: string[] },
   imageName: string,
   atlas: { sheet: { width: number; height: number }; cell: { width: number; height: number }; columns: number },
   frames: PackedFrame[],
   providerRules: Record<string, unknown> | null,
   rules: NormalizedTileRules | null,
+  indexOf?: Map<string, number>,
 ): GenericTileset {
   return {
     format: "pixelkiln-tileset",
     version: 1,
-    name: `${spec.styleId}/${spec.assetId}`,
-    style: spec.styleId,
-    asset: spec.assetId,
+    name: identity.name,
+    style: identity.style,
+    asset: identity.asset,
+    ...(identity.sets ? { sets: identity.sets } : {}),
     image: imageName,
     tile: { ...atlas.cell },
     sheet: { ...atlas.sheet, columns: atlas.columns },
     tiles: frames.map((frame, index) => {
-      const sourceIndex = tileIndex(frame.id) ?? index
+      const sourceIndex = indexOf?.get(frame.id) ?? tileIndex(frame.id) ?? index
+      const corners = rules?.corners?.[sourceIndex]
       return {
         id: index,
         sourceIndex,
@@ -262,7 +336,8 @@ function buildGeneric(
         width: frame.width,
         height: frame.height,
         ...(rules?.masks[sourceIndex] !== undefined ? { bitmask: rules.masks[sourceIndex] } : {}),
-        stampOnly: rules ? rules.masks[sourceIndex] === undefined : true,
+        ...(corners ? { corners } : {}),
+        stampOnly: rules ? rules.masks[sourceIndex] === undefined && !corners : true,
       }
     }),
     providerRules,
@@ -296,7 +371,7 @@ function buildTiled(generic: GenericTileset): Record<string, unknown> {
     tile: representativeTile(generic, 0),
     colors: terrainNames.map((name, index) => ({
       name,
-      color: index === 0 ? "#5ab552" : "#4c78a8",
+      color: terrainColor(index),
       tile: representativeTile(generic, index),
       probability: 1,
     })),
@@ -304,25 +379,28 @@ function buildTiled(generic: GenericTileset): Record<string, unknown> {
       ? [{ name: "pixelkiln:connectivity", type: "string", value: rules.connectivity }]
       : [],
     wangtiles: generic.tiles
-      .filter((tile) => tile.bitmask !== undefined)
-      .map((tile) => ({ tileid: tile.id, wangid: tiledWangId(rules, tile.bitmask!) })),
+      .filter((tile) => tile.bitmask !== undefined || tile.corners !== undefined)
+      .map((tile) => ({ tileid: tile.id, wangid: tiledWangId(rules, tile) })),
   }]
   return tiled
 }
 
-function tiledWangId(rules: NormalizedTileRules, mask: number): number[] {
-  const bitColor = (bit: number) => ((mask & (1 << bit)) !== 0 ? 1 : 2)
-  if (rules.ruleType === "corner") {
-    // Tiled order: top edge, NE, right edge, SE, bottom edge, SW, left edge, NW.
-    return [0, bitColor(2), 0, bitColor(0), 0, bitColor(1), 0, bitColor(3)]
+function tiledWangId(rules: NormalizedTileRules, tile: GenericTileset["tiles"][number]): number[] {
+  const corners = tileCorners(rules, tile)
+  if (corners) {
+    // Tiled colors count from 1. Its order: top edge, NE, right edge, SE, bottom edge, SW, left edge, NW.
+    const [nw, ne, sw, se] = corners
+    return [0, ne + 1, 0, se + 1, 0, sw + 1, 0, nw + 1]
   }
+  const mask = tile.bitmask!
+  const bitColor = (bit: number) => ((mask & (1 << bit)) !== 0 ? 1 : 2)
   // PixelLab edge mask: bit0=N bit1=E bit2=S bit3=W.
   return [bitColor(0), 0, bitColor(1), 0, bitColor(2), 0, bitColor(3), 0]
 }
 
-function buildGodot(generic: GenericTileset, spec: ResolvedSpec): string {
+function buildGodot(generic: GenericTileset, tileType: string | undefined): string {
   const rules = generic.rules
-  const shape = godotTileShape(spec.tileType ?? "isometric")
+  const shape = godotTileShape(tileType ?? "isometric")
   const lines = [
     `[gd_resource type="TileSet" load_steps=3 format=3]`,
     "",
@@ -337,8 +415,8 @@ function buildGodot(generic: GenericTileset, spec: ResolvedSpec): string {
     const x = tile.id % generic.sheet.columns
     const y = Math.floor(tile.id / generic.sheet.columns)
     lines.push(`${x}:${y}/0 = 0`)
-    if (!rules || tile.bitmask === undefined || rules.ruleType === "outline") continue
-    const values = godotTerrainBits(rules, tile.bitmask, shape)
+    if (!rules || (tile.bitmask === undefined && tile.corners === undefined) || rules.ruleType === "outline") continue
+    const values = godotTerrainBits(rules, tile, shape)
     lines.push(`${x}:${y}/0/terrain_set = 0`)
     lines.push(`${x}:${y}/0/terrain = ${dominantTerrain(values)}`)
     for (const [side, value] of Object.entries(values)) {
@@ -353,10 +431,7 @@ function buildGodot(generic: GenericTileset, spec: ResolvedSpec): string {
     lines.push(`terrain_set_0/mode = ${rules.ruleType === "corner" ? 1 : 2}`)
     for (const [index, name] of terrainNamesFor(rules).entries()) {
       lines.push(`terrain_set_0/terrain_${index}/name = ${JSON.stringify(name)}`)
-      lines.push(
-        `terrain_set_0/terrain_${index}/color = ` +
-          (index === 0 ? "Color(0.3529, 0.7098, 0.3216, 1)" : "Color(0.298, 0.4706, 0.6588, 1)"),
-      )
+      lines.push(`terrain_set_0/terrain_${index}/color = ${godotColor(terrainColor(index))}`)
     }
   }
   lines.push(`sources/0 = SubResource("TileSetAtlasSource_pixelkiln")`, "")
@@ -374,24 +449,17 @@ function buildGodot(generic: GenericTileset, spec: ResolvedSpec): string {
  * docs/terrain-tiles.md §5: "Each of the 16 tiles was rendered, its four
  * diamond corners sampled for light-vs-dark, and checked against its mask").
  */
-function godotTerrainBits(rules: NormalizedTileRules, mask: number, shape: number): Record<string, number> {
-  const terrain = (bit: number) => ((mask & (1 << bit)) !== 0 ? 0 : 1)
-  if (rules.ruleType === "corner") {
+function godotTerrainBits(rules: NormalizedTileRules, tile: GenericTileset["tiles"][number], shape: number): Record<string, number> {
+  const corners = tileCorners(rules, tile)
+  if (corners) {
+    const [nw, ne, sw, se] = corners
     if (shape === 1) {
-      return {
-        top_corner: terrain(3),
-        right_corner: terrain(2),
-        left_corner: terrain(1),
-        bottom_corner: terrain(0),
-      }
+      return { top_corner: nw, right_corner: ne, left_corner: sw, bottom_corner: se }
     }
-    return {
-      top_left_corner: terrain(3),
-      top_right_corner: terrain(2),
-      bottom_left_corner: terrain(1),
-      bottom_right_corner: terrain(0),
-    }
+    return { top_left_corner: nw, top_right_corner: ne, bottom_left_corner: sw, bottom_right_corner: se }
   }
+  const mask = tile.bitmask!
+  const terrain = (bit: number) => ((mask & (1 << bit)) !== 0 ? 0 : 1)
   // Isometric/oblique edge masks are refused before reaching here (see the
   // "edge/side adjacency" guard in exportTileset()) since the diagonal
   // peering-bit direction hasn't been verified the way the corner case has.
@@ -403,9 +471,19 @@ function godotTerrainBits(rules: NormalizedTileRules, mask: number, shape: numbe
   }
 }
 
+/** The terrain most of a tile's corners or sides carry; a tie goes to the lower-numbered one. */
 function dominantTerrain(values: Record<string, number>): number {
-  const terrainZero = Object.values(values).filter((value) => value === 0).length
-  return terrainZero * 2 >= Object.keys(values).length ? 0 : 1
+  const counts = new Map<number, number>()
+  for (const value of Object.values(values)) counts.set(value, (counts.get(value) ?? 0) + 1)
+  let best = 0
+  let bestCount = -1
+  for (const [terrain, count] of [...counts].sort(([a], [b]) => a - b)) {
+    if (count > bestCount) {
+      best = terrain
+      bestCount = count
+    }
+  }
+  return best
 }
 
 function godotTileShape(tileType: string | undefined): number {
@@ -416,13 +494,23 @@ function godotTileShape(tileType: string | undefined): number {
 
 function representativeTile(generic: GenericTileset, terrainIndex: number): number {
   const rules = generic.rules!
+  if (rules.ruleType === "corner") {
+    // The tile that is wholly this terrain.
+    return generic.tiles.find((tile) => tileCorners(rules, tile)?.every((corner) => corner === terrainIndex))?.id ?? -1
+  }
   const full = (1 << rules.arity) - 1
   const wanted = terrainIndex === 0 ? full : 0
   return generic.tiles.find((tile) => tile.bitmask === wanted)?.id ?? -1
 }
 
 function terrainNamesFor(rules: NormalizedTileRules): string[] {
+  if (rules.terrains.length > 2) return rules.terrains
   return [rules.terrains[0] ?? "feature", rules.terrains[1] ?? "background"]
+}
+
+function godotColor(hex: string): string {
+  const channel = (at: number) => Number((parseInt(hex.slice(at, at + 2), 16) / 255).toFixed(4))
+  return `Color(${channel(1)}, ${channel(3)}, ${channel(5)}, 1)`
 }
 
 function assertUniformTiles(generic: GenericTileset): void {

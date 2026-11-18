@@ -229,6 +229,7 @@ Options
   --game-pack         vfx: also download the game-pack ZIP
   --glyph-px <n>      font: native glyph size, 8, 16 (default), 32, or 64
   --prune             cache: remove invalid/unreferenced local cache data
+  --merge-connected   export: write connected terrain sets as one tileset with every terrain
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
