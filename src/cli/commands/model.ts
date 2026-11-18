@@ -9,7 +9,9 @@ import { openInEditor } from "../../pipeline/hand-edit.ts"
 import {
   adoptModelExport,
   blenderCommand,
+  discoverModels,
   exportModelTexture,
+  modelLoadPath,
   modelTexturePaths,
   openInBlender,
   resolveModel,
@@ -21,6 +23,7 @@ import {
 import { glbImageBytes, imageInfo, parseGlb, type GlbDocument } from "../../glb.ts"
 import { renderGuide } from "../../pipeline/model-guide.ts"
 import { loadManifest } from "../../manifest.ts"
+import { portableOutputPath } from "../../outputs.ts"
 import { confirm, log } from "../io.ts"
 import { UsageError } from "../../errors.ts"
 import { clientFromEnv, NORMAL_MAP_KINDS, NORMAL_MAP_MODES, type NormalMapKind, type NormalMapMode } from "../../client.ts"
@@ -74,6 +77,39 @@ export async function runModel(args: Args): Promise<void> {
       }
       if (model.edit) log(`    edit: ${model.edit.path} (${model.edit.status}${model.edit.editor ? `, ${model.edit.editor}` : ""}; ${model.edit.textures.map((t) => t.name).join(", ") || "no textures recorded"})`)
       if (model.exportWaiting) log(`    an export is waiting at ${model.exportPath}; run pixelkiln model adopt ${model.name}`)
+    }
+    return
+  }
+
+  if (sub === "resolve") {
+    // Which file a game should load for each model: the edited copy when it
+    // is an edit of the model as it is now, else the model as built.
+    const models = args.target ? [await resolveModel(loaded, args.target, styles)] : await discoverModels(loaded, styles)
+    const resolved = await Promise.all(models.map(modelLoadPath))
+    const portable = (file: string) => portableOutputPath(file, loaded.root)
+    if (args.json) {
+      const rows = resolved.map((entry) => ({
+        styleId: entry.styleId,
+        file: portable(entry.file),
+        load: portable(entry.load),
+        from: entry.from,
+        edit: entry.edit ? portable(entry.edit) : null,
+        status: entry.status,
+        absolute: entry.load,
+      }))
+      log(JSON.stringify(args.target ? rows[0] : rows, null, 2))
+      return
+    }
+    for (const entry of resolved) {
+      if (entry.status === "rebuilt-since") {
+        console.error(`  ${portable(entry.file)}: the edit at ${portable(entry.edit!)} was made before the model was rebuilt, so the model as built is named; fix the new build or look at both in the gallery`)
+      }
+    }
+    if (args.target) { log(portable(resolved[0]!.load)); return }
+    if (!resolved.length) { log("  no models: put a .glb under a style's outDir"); return }
+    for (const entry of resolved) {
+      const why = entry.from === "edit" ? `edited copy, ${entry.status}` : entry.status ? `as built; edit is ${entry.status}` : "as built, no edit"
+      log(`  ${portable(entry.file)}  ->  ${portable(entry.load)}  (${why})`)
     }
     return
   }

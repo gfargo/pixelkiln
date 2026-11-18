@@ -257,7 +257,7 @@ const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
 const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
 const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 const EDIT_SUBCOMMANDS = ["start", "detach"] as const
-const MODEL_SUBCOMMANDS = ["list", "export", "import", "blender", "adopt", "normal-map"] as const
+const MODEL_SUBCOMMANDS = ["list", "resolve", "export", "import", "blender", "adopt", "normal-map"] as const
 const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
 const VFX_SUBCOMMANDS = ["make", "presets", "parts", "effects"] as const
@@ -346,8 +346,9 @@ export function parseArgs(argv: string[]): Args {
     if (rest[0] === subcommand) rest = rest.slice(1)
     if (subcommand !== "list") {
       target = rest[0]?.startsWith("-") ? undefined : rest[0]
-      if (target === undefined) throw new UsageError(`model ${subcommand} needs a model: its path, its file name, or its gallery id`)
-      rest = rest.slice(1)
+      // resolve without a model resolves every model.
+      if (target === undefined && subcommand !== "resolve") throw new UsageError(`model ${subcommand} needs a model: its path, its file name, or its gallery id`)
+      if (target !== undefined) rest = rest.slice(1)
     }
   } else if (command === "tools") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "status" : rest[0]

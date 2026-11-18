@@ -250,6 +250,16 @@ or a plan. Its hand edit follows the sprite rule, a sibling under
 `<outDir>/edits/` and never a write to the file as built, with the same
 `.edit.json` record plus one entry per replaced texture.
 
+Downstream, the edited copy reaches a game through `pixelkiln model resolve`
+(`modelLoadPath` in `src/pipeline/model-edit.ts`), which names the file to
+load and writes nothing. The copy wins unless its record says it was based on
+an older build than the one on disk (`rebuilt-since`), in which case the new
+build is named, since an older edit's meshes may not match it. `pack`, `mount`,
+and `export` are not given models: they build sprite sheets and tilesets,
+which have no place for one, and a sprite's `source` in the manifest has no
+counterpart because a model is not a manifest asset. The status rule is the
+same function the gallery uses for its edit badge.
+
 `src/glb.ts` reads and rewrites the container without a dependency, the way
 `src/png.ts` does for PNG: header, JSON chunk, BIN chunk, accessors, and
 embedded images. Replacing an image splices the new bytes into the buffer

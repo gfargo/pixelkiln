@@ -481,6 +481,7 @@ lockfile, and the model as built is never written.
 
 ```bash
 pixelkiln model list [--json]
+pixelkiln model resolve [knight] [--json]
 pixelkiln model export knight --image Helm [--out <dir>] [--no-open] [--json]
 pixelkiln model import knight --image Helm [--from <png>] [--json]
 pixelkiln model blender knight
@@ -493,6 +494,17 @@ pixelkiln model normal-map knight [--source views|texture|sprites] [--image <mat
 - `list` (the default) shows every model with its meshes, bones, animations,
   and images by index, material, and role, and its edited copy if there is one.
   `--style` narrows it. A normal map is listed as `<material> normal map`.
+- `resolve` prints the file a game or build script should load for a model,
+  as a manifest-relative path: the edited copy when it is an edit of the
+  model as it is now (`edited`) or a file placed in the edit slot by hand
+  with no record (`unrecorded`); otherwise the model as built. An edit made
+  before the model was rebuilt (`rebuilt-since`) is passed over for the new
+  build, with a note on stderr, since its meshes may no longer match. Given
+  a model it prints only the path; without one it lists every model as
+  `<as built>  ->  <load>  (<why>)`. `--json` gives `styleId`, `file`, `load`,
+  `from` (`edit` or `built`), `edit`, `status`, and `absolute` (the load
+  path made absolute): one object for a named model, an array otherwise.
+  It reads only. `pack`, `mount`, and `export` still do not read models.
 - `export` writes one texture for painting anywhere: `--image` takes the image
   index, a material name (its base colour texture), or `<material>:normal`
   (its normal map), e.g. `--image Helm:normal`. Three files land beside

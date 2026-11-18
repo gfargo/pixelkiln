@@ -152,6 +152,50 @@ export async function readModelCompanion(editFile: string): Promise<ModelEditCom
   }
 }
 
+export type ModelEditStatus =
+  /** A browser or adopted edit of the model as it is now. */
+  | "edited"
+  /** The model was rebuilt after the edit was made; the edit is based on the older build. */
+  | "rebuilt-since"
+  /** A file at the edit path with no record beside it: placed there by hand. */
+  | "unrecorded"
+
+/** What an edited copy is, from its record and the hash of the model as built now. */
+export function modelEditStatus(companion: ModelEditCompanion | null, builtSha256: string): ModelEditStatus {
+  if (!companion) return "unrecorded"
+  return companion.outputs[0]!.basedOn === builtSha256 ? "edited" : "rebuilt-since"
+}
+
+export interface ModelLoadPath {
+  styleId: string
+  /** Absolute path of the model as built. */
+  file: string
+  /** Absolute path a consumer should load: the edited copy or the model as built. */
+  load: string
+  from: "edit" | "built"
+  /** Absolute path of the edited copy when one is on disk, else null. */
+  edit: string | null
+  /** The edited copy's status, or null when there is none. */
+  status: ModelEditStatus | null
+}
+
+/**
+ * Which file a consumer of the art should load for a model. The edited copy
+ * wins when it is an edit of the model as it is now (`edited`) or was placed
+ * in the edit slot by hand with no record (`unrecorded`). An edit made before
+ * the model was rebuilt (`rebuilt-since`) is passed over for the new build,
+ * since its meshes may no longer match; it is still named in `edit`. Reads
+ * only; writes nothing.
+ */
+export async function modelLoadPath(model: ProjectModel): Promise<ModelLoadPath> {
+  const base = { styleId: model.styleId, file: model.file }
+  if (!existsSync(model.editFile)) return { ...base, load: model.file, from: "built", edit: null, status: null }
+  const companion = await readModelCompanion(model.editFile)
+  const status = companion ? modelEditStatus(companion, sha256(await readFile(model.file))) : "unrecorded"
+  const useEdit = status !== "rebuilt-since"
+  return { ...base, load: useEdit ? model.editFile : model.file, from: useEdit ? "edit" : "built", edit: model.editFile, status }
+}
+
 async function replaceFile(file: string, bytes: Uint8Array | string): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true })
   const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
