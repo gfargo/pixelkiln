@@ -5900,5 +5900,3093 @@
         "anim": "/effects/pixelfx/critters-wisp.webp"
       }
     ]
+  },
+  "codex": {
+    "version": "1.0.0",
+    "engineSha256": "cb4a7901f305",
+    "categories": [
+      "projectile",
+      "beam",
+      "area",
+      "burst",
+      "vortex",
+      "smoke",
+      "shield",
+      "portal",
+      "environment",
+      "screen",
+      "slash",
+      "domain",
+      "summon",
+      "strike",
+      "aura",
+      "enchant"
+    ],
+    "effects": [
+      {
+        "id": "fireball",
+        "name": "Blazing Fireball",
+        "description": "A trailing fireball bursts into bright arcs and sparks, leaving fading cracks on contact.",
+        "category": "projectile",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "tailLength",
+          "sparks",
+          "debris",
+          "ringSize"
+        ],
+        "still": "/effects/codex/fireball.png",
+        "art": {
+          "width": 112,
+          "height": 65
+        },
+        "anim": "/effects/codex/fireball.webp"
+      },
+      {
+        "id": "plasma-bolt",
+        "name": "Plasma Dart",
+        "description": "A bright arrow flies with blue lightning and tiny sparks behind it.",
+        "category": "projectile",
+        "schools": [],
+        "seconds": 3,
+        "params": [
+          "strands",
+          "trailLength",
+          "impactArcs",
+          "sparks"
+        ],
+        "still": "/effects/codex/plasma-bolt.png",
+        "art": {
+          "width": 100,
+          "height": 42
+        },
+        "anim": "/effects/codex/plasma-bolt.webp"
+      },
+      {
+        "id": "ice-shard",
+        "name": "Frostcrystal Dart",
+        "description": "A cluster of sharp ice flies forward, shedding little ice pieces and frost.",
+        "category": "projectile",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "shards",
+          "fins",
+          "spin",
+          "ringSize"
+        ],
+        "still": "/effects/codex/ice-shard.png",
+        "art": {
+          "width": 95,
+          "height": 49
+        },
+        "anim": "/effects/codex/ice-shard.webp"
+      },
+      {
+        "id": "arcane-missile",
+        "name": "Runic Crystal Missiles",
+        "description": "Three magic crystals circle as they fly, trailing glowing shapes.",
+        "category": "projectile",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "missiles",
+          "helixRadius",
+          "orbitSpeed",
+          "runes"
+        ],
+        "still": "/effects/codex/arcane-missile.png",
+        "art": {
+          "width": 86,
+          "height": 35
+        },
+        "anim": "/effects/codex/arcane-missile.webp"
+      },
+      {
+        "id": "continuous-beam",
+        "name": "Threadwoven Beam",
+        "description": "A steady beam has light swirling around it and sparks where it hits.",
+        "category": "beam",
+        "schools": [],
+        "seconds": 3.6,
+        "params": [
+          "beamWidth",
+          "threads",
+          "threadSpin",
+          "sparks"
+        ],
+        "still": "/effects/codex/continuous-beam.png",
+        "art": {
+          "width": 85,
+          "height": 35
+        },
+        "anim": "/effects/codex/continuous-beam.webp"
+      },
+      {
+        "id": "pulse-beam",
+        "name": "Ringpulse Ray",
+        "description": "Glowing balls light up along a beam as rings travel forward.",
+        "category": "beam",
+        "schools": [],
+        "seconds": 3.6,
+        "params": [
+          "beamWidth",
+          "ballSize",
+          "ringSize",
+          "motes"
+        ],
+        "still": "/effects/codex/pulse-beam.png",
+        "art": {
+          "width": 81,
+          "height": 37
+        },
+        "anim": "/effects/codex/pulse-beam.webp"
+      },
+      {
+        "id": "charged-beam",
+        "name": "Charged Light Cannon",
+        "description": "Light gathers before a steady blast fires, with flashes and rings where it hits.",
+        "category": "beam",
+        "schools": [],
+        "seconds": 4.6,
+        "params": [
+          "beamWidth",
+          "chargeSparks",
+          "orbitArcs",
+          "impactSparks"
+        ],
+        "still": "/effects/codex/charged-beam.png",
+        "art": {
+          "width": 96,
+          "height": 50
+        },
+        "anim": "/effects/codex/charged-beam.webp"
+      },
+      {
+        "id": "arc-ray",
+        "name": "Forked Lightning Stream",
+        "description": "Blue-white lightning connects two ends, with little branches and sparks at the hit.",
+        "category": "beam",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 3.6,
+        "params": [
+          "boltWidth",
+          "forks",
+          "sideArcs",
+          "sparks"
+        ],
+        "still": "/effects/codex/arc-ray.png",
+        "art": {
+          "width": 91,
+          "height": 50
+        },
+        "anim": "/effects/codex/arc-ray.webp"
+      },
+      {
+        "id": "healing-field",
+        "name": "Healing Sigil",
+        "description": "A magic pattern sends out rings of light and floating crosses for healing.",
+        "category": "area",
+        "schools": [
+          "light"
+        ],
+        "seconds": 4,
+        "params": [
+          "crosses",
+          "spin",
+          "pulseSize",
+          "motes"
+        ],
+        "still": "/effects/codex/healing-field.png",
+        "art": {
+          "width": 68,
+          "height": 66
+        },
+        "anim": "/effects/codex/healing-field.webp"
+      },
+      {
+        "id": "burning-ground",
+        "name": "Flame-Etched Ground",
+        "description": "Red cracks glow on the ground as flames keep rising and fading.",
+        "category": "area",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "radius",
+          "flames",
+          "flameHeight",
+          "spin"
+        ],
+        "still": "/effects/codex/burning-ground.png",
+        "art": {
+          "width": 75,
+          "height": 69
+        },
+        "anim": "/effects/codex/burning-ground.webp"
+      },
+      {
+        "id": "frost-field",
+        "name": "Sixfold Frost Sigil",
+        "description": "A snowflake-shaped magic pattern lights outward, with ice sparkling above it.",
+        "category": "area",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "radius",
+          "crystals",
+          "shards",
+          "spin"
+        ],
+        "still": "/effects/codex/frost-field.png",
+        "art": {
+          "width": 119,
+          "height": 76
+        },
+        "anim": "/effects/codex/frost-field.webp"
+      },
+      {
+        "id": "magic-barrier",
+        "name": "Runic Mesh Barrier",
+        "description": "A half-round shield rises from the ground with glowing squares on its surface.",
+        "category": "area",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "domeRadius",
+          "cells",
+          "spin",
+          "motes"
+        ],
+        "still": "/effects/codex/magic-barrier.png",
+        "art": {
+          "width": 116,
+          "height": 70
+        },
+        "anim": "/effects/codex/magic-barrier.webp"
+      },
+      {
+        "id": "fire-explosion",
+        "name": "White-Hot Fireburst",
+        "description": "A fireball bursts with a ring of smoke, then cools into smoke and little embers.",
+        "category": "burst",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 2.8,
+        "params": [
+          "blastRadius",
+          "sparks",
+          "ripples",
+          "smokeRing"
+        ],
+        "still": "/effects/codex/fire-explosion.png",
+        "art": {
+          "width": 86,
+          "height": 77
+        },
+        "anim": "/effects/codex/fire-explosion.webp"
+      },
+      {
+        "id": "energy-burst",
+        "name": "Lightning Arc Burst",
+        "description": "Blue-white light bursts into branching lightning, then fades to scattered flashes.",
+        "category": "burst",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 1.9,
+        "params": [
+          "arcs",
+          "reach",
+          "branches",
+          "sparks"
+        ],
+        "still": "/effects/codex/energy-burst.png",
+        "art": {
+          "width": 77,
+          "height": 52
+        },
+        "anim": "/effects/codex/energy-burst.webp"
+      },
+      {
+        "id": "shockwave",
+        "name": "Dust-Raising Shockwave",
+        "description": "A ring of dust rushes outward, lifting clouds before small stones fall back down.",
+        "category": "burst",
+        "schools": [],
+        "seconds": 2.6,
+        "params": [
+          "radius",
+          "dust",
+          "jets",
+          "debris"
+        ],
+        "still": "/effects/codex/shockwave.png",
+        "art": {
+          "width": 90,
+          "height": 65
+        },
+        "anim": "/effects/codex/shockwave.webp"
+      },
+      {
+        "id": "ice-shatter",
+        "name": "Shattering Frostburst",
+        "description": "Cracks light up on ice pillars before they burst into flying ice pieces.",
+        "category": "burst",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 2.8,
+        "params": [
+          "spikes",
+          "height",
+          "fragments",
+          "mist"
+        ],
+        "still": "/effects/codex/ice-shatter.png",
+        "art": {
+          "width": 85,
+          "height": 98
+        },
+        "anim": "/effects/codex/ice-shatter.webp"
+      },
+      {
+        "id": "wind-vortex",
+        "name": "Leaf-Swept Vortex",
+        "description": "Wind spirals upward, carrying leaves through its center and drawing in dust.",
+        "category": "vortex",
+        "schools": [
+          "wind"
+        ],
+        "seconds": 5,
+        "params": [
+          "funnelHeight",
+          "funnelWidth",
+          "spin",
+          "leaves"
+        ],
+        "still": "/effects/codex/wind-vortex.png",
+        "art": {
+          "width": 93,
+          "height": 90
+        },
+        "anim": "/effects/codex/wind-vortex.webp"
+      },
+      {
+        "id": "dust-devil",
+        "name": "Sand-Swept Vortex",
+        "description": "Bands of sand spiral upward around an open center, with grit flying nearby.",
+        "category": "vortex",
+        "schools": [
+          "sand"
+        ],
+        "seconds": 5,
+        "params": [
+          "funnelHeight",
+          "funnelWidth",
+          "spin",
+          "grit"
+        ],
+        "still": "/effects/codex/dust-devil.png",
+        "art": {
+          "width": 67,
+          "height": 87
+        },
+        "anim": "/effects/codex/dust-devil.webp"
+      },
+      {
+        "id": "fire-vortex",
+        "name": "Flame-Swept Vortex",
+        "description": "Orange flames spiral upward, lighting the dust and smoke below.",
+        "category": "vortex",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 5,
+        "params": [
+          "funnelHeight",
+          "funnelWidth",
+          "spin",
+          "embers"
+        ],
+        "still": "/effects/codex/fire-vortex.png",
+        "art": {
+          "width": 66,
+          "height": 91
+        },
+        "anim": "/effects/codex/fire-vortex.webp"
+      },
+      {
+        "id": "energy-vortex",
+        "name": "Runic Ring Vortex",
+        "description": "Glowing bands spiral upward as magic symbols move around the open center.",
+        "category": "vortex",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 5,
+        "params": [
+          "funnelHeight",
+          "funnelWidth",
+          "spin",
+          "glyphs"
+        ],
+        "still": "/effects/codex/energy-vortex.png",
+        "art": {
+          "width": 83,
+          "height": 87
+        },
+        "anim": "/effects/codex/energy-vortex.webp"
+      },
+      {
+        "id": "smoke-column",
+        "name": "Billowing Smoke Column",
+        "description": "Puffs of smoke rise, spread out and fade as they climb.",
+        "category": "smoke",
+        "schools": [],
+        "seconds": 5,
+        "params": [
+          "columnHeight",
+          "puffSize",
+          "wind"
+        ],
+        "still": "/effects/codex/smoke-column.png",
+        "art": {
+          "width": 40,
+          "height": 83
+        },
+        "anim": "/effects/codex/smoke-column.webp"
+      },
+      {
+        "id": "ground-fog",
+        "name": "Ground-Hugging Mist",
+        "description": "Low fog spreads across the ground, adding mystery and hiding low areas.",
+        "category": "smoke",
+        "schools": [],
+        "seconds": 5,
+        "params": [
+          "coverage",
+          "thickness",
+          "wind"
+        ],
+        "still": "/effects/codex/ground-fog.png",
+        "art": {
+          "width": 82,
+          "height": 44
+        },
+        "anim": "/effects/codex/ground-fog.webp"
+      },
+      {
+        "id": "steam-jet",
+        "name": "Rising Steam Jet",
+        "description": "A narrow jet of steam shoots upward and spreads into mist at the top.",
+        "category": "smoke",
+        "schools": [
+          "water"
+        ],
+        "seconds": 4.5,
+        "params": [
+          "jetHeight",
+          "jetWidth",
+          "plumeSplit",
+          "speedLines"
+        ],
+        "still": "/effects/codex/steam-jet.png",
+        "art": {
+          "width": 39,
+          "height": 73
+        },
+        "anim": "/effects/codex/steam-jet.webp"
+      },
+      {
+        "id": "smoke-puff",
+        "name": "Dispersing Smoke Puff",
+        "description": "A puff swells and fades, useful when something appears, vanishes or lands.",
+        "category": "smoke",
+        "schools": [],
+        "seconds": 3.5,
+        "params": [
+          "puffSize",
+          "wisps",
+          "drift"
+        ],
+        "still": "/effects/codex/smoke-puff.png",
+        "art": {
+          "width": 72,
+          "height": 70
+        },
+        "anim": "/effects/codex/smoke-puff.webp"
+      },
+      {
+        "id": "flame-surge",
+        "name": "Surging Flame Tide",
+        "description": "A wide fan of flames rolls upward, breaking into little embers at the edges.",
+        "category": "burst",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 3,
+        "params": [
+          "tongues",
+          "height",
+          "fanWidth",
+          "embers"
+        ],
+        "still": "/effects/codex/flame-surge.png",
+        "art": {
+          "width": 60,
+          "height": 51
+        },
+        "anim": "/effects/codex/flame-surge.webp"
+      },
+      {
+        "id": "frost-wheel",
+        "name": "Crystal-Toothed Ice Wheel",
+        "description": "An ice wheel with sharp teeth spins quickly and leaves frost behind.",
+        "category": "projectile",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "teeth",
+          "wheelSize",
+          "spin",
+          "motes"
+        ],
+        "still": "/effects/codex/frost-wheel.png",
+        "art": {
+          "width": 104,
+          "height": 55
+        },
+        "anim": "/effects/codex/frost-wheel.webp"
+      },
+      {
+        "id": "arcane-matrix",
+        "name": "Floating Rune Matrix",
+        "description": "A square magic pattern connects piece by piece while floating symbols rearrange.",
+        "category": "area",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "size",
+          "cells",
+          "tiles",
+          "hopHeight"
+        ],
+        "still": "/effects/codex/arcane-matrix.png",
+        "art": {
+          "width": 126,
+          "height": 64
+        },
+        "anim": "/effects/codex/arcane-matrix.webp"
+      },
+      {
+        "id": "thunder-strike",
+        "name": "Vortex Lightning Strike",
+        "description": "Light gathers above, then blue-white lightning strikes the ground with sparks.",
+        "category": "burst",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 2.1,
+        "params": [
+          "vortexSize",
+          "branches",
+          "legs",
+          "sparks"
+        ],
+        "still": "/effects/codex/thunder-strike.png",
+        "art": {
+          "width": 50,
+          "height": 66
+        },
+        "anim": "/effects/codex/thunder-strike.webp"
+      },
+      {
+        "id": "radiant-beam",
+        "name": "Solar Halo Beam",
+        "description": "A round symbol fires a steady pillar of light with petal-like flashes where it hits.",
+        "category": "beam",
+        "schools": [
+          "light"
+        ],
+        "seconds": 3.6,
+        "params": [
+          "beamWidth",
+          "petals",
+          "beads",
+          "sigilSize"
+        ],
+        "still": "/effects/codex/radiant-beam.png",
+        "art": {
+          "width": 99,
+          "height": 44
+        },
+        "anim": "/effects/codex/radiant-beam.webp"
+      },
+      {
+        "id": "binding-curse",
+        "name": "Hooked Binding Sigil",
+        "description": "Hook-shaped magic marks glow while curved bands tighten like a binding spell.",
+        "category": "area",
+        "schools": [
+          "dark"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "bands",
+          "height",
+          "squeeze",
+          "spin"
+        ],
+        "still": "/effects/codex/binding-curse.png",
+        "art": {
+          "width": 112,
+          "height": 94
+        },
+        "anim": "/effects/codex/binding-curse.webp"
+      },
+      {
+        "id": "thorn-crown",
+        "name": "Thornvine Blossom Crown",
+        "description": "Thorny vines grow from a magic pattern, opening leaves and glowing flowers.",
+        "category": "area",
+        "schools": [
+          "nature"
+        ],
+        "seconds": 4.6,
+        "params": [
+          "vines",
+          "height",
+          "reach",
+          "leaves"
+        ],
+        "still": "/effects/codex/thorn-crown.png",
+        "art": {
+          "width": 71,
+          "height": 68
+        },
+        "anim": "/effects/codex/thorn-crown.webp"
+      },
+      {
+        "id": "shadow-glaive",
+        "name": "Afterimage Glaive",
+        "description": "A curved blade twists forward, leaving shadows that break apart and vanish.",
+        "category": "projectile",
+        "schools": [
+          "shadow"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "afterimages",
+          "bladeSize",
+          "roll",
+          "slivers"
+        ],
+        "still": "/effects/codex/shadow-glaive.png",
+        "art": {
+          "width": 94,
+          "height": 42
+        },
+        "anim": "/effects/codex/shadow-glaive.webp"
+      },
+      {
+        "id": "tidal-surge",
+        "name": "Breaking Tidal Surge",
+        "description": "A wave rolls outward, breaking into foam and droplets along its edge.",
+        "category": "burst",
+        "schools": [
+          "water"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "waveWidth",
+          "waveHeight",
+          "foam",
+          "spray"
+        ],
+        "still": "/effects/codex/tidal-surge.png",
+        "art": {
+          "width": 86,
+          "height": 44
+        },
+        "anim": "/effects/codex/tidal-surge.webp"
+      },
+      {
+        "id": "quicksand-seal",
+        "name": "Sand-Gathering Sigil",
+        "description": "Sand piles rise and collapse inside a magic triangle as nearby sand flows inward.",
+        "category": "area",
+        "schools": [
+          "sand"
+        ],
+        "seconds": 4.5,
+        "params": [
+          "piles",
+          "pileSize",
+          "flowSpeed",
+          "grains"
+        ],
+        "still": "/effects/codex/quicksand-seal.png",
+        "art": {
+          "width": 76,
+          "height": 43
+        },
+        "anim": "/effects/codex/quicksand-seal.webp"
+      },
+      {
+        "id": "astral-convergence",
+        "name": "Astral Ring Detonation",
+        "description": "Starlight circles inward, squeezes together and bursts into bright trails.",
+        "category": "burst",
+        "schools": [
+          "astral"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "rings",
+          "shards",
+          "afterglow",
+          "blastRadius"
+        ],
+        "still": "/effects/codex/astral-convergence.png",
+        "art": {
+          "width": 68,
+          "height": 75
+        },
+        "anim": "/effects/codex/astral-convergence.webp"
+      },
+      {
+        "id": "spiral-gale",
+        "name": "Spiraling Wind Spear",
+        "description": "Spinning wind rushes forward like a spear, leaving a trail that narrows and fades.",
+        "category": "projectile",
+        "schools": [
+          "wind"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "bands",
+          "spin",
+          "spearLength",
+          "pieces"
+        ],
+        "still": "/effects/codex/spiral-gale.png",
+        "art": {
+          "width": 109,
+          "height": 45
+        },
+        "anim": "/effects/codex/spiral-gale.webp"
+      },
+      {
+        "id": "venom-pool",
+        "name": "Bubbling Venom Sigil",
+        "description": "A green magic pattern bubbles with poison, making ripples and low mist as bubbles pop.",
+        "category": "area",
+        "schools": [
+          "poison"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "radius",
+          "bubbles",
+          "bubbleSize",
+          "mist"
+        ],
+        "still": "/effects/codex/venom-pool.png",
+        "art": {
+          "width": 83,
+          "height": 57
+        },
+        "anim": "/effects/codex/venom-pool.webp"
+      },
+      {
+        "id": "magma-fissure",
+        "name": "Molten Vein Fissure",
+        "description": "Glowing cracks spread along the ground, lifting stones before fading to small embers.",
+        "category": "burst",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 2.2,
+        "params": [
+          "length",
+          "slabs",
+          "branches",
+          "lava"
+        ],
+        "still": "/effects/codex/magma-fissure.png",
+        "art": {
+          "width": 95,
+          "height": 41
+        },
+        "anim": "/effects/codex/magma-fissure.webp"
+      },
+      {
+        "id": "prism-guard",
+        "name": "Prismatic Crystal Bulwark",
+        "description": "Crystal shield pieces form a curved wall, then fold away one by one when stopped.",
+        "category": "shield",
+        "schools": [
+          "light"
+        ],
+        "seconds": 4,
+        "params": [
+          "plates",
+          "wallRadius",
+          "plateSize",
+          "shards"
+        ],
+        "still": "/effects/codex/prism-guard.png",
+        "art": {
+          "width": 65,
+          "height": 47
+        },
+        "anim": "/effects/codex/prism-guard.webp"
+      },
+      {
+        "id": "prism-parry",
+        "name": "Prismatic Crystal Block",
+        "description": "A bright line flashes as a small crystal shield blocks a hit and scatters light.",
+        "category": "shield",
+        "schools": [
+          "light"
+        ],
+        "seconds": 2.5,
+        "params": [
+          "plates",
+          "plateSize",
+          "shards",
+          "starSize"
+        ],
+        "still": "/effects/codex/prism-parry.png",
+        "art": {
+          "width": 69,
+          "height": 47
+        },
+        "anim": "/effects/codex/prism-parry.webp"
+      },
+      {
+        "id": "astral-gate",
+        "name": "Gate of Astral Tracery",
+        "description": "A glowing doorway opens piece by piece, with flowing stars inside, then closes when stopped.",
+        "category": "portal",
+        "schools": [
+          "astral"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "gateSize",
+          "blocks",
+          "stars",
+          "armSpin"
+        ],
+        "still": "/effects/codex/astral-gate.png",
+        "art": {
+          "width": 44,
+          "height": 65
+        },
+        "anim": "/effects/codex/astral-gate.webp"
+      },
+      {
+        "id": "soul-siphon",
+        "name": "Dark Energy Siphon",
+        "description": "Streams of dark magic flow back from the target and finish draining when stopped.",
+        "category": "beam",
+        "schools": [
+          "dark"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "strands",
+          "wispSize",
+          "waveAmp",
+          "smoke"
+        ],
+        "still": "/effects/codex/soul-siphon.png",
+        "art": {
+          "width": 98,
+          "height": 40
+        },
+        "anim": "/effects/codex/soul-siphon.webp"
+      },
+      {
+        "id": "revival-bloom",
+        "name": "Vitality Blossom",
+        "description": "Soft light gathers low down and blooms upward like a flower for revival or healing.",
+        "category": "burst",
+        "schools": [
+          "nature",
+          "light"
+        ],
+        "seconds": 2.6,
+        "params": [
+          "petals",
+          "bloomSize",
+          "openAngle",
+          "motes"
+        ],
+        "still": "/effects/codex/revival-bloom.png",
+        "art": {
+          "width": 46,
+          "height": 54
+        },
+        "anim": "/effects/codex/revival-bloom.webp"
+      },
+      {
+        "id": "frost-lance-rain",
+        "name": "Falling Frost Spear Array",
+        "description": "Ice spears fall one after another, shatter on landing and leave fading frost.",
+        "category": "burst",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 2.4,
+        "params": [
+          "lances",
+          "spread",
+          "shards",
+          "markSize"
+        ],
+        "still": "/effects/codex/frost-lance-rain.png",
+        "art": {
+          "width": 72,
+          "height": 89
+        },
+        "anim": "/effects/codex/frost-lance-rain.webp"
+      },
+      {
+        "id": "venom-stream",
+        "name": "Corrosive Venom Jet",
+        "description": "Poison sprays toward a target with splashing drops, finishing its flow when stopped.",
+        "category": "beam",
+        "schools": [
+          "poison"
+        ],
+        "seconds": 4,
+        "params": [
+          "jetWidth",
+          "twist",
+          "drops",
+          "splashSize"
+        ],
+        "still": "/effects/codex/venom-stream.png",
+        "art": {
+          "width": 82,
+          "height": 42
+        },
+        "anim": "/effects/codex/venom-stream.webp"
+      },
+      {
+        "id": "painterly-grass",
+        "name": "Windswept Meadow",
+        "description": "Painted-looking grass dotted with white flowers sways gently in the wind.",
+        "category": "environment",
+        "schools": [
+          "nature"
+        ],
+        "seconds": 4,
+        "params": [
+          "wind",
+          "gustSpeed",
+          "grassHeight",
+          "flowers"
+        ],
+        "still": "/effects/codex/painterly-grass.png",
+        "art": {
+          "width": 97,
+          "height": 60
+        },
+        "anim": "/effects/codex/painterly-grass.webp"
+      },
+      {
+        "id": "dimensional-rend",
+        "name": "Rift-Shattering Slashes",
+        "description": "A slash makes the background split like broken glass, spread apart and slowly return.",
+        "category": "area",
+        "schools": [
+          "astral"
+        ],
+        "seconds": 3.4,
+        "params": [
+          "cuts",
+          "cutLength",
+          "panels",
+          "offset"
+        ],
+        "still": "/effects/codex/dimensional-rend.png",
+        "art": {
+          "width": 112,
+          "height": 85
+        },
+        "anim": "/effects/codex/dimensional-rend.webp"
+      },
+      {
+        "id": "black-hole",
+        "name": "Luminous Vortex Black Hole",
+        "description": "Light spirals into a black hole while the scenery behind it appears to bend.",
+        "category": "area",
+        "schools": [
+          "astral"
+        ],
+        "seconds": 6,
+        "params": [
+          "holeSize",
+          "lens",
+          "spin",
+          "motes"
+        ],
+        "still": "/effects/codex/black-hole.png",
+        "art": {
+          "width": 58,
+          "height": 56
+        },
+        "anim": "/effects/codex/black-hole.webp"
+      },
+      {
+        "id": "azure-sweep",
+        "name": "Azure Blade Sweep",
+        "description": "A blue-white slash sweeps almost a full circle, pauses, then closes from tail to tip.",
+        "category": "area",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 2,
+        "params": [
+          "arc",
+          "reach",
+          "width",
+          "motes"
+        ],
+        "still": "/effects/codex/azure-sweep.png",
+        "art": {
+          "width": 71,
+          "height": 45
+        },
+        "anim": "/effects/codex/azure-sweep.webp"
+      },
+      {
+        "id": "weapon-smear",
+        "name": "Gleaming Blade Trail",
+        "description": "Swinging a sword leaves a see-through blue trail that quickly fades when you stop.",
+        "category": "area",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "arc",
+          "bladeLength",
+          "trailLife",
+          "sparks"
+        ],
+        "still": "/effects/codex/weapon-smear.png",
+        "art": {
+          "width": 49,
+          "height": 54
+        },
+        "anim": "/effects/codex/weapon-smear.webp"
+      },
+      {
+        "id": "spatial-sweep",
+        "name": "Riftblade Sweep",
+        "description": "A clear curved slash stretches and shifts the scenery behind it, then fades away.",
+        "category": "area",
+        "schools": [
+          "astral"
+        ],
+        "seconds": 2,
+        "params": [
+          "arc",
+          "reach",
+          "width",
+          "refract"
+        ],
+        "still": "/effects/codex/spatial-sweep.png",
+        "art": {
+          "width": 65,
+          "height": 36
+        },
+        "anim": "/effects/codex/spatial-sweep.webp"
+      },
+      {
+        "id": "spatial-smear",
+        "name": "Riftblade Trail",
+        "description": "A sword swing leaves a clear trail that bends the view behind it and quickly fades.",
+        "category": "area",
+        "schools": [
+          "astral"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "arc",
+          "bladeLength",
+          "trailLife",
+          "refract"
+        ],
+        "still": "/effects/codex/spatial-smear.png",
+        "art": {
+          "width": 50,
+          "height": 55
+        },
+        "anim": "/effects/codex/spatial-smear.webp"
+      },
+      {
+        "id": "darkchain-detonation",
+        "name": "Darkchain Sigil Rupture",
+        "description": "Magic circles draw chains and smoke toward a dark ball, which shrinks and bursts with red-purple lightning.",
+        "category": "area",
+        "schools": [
+          "dark"
+        ],
+        "seconds": 5.2,
+        "params": [
+          "chains",
+          "burstSize",
+          "jets",
+          "bolts"
+        ],
+        "still": "/effects/codex/darkchain-detonation.png",
+        "art": {
+          "width": 76,
+          "height": 86
+        },
+        "anim": "/effects/codex/darkchain-detonation.webp"
+      },
+      {
+        "id": "electric-magic-arrow-strike",
+        "name": "Golden-Bladed Lightning Arrow",
+        "description": "A golden arrow flies wrapped in lightning, bursting into flashes and two rings on impact.",
+        "category": "projectile",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "sigilSize",
+          "webBolts",
+          "rings",
+          "motes"
+        ],
+        "still": "/effects/codex/electric-magic-arrow-strike.png",
+        "art": {
+          "width": 97,
+          "height": 58
+        },
+        "anim": "/effects/codex/electric-magic-arrow-strike.webp"
+      },
+      {
+        "id": "golden-chain-rain",
+        "name": "Golden Chain Rain",
+        "description": "Golden chains fall in three waves, bursting into gold shards on contact; glowing cracks release slowly rising fragments.",
+        "category": "area",
+        "schools": [
+          "light"
+        ],
+        "seconds": 5.6,
+        "params": [
+          "chains",
+          "slant",
+          "crackLength",
+          "sparks"
+        ],
+        "still": "/effects/codex/golden-chain-rain.png",
+        "art": {
+          "width": 80,
+          "height": 88
+        },
+        "anim": "/effects/codex/golden-chain-rain.webp"
+      },
+      {
+        "id": "billowing-airburst",
+        "name": "Billowing Airburst",
+        "description": "A fireball bursts in midair with thick smoke trails, then cools into fading smoke.",
+        "category": "burst",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 2.4,
+        "params": [
+          "blastSize",
+          "altitude",
+          "jets",
+          "sparks"
+        ],
+        "still": "/effects/codex/billowing-airburst.png",
+        "art": {
+          "width": 61,
+          "height": 74
+        },
+        "anim": "/effects/codex/billowing-airburst.webp"
+      },
+      {
+        "id": "spell-indicator-circle",
+        "name": "Red Circle Spell Indicator",
+        "description": "A red circle marks danger and fills as an attack approaches, disappearing when the countdown ends.",
+        "category": "area",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 2.8,
+        "params": [
+          "radius",
+          "fillStyle",
+          "hatchSpeed"
+        ],
+        "still": "/effects/codex/spell-indicator-circle.png",
+        "art": {
+          "width": 113,
+          "height": 66
+        },
+        "anim": "/effects/codex/spell-indicator-circle.webp"
+      },
+      {
+        "id": "spell-indicator-sector",
+        "name": "Red Sector Spell Indicator",
+        "description": "A red fan marks an attack direction and fills as it approaches. Its size and angle can change.",
+        "category": "area",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 2.8,
+        "params": [
+          "radius",
+          "angle",
+          "fillStyle",
+          "hatchSpeed"
+        ],
+        "still": "/effects/codex/spell-indicator-sector.png",
+        "art": {
+          "width": 74,
+          "height": 59
+        },
+        "anim": "/effects/codex/spell-indicator-sector.webp"
+      },
+      {
+        "id": "sacred-relic-descent",
+        "name": "Sacred Relic Descent",
+        "description": "A layered white-gold magic circle turns as a triangular pyramid lands with flying rocks, followed by flowing waves and raised smoke every two seconds.",
+        "category": "area",
+        "schools": [
+          "light"
+        ],
+        "seconds": 6.8,
+        "params": [
+          "relicSize",
+          "waveRadius",
+          "smokeWall",
+          "debris"
+        ],
+        "still": "/effects/codex/sacred-relic-descent.png",
+        "art": {
+          "width": 88,
+          "height": 94
+        },
+        "anim": "/effects/codex/sacred-relic-descent.webp"
+      },
+      {
+        "id": "impact-frame",
+        "name": "Impact Frame",
+        "description": "Flash comic silhouettes and stars on a hit, then erupt from darkness into a powerful final blast.",
+        "category": "screen",
+        "schools": [],
+        "seconds": 2.4,
+        "params": [
+          "lineDensity",
+          "beams",
+          "coreSize",
+          "sparks"
+        ],
+        "still": "/effects/codex/impact-frame.png",
+        "art": {
+          "width": 160,
+          "height": 100
+        },
+        "anim": "/effects/codex/impact-frame.webp"
+      },
+      {
+        "id": "verdant-restoration",
+        "name": "Verdant Restoration",
+        "description": "A nature-themed healing effect with soft green light and drifting leaves around a target, showing ongoing recovery.",
+        "category": "area",
+        "schools": [
+          "nature"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "radius",
+          "turns",
+          "leaves",
+          "spin"
+        ],
+        "still": "/effects/codex/verdant-restoration.png",
+        "art": {
+          "width": 44,
+          "height": 69
+        },
+        "anim": "/effects/codex/verdant-restoration.webp"
+      },
+      {
+        "id": "aegis-weave",
+        "name": "Aegis Weave",
+        "description": "A magic shield effect with a clear blue barrier around a target, showing a protected state.",
+        "category": "shield",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "radius",
+          "weaveLines",
+          "glints",
+          "spin"
+        ],
+        "still": "/effects/codex/aegis-weave.png",
+        "art": {
+          "width": 79,
+          "height": 58
+        },
+        "anim": "/effects/codex/aegis-weave.webp"
+      },
+      {
+        "id": "sustained-arc",
+        "name": "Sustained Arc",
+        "description": "A sustained lightning effect with branching currents linking the source to a target, suited to ongoing electric attacks.",
+        "category": "beam",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 3.2,
+        "params": [
+          "arcWidth",
+          "arches",
+          "wireTurns",
+          "sparks"
+        ],
+        "still": "/effects/codex/sustained-arc.png",
+        "art": {
+          "width": 84,
+          "height": 41
+        },
+        "anim": "/effects/codex/sustained-arc.webp"
+      },
+      {
+        "id": "starblade-cataclysm",
+        "name": "Starblade Cataclysm",
+        "description": "A sword becomes golden stars, gathers into a four-petal core, then fires a beam that burns a lava trench.",
+        "category": "beam",
+        "schools": [
+          "light",
+          "fire"
+        ],
+        "seconds": 7,
+        "params": [
+          "beamWidth",
+          "sweepLength",
+          "trenchWidth",
+          "stars"
+        ],
+        "still": "/effects/codex/starblade-cataclysm.png",
+        "art": {
+          "width": 101,
+          "height": 69
+        },
+        "anim": "/effects/codex/starblade-cataclysm.webp"
+      },
+      {
+        "id": "petal-blade-storm",
+        "name": "Thousand Petal Blades",
+        "description": "A sword sinks into the ground, giant blades rise and shatter into countless pink petal blades that scatter, spiral, then wrap the target in a sphere and crush it with crossing slashes.",
+        "category": "vortex",
+        "schools": [
+          "nature",
+          "light"
+        ],
+        "seconds": 5,
+        "params": [
+          "petals",
+          "sphereRadius",
+          "spiralSpeed",
+          "blades"
+        ],
+        "still": "/effects/codex/petal-blade-storm.png",
+        "art": {
+          "width": 111,
+          "height": 64
+        },
+        "anim": "/effects/codex/petal-blade-storm.webp"
+      },
+      {
+        "id": "cinder-edge",
+        "name": "Cinder Edge",
+        "description": "The blazing sword suddenly pulls all its fire into a razor edge and the air shimmers; one swing sends a giant arc of flame across the field, scorching the ground as ash drifts up.",
+        "category": "slash",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 4,
+        "params": [
+          "arcWidth",
+          "flameReach",
+          "ash",
+          "heatHaze"
+        ],
+        "still": "/effects/codex/cinder-edge.png",
+        "art": {
+          "width": 107,
+          "height": 59
+        },
+        "anim": "/effects/codex/cinder-edge.webp"
+      },
+      {
+        "id": "frost-wing-surge",
+        "name": "Frost Wing Surge",
+        "description": "Huge ice wings and a tail unfold behind the caster; ice spikes erupt one after another towards the target, crystals creep over it from the contact point and shatter.",
+        "category": "area",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "spikes",
+          "wingSpan",
+          "coverage"
+        ],
+        "still": "/effects/codex/frost-wing-surge.png",
+        "art": {
+          "width": 130,
+          "height": 68
+        },
+        "anim": "/effects/codex/frost-wing-surge.webp"
+      },
+      {
+        "id": "white-silence",
+        "name": "White Silence",
+        "description": "The caster turns pure white and colour drains from the scene; one swing sends a translucent frost sphere racing outwards, white fog rolls in, everything freezes into white crystal, holds still, then shatters.",
+        "category": "domain",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "sphereSize",
+          "fog",
+          "pieces",
+          "drain"
+        ],
+        "still": "/effects/codex/white-silence.png",
+        "art": {
+          "width": 159,
+          "height": 99
+        },
+        "anim": "/effects/codex/white-silence.webp"
+      },
+      {
+        "id": "ink-tide-binding",
+        "name": "Ink Tide Binding",
+        "description": "The caster slowly spreads both arms, the world darkens and black water floods out from their feet with floating ink; finally glowing white threads wrap the target and snap tight.",
+        "category": "domain",
+        "schools": [
+          "water",
+          "shadow"
+        ],
+        "seconds": 4.6,
+        "params": [
+          "waterLevel",
+          "threads",
+          "darkness",
+          "ripples"
+        ],
+        "still": "/effects/codex/ink-tide-binding.png",
+        "art": {
+          "width": 129,
+          "height": 70
+        },
+        "anim": "/effects/codex/ink-tide-binding.webp"
+      },
+      {
+        "id": "crescent-fang",
+        "name": "Crescent Fang",
+        "description": "The caster raises the blade as black energy wraps them; one swing releases a giant black crescent with a blue-white edge that ploughs the ground and bursts into an upright shock ring.",
+        "category": "slash",
+        "schools": [
+          "dark"
+        ],
+        "seconds": 3.6,
+        "params": [
+          "slashSize",
+          "tilt",
+          "darkness",
+          "streaks"
+        ],
+        "still": "/effects/codex/crescent-fang.png",
+        "art": {
+          "width": 111,
+          "height": 67
+        },
+        "anim": "/effects/codex/crescent-fang.webp"
+      },
+      {
+        "id": "violet-fusion",
+        "name": "Violet Fusion",
+        "description": "A blue orb and a red orb form at either side of the caster, spiral together and fuse into a huge violet sphere with a white-hot core that pushes forward, warping space and gouging a trench.",
+        "category": "projectile",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 4.6,
+        "params": [
+          "sphereSize",
+          "warp",
+          "trenchWidth",
+          "debris"
+        ],
+        "still": "/effects/codex/violet-fusion.png",
+        "art": {
+          "width": 112,
+          "height": 77
+        },
+        "anim": "/effects/codex/violet-fusion.webp"
+      },
+      {
+        "id": "endless-starfield",
+        "name": "Endless Starfield",
+        "description": "The caster makes a sign; after a blackout the whole frame becomes endless space: layered twinkling stars, drifting nebulae and giant slowly turning rings, with the target floating, frozen.",
+        "category": "domain",
+        "schools": [
+          "astral"
+        ],
+        "seconds": 4.8,
+        "params": [
+          "rings",
+          "stars",
+          "warp",
+          "floatHeight"
+        ],
+        "still": "/effects/codex/endless-starfield.png",
+        "art": {
+          "width": 160,
+          "height": 100
+        },
+        "anim": "/effects/codex/endless-starfield.webp"
+      },
+      {
+        "id": "shrine-of-cuts",
+        "name": "Shrine of Cuts",
+        "description": "A huge eerie shrine rises out of black smoke behind the caster and the scene turns blood red; random slash lines appear everywhere, in the air, on the ground and on the target, and debris flies.",
+        "category": "domain",
+        "schools": [
+          "dark"
+        ],
+        "seconds": 5,
+        "params": [
+          "slashCount",
+          "shrineSize",
+          "redStrength"
+        ],
+        "still": "/effects/codex/shrine-of-cuts.png",
+        "art": {
+          "width": 110,
+          "height": 78
+        },
+        "anim": "/effects/codex/shrine-of-cuts.webp"
+      },
+      {
+        "id": "shadow-marsh",
+        "name": "Shadow Marsh",
+        "description": "Liquid black shadow spreads from the caster's feet over the ground; it bulges in several places and shadow arms and beast heads burst out to strike, then sink back in.",
+        "category": "summon",
+        "schools": [
+          "shadow"
+        ],
+        "seconds": 4,
+        "params": [
+          "arms",
+          "beast",
+          "spread"
+        ],
+        "still": "/effects/codex/shadow-marsh.png",
+        "art": {
+          "width": 112,
+          "height": 59
+        },
+        "anim": "/effects/codex/shadow-marsh.webp"
+      },
+      {
+        "id": "caldera-domain",
+        "name": "Caldera Domain",
+        "description": "The battlefield becomes the inside of a volcano: rock walls rise all around, the floor cracks into lava, magma erupts and fireballs fly from the walls and the sky at the target.",
+        "category": "domain",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 4.8,
+        "params": [
+          "walls",
+          "fireballs",
+          "cracks",
+          "haze"
+        ],
+        "still": "/effects/codex/caldera-domain.png",
+        "art": {
+          "width": 111,
+          "height": 89
+        },
+        "anim": "/effects/codex/caldera-domain.webp"
+      },
+      {
+        "id": "crimson-spark-fist",
+        "name": "Crimson Spark Fist",
+        "description": "The caster dashes in with a punch; on contact a black radial burst and dark red lightning explode, the frame freezes and flips to a two-tone negative, a short hard shake, speed lines everywhere.",
+        "category": "strike",
+        "schools": [
+          "storm",
+          "dark"
+        ],
+        "seconds": 3.6,
+        "params": [
+          "bolts",
+          "impactSize",
+          "impactFrame",
+          "dashDistance"
+        ],
+        "still": "/effects/codex/crimson-spark-fist.png",
+        "art": {
+          "width": 112,
+          "height": 86
+        },
+        "anim": "/effects/codex/crimson-spark-fist.webp"
+      },
+      {
+        "id": "abyss-flame-dragon",
+        "name": "Abyss Flame Dragon",
+        "description": "The caster thrusts an arm out, black fire coils and erupts into a long giant dragon of black flame that snakes across the field, jaws open, onto the target, shedding violet sparks.",
+        "category": "summon",
+        "schools": [
+          "dark",
+          "fire"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "bodyLength",
+          "sway",
+          "jaw",
+          "embers"
+        ],
+        "still": "/effects/codex/abyss-flame-dragon.png",
+        "art": {
+          "width": 103,
+          "height": 73
+        },
+        "anim": "/effects/codex/abyss-flame-dragon.webp"
+      },
+      {
+        "id": "finger-bolt",
+        "name": "Finger Bolt",
+        "description": "The caster forms a finger gun; motes gather into a blazing blue ball at the fingertip that fires as a fast blue beam with a muzzle flash and bursts into a spherical blast on hit.",
+        "category": "beam",
+        "schools": [
+          "light"
+        ],
+        "seconds": 3.6,
+        "params": [
+          "ballSize",
+          "beamWidth",
+          "blastSize"
+        ],
+        "still": "/effects/codex/finger-bolt.png",
+        "art": {
+          "width": 102,
+          "height": 63
+        },
+        "anim": "/effects/codex/finger-bolt.webp"
+      },
+      {
+        "id": "spiral-palm-wave",
+        "name": "Spiral Palm Wave",
+        "description": "The caster gathers energy, aura rings coil and spiral upwards, the light compresses into the palms, and a double palm strike releases a widening cone wave that lands as a circular pressure ring.",
+        "category": "burst",
+        "schools": [
+          "light",
+          "wind"
+        ],
+        "seconds": 4,
+        "params": [
+          "coneAngle",
+          "rings",
+          "spiral"
+        ],
+        "still": "/effects/codex/spiral-palm-wave.png",
+        "art": {
+          "width": 102,
+          "height": 68
+        },
+        "anim": "/effects/codex/spiral-palm-wave.webp"
+      },
+      {
+        "id": "golden-aura-armor",
+        "name": "Golden Aura Armor",
+        "description": "Golden light seeps out of the caster into a bright protective flow, then forms energy armour piece by piece; vertical light streaks, floating gold dust, regular pulse rings, and golden afterimages when moving.",
+        "category": "aura",
+        "schools": [
+          "light"
+        ],
+        "seconds": 5,
+        "params": [
+          "auraHeight",
+          "dust",
+          "afterimages"
+        ],
+        "still": "/effects/codex/golden-aura-armor.png",
+        "art": {
+          "width": 77,
+          "height": 58
+        },
+        "anim": "/effects/codex/golden-aura-armor.webp"
+      },
+      {
+        "id": "thorn-bloom",
+        "name": "Thorn Bloom",
+        "description": "The caster throws a seed; vines burst from the ground and wrap the target, covered in thorns, and a giant thorn flower opens its serrated petals and snaps shut on it as petals and leaves scatter.",
+        "category": "area",
+        "schools": [
+          "nature"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "vines",
+          "flowerSize",
+          "petals"
+        ],
+        "still": "/effects/codex/thorn-bloom.png",
+        "art": {
+          "width": 109,
+          "height": 68
+        },
+        "anim": "/effects/codex/thorn-bloom.webp"
+      },
+      {
+        "id": "bat-bomb-barrage",
+        "name": "Bat Bomb Barrage",
+        "description": "The caster releases bat-shaped magic bombs that circle the target trailing black smoke, then dive in one by one in a chain of explosions that ends in one big shockwave.",
+        "category": "projectile",
+        "schools": [
+          "dark",
+          "fire"
+        ],
+        "seconds": 5,
+        "params": [
+          "bombs",
+          "orbit",
+          "blast"
+        ],
+        "still": "/effects/codex/bat-bomb-barrage.png",
+        "art": {
+          "width": 110,
+          "height": 72
+        },
+        "anim": "/effects/codex/bat-bomb-barrage.webp"
+      },
+      {
+        "id": "gale-shuriken",
+        "name": "Gale Shuriken",
+        "description": "A blue-white ball spins in the palm and grows four giant wind blades; thrown, it trails a spiral of air and on impact swells into a huge spinning storm full of tiny cuts.",
+        "category": "projectile",
+        "schools": [
+          "wind"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "blades",
+          "sphereSize",
+          "cuts"
+        ],
+        "still": "/effects/codex/gale-shuriken.png",
+        "art": {
+          "width": 116,
+          "height": 68
+        },
+        "anim": "/effects/codex/gale-shuriken.webp"
+      },
+      {
+        "id": "spirit-colossus",
+        "name": "Spirit Colossus",
+        "description": "A giant glowing skeleton rises around the caster, grows muscle and armour into a translucent violet energy giant, and the giant swings a huge blade in a sweeping band of light.",
+        "category": "summon",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "giantScale",
+          "armour",
+          "bladeLength"
+        ],
+        "still": "/effects/codex/spirit-colossus.png",
+        "art": {
+          "width": 130,
+          "height": 93
+        },
+        "anim": "/effects/codex/spirit-colossus.webp"
+      },
+      {
+        "id": "gravity-core",
+        "name": "Gravity Core",
+        "description": "The caster cups a tiny black orb and throws it up; the ground cracks and rocks fly in from all sides, orbit the core, and pack into a giant sphere of stone.",
+        "category": "vortex",
+        "schools": [
+          "dark",
+          "astral"
+        ],
+        "seconds": 5,
+        "params": [
+          "rocks",
+          "sphereRadius",
+          "orbitShare"
+        ],
+        "still": "/effects/codex/gravity-core.png",
+        "art": {
+          "width": 82,
+          "height": 69
+        },
+        "anim": "/effects/codex/gravity-core.webp"
+      },
+      {
+        "id": "repulse-sphere",
+        "name": "Repulse Sphere",
+        "description": "The caster hovers and slowly opens both hands; then a huge transparent sphere of force bursts from them, warping space, flinging rocks outwards and pushing a ring of dust as the camera pulls back.",
+        "category": "burst",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 4.4,
+        "params": [
+          "sphereRadius",
+          "debris",
+          "dust"
+        ],
+        "still": "/effects/codex/repulse-sphere.png",
+        "art": {
+          "width": 89,
+          "height": 86
+        },
+        "anim": "/effects/codex/repulse-sphere.webp"
+      },
+      {
+        "id": "crimson-dragon-dash",
+        "name": "Crimson Dragon Dash",
+        "description": "Thick red steam pours off the caster and gathers into a giant dragon silhouette; they dash and the dragon charges with them into a crushing kick that compresses into a point of light, then explodes.",
+        "category": "strike",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 4.2,
+        "params": [
+          "steam",
+          "dragonSize",
+          "speedLines",
+          "afterimages"
+        ],
+        "still": "/effects/codex/crimson-dragon-dash.png",
+        "art": {
+          "width": 120,
+          "height": 73
+        },
+        "anim": "/effects/codex/crimson-dragon-dash.webp"
+      },
+      {
+        "id": "black-flame-curse",
+        "name": "Black Flame Curse",
+        "description": "The caster stares at the target and opaque black flames burst from its surface, writhing upwards and spreading with glowing magenta edges, black embers rising and a burning zone left on the ground.",
+        "category": "area",
+        "schools": [
+          "dark",
+          "fire"
+        ],
+        "seconds": 4.6,
+        "params": [
+          "flames",
+          "flameHeight",
+          "zoneRadius"
+        ],
+        "still": "/effects/codex/black-flame-curse.png",
+        "art": {
+          "width": 82,
+          "height": 51
+        },
+        "anim": "/effects/codex/black-flame-curse.webp"
+      },
+      {
+        "id": "eclipse-slash",
+        "name": "Eclipse Slash",
+        "description": "A pitch-black crescent slash that lands with a storm of red lightning and erupts into a black sphere of force. An original combination of the crescent slash and the black-red impact.",
+        "category": "slash",
+        "schools": [
+          "dark",
+          "storm"
+        ],
+        "seconds": 3.8,
+        "params": [
+          "crescentSize",
+          "bolts",
+          "sphereSize",
+          "tilt"
+        ],
+        "still": "/effects/codex/eclipse-slash.png",
+        "art": {
+          "width": 112,
+          "height": 66
+        },
+        "anim": "/effects/codex/eclipse-slash.webp"
+      },
+      {
+        "id": "crystal-requiem",
+        "name": "Crystal Requiem",
+        "description": "Thousands of crystals circle the target, are pulled in by a central gravity and pack layer by layer into a giant crystal sphere that bursts. An original combination of the blade swarm and the gravity core.",
+        "category": "vortex",
+        "schools": [
+          "ice",
+          "arcane"
+        ],
+        "seconds": 5,
+        "params": [
+          "crystals",
+          "sphereRadius",
+          "orbitLayers"
+        ],
+        "still": "/effects/codex/crystal-requiem.png",
+        "art": {
+          "width": 74,
+          "height": 70
+        },
+        "anim": "/effects/codex/crystal-requiem.webp"
+      },
+      {
+        "id": "echo-dragon",
+        "name": "Echo Dragon",
+        "description": "A dragon of rushing wind streaks across the field and on impact the whole dragon breaks apart into hundreds of spinning wind blades that cut outwards. An original combination of the energy dragon and the wind blades.",
+        "category": "summon",
+        "schools": [
+          "wind"
+        ],
+        "seconds": 3.8,
+        "params": [
+          "blades",
+          "length",
+          "spin"
+        ],
+        "still": "/effects/codex/echo-dragon.png",
+        "art": {
+          "width": 113,
+          "height": 68
+        },
+        "anim": "/effects/codex/echo-dragon.webp"
+      },
+      {
+        "id": "void-frost-burial",
+        "name": "Void Frost Burial",
+        "description": "The field drops into dark space with a black mirror floor; white ice crystals grow up from under the target until it is encased, then everything shatters. An original combination of the starfield domain and the white freeze.",
+        "category": "domain",
+        "schools": [
+          "ice",
+          "dark"
+        ],
+        "seconds": 4.6,
+        "params": [
+          "crystals",
+          "height",
+          "reflection",
+          "pieces"
+        ],
+        "still": "/effects/codex/void-frost-burial.png",
+        "art": {
+          "width": 90,
+          "height": 63
+        },
+        "anim": "/effects/codex/void-frost-burial.webp"
+      },
+      {
+        "id": "skyfall",
+        "name": "Skyfall",
+        "description": "The sky turns red and a meteor larger than the frame drops slowly while its shadow spreads over the horde; the impact ring throws the crowd outwards in order of distance and leaves a crater with glowing lava cracks.",
+        "category": "area",
+        "schools": [
+          "fire",
+          "astral"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "meteor",
+          "force",
+          "sky"
+        ],
+        "still": "/effects/codex/skyfall.png",
+        "art": {
+          "width": 104,
+          "height": 100
+        },
+        "anim": "/effects/codex/skyfall.webp"
+      },
+      {
+        "id": "judgment-lances",
+        "name": "Judgment Lances",
+        "description": "The caster raises a hand and a lock-on sigil lights up over every enemy one by one; after a one-beat pause dozens of light pillars fall at once and the enemies dissolve into white light.",
+        "category": "beam",
+        "schools": [
+          "light"
+        ],
+        "seconds": 4.6,
+        "params": [
+          "crowd",
+          "pillarWidth",
+          "lockSpeed",
+          "darkness"
+        ],
+        "still": "/effects/codex/judgment-lances.png",
+        "art": {
+          "width": 90,
+          "height": 85
+        },
+        "anim": "/effects/codex/judgment-lances.webp"
+      },
+      {
+        "id": "sword-rain",
+        "name": "Sword Rain",
+        "description": "A wide formation of light swords opens in the sky; the swords drop one by one into the horde, then a giant sword lands in the centre and blasts the rest away.",
+        "category": "projectile",
+        "schools": [
+          "light",
+          "arcane"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "swords",
+          "giantSize",
+          "dropSpeed"
+        ],
+        "still": "/effects/codex/sword-rain.png",
+        "art": {
+          "width": 99,
+          "height": 93
+        },
+        "anim": "/effects/codex/sword-rain.webp"
+      },
+      {
+        "id": "glacier-march",
+        "name": "Glacier March",
+        "description": "Ice spikes spread forward from the caster in a fan and freeze the horde into statues one by one; the field holds still for a beat, the caster snaps their fingers and every statue shatters at once.",
+        "category": "area",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "fan",
+          "speed",
+          "shards"
+        ],
+        "still": "/effects/codex/glacier-march.png",
+        "art": {
+          "width": 118,
+          "height": 86
+        },
+        "anim": "/effects/codex/glacier-march.webp"
+      },
+      {
+        "id": "firestorm-tide",
+        "name": "Firestorm Tide",
+        "description": "A wall of fire many times taller than a person rolls out from the caster across the whole field; every enemy it swallows becomes a burning figure, then charcoal, then a pile of ash.",
+        "category": "area",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "height",
+          "depth",
+          "smoke"
+        ],
+        "still": "/effects/codex/firestorm-tide.png",
+        "art": {
+          "width": 129,
+          "height": 73
+        },
+        "anim": "/effects/codex/firestorm-tide.webp"
+      },
+      {
+        "id": "earth-dragon",
+        "name": "Earth Dragon",
+        "description": "The ground heaves and splits as a huge rock dragon bursts out, weaves through the horde on an S-shaped path throwing enemies into the air, then dives back underground leaving a rift.",
+        "category": "summon",
+        "schools": [
+          "sand",
+          "nature"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "size",
+          "width",
+          "launch"
+        ],
+        "still": "/effects/codex/earth-dragon.png",
+        "art": {
+          "width": 134,
+          "height": 98
+        },
+        "anim": "/effects/codex/earth-dragon.webp"
+      },
+      {
+        "id": "chain-storm",
+        "name": "Chain Storm",
+        "description": "A bolt strikes the first enemy and leaps to the next, faster with every hop while a counter shows the chain; once it has run through the whole horde every enemy it touched bursts at the same moment.",
+        "category": "beam",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "speedUp",
+          "boltWidth",
+          "burstForce"
+        ],
+        "still": "/effects/codex/chain-storm.png",
+        "art": {
+          "width": 102,
+          "height": 98
+        },
+        "anim": "/effects/codex/chain-storm.webp"
+      },
+      {
+        "id": "gravity-maelstrom",
+        "name": "Gravity Maelstrom",
+        "description": "A gravity vortex opens in the middle of the field and sweeps the horde up into its centre, crushing them into one mass; after a pause it collapses and bursts, scattering the bodies across the ground.",
+        "category": "vortex",
+        "schools": [
+          "dark",
+          "astral"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "swirl",
+          "coreSize",
+          "burstForce"
+        ],
+        "still": "/effects/codex/gravity-maelstrom.png",
+        "art": {
+          "width": 98,
+          "height": 91
+        },
+        "anim": "/effects/codex/gravity-maelstrom.webp"
+      },
+      {
+        "id": "titan-step",
+        "name": "Titan Step",
+        "description": "The sky splits and a stone giant’s foot larger than the frame slowly stamps down, its shadow covering the whole horde; the landing ring throws every enemy around it into the air and flattens those underneath.",
+        "category": "summon",
+        "schools": [
+          "arcane",
+          "sand"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "footSize",
+          "force",
+          "dust"
+        ],
+        "still": "/effects/codex/titan-step.png",
+        "art": {
+          "width": 160,
+          "height": 100
+        },
+        "anim": "/effects/codex/titan-step.webp"
+      },
+      {
+        "id": "phantom-cavalry",
+        "name": "Phantom Cavalry",
+        "description": "A ghostly gate opens behind the caster and a line of translucent phantom riders charges across the field, throwing aside every enemy in their path, then dissolves into green mist.",
+        "category": "summon",
+        "schools": [
+          "shadow"
+        ],
+        "seconds": 5,
+        "params": [
+          "crowd",
+          "riders",
+          "speed",
+          "opacity"
+        ],
+        "still": "/effects/codex/phantom-cavalry.png",
+        "art": {
+          "width": 127,
+          "height": 58
+        },
+        "anim": "/effects/codex/phantom-cavalry.webp"
+      },
+      {
+        "id": "piercing-lance",
+        "name": "Piercing Lance",
+        "description": "The caster hurls a spear of light that skewers a single-file column of ten, flashing at every body it passes; it can only pierce so many, so anyone beyond the limit survives.",
+        "category": "projectile",
+        "schools": [
+          "light"
+        ],
+        "seconds": 4.5,
+        "params": [
+          "crowd",
+          "formation",
+          "pierce",
+          "width",
+          "tally"
+        ],
+        "still": "/effects/codex/piercing-lance.png",
+        "art": {
+          "width": 95,
+          "height": 53
+        },
+        "anim": "/effects/codex/piercing-lance.webp"
+      },
+      {
+        "id": "blade-nova",
+        "name": "Blade Nova",
+        "description": "Ten enemies surround the caster, who spins on the spot as a ring of wind blades expands from their feet, cutting through the circle and throwing the enemies outwards; anyone beyond the radius is untouched.",
+        "category": "slash",
+        "schools": [
+          "wind"
+        ],
+        "seconds": 4.5,
+        "params": [
+          "crowd",
+          "formation",
+          "radius",
+          "blades",
+          "tally"
+        ],
+        "still": "/effects/codex/blade-nova.png",
+        "art": {
+          "width": 90,
+          "height": 76
+        },
+        "anim": "/effects/codex/blade-nova.webp"
+      },
+      {
+        "id": "seeker-volley",
+        "name": "Seeker Volley",
+        "description": "A ring of violet bolts appears around the caster; each locks onto one enemy and homes in on its own curved path. The bolts are limited, so when there are more enemies than bolts some survive.",
+        "category": "projectile",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 4.5,
+        "params": [
+          "crowd",
+          "formation",
+          "bolts",
+          "turn",
+          "tally"
+        ],
+        "still": "/effects/codex/seeker-volley.png",
+        "art": {
+          "width": 86,
+          "height": 51
+        },
+        "anim": "/effects/codex/seeker-volley.webp"
+      },
+      {
+        "id": "plague-fog",
+        "name": "Plague Fog",
+        "description": "The caster lobs a poison seed into the middle of the company; thick green fog rolls out from it and slowly swallows the hundred-strong block, and everyone it engulfs sinks to their knees and withers to bones. Anyone beyond the fog’s radius survives.",
+        "category": "area",
+        "schools": [
+          "poison"
+        ],
+        "seconds": 5.5,
+        "params": [
+          "crowd",
+          "formation",
+          "radius",
+          "speed",
+          "tally"
+        ],
+        "still": "/effects/codex/plague-fog.png",
+        "art": {
+          "width": 95,
+          "height": 44
+        },
+        "anim": "/effects/codex/plague-fog.webp"
+      },
+      {
+        "id": "sunlens-scorch",
+        "name": "Sunlens Scorch",
+        "description": "A huge lens of light appears in the sky and focuses the sun into one white-hot point; the point traces the arc of the enemy line, burning a scorched trail and setting every enemy near its path alight.",
+        "category": "beam",
+        "schools": [
+          "light",
+          "fire"
+        ],
+        "seconds": 5.5,
+        "params": [
+          "crowd",
+          "formation",
+          "width",
+          "lens",
+          "tally"
+        ],
+        "still": "/effects/codex/sunlens-scorch.png",
+        "art": {
+          "width": 85,
+          "height": 89
+        },
+        "anim": "/effects/codex/sunlens-scorch.webp"
+      },
+      {
+        "id": "thunder-bounce",
+        "name": "Thunder Bounce",
+        "description": "The caster throws a ball of lightning that bounces from squad to squad, bursting into a ring of lightning at every landing that drops the whole squad; it grows with every bounce and the last burst is the biggest. When the bounces run out, the remaining squads survive.",
+        "category": "projectile",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 5.5,
+        "params": [
+          "crowd",
+          "formation",
+          "bounces",
+          "radius",
+          "tally"
+        ],
+        "still": "/effects/codex/thunder-bounce.png",
+        "art": {
+          "width": 97,
+          "height": 97
+        },
+        "anim": "/effects/codex/thunder-bounce.webp"
+      },
+      {
+        "id": "petrify-eye",
+        "name": "Petrifying Eye",
+        "description": "The clouds part and a giant eye opens above an army of a thousand; its gaze spreads like a widening pool of light and turns the soldiers to stone one by one; when the eye blinks every statue crumbles into rubble at once.",
+        "category": "area",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 5.5,
+        "params": [
+          "crowd",
+          "formation",
+          "radius",
+          "speed",
+          "tally"
+        ],
+        "still": "/effects/codex/petrify-eye.png",
+        "art": {
+          "width": 134,
+          "height": 92
+        },
+        "anim": "/effects/codex/petrify-eye.webp"
+      },
+      {
+        "id": "sigil-barrage",
+        "name": "Sigil Barrage",
+        "description": "Rows of dozens of sigils open in the sky and fire bolts downwards row by row from the front, so the explosions roll across the army of a thousand like a carpet; the gaps between the blasts are the only way out.",
+        "category": "area",
+        "schools": [
+          "arcane",
+          "fire"
+        ],
+        "seconds": 5.5,
+        "params": [
+          "crowd",
+          "formation",
+          "rows",
+          "blast",
+          "tally"
+        ],
+        "still": "/effects/codex/sigil-barrage.png",
+        "art": {
+          "width": 78,
+          "height": 74
+        },
+        "anim": "/effects/codex/sigil-barrage.webp"
+      },
+      {
+        "id": "blood-contagion",
+        "name": "Blood Contagion",
+        "description": "The caster marks the front soldier with a blood curse that spreads like a contagion to anyone standing close, weaving a red web through the army; then every cursed soldier bursts into crimson light at once. Soldiers standing too far apart for the curse to jump survive.",
+        "category": "area",
+        "schools": [
+          "dark"
+        ],
+        "seconds": 5.5,
+        "params": [
+          "crowd",
+          "formation",
+          "jump",
+          "speed",
+          "tally"
+        ],
+        "still": "/effects/codex/blood-contagion.png",
+        "art": {
+          "width": 105,
+          "height": 54
+        },
+        "anim": "/effects/codex/blood-contagion.webp"
+      },
+      {
+        "id": "second-sun",
+        "name": "Second Sun",
+        "description": "A small star ignites above an army of ten thousand and slowly swells into a second sun that lights the ground brighter and brighter; it draws in a breath and lets go, the sky bleaches white, and a heat wave spreads from directly below, vaporising the army ring by ring and leaving scorched earth.",
+        "category": "burst",
+        "schools": [
+          "light",
+          "fire"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "radius",
+          "size",
+          "tally"
+        ],
+        "still": "/effects/codex/second-sun.png",
+        "art": {
+          "width": 104,
+          "height": 100
+        },
+        "anim": "/effects/codex/second-sun.webp"
+      },
+      {
+        "id": "starfall-storm",
+        "name": "Starfall Storm",
+        "description": "A starry sky draws over the battlefield and thousands of shooting stars streak down at a slant, pelting the army of ten thousand like a downpour; each one blasts a small crater, and they fall thicker and thicker until the whole field is pitted.",
+        "category": "projectile",
+        "schools": [
+          "astral"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "stars",
+          "radius",
+          "tally"
+        ],
+        "still": "/effects/codex/starfall-storm.png",
+        "art": {
+          "width": 125,
+          "height": 85
+        },
+        "anim": "/effects/codex/starfall-storm.webp"
+      },
+      {
+        "id": "world-tsunami",
+        "name": "World Tsunami",
+        "description": "A wave taller than the frame rises on the horizon and crashes across the field from behind the army, rolling thousands of soldiers forward in its curl; it stops short of the caster and draws back, leaving a soaked battlefield. The wave only travels so far, and anyone beyond its reach survives.",
+        "category": "area",
+        "schools": [
+          "water"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "reach",
+          "height",
+          "tally"
+        ],
+        "still": "/effects/codex/world-tsunami.png",
+        "art": {
+          "width": 132,
+          "height": 100
+        },
+        "anim": "/effects/codex/world-tsunami.webp"
+      },
+      {
+        "id": "million-host",
+        "name": "Million Host",
+        "description": "The camera starts on one soldier and pulls back past ten, a hundred, a thousand, ten thousand and a hundred thousand until a million-strong army covers a whole continent. A ring of light comes down around the coast and closes in, turning every soldier it passes into sparks; anyone inside the radius where the ring stops survives.",
+        "category": "area",
+        "schools": [
+          "light"
+        ],
+        "seconds": 7,
+        "params": [
+          "crowd",
+          "formation",
+          "ringEnd",
+          "offset",
+          "tally"
+        ],
+        "still": "/effects/codex/million-host.png",
+        "art": {
+          "width": 160,
+          "height": 100
+        },
+        "anim": "/effects/codex/million-host.webp"
+      },
+      {
+        "id": "overkill",
+        "name": "Overkill",
+        "description": "The caster pulls out their strongest ultimate: the sky changes colour, sigil after sigil unfolds and a pillar of light as wide as a planet charges for ages; only then does the camera find the target, a single small slime. The pillar comes down, the ground splits in two and the counter reads 1/1. Slimes outside the pillar’s radius survive.",
+        "category": "strike",
+        "schools": [
+          "light",
+          "arcane"
+        ],
+        "seconds": 7,
+        "params": [
+          "crowd",
+          "formation",
+          "pillar",
+          "charge",
+          "tally"
+        ],
+        "still": "/effects/codex/overkill.png",
+        "art": {
+          "width": 160,
+          "height": 100
+        },
+        "anim": "/effects/codex/overkill.webp"
+      },
+      {
+        "id": "downscale",
+        "name": "Downscale",
+        "description": "The caster snaps and the picture’s resolution halves on every beat; the thousand-strong block merges into bigger and bigger colour blocks until the whole army is a single pixel, which the caster flicks away. Soldiers spread so thin that their block is mostly ground are never merged and survive.",
+        "category": "screen",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "levels",
+          "threshold",
+          "tally"
+        ],
+        "still": "/effects/codex/downscale.png",
+        "art": {
+          "width": 124,
+          "height": 100
+        },
+        "anim": "/effects/codex/downscale.webp"
+      },
+      {
+        "id": "return-to-sender",
+        "name": "Return to Sender",
+        "description": "Ten thousand archers loose at once, the volley darkens the sky and every arrow flies at the caster, who raises one hand: the arrows stop in mid-air, turn round and fall back along their own arcs onto the archers who shot them. If the caster turns only part of the volley, the rest shatter on a shield and their archers survive.",
+        "category": "projectile",
+        "schools": [
+          "wind",
+          "arcane"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "turned",
+          "arc",
+          "tally"
+        ],
+        "still": "/effects/codex/return-to-sender.png",
+        "art": {
+          "width": 83,
+          "height": 61
+        },
+        "anim": "/effects/codex/return-to-sender.webp"
+      },
+      {
+        "id": "map-fold",
+        "name": "Map Fold",
+        "description": "The caster grabs the ground and pulls, and the battlefield folds like a sheet of paper along a crease: the half carrying the thousand-strong army swings up and slaps down on the other half, flattening everyone; when the map opens again it bears a mirrored imprint. Soldiers standing right on the crease survive.",
+        "category": "environment",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "crease",
+          "angle",
+          "tally"
+        ],
+        "still": "/effects/codex/map-fold.png",
+        "art": {
+          "width": 82,
+          "height": 78
+        },
+        "anim": "/effects/codex/map-fold.webp"
+      },
+      {
+        "id": "domino-pebble",
+        "name": "Domino Pebble",
+        "description": "The caster flicks a single pebble that knocks over the nearest soldier; he falls into the man beside him and the ten-thousand-strong block goes down like dominoes, row after row, faster and faster. Anyone standing too far from the next man is never touched, and the chain breaks there.",
+        "category": "projectile",
+        "schools": [
+          "sand"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "reach",
+          "speed",
+          "tally"
+        ],
+        "still": "/effects/codex/domino-pebble.png",
+        "art": {
+          "width": 87,
+          "height": 41
+        },
+        "anim": "/effects/codex/domino-pebble.webp"
+      },
+      {
+        "id": "shadow-mutiny",
+        "name": "Shadow Mutiny",
+        "description": "The caster makes the sun flare and sink, the shadows of a thousand soldiers stretch across the ground, then stand up one by one as black silhouettes with violet glowing rims and turn their blades on their owners. Soldiers in the shade of the cloud the caster calls in have no shadow and survive.",
+        "category": "summon",
+        "schools": [
+          "shadow",
+          "light"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "cloud",
+          "sun",
+          "tally"
+        ],
+        "still": "/effects/codex/shadow-mutiny.png",
+        "art": {
+          "width": 142,
+          "height": 84
+        },
+        "anim": "/effects/codex/shadow-mutiny.webp"
+      },
+      {
+        "id": "eraser",
+        "name": "Eraser",
+        "description": "A giant pixel eraser drops from the sky and scrubs back and forth across the battlefield along the path the caster draws; everything it passes turns into the grey-and-white checkerboard of a paint program’s transparent background, soldiers and ground alike. Soldiers the eraser misses survive.",
+        "category": "screen",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "brush",
+          "passes",
+          "tally"
+        ],
+        "still": "/effects/codex/eraser.png",
+        "art": {
+          "width": 84,
+          "height": 81
+        },
+        "anim": "/effects/codex/eraser.webp"
+      },
+      {
+        "id": "falling-score",
+        "name": "Falling Score",
+        "description": "The kill counter in the corner starts to shake and its digits break off the screen as giant golden pixel blocks that slam into an army of ten thousand; every wave of kills raises the count, so the next digits are bigger and more numerous, until 10000 lands all at once. Anyone standing in a digit’s hollow, like the middle of a 0, survives.",
+        "category": "strike",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "drops",
+          "cellSize",
+          "tally"
+        ],
+        "still": "/effects/codex/falling-score.png",
+        "art": {
+          "width": 160,
+          "height": 85
+        },
+        "anim": "/effects/codex/falling-score.webp"
+      },
+      {
+        "id": "palette-swap",
+        "name": "Palette Swap",
+        "description": "A colour wave sweeps over the thousand red soldiers in a dithered dot pattern; every soldier the pattern picks switches to the caster’s blue and turns on the red comrades beside him. The denser the dither, the more turn; red soldiers with no blue neighbour survive.",
+        "category": "area",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "dither",
+          "wave",
+          "tally"
+        ],
+        "still": "/effects/codex/palette-swap.png",
+        "art": {
+          "width": 92,
+          "height": 54
+        },
+        "anim": "/effects/codex/palette-swap.webp"
+      },
+      {
+        "id": "sky-fall",
+        "name": "Sky Fall",
+        "description": "The caster turns the world upside down: the picture flips, the army of ten thousand loses its footing and falls up into the clouds, and only the soldiers near the glowing anchor stakes the caster drove into the ground hold on. When the picture flips back, everyone beyond the stakes’ reach is gone.",
+        "category": "environment",
+        "schools": [
+          "astral",
+          "wind"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "anchors",
+          "anchorRadius",
+          "tally"
+        ],
+        "still": "/effects/codex/sky-fall.png",
+        "art": {
+          "width": 160,
+          "height": 100
+        },
+        "anim": "/effects/codex/sky-fall.webp"
+      },
+      {
+        "id": "jigsaw",
+        "name": "Jigsaw",
+        "description": "Jigsaw seams appear across the battlefield and the pieces under the thousand-strong army flip up one by one and drop into the void below, ground and soldiers together, until only the piece under the caster is left. Soldiers on pieces that are not chosen to fall survive.",
+        "category": "environment",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6,
+        "params": [
+          "crowd",
+          "formation",
+          "pieces",
+          "drop",
+          "tally"
+        ],
+        "still": "/effects/codex/jigsaw.png",
+        "art": {
+          "width": 110,
+          "height": 67
+        },
+        "anim": "/effects/codex/jigsaw.webp"
+      },
+      {
+        "id": "twin-coil",
+        "name": "Twin Coil",
+        "description": "Two lightning coils wind up a sword along fixed, staggered helix paths, hidden behind the blade and back at its edge; the caster drives the sword into the ground, the coils unwind under the army as a three-armed spiral and then fire along its arms. With fewer arms, soldiers standing between them survive.",
+        "category": "enchant",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 7,
+        "params": [
+          "crowd",
+          "formation",
+          "turns",
+          "lag",
+          "jag",
+          "arms",
+          "tally"
+        ],
+        "still": "/effects/codex/twin-coil.png",
+        "art": {
+          "width": 139,
+          "height": 87
+        },
+        "anim": "/effects/codex/twin-coil.webp"
+      },
+      {
+        "id": "drawn-lightning",
+        "name": "Drawn Lightning",
+        "description": "Lightning coils around a scabbard; when the caster draws, the coil straightens into a line and the blade turns out to be the lightning itself, with no steel inside. The drawn blade reaches across the whole battlefield and wipes out every soldier within its width; soldiers outside that width survive.",
+        "category": "enchant",
+        "schools": [
+          "storm"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "reach",
+          "width",
+          "tally"
+        ],
+        "still": "/effects/codex/drawn-lightning.png",
+        "art": {
+          "width": 128,
+          "height": 85
+        },
+        "anim": "/effects/codex/drawn-lightning.webp"
+      },
+      {
+        "id": "frost-overgrowth",
+        "name": "Frost Overgrowth",
+        "description": "Ice crystals grow up a spear along a helix path and keep going past the tip until the spear is a lance of ice ten times its length; the lance slams into the army, then cracks along the same helix and shatters. Soldiers outside the impact area survive.",
+        "category": "enchant",
+        "schools": [
+          "ice"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "length",
+          "frost",
+          "tally"
+        ],
+        "still": "/effects/codex/frost-overgrowth.png",
+        "art": {
+          "width": 122,
+          "height": 100
+        },
+        "anim": "/effects/codex/frost-overgrowth.webp"
+      },
+      {
+        "id": "siphon",
+        "name": "Siphon",
+        "description": "A stream of blood is drawn from every soldier within reach, curves through the air to the axe and spirals up its haft; every stream counts as a kill and the axe head brightens a step with the count. Soldiers beyond the reach survive.",
+        "category": "enchant",
+        "schools": [
+          "dark"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "reach",
+          "flow",
+          "tally"
+        ],
+        "still": "/effects/codex/siphon.png",
+        "art": {
+          "width": 160,
+          "height": 82
+        },
+        "anim": "/effects/codex/siphon.webp"
+      },
+      {
+        "id": "rune-projector",
+        "name": "Rune Projector",
+        "description": "Three rune rings orbit a greatsword at different heights in opposite directions, then tighten and press into the fuller as cut-outs; sunlight shines through them and projects giant runes onto the battlefield. Soldiers standing in the lit strokes burn; those in the dark between strokes survive.",
+        "category": "enchant",
+        "schools": [
+          "light",
+          "arcane"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "stroke",
+          "slide",
+          "tally"
+        ],
+        "still": "/effects/codex/rune-projector.png",
+        "art": {
+          "width": 135,
+          "height": 83
+        },
+        "anim": "/effects/codex/rune-projector.webp"
+      },
+      {
+        "id": "echo-blade",
+        "name": "Echo Blade",
+        "description": "A swordsman makes one cut and eight delayed echoes appear on the same blade path, each repeating it one step further forward; he has already lowered his blade while the kill count keeps climbing. Soldiers outside every echo’s arc survive.",
+        "category": "enchant",
+        "schools": [
+          "wind",
+          "arcane"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "echoes",
+          "stride",
+          "tally"
+        ],
+        "still": "/effects/codex/echo-blade.png",
+        "art": {
+          "width": 138,
+          "height": 95
+        },
+        "anim": "/effects/codex/echo-blade.webp"
+      },
+      {
+        "id": "traced-halo",
+        "name": "Traced Halo",
+        "description": "A point of light traces a sword’s outline, then fills it from hilt to tip, cooling from white to steel; eight swords are traced in turn and orbit the caster, hidden by the body as they pass behind. They fire one by one at the nearest enemies and are traced again along the same outlines. Soldiers no sword picks survive.",
+        "category": "summon",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "swords",
+          "rounds",
+          "tally"
+        ],
+        "still": "/effects/codex/traced-halo.png",
+        "art": {
+          "width": 136,
+          "height": 86
+        },
+        "anim": "/effects/codex/traced-halo.webp"
+      },
+      {
+        "id": "land-blade",
+        "name": "Land Blade",
+        "description": "A point of light traces the outline of a giant sword on the ground around the army; the ground inside lifts out in one piece, a sword cut from the battlefield itself with the army standing on it. The caster swings it and stops it dead, flinging every soldier on the blade; soldiers outside the outline stay on the ground and survive.",
+        "category": "summon",
+        "schools": [
+          "sand"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "length",
+          "width",
+          "tally"
+        ],
+        "still": "/effects/codex/land-blade.png",
+        "art": {
+          "width": 104,
+          "height": 82
+        },
+        "anim": "/effects/codex/land-blade.webp"
+      },
+      {
+        "id": "thousand-into-one",
+        "name": "Thousand into One",
+        "description": "Every sword within reach is pulled out of the soldiers’ hands and spirals up on staggered paths into the slots of one giant sword; once it is full, the giant sword falls on the army. Soldiers outside its impact area are only disarmed and survive.",
+        "category": "summon",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "reach",
+          "size",
+          "tally"
+        ],
+        "still": "/effects/codex/thousand-into-one.png",
+        "art": {
+          "width": 90,
+          "height": 91
+        },
+        "anim": "/effects/codex/thousand-into-one.webp"
+      },
+      {
+        "id": "anvil-field",
+        "name": "Anvil Field",
+        "description": "A mould appears in the sky and molten iron runs into it along guide lines; on every beat an invisible giant hammer comes down on the army below while the iron cools step by step from white to orange, red and steel: the army is the anvil. After three blows the weapon is forged. Soldiers outside the hammer faces survive.",
+        "category": "summon",
+        "schools": [
+          "fire"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "blows",
+          "face",
+          "tally"
+        ],
+        "still": "/effects/codex/anvil-field.png",
+        "art": {
+          "width": 119,
+          "height": 82
+        },
+        "anim": "/effects/codex/anvil-field.webp"
+      },
+      {
+        "id": "needle-thread",
+        "name": "Needle Thread",
+        "description": "The summon is just one needle. It flies a pre-computed route through every soldier in turn, trailing a glowing thread that passes in front of and behind each of them; the caster pulls and the whole army is cinched into one bundle. Soldiers past the end of the thread are never threaded and survive.",
+        "category": "summon",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "thread",
+          "speed",
+          "tally"
+        ],
+        "still": "/effects/codex/needle-thread.png",
+        "art": {
+          "width": 158,
+          "height": 100
+        },
+        "anim": "/effects/codex/needle-thread.webp"
+      },
+      {
+        "id": "endless-blade",
+        "name": "Endless Blade",
+        "description": "A small portal opens in front of the caster and a hilt slides out, then the blade keeps coming, and coming, across the whole battlefield; the portal plane cuts the blade, so the part still inside is never seen. Once it is out it sweeps a fan about the portal, striking down every soldier inside the fan; those outside survive.",
+        "category": "summon",
+        "schools": [
+          "arcane"
+        ],
+        "seconds": 6.5,
+        "params": [
+          "crowd",
+          "formation",
+          "length",
+          "sweep",
+          "tally"
+        ],
+        "still": "/effects/codex/endless-blade.png",
+        "art": {
+          "width": 118,
+          "height": 100
+        },
+        "anim": "/effects/codex/endless-blade.webp"
+      }
+    ]
   }
 }

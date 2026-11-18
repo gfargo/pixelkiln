@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { LocalCategory, LocalEffect, Preset } from "@/app/lib/effects-catalog";
+import type { CodexEffect, LocalCategory, LocalEffect, Preset } from "@/app/lib/effects-catalog";
 
 type Still = { gif: string; src: string; width: number; height: number; alt: string };
 
@@ -16,7 +16,7 @@ function matches(query: string, ...fields: string[]) {
   return words.every((word) => text.includes(word));
 }
 
-/** Both catalogs with one filter box over them. Everything is in the page; the filter only hides cards. */
+/** All three catalogs with one filter box over them. Everything is in the page; the filter only hides cards. */
 export function EffectsCatalog({
   presets,
   presetStills,
@@ -24,6 +24,9 @@ export function EffectsCatalog({
   categories,
   effects,
   version,
+  codexEffects,
+  codexCategories,
+  codexVersion,
 }: {
   presets: Preset[];
   presetStills: Record<string, Still>;
@@ -31,6 +34,9 @@ export function EffectsCatalog({
   categories: LocalCategory[];
   effects: LocalEffect[];
   version: string;
+  codexEffects: CodexEffect[];
+  codexCategories: string[];
+  codexVersion: string;
 }) {
   const [query, setQuery] = useState("");
   // Presets this site has a picture of lead, so the first row is a full row of pictures.
@@ -50,13 +56,17 @@ export function EffectsCatalog({
     [effects, query],
   );
   const standalone = effects.filter((effect) => !effect.needsCharacter).length;
+  const shownCodex = useMemo(
+    () => codexEffects.filter((effect) => matches(query, effect.id, effect.name, effect.description, effect.category, ...effect.schools)),
+    [codexEffects, query],
+  );
 
   return (
     <>
       <div className="catalog-bar">
         <div className="shell">
         <label className="catalog-filter">
-          <span>Filter both lists</span>
+          <span>Filter all three lists</span>
           <input
             type="search"
             value={query}
@@ -67,7 +77,7 @@ export function EffectsCatalog({
           />
         </label>
         <p className="catalog-count" aria-live="polite">
-          {shownPresets.length} of {presets.length} presets, {shownEffects.length} of {effects.length} pixelfx effects
+          {shownPresets.length} of {presets.length} presets, {shownEffects.length} of {effects.length} pixelfx, {shownCodex.length} of {codexEffects.length} codex
         </p>
         </div>
       </div>
@@ -185,6 +195,70 @@ export function EffectsCatalog({
                           ) : (
                             <code className="catalog-command">pixelkiln vfx --lib pixelfx --effect {effect.id} --out fx/{effect.id.split("/")[1]}</code>
                           )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="catalog-section" id="codex">
+        <div className="shell">
+          <div className="section-heading split-heading">
+            <div>
+              <h2>pixel-vfx-codex effects.</h2>
+            </div>
+            <p className="section-deck">
+              Every effect in{" "}
+              <a className="catalog-link" href="https://github.com/888wing/pixel-vfx-codex" rel="noreferrer">pixel-vfx-codex</a>{" "}
+              {codexVersion}, an MIT-licensed library by 888wing and
+              contributors, rendered on your own machine with{" "}
+              <code>--lib codex</code>. Each is defined once in 3D, so{" "}
+              <code>--camera</code> shows it side-on (shown here), isometric
+              or orbiting. Effects take their own <code>--param</code> values and
+              recolor with <code>--hue</code>.
+            </p>
+          </div>
+          <nav className="catalog-jump" aria-label="pixel-vfx-codex categories">
+            {codexCategories.map((category) => {
+              const count = shownCodex.filter((effect) => effect.category === category).length;
+              return count ? (
+                <a key={category} href={`#codex-${category}`}>
+                  {category} <span>{count}</span>
+                </a>
+              ) : null;
+            })}
+          </nav>
+          {shownCodex.length ? null : <p className="catalog-empty">No pixel-vfx-codex effect matches “{query}”.</p>}
+          {codexCategories.map((category) => {
+            const inCategory = shownCodex.filter((effect) => effect.category === category);
+            if (!inCategory.length) return null;
+            return (
+              <div key={category} className="catalog-category" id={`codex-${category}`}>
+                <h3>{category}</h3>
+                <ul className="catalog-grid">
+                  {inCategory.map((effect) => {
+                    const k = zoom(effect.art.width, effect.art.height);
+                    return (
+                      <li key={effect.id} className="catalog-card">
+                        <div className="catalog-stage">
+                          <picture>
+                            {effect.anim ? <source media="(prefers-reduced-motion: no-preference)" srcSet={effect.anim} type="image/webp" /> : null}
+                            <img src={effect.still} alt={`${effect.name}: the effect ${effect.anim ? "playing" : "in one frame"}`} width={effect.art.width * k} height={effect.art.height * k} loading="lazy" />
+                          </picture>
+                        </div>
+                        <div className="catalog-body">
+                          <h3>{effect.id}</h3>
+                          <p className="catalog-facts">
+                            {effect.art.width}×{effect.art.height} · loops, {effect.seconds}s
+                            {effect.params.length ? ` · ${effect.params.length} parameters` : ""}
+                          </p>
+                          <p>{effect.name}. {effect.description}</p>
+                          <code className="catalog-command">pixelkiln vfx --lib codex --effect {effect.id} --out fx/{effect.id}</code>
                         </div>
                       </li>
                     );

@@ -425,6 +425,8 @@ a { color: inherit; text-decoration: none; }
 }
 .fx-section { padding-block: 110px; }
 .effects-strip.fx-strip-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.effects-strip.fx-strip-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.effects-strip.fx-strip-2 picture { min-height: 360px; align-items: center; }
 /* One large picture with two beside it, for a row that would otherwise repeat the strip above. */
 .effects-strip.fx-strip-lead { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); grid-template-rows: 1fr 1fr; }
 .effects-strip.fx-strip-lead figure:first-child { grid-row: 1 / -1; }
@@ -456,10 +458,11 @@ a { color: inherit; text-decoration: none; }
 .fx-ways .check-list { margin-top: 22px; }
 .fx-steps { display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; color: var(--cream-muted); font-size: var(--text-body); line-height: 1.65; }
 .fx-steps b { color: var(--cream); font-weight: 600; }
-.provider-table.fx-controls td:nth-child(2), .provider-table.fx-controls td:nth-child(3) { white-space: normal; }
-.provider-table.fx-controls tbody th { white-space: normal; width: 22%; }
-.provider-table.fx-controls thead th { width: 39%; }
-.provider-table.fx-controls thead th:first-child { width: 22%; }
+.provider-table.fx-controls tbody td:nth-child(n) { white-space: normal; overflow-wrap: anywhere; }
+.provider-table.fx-controls { min-width: 980px; table-layout: fixed; }
+.provider-table.fx-controls tbody th { white-space: normal; width: 16%; }
+.provider-table.fx-controls thead th { width: 28%; }
+.provider-table.fx-controls thead th:first-child { width: 16%; }
 .fx-section code { overflow-wrap: anywhere; }
 .catalog-hero { padding-block: 96px 40px; }
 .catalog-crumb { margin: 0 0 22px; color: var(--cream-muted); font-size: var(--text-small); }
@@ -1293,6 +1296,8 @@ a { color: inherit; text-decoration: none; }
   .effects-bottom { grid-template-columns: minmax(0, 1fr); }
   .fx-ways { grid-template-columns: minmax(0, 1fr); }
   .effects-strip.fx-strip-3 { grid-template-columns: minmax(0, 1fr); }
+  .effects-strip.fx-strip-2 { grid-template-columns: minmax(0, 1fr); }
+  .effects-strip.fx-strip-2 picture { min-height: 240px; }
   .effects-strip.fx-strip-lead { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
   .effects-strip.fx-strip-lead figure:first-child { grid-row: auto; }
   .effects-strip.fx-strip-lead figure:first-child picture { min-height: 320px; }
