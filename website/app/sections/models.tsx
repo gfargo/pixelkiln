@@ -11,6 +11,7 @@ const STEPS: Array<{ name: string; text: string }> = [
   { name: "Thin", text: "Every part drops to a fifth of its triangles, with its paint and relief baked back on." },
   { name: "Rig", text: "Twenty-one bones under standard humanoid names go in from joints found in the sprites. Items follow the bones under them, and skin under an item is hidden." },
   { name: "Animate", text: "Motions from a free humanoid library are carried over bone by bone." },
+  { name: "Swing", text: "The cape hangs from chains of bones, and a simulation swings them through every motion and stores the result." },
 ];
 
 export function ModelsSection() {
@@ -75,7 +76,7 @@ export function ModelsSection() {
         <div className="builder-block" id="pipeline">
           <h3>How a sprite becomes a model.</h3>
           <p>
-            Seven steps, each a script that reads files and writes files.
+            Eight steps, each a script that reads files and writes files.
             The first costs generations. The rest run on a machine with a
             12 GB graphics card and cost time.
           </p>

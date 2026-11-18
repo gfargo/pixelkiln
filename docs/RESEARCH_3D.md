@@ -52,6 +52,7 @@ Last updated 17 November 2026.
 | 42 | A standard humanoid skeleton | Our script, Godot's humanoid profile | Twenty-one bones; every bone Godot's profile requires is found by name, under the right parent | Keep. No stock animation has been put on it yet. |
 | 43 | Put stock animations on the skeleton | Quaternius's Universal Animation Library (CC0), our script | Eleven library animations play on the knight: idle, walk, jog, sprint, sword attack, death and others | Keep. The character now moves like a game character. |
 | 44 | Paint views from above and below as well | Hunyuan3D paint stage, our bake | The dark streaks on arm tops, shoulders and heads are gone | Keep. The viewer's model is rebuilt with it. |
+| 45 | Bones for the cape, and a simulation that swings them | Our scripts | Twelve cape bones in three chains; the cape streams in a sprint, hangs in an idle and falls in a roll, baked into every animation | Keep. It works in any engine with no physics set up. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1127,6 +1128,38 @@ Not checked: the rebuilt model in the browser, and undersides such as the soles 
 
 **Verdict.** Keep. `TOP=45` should be the usual setting.
 
+## 45. A cape that swings
+
+**Question.** The cape has been one stiff sheet since step 24, turning with the spine. Can it hang and swing like cloth, in a file any engine can play?
+
+**Setup.**
+
+- *Bones.* `CHAINS="Cape=3x4"` in `rig.py` gives the item called Cape three columns of four links, named `Cape1_1` to `Cape3_4`, each column hung from the chest. The top fifth of the item, the fur collar, stays on the body. Below it each vertex follows the two links it lies between in the two columns it lies between, so the sheet bends smoothly down and across with at most four bones a vertex.
+- *Motion.* Engines swing such bones live with spring bones, each its own way, and glTF has no standard for it. [`scripts/sway.py`](../research/scripts/sway.py) does it once and stores the answer: for every animation in the file it simulates each chain as a string of points and writes the result as rotation keys for the cape bones.
+- *The simulation.* The top point is pinned to the chest. The rest fall under gravity, keep nine tenths of their speed each step, keep their distance from the point above, are pulled slightly towards where they hang at rest, and are pushed out of capsules round the legs and the trunk. Four steps a frame at thirty frames a second. A looping animation is run three times round and the last pass kept, so the end meets the start.
+
+**Result.** In the viewer: idle, two frames of the sprint from the side, and the roll.
+
+![The cape hanging in an idle, streaming behind a sprint, and falling during a roll](../website/public/research/3d/cape-sway.png)
+
+| Animation | How far the cape's hem swings from rest |
+|---|---|
+| Idle, sword idle, walk | 4 to 6 cm |
+| First walk | 13 cm |
+| Sprint, jog | 38 and 42 cm |
+| Roll, death | 48 and 49 cm |
+| Jump start | 71 cm |
+| Sword attack | 92 cm |
+
+- **It reads as cloth.** The cape trails a sprint, settles in an idle, and hangs towards the ground through a roll.
+- **The legs no longer pass through it** in the frames looked at; the capsules hold it off them.
+- **It costs 12 bones and about 130 KB** of keys over twelve animations. The file is 2.5 MB and passes the glTF validator with no errors or warnings.
+- **Godot 4.7.2 imports it:** 33 bones, twelve animations, and the humanoid profile still finds its seventeen.
+
+Not checked: the cape against the arms, which have no capsules; every frame of every animation; and how a live spring bone set-up in an engine compares. The stiffness and damping were set by eye in two tries.
+
+**Verdict.** Keep. Baking the swing into the animations is the portable choice; an engine's own cloth can replace it where wanted, since the bones are there.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1232,7 +1265,7 @@ No report was found of any of these being tested on pixel art.
 | Materials | Base colour only, with the redraw's lighting painted in | Roughness and metal maps: Hunyuan3D 2.1's paint stage (21 GB), MaterialMVP, and 2026 work that estimates materials from several views together ([ReLi3D](https://arxiv.org/abs/2603.19753), Intrinsic Image Fusion). A crude start costs nothing: metal and rough values per item |
 | Parts | Cut from a worn mesh by a sprite mask and a colour test (steps 27 and 36) | Generators that make parts natively: [Hunyuan3D-Part](https://x.com/TencentHunyuan/status/1971491034044694798) (open, segments a mesh into parts and regenerates each whole), [OmniPart](https://arxiv.org/pdf/2507.06165) (planned from 2D part masks, which the paperdoll layers are), PartCrafter. None was checked for clothing or for a 12 GB card |
 | References that agree | Eight directions redrawn one at a time (step 33); sprites at 256 pixels from the generator (step 39) | Models that turn one picture into consistent views: Qwen-Image-Edit with a multiple-angles LoRA, a Flux Kontext turnaround LoRA. Or draw the sprites larger at the source: PixelLab's v3 character goes to 256 pixels, four times step 26's |
-| Cloth | The cape is one rigid sheet on two bones | A chain of bones down the cape with spring physics in the engine, or the engine's cloth |
+| Cloth | The cape hangs from twelve bones and its swing is baked into each animation (step 45) | A chain of bones down the cape with spring physics in the engine, or the engine's cloth |
 | Delivery | A 2.1 MB .glb that imports into Godot (steps 37 and 41) | Import tests in Godot, Unity and Unreal; mesh and texture compression (meshopt, KTX2); levels of detail |
 | A yardstick | None | [Meshy's API](https://docs.meshy.ai/api/pricing) takes an uploaded mesh and sells each step: retexture 10 credits, remesh 5, rigging 5 with a walk and a run, an animation 3. One character through all of it would show what a paid pipeline returns. A paid plan is said to be needed for the API. *Unverified.* |
 
@@ -1321,6 +1354,10 @@ ITEMS="Helm=<helm-light.glb>:Head" JPEG=90 TEX_NORMAL=512 python3 research/scrip
 
 # Add stock animations from a humanoid library to a rigged character (step 43).
 python3 research/scripts/retarget.py <character.glb> <library.glb> <out.glb>
+
+# Give a hanging item chains of bones, then swing them through every animation (step 45).
+CHAINS="Cape=3x4" ITEMS="Cape=<cape.glb>:Hips,Spine,Chest:loose" python3 research/scripts/rig.py <body.glb> <body.rig.json> - - <character.glb>
+python3 research/scripts/sway.py <animated.glb> <out.glb>
 
 # Draw textured meshes large, one row each.
 python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>

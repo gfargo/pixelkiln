@@ -181,10 +181,20 @@ Carries animations over from a humanoid library. The example uses
 [Quaternius's Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html),
 which is CC0 and is not included in this repository.
 
+### 9. Swing what hangs
+
+```bash
+python3 research/scripts/sway.py <animated.glb> <out.glb>
+```
+
+With `CHAINS="Cape=3x4"` at the rig step, the cape hangs from three columns of
+four bones. This simulates them through every animation and stores the swing
+as keys, so the cape moves in any engine with no physics to set up.
+
 ## In a game engine
 
 The example file was imported into Godot 4.7.2 with no errors: one skeleton of
-21 bones, nine skinned meshes, twelve animations, and each body piece's
+33 bones (21 for the body, 12 for the cape), nine skinned meshes, twelve animations, and each body piece's
 `hiddenBy` list in its node metadata. Godot drops a trailing `_Loop` from
 animation names, so the library's `Walk_Loop` arrives as `Walk`.
 
@@ -213,7 +223,6 @@ swing. See step 31 of the research note.
   its unwrap is dozens of pieces.
 - **Materials.** Colour and a normal map only: no metal or roughness, and the
   redraw's lighting is painted in.
-- **Fingers, eyes and a jaw** in the skeleton, and bones for the cape, which is
-  one stiff sheet.
+- **Fingers, eyes and a jaw** in the skeleton.
 - **An item on a second body.** Items are cut on one body and have only been
   worn by it.

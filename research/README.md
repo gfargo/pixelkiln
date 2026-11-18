@@ -4,7 +4,7 @@ The scripts behind the research notes in the docs. They are rough, take paths as
 
 | Note | Scripts |
 |---|---|
-| [3D models from directional sprites](../docs/RESEARCH_3D.md) | `scripts/carve.ts`, `scripts/tilt.py`, `scripts/smooth_inputs.py`, `scripts/hunyuan3d.py`, `scripts/texture.py`, `scripts/redraw.py`, `scripts/hunyuan3d_paint.py`, `scripts/hunyuan3d_paint_turn.py`, `scripts/mvadapter_paint_turn.py`, `scripts/mvadapter_remote.py`, `scripts/bake.py`, `scripts/cut_item.py`, `scripts/thin.py`, `scripts/cards.py`, `scripts/render.py`, `scripts/look.py`, `scripts/rig.py`, `scripts/retarget.py`, `scripts/score.py` |
+| [3D models from directional sprites](../docs/RESEARCH_3D.md) | `scripts/carve.ts`, `scripts/tilt.py`, `scripts/smooth_inputs.py`, `scripts/hunyuan3d.py`, `scripts/texture.py`, `scripts/redraw.py`, `scripts/hunyuan3d_paint.py`, `scripts/hunyuan3d_paint_turn.py`, `scripts/mvadapter_paint_turn.py`, `scripts/mvadapter_remote.py`, `scripts/bake.py`, `scripts/cut_item.py`, `scripts/thin.py`, `scripts/cards.py`, `scripts/render.py`, `scripts/look.py`, `scripts/rig.py`, `scripts/retarget.py`, `scripts/sway.py`, `scripts/refit.py`, `scripts/score.py` |
 
 ## Writing a research note
 

@@ -23,6 +23,9 @@ Environment:
            A third field, "loose" ("Cape=cape.glb:Hips,Spine:loose"), marks an item that hides no skin.
   COVER    how near an item's surface must be for the skin to count as covered, in sprite pixels (default 1.2)
   ALIGN    1 slides each item to sit evenly round the body before fitting it (default 1; loose items are left)
+  CHAINS   bones for hanging items: "Cape=3x4" hangs the item called Cape from three columns of four links,
+           named Cape1_1 to Cape3_4, each column parented to the last bone the item is allowed to follow.
+           sway.py then makes them swing. CHAIN_TOP is the share of the item, from the top, that stays on the body (default 0.2)
   FIT      how far above the skin an item is moved when it lands inside the body, in sprite pixels (default 0.6; 0 is off)
   BURIED   how deep an inward-facing item triangle must be to be dropped (default 1.5)
   SKIN     also write this .npz for cards.py: the body in the sprites' frame and the bone that owns each vertex
@@ -162,6 +165,9 @@ joints_attr, weights_attr = skin(dist)
 # the nearest point inside the body, plus the gap to it, and may only follow the bones its slot names: a cape
 # hangs from the spine however close it comes to a leg.
 ITEMS = []
+EXTRA = []  # bones added for hanging items: (name, parent index, joint, end), in the sprites' frame
+# CHAINS="Cape=3x4" gives the item called Cape three columns of four links to hang from.
+CHAINS = {label: tuple(int(n) for n in shape.split("x")) for label, shape in (entry.split("=") for entry in filter(None, os.environ.get("CHAINS", "").split(";")))}
 FIT = float(os.environ.get("FIT", "0.6")); BURIED = float(os.environ.get("BURIED", "1.5"))
 if os.environ.get("ITEMS") and GEODESIC:
     # How far each point is outside the body (negative inside), on the same grid, and which way is out.
@@ -213,6 +219,37 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         if len(banned) == len(names): sys.exit(f"{label}: none of {allowed} is a bone; bones are {names}")
         pd[:, banned] = 1e9
     pj, pwt = skin(pd)
+    if label in CHAINS:
+        # A hanging item gets bones of its own: columns of links running down it, hung from the bone the item
+        # may follow. The top of the item (a collar) stays on the body; below that each vertex follows the two
+        # links it lies between, in the two columns it lies between, so the sheet bends smoothly both ways.
+        columns, links = CHAINS[label]; hold = float(os.environ.get("CHAIN_TOP", "0.2"))
+        root = names.index(allowed.split(",")[-1]) if allowed else names.index("Spine")
+        top, bottom = pw[:, 2].max(), pw[:, 2].min(); start = top - (top - bottom) * hold
+        left, right = np.quantile(pw[:, 0], 0.03), np.quantile(pw[:, 0], 0.97)
+        levels = np.linspace(start, bottom, links + 1)
+        centres = np.linspace(left, right, columns * 2 + 1)[1::2]
+        first_new = len(names) + len(EXTRA)
+        for c in range(columns):
+            strip = np.abs(pw[:, 0] - centres[c]) < (right - left) / columns * 0.6
+            for k in range(links):
+                def joint(level):
+                    band = strip & (np.abs(pw[:, 2] - level) < (top - bottom) / links * 0.35)
+                    near = pw[band] if band.sum() >= 3 else pw[strip] if strip.any() else pw
+                    return np.array([centres[c], np.median(near[:, 1]), level])
+                EXTRA.append((f"{label.replace(' ', '')}{c + 1}_{k + 1}", root if k == 0 else first_new + c * links + k - 1, joint(levels[k]), joint(levels[k + 1])))
+        # how far down each vertex is, in links, and how far across, in columns
+        down = np.clip((start - pw[:, 2]) / max(start - bottom, 1e-6) * links, 0, links - 1e-6)
+        across = np.clip((pw[:, 0] - centres[0]) / max(centres[-1] - centres[0], 1e-6) * (columns - 1), 0, columns - 1) if columns > 1 else np.zeros(len(pw))
+        k0 = np.floor(down).astype(int); c0 = np.minimum(np.floor(across).astype(int), max(columns - 2, 0)); c1 = np.minimum(c0 + 1, columns - 1)
+        fk = down - k0; fc = across - c0
+        # a vertex part-way down link k turns with link k; the blend towards the next link starts in its lower half
+        to_next = np.clip((fk - 0.5) * 2, 0, 1) * (k0 < links - 1); k1 = np.minimum(k0 + 1, links - 1)
+        hanging = pw[:, 2] < start
+        cj = np.stack([first_new + c0 * links + k0, first_new + c0 * links + k1, first_new + c1 * links + k0, first_new + c1 * links + k1], 1)
+        cw = np.stack([(1 - fc) * (1 - to_next), (1 - fc) * to_next, fc * (1 - to_next), fc * to_next], 1)
+        pj = np.where(hanging[:, None], cj, pj).astype(np.uint8); pwt = np.where(hanging[:, None], cw, pwt).astype(np.float32)
+        pj = np.where(pwt > 0, pj, 0).astype(np.uint8)  # a bone with no weight is written as bone 0, as glTF asks
     ptex = sized(part.visual.material.baseColorTexture.convert("RGBA"), "TEX_ITEM" if os.environ.get("TEX_ITEM") else "TEX")
     # Which of the body's vertices this item covers: those with the item's surface within COVER sprite pixels.
     # A loose item (a cape) covers nothing, since it swings away from what is behind it.
@@ -221,6 +258,12 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         cloud = trimesh.sample.sample_surface(trimesh.Trimesh(pw, pf, process=False), 300000, seed=5)[0]
         covers = cKDTree(cloud).query(world)[0] < float(os.environ.get("COVER", "1.2"))
     ITEMS.append({"name": label, "covers": covers, "world": pw, "faces": pf, "uv": puv, "joints": pj, "weights": pwt, "texture": ptex, "relief": prelief, "given_normals": pnormals})
+
+if EXTRA:  # the chain bones join the skeleton after the body's own, so no index already used moves
+    for name, above, joint, end in EXTRA:
+        BONES.append((name, names[above] if above < len(names) else EXTRA[above - len(names)][0], joint, end))
+    names = [b[0] for b in BONES]; parent = [names.index(b[1]) if b[1] else -1 for b in BONES]
+    head_pos = np.array([b[2] for b in BONES]); tail_pos = np.array([b[3] for b in BONES])
 
 # ---- to metres, y up, facing +z
 height = world[:, 2].max() - world[:, 2].min(); S = 1.8 / height; floor = world[:, 2].min()
