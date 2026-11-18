@@ -40,6 +40,12 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
           ))}
         </div>
       );
+    case "tiles":
+      return (
+        <div className="feature-art feature-art-sheet">
+          <Image src="/showcase/tilesets/island.png" alt="A sandy island with a grass meadow in the middle, surrounded by ocean, built from two connected tilesets" width={448} height={320} unoptimized />
+        </div>
+      );
     case "updates":
       return (
         <div className="feature-art feature-art-sheet">
