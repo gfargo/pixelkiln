@@ -457,16 +457,14 @@ export function MeshViewer() {
         ) : subject === "parts" ? (
           <p className="spin-note">
             Drag to turn it. The body and each thing it wears are separate
-            meshes on one skeleton, in one file. Each item was drawn as its
-            own sprite layer over the bare body, the way the 2D builder
-            above does it. The body was then meshed wearing that one item,
-            and the item cut out of the result wherever its layer has
-            pixels. Items are moved to just above the skin and follow the
-            body&apos;s bones. Before any of that, every sprite was redrawn
-            large by an image model, and both the shapes and the paint
-            come from those redraws, so this is no longer pixel art unless
-            you switch the pixel look on. The skin under an item is hidden
-            while the item is worn.
+            meshes on one skeleton, in one file. The generator drew the
+            bare figure at 256 pixels in eight directions, then the same
+            figure wearing each item. An image model redrew every one of
+            those large, and both the shapes and the paint come from the
+            redraws. Each item is cut out of the mesh of the figure
+            wearing it, moved to just above the skin, and follows the
+            body&apos;s bones. The skin under an item is hidden while the
+            item is worn. Switch the pixel look on to see it as pixel art.
           </p>
         ) : (
           <p className="spin-note">

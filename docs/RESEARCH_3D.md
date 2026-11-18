@@ -47,6 +47,7 @@ Last updated 17 November 2026.
 | 37 | Open the parts model in a game engine | Godot 4.7.2, headless | Ten skinned meshes, fifteen named bones, the walk, and each body piece's hide list all arrive | Keep. The first check outside three.js. |
 | 38 | A second painter, MV-Adapter | MV-Adapter on SDXL, our own guide pictures | It runs and its front view is sharp and faithful; one pass takes 11 minutes and overfills the 12 GB card; the sides it invents are wrong | Drop on this card. Keep the scripts. |
 | 39 | Sprites drawn at 256 pixels at the source | PixelLab v3 character and four states | An adult-proportioned figure and four worn versions, each agreeing across eight directions | Keep. The best source art so far; not yet meshed. |
+| 40 | Rebuild everything from the 256 pixel sprites | PixelLab, SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | An adult-proportioned, painted body and four detailed items on one skeleton; imports into Godot | Keep as the viewer's model. Still 80,000 triangles and one home-made skeleton. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -971,6 +972,43 @@ Not done: meshing, painting or rigging from these.
 
 **Verdict.** Keep. Rebuild from these next.
 
+## 40. Everything rebuilt from the 256 pixel sprites
+
+**Question.** Step 39's sprites are larger, adult in build and agree across directions. Does the chain of steps 35 and 36 give a better character from them?
+
+**Setup.** The same script as step 35, with these differences:
+
+- *Sources.* The five 256 pixel sets of step 39. They are redrawn at 1024 pixels by `redraw.py` with its usual settings; a gentler setting that let the model change little kept the pixel edges. Left to right: the sprite, the gentle redraw, the one used.
+
+![A 256 pixel sprite and two redraws of it](../website/public/research/3d/redraw-256.png)
+
+- *Fitting.* Carving and fitting ran on half-size copies, 128 pixels, to keep the carve to a few seconds. Distances given in sprite pixels were scaled to match: items sit 1.5 above the skin, skin counts as covered within 3, and an item's edge may move 7.
+- *Masks.* There are no item layers here, only worn figures. A pixel is the item where the worn sprite differs from the bare one by more than 70 across red, green and blue, tidied and with specks under 150 pixels dropped. Step 36's edge rule does the rest.
+- *Joints.* PixelLab's skeleton estimate on the eight bare sprites, 0.8 generations.
+
+About two hours of GPU time, unattended.
+
+**Result.** The assembled character with hidden skin left out, and the bare body:
+
+![The rebuilt knight and the bare body from five directions](../website/public/research/3d/rebuilt-256.png)
+
+The four items on their own:
+
+![The cuirass, leg armour, cape and helm cut from their worn meshes](../website/public/research/3d/rebuilt-256-items.png)
+
+- **The body is an adult.** Long legs, a small head, shoulders, a face, with muscle painted and shaped. Compare step 36's.
+- **The armour reads as armour:** separate plates on the legs, a shaped helm with a visor, trim that follows edges.
+- **The fits are no worse:** the meshes match the sprites' outlines 81 to 86%.
+- **The masks needed the edge rule.** It took in 1,000 to 4,300 triangles an item, most on the cape, and left out up to 900 of skin.
+- **Dark streaks run along the tops of the arms** on the bare body, and the cape has a few pinholes.
+- **In the viewer it loads, walks and its items switch off.** Seen there with the cuirass and helm off: the head, chest and arms come back whole.
+- **In Godot 4.7.2 it imports as before:** fifteen bones, ten skinned meshes, 79,819 triangles, the walk.
+- **The file is 6.3 MB** with 512 pixel textures, 11.4 MB with 1024. It passes the glTF validator with no errors or warnings.
+
+Not checked: the walk from every side, whether items clip at the extremes of the stride, the pixel look on this model.
+
+**Verdict.** Keep as the viewer's model. The look is no longer the weakest part. What separates this from an asset is now in the survey: triangle count, unwrap, skeleton, materials.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1096,6 +1134,7 @@ No public tool was found that takes several directional pixel sprites and return
 - Staged texturing: nothing. About six seconds a mesh on a laptop.
 - Image-model redraws in steps 13 and 14: 50.1 generations for six calls.
 - The paint stage: no generations. A 9.2 GB download, then about six minutes of GPU time per character.
+- The rebuild of step 40: 0.8 generations for joints, and about two hours of GPU time.
 - The 256 pixel body and four states in step 39: 9 generations for the body; the states are quoted at 10 to 25 each and were not read back.
 - A-poses in step 21: 20 generations for the two states, 0.25 for importing the knight, 1.6 for sixteen joint estimates.
 - The body and its five layers in step 26: 52.8 generations (2 for the body, 10 for each layer, 0.8 for the joints), read from the balance before and after.
