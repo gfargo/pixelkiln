@@ -1,3 +1,12 @@
+# [0.111.0](https://github.com/gfargo/pixelkiln/compare/v0.110.0...v0.111.0) (2026-11-18)
+
+
+### Features
+
+* **model:** resolve the file a game should load for each model ([3e3d1cb](https://github.com/gfargo/pixelkiln/commit/3e3d1cb00cc40f08893f251b6ddf0194c85e888d))
+* **site:** pixel-vfx-codex on the effects page and catalog ([2d24e1b](https://github.com/gfargo/pixelkiln/commit/2d24e1bd98bb46a887173fa62f951b6d63f1374a))
+* **vfx:** render effects locally from pixel-vfx-codex ([84d2abb](https://github.com/gfargo/pixelkiln/commit/84d2abb82acbcb4c770cc6e17895ef44722c8a8e))
+
 # [0.110.0](https://github.com/gfargo/pixelkiln/compare/v0.109.0...v0.110.0) (2026-11-18)
 
 
