@@ -280,7 +280,7 @@ ceiling and a live quote before each paid call. Compare the adapters in the [pro
 pixelkiln pack --style base
 # Stable declared cells in an existing sheet.
 pixelkiln mount --style ground
-# Structural atlas + engine metadata + provenance.
+# Atlas + engine metadata (tiled, godot, ldtk); --merge-connected joins sets that share a terrain.
 pixelkiln export --style ground --only terrain --format tiled
 ```
 
