@@ -173,6 +173,8 @@ export interface ModelViewer {
   coverage(): number
   /** Decoded images of the shown document, by image index, for thumbnails and for the texture editor. */
   image(index: number): ImageBitmap | null
+  /** Swap one image's pixels in place, e.g. as it is painted; the model, pose and camera stay. */
+  setImage(index: number, source: ImageBitmap | HTMLCanvasElement): void
   dispose(): void
 }
 
@@ -220,6 +222,8 @@ function buildViewer(host: HTMLElement, canvas: HTMLCanvasElement, gl: WebGL2Ren
   let skins: Array<{ joints: number[]; inverse: Float32Array; matrices: Float32Array }> = []
   let materials: Array<{ colour: WebGLTexture | null; normal: WebGLTexture | null; tint: number[]; doubleSided: boolean }> = []
   let bitmaps: Array<ImageBitmap | null> = []
+  /** The GPU textures made from each image, so a painted image can be re-uploaded. */
+  let byImage = new Map<number, WebGLTexture[]>()
   let owned: { buffers: WebGLBuffer[]; vaos: WebGLVertexArrayObject[]; textures: WebGLTexture[] } = { buffers: [], vaos: [], textures: [] }
   let centre = [0, 1, 0]
   let radius = 1
@@ -239,6 +243,7 @@ function buildViewer(host: HTMLElement, canvas: HTMLCanvasElement, gl: WebGL2Ren
     for (const t of owned.textures) gl.deleteTexture(t)
     for (const bitmap of bitmaps) bitmap?.close()
     owned = { buffers: [], vaos: [], textures: [] }
+    byImage = new Map()
     bitmaps = []
   }
 
@@ -304,6 +309,7 @@ function buildViewer(host: HTMLElement, canvas: HTMLCanvasElement, gl: WebGL2Ren
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      byImage.set(imageIndex!, [...(byImage.get(imageIndex!) ?? []), t])
       return t
     }
     const sourceOf = (info: { index: number } | undefined) => info ? json.textures?.[info.index]?.source : undefined
@@ -578,6 +584,14 @@ function buildViewer(host: HTMLElement, canvas: HTMLCanvasElement, gl: WebGL2Ren
       return pixels.length ? covered / (pixels.length / 4) : 0
     },
     image: (index) => bitmaps[index] ?? null,
+    setImage: (index, source) => {
+      for (const t of byImage.get(index) ?? []) {
+        gl.bindTexture(gl.TEXTURE_2D, t)
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
+        gl.generateMipmap(gl.TEXTURE_2D)
+      }
+    },
     dispose,
   }
 }

@@ -802,6 +802,13 @@ the model has no skeleton. **Locked layer shows** picks the guide, the guide
 over the texture as built, the texture as built alone, or nothing. The guide
 is never part of what is saved.
 
+The model also stands beside the editor in the same sheet (**3D view** in the
+sheet's bar hides it), and follows the canvas: each time painting pauses for
+about half a second the page asks the editor for its pixels and puts them on
+the model, without writing anything. Drag the bar between the two to share
+the width, and the sheet's left edge to resize the whole sheet; both widths
+are remembered.
+
 **Save to project** writes a copy of the model to `<outDir>/edits/<same
 path>` with that one texture replaced, as a PNG. The model as built is not
 touched, and in the copy every other byte of the buffer (meshes, normals,

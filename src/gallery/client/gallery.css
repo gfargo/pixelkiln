@@ -571,3 +571,16 @@ body[data-size="l"] .cell { height:210px; }
   font:11.5px/1.4 var(--mono); color:var(--dim); max-height:72px; overflow-y:auto; }
 .model-legend span { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
 .model-legend i { width:10px; height:10px; display:block; border:1px solid rgba(0,0,0,.6); }
+/* Editor sheet: a resizable left edge, and an optional pane beside the editor behind a divider. */
+.sheet.editor-host .sheet-edge { position:absolute; left:-4px; top:0; bottom:0; width:8px; cursor:col-resize; z-index:2; }
+.sheet.editor-host .sheet-edge:hover, .sheet.editor-host.resizing .sheet-edge { background:color-mix(in srgb, var(--accent) 40%, transparent); }
+.sheet.editor-host.with-side { grid-template-columns:var(--side-w, 36%) 8px minmax(0, 1fr); }
+.sheet.editor-host.with-side > .rbar, .sheet.editor-host.with-side > .sheet-below { grid-column:1 / -1; }
+.sheet.editor-host .sheet-divider { cursor:col-resize; background:var(--line); border-left:1px solid var(--line-strong); border-right:1px solid var(--line-strong); }
+.sheet.editor-host .sheet-divider:hover, .sheet.editor-host.resizing .sheet-divider { background:var(--accent); }
+.sheet.editor-host.resizing { user-select:none; cursor:col-resize; }
+.sheet.editor-host.resizing iframe { pointer-events:none; }
+.sheet-side[hidden], .sheet-divider[hidden] { display:none; }
+.model-side { display:grid; grid-template-rows:1fr auto auto; gap:8px; padding:10px; min-width:0; min-height:0; background:var(--panel); }
+.model-side-stage { min-height:0; background-color:var(--stage-bg); background-image:var(--stage-pattern); background-size:12px 12px;
+  background-position:0 0,6px 6px; border:1px solid var(--line); }

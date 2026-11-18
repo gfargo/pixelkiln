@@ -501,14 +501,62 @@ function openTextureSheet(model: GalleryModel, image: number) {
   // The texture to paint is the edit's when there is one, so earlier work carries on.
   const current = model.edit ?? model.file;
   const strip = el('div', 'model-legend-host');
+  // The model beside the editor, painted with what is on the canvas as the author pauses.
+  const side = el('div', 'sheet-side model-side');
+  const sideStage = el('div', 'model-side-stage');
+  const sideBar = el('div', 'model-row');
+  const sideNote = el('div', 'state-dim model-hint', 'Loading the model…');
+  side.append(sideStage, sideBar, sideNote);
+  let viewer: ModelViewer | null = null;
+  let updates = 0;
+  const sideControls = (scene: ViewerScene) => {
+    sideBar.textContent = '';
+    if (!viewer) return;
+    const v = viewer;
+    if (scene.clips.length) {
+      const play = el('button', null, v.playing() ? 'Pause' : 'Play'); play.type = 'button';
+      play.onclick = () => { v.setPlaying(!v.playing()); play.textContent = v.playing() ? 'Pause' : 'Play'; };
+      const pick = el('select'); pick.setAttribute('aria-label', 'Animation');
+      const none = el('option', null, 'rest pose'); none.value = ''; pick.append(none);
+      for (const n of scene.clips) { const o = el('option', null, n.replaceAll('_', ' ')); o.value = n; pick.append(o); }
+      pick.value = v.clip() ?? '';
+      pick.onchange = () => v.setClip(pick.value || null);
+      sideBar.append(play, pick);
+    }
+    for (const item of scene.items) {
+      const b = el('button', 'chip' + (v.itemShown(item) ? ' on' : ''), item.replaceAll('_', ' ')); b.type = 'button';
+      b.onclick = () => { v.setItem(item, !v.itemShown(item)); b.classList.toggle('on', v.itemShown(item)); };
+      sideBar.append(b);
+    }
+  };
   const custom = {
     title: (model.project ? model.project + ':' : '') + model.name + ' · ' + name + ' texture · ' + summary.width + '×' + summary.height,
     referenceLabel: choice === 'original' ? 'show the texture as built' : choice === 'guide' ? 'show the guide' : 'show the guide and the texture as built',
     referenceTitle: 'A locked layer at 50%, for finding your way; never part of the saved texture',
     below: choice === 'guide' || choice === 'guide+original' ? strip : null,
+    side: {
+      element: side,
+      label: '3D view',
+      shown: () => ui.side3d,
+      setShown: (on: boolean) => { ui.side3d = on; savePrefs(); },
+    },
+    async live(png: ArrayBuffer) {
+      if (!viewer) return;
+      const bitmap = await createImageBitmap(new Blob([png], { type: 'image/png' }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+      viewer.setImage(image, bitmap);
+      bitmap.close();
+      updates++;
+      if (S.SHEET) S.SHEET.liveUpdates = updates;
+      sideNote.textContent = 'Drag to turn it. Follows the canvas as you paint (' + updates + (updates === 1 ? ' update' : ' updates') + '); nothing is written until you save.';
+    },
     async open() {
       const sheet = S.SHEET;
       const [doc, original] = await Promise.all([fetchDoc(current.url), fetchDoc(model.file.url)]);
+      try { viewer = createModelViewer(sideStage); }
+      catch { viewer = null; }
+      if (viewer) {
+        viewer.show(doc).then((scene) => { sideControls(scene); sideNote.textContent = 'Drag to turn it. Follows the canvas as you paint; nothing is written until you save.'; });
+      } else sideNote.textContent = 'This browser has no WebGL2, so the model cannot be drawn here.';
       const width = summary.width!, height = summary.height!;
       // The editor takes PNG; a JPEG texture is decoded here and handed over as one.
       const paint = el('canvas'); paint.width = width; paint.height = height;
