@@ -1,3 +1,11 @@
+# [0.113.0](https://github.com/gfargo/pixelkiln/compare/v0.112.0...v0.113.0) (2026-11-18)
+
+
+### Features
+
+* **site:** a tiles and terrain page ([c47ef05](https://github.com/gfargo/pixelkiln/commit/c47ef05c3dc5569099201413cbbb2c8c061e953c))
+* **site:** LDtk on the tiles page and in the tiles feature copy ([61a34bc](https://github.com/gfargo/pixelkiln/commit/61a34bc71fedc39414191e3ea67575036d247f68))
+
 # [0.112.0](https://github.com/gfargo/pixelkiln/compare/v0.111.0...v0.112.0) (2026-11-18)
 
 
