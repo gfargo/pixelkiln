@@ -1,3 +1,13 @@
+# [0.108.0](https://github.com/gfargo/pixelkiln/compare/v0.107.0...v0.108.0) (2026-11-18)
+
+
+### Features
+
+* **site:** a fuller header menu, and a jump list that wraps ([4cad4b3](https://github.com/gfargo/pixelkiln/commit/4cad4b3b604ab95e4ded06d556f58b6843c0568c))
+* **site:** an effects catalog of every preset and pixelfx effect ([4343dbe](https://github.com/gfargo/pixelkiln/commit/4343dbe780a293fc7ab36e1c584d2abe1b216876))
+* **site:** every preset in the effects catalog is animated ([0cbdd83](https://github.com/gfargo/pixelkiln/commit/0cbdd836429a7b9afeeeece5778057c9c2a7e6f7))
+* **site:** one type scale, tighter rhythm, and varied effect rows ([dce0c47](https://github.com/gfargo/pixelkiln/commit/dce0c472ad96922c0c78b19883a2dcfca9a776e5))
+
 # [0.107.0](https://github.com/gfargo/pixelkiln/compare/v0.106.0...v0.107.0) (2026-11-17)
 
 
