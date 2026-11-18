@@ -166,7 +166,10 @@ export function buildLdtk(generic: GenericTileset, tileType: string | undefined)
     throw new Error(`ldtk grids are square; these tiles are ${generic.tile.width}x${generic.tile.height}`)
   }
   const corner = rules.ruleType === "corner"
-  const name = identifier(generic.name.replace("/", "_"), "Tileset")
+  // The project asks for the "Capitalize" identifier style, and LDtk rewrites
+  // a layer or tileset name to match on load, which marks a fresh project unsaved.
+  const base = identifier(generic.name.replace("/", "_"), "Tileset")
+  const name = base.charAt(0).toUpperCase() + base.slice(1)
   const terrainNames = [rules.terrains[0] ?? "feature", rules.terrains[1] ?? "background"]
   const columns = generic.sheet.columns
   const rows = Math.ceil(generic.tiles.length / columns)
@@ -403,8 +406,9 @@ export function buildLdtk(generic: GenericTileset, tileType: string | undefined)
       identifier: "Preview",
       iid: iid(generic.name, "level"),
       uid: levelUid,
-      worldX: 0,
-      worldY: 0,
+      // A linear world ignores the position; LDtk itself writes -1 for it.
+      worldX: -1,
+      worldY: -1,
       worldDepth: 0,
       pxWid: DEMO_WIDTH * grid,
       pxHei: DEMO_HEIGHT * grid,

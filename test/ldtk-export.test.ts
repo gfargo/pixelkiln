@@ -179,7 +179,7 @@ describe("LDtk export", () => {
   it("reads an edge set by the tile's own cell and its four neighbours, with no shift", async () => {
     const project = await exported(await edgeSet(all16))
     const [autoLayer, sourceLayer] = project.defs.layers
-    expect(sourceLayer).toMatchObject({ pxOffsetX: 0, pxOffsetY: 0, identifier: "ground_roads_cells" })
+    expect(sourceLayer).toMatchObject({ pxOffsetX: 0, pxOffsetY: 0, identifier: "Ground_roads_cells" })
     const rules: LdtkRule[] = autoLayer.autoRuleGroups[0].rules
     // Mask 0b0101: N and S are the first terrain, E and W the second; two of four, so the cell itself counts as first.
     expect(rules.find((rule) => rule.tileRectsIds[0]![0] === 5)!.pattern).toEqual([0, 1, 0, 2, 1, 2, 0, 1, 0])

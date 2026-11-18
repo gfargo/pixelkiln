@@ -271,13 +271,16 @@ Only square tiles on an orthogonal grid export. Hex, isometric and oblique
 tiles, `outline` rules, non-square tiles and sets with no mask map are refused
 with the format to use instead (`generic` or `tiled`).
 
-**Not verified inside LDtk.** LDtk has no headless mode, so CI cannot load the
-file. The key sets match the sample projects shipped with LDtk 1.5, and the
-tests run the written rules through a port of LDtk's own matcher to confirm
-they choose the tiles stored in the Preview level. The rule fields are the ones
-LDtk calls editor-internal, and the project is written as `jsonVersion` 1.5.3.
-Open one generated file in LDtk 1.5.x and paint on the `_corners` or `_cells`
-layer before relying on it.
+**What was checked in LDtk.** LDtk has no headless mode, so CI cannot load the
+file; the tests instead compare the key sets with the sample projects shipped
+with LDtk 1.5 and run the written rules through a port of LDtk's own matcher.
+Once, by hand, a 16-tile lake and grass set was opened in LDtk 1.5.3: the
+Preview level drew continuous shorelines, LDtk re-evaluated the rules and
+produced exactly the 108 tiles stored in the file, and painting a grass cell on
+the corners layer redrew the right tiles around it. LDtk changed only things it
+owns: layer and tileset names get a capital first letter (the project asks for
+that style), `cachedPixelData` is filled in, and the build id. Only corner sets
+were opened; edge sets are covered by the matcher tests alone.
 
 ## Deliberate limits
 

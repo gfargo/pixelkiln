@@ -105,7 +105,7 @@ describe("export CLI command", () => {
     ]))
     const project = JSON.parse(await readFile(out, "utf8")) as { jsonVersion: string; defs: { layers: { identifier: string }[] } }
     expect(project.jsonVersion).toBe("1.5.3")
-    expect(project.defs.layers.map((layer) => layer.identifier)).toEqual(["ground_cliff", "ground_cliff_corners"])
+    expect(project.defs.layers.map((layer) => layer.identifier)).toEqual(["Ground_cliff", "Ground_cliff_corners"])
     expect((await readFile(path.join(dir, "cliff-tileset.png"))).length).toBeGreaterThan(0)
   })
 })
