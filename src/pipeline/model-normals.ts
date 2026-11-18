@@ -22,7 +22,7 @@
  */
 import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import type { NormalMapKind, NormalMapMode, PixelLabClient } from "../client.ts"
 import { normalMapBytes, normalMapCost } from "../pixellab-utils.ts"
@@ -31,7 +31,7 @@ import { decodePng, encodeRgbaPng } from "../png.ts"
 import { describeGlb, glbImageBytes, imageInfo, parseGlb, readAccessor, type GlbDocument, type GltfNode } from "../glb.ts"
 import { readModelCompanion, saveModelTexture, type ModelEditResult, type ProjectModel } from "./model-edit.ts"
 
-export const MODEL_NORMAL_SOURCES = ["texture", "views"] as const
+export const MODEL_NORMAL_SOURCES = ["texture", "views", "sprites"] as const
 export type ModelNormalSource = (typeof MODEL_NORMAL_SOURCES)[number]
 
 /** PixelLab's largest side for `/normal-map`. */
@@ -104,7 +104,7 @@ function localMatrix(node: GltfNode): Mat4 {
   ])
 }
 
-function worldMatrices(document: GlbDocument): Mat4[] {
+function worldMatrices(document: GlbDocument, posed: Map<number, GltfNode> = new Map()): Mat4[] {
   const nodes = document.json.nodes ?? []
   const parentOf = new Map<number, number>()
   nodes.forEach((node, index) => node.children?.forEach((child) => parentOf.set(child, index)))
@@ -113,13 +113,81 @@ function worldMatrices(document: GlbDocument): Mat4[] {
     const known = world[index]
     if (known) return known
     const parent = parentOf.get(index)
-    const matrix = parent === undefined || depth > nodes.length
-      ? localMatrix(nodes[index]!)
-      : multiply(resolve(parent, depth + 1), localMatrix(nodes[index]!))
+    const local = localMatrix(posed.get(index) ?? nodes[index]!)
+    const matrix = parent === undefined || depth > nodes.length ? local : multiply(resolve(parent, depth + 1), local)
     world[index] = matrix
     return matrix
   }
   return nodes.map((_, index) => resolve(index))
+}
+
+/** A moment of one of the model's animations to pose it in: by name or index, and seconds from its start. */
+export interface ModelPose {
+  animation: string | number
+  time: number
+}
+
+/** "Idle Loop" or "Idle Loop@0.5" or "3": a pose as written on the command line. */
+export function parsePose(text: string): ModelPose {
+  const at = text.lastIndexOf("@")
+  const name = at >= 0 ? text.slice(0, at) : text
+  const time = at >= 0 ? Number(text.slice(at + 1)) : 0
+  if (!name.trim() || !Number.isFinite(time) || time < 0) throw new Error(`"${text}" is not a pose: give an animation's name or index, and optionally @seconds`)
+  return { animation: /^\d+$/.test(name.trim()) ? Number(name.trim()) : name.trim(), time }
+}
+
+/**
+ * The model's nodes at a moment of an animation: each animated translation,
+ * rotation, and scale sampled at `time` (clamped to the clip), linearly, with
+ * rotations blended and normalised; a cubic spline key's value is used as is.
+ */
+/** Names compared without case, spaces, underscores, or hyphens: "Idle Loop" finds "Idle_Loop". */
+const loose = (name: string) => name.toLowerCase().replace(/[\s_-]+/g, "")
+
+function poseNodes(document: GlbDocument, pose: ModelPose): Map<number, GltfNode> {
+  const animations = document.json.animations ?? []
+  const index = typeof pose.animation === "number"
+    ? pose.animation
+    : animations.findIndex((animation) => loose(animation.name ?? "") === loose(String(pose.animation)))
+  const animation = animations[index]
+  if (!animation) {
+    const names = animations.map((entry, at) => entry.name ?? String(at)).join(", ") || "none"
+    throw new Error(`the model has no animation "${pose.animation}"; it has: ${names}`)
+  }
+  const posed = new Map<number, GltfNode>()
+  for (const channel of animation.channels) {
+    const node = channel.target.node
+    const path = channel.target.path
+    if (node === undefined || !["translation", "rotation", "scale"].includes(path)) continue
+    const sampler = animation.samplers[channel.sampler]
+    if (!sampler) continue
+    const times = readAccessor(document, sampler.input).data
+    const values = readAccessor(document, sampler.output)
+    const width = path === "rotation" ? 4 : 3
+    const cubic = sampler.interpolation === "CUBICSPLINE"
+    const valueAt = (key: number) => Array.from(values.data.subarray((cubic ? key * 3 + 1 : key) * width, (cubic ? key * 3 + 1 : key) * width + width))
+    const last = times.length - 1
+    const time = Math.min(Math.max(pose.time, times[0] ?? 0), times[last] ?? 0)
+    let key = 0
+    while (key < last && times[key + 1]! <= time) key++
+    let value = valueAt(key)
+    if (key < last && sampler.interpolation !== "STEP" && !cubic) {
+      const span = times[key + 1]! - times[key]!
+      const f = span > 0 ? (time - times[key]!) / span : 0
+      const next = valueAt(key + 1)
+      const sign = path === "rotation" && value.reduce((sum, v, k) => sum + v * next[k]!, 0) < 0 ? -1 : 1
+      value = value.map((v, k) => v * (1 - f) + next[k]! * sign * f)
+    }
+    if (path === "rotation") {
+      const length = Math.hypot(...value) || 1
+      value = value.map((v) => v / length)
+    }
+    const base = posed.get(node) ?? { ...(document.json.nodes?.[node] ?? {}) }
+    if (base.matrix) delete base.matrix
+    base[path] = value
+    posed.set(node, base)
+  }
+  return posed
 }
 
 /** One drawn primitive at rest: world-space positions, normals, and tangents, plus what it needs from its material. */
@@ -134,10 +202,10 @@ export interface RestPrimitive {
   uv: Array<Float32Array | null>
 }
 
-/** Every mesh primitive of the model in its rest pose: skinned meshes by their bind, others by their node's transform. */
-export function restPrimitives(document: GlbDocument): RestPrimitive[] {
+/** Every mesh primitive of the model in its rest pose, or at a moment of an animation: skinned meshes by their joints, others by their node's transform. */
+export function restPrimitives(document: GlbDocument, pose?: ModelPose): RestPrimitive[] {
   const json = document.json
-  const world = worldMatrices(document)
+  const world = worldMatrices(document, pose ? poseNodes(document, pose) : undefined)
   const out: RestPrimitive[] = []
   for (const [nodeIndex, node] of (json.nodes ?? []).entries()) {
     if (typeof node.mesh !== "number") continue
@@ -452,15 +520,22 @@ export function detailFromTiles(surface: TexelSurface, tiles: Tile[], maps: Buff
   return field
 }
 
-// ---- source 2: the whole figure, drawn from around it
+// ---- source 2: the whole figure, drawn from around it or as sprites drew it
 
 export interface ViewCamera {
   /** Degrees about the up axis: 0 sees the front (+Z), 90 has the figure facing the picture's right. */
   turn: number
-  size: number
+  /** Degrees the camera is raised, looking down: 0 is level; a "low top-down" sprite is about 20 to 30. */
+  tilt: number
+  width: number
+  height: number
+  /** Picture pixels per model unit. */
   scale: number
+  /** The model point, in the camera's right and up, that lands at (offsetX, offsetY). */
   centreX: number
   centreY: number
+  offsetX: number
+  offsetY: number
 }
 
 export interface DrawnView {
@@ -468,6 +543,8 @@ export interface DrawnView {
   png: Buffer
   /** Nearness of the surface at each pixel, for telling what a view can see; -Infinity where empty. */
   depth: Float32Array
+  /** For a sprite: the pixels whose normals may be used (where sprite and model agree); all when absent. */
+  use?: Uint8Array
 }
 
 /** The usual eight directions, by sprite name. */
@@ -475,27 +552,49 @@ export const VIEW_TURNS: Record<string, number> = {
   south: 0, "south-east": 45, east: 90, "north-east": 135, north: 180, "north-west": 225, west: 270, "south-west": 315,
 }
 
-function turned(x: number, y: number, z: number, turn: number): [number, number, number] {
-  const t = (turn * Math.PI) / 180
-  return [x * Math.cos(t) + z * Math.sin(t), y, -x * Math.sin(t) + z * Math.cos(t)]
+interface Basis { right: number[]; up: number[]; toward: number[] }
+
+/** The camera's right, up, and towards-the-viewer as directions in the model's frame. */
+function basisOf(turn: number, tilt: number): Basis {
+  const t = (turn * Math.PI) / 180, e = (tilt * Math.PI) / 180
+  const level = [-Math.sin(t), 0, Math.cos(t)]
+  return {
+    right: [Math.cos(t), 0, Math.sin(t)],
+    up: [-level[0]! * Math.sin(e), Math.cos(e), -level[2]! * Math.sin(e)],
+    toward: [level[0]! * Math.cos(e), Math.sin(e), level[2]! * Math.cos(e)],
+  }
 }
 
-/** The camera that frames the whole model in a square picture of `size`, with a margin. */
-export function frameView(primitives: RestPrimitive[], turn: number, size: number): ViewCamera {
+const dot = (v: number[], x: number, y: number, z: number) => v[0]! * x + v[1]! * y + v[2]! * z
+
+function project(camera: ViewCamera, basis: Basis, x: number, y: number, z: number): [number, number, number] {
+  return [
+    (dot(basis.right, x, y, z) - camera.centreX) * camera.scale + camera.offsetX,
+    camera.offsetY - (dot(basis.up, x, y, z) - camera.centreY) * camera.scale,
+    dot(basis.toward, x, y, z),
+  ]
+}
+
+function extent(primitives: RestPrimitive[], basis: Basis) {
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
   for (const primitive of primitives) {
-    for (let vertex = 0; vertex < primitive.positions.length / 3; vertex++) {
-      const [x, y] = turned(primitive.positions[vertex * 3]!, primitive.positions[vertex * 3 + 1]!, primitive.positions[vertex * 3 + 2]!, turn)
+    const p = primitive.positions
+    for (let vertex = 0; vertex < p.length / 3; vertex++) {
+      const x = dot(basis.right, p[vertex * 3]!, p[vertex * 3 + 1]!, p[vertex * 3 + 2]!)
+      const y = dot(basis.up, p[vertex * 3]!, p[vertex * 3 + 1]!, p[vertex * 3 + 2]!)
       minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y)
     }
   }
-  const margin = Math.max(2, Math.round(size * 0.03))
-  const scale = (size - 2 * margin) / Math.max(maxX - minX, maxY - minY, 1e-9)
-  return { turn, size, scale, centreX: (minX + maxX) / 2, centreY: (minY + maxY) / 2 }
+  return { minX, maxX, minY, maxY }
 }
 
-const toPixel = (camera: ViewCamera, x: number, y: number) =>
-  [(x - camera.centreX) * camera.scale + camera.size / 2, camera.size / 2 - (y - camera.centreY) * camera.scale] as const
+/** The camera that frames the whole model in a square picture of `size`, with a margin. */
+export function frameView(primitives: RestPrimitive[], turn: number, size: number, tilt = 0): ViewCamera {
+  const { minX, maxX, minY, maxY } = extent(primitives, basisOf(turn, tilt))
+  const margin = Math.max(2, Math.round(size * 0.03))
+  const scale = (size - 2 * margin) / Math.max(maxX - minX, maxY - minY, 1e-9)
+  return { turn, tilt, width: size, height: size, scale, centreX: (minX + maxX) / 2, centreY: (minY + maxY) / 2, offsetX: size / 2, offsetY: size / 2 }
+}
 
 /**
  * Draw the model from one direction with its base colour textures, unlit and
@@ -503,9 +602,10 @@ const toPixel = (camera: ViewCamera, x: number, y: number) =>
  * sprite. Returns the picture and the depth of every pixel.
  */
 export function drawView(document: GlbDocument, primitives: RestPrimitive[], camera: ViewCamera, textures: Map<number, Raster>): DrawnView {
-  const { size } = camera
-  const pixels = new Uint8Array(size * size * 4)
-  const depth = new Float32Array(size * size).fill(-Infinity)
+  const { width, height } = camera
+  const basis = basisOf(camera.turn, camera.tilt)
+  const pixels = new Uint8Array(width * height * 4)
+  const depth = new Float32Array(width * height).fill(-Infinity)
   for (const primitive of primitives) {
     const base = primitive.material === null ? null : baseColourOf(document, primitive.material)
     const texture = base ? textures.get(base.image) ?? null : null
@@ -515,25 +615,20 @@ export function drawView(document: GlbDocument, primitives: RestPrimitive[], cam
     const { positions: p, indices } = primitive
     for (let at = 0; at + 2 < indices.length; at += 3) {
       const corners = [indices[at]!, indices[at + 1]!, indices[at + 2]!]
-      const projected = corners.map((c) => {
-        const [x, y, z] = turned(p[c * 3]!, p[c * 3 + 1]!, p[c * 3 + 2]!, camera.turn)
-        const [sx, sy] = toPixel(camera, x, y)
-        return [sx, sy, z] as const
-      })
-      const [a, b, c] = projected as [readonly [number, number, number], readonly [number, number, number], readonly [number, number, number]]
-      const den = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+      const [a, b, c] = corners.map((corner) => project(camera, basis, p[corner * 3]!, p[corner * 3 + 1]!, p[corner * 3 + 2]!)) as unknown as [number[], number[], number[]]
+      const den = (b[1]! - c[1]!) * (a[0]! - c[0]!) + (c[0]! - b[0]!) * (a[1]! - c[1]!)
       if (Math.abs(den) < 1e-12) continue
-      const x0 = Math.max(0, Math.floor(Math.min(a[0], b[0], c[0]))), x1 = Math.min(size - 1, Math.ceil(Math.max(a[0], b[0], c[0])))
-      const y0 = Math.max(0, Math.floor(Math.min(a[1], b[1], c[1]))), y1 = Math.min(size - 1, Math.ceil(Math.max(a[1], b[1], c[1])))
+      const x0 = Math.max(0, Math.floor(Math.min(a[0]!, b[0]!, c[0]!))), x1 = Math.min(width - 1, Math.ceil(Math.max(a[0]!, b[0]!, c[0]!)))
+      const y0 = Math.max(0, Math.floor(Math.min(a[1]!, b[1]!, c[1]!))), y1 = Math.min(height - 1, Math.ceil(Math.max(a[1]!, b[1]!, c[1]!)))
       for (let y = y0; y <= y1; y++) {
         for (let x = x0; x <= x1; x++) {
           const px = x + 0.5, py = y + 0.5
-          const l0 = ((b[1] - c[1]) * (px - c[0]) + (c[0] - b[0]) * (py - c[1])) / den
-          const l1 = ((c[1] - a[1]) * (px - c[0]) + (a[0] - c[0]) * (py - c[1])) / den
+          const l0 = ((b[1]! - c[1]!) * (px - c[0]!) + (c[0]! - b[0]!) * (py - c[1]!)) / den
+          const l1 = ((c[1]! - a[1]!) * (px - c[0]!) + (a[0]! - c[0]!) * (py - c[1]!)) / den
           const l2 = 1 - l0 - l1
           if (l0 < 0 || l1 < 0 || l2 < 0) continue
-          const z = l0 * a[2] + l1 * b[2] + l2 * c[2]
-          const at = y * size + x
+          const z = l0 * a[2]! + l1 * b[2]! + l2 * c[2]!
+          const at = y * width + x
           if (z <= depth[at]!) continue
           depth[at] = z
           let rgb = flat
@@ -553,7 +648,7 @@ export function drawView(document: GlbDocument, primitives: RestPrimitive[], cam
       }
     }
   }
-  return { camera, png: encodeImage({ width: size, height: size, pixels }), depth }
+  return { camera, png: encodeImage({ width, height, pixels }), depth }
 }
 
 /** Every distinct base colour image the model uses, decoded. */
@@ -567,19 +662,124 @@ export function baseColourTextures(document: GlbDocument): Map<number, Raster> {
   return textures
 }
 
+export interface SpriteFit {
+  camera: ViewCamera
+  /** How much the model's outline and the sprite's agree: shared pixels over either's, 0 to 1. */
+  overlap: number
+  /** Of the sprite's pixels, the share where the model is drawn in a matching colour, 0 to 1. */
+  agreement: number
+  /** The model drawn with its textures from the fitted camera, and which of its pixels match the sprite. */
+  drawn: DrawnView
+}
+
+/** The tilts tried when fitting a sprite: level, and raised in steps to a steep top-down. */
+export const FIT_TILTS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]
+const FIT_SCALES = [0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15]
+const FIT_SHIFT = 4
+/** How far apart two colours may be (RGB distance) and still count as the same paint. */
+export const AGREE_DISTANCE = 60
+
 /**
- * Carry PixelLab's maps of the drawn views onto a texture. A texel takes a
- * view's normal when the view sees it (its depth matches what the view drew
- * there) and faces it, weighted by how squarely to the power `power`. A
- * view's normal is in picture space (right, up, towards the viewer); its
- * sideways part is turned into the texel's tangent frame, so what is carried
- * is the detail, not the facing of the view.
+ * Line the model up with a sprite drawn from `turn`. For each camera tilt and
+ * a few scales around "the model's height is the sprite's", with the outlines'
+ * boxes centred and then shifted a few pixels each way, the model is drawn in
+ * its own colours and compared with the sprite pixel by pixel; the camera
+ * where the most sprite pixels are matched by the same paint wins. Matching
+ * colour, not outline, is what decides, since the texture was painted from
+ * art like this and a sprite's proportions (a big head, arms held otherwise)
+ * rarely match a mesh's. The returned `drawn.use` marks the pixels whose
+ * colours agree: only those carry the sprite's normals onto the model.
+ */
+export function fitSprite(document: GlbDocument, primitives: RestPrimitive[], sprite: Raster, turn: number, textures: Map<number, Raster> = baseColourTextures(document), tilts = FIT_TILTS): SpriteFit {
+  const { width, height } = sprite
+  let sx0 = Infinity, sx1 = -Infinity, sy0 = Infinity, sy1 = -Infinity
+  let opaque = 0
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (sprite.pixels[(y * width + x) * 4 + 3]! < 128) continue
+      opaque++
+      sx0 = Math.min(sx0, x); sx1 = Math.max(sx1, x + 1); sy0 = Math.min(sy0, y); sy1 = Math.max(sy1, y + 1)
+    }
+  }
+  if (!opaque) throw new Error("the sprite has no opaque pixels; its alpha must mark the figure")
+  const agrees = (model: Uint8Array, at: number, from: number) => {
+    if (sprite.pixels[at * 4 + 3]! < 128 || model[from * 4 + 3]! < 128) return false
+    return Math.hypot(sprite.pixels[at * 4]! - model[from * 4]!, sprite.pixels[at * 4 + 1]! - model[from * 4 + 1]!, sprite.pixels[at * 4 + 2]! - model[from * 4 + 2]!) < AGREE_DISTANCE
+  }
+  let best: { camera: ViewCamera; score: number } | null = null
+  for (const tilt of tilts) {
+    const { minX, maxX, minY, maxY } = extent(primitives, basisOf(turn, tilt))
+    for (const factor of FIT_SCALES) {
+      const camera: ViewCamera = {
+        turn, tilt, width, height, scale: factor * (sy1 - sy0) / Math.max(maxY - minY, 1e-9),
+        centreX: (minX + maxX) / 2, centreY: (minY + maxY) / 2, offsetX: (sx0 + sx1) / 2, offsetY: (sy0 + sy1) / 2,
+      }
+      const model = decodeImage(drawView(document, primitives, camera, textures).png).pixels
+      for (let dy = -FIT_SHIFT; dy <= FIT_SHIFT; dy++) {
+        for (let dx = -FIT_SHIFT; dx <= FIT_SHIFT; dx++) {
+          let score = 0
+          for (let y = Math.max(0, dy); y < Math.min(height, height + dy); y++) {
+            for (let x = Math.max(0, dx); x < Math.min(width, width + dx); x++) {
+              if (agrees(model, y * width + x, (y - dy) * width + x - dx)) score++
+            }
+          }
+          if (!best || score > best.score) best = { camera: { ...camera, offsetX: camera.offsetX + dx, offsetY: camera.offsetY + dy }, score }
+        }
+      }
+    }
+  }
+  const camera = best!.camera
+  const drawn = drawView(document, primitives, camera, textures)
+  const model = decodeImage(drawn.png).pixels
+  const use = new Uint8Array(width * height)
+  let both = 0, either = 0
+  for (let at = 0; at < width * height; at++) {
+    const inModel = model[at * 4 + 3]! >= 128, inSprite = sprite.pixels[at * 4 + 3]! >= 128
+    if (inModel && inSprite) both++
+    if (inModel || inSprite) either++
+    if (agrees(model, at, at)) use[at] = 1
+  }
+  drawn.use = use
+  return { camera, overlap: either ? both / either : 0, agreement: best!.score / opaque, drawn }
+}
+
+/**
+ * The sprite with the model's outline over it in red and the pixels that will
+ * not be used dimmed, for seeing how well a fit lined up.
+ */
+function fitPicture(sprite: Raster, drawn: DrawnView): Buffer {
+  const { width, height } = sprite
+  const pixels = Uint8Array.from(sprite.pixels)
+  if (drawn.use) {
+    for (let at = 0; at < width * height; at++) {
+      if (drawn.use[at]) continue
+      for (let k = 0; k < 3; k++) pixels[at * 4 + k] = Math.round(pixels[at * 4 + k]! * 0.3)
+    }
+  }
+  const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < width && y < height && drawn.depth[y * width + x] !== -Infinity
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!inside(x, y) || (inside(x - 1, y) && inside(x + 1, y) && inside(x, y - 1) && inside(x, y + 1))) continue
+      pixels.set([255, 40, 40, 255], (y * width + x) * 4)
+    }
+  }
+  return encodeImage({ width, height, pixels })
+}
+
+/**
+ * Carry PixelLab's maps of the views onto a texture. A texel takes a view's
+ * normal when the view sees it (its depth matches what the model drew there)
+ * and faces it, weighted by how squarely to the power `power`. A view's normal
+ * is in picture space (right, up, towards the viewer); its sideways part is
+ * turned into the texel's tangent frame, so what is carried is the detail, not
+ * the facing of the view.
  */
 export function detailFromViews(surface: TexelSurface, views: DrawnView[], maps: Buffer[], opts: { power?: number } = {}): DetailField {
   const power = opts.power ?? 4
   const { width, height } = surface
   const field = emptyField(width, height)
-  const decoded = views.map((view, index) => resample(decodeImage(maps[index]!), view.camera.size, view.camera.size))
+  const decoded = views.map((view, index) => resample(decodeImage(maps[index]!), view.camera.width, view.camera.height))
+  const bases = views.map((view) => basisOf(view.camera.turn, view.camera.tilt))
   const sum = new Float64Array(width * height * 3)
   for (let texel = 0; texel < width * height; texel++) {
     if (!surface.covered[texel]) continue
@@ -588,25 +788,40 @@ export function detailFromViews(surface: TexelSurface, views: DrawnView[], maps:
     let total = 0
     views.forEach((view, index) => {
       const { camera } = view
-      const t = (camera.turn * Math.PI) / 180
-      // The way back to the viewer, and the picture's right, in the model's frame.
-      const toward = [-Math.sin(t), 0, Math.cos(t)]
-      const facing = nx * toward[0]! + ny * toward[1]! + nz * toward[2]!
+      const basis = bases[index]!
+      const facing = dot(basis.toward, nx, ny, nz)
       if (facing < 0.15) return
-      const [x, y, z] = turned(px, py, pz, camera.turn)
-      const [sx, sy] = toPixel(camera, x, y)
+      const [sx, sy, z] = project(camera, basis, px, py, pz)
       const ix = Math.floor(sx), iy = Math.floor(sy)
-      if (ix < 0 || iy < 0 || ix >= camera.size || iy >= camera.size) return
+      if (ix < 0 || iy < 0 || ix >= camera.width || iy >= camera.height) return
       // Seen when nothing drawn in front is more than a pixel and a half nearer.
-      if (view.depth[iy * camera.size + ix]! - z > 1.5 / camera.scale) return
+      if (view.depth[iy * camera.width + ix]! - z > 1.5 / camera.scale) return
+      if (view.use && !view.use[iy * camera.width + ix]) return
       const map = decoded[index]!
-      const at = (iy * camera.size + ix) * 4
-      if (map.pixels[at + 3]! < 128) return
-      const [mx, my, mz] = decodeNormal(map.pixels, at)
-      const right = [Math.cos(t), 0, Math.sin(t)]
-      const dx = mx * right[0]!, dy = my, dz = mx * right[2]!
-      const tx = dx * surface.tangent[texel * 3]! + dy * surface.tangent[texel * 3 + 1]! + dz * surface.tangent[texel * 3 + 2]!
-      const ty = dx * surface.bitangent[texel * 3]! + dy * surface.bitangent[texel * 3 + 1]! + dz * surface.bitangent[texel * 3 + 2]!
+      if (map.pixels[(iy * camera.width + ix) * 4 + 3]! < 128) return
+      // Bilinear over the neighbouring pixels that may be used, so a small
+      // picture's normals blend across the texels each of its pixels covers.
+      const fx = sx - 0.5, fy = sy - 0.5
+      const bx = Math.floor(fx), by = Math.floor(fy)
+      let mx = 0, my = 0, mz = 0, mw = 0
+      for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) {
+        const qx = bx + ox, qy = by + oy
+        if (qx < 0 || qy < 0 || qx >= camera.width || qy >= camera.height) continue
+        const q = qy * camera.width + qx
+        if (map.pixels[q * 4 + 3]! < 128 || (view.use && !view.use[q])) continue
+        const w = (ox ? fx - bx : 1 - (fx - bx)) * (oy ? fy - by : 1 - (fy - by))
+        if (!(w > 0)) continue
+        const [nx2, ny2, nz2] = decodeNormal(map.pixels, q * 4)
+        mx += nx2 * w; my += ny2 * w; mz += nz2 * w; mw += w
+      }
+      if (!(mw > 0)) {
+        [mx, my, mz] = decodeNormal(map.pixels, (iy * camera.width + ix) * 4)
+      } else {
+        mx /= mw; my /= mw; mz /= mw
+      }
+      const d = [0, 1, 2].map((k) => mx * basis.right[k]! + my * basis.up[k]!)
+      const tx = d[0]! * surface.tangent[texel * 3]! + d[1]! * surface.tangent[texel * 3 + 1]! + d[2]! * surface.tangent[texel * 3 + 2]!
+      const ty = d[0]! * surface.bitangent[texel * 3]! + d[1]! * surface.bitangent[texel * 3 + 1]! + d[2]! * surface.bitangent[texel * 3 + 2]!
       const weight = Math.pow(facing, power)
       sum[texel * 3]! += tx * weight
       sum[texel * 3 + 1]! += ty * weight
@@ -738,7 +953,16 @@ export interface ModelNormalOptions extends NormalRequestOptions, ApplyOptions {
   views?: Array<string | number>
   /** `views` only: the side of each drawn view, 8 to 512. */
   size?: number
+  /** `sprites` only: the figure's own sprites, each with the direction it was drawn from. */
+  sprites?: Array<{ direction: string | number; png: Buffer }>
+  /** `sprites` only: leave out a sprite less of which the model matches in colour than this (0 to 1). */
+  minAgreement?: number
+  /** Pose the model at a moment of one of its animations first, to match the sprites' stance. */
+  pose?: ModelPose
 }
+
+/** Below this share of matching pixels a sprite is left out: too little of it lines up with the model to trust. */
+export const DEFAULT_MIN_AGREEMENT = 0.25
 
 export interface PlannedCall {
   /** What the picture is: "view south", "image 5 tile 0,0". */
@@ -758,6 +982,10 @@ export interface ModelNormalPlan {
   /** Generations the calls not already cached will cost. */
   cost: number
   dir: string
+  /** What may make the result poor, said before anything is spent. */
+  warnings: string[]
+  /** `sprites` only: how each sprite lined up with the model. */
+  fits?: Array<{ label: string; turn: number; tilt: number; overlap: number; agreement: number; png: Buffer }>
 }
 
 export const DEFAULT_VIEWS = ["south", "east", "north", "west"]
@@ -775,6 +1003,22 @@ const turnOf = (view: string | number): number => {
 }
 
 const viewName = (turn: number) => Object.entries(VIEW_TURNS).find(([, degrees]) => degrees === ((turn % 360) + 360) % 360)?.[0] ?? `${turn}deg`
+
+/** Where a model's own sprites are looked for: `<model>.sprites/` beside it, one `<direction>.png` each. */
+export function modelSpritesDir(modelFile: string): string {
+  return modelFile.replace(/\.glb$/i, "") + ".sprites"
+}
+
+/**
+ * The sprites in a folder, by file name: `south.png`, `north-east.png`, and so
+ * on (a PixelLab character's `rotations/` folder is laid out this way, and is
+ * looked in when the folder holds one). Other files are ignored.
+ */
+export async function readSpriteFolder(dir: string): Promise<Array<{ direction: string; png: Buffer; file: string }>> {
+  const folder = existsSync(path.join(dir, "rotations")) ? path.join(dir, "rotations") : dir
+  const names = (await readdir(folder)).filter((name) => name.toLowerCase().endsWith(".png") && VIEW_TURNS[name.slice(0, -4).toLowerCase()] !== undefined).sort()
+  return Promise.all(names.map(async (name) => ({ direction: name.slice(0, -4).toLowerCase(), png: await readFile(path.join(folder, name)), file: path.join(folder, name) })))
+}
 
 /** Where a model's PixelLab inputs and answers are kept: `<edit>.normal-map/`. */
 export function modelNormalDir(editFile: string): string {
@@ -805,7 +1049,7 @@ async function prepare(model: ProjectModel, opts: ModelNormalOptions): Promise<P
   for (const index of wanted) {
     if (!normalImages.some((image) => image.index === index)) throw new Error(`image ${index} is not one of the model's normal maps`)
   }
-  const primitives = restPrimitives(document)
+  const primitives = restPrimitives(document, opts.pose)
   const dir = path.join(modelNormalDir(model.editFile), opts.source)
   const surfaces = new Map<number, TexelSurface>()
   const tiles = new Map<number, Tile[]>()
@@ -823,7 +1067,42 @@ async function prepare(model: ProjectModel, opts: ModelNormalOptions): Promise<P
     surfaces.set(index, texelSurface(primitives, document, index, width, height))
   }
   let views: DrawnView[] = []
-  if (opts.source === "texture") {
+  let fits: ModelNormalPlan["fits"]
+  const warnings: string[] = []
+  if (opts.source === "sprites") {
+    if (!opts.sprites?.length) throw new Error("the sprites source needs the figure's sprites, each named by the direction it faces")
+    const minimum = opts.minAgreement ?? DEFAULT_MIN_AGREEMENT
+    const textures = baseColourTextures(document)
+    fits = []
+    const poor: string[] = []
+    for (const sprite of opts.sprites) {
+      const turn = turnOf(sprite.direction)
+      const label = `sprite ${viewName(turn)}`
+      const raster = decodeImage(sprite.png)
+      if (raster.width < 8 || raster.height < 8 || raster.width > TILE_MAX || raster.height > TILE_MAX) {
+        throw new Error(`${label} is ${raster.width}x${raster.height}; PixelLab's normal map takes 8 to ${TILE_MAX} px a side`)
+      }
+      const fit = fitSprite(document, primitives, raster, turn, textures)
+      const drawn = fit.drawn
+      fits.push({ label, turn, tilt: fit.camera.tilt, overlap: Math.round(fit.overlap * 1000) / 1000, agreement: Math.round(fit.agreement * 1000) / 1000, png: fitPicture(raster, drawn) })
+      if (fit.agreement < minimum) { poor.push(`${label} ${Math.round(fit.agreement * 100)}%`); continue }
+      if (fit.agreement < 0.5) {
+        warnings.push(`${label}: ${Math.round(fit.agreement * 100)}% of it lines up with the model in colour; only that part is used, so the detail will be patchy`)
+      }
+      const coarse = frameView(primitives, turn, TILE_MAX, fit.camera.tilt).scale / fit.camera.scale
+      if (coarse >= 3) {
+        warnings.push(`${label}: each of its pixels covers what ${Math.round(coarse)} pixels a side of a ${TILE_MAX} px drawn view would; the detail will be soft`)
+      }
+      views.push(drawn)
+      call(label, encodeImage(raster))
+    }
+    if (poor.length && views.length) warnings.push(`left out, too little of it lines up: ${poor.join(", ")}`)
+    if (!views.length) {
+      throw new Error(`no sprite lines up with the model well enough (${poor.join(", ")}; at least ${Math.round(minimum * 100)}% needed). ` +
+        "Pose the model like the sprites with --pose <animation>[@seconds], check the directions, or use --source views: " +
+        "sprites only help when the model was built to their proportions")
+    }
+  } else if (opts.source === "texture") {
     for (const index of wanted) {
       const material = materialsWithNormalImage(document, index)[0]
       const base = material ? baseColourOf(document, material.material) : null
@@ -841,7 +1120,7 @@ async function prepare(model: ProjectModel, opts: ModelNormalOptions): Promise<P
     views.forEach((view) => call(`view ${viewName(view.camera.turn)}`, view.png))
   }
   const cost = Math.round(calls.filter((entry) => !entry.cached).length * normalMapCost(opts.mode) * 100) / 100
-  return { plan: { source: opts.source, from: fromEdit ? "edit" : "built", images, calls, cost, dir }, document, primitives, surfaces, tiles, views }
+  return { plan: { source: opts.source, from: fromEdit ? "edit" : "built", images, calls, cost, dir, warnings, ...(fits ? { fits } : {}) }, document, primitives, surfaces, tiles, views }
 }
 
 /** What a run would send and cost, without sending anything. The pictures are written beside the cache for a look. */
@@ -849,6 +1128,7 @@ export async function planModelNormals(model: ProjectModel, opts: ModelNormalOpt
   const { plan } = await prepare(model, opts)
   await mkdir(plan.dir, { recursive: true })
   for (const entry of plan.calls) await writeFile(entry.cache.replace(/\.[0-9a-f]{16}\.normal\.png$/, ".png"), entry.png)
+  for (const fit of plan.fits ?? []) await writeFile(path.join(plan.dir, `${fit.label.replace(/[^a-z0-9]+/gi, "-")}.fit.png`), fit.png)
   return plan
 }
 

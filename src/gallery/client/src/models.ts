@@ -536,10 +536,14 @@ function normalDetailSection(model: GalleryModel, normals: NonNullable<GalleryMo
     ', on top of the relief already baked in. Written to the edited copy; the model as built is not touched.'));
   const controls = el('div', 'model-row');
   const source = el('select');
-  for (const [value, label] of [['views', 'From the figure, drawn from 4 sides'], ['texture', 'From each texture, as laid out']]) {
+  const choices: Array<[string, string]> = [['views', 'From the figure, drawn from 4 sides'], ['texture', 'From each texture, as laid out']];
+  const spriteCount = model.sprites?.directions.length ?? 0;
+  if (spriteCount) choices.push(['sprites', 'From its ' + spriteCount + ' sprite' + (spriteCount === 1 ? '' : 's') + ' in ' + model.sprites!.path]);
+  for (const [value, label] of choices) {
     const o = el('option', null, label); o.value = value; source.append(o);
   }
-  source.title = 'From the figure: smooth and consistent across seams, coarser, and parts no side can see stay as they were. From each texture: finer and complete, but pieces of the unwrap can disagree where they meet.';
+  source.title = 'From the figure: smooth and consistent across seams, coarser, and parts no side can see stay as they were. From each texture: finer and complete, but pieces of the unwrap can disagree where they meet.' +
+    (spriteCount ? ' From its sprites: only where a sprite lines up with the model in colour, and only as fine as the sprite; best when the model was built to the sprites\' proportions. pixelkiln model normal-map --source sprites --dry-run shows how each one lines up.' : '');
   const amount = el('input') as HTMLInputElement;
   amount.type = 'range'; amount.min = '0'; amount.max = '2'; amount.step = '0.25'; amount.value = '1';
   amount.title = 'How much of the detail goes on: 1 as PixelLab drew it, 2 twice as deep';
@@ -555,6 +559,7 @@ function normalDetailSection(model: GalleryModel, normals: NonNullable<GalleryMo
   const msg = el('span', 'msg');
   const price = () => {
     const calls = source.value === 'views' ? DETAIL_VIEWS
+      : source.value === 'sprites' ? spriteCount
       : normals.reduce((sum, image) => sum + Math.ceil(image.width! / 512) * Math.ceil(image.height! / 512), 0);
     return Math.round(calls * NORMAL_MAP_PRICE * 100) / 100;
   };

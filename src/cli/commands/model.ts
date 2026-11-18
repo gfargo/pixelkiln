@@ -1,4 +1,5 @@
 /** `model`: the gallery's 3D model actions, from the terminal. */
+import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { uvGuide } from "../../glb-guide.ts"
@@ -28,7 +29,10 @@ import {
   generateModelNormals,
   MODEL_NORMAL_SOURCES,
   modelNormalMapper,
+  modelSpritesDir,
+  parsePose,
   planModelNormals,
+  readSpriteFolder,
   type ModelNormalOptions,
   type ModelNormalSource,
 } from "../../pipeline/model-normals.ts"
@@ -148,7 +152,8 @@ export async function runModel(args: Args): Promise<void> {
  */
 async function runModelNormalMap(args: Args, model: ProjectModel, name: string): Promise<void> {
   const source = (args.source ?? "views") as ModelNormalSource
-  if (!(MODEL_NORMAL_SOURCES as readonly string[]).includes(source)) throw new UsageError(`--source is views (the default) or texture, not "${args.source}"`)
+  if (!(MODEL_NORMAL_SOURCES as readonly string[]).includes(source)) throw new UsageError(`--source is views (the default), texture, or sprites, not "${args.source}"`)
+  if (args.sprites && source !== "sprites") throw new UsageError("--sprites goes with --source sprites")
   if (args.mode !== undefined && !(NORMAL_MAP_MODES as readonly string[]).includes(args.mode)) throw new UsageError(`--mode is ${NORMAL_MAP_MODES.join(" or ")}, not "${args.mode}"`)
   if (args.kind !== undefined && !(NORMAL_MAP_KINDS as readonly string[]).includes(args.kind)) throw new UsageError(`--kind is one of ${NORMAL_MAP_KINDS.join(", ")}, not "${args.kind}"`)
   if (args.views && source !== "views") throw new UsageError("--views goes with --source views")
@@ -158,7 +163,26 @@ async function runModelNormalMap(args: Args, model: ProjectModel, name: string):
   // "Helm" here means Helm's normal map, not its base colour.
   const images = args.image?.split(",").map((ref) => ref.trim()).filter(Boolean)
     .map((ref) => resolveTextureImage(document, /^\d+$/.test(ref) || ref.includes(":") ? ref : `${ref}:normal`))
+  let sprites: ModelNormalOptions["sprites"]
+  if (source === "sprites") {
+    const given = args.sprites ?? modelSpritesDir(model.file)
+    if (given.includes("=")) {
+      sprites = await Promise.all(given.split(",").map(async (pair) => {
+        const [direction, file] = pair.split("=").map((part) => part.trim())
+        if (!direction || !file) throw new UsageError(`--sprites pairs are direction=file, not "${pair}"`)
+        return { direction, png: await readFile(path.resolve(file)) }
+      }))
+    } else {
+      if (!existsSync(given)) {
+        throw new UsageError(`no sprites at ${shown(given)}: pass --sprites <folder of south.png, east.png, …> or south=a.png,east=b.png, or put them in ${shown(modelSpritesDir(model.file))}`)
+      }
+      sprites = await readSpriteFolder(given)
+      if (!sprites.length) throw new UsageError(`${shown(given)} has no sprites named by direction (south.png, north-east.png, …)`)
+    }
+  }
   const options: ModelNormalOptions = {
+    ...(sprites ? { sprites } : {}),
+    ...(args.pose ? { pose: parsePose(args.pose) } : {}),
     source,
     ...(images?.length ? { images } : {}),
     ...(args.views ? { views: args.views.split(",").map((view) => view.trim()).filter(Boolean) } : {}),
@@ -173,8 +197,17 @@ async function runModelNormalMap(args: Args, model: ProjectModel, name: string):
   }
   const plan = await planModelNormals(model, options)
   const fresh = plan.calls.filter((call) => !call.cached).length
-  if (args.json && args.dryRun) { log(JSON.stringify({ ...plan, calls: plan.calls.map(({ png: _png, ...call }) => call) }, null, 2)); return }
-  log(`  ${name}: normal map detail from ${source === "views" ? `the figure drawn from ${plan.calls.length} directions` : "its textures"}, starting from ${plan.from === "edit" ? "the edited copy" : "the model as built"}`)
+  if (args.json && args.dryRun) {
+    log(JSON.stringify({ ...plan, calls: plan.calls.map(({ png: _png, ...call }) => call), fits: plan.fits?.map(({ png: _png, ...fit }) => fit) }, null, 2))
+    return
+  }
+  const from = source === "views" ? `the figure drawn from ${plan.calls.length} directions`
+    : source === "sprites" ? `${plan.calls.length} of its sprites` : "its textures"
+  log(`  ${name}: normal map detail from ${from}${args.pose ? ` posed at ${args.pose}` : ""}, starting from ${plan.from === "edit" ? "the edited copy" : "the model as built"}`)
+  for (const fit of plan.fits ?? []) {
+    log(`    ${fit.label}: ${Math.round(fit.agreement * 100)}% lines up in colour, outline overlap ${Math.round(fit.overlap * 100)}%, camera raised ${fit.tilt}°`)
+  }
+  for (const warning of plan.warnings) log(`    note: ${warning}`)
   log(`    for: ${plan.images.map((image) => `${image.name} (image ${image.image})`).join(", ")}`)
   log(`    PixelLab calls: ${plan.calls.length}${fresh < plan.calls.length ? ` (${plan.calls.length - fresh} already answered, free)` : ""}; cost ${plan.cost} generation${plan.cost === 1 ? "" : "s"} (${args.mode === "pro" ? "pro, 0.5 each" : "lite, 0.1 each"})`)
   log(`    pictures sent: ${shown(plan.dir)}`)

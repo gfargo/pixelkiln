@@ -21,7 +21,7 @@ import {
   saveModelTexture,
   type ProjectModel,
 } from "../pipeline/model-edit.ts"
-import { generateModelNormals, MODEL_NORMAL_SOURCES, planModelNormals, type NormalMapper } from "../pipeline/model-normals.ts"
+import { generateModelNormals, MODEL_NORMAL_SOURCES, modelSpritesDir, planModelNormals, readSpriteFolder, type NormalMapper } from "../pipeline/model-normals.ts"
 
 /** Served type of a `.glb`; the page fetches it and draws it itself. */
 export const MODEL_FILE_TYPE = "model/gltf-binary"
@@ -74,6 +74,8 @@ export interface GalleryModel {
   exportAbsolutePath: string
   /** An exported model waiting there that the edit was not adopted from. */
   exportWaiting: { bytes: number; modifiedAt: string } | null
+  /** The figure's own sprites in `<model>.sprites/`, by direction, for normal map detail; null when there is no such folder. */
+  sprites: { path: string; directions: string[] } | null
 }
 
 export interface GalleryModelMedia {
@@ -180,6 +182,15 @@ export async function describeModels(
     } catch {
       // No export waiting.
     }
+    const spritesDir = modelSpritesDir(model.file)
+    let sprites: GalleryModel["sprites"] = null
+    if (existsSync(spritesDir)) {
+      try {
+        sprites = { path: portableOutputPath(spritesDir, root), directions: (await readSpriteFolder(spritesDir)).map((sprite) => sprite.direction) }
+      } catch {
+        // An unreadable folder offers nothing.
+      }
+    }
     const relative = path.relative(outDir, model.file).split(path.sep).join("/")
     models.push({
       id: `model:${model.styleId}/${relative}`,
@@ -194,6 +205,7 @@ export async function describeModels(
       exportPath: portableOutputPath(exportFile, root),
       exportAbsolutePath: exportFile,
       exportWaiting,
+      sprites,
     })
   }
   return models
@@ -285,8 +297,11 @@ export async function applyModelRequest(
       : `  model export adopted: ${adopted.taken.length} texture(s) (${adopted.taken.join(", ") || "none changed"}) into ${shown(adopted.editFile)}`)
   } else if (request.action === "generate-model-normals") {
     if (!opts.normals) throw new ManifestEditError("this gallery spends no PixelLab generations; start it with --edit --budget <n> to allow normal map detail")
+    const sprites = request.source === "sprites" ? await readSpriteFolder(modelSpritesDir(model.file)).catch(() => []) : undefined
+    if (sprites && !sprites.length) throw new ManifestEditError(`no sprites in ${shown(modelSpritesDir(model.file))}: put south.png, east.png, and so on there`)
     const options = {
       source: request.source,
+      ...(sprites ? { sprites } : {}),
       ...(request.images?.length ? { images: request.images } : {}),
       ...(request.amount !== undefined ? { amount: request.amount } : {}),
       ...(request.replace ? { replace: true } : {}),

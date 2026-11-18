@@ -285,7 +285,12 @@ PixelLab's answer for a tile is already in the texture's tangent space; for a
 view, each texel visible to it (its depth matches the view's) takes the
 sideways part of the view's normal, turned from the picture's right and up
 into the texel's tangent and bitangent, weighted by how squarely the surface
-faces that view. The result is blended onto the existing map (whiteout) and
+faces that view. The figure's own sprites can stand in for drawn views: each
+is fitted by searching camera tilt, scale, and a few pixels of shift for the
+most sprite pixels matched by the model's own paint, and only matching pixels
+are used, since a sprite's proportions rarely match a mesh's. The model can be
+posed first at a moment of one of its animations (`restPrimitives` samples
+the channels and skins through the posed joints). The result is blended onto the existing map (whiteout) and
 saved through `saveModelTexture`, so the record and the rule are the same as a
 hand paint. The module never talks to PixelLab itself: it takes a function
 from picture to normal map, prices the calls first, and caches every answer

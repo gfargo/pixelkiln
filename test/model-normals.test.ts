@@ -6,6 +6,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { glbImageBytes, imageInfo, parseGlb } from "../src/glb.ts"
 import { readModelCompanion, type ProjectModel } from "../src/pipeline/model-edit.ts"
 import {
+  baseColourTextures,
+  drawView,
+  fitSprite,
+  frameView,
+  parsePose,
+  readSpriteFolder,
+  restPrimitives,
   applyDetail,
   decodeImage,
   generateModelNormals,
@@ -110,5 +117,53 @@ describe("model normal maps from PixelLab", () => {
     for (let texel = 0; texel < 16; texel++) normal[texel * 3 + 2] = 1
     const out = applyDetail(existing, { width: 4, height: 4, normal, weight: new Float32Array(16).fill(1) })
     for (let k = 0; k < 3; k++) expect(Math.abs(out.pixels[k]! - existing.pixels[k]!)).toBeLessThanOrEqual(2)
+  })
+
+  it("fits a sprite of the model itself, and uses it as a source", async () => {
+    const document = parseGlb(tinyGlb())
+    const primitives = restPrimitives(document)
+    const textures = baseColourTextures(document)
+    const sprite = drawView(document, primitives, frameView(primitives, 0, 48), textures)
+    const fit = fitSprite(document, primitives, decodeImage(sprite.png), 0, textures)
+    expect(fit.agreement).toBeGreaterThan(0.9)
+    expect(fit.overlap).toBeGreaterThan(0.9)
+    expect(fit.camera.tilt).toBe(0)
+
+    const plan = await planModelNormals(model, { source: "sprites", sprites: [{ direction: "south", png: sprite.png }] })
+    expect(plan.calls.map((call) => call.label)).toEqual(["sprite south"])
+    expect(plan.fits?.[0]?.agreement).toBeGreaterThan(0.9)
+    expect(existsSync(path.join(modelNormalDir(model.editFile), "sprites", "sprite-south.fit.png"))).toBe(true)
+    const result = await generateModelNormals(model, { source: "sprites", sprites: [{ direction: "south", png: sprite.png }], replace: true }, answering([220, 128, 180, 255]))
+    expect(result.companion.textures.map((t) => t.editor)).toEqual(["pixellab normal-map (sprites, replace)"])
+    expect((await savedNormal()).pixels[0]).toBeGreaterThan(170)
+  })
+
+  it("leaves out a sprite that does not line up, and says why when none does", async () => {
+    const stranger = solidPng(48, [0, 255, 0, 255])
+    await expect(planModelNormals(model, { source: "sprites", sprites: [{ direction: "south", png: stranger }] })).rejects.toThrow(/no sprite lines up with the model well enough \(sprite south 0%/)
+    await expect(planModelNormals(model, { source: "sprites" })).rejects.toThrow(/needs the figure's sprites/)
+    await expect(planModelNormals(model, { source: "sprites", sprites: [{ direction: "south", png: solidPng(600, [0, 0, 0, 255]) }] })).rejects.toThrow(/8 to 512 px/)
+  })
+
+  it("poses the model at a moment of an animation", () => {
+    const document = parseGlb(tinyGlb())
+    expect(parsePose("Wave@0.5")).toEqual({ animation: "Wave", time: 0.5 })
+    expect(parsePose("0")).toEqual({ animation: 0, time: 0 })
+    expect(() => parsePose("Wave@soon")).toThrow(/not a pose/)
+    const rest = restPrimitives(document)[0]!.positions
+    // The fixture's Wave turns the forearm bone 45 degrees halfway through; the hips quad stays put.
+    const waved = restPrimitives(document, { animation: "wave", time: 0.5 })[0]!.positions
+    expect(Array.from(waved.slice(0, 12))).toEqual(Array.from(rest.slice(0, 12)))
+    expect(Array.from(waved.slice(12, 24))).not.toEqual(Array.from(rest.slice(12, 24)))
+    expect(() => restPrimitives(document, { animation: "Dance", time: 0 })).toThrow(/no animation "Dance"; it has: Wave/)
+  })
+
+  it("reads a folder of sprites by direction, and a PixelLab rotations folder inside it", async () => {
+    const folder = path.join(dir, "models", "knight.sprites")
+    await mkdir(path.join(folder, "rotations"), { recursive: true })
+    await writeFile(path.join(folder, "rotations", "south.png"), solidPng(8, [1, 2, 3, 255]))
+    await writeFile(path.join(folder, "rotations", "north-east.png"), solidPng(8, [1, 2, 3, 255]))
+    await writeFile(path.join(folder, "rotations", "notes.png"), solidPng(8, [1, 2, 3, 255]))
+    expect((await readSpriteFolder(folder)).map((sprite) => sprite.direction)).toEqual(["north-east", "south"])
   })
 })

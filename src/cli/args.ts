@@ -140,6 +140,10 @@ export interface Args {
   image?: string
   /** model normal-map: directions to draw the model from, comma-separated. */
   views?: string
+  /** model normal-map: the figure's sprites, a folder of <direction>.png or direction=file pairs. */
+  sprites?: string
+  /** model normal-map: an animation moment to pose the model in, "<animation>[@seconds]". */
+  pose?: string
   /** model normal-map: how much of PixelLab's detail goes on, 0 to 2. */
   blend?: number
   /** model normal-map: PixelLab's detail alone instead of blended onto the baked relief. */
@@ -234,7 +238,7 @@ const VALUE_FLAGS = [
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--lib", "--margin", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
   "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
-  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend",
+  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
@@ -652,6 +656,8 @@ export function parseArgs(argv: string[]): Args {
     mode: get("--mode"),
     image: get("--image"),
     views: get("--views"),
+    sprites: get("--sprites"),
+    pose: get("--pose"),
     blend: numberOption("--blend", { min: 0, max: 2 }),
     replace: rest.includes("--replace"),
     strength: numberOption("--strength", { min: 0, max: 2 }),

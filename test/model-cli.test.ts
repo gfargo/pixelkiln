@@ -154,7 +154,7 @@ describe("pixelkiln model", () => {
     expect(dry).toContain("dry run: nothing sent")
     await expect(cli(dir, "model", "normal-map", "knight", "--source", "texture", "--budget", "0.05", "--yes")).rejects.toMatchObject({ stderr: expect.stringContaining("below this run's 0.1-generation cost") })
     await expect(cli(dir, "model", "normal-map", "knight", "--source", "texture", "--views", "south")).rejects.toMatchObject({ stderr: expect.stringContaining("--views goes with --source views") })
-    await expect(cli(dir, "model", "normal-map", "knight", "--source", "sprites")).rejects.toMatchObject({ stderr: expect.stringContaining("views (the default) or texture") })
+    await expect(cli(dir, "model", "normal-map", "knight", "--source", "photos")).rejects.toMatchObject({ stderr: expect.stringContaining("views (the default), texture, or sprites") })
 
     // Answer the one texture tile ahead of time: the run then sends nothing and needs no key.
     const plan = JSON.parse((await cli(dir, "model", "normal-map", "knight", "--image", "Sprite", "--source", "texture", "--dry-run", "--json")).stdout) as { cost: number; calls: Array<{ cache: string }> }
@@ -168,5 +168,20 @@ describe("pixelkiln model", () => {
     expect(run.stdout).toContain("saved Sprite normal map into art/edits/models/knight.glb")
     const record = JSON.parse(await readFile(path.join(dir, "art", "edits", "models", "knight.edit.json"), "utf8")) as { textures: Array<{ name: string; editor: string }> }
     expect(record.textures).toMatchObject([{ name: "Sprite normal map", editor: "pixellab normal-map (texture)" }])
+  })
+
+  it("takes the figure's sprites from <model>.sprites/ and says how each lined up", async () => {
+    await expect(cli(dir, "model", "normal-map", "knight", "--source", "sprites", "--dry-run")).rejects.toMatchObject({ stderr: expect.stringContaining("no sprites at art/models/knight.sprites") })
+    await expect(cli(dir, "model", "normal-map", "knight", "--sprites", "x")).rejects.toMatchObject({ stderr: expect.stringContaining("--sprites goes with --source sprites") })
+    const { baseColourTextures, drawView, frameView, restPrimitives } = await import("../src/pipeline/model-normals.ts")
+    const document = parseGlb(await readFile(modelFile))
+    const primitives = restPrimitives(document)
+    const sprite = drawView(document, primitives, frameView(primitives, 0, 48), baseColourTextures(document))
+    await mkdir(path.join(dir, "art", "models", "knight.sprites"), { recursive: true })
+    await writeFile(path.join(dir, "art", "models", "knight.sprites", "south.png"), sprite.png)
+    const dry = (await cli(dir, "model", "normal-map", "knight", "--source", "sprites", "--dry-run")).stdout
+    expect(dry).toContain("from 1 of its sprites")
+    expect(dry).toMatch(/sprite south: \d+% lines up in colour, outline overlap \d+%, camera raised 0°/)
+    expect(dry).toContain("cost 0.1 generation")
   })
 })

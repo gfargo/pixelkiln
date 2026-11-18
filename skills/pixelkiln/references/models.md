@@ -145,6 +145,15 @@ Which source:
   most 512 px (a 1024 texture is four calls). Finer and complete, but
   neighbouring unwrap pieces are read separately and can leave a line along a
   seam. Use it for one material with fine engraving, by `--image`.
+- `sprites`: the figure's own sprites, from `<model>.sprites/` (one
+  `<direction>.png` each) or `--sprites`. Each is lined up with the model by
+  matching colours, and only matching pixels are used. Run `--dry-run` first
+  and read the per-sprite "lines up in colour" figures and notes, and look at
+  `sprite-<direction>.fit.png`. Below about 50% the detail is patchy; low
+  resolution sprites (80 px) give soft detail. It suits a model built to the
+  sprites' proportions; on a mesh that was filled out differently (a chibi
+  sprite, an adult mesh) prefer `views`, and say why. `--pose <animation>[@s]`
+  poses the model to match sprites drawn in another stance.
 
 What to expect: in testing on a knight, both added relief to gold trim and
 embossing and little to plain cloth or fur; at `--blend 1` the change is

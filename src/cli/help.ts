@@ -263,6 +263,7 @@ Examples
   pixelkiln model export knight --image Helm
   pixelkiln model import knight --image Helm
   pixelkiln model normal-map knight --dry-run
+  pixelkiln model normal-map knight --source sprites --sprites art/knight/rotations --dry-run
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed

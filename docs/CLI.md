@@ -485,8 +485,8 @@ pixelkiln model export knight --image Helm [--out <dir>] [--no-open] [--json]
 pixelkiln model import knight --image Helm [--from <png>] [--json]
 pixelkiln model blender knight
 pixelkiln model adopt knight [--mode textures|whole] [--from <glb>] [--json]
-pixelkiln model normal-map knight [--source views|texture] [--image <material>[,…]] [--views south,east,…]
-                                  [--size <px>] [--blend <0-2>] [--replace] [--surface-detail <n>]
+pixelkiln model normal-map knight [--source views|texture|sprites] [--image <material>[,…]] [--views south,east,…]
+                                  [--size <px>] [--sprites <folder>|south=a.png,…] [--pose <animation>[@s]] [--blend <0-2>] [--replace] [--surface-detail <n>]
                                   [--detail-softness <n>] [--mode lite|pro] [--budget <n>] [--dry-run] [--yes] [--json]
 ```
 
@@ -538,6 +538,28 @@ pixelkiln model normal-map knight [--source views|texture] [--image <material>[,
     per tile (a 1024 texture is four). The detail is finer and covers every
     piece, but neighbouring pieces of the unwrap are read separately and can
     disagree where they meet, which shows as a line along the seam.
+  - `--source sprites` sends the figure's own sprites, the art the model was
+    made from: a folder of `<direction>.png` (`south.png`, `north-east.png`,
+    …; a PixelLab character's `rotations/` folder inside it is found too),
+    given with `--sprites <folder>` or as `--sprites south=a.png,east=b.png`,
+    and by default `<model>.sprites/` beside the model. Each sprite is lined up
+    with the model: the camera's tilt (sprites are often drawn from a little
+    above), scale, and position are searched for where the most sprite pixels
+    are matched by the model's own paint, and only those matching pixels pass
+    their normals on. The dry run prints, per sprite, how much lined up in
+    colour, the outline overlap, and the tilt found, and writes
+    `sprite-<direction>.fit.png` (the sprite, the model's outline in red, the
+    unused pixels dimmed). A sprite under 25% is left out, and with none left
+    the run is refused. One call per sprite. This only pays off when the model
+    was built to the sprites' proportions: on the sample knight, whose mesh has
+    adult proportions and level arms against chibi A-pose sprites at 80 px,
+    35–52% of each sprite lined up and the detail came out patchy and soft,
+    clearly worse than `views`. The plan says so before anything is spent.
+
+  `--pose <animation>[@seconds]` poses the model at a moment of one of its
+  animations first (names match without case or spacing: `Idle Loop` finds
+  `Idle_Loop`), for sprites drawn in a stance other than the rest pose; it
+  applies to any source.
 
   The detail is blended onto the normal map the model has ("whiteout": the
   sideways parts add, so the relief baked from the high-detail mesh stays);
@@ -902,7 +924,8 @@ judge a normal map: paint flat over a streak or a pinhole and watch it go.
 
 **Normal map detail (PixelLab)** in the drawer does what
 [`pixelkiln model normal-map`](#model) does: pick the source (the figure
-drawn from four sides, or each texture as laid out), the blend, and whether to
+drawn from four sides, each texture as laid out, or, when a `<model>.sprites/`
+folder is beside the model, its sprites), the blend, and whether to
 replace the baked relief, and the button shows the most the run can cost.
 After you confirm, the page sends that price with the request and the server
 refuses a run that would cost more. It needs `--edit --budget <n>` (or
@@ -2005,6 +2028,8 @@ Print the package version. `-v` is an alias.
 | `--part-shapes <n>` | normal-map | How much the sprite's 3D parts add, 0–2. |
 | `--surface-detail <n>` | normal-map/model normal-map | The art's light and dark as bumps, 0–2. |
 | `--views <list>` | model normal-map | Directions to draw the model from with `--source views`, comma-separated: `south`, `south-east`, `east`, `north-east`, `north`, `north-west`, `west`, `south-west`, or degrees. Default `south,east,north,west`. |
+| `--sprites <folder\|pairs>` | model normal-map | With `--source sprites`: a folder of `<direction>.png`, or `south=a.png,east=b.png`. Default `<model>.sprites/` beside the model. |
+| `--pose <animation>[@s]` | model normal-map | Pose the model at that moment of one of its animations before drawing or fitting. |
 | `--blend <n>` | model normal-map | How much of PixelLab's detail goes on, 0–2; default 1. |
 | `--replace` | model normal-map | Write PixelLab's detail alone instead of blending it onto the normal map's baked relief. |
 | `--detail-softness <n>` | normal-map/model normal-map | How far that detail is blurred, 0.6–3 px. |
@@ -2034,7 +2059,7 @@ Print the package version. `-v` is an alias.
 | `--name <name>` | init/font/vfx | Project name for the scaffolded manifest, the generated font's family name, or the effect's name in My effects. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--local` | adopt | Record local files as `imported` lock entries offline, with no provider key. |
-| `--source <name>` | adopt --local/model normal-map | adopt --local: where the art came from (`mcp`, `hand`, a tool name); default `external`. model normal-map: `views` (the default) or `texture`. |
+| `--source <name>` | adopt --local/model normal-map | adopt --local: where the art came from (`mcp`, `hand`, a tool name); default `external`. model normal-map: `views` (the default), `texture`, or `sprites`. |
 | `--object-id <id>` | adopt --local | The provider object id of the single asset being imported. |
 | `--tool <name>` | adopt --local | The tool call that made the art, recorded under `origin`. |
 | `--prompt <text>` | adopt --local | The prompt the art was rolled with; becomes the entry's prompt. |
