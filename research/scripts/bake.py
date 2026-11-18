@@ -17,7 +17,9 @@ Environment:
   RIM     how far, in view pixels, from an outline or depth jump a view starts to count (default 0, off: on the knight it left speckles where it pushed good views out)
   JUMP    a depth step between neighbouring view pixels, in mesh units, that counts as a jump (default 1.5)
   FLOOR   the least total weight a texel needs to count as seen (default 0.02)
-  TONE    1 moves each painted view's colours back to its sprite's mean and spread (default 1)
+  TONE    1 moves each painted view's colours to its reference's mean and spread. It helped a little when the
+          references were sprites (step 23). With redrawn references it turns greys teal, since a view shows more
+          of one colour than its reference does (default 0)
   MATCH   1 shifts each view's colour so views agree where they overlap (default 0: it moved colours away from the sprites)
   PALETTE a folder of sprites and their name, "<dir>:<name>": snap the texture to their colours
   COLOURS how many colours PALETTE keeps (default 32)
@@ -56,7 +58,7 @@ glb, views_file, out, name = sys.argv[1:5]
 R = int(sys.argv[5]) if len(sys.argv) > 5 else 1024
 env = os.environ.get
 POWER, RIM, JUMP, MATCH = float(env('POWER', '8')), float(env('RIM', '0')), float(env('JUMP', '1.5')), env('MATCH', '0') == '1'
-TONE = env('TONE', '1') == '1'
+TONE = env('TONE', '0') == '1'
 views = json.load(open(views_file))
 base = os.path.dirname(os.path.abspath(views_file))
 

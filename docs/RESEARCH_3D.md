@@ -43,6 +43,7 @@ Last updated 17 November 2026.
 | 33 | Make the redraws agree: one sheet for all eight, or each alone with the sprite's colours held | SDXL with a tile control model | Holding colours fixes the drift and keeps the detail; the one-sheet redraw agrees but is soft | Keep the colour hold. Drop the sheet. |
 | 34 | Mesh from redrawn pictures in place of smoothed sprites | SDXL redraw, Hunyuan3D-2mv | A round skull, a face, ears, arms and legs with shape, where there were flat facets | Keep. The largest gain in the mesh since step 22. |
 | 35 | Rebuild the body and all four items from redrawn pictures, end to end | SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | A sculpted body and detailed helm, armour and cape on the same skeleton; one sleeve short, a gap at the hip, a teal fur collar | Keep as the viewer's model. The item masks still come from the sprites and no longer fit exactly. |
+| 36 | Move each item's edge to where the paint puts it, and stop the bake shifting colours | Our scripts | Skin scraps and the hip gap are gone; the collar is grey again, the helm black, the underwear grey | Keep. One sleeve still ends at mid forearm. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -875,13 +876,37 @@ The assembled character with hidden skin left out, step 30 above and the rebuild
 - **The body is sculpted and painted,** with a face, ears, muscle and a round skull. Dark smears run along the tops of the arms, where the redraws' outlines were baked in.
 - **The helm and leg armour are the best pieces so far:** plates, rivets, trim and a visor, on smooth shapes.
 - **One sleeve of the cuirass ends at mid forearm,** and there is bare skin at one hip between the cuirass and the leg armour. The item masks are still the sprites' layers, and a redrawn figure is not pixel for pixel where the sprite was, so the mask lands a pixel or two off on the new mesh.
-- **The fur collar is teal.** The colour hold of step 33 covers only pixels inside the sprite, and with the model's own outline the collar grew past it.
+- **The fur collar is teal.** This was first put down to the colour hold of step 33 not reaching outside the sprite. Step 36 shows the redraw is grey and the bake is what turns it teal.
 - **The cuts carry scraps of skin** at the hands and neck, for the same reason as the short sleeve.
 - **The file is 6.0 MB** with 512 pixel textures (10.8 MB at 1024), and passes the glTF validator with no errors or warnings.
 
 In the viewer the rebuilt model loads, walks, and its items switch off. It is shown smooth by default now, with the pixel look as a switch.
 
 **Verdict.** Keep as the viewer's model. The next fault to fix is the masks: they should be made from the redraws, not the sprites.
+
+## 36. Item edges from the paint, and a colour fault in the bake
+
+**Question.** Step 35 left three faults: skin where an item should be, scraps of skin on the items, and a teal collar. Are the masks to blame, as supposed?
+
+**Setup.**
+
+- *Edges.* [`scripts/cut_item.py`](../research/scripts/cut_item.py) takes the bare body's painted mesh as `BODY`. The mask from the sprites still says roughly where the item is. Within three sprite pixels of the mask's edge the paint decides: a triangle painted as skin is left out, and a triangle is taken in when it is not skin and is painted unlike the bare body at the same place. Skin is learned from the body's own texture, as a spread of colour with brightness left out. Both meshes are in the same frame, so "the same place" is the nearest point of the body.
+- *Why two tests.* The first version took in anything near the edge that was not skin, and the cuirass grew a skirt of underwear. The underwear is on both meshes, so comparing against the body leaves it alone.
+- *Colour.* The collar was traced from sprite to redraw to painted view to texture. It is grey in all but the last.
+
+**Result.** The cuirass cut with the sprite mask alone, and with the edge moved:
+
+![The cuirass cut by the sprite mask, and with its edge moved to where the paint puts it](../website/public/research/3d/masks-cuirass.png)
+
+The assembled character: step 35 with the new edges, the same with the bake corrected, and the bare body.
+
+![The assembled knight with new edges, then with the bake's colour shift off, and the bare body](../website/public/research/3d/masks-and-colour.png)
+
+- **The scraps of hand and neck are gone,** and so is the bare patch at the hip. Each cut moved about a thousand triangles each way.
+- **The teal was `bake.py`'s `TONE`,** not the redraw. `TONE` moves each painted view's colours to match its reference's average, one channel at a time. It was added in step 23, when the references were sprites, as a small gain. A painted view of the back shows more red cape than its reference does, so matching averages takes red out of everything else and grey fur goes teal. With it off the collar is grey, the helm is black and not blue, and the underwear is grey. The blue cast noted in steps 29 and 32 was the same fault. `TONE` is now off unless asked for.
+- **One cuirass sleeve still ends at mid forearm.** The worn mesh's arm is thinner than the body's there, and the edge rule only reaches three pixels.
+
+**Verdict.** Keep both. The viewer's model is rebuilt with them, 6.0 MB.
 
 ## What has not worked, in one place
 
@@ -912,7 +937,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
 - **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
 - **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
-- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Steps 33 to 35 continue it. Still to do: item masks made from the redraws (step 35's short sleeve and skin scraps), the colour hold outside the sprite's outline (the teal collar), a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture and the file shrinks.
+- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Steps 33 to 35 continue it. Step 36 fixes the item edges and a colour fault. Still to do: the short sleeve, a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture and the file shrinks.
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).

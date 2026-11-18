@@ -150,7 +150,10 @@ for d in dirs:
         reach = binary_dilation(edge > 0.5, iterations=round(2.5 * SIZE / side))
         core = binary_erosion(edge > 0.5, iterations=round(1.5 * SIZE / side))  # well inside the sprite is always the figure
         alpha = gaussian_filter(((~ground & reach) | core).astype(np.float32), 1.2)
-        drawn = np.where((alpha > 0.05)[..., None] & (edge < 0.05)[..., None], raw, drawn)  # outside the sprite there is no sprite colour to keep
+        # Just outside the sprite, the held colours are still those of the sprite's nearest edge, which is what
+        # a figure drawn a little larger should have. Only well away from the sprite is there nothing to hold.
+        far = gaussian_filter(edge, SIZE / float(env('COLOUR_SCALE', '40'))) < 0.02
+        drawn = np.where((far & (alpha > 0.05))[..., None], raw, drawn)
     cut = Image.fromarray(np.dstack([drawn, (alpha * 255).astype(np.uint8)]))
     grow = SIZE / side  # the whole frame at the same scale, with the figure back where it was
     frame = Image.new('RGBA', (round(wholes[d].width * grow), round(wholes[d].height * grow)))
