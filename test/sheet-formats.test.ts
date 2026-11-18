@@ -173,7 +173,7 @@ describe("--format on the CLI", () => {
     expect(parseArgs(["mount", "--format", "godot"]).format).toBe("godot")
     expect(parseArgs(["export", "--format", "tiled"]).format).toBe("tiled")
     expect(() => parseArgs(["pack", "--format", "tiled"])).toThrow(/generic, aseprite, or godot/)
-    expect(() => parseArgs(["export", "--format", "aseprite"])).toThrow(/generic, tiled, or godot/)
+    expect(() => parseArgs(["export", "--format", "aseprite"])).toThrow(/generic, tiled, godot, or ldtk/)
   })
 
   it("pack --inputs writes the Aseprite JSON or the Godot resource beside the sheet", async () => {

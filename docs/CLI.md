@@ -42,7 +42,7 @@ Which command:
 | stop tracking a hand edit | `pixelkiln edit detach --only anvil` |
 | build a sprite sheet | `pixelkiln pack --style base` |
 | place sprites on a sheet at declared cells | `pixelkiln mount --style base` |
-| export a tileset for Tiled or Godot | `pixelkiln export --style ground --format tiled` |
+| export a tileset for Tiled, Godot or LDtk | `pixelkiln export --style ground --format tiled` |
 | get a sheet Phaser, Unity, or Godot loads as animations | `pixelkiln pack --style hero --format aseprite` or `--format godot` |
 | check the art against the style's palette and grid | `pixelkiln audit --style base` |
 | produce the palette-clean, grid-true final art | `pixelkiln refine` then `pixelkiln refine approve --from <record> --reviewer "Name"` |
@@ -1271,8 +1271,8 @@ is a single frame.
 
 ### `export`
 
-Build a structural tile atlas plus generic JSON, Tiled TSJ, or Godot TRES
-metadata and a provenance companion.
+Build a structural tile atlas plus generic JSON, Tiled TSJ, Godot TRES, or LDtk
+project metadata and a provenance companion.
 
 ```bash
 pixelkiln export --style ground --only terrain --format tiled --columns 8
@@ -2147,7 +2147,7 @@ Print the package version. `-v` is an alias.
 | `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/normal-map/vfx/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed, pixelated, or normal-map PNG, the effect's `<base>.png`/`.gif`/`.json`/`.vfx.json`, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
-| `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, or `godot` (TileSet). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
+| `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, `godot` (TileSet), or `ldtk` (project with auto-rules). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
 | `--output-role <role>` | pack | Include named structural roles; repeatable. |
 | `--primary-only` | pack | Include only unambiguous primary/single outputs. |
 | `--max-distance <n>` | audit | Absolute palette-distance ceiling. |

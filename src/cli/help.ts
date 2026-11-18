@@ -139,7 +139,7 @@ Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
   --port <n>          Local review/gallery server port (default: choose a free port)
   --inputs <path>     pack/quality snapshot: JSON input list; needs --out
-  --format <format>   export: generic (default), tiled, or godot (TileSet)
+  --format <format>   export: generic (default), tiled, godot (TileSet), or ldtk
                       pack/mount: generic (default), aseprite, or godot (SpriteFrames)
   --output-role <r>   pack: include only this output role (repeatable)
   --primary-only      pack: include only unambiguous primary/single outputs

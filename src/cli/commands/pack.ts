@@ -248,7 +248,7 @@ export async function runExport(args: Args): Promise<void> {
     const style = loaded.manifest.styles[spec.styleId]!
     const defaultBase = path.resolve(manifestDir, style.outDir, `${spec.assetId}-tileset`)
     const base = args.out
-      ? path.resolve(args.out.replace(/\.(?:png|json|tsj|tres)$/i, ""))
+      ? path.resolve(args.out.replace(/\.(?:png|json|tsj|tres|ldtk)$/i, ""))
       : defaultBase
     const result = exportTileset(entry, spec, {
       format,
