@@ -164,6 +164,9 @@ def add(array, kind='SCALAR', limits=False):
 added = []
 for clip in library['animations']:
     if clip['name'] not in WANT: continue
+    # Godot drops a trailing _Loop on import, so the library's Walk_Loop would collide with a Walk already here.
+    for mine in character['animations']:
+        if mine['name'] == clip['name'].removesuffix('_Loop'): mine['name'] = 'First_' + mine['name']
     channels = {}
     for channel in clip['channels']:
         sampler = clip['samplers'][channel['sampler']]

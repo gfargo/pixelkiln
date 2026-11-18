@@ -51,6 +51,7 @@ Last updated 17 November 2026.
 | 41 | Thin every part and bake the paint and a normal map onto the light mesh | Our script | 16,496 triangles for 79,819 and 2.1 MB for 6.3, with no visible loss in an unlit render | Keep. The viewer's model is the light one. |
 | 42 | A standard humanoid skeleton | Our script, Godot's humanoid profile | Twenty-one bones; every bone Godot's profile requires is found by name, under the right parent | Keep. No stock animation has been put on it yet. |
 | 43 | Put stock animations on the skeleton | Quaternius's Universal Animation Library (CC0), our script | Eleven library animations play on the knight: idle, walk, jog, sprint, sword attack, death and others | Keep. The character now moves like a game character. |
+| 44 | Paint views from above and below as well | Hunyuan3D paint stage, our bake | The dark streaks on arm tops, shoulders and heads are gone | Keep. The viewer's model is rebuilt with it. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1093,6 +1094,38 @@ Not done: putting a stock animation on it. That needs an animation library to te
 Not checked: feet sliding on the ground, hands (the character has no finger bones, so a grip is a flat hand), the cape through a roll, the animations in Godot, and the other 32 in the library.
 
 **Verdict.** Keep. A standard skeleton plus a retarget gives the character a library of motion for nothing.
+
+## 44. Views from above and below
+
+**Question.** Since step 23 the body has had dark smears along the tops of its outstretched arms, and dark patches on shoulders and the top of the head. Why, and can the painter fix them?
+
+**Setup.**
+
+- *The cause.* Every camera in a paint pass is level with the character. Nothing looks down on the top of a level arm, so its texels are seen only edge-on, where a painted view shows the figure's dark outline.
+- *The fix.* Each pass paints six views and three were kept (the sprite's, and one to each side). Two of the spare cameras now look from 45 degrees above and below the sprite's direction: `TOP=45` in `hunyuan3d_paint_turn.py`, five views kept a pass, forty a mesh. The paint node takes only 20, 45 or 90 degrees; 40 fails.
+- *The bake.* `bake.py` reads each view's tilt. It tries the tilt both ways up when it places a view, as it already does for mirroring, and keeps the one that matches the node's own render.
+
+A pass for the south sprite: the level view, the view from above, the view from below, and the node's render of the mesh from above.
+
+![A level painted view, one from above, one from below, and the mesh seen from above](../website/public/research/3d/top-views-painted.png)
+
+**Result.** The body seen from 35 degrees above, before and after:
+
+![The body from above with level views only, and with views from above and below](../website/public/research/3d/top-views-body.png)
+
+The assembled character from the same height, before and after:
+
+![The assembled knight from above, before and after](../website/public/research/3d/top-views-assembled.png)
+
+- **The smears are gone** from the arms and shoulders, and the top of the head is skin.
+- **The model invents the top views plausibly:** the reference shows a front, and it paints the same figure seen from above.
+- **Time is unchanged,** about 110 seconds a direction, since the six views were being painted anyway.
+- **The viewer's model is rebuilt from these textures,** thinned and animated as in steps 41 to 43: 16,498 triangles, 2.3 MB, valid, and it imports into Godot 4.7.2 with twelve animations.
+- **Godot found a clash.** It drops a trailing `_Loop` from animation names, so the library's `Walk_Loop` collided with our own `Walk`. `retarget.py` now renames ours `First_Walk`.
+
+Not checked: the rebuilt model in the browser, and undersides such as the soles and under the chin.
+
+**Verdict.** Keep. `TOP=45` should be the usual setting.
 
 ## What has not worked, in one place
 

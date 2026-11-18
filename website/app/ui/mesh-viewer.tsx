@@ -309,7 +309,7 @@ export function MeshViewer() {
         helper.visible = false;
         scene.add(helper);
         mixer = new THREE.AnimationMixer(gltf.scene);
-        const first = gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
+        const first = gltf.animations.find((entry) => entry.name === "Walk_Loop") ?? gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
         if (first) {
           action = mixer.clipAction(first);
           action.play();
@@ -456,7 +456,7 @@ export function MeshViewer() {
             <div className="builder-options">
               {clips.map((name) => (
                 <button key={name} type="button" className="builder-option" aria-pressed={clip === name} onClick={() => { setClip(name); controls.current?.setClip(name); }}>
-                  {name === "Walk" ? "First walk" : name.replaceAll("_", " ").replace(/ Loop$/, "")}
+                  {name.replaceAll("_", " ").replace(/ Loop$/, "")}
                 </button>
               ))}
             </div>

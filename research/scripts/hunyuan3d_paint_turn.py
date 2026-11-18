@@ -22,7 +22,8 @@ Environment:
   SEED     (default 1024)
   TEXTURE  texture size (default 1024)
   SPREAD   also keep the views this many degrees to either side of each sprite's (default 0, off)
-  TOP      with SPREAD: also keep views from this many degrees above and below each sprite's (default 0, off)
+  TOP      with SPREAD: also keep views from this many degrees above and below each sprite's (default 0, off).
+           The paint node takes only 20, 45 or 90.
   REF      hard (default) enlarges the sprite with hard pixel edges for the reference; smooth rounds them
   STAGE    paint, bake or both (default both). The bake here is the node's own; bake.py does it on
            this machine from the <name>.views.json this script writes, with control over rims and seams.
