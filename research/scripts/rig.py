@@ -6,7 +6,8 @@ The .glb comes from texture.py, the rig from carve.ts run with an anchors file (
 estimates in each view, triangulated to 3D), the voxels and camera from carve.ts with DUMP=1.
 Needs numpy, pillow, trimesh.
 
-The skeleton is fifteen bones named the way game engines name a humanoid (Hips, Spine, Head, LeftUpperArm ...).
+The skeleton is twenty-one bones named the way game engines name a humanoid (Hips, Spine, Chest, Neck, Head,
+LeftShoulder, LeftUpperArm ... LeftToes); BONES=15 gives the first, smaller set without chest, neck, shoulders or toes.
 Skin weights come from distance to each bone. Given the carved voxels, that is straight-line distance with a
 penalty when the line leaves the body, so an arm hanging beside the torso is not pulled along by the spine.
 Given "-" for the voxels, the mesh itself is filled in and distance is measured through the inside of the body:
@@ -25,6 +26,8 @@ Environment:
   FIT      how far above the skin an item is moved when it lands inside the body, in sprite pixels (default 0.6; 0 is off)
   BURIED   how deep an inward-facing item triangle must be to be dropped (default 1.5)
   SKIN     also write this .npz for cards.py: the body in the sprites' frame and the bone that owns each vertex
+  TEX_ITEM, TEX_NORMAL   the same for items' colour textures and for normal maps, when they should differ from TEX
+  JPEG     write textures as JPEG at this quality (for example 90) in place of PNG: far smaller for painted textures
   TEX      shrink textures to this many pixels a side
   PALETTE  <sprite-dir>:<name>, the sprites whose colours are stored on the materials; COLOURS of them (default 24)
   CELL     the size of each preview picture
@@ -44,9 +47,12 @@ preview = sys.argv[6] if len(sys.argv) > 6 else None
 mesh = trimesh.load(glb_in, force="mesh", process=False)
 g = np.asarray(mesh.vertices, np.float64); faces = np.asarray(mesh.faces)
 uv = np.asarray(mesh.visual.uv, np.float64)
-texture = mesh.visual.material.baseColorTexture.convert("RGBA")
-if os.environ.get("TEX"):  # shrink the texture to this many pixels a side, to keep the file small
-    texture = texture.resize((int(os.environ["TEX"]),) * 2, Image.LANCZOS)
+def sized(picture, key="TEX"):  # shrink a texture to this many pixels a side, to keep the file small
+    if picture is not None and os.environ.get(key) and picture.width > int(os.environ[key]): picture = picture.resize((int(os.environ[key]),) * 2, Image.LANCZOS)
+    return picture
+texture = sized(mesh.visual.material.baseColorTexture.convert("RGBA"))
+relief = sized(getattr(mesh.visual.material, "normalTexture", None), "TEX_NORMAL")  # a normal map, from thin.py
+given_normals = np.asarray(mesh.vertex_normals, np.float32) if relief is not None else None  # thin.py's smooth normals, which its normal map was baked against
 world = np.stack([g[:, 0], -g[:, 2], g[:, 1]], 1)  # glTF (x, up, -y) back to the sprites' frame (x, y, up)
 GEODESIC = vox_file == "-"
 J = {j["label"]: np.array([j["x"], j["y"], j["z"]]) for j in json.load(open(rig_file))["joints"]}
@@ -76,12 +82,31 @@ def past(a, b, by):  # a point `by` beyond b on the line from a
     d = b - a; return b + d / (np.linalg.norm(d) + 1e-9) * by
 
 # name, parent, where the joint is, where its bone ends
-BONES = [("Hips", None, hips, mid(hips, neck)), ("Spine", "Hips", mid(hips, neck), neck), ("Head", "Spine", neck, top)]
+# BONES=15 is the first skeleton of this note. The default adds the bones a standard humanoid has besides
+# (chest, neck, shoulders, toes), under the names Unity's and Godot's humanoid profiles use, so that an engine
+# can map the skeleton by name and put its stock animations on it.
+FULL = os.environ.get("BONES", "humanoid") != "15"
+along = lambda a, b, t: a + (b - a) * t
+if FULL:
+    floor_z = world[:, 2].min(); head_base = along(neck, head, 0.45)
+    BONES = [("Hips", None, hips, along(hips, neck, 0.3)), ("Spine", "Hips", along(hips, neck, 0.3), along(hips, neck, 0.62)),
+             ("Chest", "Spine", along(hips, neck, 0.62), neck), ("Neck", "Chest", neck, head_base), ("Head", "Neck", head_base, top)]
+else:
+    BONES = [("Hips", None, hips, mid(hips, neck)), ("Spine", "Hips", mid(hips, neck), neck), ("Head", "Spine", neck, top)]
 for side, s in (("Left", "LEFT"), ("Right", "RIGHT")):
     sh, el, wr = J[s + " SHOULDER"], J[s + " ELBOW"], J[s + " ARM"]
     hp, kn, an = J[s + " HIP"], J[s + " KNEE"], J[s + " LEG"]
-    BONES += [(side + "UpperArm", "Spine", sh, el), (side + "LowerArm", side + "UpperArm", el, wr), (side + "Hand", side + "LowerArm", wr, past(el, wr, 3)),
-              (side + "UpperLeg", "Hips", hp, kn), (side + "LowerLeg", side + "UpperLeg", kn, an), (side + "Foot", side + "LowerLeg", an, an + down * 3 + np.array([0, -2.0, 0]))]
+    arm_root = "Spine"
+    if FULL:
+        collar = along(neck, sh, 0.3) - np.array([0, 0, 0.08 * np.linalg.norm(neck - hips)])
+        BONES.append((side + "Shoulder", "Chest", collar, sh)); arm_root = side + "Shoulder"
+    BONES += [(side + "UpperArm", arm_root, sh, el), (side + "LowerArm", side + "UpperArm", el, wr), (side + "Hand", side + "LowerArm", wr, past(el, wr, 3)),
+              (side + "UpperLeg", "Hips", hp, kn), (side + "LowerLeg", side + "UpperLeg", kn, an)]
+    if FULL:
+        ball = np.array([an[0], an[1] - 0.55 * (an[2] - floor_z) - 1.0, floor_z + 0.25 * (an[2] - floor_z)])  # the ball of the foot, ahead of the ankle
+        BONES += [(side + "Foot", side + "LowerLeg", an, ball), (side + "Toes", side + "Foot", ball, ball + np.array([0, -0.6 * np.linalg.norm(ball - an), 0]))]
+    else:
+        BONES.append((side + "Foot", side + "LowerLeg", an, an + down * 3 + np.array([0, -2.0, 0])))
 names = [b[0] for b in BONES]; parent = [names.index(b[1]) if b[1] else -1 for b in BONES]
 head_pos = np.array([b[2] for b in BONES]); tail_pos = np.array([b[3] for b in BONES])
 
@@ -153,6 +178,8 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
     part = trimesh.load(file, force="mesh", process=False)
     pg = np.asarray(part.vertices, np.float64); pw = np.stack([pg[:, 0], -pg[:, 2], pg[:, 1]], 1)
     pf = np.asarray(part.faces); puv = np.asarray(part.visual.uv, np.float64)
+    prelief = sized(getattr(part.visual.material, "normalTexture", None), "TEX_NORMAL")
+    pnormals = np.asarray(part.vertex_normals, np.float32) if prelief is not None else None
     if os.environ.get("ALIGN", "1") == "1" and fit_kind != "loose":
         # The item came from a mesh fitted to the sprites on its own, and can sit a pixel or two off the body
         # along an arm, where the outline barely changes. Slide it until it is the same distance from the skin
@@ -173,6 +200,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         # A buried triangle that faces the way out of the body is the item's outside, drawn too small: keep it.
         pf = pf[~((depth[pf] < -BURIED).all(1) & (facing < 0.3))]
         used, index = np.unique(pf, return_inverse=True); pw, puv, pf = pw[used], puv[used], index.reshape(-1, 3)
+        if pnormals is not None: pnormals = pnormals[used]
         first = body_distance(pw)[0]
         want = np.clip(FIT + 0.08 * first, 0.15, FIT)  # what was deeper stays underneath what was above it
         for _ in range(6):
@@ -185,15 +213,14 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         if len(banned) == len(names): sys.exit(f"{label}: none of {allowed} is a bone; bones are {names}")
         pd[:, banned] = 1e9
     pj, pwt = skin(pd)
-    ptex = part.visual.material.baseColorTexture.convert("RGBA")
-    if os.environ.get("TEX"): ptex = ptex.resize((int(os.environ["TEX"]),) * 2, Image.LANCZOS)
+    ptex = sized(part.visual.material.baseColorTexture.convert("RGBA"), "TEX_ITEM" if os.environ.get("TEX_ITEM") else "TEX")
     # Which of the body's vertices this item covers: those with the item's surface within COVER sprite pixels.
     # A loose item (a cape) covers nothing, since it swings away from what is behind it.
     covers = np.zeros(len(world), bool)
     if fit_kind != "loose":
         cloud = trimesh.sample.sample_surface(trimesh.Trimesh(pw, pf, process=False), 300000, seed=5)[0]
         covers = cKDTree(cloud).query(world)[0] < float(os.environ.get("COVER", "1.2"))
-    ITEMS.append({"name": label, "covers": covers, "world": pw, "faces": pf, "uv": puv, "joints": pj, "weights": pwt, "texture": ptex})
+    ITEMS.append({"name": label, "covers": covers, "world": pw, "faces": pf, "uv": puv, "joints": pj, "weights": pwt, "texture": ptex, "relief": prelief, "given_normals": pnormals})
 
 # ---- to metres, y up, facing +z
 height = world[:, 2].max() - world[:, 2].min(); S = 1.8 / height; floor = world[:, 2].min()
@@ -202,7 +229,7 @@ pos = gl(world).astype(np.float32); jpos = gl(head_pos)
 if os.environ.get("SKIN"):  # what cards.py needs: the body in the sprites' frame, and the bone that owns each vertex
     np.savez(os.environ["SKIN"], world=world, faces=faces, owner=joints_attr[np.arange(len(world)), weights_attr.argmax(1)],
              names=np.array(names), head=head_pos, tail=tail_pos, scale=S, floor=floor)
-normals = trimesh.Trimesh(pos, faces, process=False).vertex_normals.astype(np.float32)
+normals = given_normals if given_normals is not None else trimesh.Trimesh(pos, faces, process=False).vertex_normals.astype(np.float32)
 
 # ---- a walk: thighs and arms swing, knees bend on the back swing
 def quat_x(deg): r = math.radians(deg) / 2; return [math.sin(r), 0.0, 0.0, math.cos(r)]
@@ -292,23 +319,54 @@ for sig in np.unique(signature):
     piece = faces[signature == sig]; used, index = np.unique(piece, return_inverse=True)
     hidden_by = [item["name"] for bit, item in enumerate(ITEMS) if sig >> bit & 1]
     PARTS.append({"name": "Character" if sig == 0 else "Character under " + " and ".join(hidden_by), "extras": {"body": True, "hiddenBy": hidden_by},
-                  "pos": pos[used], "normals": normals[used], "uv": uv[used], "faces": index.reshape(-1, 3), "joints": joints_attr[used], "weights": weights_attr[used], "texture": texture, "image_of": 0})
+                  "pos": pos[used], "normals": normals[used], "uv": uv[used], "faces": index.reshape(-1, 3), "joints": joints_attr[used], "weights": weights_attr[used], "texture": texture, "relief": relief, "image_of": 0, "of_body": used})
 BODY_PARTS = len(PARTS)
 for item in ITEMS:
     ipos = gl(item["world"]).astype(np.float32)
-    PARTS.append({**item, "pos": ipos, "normals": trimesh.Trimesh(ipos, item["faces"], process=False).vertex_normals.astype(np.float32)})
+    PARTS.append({**item, "pos": ipos, "normals": item["given_normals"] if item["given_normals"] is not None else trimesh.Trimesh(ipos, item["faces"], process=False).vertex_normals.astype(np.float32)})
+def tangents(position, normal, uv, faces):
+    """A tangent for each vertex, along increasing u, with the sign glTF stores in w. thin.py has the same function."""
+    p, t = position[faces].astype(np.float64), uv[faces]
+    e1, e2 = p[:, 1] - p[:, 0], p[:, 2] - p[:, 0]; d1, d2 = t[:, 1] - t[:, 0], t[:, 2] - t[:, 0]
+    det = d1[:, 0] * d2[:, 1] - d2[:, 0] * d1[:, 1]; det = np.where(np.abs(det) < 1e-12, 1e-12, det)
+    along_u = (e1 * d2[:, 1:2] - e2 * d1[:, 1:2]) / det[:, None]; along_v = (e2 * d1[:, 0:1] - e1 * d2[:, 0:1]) / det[:, None]
+    tan = np.zeros(position.shape); bit = np.zeros(position.shape)
+    for corner in range(3): np.add.at(tan, faces[:, corner], along_u); np.add.at(bit, faces[:, corner], along_v)
+    normal = normal.astype(np.float64)
+    tan -= normal * np.einsum("ij,ij->i", normal, tan)[:, None]
+    tan /= np.linalg.norm(tan, axis=1, keepdims=True) + 1e-12
+    sign = np.where(np.einsum("ij,ij->i", np.cross(normal, tan), bit) < 0, -1.0, 1.0)
+    return np.concatenate([tan, sign[:, None]], 1).astype(np.float32)
+
+BODY_TANGENTS = None
 for part in PARTS:
     part["attributes"] = {"POSITION": add(part["pos"], 34962, True, kind="VEC3"), "NORMAL": add(part["normals"], 34962, kind="VEC3"),
                           "TEXCOORD_0": add(np.stack([part["uv"][:, 0], 1 - part["uv"][:, 1]], 1).astype(np.float32), 34962, kind="VEC2"),
                           "JOINTS_0": add(part["joints"], 34962, ctype=5121, kind="VEC4"), "WEIGHTS_0": add(part["weights"], 34962, kind="VEC4")}
+    if part.get("relief") is not None:
+        if "of_body" in part:  # the body's tangents are worked out on the whole body, as thin.py baked them, then shared out
+            if BODY_TANGENTS is None: BODY_TANGENTS = tangents(pos, normals, uv, faces)  # v up, as thin.py had it
+            part["attributes"]["TANGENT"] = add(BODY_TANGENTS[part["of_body"]], 34962, kind="VEC4")
+        else:
+            part["attributes"]["TANGENT"] = add(tangents(part["pos"], part["normals"], part["uv"], part["faces"]), 34962, kind="VEC4")
     part["indices"] = add(part["faces"].astype(np.uint32).reshape(-1), 34963, ctype=5125)
 ibm = np.tile(np.eye(4, dtype=np.float32), (len(BONES), 1, 1)); ibm[:, 3, :3] = -jpos  # column-major: translation in the last row
 a_ibm = add(ibm.reshape(-1, 16), kind="MAT4")
 a_time = add(times, minmax=True)
+IMAGES = []  # each picture once: (buffer view, mime type)
+JPEG = int(os.environ.get("JPEG", "0"))  # 0 writes PNG; otherwise JPEG at this quality, far smaller for painted textures
+def picture(image):
+    blob = io.BytesIO()
+    if JPEG: image.convert("RGB").save(blob, "JPEG", quality=JPEG, subsampling=0)
+    else: image.save(blob, "PNG")
+    data = blob.getvalue(); off = sum(len(c) for c in chunks)
+    chunks.append(data + b"\x00" * ((4 - len(data) % 4) % 4)); views.append({"buffer": 0, "byteOffset": off, "byteLength": len(data)})
+    IMAGES.append({"bufferView": len(views) - 1, "mimeType": "image/jpeg" if JPEG else "image/png"}); return len(IMAGES) - 1
 for part in PARTS:
-    if part.get("image_of") is not None and "image" in PARTS[part["image_of"]]: part["image"] = PARTS[part["image_of"]]["image"]; continue
-    png = io.BytesIO(); part["texture"].save(png, "PNG"); data = png.getvalue(); off = sum(len(c) for c in chunks)
-    chunks.append(data + b"\x00" * ((4 - len(data) % 4) % 4)); views.append({"buffer": 0, "byteOffset": off, "byteLength": len(data)}); part["image"] = len(views) - 1
+    if part.get("image_of") is not None and "image" in PARTS[part["image_of"]]:
+        part["image"] = PARTS[part["image_of"]]["image"]; part["relief_image"] = PARTS[part["image_of"]].get("relief_image"); continue
+    part["image"] = picture(part["texture"])
+    part["relief_image"] = picture(part["relief"]) if part.get("relief") is not None else None
 nodes = [{"name": n, "translation": (jpos[i] - (jpos[parent[i]] if parent[i] >= 0 else 0)).tolist()} for i, n in enumerate(names)]
 for i, p in enumerate(parent):
     if p >= 0: nodes[p].setdefault("children", []).append(i)
@@ -322,9 +380,9 @@ for n, q in tracks.items():
 gltf = {"asset": {"version": "2.0", "generator": "pixelkiln research rig.py"}, "scene": 0, "scenes": [{"nodes": [0] + [len(BONES) + i for i in range(len(PARTS))]}], "nodes": nodes,
         "meshes": [{"name": p["name"], "primitives": [{"attributes": p["attributes"], "indices": p["indices"], "material": MATERIAL[i]}]} for i, p in enumerate(PARTS)],
         "skins": [{"joints": list(range(len(BONES))), "skeleton": 0, "inverseBindMatrices": a_ibm}],
-        "materials": [{"name": "Sprite" if i == 0 else p["name"], **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": i}, "metallicFactor": 0, "roughnessFactor": 1}} for i, p in enumerate(SKINS)],
-        "textures": [{"source": i, "sampler": 0} for i in range(len(SKINS))], "images": [{"bufferView": p["image"], "mimeType": "image/png"} for p in SKINS],
-        "samplers": [{"magFilter": 9728, "minFilter": 9728, "wrapS": 33071, "wrapT": 33071}],
+        "materials": [{"name": "Sprite" if i == 0 else p["name"], **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": p["image"]}, "metallicFactor": 0, "roughnessFactor": 1}, **({"normalTexture": {"index": p["relief_image"]}} if p.get("relief_image") is not None else {})} for i, p in enumerate(SKINS)],
+        "textures": [{"source": i, "sampler": 0} for i in range(len(IMAGES))], "images": IMAGES,
+        "samplers": [{"magFilter": 9729 if relief is not None else 9728, "minFilter": 9987 if relief is not None else 9728, "wrapS": 33071, "wrapT": 33071}],
         "animations": [{"name": "Walk", "samplers": samplers, "channels": channels}],
         "accessors": accessors, "bufferViews": views, "buffers": [{"byteLength": sum(len(c) for c in chunks)}]}
 js = json.dumps(gltf, separators=(",", ":")).encode(); js += b" " * ((4 - len(js) % 4) % 4); binary = b"".join(chunks)

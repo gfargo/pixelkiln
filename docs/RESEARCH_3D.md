@@ -48,6 +48,8 @@ Last updated 17 November 2026.
 | 38 | A second painter, MV-Adapter | MV-Adapter on SDXL, our own guide pictures | It runs and its front view is sharp and faithful; one pass takes 11 minutes and overfills the 12 GB card; the sides it invents are wrong | Drop on this card. Keep the scripts. |
 | 39 | Sprites drawn at 256 pixels at the source | PixelLab v3 character and four states | An adult-proportioned figure and four worn versions, each agreeing across eight directions | Keep. The best source art so far; not yet meshed. |
 | 40 | Rebuild everything from the 256 pixel sprites | PixelLab, SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | An adult-proportioned, painted body and four detailed items on one skeleton; imports into Godot | Keep as the viewer's model. Still 80,000 triangles and one home-made skeleton. |
+| 41 | Thin every part and bake the paint and a normal map onto the light mesh | Our script | 16,496 triangles for 79,819 and 2.1 MB for 6.3, with no visible loss in an unlit render | Keep. The viewer's model is the light one. |
+| 42 | A standard humanoid skeleton | Our script, Godot's humanoid profile | Twenty-one bones; every bone Godot's profile requires is found by name, under the right parent | Keep. No stock animation has been put on it yet. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1009,6 +1011,64 @@ Not checked: the walk from every side, whether items clip at the extremes of the
 
 **Verdict.** Keep as the viewer's model. The look is no longer the weakest part. What separates this from an asset is now in the survey: triangle count, unwrap, skeleton, materials.
 
+## 41. A light mesh with the paint and relief baked on
+
+**Question.** The survey's first gap is triangle count: step 40's model is about 30,000 triangles a part, spread evenly, in an unwrap of hundreds of pieces. How much can go without the picture changing?
+
+**Setup.** [`scripts/thin.py`](../research/scripts/thin.py), on the body and on each cut item of step 40.
+
+- *Thin.* The mesh's split vertices are joined, then it is reduced to a target count with quadric decimation: 6,000 triangles for the body, 3,000 for the cuirass and the leg armour, 2,500 for the cape, 2,000 for the helm.
+- *Unwrap.* A fresh xatlas unwrap of the light mesh, told to grow each piece four times as readily as its default, with six pixels of padding.
+- *Bake.* Every texel of the light mesh takes the colour of the nearest point on the dense mesh that faces the same way, from three million points sampled on it. Facing the same way keeps the two sides of the cape from swapping.
+- *Relief.* The same lookup gives the dense mesh's smooth normal, stored against the light mesh's own normal and tangent as a normal map in the OpenGL convention glTF asks for. `rig.py` writes matching tangents, and now keeps the normals a part arrives with.
+- *File.* `rig.py` gained `JPEG`: textures as JPEG at a given quality. Colour is 1024 pixels for the body and 512 for items, normal maps 512, quality 90.
+
+The body's colour texture and normal map after thinning:
+
+![The light body's colour texture and its normal map](../website/public/research/3d/thin-maps.png)
+
+**Result.** The assembled character, dense above and light below, drawn unlit:
+
+![The dense and the light model from five directions](../website/public/research/3d/thin-dense-vs-light.png)
+
+| | Dense (step 40) | Light |
+|---|---|---|
+| Triangles, body and four items | 79,819 | 16,496 |
+| Unwrap pieces, body | not counted | 157 |
+| File | 6.3 MB | 2.1 MB |
+
+- **The two are hard to tell apart** in an unlit render. The fur collar is a little softer.
+- **It takes seconds:** about seven for the body.
+- **In the viewer it loads and walks,** lit with the normal map. In Godot 4.7.2 it imports with the same skeleton and walk.
+- **It passes the glTF validator** with no errors or warnings.
+- **The normal map is nearly flat,** with facet-sized speckle. The dense mesh has little relief the light one lacks, and what it has is partly the generator's noise. A real gain here needs relief from somewhere else, such as a normal map drawn from the paint.
+- **The unwrap is still many pieces,** 44 to 224 a part. It is automatic, and no artist would call it clean.
+
+Not checked: the lit look beside the dense model, how the light mesh bends at elbows and knees compared with the dense one, and a hand-made or quad retopology.
+
+**Verdict.** Keep. A fifth of the triangles and a third of the file for no visible cost.
+
+## 42. A standard humanoid skeleton
+
+**Question.** The skeleton of step 16 has fifteen bones. Engines put stock animations on a character by matching its bones to a standard humanoid. Is ours one?
+
+**Setup.** `rig.py` now builds twenty-one bones unless told `BONES=15`. The six added are the ones a standard humanoid has besides: Chest, Neck, a Shoulder for each arm and Toes for each foot. They are placed from the joints already known: the spine is split in three, the neck runs from the neck joint to under the ears, each shoulder from near the neck to the shoulder joint, and the toes from the ball of the foot forward. The names are those Unity's and Godot's humanoid profiles use. Weights come as before, measured through the mesh.
+
+The check is Godot's own `SkeletonProfileHumanoid`, which lists 56 bones (fingers, eyes and jaw among them) and marks which are required. A script asks whether each is in the imported skeleton by name, and whether it hangs from the parent the profile gives.
+
+**Result.**
+
+- **All seventeen bones the profile requires are found,** by name, with no mapping written.
+- **Four optional ones are found too:** Chest, Neck and both Toes.
+- **Every bone found hangs from the parent the profile expects.**
+- **The walk still plays.** The thinned body on the new skeleton:
+
+![The light body walking on the twenty-one bone skeleton](../website/public/research/3d/humanoid-walk.png)
+
+Not done: putting a stock animation on it. That needs an animation library to test with, which means a download, and Godot's retargeting also resets each bone's rest direction, which was not run. Fingers, eyes and jaw are not built. Unity and Unreal were not tried.
+
+**Verdict.** Keep. The names and the tree are right for one engine's profile. Whether a stock animation looks right on it is the next test.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1107,15 +1167,15 @@ No report was found of any of these being tested on pixel art.
 
 | Gap | Where the model stands | What exists |
 |---|---|---|
-| Triangle count and edge flow | About 30,000 triangles a part, 150,000 worn, straight from the generator, with no loops at the joints | [AutoRemesher](https://www.cgchannel.com/2026/07/get-free-retopology-tool-autoremesher-and-its-blender-bridge/) (free, MIT, all-quad, a target count); QuadriFlow in Blender; [CurioMesh](https://github.com/CurioCrafter/CurioMesh) (GPLv3, Blender). Guides put a rigged game character at 10,000 to 100,000 triangles. Then the paint is baked from the dense mesh onto the light one, with a normal map for the lost relief |
+| Triangle count and edge flow | 16,496 triangles after thinning (step 41), from 79,819; still no loops at the joints | [AutoRemesher](https://www.cgchannel.com/2026/07/get-free-retopology-tool-autoremesher-and-its-blender-bridge/) (free, MIT, all-quad, a target count); QuadriFlow in Blender; [CurioMesh](https://github.com/CurioCrafter/CurioMesh) (GPLv3, Blender). Guides put a rigged game character at 10,000 to 100,000 triangles. Then the paint is baked from the dense mesh onto the light one, with a normal map for the lost relief |
 | Unwrap | Hundreds of small pieces from xatlas, and each item's texture mostly empty | A fresh unwrap of the light mesh with few seams; one packed texture per character or per item |
-| Skeleton | Fifteen bones placed from 2D joints, our own layout | A standard humanoid skeleton so that stock animations fit. [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) rigs an uploaded humanoid in a T-pose for free and has a large animation library; it wants one joined mesh, and is described as unmaintained. Open models: [UniRig](https://dl.acm.org/doi/abs/10.1145/3730930) (MIT code; its checkpoints and data have their own terms), [Puppeteer](https://arxiv.org/pdf/2508.10898), RigAnything, Anymate (Apache-2.0). No memory figures were found for any of them. *Unverified.* |
+| Skeleton | Twenty-one bones under standard humanoid names, matched by Godot's profile (step 42); no stock animation tried | A standard humanoid skeleton so that stock animations fit. [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) rigs an uploaded humanoid in a T-pose for free and has a large animation library; it wants one joined mesh, and is described as unmaintained. Open models: [UniRig](https://dl.acm.org/doi/abs/10.1145/3730930) (MIT code; its checkpoints and data have their own terms), [Puppeteer](https://arxiv.org/pdf/2508.10898), RigAnything, Anymate (Apache-2.0). No memory figures were found for any of them. *Unverified.* |
 | Animation | One walk made by formula | Mixamo's library; [HY-Motion 1.0](https://arxiv.org/abs/2512.23464) (Tencent, open weights, text to human motion, a community licence). Its skeleton and export formats were not checked |
 | Materials | Base colour only, with the redraw's lighting painted in | Roughness and metal maps: Hunyuan3D 2.1's paint stage (21 GB), MaterialMVP, and 2026 work that estimates materials from several views together ([ReLi3D](https://arxiv.org/abs/2603.19753), Intrinsic Image Fusion). A crude start costs nothing: metal and rough values per item |
 | Parts | Cut from a worn mesh by a sprite mask and a colour test (steps 27 and 36) | Generators that make parts natively: [Hunyuan3D-Part](https://x.com/TencentHunyuan/status/1971491034044694798) (open, segments a mesh into parts and regenerates each whole), [OmniPart](https://arxiv.org/pdf/2507.06165) (planned from 2D part masks, which the paperdoll layers are), PartCrafter. None was checked for clothing or for a 12 GB card |
 | References that agree | Eight directions redrawn one at a time (step 33); sprites at 256 pixels from the generator (step 39) | Models that turn one picture into consistent views: Qwen-Image-Edit with a multiple-angles LoRA, a Flux Kontext turnaround LoRA. Or draw the sprites larger at the source: PixelLab's v3 character goes to 256 pixels, four times step 26's |
 | Cloth | The cape is one rigid sheet on two bones | A chain of bones down the cape with spring physics in the engine, or the engine's cloth |
-| Delivery | A 6 MB .glb that imports into Godot (step 37) | Import tests in Godot, Unity and Unreal; mesh and texture compression (meshopt, KTX2); levels of detail |
+| Delivery | A 2.1 MB .glb that imports into Godot (steps 37 and 41) | Import tests in Godot, Unity and Unreal; mesh and texture compression (meshopt, KTX2); levels of detail |
 | A yardstick | None | [Meshy's API](https://docs.meshy.ai/api/pricing) takes an uploaded mesh and sells each step: retexture 10 credits, remesh 5, rigging 5 with a walk and a run, an animation 3. One character through all of it would show what a paid pipeline returns. A paid plan is said to be needed for the API. *Unverified.* |
 
 - **The largest gaps are not in the paint.** A studio would reject this model first for its triangle count, its unwrap and its home-made skeleton, and only then look at the texture.
@@ -1196,6 +1256,10 @@ LAYERS="Body=<body>;Cape=<cape>:Spine:behind;Helm=<helm>:Head" python3 research/
 python3 research/scripts/redraw.py <sprites> <name> <redraw-folder> "<what the character is>"
 VIEW=768 SPREAD=22 STAGE=paint python3 research/scripts/hunyuan3d_paint_turn.py <name.textured.glb> <redraw-folder> <name> <out-folder>
 python3 research/scripts/bake.py <name.textured.glb> <out-folder>/<name>.views.json <bake-folder> <name> 2048
+
+# A light copy of a painted part, with its paint and a normal map baked on (step 41), then rigged small.
+TEX=512 python3 research/scripts/thin.py <painted.glb> <light.glb> 3000
+ITEMS="Helm=<helm-light.glb>:Head" JPEG=90 TEX_NORMAL=512 python3 research/scripts/rig.py <body-light.glb> <body.rig.json> - - <out.glb>
 
 # Draw textured meshes large, one row each.
 python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>

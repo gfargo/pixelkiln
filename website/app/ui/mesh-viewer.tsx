@@ -206,7 +206,8 @@ export function MeshViewer() {
             });
             post.uniforms.count.value = list.length;
           }
-          mesh.material = new THREE.MeshToonMaterial({ map: source.map, gradientMap: ramp });
+          // A thinned model carries its lost relief as a normal map, and the tangents it was baked against.
+          mesh.material = new THREE.MeshToonMaterial({ map: source.map, gradientMap: ramp, normalMap: source.normalMap ?? null });
           mesh.frustumCulled = false;
           // Every mesh but the body is something the character wears, on the same skeleton.
           const hiddenBy: unknown = mesh.userData?.hiddenBy;
@@ -464,7 +465,9 @@ export function MeshViewer() {
             redraws. Each item is cut out of the mesh of the figure
             wearing it, moved to just above the skin, and follows the
             body&apos;s bones. The skin under an item is hidden while the
-            item is worn. Switch the pixel look on to see it as pixel art.
+            item is worn. Every part was then thinned to a fifth of its
+            triangles, with its paint and relief baked back on. Switch the
+            pixel look on to see it as pixel art.
           </p>
         ) : (
           <p className="spin-note">
