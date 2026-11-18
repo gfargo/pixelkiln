@@ -17,7 +17,9 @@ import {
   modelExportPath,
   modelTextureProjectPath,
   openInBlender,
+  modelEditStatus,
   readModelCompanion,
+  type ModelEditStatus,
   saveModelTexture,
   type ProjectModel,
 } from "../pipeline/model-edit.ts"
@@ -37,13 +39,7 @@ export interface GalleryModelFile {
   url: string
 }
 
-export type ModelEditStatus =
-  /** A browser or adopted edit of the model as it is now. */
-  | "edited"
-  /** The model was rebuilt after the edit was made; the edit is based on the older build. */
-  | "rebuilt-since"
-  /** A file at the edit path with no record beside it: placed there by hand. */
-  | "unrecorded"
+export type { ModelEditStatus }
 
 export interface GalleryModel {
   /** Page identity: `model:<style>/<path under the style's outDir>`, prefixed by project id in a workspace. */
@@ -162,7 +158,7 @@ export async function describeModels(
         })
         edit = {
           ...described,
-          status: !companion ? "unrecorded" : companion.outputs[0]!.basedOn === file.sha256 ? "edited" : "rebuilt-since",
+          status: modelEditStatus(companion, file.sha256),
           editor: companion?.editor ?? null,
           savedAt: companion?.savedAt ?? null,
           changedSince: companion ? companion.outputs[0]!.sha256 !== described.sha256 : false,

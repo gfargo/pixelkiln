@@ -146,6 +146,36 @@ describe("pixelkiln model", () => {
     await expect(cli(dir, "model", "adopt", "knight", "--mode", "all")).rejects.toMatchObject({ stderr: expect.stringContaining("textures (the default) or whole") })
   })
 
+  it("resolves the file a game should load: the current edit, else the model as built", async () => {
+    // No edit yet: the model as built.
+    expect((await cli(dir, "model", "resolve", "knight")).stdout.trim()).toBe("art/models/knight.glb")
+    expect((await cli(dir, "model", "resolve")).stdout).toContain("art/models/knight.glb  ->  art/models/knight.glb  (as built, no edit)")
+
+    // An edit of the model as it is now: the edited copy.
+    const texture = decodePng(await readFile(modelFile).then((bytes) => Buffer.from(glbImageBytes(parseGlb(bytes), 1).bytes)))
+    const { encodeRgbaPng } = await import("../src/png.ts")
+    const exportDir = path.join(dir, "paint")
+    await mkdir(exportDir, { recursive: true })
+    const painted = path.join(exportDir, "normal.png")
+    await writeFile(painted, encodeRgbaPng(texture.width, texture.height, Buffer.alloc(texture.width * texture.height * 4, 128)))
+    await cli(dir, "model", "import", "knight", "--image", "1", "--from", painted)
+    const edited = JSON.parse((await cli(dir, "model", "resolve", "knight", "--json")).stdout) as Record<string, unknown>
+    expect(edited).toMatchObject({ styleId: "cast", file: "art/models/knight.glb", load: "art/edits/models/knight.glb", from: "edit", status: "edited" })
+    expect(edited.absolute).toBe(path.join(dir, "art", "edits", "models", "knight.glb"))
+
+    // The model rebuilt after the edit: the new build, with a note on stderr.
+    await writeFile(modelFile, tinyGlb())
+    const stale = await cli(dir, "model", "resolve", "knight")
+    expect(stale.stdout.trim()).toBe("art/models/knight.glb")
+    expect(stale.stderr).toContain("was made before the model was rebuilt")
+    const list = JSON.parse((await cli(dir, "model", "resolve", "--json")).stdout) as Array<Record<string, unknown>>
+    expect(list).toMatchObject([{ load: "art/models/knight.glb", from: "built", edit: "art/edits/models/knight.glb", status: "rebuilt-since" }])
+
+    // A copy placed in the edit slot by hand, with no record: taken as the edit.
+    await rm(path.join(dir, "art", "edits", "models", "knight.edit.json"))
+    expect((await cli(dir, "model", "resolve")).stdout).toContain("->  art/edits/models/knight.glb  (edited copy, unrecorded)")
+  })
+
   it("prices normal map detail, refuses past --budget, and re-runs from cached answers without a key", async () => {
     const dry = (await cli(dir, "model", "normal-map", "knight", "--dry-run")).stdout
     expect(dry).toContain("the figure drawn from 4 directions")

@@ -75,6 +75,8 @@ Commands
             with its region guide to paint anywhere, import it into an edited
             copy under edits/, open the model in Blender, adopt its export,
             or add PixelLab normal map detail (normal-map; priced, 0.1 a call).
+            model resolve [model] prints the file a game should load: the
+            edited copy when it is current, else the model as built.
   tools     status/install editor: the in-browser editor (Pixelorama) is a
             46 MB web build fetched once per release into a user cache and
             verified against pinned hashes. Offline once installed.
