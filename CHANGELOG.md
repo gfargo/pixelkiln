@@ -1,3 +1,10 @@
+# [0.115.0](https://github.com/gfargo/pixelkiln/compare/v0.114.0...v0.115.0) (2026-11-18)
+
+
+### Features
+
+* **export:** merge connected terrain sets into one tileset ([4109532](https://github.com/gfargo/pixelkiln/commit/41095324823e260abfa34ff320bdd090294fb760))
+
 # [0.114.0](https://github.com/gfargo/pixelkiln/compare/v0.113.0...v0.114.0) (2026-11-18)
 
 
