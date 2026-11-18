@@ -3,8 +3,8 @@ import { FeatureArt } from "@/app/ui/feature-art";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
 /**
- * The way into each feature page. On the home page it lists all six; under a
- * feature page it lists the other five, smaller.
+ * The way into each feature page. On the home page it lists all seven; under a
+ * feature page it lists the others, smaller.
  */
 export function HubSection({ except, heading, deck }: { except?: Feature["id"]; heading: string; deck?: string }) {
   const entries = FEATURES.filter((entry) => entry.id !== except && entry.inHub !== false);

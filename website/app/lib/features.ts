@@ -126,7 +126,6 @@ export const FEATURES: Feature[] = [
   },
   {
     id: "tiles",
-    inHub: false,
     href: "/tiles",
     name: "Tiles and terrain",
     group: "Make the art",
