@@ -36,9 +36,28 @@ export function sheetButtons() {
   S.SHEET.save.disabled = busy || !S.SHEET.dirty;
   S.SHEET.saveClose.disabled = busy;
 }
-export function openEditorSheet(item) {
+/**
+ * What a sheet that is not a sprite's hand edit supplies: its own title, what
+ * it hands the editor, and where a save goes. A model's texture uses this;
+ * the frame, the buttons, and the protocol are the same either way.
+ */
+export interface SheetCustom {
+  title: string
+  /** Label and tooltip of the box that shows and hides the reference layer. */
+  referenceLabel?: string
+  referenceTitle?: string
+  /** A row under the bar, e.g. a legend. */
+  below?: HTMLElement | null
+  /** Posts `pixelkiln:open` for this sheet. */
+  open(): void | Promise<void>
+  /** Status text once the editor reports it opened. */
+  opened(m: any): string
+  /** Writes the save; throws with the reason when it was refused. */
+  save(m: any): Promise<void>
+}
+export function openEditorSheet(item, custom: SheetCustom | null = null) {
   if (S.SHEET) return;
-  const src = editorSource(item);
+  const src = custom ? null : editorSource(item);
   const host = $('dialog-host');
   host.textContent = '';
   const scrim = el('div', 'sheet-scrim');
@@ -47,15 +66,15 @@ export function openEditorSheet(item) {
   const bar = el('div', 'rbar');
   const close = el('button', null, 'Close'); close.type = 'button';
   close.onclick = () => closeEditorSheet();
-  const title = el('b', null, (item.project ? item.project + ':' : '') + item.styleId + '/' + item.assetId + ' · ' + item.width + '×' + item.height + (item.outputs.length > 1 ? ' · ' + item.outputs.length + ' ' + memberNoun(item, item.outputs.length) : ''));
+  const title = el('b', null, custom ? custom.title : (item.project ? item.project + ':' : '') + item.styleId + '/' + item.assetId + ' · ' + item.width + '×' + item.height + (item.outputs.length > 1 ? ' · ' + item.outputs.length + ' ' + memberNoun(item, item.outputs.length) : ''));
   const status = el('span', 'st');
   const acts = el('div', 'acts');
   const msg = el('span', 'msg');
   const compare = el('label', 'chip'); compare.hidden = true;
-  compare.title = 'The generated art on a locked layer at 50%, for comparison; never part of the saved file';
+  compare.title = custom?.referenceTitle ?? 'The generated art on a locked layer at 50%, for comparison; never part of the saved file';
   const compareBox = el('input'); compareBox.type = 'checkbox'; compareBox.checked = true;
   compareBox.onchange = () => showReference(compareBox.checked);
-  compare.append(compareBox, document.createTextNode(' show generated'));
+  compare.append(compareBox, document.createTextNode(' ' + (custom?.referenceLabel ?? 'show generated')));
   const save = el('button', 'primary', 'Save to project'); save.type = 'button';
   save.onclick = () => requestEditorSave(false);
   const saveClose = el('button', null, 'Save & close'); saveClose.type = 'button';
@@ -71,9 +90,10 @@ export function openEditorSheet(item) {
   loadText.append(el('b', null, 'Loading the editor'), document.createTextNode('The first open compiles a 40 MB build; later opens come from the browser cache.'));
   loading.append(loadText);
   stage.append(frame, loading);
-  panel.append(bar, stage);
+  if (custom?.below) { panel.classList.add('with-legend'); panel.append(bar, custom.below, stage); }
+  else panel.append(bar, stage);
   host.append(scrim, panel);
-  S.SHEET = { item, frame, loading, status, msg, save, saveClose, compare, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false, sentReference: false, reference: false, roles: null };
+  S.SHEET = { custom, item, frame, loading, status, msg, save, saveClose, compare, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false, sentReference: false, reference: false, roles: null };
   sheetStatus('cool', 'loading');
   sheetButtons();
   close.focus({ preventScroll: true });
@@ -167,13 +187,17 @@ export async function onEditorMessage(m) {
         sheetStatus('bad', 'mismatch');
         return;
       }
-      sendOpen();
+      if (S.SHEET.custom) {
+        try { await S.SHEET.custom.open(); }
+        catch (err) { if (S.SHEET) { S.SHEET.msg.textContent = 'Could not load the image: ' + err.message; sheetStatus('bad', 'failed'); } }
+      } else sendOpen();
       break;
     case 'pixelkiln:opened':
       S.SHEET.opened = true;
       S.SHEET.loading.remove();
       S.SHEET.reference = !!m.reference;
       S.SHEET.compare.hidden = !S.SHEET.reference;
+      if (S.SHEET.custom) { sheetStatus(S.SHEET.sentProject && m.source !== 'pxo' ? 'warn' : 'ok', S.SHEET.custom.opened(m)); sheetButtons(); break; }
       if (m.source === 'pxo') sheetStatus('ok', 'editing the edit file' + (m.frames > 1 ? 's' : '') + ' with ' + (m.layers === 1 ? 'the layer' : m.layers + ' layers') + (m.frames > 1 ? ' and ' + m.frames + ' ' + memberNoun(S.SHEET.item, m.frames) : '') + ' restored');
       else if (S.SHEET.sentProject) sheetStatus('warn', 'editing the flattened edit file' + (m.frames > 1 ? 's' : '') + '; the layer file could not be opened');
       else if (m.source === 'frames') sheetStatus('ok', (S.SHEET.item.edits.length ? 'editing the edit files' : 'editing a copy of the generated ' + memberNoun(S.SHEET.item, m.frames)) + ' as ' + m.frames + ' frames' + (isFrameSet(S.SHEET.item) ? '' : ', one per ' + memberNoun(S.SHEET.item, 1)));
@@ -190,6 +214,16 @@ export async function onEditorMessage(m) {
       const pending = S.SHEET.pending;
       if (!pending || pending.request !== m.request) return;
       try {
+        if (S.SHEET.custom) {
+          await S.SHEET.custom.save(m);
+          S.SHEET.dirty = false;
+          S.SHEET.pending = null;
+          render();
+          if (pending.close) { closeEditorSheet(true); return; }
+          sheetStatus('ok', 'saved');
+          sheetButtons();
+          break;
+        }
         const body: any = { editor: S.SHEET.ready.editor, protocol: S.SHEET.ready.version };
         if (S.SHEET.roles) {
           if (!Array.isArray(m.frames)) throw new Error('the editor returned no frames');

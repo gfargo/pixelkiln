@@ -11,6 +11,7 @@ import { buildPlan, type PlanState } from "../pipeline/plan.ts"
 import type { QualityProfileInspection } from "../pipeline/quality-profile.ts"
 import { checkQualityRecord, type RefineRecordOptions } from "../pipeline/refine.ts"
 import { decodePng } from "../png.ts"
+import { blenderAvailable, describeModels, MODEL_FILE_TYPE, type GalleryModel } from "./models.ts"
 import { lockKey, type Asset, type Lock, type LockEntry, type Postprocess, type ResolvedSpec } from "../types.ts"
 import { resolveProject, type Workspace } from "../workspace.ts"
 import { CANDIDATE_OPTION } from "./edit.ts"
@@ -36,8 +37,8 @@ export type GalleryState = PlanState | "undeclared"
 export interface GalleryMedia {
   /** Absolute path of the file the server may read for this id. */
   path: string
-  /** Images, or the editor's own project file kept beside a browser edit. */
-  contentType: MediaType | typeof PROJECT_FILE_TYPE
+  /** Images, the editor's own project file kept beside a browser edit, or a 3D model. */
+  contentType: MediaType | typeof PROJECT_FILE_TYPE | typeof MODEL_FILE_TYPE
 }
 
 /** Served type of a Pixelorama `.pxo`: a zip the browser never renders. */
@@ -304,6 +305,14 @@ export interface GallerySnapshot {
   }
   styles: GalleryStyle[]
   items: GalleryItem[]
+  /**
+   * 3D models: every `.glb` under a style's `outDir`. They are files the
+   * project holds, not manifest assets, so they have no plan state, lock
+   * entry, or cost, and are listed apart from `items`.
+   */
+  models: GalleryModel[]
+  /** Programs on this machine the page can offer to start. */
+  tools: { blender: boolean }
 }
 
 export interface GalleryBuild {
@@ -1003,6 +1012,9 @@ export async function buildGallerySnapshot(opts: BuildGalleryOptions): Promise<G
     },
     styles,
     items,
+    // `--only` narrows to named assets, and a model is not one.
+    models: opts.filter?.assets?.length ? [] : await describeModels(loaded, media, galleryMediaId, { styles: opts.filter?.styles }),
+    tools: { blender: blenderAvailable() },
   }
   return { snapshot, media }
 }
@@ -1032,6 +1044,7 @@ export async function buildWorkspaceGallerySnapshot(
   const projects: GalleryProject[] = []
   const items: GalleryItem[] = []
   const styles: GalleryStyle[] = []
+  const models: GalleryModel[] = []
   const filter = { styles: opts.filter?.styles ?? [], assets: opts.filter?.assets ?? [] }
 
   for (const project of opts.workspace.projects) {
@@ -1066,6 +1079,7 @@ export async function buildWorkspaceGallerySnapshot(
           project: project.id,
         }))
         projectStyles = build.snapshot.styles.map((style) => ({ ...style, project: project.id }))
+        models.push(...build.snapshot.models.map((model) => ({ ...model, id: `${project.id}:${model.id}`, project: project.id })))
       }
       items.push(...projectItems)
       styles.push(...projectStyles)
@@ -1130,6 +1144,8 @@ export async function buildWorkspaceGallerySnapshot(
       },
       styles,
       items,
+      models,
+      tools: { blender: blenderAvailable() },
     },
     media,
   }

@@ -1,4 +1,5 @@
 import { toggleCompare } from "./compare.ts"
+import { modelSections } from "./models.ts"
 import { $, S, STATE_ORDER, STATE_TONE, displayScale, el, fmtCost, fmtSpend, fmtWhen, isFrameSet, postEdit, projectOf, shortPath, ui, CARD_SIZES, declaredTags } from "./core.ts"
 import { openItem, render, renderDrawer, row } from "./drawer.ts"
 import { budgetLine, generateDialog, openReview } from "./editor.ts"
@@ -223,6 +224,7 @@ export function renderMain(items) {
   const root = $('root');
   root.textContent = '';
   pruneLoops();
+  if (!S.snap.items.length && S.snap.models.length) { root.append(...modelSections()); return; }
   if (!S.snap.items.length) {
     const e = el('div', 'empty');
     e.append(el('p', null, 'Nothing has been generated for this project yet.'));
@@ -237,7 +239,7 @@ export function renderMain(items) {
     b.type = 'button';
     b.onclick = clearFilters;
     e.append(b);
-    root.append(e);
+    root.append(e, ...modelSections());
     return;
   }
   // Building every card for a very large project on each keystroke is the one
@@ -337,6 +339,7 @@ export function renderMain(items) {
     }
     root.append(wrap);
   }
+  root.append(...modelSections());
   if (hidden) {
     const more = el('div', 'empty');
     more.append(el('p', null, hidden + ' more ' + (hidden === 1 ? 'generation is' : 'generations are') + ' not shown.'));

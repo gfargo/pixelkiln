@@ -11,6 +11,7 @@ import { setSelecting } from "./selection.ts"
 import { openShortcuts } from "./keys.ts"
 import { installUndo, undoLast } from "./undo.ts"
 import { closeEditorSheet } from "./sheet.ts"
+import { closeModel, modelState } from "./models.ts"
 
 loadPrefs();
 installUndo();
@@ -74,6 +75,7 @@ document.addEventListener('keydown', (e) => {
     if (S.SHEET) { e.preventDefault(); closeEditorSheet(); return; }
     if ($('dialog-host').childNodes.length) { e.preventDefault(); $('dialog-host').textContent = ''; return; }
     if (ui.open) { e.preventDefault(); closeItem(); return; }
+    if (ui.model) { e.preventDefault(); closeModel(); return; }
     if (ui.selecting) { e.preventDefault(); setSelecting(false); }
     return;
   }
@@ -93,6 +95,7 @@ $('sort').value = ui.sort;
 $('group').value = ui.group;
 const initialKey = keyFromHash();
 if (initialKey && S.snap.items.some((i) => i.id === initialKey)) ui.open = initialKey;
+else if (initialKey && S.snap.models.some((m) => m.id === initialKey)) ui.model = initialKey;
 ui.compare = ui.compare.filter((id) => S.snap.items.some((i) => i.id === id));
 render();
 if (ui.open) document.querySelector('.card.active')?.scrollIntoView({ block: 'center' });
@@ -103,4 +106,4 @@ if (ui.compare.length >= 2 && !ui.open) openCompare();
 // A read-only handle for browser tests and the devtools console: the page's
 // state lives inside the bundle, where a script evaluated in the page cannot
 // otherwise see it.
-(window as unknown as { __pixelkiln: unknown }).__pixelkiln = { S, ui, family: familyState };
+(window as unknown as { __pixelkiln: unknown }).__pixelkiln = { S, ui, family: familyState, model: modelState };

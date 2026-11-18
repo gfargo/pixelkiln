@@ -539,7 +539,8 @@ can stay open while `gen` runs in another terminal. The server binds to
 localhost, serves only the files the current snapshot names, never contacts a
 provider, and never writes anything. Stop it with Ctrl+C. See the
 [Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
-screenshot.
+screenshot. A `.glb` under a style's output folder is listed too, as a
+[3D model](#3d-models-look-at-one-paint-its-textures-open-it-in-blender).
 
 A record's drawer keeps the preview, its state, and its actions at the
 top. The rest of the record is split into tabs:
@@ -762,6 +763,79 @@ editor and the layer file; **Open in desktop editor** and **Detach edit** work
 on the same file. The editor page runs same-origin under its own
 content-security policy and never sees the gallery's session token; the page
 does the write. `--no-editor` hides all of it and serves none of its routes.
+
+#### 3D models: look at one, paint its textures, open it in Blender
+
+A `.glb` file anywhere under a style's `outDir` is listed in a **3D models**
+section below the styles. There is no manifest asset type for a model, so one
+enters a project by being put there: it has no plan state, lock entry, or
+cost, `gen` never touches it, and `--only` (which names assets) hides the
+section. `edits/`, dot folders, and `node_modules` are not searched.
+`gallery --json` lists them under `models`, each with what the file holds
+(meshes, bones, animations, images and what each is used for) and its edit.
+
+```text
+art/characters/models/knight.glb          the model as built; never written
+art/characters/edits/models/knight.glb    the edited copy, once there is one
+art/characters/edits/models/knight.edit.json
+art/characters/edits/models/knight.image-8.pxo
+art/characters/edits/models/knight.export.glb
+```
+
+A model's record draws it. Drag to turn it, pick one of its animations or
+the rest pose, pause, zoom, and switch its separate parts on and off; a body
+piece the file marks as covered by a part (node `extras.hiddenBy`) hides while
+that part shows. The view is drawn by the page itself with WebGL2, offline
+like everything else, and covers what a rigged character uses: triangle
+meshes, one skin, base colour and normal maps, and translation, rotation, and
+scale animation. It works in the read-only gallery.
+
+With `--edit`, each base colour texture offers **Edit texture in browser**.
+The texture opens in the same Pixelorama sheet a sprite does, and the locked
+layer at 50% carries a guide: every piece of the unwrap is outlined in the
+colour of the body region that moves it and named where the name fits
+("Left lower arm, front"), with the colours and numbers listed above the
+canvas. Regions come from the mesh itself: pieces are found from the texture
+coordinates, joined across every mesh that shares the texture, and each is
+named after the bone that carries most of its weight, or after its mesh when
+the model has no skeleton. **Locked layer shows** picks the guide, the guide
+over the texture as built, the texture as built alone, or nothing. The guide
+is never part of what is saved.
+
+**Save to project** writes a copy of the model to `<outDir>/edits/<same
+path>` with that one texture replaced, as a PNG. The model as built is not
+touched, and in the copy every other byte of the buffer (meshes, normals,
+tangents, skins, animations, the normal maps and other textures) is the same;
+only the JSON header is rewritten, with the same values. Beside it go
+`<name>.edit.json`, the record a sprite's browser edit gets (editor, time,
+the hash of the model the edit was based on, and one entry per texture
+painted), and `<name>.image-<n>.pxo`, the layers of that texture for the next
+time it is opened. Painting a second texture adds to the same copy. The
+preview follows a save, and **Edited** / **As built** switch between the two
+files. If the model is rebuilt later, the record says the edit is based on
+the older build. Nothing in the manifest or lockfile changes; a tool that
+wants the edit takes the file under `edits/` when it is there.
+
+**Open in Blender** starts Blender with the model imported (the edited copy
+when there is one) and one addition: **File > Export > PixelKiln edit
+(.glb)**, which writes the scene to `<name>.export.glb` in the edit folder.
+To paint there, switch to the *Texture Paint* workspace, select a mesh, paint,
+and use that export item; nothing needs saving first. Back in the gallery,
+**Refresh** shows the waiting export with two ways to take it:
+
+- **Adopt the export's textures** takes only the base colour textures that
+  changed, matched to the model by material name, into a copy of the model as
+  built. Blender re-encodes meshes and animations on export; this keeps
+  them exactly as built.
+- **Adopt the whole file** uses the export as the edit as it is, for changes
+  that are not paint.
+
+Any program that writes glTF can leave a file at that path for the same two
+buttons. `PIXELKILN_BLENDER` names the program (a name, or a command with
+arguments); without it the usual install location is used:
+`/Applications/Blender.app` on macOS, `Program Files\Blender Foundation` on
+Windows, `blender` on the `PATH` on Linux. PixelKiln never installs Blender;
+when none is found the button is disabled and says so.
 
 #### Pull changes made in PixelLab's editor
 
@@ -1824,7 +1898,7 @@ Print the package version. `-v` is an alias.
 | `--strict` | plan/hash/doctor | Fail on any invalid manifest entry instead of listing it and continuing. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser (`open`, `xdg-open`, or `start`, by platform), or the editor for `edit`. |
-| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor. |
+| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor, for sprites and for a 3D model's textures, and **Open in Blender**; those write under `edits/`. |
 | `--no-editor` | gallery | With `--edit`, do not offer, install, or serve the in-browser editor. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--refresh` | fetch | Re-download downloaded outputs and replace files whose object changed upstream; never generates, never overwrites a local edit without `--force`. |

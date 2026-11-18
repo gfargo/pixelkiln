@@ -8,6 +8,7 @@ import { generateActions, historySection, jobStrip, renderHeader, renderMain, up
 import { handEditSection } from "./hand-edit.ts"
 import { activeJobFor, isRevisable } from "./jobs.ts"
 import { displayUrl, poseStrip, skeletonAnimationForm, skeletonPoseForm } from "./skeleton.ts"
+import { closeModel, openModel, renderModelDrawer } from "./models.ts"
 
 // ---- detail drawer -------------------------------------------------------
 
@@ -254,6 +255,8 @@ const CHARACTER_KIND = {
 
 export function renderDrawer() {
   const host = $('drawer-host');
+  // A model's record keeps its 3D view across redraws, so it draws itself.
+  if (!ui.open && renderModelDrawer()) return;
   host.textContent = '';
   stopPlayback();
   const item = ui.open && S.snap.items.find((i) => i.id === ui.open);
@@ -616,7 +619,8 @@ export function writeUrlState() {
   if (ui.sort !== 'key') params.set('sort', ui.sort);
   if (ui.group !== 'style') params.set('group', ui.group);
   const query = params.toString();
-  const next = location.pathname + (query ? '?' + query : '') + (ui.open ? '#' + encodeURIComponent(ui.open) : '');
+  const open = ui.open ?? ui.model;
+  const next = location.pathname + (query ? '?' + query : '') + (open ? '#' + encodeURIComponent(open) : '');
   if (next !== location.pathname + location.search + location.hash) history.replaceState(null, '', next);
 }
 export function syncHash() { writeUrlState(); }
@@ -634,7 +638,7 @@ export function markActive(key) {
 }
 export function openItem(key) {
   if (ui.open !== key) { ui.editing = null; if (ui.notice && ui.notice.id !== key) ui.notice = null; }
-  ui.open = key; ui.member = 0; ui.zoom = 'auto';
+  ui.open = key; ui.member = 0; ui.zoom = 'auto'; ui.model = null;
   syncHash();
   const card = markActive(key);
   renderDrawer();
@@ -654,7 +658,9 @@ export function closeItem() {
 window.addEventListener('hashchange', () => {
   const key = keyFromHash();
   if (key && key !== ui.open && S.snap.items.some((i) => i.id === key)) openItem(key);
+  else if (key && key !== ui.model && S.snap.models.some((m) => m.id === key)) openModel(key);
   else if (!key && ui.open) closeItem();
+  else if (!key && ui.model) closeModel();
 });
 export function step(delta) {
   const items = visibleItems();

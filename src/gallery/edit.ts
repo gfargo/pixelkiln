@@ -23,6 +23,8 @@ import {
   updateSkeletonKeypoints,
 } from "./skeleton.ts"
 import type { GalleryBuild } from "./snapshot.ts"
+import { applyModelRequest, MODEL_ACTIONS, ModelRequestSchema } from "./models.ts"
+import type { ProjectModel } from "../pipeline/model-edit.ts"
 
 /** Standard base64, sized so a decoded payload cannot exceed the edit limit. */
 const Base64 = z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/).max(Math.ceil(MAX_HAND_EDIT_BYTES / 3) * 4)
@@ -89,6 +91,8 @@ export interface GalleryEditHandlerOptions {
   loadProject?: (project?: string) => Promise<GalleryProjectContext>
   /** Launches the author's editor; defaults to `openInEditor`. */
   openEditor?: (file: string) => string
+  /** Starts Blender on a model; defaults to `openInBlender`. */
+  openBlender?: (model: ProjectModel) => string
   onProgress?: (msg: string) => void
 }
 
@@ -193,6 +197,16 @@ function createEditApplier(opts: GalleryEditHandlerOptions, log: (msg: string) =
         if (result.changed) log(`  hand edit detached: ${request.styleId}/${request.assetId} (file kept)`)
       }
       return opts.reload()
+    }
+    const model = ModelRequestSchema.safeParse(body)
+    if (model.success) {
+      if (!opts.loadProject) throw new ManifestEditError("model edits are not available in this gallery")
+      const ctx = await opts.loadProject(model.data.project)
+      await applyModelRequest(ctx.loaded, model.data, { log, ...(opts.openBlender ? { openBlender: opts.openBlender } : {}) })
+      return opts.reload()
+    }
+    if (MODEL_ACTIONS.includes(String((body as { action?: unknown } | null)?.action))) {
+      throw new ManifestEditError("invalid model edit: " + model.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "))
     }
     const upload = UploadImageSchema.safeParse(body)
     if (upload.success) {

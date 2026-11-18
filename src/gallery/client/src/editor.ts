@@ -24,7 +24,7 @@ export async function pollEditor() {
   renderTools();
   clearTimeout(edTimer ?? undefined);
   if (S.ED.installing) edTimer = setTimeout(pollEditor, 1000);
-  else if (ui.open && formRegion() !== 'drawer') renderDrawer();
+  else if ((ui.open || ui.model) && formRegion() !== 'drawer') renderDrawer();
 }
 export async function installEditor() {
   try {

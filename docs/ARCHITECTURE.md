@@ -242,6 +242,30 @@ and per file the hash of the generation it started from and its own hash, so
 `regenerated-since` is decided by comparing hashes, and "unchanged" is decided
 by comparing pixels rather than bytes, since editors re-encode.
 
+## Models
+
+A 3D model is a file the gallery finds, not a manifest asset: any `.glb`
+under a style's `outDir`. Nothing about one is in the manifest, the lockfile,
+or a plan. Its hand edit follows the sprite rule, a sibling under
+`<outDir>/edits/` and never a write to the file as built, with the same
+`.edit.json` record plus one entry per replaced texture.
+
+`src/glb.ts` reads and rewrites the container without a dependency, the way
+`src/png.ts` does for PNG: header, JSON chunk, BIN chunk, accessors, and
+embedded images. Replacing an image splices the new bytes into the buffer
+where the old ones were and moves the offsets of the views behind it, keeping
+their alignment; every other view keeps its bytes, and the JSON is
+re-serialised with the same values. `src/glb-guide.ts` turns a texture's
+automatic unwrap into named pieces: vertices are joined by their texture
+coordinates across every primitive that uses the image, each connected group
+is a piece, and its name is the bone with the most skin weight over its
+area. Both modules use `Uint8Array` only, so the gallery page bundles them
+too and draws the guide and the model itself, with a small WebGL2 viewer in
+`src/gallery/client/src/viewer.ts` rather than a 3D library.
+
+The editor bridge has one reference layer, so the guide rides on it; a
+separate guide layer would need a new bridge protocol and a new editor build.
+
 ## Pinned editor build
 
 The gallery's in-browser editor is a web export of Pixelorama with PixelKiln's
