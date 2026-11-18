@@ -44,6 +44,7 @@ Last updated 17 November 2026.
 | 34 | Mesh from redrawn pictures in place of smoothed sprites | SDXL redraw, Hunyuan3D-2mv | A round skull, a face, ears, arms and legs with shape, where there were flat facets | Keep. The largest gain in the mesh since step 22. |
 | 35 | Rebuild the body and all four items from redrawn pictures, end to end | SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | A sculpted body and detailed helm, armour and cape on the same skeleton; one sleeve short, a gap at the hip, a teal fur collar | Keep as the viewer's model. The item masks still come from the sprites and no longer fit exactly. |
 | 36 | Move each item's edge to where the paint puts it, and stop the bake shifting colours | Our scripts | Skin scraps and the hip gap are gone; the collar is grey again, the helm black, the underwear grey | Keep. One sleeve still ends at mid forearm. |
+| 37 | Open the parts model in a game engine | Godot 4.7.2, headless | Ten skinned meshes, fifteen named bones, the walk, and each body piece's hide list all arrive | Keep. The first check outside three.js. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -908,6 +909,24 @@ The assembled character: step 35 with the new edges, the same with the bake corr
 
 **Verdict.** Keep both. The viewer's model is rebuilt with them, 6.0 MB.
 
+## 37. The model in a game engine
+
+**Question.** Every check so far has been three.js or the glTF validator. Does a game engine read the file the way it was meant?
+
+**Setup.** The viewer's `parts.glb` of step 36 in an empty Godot 4.7.2 project, imported headless (`--headless --import`), then a script that loads the scene and lists what it finds.
+
+**Result.**
+
+- **It imports with no errors or warnings.**
+- **One skeleton of fifteen bones,** with their names: Hips, Spine, Head, and upper, lower and end bones for each arm and leg.
+- **Ten meshes, all skinned to it:** six pieces of body and four items, 79,216 triangles in all.
+- **The walk arrives** as an animation named Walk, 0.9 seconds, eight tracks.
+- **The hide lists survive.** Godot puts each node's glTF extras in its metadata, so `"hiddenBy": ["Cuirass"]` can be read by a script, as in step 30.
+
+Not checked: how it looks drawn in Godot (this ran with no screen), Godot's humanoid retargeting against these bone names, Unity, and Unreal.
+
+**Verdict.** Keep. The file is a working rigged character in one engine. What it lacks to be an asset is in the survey below: triangle count, unwrap, a standard skeleton, materials.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -938,6 +957,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
 - **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
 - **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Steps 33 to 35 continue it. Step 36 fixes the item edges and a colour fault. Still to do: the short sleeve, a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture and the file shrinks.
+- **Towards game-ready** (see the survey below): a smaller file; sprites drawn at 256 pixels at the source; a thinned mesh with the paint and a normal map baked onto it; a standard humanoid skeleton and stock animations; metal and roughness; bones and springs for the cape.
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
@@ -1000,6 +1020,25 @@ No report was found of any of these being tested on pixel art.
 - **The reference is the first cap, whichever painter is used.** Every option paints what its reference shows, and ours is a 64 to 80 pixel sprite enlarged with hard edges. A redraw of each direction as a large, detailed picture would raise the ceiling for all of them.
 - **MV-Adapter is the likeliest local step up:** larger views, a permissive licence, and it sits on SDXL, so style models and edge or depth guides apply.
 - **The turn-per-sprite trick of step 20 should carry over** to any painter that takes a reference and a mesh, since it only decides which way the mesh faces. It does not carry over to TRELLIS.2, which paints the whole surface at once.
+
+**From a painted mesh to a game-ready asset.** From a third survey on 17 November 2026. The model of step 36 looks right and is not yet what a studio would call an asset. This lists what is missing, and what exists for each gap. Nothing here was run; most sources are vendor pages or the authors' own papers, and are marked where a claim could not be checked.
+
+| Gap | Where the model stands | What exists |
+|---|---|---|
+| Triangle count and edge flow | About 30,000 triangles a part, 150,000 worn, straight from the generator, with no loops at the joints | [AutoRemesher](https://www.cgchannel.com/2026/07/get-free-retopology-tool-autoremesher-and-its-blender-bridge/) (free, MIT, all-quad, a target count); QuadriFlow in Blender; [CurioMesh](https://github.com/CurioCrafter/CurioMesh) (GPLv3, Blender). Guides put a rigged game character at 10,000 to 100,000 triangles. Then the paint is baked from the dense mesh onto the light one, with a normal map for the lost relief |
+| Unwrap | Hundreds of small pieces from xatlas, and each item's texture mostly empty | A fresh unwrap of the light mesh with few seams; one packed texture per character or per item |
+| Skeleton | Fifteen bones placed from 2D joints, our own layout | A standard humanoid skeleton so that stock animations fit. [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) rigs an uploaded humanoid in a T-pose for free and has a large animation library; it wants one joined mesh, and is described as unmaintained. Open models: [UniRig](https://dl.acm.org/doi/abs/10.1145/3730930) (MIT code; its checkpoints and data have their own terms), [Puppeteer](https://arxiv.org/pdf/2508.10898), RigAnything, Anymate (Apache-2.0). No memory figures were found for any of them. *Unverified.* |
+| Animation | One walk made by formula | Mixamo's library; [HY-Motion 1.0](https://arxiv.org/abs/2512.23464) (Tencent, open weights, text to human motion, a community licence). Its skeleton and export formats were not checked |
+| Materials | Base colour only, with the redraw's lighting painted in | Roughness and metal maps: Hunyuan3D 2.1's paint stage (21 GB), MaterialMVP, and 2026 work that estimates materials from several views together ([ReLi3D](https://arxiv.org/abs/2603.19753), Intrinsic Image Fusion). A crude start costs nothing: metal and rough values per item |
+| Parts | Cut from a worn mesh by a sprite mask and a colour test (steps 27 and 36) | Generators that make parts natively: [Hunyuan3D-Part](https://x.com/TencentHunyuan/status/1971491034044694798) (open, segments a mesh into parts and regenerates each whole), [OmniPart](https://arxiv.org/pdf/2507.06165) (planned from 2D part masks, which the paperdoll layers are), PartCrafter. None was checked for clothing or for a 12 GB card |
+| References that agree | Eight directions redrawn one at a time (step 33) | Models that turn one picture into consistent views: Qwen-Image-Edit with a multiple-angles LoRA, a Flux Kontext turnaround LoRA. Or draw the sprites larger at the source: PixelLab's v3 character goes to 256 pixels, four times step 26's |
+| Cloth | The cape is one rigid sheet on two bones | A chain of bones down the cape with spring physics in the engine, or the engine's cloth |
+| Delivery | A 6 MB .glb that imports into Godot (step 37) | Import tests in Godot, Unity and Unreal; mesh and texture compression (meshopt, KTX2); levels of detail |
+| A yardstick | None | [Meshy's API](https://docs.meshy.ai/api/pricing) takes an uploaded mesh and sells each step: retexture 10 credits, remesh 5, rigging 5 with a walk and a run, an animation 3. One character through all of it would show what a paid pipeline returns. A paid plan is said to be needed for the API. *Unverified.* |
+
+- **The largest gaps are not in the paint.** A studio would reject this model first for its triangle count, its unwrap and its home-made skeleton, and only then look at the texture.
+- **A standard skeleton is worth more than any one animation,** because it makes every stock animation usable.
+- **Several gaps close with no new model:** thinning the mesh and re-baking, a normal map from the dense mesh, values for metal and roughness, compression, an engine import test.
 
 **Sprite cards on a 3D skeleton.** [A short from Cor Mundi Studios](https://www.youtube.com/shorts/84clZXpwRc0) (28 seconds, read from its transcript on 17 November 2026) shows a 2.5D player character in Unreal Engine 5. Each body part is a flat card with its own sprite sheet in sixteen directions. Under the cards is a 3D mesh that is not what the player sees: it carries the lighting and the bones, and the bones tell each card where to be and which direction to show. The picture stays hand-drawn pixels and the motion comes from a rig. Step 31 tries it with eight directions and no lighting.
 
