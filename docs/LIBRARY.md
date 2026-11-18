@@ -384,10 +384,30 @@ const exported = exportTileset(lockEntry, spec, {
 })
 ```
 
-The generic format preserves the complete provider rule object. Tiled and
-Godot exporters translate supported 4-edge and 4-corner rule sets and reject
+The generic format preserves the complete provider rule object. Tiled, Godot
+and LDtk exporters translate supported 4-edge and 4-corner rule sets and reject
 unknown semantics rather than emitting plausible but incorrect adjacency.
 See [TILES.md](./TILES.md) for file contracts and engine details.
+
+Sets that share a terrain (`connect`) export as one tileset with every terrain
+through `connectedGroup()` and `exportMergedTilesets()`, the calls behind
+`pixelkiln export --merge-connected`:
+
+```ts
+import { connectedGroup, exportMergedTilesets } from "pixelkiln"
+
+// `specs` are the manifest's resolved specs; `lock` is its lockfile.
+const group = connectedGroup(coastSpec, specs) // every linked set, parents first
+const merged = exportMergedTilesets(
+  group.map((spec) => ({ spec, entry: lock.entries[`${spec.styleId}/${spec.assetId}`]! })),
+  { format: "godot", manifestDir: loaded.root, imageName: "coast.png" },
+)
+```
+
+`merged.png`, `merged.document` and `merged.generic` are the same shape as
+`exportTileset()` returns; `merged.generic.sets` lists the group. It throws for
+a group with a sidescroller set or mixed tile shapes. See
+[connected sets](./TILES.md#connected-sets).
 
 ## Render effects
 

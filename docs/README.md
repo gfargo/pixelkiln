@@ -39,7 +39,7 @@ provider you are using. These Markdown files also render at
 |---|---|
 | [Architecture](./ARCHITECTURE.md) | Manifest/lock state, provider boundary, output identity, hand edits, 3D models, the pinned editor build, concurrency, and durable writes. |
 | [Library API](./LIBRARY.md) | Public TypeScript imports for planning, quality checks, providers, packing, exporting, and managed artifact writes. |
-| [Tiles and engine exports](./TILES.md) | Structural tile roles, provider rule preservation, generic JSON, Tiled Wang sets, and Godot terrain sets. |
+| [Tiles and engine exports](./TILES.md) | Structural tile roles, provider rule preservation, generic JSON, Tiled Wang sets, Godot terrain sets, LDtk projects, and exporting connected sets as one tileset. |
 | [Measured PixelLab endpoints](./ENDPOINTS.md) | Live-account cost and payload research, endpoint recipes, limits, and unresolved API behavior. |
 | [Provider comparison](../PROVIDERS.md) | Provider selection, costs, adapter capabilities, confidence, and next work. Start with the provider-specific setup guides above when you are ready to configure a project. |
 
