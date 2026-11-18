@@ -76,8 +76,9 @@ asked.
 Do not paint the texture yourself unless the person asks for a specific,
 checkable change. Hand fixes (streaks, pinholes, seams) are judgement calls
 the person makes looking at the model. The gallery is better for that: its
-editor shows the guide with names written in and the 3D model beside the
-canvas, updating as they paint. Suggest
+editor shows the guide with names written in (on a layer of its own with a
+protocol 5 editor build, which `pixelkiln tools status` reports) and the 3D
+model beside the canvas, updating as they paint. Suggest
 `pixelkiln gallery --edit` and leave `--edit` to them.
 
 ## Blender

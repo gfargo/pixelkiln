@@ -20,6 +20,9 @@ const EDIT_STATUS: Record<string, [string, string]> = {
   unrecorded: ['dim', 'A file placed at the edit path by hand; nothing records what it was based on.'],
 };
 
+/** The name the guide layer has in the editor ("Unwrap guide (PixelKiln guide)"). */
+const GUIDE_LAYER = 'Unwrap guide';
+
 const REFERENCE_CHOICES: Array<[string, string]> = [
   ['guide', 'the guide'],
   ['guide+original', 'the guide over the texture as built'],
@@ -392,7 +395,8 @@ function renderInfo(state: Live) {
   if (images.length) {
     const s = section('Textures');
     const editable = canWrite() && EDITOR && S.ED;
-    if (canWrite() && EDITOR && S.ED && S.ED.installed) {
+    // An editor that takes guide layers (protocol 5) gets both, each with its own box in the sheet; this choice is for older builds.
+    if (canWrite() && EDITOR && S.ED && S.ED.installed && S.ED.protocol < 5) {
       const pickRow = el('label', 'model-row');
       pickRow.append(el('span', 'lbl', 'Locked layer shows'));
       const pick = el('select');
@@ -628,9 +632,10 @@ function openTextureSheet(model: GalleryModel, image: number) {
   };
   const custom = {
     title: (model.project ? model.project + ':' : '') + model.name + ' · ' + name + ' texture · ' + summary.width + '×' + summary.height,
-    referenceLabel: choice === 'original' ? 'show the texture as built' : choice === 'guide' ? 'show the guide' : 'show the guide and the texture as built',
+    referenceLabel: S.ED.protocol >= 5 ? 'show as built' : choice === 'original' ? 'show the texture as built' : choice === 'guide' ? 'show the guide' : 'show the guide and the texture as built',
+    layers: [{ name: GUIDE_LAYER, label: 'show the guide', title: 'The unwrap guide on its own locked layer: outlines and names of each piece. Never part of the saved texture.' }],
     referenceTitle: 'A locked layer at 50%, for finding your way; never part of the saved texture',
-    below: choice === 'guide' || choice === 'guide+original' ? strip : null,
+    below: S.ED.protocol >= 5 || choice === 'guide' || choice === 'guide+original' ? strip : null,
     side: {
       element: side,
       label: '3D view',
@@ -663,7 +668,19 @@ function openTextureSheet(model: GalleryModel, image: number) {
       bitmap.close();
       const png = await canvasPng(paint);
       let reference: ArrayBuffer | null = null;
-      if (choice !== 'none' && sheet.ready.version >= 4) {
+      let guidePng: ArrayBuffer | null = null;
+      if (sheet.ready.version >= 5) {
+        // Protocol 5: the texture as built is the reference at 50%, and the guide is a layer of its own above it.
+        const built = el('canvas'); built.width = width; built.height = height;
+        const source = await decode(original, image); built.getContext('2d')!.drawImage(source, 0, 0, width, height); source.close();
+        reference = await canvasPng(built);
+        const layer = el('canvas'); layer.width = width; layer.height = height;
+        const guide = guideFor(doc, image);
+        drawGuide(layer.getContext('2d')!, guide, width, height);
+        strip.textContent = '';
+        strip.append(legend(guide));
+        guidePng = await canvasPng(layer);
+      } else if (choice !== 'none' && sheet.ready.version >= 4) {
         const layer = el('canvas'); layer.width = width; layer.height = height;
         const ctx = layer.getContext('2d')!;
         if (choice !== 'guide') { const built = await decode(original, image); ctx.drawImage(built, 0, 0, width, height); built.close(); }
@@ -692,6 +709,7 @@ function openTextureSheet(model: GalleryModel, image: number) {
       const transfer: ArrayBuffer[] = [png];
       if (pxo) { message.pxo = pxo; transfer.push(pxo); }
       if (reference) { message.reference = [{ role: null, png: reference }]; transfer.push(reference); }
+      if (guidePng) { message.guides = [{ name: GUIDE_LAYER, png: guidePng, opacity: 1 }]; transfer.push(guidePng); }
       sheet.sentReference = !!reference;
       sheet.frame.contentWindow.postMessage(message, location.origin, transfer);
       sheet.status.textContent = '';
@@ -701,6 +719,7 @@ function openTextureSheet(model: GalleryModel, image: number) {
       const from = m.source === 'pxo' ? 'painting the ' + name + ' texture with ' + (m.layers === 1 ? 'its layer' : 'its ' + m.layers + ' layers') + ' restored'
         : S.SHEET.sentProject ? 'painting the flattened ' + name + ' texture; its layer file could not be opened'
         : model.edit ? 'painting the ' + name + ' texture of the edited copy' : 'painting a copy of the ' + name + ' texture';
+      if (Array.isArray(m.guides) && m.guides.includes(GUIDE_LAYER)) return from + ' · guide on its own layer, texture as built at 50% under it';
       return from + (m.reference ? ' · ' + (choice === 'original' ? 'texture as built' : 'guide') + ' shown through at 50%' : '');
     },
     async save(m) {

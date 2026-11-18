@@ -210,6 +210,26 @@ click or with `tools install editor`; see [`tools`](CLI.md#tools).
 
 ![PixelKiln in-browser editor](../website/public/gallery-editor-showcase.jpg)
 
+### Fix a 3D model's textures
+
+A `.glb` under a style's `outDir` is listed as a 3D model, in the gallery and
+by `pixelkiln model list`. Its fixes follow the same rule: an edited copy under
+`edits/`, never the model as built. Paint a texture in the gallery's editor,
+with a guide naming each piece of the unwrap and the model beside the canvas
+updating as you paint; or export it with the guide as files for your own
+editor; or paint in Blender and adopt its export:
+
+```bash
+pixelkiln model list
+pixelkiln model export knight --image Helm      # texture + guide PNG + key, opened in your editor
+pixelkiln model import knight --image Helm      # back into edits/…/knight.glb
+pixelkiln model blender knight                  # then File > Export > PixelKiln edit (.glb)
+pixelkiln model adopt knight
+```
+
+See [3D models](CLI.md#3d-models-look-at-one-paint-its-textures-open-it-in-blender)
+and [`model`](CLI.md#model).
+
 Art edited in PixelLab's own editor comes back with `pixelkiln fetch --refresh`
 (or the record's **Pull upstream changes**), which replaces the local file only
 if the object changed upstream and records the new bytes as that generation.

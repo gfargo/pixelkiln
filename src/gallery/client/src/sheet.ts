@@ -46,6 +46,8 @@ export interface SheetCustom {
   /** Label and tooltip of the box that shows and hides the reference layer. */
   referenceLabel?: string
   referenceTitle?: string
+  /** Named guide layers (protocol 5) that get a show/hide box in the bar once the editor reports them. */
+  layers?: Array<{ name: string; label: string; title: string }>
   /** A row under the bar, e.g. a legend. */
   below?: HTMLElement | null
   /** A pane beside the editor, behind a draggable divider; its toggle sits in the bar. */
@@ -93,7 +95,14 @@ export function openEditorSheet(item, custom: SheetCustom | null = null) {
     box.onchange = () => { custom.side!.setShown(box.checked); layoutSide(); };
     sideToggle.append(box, document.createTextNode(' ' + custom.side.label));
   }
-  acts.append(msg, ...(sideToggle ? [sideToggle] : []), compare, save, saveClose);
+  const layerToggles = (custom?.layers ?? []).map((layer) => {
+    const label = el('label', 'chip'); label.hidden = true; label.title = layer.title; label.dataset.layer = layer.name;
+    const box = el('input'); box.type = 'checkbox'; box.checked = true;
+    box.onchange = () => { if (S.SHEET?.opened) S.SHEET.frame.contentWindow.postMessage({ type: 'pixelkiln:layer', name: layer.name, visible: box.checked }, location.origin); };
+    label.append(box, document.createTextNode(' ' + layer.label));
+    return label;
+  });
+  acts.append(msg, ...(sideToggle ? [sideToggle] : []), ...layerToggles, compare, save, saveClose);
   bar.append(close, title, status, acts);
   const stage = el('div', 'stage');
   const frame = el('iframe');
@@ -129,7 +138,7 @@ export function openEditorSheet(item, custom: SheetCustom | null = null) {
   layoutSide();
   host.append(scrim, panel);
   applyWidths();
-  S.SHEET = { previewing: null, previewTimer: null, lastKind: null, custom, item, frame, loading, status, msg, save, saveClose, compare, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false, sentReference: false, reference: false, roles: null };
+  S.SHEET = { layerToggles, previewing: null, previewTimer: null, lastKind: null, custom, item, frame, loading, status, msg, save, saveClose, compare, dirty: false, opened: false, ready: null, pending: null, requests: 0, source: src, sentProject: false, sentReference: false, reference: false, roles: null };
   sheetStatus('cool', 'loading');
   sheetButtons();
   close.focus({ preventScroll: true });
@@ -234,6 +243,7 @@ export async function onEditorMessage(m) {
       S.SHEET.loading.remove();
       S.SHEET.reference = !!m.reference;
       S.SHEET.compare.hidden = !S.SHEET.reference;
+      for (const toggle of S.SHEET.layerToggles) toggle.hidden = !(Array.isArray(m.guides) && m.guides.includes(toggle.dataset.layer));
       if (S.SHEET.custom) { sheetStatus(S.SHEET.sentProject && m.source !== 'pxo' ? 'warn' : 'ok', S.SHEET.custom.opened(m)); sheetButtons(); break; }
       if (m.source === 'pxo') sheetStatus('ok', 'editing the edit file' + (m.frames > 1 ? 's' : '') + ' with ' + (m.layers === 1 ? 'the layer' : m.layers + ' layers') + (m.frames > 1 ? ' and ' + m.frames + ' ' + memberNoun(S.SHEET.item, m.frames) : '') + ' restored');
       else if (S.SHEET.sentProject) sheetStatus('warn', 'editing the flattened edit file' + (m.frames > 1 ? 's' : '') + '; the layer file could not be opened');

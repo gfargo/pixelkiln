@@ -72,7 +72,7 @@ host.pixels = async (bytes) => {
   return [...x.getImageData(0, 0, bmp.width, bmp.height).data];
 };
 function show(id, bytes) { const img = document.getElementById(id); img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' })); }
-async function open(bytes, name, width, height, pxo, frames, fps, reference) {
+async function open(bytes, name, width, height, pxo, frames, fps, reference, guides) {
   host.opened = null; host.lastSave = null;
   const palette = document.getElementById('palette').value.split(',').map((s) => s.trim()).filter(Boolean);
   show('sent', bytes.slice(0));
@@ -82,8 +82,9 @@ async function open(bytes, name, width, height, pxo, frames, fps, reference) {
   if (pxo) { message.pxo = pxo; transfer.push(pxo); }
   if (frames) { message.frames = frames; message.fps = fps; for (const f of frames) transfer.push(f.png); }
   if (reference) { message.reference = reference; for (const r of reference) transfer.push(r.png); }
+  if (guides) { message.guides = guides; for (const g of guides) transfer.push(g.png); }
   // Log before posting: the buffers are transferred and read as empty afterwards.
-  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length + (pxo ? ' pxo=' + pxo.byteLength : '') + (frames ? ' frames=' + frames.length + ' fps=' + fps : '') + (reference ? ' reference=' + reference.length : ''));
+  log('→ open ' + request + ' ' + name + ' ' + width + '×' + height + ' palette=' + palette.length + (pxo ? ' pxo=' + pxo.byteLength : '') + (frames ? ' frames=' + frames.length + ' fps=' + fps : '') + (reference ? ' reference=' + reference.length : '') + (guides ? ' guides=' + guides.map((g) => g.name).join('+') : ''));
   post(message, transfer);
 }
 // The sample with the generated-art reference layer: a shifted checker on top at 50%.
@@ -92,6 +93,16 @@ host.openWithReference = async () => {
   const generated = await samplePng(16);
   await open(bytes, 'sample', 32, 32, null, null, null, [{ role: null, png: generated }]);
 };
+// Protocol 5: a guide on its own locked layer above the reference, e.g. a texture's unwrap outlines.
+host.openWithGuide = async () => {
+  const bytes = await samplePng(); host.sample = bytes.slice(0);
+  const generated = await samplePng(16);
+  const c = document.createElement('canvas'); c.width = 32; c.height = 32;
+  const x = c.getContext('2d'); x.strokeStyle = '#00ff66'; x.strokeRect(4.5, 4.5, 23, 23);
+  const guide = await new Promise((resolve) => c.toBlob((b) => b.arrayBuffer().then(resolve), 'image/png'));
+  await open(bytes, 'sample', 32, 32, null, null, null, [{ role: null, png: generated }], [{ name: 'Guide', png: guide, opacity: 1 }]);
+};
+host.showLayer = (name, visible) => { post({ type: 'pixelkiln:layer', name, visible }); log('→ layer ' + name + ' visible=' + visible); };
 host.showReference = (visible) => { post({ type: 'pixelkiln:reference', visible }); log('→ reference visible=' + visible); };
 host.openSample = async () => { const bytes = await samplePng(); host.sample = bytes.slice(0); await open(bytes, 'sample', 32, 32); };
 // An ordered set: three members, roles frame-00.., the first also sent as `png` for older editors.
@@ -119,7 +130,7 @@ window.addEventListener('message', (e) => {
       host.ready = m; document.getElementById('ready').textContent = m.editor + ' · protocol ' + m.version + ' · api ' + m.api;
       for (const id of ['open-sample', 'open-frames', 'open-reference', 'open-file', 'save', 'reopen']) document.getElementById(id).disabled = false;
       log('← ready ' + JSON.stringify(m)); break;
-    case 'pixelkiln:opened': host.opened = m; log('← opened ' + m.request + ' ' + m.width + '×' + m.height + ' from ' + m.source + ' (' + m.layers + ' layers, ' + m.frames + ' frames' + (m.reference ? ', reference' : '') + ')'); break;
+    case 'pixelkiln:opened': host.opened = m; log('← opened ' + m.request + ' ' + m.width + '×' + m.height + ' from ' + m.source + ' (' + m.layers + ' layers, ' + m.frames + ' frames' + (m.reference ? ', reference' : '') + (m.guides && m.guides.length ? ', guides ' + m.guides.join('+') : '') + ')'); break;
     case 'pixelkiln:dirty': host.dirty = !!m.dirty; { const d = document.getElementById('dirty'); d.textContent = m.dirty ? 'unsaved changes' : 'clean'; d.className = m.dirty ? 'dirty' : 'clean'; } log('← dirty ' + m.dirty); break;
     case 'pixelkiln:save': {
       const frames = (m.frames || []).map((f) => ({ role: f.role, png: new Uint8Array(f.png) }));

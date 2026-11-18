@@ -32,7 +32,7 @@ try {
   await page.waitForFunction(() => window.__host.ready !== null, { timeout: 300_000, polling: 2000 })
   const ready = await page.evaluate(() => window.__host.ready)
   console.log(`ready in ${Math.round((Date.now() - t0) / 1000)}s:`, JSON.stringify(ready))
-  if (ready.version !== 4) fail("protocol version " + ready.version)
+  if (ready.version !== 5) fail("protocol version " + ready.version)
 
   await page.evaluate(() => window.__host.openSample())
   await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
@@ -154,6 +154,33 @@ try {
   const refReopened = await page.evaluate(() => window.__host.opened)
   console.log("reference reopened:", JSON.stringify(refReopened))
   if (refReopened.source !== "pxo" || !refReopened.reference || refReopened.layers !== 1) fail("reference layer not restored once from the pxo: " + JSON.stringify(refReopened))
+
+  // Protocol 5 guide layers: locked, above the reference, never saved, kept once on reopen.
+  await page.evaluate(() => window.__host.openWithGuide())
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const guideOpened = await page.evaluate(() => window.__host.opened)
+  console.log("guide opened:", JSON.stringify(guideOpened))
+  if (!guideOpened.reference || JSON.stringify(guideOpened.guides) !== '["Guide"]' || guideOpened.layers !== 1) fail("guide layer missing or counted as a user layer: " + JSON.stringify(guideOpened))
+  await new Promise((r) => setTimeout(r, 1000))
+  if (await page.evaluate(() => window.__host.dirty)) fail("document dirty right after opening with a guide")
+  await page.evaluate(() => window.__host.showLayer("Guide", false))
+  await new Promise((r) => setTimeout(r, 500))
+  await page.evaluate(() => window.__host.showLayer("Guide", true))
+  await page.evaluate(() => window.__host.showLayer("reference", false))
+  await new Promise((r) => setTimeout(r, 500))
+  await page.evaluate(() => window.__host.requestSave())
+  await page.waitForFunction(() => window.__host.lastSave !== null, { timeout: 30_000 })
+  const guideSave = await page.evaluate(async () => {
+    const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i])
+    return same(await window.__host.pixels(window.__host.lastSave.png), await window.__host.pixels(window.__host.sample))
+  })
+  console.log("save with a guide equals the sample:", guideSave)
+  if (!guideSave) fail("the guide layer leaked into the saved image")
+  await page.evaluate(() => window.__host.reopenLastSave())
+  await page.waitForFunction(() => window.__host.opened !== null, { timeout: 30_000 })
+  const guideReopened = await page.evaluate(() => window.__host.opened)
+  console.log("guide reopened:", JSON.stringify(guideReopened))
+  if (guideReopened.source !== "pxo" || guideReopened.layers !== 1) fail("a reopened project with a guide should still have one author layer: " + JSON.stringify(guideReopened))
 
   // Pixelorama writes extensions/Monitoring.ini while an extension with
   // nodes is under suspicion and only clears it on a clean exit, which a

@@ -263,8 +263,17 @@ area. Both modules use `Uint8Array` only, so the gallery page bundles them
 too and draws the guide and the model itself, with a small WebGL2 viewer in
 `src/gallery/client/src/viewer.ts` rather than a 3D library.
 
-The editor bridge has one reference layer, so the guide rides on it; a
-separate guide layer would need a new bridge protocol and a new editor build.
+`pixelkiln model` exports a texture with the guide drawn as a PNG
+(`src/pipeline/model-guide.ts`: numbers and a text key, since there is no text
+renderer outside the browser), decoding a JPEG texture with `src/jpeg.ts`, a
+dependency-free baseline decoder.
+
+Bridge protocol 5 adds named guide layers: locked, above the reference, never
+flattened into a save, refreshed by name in a reopened project. The gallery
+sends the unwrap guide as one when the pinned editor speaks protocol 5, and
+otherwise draws it onto the single protocol 4 reference layer. Because the
+build is pinned per release, the page supports both, and only a published,
+pinned build switches a gallery over.
 
 ## Pinned editor build
 
