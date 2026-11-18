@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { LocalCategory, LocalEffect, Preset } from "@/app/lib/effects-catalog";
 
-type Still = { src: string; width: number; height: number; alt: string };
+type Still = { gif: string; src: string; width: number; height: number; alt: string };
 
 /** The largest whole-number zoom that keeps a still inside a card's stage. */
 function zoom(width: number, height: number) {
@@ -38,7 +38,7 @@ export function EffectsCatalog({
     () =>
       presets
         .filter((preset) => matches(query, preset.name, preset.summary))
-        .sort((a, b) => Number(Boolean(presetStills[b.name])) - Number(Boolean(presetStills[a.name]))),
+        .sort((a, b) => Number(Boolean(presetStills[b.name] ?? b.gif)) - Number(Boolean(presetStills[a.name] ?? a.gif))),
     [presets, presetStills, query],
   );
   const shownEffects = useMemo(
@@ -79,7 +79,9 @@ export function EffectsCatalog({
             <p className="section-deck">
               Whole effects from PixelLab&apos;s VFX workbench, free on a
               subscription. Each can be built around your own sprite with{" "}
-              <code>--sprite</code>. PixelLab adds to this list; it was read
+              <code>--sprite</code>. Most are shown here as the workbench draws
+              them with none; the ones that only light or wrap a sprite are
+              shown on a robot, a chest or a kiln. PixelLab adds to this list; it was read
               from the workbench on {presetsReadOn}, and{" "}
               <code>pixelkiln vfx presets</code> prints today&apos;s.
             </p>
@@ -87,13 +89,20 @@ export function EffectsCatalog({
           {shownPresets.length ? (
             <ul className="catalog-grid">
               {shownPresets.map((preset) => {
-                const still = presetStills[preset.name];
+                const still: Still | undefined =
+                  presetStills[preset.name] ??
+                  (preset.gif && preset.still
+                    ? { gif: preset.gif, src: preset.still, width: preset.width, height: preset.height, alt: `The ${preset.name} preset, animated` }
+                    : undefined);
                 const k = still ? zoom(still.width, still.height) : 1;
                 return (
                   <li key={preset.name} className="catalog-card">
                     {still ? (
                       <div className="catalog-stage">
-                        <img src={still.src} alt={still.alt} width={still.width * k} height={still.height * k} loading="lazy" />
+                        <picture>
+                          <source media="(prefers-reduced-motion: reduce)" srcSet={still.src} />
+                          <img src={still.gif} alt={still.alt} width={still.width * k} height={still.height * k} loading="lazy" />
+                        </picture>
                       </div>
                     ) : null}
                     <div className="catalog-body">

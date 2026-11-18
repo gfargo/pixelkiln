@@ -489,7 +489,8 @@ a { color: inherit; text-decoration: none; }
 .catalog-card { display: flex; flex-direction: column; min-width: 0; background: #1b1913; }
 .catalog-section-alt .catalog-card { background: #17150f; }
 .catalog-stage { display: flex; align-items: center; justify-content: center; height: 178px; padding: 14px; background: #12100d; overflow: hidden; }
-.catalog-stage img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; image-rendering: pixelated; }
+.catalog-stage picture { display: flex; align-items: center; justify-content: center; max-width: 100%; height: 100%; }
+.catalog-stage img { display: block; flex: none; max-width: 100%; max-height: 150px; height: auto; object-fit: contain; image-rendering: pixelated; }
 .catalog-body { display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 18px 18px 20px; }
 .catalog-body h3 { margin: 0; color: var(--ember-light); font-family: var(--font-geist-mono), monospace; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .catalog-body p { margin: 0; color: var(--cream-muted); font-size: 14px; line-height: 1.6; }

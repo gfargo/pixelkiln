@@ -8,7 +8,9 @@
         "width": 160,
         "height": 120,
         "frames": 32,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/ash_embers.gif",
+        "still": "/effects/presets/ash_embers-still.png"
       },
       {
         "name": "aura",
@@ -24,7 +26,9 @@
         "width": 232,
         "height": 212,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/black_hole.gif",
+        "still": "/effects/presets/black_hole-still.png"
       },
       {
         "name": "block_shatter",
@@ -32,7 +36,9 @@
         "width": 216,
         "height": 100,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/block_shatter.gif",
+        "still": "/effects/presets/block_shatter-still.png"
       },
       {
         "name": "chain_bolt",
@@ -40,7 +46,9 @@
         "width": 262,
         "height": 72,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/chain_bolt.gif",
+        "still": "/effects/presets/chain_bolt-still.png"
       },
       {
         "name": "crystal_bloom",
@@ -48,7 +56,9 @@
         "width": 144,
         "height": 72,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/crystal_bloom.gif",
+        "still": "/effects/presets/crystal_bloom-still.png"
       },
       {
         "name": "energy_orb",
@@ -56,7 +66,9 @@
         "width": 48,
         "height": 48,
         "frames": 8,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/energy_orb.gif",
+        "still": "/effects/presets/energy_orb-still.png"
       },
       {
         "name": "explosion",
@@ -64,7 +76,9 @@
         "width": 96,
         "height": 96,
         "frames": 12,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/explosion.gif",
+        "still": "/effects/presets/explosion-still.png"
       },
       {
         "name": "firefly_meadow",
@@ -72,7 +86,9 @@
         "width": 160,
         "height": 120,
         "frames": 32,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/firefly_meadow.gif",
+        "still": "/effects/presets/firefly_meadow-still.png"
       },
       {
         "name": "firelight",
@@ -80,7 +96,9 @@
         "width": 64,
         "height": 64,
         "frames": 8,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/firelight.gif",
+        "still": "/effects/presets/firelight-still.png"
       },
       {
         "name": "flame",
@@ -88,7 +106,9 @@
         "width": 48,
         "height": 76,
         "frames": 8,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/flame.gif",
+        "still": "/effects/presets/flame-still.png"
       },
       {
         "name": "glint_scatter",
@@ -96,7 +116,9 @@
         "width": 168,
         "height": 128,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/glint_scatter.gif",
+        "still": "/effects/presets/glint_scatter-still.png"
       },
       {
         "name": "ground_blast",
@@ -104,7 +126,9 @@
         "width": 224,
         "height": 216,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/ground_blast.gif",
+        "still": "/effects/presets/ground_blast-still.png"
       },
       {
         "name": "ground_sigil",
@@ -112,7 +136,9 @@
         "width": 128,
         "height": 112,
         "frames": 12,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/ground_sigil.gif",
+        "still": "/effects/presets/ground_sigil-still.png"
       },
       {
         "name": "heal_pillar",
@@ -120,7 +146,9 @@
         "width": 80,
         "height": 112,
         "frames": 12,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/heal_pillar.gif",
+        "still": "/effects/presets/heal_pillar-still.png"
       },
       {
         "name": "hex_shield",
@@ -128,7 +156,9 @@
         "width": 136,
         "height": 112,
         "frames": 16,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/hex_shield.gif",
+        "still": "/effects/presets/hex_shield-still.png"
       },
       {
         "name": "ice_spike_line",
@@ -136,7 +166,9 @@
         "width": 272,
         "height": 104,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/ice_spike_line.gif",
+        "still": "/effects/presets/ice_spike_line-still.png"
       },
       {
         "name": "impact_burst",
@@ -144,7 +176,9 @@
         "width": 64,
         "height": 64,
         "frames": 7,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/impact_burst.gif",
+        "still": "/effects/presets/impact_burst-still.png"
       },
       {
         "name": "light_sweep",
@@ -152,7 +186,9 @@
         "width": 64,
         "height": 64,
         "frames": 12,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/light_sweep.gif",
+        "still": "/effects/presets/light_sweep-still.png"
       },
       {
         "name": "lightning_strike",
@@ -168,7 +204,9 @@
         "width": 128,
         "height": 128,
         "frames": 12,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/magic_circle.gif",
+        "still": "/effects/presets/magic_circle-still.png"
       },
       {
         "name": "night_fog",
@@ -176,7 +214,9 @@
         "width": 192,
         "height": 100,
         "frames": 32,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/night_fog.gif",
+        "still": "/effects/presets/night_fog-still.png"
       },
       {
         "name": "plasma_beam",
@@ -184,7 +224,9 @@
         "width": 297,
         "height": 84,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/plasma_beam.gif",
+        "still": "/effects/presets/plasma_beam-still.png"
       },
       {
         "name": "plasma_globe",
@@ -192,7 +234,9 @@
         "width": 100,
         "height": 102,
         "frames": 32,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/plasma_globe.gif",
+        "still": "/effects/presets/plasma_globe-still.png"
       },
       {
         "name": "portal",
@@ -200,7 +244,9 @@
         "width": 96,
         "height": 112,
         "frames": 12,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/portal.gif",
+        "still": "/effects/presets/portal-still.png"
       },
       {
         "name": "rim_glow",
@@ -224,7 +270,9 @@
         "width": 112,
         "height": 64,
         "frames": 8,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/shockwave.gif",
+        "still": "/effects/presets/shockwave-still.png"
       },
       {
         "name": "slam_pillar",
@@ -232,7 +280,9 @@
         "width": 216,
         "height": 204,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/slam_pillar.gif",
+        "still": "/effects/presets/slam_pillar-still.png"
       },
       {
         "name": "slant_rain",
@@ -240,7 +290,9 @@
         "width": 160,
         "height": 120,
         "frames": 32,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/slant_rain.gif",
+        "still": "/effects/presets/slant_rain-still.png"
       },
       {
         "name": "slash_arc",
@@ -248,7 +300,9 @@
         "width": 96,
         "height": 96,
         "frames": 7,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/slash_arc.gif",
+        "still": "/effects/presets/slash_arc-still.png"
       },
       {
         "name": "smg_burst",
@@ -256,7 +310,9 @@
         "width": 112,
         "height": 60,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/smg_burst.gif",
+        "still": "/effects/presets/smg_burst-still.png"
       },
       {
         "name": "smoke_puff",
@@ -264,15 +320,19 @@
         "width": 64,
         "height": 64,
         "frames": 10,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/smoke_puff.gif",
+        "still": "/effects/presets/smoke_puff-still.png"
       },
       {
         "name": "snow_drift",
-        "summary": "Slow three-depth snow drifting right; 2×2 flakes and turning crystals land and lie on a wavy drift.",
+        "summary": "Slow three-depth snow drifting right; 2\u00d72 flakes and turning crystals land and lie on a wavy drift.",
         "width": 160,
         "height": 120,
         "frames": 32,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/snow_drift.gif",
+        "still": "/effects/presets/snow_drift-still.png"
       },
       {
         "name": "spark_hit",
@@ -280,7 +340,9 @@
         "width": 75,
         "height": 51,
         "frames": 31,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/spark_hit.gif",
+        "still": "/effects/presets/spark_hit-still.png"
       },
       {
         "name": "toxic_cloud",
@@ -288,7 +350,9 @@
         "width": 148,
         "height": 80,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/toxic_cloud.gif",
+        "still": "/effects/presets/toxic_cloud-still.png"
       },
       {
         "name": "toxic_puddle",
@@ -296,7 +360,9 @@
         "width": 132,
         "height": 66,
         "frames": 32,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/toxic_puddle.gif",
+        "still": "/effects/presets/toxic_puddle-still.png"
       },
       {
         "name": "tracer_bolt",
@@ -304,7 +370,9 @@
         "width": 246,
         "height": 116,
         "frames": 31,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/tracer_bolt.gif",
+        "still": "/effects/presets/tracer_bolt-still.png"
       },
       {
         "name": "turning_glint",
@@ -312,7 +380,9 @@
         "width": 160,
         "height": 120,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/turning_glint.gif",
+        "still": "/effects/presets/turning_glint-still.png"
       },
       {
         "name": "vent_bubbles",
@@ -320,7 +390,9 @@
         "width": 160,
         "height": 160,
         "frames": 32,
-        "loop": true
+        "loop": true,
+        "gif": "/effects/presets/vent_bubbles.gif",
+        "still": "/effects/presets/vent_bubbles-still.png"
       },
       {
         "name": "volt_impact",
@@ -328,7 +400,9 @@
         "width": 200,
         "height": 120,
         "frames": 32,
-        "loop": false
+        "loop": false,
+        "gif": "/effects/presets/volt_impact.gif",
+        "still": "/effects/presets/volt_impact-still.png"
       }
     ]
   },
