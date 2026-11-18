@@ -15,6 +15,8 @@ export interface Args {
   /** redraw --frame: the layer frames to draw again. */
   redrawFrames: string[]
   force: boolean
+  /** export: write each group of connected terrain sets as one tileset. */
+  mergeConnected: boolean
   yes: boolean
   budget?: number
   /** Repeatable provider-keyed budgets used by a mixed-provider run. */
@@ -249,7 +251,7 @@ const VALUE_FLAGS = [
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
+  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected",
   "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace",
 ] as const
 
@@ -587,6 +589,7 @@ export function parseArgs(argv: string[]): Args {
     assets: list("--only"),
     redrawFrames: list("--frame"),
     force: rest.includes("--force"),
+    mergeConnected: rest.includes("--merge-connected"),
     yes: rest.includes("--yes") || rest.includes("-y"),
     budget,
     providerBudgets,

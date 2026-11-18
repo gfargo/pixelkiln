@@ -125,6 +125,7 @@ pixelkiln export --style ground --only terrain --format generic
 pixelkiln export --style ground --only terrain --format tiled
 pixelkiln export --style ground --only terrain --format godot
 pixelkiln export --style ground --only terrain --format ldtk
+pixelkiln export --style ground --format tiled --merge-connected
 ```
 
 `export` selects downloaded `tiles` and `terrain` generator entries; anything
@@ -282,6 +283,53 @@ owns: layer and tileset names get a capital first letter (the project asks for
 that style), `cachedPixelData` is filled in, and the build id. Only corner sets
 were opened; edge sets are covered by the matcher tests alone.
 
+## Connected sets
+
+A coast is built from sets that share a terrain: one draws ocean against sand,
+the next draws that same sand against grass, a third grass against forest
+floor. Each set is 16 or 25 tiles with two terrains, but the map has four.
+`--merge-connected` writes the whole group as one tileset with all four.
+
+```bash
+pixelkiln export --style ground --format tiled --merge-connected
+pixelkiln export --style ground --only meadow --format godot --merge-connected
+```
+
+Naming any set in the group exports the group, so `--only meadow` also pulls
+in the coast and forest sets it connects to. Every set in the group has to be
+generated; a missing one stops the export and is named in the error.
+
+- **Which terrain is which.** The manifest's `connect` says it: the meadow's
+  lower terrain *is* the coast's upper one, so they are one terrain in the
+  result. Terrains are numbered in the order the group meets them, starting
+  from the set that connects to nothing: ocean 0, sand 1, grass 2, forest floor 3.
+- **Names.** Each terrain is named from the first clause of the description
+  in the set that defines it (`1). deep ocean water, small waves` becomes
+  `deep ocean water`), lowercased and cut to 32 characters. A set with no
+  description text falls back to `<asset>_lower` or `<asset>_upper`, and a
+  repeated name gets a number.
+- **Tiles.** Every set's tiles go into one atlas, role-prefixed with their set
+  (`coast/tile-03-...`), in the group's order. A tile's four corners are
+  recorded as terrain numbers, in place of the two-terrain bitmask. Two sets
+  that draw the same pair of corners (sand all round, from the coast and from
+  the meadow) both stay in the atlas.
+- **Generic JSON.** `sets` lists the group, `rules.terrains` the names, and
+  each tile has `corners: [NW, NE, SW, SE]` where a single set has `bitmask`.
+- **Tiled.** One Wang set with a color per terrain; each tile's id carries its
+  four corner colors.
+- **Godot.** One terrain set with a terrain per name and a peering bit on every
+  corner of every tile.
+- **LDtk.** One IntGrid layer with a value per terrain and one rule per
+  distinct set of four corners; tiles that share one are alternatives in that
+  rule. The Preview level is larger (16 by 12) and painted so that only
+  terrains a set joins ever meet, and the level's outside counts as the first
+  terrain. The preview uses every rule.
+- **Files.** The default name joins the sets: `coast-meadow-forest-tileset`.
+  `--out` names the one result. The record beside it lists the sets.
+
+Sets in a group must share a tile size and shape. A group containing a
+sidescroller set is refused.
+
 ## Deliberate limits
 
 - Tiled, Godot and LDtk exports require every image to match the atlas cell size.
@@ -295,14 +343,16 @@ were opened; edge sets are covered by the matcher tests alone.
   (see above); the cliff-tier 25-tile set exports, but its middle transition
   ring is not distinguished from the two named terrains in Tiled/Godot, and
   its four wall-continuation twins export with duplicate masks.
-- A `terrain` set exports alone. A connected set (`connect` in the
+- A `terrain` set exports alone unless you ask for `--merge-connected`; see
+  [Connected sets](#connected-sets). A connected set (`connect` in the
   manifest, `lower_base_tile_id`/`upper_base_tile_id` in the API) shares a
   terrain with another set, the way PixelLab's
   [Pro tilesets guide](https://www.youtube.com/watch?v=MbkqpDUFkEg) paints
-  ocean, sand, grass, path, and cliffs on one map, but each set still
+  ocean, sand, grass, path, and cliffs on one map. Without the flag each set
   exports as its own two-terrain Tiled Wang set, Godot terrain set or LDtk
   layer pair.
-  PixelKiln does not merge connected sets into one engine terrain set yet.
+- Merging works on `terrain` sets only. A sidescroller set connects just its
+  platform, and `tiles` sets have no `connect`, so neither merges.
 - Godot edge/side masks on an isometric or oblique tile remain generic- or
   Tiled-only; see Godot 4 above.
 - Export never changes source PNGs or the lockfile.

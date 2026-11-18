@@ -1276,6 +1276,7 @@ project metadata and a provenance companion.
 
 ```bash
 pixelkiln export --style ground --only terrain --format tiled --columns 8
+pixelkiln export --style ground --format godot --merge-connected
 ```
 
 See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
@@ -2147,6 +2148,7 @@ Print the package version. `-v` is an alias.
 | `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/normal-map/vfx/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed, pixelated, or normal-map PNG, the effect's `<base>.png`/`.gif`/`.json`/`.vfx.json`, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
+| `--merge-connected` | export | Write each group of connected terrain sets (`connect` in the manifest) as one tileset with every terrain, instead of one tileset per set. Naming any set in the group exports the group. See [connected sets](./TILES.md#connected-sets). |
 | `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, `godot` (TileSet), or `ldtk` (project with auto-rules). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
 | `--output-role <role>` | pack | Include named structural roles; repeatable. |
 | `--primary-only` | pack | Include only unambiguous primary/single outputs. |

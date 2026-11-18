@@ -3,10 +3,11 @@ import path from "node:path"
 import { readFile } from "node:fs/promises"
 import { resolveSpecs } from "../../manifest.ts"
 import { mountStyle, packSprites, packStyle, resolvePackInputs } from "../../pipeline/pack.ts"
-import { lockKey } from "../../types.ts"
+import { lockKey, type ResolvedSpec } from "../../types.ts"
 import { qualityRecordPath } from "../../pipeline/refine.ts"
 import { requireApprovedQualitySources } from "../../pipeline/quality-profile.ts"
-import { exportTileset, type TilesetFormat } from "../../pipeline/tileset-export.ts"
+import { connectedGroup } from "../../pipeline/connected-sets.ts"
+import { exportMergedTilesets, exportTileset, type TilesetFormat } from "../../pipeline/tileset-export.ts"
 import { writeManagedArtifactBundle, type ArtifactFile } from "../../artifacts.ts"
 import { renderSheetDocument, SHEET_FORMATS, type SheetFormat } from "../../pipeline/sheet-formats.ts"
 import { openProject, manifestSources, provenanceFile } from "../project.ts"
@@ -239,23 +240,57 @@ export async function runExport(args: Args): Promise<void> {
   if (!selected.length) {
     throw new Error("No downloaded tiles/terrain entries match the requested --style/--only filters.")
   }
-  if (args.out && selected.length > 1) {
+  if (args.out && selected.length > 1 && !args.mergeConnected) {
     throw new Error("--out can name one tileset only; add --style/--only to select one asset.")
   }
 
-  for (const spec of selected) {
-    const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]!
+  // With --merge-connected, sets that share a terrain are one job: the group.
+  const jobs: ResolvedSpec[][] = []
+  if (args.mergeConnected) {
+    // --style and --only narrow what `specs` holds; a connected set may be outside them.
+    const terrainSpecs = (await resolveSpecs(loaded)).filter((spec) => spec.generator === "terrain")
+    const taken = new Set<string>()
+    for (const spec of selected) {
+      if (taken.has(lockKey(spec.styleId, spec.assetId))) continue
+      const group = spec.generator === "terrain" ? connectedGroup(spec, terrainSpecs) : [spec]
+      for (const member of group) taken.add(lockKey(member.styleId, member.assetId))
+      const missing = group.filter((member) => !lock.entries[lockKey(member.styleId, member.assetId)])
+      if (missing.length) {
+        throw new Error(
+          `${spec.styleId}/${spec.assetId} is connected to ${missing.map((member) => member.assetId).join(", ")}, ` +
+            "which has not been generated; run gen first, or export without --merge-connected",
+        )
+      }
+      jobs.push(group)
+    }
+  } else {
+    for (const spec of selected) jobs.push([spec])
+  }
+  if (args.out && jobs.length > 1) {
+    throw new Error("--out can name one tileset only; add --style/--only to select one asset.")
+  }
+
+  for (const group of jobs) {
+    const spec = group[0]!
+    const merged = group.length > 1
     const style = loaded.manifest.styles[spec.styleId]!
-    const defaultBase = path.resolve(manifestDir, style.outDir, `${spec.assetId}-tileset`)
+    const assetName = group.map((member) => member.assetId).join("-")
+    const defaultBase = path.resolve(manifestDir, style.outDir, `${assetName}-tileset`)
     const base = args.out
       ? path.resolve(args.out.replace(/\.(?:png|json|tsj|tres|ldtk)$/i, ""))
       : defaultBase
-    const result = exportTileset(entry, spec, {
+    const exportOptions = {
       format,
       manifestDir,
       imageName: path.basename(`${base}.png`),
       columns: args.columns,
-    })
+    }
+    const result = merged
+      ? exportMergedTilesets(
+          group.map((member) => ({ spec: member, entry: lock.entries[lockKey(member.styleId, member.assetId)]! })),
+          exportOptions,
+        )
+      : exportTileset(lock.entries[lockKey(spec.styleId, spec.assetId)]!, spec, exportOptions)
     const outputs: ArtifactFile[] = [
       { path: `${base}.png`, data: result.png },
       { path: `${base}${result.extension}`, data: result.document },
@@ -268,17 +303,19 @@ export async function runExport(args: Args): Promise<void> {
         ...result.sources,
       ],
       options: {
-        asset: spec.assetId,
+        asset: result.generic.asset,
         columns: args.columns ?? null,
         format,
         image: path.basename(`${base}.png`),
         providerRules: result.generic.providerRules,
+        ...(merged ? { sets: result.generic.sets } : {}),
         style: spec.styleId,
         tileType: spec.tileType ?? null,
       },
     }, { force: args.force })
     log(
-      `  ${spec.styleId}/${spec.assetId}: ${result.generic.tiles.length} tile(s), ` +
+      `  ${spec.styleId}/${merged ? group.map((member) => member.assetId).join(" + ") : spec.assetId}: ${result.generic.tiles.length} tile(s), ` +
+        (merged ? `${result.generic.rules!.terrains.length} terrains (${result.generic.rules!.terrains.join(", ")}), ` : "") +
         `${result.generic.sheet.width}x${result.generic.sheet.height} (${format})`,
     )
     log(
