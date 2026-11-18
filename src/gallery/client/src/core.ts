@@ -64,6 +64,17 @@ export interface UiState {
   tags: Set<string>
   /** Card size on the grid: 's', 'm', or 'l'. */
   size: string
+  /** Id of the 3D model whose record is open; a model and a sprite record are never open together. */
+  model: string | null
+  /** Which file the open model's preview draws when it has an edit. */
+  modelSide: 'edited' | 'original'
+  /** What a texture's reference layer carries in the editor. */
+  modelReference: string
+  /** Editor sheet width and its 3D side pane width, in px; 0 for the default. */
+  sheetWidth: number
+  sideWidth: number
+  /** Show the live 3D pane beside the editor when painting a model's texture. */
+  side3d: boolean
 }
 
 export const ui: UiState = {
@@ -86,6 +97,12 @@ export const ui: UiState = {
   drawerTab: 'overview',
   tags: new Set(),
   size: 'm',
+  model: null,
+  modelSide: 'edited',
+  modelReference: 'guide',
+  sheetWidth: 0,
+  sideWidth: 0,
+  side3d: true,
 };
 
 /** Card sizes: the box a sprite is drawn into on a card, and the multi-output tile. */
@@ -100,7 +117,7 @@ export const declaredTags = (item): string[] => (item.asset && Array.isArray(ite
 // ---- per-viewer preferences ------------------------------------------------
 // Conveniences only: a private window or blocked storage just starts from the defaults.
 const PREFS_KEY = 'pixelkiln.gallery.prefs';
-const PREF_NAMES = ['playLoops', 'backdrop', 'notify', 'onion', 'drawerTab', 'size'] as const;
+const PREF_NAMES = ['playLoops', 'backdrop', 'notify', 'onion', 'drawerTab', 'size', 'modelReference', 'sheetWidth', 'sideWidth', 'side3d'] as const;
 export function loadPrefs() {
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');

@@ -9,11 +9,14 @@ extends Node
 ## Protocol (all messages carry `type: "pixelkiln:<name>"`; same origin only):
 ##   host → editor   open          { request, asset: {key, id, name, width, height}, png: ArrayBuffer, pxo?: ArrayBuffer,
 ##                                   frames?: [{role, png: ArrayBuffer}], fps?, palette: [#rrggbb],
-##                                   reference?: [{role, png: ArrayBuffer}] }
+##                                   reference?: [{role, png: ArrayBuffer}],
+##                                   guides?: [{name, png: ArrayBuffer, opacity?}] }
 ##   host → editor   request-save  { request }
 ##   host → editor   reference     { visible: bool }
+##   host → editor   layer         { name, visible: bool }        (protocol 5)
 ##   editor → host   ready         { version, editor }
-##   editor → host   opened        { request, width, height, source: "pxo" | "png" | "frames", layers, frames, reference }
+##   editor → host   opened        { request, width, height, source: "pxo" | "png" | "frames", layers, frames, reference,
+##                                   guides: [name] }
 ##   editor → host   dirty         { dirty }
 ##   editor → host   save          { request, width, height, png: ArrayBuffer, frames: [{role, png}], pxo: ArrayBuffer }
 ##   editor → host   error         { request?, message }
@@ -30,11 +33,20 @@ extends Node
 ## never flattens in and `reference {visible}` shows or hides. Opening a
 ## project file that already carries the layer refreshes its pixels.
 ##
+## `guides` (protocol 5) are further locked layers above the reference, one
+## per entry, named "<name> (PixelKiln guide)", at `opacity` (default 1), one
+## image for every frame: an overlay for finding your way, such as the
+## outlines and labels of a 3D model's texture unwrap. Like the reference they
+## are never flattened into a save, a reopened project file has their pixels
+## refreshed by name, and `layer {name, visible}` shows or hides one; the name
+## "reference" means the reference layer. `opened.layers` counts the author's
+## layers only.
+##
 ## Bytes cross the JavaScript boundary as base64 inside a small shim this
 ## node installs on `window.__pixelkiln`; the shim converts to and from
 ## ArrayBuffers so the page-facing protocol stays binary.
 
-const PROTOCOL_VERSION := 4
+const PROTOCOL_VERSION := 5
 const PXO_TMP := "user://pixelkiln-edit.pxo"
 ## Projects handed over by the host are written here to be opened; the file
 ## name becomes the project name, so one file per asset name.
@@ -43,6 +55,8 @@ const MENU_LABEL := "Save to PixelKiln"
 ## The layer that shows the generated art behind an edit; never saved.
 const REFERENCE_LAYER := "Generated (PixelKiln reference)"
 const REFERENCE_OPACITY := 0.5
+## Guide layers are named "<name>" + this, so they are found again in a reopened project.
+const GUIDE_SUFFIX := " (PixelKiln guide)"
 
 ## Installed once via JavaScriptBridge.eval. Keeps an inbox the node drains
 ## every frame, and posts replies to the parent window on the same origin.
@@ -59,7 +73,7 @@ const SHIM := """
     if (e.origin !== window.location.origin || !e.data || typeof e.data.type !== "string" || !e.data.type.startsWith("pixelkiln:")) return;
     const m = Object.assign({}, e.data);
     for (const k of ["png", "pxo"]) { if (m[k] instanceof ArrayBuffer || ArrayBuffer.isView(m[k])) m[k] = toB64(m[k].buffer || m[k]); }
-    for (const k of ["frames", "reference"]) { if (Array.isArray(m[k])) m[k] = m[k].map((f) => Object.assign({}, f, { png: (f.png instanceof ArrayBuffer || ArrayBuffer.isView(f.png)) ? toB64(f.png.buffer || f.png) : f.png })); }
+    for (const k of ["frames", "reference", "guides"]) { if (Array.isArray(m[k])) m[k] = m[k].map((f) => Object.assign({}, f, { png: (f.png instanceof ArrayBuffer || ArrayBuffer.isView(f.png)) ? toB64(f.png.buffer || f.png) : f.png })); }
     box.queue.push(m);
   });
   window.__pixelkiln = box;
@@ -137,6 +151,12 @@ func _handle(message: Dictionary) -> void:
 			_save(request)
 		"pixelkiln:reference":
 			_set_reference_visible(bool(message.get("visible", true)))
+		"pixelkiln:layer":
+			var target := str(message.get("name", ""))
+			if target == "reference":
+				_set_reference_visible(bool(message.get("visible", true)))
+			else:
+				_set_layer_visible(target + GUIDE_SUFFIX, bool(message.get("visible", true)))
 		_:
 			_post_error("unknown message type: %s" % str(message.get("type", "")), request)
 
@@ -178,6 +198,7 @@ func _open(message: Dictionary, request: String) -> void:
 	var project := Global.current_project
 	_load_palette(message.get("palette"), name)
 	var reference := _apply_reference(project, message.get("reference"))
+	var guides := _apply_guides(project, message.get("guides"))
 	project.has_changed = false
 	_set_dirty(false)
 	_post({
@@ -186,9 +207,10 @@ func _open(message: Dictionary, request: String) -> void:
 		"width": project.size.x,
 		"height": project.size.y,
 		"source": source,
-		"layers": project.layers.size() - (1 if _reference_layer_index(project) >= 0 else 0),
+		"layers": project.layers.size() - _locked_layer_indices(project).size(),
 		"frames": project.frames.size(),
 		"reference": reference,
+		"guides": guides,
 	})
 
 
@@ -237,6 +259,79 @@ func _apply_reference(project: Project, reference) -> bool:
 	project.change_cel(-1, 0 if current >= project.layers.size() - 1 else current)
 	Global.canvas.queue_redraw_all_layers()
 	return true
+
+
+## Guide layers from `open`: each entry's image on a locked layer at the top,
+## in every frame. A layer of that name already in the project (a reopened
+## project file) gets its pixels refreshed instead. Returns the names placed.
+func _apply_guides(project: Project, guides) -> Array:
+	var placed: Array = []
+	if typeof(guides) != TYPE_ARRAY:
+		return placed
+	for entry in guides:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var guide_name := str(entry.get("name", "")).strip_edges()
+		if guide_name == "":
+			continue
+		var image := Image.new()
+		if image.load_png_from_buffer(Marshalls.base64_to_raw(str(entry.get("png", "")))) != OK:
+			_post_error("guide \"%s\" is not a PNG" % guide_name)
+			continue
+		if image.get_size() != project.size:
+			_post_error("guide \"%s\" is %dx%d; the project is %dx%d" % [guide_name, image.get_width(), image.get_height(), project.size.x, project.size.y])
+			continue
+		image.convert(project.get_image_format())
+		var layer_name := guide_name + GUIDE_SUFFIX
+		var opacity := clampf(float(entry.get("opacity", 1.0)), 0.0, 1.0)
+		var existing := _layer_index(project, layer_name)
+		if existing >= 0:
+			for index in project.frames.size():
+				var cel := project.frames[index].cels[existing]
+				if cel is PixelCel:
+					(cel as PixelCel).set_content(image)
+			project.layers[existing].locked = true
+			project.layers[existing].opacity = opacity
+		else:
+			var layer := PixelLayer.new(project, layer_name)
+			layer.locked = true
+			layer.opacity = opacity
+			var cels := []
+			for index in project.frames.size():
+				cels.append(layer.new_cel_from_image(image))
+			project.add_layers([layer], [project.layers.size()], [cels])
+			var current := project.current_layer
+			project.change_cel(-1, 0 if current >= project.layers.size() - 1 else current)
+		placed.append(guide_name)
+	Global.canvas.queue_redraw_all_layers()
+	return placed
+
+
+func _layer_index(project: Project, layer_name: String) -> int:
+	for index in project.layers.size():
+		if project.layers[index].name == layer_name:
+			return index
+	return -1
+
+
+## The reference and every guide: layers for looking, never for shipping.
+func _locked_layer_indices(project: Project) -> Array:
+	var found: Array = []
+	for index in project.layers.size():
+		var layer_name: String = project.layers[index].name
+		if layer_name == REFERENCE_LAYER or layer_name.ends_with(GUIDE_SUFFIX):
+			found.append(index)
+	return found
+
+
+func _set_layer_visible(layer_name: String, visible: bool) -> void:
+	var project := Global.current_project
+	var index := _layer_index(project, layer_name)
+	if index < 0:
+		return
+	project.layers[index].visible = visible
+	Global.canvas.update_all_layers = true
+	Global.canvas.queue_redraw()
 
 
 func _reference_layer_index(project: Project) -> int:
@@ -347,11 +442,12 @@ func _save(request: String) -> void:
 	if project == null or project.frames.is_empty():
 		_post_error("nothing to save", request)
 		return
-	# The reference layer is for looking, never for shipping.
-	var reference := _reference_layer_index(project)
-	var reference_visible := reference >= 0 and project.layers[reference].visible
-	if reference_visible:
-		project.layers[reference].visible = false
+	# The reference and guide layers are for looking, never for shipping.
+	var hidden: Array = []
+	for index in _locked_layer_indices(project):
+		if project.layers[index].visible:
+			project.layers[index].visible = false
+			hidden.append(index)
 	var frames: Array = []
 	for index in project.frames.size():
 		var image := Image.create(project.size.x, project.size.y, false, Image.FORMAT_RGBA8)
@@ -360,8 +456,8 @@ func _save(request: String) -> void:
 			"role": _frame_roles[index] if index < _frame_roles.size() else null,
 			"png": Marshalls.raw_to_base64(image.save_png_to_buffer()),
 		})
-	if reference_visible:
-		project.layers[reference].visible = true
+	for index in hidden:
+		project.layers[index].visible = true
 	var pxo := PackedByteArray()
 	if OpenSave.save_pxo_file(PXO_TMP, true, false, project):
 		pxo = FileAccess.get_file_as_bytes(PXO_TMP)

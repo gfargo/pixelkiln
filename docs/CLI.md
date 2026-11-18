@@ -471,6 +471,110 @@ members by role. GIF animations and sets with a GIF in them are refused with
 the reason. `--only` must resolve to one asset in one style, so add `--style`
 when the asset is shared.
 
+### `model`
+
+The gallery's [3D model](#3d-models-look-at-one-paint-its-textures-open-it-in-blender)
+actions, from the terminal, for painting in your own editor or for a script.
+A model is a `.glb` under a style's `outDir`; name one by its path, its file
+name, or its gallery id. Nothing here reads or writes the manifest or the
+lockfile, and the model as built is never written.
+
+```bash
+pixelkiln model list [--json]
+pixelkiln model export knight --image Helm [--out <dir>] [--no-open] [--json]
+pixelkiln model import knight --image Helm [--from <png>] [--json]
+pixelkiln model blender knight
+pixelkiln model adopt knight [--mode textures|whole] [--from <glb>] [--json]
+pixelkiln model normal-map knight [--source views|texture|sprites] [--image <material>[,…]] [--views south,east,…]
+                                  [--size <px>] [--sprites <folder>|south=a.png,…] [--pose <animation>[@s]] [--blend <0-2>] [--replace] [--surface-detail <n>]
+                                  [--detail-softness <n>] [--mode lite|pro] [--budget <n>] [--dry-run] [--yes] [--json]
+```
+
+- `list` (the default) shows every model with its meshes, bones, animations,
+  and images by index, material, and role, and its edited copy if there is one.
+  `--style` narrows it. A normal map is listed as `<material> normal map`.
+- `export` writes one texture for painting anywhere: `--image` takes the image
+  index, a material name (its base colour texture), or `<material>:normal`
+  (its normal map), e.g. `--image Helm:normal`. Three files land beside
+  the edited copy, or in `--out`: `<name>.image-<n>.png`, the texture as PNG
+  (a JPEG texture is decoded; progressive JPEG is refused with the reason),
+  taken from the edited copy when there is one; `<name>.image-<n>.guide.png`,
+  a transparent layer the same size with every unwrap piece outlined in its
+  region's colour and numbered; and `<name>.image-<n>.guide.txt`, which names
+  each number and lists every piece with its label, pixel bounds, and meshes.
+  The texture then opens in `PIXELKILN_EDITOR` or the OS default, unless
+  `--no-open`. Lay the guide on top as its own layer; it is never imported.
+- `import` reads the painted PNG back (or `--from <png>`), refuses one of a
+  different size, and writes the edited copy with only that texture replaced,
+  plus the same `.edit.json` record a browser save writes, naming the editor
+  `PIXELKILN_EDITOR` names.
+- `blender` starts Blender with the model (or its edited copy) imported and
+  **File > Export > PixelKiln edit (.glb)** added; see `PIXELKILN_BLENDER`
+  above.
+- `adopt` takes what that export wrote. `--mode textures` (the default) takes
+  only the base colour textures and normal maps that changed, by material
+  name, into a copy of
+  the model as built; `--mode whole` takes the file as it is. `--from <glb>`
+  adopts a file from somewhere else.
+- `normal-map` adds normal map detail from PixelLab's `/normal-map` to the
+  model's normal maps (all of them, or `--image Helm,Cape`), written into the
+  edited copy with a record per map (editor `pixellab normal-map (<source>)`).
+  It is the one model command that spends: it prints the calls and their
+  price, then asks (`--yes` skips the question, `--budget` refuses a run that
+  costs more, `--dry-run` writes the pictures it would send and stops).
+  PixelLab is asked for surface detail only, with outline rounding and part
+  shapes at 0, since the mesh already has its shape. Two sources:
+  - `--source views` (the default) draws the whole figure from `--views`
+    (four sides unless given: `south,east,north,west`; any of the eight
+    directions or degrees), each at `--size` px (8–512, default 512), sends
+    each picture, and carries the normals back onto every texture through the
+    surface: each texel takes them from the views that see it, weighted by how
+    squarely. One call per view, whatever the number of textures: 0.4
+    generation for four in lite mode. The detail is consistent across seams but
+    coarser than the texture, and a part no view sees (under an arm, behind
+    the cape) keeps the map it had.
+  - `--source texture` sends each normal map's base colour texture as laid
+    out, masked to the unwrap and cut into tiles of at most 512 px: one call
+    per tile (a 1024 texture is four). The detail is finer and covers every
+    piece, but neighbouring pieces of the unwrap are read separately and can
+    disagree where they meet, which shows as a line along the seam.
+  - `--source sprites` sends the figure's own sprites, the art the model was
+    made from: a folder of `<direction>.png` (`south.png`, `north-east.png`,
+    …; a PixelLab character's `rotations/` folder inside it is found too),
+    given with `--sprites <folder>` or as `--sprites south=a.png,east=b.png`,
+    and by default `<model>.sprites/` beside the model. Each sprite is lined up
+    with the model: the camera's tilt (sprites are often drawn from a little
+    above), scale, and position are searched for where the most sprite pixels
+    are matched by the model's own paint, and only those matching pixels pass
+    their normals on. The dry run prints, per sprite, how much lined up in
+    colour, the outline overlap, and the tilt found, and writes
+    `sprite-<direction>.fit.png` (the sprite, the model's outline in red, the
+    unused pixels dimmed). A sprite under 25% is left out, and with none left
+    the run is refused. One call per sprite. This only pays off when the model
+    was built to the sprites' proportions: on the sample knight, whose mesh has
+    adult proportions and level arms against chibi A-pose sprites at 80 px,
+    35–52% of each sprite lined up and the detail came out patchy and soft,
+    clearly worse than `views`. The plan says so before anything is spent.
+
+  `--pose <animation>[@seconds]` poses the model at a moment of one of its
+  animations first (names match without case or spacing: `Idle Loop` finds
+  `Idle_Loop`), for sprites drawn in a stance other than the rest pose; it
+  applies to any source.
+
+  The detail is blended onto the normal map the model has ("whiteout": the
+  sideways parts add, so the relief baked from the high-detail mesh stays);
+  `--blend` scales it (0–2, default 1) and `--replace` writes PixelLab's detail
+  alone. Every picture sent and every answer is kept in
+  `<name>.normal-map/<source>/` beside the edited copy, with
+  `image-<n>.detail.png` showing the detail on its own; an answer is reused
+  whenever the same picture is asked for again, so running again with another
+  `--blend` or `--replace` is free. Each run blends onto the normal map as it
+  was before the first PixelLab run (kept there as `image-<n>.base.png`), so
+  runs re-tune the detail rather than stack it, and `--blend 0` takes it off;
+  a hand paint or an adopt after that becomes the new starting map. `--mode pro` is 0.5 generation a call.
+  On the sample knight in testing, both sources added relief to trim and
+  embossing and little to plain cloth; the effect is subtle at `--blend 1`.
+
 ### `tools`
 
 Prepare the in-browser editor before opening a gallery, or check what is on
@@ -539,7 +643,8 @@ can stay open while `gen` runs in another terminal. The server binds to
 localhost, serves only the files the current snapshot names, never contacts a
 provider, and never writes anything. Stop it with Ctrl+C. See the
 [Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
-screenshot.
+screenshot. A `.glb` under a style's output folder is listed too, as a
+[3D model](#3d-models-look-at-one-paint-its-textures-open-it-in-blender).
 
 A record's drawer keeps the preview, its state, and its actions at the
 top. The rest of the record is split into tabs:
@@ -762,6 +867,115 @@ editor and the layer file; **Open in desktop editor** and **Detach edit** work
 on the same file. The editor page runs same-origin under its own
 content-security policy and never sees the gallery's session token; the page
 does the write. `--no-editor` hides all of it and serves none of its routes.
+
+#### 3D models: look at one, paint its textures, open it in Blender
+
+A `.glb` file anywhere under a style's `outDir` is listed in a **3D models**
+section below the styles. There is no manifest asset type for a model, so one
+enters a project by being put there: it has no plan state, lock entry, or
+cost, `gen` never touches it, and `--only` (which names assets) hides the
+section. `edits/`, dot folders, and `node_modules` are not searched.
+`gallery --json` lists them under `models`, each with what the file holds
+(meshes, bones, animations, images and what each is used for) and its edit.
+Each card shows the model drawn once at rest (the edited copy when there
+is one), by the page, so it costs nothing on the server.
+
+```text
+art/characters/models/knight.glb          the model as built; never written
+art/characters/edits/models/knight.glb    the edited copy, once there is one
+art/characters/edits/models/knight.edit.json
+art/characters/edits/models/knight.image-8.pxo
+art/characters/edits/models/knight.export.glb
+```
+
+A model's record draws it. Drag to turn it, pick one of its animations or
+the rest pose, pause, zoom, and switch its separate parts on and off; a body
+piece the file marks as covered by a part (node `extras.hiddenBy`) hides while
+that part shows. The view is drawn by the page itself with WebGL2, offline
+like everything else, and covers what a rigged character uses: triangle
+meshes, one skin, base colour and normal maps, and translation, rotation, and
+scale animation. It works in the read-only gallery.
+
+With `--edit`, each base colour texture offers **Edit texture in browser**,
+and each normal map **Edit normal map in browser**.
+The texture opens in the same Pixelorama sheet a sprite does, and the locked
+layer at 50% carries a guide: every piece of the unwrap is outlined in the
+colour of the body region that moves it and named where the name fits
+("Left lower arm, front"), with the colours and numbers listed above the
+canvas. The guide is a locked layer of its own (**Unwrap guide**) above a
+second one holding the texture as built at 50%, and the sheet's bar has
+**show the guide** and **show as built** to hide either. Neither is ever part
+of the saved texture. This needs the editor build to speak bridge protocol 5,
+which the pinned build does from `editor-pixelorama-v1.2.2-pk.31`. A
+gallery serves only the build its PixelKiln version pins, so after upgrading
+the header offers **Install editor** once to fetch it (see [`tools`](#tools)).
+With a protocol 4 build, both share one locked layer as described next. Regions come from the mesh itself: pieces are found from the texture
+coordinates, joined across every mesh that shares the texture, and each is
+named after the bone that carries most of its weight, or after its mesh when
+the model has no skeleton. **Locked layer shows** (protocol 4 builds only) picks the guide, the guide
+over the texture as built, the texture as built alone, or nothing. The guide
+is never part of what is saved.
+
+A normal map opens the same way, with the normal map as built under the guide
+and five swatches in the palette: flat (`#8080ff`) and leaning 45° right,
+left, up, and down, in glTF's OpenGL convention (green up). The 3D view beside
+the editor lights the model with what is on the canvas, which is the way to
+judge a normal map: paint flat over a streak or a pinhole and watch it go.
+
+**Normal map detail (PixelLab)** in the drawer does what
+[`pixelkiln model normal-map`](#model) does: pick the source (the figure
+drawn from four sides, each texture as laid out, or, when a `<model>.sprites/`
+folder is beside the model, its sprites), the blend, and whether to
+replace the baked relief, and the button shows the most the run can cost.
+After you confirm, the page sends that price with the request and the server
+refuses a run that would cost more. It needs `--edit --budget <n>` (or
+`--budget pixellab=<n>`): the session's spending on normal map detail stops at
+that ceiling, counted on its own, before any call is sent. Answers already
+fetched are reused, so the real charge can be lower than shown, and changing
+only the blend costs nothing.
+
+The model also stands beside the editor in the same sheet (**3D view** in the
+sheet's bar hides it), and follows the canvas: each time painting pauses for
+about half a second the page asks the editor for its pixels and puts them on
+the model, without writing anything. Drag the bar between the two to share
+the width, and the sheet's left edge to resize the whole sheet; both widths
+are remembered.
+
+**Save to project** writes a copy of the model to `<outDir>/edits/<same
+path>` with that one texture replaced, as a PNG. The model as built is not
+touched, and in the copy every other byte of the buffer (meshes, normals,
+tangents, skins, animations, the normal maps and other textures) is the same;
+only the JSON header is rewritten, with the same values. Beside it go
+`<name>.edit.json`, the record a sprite's browser edit gets (editor, time,
+the hash of the model the edit was based on, and one entry per texture
+painted), and `<name>.image-<n>.pxo`, the layers of that texture for the next
+time it is opened. Painting a second texture adds to the same copy. The
+preview follows a save, and **Edited** / **As built** switch between the two
+files. If the model is rebuilt later, the record says the edit is based on
+the older build. Nothing in the manifest or lockfile changes; a tool that
+wants the edit takes the file under `edits/` when it is there.
+
+**Open in Blender** starts Blender with the model imported (the edited copy
+when there is one) and one addition: **File > Export > PixelKiln edit
+(.glb)**, which writes the scene to `<name>.export.glb` in the edit folder.
+To paint there, switch to the *Texture Paint* workspace, select a mesh, paint,
+and use that export item; nothing needs saving first. Back in the gallery,
+**Refresh** shows the waiting export with two ways to take it:
+
+- **Adopt the export's textures** takes only the base colour textures and
+  normal maps that changed, matched to the model by material name, into a copy of the model as
+  built. Blender re-encodes meshes and animations on export; this keeps
+  them exactly as built.
+- **Adopt the whole file** uses the export as the edit as it is, for changes
+  that are not paint.
+
+Any program that writes glTF can leave a file at that path for the same two
+buttons. [`pixelkiln model`](#model) does all of this from the terminal, and
+exports a texture with the guide as files for painting in your own editor. `PIXELKILN_BLENDER` names the program (a name, or a command with
+arguments); without it the usual install location is used:
+`/Applications/Blender.app` on macOS, `Program Files\Blender Foundation` on
+Windows, `blender` on the `PATH` on Linux. PixelKiln never installs Blender;
+when none is found the button is disabled and says so.
 
 #### Pull changes made in PixelLab's editor
 
@@ -1807,16 +2021,22 @@ Print the package version. `-v` is an alias.
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
 | `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
 | `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
-| `--mode <mode>` | normal-map/asset import | normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. |
+| `--mode <mode>` | normal-map/asset import/model adopt/model normal-map | normal-map and model normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. model adopt: `textures` (the default) or `whole`. |
+| `--image <n\|material>` | model export/import/normal-map | The texture: an image index, a material name for its base colour texture, or `<material>:normal` for its normal map. For `model normal-map`, a material name means its normal map, and several can be given comma-separated. |
 | `--strength <n>` | normal-map | How far every pixel tilts away from the viewer, 0–2. |
 | `--outline-rounding <n>` | normal-map | How much the outline rounds off, 0–3. |
 | `--part-shapes <n>` | normal-map | How much the sprite's 3D parts add, 0–2. |
-| `--surface-detail <n>` | normal-map | The art's light and dark as bumps, 0–2. |
-| `--detail-softness <n>` | normal-map | How far that detail is blurred, 0.6–3 px. |
+| `--surface-detail <n>` | normal-map/model normal-map | The art's light and dark as bumps, 0–2. |
+| `--views <list>` | model normal-map | Directions to draw the model from with `--source views`, comma-separated: `south`, `south-east`, `east`, `north-east`, `north`, `north-west`, `west`, `south-west`, or degrees. Default `south,east,north,west`. |
+| `--sprites <folder\|pairs>` | model normal-map | With `--source sprites`: a folder of `<direction>.png`, or `south=a.png,east=b.png`. Default `<model>.sprites/` beside the model. |
+| `--pose <animation>[@s]` | model normal-map | Pose the model at that moment of one of its animations before drawing or fitting. |
+| `--blend <n>` | model normal-map | How much of PixelLab's detail goes on, 0–2; default 1. |
+| `--replace` | model normal-map | Write PixelLab's detail alone instead of blending it onto the normal map's baked relief. |
+| `--detail-softness <n>` | normal-map/model normal-map | How far that detail is blurred, 0.6–3 px. |
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |
-| `--budget <n\|provider=n>` | submit/gen/gallery | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page. |
+| `--budget <n\|provider=n>` | submit/gen/gallery/model normal-map | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page, and (from `pixellab=<n>` or the plain amount) the ceiling on a session's normal map detail for models. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands, adopt --local, quality snapshot --only | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/normal-map/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
@@ -1824,7 +2044,7 @@ Print the package version. `-v` is an alias.
 | `--strict` | plan/hash/doctor | Fail on any invalid manifest entry instead of listing it and continuing. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser (`open`, `xdg-open`, or `start`, by platform), or the editor for `edit`. |
-| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor. |
+| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor, for sprites and for a 3D model's textures, and **Open in Blender**; those write under `edits/`. |
 | `--no-editor` | gallery | With `--edit`, do not offer, install, or serve the in-browser editor. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--refresh` | fetch | Re-download downloaded outputs and replace files whose object changed upstream; never generates, never overwrites a local edit without `--force`. |
@@ -1839,7 +2059,7 @@ Print the package version. `-v` is an alias.
 | `--name <name>` | init/font/vfx | Project name for the scaffolded manifest, the generated font's family name, or the effect's name in My effects. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--local` | adopt | Record local files as `imported` lock entries offline, with no provider key. |
-| `--source <name>` | adopt --local | Where the art came from (`mcp`, `hand`, a tool name); default `external`. |
+| `--source <name>` | adopt --local/model normal-map | adopt --local: where the art came from (`mcp`, `hand`, a tool name); default `external`. model normal-map: `views` (the default), `texture`, or `sprites`. |
 | `--object-id <id>` | adopt --local | The provider object id of the single asset being imported. |
 | `--tool <name>` | adopt --local | The tool call that made the art, recorded under `origin`. |
 | `--prompt <text>` | adopt --local | The prompt the art was rolled with; becomes the entry's prompt. |
@@ -1881,8 +2101,8 @@ Print the package version. `-v` is an alias.
 | `--margin <px>` | vfx | With `--lib pixelfx`: transparent pixels added on every side of the effect's canvas, 0–256. |
 | `--sprite-frames <n>` | vfx | With `--description`: `--sprite` is a horizontal PNG strip of `n` equal frames (2 to 32). |
 | `--sprite-fps <n>` | vfx | With `--description`: how fast an animated `--sprite` plays, 1 to 60. PixelLab's default is a GIF's own timing, else 12. |
-| `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
-| `--size <WxH>` | asset canvas/import | asset canvas: the new canvas, in multiples of 4. asset import `--kind tileset` or `tiles`: the tile size in pixels, e.g. `--size 32`. |
+| `--kind <kind>` | asset/normal-map/model normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map and model normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
+| `--size <WxH>` | asset canvas/import/model normal-map | asset canvas: the new canvas, in multiples of 4. asset import `--kind tileset` or `tiles`: the tile size in pixels, e.g. `--size 32`. model normal-map: the side of each drawn view, 8–512 px (default 512). |
 | `--text <line>` | talk gif/plan | The line of dialogue to lip-sync, up to 500 characters. |
 | `--mood <mood>` | talk | `neutral` (the default), `happy`, `angry`, `sad` or `surprised`. For gif and plan it picks among a character's stored expressions. |
 | `--visemes <n>` | talk visemes/plan | How many mouth positions: 3, 5, 7 (the default) or 12. |

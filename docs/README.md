@@ -13,7 +13,7 @@ provider you are using. These Markdown files also render at
 | [Set up Retro Diffusion](./RETRO_DIFFUSION.md) | Configure the experimental provider, choose a style, and understand its live-tested boundary. |
 | [Set up ComfyUI](./COMFYUI.md) | Bind local still, revision, and atomic frame-set workflows with an explicit quality boundary. |
 | [Set up Scenario](./SCENARIO.md) | Configure hosted models, two-part credentials, CU ceilings, and durable downloads. |
-| [CLI reference](./CLI.md) | Every command and flag, including `gallery`, `edit`, and `tools`; offline and provider requirements; JSON output; exit codes. |
+| [CLI reference](./CLI.md) | Every command and flag, including `gallery` (with its 3D model preview and texture painting), `edit`, `model`, and `tools`; offline and provider requirements; JSON output; exit codes. |
 | [Manifest reference](./MANIFEST.md) | Every shared style and asset field, palette enforcement, quality profiles, revisions, mounting, and schema validation. |
 | [Mixed-provider projects](./MIXED_PROVIDERS.md) | Route styles to different providers, set separate budget ceilings, and resume safely from one lockfile. |
 | [Agent workflows](./AGENTS.md) | Install the official skill and pair agent guidance with the deterministic CLI. |
@@ -37,7 +37,7 @@ provider you are using. These Markdown files also render at
 
 | Guide | Use it for |
 |---|---|
-| [Architecture](./ARCHITECTURE.md) | Manifest/lock state, provider boundary, output identity, hand edits, the pinned editor build, concurrency, and durable writes. |
+| [Architecture](./ARCHITECTURE.md) | Manifest/lock state, provider boundary, output identity, hand edits, 3D models, the pinned editor build, concurrency, and durable writes. |
 | [Library API](./LIBRARY.md) | Public TypeScript imports for planning, quality checks, providers, packing, exporting, and managed artifact writes. |
 | [Tiles and engine exports](./TILES.md) | Structural tile roles, provider rule preservation, generic JSON, Tiled Wang sets, and Godot terrain sets. |
 | [Measured PixelLab endpoints](./ENDPOINTS.md) | Live-account cost and payload research, endpoint recipes, limits, and unresolved API behavior. |

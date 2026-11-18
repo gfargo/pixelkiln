@@ -136,6 +136,18 @@ export interface Args {
   gamePack: boolean
   /** normal-map: lite (default) or pro. */
   mode?: string
+  /** model export/import: the texture, by image index or material name. */
+  image?: string
+  /** model normal-map: directions to draw the model from, comma-separated. */
+  views?: string
+  /** model normal-map: the figure's sprites, a folder of <direction>.png or direction=file pairs. */
+  sprites?: string
+  /** model normal-map: an animation moment to pose the model in, "<animation>[@seconds]". */
+  pose?: string
+  /** model normal-map: how much of PixelLab's detail goes on, 0 to 2. */
+  blend?: number
+  /** model normal-map: PixelLab's detail alone instead of blended onto the baked relief. */
+  replace: boolean
   /** normal-map: how far every pixel tilts away from the viewer. */
   strength?: number
   /** normal-map: how much the outline rounds off, 0-3. */
@@ -226,17 +238,17 @@ const VALUE_FLAGS = [
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--lib", "--margin", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
   "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
-  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame",
+  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro",
+  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace",
 ] as const
 
 export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
+  "gallery", "edit", "model", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
   "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "help", "--help", "-h", "--version", "-v",
 ] as const
 
@@ -245,6 +257,7 @@ const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
 const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
 const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 const EDIT_SUBCOMMANDS = ["start", "detach"] as const
+const MODEL_SUBCOMMANDS = ["list", "export", "import", "blender", "adopt", "normal-map"] as const
 const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
 const VFX_SUBCOMMANDS = ["make", "presets", "parts", "effects"] as const
@@ -325,6 +338,17 @@ export function parseArgs(argv: string[]): Args {
       throw new UsageError(`Unknown edit subcommand "${subcommand}". Known: ${EDIT_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
+  } else if (command === "model") {
+    subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "list" : rest[0]
+    if (!(MODEL_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown model subcommand "${subcommand}". Known: ${MODEL_SUBCOMMANDS.join(", ")}`)
+    }
+    if (rest[0] === subcommand) rest = rest.slice(1)
+    if (subcommand !== "list") {
+      target = rest[0]?.startsWith("-") ? undefined : rest[0]
+      if (target === undefined) throw new UsageError(`model ${subcommand} needs a model: its path, its file name, or its gallery id`)
+      rest = rest.slice(1)
+    }
   } else if (command === "tools") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "status" : rest[0]
     if (!(TOOLS_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
@@ -630,6 +654,12 @@ export function parseArgs(argv: string[]): Args {
     spriteFps: numberOption("--sprite-fps", { min: 1, max: 60, integer: true }),
     gamePack: rest.includes("--game-pack"),
     mode: get("--mode"),
+    image: get("--image"),
+    views: get("--views"),
+    sprites: get("--sprites"),
+    pose: get("--pose"),
+    blend: numberOption("--blend", { min: 0, max: 2 }),
+    replace: rest.includes("--replace"),
     strength: numberOption("--strength", { min: 0, max: 2 }),
     outlineRounding: numberOption("--outline-rounding", { min: 0, max: 3 }),
     partShapes: numberOption("--part-shapes", { min: 0, max: 2 }),

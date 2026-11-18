@@ -88,7 +88,7 @@ reviews from the page under that ceiling.
 Hand edits live beside the art, not in place of the record. [`pixelkiln edit`](https://pixelkiln.griffen.codes/docs/cli/edit)
 opens a copy in your own editor; with `--edit` the gallery does the same, or opens
 it in a pinned, hash-verified [Pixelorama](https://pixelkiln.griffen.codes/docs/cli/tools) build right in the page
-and saves it back with its layers kept, one file per member for frame and tile sets.
+and saves it back with its layers kept, one file per member for frame and tile sets; a `.glb` model's textures too ([`model`](https://pixelkiln.griffen.codes/docs/cli/model)).
 
 ![PixelKiln in-browser editor](https://raw.githubusercontent.com/gfargo/pixelkiln/main/website/public/gallery-editor-showcase.jpg)
 

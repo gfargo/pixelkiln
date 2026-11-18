@@ -46,11 +46,12 @@ Same origin only, both directions checked. Bytes are `ArrayBuffer`s
 
 | direction | type | fields |
 |---|---|---|
-| host → editor | `open` | `request`, `asset: {key, id, name, width, height}`, `png`, `pxo?`, `frames?: [{role, png}]`, `fps?`, `palette: ["#rrggbb", …]`, `reference?: [{role, png}]` |
+| host → editor | `open` | `request`, `asset: {key, id, name, width, height}`, `png`, `pxo?`, `frames?: [{role, png}]`, `fps?`, `palette: ["#rrggbb", …]`, `reference?: [{role, png}]`, `guides?: [{name, png, opacity?}]` |
 | host → editor | `request-save` | `request` |
 | host → editor | `reference` | `visible` |
+| host → editor | `layer` | `name`, `visible` (protocol 5) |
 | editor → host | `ready` | `version`, `editor`, `api` |
-| editor → host | `opened` | `request`, `width`, `height`, `source: "pxo" \| "frames" \| "png"`, `layers`, `frames`, `reference` |
+| editor → host | `opened` | `request`, `width`, `height`, `source: "pxo" \| "frames" \| "png"`, `layers`, `frames`, `reference`, `guides` |
 | editor → host | `dirty` | `dirty` |
 | editor → host | `save` | `request`, `width`, `height`, `png`, `frames: [{role, png}]`, `pxo` |
 | editor → host | `error` | `request?`, `message` |
@@ -67,7 +68,15 @@ edit is compared against: it becomes a locked, half-transparent layer on top
 with one cel per frame, an onion skin, that `save` never flattens in,
 `reference {visible}` shows or hides, and a reopened `.pxo` keeps once,
 refreshed with the current bytes; `opened.layers` counts the author's layers
-without it. The editor also answers ⌘S / Ctrl+S and a **File → Save to
+without it. `guides` (protocol 5) are further locked layers above the
+reference, one per entry, named `<name> (PixelKiln guide)`, at `opacity`
+(default 1), the same image in every frame: an overlay for finding your way,
+such as the outlines and labels of a 3D model's texture unwrap. They are never
+flattened into a save either, a reopened `.pxo` has them refreshed by name,
+`opened.guides` lists the names placed, and `layer {name, visible}` shows or
+hides one (`name: "reference"` means the reference layer). A host that
+also uses `request-save` as a live preview (the gallery does, for a model's
+texture) gets the same flattened image a real save would. The editor also answers ⌘S / Ctrl+S and a **File → Save to
 PixelKiln** item with a `save`; its disk-oriented File items are removed,
 since the page owns the file.
 
