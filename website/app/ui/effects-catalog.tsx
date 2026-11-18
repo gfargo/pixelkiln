@@ -155,10 +155,8 @@ export function EffectsCatalog({
             if (!inCategory.length) return null;
             return (
               <div key={category.id} className="catalog-category" id={`pixelfx-${category.id}`}>
-                <h3>
-                  {category.name}
-                  {category.blurb ? <span>{category.blurb}</span> : null}
-                </h3>
+                <h3>{category.name}</h3>
+                {category.blurb ? <p>{category.blurb}</p> : null}
                 <ul className="catalog-grid">
                   {inCategory.map((effect) => {
                     const k = zoom(effect.width, effect.height);

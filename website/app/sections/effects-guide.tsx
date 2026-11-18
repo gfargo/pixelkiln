@@ -12,8 +12,8 @@ const LOCAL_EFFECTS = [
 
 /** Rendered live on 17 November 2026 with the commands in the section below; each cost nothing. */
 const OBJECT_EFFECTS = [
-  { name: "object-kiln-rim", width: 64, height: 64, scale: 3, title: "rim_glow", note: "a 32px kiln, from a local PNG", alt: "A small kiln with a pulsing purple glow behind it" },
-  { name: "object-chest-shield", width: 96, height: 96, scale: 2, title: "shield_bubble", note: "a 68px chest, by object:<id>", alt: "A wooden chest inside a shimmering blue bubble shield" },
+  { name: "object-chest-shield", width: 96, height: 96, scale: 3, title: "shield_bubble", note: "a 68px chest, by object:<id>", alt: "A wooden chest inside a shimmering blue bubble shield" },
+  { name: "object-kiln-rim", width: 64, height: 64, scale: 2, title: "rim_glow", note: "a 32px kiln, from a local PNG", alt: "A small kiln with a pulsing purple glow behind it" },
   { name: "object-anvil-strike", width: 96, height: 128, scale: 2, title: "lightning_strike", note: "a 32px anvil, one-shot", alt: "A lightning bolt striking a small anvil, with a shockwave ring on the ground" },
 ] as const;
 
@@ -54,7 +54,7 @@ export function EffectsGuideSections() {
         <div className="shell">
           <div className="section-heading split-heading">
             <div>
-              <h2>Objects take effects the same way.</h2>
+              <h2>Objects work the same way.</h2>
             </div>
             <p className="section-deck">
               The workbench fits an effect to whatever image it is given. It
@@ -62,7 +62,7 @@ export function EffectsGuideSections() {
               were rendered around props with the same presets, for nothing.
             </p>
           </div>
-          <div className="effects-strip fx-strip-3">
+          <div className="effects-strip fx-strip-lead">
             {OBJECT_EFFECTS.map((effect) => (
               <figure key={effect.name}>
                 <picture>
@@ -130,21 +130,19 @@ pixelkiln vfx --preset lightning_strike --sprite props/anvil.png --out fx/anvil-
             the order named, with the effect&apos;s pivot on one point of the
             chest.
           </p>
-          <div className="effects-strip fx-strip-3">
+          <div className="fx-band">
             {PLACED_EFFECTS.map((effect) => (
               <figure key={effect.id}>
-                <div className="fx-stage">
-                  <SpriteLoop
-                    strip={effect.strip}
-                    width={128 * effect.frames}
-                    frames={effect.frames}
-                    cell={128}
-                    stride={128}
-                    scale={2}
-                    seconds={effect.frames / 12}
-                    label={effect.label}
-                  />
-                </div>
+                <SpriteLoop
+                  strip={effect.strip}
+                  width={128 * effect.frames}
+                  frames={effect.frames}
+                  cell={128}
+                  stride={128}
+                  scale={2}
+                  seconds={effect.frames / 12}
+                  label={effect.label}
+                />
                 <figcaption><b>{effect.id}</b> {effect.note}</figcaption>
               </figure>
             ))}
