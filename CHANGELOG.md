@@ -1,3 +1,10 @@
+# [0.114.0](https://github.com/gfargo/pixelkiln/compare/v0.113.0...v0.114.0) (2026-11-18)
+
+
+### Features
+
+* **site:** tiles and terrain joins the home-page hub ([c7082b5](https://github.com/gfargo/pixelkiln/commit/c7082b5f160a770ec0e6ce47193dc92b71e3c952))
+
 # [0.113.0](https://github.com/gfargo/pixelkiln/compare/v0.112.0...v0.113.0) (2026-11-18)
 
 
