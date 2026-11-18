@@ -45,6 +45,8 @@ Last updated 17 November 2026.
 | 35 | Rebuild the body and all four items from redrawn pictures, end to end | SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | A sculpted body and detailed helm, armour and cape on the same skeleton; one sleeve short, a gap at the hip, a teal fur collar | Keep as the viewer's model. The item masks still come from the sprites and no longer fit exactly. |
 | 36 | Move each item's edge to where the paint puts it, and stop the bake shifting colours | Our scripts | Skin scraps and the hip gap are gone; the collar is grey again, the helm black, the underwear grey | Keep. One sleeve still ends at mid forearm. |
 | 37 | Open the parts model in a game engine | Godot 4.7.2, headless | Ten skinned meshes, fifteen named bones, the walk, and each body piece's hide list all arrive | Keep. The first check outside three.js. |
+| 38 | A second painter, MV-Adapter | MV-Adapter on SDXL, our own guide pictures | It runs and its front view is sharp and faithful; one pass takes 11 minutes and overfills the 12 GB card; the sides it invents are wrong | Drop on this card. Keep the scripts. |
+| 39 | Sprites drawn at 256 pixels at the source | PixelLab v3 character and four states | An adult-proportioned figure and four worn versions, each agreeing across eight directions | Keep. The best source art so far; not yet meshed. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -927,6 +929,48 @@ Not checked: how it looks drawn in Godot (this ran with no screen), Godot's huma
 
 **Verdict.** Keep. The file is a working rigged character in one engine. What it lacks to be an asset is in the survey below: triangle count, unwrap, a standard skeleton, materials.
 
+## 38. A second painter: MV-Adapter
+
+**Question.** The survey named MV-Adapter as the likeliest local step up from Hunyuan3D's paint stage. Does it run on a 12 GB card, and is it better?
+
+**Setup.**
+
+- *Install.* A clone of [MV-Adapter](https://github.com/huanngzh/MV-Adapter) in its own folder and Python 3.12 environment on the same machine, with PyTorch 2.6 and diffusers 0.31, and three downloads: SDXL base in half precision, a fixed VAE, and the adapter `mvadapter_ig2mv_sdxl`. Its requirements list nvdiffrast, which needs a compiler, and CV-CUDA, which is Linux only; the machine is Windows with neither. Both were left out.
+- *What replaces them.* The model is guided by six pictures of where the mesh's surface is and which way it faces. [`scripts/mvadapter_paint_turn.py`](../research/scripts/mvadapter_paint_turn.py) draws those itself, with MV-Adapter's own six cameras, and [`scripts/mvadapter_remote.py`](../research/scripts/mvadapter_remote.py) runs only the model. The bake is `bake.py`, as for the other painter.
+- *Run.* The body wearing the cuirass, turned to face the front, with the front redraw of step 35 as the reference. 30 steps.
+
+**Result.** The reference, the four views round the figure that the model painted, and one of the guide pictures:
+
+![A reference picture, four views painted by MV-Adapter, and a guide picture](../website/public/research/3d/mvadapter-views.png)
+
+- **It works with our guide pictures.** The painted front view sits on the mesh and follows the reference closely: plates, crest, face.
+- **It does not fit.** At 768 pixels it filled all 12 GB and made no progress in 25 minutes. Its option to keep parts of the model off the GPU failed inside its own reference step. At 640 pixels it finished one pass in 689 seconds with 12.9 GB in use, more than the card has, so part of it ran from ordinary memory. Hunyuan3D's paint stage takes 110 seconds for a pass at 768.
+- **The sides it invents are wrong,** as with the other painter in step 17: a black head from the side and the back, and the chest's crest repeated on the back. The one-direction-at-a-time trick would discard them, at eight passes and an hour and a half a mesh.
+
+Not done: a bake from its views, its smaller SD2.1 variant, or a comparison against Hunyuan3D on the same finished mesh.
+
+**Verdict.** Drop on this card. Its front view is no better than what step 35 has, and it is six times slower. The scripts stay for a machine with 16 GB or more.
+
+## 39. Sprites drawn larger at the source
+
+**Question.** Steps 32 to 36 enlarge 64 pixel sprites with an image model that redraws each direction alone. The generator that drew the sprites can draw them four times larger itself. Is that a better start?
+
+**Setup.** PixelLab's v3 character at 256 pixels, with step 26's body prompt, underwear included and a T-pose asked for: 9 generations. Then four states of that character, one for each item ("wearing a black steel plate cuirass ...", and so on), which keep the same figure and redraw all eight directions.
+
+**Result.** The bare body, then the cuirass, leg armour, cape and helm:
+
+![Five sets of eight directions at 256 pixels: the body and four worn versions](../website/public/research/3d/sprites-256.png)
+
+- **The figure is an adult,** about seven heads tall, where the 64 pixel one is four. Step 26 put the squat build down to the style; it was the size. At 64 pixels a face needs a quarter of the height.
+- **The eight directions agree,** in pose and in detail, because one model drew them together. That is what step 33 could not get from redraws.
+- **Each worn version is the same figure in the same pose,** so comparing it with the bare one says where the item is.
+- **These are whole figures, not layers.** The items are not separate pictures as in step 26.
+- **The helm's horns are short.** A state cannot have a canvas larger than 256 pixels, and the head is near the top.
+
+Not done: meshing, painting or rigging from these.
+
+**Verdict.** Keep. Rebuild from these next.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1031,7 +1075,7 @@ No report was found of any of these being tested on pixel art.
 | Animation | One walk made by formula | Mixamo's library; [HY-Motion 1.0](https://arxiv.org/abs/2512.23464) (Tencent, open weights, text to human motion, a community licence). Its skeleton and export formats were not checked |
 | Materials | Base colour only, with the redraw's lighting painted in | Roughness and metal maps: Hunyuan3D 2.1's paint stage (21 GB), MaterialMVP, and 2026 work that estimates materials from several views together ([ReLi3D](https://arxiv.org/abs/2603.19753), Intrinsic Image Fusion). A crude start costs nothing: metal and rough values per item |
 | Parts | Cut from a worn mesh by a sprite mask and a colour test (steps 27 and 36) | Generators that make parts natively: [Hunyuan3D-Part](https://x.com/TencentHunyuan/status/1971491034044694798) (open, segments a mesh into parts and regenerates each whole), [OmniPart](https://arxiv.org/pdf/2507.06165) (planned from 2D part masks, which the paperdoll layers are), PartCrafter. None was checked for clothing or for a 12 GB card |
-| References that agree | Eight directions redrawn one at a time (step 33) | Models that turn one picture into consistent views: Qwen-Image-Edit with a multiple-angles LoRA, a Flux Kontext turnaround LoRA. Or draw the sprites larger at the source: PixelLab's v3 character goes to 256 pixels, four times step 26's |
+| References that agree | Eight directions redrawn one at a time (step 33); sprites at 256 pixels from the generator (step 39) | Models that turn one picture into consistent views: Qwen-Image-Edit with a multiple-angles LoRA, a Flux Kontext turnaround LoRA. Or draw the sprites larger at the source: PixelLab's v3 character goes to 256 pixels, four times step 26's |
 | Cloth | The cape is one rigid sheet on two bones | A chain of bones down the cape with spring physics in the engine, or the engine's cloth |
 | Delivery | A 6 MB .glb that imports into Godot (step 37) | Import tests in Godot, Unity and Unreal; mesh and texture compression (meshopt, KTX2); levels of detail |
 | A yardstick | None | [Meshy's API](https://docs.meshy.ai/api/pricing) takes an uploaded mesh and sells each step: retexture 10 credits, remesh 5, rigging 5 with a walk and a run, an animation 3. One character through all of it would show what a paid pipeline returns. A paid plan is said to be needed for the API. *Unverified.* |
@@ -1052,6 +1096,7 @@ No public tool was found that takes several directional pixel sprites and return
 - Staged texturing: nothing. About six seconds a mesh on a laptop.
 - Image-model redraws in steps 13 and 14: 50.1 generations for six calls.
 - The paint stage: no generations. A 9.2 GB download, then about six minutes of GPU time per character.
+- The 256 pixel body and four states in step 39: 9 generations for the body; the states are quoted at 10 to 25 each and were not read back.
 - A-poses in step 21: 20 generations for the two states, 0.25 for importing the knight, 1.6 for sixteen joint estimates.
 - The body and its five layers in step 26: 52.8 generations (2 for the body, 10 for each layer, 0.8 for the joints), read from the balance before and after.
 - Nine meshes in step 27: about two minutes of GPU time each. Five paint runs in step 29: five to six minutes each.
