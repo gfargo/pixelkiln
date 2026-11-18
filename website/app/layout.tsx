@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { siteUrl } from "@/app/lib/site";
+import { BackToTop } from "@/app/ui/back-to-top";
 import { SiteAnalytics } from "@/app/ui/site-analytics";
 import "./globals.css";
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body>
         {children}
+        <BackToTop />
         <SiteAnalytics />
       </body>
     </html>

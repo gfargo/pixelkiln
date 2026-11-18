@@ -1,11 +1,14 @@
-# pixelkiln
-
-![PixelKiln](https://wp.griffen.codes/wp-content/uploads/2026/08/download.png)
-
-[Website](https://pixelkiln.griffen.codes) · [Documentation](https://pixelkiln.griffen.codes/docs) · [GitHub](https://github.com/gfargo/pixelkiln)
-
-Generate pixel art from a manifest, review it locally, recover paid work, and
-package the accepted files for a game engine.
+<p align="center"><img src="https://raw.githubusercontent.com/gfargo/pixelkiln/main/website/public/brand/kiln-mark-v3.png" alt="The PixelKiln kiln mark" width="112" height="112"></p>
+<h1 align="center">pixelkiln</h1>
+<p align="center"><strong>Generate pixel art from a manifest, review it locally, recover paid work,<br>and package the accepted files for a game engine.</strong></p>
+<p align="center">
+<a href="https://www.npmjs.com/package/pixelkiln"><img src="https://img.shields.io/npm/v/pixelkiln?color=ff6b35&amp;label=npm" alt="npm version"></a>
+<a href="https://github.com/gfargo/pixelkiln/actions/workflows/ci.yml"><img src="https://github.com/gfargo/pixelkiln/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+<a href="./LICENSE"><img src="https://img.shields.io/github/license/gfargo/pixelkiln?color=ff6b35" alt="MIT license"></a>
+<a href="https://www.npmjs.com/package/pixelkiln"><img src="https://img.shields.io/node/v/pixelkiln?color=ff6b35" alt="Node version"></a>
+<a href="https://www.npmjs.com/package/pixelkiln"><img src="https://img.shields.io/npm/dm/pixelkiln?color=ff6b35" alt="npm downloads per month"></a>
+</p>
+<p align="center"><a href="https://pixelkiln.griffen.codes">Website</a> · <a href="https://pixelkiln.griffen.codes/docs/getting-started">Quickstart</a> · <a href="https://pixelkiln.griffen.codes/docs">Documentation</a> · <a href="https://pixelkiln.griffen.codes/effects">Effects</a> · <a href="https://github.com/gfargo/pixelkiln/issues">Issues</a></p>
 
 PixelKiln treats generated art as build output. Declare assets once, inspect the
 cost and changed work, generate only what is missing, choose candidates in a
@@ -22,7 +25,7 @@ Scenario has passed CU preflight, generation, human review, and durable restore
 with BFL Flux 2 Dev.
 
 Styles may use different providers with separate budget ceilings. The
-[provider comparison](./PROVIDERS.md) lists the tested limits and best routes.
+[provider comparison](https://pixelkiln.griffen.codes/docs/provider-notes) lists the tested limits and best routes.
 `FakeProvider` covers the shared contract in automated tests.
 
 ## Why PixelKiln
@@ -53,7 +56,7 @@ Released on npm through Semantic Release and npm Trusted Publishing, with signed
 | Generate and review | Resumable submit/poll/pick/fetch pipeline, exact next-step hints, candidate or atomic frame-set review, and a provenance gallery that can edit intent, generate under a budget, and compare records. |
 | Hand edits | Touch-ups in your own editor or a pinned in-browser Pixelorama, kept beside the generated art with the generation still the record; frame and tile sets member by member. |
 | Controlled inputs | Hashed revision lineage (image-to-image and inpaint; on PixelLab also palette reduction, pixel cleanup, animation, skeleton posing, interpolation, and animation edits), fail-closed parent approval, source-versus-candidate review, and content-addressed per-asset ComfyUI bindings. |
-| Characters | A base in 4 or 8 directions from a prompt or your own sprite (four PixelLab engines), poses, loops, portraits, and outfit transfers as dependent assets generated in waves, free mirrored directions (one `directions` list declares a loop and mirrors the rest), account adoption and salvage, and SpriteFrames export. [Paperdoll layers](./docs/PAPERDOLL.md) put outfits, hats and held items over one bare character as transparent layers, a PNG per frame of every animation, each drawn by one masked inpaint over a sheet of all the frames or, for a rigid item, pinned to the hand from a sprite for free (`attach`, with `grasp` to close the hand around it), nudged by the pixel with `offset`, with loop cleaning that strips animation ghosts at download. |
+| Characters | A base in 4 or 8 directions from a prompt or your own sprite (four PixelLab engines), poses, loops, portraits, and outfit transfers as dependent assets generated in waves, free mirrored directions (one `directions` list declares a loop and mirrors the rest), account adoption and salvage, and SpriteFrames export. [Paperdoll layers](https://pixelkiln.griffen.codes/docs/paperdoll) put outfits, hats and held items over one bare character as transparent layers, a PNG per frame of every animation, each drawn by one masked inpaint over a sheet of all the frames or, for a rigid item, pinned to the hand from a sprite for free (`attach`, with `grasp` to close the hand around it), nudged by the pixel with `offset`, with loop cleaning that strips animation ghosts at download. |
 | PixelLab utilities | `unzoom` returns upscaled reference art to its native grid, `pixelate` turns a photo or render into pixel art (Image to Pixel Art Pro Flash, 6 generations, or `--pro` for 20), `normal-map` makes a sprite's or a loop strip's normal map for lighting (0.1 generation, or 0.5 on pro), `vfx` builds animated effects such as explosions and auras with PixelLab's free VFX workbench (or renders them locally from the [pixelfx](https://github.com/patch-gg/pixelfx) library with `--lib pixelfx`), `font` generates a `.ttf` and glyph atlas, `music` makes a song (two MP3 takes, with optional seamless loops and loop points) and `sfx` a sound effect (WAV), `ui` splits a generated UI panel into elements, draws their hover and pressed states, sets 9-slice insets, and pulls every piece with a record, `asset` imports your own sprite as an object (or your own tileset sheet or tiles), saves edited pixels back over a stored asset with an undo, expands an object to 8 directions, resizes its canvas, and exports it as a spritesheet, `.aseprite` file or GIF, `talk` draws a portrait's mouth positions once and then lip-syncs any line to a GIF or a frame plan for free, `estimate-skeleton` starts a keypoints file for skeleton animation, and `skeleton-preview` draws its poses over the sprite for free. |
 | Existing-art onboarding | Manifest scaffolding, exact-hash account adoption, and prompt recovery. |
 | Recovery | Safe stale-output replacement, validated caches, durable references, resumable paid jobs, and per-asset generation history with free restores. |
@@ -69,25 +72,25 @@ Released on npm through Semantic Release and npm Trusted Publishing, with signed
 `pixelkiln pick` opens a local candidate sheet with native aspect ratios and
 crisp small sprites. No model chooses artwork for you.
 
-![PixelKiln candidate review UI](./website/public/review-ui-showcase.jpg)
+![PixelKiln candidate review UI](https://raw.githubusercontent.com/gfargo/pixelkiln/main/website/public/review-ui-showcase.jpg)
 
 Left/Right inspects alternatives, Enter or 1–9 selects, 0 leaves a row
 unresolved, and closing without **Apply selections** applies nothing
-([CLI reference](docs/CLI.md#pick)). [`pixelkiln gallery`](docs/CLI.md#gallery)
+([CLI reference](https://pixelkiln.griffen.codes/docs/cli/pick)). [`pixelkiln gallery`](https://pixelkiln.griffen.codes/docs/cli/gallery)
 is its companion: every generation at integer zoom with its prompt, cost, hashes,
 lineage, and quality record, side-by-side comparison, and a `--workspace` view
 across projects. `--edit` changes prompts, sizes, tags, and style fields (with the
 blast radius shown first) and adds assets; `--budget` generates, regenerates, and
 reviews from the page under that ceiling.
 
-![PixelKiln generation gallery UI](./website/public/gallery-ui-showcase.jpg)
+![PixelKiln generation gallery UI](https://raw.githubusercontent.com/gfargo/pixelkiln/main/website/public/gallery-ui-showcase.jpg)
 
-Hand edits live beside the art, not in place of the record. [`pixelkiln edit`](docs/CLI.md#edit)
+Hand edits live beside the art, not in place of the record. [`pixelkiln edit`](https://pixelkiln.griffen.codes/docs/cli/edit)
 opens a copy in your own editor; with `--edit` the gallery does the same, or opens
-it in a pinned, hash-verified [Pixelorama](docs/CLI.md#tools) build right in the page
+it in a pinned, hash-verified [Pixelorama](https://pixelkiln.griffen.codes/docs/cli/tools) build right in the page
 and saves it back with its layers kept, one file per member for frame and tile sets.
 
-![PixelKiln in-browser editor](./website/public/gallery-editor-showcase.jpg)
+![PixelKiln in-browser editor](https://raw.githubusercontent.com/gfargo/pixelkiln/main/website/public/gallery-editor-showcase.jpg)
 
 ## Install
 
@@ -145,12 +148,12 @@ pixelkiln adopt --write-prompts
 pixelkiln plan
 ```
 
-See [Getting started](./docs/GETTING_STARTED.md) for new and existing projects.
-Use [Set up PixelLab](./docs/PIXELLAB.md),
-[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md),
-[Set up ComfyUI](./docs/COMFYUI.md), or
-[Set up Scenario](./docs/SCENARIO.md) for provider-specific configuration,
-manifest examples, and current limits. See [Mixed-provider projects](./docs/MIXED_PROVIDERS.md)
+See [Getting started](https://pixelkiln.griffen.codes/docs/getting-started) for new and existing projects.
+Use [Set up PixelLab](https://pixelkiln.griffen.codes/docs/pixellab),
+[Set up Retro Diffusion](https://pixelkiln.griffen.codes/docs/retro-diffusion),
+[Set up ComfyUI](https://pixelkiln.griffen.codes/docs/comfyui), or
+[Set up Scenario](https://pixelkiln.griffen.codes/docs/scenario) for provider-specific configuration,
+manifest examples, and current limits. See [Mixed-provider projects](https://pixelkiln.griffen.codes/docs/mixed-providers)
 when styles in one manifest need different backends.
 
 ## Agent skill
@@ -197,11 +200,11 @@ Each style re-derives the same asset ids into separate lock keys. Generator
 choice, reference-image bytes, dimensions, palette, seed, and
 prompt settings participate in deterministic spec identity. A manifest may
 select another provider and pass namespaced `providerOptions`; see
-[Set up PixelLab](./docs/PIXELLAB.md),
-[Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md),
-[Set up ComfyUI](./docs/COMFYUI.md), and
-[Set up Scenario](./docs/SCENARIO.md). The
-[provider comparison](./PROVIDERS.md) covers costs,
+[Set up PixelLab](https://pixelkiln.griffen.codes/docs/pixellab),
+[Set up Retro Diffusion](https://pixelkiln.griffen.codes/docs/retro-diffusion),
+[Set up ComfyUI](https://pixelkiln.griffen.codes/docs/comfyui), and
+[Set up Scenario](https://pixelkiln.griffen.codes/docs/scenario). The
+[provider comparison](https://pixelkiln.griffen.codes/docs/provider-notes) covers costs,
 current confidence, and limitations. ComfyUI works best as a composition tool:
 start with 48–128px native components and build larger scenes from accepted
 parts. Supported still styles and ComfyUI frame sets can declare a `quality`
@@ -211,10 +214,10 @@ stale. Changing the profile never schedules another provider generation.
 
 Versioned recipes capture tested workflows, model hashes, license links, and
 manifest-ready styles with quality boundaries. Start with `pixelkiln recipe install comfyui/pixel-art-xl-environment@1.0.0`.
-Recipes install no models and make no provider calls. See [Versioned recipes](./docs/RECIPES.md).
+Recipes install no models and make no provider calls. See [Versioned recipes](https://pixelkiln.griffen.codes/docs/recipes).
 
 The schema rejects unknown fields and invalid generator combinations before
-planning. See the [Manifest reference](./docs/MANIFEST.md).
+planning. See the [Manifest reference](https://pixelkiln.griffen.codes/docs/manifest).
 
 ## Everyday workflow
 
@@ -262,13 +265,13 @@ Start with the required capability, not the most expensive endpoint. Twenty-five
 re-rolls cost the same as one 64×64 `1dir` call; conversely, `map` cannot replace a
 hard palette or reference-image constraint. PixelLab has eight more generators
 (`imagePro`, `imageProFlash`, `terrain`, `isometricTile`, `objectPro`, `uiAsset`,
-`uiElement`, and `vfx` for free animated effects); see [Generator selection](./docs/GENERATORS.md) and the [measured endpoint reference](./docs/ENDPOINTS.md).
+`uiElement`, and `vfx` for free animated effects); see [Generator selection](https://pixelkiln.griffen.codes/docs/generators) and the [measured endpoint reference](https://pixelkiln.griffen.codes/docs/endpoints).
 
 Generator names describe PixelKiln workflows; their exact capabilities and prices
 depend on the selected provider. Retro Diffusion also supports the provider-specific
 `animation` generator. ComfyUI supports `map` plus atomic still-image `frames` through
 an operator-supplied workflow. Scenario supports `map` with a required offline CU
-ceiling and a live quote before each paid call. Compare the adapters in the [provider comparison](./PROVIDERS.md).
+ceiling and a live quote before each paid call. Compare the adapters in the [provider comparison](https://pixelkiln.griffen.codes/docs/provider-notes).
 
 ## Derived artifacts
 
@@ -286,8 +289,8 @@ profile they consume only its current approved PNGs; a hand edit stands in for
 its generation. Unowned output is adopted only when byte-identical; manual edits
 stop the write unless `--force` takes ownership. Changing members stage before
 promotion, ordinary failures roll back, and abrupt termination leaves a journal
-the next invocation finishes. See [Derived artifacts](./docs/ARTIFACTS.md) and
-[Tiles and engine exports](./docs/TILES.md).
+the next invocation finishes. See [Derived artifacts](https://pixelkiln.griffen.codes/docs/artifacts) and
+[Tiles and engine exports](https://pixelkiln.griffen.codes/docs/tiles).
 
 ## Recovery and shared accounts
 
@@ -318,7 +321,7 @@ pixelkiln salvage --workspace pixelkiln.workspace.json
 A registered project's missing or unreadable lockfile is a hard error for
 `workspace claims` and `salvage --workspace`; missing claims are never skipped.
 Purge only targets objects already tagged discard and asks first.
-See [Recovery and account safety](./docs/RECOVERY.md).
+See [Recovery and account safety](https://pixelkiln.griffen.codes/docs/recovery).
 
 ## Automation
 
@@ -333,7 +336,7 @@ Pipeline stages exit nonzero after partial failures or timeouts. JSON modes
 separate machine output from human diagnostics where necessary. Generation
 should remain an explicit budgeted action; CI should prove committed state and
 artifacts agree rather than regenerate them. See
-[Quality and automation gates](./docs/QUALITY.md).
+[Quality and automation gates](https://pixelkiln.griffen.codes/docs/quality).
 
 ## TypeScript library
 
@@ -354,46 +357,42 @@ The package also exports audit and image-regression gates, quality-profile
 inspection and refinement, revision-readiness checks, lock/output helpers, the
 gallery snapshot and server, hand edits and the editor install, provider contracts,
 sprite packing/mounting, tile exporters, managed artifact writes, and provenance
-verification. See [Library API](./docs/LIBRARY.md).
+verification. See [Library API](https://pixelkiln.griffen.codes/docs/library).
 
 ## Documentation
 
 | Guide | Covers |
 |---|---|
-| [Documentation index](./docs/README.md) | All user, workflow, reference, and architecture guides. |
-| [Getting started](./docs/GETTING_STARTED.md) | First project, existing-art onboarding, everyday workflow, and what to commit. |
-| [Set up PixelLab](./docs/PIXELLAB.md) | Production-provider credentials, manifest, generators, and account workflows. |
-| [Set up Retro Diffusion](./docs/RETRO_DIFFUSION.md) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
-| [Set up ComfyUI](./docs/COMFYUI.md) | Self-hosted stills, revisions, ordered frame sets, per-asset inputs, and quality limits. |
-| [Set up Scenario](./docs/SCENARIO.md) | Experimental hosted models, two-part credentials, CU preflight, reference-image edits, multi-model chains, measured findings, and durable downloads. |
-| [Versioned recipes](./docs/RECIPES.md) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
-| [Controlled revisions](./docs/REVISIONS.md) | Image-to-image, inpaint, palette cleanup, animation, and interpolation from a parent; masks, fail-closed readiness, provenance, and ComfyUI bindings. |
-| [CLI reference](./docs/CLI.md) | Every command, flag, JSON mode, and exit contract. |
-| [Manifest reference](./docs/MANIFEST.md) | Style/asset fields, quality profiles, and generator constraints. |
-| [Mixed-provider projects](./docs/MIXED_PROVIDERS.md) | Per-style routing, provider-keyed budgets, recovery, and account commands. |
-| [Agent workflows](./docs/AGENTS.md) | Official skill install, operating model, and provider-aware safety. |
-| [Generators](./docs/GENERATORS.md) | Capability choice, measured costs, palettes, style references, and tiles. |
-| [Characters](./docs/CHARACTERS.md) | Bases, states, loops, mirrors, portraits, outfits, the `directions` shorthand, and per-engine costs. |
-| [Paperdoll layers](./docs/PAPERDOLL.md) | Outfits, hats and held items as transparent layers over one bare character, frame for frame. |
-| [Environment provider benchmark](./docs/PROVIDER_BENCHMARK.md) | Thirty provider outputs plus native-grid and final-palette results comparing large scenes, transparency, palette size, and file readiness. |
-| [Derived artifacts](./docs/ARTIFACTS.md) | Refine, pack, mount, export, provenance, ownership, transactions, and recovery. |
-| [Recovery](./docs/RECOVERY.md) | Restore, caches, adopt, salvage, claims, and purge safety. |
-| [Quality gates](./docs/QUALITY.md) | Image baselines, plan, doctor, refine, audit, cache, human approval, JSON, and CI. |
-| [Architecture](./docs/ARCHITECTURE.md) | State model, lockfile, providers, concurrency, and output identity. |
-| [Library API](./docs/LIBRARY.md) | Public TypeScript contracts and examples. |
-| [Tiles](./docs/TILES.md) | Structural outputs and generic/Tiled/Godot formats. |
-| [Endpoint research](./docs/ENDPOINTS.md) | Measured PixelLab API behavior and recipes. |
-| [Provider comparison](./PROVIDERS.md) | Provider selection, costs, supported workflows, confidence, and limitations. |
+| [Documentation index](https://pixelkiln.griffen.codes/docs) | All user, workflow, reference, and architecture guides. |
+| [Getting started](https://pixelkiln.griffen.codes/docs/getting-started) | First project, existing-art onboarding, everyday workflow, and what to commit. |
+| [Set up PixelLab](https://pixelkiln.griffen.codes/docs/pixellab) | Production-provider credentials, manifest, generators, and account workflows. |
+| [Set up Retro Diffusion](https://pixelkiln.griffen.codes/docs/retro-diffusion) | Experimental-provider credentials, styles, formats, cost checks, and limits. |
+| [Set up ComfyUI](https://pixelkiln.griffen.codes/docs/comfyui) | Self-hosted stills, revisions, ordered frame sets, per-asset inputs, and quality limits. |
+| [Set up Scenario](https://pixelkiln.griffen.codes/docs/scenario) | Experimental hosted models, two-part credentials, CU preflight, reference-image edits, multi-model chains, measured findings, and durable downloads. |
+| [Versioned recipes](https://pixelkiln.griffen.codes/docs/recipes) | Pinned workflow packs, model hashes, manifest templates, and quality contracts. |
+| [Controlled revisions](https://pixelkiln.griffen.codes/docs/revisions) | Image-to-image, inpaint, palette cleanup, animation, and interpolation from a parent; masks, fail-closed readiness, provenance, and ComfyUI bindings. |
+| [CLI reference](https://pixelkiln.griffen.codes/docs/cli) | Every command, flag, JSON mode, and exit contract. |
+| [Manifest reference](https://pixelkiln.griffen.codes/docs/manifest) | Style/asset fields, quality profiles, and generator constraints. |
+| [Mixed-provider projects](https://pixelkiln.griffen.codes/docs/mixed-providers) | Per-style routing, provider-keyed budgets, recovery, and account commands. |
+| [Agent workflows](https://pixelkiln.griffen.codes/docs/agents) | Official skill install, operating model, and provider-aware safety. |
+| [Generators](https://pixelkiln.griffen.codes/docs/generators) | Capability choice, measured costs, palettes, style references, and tiles. |
+| [Characters](https://pixelkiln.griffen.codes/docs/characters) | Bases, states, loops, mirrors, portraits, outfits, the `directions` shorthand, and per-engine costs. |
+| [Paperdoll layers](https://pixelkiln.griffen.codes/docs/paperdoll) | Outfits, hats and held items as transparent layers over one bare character, frame for frame. |
+| [Environment provider benchmark](https://pixelkiln.griffen.codes/docs/provider-benchmark) | Thirty provider outputs plus native-grid and final-palette results comparing large scenes, transparency, palette size, and file readiness. |
+| [Derived artifacts](https://pixelkiln.griffen.codes/docs/artifacts) | Refine, pack, mount, export, provenance, ownership, transactions, and recovery. |
+| [Recovery](https://pixelkiln.griffen.codes/docs/recovery) | Restore, caches, adopt, salvage, claims, and purge safety. |
+| [Quality gates](https://pixelkiln.griffen.codes/docs/quality) | Image baselines, plan, doctor, refine, audit, cache, human approval, JSON, and CI. |
+| [Architecture](https://pixelkiln.griffen.codes/docs/architecture) | State model, lockfile, providers, concurrency, and output identity. |
+| [Library API](https://pixelkiln.griffen.codes/docs/library) | Public TypeScript contracts and examples. |
+| [Tiles](https://pixelkiln.griffen.codes/docs/tiles) | Structural outputs and generic/Tiled/Godot formats. |
+| [Endpoint research](https://pixelkiln.griffen.codes/docs/endpoints) | Measured PixelLab API behavior and recipes. |
+| [Provider comparison](https://pixelkiln.griffen.codes/docs/provider-notes) | Provider selection, costs, supported workflows, confidence, and limitations. |
 
 The [public documentation site](https://pixelkiln.griffen.codes/docs) is built from these Markdown
-files by [`website/`](./website/README.md), so the site and the package share one source.
-Policies: [Contributing](./CONTRIBUTING.md), [Security](./SECURITY.md).
+files by [`website/`](./website/README.md), so the site and the package share one source;
+the Markdown for each guide is in [`docs/`](./docs/).
+Policies: [Contributing](https://pixelkiln.griffen.codes/docs/contributing), [Security](https://pixelkiln.griffen.codes/docs/security).
 
-## Scope
+## Scope and license
 
-Cross-project cache reuse and `workspace find` are not implemented; see the
-open [issues](https://github.com/gfargo/pixelkiln/issues).
-
-## License
-
-[MIT](./LICENSE)
+Cross-project cache reuse and `workspace find` are not implemented; see the open [issues](https://github.com/gfargo/pixelkiln/issues). PixelKiln is released under the [MIT license](./LICENSE).

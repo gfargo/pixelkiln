@@ -34,7 +34,8 @@ function subscribeQuery(query: string) {
   };
 }
 const subscribeReducedMotion = subscribeQuery("(prefers-reduced-motion: reduce)");
-const subscribeNarrow = subscribeQuery("(max-width: 480px)");
+const subscribePhone = subscribeQuery("(max-width: 600px)");
+const subscribeCompact = subscribeQuery("(max-width: 980px), (max-height: 740px)");
 
 /**
  * Dress one character from separately generated layers, turn it, and walk it.
@@ -55,12 +56,18 @@ export function CharacterBuilder() {
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     () => false,
   );
-  const narrow = useSyncExternalStore(
-    subscribeNarrow,
-    () => window.matchMedia("(max-width: 480px)").matches,
+  const phone = useSyncExternalStore(
+    subscribePhone,
+    () => window.matchMedia("(max-width: 600px)").matches,
     () => false,
   );
-  const scale = narrow ? 3 : 4;
+  const compact = useSyncExternalStore(
+    subscribeCompact,
+    () => window.matchMedia("(max-width: 980px), (max-height: 740px)").matches,
+    () => false,
+  );
+  // The preview stays on screen while the options scroll, so it has to fit beside them.
+  const scale = phone ? 2 : compact ? 3 : 4;
 
   const direction = BUILDER_DIRECTIONS[facing]!;
   const walkRow = BUILDER_WALK_ROWS[direction];
@@ -162,6 +169,18 @@ export function CharacterBuilder() {
         </p>
       </div>
       <div className="builder-controls">
+        <div className="builder-slot" role="group" aria-label="Start from">
+          <span className="builder-slot-label">Start from</span>
+          <div className="builder-options">
+            {BUILDER_LOOKS.map((look) => (
+              <button key={look.id} type="button" className="builder-action" onClick={() => setChoices(lookChoices(look.wears))}>
+                {look.label}
+              </button>
+            ))}
+            <button type="button" className="builder-action" onClick={shuffle}>Shuffle</button>
+            <button type="button" className="builder-action" onClick={strip}>Bare</button>
+          </div>
+        </div>
         <div className="builder-slot" role="group" aria-label="Skin">
           <span className="builder-slot-label">Skin</span>
           <div className="builder-options">
@@ -210,20 +229,6 @@ export function CharacterBuilder() {
             </button>
             <code aria-live="polite">{headwear ? `"offset": [0, ${nudge}]` : "pick some headwear"}</code>
           </div>
-        </div>
-        <div className="builder-slot" role="group" aria-label="Looks">
-          <span className="builder-slot-label">Looks</span>
-          <div className="builder-options">
-            {BUILDER_LOOKS.map((look) => (
-              <button key={look.id} type="button" className="builder-action" onClick={() => setChoices(lookChoices(look.wears))}>
-                {look.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="builder-actions">
-          <button type="button" className="builder-action" onClick={shuffle}>Shuffle</button>
-          <button type="button" className="builder-action" onClick={strip}>Take it all off</button>
         </div>
       </div>
     </div>
