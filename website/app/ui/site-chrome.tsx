@@ -66,6 +66,7 @@ export function SiteFooter() {
           <div>
             <span>Providers</span>
             <TrackedLink id="footer_providers" section="footer" href="/providers">Provider results</TrackedLink>
+            <TrackedLink id="footer_updates" section="footer" href="/providers/updates">Provider updates</TrackedLink>
             <TrackedLink id="footer_pixellab" section="footer" href="/docs/pixellab">Set up PixelLab</TrackedLink>
             <TrackedLink id="footer_retro" section="footer" href="/docs/retro-diffusion">Set up Retro Diffusion</TrackedLink>
             <TrackedLink id="footer_comfyui" section="footer" href="/docs/comfyui">Set up ComfyUI</TrackedLink>

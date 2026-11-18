@@ -7,7 +7,7 @@ import { TrackedLink } from "@/app/ui/tracked-link";
  * feature page it lists the other five, smaller.
  */
 export function HubSection({ except, heading, deck }: { except?: Feature["id"]; heading: string; deck?: string }) {
-  const entries = FEATURES.filter((entry) => entry.id !== except);
+  const entries = FEATURES.filter((entry) => entry.id !== except && entry.inHub !== false);
   return (
     <section className={`hub-section shell${except ? " hub-more" : ""}`} id="features">
       <div className="section-heading hub-heading">

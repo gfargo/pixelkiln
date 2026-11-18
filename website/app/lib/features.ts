@@ -5,7 +5,9 @@
 export type FeatureGroup = "Run the pipeline" | "Make the art" | "Choose a provider";
 
 export type Feature = {
-  id: "pipeline" | "review" | "characters" | "paperdoll" | "effects" | "providers";
+  id: "pipeline" | "review" | "characters" | "paperdoll" | "effects" | "providers" | "updates";
+  /** False for a page that has its own place in the menu but no tile on the home page. */
+  inHub?: boolean;
   href: string;
   /** Its name in the menu and the hub. */
   name: string;
@@ -134,11 +136,32 @@ export const FEATURES: Feature[] = [
       { href: "#providers", label: "Results by provider" },
       { href: "#scenario", label: "Scenario, measured" },
       { href: "#costs", label: "What a sprite costs" },
+      { href: "/providers/updates", label: "Provider updates" },
     ],
     docs: [
       { href: "/docs/provider-benchmark", label: "Benchmark" },
       { href: "/docs/provider-notes", label: "Provider notes" },
       { href: "/docs/mixed-providers", label: "Mixing providers" },
+    ],
+  },
+  {
+    id: "updates",
+    inHub: false,
+    href: "/providers/updates",
+    name: "Provider updates",
+    group: "Choose a provider",
+    summary: "What each provider shipped that PixelKiln can drive, with real output and what it cost.",
+    title: "What the providers shipped.",
+    deck: "When PixelLab, Retro Diffusion, ComfyUI or Scenario adds something PixelKiln can drive, it lands here with real output from the project's own manifests and what each call cost.",
+    description: "Updates from PixelKiln's providers: what changed, what PixelKiln can now drive, real output, and measured costs.",
+    sections: [
+      { href: "#updates", label: "Latest update" },
+      { href: "#earlier", label: "Earlier updates" },
+    ],
+    docs: [
+      { href: "/docs/pixellab", label: "Set up PixelLab" },
+      { href: "/docs/endpoints", label: "Measured endpoints" },
+      { href: "/docs/provider-notes", label: "Provider notes" },
     ],
   },
 ];
@@ -153,6 +176,7 @@ export const MENU_ART: Record<Feature["id"], { src: string; strip?: boolean }> =
   paperdoll: { src: "/sprites/paperdoll/showcase-8dir.png", strip: true },
   effects: { src: "/effects/robot-aura-still.png" },
   providers: { src: "/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png" },
+  updates: { src: "/showcase/pixflux/knight-options.png", strip: true },
 };
 
 /** One short line per feature for the header menu, where the hub's full sentence would be cut off. */
@@ -163,6 +187,7 @@ export const MENU_LINES: Record<Feature["id"], string> = {
   paperdoll: "Swappable outfits over one body.",
   effects: "Auras, hits and shields, free.",
   providers: "Four providers on the same prompts.",
+  updates: "What each provider shipped lately.",
 };
 
 /** Shortcuts listed under each group in the header menu: places people ask for that are not feature pages. */
@@ -178,7 +203,6 @@ export const MENU_SHORTCUTS: Record<FeatureGroup, Array<{ href: string; label: s
   "Choose a provider": [
     { href: "/docs/generators", label: "Generators compared" },
     { href: "/docs/provider-notes", label: "Provider notes" },
-    { href: "/docs/mixed-providers", label: "Mixing providers" },
   ],
 };
 

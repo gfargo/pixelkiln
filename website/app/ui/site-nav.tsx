@@ -59,7 +59,8 @@ export function SiteNav() {
 
   const toggle = useCallback((panel: Exclude<Panel, null>) => setOpen((current) => (current === panel ? null : panel)), []);
   const current = (href: string) => (pathname === href ? ("page" as const) : undefined);
-  const inFeatures = FEATURES.some((entry) => pathname === entry.href || pathname.startsWith(`${entry.href}/`)) && pathname !== "/providers";
+  const inProviders = pathname === "/providers" || pathname.startsWith("/providers/");
+  const inFeatures = !inProviders && FEATURES.some((entry) => pathname === entry.href || pathname.startsWith(`${entry.href}/`));
   const inDocs = pathname.startsWith("/docs");
 
   const features = (
@@ -124,7 +125,7 @@ export function SiteNav() {
         <button type="button" data-menu="docs" data-here={inDocs || undefined} aria-expanded={open === "docs"} aria-controls="menu-docs" onClick={() => toggle("docs")}>
           Docs
         </button>
-        <TrackedLink id="nav_providers" section="header" href="/providers" aria-current={current("/providers")}>Providers</TrackedLink>
+        <TrackedLink id="nav_providers" section="header" href="/providers" aria-current={inProviders ? "page" : undefined}>Providers</TrackedLink>
         <TrackedLink id="nav_github" section="header" href="https://github.com/gfargo/pixelkiln" external>GitHub</TrackedLink>
       </nav>
       <button type="button" className="site-nav-toggle" data-menu="all" aria-expanded={open === "all"} aria-controls="menu-all" onClick={() => toggle("all")}>
