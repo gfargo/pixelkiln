@@ -4,8 +4,9 @@
  * - PixelLab's VFX presets, read live from the workbench (`vfx presets`).
  *   Free, but it needs PIXELLAB_API_KEY; pass --keep-presets to leave the
  *   presets already in the file alone.
- * - Every pixelfx effect, read from the installed library, and one still
- *   frame of each standalone effect, rendered here.
+ * - Every pixelfx effect, read from the installed library, with a still and
+ *   an animated WebP of each, rendered here (the animation needs img2webp).
+ *   Effects that need a character are acted out with pixelfx's stand-in.
  *
  * With --render-presets, each preset that has no picture yet is also rendered
  * by the workbench (free, but every render is saved to the account's My
@@ -14,12 +15,13 @@
  *
  *   npx tsx scripts/gen-effects-catalog.ts [--keep-presets] [--render-presets] [--skip a,b] [--env-dir <dir with .env.local>]
  */
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { execFileSync, spawnSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadEnvFiles } from "../src/env.ts"
-import { listPixelfxEffects, loadPixelfx, renderPixelfx } from "../src/pixelfx-vfx.ts"
+import { listPixelfxEffects, loadPixelfx, renderPixelfx, type PixelfxModule } from "../src/pixelfx-vfx.ts"
 import { mcpClientFromEnv } from "../src/pixellab-mcp.ts"
 import { describeVfx, makeVfx, sliceVfxSheet } from "../src/pixellab-vfx.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
@@ -144,6 +146,53 @@ if (process.argv.includes("--render-presets")) {
 }
 
 const lib = await loadPixelfx()
+const MAX_FRAMES = 30
+/** What one animation may weigh before it is thinned. */
+const ANIM_BUDGET = 90_000
+// Animations are written with libwebp's img2webp (brew install webp); without it only stills are made.
+const animate = spawnSync("img2webp", ["-version"]).status === 0
+if (!animate) console.log("img2webp not found: writing stills only")
+
+/**
+ * An effect that needs a character, acted out with pixelfx's own stand-in
+ * figure and target the way its tools/act.mjs shows it: wind-up, the effect,
+ * recovery. After renderAct in pixelfx's tools/lib/fxlib.mjs (MIT, Copyright
+ * (c) 2026 Patch), without the backdrop or the screen shake.
+ */
+function renderActed(mod: PixelfxModule, fps: number): { width: number; height: number; frames: Buffer[] } {
+  // These calls are in pixelfx's core but outside what PixelKiln itself uses, so they are not in its types.
+  const core = lib.core as unknown as {
+    actBounds(mod: PixelfxModule): { x0: number; y0: number; x1: number; y1: number }
+    createAct(mod: PixelfxModule, o: { x: number; y: number }): {
+      t: number
+      update(dt: number): void
+      draw(frame: unknown, show: { body: boolean; target: boolean }): void
+      done(): boolean
+    }
+  }
+  const bounds = core.actBounds(mod)
+  const pad = 6
+  const width = bounds.x1 - bounds.x0 + pad * 2
+  const height = bounds.y1 - bounds.y0 + pad * 2
+  const frame = lib.core.createFrame(width, height)
+  const act = core.createAct(mod, { x: pad - bounds.x0, y: pad - bounds.y0 })
+  const loop = mod.meta?.loop ?? false
+  const limit = Math.round((loop ? (mod.meta?.duration ?? 1) - act.t : 8) * fps)
+  const frames: Buffer[] = []
+  const show = () => {
+    lib.core.clearFrame(frame)
+    act.draw(frame, { body: true, target: true })
+    const rgba = new Uint8ClampedArray(width * height * 4)
+    lib.core.composite(frame, rgba, null)
+    frames.push(Buffer.from(rgba.buffer, rgba.byteOffset, rgba.byteLength))
+  }
+  show()
+  for (let i = 0; i < limit && !act.done(); i++) {
+    act.update(1 / fps)
+    show()
+  }
+  return { width, height, frames }
+}
 rmSync(thumbs, { recursive: true, force: true })
 mkdirSync(thumbs, { recursive: true })
 const effects = listPixelfxEffects(lib).map((effect) => {
@@ -159,12 +208,16 @@ const effects = listPixelfxEffects(lib).map((effect) => {
     needsCharacter: effect.needsCharacter,
     options: Object.keys(effect.options),
   }
-  if (effect.needsCharacter) return entry
-  // A still for the grid: the fullest frame of a low-rate render.
-  const render = renderPixelfx(lib, { effect: effect.id, fps: 8 })
-  let best = render.frames[0]!
+  // Ten frames a second is enough to read the motion; long effects are thinned to at most MAX_FRAMES.
+  const render = effect.needsCharacter
+    ? renderActed(lib.effects[effect.id]!, 10)
+    : renderPixelfx(lib, { effect: effect.id, fps: 10 })
+  const step = Math.max(1, Math.ceil(render.frames.length / MAX_FRAMES))
+  const frames = render.frames.filter((_, index) => index % step === 0)
+  // The still, for the grid under reduced motion: the fullest frame.
+  let best = frames[0]!
   let most = -1
-  for (const frame of render.frames) {
+  for (const frame of frames) {
     let filled = 0
     for (let i = 3; i < frame.length; i += 4) if (frame[i]! > 0) filled++
     if (filled > most) {
@@ -172,13 +225,33 @@ const effects = listPixelfxEffects(lib).map((effect) => {
       best = frame
     }
   }
-  const file = `${effect.id.replace("/", "-")}.png`
-  writeFileSync(path.join(thumbs, file), encodeRgbaPng(render.width, render.height, best))
-  return { ...entry, still: `/effects/pixelfx/${file}` }
+  const base = effect.id.replace("/", "-")
+  writeFileSync(path.join(thumbs, `${base}.png`), encodeRgbaPng(render.width, render.height, best))
+  const pictures = { still: `/effects/pixelfx/${base}.png`, art: { width: render.width, height: render.height } }
+  if (!animate) return { ...entry, ...pictures }
+  const work = mkdtempSync(path.join(tmpdir(), "pixelkiln-anim-"))
+  const files = frames.map((frame, index) => {
+    const file = path.join(work, `${String(index).padStart(3, "0")}.png`)
+    writeFileSync(file, encodeRgbaPng(render.width, render.height, frame))
+    return file
+  })
+  const out = path.join(thumbs, `${base}.webp`)
+  // Lossy WebP keeps pixel edges readable at a fraction of the lossless size. A file still over
+  // the budget is tried again with every second, then every third, frame and a lower quality.
+  for (const [thin, quality] of [[1, 74], [2, 64], [3, 54]] as const) {
+    const kept = files.filter((_, index) => index % thin === 0)
+    const args = ["-loop", "0", "-lossy", "-q", String(quality), "-m", "4"]
+    // One-shots rest on their last frame for a moment before starting over.
+    kept.forEach((file, index) => args.push("-d", String(index === kept.length - 1 && !effect.loop ? 900 : step * thin * 100), file))
+    execFileSync("img2webp", [...args, "-o", out], { stdio: "ignore" })
+    if (statSync(out).size <= ANIM_BUDGET) break
+  }
+  rmSync(work, { recursive: true, force: true })
+  return { ...entry, ...pictures, anim: `/effects/pixelfx/${base}.webp` }
 })
 
 writeFileSync(
   dataFile,
   `${JSON.stringify({ presets, pixelfx: { version: lib.version, categories: lib.categories, effects } }, null, 2)}\n`,
 )
-console.log(`${presets.items.length} presets (${presets.items.filter((preset) => preset.gif).length} with a picture), ${effects.length} pixelfx effects, ${effects.filter((e) => "still" in e).length} stills`)
+console.log(`${presets.items.length} presets (${presets.items.filter((preset) => preset.gif).length} with a picture), ${effects.length} pixelfx effects, ${effects.filter((e) => "anim" in e).length} animated`)

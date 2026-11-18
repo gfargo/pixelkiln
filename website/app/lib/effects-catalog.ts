@@ -25,7 +25,12 @@ export type LocalEffect = {
   loop: boolean;
   needsCharacter: boolean;
   options: string[];
+  /** One frame, shown under reduced motion. */
   still?: string;
+  /** The effect playing, as an animated WebP. */
+  anim?: string;
+  /** The picture's own size: an acted effect's stage is wider than the effect's canvas. */
+  art?: { width: number; height: number };
 };
 
 export type LocalCategory = { id: string; name: string; blurb?: string };

@@ -53,7 +53,8 @@ export function EffectsCatalog({
 
   return (
     <>
-      <div className="catalog-bar shell">
+      <div className="catalog-bar">
+        <div className="shell">
         <label className="catalog-filter">
           <span>Filter both lists</span>
           <input
@@ -68,6 +69,7 @@ export function EffectsCatalog({
         <p className="catalog-count" aria-live="polite">
           {shownPresets.length} of {presets.length} presets, {shownEffects.length} of {effects.length} pixelfx effects
         </p>
+        </div>
       </div>
 
       <section className="catalog-section" id="presets">
@@ -134,9 +136,10 @@ export function EffectsCatalog({
               <a className="catalog-link" href="https://github.com/patch-gg/pixelfx" rel="noreferrer">pixelfx</a>{" "}
               {version}, an MIT-licensed library by Patch, rendered on your
               own machine with <code>--lib pixelfx</code>. {standalone} stand
-              alone and are shown as one frame each; the other{" "}
-              {effects.length - standalone} need a character to wrap and are
-              not rendered by PixelKiln yet.
+              alone and PixelKiln renders them. The other{" "}
+              {effects.length - standalone} are built around a character;
+              they are shown here acted out by pixelfx&apos;s own stand-in
+              figure, and PixelKiln does not render them yet.
             </p>
           </div>
           <nav className="catalog-jump" aria-label="pixelfx categories">
@@ -159,22 +162,27 @@ export function EffectsCatalog({
                 {category.blurb ? <p>{category.blurb}</p> : null}
                 <ul className="catalog-grid">
                   {inCategory.map((effect) => {
-                    const k = zoom(effect.width, effect.height);
+                    const art = effect.art ?? { width: effect.width, height: effect.height };
+                    const k = zoom(art.width, art.height);
                     return (
-                      <li key={effect.id} className={`catalog-card${effect.needsCharacter ? " catalog-card-off" : ""}`}>
+                      <li key={effect.id} className="catalog-card">
                         {effect.still ? (
                           <div className="catalog-stage">
-                            <img src={effect.still} alt={`${effect.name}: one frame of the effect`} width={effect.width * k} height={effect.height * k} loading="lazy" />
+                            <picture>
+                              {effect.anim ? <source media="(prefers-reduced-motion: no-preference)" srcSet={effect.anim} type="image/webp" /> : null}
+                              <img src={effect.still} alt={`${effect.name}: the effect ${effect.anim ? "playing" : "in one frame"}`} width={art.width * k} height={art.height * k} loading="lazy" />
+                            </picture>
                           </div>
                         ) : null}
                         <div className="catalog-body">
                           <h3>{effect.id}</h3>
                           <p className="catalog-facts">
                             {effect.width}×{effect.height} · {effect.loop ? "loops" : "plays once"}, {effect.duration}s
-                            {effect.needsCharacter ? " · needs a character" : ""}
                           </p>
                           <p>{effect.description}</p>
-                          {effect.needsCharacter ? null : (
+                          {effect.needsCharacter ? (
+                            <p className="catalog-note">Needs a character. Shown with pixelfx&apos;s stand-in; PixelKiln does not render it yet.</p>
+                          ) : (
                             <code className="catalog-command">pixelkiln vfx --lib pixelfx --effect {effect.id} --out fx/{effect.id.split("/")[1]}</code>
                           )}
                         </div>
