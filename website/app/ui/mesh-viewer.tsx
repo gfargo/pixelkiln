@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+/** Every model the site can show. `pixel` says whether its pixel look starts on. */
 const SUBJECTS = [
-  { id: "parts", label: "Dressed from parts" },
-  { id: "cards", label: "Sprite cards on bones" },
-  { id: "knight", label: "Dark knight, one piece" },
-  { id: "hero", label: "Bare base" },
+  { id: "parts", label: "Painted, from 256 px sprites", pixel: false },
+  { id: "pixel", label: "Pixel, from 64 px sprites", pixel: true },
+  { id: "cards", label: "Sprite cards on bones", pixel: true },
+  { id: "knight", label: "First knight, one piece", pixel: true },
+  { id: "hero", label: "First bare base", pixel: true },
 ] as const;
-type SubjectId = (typeof SUBJECTS)[number]["id"];
+export type MeshSubject = (typeof SUBJECTS)[number]["id"];
+type SubjectId = MeshSubject;
 
 /** Screen pixels per rendered pixel when the pixel look is on. */
 const PIXEL = 3;
@@ -49,10 +52,12 @@ type Controls = {
  * file it loads is the .glb a game engine would import. three.js is fetched
  * only when this mounts.
  */
-export function MeshViewer() {
+export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; initial?: MeshSubject } = {}) {
+  const offered = SUBJECTS.filter((entry) => !subjects || subjects.includes(entry.id));
+  const start = initial ?? offered[0]!.id;
   const host = useRef<HTMLDivElement>(null);
   const controls = useRef<Controls | null>(null);
-  const [subject, setSubject] = useState<SubjectId>("parts");
+  const [subject, setSubject] = useState<SubjectId>(start);
   // The separate meshes the loaded file holds besides the body, and which of them are shown.
   const [items, setItems] = useState<string[]>([]);
   const [worn, setWorn] = useState<Record<string, boolean>>({});
@@ -61,7 +66,7 @@ export function MeshViewer() {
   const [clip, setClip] = useState("Walk");
   const [walking, setWalking] = useState(true);
   const [spinning, setSpinning] = useState(false);
-  const [pixel, setPixel] = useState(false);
+  const [pixel, setPixel] = useState<boolean>(SUBJECTS.find((entry) => entry.id === start)!.pixel);
   const [bones, setBones] = useState(false);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const reducedMotion = useSyncExternalStore(
@@ -428,11 +433,11 @@ export function MeshViewer() {
         </p>
       </div>
       <div className="builder-controls">
-        <div className="builder-slot" role="group" aria-label="Character">
-          <span className="builder-slot-label">Character</span>
+        <div className="builder-slot" role="group" aria-label="Model" hidden={offered.length < 2}>
+          <span className="builder-slot-label">Model</span>
           <div className="builder-options">
-            {SUBJECTS.map((option) => (
-              <button key={option.id} type="button" className="builder-option" aria-pressed={subject === option.id} onClick={() => { setSubject(option.id); setPixel(option.id !== "parts"); }}>
+            {offered.map((option) => (
+              <button key={option.id} type="button" className="builder-option" aria-pressed={subject === option.id} onClick={() => { setSubject(option.id); setPixel(option.pixel); }}>
                 {option.label}
               </button>
             ))}
@@ -483,6 +488,16 @@ export function MeshViewer() {
             move the cards. The pixels are the sprites&apos; own. Joints
             open and overlap as limbs turn, and only eight directions are
             drawn.
+          </p>
+        ) : subject === "pixel" ? (
+          <p className="spin-note">
+            Drag to turn it. The same character made the cheaper way: sprites
+            drawn at 64 pixels, meshed and painted from those sprites with no
+            redraw, and its colours snapped to the sprites&apos; own. It is
+            stocky, because a 64 pixel sprite gives a quarter of its height
+            to the head, and its texture is soft under the pixel look. It
+            has the same skeleton, the same separate items and the same
+            motions as the painted one, in half the triangles.
           </p>
         ) : subject === "parts" ? (
           <p className="spin-note">

@@ -364,7 +364,7 @@ Top pair of rows: directions 1 to 8 as rendered from the model, then after `edit
 
 The redrawn in-between views are a clean, recognisable knight. They are also a little squat next to the drawn ones: the carve loses some of the horns' height and the head sits lower, and the redraw keeps the model's proportions. Editing by reference cleaned less than editing by instruction here.
 
-The sixteen directions are on the website as a viewer that turns the character, on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#turnaround), with a switch to the raw model.
+The sixteen directions are on the website as a viewer that turns the character, on the [3D characters page](https://pixelkiln.griffen.codes/3d#turnaround), with a switch to the raw model.
 
 **Verdict.** Keep, and change direction. The 3D model does not have to look good. It has to put the right shapes and rough colours in the right place from any angle, and an image model does the drawing. Eight new directions cost 10 generations.
 
@@ -419,7 +419,7 @@ The walk, posed here with the file's own bones and weights and drawn from the fr
 
 - **Both files pass the Khronos glTF validator** with no errors or warnings.
 - **Sizes:** the bare character is 7,571 vertices and 10,460 triangles in 562 KB; the knight is 10,433 vertices and 15,120 triangles.
-- **They load and play in three.js**, which is what the viewer on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#mesh) uses. They were not opened in Blender, Unity, Godot or Unreal here.
+- **They load and play in three.js**, which is what the viewer on the [3D characters page](https://pixelkiln.griffen.codes/3d#mesh) uses. They were not opened in Blender, Unity, Godot or Unreal here.
 - **The knight's cape follows the legs,** because it is bound to the nearest bones like everything else. A cape wants bones of its own or cloth simulation.
 - **Dark patches open up on the inner thighs** as the legs part: that surface was never seen by any sprite and was filled in.
 - **The hands, feet and head are single bones.** There are no fingers, toes, jaw or eyes.
@@ -498,7 +498,7 @@ The baked result against the stitched texture of step 10, on the same meshes, dr
 - **It is no longer pixel art on the surface.** The views are 512 pixels with soft-edged blocks. The texture is 1024 pixels, shrunk to 512 in the rigged files.
 - **Light rims on the cape's edges,** where the grey ground of a painted view was baked onto the silhouette.
 - **Seams where two views meet,** most visible on the bare character's arms and head, as blocks that do not line up.
-- **Both characters were rigged again from the painted meshes** and pass the glTF validator: 23,565 vertices and 2.0 MB for the knight, 21,327 vertices and 1.9 MB for the bare character. These are the files in the viewer on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#mesh).
+- **Both characters were rigged again from the painted meshes** and pass the glTF validator: 23,565 vertices and 2.0 MB for the knight, 21,327 vertices and 1.9 MB for the bare character. These are the files in the viewer on the [3D characters page](https://pixelkiln.griffen.codes/3d#mesh).
 - **Licence.** The paint model is published with the shape model, under the same Tencent licence and regional exclusion. The source files of its renderer name a non-commercial licence in their headers. Which terms apply to textures made with it was not settled here: treat these as a research result, and read the licence before shipping one in a game.
 
 **Verdict.** Keep. A generated mesh, fitted to the sprites' camera, painted once per sprite and rigged is the best route found so far from eight sprites to an animated 3D character.
@@ -685,7 +685,7 @@ The two outline columns are not like for like: alone, the mesh is compared with 
 ![The body wearing all four items, from five directions](../website/public/research/3d/parts-assembled.png)
 
 - **It reads as the knight,** from parts that were never meshed together. Nothing pokes through in the rest pose.
-- **Items come off one at a time** in the viewer on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#mesh), and the body under them is whole.
+- **Items come off one at a time** in the viewer on the [3D characters page](https://pixelkiln.griffen.codes/3d#mesh), and the body under them is whole.
 - **The file is 3.6 MB:** five meshes of up to 30,000 triangles and five 256 pixel textures. It passes the glTF validator with no errors or warnings.
 - **The textures are the stitched ones of step 10,** noisy on the armour. Step 29 paints them.
 

@@ -1527,3 +1527,19 @@ div.receipt-line .receipt-mark { background: var(--lime); }
 
 /* The recovery band is a field of the second brand colour, with ink on it. */
 .safety-section { background: var(--lime); }
+
+/* The 3D characters page */
+.models-status { max-width: 760px; }
+.models-figure { margin: 0 0 8px; }
+.models-figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line-strong); }
+.models-figure figcaption { margin-top: 12px; color: var(--cream-muted); font-size: 14px; line-height: 1.6; }
+.provider-table.models-table td:nth-child(2), .provider-table.models-table td:nth-child(3) { white-space: normal; min-width: 240px; }
+.models-steps { list-style: none; margin: 0 0 32px; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--line); max-width: 820px; }
+.models-steps li { display: grid; grid-template-columns: 36px 96px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--line); color: var(--cream-muted); font-size: 15px; line-height: 1.6; }
+.models-steps strong { color: var(--cream); font-weight: 600; }
+.models-step-number { color: var(--cream-muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+.feature-art-models img { width: 100%; height: auto; image-rendering: auto; }
+@media (max-width: 640px) {
+  .models-steps li { grid-template-columns: 28px minmax(0, 1fr); }
+  .models-steps li > span:last-child { grid-column: 2; }
+}

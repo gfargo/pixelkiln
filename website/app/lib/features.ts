@@ -5,7 +5,7 @@
 export type FeatureGroup = "Run the pipeline" | "Make the art" | "Choose a provider";
 
 export type Feature = {
-  id: "pipeline" | "review" | "characters" | "paperdoll" | "effects" | "providers";
+  id: "pipeline" | "review" | "characters" | "paperdoll" | "models" | "effects" | "providers";
   href: string;
   /** Its name in the menu and the hub. */
   name: string;
@@ -95,6 +95,27 @@ export const FEATURES: Feature[] = [
     ],
   },
   {
+    id: "models",
+    href: "/3d",
+    name: "3D characters",
+    group: "Make the art",
+    summary: "Rigged, animated 3D models built from directional sprites, body and items apart.",
+    title: "Sprites in, rigged models out.",
+    deck: "An experiment that turns eight drawn directions into a 3D character a game engine imports: a body and its items as separate meshes on one skeleton, with stock animations. Research, not a command yet.",
+    description: "Experimental 3D characters from PixelKiln sprites: separate body and item meshes on a humanoid skeleton, a pixel path and a painted path, with live models.",
+    sections: [
+      { href: "#mesh", label: "A character in parts" },
+      { href: "#paths", label: "Pixel path or painted path" },
+      { href: "#pipeline", label: "How it is made" },
+      { href: "#cards", label: "Sprite cards on bones" },
+      { href: "#turnaround", label: "Sixteen directions" },
+    ],
+    docs: [
+      { href: "/docs/characters-3d", label: "3D characters guide" },
+      { href: "/docs/research-3d", label: "Research notes" },
+    ],
+  },
+  {
     id: "effects",
     href: "/effects",
     name: "Effects",
@@ -150,6 +171,7 @@ export const DOC_MENU: Array<{ label: string; links: Array<{ href: string; label
     links: [
       { href: "/docs/characters", label: "Characters" },
       { href: "/docs/paperdoll", label: "Paperdoll layers" },
+      { href: "/docs/characters-3d", label: "3D characters" },
       { href: "/docs/tiles", label: "Tiles and terrain" },
       { href: "/docs/revisions", label: "Revisions" },
       { href: "/docs/recovery", label: "Recovery" },

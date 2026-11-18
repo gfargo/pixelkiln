@@ -26,6 +26,7 @@ provider you are using. These Markdown files also render at
 | [Paperdoll layers](./PAPERDOLL.md) | One bare character and any number of outfits, hats and held items as transparent layers that match every frame: how it works, a base built for it, masks, cleaning loops, measured cost, and limits. |
 | [Generators](./GENERATORS.md) | Choose between still, tile, character, hosted animation, and ComfyUI frame-set workflows. |
 | [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and native-grid recovery. |
+| [3D characters from sprites](./CHARACTERS_3D.md) | An experimental pipeline from directional sprites to a rigged, animated 3D character with separate items: a pixel path and a painted path, the steps, and what each costs. Scripts, not a command. |
 | [Research: 3D models from sprites](./RESEARCH_3D.md) | Every attempt to turn eight directional sprites into a 3D model, with pictures. Research, not a feature. |
 | [Controlled asset revisions](./REVISIONS.md) | Image-to-image and inpaint edits, PixelLab palette cleanup, animation, skeleton posing, and interpolation from a parent asset; masks, approval gates, side-by-side review, and ComfyUI bindings. |
 | [Derived artifacts](./ARTIFACTS.md) | Refine, pack, mount, and export; provenance, approval gates, ownership, and crash recovery. |

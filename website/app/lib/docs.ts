@@ -101,6 +101,13 @@ export const docs: DocEntry[] = [
     split: 2,
   },
   {
+    slug: "characters-3d",
+    title: "3D characters from sprites",
+    description: "An experimental pipeline from directional sprites to a rigged, animated 3D character with separate items: a pixel path, a painted path, the steps, and what each costs.",
+    file: "docs/CHARACTERS_3D.md",
+    group: "Guides",
+  },
+  {
     slug: "generators",
     title: "Generator selection",
     description: "Pick a generator and see what it costs.",
