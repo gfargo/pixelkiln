@@ -116,7 +116,7 @@ async function drainThumbs() {
         thumbViewer.setClip(null);
         thumbViewer.setClip(clip);
         thumbViewer.resetCamera();
-        thumbs.set(source, thumbViewer.snapshot());
+        thumbs.set(source, await cropToModel(thumbViewer.snapshot()));
       } catch {
         continue;
       }
@@ -130,6 +130,33 @@ async function drainThumbs() {
   } finally {
     drawing = false;
   }
+}
+
+/**
+ * Cut a rendered frame down to the model: find the drawn pixels' bounds and
+ * keep them, with a little room, at the card's 4:3, so a tall figure fills
+ * the card instead of sitting small in the middle of its bounding sphere.
+ */
+async function cropToModel(dataUrl: string): Promise<string> {
+  const img = new Image();
+  img.src = dataUrl;
+  await img.decode();
+  const work = el('canvas'); work.width = img.width; work.height = img.height;
+  const ctx = work.getContext('2d')!;
+  ctx.drawImage(img, 0, 0);
+  const { data, width, height } = ctx.getImageData(0, 0, work.width, work.height);
+  let left = width, top = height, right = -1, bottom = -1;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    if (data[(y * width + x) * 4 + 3] > 8) { if (x < left) left = x; if (x > right) right = x; if (y < top) top = y; if (y > bottom) bottom = y; }
+  }
+  if (right < 0) return dataUrl;
+  const pad = 0.06;
+  let w = (right - left + 1) * (1 + pad * 2), h = (bottom - top + 1) * (1 + pad * 2);
+  if (w / h < 4 / 3) w = h * 4 / 3; else h = w * 3 / 4;
+  const cx = (left + right + 1) / 2, cy = (top + bottom + 1) / 2;
+  const out = el('canvas'); out.width = 320; out.height = 240;
+  out.getContext('2d')!.drawImage(work, cx - w / 2, cy - h / 2, w, h, 0, 0, out.width, out.height);
+  return out.toDataURL('image/png');
 }
 
 /** For browser tests: how many thumbnails are drawn. */
