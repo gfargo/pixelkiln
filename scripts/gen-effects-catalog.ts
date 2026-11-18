@@ -13,7 +13,11 @@
  * effects as "pixelkiln catalog: <preset>") and its GIF and one still are
  * kept. --skip a,b leaves those presets without one.
  *
- *   npx tsx scripts/gen-effects-catalog.ts [--keep-presets] [--render-presets] [--skip a,b] [--env-dir <dir with .env.local>]
+ * With --codex, every pixel-vfx-codex effect is rendered too (2d camera) into
+ * website/public/effects/codex/. --keep-pixelfx leaves the pixelfx entries and
+ * pictures already in the file alone, so a codex run does not re-render them.
+ *
+ *   npx tsx scripts/gen-effects-catalog.ts [--keep-presets] [--render-presets] [--skip a,b] [--codex] [--keep-pixelfx] [--env-dir <dir with .env.local>]
  */
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { execFileSync, spawnSync } from "node:child_process"
@@ -21,6 +25,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadEnvFiles } from "../src/env.ts"
+import { listCodexEffects, loadCodex, renderCodex } from "../src/codex-vfx.ts"
 import { listPixelfxEffects, loadPixelfx, renderPixelfx, type PixelfxModule } from "../src/pixelfx-vfx.ts"
 import { mcpClientFromEnv } from "../src/pixellab-mcp.ts"
 import { describeVfx, makeVfx, sliceVfxSheet } from "../src/pixellab-vfx.ts"
@@ -193,28 +198,20 @@ function renderActed(mod: PixelfxModule, fps: number): { width: number; height: 
   }
   return { width, height, frames }
 }
-rmSync(thumbs, { recursive: true, force: true })
-mkdirSync(thumbs, { recursive: true })
-const effects = listPixelfxEffects(lib).map((effect) => {
-  const entry = {
-    id: effect.id,
-    category: effect.category,
-    name: effect.name,
-    description: effect.description,
-    width: effect.width,
-    height: effect.height,
-    duration: Number(effect.duration.toFixed(2)),
-    loop: effect.loop,
-    needsCharacter: effect.needsCharacter,
-    options: Object.keys(effect.options),
-  }
-  // Ten frames a second is enough to read the motion; long effects are thinned to at most MAX_FRAMES.
-  const render = effect.needsCharacter
-    ? renderActed(lib.effects[effect.id]!, 10)
-    : renderPixelfx(lib, { effect: effect.id, fps: 10 })
+/**
+ * Write one effect's pictures: a still (the fullest frame, shown under reduced motion) and, when
+ * img2webp is there, an animated WebP of at most MAX_FRAMES frames within ANIM_BUDGET bytes.
+ */
+function writePictures(
+  render: { width: number; height: number; frames: Buffer[] },
+  fps: number,
+  loop: boolean,
+  dir: string,
+  publicDir: string,
+  base: string,
+): { still: string; anim?: string; art: { width: number; height: number } } {
   const step = Math.max(1, Math.ceil(render.frames.length / MAX_FRAMES))
   const frames = render.frames.filter((_, index) => index % step === 0)
-  // The still, for the grid under reduced motion: the fullest frame.
   let best = frames[0]!
   let most = -1
   for (const frame of frames) {
@@ -225,33 +222,91 @@ const effects = listPixelfxEffects(lib).map((effect) => {
       best = frame
     }
   }
-  const base = effect.id.replace("/", "-")
-  writeFileSync(path.join(thumbs, `${base}.png`), encodeRgbaPng(render.width, render.height, best))
-  const pictures = { still: `/effects/pixelfx/${base}.png`, art: { width: render.width, height: render.height } }
-  if (!animate) return { ...entry, ...pictures }
+  writeFileSync(path.join(dir, `${base}.png`), encodeRgbaPng(render.width, render.height, best))
+  const result = { still: `${publicDir}/${base}.png`, art: { width: render.width, height: render.height } }
+  if (!animate) return result
   const work = mkdtempSync(path.join(tmpdir(), "pixelkiln-anim-"))
   const files = frames.map((frame, index) => {
     const file = path.join(work, `${String(index).padStart(3, "0")}.png`)
     writeFileSync(file, encodeRgbaPng(render.width, render.height, frame))
     return file
   })
-  const out = path.join(thumbs, `${base}.webp`)
+  const out = path.join(dir, `${base}.webp`)
   // Lossy WebP keeps pixel edges readable at a fraction of the lossless size. A file still over
   // the budget is tried again with every second, then every third, frame and a lower quality.
   for (const [thin, quality] of [[1, 74], [2, 64], [3, 54]] as const) {
     const kept = files.filter((_, index) => index % thin === 0)
     const args = ["-loop", "0", "-lossy", "-q", String(quality), "-m", "4"]
     // One-shots rest on their last frame for a moment before starting over.
-    kept.forEach((file, index) => args.push("-d", String(index === kept.length - 1 && !effect.loop ? 900 : step * thin * 100), file))
+    kept.forEach((file, index) => args.push("-d", String(index === kept.length - 1 && !loop ? 900 : Math.round((step * thin * 1000) / fps)), file))
     execFileSync("img2webp", [...args, "-o", out], { stdio: "ignore" })
     if (statSync(out).size <= ANIM_BUDGET) break
   }
   rmSync(work, { recursive: true, force: true })
-  return { ...entry, ...pictures, anim: `/effects/pixelfx/${base}.webp` }
-})
+  return { ...result, anim: `${publicDir}/${base}.webp` }
+}
+
+const keepPixelfx = process.argv.includes("--keep-pixelfx")
+const previousData = existsSync(dataFile) ? (JSON.parse(readFileSync(dataFile, "utf8")) as Record<string, unknown>) : {}
+let pixelfx = previousData.pixelfx
+if (!keepPixelfx || !pixelfx) {
+  rmSync(thumbs, { recursive: true, force: true })
+  mkdirSync(thumbs, { recursive: true })
+  const effects = listPixelfxEffects(lib).map((effect) => {
+    const entry = {
+      id: effect.id,
+      category: effect.category,
+      name: effect.name,
+      description: effect.description,
+      width: effect.width,
+      height: effect.height,
+      duration: Number(effect.duration.toFixed(2)),
+      loop: effect.loop,
+      needsCharacter: effect.needsCharacter,
+      options: Object.keys(effect.options),
+    }
+    // Ten frames a second is enough to read the motion; long effects are thinned to at most MAX_FRAMES.
+    const render = effect.needsCharacter ? renderActed(lib.effects[effect.id]!, 10) : renderPixelfx(lib, { effect: effect.id, fps: 10 })
+    return { ...entry, ...writePictures(render, 10, effect.loop, thumbs, "/effects/pixelfx", effect.id.replace("/", "-")) }
+  })
+  pixelfx = { version: lib.version, categories: lib.categories, effects }
+}
+
+let codex = previousData.codex
+if (process.argv.includes("--codex")) {
+  const codexLib = loadCodex()
+  const codexDir = path.join(root, "website/public/effects/codex")
+  rmSync(codexDir, { recursive: true, force: true })
+  mkdirSync(codexDir, { recursive: true })
+  const infos = listCodexEffects(codexLib)
+  const effects = infos.map((info) => {
+    // The 2d camera steps at 12 frames a second; every effect is one cast that ends where it began.
+    const render = renderCodex(codexLib, { effect: info.id, fps: 12 })
+    return {
+      id: info.id,
+      name: info.en,
+      description: info.descEn,
+      category: info.category,
+      schools: info.schools,
+      seconds: Number(info.loopSeconds.toFixed(2)),
+      params: Object.keys(info.params),
+      ...writePictures(render, 12, true, codexDir, "/effects/codex", info.id),
+    }
+  })
+  // A few effects seen through each camera, for the Effects page.
+  const demoDir = path.join(root, "website/public/effects/codex-demo")
+  rmSync(demoDir, { recursive: true, force: true })
+  mkdirSync(demoDir, { recursive: true })
+  for (const [effect, camera] of [["fireball", "2d"], ["fireball", "25d"], ["healing-field", "25d"], ["black-hole", "3d"]] as const) {
+    const fps = camera === "2d" ? 12 : camera === "25d" ? 20 : 30
+    writePictures(renderCodex(codexLib, { effect, camera, fps }), fps, true, demoDir, "/effects/codex-demo", `${effect}-${camera}`)
+  }
+  codex = { version: codexLib.version, engineSha256: codexLib.engineSha256, categories: [...new Set(infos.map((info) => info.category))], effects }
+}
 
 writeFileSync(
   dataFile,
-  `${JSON.stringify({ presets, pixelfx: { version: lib.version, categories: lib.categories, effects } }, null, 2)}\n`,
+  `${JSON.stringify({ presets, pixelfx, ...(codex ? { codex } : {}) }, null, 2)}\n`,
 )
-console.log(`${presets.items.length} presets (${presets.items.filter((preset) => preset.gif).length} with a picture), ${effects.length} pixelfx effects, ${effects.filter((e) => "anim" in e).length} animated`)
+const count = (value: unknown) => ((value as { effects?: unknown[] } | undefined)?.effects ?? []).length
+console.log(`${presets.items.length} presets (${presets.items.filter((preset) => preset.gif).length} with a picture), ${count(pixelfx)} pixelfx effects, ${count(codex)} codex effects`)

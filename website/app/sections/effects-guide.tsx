@@ -1,3 +1,4 @@
+import { codexCategories, codexEffects } from "@/app/lib/effects-catalog";
 import { CodeWindow } from "@/app/ui/code-window";
 import { SpriteLoop } from "@/app/ui/sprite-loop";
 import { TrackedLink } from "@/app/ui/tracked-link";
@@ -24,17 +25,25 @@ const PLACED_EFFECTS = [
   { id: "holy/sunburst", strip: "/effects/pixelfx-chest-sunburst.png", frames: 48, note: "behind, pivot on the chest's centre", label: "Golden rays turning behind a green chest" },
 ] as const;
 
-const CONTROLS: Array<[string, string, string]> = [
-  ["List what exists", "`vfx presets`, `vfx parts`", "`vfx effects` (add `--json` for every option and default)"],
-  ["Pick the effect", "`--preset <name>`, plus `--part <name>` as often as you like", "`--effect <category>/<name>`"],
-  ["Build it around a sprite", "`--sprite <file | URL | character:<id>:<dir>>`", "Not available: effects stand alone and are placed by their pivot"],
-  ["Colors", "Sliders on pixellab.ai, pulled back with `--effect <id> --force`", "`--palette \"#102,#43a,#8cf,#fff\"`, a ramp from dark to bright"],
-  ["Variation", "Part sliders in the saved effect", "`--seed <n>`"],
-  ["Speed", "`--fps <n>`, 1 to 60", "`--fps <n>`, 1 to 60; sets the frame count too"],
-  ["Canvas", "Set by the preset and the sprite", "The effect's own size; `--margin <px>` adds transparent space around it"],
-  ["Render it again", "`--recipe <base>.vfx.json`", "`--recipe <base>.vfx.json`, no `--lib` needed"],
-  ["Extra files", "`<base>.gif`, and `--game-pack` for one clip per layer", "None: no GIF is written"],
-  ["Needs", "`PIXELLAB_API_KEY` and a subscription; free to render", "`npm i github:patch-gg/pixelfx`; no key, no network"],
+/** Rendered by `scripts/gen-effects-catalog.ts --codex`. */
+const CODEX_DEMOS = [
+  { name: "fireball-2d", width: 112, height: 65, title: "fireball", note: "2d camera, 12 fps", alt: "A fireball flying right, then bursting into smoke" },
+  { name: "fireball-25d", width: 148, height: 111, title: "fireball", note: "25d camera, 20 fps, isometric", alt: "The same fireball flying down an isometric floor and bursting" },
+  { name: "healing-field-25d", width: 114, height: 102, title: "healing-field", note: "25d camera, a ground effect", alt: "A green rune circle on the ground with sparkles rising from it" },
+  { name: "black-hole-3d", width: 92, height: 88, title: "black-hole", note: "3d camera, 30 fps, orbiting", alt: "A black hole with a glowing disk, seen from an orbiting camera" },
+] as const;
+
+const CONTROLS: Array<[string, string, string, string]> = [
+  ["List what exists", "`vfx presets`, `vfx parts`", "`vfx effects` (add `--json` for every option and default)", "`vfx effects --lib codex` (`--json` adds each parameter's range)"],
+  ["Pick the effect", "`--preset <name>`, plus `--part <name>` as often as you like", "`--effect <category>/<name>`", "`--effect <id>`, plus `--camera 2d`, `25d` or `3d`"],
+  ["Build it around a sprite", "`--sprite <file | URL | character:<id>:<dir>>`", "Not available: effects stand alone and are placed by their pivot", "Not available: effects stand alone and are placed by their pivot"],
+  ["Colors", "Sliders on pixellab.ai, pulled back with `--effect <id> --force`", "`--palette \"#102,#43a,#8cf,#fff\"`, a ramp from dark to bright", "`--hue <degrees>` turns every color; there is no palette option"],
+  ["Variation", "Part sliders in the saved effect", "`--seed <n>`", "`--param name=value` and `--tune name=value`; no seed, because effects are pure functions of time"],
+  ["Speed", "`--fps <n>`, 1 to 60", "`--fps <n>`, 1 to 60; sets the frame count too", "`--fps <n>`; each camera steps at its own rate (12, 20 or 30)"],
+  ["Canvas", "Set by the preset and the sprite", "The effect's own size; `--margin <px>` adds transparent space around it", "Cropped to the effect and its pivot; `--margin <px>` adds space"],
+  ["Render it again", "`--recipe <base>.vfx.json`", "`--recipe <base>.vfx.json`, no `--lib` needed", "`--recipe <base>.vfx.json`, no `--lib` needed"],
+  ["Extra files", "`<base>.gif`, and `--game-pack` for one clip per layer", "None: no GIF is written", "None: no GIF is written"],
+  ["Needs", "`PIXELLAB_API_KEY` and a subscription; free to render", "`npm i github:patch-gg/pixelfx`; no key, no network", "`npm i github:888wing/pixel-vfx-codex`; no key, no network"],
 ];
 
 /** Text with `code` spans marked by backticks. */
@@ -302,7 +311,64 @@ pixelkiln vfx --recipe fx/torch.vfx.json --out fx/torch-again
         </div>
       </section>
 
-      <section className="fx-section fx-section-alt" id="in-your-game">
+      <section className="fx-section fx-section-alt" id="codex">
+        <div className="shell">
+          <div className="section-heading split-heading">
+            <div>
+              <h2>A second library, seen from three cameras.</h2>
+            </div>
+            <p className="section-deck">
+              <code>--lib codex</code> draws from{" "}
+              <TrackedLink id="effects_codex_repo" section="effects" href="https://github.com/888wing/pixel-vfx-codex">pixel-vfx-codex</TrackedLink>,
+              an MIT-licensed library of {codexEffects.length} effects by
+              888wing and contributors. Each is defined once in 3D and
+              rendered through a camera you choose, so the same fireball can
+              fly side-on or across an isometric floor.
+            </p>
+          </div>
+          <div className="effects-strip fx-strip-2">
+            {CODEX_DEMOS.map((demo) => (
+              <figure key={demo.name}>
+                <picture>
+                  <source media="(prefers-reduced-motion: reduce)" srcSet={`/effects/codex-demo/${demo.name}.png`} />
+                  <img src={`/effects/codex-demo/${demo.name}.webp`} alt={demo.alt} width={demo.width * 3} height={demo.height * 3} loading="lazy" />
+                </picture>
+                <figcaption><b>{demo.title}</b> {demo.note}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <div className="effects-bottom">
+            <CodeWindow
+              title="terminal"
+              language="shell"
+              copyId="effects_codex_commands"
+              section="effects"
+              code={`
+npm i github:888wing/pixel-vfx-codex
+pixelkiln vfx effects --lib codex
+pixelkiln vfx --lib codex --effect fireball --out fx/fireball
+pixelkiln vfx --lib codex --effect fireball --camera 25d --param tailLength=1.6 --hue 40 --out fx/fireball-iso
+`}
+            />
+            <ul className="check-list effects-list">
+              <li><span className="tick" aria-hidden="true" /> {codexEffects.length} effects in {codexCategories.length} categories: projectiles, beams, ground areas, bursts, vortices, shields, summons, domains.</li>
+              <li><span className="tick" aria-hidden="true" /> <code>--param</code> sets an effect&apos;s own settings, such as a fireball&apos;s tail length, within the range it lists. <code>--hue</code> recolors it.</li>
+              <li><span className="tick" aria-hidden="true" /> The library is new and unversioned (it stays at 1.0.0 while its code changes), so each record keeps a hash of its engine and the command says when it differs.</li>
+              <li><span className="tick" aria-hidden="true" /> Frames are cropped to the effect and its pivot, so sizes vary. Like pixelfx, it is not on the npm registry.</li>
+            </ul>
+          </div>
+          <div className="review-links">
+            <TrackedLink className="text-link" id="effects_catalog_codex" section="effects" href="/effects/catalog#codex">
+              Browse every pixel-vfx-codex effect
+            </TrackedLink>
+            <TrackedLink className="text-link" id="effects_codex_docs" section="effects" href="/docs/cli/vfx">
+              The vfx reference
+            </TrackedLink>
+          </div>
+        </div>
+      </section>
+
+      <section className="fx-section" id="in-your-game">
         <div className="shell">
           <div className="section-heading split-heading">
             <div>
@@ -362,14 +428,14 @@ pixelkiln vfx --recipe fx/torch.vfx.json --out fx/torch-again
         </div>
       </section>
 
-      <section className="fx-section" id="controls">
+      <section className="fx-section fx-section-alt" id="controls">
         <div className="shell">
           <div className="section-heading split-heading">
             <div>
               <h2>Every control, side by side.</h2>
             </div>
             <p className="section-deck">
-              One command, two sources. <code>--out &lt;base&gt;</code>,{" "}
+              One command, three sources. <code>--out &lt;base&gt;</code>,{" "}
               <code>--force</code>, <code>--dry-run</code> and{" "}
               <code>--json</code> mean the same for both.
             </p>
@@ -381,14 +447,16 @@ pixelkiln vfx --recipe fx/torch.vfx.json --out fx/torch-again
                   <th scope="col">To do this</th>
                   <th scope="col">PixelLab workbench (default)</th>
                   <th scope="col"><code>--lib pixelfx</code></th>
+                  <th scope="col"><code>--lib codex</code></th>
                 </tr>
               </thead>
               <tbody>
-                {CONTROLS.map(([task, pixellab, pixelfx]) => (
+                {CONTROLS.map(([task, pixellab, pixelfx, codex]) => (
                   <tr key={task}>
                     <th scope="row">{task}</th>
                     <td><Marked text={pixellab} /></td>
                     <td><Marked text={pixelfx} /></td>
+                    <td><Marked text={codex} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -408,7 +476,7 @@ pixelkiln vfx --recipe fx/torch.vfx.json --out fx/torch-again
         </div>
       </section>
 
-      <section className="fx-section fx-section-alt" id="recipes">
+      <section className="fx-section" id="recipes">
         <div className="shell">
           <div className="section-heading split-heading">
             <div>
@@ -452,7 +520,7 @@ pixelkiln vfx --recipe fx/torch.vfx.json --out fx/torch-again
         </div>
       </section>
 
-      <section className="fx-section" id="library">
+      <section className="fx-section fx-section-alt" id="library">
         <div className="shell">
           <div className="section-heading split-heading">
             <div>

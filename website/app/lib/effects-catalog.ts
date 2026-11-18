@@ -33,6 +33,22 @@ export type LocalEffect = {
   art?: { width: number; height: number };
 };
 
+/** One effect of pixel-vfx-codex, rendered through its 2d camera by `scripts/gen-effects-catalog.ts --codex`. */
+export type CodexEffect = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  schools: string[];
+  /** Seconds one cast takes. */
+  seconds: number;
+  /** The effect's own parameters, by name. */
+  params: string[];
+  still: string;
+  anim?: string;
+  art: { width: number; height: number };
+};
+
 export type LocalCategory = { id: string; name: string; blurb?: string };
 
 export const presetsReadOn: string = data.presets.readOn;
@@ -48,3 +64,7 @@ export const presetStills: Record<string, { gif: string; src: string; width: num
   lightning_strike: { gif: "/effects/robot-lightning.gif", src: "/effects/robot-lightning-still.png", width: 96, height: 128, alt: "Lightning striking a robot" },
   rim_glow: { gif: "/effects/object-kiln-rim.gif", src: "/effects/object-kiln-rim-still.png", width: 64, height: 64, alt: "A purple glow behind a small kiln" },
 };
+
+export const codexVersion: string = data.codex.version;
+export const codexCategories: string[] = data.codex.categories;
+export const codexEffects: CodexEffect[] = data.codex.effects;

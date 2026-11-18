@@ -430,6 +430,38 @@ const { frames, width, height, anchor } = renderPixelfx(lib, { effect: "pickups/
   the effect's own. Effects drawn around pixelfx's stock character are
   refused with a `usage` error.
 
+A second local source, [pixel-vfx-codex](https://github.com/888wing/pixel-vfx-codex),
+has the same shape and is installed the same way
+(`npm i github:888wing/pixel-vfx-codex`):
+
+```ts
+import { loadCodex, listCodexEffects, makeCodexVfx, renderCodex } from "pixelkiln"
+
+const lib = loadCodex()
+const effects = listCodexEffects(lib) // id, name, category, and each parameter's range
+
+const made = await makeCodexVfx(lib, {
+  effect: "fireball",
+  camera: "25d",
+  params: { tailLength: 1.6 },
+  hue: 40,
+  out: "fx/fireball",
+})
+const { frames, width, height, anchor, fps } = renderCodex(lib, { effect: "healing-field" })
+```
+
+- `loadCodex(from?)` is synchronous. It evaluates the package's engine and
+  effect files in a separate `vm` context and throws a `capability` error with
+  the install line as its `hint` when the package is missing.
+- A recipe is `{ effect, camera?, fps?, margin?, hue?, params?, tune? }`.
+  `planCodex(lib, recipe)` gives the frame count without rendering, and
+  `checkCodexRecipe` throws a `usage` error for an unknown effect, parameter
+  or knob, or a value out of range.
+- `renderCodex` and `makeCodexVfx` match their pixelfx counterparts: frames on
+  transparency cropped to one box, the pivot in `anchor`, and the same three
+  files. `readCodexRecipe(file, { bare? })` reads a record back.
+- `writeLocalVfx` and `localSheet` are the shared writer both sources use.
+
 The PixelLab side has the same shape: `makeVfx(mcpClientFromEnv(), { preset,
 parts, sprite, fps, out })` drives the free workbench, and
 `makeVfxWithArtist(clientFromEnv(), { description, out })` asks the paid

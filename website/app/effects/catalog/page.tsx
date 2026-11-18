@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { pixelfxCategories, pixelfxEffects, pixelfxVersion, presets, presetStills, presetsReadOn } from "@/app/lib/effects-catalog";
+import { codexCategories, codexEffects, codexVersion, pixelfxCategories, pixelfxEffects, pixelfxVersion, presets, presetStills, presetsReadOn } from "@/app/lib/effects-catalog";
 import { absoluteUrl, pageMetadata } from "@/app/lib/metadata";
 import { InstallSection } from "@/app/sections/install";
 import { EffectsCatalog } from "@/app/ui/effects-catalog";
@@ -9,7 +9,7 @@ import { TrackedLink } from "@/app/ui/tracked-link";
 
 const path = "/effects/catalog";
 const title = "Effects catalog";
-const description = `Every effect pixelkiln vfx can make: ${presets.length} PixelLab workbench presets and ${pixelfxEffects.length} effects from the pixelfx library, with frame sizes and the command for each.`;
+const description = `Every effect pixelkiln vfx can make: ${presets.length} PixelLab workbench presets, ${pixelfxEffects.length} effects from the pixelfx library and ${codexEffects.length} from pixel-vfx-codex, with frame sizes and the command for each.`;
 
 export const metadata: Metadata = pageMetadata({ title, description, path });
 
@@ -34,16 +34,18 @@ export default function Page() {
           </p>
           <h1>Every effect, in one place.</h1>
           <p>
-            Two sources feed <code>pixelkiln vfx</code>. PixelLab&apos;s
+            Three sources feed <code>pixelkiln vfx</code>. PixelLab&apos;s
             workbench has {presets.length} presets that can be built around
             your sprite. The pixelfx library has {pixelfxEffects.length}{" "}
-            effects that render on your own machine. Find one here, copy its
-            command, and read how to place it on the{" "}
+            effects, and pixel-vfx-codex {codexEffects.length}, that render on
+            your own machine. Find one here, copy its command, and read how
+            to place it on the{" "}
             <TrackedLink id="catalog_effects_guide" section="effects" href="/effects#placement">effects page</TrackedLink>.
           </p>
           <div className="catalog-hero-links">
             <a className="button button-primary" href="#presets">PixelLab presets ({presets.length})</a>
             <a className="button catalog-button" href="#pixelfx">pixelfx effects ({pixelfxEffects.length})</a>
+            <a className="button catalog-button" href="#codex">pixel-vfx-codex effects ({codexEffects.length})</a>
           </div>
         </header>
         <EffectsCatalog
@@ -53,6 +55,9 @@ export default function Page() {
           categories={pixelfxCategories}
           effects={pixelfxEffects}
           version={pixelfxVersion}
+          codexEffects={codexEffects}
+          codexCategories={codexCategories}
+          codexVersion={codexVersion}
         />
         <InstallSection />
       </main>
