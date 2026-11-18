@@ -270,10 +270,10 @@ dependency-free baseline decoder.
 
 Bridge protocol 5 adds named guide layers: locked, above the reference, never
 flattened into a save, refreshed by name in a reopened project. The gallery
-sends the unwrap guide as one when the pinned editor speaks protocol 5, and
-otherwise draws it onto the single protocol 4 reference layer. Because the
-build is pinned per release, the page supports both, and only a published,
-pinned build switches a gallery over.
+sends the unwrap guide as one when the editor speaks protocol 5 (the pinned
+build does from `pk.31`), and otherwise draws it onto the single protocol 4
+reference layer, so the page also works with a PixelKiln version that still
+pins a protocol 4 build.
 
 ## Pinned editor build
 

@@ -838,11 +838,14 @@ The texture opens in the same Pixelorama sheet a sprite does, and the locked
 layer at 50% carries a guide: every piece of the unwrap is outlined in the
 colour of the body region that moves it and named where the name fits
 ("Left lower arm, front"), with the colours and numbers listed above the
-canvas. With an editor build that speaks bridge protocol 5, the guide is a
-locked layer of its own (**Unwrap guide**) above a second one holding the
-texture as built at 50%, and the sheet has a box to show or hide each. The
-pinned build named under [`tools`](#tools) decides which: until a protocol 5
-build is published and pinned, both share the one reference layer as below. Regions come from the mesh itself: pieces are found from the texture
+canvas. The guide is a locked layer of its own (**Unwrap guide**) above a
+second one holding the texture as built at 50%, and the sheet's bar has
+**show the guide** and **show as built** to hide either. Neither is ever part
+of the saved texture. This needs the editor build to speak bridge protocol 5,
+which the pinned build does from `editor-pixelorama-v1.2.2-pk.31`. A
+gallery serves only the build its PixelKiln version pins, so after upgrading
+the header offers **Install editor** once to fetch it (see [`tools`](#tools)).
+With a protocol 4 build, both share one locked layer as described next. Regions come from the mesh itself: pieces are found from the texture
 coordinates, joined across every mesh that shares the texture, and each is
 named after the bone that carries most of its weight, or after its mesh when
 the model has no skeleton. **Locked layer shows** (protocol 4 builds only) picks the guide, the guide
