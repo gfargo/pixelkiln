@@ -50,6 +50,7 @@ Last updated 17 November 2026.
 | 40 | Rebuild everything from the 256 pixel sprites | PixelLab, SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | An adult-proportioned, painted body and four detailed items on one skeleton; imports into Godot | Keep as the viewer's model. Still 80,000 triangles and one home-made skeleton. |
 | 41 | Thin every part and bake the paint and a normal map onto the light mesh | Our script | 16,496 triangles for 79,819 and 2.1 MB for 6.3, with no visible loss in an unlit render | Keep. The viewer's model is the light one. |
 | 42 | A standard humanoid skeleton | Our script, Godot's humanoid profile | Twenty-one bones; every bone Godot's profile requires is found by name, under the right parent | Keep. No stock animation has been put on it yet. |
+| 43 | Put stock animations on the skeleton | Quaternius's Universal Animation Library (CC0), our script | Eleven library animations play on the knight: idle, walk, jog, sprint, sword attack, death and others | Keep. The character now moves like a game character. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1069,6 +1070,30 @@ Not done: putting a stock animation on it. That needs an animation library to te
 
 **Verdict.** Keep. The names and the tree are right for one engine's profile. Whether a stock animation looks right on it is the next test.
 
+## 43. Stock animations on the skeleton
+
+**Question.** Step 42 says the skeleton has the right names. Does an animation made for another character look right on it?
+
+**Setup.**
+
+- *The library.* [Quaternius's Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html), standard edition: 43 animations on a 65 bone humanoid named as Unreal's mannequin is (`pelvis`, `spine_01`, `upperarm_l`), as one .glb. CC0. A 15 MB download from itch.io. It is not in this repository.
+- *The problem.* The two skeletons differ in bone count, proportions and rest pose, and the library's bones carry rotations at rest where ours carry none. Keyframes cannot be copied.
+- *The method.* [`scripts/retarget.py`](../research/scripts/retarget.py) pairs our 21 bones with 21 of the library's. For each bone at each moment it takes the library bone's turn away from its rest pose, in world space, and gives it to our bone. Before that, each of our limbs is turned to point the way the library's points at rest, so the two rest poses need not agree. The hips also travel, by the library's hip movement scaled to our hip height (1.023 here). Sampled 30 times a second.
+- *The viewer* gained a picker for whatever animations a file carries.
+
+**Result.** Idle, walk, jog, sword attack and death, in the viewer:
+
+![The knight in five stock animations](../website/public/research/3d/stock-animations.png)
+
+- **They read as what they are.** The idle stands with arms at the sides, the walk and jog stride, the attack lunges, the death falls and lies on the ground.
+- **Eleven animations add 220 KB** to the file, which is 2.3 MB with them.
+- **The armour and cape follow** through all of them, since items are skinned to the same bones.
+- **It passes the glTF validator** with no errors or warnings.
+
+Not checked: feet sliding on the ground, hands (the character has no finger bones, so a grip is a flat hand), the cape through a roll, the animations in Godot, and the other 32 in the library.
+
+**Verdict.** Keep. A standard skeleton plus a retarget gives the character a library of motion for nothing.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1169,8 +1194,8 @@ No report was found of any of these being tested on pixel art.
 |---|---|---|
 | Triangle count and edge flow | 16,496 triangles after thinning (step 41), from 79,819; still no loops at the joints | [AutoRemesher](https://www.cgchannel.com/2026/07/get-free-retopology-tool-autoremesher-and-its-blender-bridge/) (free, MIT, all-quad, a target count); QuadriFlow in Blender; [CurioMesh](https://github.com/CurioCrafter/CurioMesh) (GPLv3, Blender). Guides put a rigged game character at 10,000 to 100,000 triangles. Then the paint is baked from the dense mesh onto the light one, with a normal map for the lost relief |
 | Unwrap | Hundreds of small pieces from xatlas, and each item's texture mostly empty | A fresh unwrap of the light mesh with few seams; one packed texture per character or per item |
-| Skeleton | Twenty-one bones under standard humanoid names, matched by Godot's profile (step 42); no stock animation tried | A standard humanoid skeleton so that stock animations fit. [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) rigs an uploaded humanoid in a T-pose for free and has a large animation library; it wants one joined mesh, and is described as unmaintained. Open models: [UniRig](https://dl.acm.org/doi/abs/10.1145/3730930) (MIT code; its checkpoints and data have their own terms), [Puppeteer](https://arxiv.org/pdf/2508.10898), RigAnything, Anymate (Apache-2.0). No memory figures were found for any of them. *Unverified.* |
-| Animation | One walk made by formula | Mixamo's library; [HY-Motion 1.0](https://arxiv.org/abs/2512.23464) (Tencent, open weights, text to human motion, a community licence). Its skeleton and export formats were not checked |
+| Skeleton | Twenty-one bones under standard humanoid names, matched by Godot's profile (step 42); no fingers | A standard humanoid skeleton so that stock animations fit. [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) rigs an uploaded humanoid in a T-pose for free and has a large animation library; it wants one joined mesh, and is described as unmaintained. Open models: [UniRig](https://dl.acm.org/doi/abs/10.1145/3730930) (MIT code; its checkpoints and data have their own terms), [Puppeteer](https://arxiv.org/pdf/2508.10898), RigAnything, Anymate (Apache-2.0). No memory figures were found for any of them. *Unverified.* |
+| Animation | Eleven stock animations retargeted from a CC0 library (step 43), and one walk made by formula | Mixamo's library; [HY-Motion 1.0](https://arxiv.org/abs/2512.23464) (Tencent, open weights, text to human motion, a community licence). Its skeleton and export formats were not checked |
 | Materials | Base colour only, with the redraw's lighting painted in | Roughness and metal maps: Hunyuan3D 2.1's paint stage (21 GB), MaterialMVP, and 2026 work that estimates materials from several views together ([ReLi3D](https://arxiv.org/abs/2603.19753), Intrinsic Image Fusion). A crude start costs nothing: metal and rough values per item |
 | Parts | Cut from a worn mesh by a sprite mask and a colour test (steps 27 and 36) | Generators that make parts natively: [Hunyuan3D-Part](https://x.com/TencentHunyuan/status/1971491034044694798) (open, segments a mesh into parts and regenerates each whole), [OmniPart](https://arxiv.org/pdf/2507.06165) (planned from 2D part masks, which the paperdoll layers are), PartCrafter. None was checked for clothing or for a 12 GB card |
 | References that agree | Eight directions redrawn one at a time (step 33); sprites at 256 pixels from the generator (step 39) | Models that turn one picture into consistent views: Qwen-Image-Edit with a multiple-angles LoRA, a Flux Kontext turnaround LoRA. Or draw the sprites larger at the source: PixelLab's v3 character goes to 256 pixels, four times step 26's |
@@ -1260,6 +1285,9 @@ python3 research/scripts/bake.py <name.textured.glb> <out-folder>/<name>.views.j
 # A light copy of a painted part, with its paint and a normal map baked on (step 41), then rigged small.
 TEX=512 python3 research/scripts/thin.py <painted.glb> <light.glb> 3000
 ITEMS="Helm=<helm-light.glb>:Head" JPEG=90 TEX_NORMAL=512 python3 research/scripts/rig.py <body-light.glb> <body.rig.json> - - <out.glb>
+
+# Add stock animations from a humanoid library to a rigged character (step 43).
+python3 research/scripts/retarget.py <character.glb> <library.glb> <out.glb>
 
 # Draw textured meshes large, one row each.
 python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>

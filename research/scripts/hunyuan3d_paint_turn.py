@@ -22,6 +22,7 @@ Environment:
   SEED     (default 1024)
   TEXTURE  texture size (default 1024)
   SPREAD   also keep the views this many degrees to either side of each sprite's (default 0, off)
+  TOP      with SPREAD: also keep views from this many degrees above and below each sprite's (default 0, off)
   REF      hard (default) enlarges the sprite with hard pixel edges for the reference; smooth rounds them
   STAGE    paint, bake or both (default both). The bake here is the node's own; bake.py does it on
            this machine from the <name>.views.json this script writes, with control over rims and seams.
@@ -42,9 +43,14 @@ VIEW = int(env('VIEW', '512'))
 STAGE = env('STAGE', 'both')
 SPREAD = int(env('SPREAD', '0'))  # the camera node takes whole degrees
 # The model paints six views at once. The first faces the sprite; with SPREAD the next two sit to either side of it.
+TOP = int(env('TOP', '0'))
 CAMERAS = [0, SPREAD, 360 - SPREAD, 180, 90, 270] if SPREAD else [0, 90, 180, 270, 0, 180]
 ELEVATIONS = [0, 0, 0, 0, 0, 0] if SPREAD else [0, 0, 0, 0, 90, -90]
 KEEP = 3 if SPREAD else 1
+if SPREAD and TOP:
+    # Every camera so far is level, so no view looks down on the top of an outstretched arm, a shoulder or a head,
+    # and those take the dark outline of the views that graze them. Two of the spare cameras look from above and below.
+    CAMERAS = [0, SPREAD, 360 - SPREAD, 0, 0, 180]; ELEVATIONS = [0, 0, 0, TOP, -TOP, 0]; KEEP = 5
 os.makedirs(out, exist_ok=True)
 
 
@@ -145,7 +151,7 @@ if STAGE in ('paint', 'both'):
             'normal': {'class_type': 'SaveImage', 'inputs': {'images': ['render', 0], 'filename_prefix': f'paint/{name}_turnnormal{v}'}},
         })
         for k in range(KEEP):
-            tag = f'{v}' if k == 0 else f'{v}{"ab"[k - 1]}'
+            tag = f'{v}' if k == 0 else f'{v}{"abcd"[k - 1]}'
             open(f'{out}/{name}-view-{tag}.png', 'wb').write(fetch(outputs['view']['images'][k]))
             open(f'{out}/{name}-normal-{tag}.png', 'wb').write(fetch(outputs['normal']['images'][k]))
         print(D[v], f'{time.time() - started:.0f}s', flush=True)
@@ -159,8 +165,8 @@ if STAGE in ('paint', 'both'):
     listing = []
     for v in dirs:
         for k in range(KEEP):
-            tag = f'{v}' if k == 0 else f'{v}{"ab"[k - 1]}'
-            listing.append({'view': f'{name}-view-{tag}.png', 'normal': f'{name}-normal-{tag}.png', 'ref': f'{name}-ref-{v}.png', 'turn': SIGN * v * 45 - CAMERAS[k]})
+            tag = f'{v}' if k == 0 else f'{v}{"abcd"[k - 1]}'
+            listing.append({'view': f'{name}-view-{tag}.png', 'normal': f'{name}-normal-{tag}.png', 'ref': f'{name}-ref-{v}.png', 'turn': SIGN * v * 45 - CAMERAS[k], 'tilt': ELEVATIONS[k]})
     json.dump(listing, open(f'{out}/{name}.views.json', 'w'), indent=1)
 
 if STAGE in ('bake', 'both'):

@@ -87,10 +87,11 @@ P = pos[used]; N = nor[used]; N /= np.linalg.norm(N, axis=1, keepdims=True) + 1e
 dense, _ = trimesh.sample.sample_surface(mesh, 1500000, seed=5)
 
 
-def turned(points, degrees):
-    """The mesh as the camera saw it: right, up, and towards the camera."""
-    t = math.radians(degrees)
-    return np.stack([points[:, 0] * math.cos(t) + points[:, 2] * math.sin(t), points[:, 1], -points[:, 0] * math.sin(t) + points[:, 2] * math.cos(t)], 1)
+def turned(points, degrees, tilt=0.0):
+    """The mesh as the camera saw it: right, up, and towards the camera. A camera raised by `tilt` degrees looks down."""
+    t = math.radians(degrees); e = math.radians(tilt)
+    right, up, near = points[:, 0] * math.cos(t) + points[:, 2] * math.sin(t), points[:, 1], -points[:, 0] * math.sin(t) + points[:, 2] * math.cos(t)
+    return np.stack([right, up * math.cos(e) - near * math.sin(e), near * math.cos(e) + up * math.sin(e)], 1)
 
 
 def place(view, size):
@@ -98,19 +99,22 @@ def place(view, size):
     normal = np.array(Image.open(os.path.join(base, view['normal'])).convert('RGB').resize((size, size), Image.BILINEAR)).astype(int)
     mask = np.abs(normal - normal[0, 0]).sum(2) > 24
     ys, xs = np.nonzero(mask)
-    q = turned(V, view['turn'])
     best = None
-    for flip in (1, -1):
-        x = q[:, 0] * flip
-        scale = ((xs.max() - xs.min() + 1) / (x.max() - x.min()) + (ys.max() - ys.min() + 1) / (q[:, 1].max() - q[:, 1].min())) / 2
-        ox = (xs.max() + xs.min() + 1) / 2 - scale * (x.max() + x.min()) / 2
-        oy = (ys.max() + ys.min() + 1) / 2 + scale * (q[:, 1].max() + q[:, 1].min()) / 2
-        d = turned(dense, view['turn'])
-        cover = np.zeros((size, size), bool)
-        px = np.clip((d[:, 0] * flip * scale + ox).astype(int), 0, size - 1); py = np.clip((oy - d[:, 1] * scale).astype(int), 0, size - 1)
-        cover[py, px] = True
-        score = (cover & mask).sum() / max((cover | mask).sum(), 1)
-        if best is None or score > best[0]: best = (score, flip, scale, ox, oy)
+    # The picture does not say whether the node's "above" is this script's "above", nor whether it is mirrored, so try each.
+    for tilt in sorted({view.get('tilt', 0), -view.get('tilt', 0)}):
+        q = turned(V, view['turn'], tilt)
+        for flip in (1, -1):
+            x = q[:, 0] * flip
+            scale = ((xs.max() - xs.min() + 1) / (x.max() - x.min()) + (ys.max() - ys.min() + 1) / (q[:, 1].max() - q[:, 1].min())) / 2
+            ox = (xs.max() + xs.min() + 1) / 2 - scale * (x.max() + x.min()) / 2
+            oy = (ys.max() + ys.min() + 1) / 2 + scale * (q[:, 1].max() + q[:, 1].min()) / 2
+            d = turned(dense, view['turn'], tilt)
+            cover = np.zeros((size, size), bool)
+            px = np.clip((d[:, 0] * flip * scale + ox).astype(int), 0, size - 1); py = np.clip((oy - d[:, 1] * scale).astype(int), 0, size - 1)
+            cover[py, px] = True
+            score = (cover & mask).sum() / max((cover | mask).sum(), 1)
+            if best is None or score > best[0]: best = (score, flip, scale, ox, oy); found = tilt
+    view['tilt'] = found
     return best
 
 
@@ -119,14 +123,14 @@ for k, view in enumerate(views):
     picture = np.array(Image.open(os.path.join(base, view['view'])).convert('RGB')).astype(np.float64)
     size = picture.shape[0]
     fit, flip, scale, ox, oy = place(view, size)
-    d = turned(dense, view['turn'])
+    d = turned(dense, view['turn'], view['tilt'])
     px = np.clip((d[:, 0] * flip * scale + ox).astype(int), 0, size - 1); py = np.clip((oy - d[:, 1] * scale).astype(int), 0, size - 1)
     depth = np.full((size, size), -np.inf); np.maximum.at(depth, (py, px), d[:, 2])
     solid = np.isfinite(depth)
     filled = np.where(solid, depth, -1e9)
     edge = ~solid | (maximum_filter(filled, 3) - minimum_filter(np.where(solid, depth, 1e9), 3) > JUMP)
     far = distance_transform_edt(~edge)
-    q = turned(P, view['turn']); n = turned(N, view['turn'])
+    q = turned(P, view['turn'], view['tilt']); n = turned(N, view['turn'], view['tilt'])
     fx, fy = q[:, 0] * flip * scale + ox, oy - q[:, 1] * scale
     ix, iy = np.clip(fx.astype(int), 0, size - 1), np.clip(fy.astype(int), 0, size - 1)
     seen = (q[:, 2] >= depth[iy, ix] - 1.0) & (n[:, 2] > 0.05)

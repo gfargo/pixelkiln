@@ -38,6 +38,7 @@ type Controls = {
   setPixel: (on: boolean) => void;
   setBones: (on: boolean) => void;
   setWorn: (item: string, on: boolean) => void;
+  setClip: (name: string) => void;
   dispose: () => void;
 };
 
@@ -55,6 +56,9 @@ export function MeshViewer() {
   // The separate meshes the loaded file holds besides the body, and which of them are shown.
   const [items, setItems] = useState<string[]>([]);
   const [worn, setWorn] = useState<Record<string, boolean>>({});
+  // The animations the loaded file carries, and the one playing.
+  const [clips, setClips] = useState<string[]>([]);
+  const [clip, setClip] = useState("Walk");
   const [walking, setWalking] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [pixel, setPixel] = useState(false);
@@ -73,6 +77,7 @@ export function MeshViewer() {
     let cleanup = () => {};
     setStatus("loading");
     setItems([]);
+    setClips([]);
 
     (async () => {
       const THREE = await import("three");
@@ -162,6 +167,7 @@ export function MeshViewer() {
       const wornNow = new Map<string, boolean>();
       const showSkin = () => { for (const { piece, hiddenBy } of skin) piece.visible = !hiddenBy.some((item) => wornNow.get(item) ?? true); };
       let updateCards: (() => void) | null = null;
+      let play: (name: string) => void = () => {};
       let pixelOn = true;
       let playing = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -303,12 +309,22 @@ export function MeshViewer() {
         helper.visible = false;
         scene.add(helper);
         mixer = new THREE.AnimationMixer(gltf.scene);
-        const clip = gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
-        if (clip) {
-          action = mixer.clipAction(clip);
+        const first = gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
+        if (first) {
+          action = mixer.clipAction(first);
           action.play();
           action.paused = !playing;
         }
+        setClips(gltf.animations.map((entry) => entry.name));
+        setClip(first?.name ?? "");
+        play = (name) => {
+          const next = gltf.animations.find((entry) => entry.name === name);
+          if (!next || !mixer) return;
+          mixer.stopAllAction();
+          action = mixer.clipAction(next);
+          action.reset().play();
+          action.paused = !playing;
+        };
         setStatus("ready");
       } catch {
         if (!cancelled) setStatus("failed");
@@ -346,6 +362,7 @@ export function MeshViewer() {
         setPixel: (on) => { pixelOn = on; canvas.classList.toggle("mesh-canvas-smooth", !on); resize(); },
         setBones: (on) => { if (helper) helper.visible = on; },
         setWorn: (item, on) => { const part = parts.get(item); if (part) part.visible = on; wornNow.set(item, on); showSkin(); },
+        setClip: (name) => play(name),
         dispose: () => {},
       };
       // Bring a freshly loaded model in line with the switches as they stand.
@@ -407,7 +424,7 @@ export function MeshViewer() {
         </div>
         <p className="builder-readout">
           <span>.glb</span>
-          <a className="text-link" href={`/models/${subject}.glb`} download>Download this model</a>, with its skeleton and walk.
+          <a className="text-link" href={`/models/${subject}.glb`} download>Download this model</a>, with its skeleton and {clips.length > 1 ? "animations" : "walk"}.
         </p>
       </div>
       <div className="builder-controls">
@@ -428,6 +445,18 @@ export function MeshViewer() {
               {items.map((item) => (
                 <button key={item} type="button" className="builder-option" aria-pressed={worn[item] ?? true} onClick={() => setWorn((current) => ({ ...current, [item]: !(current[item] ?? true) }))}>
                   {item.replaceAll("_", " ")}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {clips.length > 1 ? (
+          <div className="builder-slot" role="group" aria-label="Animation">
+            <span className="builder-slot-label">Motion</span>
+            <div className="builder-options">
+              {clips.map((name) => (
+                <button key={name} type="button" className="builder-option" aria-pressed={clip === name} onClick={() => { setClip(name); controls.current?.setClip(name); }}>
+                  {name === "Walk" ? "First walk" : name.replaceAll("_", " ").replace(/ Loop$/, "")}
                 </button>
               ))}
             </div>
@@ -466,8 +495,10 @@ export function MeshViewer() {
             wearing it, moved to just above the skin, and follows the
             body&apos;s bones. The skin under an item is hidden while the
             item is worn. Every part was then thinned to a fifth of its
-            triangles, with its paint and relief baked back on. Switch the
-            pixel look on to see it as pixel art.
+            triangles, with its paint and relief baked back on. The
+            motions other than the first walk come from a free animation
+            library made for a different skeleton, carried over bone by
+            bone. Switch the pixel look on to see it as pixel art.
           </p>
         ) : (
           <p className="spin-note">
