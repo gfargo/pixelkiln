@@ -489,9 +489,10 @@ pixelkiln model adopt knight [--mode textures|whole] [--from <glb>] [--json]
 
 - `list` (the default) shows every model with its meshes, bones, animations,
   and images by index, material, and role, and its edited copy if there is one.
-  `--style` narrows it.
+  `--style` narrows it. A normal map is listed as `<material> normal map`.
 - `export` writes one texture for painting anywhere: `--image` takes the image
-  index or a material name (its base colour texture). Three files land beside
+  index, a material name (its base colour texture), or `<material>:normal`
+  (its normal map), e.g. `--image Helm:normal`. Three files land beside
   the edited copy, or in `--out`: `<name>.image-<n>.png`, the texture as PNG
   (a JPEG texture is decoded; progressive JPEG is refused with the reason),
   taken from the edited copy when there is one; `<name>.image-<n>.guide.png`,
@@ -508,7 +509,8 @@ pixelkiln model adopt knight [--mode textures|whole] [--from <glb>] [--json]
   **File > Export > PixelKiln edit (.glb)** added; see `PIXELKILN_BLENDER`
   above.
 - `adopt` takes what that export wrote. `--mode textures` (the default) takes
-  only the base colour textures that changed, by material name, into a copy of
+  only the base colour textures and normal maps that changed, by material
+  name, into a copy of
   the model as built; `--mode whole` takes the file as it is. `--from <glb>`
   adopts a file from somewhere else.
 
@@ -833,7 +835,8 @@ like everything else, and covers what a rigged character uses: triangle
 meshes, one skin, base colour and normal maps, and translation, rotation, and
 scale animation. It works in the read-only gallery.
 
-With `--edit`, each base colour texture offers **Edit texture in browser**.
+With `--edit`, each base colour texture offers **Edit texture in browser**,
+and each normal map **Edit normal map in browser**.
 The texture opens in the same Pixelorama sheet a sprite does, and the locked
 layer at 50% carries a guide: every piece of the unwrap is outlined in the
 colour of the body region that moves it and named where the name fits
@@ -851,6 +854,12 @@ named after the bone that carries most of its weight, or after its mesh when
 the model has no skeleton. **Locked layer shows** (protocol 4 builds only) picks the guide, the guide
 over the texture as built, the texture as built alone, or nothing. The guide
 is never part of what is saved.
+
+A normal map opens the same way, with the normal map as built under the guide
+and five swatches in the palette: flat (`#8080ff`) and leaning 45° right,
+left, up, and down, in glTF's OpenGL convention (green up). The 3D view beside
+the editor lights the model with what is on the canvas, which is the way to
+judge a normal map: paint flat over a streak or a pinhole and watch it go.
 
 The model also stands beside the editor in the same sheet (**3D view** in the
 sheet's bar hides it), and follows the canvas: each time painting pauses for
@@ -880,8 +889,8 @@ To paint there, switch to the *Texture Paint* workspace, select a mesh, paint,
 and use that export item; nothing needs saving first. Back in the gallery,
 **Refresh** shows the waiting export with two ways to take it:
 
-- **Adopt the export's textures** takes only the base colour textures that
-  changed, matched to the model by material name, into a copy of the model as
+- **Adopt the export's textures** takes only the base colour textures and
+  normal maps that changed, matched to the model by material name, into a copy of the model as
   built. Blender re-encodes meshes and animations on export; this keeps
   them exactly as built.
 - **Adopt the whole file** uses the export as the edit as it is, for changes
@@ -1940,7 +1949,7 @@ Print the package version. `-v` is an alias.
 | `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
 | `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
 | `--mode <mode>` | normal-map/asset import/model adopt | normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. model adopt: `textures` (the default) or `whole`. |
-| `--image <n\|material>` | model export/import | The texture: an image index, or a material name for its base colour texture. |
+| `--image <n\|material>` | model export/import | The texture: an image index, a material name for its base colour texture, or `<material>:normal` for its normal map. |
 | `--strength <n>` | normal-map | How far every pixel tilts away from the viewer, 0–2. |
 | `--outline-rounding <n>` | normal-map | How much the outline rounds off, 0–3. |
 | `--part-shapes <n>` | normal-map | How much the sprite's 3D parts add, 0–2. |

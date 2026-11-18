@@ -178,8 +178,12 @@ async function readModel(file: string, what: string): Promise<{ bytes: Buffer; d
   }
 }
 
-const materialOfImage = (document: GlbDocument, image: number) =>
-  describeGlb(document).images[image]?.materials[0] ?? `image ${image}`
+/** What a texture is called in records: its material, and its role when that is not base colour ("Helm normal map"). */
+const materialOfImage = (document: GlbDocument, image: number) => {
+  const summary = describeGlb(document).images[image]
+  const material = summary?.materials[0] ?? `image ${image}`
+  return summary && !summary.roles.includes("baseColor") && summary.roles.includes("normal") ? `${material} normal map` : material
+}
 
 export interface ModelTextureSaveInput {
   /** Index into the model's `images`. */
@@ -293,20 +297,26 @@ export async function adoptModelExport(
   if (mode === "whole") {
     edited = exported.bytes
   } else {
-    const baseColourImage = (document: GlbDocument, materialIndex: number) => {
-      const info = document.json.materials?.[materialIndex]?.pbrMetallicRoughness?.baseColorTexture
+    // Base colour and normal maps, matched slot to slot by material name.
+    const slots = ["baseColor", "normal"] as const
+    const slotImage = (document: GlbDocument, materialIndex: number, slot: (typeof slots)[number]) => {
+      const material = document.json.materials?.[materialIndex]
+      const info = slot === "baseColor" ? material?.pbrMetallicRoughness?.baseColorTexture : material?.normalTexture
       return info ? document.json.textures?.[info.index]?.source : undefined
     }
     const exportedByName = new Map<string, number>()
     for (const [index, material] of (exported.document.json.materials ?? []).entries()) {
-      const image = baseColourImage(exported.document, index)
-      if (material.name && image !== undefined && !exportedByName.has(material.name)) exportedByName.set(material.name, image)
+      for (const slot of slots) {
+        const image = slotImage(exported.document, index, slot)
+        const key = `${material.name}\u0000${slot}`
+        if (material.name && image !== undefined && !exportedByName.has(key)) exportedByName.set(key, image)
+      }
     }
     let document = original.document
     const done = new Set<number>()
-    for (const [index, material] of (original.document.json.materials ?? []).entries()) {
-      const image = baseColourImage(original.document, index)
-      const source = material.name ? exportedByName.get(material.name) : undefined
+    for (const [index, material] of (original.document.json.materials ?? []).entries()) for (const slot of slots) {
+      const image = slotImage(original.document, index, slot)
+      const source = material.name ? exportedByName.get(`${material.name}\u0000${slot}`) : undefined
       if (image === undefined || source === undefined || done.has(image)) continue
       let bytes: Uint8Array
       try {
@@ -320,11 +330,12 @@ export async function adoptModelExport(
       // An export that did not touch a texture hands back the same bytes; leave those alone.
       if (Buffer.from(glbImageBytes(original.document, image).bytes).equals(Buffer.from(bytes))) continue
       document = replaceGlbImage(document, image, bytes, info.mimeType)
-      taken.push(material.name!)
+      const label = slot === "normal" ? `${material.name} normal map` : material.name!
+      taken.push(label)
       const hash = sha256(Buffer.from(bytes))
       // A texture the other program passed through untouched keeps its record, and with it its layer file.
       const kept = previous?.textures.find((entry) => entry.image === image && entry.sha256 === hash)
-      textures.push(kept ?? { image, name: material.name!, sha256: hash, editor, savedAt, project: null })
+      textures.push(kept ?? { image, name: label, sha256: hash, editor, savedAt, project: null })
     }
     if (!done.size) {
       throw new ManifestEditError(
@@ -466,8 +477,9 @@ export async function resolveModel(loaded: LoadedManifest, ref: string, opts: { 
 }
 
 /**
- * Which image a texture reference means: an image index, or a material name
- * (its base colour texture). Names are compared without case.
+ * Which image a texture reference means: an image index, a material name for
+ * its base colour texture (`Helm`), or a material name and `:normal` for its
+ * normal map (`Helm:normal`). Names are compared without case.
  */
 export function resolveTextureImage(document: GlbDocument, ref: string): number {
   if (/^\d+$/.test(ref)) {
@@ -475,11 +487,15 @@ export function resolveTextureImage(document: GlbDocument, ref: string): number 
     if (!document.json.images?.[index]) throw new ManifestEditError(`the model has no image ${index}; it has ${document.json.images?.length ?? 0}`)
     return index
   }
+  const normal = /:normal$/i.test(ref)
+  const material = ref.replace(/:(normal|color|colour|base)$/i, "")
+  const role = normal ? "normal" : "baseColor"
   const summary = describeGlb(document)
-  const matches = summary.images.filter((image) => image.roles.includes("baseColor") && image.materials.some((name) => name.toLowerCase() === ref.toLowerCase()))
+  const matches = summary.images.filter((image) => image.roles.includes(role) && image.materials.some((name) => name.toLowerCase() === material.toLowerCase()))
   if (matches.length === 1) return matches[0]!.index
-  const choices = summary.images.filter((image) => image.roles.includes("baseColor")).map((image) => `${image.index} (${image.materials.join(", ")})`)
-  throw new ManifestEditError(`no base colour texture for material "${ref}"; the model's are ${choices.join(", ") || "none"}`)
+  const choices = summary.images.filter((image) => image.roles.includes("baseColor") || image.roles.includes("normal"))
+    .map((image) => `${image.index} (${image.materials.join(", ")}${image.roles.includes("baseColor") ? "" : ":normal"})`)
+  throw new ManifestEditError(`no ${normal ? "normal map" : "base colour texture"} for material "${material}"; the model's textures are ${choices.join(", ") || "none"}`)
 }
 
 /** Where a texture is exported for painting elsewhere, and where its import is read from. */

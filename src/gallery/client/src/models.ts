@@ -409,7 +409,8 @@ function renderInfo(state: Live) {
     }
     const list = el('div', 'model-textures');
     for (const image of images) {
-      const paintable = image.roles.includes('baseColor') && image.embedded && image.width && image.height;
+      const paintable = (image.roles.includes('baseColor') || image.roles.includes('normal')) && image.embedded && image.width && image.height;
+      const isNormal = !image.roles.includes('baseColor') && image.roles.includes('normal');
       const entry = el('div', 'model-texture');
       const thumb = el('canvas'); thumb.width = 72; thumb.height = 72;
       const bitmap = state.viewer?.image(image.index);
@@ -427,7 +428,7 @@ function renderInfo(state: Live) {
       if (paintable && editable) {
         const acts = el('div', 'acts');
         if (S.ED.installed) {
-          const b = el('button', 'primary', 'Edit texture in browser'); b.type = 'button';
+          const b = el('button', isNormal ? null : 'primary', isNormal ? 'Edit normal map in browser' : 'Edit texture in browser'); b.type = 'button';
           b.title = 'Open this texture in Pixelorama here; Save writes an edited copy of the model under edits/';
           b.onclick = () => openTextureSheet(model, image.index);
           acts.append(b);
@@ -598,6 +599,9 @@ async function decode(doc: GlbDocument, image: number): Promise<ImageBitmap> {
 function openTextureSheet(model: GalleryModel, image: number) {
   const summary = model.summary!.images[image];
   const name = summary.materials[0] || 'image ' + image;
+  const isNormal = !summary.roles.includes('baseColor') && summary.roles.includes('normal');
+  /** "the Helm texture" or "the Helm normal map". */
+  const what = name + (isNormal ? ' normal map' : ' texture');
   const choice = REFERENCE_CHOICES.some(([value]) => value === ui.modelReference) ? ui.modelReference : 'guide';
   // The texture to paint is the edit's when there is one, so earlier work carries on.
   const current = model.edit ?? model.file;
@@ -631,7 +635,7 @@ function openTextureSheet(model: GalleryModel, image: number) {
     }
   };
   const custom = {
-    title: (model.project ? model.project + ':' : '') + model.name + ' · ' + name + ' texture · ' + summary.width + '×' + summary.height,
+    title: (model.project ? model.project + ':' : '') + model.name + ' · ' + what + ' · ' + summary.width + '×' + summary.height,
     referenceLabel: S.ED.protocol >= 5 ? 'show as built' : choice === 'original' ? 'show the texture as built' : choice === 'guide' ? 'show the guide' : 'show the guide and the texture as built',
     layers: [{ name: GUIDE_LAYER, label: 'show the guide', title: 'The unwrap guide on its own locked layer: outlines and names of each piece. Never part of the saved texture.' }],
     referenceTitle: 'A locked layer at 50%, for finding your way; never part of the saved texture',
@@ -704,7 +708,8 @@ function openTextureSheet(model: GalleryModel, image: number) {
       const message: any = {
         type: 'pixelkiln:open', request,
         asset: { key: model.id + '#image-' + image, id: model.id, name: (model.name + '-' + name).replace(/[^A-Za-z0-9._-]+/g, '-'), width, height },
-        png, palette: [],
+        // A normal map is painted in directions, not colours: flat, and leaning 45° each way (OpenGL, green up).
+        png, palette: isNormal ? ['#8080ff', '#da80da', '#2580da', '#80dada', '#8025da'] : [],
       };
       const transfer: ArrayBuffer[] = [png];
       if (pxo) { message.pxo = pxo; transfer.push(pxo); }
@@ -716,9 +721,9 @@ function openTextureSheet(model: GalleryModel, image: number) {
       sheet.status.append(el('i', 'dot cool'), document.createTextNode('opening'));
     },
     opened(m) {
-      const from = m.source === 'pxo' ? 'painting the ' + name + ' texture with ' + (m.layers === 1 ? 'its layer' : 'its ' + m.layers + ' layers') + ' restored'
-        : S.SHEET.sentProject ? 'painting the flattened ' + name + ' texture; its layer file could not be opened'
-        : model.edit ? 'painting the ' + name + ' texture of the edited copy' : 'painting a copy of the ' + name + ' texture';
+      const from = m.source === 'pxo' ? 'painting the ' + what + ' with ' + (m.layers === 1 ? 'its layer' : 'its ' + m.layers + ' layers') + ' restored'
+        : S.SHEET.sentProject ? 'painting the flattened ' + what + '; its layer file could not be opened'
+        : model.edit ? 'painting the ' + what + ' of the edited copy' : 'painting a copy of the ' + what + '';
       if (Array.isArray(m.guides) && m.guides.includes(GUIDE_LAYER)) return from + ' · guide on its own layer, texture as built at 50% under it';
       return from + (m.reference ? ' · ' + (choice === 'original' ? 'texture as built' : 'guide') + ' shown through at 50%' : '');
     },
@@ -729,7 +734,7 @@ function openTextureSheet(model: GalleryModel, image: number) {
       // The preview follows the save.
       ui.modelSide = 'edited';
       const saved = modelOf(model.id);
-      ui.notice = { id: model.id, text: 'Saved the ' + name + ' texture into ' + (saved?.edit?.path ?? model.editPath) + '. The model as built is unchanged.' };
+      ui.notice = { id: model.id, text: 'Saved the ' + what + ' into ' + (saved?.edit?.path ?? model.editPath) + '. The model as built is unchanged.' };
     },
   };
   openEditorSheet(model, custom);

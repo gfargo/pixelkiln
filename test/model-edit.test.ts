@@ -311,3 +311,29 @@ describe("models in the gallery", () => {
     await expect(edit({ action: "adopt-model-export", path: "art/cast/models/knight.glb" })).rejects.toThrow(/exported model is not on disk/)
   })
 })
+
+describe("normal maps", () => {
+  it("are named by material and :normal, painted into the copy, and recorded as the normal map", async () => {
+    const target = await model()
+    const { resolveTextureImage } = await import("../src/pipeline/model-edit.ts")
+    const document = parseGlb(await readFile(modelFile))
+    expect(resolveTextureImage(document, "Sprite:normal")).toBe(1)
+    expect(resolveTextureImage(document, "sprite")).toBe(0)
+    expect(() => resolveTextureImage(document, "Helm:normal")).toThrow(/no normal map for material "Helm"; the model's textures are 0 \(Sprite\), 1 \(Sprite:normal\), 2 \(Helm\)/)
+    const flat = solidPng(4, [128, 128, 255, 255])
+    const saved = await saveModelTexture(target, { image: 1, png: flat, editor: "x", protocol: 5 })
+    expect(saved.companion.textures).toMatchObject([{ image: 1, name: "Sprite normal map" }])
+    expect((await imageOf(saved.editFile, 1)).equals(flat)).toBe(true)
+  })
+
+  it("come back from a Blender export by material name too", async () => {
+    const target = await model()
+    const normal = solidPng(4, [200, 128, 200, 255])
+    const exported = replaceGlbImage(parseGlb(await readFile(modelFile)), 1, normal, "image/png")
+    await mkdir(path.dirname(modelExportPath(target.editFile)), { recursive: true })
+    await writeFile(modelExportPath(target.editFile), serializeGlb(exported))
+    const adopted = await adoptModelExport(target)
+    expect(adopted.taken).toEqual(["Sprite normal map"])
+    expect((await imageOf(adopted.editFile, 1)).equals(normal)).toBe(true)
+  })
+})

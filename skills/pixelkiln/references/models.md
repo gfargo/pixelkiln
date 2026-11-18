@@ -33,8 +33,9 @@ pixelkiln model list --json     # the same, plus the edit's status and record
 ```
 
 Each image is listed by index with its material and role (`base colour`,
-`normal map`). Name a texture by index (`--image 8`) or by material name
-(`--image Helm`, its base colour texture). Name a model by its path, its file
+`normal map`). Name a texture by index (`--image 8`), by material name
+(`--image Helm`, its base colour texture), or `--image Helm:normal` for that
+material's normal map. Name a model by its path, its file
 name (`knight`), or the gallery id (`model:cast/models/knight.glb`).
 
 An edit's `status` is `edited` (based on the model as it is now),
@@ -95,17 +96,27 @@ built) with an export item that writes `knight.export.glb`. It finds Blender
 through `PIXELKILN_BLENDER`, then the usual install location; it never
 installs it. It opens a window, so run it only when the person asks.
 
-`adopt` defaults to `textures`: the base colour textures that changed in the
-export are matched to the model by material name and put into a copy of the
+`adopt` defaults to `textures`: the base colour textures and normal maps that
+changed in the export are matched to the model by material name and put into a copy of the
 model as built. Blender re-encodes meshes and animations on export, so this
 keeps them exactly as built. Use `--mode whole` only when the person changed
 more than paint (geometry, weights, animation). `--from <glb>` adopts a file
 from elsewhere. An export whose material names no longer match is refused;
 `whole` is the way to take it.
 
+## Normal maps
+
+Normal maps are exported, imported, painted in the gallery, and adopted from
+Blender the same way, recorded as `<material> normal map`. They are glTF
+tangent-space maps in the OpenGL convention: `#8080ff` is flat, red leans the
+surface right, green up. Painting one by hand is for repairs (flattening a
+streak, filling a pinhole, softening a seam), judged in the gallery's 3D view
+beside the editor, never for adding relief from scratch. Do not paint one
+yourself.
+
 ## Not covered
 
-Normal maps and other non-colour images are listed but not offered for
-painting; a hand-painted normal map is rarely right. There is no way to
+Metallic-roughness, occlusion, and emissive images are listed but not offered
+for painting. There is no way to
 declare the edited copy in the manifest, and no step builds or regenerates a
 model.
