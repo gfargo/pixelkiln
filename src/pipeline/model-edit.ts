@@ -8,6 +8,8 @@ import { sha256 } from "../hash.ts"
 import type { LoadedManifest } from "../manifest.ts"
 import { ManifestEditError } from "../manifest-edit.ts"
 import { MediaType, validateMedia } from "../media.ts"
+import { decodeJpeg } from "../jpeg.ts"
+import { encodeRgbaPng } from "../png.ts"
 import { HAND_EDIT_DIR, MAX_HAND_EDIT_BYTES } from "./hand-edit.ts"
 
 /**
@@ -433,4 +435,121 @@ export function openInBlender(model: ProjectModel, opts: { command?: string[] | 
   })
   launch(program!, args)
   return `${command.join(" ")} (${path.basename(file)})`
+}
+
+/**
+ * A model named on the command line: its path (manifest-relative or
+ * absolute), its file name with or without `.glb`, or the gallery's id
+ * (`model:<style>/<path>`). A name two models share is refused with both.
+ */
+export async function resolveModel(loaded: LoadedManifest, ref: string, opts: { styles?: string[] } = {}): Promise<ProjectModel> {
+  const models = await discoverModels(loaded, opts)
+  const wanted = path.resolve(loaded.root, ref)
+  const byPath = models.find((model) => model.file === wanted)
+  if (byPath) return byPath
+  const id = /^(?:[^:]+:)?model:([^/]+)\/(.+)$/.exec(ref)
+  if (id) {
+    const found = models.find((model) => model.styleId === id[1] && model.file === path.resolve(loaded.root, loaded.manifest.styles[id[1]!]?.outDir ?? ".", id[2]!))
+    if (found) return found
+  }
+  const name = ref.toLowerCase().replace(/\.glb$/, "")
+  const named = models.filter((model) => path.basename(model.file, path.extname(model.file)).toLowerCase() === name)
+  if (named.length === 1) return named[0]!
+  if (named.length > 1) {
+    throw new ManifestEditError(`"${ref}" names ${named.length} models: ${named.map((model) => path.relative(loaded.root, model.file)).join(", ")}; give its path`)
+  }
+  throw new ManifestEditError(
+    models.length
+      ? `no model "${ref}"; this project has ${models.map((model) => path.relative(loaded.root, model.file)).join(", ")}`
+      : `no model "${ref}": this project has no .glb under a style's output folder`,
+  )
+}
+
+/**
+ * Which image a texture reference means: an image index, or a material name
+ * (its base colour texture). Names are compared without case.
+ */
+export function resolveTextureImage(document: GlbDocument, ref: string): number {
+  if (/^\d+$/.test(ref)) {
+    const index = Number(ref)
+    if (!document.json.images?.[index]) throw new ManifestEditError(`the model has no image ${index}; it has ${document.json.images?.length ?? 0}`)
+    return index
+  }
+  const summary = describeGlb(document)
+  const matches = summary.images.filter((image) => image.roles.includes("baseColor") && image.materials.some((name) => name.toLowerCase() === ref.toLowerCase()))
+  if (matches.length === 1) return matches[0]!.index
+  const choices = summary.images.filter((image) => image.roles.includes("baseColor")).map((image) => `${image.index} (${image.materials.join(", ")})`)
+  throw new ManifestEditError(`no base colour texture for material "${ref}"; the model's are ${choices.join(", ") || "none"}`)
+}
+
+/** Where a texture is exported for painting elsewhere, and where its import is read from. */
+export function modelTexturePaths(editFile: string, image: number, dir?: string) {
+  const base = dir ? path.join(dir, path.basename(stem(editFile))) : stem(editFile)
+  return {
+    texture: `${base}.image-${image}.png`,
+    guide: `${base}.image-${image}.guide.png`,
+    key: `${base}.image-${image}.guide.txt`,
+  }
+}
+
+export interface ModelTextureExport {
+  image: number
+  material: string
+  width: number
+  height: number
+  /** Whether the pixels came from the edited copy (true) or the model as built. */
+  fromEdit: boolean
+  texture: string
+  guide: string
+  key: string
+  guidePieces: number
+  regions: string[]
+}
+
+/**
+ * Write one texture as a PNG for painting in any editor, with the guide as
+ * a transparent PNG the same size to lay on top, and its key. The pixels
+ * come from the edited copy when there is one, so earlier work carries on.
+ * A JPEG texture is decoded here; nothing about the model changes.
+ */
+export async function exportModelTexture(
+  model: ProjectModel,
+  ref: string,
+  opts: { dir?: string; guide: (document: GlbDocument, image: number) => { png: Buffer; key: string; pieces: number; regions: string[] } },
+): Promise<ModelTextureExport> {
+  const fromEdit = existsSync(model.editFile)
+  const source = await readModel(fromEdit ? model.editFile : model.file, fromEdit ? "the model's edit" : "the model")
+  const image = resolveTextureImage(source.document, ref)
+  let bytes: Uint8Array
+  try {
+    bytes = glbImageBytes(source.document, image).bytes
+  } catch (error) {
+    throw new ManifestEditError(error instanceof Error ? error.message : String(error))
+  }
+  const info = imageInfo(bytes) ?? (() => { throw new ManifestEditError(`image ${image} is neither PNG nor JPEG`) })()
+  let png: Buffer
+  if (info.mimeType === "image/png") png = Buffer.from(bytes)
+  else {
+    try {
+      const decoded = decodeJpeg(bytes)
+      png = encodeRgbaPng(decoded.width, decoded.height, decoded.pixels)
+    } catch (error) {
+      throw new ManifestEditError(`image ${image} could not be decoded: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  const paths = modelTexturePaths(model.editFile, image, opts.dir)
+  const drawn = opts.guide(source.document, image)
+  await replaceFile(paths.texture, png)
+  await replaceFile(paths.guide, drawn.png)
+  await replaceFile(paths.key, drawn.key)
+  return {
+    image,
+    material: materialOfImage(source.document, image),
+    width: info.width,
+    height: info.height,
+    fromEdit,
+    ...paths,
+    guidePieces: drawn.pieces,
+    regions: drawn.regions,
+  }
 }

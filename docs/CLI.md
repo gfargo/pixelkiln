@@ -471,6 +471,47 @@ members by role. GIF animations and sets with a GIF in them are refused with
 the reason. `--only` must resolve to one asset in one style, so add `--style`
 when the asset is shared.
 
+### `model`
+
+The gallery's [3D model](#3d-models-look-at-one-paint-its-textures-open-it-in-blender)
+actions, from the terminal, for painting in your own editor or for a script.
+A model is a `.glb` under a style's `outDir`; name one by its path, its file
+name, or its gallery id. Nothing here reads or writes the manifest or the
+lockfile, and the model as built is never written.
+
+```bash
+pixelkiln model list [--json]
+pixelkiln model export knight --image Helm [--out <dir>] [--no-open] [--json]
+pixelkiln model import knight --image Helm [--from <png>] [--json]
+pixelkiln model blender knight
+pixelkiln model adopt knight [--mode textures|whole] [--from <glb>] [--json]
+```
+
+- `list` (the default) shows every model with its meshes, bones, animations,
+  and images by index, material, and role, and its edited copy if there is one.
+  `--style` narrows it.
+- `export` writes one texture for painting anywhere: `--image` takes the image
+  index or a material name (its base colour texture). Three files land beside
+  the edited copy, or in `--out`: `<name>.image-<n>.png`, the texture as PNG
+  (a JPEG texture is decoded; progressive JPEG is refused with the reason),
+  taken from the edited copy when there is one; `<name>.image-<n>.guide.png`,
+  a transparent layer the same size with every unwrap piece outlined in its
+  region's colour and numbered; and `<name>.image-<n>.guide.txt`, which names
+  each number and lists every piece with its label, pixel bounds, and meshes.
+  The texture then opens in `PIXELKILN_EDITOR` or the OS default, unless
+  `--no-open`. Lay the guide on top as its own layer; it is never imported.
+- `import` reads the painted PNG back (or `--from <png>`), refuses one of a
+  different size, and writes the edited copy with only that texture replaced,
+  plus the same `.edit.json` record a browser save writes, naming the editor
+  `PIXELKILN_EDITOR` names.
+- `blender` starts Blender with the model (or its edited copy) imported and
+  **File > Export > PixelKiln edit (.glb)** added; see `PIXELKILN_BLENDER`
+  above.
+- `adopt` takes what that export wrote. `--mode textures` (the default) takes
+  only the base colour textures that changed, by material name, into a copy of
+  the model as built; `--mode whole` takes the file as it is. `--from <glb>`
+  adopts a file from somewhere else.
+
 ### `tools`
 
 Prepare the in-browser editor before opening a gallery, or check what is on
@@ -840,7 +881,8 @@ and use that export item; nothing needs saving first. Back in the gallery,
   that are not paint.
 
 Any program that writes glTF can leave a file at that path for the same two
-buttons. `PIXELKILN_BLENDER` names the program (a name, or a command with
+buttons. [`pixelkiln model`](#model) does all of this from the terminal, and
+exports a texture with the guide as files for painting in your own editor. `PIXELKILN_BLENDER` names the program (a name, or a command with
 arguments); without it the usual install location is used:
 `/Applications/Blender.app` on macOS, `Program Files\Blender Foundation` on
 Windows, `blender` on the `PATH` on Linux. PixelKiln never installs Blender;
@@ -1890,7 +1932,8 @@ Print the package version. `-v` is an alias.
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
 | `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
 | `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
-| `--mode <mode>` | normal-map/asset import | normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. |
+| `--mode <mode>` | normal-map/asset import/model adopt | normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. model adopt: `textures` (the default) or `whole`. |
+| `--image <n\|material>` | model export/import | The texture: an image index, or a material name for its base colour texture. |
 | `--strength <n>` | normal-map | How far every pixel tilts away from the viewer, 0–2. |
 | `--outline-rounding <n>` | normal-map | How much the outline rounds off, 0–3. |
 | `--part-shapes <n>` | normal-map | How much the sprite's 3D parts add, 0–2. |

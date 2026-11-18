@@ -71,6 +71,9 @@ Commands
             --edit lets the page change prompts, sizes, tags, and add assets,
             and offers the in-browser pixel editor (--no-editor hides it);
             --budget enables Generate, Regenerate, and review under that ceiling.
+  model     3D models (.glb under a style's outDir): list, export a texture
+            with its region guide to paint anywhere, import it into an edited
+            copy under edits/, open the model in Blender, adopt its export.
   tools     status/install editor: the in-browser editor (Pixelorama) is a
             46 MB web build fetched once per release into a user cache and
             verified against pinned hashes. Offline once installed.
@@ -256,6 +259,8 @@ Examples
   pixelkiln edit --style base --only anvil
   pixelkiln tools install editor
   PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
+  pixelkiln model export knight --image Helm
+  pixelkiln model import knight --image Helm
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
