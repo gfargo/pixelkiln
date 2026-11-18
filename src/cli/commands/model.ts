@@ -15,11 +15,23 @@ import {
   resolveTextureImage,
   saveModelTexture,
   type ModelAdoptMode,
+  type ProjectModel,
 } from "../../pipeline/model-edit.ts"
 import { glbImageBytes, imageInfo, parseGlb, type GlbDocument } from "../../glb.ts"
 import { renderGuide } from "../../pipeline/model-guide.ts"
 import { loadManifest } from "../../manifest.ts"
-import { log } from "../io.ts"
+import { confirm, log } from "../io.ts"
+import { UsageError } from "../../errors.ts"
+import { clientFromEnv, NORMAL_MAP_KINDS, NORMAL_MAP_MODES, type NormalMapKind, type NormalMapMode } from "../../client.ts"
+import { loadEnvFiles } from "../../env.ts"
+import {
+  generateModelNormals,
+  MODEL_NORMAL_SOURCES,
+  modelNormalMapper,
+  planModelNormals,
+  type ModelNormalOptions,
+  type ModelNormalSource,
+} from "../../pipeline/model-normals.ts"
 import type { Args } from "../args.ts"
 
 const shown = (file: string) => path.relative(process.cwd(), file) || file
@@ -106,6 +118,8 @@ export async function runModel(args: Args): Promise<void> {
     return
   }
 
+  if (sub === "normal-map") { await runModelNormalMap(args, model, name); return }
+
   if (sub === "blender") {
     if (!blenderCommand()) throw new Error("Blender was not found in its usual place; set PIXELKILN_BLENDER to the program")
     const command = openInBlender(model)
@@ -124,6 +138,59 @@ export async function runModel(args: Args): Promise<void> {
       : `  adopted ${adopted.taken.length ? adopted.taken.join(", ") : "no changed textures"} into ${shown(adopted.editFile)}; meshes and animations are as built`)
     return
   }
+}
+
+/**
+ * `model normal-map`: PixelLab normal map detail on the model's normal maps,
+ * from its texture (`--source texture`) or from drawn views of the whole
+ * figure (`--source views`, the default). Priced and confirmed first; answers
+ * are cached, so a second run with another --blend costs nothing.
+ */
+async function runModelNormalMap(args: Args, model: ProjectModel, name: string): Promise<void> {
+  const source = (args.source ?? "views") as ModelNormalSource
+  if (!(MODEL_NORMAL_SOURCES as readonly string[]).includes(source)) throw new UsageError(`--source is views (the default) or texture, not "${args.source}"`)
+  if (args.mode !== undefined && !(NORMAL_MAP_MODES as readonly string[]).includes(args.mode)) throw new UsageError(`--mode is ${NORMAL_MAP_MODES.join(" or ")}, not "${args.mode}"`)
+  if (args.kind !== undefined && !(NORMAL_MAP_KINDS as readonly string[]).includes(args.kind)) throw new UsageError(`--kind is one of ${NORMAL_MAP_KINDS.join(", ")}, not "${args.kind}"`)
+  if (args.views && source !== "views") throw new UsageError("--views goes with --source views")
+  const size = args.size === undefined ? undefined : Number(args.size)
+  if (size !== undefined && source !== "views") throw new UsageError("--size goes with --source views")
+  const document = parseGlb(await readFile(model.file))
+  // "Helm" here means Helm's normal map, not its base colour.
+  const images = args.image?.split(",").map((ref) => ref.trim()).filter(Boolean)
+    .map((ref) => resolveTextureImage(document, /^\d+$/.test(ref) || ref.includes(":") ? ref : `${ref}:normal`))
+  const options: ModelNormalOptions = {
+    source,
+    ...(images?.length ? { images } : {}),
+    ...(args.views ? { views: args.views.split(",").map((view) => view.trim()).filter(Boolean) } : {}),
+    ...(size !== undefined ? { size } : {}),
+    ...(args.mode ? { mode: args.mode as NormalMapMode } : {}),
+    ...(args.kind ? { kind: args.kind as NormalMapKind } : {}),
+    ...(args.surfaceDetail !== undefined ? { surfaceDetail: args.surfaceDetail } : {}),
+    ...(args.detailSoftness !== undefined ? { detailSoftness: args.detailSoftness } : {}),
+    ...(args.strength !== undefined ? { strength: args.strength } : {}),
+    ...(args.blend !== undefined ? { amount: args.blend } : {}),
+    ...(args.replace ? { replace: true } : {}),
+  }
+  const plan = await planModelNormals(model, options)
+  const fresh = plan.calls.filter((call) => !call.cached).length
+  if (args.json && args.dryRun) { log(JSON.stringify({ ...plan, calls: plan.calls.map(({ png: _png, ...call }) => call) }, null, 2)); return }
+  log(`  ${name}: normal map detail from ${source === "views" ? `the figure drawn from ${plan.calls.length} directions` : "its textures"}, starting from ${plan.from === "edit" ? "the edited copy" : "the model as built"}`)
+  log(`    for: ${plan.images.map((image) => `${image.name} (image ${image.image})`).join(", ")}`)
+  log(`    PixelLab calls: ${plan.calls.length}${fresh < plan.calls.length ? ` (${plan.calls.length - fresh} already answered, free)` : ""}; cost ${plan.cost} generation${plan.cost === 1 ? "" : "s"} (${args.mode === "pro" ? "pro, 0.5 each" : "lite, 0.1 each"})`)
+  log(`    pictures sent: ${shown(plan.dir)}`)
+  if (args.budget !== undefined && args.budget < plan.cost) throw new Error(`--budget ${args.budget} is below this run's ${plan.cost}-generation cost`)
+  if (args.dryRun) { log("  dry run: nothing sent"); return }
+  if (fresh && !(await confirm(`  Spend ${plan.cost} generation${plan.cost === 1 ? "" : "s"}?`, args.yes))) return
+  loadEnvFiles(path.dirname(path.resolve(args.manifest)))
+  loadEnvFiles(process.cwd())
+  const client = fresh ? clientFromEnv() : null
+  const result = await generateModelNormals(model, options, modelNormalMapper(() => client!), {
+    onCall: (label, cached) => log(`    ${label}${cached ? " (cached)" : "…"}`),
+  })
+  if (args.json) { log(JSON.stringify({ sent: result.sent, cost: plan.cost, editFile: result.editFile, details: result.details, companion: result.companion }, null, 2)); return }
+  log(`  saved ${plan.images.map((image) => image.name).join(", ")} into ${shown(result.editFile)}; the model as built is unchanged`)
+  log(`  PixelLab's detail alone: ${result.details.map(shown).join(", ")}`)
+  log(`  look at it: pixelkiln gallery (3D models), or run again with --blend <0-2> or --replace for free`)
 }
 
 function describeSize(document: GlbDocument, image: number): { width: number; height: number } {

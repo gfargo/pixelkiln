@@ -114,9 +114,56 @@ streak, filling a pinhole, softening a seam), judged in the gallery's 3D view
 beside the editor, never for adding relief from scratch. Do not paint one
 yourself.
 
+## Normal map detail from PixelLab (spends generations)
+
+```bash
+pixelkiln model normal-map knight --dry-run                 # what it would send, and the price
+pixelkiln model normal-map knight --yes --budget 0.5        # four views of the figure, 0.4 generation
+pixelkiln model normal-map knight --source texture --image Cuirass --yes --budget 0.2
+pixelkiln model normal-map knight --blend 2                 # again, stronger: answers are cached, free
+```
+
+This is the one model command that costs money. Run it only when the person
+asked for normal map detail, show them the `--dry-run` price first, and pass
+`--budget` at that price with `--yes`. Spending is never implied by "fix the
+model".
+
+It reads the painted light and dark as small bumps (PixelLab's surface
+detail, with outline rounding and part shapes held at 0, since the mesh has
+its shape already) and blends them onto the normal maps the model has, so the
+baked relief stays. It writes the edited copy, recorded per map as
+`pixellab normal-map (<source>)`.
+
+Which source:
+
+- `views` (default): the whole figure drawn from four sides (`--views` for
+  others, up to eight; 0.1 generation each in lite mode), each picture's
+  normals carried back onto every texture through the surface. Consistent
+  across seams, coarser, and parts no view sees stay as they were. Best for a
+  first pass on a character: one price covers every texture.
+- `texture`: each normal map's base colour texture as laid out, in tiles of at
+  most 512 px (a 1024 texture is four calls). Finer and complete, but
+  neighbouring unwrap pieces are read separately and can leave a line along a
+  seam. Use it for one material with fine engraving, by `--image`.
+
+What to expect: in testing on a knight, both added relief to gold trim and
+embossing and little to plain cloth or fur; at `--blend 1` the change is
+subtle. `--blend` (0–2) and `--replace` re-run from the cache at no cost, so
+tune with those rather than by asking again. Runs re-tune, they do not stack:
+each blends onto the map from before the first PixelLab run, and `--blend 0`
+takes the detail off. The pictures sent, PixelLab's
+answers, and `image-<n>.detail.png` (the detail alone) are in
+`edits/models/<name>.normal-map/<source>/`; look at the detail picture and the
+gallery's 3D view before calling it done.
+
+In the gallery the same thing is **Normal map detail (PixelLab)** in the
+model's drawer. It works only when the person started the gallery with
+`--edit --budget <n>`; leave starting it that way to them.
+
 ## Not covered
 
 Metallic-roughness, occlusion, and emissive images are listed but not offered
-for painting. There is no way to
+for painting. `normal-map` adds detail to a normal map the model has; it does
+not add one to a material without one. There is no way to
 declare the edited copy in the manifest, and no step builds or regenerates a
 model.

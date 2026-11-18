@@ -138,6 +138,12 @@ export interface Args {
   mode?: string
   /** model export/import: the texture, by image index or material name. */
   image?: string
+  /** model normal-map: directions to draw the model from, comma-separated. */
+  views?: string
+  /** model normal-map: how much of PixelLab's detail goes on, 0 to 2. */
+  blend?: number
+  /** model normal-map: PixelLab's detail alone instead of blended onto the baked relief. */
+  replace: boolean
   /** normal-map: how far every pixel tilts away from the viewer. */
   strength?: number
   /** normal-map: how much the outline rounds off, 0-3. */
@@ -228,11 +234,11 @@ const VALUE_FLAGS = [
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--lib", "--margin", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
   "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
-  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image",
+  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro",
+  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace",
 ] as const
 
 export const COMMANDS = [
@@ -247,7 +253,7 @@ const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
 const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
 const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 const EDIT_SUBCOMMANDS = ["start", "detach"] as const
-const MODEL_SUBCOMMANDS = ["list", "export", "import", "blender", "adopt"] as const
+const MODEL_SUBCOMMANDS = ["list", "export", "import", "blender", "adopt", "normal-map"] as const
 const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
 const VFX_SUBCOMMANDS = ["make", "presets", "parts", "effects"] as const
@@ -645,6 +651,9 @@ export function parseArgs(argv: string[]): Args {
     gamePack: rest.includes("--game-pack"),
     mode: get("--mode"),
     image: get("--image"),
+    views: get("--views"),
+    blend: numberOption("--blend", { min: 0, max: 2 }),
+    replace: rest.includes("--replace"),
     strength: numberOption("--strength", { min: 0, max: 2 }),
     outlineRounding: numberOption("--outline-rounding", { min: 0, max: 3 }),
     partShapes: numberOption("--part-shapes", { min: 0, max: 2 }),

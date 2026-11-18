@@ -497,6 +497,9 @@ function renderInfo(state: Live) {
     host.append(s);
   }
 
+  const normalImages = images.filter((image) => !image.roles.includes('baseColor') && image.roles.includes('normal') && image.width && image.height);
+  if (canWrite() && normalImages.length) host.append(normalDetailSection(model, normalImages));
+
   {
     const s = section('Model');
     const dl = el('dl');
@@ -513,6 +516,72 @@ function renderInfo(state: Live) {
     s.append(dl);
     host.append(s);
   }
+}
+
+/** PixelLab's lite price for one normal map. */
+const NORMAL_MAP_PRICE = 0.1;
+const DETAIL_VIEWS = 4;
+
+/**
+ * Normal map detail from PixelLab: either the figure drawn from four sides,
+ * or each texture as laid out, in tiles of at most 512 px. Priced before
+ * anything is sent; the server refuses a run above that price or past the
+ * session's --budget. Answers are cached, so changing the blend is free and
+ * the real charge can be lower than shown.
+ */
+function normalDetailSection(model: GalleryModel, normals: NonNullable<GalleryModel['summary']>['images']) {
+  const s = section('Normal map detail (PixelLab)');
+  s.append(el('div', 'state-dim', 'Reads the painted light and dark as small bumps and adds them to ' +
+    (normals.length === 1 ? 'the normal map' : 'the ' + normals.length + ' normal maps') +
+    ', on top of the relief already baked in. Written to the edited copy; the model as built is not touched.'));
+  const controls = el('div', 'model-row');
+  const source = el('select');
+  for (const [value, label] of [['views', 'From the figure, drawn from 4 sides'], ['texture', 'From each texture, as laid out']]) {
+    const o = el('option', null, label); o.value = value; source.append(o);
+  }
+  source.title = 'From the figure: smooth and consistent across seams, coarser, and parts no side can see stay as they were. From each texture: finer and complete, but pieces of the unwrap can disagree where they meet.';
+  const amount = el('input') as HTMLInputElement;
+  amount.type = 'range'; amount.min = '0'; amount.max = '2'; amount.step = '0.25'; amount.value = '1';
+  amount.title = 'How much of the detail goes on: 1 as PixelLab drew it, 2 twice as deep';
+  const amountLabel = el('span', 'lbl', 'blend 1');
+  const replaceBox = el('label', 'lbl');
+  const replace = el('input') as HTMLInputElement; replace.type = 'checkbox';
+  replaceBox.append(replace, document.createTextNode(' replace the baked relief'));
+  replaceBox.title = 'Write PixelLab’s detail alone, dropping the relief the model was built with';
+  controls.append(source, amountLabel, amount, replaceBox);
+  s.append(controls);
+  const acts = el('div', 'hand-actions');
+  const go = el('button', null, '') as HTMLButtonElement; go.type = 'button';
+  const msg = el('span', 'msg');
+  const price = () => {
+    const calls = source.value === 'views' ? DETAIL_VIEWS
+      : normals.reduce((sum, image) => sum + Math.ceil(image.width! / 512) * Math.ceil(image.height! / 512), 0);
+    return Math.round(calls * NORMAL_MAP_PRICE * 100) / 100;
+  };
+  const refresh = () => {
+    amountLabel.textContent = 'blend ' + amount.value;
+    go.textContent = 'Generate · up to ' + price() + ' generations';
+    go.disabled = !GENERATION;
+    go.title = GENERATION ? 'Ask PixelLab, after you confirm the price. Answers already fetched for the same pictures are reused for free.'
+      : 'Start the gallery with --edit --budget <n> to spend PixelLab generations from here, or run pixelkiln model normal-map';
+  };
+  source.onchange = refresh; amount.oninput = refresh;
+  go.onclick = async () => {
+    const cost = price();
+    if (!confirm('Spend up to ' + cost + ' PixelLab generations on normal map detail for ' + model.name + '?')) return;
+    go.disabled = true; msg.className = 'msg'; msg.textContent = 'Asking PixelLab… (about 10 s a picture)';
+    try {
+      await postModel(model, 'generate-model-normals', { source: source.value, amount: Number(amount.value), ...(replace.checked ? { replace: true } : {}), maxCost: cost });
+      ui.modelSide = 'edited';
+      ui.notice = { id: model.id, text: 'Added PixelLab’s normal map detail to ' + model.editPath + '. Drag the model to turn it in the light; Edited / As built compares.' };
+      render();
+    } catch (err) { go.disabled = false; msg.className = 'msg bad'; msg.textContent = err.message; }
+  };
+  refresh();
+  acts.append(go, msg);
+  s.append(acts);
+  if (!GENERATION) s.append(el('div', 'state-dim', 'This gallery spends nothing: start it with --edit --budget <n>, or run pixelkiln model normal-map ' + model.name + ' in a terminal.'));
+  return s;
 }
 
 // ---- the guide ----

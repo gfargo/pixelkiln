@@ -122,7 +122,7 @@ async function serveUntilStopped(
       url, initial.snapshot.totals.entries, undefined, undefined, args.edit, budget ? describeBudget(budget) : null,
     ),
     ...(args.edit
-      ? { edit: createGalleryEditHandler({ manifestFor: access.manifestFor, loadProject: access.loadProject, reload, onProgress: log }) }
+      ? { edit: createGalleryEditHandler({ manifestFor: access.manifestFor, loadProject: access.loadProject, reload, onProgress: log, ...((args.providerBudgets?.pixellab ?? args.budget) !== undefined ? { modelNormalBudget: (args.providerBudgets?.pixellab ?? args.budget)! } : {}) }) }
       : {}),
     ...(budget
       ? { generate: createGenerateHandlers({ loadProject, providerFor, budget, reload, onProgress: log }) }

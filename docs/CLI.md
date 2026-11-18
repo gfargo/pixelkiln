@@ -485,6 +485,9 @@ pixelkiln model export knight --image Helm [--out <dir>] [--no-open] [--json]
 pixelkiln model import knight --image Helm [--from <png>] [--json]
 pixelkiln model blender knight
 pixelkiln model adopt knight [--mode textures|whole] [--from <glb>] [--json]
+pixelkiln model normal-map knight [--source views|texture] [--image <material>[,…]] [--views south,east,…]
+                                  [--size <px>] [--blend <0-2>] [--replace] [--surface-detail <n>]
+                                  [--detail-softness <n>] [--mode lite|pro] [--budget <n>] [--dry-run] [--yes] [--json]
 ```
 
 - `list` (the default) shows every model with its meshes, bones, animations,
@@ -513,6 +516,42 @@ pixelkiln model adopt knight [--mode textures|whole] [--from <glb>] [--json]
   name, into a copy of
   the model as built; `--mode whole` takes the file as it is. `--from <glb>`
   adopts a file from somewhere else.
+- `normal-map` adds normal map detail from PixelLab's `/normal-map` to the
+  model's normal maps (all of them, or `--image Helm,Cape`), written into the
+  edited copy with a record per map (editor `pixellab normal-map (<source>)`).
+  It is the one model command that spends: it prints the calls and their
+  price, then asks (`--yes` skips the question, `--budget` refuses a run that
+  costs more, `--dry-run` writes the pictures it would send and stops).
+  PixelLab is asked for surface detail only, with outline rounding and part
+  shapes at 0, since the mesh already has its shape. Two sources:
+  - `--source views` (the default) draws the whole figure from `--views`
+    (four sides unless given: `south,east,north,west`; any of the eight
+    directions or degrees), each at `--size` px (8–512, default 512), sends
+    each picture, and carries the normals back onto every texture through the
+    surface: each texel takes them from the views that see it, weighted by how
+    squarely. One call per view, whatever the number of textures: 0.4
+    generation for four in lite mode. The detail is consistent across seams but
+    coarser than the texture, and a part no view sees (under an arm, behind
+    the cape) keeps the map it had.
+  - `--source texture` sends each normal map's base colour texture as laid
+    out, masked to the unwrap and cut into tiles of at most 512 px: one call
+    per tile (a 1024 texture is four). The detail is finer and covers every
+    piece, but neighbouring pieces of the unwrap are read separately and can
+    disagree where they meet, which shows as a line along the seam.
+
+  The detail is blended onto the normal map the model has ("whiteout": the
+  sideways parts add, so the relief baked from the high-detail mesh stays);
+  `--blend` scales it (0–2, default 1) and `--replace` writes PixelLab's detail
+  alone. Every picture sent and every answer is kept in
+  `<name>.normal-map/<source>/` beside the edited copy, with
+  `image-<n>.detail.png` showing the detail on its own; an answer is reused
+  whenever the same picture is asked for again, so running again with another
+  `--blend` or `--replace` is free. Each run blends onto the normal map as it
+  was before the first PixelLab run (kept there as `image-<n>.base.png`), so
+  runs re-tune the detail rather than stack it, and `--blend 0` takes it off;
+  a hand paint or an adopt after that becomes the new starting map. `--mode pro` is 0.5 generation a call.
+  On the sample knight in testing, both sources added relief to trim and
+  embossing and little to plain cloth; the effect is subtle at `--blend 1`.
 
 ### `tools`
 
@@ -860,6 +899,17 @@ and five swatches in the palette: flat (`#8080ff`) and leaning 45° right,
 left, up, and down, in glTF's OpenGL convention (green up). The 3D view beside
 the editor lights the model with what is on the canvas, which is the way to
 judge a normal map: paint flat over a streak or a pinhole and watch it go.
+
+**Normal map detail (PixelLab)** in the drawer does what
+[`pixelkiln model normal-map`](#model) does: pick the source (the figure
+drawn from four sides, or each texture as laid out), the blend, and whether to
+replace the baked relief, and the button shows the most the run can cost.
+After you confirm, the page sends that price with the request and the server
+refuses a run that would cost more. It needs `--edit --budget <n>` (or
+`--budget pixellab=<n>`): the session's spending on normal map detail stops at
+that ceiling, counted on its own, before any call is sent. Answers already
+fetched are reused, so the real charge can be lower than shown, and changing
+only the blend costs nothing.
 
 The model also stands beside the editor in the same sheet (**3D view** in the
 sheet's bar hides it), and follows the canvas: each time painting pauses for
@@ -1948,17 +1998,20 @@ Print the package version. `-v` is an alias.
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
 | `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
 | `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
-| `--mode <mode>` | normal-map/asset import/model adopt | normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. model adopt: `textures` (the default) or `whole`. |
-| `--image <n\|material>` | model export/import | The texture: an image index, a material name for its base colour texture, or `<material>:normal` for its normal map. |
+| `--mode <mode>` | normal-map/asset import/model adopt/model normal-map | normal-map and model normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. model adopt: `textures` (the default) or `whole`. |
+| `--image <n\|material>` | model export/import/normal-map | The texture: an image index, a material name for its base colour texture, or `<material>:normal` for its normal map. For `model normal-map`, a material name means its normal map, and several can be given comma-separated. |
 | `--strength <n>` | normal-map | How far every pixel tilts away from the viewer, 0–2. |
 | `--outline-rounding <n>` | normal-map | How much the outline rounds off, 0–3. |
 | `--part-shapes <n>` | normal-map | How much the sprite's 3D parts add, 0–2. |
-| `--surface-detail <n>` | normal-map | The art's light and dark as bumps, 0–2. |
-| `--detail-softness <n>` | normal-map | How far that detail is blurred, 0.6–3 px. |
+| `--surface-detail <n>` | normal-map/model normal-map | The art's light and dark as bumps, 0–2. |
+| `--views <list>` | model normal-map | Directions to draw the model from with `--source views`, comma-separated: `south`, `south-east`, `east`, `north-east`, `north`, `north-west`, `west`, `south-west`, or degrees. Default `south,east,north,west`. |
+| `--blend <n>` | model normal-map | How much of PixelLab's detail goes on, 0–2; default 1. |
+| `--replace` | model normal-map | Write PixelLab's detail alone instead of blending it onto the normal map's baked relief. |
+| `--detail-softness <n>` | normal-map/model normal-map | How far that detail is blurred, 0.6–3 px. |
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |
-| `--budget <n\|provider=n>` | submit/gen/gallery | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page. |
+| `--budget <n\|provider=n>` | submit/gen/gallery/model normal-map | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page, and (from `pixellab=<n>` or the plain amount) the ceiling on a session's normal map detail for models. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands, adopt --local, quality snapshot --only | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/normal-map/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
@@ -1981,7 +2034,7 @@ Print the package version. `-v` is an alias.
 | `--name <name>` | init/font/vfx | Project name for the scaffolded manifest, the generated font's family name, or the effect's name in My effects. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--local` | adopt | Record local files as `imported` lock entries offline, with no provider key. |
-| `--source <name>` | adopt --local | Where the art came from (`mcp`, `hand`, a tool name); default `external`. |
+| `--source <name>` | adopt --local/model normal-map | adopt --local: where the art came from (`mcp`, `hand`, a tool name); default `external`. model normal-map: `views` (the default) or `texture`. |
 | `--object-id <id>` | adopt --local | The provider object id of the single asset being imported. |
 | `--tool <name>` | adopt --local | The tool call that made the art, recorded under `origin`. |
 | `--prompt <text>` | adopt --local | The prompt the art was rolled with; becomes the entry's prompt. |
@@ -2023,8 +2076,8 @@ Print the package version. `-v` is an alias.
 | `--margin <px>` | vfx | With `--lib pixelfx`: transparent pixels added on every side of the effect's canvas, 0–256. |
 | `--sprite-frames <n>` | vfx | With `--description`: `--sprite` is a horizontal PNG strip of `n` equal frames (2 to 32). |
 | `--sprite-fps <n>` | vfx | With `--description`: how fast an animated `--sprite` plays, 1 to 60. PixelLab's default is a GIF's own timing, else 12. |
-| `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
-| `--size <WxH>` | asset canvas/import | asset canvas: the new canvas, in multiples of 4. asset import `--kind tileset` or `tiles`: the tile size in pixels, e.g. `--size 32`. |
+| `--kind <kind>` | asset/normal-map/model normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map and model normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
+| `--size <WxH>` | asset canvas/import/model normal-map | asset canvas: the new canvas, in multiples of 4. asset import `--kind tileset` or `tiles`: the tile size in pixels, e.g. `--size 32`. model normal-map: the side of each drawn view, 8–512 px (default 512). |
 | `--text <line>` | talk gif/plan | The line of dialogue to lip-sync, up to 500 characters. |
 | `--mood <mood>` | talk | `neutral` (the default), `happy`, `angry`, `sad` or `surprised`. For gif and plan it picks among a character's stored expressions. |
 | `--visemes <n>` | talk visemes/plan | How many mouth positions: 3, 5, 7 (the default) or 12. |

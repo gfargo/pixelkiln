@@ -145,4 +145,28 @@ describe("pixelkiln model", () => {
     await expect(cli(dir, "model", "export")).rejects.toMatchObject({ stderr: expect.stringContaining("needs a model") })
     await expect(cli(dir, "model", "adopt", "knight", "--mode", "all")).rejects.toMatchObject({ stderr: expect.stringContaining("textures (the default) or whole") })
   })
+
+  it("prices normal map detail, refuses past --budget, and re-runs from cached answers without a key", async () => {
+    const dry = (await cli(dir, "model", "normal-map", "knight", "--dry-run")).stdout
+    expect(dry).toContain("the figure drawn from 4 directions")
+    expect(dry).toContain("for: Sprite normal map (image 1)")
+    expect(dry).toContain("cost 0.4 generations")
+    expect(dry).toContain("dry run: nothing sent")
+    await expect(cli(dir, "model", "normal-map", "knight", "--source", "texture", "--budget", "0.05", "--yes")).rejects.toMatchObject({ stderr: expect.stringContaining("below this run's 0.1-generation cost") })
+    await expect(cli(dir, "model", "normal-map", "knight", "--source", "texture", "--views", "south")).rejects.toMatchObject({ stderr: expect.stringContaining("--views goes with --source views") })
+    await expect(cli(dir, "model", "normal-map", "knight", "--source", "sprites")).rejects.toMatchObject({ stderr: expect.stringContaining("views (the default) or texture") })
+
+    // Answer the one texture tile ahead of time: the run then sends nothing and needs no key.
+    const plan = JSON.parse((await cli(dir, "model", "normal-map", "knight", "--image", "Sprite", "--source", "texture", "--dry-run", "--json")).stdout) as { cost: number; calls: Array<{ cache: string }> }
+    expect(plan.cost).toBe(0.1)
+    await writeFile(plan.calls[0]!.cache, solidPng(4, [200, 128, 200, 255]))
+    const run = await execFileAsync(path.resolve("node_modules/.bin/tsx"), [path.resolve("src/cli.ts"), "model", "normal-map", "knight", "--source", "texture", "--blend", "2"], {
+      cwd: dir,
+      env: { ...process.env, PIXELLAB_API_KEY: "" },
+    })
+    expect(run.stdout).toContain("already answered, free")
+    expect(run.stdout).toContain("saved Sprite normal map into art/edits/models/knight.glb")
+    const record = JSON.parse(await readFile(path.join(dir, "art", "edits", "models", "knight.edit.json"), "utf8")) as { textures: Array<{ name: string; editor: string }> }
+    expect(record.textures).toMatchObject([{ name: "Sprite normal map", editor: "pixellab normal-map (texture)" }])
+  })
 })

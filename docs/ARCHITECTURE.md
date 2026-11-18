@@ -275,6 +275,23 @@ build does from `pk.31`), and otherwise draws it onto the single protocol 4
 reference layer, so the page also works with a PixelKiln version that still
 pins a protocol 4 build.
 
+`src/pipeline/model-normals.ts` adds normal map detail from PixelLab. It poses
+the model at rest (skinned meshes through their bind, others through their
+node), rasterises each normal map's triangles in texture space to know the
+position and tangent frame under every texel, and then either cuts the base
+colour texture into tiles of at most 512 px (`texture`) or draws the whole
+figure unlit from several directions with its own depth buffer (`views`).
+PixelLab's answer for a tile is already in the texture's tangent space; for a
+view, each texel visible to it (its depth matches the view's) takes the
+sideways part of the view's normal, turned from the picture's right and up
+into the texel's tangent and bitangent, weighted by how squarely the surface
+faces that view. The result is blended onto the existing map (whiteout) and
+saved through `saveModelTexture`, so the record and the rule are the same as a
+hand paint. The module never talks to PixelLab itself: it takes a function
+from picture to normal map, prices the calls first, and caches every answer
+by a hash of the picture and the request, which is what lets the gallery and
+the CLI quote, confirm, and re-blend for free.
+
 ## Pinned editor build
 
 The gallery's in-browser editor is a web export of Pixelorama with PixelKiln's

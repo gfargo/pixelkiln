@@ -310,6 +310,34 @@ describe("models in the gallery", () => {
     await expect(edit({ action: "save-model-texture", path: "art/cast/models/knight.glb", image: -1, png: "", editor: "x", protocol: 4 })).rejects.toThrow(/invalid model edit/)
     await expect(edit({ action: "adopt-model-export", path: "art/cast/models/knight.glb" })).rejects.toThrow(/exported model is not on disk/)
   })
+
+  it("asks for normal map detail only under a budget, at no more than the agreed price", async () => {
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const loadProject = async () => {
+      const manifest = await loadManifest(manifestPath)
+      return { loaded: manifest, specs: await resolveSpecs(manifest), lock: await loadLock(lockPath), lockPath }
+    }
+    const request = { action: "generate-model-normals", path: "art/cast/models/knight.glb", source: "texture", maxCost: 0.1 }
+    const free = createGalleryEditHandler({ manifestFor: () => manifestPath, loadProject, reload: async () => build() })
+    await expect(free(request)).rejects.toThrow(/--edit --budget/)
+    let calls = 0
+    const edit = createGalleryEditHandler({
+      manifestFor: () => manifestPath,
+      loadProject,
+      reload: async () => build(),
+      modelNormalBudget: 0.15,
+      modelNormalMapper: () => async () => { calls++; return solidPng(4, [200, 128, 200, 255]) },
+    })
+    await expect(edit({ ...request, maxCost: 0.05 })).rejects.toThrow(/costs 0.1 generations, more than the 0.05 agreed/)
+    const result = await edit(request)
+    expect(calls).toBe(1)
+    expect(result.snapshot.models[0]!.edit?.textures.map((texture) => [texture.name, texture.editor])).toEqual([["Sprite normal map", "pixellab normal-map (texture)"]])
+    // The same pictures again are answered from the cache, free; a new request past the budget is refused before it is sent.
+    await edit({ ...request, amount: 2 })
+    expect(calls).toBe(1)
+    await expect(edit({ ...request, source: "views", maxCost: 0.4 })).rejects.toThrow(/0.05 left of its --budget 0.15/)
+    expect(calls).toBe(1)
+  })
 })
 
 describe("normal maps", () => {

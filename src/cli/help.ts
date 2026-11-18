@@ -73,7 +73,8 @@ Commands
             --budget enables Generate, Regenerate, and review under that ceiling.
   model     3D models (.glb under a style's outDir): list, export a texture
             with its region guide to paint anywhere, import it into an edited
-            copy under edits/, open the model in Blender, adopt its export.
+            copy under edits/, open the model in Blender, adopt its export,
+            or add PixelLab normal map detail (normal-map; priced, 0.1 a call).
   tools     status/install editor: the in-browser editor (Pixelorama) is a
             46 MB web build fetched once per release into a user cache and
             verified against pinned hashes. Offline once installed.
@@ -261,6 +262,7 @@ Examples
   PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
   pixelkiln model export knight --image Helm
   pixelkiln model import knight --image Helm
+  pixelkiln model normal-map knight --dry-run
   pixelkiln adopt --tag
   pixelkiln pack --style heybud-premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed

@@ -5,6 +5,7 @@ import { z } from "zod"
 import { describeGlb, parseGlb, type GlbSummary } from "../glb.ts"
 import { sha256 } from "../hash.ts"
 import type { LoadedManifest } from "../manifest.ts"
+import { ManifestEditError } from "../manifest-edit.ts"
 import { portableOutputPath } from "../outputs.ts"
 import { MAX_HAND_EDIT_BYTES } from "../pipeline/hand-edit.ts"
 import {
@@ -20,6 +21,7 @@ import {
   saveModelTexture,
   type ProjectModel,
 } from "../pipeline/model-edit.ts"
+import { generateModelNormals, MODEL_NORMAL_SOURCES, planModelNormals, type NormalMapper } from "../pipeline/model-normals.ts"
 
 /** Served type of a `.glb`; the page fetches it and draws it itself. */
 export const MODEL_FILE_TYPE = "model/gltf-binary"
@@ -224,6 +226,20 @@ export const ModelRequestSchema = z.discriminatedUnion("action", [
     .strict(),
   z
     .object({
+      action: z.literal("generate-model-normals"),
+      project: z.string().min(1).optional(),
+      path: z.string().min(1).max(1024),
+      source: z.enum(MODEL_NORMAL_SOURCES),
+      /** Normal map images; all of the model's when left out. */
+      images: z.array(z.number().int().nonnegative()).max(64).optional(),
+      amount: z.number().min(0).max(2).optional(),
+      replace: z.boolean().optional(),
+      /** The price the person agreed to on the page; a run that would cost more is refused. */
+      maxCost: z.number().nonnegative().max(100),
+    })
+    .strict(),
+  z
+    .object({
       action: z.literal("open-model"),
       project: z.string().min(1).optional(),
       path: z.string().min(1).max(1024),
@@ -232,13 +248,23 @@ export const ModelRequestSchema = z.discriminatedUnion("action", [
 ])
 export type ModelRequest = z.infer<typeof ModelRequestSchema>
 
-export const MODEL_ACTIONS = ["save-model-texture", "adopt-model-export", "open-model"]
+export const MODEL_ACTIONS = ["save-model-texture", "adopt-model-export", "generate-model-normals", "open-model"]
+
+/**
+ * What a gallery needs to ask PixelLab for a model's normal map detail: who
+ * answers, and a purse the session's spending comes out of. `spend` throws
+ * when a run would go past it, before anything is sent.
+ */
+export interface ModelNormalSpending {
+  mapper: (loaded: LoadedManifest) => NormalMapper
+  spend: (cost: number) => void
+}
 
 /** Apply one model request. Never touches the manifest or the lockfile. */
 export async function applyModelRequest(
   loaded: LoadedManifest,
   request: ModelRequest,
-  opts: { log?: (msg: string) => void; openBlender?: (model: ProjectModel) => string } = {},
+  opts: { log?: (msg: string) => void; openBlender?: (model: ProjectModel) => string; normals?: ModelNormalSpending | null } = {},
 ): Promise<void> {
   const log = opts.log ?? (() => {})
   const model = await findModel(loaded, request.path)
@@ -257,6 +283,19 @@ export async function applyModelRequest(
     log(adopted.mode === "whole"
       ? `  model export adopted whole: ${shown(adopted.editFile)}`
       : `  model export adopted: ${adopted.taken.length} texture(s) (${adopted.taken.join(", ") || "none changed"}) into ${shown(adopted.editFile)}`)
+  } else if (request.action === "generate-model-normals") {
+    if (!opts.normals) throw new ManifestEditError("this gallery spends no PixelLab generations; start it with --edit --budget <n> to allow normal map detail")
+    const options = {
+      source: request.source,
+      ...(request.images?.length ? { images: request.images } : {}),
+      ...(request.amount !== undefined ? { amount: request.amount } : {}),
+      ...(request.replace ? { replace: true } : {}),
+    }
+    const plan = await planModelNormals(model, options)
+    if (plan.cost > request.maxCost + 1e-9) throw new ManifestEditError(`this run costs ${plan.cost} generations, more than the ${request.maxCost} agreed on the page`)
+    opts.normals.spend(plan.cost)
+    const result = await generateModelNormals(model, options, opts.normals.mapper(loaded))
+    log(`  normal map detail from PixelLab (${request.source}, ${result.sent} call${result.sent === 1 ? "" : "s"}, ${plan.cost} generations): ${plan.images.map((image) => image.name).join(", ")} into ${shown(result.editFile)}`)
   } else {
     const command = (opts.openBlender ?? ((target) => openInBlender(target)))(model)
     log(`  opened in Blender: ${command}`)
