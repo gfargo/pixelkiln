@@ -326,7 +326,7 @@
       },
       {
         "name": "snow_drift",
-        "summary": "Slow three-depth snow drifting right; 2\u00d72 flakes and turning crystals land and lie on a wavy drift.",
+        "summary": "Slow three-depth snow drifting right; 2×2 flakes and turning crystals land and lie on a wavy drift.",
         "width": 160,
         "height": 120,
         "frames": 32,
@@ -528,7 +528,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-arrow-shot.png",
+        "art": {
+          "width": 312,
+          "height": 86
+        },
+        "anim": "/effects/pixelfx/moves-arrow-shot.webp"
       },
       {
         "id": "moves/dash-strike",
@@ -542,7 +548,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-dash-strike.png",
+        "art": {
+          "width": 384,
+          "height": 168
+        },
+        "anim": "/effects/pixelfx/moves-dash-strike.webp"
       },
       {
         "id": "moves/earth-stomp",
@@ -556,7 +568,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-earth-stomp.png",
+        "art": {
+          "width": 302,
+          "height": 154
+        },
+        "anim": "/effects/pixelfx/moves-earth-stomp.webp"
       },
       {
         "id": "moves/fireball-throw",
@@ -570,7 +588,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-fireball-throw.png",
+        "art": {
+          "width": 368,
+          "height": 256
+        },
+        "anim": "/effects/pixelfx/moves-fireball-throw.webp"
       },
       {
         "id": "moves/ground-pound",
@@ -584,7 +608,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-ground-pound.png",
+        "art": {
+          "width": 316,
+          "height": 216
+        },
+        "anim": "/effects/pixelfx/moves-ground-pound.webp"
       },
       {
         "id": "moves/holy-smite",
@@ -598,7 +628,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-holy-smite.png",
+        "art": {
+          "width": 264,
+          "height": 194
+        },
+        "anim": "/effects/pixelfx/moves-holy-smite.webp"
       },
       {
         "id": "moves/ice-lance-throw",
@@ -612,7 +648,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-ice-lance-throw.png",
+        "art": {
+          "width": 322,
+          "height": 148
+        },
+        "anim": "/effects/pixelfx/moves-ice-lance-throw.webp"
       },
       {
         "id": "moves/lightning-call",
@@ -626,7 +668,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-lightning-call.png",
+        "art": {
+          "width": 302,
+          "height": 278
+        },
+        "anim": "/effects/pixelfx/moves-lightning-call.webp"
       },
       {
         "id": "moves/meteor-call",
@@ -640,7 +688,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-meteor-call.png",
+        "art": {
+          "width": 392,
+          "height": 252
+        },
+        "anim": "/effects/pixelfx/moves-meteor-call.webp"
       },
       {
         "id": "moves/pistol-shots",
@@ -654,7 +708,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-pistol-shots.png",
+        "art": {
+          "width": 390,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/moves-pistol-shots.webp"
       },
       {
         "id": "moves/rocket-launcher",
@@ -668,7 +728,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-rocket-launcher.png",
+        "art": {
+          "width": 492,
+          "height": 256
+        },
+        "anim": "/effects/pixelfx/moves-rocket-launcher.webp"
       },
       {
         "id": "moves/sword-combo",
@@ -682,7 +748,13 @@
         "needsCharacter": true,
         "options": [
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/moves-sword-combo.png",
+        "art": {
+          "width": 276,
+          "height": 162
+        },
+        "anim": "/effects/pixelfx/moves-sword-combo.webp"
       },
       {
         "id": "fire/brazier",
@@ -699,7 +771,12 @@
           "iron",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-brazier.png"
+        "still": "/effects/pixelfx/fire-brazier.png",
+        "art": {
+          "width": 112,
+          "height": 148
+        },
+        "anim": "/effects/pixelfx/fire-brazier.webp"
       },
       {
         "id": "fire/campfire",
@@ -717,7 +794,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-campfire.png"
+        "still": "/effects/pixelfx/fire-campfire.png",
+        "art": {
+          "width": 128,
+          "height": 128
+        },
+        "anim": "/effects/pixelfx/fire-campfire.webp"
       },
       {
         "id": "fire/candle",
@@ -736,7 +818,12 @@
           "brass",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-candle.png"
+        "still": "/effects/pixelfx/fire-candle.png",
+        "art": {
+          "width": 56,
+          "height": 76
+        },
+        "anim": "/effects/pixelfx/fire-candle.webp"
       },
       {
         "id": "fire/fire-breath",
@@ -754,7 +841,12 @@
           "speed",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-fire-breath.png"
+        "still": "/effects/pixelfx/fire-fire-breath.png",
+        "art": {
+          "width": 160,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/fire-fire-breath.webp"
       },
       {
         "id": "fire/fire-ring",
@@ -770,7 +862,13 @@
           "palette",
           "reach",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/fire-fire-ring.png",
+        "art": {
+          "width": 236,
+          "height": 140
+        },
+        "anim": "/effects/pixelfx/fire-fire-ring.webp"
       },
       {
         "id": "fire/fire-tornado",
@@ -787,7 +885,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-fire-tornado.png"
+        "still": "/effects/pixelfx/fire-fire-tornado.png",
+        "art": {
+          "width": 120,
+          "height": 152
+        },
+        "anim": "/effects/pixelfx/fire-fire-tornado.webp"
       },
       {
         "id": "fire/fireball",
@@ -805,7 +908,12 @@
           "speed",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-fireball.png"
+        "still": "/effects/pixelfx/fire-fireball.png",
+        "art": {
+          "width": 136,
+          "height": 56
+        },
+        "anim": "/effects/pixelfx/fire-fireball.webp"
       },
       {
         "id": "fire/flame-pillar",
@@ -823,7 +931,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-flame-pillar.png"
+        "still": "/effects/pixelfx/fire-flame-pillar.png",
+        "art": {
+          "width": 184,
+          "height": 256
+        },
+        "anim": "/effects/pixelfx/fire-flame-pillar.webp"
       },
       {
         "id": "fire/flamethrower",
@@ -842,7 +955,12 @@
           "speed",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-flamethrower.png"
+        "still": "/effects/pixelfx/fire-flamethrower.png",
+        "art": {
+          "width": 184,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/fire-flamethrower.webp"
       },
       {
         "id": "fire/meteor",
@@ -860,7 +978,12 @@
           "rock",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-meteor.png"
+        "still": "/effects/pixelfx/fire-meteor.png",
+        "art": {
+          "width": 272,
+          "height": 232
+        },
+        "anim": "/effects/pixelfx/fire-meteor.webp"
       },
       {
         "id": "fire/spirit-flame",
@@ -876,7 +999,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-spirit-flame.png"
+        "still": "/effects/pixelfx/fire-spirit-flame.png",
+        "art": {
+          "width": 80,
+          "height": 124
+        },
+        "anim": "/effects/pixelfx/fire-spirit-flame.webp"
       },
       {
         "id": "fire/torch",
@@ -894,7 +1022,12 @@
           "iron",
           "seed"
         ],
-        "still": "/effects/pixelfx/fire-torch.png"
+        "still": "/effects/pixelfx/fire-torch.png",
+        "art": {
+          "width": 72,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/fire-torch.webp"
       },
       {
         "id": "explosions/barrel-explosion",
@@ -911,7 +1044,12 @@
           "barrel",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-barrel-explosion.png"
+        "still": "/effects/pixelfx/explosions-barrel-explosion.png",
+        "art": {
+          "width": 300,
+          "height": 240
+        },
+        "anim": "/effects/pixelfx/explosions-barrel-explosion.webp"
       },
       {
         "id": "explosions/big-explosion",
@@ -928,7 +1066,12 @@
           "stone",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-big-explosion.png"
+        "still": "/effects/pixelfx/explosions-big-explosion.png",
+        "art": {
+          "width": 360,
+          "height": 300
+        },
+        "anim": "/effects/pixelfx/explosions-big-explosion.webp"
       },
       {
         "id": "explosions/cartoon-pow",
@@ -945,7 +1088,12 @@
           "text",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-cartoon-pow.png"
+        "still": "/effects/pixelfx/explosions-cartoon-pow.png",
+        "art": {
+          "width": 184,
+          "height": 144
+        },
+        "anim": "/effects/pixelfx/explosions-cartoon-pow.webp"
       },
       {
         "id": "explosions/dirt-explosion",
@@ -962,7 +1110,12 @@
           "fire",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-dirt-explosion.png"
+        "still": "/effects/pixelfx/explosions-dirt-explosion.png",
+        "art": {
+          "width": 260,
+          "height": 240
+        },
+        "anim": "/effects/pixelfx/explosions-dirt-explosion.webp"
       },
       {
         "id": "explosions/firework-burst",
@@ -979,7 +1132,12 @@
           "core",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-firework-burst.png"
+        "still": "/effects/pixelfx/explosions-firework-burst.png",
+        "art": {
+          "width": 240,
+          "height": 248
+        },
+        "anim": "/effects/pixelfx/explosions-firework-burst.webp"
       },
       {
         "id": "explosions/firework-rocket",
@@ -996,7 +1154,12 @@
           "tips",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-firework-rocket.png"
+        "still": "/effects/pixelfx/explosions-firework-rocket.png",
+        "art": {
+          "width": 300,
+          "height": 300
+        },
+        "anim": "/effects/pixelfx/explosions-firework-rocket.webp"
       },
       {
         "id": "explosions/grenade",
@@ -1013,7 +1176,12 @@
           "body",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-grenade.png"
+        "still": "/effects/pixelfx/explosions-grenade.png",
+        "art": {
+          "width": 300,
+          "height": 200
+        },
+        "anim": "/effects/pixelfx/explosions-grenade.webp"
       },
       {
         "id": "explosions/implosion",
@@ -1029,7 +1197,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-implosion.png"
+        "still": "/effects/pixelfx/explosions-implosion.png",
+        "art": {
+          "width": 208,
+          "height": 184
+        },
+        "anim": "/effects/pixelfx/explosions-implosion.webp"
       },
       {
         "id": "explosions/nuke",
@@ -1046,7 +1219,12 @@
           "dust",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-nuke.png"
+        "still": "/effects/pixelfx/explosions-nuke.png",
+        "art": {
+          "width": 400,
+          "height": 320
+        },
+        "anim": "/effects/pixelfx/explosions-nuke.webp"
       },
       {
         "id": "explosions/plasma-explosion",
@@ -1063,7 +1241,12 @@
           "accent",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-plasma-explosion.png"
+        "still": "/effects/pixelfx/explosions-plasma-explosion.png",
+        "art": {
+          "width": 224,
+          "height": 200
+        },
+        "anim": "/effects/pixelfx/explosions-plasma-explosion.webp"
       },
       {
         "id": "explosions/small-explosion",
@@ -1081,7 +1264,12 @@
           "size",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-small-explosion.png"
+        "still": "/effects/pixelfx/explosions-small-explosion.png",
+        "art": {
+          "width": 300,
+          "height": 240
+        },
+        "anim": "/effects/pixelfx/explosions-small-explosion.webp"
       },
       {
         "id": "explosions/smoke-bomb",
@@ -1099,7 +1287,12 @@
           "sparks",
           "seed"
         ],
-        "still": "/effects/pixelfx/explosions-smoke-bomb.png"
+        "still": "/effects/pixelfx/explosions-smoke-bomb.png",
+        "art": {
+          "width": 260,
+          "height": 176
+        },
+        "anim": "/effects/pixelfx/explosions-smoke-bomb.webp"
       },
       {
         "id": "water/bubbles",
@@ -1115,7 +1308,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-bubbles.png"
+        "still": "/effects/pixelfx/water-bubbles.png",
+        "art": {
+          "width": 104,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/water-bubbles.webp"
       },
       {
         "id": "water/drip",
@@ -1133,7 +1331,12 @@
           "source",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-drip.png"
+        "still": "/effects/pixelfx/water-drip.png",
+        "art": {
+          "width": 72,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/water-drip.webp"
       },
       {
         "id": "water/fountain",
@@ -1149,7 +1352,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-fountain.png"
+        "still": "/effects/pixelfx/water-fountain.png",
+        "art": {
+          "width": 120,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/water-fountain.webp"
       },
       {
         "id": "water/geyser",
@@ -1166,7 +1374,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-geyser.png"
+        "still": "/effects/pixelfx/water-geyser.png",
+        "art": {
+          "width": 184,
+          "height": 168
+        },
+        "anim": "/effects/pixelfx/water-geyser.webp"
       },
       {
         "id": "water/rain-splash",
@@ -1182,7 +1395,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-rain-splash.png"
+        "still": "/effects/pixelfx/water-rain-splash.png",
+        "art": {
+          "width": 176,
+          "height": 80
+        },
+        "anim": "/effects/pixelfx/water-rain-splash.webp"
       },
       {
         "id": "water/ripples",
@@ -1198,7 +1416,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-ripples.png"
+        "still": "/effects/pixelfx/water-ripples.png",
+        "art": {
+          "width": 136,
+          "height": 52
+        },
+        "anim": "/effects/pixelfx/water-ripples.webp"
       },
       {
         "id": "water/splash",
@@ -1215,7 +1438,12 @@
           "stone",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-splash.png"
+        "still": "/effects/pixelfx/water-splash.png",
+        "art": {
+          "width": 176,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/water-splash.webp"
       },
       {
         "id": "water/water-jet",
@@ -1232,7 +1460,12 @@
           "length",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-water-jet.png"
+        "still": "/effects/pixelfx/water-water-jet.png",
+        "art": {
+          "width": 188,
+          "height": 80
+        },
+        "anim": "/effects/pixelfx/water-water-jet.webp"
       },
       {
         "id": "water/water-orb",
@@ -1249,7 +1482,12 @@
           "radius",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-water-orb.png"
+        "still": "/effects/pixelfx/water-water-orb.png",
+        "art": {
+          "width": 100,
+          "height": 108
+        },
+        "anim": "/effects/pixelfx/water-water-orb.webp"
       },
       {
         "id": "water/waterfall",
@@ -1268,7 +1506,12 @@
           "ledge",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-waterfall.png"
+        "still": "/effects/pixelfx/water-waterfall.png",
+        "art": {
+          "width": 144,
+          "height": 136
+        },
+        "anim": "/effects/pixelfx/water-waterfall.webp"
       },
       {
         "id": "water/wave-crash",
@@ -1284,7 +1527,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-wave-crash.png"
+        "still": "/effects/pixelfx/water-wave-crash.png",
+        "art": {
+          "width": 224,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/water-wave-crash.webp"
       },
       {
         "id": "water/whirlpool",
@@ -1300,7 +1548,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/water-whirlpool.png"
+        "still": "/effects/pixelfx/water-whirlpool.png",
+        "art": {
+          "width": 128,
+          "height": 84
+        },
+        "anim": "/effects/pixelfx/water-whirlpool.webp"
       },
       {
         "id": "ice/blizzard-vortex",
@@ -1317,7 +1570,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/ice-blizzard-vortex.png"
+        "still": "/effects/pixelfx/ice-blizzard-vortex.png",
+        "art": {
+          "width": 128,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/ice-blizzard-vortex.webp"
       },
       {
         "id": "ice/freeze",
@@ -1332,7 +1590,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/ice-freeze.png",
+        "art": {
+          "width": 188,
+          "height": 140
+        },
+        "anim": "/effects/pixelfx/ice-freeze.webp"
       },
       {
         "id": "ice/frost-breath",
@@ -1350,7 +1614,12 @@
           "power",
           "seed"
         ],
-        "still": "/effects/pixelfx/ice-frost-breath.png"
+        "still": "/effects/pixelfx/ice-frost-breath.png",
+        "art": {
+          "width": 184,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/ice-frost-breath.webp"
       },
       {
         "id": "ice/frost-nova",
@@ -1366,7 +1635,13 @@
           "palette",
           "reach",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/ice-frost-nova.png",
+        "art": {
+          "width": 300,
+          "height": 204
+        },
+        "anim": "/effects/pixelfx/ice-frost-nova.webp"
       },
       {
         "id": "ice/ice-crystal",
@@ -1383,7 +1658,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/ice-ice-crystal.png"
+        "still": "/effects/pixelfx/ice-ice-crystal.png",
+        "art": {
+          "width": 96,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/ice-ice-crystal.webp"
       },
       {
         "id": "ice/ice-lance",
@@ -1400,7 +1680,12 @@
           "length",
           "seed"
         ],
-        "still": "/effects/pixelfx/ice-ice-lance.png"
+        "still": "/effects/pixelfx/ice-ice-lance.png",
+        "art": {
+          "width": 176,
+          "height": 64
+        },
+        "anim": "/effects/pixelfx/ice-ice-lance.webp"
       },
       {
         "id": "ice/ice-shatter",
@@ -1416,7 +1701,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/ice-ice-shatter.png"
+        "still": "/effects/pixelfx/ice-ice-shatter.png",
+        "art": {
+          "width": 224,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/ice-ice-shatter.webp"
       },
       {
         "id": "ice/ice-spikes",
@@ -1434,7 +1724,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/ice-ice-spikes.png"
+        "still": "/effects/pixelfx/ice-ice-spikes.png",
+        "art": {
+          "width": 264,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/ice-ice-spikes.webp"
       },
       {
         "id": "ice/icicle-fall",
@@ -1450,7 +1745,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/ice-icicle-fall.png"
+        "still": "/effects/pixelfx/ice-icicle-fall.png",
+        "art": {
+          "width": 152,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/ice-icicle-fall.webp"
       },
       {
         "id": "ice/snowflake-burst",
@@ -1467,7 +1767,12 @@
           "count",
           "seed"
         ],
-        "still": "/effects/pixelfx/ice-snowflake-burst.png"
+        "still": "/effects/pixelfx/ice-snowflake-burst.png",
+        "art": {
+          "width": 140,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/ice-snowflake-burst.webp"
       },
       {
         "id": "lightning/ball-lightning",
@@ -1484,7 +1789,12 @@
           "sparks",
           "seed"
         ],
-        "still": "/effects/pixelfx/lightning-ball-lightning.png"
+        "still": "/effects/pixelfx/lightning-ball-lightning.png",
+        "art": {
+          "width": 136,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/lightning-ball-lightning.webp"
       },
       {
         "id": "lightning/chain-lightning",
@@ -1500,7 +1810,13 @@
           "palette",
           "sparks",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/lightning-chain-lightning.png",
+        "art": {
+          "width": 260,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/lightning-chain-lightning.webp"
       },
       {
         "id": "lightning/charge-up",
@@ -1517,7 +1833,13 @@
           "sparks",
           "charge",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/lightning-charge-up.png",
+        "art": {
+          "width": 284,
+          "height": 196
+        },
+        "anim": "/effects/pixelfx/lightning-charge-up.webp"
       },
       {
         "id": "lightning/electrified",
@@ -1533,7 +1855,13 @@
           "palette",
           "sparks",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/lightning-electrified.png",
+        "art": {
+          "width": 120,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/lightning-electrified.webp"
       },
       {
         "id": "lightning/lightning-strike",
@@ -1550,7 +1878,12 @@
           "sparks",
           "seed"
         ],
-        "still": "/effects/pixelfx/lightning-lightning-strike.png"
+        "still": "/effects/pixelfx/lightning-lightning-strike.png",
+        "art": {
+          "width": 240,
+          "height": 264
+        },
+        "anim": "/effects/pixelfx/lightning-lightning-strike.webp"
       },
       {
         "id": "lightning/plasma-ball",
@@ -1567,7 +1900,12 @@
           "tendrils",
           "seed"
         ],
-        "still": "/effects/pixelfx/lightning-plasma-ball.png"
+        "still": "/effects/pixelfx/lightning-plasma-ball.png",
+        "art": {
+          "width": 112,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/lightning-plasma-ball.webp"
       },
       {
         "id": "lightning/spark-arc",
@@ -1584,7 +1922,12 @@
           "sparks",
           "seed"
         ],
-        "still": "/effects/pixelfx/lightning-spark-arc.png"
+        "still": "/effects/pixelfx/lightning-spark-arc.png",
+        "art": {
+          "width": 124,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/lightning-spark-arc.webp"
       },
       {
         "id": "lightning/storm-cloud",
@@ -1603,7 +1946,12 @@
           "rain",
           "seed"
         ],
-        "still": "/effects/pixelfx/lightning-storm-cloud.png"
+        "still": "/effects/pixelfx/lightning-storm-cloud.png",
+        "art": {
+          "width": 168,
+          "height": 176
+        },
+        "anim": "/effects/pixelfx/lightning-storm-cloud.webp"
       },
       {
         "id": "lightning/tesla-coil",
@@ -1622,7 +1970,12 @@
           "steel",
           "seed"
         ],
-        "still": "/effects/pixelfx/lightning-tesla-coil.png"
+        "still": "/effects/pixelfx/lightning-tesla-coil.png",
+        "art": {
+          "width": 224,
+          "height": 136
+        },
+        "anim": "/effects/pixelfx/lightning-tesla-coil.webp"
       },
       {
         "id": "lightning/thunderclap",
@@ -1639,7 +1992,13 @@
           "sparks",
           "reach",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/lightning-thunderclap.png",
+        "art": {
+          "width": 300,
+          "height": 168
+        },
+        "anim": "/effects/pixelfx/lightning-thunderclap.webp"
       },
       {
         "id": "lightning/zap-hit",
@@ -1655,7 +2014,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/lightning-zap-hit.png"
+        "still": "/effects/pixelfx/lightning-zap-hit.png",
+        "art": {
+          "width": 144,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/lightning-zap-hit.webp"
       },
       {
         "id": "scifi/emp-blast",
@@ -1673,7 +2037,12 @@
           "radius",
           "seed"
         ],
-        "still": "/effects/pixelfx/scifi-emp-blast.png"
+        "still": "/effects/pixelfx/scifi-emp-blast.png",
+        "art": {
+          "width": 152,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/scifi-emp-blast.webp"
       },
       {
         "id": "scifi/energy-core",
@@ -1690,7 +2059,12 @@
           "metal",
           "seed"
         ],
-        "still": "/effects/pixelfx/scifi-energy-core.png"
+        "still": "/effects/pixelfx/scifi-energy-core.png",
+        "art": {
+          "width": 112,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/scifi-energy-core.webp"
       },
       {
         "id": "scifi/force-field",
@@ -1707,7 +2081,13 @@
           "sparks",
           "radius",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/scifi-force-field.png",
+        "art": {
+          "width": 196,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/scifi-force-field.webp"
       },
       {
         "id": "scifi/glitch",
@@ -1722,7 +2102,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/scifi-glitch.png",
+        "art": {
+          "width": 100,
+          "height": 76
+        },
+        "anim": "/effects/pixelfx/scifi-glitch.webp"
       },
       {
         "id": "scifi/hologram",
@@ -1740,7 +2126,12 @@
           "split",
           "seed"
         ],
-        "still": "/effects/pixelfx/scifi-hologram.png"
+        "still": "/effects/pixelfx/scifi-hologram.png",
+        "art": {
+          "width": 112,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/scifi-hologram.webp"
       },
       {
         "id": "scifi/jetpack",
@@ -1758,7 +2149,12 @@
           "length",
           "seed"
         ],
-        "still": "/effects/pixelfx/scifi-jetpack.png"
+        "still": "/effects/pixelfx/scifi-jetpack.png",
+        "art": {
+          "width": 96,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/scifi-jetpack.webp"
       },
       {
         "id": "scifi/laser-grid",
@@ -1775,7 +2171,12 @@
           "metal",
           "seed"
         ],
-        "still": "/effects/pixelfx/scifi-laser-grid.png"
+        "still": "/effects/pixelfx/scifi-laser-grid.png",
+        "art": {
+          "width": 128,
+          "height": 84
+        },
+        "anim": "/effects/pixelfx/scifi-laser-grid.webp"
       },
       {
         "id": "scifi/scanner",
@@ -1790,7 +2191,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/scifi-scanner.png",
+        "art": {
+          "width": 124,
+          "height": 90
+        },
+        "anim": "/effects/pixelfx/scifi-scanner.webp"
       },
       {
         "id": "scifi/teleporter-pad",
@@ -1807,7 +2214,12 @@
           "metal",
           "seed"
         ],
-        "still": "/effects/pixelfx/scifi-teleporter-pad.png"
+        "still": "/effects/pixelfx/scifi-teleporter-pad.png",
+        "art": {
+          "width": 96,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/scifi-teleporter-pad.webp"
       },
       {
         "id": "scifi/tractor-beam",
@@ -1825,7 +2237,12 @@
           "stone",
           "seed"
         ],
-        "still": "/effects/pixelfx/scifi-tractor-beam.png"
+        "still": "/effects/pixelfx/scifi-tractor-beam.png",
+        "art": {
+          "width": 120,
+          "height": 132
+        },
+        "anim": "/effects/pixelfx/scifi-tractor-beam.webp"
       },
       {
         "id": "scifi/warp-in",
@@ -1841,7 +2258,13 @@
           "palette",
           "width",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/scifi-warp-in.png",
+        "art": {
+          "width": 204,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/scifi-warp-in.webp"
       },
       {
         "id": "scifi/warp-out",
@@ -1856,7 +2279,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/scifi-warp-out.png",
+        "art": {
+          "width": 140,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/scifi-warp-out.webp"
       },
       {
         "id": "melee/claw-swipe",
@@ -1872,7 +2301,13 @@
           "palette",
           "sparks",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-claw-swipe.png",
+        "art": {
+          "width": 142,
+          "height": 108
+        },
+        "anim": "/effects/pixelfx/melee-claw-swipe.webp"
       },
       {
         "id": "melee/dagger-flurry",
@@ -1888,7 +2323,13 @@
           "palette",
           "sparks",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-dagger-flurry.png",
+        "art": {
+          "width": 160,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/melee-dagger-flurry.webp"
       },
       {
         "id": "melee/double-slash",
@@ -1904,7 +2345,13 @@
           "palette",
           "sparks",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-double-slash.png",
+        "art": {
+          "width": 176,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/melee-double-slash.webp"
       },
       {
         "id": "melee/hammer-smash",
@@ -1920,7 +2367,13 @@
           "palette",
           "stone",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-hammer-smash.png",
+        "art": {
+          "width": 220,
+          "height": 124
+        },
+        "anim": "/effects/pixelfx/melee-hammer-smash.webp"
       },
       {
         "id": "melee/heavy-cleave",
@@ -1936,7 +2389,13 @@
           "palette",
           "stone",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-heavy-cleave.png",
+        "art": {
+          "width": 220,
+          "height": 128
+        },
+        "anim": "/effects/pixelfx/melee-heavy-cleave.webp"
       },
       {
         "id": "melee/scythe-reap",
@@ -1951,7 +2410,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-scythe-reap.png",
+        "art": {
+          "width": 198,
+          "height": 128
+        },
+        "anim": "/effects/pixelfx/melee-scythe-reap.webp"
       },
       {
         "id": "melee/spear-sweep",
@@ -1968,7 +2433,13 @@
           "sparks",
           "stone",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-spear-sweep.png",
+        "art": {
+          "width": 228,
+          "height": 96
+        },
+        "anim": "/effects/pixelfx/melee-spear-sweep.webp"
       },
       {
         "id": "melee/spin-slash",
@@ -1985,7 +2456,13 @@
           "sparks",
           "radius",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-spin-slash.png",
+        "art": {
+          "width": 220,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/melee-spin-slash.webp"
       },
       {
         "id": "melee/sword-slash",
@@ -2002,7 +2479,13 @@
           "sparks",
           "radius",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-sword-slash.png",
+        "art": {
+          "width": 150,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/melee-sword-slash.webp"
       },
       {
         "id": "melee/thrust",
@@ -2019,7 +2502,13 @@
           "sparks",
           "reach",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-thrust.png",
+        "art": {
+          "width": 208,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/melee-thrust.webp"
       },
       {
         "id": "melee/uppercut",
@@ -2036,7 +2525,13 @@
           "outline",
           "sparks",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-uppercut.png",
+        "art": {
+          "width": 144,
+          "height": 140
+        },
+        "anim": "/effects/pixelfx/melee-uppercut.webp"
       },
       {
         "id": "melee/whip-crack",
@@ -2053,7 +2548,13 @@
           "sparks",
           "length",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/melee-whip-crack.png",
+        "art": {
+          "width": 204,
+          "height": 92
+        },
+        "anim": "/effects/pixelfx/melee-whip-crack.webp"
       },
       {
         "id": "impacts/blunt-hit",
@@ -2073,7 +2574,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/impacts-blunt-hit.png"
+        "still": "/effects/pixelfx/impacts-blunt-hit.png",
+        "art": {
+          "width": 128,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/impacts-blunt-hit.webp"
       },
       {
         "id": "impacts/bullet-impact",
@@ -2091,7 +2597,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/impacts-bullet-impact.png"
+        "still": "/effects/pixelfx/impacts-bullet-impact.png",
+        "art": {
+          "width": 152,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/impacts-bullet-impact.webp"
       },
       {
         "id": "impacts/crit-hit",
@@ -2109,7 +2620,12 @@
           "aim",
           "seed"
         ],
-        "still": "/effects/pixelfx/impacts-crit-hit.png"
+        "still": "/effects/pixelfx/impacts-crit-hit.png",
+        "art": {
+          "width": 216,
+          "height": 136
+        },
+        "anim": "/effects/pixelfx/impacts-crit-hit.webp"
       },
       {
         "id": "impacts/ground-slam",
@@ -2127,7 +2643,12 @@
           "reach",
           "seed"
         ],
-        "still": "/effects/pixelfx/impacts-ground-slam.png"
+        "still": "/effects/pixelfx/impacts-ground-slam.png",
+        "art": {
+          "width": 288,
+          "height": 208
+        },
+        "anim": "/effects/pixelfx/impacts-ground-slam.webp"
       },
       {
         "id": "impacts/heavy-landing",
@@ -2143,7 +2664,13 @@
           "palette",
           "stone",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/impacts-heavy-landing.png",
+        "art": {
+          "width": 188,
+          "height": 123
+        },
+        "anim": "/effects/pixelfx/impacts-heavy-landing.webp"
       },
       {
         "id": "impacts/hit-flash",
@@ -2160,7 +2687,13 @@
           "lines",
           "side",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/impacts-hit-flash.png",
+        "art": {
+          "width": 92,
+          "height": 76
+        },
+        "anim": "/effects/pixelfx/impacts-hit-flash.webp"
       },
       {
         "id": "impacts/hit-spark",
@@ -2178,7 +2711,12 @@
           "aim",
           "seed"
         ],
-        "still": "/effects/pixelfx/impacts-hit-spark.png"
+        "still": "/effects/pixelfx/impacts-hit-spark.png",
+        "art": {
+          "width": 136,
+          "height": 80
+        },
+        "anim": "/effects/pixelfx/impacts-hit-spark.webp"
       },
       {
         "id": "impacts/impact-frame",
@@ -2195,7 +2733,12 @@
           "lines",
           "seed"
         ],
-        "still": "/effects/pixelfx/impacts-impact-frame.png"
+        "still": "/effects/pixelfx/impacts-impact-frame.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/impacts-impact-frame.webp"
       },
       {
         "id": "impacts/parry",
@@ -2212,7 +2755,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/impacts-parry.png"
+        "still": "/effects/pixelfx/impacts-parry.png",
+        "art": {
+          "width": 200,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/impacts-parry.webp"
       },
       {
         "id": "impacts/ricochet",
@@ -2229,7 +2777,12 @@
           "stone",
           "seed"
         ],
-        "still": "/effects/pixelfx/impacts-ricochet.png"
+        "still": "/effects/pixelfx/impacts-ricochet.png",
+        "art": {
+          "width": 232,
+          "height": 84
+        },
+        "anim": "/effects/pixelfx/impacts-ricochet.webp"
       },
       {
         "id": "impacts/shield-block",
@@ -2245,7 +2798,13 @@
           "palette",
           "sparks",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/impacts-shield-block.png",
+        "art": {
+          "width": 160,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/impacts-shield-block.webp"
       },
       {
         "id": "projectiles/arrow",
@@ -2264,7 +2823,12 @@
           "wind",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-arrow.png"
+        "still": "/effects/pixelfx/projectiles-arrow.png",
+        "art": {
+          "width": 112,
+          "height": 32
+        },
+        "anim": "/effects/pixelfx/projectiles-arrow.webp"
       },
       {
         "id": "projectiles/bullet-tracer",
@@ -2283,7 +2847,12 @@
           "speed",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-bullet-tracer.png"
+        "still": "/effects/pixelfx/projectiles-bullet-tracer.png",
+        "art": {
+          "width": 200,
+          "height": 40
+        },
+        "anim": "/effects/pixelfx/projectiles-bullet-tracer.webp"
       },
       {
         "id": "projectiles/cannonball",
@@ -2302,7 +2871,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-cannonball.png"
+        "still": "/effects/pixelfx/projectiles-cannonball.png",
+        "art": {
+          "width": 208,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/projectiles-cannonball.webp"
       },
       {
         "id": "projectiles/energy-disc",
@@ -2321,7 +2895,12 @@
           "speed",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-energy-disc.png"
+        "still": "/effects/pixelfx/projectiles-energy-disc.png",
+        "art": {
+          "width": 120,
+          "height": 52
+        },
+        "anim": "/effects/pixelfx/projectiles-energy-disc.webp"
       },
       {
         "id": "projectiles/flare",
@@ -2339,7 +2918,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-flare.png"
+        "still": "/effects/pixelfx/projectiles-flare.png",
+        "art": {
+          "width": 152,
+          "height": 232
+        },
+        "anim": "/effects/pixelfx/projectiles-flare.webp"
       },
       {
         "id": "projectiles/homing-missile",
@@ -2358,7 +2942,12 @@
           "stone",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-homing-missile.png"
+        "still": "/effects/pixelfx/projectiles-homing-missile.png",
+        "art": {
+          "width": 248,
+          "height": 140
+        },
+        "anim": "/effects/pixelfx/projectiles-homing-missile.webp"
       },
       {
         "id": "projectiles/laser-bolt",
@@ -2375,7 +2964,12 @@
           "length",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-laser-bolt.png"
+        "still": "/effects/pixelfx/projectiles-laser-bolt.png",
+        "art": {
+          "width": 128,
+          "height": 32
+        },
+        "anim": "/effects/pixelfx/projectiles-laser-bolt.webp"
       },
       {
         "id": "projectiles/magic-missile",
@@ -2393,7 +2987,12 @@
           "reach",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-magic-missile.png"
+        "still": "/effects/pixelfx/projectiles-magic-missile.png",
+        "art": {
+          "width": 208,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/projectiles-magic-missile.webp"
       },
       {
         "id": "projectiles/muzzle-pistol",
@@ -2412,7 +3011,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-muzzle-pistol.png"
+        "still": "/effects/pixelfx/projectiles-muzzle-pistol.png",
+        "art": {
+          "width": 96,
+          "height": 72
+        },
+        "anim": "/effects/pixelfx/projectiles-muzzle-pistol.webp"
       },
       {
         "id": "projectiles/muzzle-shotgun",
@@ -2431,7 +3035,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-muzzle-shotgun.png"
+        "still": "/effects/pixelfx/projectiles-muzzle-shotgun.png",
+        "art": {
+          "width": 160,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/projectiles-muzzle-shotgun.webp"
       },
       {
         "id": "projectiles/muzzle-smg",
@@ -2450,7 +3059,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-muzzle-smg.png"
+        "still": "/effects/pixelfx/projectiles-muzzle-smg.png",
+        "art": {
+          "width": 112,
+          "height": 72
+        },
+        "anim": "/effects/pixelfx/projectiles-muzzle-smg.webp"
       },
       {
         "id": "projectiles/plasma-shot",
@@ -2468,7 +3082,12 @@
           "speed",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-plasma-shot.png"
+        "still": "/effects/pixelfx/projectiles-plasma-shot.png",
+        "art": {
+          "width": 144,
+          "height": 60
+        },
+        "anim": "/effects/pixelfx/projectiles-plasma-shot.webp"
       },
       {
         "id": "projectiles/rocket",
@@ -2488,7 +3107,12 @@
           "speed",
           "seed"
         ],
-        "still": "/effects/pixelfx/projectiles-rocket.png"
+        "still": "/effects/pixelfx/projectiles-rocket.png",
+        "art": {
+          "width": 288,
+          "height": 76
+        },
+        "anim": "/effects/pixelfx/projectiles-rocket.webp"
       },
       {
         "id": "spawn/coin-drop",
@@ -2506,7 +3130,12 @@
           "coins",
           "seed"
         ],
-        "still": "/effects/pixelfx/spawn-coin-drop.png"
+        "still": "/effects/pixelfx/spawn-coin-drop.png",
+        "art": {
+          "width": 160,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/spawn-coin-drop.webp"
       },
       {
         "id": "spawn/disintegrate",
@@ -2523,7 +3152,13 @@
           "accent",
           "wind",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/spawn-disintegrate.png",
+        "art": {
+          "width": 188,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/spawn-disintegrate.webp"
       },
       {
         "id": "spawn/dissolve-burn",
@@ -2539,7 +3174,13 @@
           "palette",
           "ash",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/spawn-dissolve-burn.png",
+        "art": {
+          "width": 108,
+          "height": 124
+        },
+        "anim": "/effects/pixelfx/spawn-dissolve-burn.webp"
       },
       {
         "id": "spawn/egg-hatch",
@@ -2557,7 +3198,12 @@
           "speckle",
           "seed"
         ],
-        "still": "/effects/pixelfx/spawn-egg-hatch.png"
+        "still": "/effects/pixelfx/spawn-egg-hatch.png",
+        "art": {
+          "width": 120,
+          "height": 96
+        },
+        "anim": "/effects/pixelfx/spawn-egg-hatch.webp"
       },
       {
         "id": "spawn/poof",
@@ -2574,7 +3220,12 @@
           "stars",
           "seed"
         ],
-        "still": "/effects/pixelfx/spawn-poof.png"
+        "still": "/effects/pixelfx/spawn-poof.png",
+        "art": {
+          "width": 112,
+          "height": 92
+        },
+        "anim": "/effects/pixelfx/spawn-poof.webp"
       },
       {
         "id": "spawn/respawn-beam",
@@ -2590,7 +3241,13 @@
           "palette",
           "width",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/spawn-respawn-beam.png",
+        "art": {
+          "width": 140,
+          "height": 162
+        },
+        "anim": "/effects/pixelfx/spawn-respawn-beam.webp"
       },
       {
         "id": "spawn/shatter-death",
@@ -2605,7 +3262,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/spawn-shatter-death.png",
+        "art": {
+          "width": 184,
+          "height": 108
+        },
+        "anim": "/effects/pixelfx/spawn-shatter-death.webp"
       },
       {
         "id": "spawn/soul-rise",
@@ -2621,7 +3284,13 @@
           "palette",
           "height",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/spawn-soul-rise.png",
+        "art": {
+          "width": 108,
+          "height": 152
+        },
+        "anim": "/effects/pixelfx/spawn-soul-rise.webp"
       },
       {
         "id": "spawn/spawn-portal",
@@ -2638,7 +3307,12 @@
           "width",
           "seed"
         ],
-        "still": "/effects/pixelfx/spawn-spawn-portal.png"
+        "still": "/effects/pixelfx/spawn-spawn-portal.png",
+        "art": {
+          "width": 208,
+          "height": 150
+        },
+        "anim": "/effects/pixelfx/spawn-spawn-portal.webp"
       },
       {
         "id": "spawn/summon-rise",
@@ -2657,7 +3331,12 @@
           "stone",
           "seed"
         ],
-        "still": "/effects/pixelfx/spawn-summon-rise.png"
+        "still": "/effects/pixelfx/spawn-summon-rise.png",
+        "art": {
+          "width": 176,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/spawn-summon-rise.webp"
       },
       {
         "id": "arcane/arcane-beam",
@@ -2672,7 +3351,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/arcane-arcane-beam.png",
+        "art": {
+          "width": 276,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/arcane-arcane-beam.webp"
       },
       {
         "id": "arcane/arcane-missiles",
@@ -2687,7 +3372,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/arcane-arcane-missiles.png",
+        "art": {
+          "width": 252,
+          "height": 128
+        },
+        "anim": "/effects/pixelfx/arcane-arcane-missiles.webp"
       },
       {
         "id": "arcane/arcane-orb",
@@ -2703,7 +3394,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/arcane-arcane-orb.png"
+        "still": "/effects/pixelfx/arcane-arcane-orb.png",
+        "art": {
+          "width": 136,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/arcane-arcane-orb.webp"
       },
       {
         "id": "arcane/blink-in",
@@ -2718,7 +3414,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/arcane-blink-in.png",
+        "art": {
+          "width": 148,
+          "height": 108
+        },
+        "anim": "/effects/pixelfx/arcane-blink-in.webp"
       },
       {
         "id": "arcane/blink-out",
@@ -2733,7 +3435,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/arcane-blink-out.png",
+        "art": {
+          "width": 148,
+          "height": 108
+        },
+        "anim": "/effects/pixelfx/arcane-blink-out.webp"
       },
       {
         "id": "arcane/magic-circle-cast",
@@ -2749,7 +3457,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/arcane-magic-circle-cast.png"
+        "still": "/effects/pixelfx/arcane-magic-circle-cast.png",
+        "art": {
+          "width": 200,
+          "height": 220
+        },
+        "anim": "/effects/pixelfx/arcane-magic-circle-cast.webp"
       },
       {
         "id": "arcane/mana-burst",
@@ -2765,7 +3478,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/arcane-mana-burst.png"
+        "still": "/effects/pixelfx/arcane-mana-burst.png",
+        "art": {
+          "width": 208,
+          "height": 150
+        },
+        "anim": "/effects/pixelfx/arcane-mana-burst.webp"
       },
       {
         "id": "arcane/portal",
@@ -2783,7 +3501,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/arcane-portal.png"
+        "still": "/effects/pixelfx/arcane-portal.png",
+        "art": {
+          "width": 152,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/arcane-portal.webp"
       },
       {
         "id": "arcane/rune-circle",
@@ -2799,7 +3522,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/arcane-rune-circle.png"
+        "still": "/effects/pixelfx/arcane-rune-circle.png",
+        "art": {
+          "width": 136,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/arcane-rune-circle.webp"
       },
       {
         "id": "arcane/spell-charge",
@@ -2814,7 +3542,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/arcane-spell-charge.png",
+        "art": {
+          "width": 132,
+          "height": 98
+        },
+        "anim": "/effects/pixelfx/arcane-spell-charge.webp"
       },
       {
         "id": "arcane/star-fall",
@@ -2830,7 +3564,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/arcane-star-fall.png"
+        "still": "/effects/pixelfx/arcane-star-fall.png",
+        "art": {
+          "width": 232,
+          "height": 172
+        },
+        "anim": "/effects/pixelfx/arcane-star-fall.webp"
       },
       {
         "id": "arcane/time-stop",
@@ -2846,7 +3585,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/arcane-time-stop.png"
+        "still": "/effects/pixelfx/arcane-time-stop.png",
+        "art": {
+          "width": 196,
+          "height": 136
+        },
+        "anim": "/effects/pixelfx/arcane-time-stop.webp"
       },
       {
         "id": "holy/blessing",
@@ -2861,7 +3605,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/holy-blessing.png",
+        "art": {
+          "width": 92,
+          "height": 140
+        },
+        "anim": "/effects/pixelfx/holy-blessing.webp"
       },
       {
         "id": "holy/divine-shield",
@@ -2877,7 +3627,13 @@
           "palette",
           "radius",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/holy-divine-shield.png",
+        "art": {
+          "width": 100,
+          "height": 96
+        },
+        "anim": "/effects/pixelfx/holy-divine-shield.webp"
       },
       {
         "id": "holy/feather-burst",
@@ -2894,7 +3650,12 @@
           "glow",
           "seed"
         ],
-        "still": "/effects/pixelfx/holy-feather-burst.png"
+        "still": "/effects/pixelfx/holy-feather-burst.png",
+        "art": {
+          "width": 160,
+          "height": 160
+        },
+        "anim": "/effects/pixelfx/holy-feather-burst.webp"
       },
       {
         "id": "holy/halo",
@@ -2909,7 +3670,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/holy-halo.png",
+        "art": {
+          "width": 68,
+          "height": 92
+        },
+        "anim": "/effects/pixelfx/holy-halo.webp"
       },
       {
         "id": "holy/heal",
@@ -2924,7 +3691,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/holy-heal.png",
+        "art": {
+          "width": 92,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/holy-heal.webp"
       },
       {
         "id": "holy/heal-aoe",
@@ -2941,7 +3714,12 @@
           "reach",
           "seed"
         ],
-        "still": "/effects/pixelfx/holy-heal-aoe.png"
+        "still": "/effects/pixelfx/holy-heal-aoe.png",
+        "art": {
+          "width": 256,
+          "height": 136
+        },
+        "anim": "/effects/pixelfx/holy-heal-aoe.webp"
       },
       {
         "id": "holy/holy-pillar",
@@ -2958,7 +3736,12 @@
           "shafts",
           "seed"
         ],
-        "still": "/effects/pixelfx/holy-holy-pillar.png"
+        "still": "/effects/pixelfx/holy-holy-pillar.png",
+        "art": {
+          "width": 192,
+          "height": 232
+        },
+        "anim": "/effects/pixelfx/holy-holy-pillar.webp"
       },
       {
         "id": "holy/resurrection",
@@ -2974,7 +3757,13 @@
           "palette",
           "ash",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/holy-resurrection.png",
+        "art": {
+          "width": 204,
+          "height": 172
+        },
+        "anim": "/effects/pixelfx/holy-resurrection.webp"
       },
       {
         "id": "holy/smite",
@@ -2991,7 +3780,12 @@
           "stone",
           "seed"
         ],
-        "still": "/effects/pixelfx/holy-smite.png"
+        "still": "/effects/pixelfx/holy-smite.png",
+        "art": {
+          "width": 224,
+          "height": 176
+        },
+        "anim": "/effects/pixelfx/holy-smite.webp"
       },
       {
         "id": "holy/sunburst",
@@ -3008,7 +3802,12 @@
           "rays",
           "seed"
         ],
-        "still": "/effects/pixelfx/holy-sunburst.png"
+        "still": "/effects/pixelfx/holy-sunburst.png",
+        "art": {
+          "width": 128,
+          "height": 128
+        },
+        "anim": "/effects/pixelfx/holy-sunburst.webp"
       },
       {
         "id": "shadow/black-hole",
@@ -3025,7 +3824,12 @@
           "rock",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-black-hole.png"
+        "still": "/effects/pixelfx/shadow-black-hole.png",
+        "art": {
+          "width": 184,
+          "height": 132
+        },
+        "anim": "/effects/pixelfx/shadow-black-hole.webp"
       },
       {
         "id": "shadow/curse",
@@ -3041,7 +3845,13 @@
           "palette",
           "bone",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/shadow-curse.png",
+        "art": {
+          "width": 124,
+          "height": 136
+        },
+        "anim": "/effects/pixelfx/shadow-curse.webp"
       },
       {
         "id": "shadow/dark-explosion",
@@ -3057,7 +3867,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-dark-explosion.png"
+        "still": "/effects/pixelfx/shadow-dark-explosion.png",
+        "art": {
+          "width": 280,
+          "height": 248
+        },
+        "anim": "/effects/pixelfx/shadow-dark-explosion.webp"
       },
       {
         "id": "shadow/eclipse",
@@ -3074,7 +3889,12 @@
           "pearl",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-eclipse.png"
+        "still": "/effects/pixelfx/shadow-eclipse.png",
+        "art": {
+          "width": 160,
+          "height": 144
+        },
+        "anim": "/effects/pixelfx/shadow-eclipse.webp"
       },
       {
         "id": "shadow/grasping-hands",
@@ -3090,7 +3910,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-grasping-hands.png"
+        "still": "/effects/pixelfx/shadow-grasping-hands.png",
+        "art": {
+          "width": 200,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/shadow-grasping-hands.webp"
       },
       {
         "id": "shadow/hex-sigil",
@@ -3106,7 +3931,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-hex-sigil.png"
+        "still": "/effects/pixelfx/shadow-hex-sigil.png",
+        "art": {
+          "width": 168,
+          "height": 128
+        },
+        "anim": "/effects/pixelfx/shadow-hex-sigil.webp"
       },
       {
         "id": "shadow/life-steal",
@@ -3122,7 +3952,13 @@
           "palette",
           "dark",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/shadow-life-steal.png",
+        "art": {
+          "width": 196,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/shadow-life-steal.webp"
       },
       {
         "id": "shadow/necro-skulls",
@@ -3139,7 +3975,12 @@
           "bone",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-necro-skulls.png"
+        "still": "/effects/pixelfx/shadow-necro-skulls.png",
+        "art": {
+          "width": 136,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/shadow-necro-skulls.webp"
       },
       {
         "id": "shadow/shadow-flames",
@@ -3155,7 +3996,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-shadow-flames.png"
+        "still": "/effects/pixelfx/shadow-shadow-flames.png",
+        "art": {
+          "width": 104,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/shadow-shadow-flames.webp"
       },
       {
         "id": "shadow/shadow-tendrils",
@@ -3171,7 +4017,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-shadow-tendrils.png"
+        "still": "/effects/pixelfx/shadow-shadow-tendrils.png",
+        "art": {
+          "width": 208,
+          "height": 130
+        },
+        "anim": "/effects/pixelfx/shadow-shadow-tendrils.webp"
       },
       {
         "id": "shadow/soul-drain",
@@ -3188,7 +4039,12 @@
           "soul",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-soul-drain.png"
+        "still": "/effects/pixelfx/shadow-soul-drain.png",
+        "art": {
+          "width": 208,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/shadow-soul-drain.webp"
       },
       {
         "id": "shadow/void-orb",
@@ -3204,7 +4060,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/shadow-void-orb.png"
+        "still": "/effects/pixelfx/shadow-void-orb.png",
+        "art": {
+          "width": 168,
+          "height": 160
+        },
+        "anim": "/effects/pixelfx/shadow-void-orb.webp"
       },
       {
         "id": "status/bleeding",
@@ -3219,7 +4080,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-bleeding.png",
+        "art": {
+          "width": 72,
+          "height": 68
+        },
+        "anim": "/effects/pixelfx/status-bleeding.webp"
       },
       {
         "id": "status/burning",
@@ -3236,7 +4103,13 @@
           "char",
           "smoke",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-burning.png",
+        "art": {
+          "width": 84,
+          "height": 92
+        },
+        "anim": "/effects/pixelfx/status-burning.webp"
       },
       {
         "id": "status/charmed",
@@ -3251,7 +4124,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-charmed.png",
+        "art": {
+          "width": 72,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/status-charmed.webp"
       },
       {
         "id": "status/confused",
@@ -3267,7 +4146,13 @@
           "palette",
           "marks",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-confused.png",
+        "art": {
+          "width": 72,
+          "height": 90
+        },
+        "anim": "/effects/pixelfx/status-confused.webp"
       },
       {
         "id": "status/cursed",
@@ -3282,7 +4167,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-cursed.png",
+        "art": {
+          "width": 76,
+          "height": 96
+        },
+        "anim": "/effects/pixelfx/status-cursed.webp"
       },
       {
         "id": "status/frozen",
@@ -3297,7 +4188,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-frozen.png",
+        "art": {
+          "width": 84,
+          "height": 76
+        },
+        "anim": "/effects/pixelfx/status-frozen.webp"
       },
       {
         "id": "status/haste",
@@ -3313,7 +4210,13 @@
           "palette",
           "dust",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-haste.png",
+        "art": {
+          "width": 112,
+          "height": 68
+        },
+        "anim": "/effects/pixelfx/status-haste.webp"
       },
       {
         "id": "status/petrified",
@@ -3328,7 +4231,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-petrified.png",
+        "art": {
+          "width": 132,
+          "height": 86
+        },
+        "anim": "/effects/pixelfx/status-petrified.webp"
       },
       {
         "id": "status/poisoned",
@@ -3344,7 +4253,13 @@
           "palette",
           "veins",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-poisoned.png",
+        "art": {
+          "width": 84,
+          "height": 76
+        },
+        "anim": "/effects/pixelfx/status-poisoned.webp"
       },
       {
         "id": "status/rage",
@@ -3361,7 +4276,13 @@
           "heat",
           "steam",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-rage.png",
+        "art": {
+          "width": 92,
+          "height": 92
+        },
+        "anim": "/effects/pixelfx/status-rage.webp"
       },
       {
         "id": "status/sleep",
@@ -3376,7 +4297,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-sleep.png",
+        "art": {
+          "width": 72,
+          "height": 94
+        },
+        "anim": "/effects/pixelfx/status-sleep.webp"
       },
       {
         "id": "status/slowed",
@@ -3391,7 +4318,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-slowed.png",
+        "art": {
+          "width": 76,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/status-slowed.webp"
       },
       {
         "id": "status/stunned",
@@ -3408,7 +4341,13 @@
           "birds",
           "beak",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/status-stunned.png",
+        "art": {
+          "width": 72,
+          "height": 76
+        },
+        "anim": "/effects/pixelfx/status-stunned.webp"
       },
       {
         "id": "nature/acid-splash",
@@ -3424,7 +4363,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-acid-splash.png"
+        "still": "/effects/pixelfx/nature-acid-splash.png",
+        "art": {
+          "width": 184,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/nature-acid-splash.webp"
       },
       {
         "id": "nature/boulder",
@@ -3442,7 +4386,12 @@
           "size",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-boulder.png"
+        "still": "/effects/pixelfx/nature-boulder.png",
+        "art": {
+          "width": 264,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/nature-boulder.webp"
       },
       {
         "id": "nature/earth-spike",
@@ -3460,7 +4409,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-earth-spike.png"
+        "still": "/effects/pixelfx/nature-earth-spike.png",
+        "art": {
+          "width": 272,
+          "height": 150
+        },
+        "anim": "/effects/pixelfx/nature-earth-spike.webp"
       },
       {
         "id": "nature/healing-bloom",
@@ -3478,7 +4432,12 @@
           "heart",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-healing-bloom.png"
+        "still": "/effects/pixelfx/nature-healing-bloom.png",
+        "art": {
+          "width": 124,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/nature-healing-bloom.webp"
       },
       {
         "id": "nature/leaf-storm",
@@ -3494,7 +4453,13 @@
           "palette",
           "leaves",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/nature-leaf-storm.png",
+        "art": {
+          "width": 124,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/nature-leaf-storm.webp"
       },
       {
         "id": "nature/poison-cloud",
@@ -3511,7 +4476,12 @@
           "spread",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-poison-cloud.png"
+        "still": "/effects/pixelfx/nature-poison-cloud.png",
+        "art": {
+          "width": 256,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/nature-poison-cloud.webp"
       },
       {
         "id": "nature/quake",
@@ -3529,7 +4499,12 @@
           "reach",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-quake.png"
+        "still": "/effects/pixelfx/nature-quake.png",
+        "art": {
+          "width": 288,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/nature-quake.webp"
       },
       {
         "id": "nature/root-snare",
@@ -3545,7 +4520,13 @@
           "palette",
           "glow",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/nature-root-snare.png",
+        "art": {
+          "width": 140,
+          "height": 108
+        },
+        "anim": "/effects/pixelfx/nature-root-snare.webp"
       },
       {
         "id": "nature/spore-burst",
@@ -3563,7 +4544,12 @@
           "stem",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-spore-burst.png"
+        "still": "/effects/pixelfx/nature-spore-burst.png",
+        "art": {
+          "width": 212,
+          "height": 132
+        },
+        "anim": "/effects/pixelfx/nature-spore-burst.webp"
       },
       {
         "id": "nature/thorns",
@@ -3582,7 +4568,12 @@
           "count",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-thorns.png"
+        "still": "/effects/pixelfx/nature-thorns.png",
+        "art": {
+          "width": 232,
+          "height": 92
+        },
+        "anim": "/effects/pixelfx/nature-thorns.webp"
       },
       {
         "id": "nature/tornado",
@@ -3601,7 +4592,12 @@
           "height",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-tornado.png"
+        "still": "/effects/pixelfx/nature-tornado.png",
+        "art": {
+          "width": 196,
+          "height": 168
+        },
+        "anim": "/effects/pixelfx/nature-tornado.webp"
       },
       {
         "id": "nature/toxic-puddle",
@@ -3619,7 +4615,12 @@
           "width",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-toxic-puddle.png"
+        "still": "/effects/pixelfx/nature-toxic-puddle.png",
+        "art": {
+          "width": 176,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/nature-toxic-puddle.webp"
       },
       {
         "id": "nature/vine-whip",
@@ -3637,7 +4638,12 @@
           "soil",
           "seed"
         ],
-        "still": "/effects/pixelfx/nature-vine-whip.png"
+        "still": "/effects/pixelfx/nature-vine-whip.png",
+        "art": {
+          "width": 216,
+          "height": 128
+        },
+        "anim": "/effects/pixelfx/nature-vine-whip.webp"
       },
       {
         "id": "weather/aurora",
@@ -3654,7 +4660,12 @@
           "upper",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-aurora.png"
+        "still": "/effects/pixelfx/weather-aurora.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-aurora.webp"
       },
       {
         "id": "weather/blizzard",
@@ -3670,7 +4681,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-blizzard.png"
+        "still": "/effects/pixelfx/weather-blizzard.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-blizzard.webp"
       },
       {
         "id": "weather/cherry-blossoms",
@@ -3686,7 +4702,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-cherry-blossoms.png"
+        "still": "/effects/pixelfx/weather-cherry-blossoms.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-cherry-blossoms.webp"
       },
       {
         "id": "weather/clouds",
@@ -3702,7 +4723,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-clouds.png"
+        "still": "/effects/pixelfx/weather-clouds.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-clouds.webp"
       },
       {
         "id": "weather/falling-leaves",
@@ -3720,7 +4746,12 @@
           "golds",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-falling-leaves.png"
+        "still": "/effects/pixelfx/weather-falling-leaves.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-falling-leaves.webp"
       },
       {
         "id": "weather/fireflies",
@@ -3737,7 +4768,12 @@
           "grass",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-fireflies.png"
+        "still": "/effects/pixelfx/weather-fireflies.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-fireflies.webp"
       },
       {
         "id": "weather/fog",
@@ -3753,7 +4789,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-fog.png"
+        "still": "/effects/pixelfx/weather-fog.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-fog.webp"
       },
       {
         "id": "weather/god-rays",
@@ -3769,7 +4810,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-god-rays.png"
+        "still": "/effects/pixelfx/weather-god-rays.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-god-rays.webp"
       },
       {
         "id": "weather/rain",
@@ -3786,7 +4832,12 @@
           "density",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-rain.png"
+        "still": "/effects/pixelfx/weather-rain.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-rain.webp"
       },
       {
         "id": "weather/shooting-stars",
@@ -3803,7 +4854,12 @@
           "sky",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-shooting-stars.png"
+        "still": "/effects/pixelfx/weather-shooting-stars.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-shooting-stars.webp"
       },
       {
         "id": "weather/snow",
@@ -3819,7 +4875,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-snow.png"
+        "still": "/effects/pixelfx/weather-snow.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-snow.webp"
       },
       {
         "id": "weather/storm",
@@ -3836,7 +4897,12 @@
           "bolt",
           "seed"
         ],
-        "still": "/effects/pixelfx/weather-storm.png"
+        "still": "/effects/pixelfx/weather-storm.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/weather-storm.webp"
       },
       {
         "id": "ui/achievement",
@@ -3855,7 +4921,12 @@
           "text",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-achievement.png"
+        "still": "/effects/pixelfx/ui-achievement.png",
+        "art": {
+          "width": 220,
+          "height": 72
+        },
+        "anim": "/effects/pixelfx/ui-achievement.webp"
       },
       {
         "id": "ui/coin-collect",
@@ -3873,7 +4944,12 @@
           "from",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-coin-collect.png"
+        "still": "/effects/pixelfx/ui-coin-collect.png",
+        "art": {
+          "width": 176,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/ui-coin-collect.webp"
       },
       {
         "id": "ui/combo-counter",
@@ -3891,7 +4967,12 @@
           "label",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-combo-counter.png"
+        "still": "/effects/pixelfx/ui-combo-counter.png",
+        "art": {
+          "width": 208,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/ui-combo-counter.webp"
       },
       {
         "id": "ui/confetti",
@@ -3907,7 +4988,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-confetti.png"
+        "still": "/effects/pixelfx/ui-confetti.png",
+        "art": {
+          "width": 200,
+          "height": 140
+        },
+        "anim": "/effects/pixelfx/ui-confetti.webp"
       },
       {
         "id": "ui/countdown",
@@ -3926,7 +5012,12 @@
           "word",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-countdown.png"
+        "still": "/effects/pixelfx/ui-countdown.png",
+        "art": {
+          "width": 152,
+          "height": 136
+        },
+        "anim": "/effects/pixelfx/ui-countdown.webp"
       },
       {
         "id": "ui/crit-number",
@@ -3944,7 +5035,12 @@
           "label",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-crit-number.png"
+        "still": "/effects/pixelfx/ui-crit-number.png",
+        "art": {
+          "width": 152,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/ui-crit-number.webp"
       },
       {
         "id": "ui/damage-number",
@@ -3961,7 +5057,12 @@
           "text",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-damage-number.png"
+        "still": "/effects/pixelfx/ui-damage-number.png",
+        "art": {
+          "width": 76,
+          "height": 68
+        },
+        "anim": "/effects/pixelfx/ui-damage-number.webp"
       },
       {
         "id": "ui/exclamation",
@@ -3976,7 +5077,13 @@
         "options": [
           "palette",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/ui-exclamation.png",
+        "art": {
+          "width": 96,
+          "height": 116
+        },
+        "anim": "/effects/pixelfx/ui-exclamation.webp"
       },
       {
         "id": "ui/health-bar-hit",
@@ -3994,7 +5101,12 @@
           "to",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-health-bar-hit.png"
+        "still": "/effects/pixelfx/ui-health-bar-hit.png",
+        "art": {
+          "width": 160,
+          "height": 64
+        },
+        "anim": "/effects/pixelfx/ui-health-bar-hit.webp"
       },
       {
         "id": "ui/heart-lost",
@@ -4010,7 +5122,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-heart-lost.png"
+        "still": "/effects/pixelfx/ui-heart-lost.png",
+        "art": {
+          "width": 96,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/ui-heart-lost.webp"
       },
       {
         "id": "ui/level-up",
@@ -4026,7 +5143,13 @@
           "palette",
           "text",
           "seed"
-        ]
+        ],
+        "still": "/effects/pixelfx/ui-level-up.png",
+        "art": {
+          "width": 188,
+          "height": 150
+        },
+        "anim": "/effects/pixelfx/ui-level-up.webp"
       },
       {
         "id": "ui/quest-complete",
@@ -4044,7 +5167,12 @@
           "text",
           "seed"
         ],
-        "still": "/effects/pixelfx/ui-quest-complete.png"
+        "still": "/effects/pixelfx/ui-quest-complete.png",
+        "art": {
+          "width": 204,
+          "height": 92
+        },
+        "anim": "/effects/pixelfx/ui-quest-complete.webp"
       },
       {
         "id": "pickups/chest-open",
@@ -4062,7 +5190,12 @@
           "coins",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-chest-open.png"
+        "still": "/effects/pixelfx/pickups-chest-open.png",
+        "art": {
+          "width": 176,
+          "height": 112
+        },
+        "anim": "/effects/pixelfx/pickups-chest-open.webp"
       },
       {
         "id": "pickups/coin-spin",
@@ -4078,7 +5211,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-coin-spin.png"
+        "still": "/effects/pixelfx/pickups-coin-spin.png",
+        "art": {
+          "width": 56,
+          "height": 56
+        },
+        "anim": "/effects/pixelfx/pickups-coin-spin.webp"
       },
       {
         "id": "pickups/collect-burst",
@@ -4094,7 +5232,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-collect-burst.png"
+        "still": "/effects/pixelfx/pickups-collect-burst.png",
+        "art": {
+          "width": 112,
+          "height": 108
+        },
+        "anim": "/effects/pixelfx/pickups-collect-burst.webp"
       },
       {
         "id": "pickups/crystal-shard",
@@ -4110,7 +5253,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-crystal-shard.png"
+        "still": "/effects/pixelfx/pickups-crystal-shard.png",
+        "art": {
+          "width": 64,
+          "height": 76
+        },
+        "anim": "/effects/pixelfx/pickups-crystal-shard.webp"
       },
       {
         "id": "pickups/gem-spin",
@@ -4126,7 +5274,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-gem-spin.png"
+        "still": "/effects/pixelfx/pickups-gem-spin.png",
+        "art": {
+          "width": 64,
+          "height": 64
+        },
+        "anim": "/effects/pixelfx/pickups-gem-spin.webp"
       },
       {
         "id": "pickups/heart-pickup",
@@ -4142,7 +5295,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-heart-pickup.png"
+        "still": "/effects/pixelfx/pickups-heart-pickup.png",
+        "art": {
+          "width": 56,
+          "height": 60
+        },
+        "anim": "/effects/pixelfx/pickups-heart-pickup.webp"
       },
       {
         "id": "pickups/key-glint",
@@ -4158,7 +5316,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-key-glint.png"
+        "still": "/effects/pixelfx/pickups-key-glint.png",
+        "art": {
+          "width": 72,
+          "height": 60
+        },
+        "anim": "/effects/pixelfx/pickups-key-glint.webp"
       },
       {
         "id": "pickups/loot-beam",
@@ -4174,7 +5337,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-loot-beam.png"
+        "still": "/effects/pixelfx/pickups-loot-beam.png",
+        "art": {
+          "width": 96,
+          "height": 176
+        },
+        "anim": "/effects/pixelfx/pickups-loot-beam.webp"
       },
       {
         "id": "pickups/potion",
@@ -4190,7 +5358,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-potion.png"
+        "still": "/effects/pixelfx/pickups-potion.png",
+        "art": {
+          "width": 56,
+          "height": 72
+        },
+        "anim": "/effects/pixelfx/pickups-potion.webp"
       },
       {
         "id": "pickups/power-star",
@@ -4206,7 +5379,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-power-star.png"
+        "still": "/effects/pixelfx/pickups-power-star.png",
+        "art": {
+          "width": 88,
+          "height": 84
+        },
+        "anim": "/effects/pixelfx/pickups-power-star.webp"
       },
       {
         "id": "pickups/xp-orb",
@@ -4222,7 +5400,12 @@
           "palette",
           "seed"
         ],
-        "still": "/effects/pixelfx/pickups-xp-orb.png"
+        "still": "/effects/pixelfx/pickups-xp-orb.png",
+        "art": {
+          "width": 72,
+          "height": 56
+        },
+        "anim": "/effects/pixelfx/pickups-xp-orb.webp"
       },
       {
         "id": "transitions/blinds",
@@ -4239,7 +5422,12 @@
           "seed",
           "palette"
         ],
-        "still": "/effects/pixelfx/transitions-blinds.png"
+        "still": "/effects/pixelfx/transitions-blinds.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-blinds.webp"
       },
       {
         "id": "transitions/burn-away",
@@ -4256,7 +5444,12 @@
           "seed",
           "palette"
         ],
-        "still": "/effects/pixelfx/transitions-burn-away.png"
+        "still": "/effects/pixelfx/transitions-burn-away.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-burn-away.webp"
       },
       {
         "id": "transitions/crt-off",
@@ -4273,7 +5466,12 @@
           "seed",
           "palette"
         ],
-        "still": "/effects/pixelfx/transitions-crt-off.png"
+        "still": "/effects/pixelfx/transitions-crt-off.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-crt-off.webp"
       },
       {
         "id": "transitions/diamond-wipe",
@@ -4290,7 +5488,12 @@
           "seed",
           "palette"
         ],
-        "still": "/effects/pixelfx/transitions-diamond-wipe.png"
+        "still": "/effects/pixelfx/transitions-diamond-wipe.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-diamond-wipe.webp"
       },
       {
         "id": "transitions/glitch-wipe",
@@ -4308,7 +5511,12 @@
           "palette",
           "split"
         ],
-        "still": "/effects/pixelfx/transitions-glitch-wipe.png"
+        "still": "/effects/pixelfx/transitions-glitch-wipe.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-glitch-wipe.webp"
       },
       {
         "id": "transitions/iris",
@@ -4326,7 +5534,12 @@
           "palette",
           "focus"
         ],
-        "still": "/effects/pixelfx/transitions-iris.png"
+        "still": "/effects/pixelfx/transitions-iris.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-iris.webp"
       },
       {
         "id": "transitions/pixel-dissolve",
@@ -4343,7 +5556,12 @@
           "seed",
           "palette"
         ],
-        "still": "/effects/pixelfx/transitions-pixel-dissolve.png"
+        "still": "/effects/pixelfx/transitions-pixel-dissolve.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-pixel-dissolve.webp"
       },
       {
         "id": "transitions/shatter-wipe",
@@ -4360,7 +5578,12 @@
           "seed",
           "palette"
         ],
-        "still": "/effects/pixelfx/transitions-shatter-wipe.png"
+        "still": "/effects/pixelfx/transitions-shatter-wipe.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-shatter-wipe.webp"
       },
       {
         "id": "transitions/slash-wipe",
@@ -4378,7 +5601,12 @@
           "palette",
           "sparks"
         ],
-        "still": "/effects/pixelfx/transitions-slash-wipe.png"
+        "still": "/effects/pixelfx/transitions-slash-wipe.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-slash-wipe.webp"
       },
       {
         "id": "transitions/star-iris",
@@ -4396,7 +5624,12 @@
           "palette",
           "focus"
         ],
-        "still": "/effects/pixelfx/transitions-star-iris.png"
+        "still": "/effects/pixelfx/transitions-star-iris.png",
+        "art": {
+          "width": 320,
+          "height": 180
+        },
+        "anim": "/effects/pixelfx/transitions-star-iris.webp"
       },
       {
         "id": "critters/bat",
@@ -4413,7 +5646,12 @@
           "eyes",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-bat.png"
+        "still": "/effects/pixelfx/critters-bat.png",
+        "art": {
+          "width": 112,
+          "height": 80
+        },
+        "anim": "/effects/pixelfx/critters-bat.webp"
       },
       {
         "id": "critters/bird",
@@ -4430,7 +5668,12 @@
           "breast",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-bird.png"
+        "still": "/effects/pixelfx/critters-bird.png",
+        "art": {
+          "width": 112,
+          "height": 80
+        },
+        "anim": "/effects/pixelfx/critters-bird.webp"
       },
       {
         "id": "critters/butterfly",
@@ -4447,7 +5690,12 @@
           "spots",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-butterfly.png"
+        "still": "/effects/pixelfx/critters-butterfly.png",
+        "art": {
+          "width": 128,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/critters-butterfly.webp"
       },
       {
         "id": "critters/eyeball",
@@ -4466,7 +5714,12 @@
           "hover",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-eyeball.png"
+        "still": "/effects/pixelfx/critters-eyeball.png",
+        "art": {
+          "width": 96,
+          "height": 108
+        },
+        "anim": "/effects/pixelfx/critters-eyeball.webp"
       },
       {
         "id": "critters/fish-school",
@@ -4483,7 +5736,12 @@
           "stripe",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-fish-school.png"
+        "still": "/effects/pixelfx/critters-fish-school.png",
+        "art": {
+          "width": 136,
+          "height": 80
+        },
+        "anim": "/effects/pixelfx/critters-fish-school.webp"
       },
       {
         "id": "critters/flying-skull",
@@ -4502,7 +5760,12 @@
           "floor",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-flying-skull.png"
+        "still": "/effects/pixelfx/critters-flying-skull.png",
+        "art": {
+          "width": 96,
+          "height": 132
+        },
+        "anim": "/effects/pixelfx/critters-flying-skull.webp"
       },
       {
         "id": "critters/frog",
@@ -4519,7 +5782,12 @@
           "belly",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-frog.png"
+        "still": "/effects/pixelfx/critters-frog.png",
+        "art": {
+          "width": 112,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/critters-frog.webp"
       },
       {
         "id": "critters/ghost",
@@ -4536,7 +5804,12 @@
           "hover",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-ghost.png"
+        "still": "/effects/pixelfx/critters-ghost.png",
+        "art": {
+          "width": 96,
+          "height": 100
+        },
+        "anim": "/effects/pixelfx/critters-ghost.webp"
       },
       {
         "id": "critters/jellyfish",
@@ -4553,7 +5826,12 @@
           "glow",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-jellyfish.png"
+        "still": "/effects/pixelfx/critters-jellyfish.png",
+        "art": {
+          "width": 96,
+          "height": 120
+        },
+        "anim": "/effects/pixelfx/critters-jellyfish.webp"
       },
       {
         "id": "critters/slime",
@@ -4570,7 +5848,12 @@
           "hop",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-slime.png"
+        "still": "/effects/pixelfx/critters-slime.png",
+        "art": {
+          "width": 112,
+          "height": 88
+        },
+        "anim": "/effects/pixelfx/critters-slime.webp"
       },
       {
         "id": "critters/snake",
@@ -4587,7 +5870,12 @@
           "belly",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-snake.png"
+        "still": "/effects/pixelfx/critters-snake.png",
+        "art": {
+          "width": 136,
+          "height": 56
+        },
+        "anim": "/effects/pixelfx/critters-snake.webp"
       },
       {
         "id": "critters/wisp",
@@ -4604,7 +5892,12 @@
           "hover",
           "seed"
         ],
-        "still": "/effects/pixelfx/critters-wisp.png"
+        "still": "/effects/pixelfx/critters-wisp.png",
+        "art": {
+          "width": 128,
+          "height": 104
+        },
+        "anim": "/effects/pixelfx/critters-wisp.webp"
       }
     ]
   }
