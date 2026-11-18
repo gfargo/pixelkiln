@@ -5,7 +5,7 @@
 export type FeatureGroup = "Run the pipeline" | "Make the art" | "Choose a provider";
 
 export type Feature = {
-  id: "pipeline" | "review" | "characters" | "paperdoll" | "effects" | "providers" | "updates";
+  id: "pipeline" | "review" | "characters" | "paperdoll" | "effects" | "tiles" | "providers" | "updates";
   /** False for a page that has its own place in the menu but no tile on the home page. */
   inHub?: boolean;
   href: string;
@@ -125,6 +125,28 @@ export const FEATURES: Feature[] = [
     ],
   },
   {
+    id: "tiles",
+    inHub: false,
+    href: "/tiles",
+    name: "Tiles and terrain",
+    group: "Make the art",
+    summary: "Describe a border, get every tile that meets it, and export the set to Tiled, Godot or LDtk.",
+    title: "Tilesets that connect.",
+    deck: "Describe two surfaces and PixelLab draws the tiles that join them: sixteen for a coast, twenty-five with tall walls. PixelKiln prices the set, records it, and exports it to Tiled, Godot or LDtk with its placement rules.",
+    description: "Generate connected pixel-art tilesets from a description, price them first, and export them to Tiled, Godot 4 or generic JSON with their terrain rules.",
+    sections: [
+      { href: "#sets", label: "What a terrain set is" },
+      { href: "#kinds", label: "Kinds and costs" },
+      { href: "#textures", label: "Your own textures" },
+      { href: "#engines", label: "Out to Tiled, Godot and LDtk" },
+    ],
+    docs: [
+      { href: "/docs/tiles", label: "Tiles and engine exports" },
+      { href: "/docs/generators#tiles", label: "The tiles generator" },
+      { href: "/docs/manifest/style-fields", label: "Terrain fields" },
+    ],
+  },
+  {
     id: "providers",
     href: "/providers",
     name: "Providers and costs",
@@ -178,6 +200,7 @@ export const MENU_ART: Record<Feature["id"], { src: string; strip?: boolean }> =
   effects: { src: "/effects/robot-aura-still.png" },
   providers: { src: "/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png" },
   updates: { src: "/showcase/pixflux/knight-options.png", strip: true },
+  tiles: { src: "/showcase/tilesets/lake-grass-tile-01-wang-10.png" },
 };
 
 /** One short line per feature for the header menu, where the hub's full sentence would be cut off. */
@@ -189,6 +212,7 @@ export const MENU_LINES: Record<Feature["id"], string> = {
   effects: "Auras, hits and shields, free.",
   providers: "Four providers on the same prompts.",
   updates: "What each provider shipped lately.",
+  tiles: "Connected sets for Tiled, Godot and LDtk.",
 };
 
 /** Shortcuts listed under each group in the header menu: places people ask for that are not feature pages. */
@@ -199,7 +223,7 @@ export const MENU_SHORTCUTS: Record<FeatureGroup, Array<{ href: string; label: s
   ],
   "Make the art": [
     { href: "/effects/catalog", label: "Effects catalog" },
-    { href: "/docs/tiles", label: "Tiles and terrain" },
+    { href: "/docs/tiles", label: "Tiles and engine exports" },
   ],
   "Choose a provider": [
     { href: "/docs/generators", label: "Generators compared" },

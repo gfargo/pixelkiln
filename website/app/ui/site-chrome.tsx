@@ -60,6 +60,7 @@ export function SiteFooter() {
             <TrackedLink id="footer_characters" section="footer" href="/characters">Characters</TrackedLink>
             <TrackedLink id="footer_paperdoll" section="footer" href="/paperdoll">Paperdoll layers</TrackedLink>
             <TrackedLink id="footer_effects" section="footer" href="/effects">Effects</TrackedLink>
+            <TrackedLink id="footer_tiles" section="footer" href="/tiles">Tiles and terrain</TrackedLink>
             <TrackedLink id="footer_generators" section="footer" href="/docs/generators">Generators</TrackedLink>
             <TrackedLink id="footer_benchmark" section="footer" href="/docs/provider-benchmark">Benchmark</TrackedLink>
           </div>
