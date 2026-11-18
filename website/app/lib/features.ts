@@ -130,15 +130,15 @@ export const FEATURES: Feature[] = [
     href: "/tiles",
     name: "Tiles and terrain",
     group: "Make the art",
-    summary: "Describe a border, get every tile that meets it, and export the set to Tiled or Godot.",
+    summary: "Describe a border, get every tile that meets it, and export the set to Tiled, Godot or LDtk.",
     title: "Tilesets that connect.",
-    deck: "Describe two surfaces and PixelLab draws the tiles that join them: sixteen for a coast, twenty-five with tall walls. PixelKiln prices the set, records it, and exports it to Tiled or Godot with its placement rules.",
+    deck: "Describe two surfaces and PixelLab draws the tiles that join them: sixteen for a coast, twenty-five with tall walls. PixelKiln prices the set, records it, and exports it to Tiled, Godot or LDtk with its placement rules.",
     description: "Generate connected pixel-art tilesets from a description, price them first, and export them to Tiled, Godot 4 or generic JSON with their terrain rules.",
     sections: [
       { href: "#sets", label: "What a terrain set is" },
       { href: "#kinds", label: "Kinds and costs" },
       { href: "#textures", label: "Your own textures" },
-      { href: "#engines", label: "Out to Tiled and Godot" },
+      { href: "#engines", label: "Out to Tiled, Godot and LDtk" },
     ],
     docs: [
       { href: "/docs/tiles", label: "Tiles and engine exports" },
@@ -212,7 +212,7 @@ export const MENU_LINES: Record<Feature["id"], string> = {
   effects: "Auras, hits and shields, free.",
   providers: "Four providers on the same prompts.",
   updates: "What each provider shipped lately.",
-  tiles: "Connected sets for Tiled and Godot.",
+  tiles: "Connected sets for Tiled, Godot and LDtk.",
 };
 
 /** Shortcuts listed under each group in the header menu: places people ask for that are not feature pages. */

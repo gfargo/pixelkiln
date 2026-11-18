@@ -207,7 +207,7 @@ export function TilesSections() {
         <div className="shell">
           <div className="section-heading split-heading">
             <div>
-              <h2>Out to Tiled and Godot, rules included.</h2>
+              <h2>Out to Tiled, Godot and LDtk.</h2>
             </div>
             <p className="section-deck">
               A folder of tile images is not a tileset until an engine knows
@@ -227,12 +227,14 @@ pixelkiln plan
 pixelkiln gen --budget 15
 pixelkiln export --style ground --only terrain --format tiled
 pixelkiln export --style ground --only terrain --format godot
+pixelkiln export --style ground --only terrain --format ldtk
 pixelkiln export --style ground --only terrain --format generic
 `}
             />
             <ul className="check-list effects-list">
               <li><span className="tick" aria-hidden="true" /> <b>Tiled:</b> a <code>.tsj</code> tileset with a Wang set, its ids in Tiled&apos;s own order.</li>
               <li><span className="tick" aria-hidden="true" /> <b>Godot 4:</b> a <code>.tres</code> TileSet with terrain peering bits on every tile. A headless Godot 4.7.2 loads it in CI and reads a peering bit back.</li>
+              <li><span className="tick" aria-hidden="true" /> <b>LDtk:</b> a <code>.ldtk</code> project with the tileset, a paint layer and an auto-rule layer, and a small Preview level that uses every rule. Corner sets paint on a grid shifted half a tile, so the brush works on the corners. LDtk 1.5.3 redrew the same tiles from the rules when we opened one.</li>
               <li><span className="tick" aria-hidden="true" /> <b>Anything else:</b> generic JSON with the atlas, each tile&apos;s rectangle and mask, and the provider&apos;s raw rules, for an importer of your own.</li>
               <li><span className="tick" aria-hidden="true" /> Each export has a record of its inputs and output hashes. An edited file stops the next export instead of being overwritten.</li>
             </ul>
@@ -240,8 +242,8 @@ pixelkiln export --style ground --only terrain --format generic
           <div className="tiles-limits">
             <h3>What it does not do yet.</h3>
             <ul>
-              <li>Connected sets export one at a time. Each becomes its own two-surface set in Tiled or Godot; they are not merged into one terrain set.</li>
-              <li>Six-edge hex masks stay in the generic JSON. Edge masks on isometric tiles do too, for Godot.</li>
+              <li>Connected sets export one at a time. Each becomes its own two-surface set in Tiled, Godot or LDtk; they are not merged into one terrain set.</li>
+              <li>Six-edge hex masks stay in the generic JSON. Edge masks on isometric tiles do too, for Godot. LDtk takes square tiles only.</li>
               <li>Terrain sets are always square and top-down or side-on. Isometric ground comes from <code>tiles</code> or <code>isometricTile</code>.</li>
             </ul>
           </div>
