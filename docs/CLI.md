@@ -1192,6 +1192,9 @@ server with the same `PIXELLAB_API_KEY`. The workbench is a renderer, not a
 model: it is **free** on a subscription and the same recipe renders the
 same pixels every time.
 
+- Every preset and every pixelfx effect is listed, with frame sizes and the
+  command for each, in the
+  [effects catalog](https://pixelkiln.griffen.codes/effects/catalog).
 - `vfx presets` and `vfx parts` print PixelLab's current lists: whole-effect
   presets (explosion, lightning_strike, heal_pillar, portal, aura, and more)
   and parts to layer on (scorch_mark, spark_burst, stun_stars, rain_streaks,

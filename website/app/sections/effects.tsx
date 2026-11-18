@@ -1,3 +1,4 @@
+import { presets } from "@/app/lib/effects-catalog";
 import { CodeWindow } from "@/app/ui/code-window";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
@@ -62,12 +63,15 @@ pixelkiln vfx --recipe fx/zap.vfx.json --out fx/zap-again
 `}
               />
               <ul className="check-list effects-list">
-                <li><span className="tick" aria-hidden="true" /> 41 presets and about 90 parts: explosions, slashes, auras, shields, status icons, weather.</li>
+                <li><span className="tick" aria-hidden="true" /> {presets.length} presets and about 90 parts: explosions, slashes, auras, shields, status icons, weather.</li>
                 <li><span className="tick" aria-hidden="true" /> Every effect is saved to your PixelLab account, where its sliders can be moved; <code>--effect</code> pulls the edit back down.</li>
                 <li><span className="tick" aria-hidden="true" /> A <code>.vfx.json</code> record keeps the full recipe; re-rendering one gave a byte-identical sheet.</li>
               </ul>
             </div>
             <div className="review-links">
+              <TrackedLink className="text-link" id="effects_catalog_presets" section="effects" href="/effects/catalog#presets">
+                Browse all {presets.length} presets
+              </TrackedLink>
               <TrackedLink className="text-link" id="effects_cli_docs" section="effects" href="/docs/cli/vfx">
                 Read the vfx reference
               </TrackedLink>

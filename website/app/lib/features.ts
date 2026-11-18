@@ -112,6 +112,7 @@ export const FEATURES: Feature[] = [
       { href: "#controls", label: "Controls" },
       { href: "#recipes", label: "The .vfx.json record" },
       { href: "#library", label: "Library calls" },
+      { href: "/effects/catalog", label: "Catalog: every preset and effect" },
     ],
     docs: [
       { href: "/docs/cli/vfx", label: "The vfx command" },
@@ -143,6 +144,51 @@ export const FEATURES: Feature[] = [
 ];
 
 export const FEATURE_GROUPS: FeatureGroup[] = ["Run the pipeline", "Make the art", "Choose a provider"];
+
+/** A small real output that stands for each feature in the header menu. `strip` pictures show their first square cell. */
+export const MENU_ART: Record<Feature["id"], { src: string; strip?: boolean }> = {
+  pipeline: { src: "/sprites/workflow/plan.png" },
+  review: { src: "/sprites/workflow/review.png" },
+  characters: { src: "/sprites/characters/robot-8dir.png", strip: true },
+  paperdoll: { src: "/sprites/paperdoll/showcase-8dir.png", strip: true },
+  effects: { src: "/effects/robot-aura-still.png" },
+  providers: { src: "/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png" },
+};
+
+/** One short line per feature for the header menu, where the hub's full sentence would be cut off. */
+export const MENU_LINES: Record<Feature["id"], string> = {
+  pipeline: "One manifest, priced before you pay.",
+  review: "Pick, retouch and approve the pixels.",
+  characters: "Eight directions and every loop.",
+  paperdoll: "Swappable outfits over one body.",
+  effects: "Auras, hits and shields, free.",
+  providers: "Four providers on the same prompts.",
+};
+
+/** Shortcuts listed under each group in the header menu: places people ask for that are not feature pages. */
+export const MENU_SHORTCUTS: Record<FeatureGroup, Array<{ href: string; label: string }>> = {
+  "Run the pipeline": [
+    { href: "/docs/getting-started", label: "Quickstart" },
+    { href: "/pipeline#recovery", label: "Recovering paid work" },
+  ],
+  "Make the art": [
+    { href: "/effects/catalog", label: "Effects catalog" },
+    { href: "/docs/tiles", label: "Tiles and terrain" },
+  ],
+  "Choose a provider": [
+    { href: "/docs/generators", label: "Generators compared" },
+    { href: "/docs/provider-notes", label: "Provider notes" },
+    { href: "/docs/mixed-providers", label: "Mixing providers" },
+  ],
+};
+
+/** The commands people look up most, for the documentation menu. */
+export const MENU_COMMANDS: Array<{ href: string; command: string; does: string }> = [
+  { href: "/docs/cli/plan", command: "pixelkiln plan", does: "Price a run before paying" },
+  { href: "/docs/cli/gen", command: "pixelkiln gen", does: "Generate within a budget" },
+  { href: "/docs/cli/pick", command: "pixelkiln pick", does: "Choose candidates" },
+  { href: "/docs/cli/vfx", command: "pixelkiln vfx", does: "Make an effect" },
+];
 
 export function feature(id: Feature["id"]): Feature {
   return FEATURES.find((entry) => entry.id === id)!;
