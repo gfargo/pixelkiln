@@ -29,7 +29,7 @@ describe("parseArgs", () => {
   it("parses and validates engine export formats", () => {
     expect(parseArgs(["export", "--format", "tiled", "--out", "dist/terrain"]))
       .toMatchObject({ command: "export", format: "tiled", out: "dist/terrain" })
-    expect(() => parseArgs(["export", "--format", "unity"])).toThrow(/generic, tiled, or godot/)
+    expect(() => parseArgs(["export", "--format", "unity"])).toThrow(/generic, tiled, godot, or ldtk/)
   })
 
   it("parses audit CI thresholds and pack output selectors", () => {

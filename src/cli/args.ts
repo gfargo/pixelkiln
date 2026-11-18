@@ -60,7 +60,7 @@ export interface Args {
   port?: number
   inputs?: string
   claims: string[]
-  /** `export`: generic, tiled, or godot. `pack` and `mount`: generic, aseprite, or godot. */
+  /** `export`: generic, tiled, godot, or ldtk. `pack` and `mount`: generic, aseprite, or godot. */
   format?: TilesetFormat | SheetFormat
   outputRoles: string[]
   primaryOnly: boolean
@@ -542,10 +542,10 @@ export function parseArgs(argv: string[]): Args {
   }
 
   const manifest = get("--manifest") ?? "pixelkiln.manifest.json"
-  // Tilesets take generic, tiled, or godot; sheets take generic, aseprite,
+  // Tilesets take generic, tiled, godot, or ldtk; sheets take generic, aseprite,
   // or godot. Each command checks its own set once it knows what it is.
   const rawFormat = get("--format")
-  const formats = command === "export" ? ["generic", "tiled", "godot"]
+  const formats = command === "export" ? ["generic", "tiled", "godot", "ldtk"]
     : command === "asset" ? ["zip", "spritesheet", "aseprite", "gif"]
     : ["generic", "aseprite", "godot"]
   if (rawFormat && !formats.includes(rawFormat)) {

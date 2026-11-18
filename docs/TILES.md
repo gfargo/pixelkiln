@@ -124,6 +124,7 @@ twin pair gets the same mask.
 pixelkiln export --style ground --only terrain --format generic
 pixelkiln export --style ground --only terrain --format tiled
 pixelkiln export --style ground --only terrain --format godot
+pixelkiln export --style ground --only terrain --format ldtk
 ```
 
 `export` selects downloaded `tiles` and `terrain` generator entries; anything
@@ -239,10 +240,49 @@ through Godot's own `get_terrain_peering_bit()` rather than only checking
 tile/terrain-set counts. That last check is what would have caught the
 isometric-corner-names bug; the counts alone did not.
 
+## LDtk
+
+The `.ldtk` export is a whole project file: open it in LDtk 1.5 and the set is
+already a tileset, a pair of layers with auto-tiling rules, and a small
+"Preview" level painted to show every tile.
+
+LDtk has no terrain concept. It paints a cell value on an IntGrid layer, and an
+AutoLayer picks tiles by matching rules against the values around each cell.
+The export turns each mask into one rule, so painting two values gives the same
+borders the other formats give.
+
+- **Corner sets (`terrain`, corner-ruled `tiles`).** Corners belong to the
+  vertices between cells, so the export uses a dual grid. The IntGrid layer
+  (`<asset>_corners`) holds one value per vertex and is shifted half a tile up
+  and left; the AutoLayer (`<asset>`) reads each tile's own cell plus the cell to
+  the right, below and below-right, which are its NW, NE, SW and SE corners
+  (mask bits 3/2/1/0). The first terrain is value 1, the second value 2.
+- **Edge sets.** The IntGrid layer (`<asset>_cells`) is not shifted. A rule
+  reads the cell and its four neighbours; the cell takes the terrain most of its
+  edges have (the first terrain on a tie).
+- **Tiles that share a mask** (the 25-tile cliff set's wall twins) sit in one
+  rule as alternatives, so LDtk picks among them at random.
+- The tileset carries each tile's mask as custom data (`mask=<n>`).
+- Outside the level the rules read the second terrain.
+- The file has no timestamp and fixed ids, so an unchanged set exports the same
+  bytes.
+
+Only square tiles on an orthogonal grid export. Hex, isometric and oblique
+tiles, `outline` rules, non-square tiles and sets with no mask map are refused
+with the format to use instead (`generic` or `tiled`).
+
+**Not verified inside LDtk.** LDtk has no headless mode, so CI cannot load the
+file. The key sets match the sample projects shipped with LDtk 1.5, and the
+tests run the written rules through a port of LDtk's own matcher to confirm
+they choose the tiles stored in the Preview level. The rule fields are the ones
+LDtk calls editor-internal, and the project is written as `jsonVersion` 1.5.3.
+Open one generated file in LDtk 1.5.x and paint on the `_corners` or `_cells`
+layer before relying on it.
+
 ## Deliberate limits
 
-- Tiled and Godot exports require every image to match the atlas cell size.
-- Six-edge hex masks remain generic-only. Their engine layouts depend on hex
+- Tiled, Godot and LDtk exports require every image to match the atlas cell size.
+- Six-edge hex masks remain generic-only (LDtk does not support hex tiles). Their engine layouts depend on hex
   orientation and offset conventions that the current manifest does not yet
   declare.
 - `outline` and building-kit images absent from the rule map are stamp-only.
@@ -257,7 +297,8 @@ isometric-corner-names bug; the counts alone did not.
   terrain with another set, the way PixelLab's
   [Pro tilesets guide](https://www.youtube.com/watch?v=MbkqpDUFkEg) paints
   ocean, sand, grass, path, and cliffs on one map, but each set still
-  exports as its own two-terrain Tiled Wang set or Godot terrain set.
+  exports as its own two-terrain Tiled Wang set, Godot terrain set or LDtk
+  layer pair.
   PixelKiln does not merge connected sets into one engine terrain set yet.
 - Godot edge/side masks on an isometric or oblique tile remain generic- or
   Tiled-only; see Godot 4 above.

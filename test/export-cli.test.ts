@@ -95,4 +95,17 @@ describe("export CLI command", () => {
     expect(document).toMatch(/terrains_peering_bit\/bottom_right_corner = 0/)
     expect(document).not.toMatch(/tile_shape = 1/)
   })
+
+  it("exports the same terrain asset as an LDtk project", async () => {
+    const { manifestPath, lockPath } = await terrainProject()
+    const out = path.join(dir, "cliff-tileset.ldtk")
+    await runExport(parseArgs([
+      "export", "--manifest", manifestPath, "--lock", lockPath,
+      "--style", "ground", "--only", "cliff", "--format", "ldtk", "--out", out,
+    ]))
+    const project = JSON.parse(await readFile(out, "utf8")) as { jsonVersion: string; defs: { layers: { identifier: string }[] } }
+    expect(project.jsonVersion).toBe("1.5.3")
+    expect(project.defs.layers.map((layer) => layer.identifier)).toEqual(["ground_cliff", "ground_cliff_corners"])
+    expect((await readFile(path.join(dir, "cliff-tileset.png"))).length).toBeGreaterThan(0)
+  })
 })
