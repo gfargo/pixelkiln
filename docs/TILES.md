@@ -175,6 +175,8 @@ The generic format is the lossless interchange contract:
 - normalized rule type, arity, connectivity, terrain names, and masks
 - the complete raw provider rule object in `providerRules`, including rule
   families a current exporter does not yet normalize
+- for an isometric set, `footprint`: the ground diamond inside each tile image
+  (see [Isometric tiles](#isometric-tiles))
 
 Use it for custom engines, unsupported rule families, or as the input to a
 project-specific importer.
@@ -219,6 +221,8 @@ shape dependency.
 The texture path is relative to the `.tres`, so the generated PNG and resource
 can move together inside a Godot project.
 
+(Where the tile's cell and origin go is under [Isometric tiles](#isometric-tiles).)
+
 **`terrain`-generator tiles are always square, never isometric.**
 `/create-tileset` places tiles on a rectangular vertex grid (its own docs: "a
 map of W×H cells has (W+1)×(H+1) vertices" — standard square Wang-tiling
@@ -240,6 +244,43 @@ tileset and an isometric `tiles` tileset — round-trips an actual peering bit
 through Godot's own `get_terrain_peering_bit()` rather than only checking
 tile/terrain-set counts. That last check is what would have caught the
 isometric-corner-names bug; the counts alone did not.
+
+## Isometric tiles
+
+An isometric tile is a 2:1 diamond, but its image is rarely just the diamond:
+a block's sides hang below it. PixelLab measured a 32x24 tile with the
+diamond's midline on row 7, so the diamond is 32 wide and 16 tall, at the top
+of the image, with 8 rows of side below it. An engine's grid is the diamond, not
+the image, and it has to know where on the image the diamond is to put each
+tile on its cell.
+
+`export` finds the diamond from the tile art's alpha: its apex is the first
+opaque row, its width is the widest row, and its height is twice the distance
+from the apex to that row (it uses half the width when that comes out within a
+couple of pixels, since a true diamond is 2:1). The result is written as
+`footprint` in the generic file and used by:
+
+- **Godot.** `tile_size` is the diamond (32x16), `texture_region_size` still
+  cuts the whole image (32x24), every tile gets a `texture_origin` that moves
+  the image so its diamond sits on the cell (here `Vector2i(0, -4)`), and the
+  layout is `tile_layout = 5` (diamond down), which is what makes an isometric
+  map a diamond lattice. Godot's own default, stacked, staggers the rows.
+- **Tiled.** The tileset gets `grid` (`isometric`, 32 by 16) and a
+  `tileoffset` that lowers the image onto its cell: Tiled lines an image up by
+  its bottom edge, so a diamond at the top of a taller image sits too high by
+  the difference (here `y: 8`).
+
+Tiles drawn as filled squares have no diamond to find, so they get no
+footprint and no offsets; Godot is still laid out as a diamond. `oblique` sets
+get none. If a set's diamond is not on the first opaque row because the art is
+raised on purpose (`tileElevation`), the raised art is read as the ground.
+
+How it was checked: a 2x2 block of cells drawn by a `TileMapLayer` in Godot
+4.7.2 filled exactly the lattice the cell centres predict, with the stacked
+layout and with no origin both visibly wrong. CI's headless Godot reads
+`tile_size`, `tile_layout` and `texture_origin` back from the exported TileSet.
+The Tiled offset follows Tiled's documented drawing rule and has not been
+loaded in Tiled.
 
 ## LDtk
 
@@ -344,9 +385,10 @@ sidescroller set is refused.
 ## Deliberate limits
 
 - Tiled, Godot and LDtk exports require every image to match the atlas cell size.
-- Six-edge hex masks remain generic-only (LDtk does not support hex tiles). Their engine layouts depend on hex
+- Six-edge hex masks remain generic-only. Their engine layouts depend on hex
   orientation and offset conventions that the current manifest does not yet
-  declare.
+  declare, and we have no real hex set to check a mapping against. LDtk has no
+  hex or isometric tiles at all, so those never export to it.
 - `outline` and building-kit images absent from the rule map are stamp-only.
   Generic export retains them; engine exporters reject a rule family whose
   placement semantics would have to be invented.
@@ -365,5 +407,9 @@ sidescroller set is refused.
 - Merging works on `terrain` sets only. A sidescroller set connects just its
   platform, and `tiles` sets have no `connect`, so neither merges.
 - Godot edge/side masks on an isometric or oblique tile remain generic- or
-  Tiled-only; see Godot 4 above.
+  Tiled-only: which diagonal each edge bit means has not been checked against
+  a real edge-ruled isometric set, the way the corner mapping was.
+- `terrain` sets are square, top-down or side-on because PixelLab's tileset
+  endpoint has no shape option. Isometric corner sets come from `tiles` with
+  `tileFeature: "tileset"`, and export as above.
 - Export never changes source PNGs or the lockfile.

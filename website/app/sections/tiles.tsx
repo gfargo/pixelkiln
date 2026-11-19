@@ -20,15 +20,15 @@ const ENGINES: Array<{ id: string; name: string; file: string; gets: string; che
     id: "tiled",
     name: "Tiled",
     file: ".tsj",
-    gets: "An image tileset with a Wang set, its ids in Tiled's own order.",
+    gets: "An image tileset with a Wang set, its ids in Tiled's own order. Isometric sets get their diamond grid and the offset that seats each image on it.",
     checked: "Follows Tiled's documented format. Not loaded by Tiled in CI.",
   },
   {
     id: "godot",
     name: "Godot 4",
     file: ".tres",
-    gets: "A TileSet with terrain peering bits on every tile.",
-    checked: "A headless Godot 4.7.2 loads it in CI and reads a peering bit back.",
+    gets: "A TileSet with terrain peering bits on every tile. Isometric sets get the diamond as the cell, each image placed on it, and a diamond layout.",
+    checked: "A headless Godot 4.7.2 loads it in CI and reads a peering bit and the isometric geometry back. Drawn in Godot, isometric cells tile exactly.",
   },
   {
     id: "ldtk",
@@ -352,8 +352,8 @@ pixelkiln export --style ground --only meadow --format ldtk --merge-connected
             <h3>What it does not do yet.</h3>
             <ul>
               <li>Connected sets export one at a time unless you ask for <code>--merge-connected</code>. A sidescroller set connects only its platform, so it always exports alone.</li>
-              <li>Six-edge hex masks stay in the generic JSON. Edge masks on isometric tiles do too, for Godot. LDtk takes square tiles only.</li>
-              <li>Terrain sets are always square and top-down or side-on. Isometric ground comes from <code>tiles</code> or <code>isometricTile</code>.</li>
+              <li>Six-edge hex masks stay in the generic JSON, and so do edge masks on isometric tiles for Godot: we have not checked which diagonal each bit means against a real set. LDtk takes square tiles only.</li>
+              <li>Terrain sets are square, top-down or side-on, because PixelLab&apos;s tileset endpoint has no shape option. Isometric ground comes from <code>tiles</code>, and exports with its diamond geometry. A single raised block is <code>isometricTile</code>.</li>
             </ul>
           </div>
           <div className="review-links">
