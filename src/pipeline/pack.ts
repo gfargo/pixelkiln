@@ -128,7 +128,7 @@ export function resolvePackInputs(raw: unknown, inputsFilePath: string): SpriteI
  *
  * Separate from `packStyle` because the lockfile is not the only way to decide
  * what belongs on a sheet. A consumer may draw from several manifests, or key
- * frames by its own vocabulary rather than by pixelkiln asset ids; heybud's
+ * frames by its own vocabulary rather than by pixelkiln asset ids; one real consumer's
  * review-form icons do both. Keeping the pixel work here and the "which files,
  * called what" decision at the call site avoids teaching this module about
  * anyone else's naming.
@@ -143,7 +143,7 @@ export function packSprites(
   // key, and a consumer doing `frames.find(f => f.id === x)` gets whichever
   // came first with no signal that the other was dropped. Caught here, before
   // any file I/O, rather than left for the next caller to discover the hard
-  // way; heybud's own sync script has to dedupe upstream today for exactly
+  // way; that consumer's own sync script has to dedupe upstream today for exactly
   // this reason (its archetype sources deliberately overlap).
   const seen = new Set<string>()
   const dupes = new Set<string>()

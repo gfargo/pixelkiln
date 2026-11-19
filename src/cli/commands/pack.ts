@@ -20,7 +20,7 @@ export async function runPack(args: Args): Promise<void> {
     // whole point of `--inputs` is packing sprites that were never part of a
     // pixelkiln manifest at all. Requiring one anyway, as this did until a
     // manual smoke test caught it, defeated the feature for exactly the
-    // no-manifest consumer it was built for; heybud-admin's sync script never
+    // no-manifest consumer it was built for; one such consumer's sync script never
     // noticed because it happens to run from a directory that has its own
     // manifest for an unrelated reason.
     if (!args.out) throw new Error("--inputs requires --out")

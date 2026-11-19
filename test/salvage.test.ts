@@ -54,8 +54,8 @@ function orphan(over: Partial<Orphan> = {}): Orphan {
 
 describe("matchOrphanStyle / groupOrphansByStyle", () => {
   // Sharing an account across projects is the whole reason salvage's orphan
-  // pool can span styles that were never meant to mix (heybud-neuromancer
-  // badges next to an unrelated project's terrain tiles). Classification has
+  // pool can span styles that were never meant to mix (a retro-neon
+  // project's badges next to an unrelated project's terrain tiles). Classification has
   // to separate them correctly, and has to resist two failure modes: a short
   // or empty promptPrefix/promptSuffix matching everything, and a single-style
   // manifest (which has no pattern to check against at all) matching nothing.
@@ -126,14 +126,14 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
   // The real gap this closes: one game's own manifest has one style
   // with an empty prompt template, so it has nothing to pattern-match
   // against and used to claim its whole shared account's orphan pool by
-  // default, including heybud-admin's badge art.
+  // default, including another project's badge art.
   describe("with sibling manifests", () => {
     const single: Manifest = {
       name: "sample-game",
       styles: { base: style() }, // empty prefix/suffix, same as the real project
       assets: {},
     }
-    const sibling = { label: "heybud-admin", manifest }
+    const sibling = { label: "sample-admin", manifest }
 
     it("still claims everything by default with no siblings passed", () => {
       const { matched, elsewhere } = groupOrphansByStyle(
@@ -148,8 +148,8 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
       const badge = orphan({ id: "badge", prompt: "hot magenta and electric cyan rim lighting" })
       const { matched, elsewhere } = groupOrphansByStyle([badge], single, [sibling])
       expect(matched.has("base")).toBe(false)
-      expect([...elsewhere.keys()]).toEqual(["heybud-admin: neon"])
-      expect(elsewhere.get("heybud-admin: neon")!.map((o) => o.id)).toEqual(["badge"])
+      expect([...elsewhere.keys()]).toEqual(["sample-admin: neon"])
+      expect(elsewhere.get("sample-admin: neon")!.map((o) => o.id)).toEqual(["badge"])
     })
 
     it("still falls back to the one style when a sibling doesn't recognise it either", () => {
@@ -223,7 +223,7 @@ describe("loadSiblingManifests", () => {
 describe("idFromPrompt", () => {
   it("names the asset after the subject, not the shared style prefix", () => {
     const id = idFromPrompt(
-      "Premium indie-game achievement icon for Heybud: one centered blacksmith anvil with a bright spark, bold dark outline, transparent background",
+      "Premium indie-game achievement icon for a game: one centered blacksmith anvil with a bright spark, bold dark outline, transparent background",
       new Set(),
     )
     expect(id).toContain("anvil")
@@ -333,9 +333,9 @@ describe("salvage sheet", () => {
   // read the same generic "pixelkiln salvage" title, with no way to tell them apart
   // without checking which images had loaded.
   it("names the style and import destination in the title and header when given a context", () => {
-    const html = renderSalvageSheet([orphan], { styleId: "heybud-neon", importDir: "public/badges/variants/neon" })
-    expect(html).toMatch(/<title>heybud-neon \| pixelkiln salvage<\/title>/)
-    expect(html).toContain("heybud-neon")
+    const html = renderSalvageSheet([orphan], { styleId: "sample-neon", importDir: "public/badges/variants/neon" })
+    expect(html).toMatch(/<title>sample-neon \| pixelkiln salvage<\/title>/)
+    expect(html).toContain("sample-neon")
     expect(html).toContain("public/badges/variants/neon/_salvaged/")
   })
 
