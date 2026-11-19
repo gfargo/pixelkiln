@@ -1,3 +1,19 @@
+# [0.118.0](https://github.com/gfargo/pixelkiln/compare/v0.117.0...v0.118.0) (2026-11-19)
+
+
+### Bug Fixes
+
+* **export:** tiles meet their rules, and Godot paints every border ([22b848b](https://github.com/gfargo/pixelkiln/commit/22b848bf1b202d814f7956bc754995cfd84fa286))
+
+
+### Features
+
+* **export:** isometric tile geometry for Godot and Tiled ([49815eb](https://github.com/gfargo/pixelkiln/commit/49815ebb89a5e9c2f6d2ceaeed90019d6560f0c1))
+* **site:** a three-tier stone hall from the building kit ([005042e](https://github.com/gfargo/pixelkiln/commit/005042ee6f21571cf4df865aa985604aa8c827fe))
+* **site:** isometric tiles from real PixelLab runs, and what they showed ([e342cd4](https://github.com/gfargo/pixelkiln/commit/e342cd4af2c7437f1f47e369c0f4c41f96845fc9))
+* **site:** stairs on half blocks, and a side room with an east ramp ([9dbea3d](https://github.com/gfargo/pixelkiln/commit/9dbea3d23f8394184433236119dfd265a440e4ef))
+* **site:** the isometric sets painted in Godot ([5cdae5a](https://github.com/gfargo/pixelkiln/commit/5cdae5aee380d53c17720e48766582af74d94b3d))
+
 # [0.117.0](https://github.com/gfargo/pixelkiln/compare/v0.116.0...v0.117.0) (2026-11-19)
 
 
