@@ -300,6 +300,17 @@ export function TilesSections() {
           </figure>
           <figure className="tiles-sheet tiles-sheet-next">
             {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/showcase/isometric/dungeon-hall.png" alt="A stone hall in three tiers, each a floor higher than the last, joined by two flights of stairs, with a doorway in the back wall and pillars on the flagstones" width={824} height={644} loading="lazy" />
+            <figcaption>
+              <b>The kit, stacked.</b> A hall in three tiers from the same 58
+              pieces: walls, flagstones, pillars, a doorway, solid blocks and two
+              flights of stairs, each climbing 32 pixels. The pieces are placed
+              by script from the kit&apos;s own heights; no engine lays a kit
+              like this for you yet.
+            </figcaption>
+          </figure>
+          <figure className="tiles-sheet tiles-sheet-next">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/showcase/isometric/blocks-sheet.png" alt="Two isometric blocks: earth with a thick grass top, and grey mossy stone bricks" width={360} height={184} loading="lazy" />
             <figcaption>
               <b>Single blocks.</b> <code>isometricTile</code>: one tile per
