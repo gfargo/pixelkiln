@@ -137,6 +137,7 @@ export const FEATURES: Feature[] = [
       { href: "#sets", label: "What a terrain set is" },
       { href: "#kinds", label: "Kinds and costs" },
       { href: "#textures", label: "Your own textures" },
+      { href: "#isometric", label: "Isometric tiles" },
       { href: "#engines", label: "Out to Tiled, Godot and LDtk" },
       { href: "#merged", label: "One brush for several sets" },
       { href: "#try", label: "Try it" },

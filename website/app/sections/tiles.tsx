@@ -242,6 +242,61 @@ export function TilesSections() {
         </div>
       </section>
 
+      <section className="tiles-section" id="isometric">
+        <div className="shell">
+          <div className="section-heading split-heading">
+            <div>
+              <h2>Isometric, in four kinds.</h2>
+            </div>
+            <p className="section-deck">
+              The same generators draw on a diamond grid when you set{" "}
+              <code>tileType: &quot;isometric&quot;</code>. These came from one
+              manifest, in one run, and every set below is untouched PixelLab
+              output.
+            </p>
+          </div>
+          <figure className="tiles-sheet">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/showcase/isometric/ground-sheet.png" alt="Sixteen isometric blocks of grass and worn cobblestone, each a raised slab with earth showing along its side" width={848} height={176} loading="lazy" />
+            <figcaption>
+              <b>A terrain set.</b> Short green grass to worn grey cobblestone,
+              16 tiles at 32 by 24. Billed 10 generations against a plan of 25.
+            </figcaption>
+          </figure>
+          <figure className="tiles-sheet tiles-sheet-next">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/showcase/isometric/road-sheet.png" alt="Eighteen isometric slabs of grass with a brown dirt road running across them in every junction and turn" width={952} height={224} loading="lazy" />
+            <figcaption>
+              <b>A road set.</b> A dirt road over grass: every end, turn,
+              junction and crossing, 18 tiles at 48 by 48. Isometric roads must
+              be 48 to 96px; the API refused 32 before charging anything. Billed 10.
+            </figcaption>
+          </figure>
+          <figure className="tiles-sheet tiles-sheet-next">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/showcase/isometric/hall-sheet.png" alt="Fifty-eight pieces of a grey stone building kit: wall sections, corners, pillars, doorways, stairs and floor slabs" width={1096} height={736} loading="lazy" />
+            <figcaption>
+              <b>A building kit.</b> A stone hall with a slate roof as 58
+              separate pieces: walls, corners, pillars, doorways, stairs and
+              floors, each 52 by 58. Billed 10.
+            </figcaption>
+          </figure>
+          <figure className="tiles-sheet tiles-sheet-next">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/showcase/isometric/blocks-sheet.png" alt="Two isometric blocks: earth with a thick grass top, and grey mossy stone bricks" width={360} height={184} loading="lazy" />
+            <figcaption>
+              <b>Single blocks.</b> <code>isometricTile</code>: one tile per
+              prompt, 32 by 32. 1 generation each.
+            </figcaption>
+          </figure>
+          <ul className="check-list effects-list tiles-points">
+            <li><span className="tick" aria-hidden="true" /> A tile image is taller than its diamond. The 32 by 24 tiles are a 32 by 16 diamond with 8 rows of side below it, so <code>export</code> finds the diamond and gives Godot its cell and offset, and Tiled its grid, to stand each image on its cell.</li>
+            <li><span className="tick" aria-hidden="true" /> The terrain set is corner-ruled and exports to Godot and Tiled. The road set is edge-ruled, so it goes to Tiled and the generic file; Godot&apos;s isometric edge mapping is the next thing to check, against this set.</li>
+            <li><span className="tick" aria-hidden="true" /> A building kit has its own rule family, so it exports to the generic file with every rule kept. An engine importer has to place its pieces.</li>
+          </ul>
+        </div>
+      </section>
+
       <section className="tiles-section tiles-section-alt" id="engines">
         <div className="shell">
           <div className="section-heading split-heading">

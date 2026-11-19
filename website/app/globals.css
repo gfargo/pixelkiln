@@ -1764,6 +1764,7 @@ div.receipt-line .receipt-mark { background: var(--lime); }
 .tiles-sheet img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
 .tiles-sheet figcaption, .tiles-maps figcaption, .tiles-pair figcaption { padding: 16px 20px 18px; color: var(--cream-muted); font-size: var(--text-small); line-height: 1.55; }
 .tiles-sheet figcaption b, .tiles-maps figcaption b, .tiles-pair figcaption b { display: block; color: var(--ember-light); font-weight: 600; }
+.tiles-sheet-next { margin-top: 24px; }
 .tiles-maps, .tiles-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 1px 0 0; background: var(--line); }
 .tiles-maps figure, .tiles-pair figure { display: flex; flex-direction: column; margin: 0; background: #12100d; }
 .tiles-pair img { display: block; width: 100%; height: auto; image-rendering: pixelated; }

@@ -1106,6 +1106,35 @@ and `buildingRoofProfile`. Measured on 14 November 2026 (Tier 3),
   planned 25. One data point, so the estimate is unchanged.
 - `roof_profile` was not run.
 
+### Isometric tiles, measured
+
+Measured on 18 November 2026 (Tier 3) from one manifest,
+`website/art/pixellab-isometric`: `tileType: "isometric"`, `tileView: "low top-down"`,
+`outlineMode: "segmentation"` on the ground and road sets.
+
+| Request | Planned | Billed | Result |
+|---|---|---|---|
+| `tileset`, 32px, grass to cobblestone | 25 | 10 | 16 tiles, each 32x24; corner rules (arity 4), all 16 masks present |
+| `roads`, 32px | 25 | 0 | **422**: "Roads need tile_size 48-96 for isometric." |
+| `roads`, 48px | 25 | 10 | 18 tiles, each 48x48; edge rules (arity 4) naming 17 of the 18 |
+| `building`, 32px, stone hall | 25 | 10 | 58 pieces, each 52x58; rule family `composed`, arity 8, no per-tile masks |
+| `isometricTile`, 32px `block`, two prompts | 1 each | 1 each | two 32x32 blocks |
+
+- **The diamond is not the image.** A 32x24 ground tile is a 32x16 diamond on
+  rows 0 to 15 with 8 rows of side below it. A 48x48 road tile is a 48x16
+  diamond on rows 12 to 27 with 7 rows below, so the diamond is flatter at 48px
+  (3:1, not 2:1) and does not start on the first row. The export measures the
+  diamond from each set's alpha instead of assuming a ratio.
+- **The corner mask reads off the art.** Sampling the four vertices of each of
+  the 16 ground tiles: mask bits 3, 2, 1, 0 (NW, NE, SW, SE) are the top, right,
+  left and bottom vertices of the diamond, which is the mapping the Godot export
+  writes.
+- **Roads take a bigger tile than the other kinds.** The 32px request was
+  refused for free, naming the 48 to 96px range.
+- **A building kit is a different kind of result.** It is not a mask map but a
+  set of separate pieces under a `composed` rule family PixelKiln does not map,
+  so it exports to the generic file only.
+
 ### Tileset options, November 2026, measured
 
 PixelLab replaced the sidescroller model and added options to both tileset

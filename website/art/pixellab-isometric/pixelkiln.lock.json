@@ -1,0 +1,1385 @@
+{
+  "version": 2,
+  "entries": {
+    "blocks/grass-block": {
+      "styleId": "blocks",
+      "assetId": "grass-block",
+      "specHash": "2cf3a66032acd3614349128faf22f74d6bcfd36eefee6782bc5d4d6e170f2b5a",
+      "generator": "isometricTile",
+      "tileFeature": null,
+      "prompt": "a block of earth with a thick layer of green grass on top",
+      "width": 32,
+      "height": 32,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "d24f8ced-fe30-4162-b5e9-2363e99ac59b",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "d24f8ced-fe30-4162-b5e9-2363e99ac59b",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../public/showcase/isometric/grass-block.png",
+          "sha256": "1f89f70592726b7fe52a18ce258dda673a1f0c121b0c3c8546641b32b57bf705",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "2fc5dbe8-1972-4eda-be50-8b729a2583f2"
+        }
+      },
+      "submittedAt": "2026-11-19T01:46:42.433Z",
+      "downloadedAt": "2026-11-19T01:49:07.941Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 1,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    },
+    "blocks/stone-block": {
+      "styleId": "blocks",
+      "assetId": "stone-block",
+      "specHash": "36493c97dfc41cecf7836095b1c3ac5a5106b4c0d76c63f1618505e98c4fd325",
+      "generator": "isometricTile",
+      "tileFeature": null,
+      "prompt": "a block of grey mossy stone bricks",
+      "width": 32,
+      "height": 32,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "076975a6-c3e5-45dd-adf2-e2dccc327d80",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "076975a6-c3e5-45dd-adf2-e2dccc327d80",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../public/showcase/isometric/stone-block.png",
+          "sha256": "6f8b7f3da03cccbb4f275fab11542715699aba7edf2c88240a85702a6bfdf59a",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "09c1c7a0-40b5-45a1-b899-c9395662fb7c"
+        }
+      },
+      "submittedAt": "2026-11-19T01:46:44.940Z",
+      "downloadedAt": "2026-11-19T01:49:07.939Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 1,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    },
+    "buildings/stone-hall": {
+      "styleId": "buildings",
+      "assetId": "stone-hall",
+      "specHash": "474b4f0b503753bc5fa477b3b1adb7831a15d1ece548272ac36a4de6c53697e3",
+      "generator": "tiles",
+      "tileFeature": "building",
+      "prompt": "a small stone hall with a slate roof",
+      "width": 32,
+      "height": 32,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "18630b4b-26c7-4dfc-9fe4-90571aaa3bcf",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "18630b4b-26c7-4dfc-9fe4-90571aaa3bcf",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_0.png",
+      "sourceUrls": [
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_0.png",
+          "role": "tile-00"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_1.png",
+          "role": "tile-01"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_2.png",
+          "role": "tile-02"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_3.png",
+          "role": "tile-03"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_4.png",
+          "role": "tile-04"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_5.png",
+          "role": "tile-05"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_6.png",
+          "role": "tile-06"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_7.png",
+          "role": "tile-07"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_8.png",
+          "role": "tile-08"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_9.png",
+          "role": "tile-09"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_10.png",
+          "role": "tile-10"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_11.png",
+          "role": "tile-11"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_12.png",
+          "role": "tile-12"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_13.png",
+          "role": "tile-13"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_14.png",
+          "role": "tile-14"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_15.png",
+          "role": "tile-15"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_16.png",
+          "role": "tile-16"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_17.png",
+          "role": "tile-17"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_18.png",
+          "role": "tile-18"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_19.png",
+          "role": "tile-19"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_20.png",
+          "role": "tile-20"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_21.png",
+          "role": "tile-21"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_22.png",
+          "role": "tile-22"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_23.png",
+          "role": "tile-23"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_24.png",
+          "role": "tile-24"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_25.png",
+          "role": "tile-25"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_26.png",
+          "role": "tile-26"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_27.png",
+          "role": "tile-27"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_28.png",
+          "role": "tile-28"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_29.png",
+          "role": "tile-29"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_30.png",
+          "role": "tile-30"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_31.png",
+          "role": "tile-31"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_32.png",
+          "role": "tile-32"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_33.png",
+          "role": "tile-33"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_34.png",
+          "role": "tile-34"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_35.png",
+          "role": "tile-35"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_36.png",
+          "role": "tile-36"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_37.png",
+          "role": "tile-37"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_38.png",
+          "role": "tile-38"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_39.png",
+          "role": "tile-39"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_40.png",
+          "role": "tile-40"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_41.png",
+          "role": "tile-41"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_42.png",
+          "role": "tile-42"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_43.png",
+          "role": "tile-43"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_44.png",
+          "role": "tile-44"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_45.png",
+          "role": "tile-45"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_46.png",
+          "role": "tile-46"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_47.png",
+          "role": "tile-47"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_48.png",
+          "role": "tile-48"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_49.png",
+          "role": "tile-49"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_50.png",
+          "role": "tile-50"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_51.png",
+          "role": "tile-51"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_52.png",
+          "role": "tile-52"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_53.png",
+          "role": "tile-53"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_54.png",
+          "role": "tile-54"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_55.png",
+          "role": "tile-55"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_56.png",
+          "role": "tile-56"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/18630b4b-26c7-4dfc-9fe4-90571aaa3bcf/tile_57.png",
+          "role": "tile-57"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-00.png",
+          "sha256": "53c143f9465c5cb80fa4eb2eaa4ecc1fe368a0ca87e27b691af0a00e4072c6a8",
+          "role": "tile-00",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-01.png",
+          "sha256": "94c795f27dc8fa0df7f39313428d2aa68ec3d859d696cb18ec8864661d20d8c4",
+          "role": "tile-01",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-02.png",
+          "sha256": "80cb51d46442456c3a708b77319df0d826a482cefc748a52bf3502506514c8ed",
+          "role": "tile-02",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-03.png",
+          "sha256": "4e3f4532c579e4e326f2fcac580c86dcfeeaad1c6ebd47c0a04f6cebfbfc04e1",
+          "role": "tile-03",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-04.png",
+          "sha256": "3d8e4c651dbcd8f73dfdf7cd1df99c621e2679787b1182fae666cd1c5dc26a8e",
+          "role": "tile-04",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-05.png",
+          "sha256": "4867ab1c704a61644e95284dc8f7e7875f3af16a511308ca0c99818a262d2a0e",
+          "role": "tile-05",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-06.png",
+          "sha256": "df5fb7b03b710e18ea2c069f9e8e539564ffdafcc3a104d68d2a49c4d973dd69",
+          "role": "tile-06",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-07.png",
+          "sha256": "7e826fcd75ade6c88a4c9a80abcbf9aee1930307802eda3d13f6c61ca79d9978",
+          "role": "tile-07",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-08.png",
+          "sha256": "9aef0a9064bb472f58dd80073311b819ae3d74da9845505f72f6fd614b7c30d0",
+          "role": "tile-08",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-09.png",
+          "sha256": "ea323c51324feb3bf2df8fd4391d98bed3a433f4094cdcd0dd90a08657debeef",
+          "role": "tile-09",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-10.png",
+          "sha256": "9aac55731877cef328bcf28a9342c1da04f635d7a5dc63bda6f82e58c079f1b4",
+          "role": "tile-10",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-11.png",
+          "sha256": "aa5f5b00440dbfbb2a629eb6590b1e96fa2ec99acc639bc3f20db135395b91d8",
+          "role": "tile-11",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-12.png",
+          "sha256": "9347d3dae7fccfa877ec4b28acdf27321cbb7b75e8d2d283e8795fbf454655f7",
+          "role": "tile-12",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-13.png",
+          "sha256": "304821a46ebbf57328e673084ac6f87ffc2dadab44ecd1b4dc7f31fef7c37e58",
+          "role": "tile-13",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-14.png",
+          "sha256": "5b7b2fe72be479c7a3b27f02a7ba12bc6a4f4f235abfdd2d85672f7d625afbbb",
+          "role": "tile-14",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-15.png",
+          "sha256": "1f39525d9fe46b14d508d697fc275bff4d3565ba2d560a6aec75ca0915b5cded",
+          "role": "tile-15",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-16.png",
+          "sha256": "a7a9882982585641609878fd352a1a082c36071cfc83ad957563e005ec789545",
+          "role": "tile-16",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-17.png",
+          "sha256": "acb3a0e3b4469640198c5ddbe4b964dbadd60854462cbb4a5583c9b79076e199",
+          "role": "tile-17",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-18.png",
+          "sha256": "160851478e0e31e68aeaf8fdf0498566506cd540107f75cbea86a5a7c1d2b770",
+          "role": "tile-18",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-19.png",
+          "sha256": "c024d58fab4fcc8479f45076a1d7a73f8d8d4ccf65b535d853c65c937e9d3d72",
+          "role": "tile-19",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-20.png",
+          "sha256": "794301573001f58993cc7b3a92d9c6a8a99c319d1beffa7ebf29f7e2867d0efa",
+          "role": "tile-20",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-21.png",
+          "sha256": "d4998b453cc4c726a1cf0471e64ecd24074e6008b4328b928f4a776f6d5ec78b",
+          "role": "tile-21",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-22.png",
+          "sha256": "663c5bc824b12a05a6bcd41022cdc908370a93ff0518758e0371f6ecd5764c19",
+          "role": "tile-22",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-23.png",
+          "sha256": "78f7a8e19bda5e9b81e284658d2797a9582cddca385b87697bd9f56c34645de5",
+          "role": "tile-23",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-24.png",
+          "sha256": "e68999489aadd02db4c5efbcda312971809ecf1c4b0b680a38205c5d52efc4b2",
+          "role": "tile-24",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-25.png",
+          "sha256": "34fe6fc441eebeaea739bc5a72a9b45cecdf729075a19fba8dbdd8e32ac53063",
+          "role": "tile-25",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-26.png",
+          "sha256": "992106c6d0f37d9758c36005503d0a65e32bae47f8ee71f206e1393886358980",
+          "role": "tile-26",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-27.png",
+          "sha256": "cfeb45b607c77f5abef6ba4bc393b97274a361a0ef8e571745dbaff1b96c5b6b",
+          "role": "tile-27",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-28.png",
+          "sha256": "3e43daa3505f640d1c8e848cefa70cef8441cbca127b141c8b08676b4131509c",
+          "role": "tile-28",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-29.png",
+          "sha256": "f1769d855e3bf6fc1e1440f4068f704e4b3b34e11ca74bf3158ec8ae5620a493",
+          "role": "tile-29",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-30.png",
+          "sha256": "02130b725901f55b95f2049e9f8489533ac36f5c1f5dc4ab1d1e61b724eff430",
+          "role": "tile-30",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-31.png",
+          "sha256": "ff3d197e9ec2ebf6f15712236b9d7966d29e8f3634ee10502b89c616e382f6e2",
+          "role": "tile-31",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-32.png",
+          "sha256": "bf3239be539ac5dfd232228f6092b76410a8fea4d9f3fb6b5e97ffebf3ea72ad",
+          "role": "tile-32",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-33.png",
+          "sha256": "3524f98ccd818dab840b4b81dec2a1f7c21e7c165dc6d8650f852f20b0890c27",
+          "role": "tile-33",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-34.png",
+          "sha256": "cdb5ab82c2a5d51ec407b441f366b5adc8f4799cf6495686671841715eea3e75",
+          "role": "tile-34",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-35.png",
+          "sha256": "9386ff5600653c6e3916e01f1484df2aefefc7714f34e5e792715ebddfe369d1",
+          "role": "tile-35",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-36.png",
+          "sha256": "bcb529da34274239b16f08534243566d317546dc96d1d79d7893703de087bed2",
+          "role": "tile-36",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-37.png",
+          "sha256": "8b3e1ece947dbc30dce28e8b442f2ad69b48699aebee453e17d1640083855f4c",
+          "role": "tile-37",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-38.png",
+          "sha256": "8e11aaba142330018f523345d03547d6de4c2cdd2e05df2a811e4cd71427250e",
+          "role": "tile-38",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-39.png",
+          "sha256": "1d3490e12a6d103c5753d03927eb792c58241753ed66ef937cb10e4eab1cd472",
+          "role": "tile-39",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-40.png",
+          "sha256": "a3b23d59167054aacf819cee548217474a57f6c9e2818d347be99f87e99ed820",
+          "role": "tile-40",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-41.png",
+          "sha256": "6932788b188521cd48ee490b37345a4e45b44fd2346b45f8a699a35d23e93f91",
+          "role": "tile-41",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-42.png",
+          "sha256": "e574dcdb6beb4902d699c79c02e17db46fac6643b6dc1d8b895ac3ec5fcfa224",
+          "role": "tile-42",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-43.png",
+          "sha256": "f498d68fddbfb6de22861d4748d66e1eab8c0432b4f110ae7c5a8c98cbd27604",
+          "role": "tile-43",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-44.png",
+          "sha256": "7f7fd3e77688de1d267989e60c519d43b36780f7046c843f4374f3047f85e2be",
+          "role": "tile-44",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-45.png",
+          "sha256": "90906fb5b4f80721a013b8690fbdec29fdddce69b0c710e6a12831f184b2324d",
+          "role": "tile-45",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-46.png",
+          "sha256": "6db1e0071db1f197ba8e2356f49a3c261a5ba79b1ea642818e7ad10e90b2c801",
+          "role": "tile-46",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-47.png",
+          "sha256": "c82cc1eb81194adc3ee9f203bae42f7c4aaafdc289dd930f5327fda9fc1ed781",
+          "role": "tile-47",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-48.png",
+          "sha256": "fe9192e66550d60e2cc4cdc4c917410ed7f325a3d10b5a80cb55c885298aeb96",
+          "role": "tile-48",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-49.png",
+          "sha256": "58d1ee20f040fb294390250dc2415ba1b7f7c40f000b10b609967e2e0c5dbeef",
+          "role": "tile-49",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-50.png",
+          "sha256": "dd4b63e0b6606f4402f58918b5d9958f3ce79e14cf6cc86694eff0cc3a8aa5e0",
+          "role": "tile-50",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-51.png",
+          "sha256": "22cb3a1540dad3c63bb3c68cfcfbf0fb2c518a4e0cd94022084e3f6de9176c50",
+          "role": "tile-51",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-52.png",
+          "sha256": "6e6ec0986de714f78c66b5e62f9dce6b6cb93108db8e6c4a9a3224027989d532",
+          "role": "tile-52",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-53.png",
+          "sha256": "118b997734d43f833fbce68661ad6cb57f3590a43a0bff2b334c8b393b29967c",
+          "role": "tile-53",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-54.png",
+          "sha256": "6e07e38a4fc4994e90ab01696d26711cfb5b420be55e6ab8556f2cbe2db6f816",
+          "role": "tile-54",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-55.png",
+          "sha256": "61c9e01c5b2e4df8a00411446fe9b1ace9cb0ab694251da2eefd3a5a306d40ab",
+          "role": "tile-55",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-56.png",
+          "sha256": "be074c7a3db65ce066297c3fd9a89490c5a29df83b085724f4a6e3bd52d78e91",
+          "role": "tile-56",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/stone-hall-tile-57.png",
+          "sha256": "b6f44d790355309870d76fa7cfc6abd63d50e56d95b6a75acf3544ffeaa6ca2e",
+          "role": "tile-57",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "8dcebc3c-f77e-4cb6-9c02-89a75068c0d1",
+          "tileKind": "building",
+          "tileRules": {
+            "arity": 8,
+            "parts": {
+              "doors": {
+                "Ea": 34,
+                "Eb": 35,
+                "Na": 32,
+                "Nb": 33,
+                "Sa": 36,
+                "Sb": 37,
+                "Wa": 38,
+                "Wb": 39
+              },
+              "floor": 0,
+              "sides": {
+                "E": 2,
+                "N": 1,
+                "S": 3,
+                "W": 4
+              },
+              "pillar": 31,
+              "stairs": [
+                40,
+                41
+              ],
+              "corners": {
+                "NE": 5,
+                "NW": 8,
+                "SE": 6,
+                "SW": 7
+              },
+              "painted": [
+                0,
+                1,
+                4,
+                14,
+                17,
+                31,
+                32,
+                33,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48
+              ],
+              "materials": {
+                "wall": "weathered grey stone brick walls",
+                "floor": "worn flagstone floor",
+                "floor2": "dark slate roof tiles"
+              },
+              "partition": {
+                "E": 15,
+                "N": 14,
+                "S": 16,
+                "W": 17,
+                "hub": 13
+              },
+              "floor_roof": 44,
+              "outer_multi": {
+                "EW": 55,
+                "NS": 54,
+                "ESW": 52,
+                "NES": 49,
+                "NEW": 50,
+                "NSW": 51,
+                "NESW": 53
+              },
+              "stairs_east": [
+                42,
+                43
+              ],
+              "outer_corners": {
+                "NE": 9,
+                "NW": 12,
+                "SE": 10,
+                "SW": 11
+              },
+              "partition_wall": {
+                "E": 19,
+                "N": 18,
+                "S": 20,
+                "W": 21
+              },
+              "partition_doors": {
+                "Ha": 47,
+                "Hb": 48,
+                "Va": 45,
+                "Vb": 46
+              },
+              "partition_multi": {
+                "ES": 24,
+                "NE": 22,
+                "NW": 23,
+                "SW": 25,
+                "ESW": 29,
+                "NES": 26,
+                "NEW": 28,
+                "NSW": 27,
+                "NESW": 30
+              }
+            },
+            "tiles": {},
+            "terrains": [
+              "wall",
+              "empty"
+            ],
+            "rule_type": "composed",
+            "view_angle": null,
+            "wall_tiles": 2,
+            "mask_source": "floor_absent",
+            "connectivity": "same",
+            "stack_stride_px": 16
+          }
+        }
+      },
+      "submittedAt": "2026-11-19T01:46:39.928Z",
+      "downloadedAt": "2026-11-19T01:49:42.690Z",
+      "cost": 25,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 10,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    },
+    "ground/grass-cobble": {
+      "styleId": "ground",
+      "assetId": "grass-cobble",
+      "specHash": "ed602583b59d2d09097c1c407904ce4be47dcea607d2b51d569208cfb7a46f59",
+      "generator": "tiles",
+      "tileFeature": "tileset",
+      "prompt": "short green grass to worn grey cobblestone",
+      "width": 32,
+      "height": 32,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "58904d1a-afae-4c86-8370-05257ada2a38",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "58904d1a-afae-4c86-8370-05257ada2a38",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_0.png",
+      "sourceUrls": [
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_0.png",
+          "role": "tile-00"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_1.png",
+          "role": "tile-01"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_2.png",
+          "role": "tile-02"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_3.png",
+          "role": "tile-03"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_4.png",
+          "role": "tile-04"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_5.png",
+          "role": "tile-05"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_6.png",
+          "role": "tile-06"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_7.png",
+          "role": "tile-07"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_8.png",
+          "role": "tile-08"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_9.png",
+          "role": "tile-09"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_10.png",
+          "role": "tile-10"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_11.png",
+          "role": "tile-11"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_12.png",
+          "role": "tile-12"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_13.png",
+          "role": "tile-13"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_14.png",
+          "role": "tile-14"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/58904d1a-afae-4c86-8370-05257ada2a38/tile_15.png",
+          "role": "tile-15"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-00.png",
+          "sha256": "1d57cd794c807dad5e07d4817e8d4a40fab1b291b87a0b95265043e0b696d092",
+          "role": "tile-00",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-01.png",
+          "sha256": "bfdee872cdcac2c9644dfdcac81cd106598bb68ed09d5af742ca27faf4163aeb",
+          "role": "tile-01",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-02.png",
+          "sha256": "69892a3556fee649a4de36c9457d06316b582cb5bbeb6c71bc0d46ac08688ab1",
+          "role": "tile-02",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-03.png",
+          "sha256": "410df2542f8773e08dca948aa87c06b50833db7ecee434c52e0808ebd2d9b811",
+          "role": "tile-03",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-04.png",
+          "sha256": "43dd12dd0c3d77c7335582732adf84bbceacdb621737f2693d8510c18eb79bb5",
+          "role": "tile-04",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-05.png",
+          "sha256": "3eda238bf365aa4fea11ffce5a582332ebee4c363e12f7adda69a114b51740f6",
+          "role": "tile-05",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-06.png",
+          "sha256": "fdd3fc37d13b72ca07398f8a8cb42696cae52f08933d6c6ceb5aece4c3cdc226",
+          "role": "tile-06",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-07.png",
+          "sha256": "82083180a0dfb0c0f8fecc2bf603c205af669596aa819cfed461a4142b5f9854",
+          "role": "tile-07",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-08.png",
+          "sha256": "80c4233c086349dcedd81f8d097c00233b5721100d435952c25fdb99699ac8ca",
+          "role": "tile-08",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-09.png",
+          "sha256": "89df08b0ad5735923ecd10afb11fd2ce414df18f532cd62d94fe4226469fd336",
+          "role": "tile-09",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-10.png",
+          "sha256": "16e93a3027842731177636953fe82ca66f6a17619cdcea44767652dfe0ed8e07",
+          "role": "tile-10",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-11.png",
+          "sha256": "4dd2a35e4c423444840cdbb994463633757d2d309b75105beaa17f0a0291f7aa",
+          "role": "tile-11",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-12.png",
+          "sha256": "3aa3b7ee6d60fff946e9de392a8cdf901680b9f2e9026bde4e6b894808100542",
+          "role": "tile-12",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-13.png",
+          "sha256": "fbfc3e59f4be332ca8d3eba8b29cb12e53c232a4f4801ae8c8f486a9d87e1e6b",
+          "role": "tile-13",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-14.png",
+          "sha256": "5e4b1590ffa64a2780a6d87e47fec2d111fb66f309d87fe47158425254ff30fc",
+          "role": "tile-14",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/grass-cobble-tile-15.png",
+          "sha256": "a98041b982c87b253948d6c12f464cbe451aecf895fe44f8aba4e50335496cce",
+          "role": "tile-15",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "89571330-052f-4390-85e1-80a9ff59cc81",
+          "tileKind": "tileset",
+          "tileRules": {
+            "arity": 4,
+            "tiles": {
+              "tile_0": {
+                "mask": 0
+              },
+              "tile_1": {
+                "mask": 1
+              },
+              "tile_2": {
+                "mask": 2
+              },
+              "tile_3": {
+                "mask": 3
+              },
+              "tile_4": {
+                "mask": 4
+              },
+              "tile_5": {
+                "mask": 5
+              },
+              "tile_6": {
+                "mask": 6
+              },
+              "tile_7": {
+                "mask": 7
+              },
+              "tile_8": {
+                "mask": 8
+              },
+              "tile_9": {
+                "mask": 9
+              },
+              "tile_10": {
+                "mask": 10
+              },
+              "tile_11": {
+                "mask": 11
+              },
+              "tile_12": {
+                "mask": 12
+              },
+              "tile_13": {
+                "mask": 13
+              },
+              "tile_14": {
+                "mask": 14
+              },
+              "tile_15": {
+                "mask": 15
+              }
+            },
+            "terrains": [
+              "short green grass",
+              "worn grey cobblestone"
+            ],
+            "elevation": 0,
+            "rule_type": "corner",
+            "step_slope": 0,
+            "boundary_seed": 0,
+            "boundary_amplitude": 0
+          }
+        }
+      },
+      "submittedAt": "2026-11-19T01:46:34.914Z",
+      "downloadedAt": "2026-11-19T01:49:17.174Z",
+      "cost": 25,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 10,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    },
+    "paths/dirt-road": {
+      "styleId": "paths",
+      "assetId": "dirt-road",
+      "specHash": "5843db06a955f297b1f5f048d8124693a6c144736a456ee91a4fe8d41f622548",
+      "generator": "tiles",
+      "tileFeature": "roads",
+      "prompt": "a packed brown dirt road across short green grass",
+      "width": 48,
+      "height": 48,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "e11723c6-96e3-4084-ad6d-da4f0672b853",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "e11723c6-96e3-4084-ad6d-da4f0672b853",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_0.png",
+      "sourceUrls": [
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_0.png",
+          "role": "tile-00"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_1.png",
+          "role": "tile-01"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_2.png",
+          "role": "tile-02"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_3.png",
+          "role": "tile-03"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_4.png",
+          "role": "tile-04"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_5.png",
+          "role": "tile-05"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_6.png",
+          "role": "tile-06"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_7.png",
+          "role": "tile-07"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_8.png",
+          "role": "tile-08"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_9.png",
+          "role": "tile-09"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_10.png",
+          "role": "tile-10"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_11.png",
+          "role": "tile-11"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_12.png",
+          "role": "tile-12"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_13.png",
+          "role": "tile-13"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_14.png",
+          "role": "tile-14"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_15.png",
+          "role": "tile-15"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_16.png",
+          "role": "tile-16"
+        },
+        {
+          "url": "https://backblaze.pixellab.ai/file/pixellab-tiles/61c4f8f0-7ff0-412f-ae21-005dbb3cc2b9/e11723c6-96e3-4084-ad6d-da4f0672b853/tile_17.png",
+          "role": "tile-17"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-00.png",
+          "sha256": "e32f597fe781b3ea952f38666bbd65785684a1e749767956432c17e7466c5f2a",
+          "role": "tile-00",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-01.png",
+          "sha256": "8a69af2e1b6fc308a96c814c9e3390ba0e0a88ef72f399cb4575e50365562610",
+          "role": "tile-01",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-02.png",
+          "sha256": "fe6599ced531b8fe5cb3637a63f479a9aa3567313eb2a837e294a5201d47fe27",
+          "role": "tile-02",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-03.png",
+          "sha256": "a53d819c6f1ab3fa976e77af3a454389cb06ac3e5a4bfdb529a1f0841d155656",
+          "role": "tile-03",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-04.png",
+          "sha256": "73153167c710ff7fb38578dda31e98c15dc8d8dc99add276e3c9dc708e421b75",
+          "role": "tile-04",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-05.png",
+          "sha256": "704438ef4d438c884d98d8d500f7d415503a1b1db819fa7ee89613a1becd0ecd",
+          "role": "tile-05",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-06.png",
+          "sha256": "f1d2d9f878037c1c3ec1dfc1c9f05d0384bc9f901c6aaad0c6ca0c1d374ff71d",
+          "role": "tile-06",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-07.png",
+          "sha256": "4f908faec882e078a25645488acf3e0c0862cd1003610bd45fb1e6ad3614067f",
+          "role": "tile-07",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-08.png",
+          "sha256": "b2fb9ffc15395413072b05a55b6d07106ae8933422aa1f21abb65a1b73fe2871",
+          "role": "tile-08",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-09.png",
+          "sha256": "b0d102b0abdce9a31d9f3e844923752b825044d518a6835c2e9735feda6d087c",
+          "role": "tile-09",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-10.png",
+          "sha256": "8fb9420780e905e24b474e3264c5898c20df2736626acfb8ba4b7f5192c9ea0a",
+          "role": "tile-10",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-11.png",
+          "sha256": "57133e8dbbd89baf1a7463e5885a5ec8c18635969fd99bc886fe9711f3dde55c",
+          "role": "tile-11",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-12.png",
+          "sha256": "4b534da99dc202cc044b9b6d9ff57fe2ed7cffeb324dcb43528a2a5b8accc83d",
+          "role": "tile-12",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-13.png",
+          "sha256": "6844a9a22ad533d0b163ac32779856b04d78590f9625c05052135c8f31a25a7c",
+          "role": "tile-13",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-14.png",
+          "sha256": "d1b4ef618bb9f545fca78c280c667054e38192109950287f6744e0ee656048b4",
+          "role": "tile-14",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-15.png",
+          "sha256": "3ebcd86da4f6f5adfc4cb4d5a27d25c44dab377b72412f0e7aa2916a1e079202",
+          "role": "tile-15",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-16.png",
+          "sha256": "30de3c3144c6c0f5a9a4b5c11938b17ade22573b73c84ca8618b60d2d295dcbc",
+          "role": "tile-16",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "../../public/showcase/isometric/dirt-road-tile-17.png",
+          "sha256": "ff0566601402098435a36006834aa1d04a00c13198da72941ba4701798203a9d",
+          "role": "tile-17",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "backgroundJobId": "5873c56a-991f-4b2f-9775-2b1678a785ff",
+          "tileKind": "paths",
+          "tileRules": {
+            "arity": 4,
+            "tiles": {
+              "tile_0": {
+                "mask": 0
+              },
+              "tile_1": {
+                "mask": 0
+              },
+              "tile_2": {
+                "mask": 1
+              },
+              "tile_3": {
+                "mask": 2
+              },
+              "tile_4": {
+                "mask": 4
+              },
+              "tile_5": {
+                "mask": 8
+              },
+              "tile_6": {
+                "mask": 10
+              },
+              "tile_7": {
+                "mask": 5
+              },
+              "tile_8": {
+                "mask": 6
+              },
+              "tile_9": {
+                "mask": 12
+              },
+              "tile_10": {
+                "mask": 3
+              },
+              "tile_11": {
+                "mask": 9
+              },
+              "tile_12": {
+                "mask": 14
+              },
+              "tile_13": {
+                "mask": 13
+              },
+              "tile_14": {
+                "mask": 11
+              },
+              "tile_15": {
+                "mask": 7
+              },
+              "tile_16": {
+                "mask": 15
+              }
+            },
+            "terrains": [
+              "path",
+              "ground"
+            ],
+            "rule_type": "edge",
+            "connectivity": "same"
+          }
+        }
+      },
+      "submittedAt": "2026-11-19T01:50:02.268Z",
+      "downloadedAt": "2026-11-19T01:51:16.372Z",
+      "cost": 25,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 10,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    }
+  }
+}
