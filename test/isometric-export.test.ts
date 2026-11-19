@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { tmpdir } from "node:os"
 import { encodeRgbaPng } from "../src/png.ts"
@@ -70,6 +70,16 @@ describe("isometricFootprint", () => {
   it("finds a diamond that does not start on the first row", () => {
     const image = diamondTile(32, 32, 8, 0)
     expect(isometricFootprint(image, [{ x: 0, y: 0, width: 32, height: 32 }])).toEqual({ x: 0, y: 8, width: 32, height: 16 })
+  })
+
+  it("finds the diamond in real PixelLab tiles of two shapes", async () => {
+    // Generated 18 November 2026 (docs/ENDPOINTS.md, "Isometric tiles, measured").
+    // A 32px ground tile is a 2:1 diamond at the top of the image; a 48px road
+    // tile is a flatter 3:1 diamond that starts on row 12.
+    const ground = await readFile(path.resolve("test/fixtures/isometric/ground-32x24.png"))
+    const road = await readFile(path.resolve("test/fixtures/isometric/road-48x48.png"))
+    expect(isometricFootprint(ground, [{ x: 0, y: 0, width: 32, height: 24 }])).toEqual({ x: 0, y: 0, width: 32, height: 16 })
+    expect(isometricFootprint(road, [{ x: 0, y: 0, width: 48, height: 48 }])).toEqual({ x: 0, y: 12, width: 48, height: 16 })
   })
 
   it("finds nothing in a filled square", () => {
