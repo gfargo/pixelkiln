@@ -1,3 +1,15 @@
+# [0.122.0](https://github.com/gfargo/pixelkiln/compare/v0.121.1...v0.122.0) (2026-11-19)
+
+
+### Bug Fixes
+
+* **site:** show skeletons on the bare paperdoll base, whose estimate is right ([1b12ae1](https://github.com/gfargo/pixelkiln/commit/1b12ae18ef6cbd8fd6cad1d0aadb6e0b257d4efa))
+
+
+### Features
+
+* **site:** a Skeletons and rigging page and guide ([4f2b29d](https://github.com/gfargo/pixelkiln/commit/4f2b29d72a93960cb02e8c076981745280b3ccc5))
+
 ## [0.121.1](https://github.com/gfargo/pixelkiln/compare/v0.121.0...v0.121.1) (2026-11-19)
 
 
