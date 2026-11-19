@@ -1852,3 +1852,7 @@ div.receipt-line .receipt-mark { background: var(--lime); }
   .skeleton-uses .skeleton-use-wide { grid-template-columns: minmax(0, 1fr); }
   .skeleton-loops { gap: 16px; }
 }
+.skeleton-resolution { margin: 0 0 36px; }
+.skeleton-resolution img { display: block; width: 100%; max-width: 1176px; height: auto; }
+.skeleton-resolution figcaption { margin-top: 14px; max-width: 760px; color: var(--cream-muted); font-size: var(--text-small); line-height: 1.5; }
+.skeleton-after { margin-top: 24px !important; }

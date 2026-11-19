@@ -91,6 +91,7 @@ export const FEATURES: Feature[] = [
     sections: [
       { href: "#skeletons", label: "Estimate and animate" },
       { href: "#uses", label: "Where it is used" },
+      { href: "#resolution", label: "Sprite size and hands" },
       { href: "#joints", label: "The 18 joints" },
       { href: "#which", label: "Which skeleton is which" },
     ],

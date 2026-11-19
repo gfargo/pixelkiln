@@ -28,6 +28,13 @@ const JOINTS: Array<[string, string, string]> = [
   ["ears", "RIGHT EAR, LEFT EAR", "16, 17"],
 ];
 
+const SIZES: Array<[string, string, string, string]> = [
+  ["64px", "6 × 5 px", "the wrist", "The 18 joints. Items are pinned a little past the wrist."],
+  ["128px", "12 × 7 px", "which way the hand points", "18 + 1 per hand: turn a held sword the way the hand points."],
+  ["256px", "24 × 14 px, thumb apart", "knuckles, fingertip, thumb", "18 + 4 per hand: close a hand around a handle; a 3D rig with a thumb and one finger chain."],
+  ["larger", "each finger drawn", "every finger joint", "18 + 21 per hand (OpenPose, MediaPipe); 15 finger bones per hand (Godot, VRM)."],
+];
+
 const KINDS: Array<[string, string, string]> = [
   ["A keypoints file", "Committed JSON beside the manifest", "You, joint by joint"],
   ["An anchors file", "Committed JSON, one entry per frame", "Nobody: it records where the joints already are"],
@@ -182,6 +189,42 @@ export function SkeletonsSection() {
               <TrackedLink className="text-link" id="skeletons_use_3d" section="skeletons" href="/docs/research-3d">3D research notes</TrackedLink>
             </li>
           </ol>
+        </div>
+
+        <div className="builder-block" id="resolution">
+          <h3>More pixels, more skeleton.</h3>
+          <p>
+            The 18 joints stop at the wrist, and on a 64px sprite that is all a hand has room for. At 128px a
+            hand points somewhere; at 256px, the size of the bodies the 3D work starts from, it has knuckles and
+            a separate thumb. So the skeleton should grow with the sprite: hands matter for a character that
+            grips a sword or a staff, and for one drawn as the source of a 3D model. Hand points are not
+            estimated by anything yet; the yellow ones below were read off the drawing.
+          </p>
+          <figure className="skeleton-resolution">
+            <Image src="/showcase/skeleton/resolution.png" alt="The same kind of figure at 64, 128 and 256px with its estimated 18-joint skeleton, and each right hand enlarged: at 64px only the wrist, at 128px the wrist and a fingertip, at 256px the knuckles, the fingertip and the thumb" width={1176} height={632} unoptimized />
+            <figcaption>
+              A native 64px figure and a native 256px one from PixelLab; the 128px figure is the 256px drawing
+              reduced. The body skeletons are each a real <code>estimate-skeleton</code>. Even at 256px the four
+              fingers are one block, so four hand points is what it can honestly carry.
+            </figcaption>
+          </figure>
+          <div className="provider-table-wrap skeleton-table-wrap">
+            <table className="provider-table skeleton-table" aria-label="How much of a hand each sprite size can carry">
+              <thead>
+                <tr><th scope="col">Sprite</th><th scope="col">Hand past the wrist</th><th scope="col">It can carry</th><th scope="col">Skeleton that fits</th></tr>
+              </thead>
+              <tbody>
+                {SIZES.map(([size, hand, carry, fits]) => (
+                  <tr key={size}><th scope="row">{size}</th><td>{hand}</td><td>{carry}</td><td>{fits}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="skeleton-after">
+            Which libraries and engines take which skeleton, with their licenses, is in{" "}
+            <TrackedLink className="text-link" id="skeletons_formats" section="skeletons" href="/docs/skeletons#formats-libraries-and-rigs">the guide&apos;s formats table</TrackedLink>:
+            OpenPose and MediaPipe use 21 points a hand, Godot and VRM 15 finger bones, and PixelLab none.
+          </p>
         </div>
 
         <div className="builder-block" id="joints">

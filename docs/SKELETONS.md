@@ -47,6 +47,45 @@ differently:
 "Right" is the character's own right. On a sprite facing the viewer, its right
 hand is on the left of the picture.
 
+## How much skeleton a sprite can carry
+
+The 18 joints stop at the wrist. Whether a hand needs more depends on how many
+pixels the hand has, so the right skeleton grows with the sprite. Measured on two
+PixelLab characters of the same kind, a native 64px figure and a native 256px
+one, with the 256px drawing also reduced to 128px. Each skeleton was estimated
+with `estimate-skeleton`. The yellow hand points were read off the drawing by
+eye: no tool estimates them yet.
+
+![The same kind of figure at 64, 128 and 256px with its estimated skeleton, and each right hand enlarged: at 64px only the wrist, at 128px the wrist and a fingertip, at 256px the knuckles, the fingertip and the thumb](../website/public/showcase/skeleton/resolution.png)
+
+| Sprite | Hand, past the wrist | What the hand can carry | Skeleton that fits | What it is good for |
+|---|---|---|---|---|
+| 64px | 6 × 5 px, 25 pixels | the wrist | the 18 joints | Animation from poses; held items pinned a little past the wrist. Fingers are one or two pixels; there is nothing to pose. |
+| 128px (the 256px drawing reduced) | 12 × 7 px, 55 pixels | the wrist and the fingertip: which way the hand points | 18 + 1 point per hand | Turning a held sword or torch the way the hand points. |
+| 256px | 24 × 14 px, 214 pixels; the four fingers drawn as one block, the thumb apart | the wrist, the knuckles, the fingertip, the thumb's base and tip | 18 + 4 points per hand | Closing a hand around a handle; a 3D rig with a hand, a thumb and one finger chain. |
+| Larger, with each finger drawn | not measured | every finger joint | 18 + 21 points per hand (OpenPose, MediaPipe); 15 finger bones per hand (Godot, VRM) | Hand poses and gestures. |
+
+Notes from the measurement:
+
+- **Even 256px does not draw fingers apart.** The 256px figure's hand is a palm,
+  one block of fingers and a thumb. A 21-point hand would put four of its five
+  fingers on the same pixels, so a four-point hand is what a 256px sprite can
+  honestly carry.
+- **The four points map onto the bigger skeletons.** In the 21-point hand of
+  OpenPose and MediaPipe they are the wrist (0), the thumb's base (2) and tip (4),
+  the middle finger's knuckle (9) and its tip (12). In a 3D rig they are the hand
+  bone, the thumb bones, and one finger chain that the other fingers can copy.
+- **128px and 256px are where hands start to matter:** characters made as the
+  source for a 3D model, such as the 256px research bodies the 3D work starts
+  from, and any character that grips a sword, a staff or a shield.
+
+**Not built yet.** PixelLab's `/estimate-skeleton` returns the 18 joints and no
+hand points, `animate-skeleton` takes only those 18 labels, and a held item is
+placed a little past the wrist. Hand points would need either PixelLab's custom-skeleton estimate
+(`estimate_custom_skeleton` among its MCP tools, which takes joint names you
+choose; not tried) or a local
+hand estimator such as MediaPipe (not tried on pixel art). Both are open.
+
 ## Estimate one
 
 ```bash
@@ -173,3 +212,39 @@ These are separate skeletons that share the same 18 joints:
 A keypoints file and an anchors file are local files PixelKiln reads, hashes
 and checks. A stored 3D skeleton is never downloaded, so PixelKiln cannot show
 or edit it.
+
+## Formats, libraries and rigs
+
+The same body joints turn up under other names. Hands are where they part.
+Counts are from each project's own documentation (November 2026); "unchecked"
+means no primary source confirmed the number.
+
+| Format | Kind | Body | Hand, per hand | License | Used in PixelKiln |
+|---|---|---|---|---|---|
+| [PixelLab skeleton](https://api.pixellab.ai/v2/openapi.json) | 2D joints | 18 | none | PixelLab's terms | `estimate-skeleton`, `animate-skeleton`, `anchors` |
+| [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) | 2D keypoints | 18 (COCO) or 25 (BODY_25, with feet) | 21 | Non-commercial; commercial use needs a paid license | Its 18-point *format*, drawn by our own script for ComfyUI pose maps. The OpenPose software is not used. |
+| [COCO-WholeBody](https://github.com/jin-s13/COCO-WholeBody) / [DWPose](https://github.com/IDEA-Research/DWPose) | 2D keypoints | 17 + 6 feet (133 with face and hands) | 21 | DWPose code Apache-2.0; the training data is CC BY-NC, and the weights' terms are not stated | Not used |
+| [MediaPipe Pose](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker) and [Hand Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker) | 2D landmarks | 33 | 21 | Apache-2.0 | Not used; a candidate hand estimator |
+| [xinsir OpenPose ControlNet (SDXL)](https://huggingface.co/xinsir/controlnet-openpose-sdxl-1.0) | pose control | body | not claimed: its card never says it was trained on hands | Apache-2.0 | The ComfyUI pose lane (#79) |
+| [Godot 4 SkeletonProfileHumanoid](https://docs.godotengine.org/en/stable/classes/class_skeletonprofilehumanoid.html) | 3D rig | 56 bones in all | 15 | MIT | A target for exported rigs |
+| [VRM 1.0 humanoid](https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_vrm-1.0/humanoid.md) | 3D rig | 15 required bones, 40 optional | 15, all optional | VRM specification | Not used |
+| [glTF 2.0 skins](https://github.com/KhronosGroup/glTF/blob/main/specification/2.0/Specification.adoc) | 3D file format | any | any | Khronos | The 3D research writes `.glb` |
+| [Quaternius Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) | 3D animations | unchecked (Unreal mannequin names) | unchecked | CC0 | The 3D research retargets its walks and attacks |
+| [DragonBones](https://github.com/DragonBones/DragonBonesJS) / [Spine](https://esotericsoftware.com/spine-runtimes-license) | 2D bones | any | any | DragonBones MIT; Spine needs an editor license per user | Not used |
+
+Unity's Humanoid avatar, Mixamo and Unreal's mannequin all have finger bones, but
+their counts were not confirmed from a primary source.
+
+What this means in practice:
+
+- **A 64px character needs nothing past the 18 joints,** and those convert to
+  OpenPose's 18 directly.
+- **For hands, the 21-point hand of OpenPose and MediaPipe is the 2D format to
+  meet,** and Godot and VRM's 15 finger bones the 3D one. A 256px sprite's four
+  hand points fill part of each, and the rest can be copied from the middle
+  finger.
+- **Check licenses before shipping.** OpenPose's software and DWPose's weights
+  are not cleared for commercial use; MediaPipe, Godot and the xinsir ControlNet
+  are.
+- **Hand points in a ControlNet pose map are unproven.** The ControlNet in use
+  does not say it learned hands, so drawing them may do nothing.
