@@ -300,13 +300,15 @@ export function TilesSections() {
           </figure>
           <figure className="tiles-sheet tiles-sheet-next">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/showcase/isometric/dungeon-hall.png" alt="A stone hall in three tiers, each a floor higher than the last, joined by two flights of stairs, with a doorway in the back wall and pillars on the flagstones" width={824} height={644} loading="lazy" />
+            <img src="/showcase/isometric/dungeon-hall.png" alt="A stone hall in three tiers, each a floor higher than the last, joined by two flights of stairs, with a doorway in the back wall, and a small side room one level up, reached by a ramp" width={824} height={756} loading="lazy" />
             <figcaption>
-              <b>The kit, stacked.</b> A hall in three tiers from the same 58
-              pieces: walls, flagstones, pillars, a doorway, solid blocks and two
-              flights of stairs, each climbing 32 pixels. The pieces are placed
-              by script from the kit&apos;s own heights; no engine lays a kit
-              like this for you yet.
+              <b>The kit, stacked.</b> A hall in three tiers and a side room one
+              level up, from the same 58 pieces: walls, flagstones, pillars,
+              doorways, solid blocks, two flights of stairs that climb 32 pixels
+              each, and a ramp. The kit has no half-height block, so the
+              supports under the upper flights are a solid block with 16 pixels
+              cut from its middle. The pieces are placed by script from the
+              kit&apos;s own heights; no engine lays a kit like this for you yet.
             </figcaption>
           </figure>
           <figure className="tiles-sheet tiles-sheet-next">
