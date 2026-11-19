@@ -1005,7 +1005,7 @@ controls on anything but a single 64×64 sprite.
 ## Tilesets: measured once per kind
 
 Called out separately because these are the most capable endpoints for level art
-and they are relevant to the disc-golf game. pixelkiln plans a top-down set
+and they matter for game level art. pixelkiln plans a top-down set
 at PixelLab's own quote (Pro 15 for tiles up to 32px, 25 at 64px; standard 4,
 the top of its quoted 1 to 4). Every kind is measured below: Pro billed
 exactly its quote at 32px and 64px, and standard billed 3, under the plan.

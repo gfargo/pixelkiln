@@ -1,6 +1,6 @@
 # Scenario game pilot
 
-What Scenario did on a real project: a retro isometric pixel-art disc golf game
+What Scenario did on a real project: a retro isometric pixel-art sports game
 that generates its art with PixelLab (about 1,800 manifest assets, 32 px props,
 240 px landmark structures, 192×96 covers, 48 px animated characters). Run on
 October 5, 2026, in scratch projects outside the game. **The game's art is not

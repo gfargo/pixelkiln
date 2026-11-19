@@ -262,9 +262,9 @@ Options
 
 Examples
   pixelkiln plan
-  pixelkiln gen --style heybud-premium --budget 400
+  pixelkiln gen --style premium --budget 400
   pixelkiln gen --only first_review --force
-  pixelkiln gallery --style heybud-premium
+  pixelkiln gallery --style premium
   pixelkiln gallery --workspace pixelkiln.workspace.json
   pixelkiln gallery --edit --budget 80
   pixelkiln edit --style base --only anvil
@@ -275,7 +275,7 @@ Examples
   pixelkiln model normal-map knight --dry-run
   pixelkiln model normal-map knight --source sprites --sprites art/knight/rotations --dry-run
   pixelkiln adopt --tag
-  pixelkiln pack --style heybud-premium
+  pixelkiln pack --style premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
   pixelkiln pack --style hero --format aseprite         # sheet JSON engines load
   pixelkiln mount --style ground
