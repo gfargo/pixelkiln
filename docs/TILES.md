@@ -171,7 +171,10 @@ The generic format is the lossless interchange contract:
 - `format: "pixelkiln-tileset"` and `version: 1`
 - atlas image, cell size, sheet size, and columns
 - one ordered tile record with atlas id, original provider `sourceIndex`, role,
-  rectangle, optional bitmask, and `stampOnly`
+  rectangle, optional bitmask, and `stampOnly`. A `terrain` tile finds its
+  corners by role: its role may end in a number of the provider's own
+  (`tile-06-wang-0`) that is not its place in the list, and a set exported by an
+  older version put rules on the wrong tiles, so export it again
 - normalized rule type, arity, connectivity, terrain names, and masks
 - the complete raw provider rule object in `providerRules`, including rule
   families a current exporter does not yet normalize
@@ -308,6 +311,34 @@ layout and with no origin both visibly wrong. CI's headless Godot reads
 `tile_size`, `tile_layout` and `texture_origin` back from the exported TileSet.
 The Tiled offset follows Tiled's documented drawing rule and has not been
 loaded in Tiled.
+
+### Building kits
+
+A `tiles` asset with `tileFeature: "building"` returns separate pieces (floor,
+walls, corners, pillars, doorways, stairs, solid blocks), not a corner or edge
+mask per tile. Its rules are a `composed` family: `providerRules.parts` in the
+generic file names each piece's index and `stack_stride_px` the height of one
+level. No engine exporter maps it, so the generic file is the output, and a
+scene is built by placing pieces by cell and height.
+
+What a kit's pieces share, measured on the stone-hall kit (52 by 58 cells):
+
+- The floor diamond is at the same place in every piece, here its top left at
+  (10, 37), so a piece for cell (x, y) at level z is drawn with that point on
+  `((x - y) * 16, (x + y) * 8 - z * 16)`. Draw back to front by `x + y`, then z.
+- `footprint` in the generic file is the diamond of the tile with the most
+  opaque pixels, which for a kit is a wall, not the floor. Take the anchor from
+  the floor piece.
+- A level is `stack_stride_px` (16). A solid block is two levels high; there is
+  no half-height block, so one can be made by cutting 16 rows from the middle
+  of a block.
+- Stairs come in pairs that each climb a level between them (pieces 40 and 41
+  climb north), so a two-level rise is two pairs, the upper pair on half blocks.
+  The east pieces (42 and 43) are a smooth ramp, not steps.
+
+`website/art/pixellab-isometric/compose-hall.py` places the kit into a hall of
+three tiers with a side room, from the generic export. It is the page's example,
+and a starting point for an importer.
 
 ## LDtk
 

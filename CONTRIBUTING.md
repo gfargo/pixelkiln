@@ -48,6 +48,12 @@ PixelKiln can use, add an entry at the top of that list. The newest entry
 shows its figures and code sample; earlier ones collapse to a short row. Show
 only output from a real call, with the bill the docs record.
 
+The `/tiles` terrain brush paints with the tile lookups in
+`website/app/lib/brush-tilesets.ts`, generated from the locks under
+`website/art/` by `npx tsx scripts/gen-brush-tilesets.ts`. Run it after a lock
+or a set's wording changes, and add a set by adding it to the list at the top of
+that script; do not edit the generated file.
+
 Website sprites are generated from `website/art/pixelkiln.manifest.json`.
 Treat those requests as paid work: run `plan` and `audit` first, use an explicit
 hard budget, and commit the manifest, lockfile, and reviewed outputs together.
