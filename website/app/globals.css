@@ -1790,8 +1790,12 @@ div.receipt-line .receipt-mark { background: var(--lime); }
 .tiles-brush-map { position: relative; display: grid; width: 100%; max-width: 760px; margin: 0 auto; background: #0e0c09; cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; }
 .tiles-brush-map:focus-visible { outline: 2px solid var(--ember-light); outline-offset: 4px; }
 .tiles-brush-map img { display: block; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
-.brush-dot { position: absolute; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: #1b6fb8; box-shadow: 0 0 0 2px rgba(18, 16, 13, 0.85); pointer-events: none; }
-.brush-dot-grass { background: #7fc04a; }
+.brush-dot { position: absolute; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(18, 16, 13, 0.85); pointer-events: none; }
+.brush-dot-0 { background: #2f86d6; }
+.brush-dot-1 { background: #f0cf7a; }
+.brush-dot-2 { background: #7fc04a; }
+.brush-choice { display: inline-flex; align-items: center; gap: 8px; }
+.brush-swatch { position: static; display: block; width: 12px; height: 12px; margin: 0; box-shadow: none; }
 .brush-dot-cursor { width: 17px; height: 17px; margin: -8.5px 0 0 -8.5px; box-shadow: 0 0 0 3px var(--ember-light); }
 .tiles-brush-caption { margin: 0; padding: 16px 20px 20px; color: var(--cream-muted); font-size: var(--text-small); line-height: 1.55; }
 
