@@ -143,7 +143,7 @@ not probed.
 | `POST /animate-character`, `mode` template or v3 | `character` loops without skeleton-v3 | Run live, not measured | A v3 text loop on a 96px pro-flash base came back 108×108; template loops need a skeleton template ([Characters, measured](#characters-measured)). Plan: template 1, v3 `ceil(size² × frames / 65536)`. | Billed amounts were not recorded; billed per direction. | High |
 | `POST /animate-character`, `mode: pro` | `character` loops, `mode: pro` | Unknown | Planned 10 to 25 by canvas ([GENERATORS.md](./GENERATORS.md)). Nothing records a live run. | Everything. | High |
 | `POST /characters/animations`, `mode: skeleton-v3` | `character` loops, `mode: "skeleton-v3"` (template or sentence) | Measured live | On a v3 character: a template loop billed 3; a sentence loop (no template) billed 3, 8 frames at 96×96 from a 64px character; `west` added with `animation_group_id` billed 3 and joined the group. A standard-engine character is refused with a 500 "no stored 3D skeleton" ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured), October 2026). | `pro` and `pro-flash` bases; other frame counts; the price per direction across 8 directions is untested. | High |
-| `POST /portrait-character-pro` (+ `GET /portrait-character-pro/{job_id}`) | `character` portrait | Measured live | A 16px `character_to_portrait` billed 20 and four 128px ones billed 25 each, all before the cut (the floor and middle tiers then, against a plan of 40 for 128px; the plan now says 25); the `GET` reports `usage: null`, so read the job ([Characters, measured](#characters-measured)). The seed is read from the job's `last_response.seed` and kept in the lock. `target_palette` sent, mock only. | The price after the cut (10 to 25); 32, 48, 64 and 160px; whether `last_response` carries `seed` for this job, as it does for `inpaint-v3`. | High |
+| `POST /portrait-character-pro` (+ `GET /portrait-character-pro/{job_id}`) | `character` portrait | Measured live | 16px billed 10 five times (November 2026). Before the cut, 16px billed 20 and four 128px ones billed 25 each (against a plan of 40 then; the plan now says 25). The `GET` reports `usage: null`, so read the job ([Characters, measured](#characters-measured)). The job's `last_response.seed` is the seed it used. **A `seed` in the request makes it ignore the image** ([Portrait seeds](#portrait-seeds-measured)), so none is sent. `target_palette` sent, mock only. | 32, 48, 64, 128 and 160px after the cut. | High |
 | `POST /characters/{id}/portrait` | `character` portrait attach | Measured live | Free (`usage.generations: 0`); the reply holds the only copy of the stored URL ([Characters, measured](#characters-measured)). | None recorded. | Low |
 | `POST /transfer-outfit-v2` | `character` outfit | Measured live | A 2-frame 92×92 job billed 20 (before the cut); frames return inline in `last_response.quantized_images` ([Characters, measured](#characters-measured)). `target_palette` sent, mock only. | Other frame counts (2 to 16) and canvases; the price after the cut. | High |
 | `GET /characters/{id}`, `GET /characters?limit=&offset=` | `adopt`, `fetch --refresh`, `salvage` | Measured live | Free; carries no `usage`; image URLs carry `?t=<updated_at>` ([Object lifecycle](#object-lifecycle)). | None recorded. | Low |
@@ -639,6 +639,30 @@ was free: the balance did not move.
 The two test tilesets and three test tile groups were deleted. The test
 gallery image was left in the account; the REST API has no route to remove
 a gallery image.
+
+## Portrait seeds, measured
+
+November 2026, five `character_to_portrait` jobs at `result_size` 16 from the
+same 80x80 south sprite of a horned, caped knight (sha256 `7819b38c…`), view
+`low top-down`, 10 generations each:
+
+| Run | `seed` sent | `last_response.seed` | Result |
+|---|---|---|---|
+| 1 | none | 334129356 | the knight's helmet, horns and red eyes |
+| 2 | 334129356 | 334129356 | a blond young man in a blue collar (190 of 256 pixels differ from run 1) |
+| 3 | 334129356 | 334129356 | a blond young man, close to run 2 but not identical (163 of 256 pixels differ) |
+| 4 | 7 | 7 | a blond young man again |
+| 5 | none | 1180709380 | the knight again, drawn differently (151 of 256 pixels differ from run 1) |
+
+- **A seed makes the job ignore the image.** Every run with a seed drew the
+  same generic face, whatever the seed; both without one followed the sprite.
+  pixelkiln therefore never sends `seed` to this endpoint and refuses
+  `portrait.seed`.
+- **A seed does not reproduce a portrait.** Run 1 reported the seed it used;
+  sending it back did not redraw run 1, and the same seed twice did not give
+  the same bytes.
+- `last_response.seed` is present on this job, as on `inpaint-v3`; the lock
+  keeps it for the record.
 
 ## Talking portraits, measured
 

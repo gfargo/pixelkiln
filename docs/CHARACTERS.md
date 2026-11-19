@@ -497,9 +497,9 @@ attached to that character's own PixelLab record:
 result sizes (16, 32, 48, 64, 128, or 160 — 128 and 160 render at 2K and cost
 more), independent of the style's own `size`. A portrait takes no prompt: it
 is drawn from the parent's pixels, not text, so it is priced and generated
-like a state, 10 to 25 generations by the size tier (before PixelLab's October
-2026 price cut, a 16px portrait billed 20, the floor then, and four 128px
-portraits billed 25 each, the middle tier then; see
+like a state, 10 to 25 generations by the size tier (a 16px portrait billed 10,
+five times in November 2026; before PixelLab's October 2026 price cut, four
+128px portraits billed 25 each, the middle tier then; see
 [`docs/ENDPOINTS.md`](ENDPOINTS.md)). The plan prices 48px and up at 25.
 It lands as `<asset>.png`, one file like a single-direction generator. Once
 drawn, it is also attached to the parent's character record upstream (a
@@ -509,16 +509,21 @@ portrait back once set. The `ready` line in the log says when it does. A
 character used elsewhere, such as an in-game skin, can be left as it is:
 
 ```json
-"mira.bust": { "portrait": { "of": "mira", "size": 128, "seed": 18964718, "attach": false } }
+"mira.bust": { "portrait": { "of": "mira", "size": 128, "attach": false } }
 ```
 
-`seed` pins PixelLab's seed for this portrait, in place of the style's `seed`,
-and is part of its identity: a new seed is a new portrait. With or without
-one, the lock keeps the seed under `providerMetadata.pixellab.character.seed`:
-the one the job reports using, or the one sent if it reports none. PixelLab
-deletes a finished job within about a day, so the lock is the only place a seed
-survives; copy it into `seed` to draw the same bust again. `attach` changes
-nothing about the picture and is not part of its identity.
+`attach` changes nothing about the picture and is not part of its identity.
+
+**A portrait cannot be pinned to a seed.** Sent a seed, PixelLab ignores the
+character and draws a generic face: in November 2026, three 16px portraits of
+a horned knight, sent seed 334129356 twice and seed 7 once, each came back as a
+blond young man, and the two with the same seed did not match pixel for pixel.
+Two portraits with no seed both drew the knight. So pixelkiln never sends a
+portrait a seed, not even the style's, and refuses `portrait.seed`. The lock
+still keeps the seed the job reports at
+`providerMetadata.pixellab.character.seed` (PixelLab deletes finished jobs
+within about a day), but that seed cannot redraw the portrait; keep the PNG
+instead, which `history` and `restore` already do.
 
 **Keeping the character's rotations out of a delivery folder.** A portrait's
 parent must be in the same style, and the parent's eight rotations land in that

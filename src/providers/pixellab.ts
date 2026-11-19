@@ -1692,7 +1692,8 @@ export class PixelLabProvider implements Provider {
         image: { base64: bytes.toString("base64"), format: "png" },
         view: spec.view,
         resultSize: character.portrait!.size,
-        seed: spec.seed,
+        // No seed, ever, not even the style's: given one, PixelLab draws a generic face
+        // and ignores the character image (measured, docs/ENDPOINTS.md, "Portrait seeds").
         targetPalette: targetPaletteFor(spec),
       })
       return {
@@ -1702,9 +1703,6 @@ export class PixelLabProvider implements Provider {
             kind: "portrait",
             parentCharacterId: parentId,
             backgroundJobId: res.background_job_id,
-            // PixelLab expires finished jobs within about a day, so the seed sent is kept here;
-            // poll replaces it with the one the job reports using.
-            ...(spec.seed != null ? { seed: spec.seed } : {}),
             ...(character.portrait!.attach ? {} : { attach: false }),
           },
         },
@@ -1914,8 +1912,9 @@ export class PixelLabProvider implements Provider {
         await this.client.setCharacterPortrait(attach, { base64: bytes.toString("base64"), format: "png" })
       }
       const { billed, lastResponse } = await this.readFinishedJob(meta?.backgroundJobId)
-      // The seed the job drew with, so the portrait can be drawn again after the job expires.
-      const seed = typeof lastResponse?.seed === "number" ? lastResponse.seed : meta?.seed
+      // The seed the job reports, kept for the record. It cannot redraw the portrait: sending
+      // a seed back makes PixelLab ignore the character (docs/ENDPOINTS.md, "Portrait seeds").
+      const seed = typeof lastResponse?.seed === "number" ? lastResponse.seed : undefined
       return {
         status: "ready",
         objectId: jobId,

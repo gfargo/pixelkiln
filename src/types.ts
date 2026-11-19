@@ -638,7 +638,11 @@ export const CharacterPortraitSchema = z
     /** The base or state to portray, in the same style. */
     of: z.string().min(1),
     size: CharacterPortraitSizeSchema.default(64),
-    /** PixelLab's seed for this portrait, in place of the style's `seed`. Part of its identity. */
+    /**
+     * Refused when set. Given a seed, PixelLab ignores the character image and
+     * draws a generic face, so a portrait is never sent one; the key stays so
+     * the refusal can say why instead of "unrecognized key".
+     */
     seed: z.number().int().min(0).optional(),
     /**
      * Attach the drawn portrait to the parent's PixelLab character record, as

@@ -1456,27 +1456,19 @@ describe("portraits", () => {
     return { client, provider, p, jobId, file }
   }
 
-  it("sends a seed pinned on the portrait, makes it part of the identity, and keeps it in the lock", async () => {
-    const { client, provider, p, jobId } = await portraitOf({ size: 16, seed: 77 }, {}, { seed: 5 })
-    // The portrait's own seed wins over the style's.
-    expect(client.portraitSeeds).toEqual([77])
-    expect(p.specs.find((s) => s.assetId === "mira.bust")!.seed).toBe(77)
-    expect(p.lock.entries["cast/mira.bust"]!.providerMetadata.pixellab).toMatchObject({ character: { kind: "portrait", seed: 77 } })
-    client.completePortrait(jobId, 16)
-    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
-    expect(p.lock.entries["cast/mira.bust"]!.providerMetadata.pixellab).toMatchObject({
-      character: { kind: "portrait", parentCharacterId: "char-1", backgroundJobId: jobId, seed: 77 },
-    })
+  it("never sends a portrait a seed, not even the style's, and refuses one pinned on it", async () => {
+    // Given a seed, PixelLab ignores the character and draws a generic face (measured, 3 of 3).
+    const { client, p } = await portraitOf({ size: 16 }, {}, { seed: 5 })
+    expect(client.portraitSeeds).toEqual([undefined])
+    expect(p.lock.entries["cast/mira.bust"]!.providerMetadata.pixellab).not.toHaveProperty("character.seed")
 
-    // A different seed is a different portrait.
-    const seeded = async (seed: number) => {
-      await writeManifest({ assets: { mira: { prompt: "small young woman" }, "mira.bust": { portrait: { of: "mira", size: 16, seed } } } })
-      return (await resolveSpecs(await loadManifest(manifestPath()))).find((s) => s.assetId === "mira.bust")!.specHash
-    }
-    expect(await seeded(77)).not.toBe(await seeded(78))
+    await writeManifest({ assets: { mira: { prompt: "small young woman" }, "mira.bust": { portrait: { of: "mira", size: 16, seed: 77 } } } })
+    await expect(resolveSpecs(await loadManifest(manifestPath()))).rejects.toThrow(
+      /assets\.mira\.bust\.portrait\.seed: PixelLab ignores the character and draws a generic face/,
+    )
   })
 
-  it("records the seed the job reports using when none was pinned", async () => {
+  it("records the seed the job reports, for the record", async () => {
     const { client, provider, p, jobId } = await portraitOf({ size: 16 })
     expect(client.portraitSeeds).toEqual([undefined])
     expect(p.lock.entries["cast/mira.bust"]!.providerMetadata.pixellab).not.toHaveProperty("character.seed")
