@@ -1799,6 +1799,10 @@ div.receipt-line .receipt-mark { background: var(--lime); }
 .brush-choice { display: inline-flex; align-items: center; gap: 8px; }
 .brush-swatch { position: static; display: block; width: 12px; height: 12px; margin: 0; box-shadow: none; }
 .brush-dot-cursor { width: 17px; height: 17px; margin: -8.5px 0 0 -8.5px; box-shadow: 0 0 0 3px var(--ember-light); }
+@media (max-width: 640px) {
+  .brush-dot { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; box-shadow: 0 0 0 1.5px rgba(18, 16, 13, 0.85); }
+  .brush-dot-cursor { width: 12px; height: 12px; margin: -6px 0 0 -6px; box-shadow: 0 0 0 2px var(--ember-light); }
+}
 .tiles-brush-caption { margin: 0; padding: 16px 20px 20px; color: var(--cream-muted); font-size: var(--text-small); line-height: 1.55; }
 
 /* The engine screenshot, the table of what each format is, and the merged-sets figure. */
