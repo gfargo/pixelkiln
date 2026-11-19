@@ -123,13 +123,13 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
     expect(matched.has("neon")).toBe(true)
   })
 
-  // The real gap this closes: disc-golf-game's own manifest has one style
+  // The real gap this closes: one game's own manifest has one style
   // with an empty prompt template, so it has nothing to pattern-match
   // against and used to claim its whole shared account's orphan pool by
   // default, including heybud-admin's badge art.
   describe("with sibling manifests", () => {
     const single: Manifest = {
-      name: "disc-golf-game",
+      name: "sample-game",
       styles: { base: style() }, // empty prefix/suffix, same as the real project
       assets: {},
     }
@@ -153,7 +153,7 @@ describe("matchOrphanStyle / groupOrphansByStyle", () => {
     })
 
     it("still falls back to the one style when a sibling doesn't recognise it either", () => {
-      const tree = orphan({ id: "tree", prompt: "isometric pine tree, disc golf course" })
+      const tree = orphan({ id: "tree", prompt: "isometric pine tree, golf course" })
       const { matched, elsewhere } = groupOrphansByStyle([tree], single, [sibling])
       expect(matched.get("base")!.map((o) => o.id)).toEqual(["tree"])
       expect(elsewhere.size).toBe(0)

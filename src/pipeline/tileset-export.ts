@@ -445,8 +445,8 @@ function buildGodot(generic: GenericTileset, tileType: string | undefined): stri
  * outright on an isometric/oblique (diamond) tile, which instead wants the
  * diamond-point names `top_corner`/`right_corner`/`bottom_corner`/`left_corner`.
  * Confirmed both experimentally (headless Godot 4.7.2 `is_valid_terrain_peering_bit`)
- * and against a shipped, hand-verified isometric Wang set (disc-golf-game's
- * docs/terrain-tiles.md §5: "Each of the 16 tiles was rendered, its four
+ * and against a shipped, hand-verified isometric Wang set (a downstream game's
+ * terrain-tiles notes, §5: "Each of the 16 tiles was rendered, its four
  * diamond corners sampled for light-vs-dark, and checked against its mask").
  */
 function godotTerrainBits(rules: NormalizedTileRules, tile: GenericTileset["tiles"][number], shape: number): Record<string, number> {
