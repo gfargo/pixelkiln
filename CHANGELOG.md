@@ -1,3 +1,10 @@
+# [0.117.0](https://github.com/gfargo/pixelkiln/compare/v0.116.0...v0.117.0) (2026-11-19)
+
+
+### Features
+
+* **site:** the terrain brush paints three terrains from real connected sets ([5916791](https://github.com/gfargo/pixelkiln/commit/5916791747dad153cf870a04a6ced981c582beab))
+
 # [0.116.0](https://github.com/gfargo/pixelkiln/compare/v0.115.2...v0.116.0) (2026-11-19)
 
 
