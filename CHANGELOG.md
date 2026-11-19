@@ -1,3 +1,11 @@
+## [0.121.1](https://github.com/gfargo/pixelkiln/compare/v0.121.0...v0.121.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **character:** never send a portrait a seed; PixelLab ignores the character when given one ([a7b8863](https://github.com/gfargo/pixelkiln/commit/a7b886301e197bd5077faa265cf4be6bb89386d9)), closes [#352](https://github.com/gfargo/pixelkiln/issues/352)
+* derive without a provider key, and say what a derived asset in a quality style waits for ([2226f56](https://github.com/gfargo/pixelkiln/commit/2226f5662534aae7d19ecf19b02e976f54c3ef27)), closes [#301](https://github.com/gfargo/pixelkiln/issues/301) [#301](https://github.com/gfargo/pixelkiln/issues/301)
+
 # [0.121.0](https://github.com/gfargo/pixelkiln/compare/v0.120.0...v0.121.0) (2026-11-19)
 
 
