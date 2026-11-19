@@ -835,7 +835,7 @@ describe("ComfyUI provider", () => {
     await expect(readFile(path.join(dir, "out/dancer-frame-00.png"))).resolves.toEqual(poses[0])
     await expect(readFile(path.join(dir, "out/dancer-frame-01.png"))).resolves.toEqual(poses[1])
     expect(JSON.stringify(lock)).not.toContain(dir)
-  }, 15_000)
+  })
 
   it("checkpoints accepted frame prompts and resumes only the missing frame", async () => {
     const promptSeeds: number[] = []
