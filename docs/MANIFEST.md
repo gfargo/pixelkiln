@@ -485,7 +485,14 @@ The transform is one of:
 costs nothing in any unit. The plan reports a derived asset `stale`, free to fix,
 when its source's recorded output, its `file`, the transform, or its parameters
 change. An edit by hand makes it `orphaned`, like any generated file. The lock entry
-records the input's hash under `derive`.
+records the input's hash under `derive`. A run that only derives needs no
+provider key.
+
+In a style with a `quality` profile, a derived asset waits until its source's
+refined output is approved; `plan` and `refine` show it as blocked until then,
+and `refine` counts it as blocked, not failed (it still exits 1, since the style
+cannot be packed yet). Once approved, `gen` derives it, and it is refined and
+approved like any other asset in the style.
 
 ### `external`: built elsewhere, tracked here
 

@@ -66,7 +66,10 @@ export async function submit(
   lockPath: string,
   opts: SubmitOptions = {},
 ): Promise<SubmitResult> {
-  const limits = provider.rateLimit?.() ?? DEFAULT_RATE_LIMIT
+  // Local work (a mirror, a derive, a held item) never reaches the provider, so a
+  // batch of only that leaves it untouched and needs no credentials.
+  const local = (spec: ResolvedSpec) => Boolean(spec.mirror || spec.derive || isHeldItem(spec))
+  const limits = items.every((item) => local(item.spec)) ? DEFAULT_RATE_LIMIT : provider.rateLimit?.() ?? DEFAULT_RATE_LIMIT
   const maxInFlight = opts.maxInFlight ?? limits.maxInFlight
   const spacing = opts.spacingMs ?? limits.spacingMs
   const slotPollMs = opts.slotPollMs ?? IN_FLIGHT_POLL_MS
@@ -77,7 +80,7 @@ export async function submit(
   // nothing, in whatever unit the rest of the batch is priced in.
   const estimates = new Map(items.map((item) => [
     item.key,
-    item.spec.mirror || item.spec.derive || isHeldItem(item.spec)
+    local(item.spec)
       ? { amount: 0, unit: item.spec.costUnit, candidates: 1 }
       : validateCostEstimate(provider.id, provider.estimate(item.spec)),
   ]))
