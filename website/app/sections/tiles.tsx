@@ -1,5 +1,43 @@
+import Image from "next/image";
 import { CodeWindow } from "@/app/ui/code-window";
+import { CopyCommand } from "@/app/ui/copy-command";
+import { TerrainBrush } from "@/app/ui/terrain-brush";
 import { TrackedLink } from "@/app/ui/tracked-link";
+
+/** The four surfaces of a coast, as the colors the island map above is drawn in. */
+const CHIP = { ocean: "#043862", sand: "#ecc570", grass: "#4c8e29", forest: "#2c4a22" };
+
+/** The engine formats: what each writes, and how it was checked. */
+const ENGINES: Array<{ id: string; name: string; file: string; gets: string; checked: string }> = [
+  {
+    id: "generic",
+    name: "Generic JSON",
+    file: ".json",
+    gets: "The lossless record: the atlas, every tile's rectangle and mask, and the provider's raw rules. For any engine without an exporter.",
+    checked: "Round-trip tests.",
+  },
+  {
+    id: "tiled",
+    name: "Tiled",
+    file: ".tsj",
+    gets: "An image tileset with a Wang set, its ids in Tiled's own order.",
+    checked: "Follows Tiled's documented format. Not loaded by Tiled in CI.",
+  },
+  {
+    id: "godot",
+    name: "Godot 4",
+    file: ".tres",
+    gets: "A TileSet with terrain peering bits on every tile.",
+    checked: "A headless Godot 4.7.2 loads it in CI and reads a peering bit back.",
+  },
+  {
+    id: "ldtk",
+    name: "LDtk",
+    file: ".ldtk",
+    gets: "A project: the tileset, a paint layer, an auto-rule layer, and a Preview level that uses every rule.",
+    checked: "Opened in LDtk 1.5.3, where its own rules redrew the tiles the file stores.",
+  },
+];
 
 /** Which kind of tile work each generator does, what it makes, and what the measured runs billed. */
 const KINDS: Array<{ id: string; name: string; makes: string; cost: string; doc: string }> = [
@@ -67,6 +105,7 @@ export function TilesSections() {
               tiles, with a raised, winding bank. 10 generations.
             </figcaption>
           </figure>
+          <TerrainBrush />
           <div className="tiles-maps">
             <figure>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -87,9 +126,9 @@ export function TilesSections() {
             </figure>
           </div>
           <ul className="check-list effects-list tiles-points">
-            <li><span className="tick" aria-hidden="true" /> A tile records which surface fills each of its four corners, so a map engine can pick the right one for any neighbour. PixelKiln keeps that record beside the file.</li>
-            <li><span className="tick" aria-hidden="true" /> The set comes from one request, so its tiles are drawn to match each other. You review the set, not tile by tile.</li>
-            <li><span className="tick" aria-hidden="true" /> A set that shares a surface with another waits for it, sends its id, and goes stale if the first set is regenerated.</li>
+            <li><span className="tick" aria-hidden="true" /> A tile records which surface fills each of its four corners, so an engine can pick the right one for any neighbour. PixelKiln keeps that record beside the file.</li>
+            <li><span className="tick" aria-hidden="true" /> The set comes from one request, so its tiles are drawn to match. You review the set, not tile by tile.</li>
+            <li><span className="tick" aria-hidden="true" /> A set that shares a surface with another waits for it, and goes stale if the first is regenerated.</li>
           </ul>
         </div>
       </section>
@@ -216,7 +255,31 @@ export function TilesSections() {
               first time you open it.
             </p>
           </div>
-          <div className="effects-bottom">
+          <figure className="tiles-shot">
+            <Image src="/showcase/tilesets/ldtk-preview.webp" alt="LDtk open on a generated project: a layer list on the left, and a painted preview of grass islands in a lake, every shore drawn with the right edge tile" width={1600} height={1003} sizes="(max-width: 1280px) 100vw, 1180px" />
+            <figcaption>
+              <b>The result, opened in LDtk 1.5.3.</b> The Preview level that{" "}
+              <code>--format ldtk</code> writes, drawn by the auto-rules the
+              export wrote. Pick the corners layer and paint: the shores redraw.
+            </figcaption>
+          </figure>
+          <div className="tiles-kinds tiles-kinds-engines">
+            <div className="tiles-kind tiles-kind-head" aria-hidden="true">
+              <span>Format</span>
+              <span>File</span>
+              <span>What you get</span>
+              <span>How it was checked</span>
+            </div>
+            {ENGINES.map((engine) => (
+              <div className="tiles-kind" key={engine.id}>
+                <strong>{engine.name}</strong>
+                <span><code>{engine.file}</code></span>
+                <span>{engine.gets}</span>
+                <span>{engine.checked}</span>
+              </div>
+            ))}
+          </div>
+          <div className="effects-bottom fx-top">
             <CodeWindow
               title="terminal"
               language="shell"
@@ -229,18 +292,62 @@ pixelkiln export --style ground --only terrain --format tiled
 pixelkiln export --style ground --only terrain --format godot
 pixelkiln export --style ground --only terrain --format ldtk
 pixelkiln export --style ground --only terrain --format generic
-pixelkiln export --style ground --format tiled --merge-connected
 `}
             />
             <ul className="check-list effects-list">
-              <li><span className="tick" aria-hidden="true" /> <b>Tiled:</b> a <code>.tsj</code> tileset with a Wang set, its ids in Tiled&apos;s own order.</li>
-              <li><span className="tick" aria-hidden="true" /> <b>Godot 4:</b> a <code>.tres</code> TileSet with terrain peering bits on every tile. A headless Godot 4.7.2 loads it in CI and reads a peering bit back.</li>
-              <li><span className="tick" aria-hidden="true" /> <b>LDtk:</b> a <code>.ldtk</code> project with the tileset, a paint layer and an auto-rule layer, and a small Preview level that uses every rule. Corner sets paint on a grid shifted half a tile, so the brush works on the corners. LDtk 1.5.3 redrew the same tiles from the rules when we opened one.</li>
-              <li><span className="tick" aria-hidden="true" /> <b>Anything else:</b> generic JSON with the atlas, each tile&apos;s rectangle and mask, and the provider&apos;s raw rules, for an importer of your own.</li>
-              <li><span className="tick" aria-hidden="true" /> <b>Connected sets:</b> add <code>--merge-connected</code> and the sets that share a surface export as one tileset. Ocean to sand, sand to grass and grass to forest become one Tiled Wang set, Godot terrain set or LDtk layer with four surfaces.</li>
               <li><span className="tick" aria-hidden="true" /> Each export has a record of its inputs and output hashes. An edited file stops the next export instead of being overwritten.</li>
+              <li><span className="tick" aria-hidden="true" /> Fix a tile by hand with <code>pixelkiln edit --only coast --no-open</code>. It copies each tile to <code>edits/</code>, and the next export uses your version and names the files in its record.</li>
+              <li><span className="tick" aria-hidden="true" /> Brought your own sheet? <code>asset import</code> cuts it into tiles under the same record and export.</li>
             </ul>
           </div>
+
+          <div className="tiles-merge-wrap" id="merged">
+            <h3>One brush for several sets.</h3>
+            <div className="tiles-merge">
+              <div className="merge-sets" aria-hidden="true">
+                {[
+                  ["Set 1: coast", "ocean", "sand"],
+                  ["Set 2: meadow", "sand", "grass"],
+                  ["Set 3: forest", "grass", "forest"],
+                ].map(([label, first, second]) => (
+                  <div className="merge-set" key={label}>
+                    <b>{label}</b>
+                    {[first, second].map((name) => (
+                      <span className="merge-chip" key={name} style={{ "--chip": CHIP[name as keyof typeof CHIP] } as React.CSSProperties}><i />{name}</span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <span className="merge-arrow" aria-hidden="true">→</span>
+              <div className="merge-brush" aria-hidden="true">
+                <b>One tileset, four surfaces</b>
+                {(["ocean", "sand", "grass", "forest"] as const).map((name) => (
+                  <span className="merge-chip" key={name} style={{ "--chip": CHIP[name] } as React.CSSProperties}><i />{name}</span>
+                ))}
+              </div>
+            </div>
+            <p className="tiles-merge-copy">
+              A coast takes three sets, and each one joins only two surfaces.
+              Exported one at a time they are three brushes that do not know
+              the sand is the same sand. Add <code>--merge-connected</code> and
+              the sets that share a surface come out as one tileset with all
+              four. Naming any one set exports the group, and every set in it
+              has to be generated first. Surfaces no set joins, ocean against
+              grass, leave empty cells where they meet, so plan a set for every
+              pair that touches.
+            </p>
+            <CodeWindow
+              title="terminal"
+              language="shell"
+              copyId="tiles_merge_commands"
+              section="feature_page"
+              code={`
+pixelkiln export --style ground --format tiled --merge-connected
+pixelkiln export --style ground --only meadow --format ldtk --merge-connected
+`}
+            />
+          </div>
+
           <div className="tiles-limits">
             <h3>What it does not do yet.</h3>
             <ul>
@@ -253,9 +360,52 @@ pixelkiln export --style ground --format tiled --merge-connected
             <TrackedLink className="text-link" id="tiles_engines_docs" section="feature_page" href="/docs/tiles">
               Tiles and engine exports
             </TrackedLink>
+            <TrackedLink className="text-link" id="tiles_connected_docs" section="feature_page" href="/docs/tiles#connected-sets">
+              Connected sets
+            </TrackedLink>
             <TrackedLink className="text-link" id="tiles_artifacts_docs" section="feature_page" href="/docs/artifacts">
               How exports are recorded
             </TrackedLink>
+          </div>
+        </div>
+      </section>
+
+      <section className="tiles-section" id="try">
+        <div className="shell">
+          <div className="section-heading split-heading">
+            <div>
+              <h2>Draw a coast. Open it in your engine.</h2>
+            </div>
+            <p className="section-deck">
+              Describe two surfaces, read the price, and export. The first set
+              is one command after the plan, and the lockfile records what it
+              cost.
+            </p>
+          </div>
+          <div className="tiles-try">
+            <CopyCommand command="npm install --save-dev pixelkiln" />
+            <CodeWindow
+              title="pixelkiln.manifest.json"
+              language="json"
+              copyId="tiles_first_set"
+              section="feature_page"
+              code={`
+"styles": {
+  "ground": { "generator": "terrain", "size": 32, "outDir": "tiles" }
+},
+"assets": {
+  "coast": { "prompt": "1). deep ocean water texture 2). plain smooth sand texture" }
+}
+`}
+            />
+            <div className="tiles-try-actions">
+              <TrackedLink className="button button-primary" id="tiles_try_getting_started" section="feature_page" href="/docs/getting-started">
+                Getting started
+              </TrackedLink>
+              <TrackedLink className="button button-secondary" id="tiles_try_docs" section="feature_page" href="/docs/tiles">
+                Tiles in the docs
+              </TrackedLink>
+            </div>
           </div>
         </div>
       </section>
