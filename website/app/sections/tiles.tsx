@@ -311,7 +311,11 @@ export function TilesSections() {
               doorways, solid blocks, two flights of stairs that climb 32 pixels
               each, and a ramp. The kit has no half-height block, so the
               supports under the upper flights are a solid block with 16 pixels
-              cut from its middle. The pieces are placed by script from the
+              cut from its middle. Two touches are ours too: the kit draws the
+              ramp&apos;s slope far paler than its stairs, so the slope is
+              repainted in the stairs&apos; stone, and a doorway is open to
+              whatever lies behind the wall, so each one is filled with a dim
+              passage. The pieces are placed by script from the
               kit&apos;s own heights; no engine lays a kit like this for you yet.
             </figcaption>
           </figure>
