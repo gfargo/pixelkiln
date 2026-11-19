@@ -198,6 +198,23 @@ corner positions. For edge masks, bits N/E/S/W = 0/1/2/3 are placed into the
 four edge positions. Terrain names come from the provider metadata; editor
 colors are deterministic display colors and do not alter the artwork.
 
+**How it was checked.** Tiled 1.12.2, from a script run with `tiled --evaluate`:
+each exported `.tsj` was loaded, a 12x10 map was painted with Tiled's own Wang
+tool (`TileLayer.wangEdit`, corrections on), every cell's tile was read back,
+and its Wang id was compared with what was painted. `tmxrasterizer` drew each
+map to check by eye. All from real PixelLab art, November 2026:
+
+| Set | Wang set | Painted | Cells missing a tile | Cells with the wrong corners or sides |
+|---|---|---|---|---|
+| lake (single set) | corner, 2 colours | a lake with a bay | 0 of 120 | 0 |
+| marsh (single set) | corner, 2 colours | the same | 0 of 120 | 0 |
+| coast (`--merge-connected`, two sets) | corner, 3 colours | ocean, a sand island, a grass field inside it | 0 of 120 | 0 |
+| isometric ground, 32px | corner, 2 colours, isometric grid, `tileoffset` | the same shapes on a diamond map | 0 of 120 | 0 |
+| isometric road, 48px | edge, 2 colours, isometric grid 48x16 | 23 road cells: a long road, a crossing, a T and a corner | 0 of 120 | 0 |
+
+Painting two colours that no set joins (ocean straight against grass in the
+merged coast) leaves those cells empty, as in Godot and LDtk.
+
 ## Godot 4
 
 The `.tres` export creates a `TileSet` containing one `TileSetAtlasSource`.
