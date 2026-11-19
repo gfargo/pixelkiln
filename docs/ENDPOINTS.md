@@ -1110,21 +1110,34 @@ and `buildingRoofProfile`. Measured on 14 November 2026 (Tier 3),
 
 Measured on 18 November 2026 (Tier 3) from one manifest,
 `website/art/pixellab-isometric`: `tileType: "isometric"`, `tileView: "low top-down"`,
-`outlineMode: "segmentation"` on the ground and road sets.
+`outlineMode: "segmentation"` on the ground and road sets. The road set was
+drawn twice more on 19 November 2026 with a steeper view; the first set is still
+the one in the repo, for the reasons below.
 
 | Request | Planned | Billed | Result |
 |---|---|---|---|
 | `tileset`, 32px, grass to cobblestone | 25 | 10 | 16 tiles, each 32x24; corner rules (arity 4), all 16 masks present |
 | `roads`, 32px | 25 | 0 | **422**: "Roads need tile_size 48-96 for isometric." |
-| `roads`, 48px | 25 | 10 | 18 tiles, each 48x48; edge rules (arity 4) naming 17 of the 18 |
+| `roads`, 48px, `low top-down`, `segmentation` | 25 | 10 | 18 tiles, each 48x48; edge rules (arity 4) naming 17 of the 18; a flat 3:1 diamond |
+| `roads`, 48px, `high top-down`, `segmentation` | 25 | 10 | same shape, a 2:1 diamond, but 17 of 18 tiles carry stray fragments of grass outside the slab, above and below it |
+| `roads`, 48px, `high top-down`, `outline` | 25 | 10 | same shape, a clean 2:1 diamond and no fragments, but every tile has a dark outline, so a map of them shows the grid |
 | `building`, 32px, stone hall | 25 | 10 | 58 pieces, each 52x58; rule family `composed`, arity 8, no per-tile masks |
 | `isometricTile`, 32px `block`, two prompts | 1 each | 1 each | two 32x32 blocks |
 
 - **The diamond is not the image.** A 32x24 ground tile is a 32x16 diamond on
-  rows 0 to 15 with 8 rows of side below it. A 48x48 road tile is a 48x16
-  diamond on rows 12 to 27 with 7 rows below, so the diamond is flatter at 48px
-  (3:1, not 2:1) and does not start on the first row. The export measures the
-  diamond from each set's alpha instead of assuming a ratio.
+  rows 0 to 15 with 8 rows of side below it. A 48x48 road tile drawn from
+  `low top-down` is a 48x16 diamond on rows 12 to 27 with 7 rows below, so the
+  diamond is flatter (3:1, not 2:1) and does not start on the first row; from
+  `high top-down` it is 48x24 on rows 6 to 29. The export measures the diamond
+  from each set's alpha instead of assuming a ratio.
+- **The view and the outline mode trade off in a road set.** A steeper view
+  makes a 2:1 diamond, which reads as isometric where the 3:1 one reads as
+  top-down. With `segmentation` at that view, 17 of 18 tiles had stray grass
+  triangles above and below the slab. `outline` has none, but each tile keeps a
+  dark border, so a painted map shows a grid of black lines where the flat
+  `segmentation` set is seamless. None of the three was clean and seamless and
+  isometric at once. Check a road set for pixels outside the first tile's
+  silhouette, and paint a map with it, before choosing.
 - **The corner mask reads off the art.** Sampling the four vertices of each of
   the 16 ground tiles: mask bits 3, 2, 1, 0 (NW, NE, SW, SE) are the top, right,
   left and bottom vertices of the diamond, which is the mapping the Godot export
