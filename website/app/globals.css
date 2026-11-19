@@ -1788,9 +1788,10 @@ div.receipt-line .receipt-mark { background: var(--lime); }
 .tiles-merge-wrap { margin-top: 72px; }
 .tiles-merge-wrap h3 { margin: 0; font-size: var(--text-head); font-weight: 600; letter-spacing: -0.02em; }
 .tiles-merge-wrap .code-window { margin-top: 28px; }
-.tiles-brush-map { position: relative; display: grid; width: 100%; max-width: 760px; margin: 0 auto; background: #0e0c09; cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; }
+.tiles-brush-map { position: relative; width: 100%; max-width: 760px; margin: 0 auto; background: #0e0c09; cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; }
 .tiles-brush-map:focus-visible { outline: 2px solid var(--ember-light); outline-offset: 4px; }
-.tiles-brush-map img { display: block; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+.tiles-brush-map img { position: absolute; display: block; height: auto; image-rendering: pixelated; pointer-events: none; }
+.tiles-brush-bar-brush { padding-top: 0; }
 .brush-dot { position: absolute; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(18, 16, 13, 0.85); pointer-events: none; }
 .brush-dot-0 { background: #2f86d6; }
 .brush-dot-1 { background: #f0cf7a; }
