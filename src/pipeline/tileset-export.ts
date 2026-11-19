@@ -188,7 +188,10 @@ export function exportTileset(
     frames,
     providerRules,
     rules,
-    undefined,
+    // A `terrain` set names each tile's corners in the order of its `terrainTiles`; find a
+    // tile's entry by role. Its role ends in a number of the provider's own (`wang-13`), which
+    // is not its place in that list.
+    terrainRules && !normalizeTileRules(rawRules) ? terrainTileIndexes(metadata, outputs) : undefined,
     spec.tileType === "isometric" ? isometricFootprint(packed.png, frames) : null,
   )
 
@@ -221,15 +224,32 @@ export function exportTileset(
   }
   if (
     options.format === "godot" && rules?.ruleType === "edge" &&
-    godotTileShape(spec.tileType ?? "isometric") !== 0
+    godotTileShape(spec.tileType ?? "isometric") !== 0 && (spec.tileType ?? "isometric") !== "isometric"
   ) {
     throw new Error(
-      "godot export does not yet map edge/side adjacency onto an isometric or oblique tile's " +
+      "godot export does not yet map edge/side adjacency onto an oblique tile's " +
         "diagonal peering bits safely; use --format generic or --format tiled",
     )
   }
 
   return renderTileset(generic, packed, spec.tileType, options)
+}
+
+/**
+ * Each output's index in the lock's `terrainTiles`: the entry with its role, or
+ * the entry at its own position when roles are missing, as a merged export does.
+ */
+function terrainTileIndexes(
+  metadata: unknown,
+  outputs: Array<{ index: number; role?: string }>,
+): Map<string, number> {
+  const tiles = isRecord(metadata) && Array.isArray(metadata.terrainTiles) ? metadata.terrainTiles : []
+  const indexes = new Map<string, number>()
+  for (const output of outputs) {
+    const byRole = output.role ? tiles.findIndex((tile) => isRecord(tile) && tile.role === output.role) : -1
+    indexes.set(output.role ?? fallbackOutputRole(output.index), byRole >= 0 ? byRole : output.index)
+  }
+  return indexes
 }
 
 /** Write the document for an engine format from a built generic tileset. */
@@ -514,14 +534,27 @@ function buildGodot(generic: GenericTileset, tileType: string | undefined): stri
   for (const tile of generic.tiles) {
     const x = tile.id % generic.sheet.columns
     const y = Math.floor(tile.id / generic.sheet.columns)
-    lines.push(`${x}:${y}/0 = 0`)
-    if (origin && (origin.x !== 0 || origin.y !== 0)) lines.push(`${x}:${y}/0/texture_origin = Vector2i(${origin.x}, ${origin.y})`)
-    if (!rules || (tile.bitmask === undefined && tile.corners === undefined) || rules.ruleType === "outline") continue
+    const shifted = origin && (origin.x !== 0 || origin.y !== 0)
+    if (!rules || (tile.bitmask === undefined && tile.corners === undefined) || rules.ruleType === "outline") {
+      lines.push(`${x}:${y}/0 = 0`)
+      if (shifted) lines.push(`${x}:${y}/0/texture_origin = Vector2i(${origin.x}, ${origin.y})`)
+      continue
+    }
     const values = godotTerrainBits(rules, tile, shape)
-    lines.push(`${x}:${y}/0/terrain_set = 0`)
-    lines.push(`${x}:${y}/0/terrain = ${dominantTerrain(values)}`)
-    for (const [side, value] of Object.entries(values)) {
-      lines.push(`${x}:${y}/0/terrains_peering_bit/${side} = ${value}`)
+    // Godot paints a cell by looking for a tile whose centre terrain is the painted one. A tile
+    // that meets two terrains has to answer to either, or one of them cannot paint its own
+    // edge and the border zigzags. So it is written once per terrain it touches, as alternatives
+    // of the same image; the most common one comes first.
+    const centres = centreTerrains(values)
+    if (centres.length > 1) lines.push(`${x}:${y}/next_alternative_id = ${centres.length}`)
+    for (const [alternative, centre] of centres.entries()) {
+      lines.push(`${x}:${y}/${alternative} = ${alternative}`)
+      if (shifted) lines.push(`${x}:${y}/${alternative}/texture_origin = Vector2i(${origin.x}, ${origin.y})`)
+      lines.push(`${x}:${y}/${alternative}/terrain_set = 0`)
+      lines.push(`${x}:${y}/${alternative}/terrain = ${centre}`)
+      for (const [side, value] of Object.entries(values)) {
+        lines.push(`${x}:${y}/${alternative}/terrains_peering_bit/${side} = ${value}`)
+      }
     }
   }
 
@@ -563,9 +596,19 @@ function godotTerrainBits(rules: NormalizedTileRules, tile: GenericTileset["tile
   }
   const mask = tile.bitmask!
   const terrain = (bit: number) => ((mask & (1 << bit)) !== 0 ? 0 : 1)
-  // Isometric/oblique edge masks are refused before reaching here (see the
-  // "edge/side adjacency" guard in exportTileset()) since the diagonal
-  // peering-bit direction hasn't been verified the way the corner case has.
+  if (shape === 1) {
+    // Oblique edge masks are refused before reaching here (see the guard in
+    // exportTileset()). An isometric tile is a square turned a quarter on its
+    // side, so the north edge is the diamond's top-right side, then clockwise.
+    // Measured on the 17 road tiles of a real PixelLab isometric set: the dirt
+    // of each single-edge tile sits toward that side of the diamond.
+    return {
+      top_right_side: terrain(0),
+      bottom_right_side: terrain(1),
+      bottom_left_side: terrain(2),
+      top_left_side: terrain(3),
+    }
+  }
   return {
     top_side: terrain(0),
     right_side: terrain(1),
@@ -574,19 +617,15 @@ function godotTerrainBits(rules: NormalizedTileRules, tile: GenericTileset["tile
   }
 }
 
-/** The terrain most of a tile's corners or sides carry; a tie goes to the lower-numbered one. */
-function dominantTerrain(values: Record<string, number>): number {
+/**
+ * The terrains a tile can be the centre of: those on its corners or sides, the
+ * one it has most of first, then the rest in order (a tie goes to the
+ * lower-numbered one).
+ */
+function centreTerrains(values: Record<string, number>): number[] {
   const counts = new Map<number, number>()
   for (const value of Object.values(values)) counts.set(value, (counts.get(value) ?? 0) + 1)
-  let best = 0
-  let bestCount = -1
-  for (const [terrain, count] of [...counts].sort(([a], [b]) => a - b)) {
-    if (count > bestCount) {
-      best = terrain
-      bestCount = count
-    }
-  }
-  return best
+  return [...counts].sort(([a, countA], [b, countB]) => countB - countA || a - b).map(([terrain]) => terrain)
 }
 
 function godotTileShape(tileType: string | undefined): number {

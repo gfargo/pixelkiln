@@ -211,12 +211,35 @@ no usable terrain data at all once loaded. The corner-mask → isometric-name
 mapping (mask bit 3/2/1/0 = NW/NE/SW/SE → `top_corner`/`right_corner`/
 `left_corner`/`bottom_corner`) is confirmed against a production, hand-verified
 isometric Wang set (a downstream consumer's `docs/terrain-tiles.md` §5: every
-tile rendered, its corners sampled, checked against its mask). Edge/side
-masks on an isometric or oblique tile are refused rather than guessed — the
-diagonal peering-bit direction for that case hasn't been verified the same
-way — so `--format godot` on an edge-ruled isometric tileset asks for
-`--format generic` or `--format tiled` instead, neither of which has this
-shape dependency.
+tile rendered, its corners sampled, checked against its mask).
+
+Edge masks on an isometric tile use the diamond's four sides:
+`top_right_side`, `bottom_right_side`, `bottom_left_side` and
+`top_left_side` for the north, east, south and west bits. A square tile turned
+a quarter on its side puts north on the top right, then clockwise. This was
+measured on the 17 road tiles of a real PixelLab isometric set (the dirt of each
+single-edge tile sits toward that side), then painted in Godot 4.7.2: roads ran
+unbroken along both axes with correct corners and T-junctions. Edge masks on an
+oblique tile are still refused, because that diagonal has not been measured, so
+`--format godot` on one asks for `--format generic` or `--format tiled`.
+
+**Each tile that meets two terrains is written once per terrain.** Godot
+paints a cell by finding a tile whose centre terrain is the one you paint, and
+a tile has one centre. A tile with grass on two corners and sand on two has to
+answer to a grass brush and a sand brush alike, or one of them cannot draw its
+own edge and the border comes out as a sawtooth. So the export writes the
+tile as alternatives of one image, one per terrain it touches, with the terrain
+it has most of first. Tile counts in the editor do not change; each tile gains
+alternatives.
+
+**To paint:** fill the ground with the plain tile of the lowest terrain, then paint
+the others with the terrain tool, higher terrains on top (ocean, then sand, then
+grass). The editor paints with `ignore_empty_terrains` off, and a script has to
+do the same: `set_cells_terrain_connect(cells, 0, terrain, false)`. With the
+script default of `true`, Godot leaves the edge cells of a filled area empty.
+The cells on the very edge of a terrain-painted area also pick border
+tiles, so paint the ground a little past the edge of the map or place the plain
+tile there directly.
 
 The texture path is relative to the `.tres`, so the generated PNG and resource
 can move together inside a Godot project.
@@ -239,11 +262,15 @@ an isometric `tiles`-generator tileset (`tileFeature: "tileset"` with
 Both this `TileSet` and the `SpriteFrames` that `pack --format godot` writes
 are loaded by a headless Godot 4.7.2 in CI (`npm run test:godot`), which
 reports the atlas tiles, terrain sets and names, animation names, frame
-counts, speeds, and loop flags it sees, and — for both a square terrain
-tileset and an isometric `tiles` tileset — round-trips an actual peering bit
+counts, speeds, and loop flags it sees, and round-trips an actual peering bit
 through Godot's own `get_terrain_peering_bit()` rather than only checking
-tile/terrain-set counts. That last check is what would have caught the
-isometric-corner-names bug; the counts alone did not.
+tile/terrain-set counts. It also paints. A square corner set, a square edge
+set, an isometric corner set, an isometric edge set and the repo's real
+three-terrain coast set (ocean, sand, grass) are each painted with
+`set_cells_terrain_connect`, one terrain inside the last, and every corner or
+side of every cell is compared with what the strokes say it should be. All five
+fail without the alternatives above, so the check does catch a border that
+looks right in the counts and wrong on the map.
 
 ## Isometric tiles
 
@@ -406,9 +433,9 @@ sidescroller set is refused.
   layer pair.
 - Merging works on `terrain` sets only. A sidescroller set connects just its
   platform, and `tiles` sets have no `connect`, so neither merges.
-- Godot edge/side masks on an isometric or oblique tile remain generic- or
-  Tiled-only: which diagonal each edge bit means has not been checked against
-  a real edge-ruled isometric set, the way the corner mapping was.
+- Godot edge/side masks on an oblique tile remain generic- or Tiled-only: which
+  diagonal each edge bit means has not been measured against a real set. On an
+  isometric tile they map to the diamond's sides, as above.
 - `terrain` sets are square, top-down or side-on because PixelLab's tileset
   endpoint has no shape option. Isometric corner sets come from `tiles` with
   `tileFeature: "tileset"`, and export as above.

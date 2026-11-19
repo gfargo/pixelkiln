@@ -28,7 +28,7 @@ const ENGINES: Array<{ id: string; name: string; file: string; gets: string; che
     name: "Godot 4",
     file: ".tres",
     gets: "A TileSet with terrain peering bits on every tile. Isometric sets get the diamond as the cell, each image placed on it, and a diamond layout.",
-    checked: "A headless Godot 4.7.2 loads it in CI and reads a peering bit and the isometric geometry back. Drawn in Godot, isometric cells tile exactly.",
+    checked: "A headless Godot 4.7.2 loads it in CI, reads a peering bit and the isometric geometry back, and paints square and isometric corner and edge sets, and the three-terrain coast, with every border compared to the strokes. Drawn in Godot, isometric cells tile exactly.",
   },
   {
     id: "ldtk",
@@ -291,7 +291,7 @@ export function TilesSections() {
           </figure>
           <ul className="check-list effects-list tiles-points">
             <li><span className="tick" aria-hidden="true" /> A tile image is taller than its diamond. The 32 by 24 tiles are a 32 by 16 diamond with 8 rows of side below it, so <code>export</code> finds the diamond and gives Godot its cell and offset, and Tiled its grid, to stand each image on its cell.</li>
-            <li><span className="tick" aria-hidden="true" /> The terrain set is corner-ruled and exports to Godot and Tiled. The road set is edge-ruled, so it goes to Tiled and the generic file; Godot&apos;s isometric edge mapping is the next thing to check, against this set.</li>
+            <li><span className="tick" aria-hidden="true" /> The terrain set is corner-ruled and the road set is edge-ruled. Both export to Godot and Tiled. The road set&apos;s four edges are the diamond&apos;s four sides, which we measured on these tiles and checked by painting a road network in Godot.</li>
             <li><span className="tick" aria-hidden="true" /> A building kit has its own rule family, so it exports to the generic file with every rule kept. An engine importer has to place its pieces.</li>
           </ul>
         </div>
@@ -306,8 +306,8 @@ export function TilesSections() {
             <p className="section-deck">
               A folder of tile images is not a tileset until an engine knows
               which tile goes where. <code>export</code> writes the atlas and
-              the placement rules together, so the terrain brush works the
-              first time you open it.
+              the placement rules together, so the engine&apos;s terrain brush
+              can paint with it. Godot&apos;s was checked by painting.
             </p>
           </div>
           <figure className="tiles-shot">
@@ -407,7 +407,7 @@ pixelkiln export --style ground --only meadow --format ldtk --merge-connected
             <h3>What it does not do yet.</h3>
             <ul>
               <li>Connected sets export one at a time unless you ask for <code>--merge-connected</code>. A sidescroller set connects only its platform, so it always exports alone.</li>
-              <li>Six-edge hex masks stay in the generic JSON, and so do edge masks on isometric tiles for Godot: we have not checked which diagonal each bit means against a real set. LDtk takes square tiles only.</li>
+              <li>Six-edge hex masks stay in the generic JSON, and so do edge masks on oblique tiles for Godot: we have not measured which diagonal each bit means. LDtk takes square tiles only.</li>
               <li>Terrain sets are square, top-down or side-on, because PixelLab&apos;s tileset endpoint has no shape option. Isometric ground comes from <code>tiles</code>, and exports with its diamond geometry. A single raised block is <code>isometricTile</code>.</li>
             </ul>
           </div>
