@@ -1,6 +1,6 @@
 import type { LockEntry, ResolvedSpec } from "../types.ts"
 import { fallbackOutputRole, resolveSpecEntryOutputs, sourceIsStem, sourceOutputPath } from "../outputs.ts"
-import { mergeConnectedTerrain, terrainColor, tileCorners, type ConnectedMember, type CornerTerrains } from "./connected-sets.ts"
+import { mergeConnectedTerrain, terrainColor, unmatchedRoleWarning, tileCorners, type ConnectedMember, type CornerTerrains } from "./connected-sets.ts"
 import { decodePng } from "../png.ts"
 import { buildLdtk } from "./ldtk-export.ts"
 import { packSprites, type PackedFrame, type PackedSource } from "./pack.ts"
@@ -67,6 +67,8 @@ export interface TilesetExport {
   document: string
   generic: GenericTileset
   sources: PackedSource[]
+  /** What the export had to guess, for the CLI to print; empty when it guessed nothing. */
+  warnings: string[]
 }
 
 export interface TilesetExportOptions {
@@ -194,6 +196,10 @@ export function exportTileset(
     terrainRules && !normalizeTileRules(rawRules) ? terrainTileIndexes(metadata, outputs) : undefined,
     spec.tileType === "isometric" ? isometricFootprint(packed.png, frames) : null,
   )
+  const roleWarning = terrainRules && !normalizeTileRules(rawRules) && isRecord(metadata) && Array.isArray(metadata.terrainTiles)
+    ? unmatchedRoleWarning(`${spec.styleId}/${spec.assetId}`, outputs, metadata.terrainTiles)
+    : null
+  const warnings = roleWarning ? [roleWarning] : []
 
   if (options.format === "generic") {
     return {
@@ -202,6 +208,7 @@ export function exportTileset(
       document: JSON.stringify(generic, null, 2) + "\n",
       generic,
       sources: packed.sources,
+      warnings,
     }
   }
 
@@ -232,7 +239,7 @@ export function exportTileset(
     )
   }
 
-  return renderTileset(generic, packed, spec.tileType, options)
+  return { ...renderTileset(generic, packed, spec.tileType, options), warnings }
 }
 
 /**
@@ -258,7 +265,7 @@ function renderTileset(
   packed: { png: Buffer; sources: PackedSource[] },
   tileType: string | undefined,
   options: TilesetExportOptions,
-): TilesetExport {
+): Omit<TilesetExport, "warnings"> {
   if (options.format === "tiled") {
     return {
       png: packed.png,
@@ -329,10 +336,11 @@ export function exportMergedTilesets(members: ConnectedMember[], options: Tilese
       document: JSON.stringify(generic, null, 2) + "\n",
       generic,
       sources: packed.sources,
+      warnings: merged.warnings,
     }
   }
   assertUniformTiles(generic)
-  return renderTileset(generic, packed, merged.tileType, options)
+  return { ...renderTileset(generic, packed, merged.tileType, options), warnings: merged.warnings }
 }
 
 /**

@@ -210,6 +210,26 @@ describe("export --merge-connected", () => {
     expect(second).toBe(first)
   })
 
+  it("warns, naming the set and tile, when a tile's role is not in its set's terrainTiles", async () => {
+    const { manifestPath, lockPath } = await connectedProject()
+    const lock = JSON.parse(await readFile(lockPath, "utf8"))
+    lock.entries["ground/meadow"].providerMetadata.pixellab.terrainTiles[5].role = "tile-05-renamed"
+    await writeFile(lockPath, JSON.stringify(lock))
+    await runExport(parseArgs([
+      "export", "--manifest", manifestPath, "--lock", lockPath, "--style", "ground",
+      "--format", "godot", "--merge-connected", "--out", path.join(dir, "merged"),
+    ]))
+    const printed = quiet.mock.calls.map((call) => String(call[0]))
+    expect(printed.filter((line) => line.includes("warning:"))).toEqual([
+      expect.stringMatching(/warning: ground\/meadow: 1 tile\(s\) have a role that is not in the lock's terrainTiles \(tile-05-m5\)/),
+    ])
+  })
+
+  it("prints no warning when every role is found", async () => {
+    await exportMerged("godot")
+    expect(quiet.mock.calls.some((call) => String(call[0]).includes("warning:"))).toBe(false)
+  })
+
   it("pulls in the whole group when only one set is named, under a name made of all of them", async () => {
     const { manifestPath, lockPath } = await connectedProject()
     await runExport(parseArgs([

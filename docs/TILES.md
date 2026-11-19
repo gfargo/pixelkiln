@@ -174,7 +174,10 @@ The generic format is the lossless interchange contract:
   rectangle, optional bitmask, and `stampOnly`. A `terrain` tile finds its
   corners by role: its role may end in a number of the provider's own
   (`tile-06-wang-0`) that is not its place in the list, and a set exported by an
-  older version put rules on the wrong tiles, so export it again
+  older version put rules on the wrong tiles, so export it again. A tile whose
+  role is not in the lock's `terrainTiles` takes the corners of the entry at its
+  own position, and `pixelkiln export` prints a `warning:` line naming the set
+  and the tiles; regenerate a set that warns and paints the wrong tiles
 - normalized rule type, arity, connectivity, terrain names, and masks
 - the complete raw provider rule object in `providerRules`, including rule
   families a current exporter does not yet normalize
