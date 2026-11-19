@@ -250,6 +250,14 @@ describe("exportTileset", () => {
     const godot = exportTileset(entry, spec, { format: "godot", manifestDir: dir, imageName: "terrain.png", columns: 2 })
     expect(godot.document).toMatch(/1:0\/0\/terrains_peering_bit\/bottom_right_corner = 1/)
     expect(godot.document).not.toMatch(/1:0\/0\/terrains_peering_bit\/\w+ = 0/)
+    expect(result.warnings).toEqual([])
+
+    // A role the lock's terrainTiles does not list is taken by position, and the export says so.
+    const listed = terrainTiles.map((tile, index) => (index === 2 ? { ...tile, role: "tile-02-renamed" } : tile))
+    const renamed = { ...entry, providerMetadata: { pixellab: { terrainTypes: ["grass", "water"], terrainTiles: listed } } }
+    const guessed = exportTileset(renamed as LockEntry, spec, { format: "godot", manifestDir: dir, imageName: "terrain.png", columns: 2 })
+    expect(guessed.warnings).toHaveLength(1)
+    expect(guessed.warnings[0]).toMatch(/^ground\/terrain: 1 tile\(s\) have a role that is not in the lock's terrainTiles \(tile-02-wang-2\)/)
   })
 
   it("normalizes the terrain generator's corner metadata into a generic Wang atlas", async () => {

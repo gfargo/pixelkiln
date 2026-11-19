@@ -322,6 +322,7 @@ export async function runExport(args: Args): Promise<void> {
       `    ${path.relative(process.cwd(), base)}.png + ` +
         `${path.basename(base)}${result.extension} + .pixelkiln.json`,
     )
+    for (const warning of result.warnings) log(`    warning: ${warning}`)
   }
 }
 

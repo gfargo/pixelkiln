@@ -193,6 +193,10 @@ terrain:
   Godot one terrain set; LDtk one value per terrain and a 16 by 12 Preview.
 - refused: a group with a sidescroller set, or sets with different tile sizes
   or shapes.
+- a `warning:` line under a set means some of its tiles have a role that is not
+  in the lock's `terrainTiles`, so the export took their corners by position.
+  Tell the user, and if the painted map puts the wrong tiles at the shores,
+  regenerate that set. A single-set export prints the same warning.
 
 The flag is opt-in on purpose. Without it, existing exports and their file
 names do not move, and a game that loads `coast-tileset` keeps working. Do not

@@ -39,6 +39,29 @@ export interface MergedTerrain {
   tileType: string | undefined
   /** Each set's own terrain names and tiles, as PixelLab returned them. */
   providerRules: Record<string, unknown>
+  /** Things the export got by guessing, to tell the user (see `unmatchedRoleWarning`). */
+  warnings: string[]
+}
+
+/**
+ * A warning for the outputs whose role names no entry in the lock's
+ * `terrainTiles`, or null when every role is found. Such a tile takes the
+ * corners of the entry at its own position, which is right only when the
+ * provider listed tiles in output order; a wrong guess paints the wrong tile.
+ */
+export function unmatchedRoleWarning(
+  label: string,
+  outputs: Array<{ role?: string }>,
+  terrainTiles: unknown[],
+): string | null {
+  const roles = new Set(terrainTiles.flatMap((tile) => (isRecord(tile) && typeof tile.role === "string" ? [tile.role] : [])))
+  const missing = outputs.flatMap((output) => (output.role && !roles.has(output.role) ? [output.role] : []))
+  if (!missing.length) return null
+  const shown = missing.slice(0, 3).join(", ") + (missing.length > 3 ? `, and ${missing.length - 3} more` : "")
+  return (
+    `${label}: ${missing.length} tile(s) have a role that is not in the lock's terrainTiles (${shown}), ` +
+    "so their corners were taken by position and may be wrong; regenerate the set if it paints the wrong tiles"
+  )
 }
 
 const key = (spec: Pick<ResolvedSpec, "styleId" | "assetId">) => `${spec.styleId}/${spec.assetId}`
@@ -179,6 +202,7 @@ export function mergeConnectedTerrain(members: ConnectedMember[], manifestDir: s
   }
 
   const tiles: MergedTile[] = []
+  const warnings: string[] = []
   const providerRules: Record<string, unknown> = {}
   for (const { spec, entry } of members) {
     const metadata = entry.providerMetadata?.[entry.provider] as Record<string, unknown> | undefined
@@ -195,6 +219,8 @@ export function mergeConnectedTerrain(members: ConnectedMember[], manifestDir: s
     if (spec.source && sourceIsStem(spec.source, entry, manifestDir)) {
       outputs = outputs.map((output) => ({ ...output, absolutePath: sourceOutputPath(spec.source!, entry, output.index, manifestDir) }))
     }
+    const warning = unmatchedRoleWarning(key(spec), outputs, terrainTiles)
+    if (warning) warnings.push(warning)
     for (const output of outputs) {
       const tile = (output.role ? terrainTiles.find((item) => isRecord(item) && item.role === output.role) : undefined) ??
         terrainTiles[output.index]
@@ -213,7 +239,7 @@ export function mergeConnectedTerrain(members: ConnectedMember[], manifestDir: s
     }
   }
   if (!tiles.length) throw new Error(`connected sets ${ids.join(", ")} have no tiles with corner data`)
-  return { assets: ids, terrains: names, tiles, tileType: members[0]!.spec.tileType, providerRules }
+  return { assets: ids, terrains: names, tiles, tileType: members[0]!.spec.tileType, providerRules, warnings }
 }
 
 /**
