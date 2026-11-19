@@ -127,6 +127,18 @@ What export refuses, and what to do instead:
 | LDtk for hex, isometric, oblique, non-square tiles | `generic` or `tiled`; LDtk takes square tiles on an orthogonal grid. |
 | tiles of different sizes | Engine formats need one cell size; `generic` does not. |
 
+### Isometric sets
+
+An isometric tile image is taller than its diamond (the sides of a block hang
+below it), so the export finds the diamond from the art's alpha and writes it as
+`footprint` in the generic file. Godot then gets the diamond as `tile_size`, a
+`texture_origin` per tile that puts the image on its cell, and the diamond
+layout; Tiled gets an isometric `grid` and a `tileoffset`. Filled-square tiles
+have no diamond and get none of that. Corner sets only: edge-ruled isometric
+sets still go to `generic` or `tiled`. When someone reports isometric tiles
+sitting too high or spaced wrong, check `footprint` in the generic export
+first. The geometry is described under "Isometric tiles" in `docs/TILES.md`.
+
 A hand-edited set (`pixelkiln edit --only <asset> --style <style> --no-open`)
 is exported tile by tile from its edits, and the record names those paths.
 A changed output stops the next export instead of being overwritten; `--force`
@@ -164,6 +176,10 @@ want one brush for several surfaces.
 
 Tell the person when it matters:
 
+- Godot isometric geometry: a 2x2 block of cells drawn in Godot 4.7.2 filled
+  exactly the diamond lattice the cells predict. No isometric set from PixelLab
+  itself has been exported yet; the tests use tiles drawn to its measured
+  32x24 shape.
 - Godot: the `.tres` for a square corner set and an isometric set loads in a
   headless Godot 4.7.2 in CI, and a peering bit reads back.
 - LDtk: a 16-tile corner set was opened by hand in LDtk 1.5.3. The preview

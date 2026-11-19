@@ -118,10 +118,27 @@ await writeFile(path.join(dir, "terrain2-tileset.tres"), terrainTileset.document
 // exercises that branch for a `tiles`-shaped isometric corner set and, below,
 // actually round-trips a peering bit through Godot's own
 // get_terrain_peering_bit() rather than only checking tile/terrain-set counts.
+// Its tiles are drawn as PixelLab draws them: a 2:1 diamond 32 wide and 16 tall
+// at the top of a 32x24 image, with the sides hanging 8px below it.
+const diamond = (shade: number) => {
+  const rgba = Buffer.alloc(32 * 24 * 4, 0)
+  const bottom: number[] = []
+  for (let y = 0; y < 16; y++) {
+    const width = y < 8 ? 4 * (y + 1) : 4 * (16 - y)
+    for (let x = 16 - width / 2; x < 16 + width / 2; x++) {
+      rgba.set([shade, shade, shade, 255], (y * 32 + x) * 4)
+      bottom[x] = Math.max(bottom[x] ?? 0, y)
+    }
+  }
+  bottom.forEach((b, x) => {
+    for (let y = b + 1; y <= b + 8 && y < 24; y++) rgba.set([shade / 2, shade / 2, shade / 2, 255], (y * 32 + x) * 4)
+  })
+  return encodeRgbaPng(32, 24, rgba)
+}
 const isoTiles: LockEntry["outputs"] = []
 for (const [index, tile] of terrainCorners.entries()) {
   const file = path.join(dir, `terrain3-${tile.role}.png`)
-  await writeFile(file, px(8, 60 + index * 30))
+  await writeFile(file, diamond(120 + index * 30))
   isoTiles.push({ path: file, sha256: String(index), role: tile.role })
 }
 const isoTileset = exportTileset(
@@ -221,6 +238,10 @@ func _init() -> void:
 		# for a non-square tile_shape), proving this isn't just emitting both.
 		report["iso_tileset"] = {
 			"tile_shape": iso_tileset.tile_shape,
+			"tile_layout": iso_tileset.tile_layout,
+			"tile_size": [iso_tileset.tile_size.x, iso_tileset.tile_size.y],
+			"region_size": [iso_source.texture_region_size.x, iso_source.texture_region_size.y],
+			"texture_origin": [iso_tile_data.texture_origin.x, iso_tile_data.texture_origin.y],
 			"bottom_corner": iso_tile_data.get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_CORNER),
 			"square_bottom_right_corner_is_invalid": iso_tile_data.get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER) == -1,
 		}
@@ -260,6 +281,10 @@ try {
   check(report.terrain_tileset?.peering_bit === 0, `terrain generator's corner metadata reaches the tile's terrain peering bit (${report.terrain_tileset?.peering_bit})`)
   check(report.terrain_tileset?.tile_shape === 0, `terrain generator's TileSet stays square, not isometric (${report.terrain_tileset?.tile_shape})`)
   check(report.iso_tileset?.tile_shape === 1, `an isometric tiles-generator TileSet has tile_shape 1 (${report.iso_tileset?.tile_shape})`)
+  check(report.iso_tileset?.tile_layout === 5, `an isometric TileSet is laid out as a diamond, not staggered (${report.iso_tileset?.tile_layout})`)
+  check(JSON.stringify(report.iso_tileset?.tile_size) === "[32,16]", `its cell is the 32x16 diamond, not the 32x24 image (${JSON.stringify(report.iso_tileset?.tile_size)})`)
+  check(JSON.stringify(report.iso_tileset?.region_size) === "[32,24]", `its atlas still cuts the whole 32x24 image (${JSON.stringify(report.iso_tileset?.region_size)})`)
+  check(JSON.stringify(report.iso_tileset?.texture_origin) === "[0,-4]", `each image is moved so its diamond sits on the cell (${JSON.stringify(report.iso_tileset?.texture_origin)})`)
   check(report.iso_tileset?.bottom_corner === 0, `isometric tileset's diamond-point peering bit round-trips through Godot (${report.iso_tileset?.bottom_corner})`)
   check(report.iso_tileset?.square_bottom_right_corner_is_invalid === true, "isometric tileset does not also carry the square corner name Godot would reject")
 } finally {

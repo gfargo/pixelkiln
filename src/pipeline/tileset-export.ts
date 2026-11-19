@@ -1,6 +1,7 @@
 import type { LockEntry, ResolvedSpec } from "../types.ts"
 import { fallbackOutputRole, resolveSpecEntryOutputs, sourceIsStem, sourceOutputPath } from "../outputs.ts"
 import { mergeConnectedTerrain, terrainColor, tileCorners, type ConnectedMember, type CornerTerrains } from "./connected-sets.ts"
+import { decodePng } from "../png.ts"
 import { buildLdtk } from "./ldtk-export.ts"
 import { packSprites, type PackedFrame, type PackedSource } from "./pack.ts"
 
@@ -33,6 +34,13 @@ export interface GenericTileset {
   sets?: string[]
   image: string
   tile: { width: number; height: number }
+  /**
+   * Isometric tiles only: the ground diamond inside each tile image, in that
+   * image's own pixels. A tile is usually taller than its diamond (the sides
+   * of a raised block hang below it), so an engine needs the diamond to size
+   * its grid and to line each image up with the cell it stands on.
+   */
+  footprint?: { x: number; y: number; width: number; height: number }
   sheet: { width: number; height: number; columns: number }
   tiles: Array<{
     id: number
@@ -180,6 +188,8 @@ export function exportTileset(
     frames,
     providerRules,
     rules,
+    undefined,
+    spec.tileType === "isometric" ? isometricFootprint(packed.png, frames) : null,
   )
 
   if (options.format === "generic") {
@@ -305,6 +315,72 @@ export function exportMergedTilesets(members: ConnectedMember[], options: Tilese
   return renderTileset(generic, packed, merged.tileType, options)
 }
 
+/**
+ * Find the ground diamond of an isometric tile set from its alpha.
+ *
+ * PixelLab draws an isometric tile as a 2:1 diamond with the apex on the
+ * image's first opaque row and, on a raised tile, the sides hanging below it
+ * (measured: 32x24 with the diamond's midline at row 7). The diamond is
+ * `width` wide and `2 * (widest row - apex row) + 2` tall; the tile image is
+ * taller than that by the side faces. A set whose tiles are filled squares has
+ * no diamond to find and gets none, so nothing changes for it.
+ */
+export function isometricFootprint(
+  png: Buffer,
+  frames: Array<{ x: number; y: number; width: number; height: number }>,
+): GenericTileset["footprint"] | null {
+  const image = decodePng(png)
+  let best: { apex: number; widest: number; left: number; right: number; width: number; height: number; count: number } | null = null
+  for (const frame of frames) {
+    let apex = -1
+    let widest = -1
+    let widestRow = -1
+    let left = frame.width
+    let right = -1
+    let count = 0
+    for (let row = 0; row < frame.height; row++) {
+      let first = -1
+      let last = -1
+      let opaque = 0
+      for (let column = 0; column < frame.width; column++) {
+        if (image.pixels[((frame.y + row) * image.width + frame.x + column) * 4 + 3]! > 8) {
+          if (first < 0) first = column
+          last = column
+          opaque++
+        }
+      }
+      count += opaque
+      if (opaque === 0) continue
+      if (apex < 0) apex = row
+      // The first row to reach (nearly) the widest the tile gets.
+      if (opaque > widest * 1.0 + 0.5 && last - first + 1 >= widest) {
+        widest = opaque
+        widestRow = row
+        left = first
+        right = last
+      }
+    }
+    if (apex < 0 || (best && count <= best.count)) continue
+    // The apex row is narrow on a diamond and as wide as the tile on a filled square.
+    const apexWidth = (() => {
+      let w = 0
+      for (let column = 0; column < frame.width; column++) {
+        if (image.pixels[((frame.y + apex) * image.width + frame.x + column) * 4 + 3]! > 8) w++
+      }
+      return w
+    })()
+    if (apexWidth * 2 > frame.width) continue
+    best = { apex, widest: widestRow, left, right, width: frame.width, height: frame.height, count }
+  }
+  if (!best) return null
+  const width = best.right - best.left + 1
+  const measured = 2 * (best.widest - best.apex) + 2
+  // A true 2:1 diamond is half as tall as it is wide; trust the measure only when it is close.
+  const height = Math.abs(measured - width / 2) <= Math.max(2, width * 0.1) ? Math.round(width / 2) : measured
+  if (height < 2 || best.apex + height > best.height) return null
+  return { x: best.left, y: best.apex, width, height }
+}
+
 function buildGeneric(
   identity: { name: string; style: string; asset: string; sets?: string[] },
   imageName: string,
@@ -313,6 +389,7 @@ function buildGeneric(
   providerRules: Record<string, unknown> | null,
   rules: NormalizedTileRules | null,
   indexOf?: Map<string, number>,
+  footprint?: GenericTileset["footprint"] | null,
 ): GenericTileset {
   return {
     format: "pixelkiln-tileset",
@@ -323,6 +400,7 @@ function buildGeneric(
     ...(identity.sets ? { sets: identity.sets } : {}),
     image: imageName,
     tile: { ...atlas.cell },
+    ...(footprint ? { footprint } : {}),
     sheet: { ...atlas.sheet, columns: atlas.columns },
     tiles: frames.map((frame, index) => {
       const sourceIndex = indexOf?.get(frame.id) ?? tileIndex(frame.id) ?? index
@@ -361,6 +439,17 @@ function buildTiled(generic: GenericTileset): Record<string, unknown> {
     imageheight: generic.sheet.height,
     margin: 0,
     spacing: 0,
+  }
+  if (generic.footprint) {
+    // Tiled lines a tile image up by its bottom edge on the cell it stands on,
+    // so an image taller than its diamond needs lowering by the difference to
+    // put the diamond on the cell, and sideways by how far off-centre it is.
+    const { x, y, width, height } = generic.footprint
+    tiled.tileoffset = {
+      x: Math.round(generic.tile.width / 2 - (x + width / 2)),
+      y: generic.tile.height - (y + height),
+    }
+    tiled.grid = { orientation: "isometric", width, height }
   }
   if (!rules || rules.ruleType === "outline") return tiled
 
@@ -410,11 +499,23 @@ function buildGodot(generic: GenericTileset, tileType: string | undefined): stri
     `texture = ExtResource("1_texture")`,
     `texture_region_size = Vector2i(${generic.tile.width}, ${generic.tile.height})`,
   ]
+  // An isometric cell is the diamond, not the whole image. The image is drawn
+  // centred on the cell, so it is moved by how far the diamond's centre is from
+  // the image's (checked by drawing a TileMapLayer in Godot 4.7.2: with the
+  // origin set this way the diamond lands exactly on its cell).
+  const footprint = generic.footprint
+  const origin = footprint
+    ? {
+        x: Math.round(footprint.x + footprint.width / 2 - generic.tile.width / 2),
+        y: Math.round(footprint.y + footprint.height / 2 - generic.tile.height / 2),
+      }
+    : null
 
   for (const tile of generic.tiles) {
     const x = tile.id % generic.sheet.columns
     const y = Math.floor(tile.id / generic.sheet.columns)
     lines.push(`${x}:${y}/0 = 0`)
+    if (origin && (origin.x !== 0 || origin.y !== 0)) lines.push(`${x}:${y}/0/texture_origin = Vector2i(${origin.x}, ${origin.y})`)
     if (!rules || (tile.bitmask === undefined && tile.corners === undefined) || rules.ruleType === "outline") continue
     const values = godotTerrainBits(rules, tile, shape)
     lines.push(`${x}:${y}/0/terrain_set = 0`)
@@ -425,8 +526,10 @@ function buildGodot(generic: GenericTileset, tileType: string | undefined): stri
   }
 
   lines.push("", "[resource]")
-  lines.push(`tile_size = Vector2i(${generic.tile.width}, ${generic.tile.height})`)
+  lines.push(`tile_size = Vector2i(${footprint ? footprint.width : generic.tile.width}, ${footprint ? footprint.height : generic.tile.height})`)
   if (shape !== 0) lines.push(`tile_shape = ${shape}`)
+  // An isometric map is a diamond grid. Godot's default layout, stacked, would stagger the rows instead.
+  if (tileType === "isometric") lines.push("tile_layout = 5")
   if (rules && rules.ruleType !== "outline") {
     lines.push(`terrain_set_0/mode = ${rules.ruleType === "corner" ? 1 : 2}`)
     for (const [index, name] of terrainNamesFor(rules).entries()) {

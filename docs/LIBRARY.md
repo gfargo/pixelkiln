@@ -389,6 +389,10 @@ and LDtk exporters translate supported 4-edge and 4-corner rule sets and reject
 unknown semantics rather than emitting plausible but incorrect adjacency.
 See [TILES.md](./TILES.md) for file contracts and engine details.
 
+For an isometric set, `exported.generic.footprint` is the ground diamond inside
+each tile image, and `isometricFootprint(png, frames)` finds it from any atlas
+PNG and its frame rectangles; see [isometric tiles](./TILES.md#isometric-tiles).
+
 Sets that share a terrain (`connect`) export as one tileset with every terrain
 through `connectedGroup()` and `exportMergedTilesets()`, the calls behind
 `pixelkiln export --merge-connected`:
