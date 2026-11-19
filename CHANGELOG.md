@@ -1,3 +1,11 @@
+# [0.120.0](https://github.com/gfargo/pixelkiln/compare/v0.119.1...v0.120.0) (2026-11-19)
+
+
+### Features
+
+* **export:** warn when a terrain tile's role is not in its set's terrainTiles ([c7204e3](https://github.com/gfargo/pixelkiln/commit/c7204e3fa16a50c0cdc6ccf2087937f710c44428))
+* **site:** stone ramp and lit doorways in the stacked dungeon hall ([0be9c6b](https://github.com/gfargo/pixelkiln/commit/0be9c6baad31395d9744796445ac9f902264d67a))
+
 ## [0.119.1](https://github.com/gfargo/pixelkiln/compare/v0.119.0...v0.119.1) (2026-11-19)
 
 # [0.119.0](https://github.com/gfargo/pixelkiln/compare/v0.118.0...v0.119.0) (2026-11-19)
