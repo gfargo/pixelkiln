@@ -6,6 +6,10 @@ one level is 16px (a solid block is two levels). Stairs come in pairs that climb
 pieces 40 and 41 climbing north, so a 32px rise is two pairs, the upper pair over blocks
 sunk one level so the stairs have something under them.
 
+Two pieces are touched up after placing: the ramp's slope is repainted in the stairs'
+stone (the kit draws it far paler), and each doorway, a hole the background shows
+through, is filled with a dim passage.
+
   pixelkiln export --style buildings --format generic --out /tmp/hall/hall
   python3 compose-hall.py /tmp/hall/hall.json /tmp/hall/hall.png out.png
 """
@@ -13,9 +17,51 @@ import json, sys
 from PIL import Image
 d=json.load(open(sys.argv[1]))
 atlas=Image.open(sys.argv[2]).convert('RGBA')
+def crop(i):
+    t=d['tiles'][i]; return atlas.crop((t['x'],t['y'],t['x']+52,t['y']+58))
 def piece(i):
     if i==HALF: return half_block()
-    t=d['tiles'][i]; return atlas.crop((t['x'],t['y'],t['x']+52,t['y']+58))
+    if i in (RAMP_LO,RAMP_HI): return stone_ramp(i)
+    return crop(i)
+
+def lum(p): return (299*p[0]+587*p[1]+114*p[2])//1000
+def stone_ramp(i):
+    """The kit draws a ramp's slope in pale lit stone (luminance 165 to 250), brighter
+    than anything else in the kit, so it read as a white wedge. Bring the slope down
+    to the stairs' stone (whose treads top out at 165), keeping its shading: each
+    slope pixel takes the stair colour at the same place in the stairs' upper range."""
+    out=crop(i)
+    stair=sorted({p[:3] for p in crop(STAIR_LO).getdata() if p[3] and lum(p)>=118},key=lum)
+    px=out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r,g,b,a=px[x,y]
+            if not a or lum((r,g,b))<150: continue
+            t=min(1,(lum((r,g,b))-150)/60)
+            px[x,y]=stair[round(t*(len(stair)-1))]+(a,)
+    return out
+
+def light_doorways(img,bg):
+    """A doorway in the back wall is a hole the background shows through, which reads
+    as a black panel. Fill each hole (background not reachable from the image's edge)
+    with a passage: dark above, the floor's darkest brown at the threshold."""
+    w,h=img.size; px=img.load(); seen=set(); stack=[(0,0)]
+    while stack:
+        x,y=stack.pop()
+        if (x,y) in seen or not (0<=x<w and 0<=y<h) or px[x,y][:3]!=bg: continue
+        seen.add((x,y)); stack+= [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+    holes={(x,y) for y in range(h) for x in range(w) if px[x,y][:3]==bg and (x,y) not in seen}
+    while holes:
+        part=[holes.pop()]; k=0
+        while k<len(part):
+            x,y=part[k]; k+=1
+            for n in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
+                if n in holes: holes.remove(n); part.append(n)
+        y0=min(y for _,y in part); y1=max(y for _,y in part)
+        dark,warm=(26,22,20),(60,45,45)
+        for x,y in part:
+            t=((y-y0)/max(1,y1-y0))**2
+            px[x,y]=tuple(round(dark[c]+(warm[c]-dark[c])*t) for c in range(3))+(255,)
 
 HALF=100   # not in the kit: a solid block one level (16px) high
 def half_block():
@@ -43,6 +89,7 @@ class Scene:
         order=sorted(range(len(s.items)),key=lambda k:(s.items[k][1]+s.items[k][2], s.items[k][3], k))
         for k in order:
             i,px,py=pts[k]; img.alpha_composite(piece(i),(px-x0,py-y0))
+        light_doorways(img,bg)
         return img.resize((img.width*scale,img.height*scale),Image.NEAREST)
 
 s=Scene()
