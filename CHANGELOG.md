@@ -1,3 +1,10 @@
+# [0.116.0](https://github.com/gfargo/pixelkiln/compare/v0.115.2...v0.116.0) (2026-11-19)
+
+
+### Features
+
+* **site:** a live terrain brush, an engine screenshot and a merged-sets figure on /tiles ([4ef057d](https://github.com/gfargo/pixelkiln/commit/4ef057d4150005a9208a286b265bf9aa919ebe54))
+
 ## [0.115.2](https://github.com/gfargo/pixelkiln/compare/v0.115.1...v0.115.2) (2026-11-19)
 
 ## [0.115.1](https://github.com/gfargo/pixelkiln/compare/v0.115.0...v0.115.1) (2026-11-18)
