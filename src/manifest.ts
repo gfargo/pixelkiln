@@ -738,6 +738,12 @@ export async function resolveSpecs(
           `assets.${assetId}: ${asset.portrait ? "portrait" : "outfit"} needs a character style; "${styleId}" generates ${generator}`,
         )
       }
+      if (asset.portrait?.seed !== undefined) {
+        throw new Error(
+          `assets.${assetId}.portrait.seed: PixelLab ignores the character and draws a generic face ` +
+            "when a portrait is sent a seed (measured November 2026), so pixelkiln never sends one; remove it",
+        )
+      }
       if (asset.layer && generator !== "character") {
         throw new Error(`assets.${assetId}: layer needs a character style; "${styleId}" generates ${generator}`)
       }
@@ -836,8 +842,7 @@ export async function resolveSpecs(
         outline: style.outline,
         shading: style.shading,
         detail: style.detail,
-        // A portrait may pin its own; it reaches the wire and the identity like the style's.
-        seed: asset.portrait?.seed ?? style.seed,
+        seed: style.seed,
         uiPieces: generator === "uiAsset" ? asset.pieces : undefined,
         uiElements: generator === "uiAsset" ? asset.elements : undefined,
         uiColorPalette: generator === "uiAsset" || generator === "uiElement" ? style.uiColorPalette : undefined,
