@@ -214,8 +214,10 @@ Tell the person when it matters:
   road network painted from the real isometric road set ran unbroken with
   correct corners and T-junctions. To paint, fill the ground with the lowest
   terrain's plain tile first, then paint higher terrains on top; a script must
-  pass `ignore_empty_terrains` as `false`. The outermost cells of a
-  terrain-painted area pick border tiles, so paint past the camera's edge.
+  pass `ignore_empty_terrains` as `false`. A higher terrain painted up to the
+  map's edge gets a border of the first terrain there (a road off the side ends
+  in a cap); Godot's solver does that, not the export, so paint one cell past
+  the camera's edge. The first terrain fills to the edge cleanly.
 - Godot isometric geometry: a 2x2 block of cells drawn in Godot 4.7.2 filled
   exactly the diamond lattice the cells predict, for the real 32px ground set.
 - Godot: the `.tres` for a square corner set and an isometric set loads in a

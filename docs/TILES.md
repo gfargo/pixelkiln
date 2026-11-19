@@ -243,9 +243,16 @@ the others with the terrain tool, higher terrains on top (ocean, then sand, then
 grass). The editor paints with `ignore_empty_terrains` off, and a script has to
 do the same: `set_cells_terrain_connect(cells, 0, terrain, false)`. With the
 script default of `true`, Godot leaves the edge cells of a filled area empty.
-The cells on the very edge of a terrain-painted area also pick border
-tiles, so paint the ground a little past the edge of the map or place the plain
-tile there directly.
+A higher terrain that runs to the edge of the painted map ends in a border
+there: a cell's corner or side that faces an empty cell takes the first
+terrain, so a road painted off the side of the map gets a cap on its last
+cell, and grass painted on an empty map gets a ring of the first terrain. The
+first terrain itself fills to the edge cleanly. Godot's solver chooses that
+terrain, not the TileSet, so paint one cell past the edge of the map, or set
+the plain tile on the edge cells directly. (Measured in Godot 4.7.2 on all
+five painted test sets: a 10x8 fill of the first terrain had no border on its
+32 edge cells, and a band of the second terrain across the full width had a
+border on all four of its end cells.)
 
 The texture path is relative to the `.tres`, so the generated PNG and resource
 can move together inside a Godot project.
