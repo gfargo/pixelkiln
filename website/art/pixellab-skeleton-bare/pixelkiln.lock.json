@@ -1,0 +1,104 @@
+{
+  "version": 2,
+  "entries": {
+    "rig/base-wave": {
+      "styleId": "rig",
+      "assetId": "base-wave",
+      "specHash": "b7fd74214629c0838448a354aa75b12ac77597ba8408c284d7408a72a2ce1b3f",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "wave",
+      "width": 64,
+      "height": 64,
+      "revision": {
+        "mode": "animate-skeleton",
+        "sourceAssetId": "base",
+        "sourceSha256": "7b24b4ad7879d45aaf82e6fa1c2aad6fac6616b0ee468fc8fc6e61705790d0f4",
+        "frames": 8,
+        "direction": "south",
+        "keypointsSha256": "ec8c036f35e01c3f4d647b7a048afc39355d053b051710bf546afb08010bbc69",
+        "description": "bald adult figure with smooth light peach skin and dark grey briefs, no clothing, no hair"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "b36b23fd-79b6-4be8-be73-0da8d0f7520a",
+      "submissionComplete": true,
+      "reviewObjectId": "b36b23fd-79b6-4be8-be73-0da8d0f7520a",
+      "objectId": "b36b23fd-79b6-4be8-be73-0da8d0f7520a",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "out/base-wave-frame-00.png",
+          "sha256": "739785cd6cfc124195a6469db18d9fea6ee89bb2302c3713c8716d0cd7ad48c4",
+          "role": "frame-00",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/base-wave-frame-01.png",
+          "sha256": "819b4b9e48776f2f64910c46075c3b407ab713e9db35f0f774451a529386ddf9",
+          "role": "frame-01",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/base-wave-frame-02.png",
+          "sha256": "795b62dae0964e456946f040a779131af6cc0cb64fc5698d059784034d01b0c6",
+          "role": "frame-02",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/base-wave-frame-03.png",
+          "sha256": "ce4b5100121f238b60e680a8eaaed7231d76fd5304dab7eb978aa397b6628db7",
+          "role": "frame-03",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/base-wave-frame-04.png",
+          "sha256": "de97fef710a405fd75acfa77af8d7a99e42bcdd53ea3558a3c454d2414251e8e",
+          "role": "frame-04",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/base-wave-frame-05.png",
+          "sha256": "80469131d0b42c3c5cfdd1e2eaa83e2770c87fecc6d41996ca7f5807af9f12e8",
+          "role": "frame-05",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/base-wave-frame-06.png",
+          "sha256": "13d84da5d023bdbde8d61ca9160a27a7d0bbb1b1bb6107f0e4cb21e6bdccfb07",
+          "role": "frame-06",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/base-wave-frame-07.png",
+          "sha256": "b0cdf99818b1684fbdcc3ddd2d972b0ef8c3fb31e711bbc049e68c802cadecf2",
+          "role": "frame-07",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "frameSet": {
+            "fps": 8,
+            "count": 8
+          }
+        }
+      },
+      "submittedAt": "2026-11-19T20:12:46.021Z",
+      "downloadedAt": "2026-11-19T20:23:15.581Z",
+      "cost": 3,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 3,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    }
+  }
+}

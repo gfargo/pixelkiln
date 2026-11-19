@@ -75,12 +75,15 @@ strength, each frame after it over a dimmed copy. Right-side bones are
 orange, left-side blue, and the head and spine white. It runs locally and
 costs nothing.
 
-![The starting pose and eight frames of a wave, the skeleton drawn over the sprite](../website/public/showcase/skeleton/wave-poses.png)
+![A bare figure's estimated pose with its arms at its sides, then eight poses raising its right arm into a wave](../website/public/showcase/skeleton/base-wave-poses.png)
 
 Check the starting pose before anything else. PixelLab redraws that frame
 first to learn the sprite's colours and background. A starting pose that does
 not match the picture gives no error, but it degrades every frame drawn from
-it. When in doubt, use the estimate as it came. See
+it. Clothing and gear can fool the estimate: on a character carrying a sword
+and a pack on its back, it read the straps and hilt as both arms raised,
+although the arms hung at its sides. Use a sprite with nothing on its back,
+such as a paperdoll's bare base, or move the joints back by hand. See
 [`skeleton-preview`](./CLI.md#skeleton-preview).
 
 ## Animate from poses

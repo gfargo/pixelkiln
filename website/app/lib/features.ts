@@ -221,7 +221,7 @@ export const MENU_ART: Record<Feature["id"], { src: string; strip?: boolean }> =
   pipeline: { src: "/sprites/workflow/plan.png" },
   review: { src: "/sprites/workflow/review.png" },
   characters: { src: "/sprites/characters/robot-8dir.png", strip: true },
-  skeletons: { src: "/showcase/skeleton/wave-custom-pose-still.png" },
+  skeletons: { src: "/showcase/skeleton/base-wave-still.png" },
   paperdoll: { src: "/sprites/paperdoll/showcase-8dir.png", strip: true },
   effects: { src: "/effects/robot-aura-still.png" },
   providers: { src: "/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png" },

@@ -25,7 +25,7 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
     case "skeletons":
       return (
         <div className="feature-art feature-art-strip">
-          <Image src="/showcase/skeleton/wave-poses-three.png" alt="An adventurer sprite three times with its 18-joint skeleton drawn over it: the estimated pose, arms half raised, and a full wave" width={592} height={200} unoptimized />
+          <Image src="/showcase/skeleton/base-wave-poses-three.png" alt="A bare figure three times with its 18-joint skeleton drawn over it: the estimated pose with its arms down, then its right arm raised in a wave" width={592} height={200} unoptimized />
         </div>
       );
     case "paperdoll":

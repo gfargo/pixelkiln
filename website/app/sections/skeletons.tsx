@@ -41,11 +41,12 @@ export function SkeletonsSection() {
     <section className="cast-section skeletons-section" id="skeletons">
       <div className="shell">
         <figure className="cast-strip" aria-label="A skeleton estimated from a sprite and moved into a wave">
-          <Image src="/showcase/skeleton/wave-poses.png" alt="An adventurer sprite nine times, each with an 18-joint skeleton drawn over it: the estimated starting pose, then eight poses raising both arms into a wave" width={1768} height={200} unoptimized />
+          <Image src="/showcase/skeleton/base-wave-poses.png" alt="A bare figure nine times, each with an 18-joint skeleton drawn over it: the estimated pose with both arms at its sides, then eight poses raising its right arm into a wave" width={1768} height={200} unoptimized />
           <figcaption>
             <code>pixelkiln skeleton-preview</code>: the pose PixelLab estimated from the sprite, at full strength,
-            then the eight poses edited from it into a wave, each over a dimmed copy. Orange is the right side,
-            blue the left. Drawn locally, for nothing.
+            with both arms down at its sides as they are in the picture, then the eight poses edited from it
+            into a wave, each over a dimmed copy. Orange is the figure&apos;s right side, blue its left. Drawn
+            locally, for nothing.
           </figcaption>
         </figure>
 
@@ -83,36 +84,34 @@ export function SkeletonsSection() {
             <div className="lock-visual cast-manifest" aria-label="Estimating a skeleton and animating from it">
               <div className="lock-label">terminal, then pixelkiln.manifest.json</div>
               <CodeBody language="json" code={`
-// pixelkiln estimate-skeleton hero-south.png \\
-//   --out poses/hero-wave.json --frames 8
+// pixelkiln estimate-skeleton base-south.png \\
+//   --out poses/estimate.json --frames 8
 // (edit the eight poses, check them with skeleton-preview)
 
-"hero.wave": {
-  "prompt": "waving",
+"base-wave": {
+  "prompt": "wave",
   "revision": {
     "mode": "animate-skeleton",
-    "from": "hero",
-    "keypointsFile": "poses/hero-wave.json",
+    "from": "base",
+    "keypointsFile": "poses/wave.json",
     "direction": "south",
-    "description": "a young adventurer in a blue tunic" } }
+    "description": "bald figure in grey briefs" } }
 `} />
               <div className="lock-callout top"><span>◇</span> 0.1 to estimate</div>
               <div className="lock-callout bottom"><span>◇</span> 3 for eight frames</div>
             </div>
             <div className="skeleton-loops">
+              <figure className="skeleton-loop">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/showcase/skeleton/base-south.png" alt="The bare figure standing with both arms at its sides" width={256} height={256} loading="lazy" />
+                <figcaption><b>The sprite.</b> The paperdoll&apos;s bare base, facing south, 64×64. Nothing on its back for the estimate to mistake for an arm.</figcaption>
+              </figure>
               <Loop
-                src="/showcase/skeleton/wave-custom-pose.gif"
-                still="/showcase/skeleton/wave-custom-pose-still.png"
-                alt="The adventurer raising and swinging both arms, following the hand-edited poses"
+                src="/showcase/skeleton/base-wave.gif"
+                still="/showcase/skeleton/base-wave-still.png"
+                alt="The same figure raising its right arm and waving, following the edited poses"
                 size={256}
-                caption={<><b>From your poses.</b> The eight skeletons above, sent with <code>animate-skeleton</code>. 64×64, 3 generations.</>}
-              />
-              <Loop
-                src="/showcase/skeleton/wave-sentence.gif"
-                still="/showcase/skeleton/wave-sentence-still.png"
-                alt="The same adventurer waving both arms overhead"
-                size={288}
-                caption={<><b>From a sentence.</b> A <code>skeleton-v3</code> loop: &ldquo;cheerfully waving both arms overhead&rdquo;. PixelLab posed its own skeleton. 3 generations.</>}
+                caption={<><b>From your poses.</b> The eight skeletons above, sent with <code>animate-skeleton</code>. 8 frames at 64×64, 3 generations.</>}
               />
             </div>
           </div>
