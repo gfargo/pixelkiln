@@ -1,3 +1,10 @@
+# [0.121.0](https://github.com/gfargo/pixelkiln/compare/v0.120.0...v0.121.0) (2026-11-19)
+
+
+### Features
+
+* **character:** pin and record a portrait's seed, and let it skip the upstream attach ([0e51a98](https://github.com/gfargo/pixelkiln/commit/0e51a98b448c2eb42d673df493a0315d464acc9e)), closes [#238](https://github.com/gfargo/pixelkiln/issues/238)
+
 # [0.120.0](https://github.com/gfargo/pixelkiln/compare/v0.119.1...v0.120.0) (2026-11-19)
 
 
