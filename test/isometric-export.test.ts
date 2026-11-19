@@ -82,6 +82,13 @@ describe("isometricFootprint", () => {
     expect(isometricFootprint(road, [{ x: 0, y: 0, width: 48, height: 48 }])).toEqual({ x: 0, y: 12, width: 48, height: 16 })
   })
 
+  it("finds a 2:1 diamond in a 48px road tile drawn from a steeper view", async () => {
+    // Generated 19 November 2026 with tileView "high top-down" and outlineMode "outline":
+    // the same 48x48 image, but the diamond is 48x24 and starts on row 6.
+    const road = await readFile(path.resolve("test/fixtures/isometric/road-48x48-steep.png"))
+    expect(isometricFootprint(road, [{ x: 0, y: 0, width: 48, height: 48 }])).toEqual({ x: 0, y: 6, width: 48, height: 24 })
+  })
+
   it("finds nothing in a filled square", () => {
     expect(isometricFootprint(filled(32, 32), [{ x: 0, y: 0, width: 32, height: 32 }])).toBeNull()
   })

@@ -286,7 +286,11 @@ export function TilesSections() {
             <figcaption>
               <b>A road set.</b> A dirt road over grass: every end, turn,
               junction and crossing, 18 tiles at 48 by 48. Isometric roads must
-              be 48 to 96px; the API refused 32 before charging anything. Billed 10.
+              be 48 to 96px; the API refused 32 before charging anything.
+              Billed 10. Its diamond is flatter than the ground&apos;s (3:1, not
+              2:1). A steeper view made it 2:1 in two more runs, but one came
+              back with stray fragments and the other with a grid of outlines,
+              so this seamless one stays.
             </figcaption>
           </figure>
           <figure className="tiles-sheet tiles-sheet-next">

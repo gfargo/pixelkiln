@@ -48,7 +48,12 @@ camera (`top-down`, `high top-down`, `low top-down`, or `side`). `outlineMode`
 chooses `outline` (a dark border per tile — right for tiles meant to read as
 discrete objects) or `segmentation` (no border, so a ground set tiles
 seamlessly instead of quilting at every cell edge — this alone decided
-whether a measured terrain set was usable). `tileFeature` asks for a
+whether a measured terrain set was usable). Isometric road sets (48 to
+96px) trade off: `low top-down` with `segmentation` is seamless but a flat 3:1
+diamond that reads as top-down; `high top-down` makes a 2:1 diamond, but with
+`segmentation` it left grass fragments outside the slab on 17 of 18 tiles, and
+with `outline` every tile has a border, so a map shows a grid. Paint a map with
+a road set before choosing. `tileFeature` asks for a
 connectable set instead of independent variations: `roads` for an
 18-configuration path set, `tileset` for a 16-tile Wang corner set — describe
 the transition itself in the prompt ("fairway grass to rough meadow"), not
