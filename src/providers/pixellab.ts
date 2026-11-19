@@ -1697,7 +1697,17 @@ export class PixelLabProvider implements Provider {
       })
       return {
         jobId: res.background_job_id,
-        metadata: { character: { kind: "portrait", parentCharacterId: parentId, backgroundJobId: res.background_job_id } },
+        metadata: {
+          character: {
+            kind: "portrait",
+            parentCharacterId: parentId,
+            backgroundJobId: res.background_job_id,
+            // PixelLab expires finished jobs within about a day, so the seed sent is kept here;
+            // poll replaces it with the one the job reports using.
+            ...(spec.seed != null ? { seed: spec.seed } : {}),
+            ...(character.portrait!.attach ? {} : { attach: false }),
+          },
+        },
       }
     }
     const animation = character.animation!
@@ -1891,21 +1901,29 @@ export class PixelLabProvider implements Provider {
    * separate, free call PixelLab does not make automatically (docs/PIXELLAB.md).
    */
   private async pollCharacterPortrait(jobId: string, context?: PollContext): Promise<JobState> {
-    const meta = context?.metadata?.character as { parentCharacterId?: string; backgroundJobId?: string } | undefined
+    const meta = context?.metadata?.character as
+      | { parentCharacterId?: string; backgroundJobId?: string; seed?: number; attach?: boolean }
+      | undefined
     try {
       const job = await this.client.getPortraitCharacterJob(jobId)
       if (job.status === "failed") return { status: "failed", error: "portrait generation failed upstream" }
       if (job.status !== "completed" || !job.download_url) return { status: "processing" }
-      if (meta?.parentCharacterId) {
+      const attach = meta?.parentCharacterId && meta.attach !== false ? meta.parentCharacterId : null
+      if (attach) {
         const bytes = await this.client.download(job.download_url)
-        await this.client.setCharacterPortrait(meta.parentCharacterId, { base64: bytes.toString("base64"), format: "png" })
+        await this.client.setCharacterPortrait(attach, { base64: bytes.toString("base64"), format: "png" })
       }
+      const { billed, lastResponse } = await this.readFinishedJob(meta?.backgroundJobId)
+      // The seed the job drew with, so the portrait can be drawn again after the job expires.
+      const seed = typeof lastResponse?.seed === "number" ? lastResponse.seed : meta?.seed
       return {
         status: "ready",
         objectId: jobId,
         sourceUrl: job.download_url,
         sources: [{ url: job.download_url }],
-        billed: await this.billedForJob(meta?.backgroundJobId),
+        billed,
+        ...(seed != null ? { metadata: { character: { ...meta, seed } } } : {}),
+        ...(attach ? { note: `attached to character ${attach} on PixelLab` } : {}),
       }
     } catch (err) {
       // Like tiles and map objects, still drawing answers 423.
@@ -2721,9 +2739,17 @@ export class PixelLabProvider implements Provider {
    * known", not a failure worth surfacing.
    */
   private async billedForJob(backgroundJobId: string | null | undefined): Promise<BilledAmount | null> {
-    if (!backgroundJobId) return null
+    return (await this.readFinishedJob(backgroundJobId)).billed
+  }
+
+  /** A finished background job's bill (see `billedForJob`) and its `last_response`, read once. */
+  private async readFinishedJob(
+    backgroundJobId: string | null | undefined,
+  ): Promise<{ billed: BilledAmount | null; lastResponse: Record<string, unknown> | null }> {
+    if (!backgroundJobId) return { billed: null, lastResponse: null }
     try {
       const job = await this.client.getBackgroundJob(backgroundJobId)
+      const lastResponse = (job.last_response as Record<string, unknown> | null | undefined) ?? null
       // The job's `usage` can be the schema's dollar-shaped example with a
       // zero (a v3 base read `{usd: 0}` against an estimate of 2
       // generations); its copy at `last_response.billing_usage` is tried
@@ -2731,11 +2757,11 @@ export class PixelLabProvider implements Provider {
       const nested = (job.last_response as { billing_usage?: PixelLabUsage | null } | null | undefined)?.billing_usage
       for (const usage of [job.usage, nested]) {
         const billed = billedFromUsage(usage)
-        if (billed && !(billed.unit === "usd" && billed.amount === 0)) return billed
+        if (billed && !(billed.unit === "usd" && billed.amount === 0)) return { billed, lastResponse }
       }
-      return null
+      return { billed: null, lastResponse }
     } catch {
-      return null
+      return { billed: null, lastResponse: null }
     }
   }
 

@@ -497,13 +497,42 @@ attached to that character's own PixelLab record:
 result sizes (16, 32, 48, 64, 128, or 160 — 128 and 160 render at 2K and cost
 more), independent of the style's own `size`. A portrait takes no prompt: it
 is drawn from the parent's pixels, not text, so it is priced and generated
-like a state, 10 to 25 generations by the size tier (a 16px portrait billed
-exactly 20, the floor, in a live test; see [`docs/ENDPOINTS.md`](ENDPOINTS.md)).
-It lands as `<asset>.png`, one file like a single-direction generator, and
-`pixelkiln fetch` also attaches it to the parent's character record upstream
-(a separate, free call PixelLab does not make on its own) — useful for
-PixelLab's own tools, since the API otherwise has no way to read a
-character's portrait back once set.
+like a state, 10 to 25 generations by the size tier (before PixelLab's October
+2026 price cut, a 16px portrait billed 20, the floor then, and four 128px
+portraits billed 25 each, the middle tier then; see
+[`docs/ENDPOINTS.md`](ENDPOINTS.md)). The plan prices 48px and up at 25.
+It lands as `<asset>.png`, one file like a single-direction generator. Once
+drawn, it is also attached to the parent's character record upstream (a
+separate, free call PixelLab does not make on its own), which is useful for
+PixelLab's own tools, since the API otherwise has no way to read a character's
+portrait back once set. The `ready` line in the log says when it does. A
+character used elsewhere, such as an in-game skin, can be left as it is:
+
+```json
+"mira.bust": { "portrait": { "of": "mira", "size": 128, "seed": 18964718, "attach": false } }
+```
+
+`seed` pins PixelLab's seed for this portrait, in place of the style's `seed`,
+and is part of its identity: a new seed is a new portrait. With or without
+one, the lock keeps the seed under `providerMetadata.pixellab.character.seed`:
+the one the job reports using, or the one sent if it reports none. PixelLab
+deletes a finished job within about a day, so the lock is the only place a seed
+survives; copy it into `seed` to draw the same bust again. `attach` changes
+nothing about the picture and is not part of its identity.
+
+**Keeping the character's rotations out of a delivery folder.** A portrait's
+parent must be in the same style, and the parent's eight rotations land in that
+style's `outDir`. To deliver only the bust, point the style at a scratch folder
+and give the portrait a `file` that leaves it; `file` is relative to `outDir`
+and may climb out of it:
+
+```json
+"styles": { "rival_cast": { "generator": "character", "outDir": "build/cast", "size": 48 } },
+"assets": {
+  "rival": { "prompt": "a rival swordswoman", "remoteId": "…" },
+  "rival.bust": { "portrait": { "of": "rival", "size": 128 }, "file": "../../art/portraits/rival.png" }
+}
+```
 
 A portrait blocks until its parent is downloaded and current, and goes
 `stale` when the parent is regenerated, exactly like a state. It takes no

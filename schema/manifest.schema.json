@@ -1716,6 +1716,13 @@
                       160
                     ],
                     "default": 64
+                  },
+                  "seed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "attach": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
