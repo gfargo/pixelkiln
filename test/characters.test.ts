@@ -920,12 +920,16 @@ function fakeClient() {
     setBaseUsage(characterId: string, usage: Record<string, unknown>) { baseJobUsage.set(`job-${characterId}`, usage) },
     /** Test hook: the `last_response` a base or state's background job carries. */
     setBaseResponse(characterId: string, response: Record<string, unknown>) { baseJobResponse.set(`job-${characterId}`, response) },
+    /** Test hook: the `last_response` any background job (by its own id) carries. */
+    setJobResponse(jobId: string, response: Record<string, unknown>) { baseJobResponse.set(jobId, response) },
     /** Test hook: what any background job (by its own id) reports as billed once it completes. */
     setJobUsage(jobId: string, usage: Record<string, unknown>) { baseJobUsage.set(jobId, usage) },
     portraitsSet: [] as { characterId: string; base64: string }[],
-    async createPortraitCharacterPro(args: { direction: string; image: { base64: string; format: string }; resultSize?: number }) {
+    portraitSeeds: [] as (number | undefined)[],
+    async createPortraitCharacterPro(args: { direction: string; image: { base64: string; format: string }; resultSize?: number; seed?: number }) {
       const jobId = `portrait-job-${++counter}`
       client.calls.push(`portrait:${args.direction}:${args.resultSize}`)
+      client.portraitSeeds.push(args.seed)
       portraitJobs.set(jobId, { status: "processing" })
       baseJobs.set(jobId, "processing")
       return { background_job_id: jobId, status: "processing", usage: null }
@@ -1431,6 +1435,97 @@ describe("portraits", () => {
     const bust = p.lock.entries["cast/mira.bust"]!
     expect(bust.status).toBe("downloaded")
     expect(path.basename(bust.outputs[0]!.path)).toBe("mira.bust.png")
+  })
+
+  /** Draw `mira`, then submit `mira.bust` from the given portrait settings; returns the bust's job id. */
+  async function portraitOf(portrait: Record<string, unknown>, extra: Record<string, unknown> = {}, style: Record<string, unknown> = {}) {
+    const file = await writeManifest({
+      style,
+      assets: { mira: { prompt: "small young woman" }, "mira.bust": { portrait: { of: "mira", ...portrait }, ...extra } },
+    })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const jobId = p.lock.entries["cast/mira.bust"]!.jobId!
+    return { client, provider, p, jobId, file }
+  }
+
+  it("sends a seed pinned on the portrait, makes it part of the identity, and keeps it in the lock", async () => {
+    const { client, provider, p, jobId } = await portraitOf({ size: 16, seed: 77 }, {}, { seed: 5 })
+    // The portrait's own seed wins over the style's.
+    expect(client.portraitSeeds).toEqual([77])
+    expect(p.specs.find((s) => s.assetId === "mira.bust")!.seed).toBe(77)
+    expect(p.lock.entries["cast/mira.bust"]!.providerMetadata.pixellab).toMatchObject({ character: { kind: "portrait", seed: 77 } })
+    client.completePortrait(jobId, 16)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.bust"]!.providerMetadata.pixellab).toMatchObject({
+      character: { kind: "portrait", parentCharacterId: "char-1", backgroundJobId: jobId, seed: 77 },
+    })
+
+    // A different seed is a different portrait.
+    const seeded = async (seed: number) => {
+      await writeManifest({ assets: { mira: { prompt: "small young woman" }, "mira.bust": { portrait: { of: "mira", size: 16, seed } } } })
+      return (await resolveSpecs(await loadManifest(manifestPath()))).find((s) => s.assetId === "mira.bust")!.specHash
+    }
+    expect(await seeded(77)).not.toBe(await seeded(78))
+  })
+
+  it("records the seed the job reports using when none was pinned", async () => {
+    const { client, provider, p, jobId } = await portraitOf({ size: 16 })
+    expect(client.portraitSeeds).toEqual([undefined])
+    expect(p.lock.entries["cast/mira.bust"]!.providerMetadata.pixellab).not.toHaveProperty("character.seed")
+    client.completePortrait(jobId, 16)
+    client.setJobResponse(jobId, { seed: 18964718, billing_usage: { type: "generations", generations: 25 } })
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    expect(p.lock.entries["cast/mira.bust"]).toMatchObject({
+      billed: { amount: 25, unit: "generations" },
+      providerMetadata: { pixellab: { character: { kind: "portrait", parentCharacterId: "char-1", seed: 18964718 } } },
+    })
+  })
+
+  it("says in the log when it attaches the portrait to the parent's record upstream", async () => {
+    const lines: string[] = []
+    const onProgress = (line: string) => { lines.push(line) }
+    const attached = await portraitOf({ size: 16 })
+    attached.client.completePortrait(attached.jobId, 16)
+    await poll(attached.provider, attached.p.lock, attached.p.lockPath, { intervalMs: 0, specs: attached.p.specs, onProgress })
+    expect(attached.client.portraitsSet).toHaveLength(1)
+    expect(lines).toContainEqual(expect.stringMatching(/ready\s+cast\/mira\.bust \(attached to character char-1 on PixelLab\)/))
+  })
+
+  it("leaves the parent's record alone with attach: false, and draws the same portrait", async () => {
+    const lines: string[] = []
+    const onProgress = (line: string) => { lines.push(line) }
+    const kept = await portraitOf({ size: 16, attach: false })
+    expect(kept.p.lock.entries["cast/mira.bust"]!.providerMetadata.pixellab).toMatchObject({ character: { attach: false } })
+    kept.client.completePortrait(kept.jobId, 16)
+    await poll(kept.provider, kept.p.lock, kept.p.lockPath, { intervalMs: 0, specs: kept.p.specs, onProgress })
+    expect(kept.p.lock.entries["cast/mira.bust"]!.status).toBe("selected")
+    expect(kept.client.portraitsSet).toEqual([])
+    expect(kept.client.calls.some((call) => call.startsWith("set-portrait"))).toBe(false)
+    expect(lines).toContainEqual(expect.stringMatching(/ready\s+cast\/mira\.bust$/))
+    // Whether it is attached does not change what is drawn.
+    await writeManifest({ assets: { mira: { prompt: "small young woman" }, "mira.bust": { portrait: { of: "mira", size: 16 } } } })
+    const attachedHash = (await resolveSpecs(await loadManifest(manifestPath()))).find((s) => s.assetId === "mira.bust")!.specHash
+    expect(kept.p.specs.find((s) => s.assetId === "mira.bust")!.specHash).toBe(attachedHash)
+  })
+
+  it("delivers a portrait outside its style's folder, so the characters can stay in a scratch folder", async () => {
+    const { client, provider, p, jobId } = await portraitOf({ size: 16 }, { file: "../../game/portraits/mira.png" }, { outDir: "build/cast" })
+    client.completePortrait(jobId, 16)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const root = path.dirname(manifestPath())
+    expect(existsSync(path.join(root, "game", "portraits", "mira.png"))).toBe(true)
+    // The character's rotations stay in the style's own folder.
+    expect(existsSync(path.join(root, "build", "cast", "mira", "south.png")) || existsSync(path.join(root, "build", "cast", "mira-south.png"))).toBe(true)
+    expect(existsSync(path.join(root, "game", "portraits", "mira-south.png"))).toBe(false)
   })
 
   it("fails cleanly when the portrait job fails upstream", async () => {

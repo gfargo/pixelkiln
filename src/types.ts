@@ -638,6 +638,14 @@ export const CharacterPortraitSchema = z
     /** The base or state to portray, in the same style. */
     of: z.string().min(1),
     size: CharacterPortraitSizeSchema.default(64),
+    /** PixelLab's seed for this portrait, in place of the style's `seed`. Part of its identity. */
+    seed: z.number().int().min(0).optional(),
+    /**
+     * Attach the drawn portrait to the parent's PixelLab character record, as
+     * PixelLab's own app shows it (the default). `false` leaves that record as
+     * it is, for a character used elsewhere. Not part of the portrait's identity.
+     */
+    attach: z.boolean().optional(),
   })
   .strict()
 export type CharacterPortrait = z.infer<typeof CharacterPortraitSchema>
@@ -1122,6 +1130,8 @@ export interface ResolvedCharacter {
   }
   portrait?: {
     size: CharacterPortraitSize
+    /** Attach the result to the parent's character record. */
+    attach: boolean
   }
   /** For an outfit: the reference image to transfer, and any extra guidance. */
   outfit?: {

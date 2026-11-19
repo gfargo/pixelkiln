@@ -836,7 +836,8 @@ export async function resolveSpecs(
         outline: style.outline,
         shading: style.shading,
         detail: style.detail,
-        seed: style.seed,
+        // A portrait may pin its own; it reaches the wire and the identity like the style's.
+        seed: asset.portrait?.seed ?? style.seed,
         uiPieces: generator === "uiAsset" ? asset.pieces : undefined,
         uiElements: generator === "uiAsset" ? asset.elements : undefined,
         uiColorPalette: generator === "uiAsset" || generator === "uiElement" ? style.uiColorPalette : undefined,
@@ -1946,7 +1947,7 @@ async function resolveCharacterShape(
     }
   }
   if (asset.portrait) {
-    shape.portrait = { size: asset.portrait.size }
+    shape.portrait = { size: asset.portrait.size, attach: asset.portrait.attach ?? true }
   }
   if (asset.animation) {
     const animationMode = asset.animation.mode ?? (asset.animation.template ? "template" : "v3")

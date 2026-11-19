@@ -39,6 +39,16 @@ PixelLab, and it also takes `isometric: true`, `textGuidanceScale` (1 to 20) and
 `backgroundRemoval: "complex"`; an asset may set `direction`, which only nudges, so state the
 facing in the prompt too. Each new option changes the asset's hash only when set.
 
+A `portrait` may pin `seed` (a new seed is a new portrait), and the lock always
+keeps the seed it drew with at `providerMetadata.pixellab.character.seed`;
+PixelLab deletes finished jobs within a day, so that is the only copy. To
+redraw a portrait the same way, copy that seed into the manifest. By default the
+bust is attached to the parent's PixelLab character record; when the person
+uses that character elsewhere, set `attach: false` rather than skipping the
+portrait. To deliver only the bust and keep the parent's rotations out of the
+game's art folder, put the style's `outDir` in a scratch folder and give the
+portrait a `file` that climbs out of it (`"../../art/portraits/x.png"`).
+
 `tiles` is not limited to top-down ground: `tileType` selects the projection
 (`isometric` — the API default —, `oblique`, `hex`, `hex_pointy`, `octagon`,
 or `square_topdown`), `tileSize` sets one tile's edge in pixels (16–128 — the
