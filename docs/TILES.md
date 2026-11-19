@@ -283,6 +283,16 @@ owns: layer and tileset names get a capital first letter (the project asks for
 that style), `cachedPixelData` is filled in, and the build id. Only corner sets
 were opened; edge sets are covered by the matcher tests alone.
 
+A merged group was opened the same way: two connected sets built from that real
+art, grass shared, with the lake's blue recolored to dirt (32 tiles, three
+terrains, 31 rules). The 16 by 12 Preview drew grass, lake and dirt with the
+right border at every join, LDtk's own rule evaluation reproduced all 192
+stored tiles, and painting dirt beside grass redrew the right tiles. Painting a
+terrain next to one it has no set with (dirt against lake) left those cells
+empty: no tile has a lake corner and a dirt corner, so no rule matches. That is
+the same hard edge the Connected sets section describes; paint a band of the
+shared terrain between them.
+
 ## Connected sets
 
 A coast is built from sets that share a terrain: one draws ocean against sand,
@@ -323,7 +333,8 @@ generated; a missing one stops the export and is named in the error.
   distinct set of four corners; tiles that share one are alternatives in that
   rule. The Preview level is larger (16 by 12) and painted so that only
   terrains a set joins ever meet, and the level's outside counts as the first
-  terrain. The preview uses every rule.
+  terrain. The preview uses every rule. Cells whose corners no set joins are
+  left empty, so paint the shared terrain between two that have no set.
 - **Files.** The default name joins the sets: `coast-meadow-forest-tileset`.
   `--out` names the one result. The record beside it lists the sets.
 
