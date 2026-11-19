@@ -224,6 +224,9 @@ single direction before a batch.
 
 ### Loops from a sentence
 
+(For how this stored skeleton differs from the keypoints you edit yourself, see
+[Skeletons and rigging](./SKELETONS.md#which-skeleton-is-which).)
+
 `mode: "skeleton-v3"` with **no `template`** animates the asset's `prompt`
 instead: PixelLab writes the sentence into one 3D motion and draws the
 character from it, with no template to pick. `frames` takes PixelLab's own

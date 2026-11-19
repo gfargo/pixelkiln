@@ -93,6 +93,13 @@ export const docs: DocEntry[] = [
     group: "Guides",
   },
   {
+    slug: "skeletons",
+    title: "Skeletons and rigging",
+    description: "The 18-joint skeleton every pose tool shares: estimate and correct one, animate from poses, pin items to a hand, pose frames with OpenPose, and rig a 3D model.",
+    file: "docs/SKELETONS.md",
+    group: "Guides",
+  },
+  {
     slug: "paperdoll",
     title: "Paperdoll layers",
     description: "Dress one bare character in outfits, hats and held items, each a transparent layer that matches every frame.",

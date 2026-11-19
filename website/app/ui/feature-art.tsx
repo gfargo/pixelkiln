@@ -22,6 +22,12 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
           <Image src="/showcase/assets/knight-8dir.png" alt="A knight in plate armour and a blue cape drawn from eight directions" width={1128} height={568} unoptimized />
         </div>
       );
+    case "skeletons":
+      return (
+        <div className="feature-art feature-art-strip">
+          <Image src="/showcase/skeleton/base-wave-poses-three.png" alt="A bare figure three times with its 18-joint skeleton drawn over it: the estimated pose with its arms down, then its right arm raised in a wave" width={592} height={200} unoptimized />
+        </div>
+      );
     case "paperdoll":
       return (
         <div className="feature-art feature-art-strip">

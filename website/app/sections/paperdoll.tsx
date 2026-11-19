@@ -41,7 +41,7 @@ export function PaperdollSection() {
                   <li><span className="tick" aria-hidden="true" /> 56 frames dressed by one request: 8 rotations and a walk in 8 directions, for 25 generations.</li>
                   <li><span className="tick" aria-hidden="true" /> The character on this page: a base, four walks, fifteen drawn layers and five held items, 32 frames each, for about 445 generations.</li>
                   <li><span className="tick" aria-hidden="true" /> <code>region</code> picks what may change: the body for clothing, the head for hats, the space around the body for capes and packs.</li>
-                  <li><span className="tick" aria-hidden="true" /> <code>attach</code> pins a sprite you already have to the hand in every frame, for nothing, so it is the same item in every frame and always in the same hand. <code>grasp</code> adds one small inpaint that closes the fingers around it.</li>
+                  <li><span className="tick" aria-hidden="true" /> <code>attach</code> pins a sprite you already have to the hand in every frame, for nothing, so it is the same item in every frame and always in the same hand. The hand is found from each frame&apos;s <TrackedLink className="text-link" id="paperdoll_skeleton_inline" section="paperdoll" href="/skeletons">skeleton</TrackedLink>. <code>grasp</code> adds one small inpaint that closes the fingers around it.</li>
                   <li><span className="tick" aria-hidden="true" /> A drawn layer recolours for nothing: one <code>derive</code> turns a crimson cape blue in every frame and leaves its fur collar grey.</li>
                   <li><span className="tick" aria-hidden="true" /> <code>offset</code> nudges a layer by the pixel, for every frame or one loop, and changing it costs nothing: the frames are moved again at download.</li>
                   <li><span className="tick" aria-hidden="true" /> <code>clean</code> on a loop strips the ghost pixels an animation model leaves, at download, for nothing: 608 stray pixels down to 2 on this walk.</li>
@@ -53,6 +53,9 @@ export function PaperdollSection() {
                   </TrackedLink>
                   <TrackedLink className="text-link" id="paperdoll_limits_docs" section="paperdoll" href="/docs/paperdoll/cost-and-limits">
                     What it costs and where it stops
+                  </TrackedLink>
+                  <TrackedLink className="text-link" id="paperdoll_skeletons" section="paperdoll" href="/skeletons">
+                    How held items find the hand
                   </TrackedLink>
                 </div>
               </div>
@@ -125,7 +128,9 @@ export function PaperdollSection() {
                 have an image model redraw each rough render. It is research,
                 not a PixelKiln command yet, and the{" "}
                 <TrackedLink className="text-link" id="paperdoll_research_3d" section="paperdoll" href="/docs/research-3d">research notes</TrackedLink>{" "}
-                show every step, including what did not work.
+                show every step, including what did not work.{" "}
+                <TrackedLink className="text-link" id="paperdoll_turnaround_skeleton" section="paperdoll" href="/skeletons#uses">Skeletons and rigging</TrackedLink>{" "}
+                shows where rigging fits with the rest.
               </p>
               <SpinViewer />
             </div>
