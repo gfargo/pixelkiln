@@ -493,6 +493,9 @@ rather than failing partway through submission.
 
 ## Skeleton-driven animation
 
+[Skeletons and rigging](./SKELETONS.md) covers every tool that uses a
+skeleton; this section is the reference for the revision mode.
+
 A third mode, `animate-skeleton`, poses the source image frame-by-frame from
 a supplied 18-joint skeleton per frame instead of a text motion description:
 

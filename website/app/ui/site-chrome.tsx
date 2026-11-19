@@ -58,6 +58,7 @@ export function SiteFooter() {
             <TrackedLink id="footer_workflow" section="footer" href="/pipeline">How it works</TrackedLink>
             <TrackedLink id="footer_gallery" section="footer" href="/review#gallery">The gallery</TrackedLink>
             <TrackedLink id="footer_characters" section="footer" href="/characters">Characters</TrackedLink>
+            <TrackedLink id="footer_skeletons" section="footer" href="/skeletons">Skeletons and rigging</TrackedLink>
             <TrackedLink id="footer_paperdoll" section="footer" href="/paperdoll">Paperdoll layers</TrackedLink>
             <TrackedLink id="footer_effects" section="footer" href="/effects">Effects</TrackedLink>
             <TrackedLink id="footer_tiles" section="footer" href="/tiles">Tiles and terrain</TrackedLink>

@@ -1,0 +1,233 @@
+import Image from "next/image";
+import { CodeBody } from "@/app/ui/code-window";
+import { SpriteLoop } from "@/app/ui/sprite-loop";
+import { TrackedLink } from "@/app/ui/tracked-link";
+
+/** A GIF that holds still for people who ask for less motion. */
+function Loop({ src, still, alt, size, caption }: { src: string; still: string; alt: string; size: number; caption: React.ReactNode }) {
+  return (
+    <figure className="skeleton-loop">
+      <picture>
+        <source media="(prefers-reduced-motion: reduce)" srcSet={still} />
+        {/* Pixel art at its own size; next/image would resample it. */}
+        <img src={src} alt={alt} width={size} height={size} loading="lazy" />
+      </picture>
+      <figcaption>{caption}</figcaption>
+    </figure>
+  );
+}
+
+const JOINTS: Array<[string, string, string]> = [
+  ["nose", "NOSE", "0"],
+  ["neck", "NECK", "1"],
+  ["right shoulder, elbow, wrist", "RIGHT SHOULDER, RIGHT ELBOW, RIGHT ARM", "2, 3, 4"],
+  ["left shoulder, elbow, wrist", "LEFT SHOULDER, LEFT ELBOW, LEFT ARM", "5, 6, 7"],
+  ["right hip, knee, ankle", "RIGHT HIP, RIGHT KNEE, RIGHT LEG", "8, 9, 10"],
+  ["left hip, knee, ankle", "LEFT HIP, LEFT KNEE, LEFT LEG", "11, 12, 13"],
+  ["eyes", "RIGHT EYE, LEFT EYE", "14, 15"],
+  ["ears", "RIGHT EAR, LEFT EAR", "16, 17"],
+];
+
+const KINDS: Array<[string, string, string]> = [
+  ["A keypoints file", "Committed JSON beside the manifest", "You, joint by joint"],
+  ["An anchors file", "Committed JSON, one entry per frame", "Nobody: it records where the joints already are"],
+  ["PixelLab's stored 3D skeleton", "Your PixelLab account, with a v3 character", "PixelLab, from a template or a sentence"],
+  ["An OpenPose map", "A committed PNG per frame", "You, or a script"],
+  ["A 3D rig", "The research's model files", "Motion data, retargeted"],
+];
+
+export function SkeletonsSection() {
+  return (
+    <section className="cast-section skeletons-section" id="skeletons">
+      <div className="shell">
+        <figure className="cast-strip" aria-label="A skeleton estimated from a sprite and moved into a wave">
+          <Image src="/showcase/skeleton/wave-poses.png" alt="An adventurer sprite nine times, each with an 18-joint skeleton drawn over it: the estimated starting pose, then eight poses raising both arms into a wave" width={1768} height={200} unoptimized />
+          <figcaption>
+            <code>pixelkiln skeleton-preview</code>: the pose PixelLab estimated from the sprite, at full strength,
+            then the eight poses edited from it into a wave, each over a dimmed copy. Orange is the right side,
+            blue the left. Drawn locally, for nothing.
+          </figcaption>
+        </figure>
+
+        <div className="cast-grid">
+          <div className="section-heading cast-copy">
+            <h2>One skeleton, everywhere a pose is needed.</h2>
+            <p className="section-deck">
+              A skeleton is 18 points: nose, neck, ears and eyes, and each shoulder, elbow, wrist, hip, knee
+              and ankle. PixelKiln estimates one from any sprite, draws it over the art so you can check it,
+              and keeps it as a JSON file you can edit and commit.
+            </p>
+            <p className="section-deck">
+              The same 18 points then do several jobs. They pose an animation frame by frame. They find the
+              hand to pin a sword to in every frame of every walk. As an OpenPose map they pose frames drawn
+              on your own GPU, and in the 3D research they become a rig. Each tool reads the skeleton the same
+              way.
+            </p>
+            <ul className="check-list cast-list">
+              <li><span className="tick" aria-hidden="true" /> <code>estimate-skeleton</code> reads the 18 joints from a square sprite (16 to 256px) for 0.1 generation.</li>
+              <li><span className="tick" aria-hidden="true" /> <code>skeleton-preview</code> draws every pose over the art, locally, so a wrong elbow is caught before anything is paid for.</li>
+              <li><span className="tick" aria-hidden="true" /> An <code>animate-skeleton</code> revision turns 3 to 15 poses into frames: eight at 64px billed 3 generations.</li>
+              <li><span className="tick" aria-hidden="true" /> A <code>skeleton-v3</code> loop poses the 3D skeleton PixelLab keeps for a v3 character, from a template or a sentence: 3 generations a direction.</li>
+              <li><span className="tick" aria-hidden="true" /> <code>anchors</code> records the skeleton of every frame once per character, and every held item reads it.</li>
+            </ul>
+            <div className="review-links">
+              <TrackedLink className="text-link" id="skeletons_guide_docs" section="skeletons" href="/docs/skeletons">
+                Read the skeletons guide
+              </TrackedLink>
+              <TrackedLink className="text-link" id="skeletons_revisions_docs" section="skeletons" href="/docs/revisions#skeleton-driven-animation">
+                Animating from poses
+              </TrackedLink>
+            </div>
+          </div>
+          <div className="cast-visuals">
+            <div className="lock-visual cast-manifest" aria-label="Estimating a skeleton and animating from it">
+              <div className="lock-label">terminal, then pixelkiln.manifest.json</div>
+              <CodeBody language="json" code={`
+// pixelkiln estimate-skeleton hero-south.png \\
+//   --out poses/hero-wave.json --frames 8
+// (edit the eight poses, check them with skeleton-preview)
+
+"hero.wave": {
+  "prompt": "waving",
+  "revision": {
+    "mode": "animate-skeleton",
+    "from": "hero",
+    "keypointsFile": "poses/hero-wave.json",
+    "direction": "south",
+    "description": "a young adventurer in a blue tunic" } }
+`} />
+              <div className="lock-callout top"><span>◇</span> 0.1 to estimate</div>
+              <div className="lock-callout bottom"><span>◇</span> 3 for eight frames</div>
+            </div>
+            <div className="skeleton-loops">
+              <Loop
+                src="/showcase/skeleton/wave-custom-pose.gif"
+                still="/showcase/skeleton/wave-custom-pose-still.png"
+                alt="The adventurer raising and swinging both arms, following the hand-edited poses"
+                size={256}
+                caption={<><b>From your poses.</b> The eight skeletons above, sent with <code>animate-skeleton</code>. 64×64, 3 generations.</>}
+              />
+              <Loop
+                src="/showcase/skeleton/wave-sentence.gif"
+                still="/showcase/skeleton/wave-sentence-still.png"
+                alt="The same adventurer waving both arms overhead"
+                size={288}
+                caption={<><b>From a sentence.</b> A <code>skeleton-v3</code> loop: &ldquo;cheerfully waving both arms overhead&rdquo;. PixelLab posed its own skeleton. 3 generations.</>}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="builder-block" id="uses">
+          <h3>Where the skeleton is used.</h3>
+          <p>
+            These are the places a skeleton turns up in PixelKiln, in the order a character usually meets them.
+            The first two are free; the rest say what they cost.
+          </p>
+          <ol className="skeleton-uses">
+            <li>
+              <h4>Estimate and correct</h4>
+              <p>
+                <code>pixelkiln estimate-skeleton</code> writes the pose and copies of it to move; the gallery&apos;s{" "}
+                <b>+ Skeleton animation</b> form does the same and declares the revision. Check the starting
+                pose first: PixelLab redraws it to learn the sprite&apos;s colours, and a pose that does not match
+                the picture degrades every frame without an error.
+              </p>
+              <TrackedLink className="text-link" id="skeletons_use_estimate" section="skeletons" href="/docs/skeletons#estimate-one">Estimating a skeleton</TrackedLink>
+            </li>
+            <li>
+              <h4>Animate from your poses</h4>
+              <p>
+                An <code>animate-skeleton</code> revision draws one frame per pose you set. You control the
+                motion exactly; the poses are yours to commit and review.
+              </p>
+              <TrackedLink className="text-link" id="skeletons_use_animate" section="skeletons" href="/docs/skeletons#animate-from-poses">Animating from poses</TrackedLink>
+            </li>
+            <li>
+              <h4>Animate through the character&apos;s own skeleton</h4>
+              <p>
+                A <code>skeleton-v3</code> loop poses the 3D skeleton PixelLab keeps with a character drawn on
+                the v3 engine. A <code>standard</code> base has none, so <code>plan</code> refuses it. You never see
+                those joints; PixelLab moves them from a template or a sentence.
+              </p>
+              <TrackedLink className="text-link" id="skeletons_use_v3" section="skeletons" href="/characters">Characters and loops</TrackedLink>
+            </li>
+            <li className="skeleton-use-wide">
+              <div>
+                <h4>Pin items to a hand</h4>
+                <p>
+                  A held item in a paperdoll is a sprite placed on the hand, a little past the wrist, in every
+                  frame. <code>pixelkiln anchors</code> estimates each frame&apos;s skeleton once per character: 56
+                  frames cost 5.6 generations, placing costs nothing, and the sword stayed in the right hand in
+                  all 56.
+                </p>
+                <TrackedLink className="text-link" id="skeletons_use_anchors" section="skeletons" href="/paperdoll">Paperdoll layers</TrackedLink>
+              </div>
+              <SpriteLoop strip="/sprites/paperdoll/showcase-walk-knight.png" width={572} frames={6} cell={92} stride={96} scale={2} seconds={0.75} label="An armoured knight walking toward the viewer, the greatsword pinned to its right hand in every frame" />
+            </li>
+            <li>
+              <h4>Pose frames on your own GPU</h4>
+              <p>
+                With ComfyUI, an OpenPose ControlNet poses each frame from an OpenPose map: the same 18 joints
+                drawn as coloured limbs. A recipe for this is in progress; the maps have to keep scale, camera
+                and ground line fixed across a set.
+              </p>
+              <TrackedLink className="text-link" id="skeletons_use_comfyui" section="skeletons" href="/docs/skeletons#pose-frames-you-draw-yourself">Pose maps</TrackedLink>
+            </li>
+            <li>
+              <h4>Rig a 3D model</h4>
+              <p>
+                The 3D research builds a mesh from the eight drawn directions, binds it to a skeleton and drives
+                it with motion. It is research, not a command yet, and the notes show every step.
+              </p>
+              <TrackedLink className="text-link" id="skeletons_use_3d" section="skeletons" href="/docs/research-3d">3D research notes</TrackedLink>
+            </li>
+          </ol>
+        </div>
+
+        <div className="builder-block" id="joints">
+          <h3>The 18 joints.</h3>
+          <p>
+            PixelLab and OpenPose name the same 18 points, so a pose made for one converts to the other.
+            PixelLab keeps each as <code>{"{label, x, y, z_index}"}</code> with <code>x</code> and <code>y</code> from 0 to 1;
+            OpenPose draws them as an image, telling left from right by colour. Right is the character&apos;s own
+            right: facing you, its right hand is on your left. <code>ARM</code> is the wrist and <code>LEG</code> the ankle.
+          </p>
+          <div className="provider-table-wrap skeleton-table-wrap">
+            <table className="provider-table skeleton-table" aria-label="The 18 joints in PixelLab and OpenPose">
+              <thead>
+                <tr><th scope="col">Joint</th><th scope="col">PixelLab label</th><th scope="col">OpenPose index</th></tr>
+              </thead>
+              <tbody>
+                {JOINTS.map(([joint, label, index]) => (
+                  <tr key={joint}><th scope="row">{joint}</th><td><code>{label}</code></td><td>{index}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="builder-block" id="which">
+          <h3>Which skeleton is which.</h3>
+          <p>
+            Five skeletons share those 18 joints, and they are kept in different places. The files are local, so
+            PixelKiln hashes and checks them. A stored 3D skeleton never leaves PixelLab, so PixelKiln cannot show
+            or edit it.
+          </p>
+          <div className="provider-table-wrap skeleton-table-wrap">
+            <table className="provider-table skeleton-table" aria-label="The kinds of skeleton, where each lives, and what moves it">
+              <thead>
+                <tr><th scope="col">Skeleton</th><th scope="col">Where it lives</th><th scope="col">Who moves it</th></tr>
+              </thead>
+              <tbody>
+                {KINDS.map(([kind, where, who]) => (
+                  <tr key={kind}><th scope="row">{kind}</th><td>{where}</td><td>{who}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

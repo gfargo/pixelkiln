@@ -5,7 +5,7 @@
 export type FeatureGroup = "Run the pipeline" | "Make the art" | "Choose a provider";
 
 export type Feature = {
-  id: "pipeline" | "review" | "characters" | "paperdoll" | "effects" | "tiles" | "providers" | "updates";
+  id: "pipeline" | "review" | "characters" | "skeletons" | "paperdoll" | "effects" | "tiles" | "providers" | "updates";
   /** False for a page that has its own place in the menu but no tile on the home page. */
   inHub?: boolean;
   href: string;
@@ -76,6 +76,28 @@ export const FEATURES: Feature[] = [
     docs: [
       { href: "/docs/characters", label: "Characters guide" },
       { href: "/docs/characters#mirrors", label: "Mirrors" },
+      { href: "/skeletons", label: "Skeletons and rigging" },
+    ],
+  },
+  {
+    id: "skeletons",
+    href: "/skeletons",
+    name: "Skeletons and rigging",
+    group: "Make the art",
+    summary: "One 18-joint skeleton per sprite: estimate it, correct it, animate from it, and pin items to its hands.",
+    title: "One skeleton, every pose.",
+    deck: "Estimate a character's 18 joints from a sprite, check them over the art, and use them everywhere a pose is needed: animations from your own poses, loops through PixelLab's stored skeleton, held items pinned to a hand, OpenPose maps and 3D rigs.",
+    description: "Skeletons in PixelKiln: estimate and correct an 18-joint skeleton from a sprite, animate from poses with animate-skeleton or skeleton-v3, pin paperdoll items to a hand, and map joints to OpenPose.",
+    sections: [
+      { href: "#skeletons", label: "Estimate and animate" },
+      { href: "#uses", label: "Where it is used" },
+      { href: "#joints", label: "The 18 joints" },
+      { href: "#which", label: "Which skeleton is which" },
+    ],
+    docs: [
+      { href: "/docs/skeletons", label: "Skeletons guide" },
+      { href: "/docs/revisions#skeleton-driven-animation", label: "Animating from poses" },
+      { href: "/docs/cli/estimate-skeleton", label: "The estimate-skeleton command" },
     ],
   },
   {
@@ -94,6 +116,7 @@ export const FEATURES: Feature[] = [
     docs: [
       { href: "/docs/paperdoll", label: "Paperdoll guide" },
       { href: "/docs/paperdoll/cost-and-limits", label: "Cost and limits" },
+      { href: "/skeletons", label: "Skeletons and rigging" },
     ],
   },
   {
@@ -198,6 +221,7 @@ export const MENU_ART: Record<Feature["id"], { src: string; strip?: boolean }> =
   pipeline: { src: "/sprites/workflow/plan.png" },
   review: { src: "/sprites/workflow/review.png" },
   characters: { src: "/sprites/characters/robot-8dir.png", strip: true },
+  skeletons: { src: "/showcase/skeleton/wave-custom-pose-still.png" },
   paperdoll: { src: "/sprites/paperdoll/showcase-8dir.png", strip: true },
   effects: { src: "/effects/robot-aura-still.png" },
   providers: { src: "/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png" },
@@ -210,6 +234,7 @@ export const MENU_LINES: Record<Feature["id"], string> = {
   pipeline: "One manifest, priced before you pay.",
   review: "Pick, retouch and approve the pixels.",
   characters: "Eight directions and every loop.",
+  skeletons: "Joints to pose, animate and rig.",
   paperdoll: "Swappable outfits over one body.",
   effects: "Auras, hits and shields, free.",
   providers: "Four providers on the same prompts.",
@@ -260,6 +285,7 @@ export const DOC_MENU: Array<{ label: string; links: Array<{ href: string; label
     label: "Guides",
     links: [
       { href: "/docs/characters", label: "Characters" },
+      { href: "/docs/skeletons", label: "Skeletons and rigging" },
       { href: "/docs/paperdoll", label: "Paperdoll layers" },
       { href: "/docs/tiles", label: "Tiles and terrain" },
       { href: "/docs/revisions", label: "Revisions" },

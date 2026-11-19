@@ -38,7 +38,7 @@ export function CharactersSection() {
                 </p>
                 <ul className="check-list cast-list">
                   <li><span className="tick" aria-hidden="true" /> A loop facing east is the west loop flipped. <code>mirror</code> makes it locally for nothing; eight directions of one walk cost 5, not 8.</li>
-                  <li><span className="tick" aria-hidden="true" /> Poses from a text edit, loops from a template or from text, with start and end poses you supply.</li>
+                  <li><span className="tick" aria-hidden="true" /> Poses from a text edit, loops from a template or from text, with start and end poses you supply, or every frame posed from a <TrackedLink className="text-link" id="cast_skeletons_inline" section="characters" href="/skeletons">skeleton you edit</TrackedLink>.</li>
                   <li><span className="tick" aria-hidden="true" /> Concept images and style anchors on pro, style images with chosen traits on pro-flash.</li>
                   <li><span className="tick" aria-hidden="true" /> Bust portraits and outfit transfer onto a loop, and one <code>directions</code> list that declares a loop and mirrors the rest.</li>
                 </ul>
@@ -48,6 +48,9 @@ export function CharactersSection() {
                   </TrackedLink>
                   <TrackedLink className="text-link" id="cast_mirror_docs" section="characters" href="/docs/characters#mirrors">
                     How mirrors work
+                  </TrackedLink>
+                  <TrackedLink className="text-link" id="cast_skeletons" section="characters" href="/skeletons">
+                    Skeletons and rigging
                   </TrackedLink>
                 </div>
               </div>
