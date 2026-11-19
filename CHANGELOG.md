@@ -1,3 +1,15 @@
+# [0.119.0](https://github.com/gfargo/pixelkiln/compare/v0.118.0...v0.119.0) (2026-11-19)
+
+
+### Bug Fixes
+
+* **site:** smaller brush dots at phone width ([a4cc813](https://github.com/gfargo/pixelkiln/commit/a4cc8132821a89ea9753f0e6d72d129f44400b34))
+
+
+### Features
+
+* **site:** the terrain brush paints every set on the page ([5e13d48](https://github.com/gfargo/pixelkiln/commit/5e13d48e6e914032418414ec21384d4320f1c1d2))
+
 # [0.118.0](https://github.com/gfargo/pixelkiln/compare/v0.117.0...v0.118.0) (2026-11-19)
 
 
