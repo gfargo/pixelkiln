@@ -171,8 +171,12 @@ Tell the person when it matters:
   painting redrew the right tiles. Edge sets are covered by tests only.
 - Tiled: the `.tsj` follows Tiled's documented layout but nothing loads it in
   CI.
-- Merged exports: tested through the `export` command and, for LDtk, against a
-  port of its rule matcher. No engine has loaded one yet.
+- Merged exports: tested through the `export` command. A merged LDtk project
+  (two connected sets from real art, three terrains) was opened in LDtk 1.5.3:
+  the preview drew every border, LDtk's own rules reproduced all stored tiles,
+  and painting redrew correctly. Painting two terrains that have no set between
+  them leaves empty cells, as expected. No Godot or Tiled load of a merged
+  export yet.
 
 Before the person relies on a format, suggest opening one file in the engine
 and painting a few cells.
