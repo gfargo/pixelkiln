@@ -272,7 +272,7 @@ process.stdout.write(JSON.stringify({
       expect.objectContaining({ id: "$quality/keep", included: true }),
       expect.objectContaining({ id: "keep", included: true }),
     ]))
-  }, 15_000)
+  })
 
   it("rejects duplicate palettes, unsupported generators, and output collisions", async () => {
     await expect(writeManifest({

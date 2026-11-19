@@ -199,5 +199,5 @@ describe("--format on the CLI", () => {
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
-  }, 30_000)
+  })
 })
