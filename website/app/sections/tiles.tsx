@@ -251,11 +251,28 @@ export function TilesSections() {
             <p className="section-deck">
               The same generators draw on a diamond grid when you set{" "}
               <code>tileType: &quot;isometric&quot;</code>. These came from one
-              manifest, in one run, and every set below is untouched PixelLab
-              output.
+              manifest, in one run. The sheets are untouched PixelLab output;
+              the two maps are those sets painted in Godot.
             </p>
           </div>
           <figure className="tiles-sheet">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/showcase/isometric/map-road.png" alt="A diamond of grass with a dirt road laid across it, with corners, a T-junction and a crossing, drawn in Godot" width={1392} height={510} loading="lazy" />
+            <figcaption>
+              <b>The road set, painted.</b> The ground filled with the plain tile,
+              then a road laid with Godot&apos;s terrain tool from the exported
+              TileSet. Each stroke picked its own end, turn and junction.
+            </figcaption>
+          </figure>
+          <figure className="tiles-sheet tiles-sheet-next">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/showcase/isometric/map-ground.png" alt="A diamond of grass with a grey cobblestone plaza and two paved patches, drawn in Godot" width={944} height={512} loading="lazy" />
+            <figcaption>
+              <b>The terrain set, painted.</b> Cobblestone laid over grass the
+              same way, with a lawn left inside the plaza.
+            </figcaption>
+          </figure>
+          <figure className="tiles-sheet tiles-sheet-next">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/showcase/isometric/ground-sheet.png" alt="Sixteen isometric blocks of grass and worn cobblestone, each a raised slab with earth showing along its side" width={848} height={176} loading="lazy" />
             <figcaption>
