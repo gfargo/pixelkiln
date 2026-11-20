@@ -16,7 +16,9 @@ briefs from the site's character builder, cropped to 64×64 because
    (`out/`, `pixelkiln.lock.json`).
 
 This replaced an earlier showcase character, an adventurer with a sword and a
-pack on its back. Its estimate read the straps and hilt as both arms raised
-although the arms hung down, so its pose sheet was wrong from the first frame.
-That character's loops still illustrate the October 2026 provider update in
-`../pixellab-skeleton`.
+pack on its back, after its pose sheet was read as showing both arms raised.
+That reading was wrong: the estimate had the arms down. The lines from the nose
+to the ears, drawn then in the arms' colours, ran up toward the hilt and the
+orb behind its head and looked like arms. `skeleton-preview` now draws the eyes
+and ears in grey. The bare base is still the clearer example. The adventurer's
+loops illustrate the October 2026 provider update in `../pixellab-skeleton`.

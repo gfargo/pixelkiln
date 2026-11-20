@@ -174,7 +174,8 @@ pixelkiln skeleton-preview poses/hero-wave.json --from hero-south.png
 
 This draws every pose over the sprite on one sheet: the starting pose at full
 strength, each frame after it over a dimmed copy. Right-side bones are
-orange, left-side blue, and the head and spine white. It runs locally and
+orange, left-side blue, the head and spine white, and the eyes and ears grey.
+It runs locally and
 costs nothing.
 
 ![A bare figure's estimated pose with its arms at its sides, then eight poses raising its right arm into a wave](../website/public/showcase/skeleton/base-wave-poses.png)
@@ -182,10 +183,12 @@ costs nothing.
 Check the starting pose before anything else. PixelLab redraws that frame
 first to learn the sprite's colours and background. A starting pose that does
 not match the picture gives no error, but it degrades every frame drawn from
-it. Clothing and gear can fool the estimate: on a character carrying a sword
-and a pack on its back, it read the straps and hilt as both arms raised,
-although the arms hung at its sides. Use a sprite with nothing on its back,
-such as a paperdoll's bare base, or move the joints back by hand. See
+it. Read the sheet carefully on a small sprite: the lines from the nose to the
+eyes and ears run up toward the top of the head, and an earlier version of the
+sheet drew them in the same orange and blue as the arms. On a 64px adventurer
+with a sword hilt and an orb behind its head, they looked like both arms raised,
+although the estimate had the arms down correctly. The sheet now draws the eyes
+and ears in grey. See
 [`skeleton-preview`](./CLI.md#skeleton-preview).
 
 ## Animate from poses
@@ -289,7 +292,7 @@ What each tool did:
 
 | Figure | PixelLab, 18 joints | MediaPipe, body | PixelLab, custom rig | MediaPipe, segmenter |
 |---|---|---|---|---|
-| Adventurer, 64px | Wrong: read the pack straps and sword hilt as both arms raised | Found no body | Not tried | Found nothing |
+| Adventurer, 64px | Right: arms down at its sides | Found no body | Not tried | Found nothing |
 | Cape, 256px | Right | Right; its body mask covered 51% of the sprite and left out the cape | Three cape chains (five joints down each side from the shoulders, three down the middle from the hips) and a point for each hand | Cape marked as clothes, body as skin |
 | Knight, 128px | Right | Wrong, a tangle around the helm, with a body visibility of 0.44 | A three-joint sword from the right wrist, a shield top and bottom from the left, three joints up each horn, a four-joint cape chain | Helm and much of the sword and shield marked as accessories, the horns as skin |
 | Mage, 128px | Right | Pose Landmarker found no body; Holistic found 33 points | A three-joint staff from the right wrist, three joints up the hat and one at each side of the brim | Most of the staff marked as accessories, the hat and robe as clothes |
@@ -319,9 +322,10 @@ What follows from it:
   (`pose_world_landmarks`), with depth. On these flat front views the depth is
   small and not checked against anything, but it is a starting point for a 3D
   rig that PixelLab's 2D joints do not give.
-- **Neither tool can be trusted blind on a dressed character.** The adventurer
-  defeated both, in different ways. Check every estimate over the art
-  (`skeleton-preview` for the 18 joints) before animating from it.
+- **MediaPipe cannot be trusted blind on a dressed or small character.** It
+  found no body on the 64px adventurer and a wrong one on the knight. Check
+  every estimate over the art (`skeleton-preview` for the 18 joints) before
+  animating from it.
 
 How a rigid or bending part maps onto the rigs elsewhere:
 
@@ -339,6 +343,86 @@ MediaPipe has no model for them.
 
 Everything is in `website/art/rigging-tools/`: the sprites, both tools' raw
 output, `mediapipe-run.py` and `draw-figure.py`.
+
+## Open-source tools on your own machine: rtmlib and SAM 2.1
+
+Two more free tools were tried on the same sprites (November 2026), picked from
+a survey of open models for what PixelKiln could use without a paid service:
+**rtmlib**, which runs the RTMW whole-body pose model (133 points: body, feet,
+face and both hands), and **SAM 2.1**, Meta's segmenter, which cuts out whatever
+you click on.
+
+![Five figures in rows. Columns: rtmlib's body, MediaPipe's body, and SAM 2.1's mask from one click on a prop. rtmlib finds a body on all five, though on the knight it runs the arms up into the horns; MediaPipe finds none on the adventurer and the mage and a wrong one on the knight; SAM cuts out the sword and the staff, and only an edge of the cape](../website/public/showcase/skeleton/open-tools.png)
+
+**rtmlib** (code Apache-2.0, version 0.0.16 with onnxruntime 1.32, on the CPU,
+its "balanced" models) found a body on all seven test sprites, at the sprite's own
+size and enlarged 2 and 4 times, in about a third of a second each on an M1 Max.
+Agreement with PixelLab's 18 joints, as the average distance between the same
+joints in torso heights:
+
+| Sprite | rtmlib vs PixelLab | Note |
+|---|---|---|
+| Cuirass, 256px | 3.7% | |
+| Bare, 256px | 4.3% | |
+| Cape, 256px | 5.8% | |
+| Bare, 64px | 8.2% | MediaPipe's legs went astray here |
+| Adventurer, 64px | 8.6% | MediaPipe found no body |
+| Mage, 128px | 10% | MediaPipe's Pose Landmarker found no body |
+| Knight, 128px | 46% | Wrong: it ran both arms up into the horns |
+
+Its hand points, scored as in [Finding hand points](#finding-hand-points-pixellab-or-mediapipe):
+5 to 8% of the hand's length at 256px (MediaPipe: 7 to 9%), 6 to 14% at 128px,
+and 20 to 51% at 64px, where it still answers but guesses (both its "balanced"
+and "performance" models, at 1, 2 and 4 times). So at 256px rtmlib is
+the closest of the three tools tried, and it is the only free one that found a
+body on every figure here.
+
+**Its model files are not ours to ship.** rtmlib's code is Apache-2.0, but its
+person detector was trained on Human-Art (CC BY-NC-SA 4.0) and RTMW on fourteen
+datasets with mixed terms. PixelKiln could call it when someone installs it
+themselves, as it does with ComfyUI, but should not bundle or download the
+weights for them.
+
+**SAM 2.1** (code and weights Apache-2.0, `facebook/sam2.1-hiera-*` through
+Hugging Face `transformers`) took one click on each prop, the same point
+PixelLab's custom skeleton put a joint on:
+
+| Prop | Small model, confidence | Large model, confidence | Mask |
+|---|---|---|---|
+| Staff (mage, 128px) | 0.78 | 0.56 | The whole staff, crystal included |
+| Sword (knight, 128px) | 0.41 | 0.91 | The blade and hilt |
+| Shield (knight, 128px) | 0.27 | 0.81 | Most of the shield |
+| Knight's cape | 0.30 | 0.27 | A part of the cape |
+| Cape (256px) | 0.92 | 0.97 | Small: one edge of the cape. Large: the whole figure |
+
+- **Rigid props work; capes do not.** A clean mask of a staff or sword gives its
+  bone directly: the mask's long axis, from end to end. On the staff that axis
+  ran the full 46 pixels from the foot to the crystal, while PixelLab's staff
+  joints started at the hand, 21 pixels up, so the two mean different things
+  (the whole staff, or the part above the grip). A cape is one colour against a
+  body of another and drapes around it; neither model cut one out reliably.
+- **Bigger is not always better.** The large model was surer on the knight's
+  small props and worse on the staff, and it took the whole caped figure for
+  the cape. Its own confidence did not warn of that (0.97).
+- **No GPU needed.** On an RTX 3060 (CUDA 12.4) both models gave exactly the same
+  masks and scores as on the Mac, and were no faster for sprites this small:
+  about 40 ms a prop for the large model there against 16 to 19 ms on the M1
+  Max's GPU, after the model has loaded.
+
+Which tool for what, from everything tried on this page:
+
+| Job | Use | Why |
+|---|---|---|
+| Body joints, 64 to 128px | PixelLab's `estimate-skeleton` | Right on every figure here; rtmlib close behind, MediaPipe unreliable |
+| Body joints, 256px, free | rtmlib, or MediaPipe | Both close to PixelLab; rtmlib also found every smaller body |
+| Hand points, 256px | rtmlib (installed by the user), else MediaPipe | 5 to 8% off, against 7 to 9% |
+| Joints for props, capes and hats | PixelLab's custom skeleton | The only tool that adds them by itself |
+| A prop's mask and its bone, free and shippable | SAM 2.1, then the mask's long axis | Clean on staffs and swords; Apache-2.0 code and weights |
+| What may bend | MediaPipe's body mask or segmenter | Leaves a cape out of the body; rough |
+
+Everything is in `website/art/rigging-tools/`: `rtmlib-trial.py`, `sam-trial.py`,
+their results (`rtmlib-*.json`, `sam-*.json`, the `-cuda` ones from the RTX 3060),
+and `draw-open-tools.py`.
 
 ## Which skeleton is which
 

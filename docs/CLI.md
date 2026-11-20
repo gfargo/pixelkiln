@@ -2018,7 +2018,9 @@ pixelkiln skeleton-preview <asset> [--style <id>] [--out sheet.png]
 
 Draws every pose of a keypoints file over its source image as one PNG, the
 starting pose first at full strength and each frame after it over a dimmed
-copy. Right-side bones are orange, left-side blue, the head and spine white.
+copy. Right-side bones are orange, left-side blue, the head and spine white,
+and the eyes and ears grey, so the lines up to the ears of a small sprite are
+not mistaken for raised arms.
 Local and free: nothing is sent anywhere. Given an `animate-skeleton` asset
 id, it reads the revision's `keypointsFile` and source image from the
 manifest; given a file, `--from` names the image (without one, poses are drawn

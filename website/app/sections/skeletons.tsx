@@ -258,8 +258,7 @@ export function SkeletonsSection() {
           <figure className="skeleton-resolution skeleton-props">
             <Image src="/showcase/skeleton/rigging-tools.png" alt="Four characters in rows: an adventurer, a caped figure, a knight and a mage. Columns: PixelLab's 18 joints; MediaPipe's 33-point body; the extra joints PixelLab's custom skeleton added for capes, a sword, a shield, horns, a staff and a hat; and MediaPipe's segmenter colouring skin, clothes and accessories" width={1166} height={1106} unoptimized />
             <figcaption>
-              PixelLab&apos;s 18 joints misread the adventurer&apos;s pack as raised arms, and MediaPipe found no body
-              at all. MediaPipe got the knight wrong but scored it 0.44 against 0.99 on good figures, so its
+              PixelLab&apos;s 18 joints were right on all four. MediaPipe found no body on the 64px adventurer. MediaPipe got the knight wrong but scored it 0.44 against 0.99 on good figures, so its
               own score tells you to discard it. The custom rig hung the sword and staff from the wrist and the
               capes from the shoulders.
             </figcaption>
@@ -268,11 +267,35 @@ export function SkeletonsSection() {
             <li><span className="tick" aria-hidden="true" /> Props and capes: PixelLab&apos;s custom skeleton. Rigid items hang from the wrist, capes from the shoulders and hips.</li>
             <li><span className="tick" aria-hidden="true" /> Bodies at 256px: MediaPipe, free. Its Holistic model returned body, both hands and 478 face points in one call.</li>
             <li><span className="tick" aria-hidden="true" /> Depth for 3D: MediaPipe gives every body point a 3D position; PixelLab&apos;s joints are flat.</li>
-            <li><span className="tick" aria-hidden="true" /> Dressed characters fool both. Check every estimate over the art before animating from it.</li>
+            <li><span className="tick" aria-hidden="true" /> MediaPipe misses small and heavily dressed characters. Check every estimate over the art before animating from it.</li>
           </ul>
           <p className="skeleton-after">
             <TrackedLink className="text-link" id="skeletons_props" section="skeletons" href="/docs/skeletons#props-capes-and-hats">The full comparison</TrackedLink>{" "}
             covers every figure, how each part maps onto 3D rigs and engines, and what was not tried.
+          </p>
+        </div>
+
+        <div className="builder-block" id="open-tools">
+          <h3>Free tools on your own machine.</h3>
+          <p>
+            Two open-source tools were tried on the same sprites. rtmlib&apos;s RTMW model found a body on every
+            figure, 64px included, in a third of a second on a laptop CPU, and was the closest of the free
+            tools on 256px hands. It still read the knight&apos;s horns as raised arms. SAM 2.1 cut out the
+            sword and the staff from one click each, and the long axis of each mask is the prop&apos;s bone; it
+            could not cut out a cape.
+          </p>
+          <figure className="skeleton-resolution skeleton-open">
+            <Image src="/showcase/skeleton/open-tools.png" alt="Five figures in rows with rtmlib's body, MediaPipe's body and SAM 2.1's mask of a prop. rtmlib finds every body but runs the knight's arms into its horns; MediaPipe misses the adventurer and the mage; SAM cuts out the sword and the staff" width={912} height={1340} unoptimized />
+            <figcaption>
+              SAM 2.1&apos;s code and weights are Apache-2.0, so it could ship with PixelKiln. rtmlib&apos;s code is
+              Apache-2.0 too, but its models were trained on data with non-commercial terms: something a
+              user installs, not something PixelKiln can hand out. Neither needed a CUDA card: an RTX 3060
+              gave the same masks as the Mac, and no faster.
+            </figcaption>
+          </figure>
+          <p className="skeleton-after">
+            <TrackedLink className="text-link" id="skeletons_open_tools" section="skeletons" href="/docs/skeletons#open-source-tools-on-your-own-machine-rtmlib-and-sam-2-1">The guide</TrackedLink>{" "}
+            has every score, the licences, and which tool to use for which job.
           </p>
         </div>
 

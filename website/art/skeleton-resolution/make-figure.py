@@ -34,6 +34,10 @@ HAND_256 = {"knuckles": (25, 67), "fingertip": (12, 68), "thumb base": (29, 70),
 
 
 def colour(a, b):
+    # Eyes and ears in grey, as skeleton-preview draws them: in the side colours the
+    # lines up to the ears look like raised arms.
+    if any(part in a + b for part in ("EYE", "EAR")):
+        return (150, 150, 150)
     if "RIGHT" in a or "RIGHT" in b:
         return RIGHT
     if "LEFT" in a or "LEFT" in b:
