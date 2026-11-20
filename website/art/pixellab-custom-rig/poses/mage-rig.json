@@ -1,0 +1,479 @@
+{
+  "rig": [
+    {
+      "name": "pelvis",
+      "parent": null,
+      "side": "mid",
+      "estimate": null
+    },
+    {
+      "name": "chest",
+      "parent": "pelvis",
+      "side": "mid",
+      "estimate": null
+    },
+    {
+      "name": "neck",
+      "parent": "chest",
+      "side": "mid",
+      "estimate": "NECK"
+    },
+    {
+      "name": "head",
+      "parent": "neck",
+      "side": "mid",
+      "estimate": null
+    },
+    {
+      "name": "hat_base",
+      "parent": "head",
+      "side": "mid",
+      "estimate": null
+    },
+    {
+      "name": "hat_tip",
+      "parent": "hat_base",
+      "side": "mid",
+      "estimate": null
+    },
+    {
+      "name": "hat_curl",
+      "parent": "hat_tip",
+      "side": "mid",
+      "estimate": null
+    },
+    {
+      "name": "hat_brim_right",
+      "parent": "head",
+      "side": "near",
+      "estimate": null
+    },
+    {
+      "name": "hat_brim_left",
+      "parent": "head",
+      "side": "far",
+      "estimate": null
+    },
+    {
+      "name": "right_shoulder",
+      "parent": "chest",
+      "side": "near",
+      "estimate": "RIGHT SHOULDER"
+    },
+    {
+      "name": "right_elbow",
+      "parent": "right_shoulder",
+      "side": "near",
+      "estimate": "RIGHT ELBOW"
+    },
+    {
+      "name": "right_wrist",
+      "parent": "right_elbow",
+      "side": "near",
+      "estimate": "RIGHT ARM"
+    },
+    {
+      "name": "staff_butt",
+      "parent": "right_wrist",
+      "side": "near",
+      "estimate": null
+    },
+    {
+      "name": "staff_mid",
+      "parent": "right_wrist",
+      "side": "near",
+      "estimate": null
+    },
+    {
+      "name": "staff_top",
+      "parent": "staff_mid",
+      "side": "near",
+      "estimate": null
+    },
+    {
+      "name": "left_shoulder",
+      "parent": "chest",
+      "side": "far",
+      "estimate": "LEFT SHOULDER"
+    },
+    {
+      "name": "left_elbow",
+      "parent": "left_shoulder",
+      "side": "far",
+      "estimate": "LEFT ELBOW"
+    },
+    {
+      "name": "left_wrist",
+      "parent": "left_elbow",
+      "side": "far",
+      "estimate": "LEFT ARM"
+    },
+    {
+      "name": "left_hip",
+      "parent": "pelvis",
+      "side": "far",
+      "estimate": "LEFT HIP"
+    },
+    {
+      "name": "left_knee",
+      "parent": "left_hip",
+      "side": "far",
+      "estimate": "LEFT KNEE"
+    },
+    {
+      "name": "left_ankle",
+      "parent": "left_knee",
+      "side": "far",
+      "estimate": "LEFT LEG"
+    },
+    {
+      "name": "left_toe",
+      "parent": "left_ankle",
+      "side": "far",
+      "estimate": null
+    },
+    {
+      "name": "right_hip",
+      "parent": "pelvis",
+      "side": "near",
+      "estimate": "RIGHT HIP"
+    },
+    {
+      "name": "right_knee",
+      "parent": "right_hip",
+      "side": "near",
+      "estimate": "RIGHT KNEE"
+    },
+    {
+      "name": "right_ankle",
+      "parent": "right_knee",
+      "side": "near",
+      "estimate": "RIGHT LEG"
+    },
+    {
+      "name": "right_toe",
+      "parent": "right_ankle",
+      "side": "near",
+      "estimate": null
+    }
+  ],
+  "kind": "person",
+  "firstFrameKeypoints": [
+    {
+      "label": "pelvis",
+      "x": 0.4883,
+      "y": 0.5352,
+      "z_index": 1
+    },
+    {
+      "label": "chest",
+      "x": 0.4922,
+      "y": 0.4688,
+      "z_index": 1
+    },
+    {
+      "label": "neck",
+      "x": 0.4919,
+      "y": 0.4167,
+      "z_index": 1
+    },
+    {
+      "label": "head",
+      "x": 0.4922,
+      "y": 0.3672,
+      "z_index": 1
+    },
+    {
+      "label": "hat_base",
+      "x": 0.4922,
+      "y": 0.3203,
+      "z_index": 1
+    },
+    {
+      "label": "hat_tip",
+      "x": 0.4922,
+      "y": 0.1719,
+      "z_index": 1
+    },
+    {
+      "label": "hat_curl",
+      "x": 0.5859,
+      "y": 0.2266,
+      "z_index": 1
+    },
+    {
+      "label": "hat_brim_right",
+      "x": 0.4297,
+      "y": 0.3359,
+      "z_index": 2
+    },
+    {
+      "label": "hat_brim_left",
+      "x": 0.5938,
+      "y": 0.3438,
+      "z_index": 0
+    },
+    {
+      "label": "right_shoulder",
+      "x": 0.4328,
+      "y": 0.416,
+      "z_index": 2
+    },
+    {
+      "label": "right_elbow",
+      "x": 0.4108,
+      "y": 0.4778,
+      "z_index": 2
+    },
+    {
+      "label": "right_wrist",
+      "x": 0.3998,
+      "y": 0.5396,
+      "z_index": 2
+    },
+    {
+      "label": "staff_butt",
+      "x": 0.4062,
+      "y": 0.6719,
+      "z_index": 2
+    },
+    {
+      "label": "staff_mid",
+      "x": 0.4141,
+      "y": 0.4688,
+      "z_index": 2
+    },
+    {
+      "label": "staff_top",
+      "x": 0.4297,
+      "y": 0.375,
+      "z_index": 2
+    },
+    {
+      "label": "left_shoulder",
+      "x": 0.5509,
+      "y": 0.4174,
+      "z_index": 0
+    },
+    {
+      "label": "left_elbow",
+      "x": 0.5715,
+      "y": 0.4861,
+      "z_index": 0
+    },
+    {
+      "label": "left_wrist",
+      "x": 0.5811,
+      "y": 0.5534,
+      "z_index": 0
+    },
+    {
+      "label": "left_hip",
+      "x": 0.5179,
+      "y": 0.5341,
+      "z_index": 0
+    },
+    {
+      "label": "left_knee",
+      "x": 0.5262,
+      "y": 0.622,
+      "z_index": 0
+    },
+    {
+      "label": "left_ankle",
+      "x": 0.5289,
+      "y": 0.6989,
+      "z_index": 0
+    },
+    {
+      "label": "left_toe",
+      "x": 0.543,
+      "y": 0.7305,
+      "z_index": 0
+    },
+    {
+      "label": "right_hip",
+      "x": 0.4603,
+      "y": 0.5328,
+      "z_index": 2
+    },
+    {
+      "label": "right_knee",
+      "x": 0.4534,
+      "y": 0.6248,
+      "z_index": 2
+    },
+    {
+      "label": "right_ankle",
+      "x": 0.4479,
+      "y": 0.6989,
+      "z_index": 2
+    },
+    {
+      "label": "right_toe",
+      "x": 0.4336,
+      "y": 0.7305,
+      "z_index": 2
+    }
+  ],
+  "frames": [
+    [
+      {
+        "label": "pelvis",
+        "x": 0.4883,
+        "y": 0.5352,
+        "z_index": 1
+      },
+      {
+        "label": "chest",
+        "x": 0.4922,
+        "y": 0.4688,
+        "z_index": 1
+      },
+      {
+        "label": "neck",
+        "x": 0.4919,
+        "y": 0.4167,
+        "z_index": 1
+      },
+      {
+        "label": "head",
+        "x": 0.4922,
+        "y": 0.3672,
+        "z_index": 1
+      },
+      {
+        "label": "hat_base",
+        "x": 0.4922,
+        "y": 0.3203,
+        "z_index": 1
+      },
+      {
+        "label": "hat_tip",
+        "x": 0.4922,
+        "y": 0.1719,
+        "z_index": 1
+      },
+      {
+        "label": "hat_curl",
+        "x": 0.5859,
+        "y": 0.2266,
+        "z_index": 1
+      },
+      {
+        "label": "hat_brim_right",
+        "x": 0.4297,
+        "y": 0.3359,
+        "z_index": 2
+      },
+      {
+        "label": "hat_brim_left",
+        "x": 0.5938,
+        "y": 0.3438,
+        "z_index": 0
+      },
+      {
+        "label": "right_shoulder",
+        "x": 0.4328,
+        "y": 0.416,
+        "z_index": 2
+      },
+      {
+        "label": "right_elbow",
+        "x": 0.4108,
+        "y": 0.4778,
+        "z_index": 2
+      },
+      {
+        "label": "right_wrist",
+        "x": 0.3998,
+        "y": 0.5396,
+        "z_index": 2
+      },
+      {
+        "label": "staff_butt",
+        "x": 0.4062,
+        "y": 0.6719,
+        "z_index": 2
+      },
+      {
+        "label": "staff_mid",
+        "x": 0.4141,
+        "y": 0.4688,
+        "z_index": 2
+      },
+      {
+        "label": "staff_top",
+        "x": 0.4297,
+        "y": 0.375,
+        "z_index": 2
+      },
+      {
+        "label": "left_shoulder",
+        "x": 0.5509,
+        "y": 0.4174,
+        "z_index": 0
+      },
+      {
+        "label": "left_elbow",
+        "x": 0.5715,
+        "y": 0.4861,
+        "z_index": 0
+      },
+      {
+        "label": "left_wrist",
+        "x": 0.5811,
+        "y": 0.5534,
+        "z_index": 0
+      },
+      {
+        "label": "left_hip",
+        "x": 0.5179,
+        "y": 0.5341,
+        "z_index": 0
+      },
+      {
+        "label": "left_knee",
+        "x": 0.5262,
+        "y": 0.622,
+        "z_index": 0
+      },
+      {
+        "label": "left_ankle",
+        "x": 0.5289,
+        "y": 0.6989,
+        "z_index": 0
+      },
+      {
+        "label": "left_toe",
+        "x": 0.543,
+        "y": 0.7305,
+        "z_index": 0
+      },
+      {
+        "label": "right_hip",
+        "x": 0.4603,
+        "y": 0.5328,
+        "z_index": 2
+      },
+      {
+        "label": "right_knee",
+        "x": 0.4534,
+        "y": 0.6248,
+        "z_index": 2
+      },
+      {
+        "label": "right_ankle",
+        "x": 0.4479,
+        "y": 0.6989,
+        "z_index": 2
+      },
+      {
+        "label": "right_toe",
+        "x": 0.4336,
+        "y": 0.7305,
+        "z_index": 2
+      }
+    ]
+  ]
+}

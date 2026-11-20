@@ -235,6 +235,15 @@ with the hand; add `writeMotionFrames` to have PixelLab write the motion from
 the prompt instead of posing every frame. See
 [Custom rigs and written motion](./REVISIONS.md#custom-rigs-and-written-motion).
 
+Made this way, November 2026: the paperdoll mage (128px) got a 26-joint rig
+with a staff from the hand, a hat with a curl and a brim, toes and a spine (1
+generation), and `writeMotionFrames: 8` with the prompt "swinging the staff
+overhead" drew the swing below (3 generations). The staff stays one rigid piece
+in his hand through the swing.
+
+![The mage's custom rig: body joints in orange and blue, the staff and hat in yellow](../website/public/showcase/skeleton/mage-rig.png)
+![The mage lifting the staff, swinging it overhead and across, and bringing it back down](../website/public/showcase/skeleton/mage-swing.gif)
+
 What the rig contains depends on what it is told; on the figures in
 [Props, capes and hats](#props-capes-and-hats) it added cape chains, a sword,
 a shield, horns, a staff and a hat. Joint names change from one estimate to the
