@@ -1,0 +1,22 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-website-custom-rig",
+  "styles": {
+    "rig": { "generator": "map", "outDir": "out", "view": "low top-down", "noBackground": true }
+  },
+  "assets": {
+    "mage": { "prompt": "paperdoll mage", "width": 128, "height": 128, "source": "mage-south.png", "styles": ["rig"] },
+    "mage-swing": {
+      "prompt": "swinging the staff overhead",
+      "styles": ["rig"],
+      "revision": {
+        "mode": "animate-skeleton",
+        "from": "mage",
+        "keypointsFile": "poses/mage-rig.json",
+        "direction": "south",
+        "description": "wizard in a purple robe and a tall pointed blue hat, holding a long dark staff with a purple crystal in his right hand",
+        "writeMotionFrames": 8
+      }
+    }
+  }
+}

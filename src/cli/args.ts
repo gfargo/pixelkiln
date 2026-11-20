@@ -193,8 +193,14 @@ export interface Args {
   size?: string
   /** asset mirror/export: an animation group id. */
   animation?: string
-  /** asset mirror: the direction to flip. asset expand: the way the object faces now. asset export gif: the direction. */
+  /** asset mirror: the direction to flip. asset expand: the way the object faces now. asset export gif: the direction. estimate-skeleton --custom: the way the sprite faces. */
   direction?: string
+  /** estimate-skeleton: build a custom rig (props, capes, tails) instead of the 18 joints. */
+  custom: boolean
+  /** estimate-skeleton --custom: what the sprite will be animated doing, so the parts that move get joints. */
+  action?: string
+  /** estimate-skeleton --custom: the camera the sprite is drawn at. */
+  view?: string
   /** asset expand: keep a reviewed expansion. */
   keep: boolean
   /** asset expand: discard a pending expansion. */
@@ -246,13 +252,13 @@ const VALUE_FLAGS = [
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
   "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--lib", "--margin", "--camera", "--hue", "--param", "--tune", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
-  "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
+  "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction", "--action", "--view",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
 ] as const
 const BOOL_FLAGS = [
   "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected",
-  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace",
+  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace", "--custom",
 ] as const
 
 export const COMMANDS = [
@@ -651,7 +657,9 @@ export function parseArgs(argv: string[]): Args {
     glyphPx: numberOption("--glyph-px", { min: 8, max: 64, integer: true }),
     frames: command === "normal-map"
       ? numberOption("--frames", { min: 1, max: 32, integer: true })
-      : numberOption("--frames", { min: 3, max: 15, integer: true }),
+      : command === "estimate-skeleton" && rest.includes("--custom")
+        ? numberOption("--frames", { min: 1, max: 15, integer: true })
+        : numberOption("--frames", { min: 3, max: 15, integer: true }),
     convention: get("--convention"),
     estimateLimit: numberOption("--estimate-limit", { min: 0, max: 1000, integer: true }),
     preset: get("--preset"),
@@ -696,6 +704,9 @@ export function parseArgs(argv: string[]): Args {
     transition: get("--transition"),
     animation: get("--animation"),
     direction: get("--direction"),
+    custom: rest.includes("--custom"),
+    action: get("--action"),
+    view: get("--view"),
     keep: rest.includes("--keep"),
     discard: rest.includes("--discard"),
     pro: rest.includes("--pro"),

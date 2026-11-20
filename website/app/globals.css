@@ -1861,3 +1861,4 @@ div.receipt-line .receipt-mark { background: var(--lime); }
 .skeleton-props img { max-width: 1166px; }
 .skeleton-findings { margin-top: 0; }
 .skeleton-open img { max-width: 912px; }
+.skeleton-rig-loops { max-width: 620px; margin: 8px 0 28px; }

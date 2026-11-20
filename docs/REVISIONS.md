@@ -582,6 +582,35 @@ anchor, and returned 8 frames at the sprite's own 64×64 size. The endpoint
 `revision.description` (or an empty `prompt`) and the gallery's form asks for
 one.
 
+### Custom rigs and written motion
+
+A keypoints file may carry a custom `rig` from `pixelkiln estimate-skeleton
+--custom`: joints for a staff, a cape, a hat or a tail as well as the body.
+Its poses then name the rig's joints instead of the 18, every joint once per
+pose, and 1 to 15 frames are allowed (one frame redraws a single pose). The
+rig is sent to `/animate-with-skeleton-v3` as `rig`. Without a
+`skeletonTemplate`, a rig whose `kind` is `four-legged` goes on the `dog`
+template and anything else on `mannequin`, as PixelLab advises.
+
+`writeMotionFrames: <3-15>` on the revision has PixelLab write the motion from
+the asset's `prompt` instead, starting from the file's `firstFrameKeypoints`;
+the file's `frames` may then be empty. It works with the 18 joints or a rig,
+and the plan prices it as that many frames.
+
+```json
+"mage.swing": {
+  "prompt": "swinging the staff overhead",
+  "revision": {
+    "mode": "animate-skeleton",
+    "from": "mage",
+    "keypointsFile": "poses/mage-rig.json",
+    "direction": "south",
+    "description": "a wizard in a purple robe holding a long staff",
+    "writeMotionFrames": 8
+  }
+}
+```
+
 ComfyUI does not support this mode either, for the same structural reason as
 `animate`/`animate-pixminimax`.
 

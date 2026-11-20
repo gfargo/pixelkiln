@@ -269,6 +269,20 @@ export function SkeletonsSection() {
             <li><span className="tick" aria-hidden="true" /> Depth for 3D: MediaPipe gives every body point a 3D position; PixelLab&apos;s joints are flat.</li>
             <li><span className="tick" aria-hidden="true" /> MediaPipe misses small and heavily dressed characters. Check every estimate over the art before animating from it.</li>
           </ul>
+          <div className="skeleton-loops skeleton-rig-loops">
+            <figure className="skeleton-loop">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/showcase/skeleton/mage-rig.png" alt="The mage with its custom rig drawn over it: body joints in orange and blue, the staff and the hat in yellow" width={264} height={264} loading="lazy" />
+              <figcaption><b>The rig.</b> <code>estimate-skeleton --custom</code> on the mage: 26 joints, a staff from the hand and a hat with a brim. 1 generation.</figcaption>
+            </figure>
+            <Loop
+              src="/showcase/skeleton/mage-swing.gif"
+              still="/showcase/skeleton/mage-swing-still.png"
+              alt="The mage lifting the staff, swinging it overhead and across, and bringing it back down"
+              size={240}
+              caption={<><b>The swing.</b> <code>writeMotionFrames: 8</code> and &ldquo;swinging the staff overhead&rdquo;: PixelLab wrote the motion and drew 8 frames. The staff stays one piece. 3 generations.</>}
+            />
+          </div>
           <p className="skeleton-after">
             <TrackedLink className="text-link" id="skeletons_props" section="skeletons" href="/docs/skeletons#props-capes-and-hats">The full comparison</TrackedLink>{" "}
             covers every figure, how each part maps onto 3D rigs and engines, and what was not tried.

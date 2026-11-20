@@ -2,7 +2,7 @@ import type { CharacterDirection, CharacterProportions, ResolvedStyleImage, UiEl
 import { z } from "zod"
 import { ProviderError } from "./errors.ts"
 import { fetchWithRetry, type RetryingFetch } from "./http.ts"
-import { SkeletonKeypointSchema, type SkeletonKeypoint } from "./skeleton.ts"
+import { RigKeypointSchema, SkeletonKeypointSchema, SkeletonRigSchema, type PoseJoint, type RigJoint, type SkeletonKeypoint } from "./skeleton.ts"
 
 /**
  * PixelLab REST client.
@@ -583,6 +583,15 @@ const EstimateSkeletonResponseSchema = z
   .object({
     keypoints: z.array(SkeletonKeypointSchema).length(18),
     usage: z.unknown().optional(),
+  })
+  .passthrough()
+
+/** `/estimate-custom-skeleton`'s finished job (`last_response`): the rig, what it is, one pose per image. */
+const CustomSkeletonResultSchema = z
+  .object({
+    rig: SkeletonRigSchema,
+    kind: z.enum(["person", "four-legged", "other"]).nullable().optional(),
+    frames: z.array(z.array(RigKeypointSchema.extend({ z_index: z.number().default(0) }))).min(1),
   })
   .passthrough()
 
@@ -3139,8 +3148,13 @@ export class PixelLabClient {
    */
   async animateWithSkeletonV3(args: {
     firstFrame: Base64Image
-    firstFrameKeypoints: SkeletonKeypoint[]
-    keypoints: SkeletonKeypoint[][]
+    firstFrameKeypoints: PoseJoint[]
+    /** The motion; empty when `writeMotionFrames` has PixelLab write it. */
+    keypoints: PoseJoint[][]
+    /** A custom skeleton (from `/estimate-custom-skeleton`) whose joints the poses name instead of the 18. */
+    rig?: RigJoint[]
+    /** Instead of `keypoints`: PixelLab writes this many frames (3-15) of motion from `action`. */
+    writeMotionFrames?: number
     direction: CharacterDirection
     /** The camera the sprite is drawn at; PixelLab assumes `low top-down` when omitted, which poses a side-view sprite for the wrong camera. */
     view?: "side" | "low top-down" | "high top-down"
@@ -3153,9 +3167,11 @@ export class PixelLabClient {
     const body: Record<string, unknown> = {
       first_frame: args.firstFrame,
       first_frame_keypoints: args.firstFrameKeypoints,
-      keypoints: args.keypoints,
       direction: args.direction,
     }
+    if (args.writeMotionFrames != null) body.write_motion_frames = args.writeMotionFrames
+    else body.keypoints = args.keypoints
+    if (args.rig) body.rig = args.rig
     if (args.view) body.view = args.view
     if (args.templateId) body.template_id = args.templateId
     if (args.action) body.action = args.action
@@ -3189,6 +3205,58 @@ export class PixelLabClient {
       "estimate-skeleton",
     )
     return { keypoints: res.keypoints, usage: res.usage }
+  }
+
+  /**
+   * `/estimate-custom-skeleton` (beta): builds a rig of any shape for a sprite
+   * (a staff, a cape, wings, a tail) from `description` and `action`, and places
+   * it on the image. A background job; this submits it and waits for the
+   * result, polling every `intervalMs` (most finish in about a minute). 1
+   * generation per 8 images. Measured on four sprites in November 2026: given a
+   * figure "swinging the staff", it hung a three-joint staff from the wrist.
+   */
+  async estimateCustomSkeleton(
+    args: {
+      image: Base64Image
+      direction: CharacterDirection
+      view?: "side" | "low top-down" | "high top-down"
+      description?: string
+      action?: string
+    },
+    wait: { intervalMs?: number; timeoutMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+  ): Promise<{ rig: RigJoint[]; kind: "person" | "four-legged" | "other" | null; keypoints: PoseJoint[]; jobId: string; usage: PixelLabUsage | null }> {
+    const body: Record<string, unknown> = {
+      images: [{ type: "base64", base64: args.image.base64, format: args.image.format }],
+      direction: args.direction,
+    }
+    if (args.view) body.view = args.view
+    if (args.description) body.description = args.description
+    if (args.action) body.action = args.action
+    const submitted = validateResponse(
+      RevisionJobSubmitSchema,
+      await this.request<unknown>("/estimate-custom-skeleton", { method: "POST", body: JSON.stringify(body) }),
+      "estimate-custom-skeleton",
+    )
+    const sleep = wait.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+    const deadline = Date.now() + (wait.timeoutMs ?? 5 * 60_000)
+    for (;;) {
+      const job = await this.getBackgroundJob(submitted.background_job_id)
+      if (job.status === "completed") {
+        const result = validateResponse(CustomSkeletonResultSchema, job.last_response, "estimate-custom-skeleton result")
+        return {
+          rig: result.rig,
+          kind: result.kind ?? null,
+          keypoints: result.frames[0]!,
+          jobId: submitted.background_job_id,
+          usage: job.usage ?? null,
+        }
+      }
+      if (job.status === "failed") throw new ProviderError("pixellab", `estimate-custom-skeleton job ${submitted.background_job_id} failed`)
+      if (Date.now() > deadline) {
+        throw new ProviderError("pixellab", `estimate-custom-skeleton job ${submitted.background_job_id} is still running; it was not charged until it finishes`)
+      }
+      await sleep(wait.intervalMs ?? 5000)
+    }
   }
 
   async getBackgroundJob(jobId: string): Promise<{ id: string; status: string; last_response?: Record<string, unknown> | null; usage?: PixelLabUsage | null }> {

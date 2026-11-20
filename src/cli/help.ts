@@ -40,6 +40,7 @@ Commands
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
   estimate-skeleton <image> [--out <file>] [--frames <n>] [--force]
+                      [--custom --description <text> --action <text> --direction <dir> --view <camera>]
             PixelLab only: derive an 18-joint skeleton from a square 16-256px
             image, direct and un-budgeted (like balance, not a generation).
             Prints, or writes with --out, a ready keypoints file for an
