@@ -272,7 +272,51 @@ process.stdout.write(JSON.stringify({
       expect.objectContaining({ id: "$quality/keep", included: true }),
       expect.objectContaining({ id: "keep", included: true }),
     ]))
-  }, 15_000)
+  })
+
+  it("waits a derived asset on its source, derives it without a key, then refines it (#301)", async () => {
+    await mkdir(path.join(dir, "art/raw"), { recursive: true })
+    await writeFile(path.join(dir, "art/raw/rock.png"), samplePng())
+    await writeFile(manifestPath, JSON.stringify({
+      name: "quality-derive",
+      styles: { base: { generator: "map", outDir: "art/raw", quality: { outDir: "art/final", palette: ["#000000", "#ffffff"] } } },
+      assets: {
+        rock: { prompt: "a grey rock" },
+        rock_red: { derive: { from: "rock", transform: "recolor", map: { "#0c1218": "#b84a3a" } } },
+      },
+    }))
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const common = ["--manifest", manifestPath, "--lock", lockPath]
+    const env = { ...process.env }
+    delete env.PIXELLAB_API_KEY
+    const run = (...args: string[]) => execFileAsync(cli, [cliEntry, ...args, ...common], { cwd: dir, env })
+    const fixer = { fixerCommand: process.execPath, fixerArgsPrefix: [fixture] }
+    const open = async () => {
+      const loaded = await loadManifest(manifestPath)
+      return { specs: await resolveSpecs(loaded), lock: JSON.parse(await readFile(lockPath, "utf8")) as Lock }
+    }
+
+    await run("adopt", "--local", "--only", "rock")
+    let { specs, lock } = await open()
+    const first = await refineQualityProfiles(specs, lock, fixer)
+    // Waiting on its source is not a failure, and no provider is blamed for a file made locally.
+    expect(first).toMatchObject({ processed: 1, blocked: 1, failed: 0 })
+    expect(first.items.find((item) => item.key === "base/rock_red")).toMatchObject({
+      state: "blocked",
+      reason: "derived output is not made yet; `pixelkiln gen` derives it once its source is ready",
+    })
+    await approveQualityRecord(path.join(dir, "art/final/rock.pixelkiln.json"), { reviewer: "Ada" })
+
+    // A derive is local: gen makes it with no provider key in reach.
+    await run("gen", "--style", "base", "--budget", "0", "--yes", "--no-open")
+    ;({ specs, lock } = await open())
+    expect(lock.entries["base/rock_red"]).toMatchObject({ status: "downloaded" })
+    const second = await refineQualityProfiles(specs, lock, fixer)
+    expect(second).toMatchObject({ processed: 1, blocked: 0, failed: 0 })
+    expect(second.items.find((item) => item.key === "base/rock_red")).toMatchObject({ state: "needs-approval" })
+    await approveQualityRecord(path.join(dir, "art/final/rock_red.pixelkiln.json"), { reviewer: "Ada" })
+    expect(JSON.parse((await run("refine", "check", "--json")).stdout)).toMatchObject({ safe: true })
+  })
 
   it("rejects duplicate palettes, unsupported generators, and output collisions", async () => {
     await expect(writeManifest({

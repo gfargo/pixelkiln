@@ -13,7 +13,7 @@ provider you are using. These Markdown files also render at
 | [Set up Retro Diffusion](./RETRO_DIFFUSION.md) | Configure the experimental provider, choose a style, and understand its live-tested boundary. |
 | [Set up ComfyUI](./COMFYUI.md) | Bind local still, revision, and atomic frame-set workflows with an explicit quality boundary. |
 | [Set up Scenario](./SCENARIO.md) | Configure hosted models, two-part credentials, CU ceilings, and durable downloads. |
-| [CLI reference](./CLI.md) | Every command and flag, including `gallery`, `edit`, and `tools`; offline and provider requirements; JSON output; exit codes. |
+| [CLI reference](./CLI.md) | Every command and flag, including `gallery` (with its 3D model preview and texture painting), `edit`, `model`, and `tools`; offline and provider requirements; JSON output; exit codes. |
 | [Manifest reference](./MANIFEST.md) | Every shared style and asset field, palette enforcement, quality profiles, revisions, mounting, and schema validation. |
 | [Mixed-provider projects](./MIXED_PROVIDERS.md) | Route styles to different providers, set separate budget ceilings, and resume safely from one lockfile. |
 | [Agent workflows](./AGENTS.md) | Install the official skill and pair agent guidance with the deterministic CLI. |
@@ -23,6 +23,7 @@ provider you are using. These Markdown files also render at
 | Guide | Use it for |
 |---|---|
 | [Characters](./CHARACTERS.md) | A base in 4 or 8 directions from a prompt or your own sprite, states, loops, mirrors, portraits, outfit transfer, the four PixelLab engines, and what each costs. |
+| [Skeletons and rigging](./SKELETONS.md) | The 18-joint skeleton every pose tool shares: estimating and correcting one, animating from poses or from a character's stored skeleton, pinning items to a hand, OpenPose maps, and 3D rigs, with what each costs. |
 | [Paperdoll layers](./PAPERDOLL.md) | One bare character and any number of outfits, hats and held items as transparent layers that match every frame: how it works, a base built for it, masks, cleaning loops, measured cost, and limits. |
 | [Generators](./GENERATORS.md) | Choose between still, tile, character, hosted animation, and ComfyUI frame-set workflows. |
 | [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and native-grid recovery. |
@@ -38,9 +39,9 @@ provider you are using. These Markdown files also render at
 
 | Guide | Use it for |
 |---|---|
-| [Architecture](./ARCHITECTURE.md) | Manifest/lock state, provider boundary, output identity, hand edits, the pinned editor build, concurrency, and durable writes. |
+| [Architecture](./ARCHITECTURE.md) | Manifest/lock state, provider boundary, output identity, hand edits, 3D models, the pinned editor build, concurrency, and durable writes. |
 | [Library API](./LIBRARY.md) | Public TypeScript imports for planning, quality checks, providers, packing, exporting, and managed artifact writes. |
-| [Tiles and engine exports](./TILES.md) | Structural tile roles, provider rule preservation, generic JSON, Tiled Wang sets, and Godot terrain sets. |
+| [Tiles and engine exports](./TILES.md) | Structural tile roles, provider rule preservation, generic JSON, Tiled Wang sets, Godot terrain sets, LDtk projects, and exporting connected sets as one tileset. |
 | [Measured PixelLab endpoints](./ENDPOINTS.md) | Live-account cost and payload research, endpoint recipes, limits, and unresolved API behavior. |
 | [Provider comparison](../PROVIDERS.md) | Provider selection, costs, adapter capabilities, confidence, and next work. Start with the provider-specific setup guides above when you are ready to configure a project. |
 
@@ -48,6 +49,7 @@ provider you are using. These Markdown files also render at
 
 - [Contributing](../CONTRIBUTING.md)
 - [Security](../SECURITY.md)
+- [Third-party notices](./THIRD_PARTY.md)
 
 The Markdown in this directory is the canonical documentation and ships in the
 npm package. The Next.js app in `website/` renders this source directly into

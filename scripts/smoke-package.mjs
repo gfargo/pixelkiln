@@ -45,6 +45,8 @@ try {
     "docs/ARTIFACTS.md",
     "skills/pixelkiln/SKILL.md",
     "skills/pixelkiln/references/pixellab.md",
+    "skills/pixelkiln/references/tiles.md",
+    "skills/pixelkiln/references/vfx.md",
     "skills/pixelkiln/references/retro-diffusion.md",
     "skills/pixelkiln/references/mixed-providers.md",
     "skills/pixelkiln/references/recipes.md",

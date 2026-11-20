@@ -47,6 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ],
     },
     ...FEATURES.map((entry) => ({ url: `${siteUrl}${entry.href}`, changeFrequency: "monthly" as const, priority: 0.9 })),
+    { url: `${siteUrl}/effects/catalog`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${siteUrl}/docs`, changeFrequency: "weekly", priority: 0.9 },
     ...docs.map((doc) => ({
       url: `${siteUrl}/docs/${doc.slug}`,

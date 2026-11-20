@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { docGroups, docs } from "@/app/lib/docs";
 import { absoluteUrl, pageMetadata } from "@/app/lib/metadata";
+import { CodeWindow } from "@/app/ui/code-window";
 import { JsonLd } from "@/app/ui/json-ld";
 import { SiteFooter, SiteHeader } from "@/app/ui/site-chrome";
 import { TrackedLink } from "@/app/ui/tracked-link";
 
 export const metadata: Metadata = pageMetadata({
   title: "Documentation",
-  description: "Set up PixelKiln, choose a provider, and operate each command safely.",
+  description: "Set up PixelKiln, pick a provider, and look up any command.",
   path: "/docs",
 });
 
@@ -27,12 +28,26 @@ export default function DocsIndex() {
       <SiteHeader compact />
       <main className="docs-index shell">
         <div className="docs-index-hero">
-          <h1>Start with a manifest.</h1>
-          <p>
-            These pages render from the Markdown shipped with PixelKiln. Start
-            with the everyday workflow, or open the setup guide for PixelLab,
-            Retro Diffusion, ComfyUI, or Scenario.
-          </p>
+          <div>
+            <h1>Start with a manifest.</h1>
+            <p>
+              Every page here is a Markdown file in the PixelKiln repository.
+              Start with the quickstart, or go straight to the setup guide for
+              your provider.
+            </p>
+          </div>
+          <CodeWindow
+            title="terminal"
+            language="shell"
+            copyId="docs_index_start"
+            section="docs_index"
+            code={`
+npm install --save-dev pixelkiln
+pixelkiln init
+pixelkiln plan
+pixelkiln gen --budget 10
+`}
+          />
         </div>
 
         <TrackedLink
@@ -43,7 +58,7 @@ export default function DocsIndex() {
         >
           <div>
             <h2>Go from a manifest to reviewed output.</h2>
-            <p>The recommended first read: install PixelKiln, plan without spending, and cap the first generation.</p>
+            <p>Install PixelKiln, see what a run costs without spending, then generate with a budget cap.</p>
           </div>
           <strong aria-hidden="true">↗</strong>
         </TrackedLink>

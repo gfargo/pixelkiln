@@ -5,6 +5,7 @@ import { HELP } from "./help.ts"
 import { log } from "./io.ts"
 import { runAdopt, runBalance, runPurge, runSalvage, runTag } from "./commands/account.ts"
 import { runEdit } from "./commands/edit.ts"
+import { runModel } from "./commands/model.ts"
 import { runGallery } from "./commands/gallery.ts"
 import { runGenerate } from "./commands/generate.ts"
 import { runHistory, runRestoreGeneration } from "./commands/history.ts"
@@ -83,6 +84,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   status: runStatus,
   gallery: runGallery,
   edit: runEdit,
+  model: runModel,
   tools: runTools,
   history: runHistory,
   quality: runQuality,

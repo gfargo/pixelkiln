@@ -1,0 +1,269 @@
+/** `model`: the gallery's 3D model actions, from the terminal. */
+import { existsSync } from "node:fs"
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+import { uvGuide } from "../../glb-guide.ts"
+import { describeModels } from "../../gallery/models.ts"
+import { galleryMediaId } from "../../gallery/snapshot.ts"
+import { openInEditor } from "../../pipeline/hand-edit.ts"
+import {
+  adoptModelExport,
+  blenderCommand,
+  discoverModels,
+  exportModelTexture,
+  modelLoadPath,
+  modelTexturePaths,
+  openInBlender,
+  resolveModel,
+  resolveTextureImage,
+  saveModelTexture,
+  type ModelAdoptMode,
+  type ProjectModel,
+} from "../../pipeline/model-edit.ts"
+import { glbImageBytes, imageInfo, parseGlb, type GlbDocument } from "../../glb.ts"
+import { renderGuide } from "../../pipeline/model-guide.ts"
+import { loadManifest } from "../../manifest.ts"
+import { portableOutputPath } from "../../outputs.ts"
+import { confirm, log } from "../io.ts"
+import { UsageError } from "../../errors.ts"
+import { clientFromEnv, NORMAL_MAP_KINDS, NORMAL_MAP_MODES, type NormalMapKind, type NormalMapMode } from "../../client.ts"
+import { loadEnvFiles } from "../../env.ts"
+import {
+  generateModelNormals,
+  MODEL_NORMAL_SOURCES,
+  modelNormalMapper,
+  modelSpritesDir,
+  parsePose,
+  planModelNormals,
+  readSpriteFolder,
+  type ModelNormalOptions,
+  type ModelNormalSource,
+} from "../../pipeline/model-normals.ts"
+import type { Args } from "../args.ts"
+
+const shown = (file: string) => path.relative(process.cwd(), file) || file
+
+/** The editor a terminal import records: the program PIXELKILN_EDITOR names, else "external". */
+function editorName(): string {
+  const program = process.env.PIXELKILN_EDITOR?.trim().split(/\s+/).pop()
+  return program ? `${path.basename(program)} (via pixelkiln model import)` : "external (via pixelkiln model import)"
+}
+
+export async function runModel(args: Args): Promise<void> {
+  const loaded = await loadManifest(args.manifest)
+  const styles = args.styles.length ? { styles: args.styles } : {}
+  const sub = args.subcommand
+
+  if (sub === "list") {
+    const models = await describeModels(loaded, { set: () => undefined }, galleryMediaId, styles)
+    if (args.json) {
+      // The page's media urls mean nothing outside a running gallery.
+      log(JSON.stringify(models, (key, value) => (key === "url" || key === "projectUrl" ? undefined : value), 2))
+      return
+    }
+    if (!models.length) {
+      log("  no models: put a .glb under a style's outDir and it is listed here and in the gallery")
+      return
+    }
+    for (const model of models) {
+      log(`  ${model.file.path}  (${model.styleId})`)
+      if (model.error) { log(`    could not be read: ${model.error}`); continue }
+      const summary = model.summary!
+      const triangles = summary.meshes.reduce((sum, mesh) => sum + mesh.triangles, 0)
+      log(`    ${summary.meshes.length} meshes, ${triangles} triangles, ${summary.bones.length} bones, ${summary.animations.length} animations${summary.items.length ? `; parts: ${summary.items.join(", ")}` : ""}`)
+      for (const image of summary.images) {
+        const role = image.roles.map((r) => (r === "baseColor" ? "base colour" : r === "normal" ? "normal map" : r)).join(", ") || "unused"
+        log(`    image ${image.index}: ${image.materials.join(", ") || "-"} ${role}, ${image.width}×${image.height} ${image.mimeType?.replace("image/", "") ?? ""}`)
+      }
+      if (model.edit) log(`    edit: ${model.edit.path} (${model.edit.status}${model.edit.editor ? `, ${model.edit.editor}` : ""}; ${model.edit.textures.map((t) => t.name).join(", ") || "no textures recorded"})`)
+      if (model.exportWaiting) log(`    an export is waiting at ${model.exportPath}; run pixelkiln model adopt ${model.name}`)
+    }
+    return
+  }
+
+  if (sub === "resolve") {
+    // Which file a game should load for each model: the edited copy when it
+    // is an edit of the model as it is now, else the model as built.
+    const models = args.target ? [await resolveModel(loaded, args.target, styles)] : await discoverModels(loaded, styles)
+    const resolved = await Promise.all(models.map(modelLoadPath))
+    const portable = (file: string) => portableOutputPath(file, loaded.root)
+    if (args.json) {
+      const rows = resolved.map((entry) => ({
+        styleId: entry.styleId,
+        file: portable(entry.file),
+        load: portable(entry.load),
+        from: entry.from,
+        edit: entry.edit ? portable(entry.edit) : null,
+        status: entry.status,
+        absolute: entry.load,
+      }))
+      log(JSON.stringify(args.target ? rows[0] : rows, null, 2))
+      return
+    }
+    for (const entry of resolved) {
+      if (entry.status === "rebuilt-since") {
+        console.error(`  ${portable(entry.file)}: the edit at ${portable(entry.edit!)} was made before the model was rebuilt, so the model as built is named; fix the new build or look at both in the gallery`)
+      }
+    }
+    if (args.target) { log(portable(resolved[0]!.load)); return }
+    if (!resolved.length) { log("  no models: put a .glb under a style's outDir"); return }
+    for (const entry of resolved) {
+      const why = entry.from === "edit" ? `edited copy, ${entry.status}` : entry.status ? `as built; edit is ${entry.status}` : "as built, no edit"
+      log(`  ${portable(entry.file)}  ->  ${portable(entry.load)}  (${why})`)
+    }
+    return
+  }
+
+  const ref = args.target
+  if (!ref) throw new Error(`model ${sub} needs a model: its path, its file name, or its gallery id. pixelkiln model list shows them.`)
+  const model = await resolveModel(loaded, ref, styles)
+  const name = path.basename(model.file, path.extname(model.file))
+
+  if (sub === "export") {
+    if (!args.image) throw new Error("model export needs --image <index or material name>; pixelkiln model list shows them")
+    const result = await exportModelTexture(model, args.image, {
+      ...(args.out ? { dir: path.resolve(args.out) } : {}),
+      guide: (document, image) => {
+        const guide = uvGuide(document, image)
+        const size = describeSize(document, image)
+        const files = renderGuide(guide, size.width, size.height)
+        return { ...files, pieces: guide.pieces.length, regions: guide.regions }
+      },
+    })
+    if (args.json) { log(JSON.stringify(result, null, 2)); return }
+    log(`  ${result.material} texture (image ${result.image}, ${result.width}×${result.height}) from ${result.fromEdit ? "the edited copy" : "the model as built"}`)
+    log(`    paint:  ${shown(result.texture)}`)
+    log(`    guide:  ${shown(result.guide)}  (${result.guidePieces} pieces over ${result.regions.length} regions; lay it on top, never paint on it)`)
+    log(`    key:    ${shown(result.key)}`)
+    if (!args.noOpen) log(`  opened with: ${openInEditor(result.texture)}`)
+    log(`  then: pixelkiln model import ${name} --image ${result.image}${args.out ? ` --from ${shown(result.texture)}` : ""}`)
+    return
+  }
+
+  if (sub === "import") {
+    if (!args.image) throw new Error("model import needs --image <index or material name>")
+    const document = parseGlb(await readFile(model.file))
+    const image = resolveTextureImage(document, args.image)
+    const from = args.from ? path.resolve(args.from) : modelTexturePaths(model.editFile, image).texture
+    let png: Buffer
+    try {
+      png = await readFile(from)
+    } catch {
+      throw new Error(`no painted texture at ${shown(from)}; run pixelkiln model export ${name} --image ${image} first, or pass --from`)
+    }
+    const saved = await saveModelTexture(model, { image, png, editor: editorName(), protocol: 0 })
+    if (args.json) { log(JSON.stringify(saved.companion, null, 2)); return }
+    log(`  saved ${shown(from)} as image ${image} into ${shown(saved.editFile)}${saved.created ? " (new edit)" : ""}; the model as built is unchanged`)
+    log(`  record: ${shown(saved.companionPath)}`)
+    return
+  }
+
+  if (sub === "normal-map") { await runModelNormalMap(args, model, name); return }
+
+  if (sub === "blender") {
+    if (!blenderCommand()) throw new Error("Blender was not found in its usual place; set PIXELKILN_BLENDER to the program")
+    const command = openInBlender(model)
+    log(`  started: ${command}`)
+    log(`  paint in Blender, then File > Export > PixelKiln edit (.glb), then: pixelkiln model adopt ${name}`)
+    return
+  }
+
+  if (sub === "adopt") {
+    const mode = (args.mode ?? "textures") as ModelAdoptMode
+    if (mode !== "textures" && mode !== "whole") throw new Error(`model adopt --mode is textures (the default) or whole, not "${mode}"`)
+    const adopted = await adoptModelExport(model, { mode, ...(args.from ? { from: path.resolve(args.from) } : {}) })
+    if (args.json) { log(JSON.stringify({ mode: adopted.mode, taken: adopted.taken, editFile: adopted.editFile, companion: adopted.companion }, null, 2)); return }
+    log(adopted.mode === "whole"
+      ? `  adopted the whole exported file as ${shown(adopted.editFile)}`
+      : `  adopted ${adopted.taken.length ? adopted.taken.join(", ") : "no changed textures"} into ${shown(adopted.editFile)}; meshes and animations are as built`)
+    return
+  }
+}
+
+/**
+ * `model normal-map`: PixelLab normal map detail on the model's normal maps,
+ * from its texture (`--source texture`) or from drawn views of the whole
+ * figure (`--source views`, the default). Priced and confirmed first; answers
+ * are cached, so a second run with another --blend costs nothing.
+ */
+async function runModelNormalMap(args: Args, model: ProjectModel, name: string): Promise<void> {
+  const source = (args.source ?? "views") as ModelNormalSource
+  if (!(MODEL_NORMAL_SOURCES as readonly string[]).includes(source)) throw new UsageError(`--source is views (the default), texture, or sprites, not "${args.source}"`)
+  if (args.sprites && source !== "sprites") throw new UsageError("--sprites goes with --source sprites")
+  if (args.mode !== undefined && !(NORMAL_MAP_MODES as readonly string[]).includes(args.mode)) throw new UsageError(`--mode is ${NORMAL_MAP_MODES.join(" or ")}, not "${args.mode}"`)
+  if (args.kind !== undefined && !(NORMAL_MAP_KINDS as readonly string[]).includes(args.kind)) throw new UsageError(`--kind is one of ${NORMAL_MAP_KINDS.join(", ")}, not "${args.kind}"`)
+  if (args.views && source !== "views") throw new UsageError("--views goes with --source views")
+  const size = args.size === undefined ? undefined : Number(args.size)
+  if (size !== undefined && source !== "views") throw new UsageError("--size goes with --source views")
+  const document = parseGlb(await readFile(model.file))
+  // "Helm" here means Helm's normal map, not its base colour.
+  const images = args.image?.split(",").map((ref) => ref.trim()).filter(Boolean)
+    .map((ref) => resolveTextureImage(document, /^\d+$/.test(ref) || ref.includes(":") ? ref : `${ref}:normal`))
+  let sprites: ModelNormalOptions["sprites"]
+  if (source === "sprites") {
+    const given = args.sprites ?? modelSpritesDir(model.file)
+    if (given.includes("=")) {
+      sprites = await Promise.all(given.split(",").map(async (pair) => {
+        const [direction, file] = pair.split("=").map((part) => part.trim())
+        if (!direction || !file) throw new UsageError(`--sprites pairs are direction=file, not "${pair}"`)
+        return { direction, png: await readFile(path.resolve(file)) }
+      }))
+    } else {
+      if (!existsSync(given)) {
+        throw new UsageError(`no sprites at ${shown(given)}: pass --sprites <folder of south.png, east.png, …> or south=a.png,east=b.png, or put them in ${shown(modelSpritesDir(model.file))}`)
+      }
+      sprites = await readSpriteFolder(given)
+      if (!sprites.length) throw new UsageError(`${shown(given)} has no sprites named by direction (south.png, north-east.png, …)`)
+    }
+  }
+  const options: ModelNormalOptions = {
+    ...(sprites ? { sprites } : {}),
+    ...(args.pose ? { pose: parsePose(args.pose) } : {}),
+    source,
+    ...(images?.length ? { images } : {}),
+    ...(args.views ? { views: args.views.split(",").map((view) => view.trim()).filter(Boolean) } : {}),
+    ...(size !== undefined ? { size } : {}),
+    ...(args.mode ? { mode: args.mode as NormalMapMode } : {}),
+    ...(args.kind ? { kind: args.kind as NormalMapKind } : {}),
+    ...(args.surfaceDetail !== undefined ? { surfaceDetail: args.surfaceDetail } : {}),
+    ...(args.detailSoftness !== undefined ? { detailSoftness: args.detailSoftness } : {}),
+    ...(args.strength !== undefined ? { strength: args.strength } : {}),
+    ...(args.blend !== undefined ? { amount: args.blend } : {}),
+    ...(args.replace ? { replace: true } : {}),
+  }
+  const plan = await planModelNormals(model, options)
+  const fresh = plan.calls.filter((call) => !call.cached).length
+  if (args.json && args.dryRun) {
+    log(JSON.stringify({ ...plan, calls: plan.calls.map(({ png: _png, ...call }) => call), fits: plan.fits?.map(({ png: _png, ...fit }) => fit) }, null, 2))
+    return
+  }
+  const from = source === "views" ? `the figure drawn from ${plan.calls.length} directions`
+    : source === "sprites" ? `${plan.calls.length} of its sprites` : "its textures"
+  log(`  ${name}: normal map detail from ${from}${args.pose ? ` posed at ${args.pose}` : ""}, starting from ${plan.from === "edit" ? "the edited copy" : "the model as built"}`)
+  for (const fit of plan.fits ?? []) {
+    log(`    ${fit.label}: ${Math.round(fit.agreement * 100)}% lines up in colour, outline overlap ${Math.round(fit.overlap * 100)}%, camera raised ${fit.tilt}°`)
+  }
+  for (const warning of plan.warnings) log(`    note: ${warning}`)
+  log(`    for: ${plan.images.map((image) => `${image.name} (image ${image.image})`).join(", ")}`)
+  log(`    PixelLab calls: ${plan.calls.length}${fresh < plan.calls.length ? ` (${plan.calls.length - fresh} already answered, free)` : ""}; cost ${plan.cost} generation${plan.cost === 1 ? "" : "s"} (${args.mode === "pro" ? "pro, 0.5 each" : "lite, 0.1 each"})`)
+  log(`    pictures sent: ${shown(plan.dir)}`)
+  if (args.budget !== undefined && args.budget < plan.cost) throw new Error(`--budget ${args.budget} is below this run's ${plan.cost}-generation cost`)
+  if (args.dryRun) { log("  dry run: nothing sent"); return }
+  if (fresh && !(await confirm(`  Spend ${plan.cost} generation${plan.cost === 1 ? "" : "s"}?`, args.yes))) return
+  loadEnvFiles(path.dirname(path.resolve(args.manifest)))
+  loadEnvFiles(process.cwd())
+  const client = fresh ? clientFromEnv() : null
+  const result = await generateModelNormals(model, options, modelNormalMapper(() => client!), {
+    onCall: (label, cached) => log(`    ${label}${cached ? " (cached)" : "…"}`),
+  })
+  if (args.json) { log(JSON.stringify({ sent: result.sent, cost: plan.cost, editFile: result.editFile, details: result.details, companion: result.companion }, null, 2)); return }
+  log(`  saved ${plan.images.map((image) => image.name).join(", ")} into ${shown(result.editFile)}; the model as built is unchanged`)
+  log(`  PixelLab's detail alone: ${result.details.map(shown).join(", ")}`)
+  log(`  look at it: pixelkiln gallery (3D models), or run again with --blend <0-2> or --replace for free`)
+}
+
+function describeSize(document: GlbDocument, image: number): { width: number; height: number } {
+  const info = imageInfo(glbImageBytes(document, image).bytes)
+  if (!info) throw new Error("the texture is neither PNG nor JPEG")
+  return { width: info.width, height: info.height }
+}

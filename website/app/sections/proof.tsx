@@ -9,7 +9,7 @@ export function ProofSection() {
             <span>generation providers</span>
           </div>
           <div>
-            <strong>46</strong>
+            <strong>47</strong>
             <span>composable commands</span>
           </div>
           <div>

@@ -22,6 +22,8 @@ import { createGalleryEditHandler, createGalleryPriceHandler } from "../src/gall
 import { createGenerateHandlers } from "../src/gallery/generate.ts"
 import { createGallerySkeletonHandlers } from "../src/gallery/skeleton.ts"
 import { encodeRgbaPng } from "../src/png.ts"
+import { glbImageBytes, parseGlb } from "../src/glb.ts"
+import { solidPng, tinyGlb } from "../test/fixtures/tiny-glb.ts"
 import { SKELETON_LABELS, scaffoldSkeletonSet } from "../src/skeleton.ts"
 import { serveGallery } from "../src/gallery/server.ts"
 import { buildGallerySnapshot } from "../src/gallery/snapshot.ts"
@@ -113,7 +115,7 @@ const check = (ok: unknown, what: string) => {
 
 // A launch can time out waiting for the DevTools endpoint when another Chrome
 // is still shutting down on the same machine; one more try is cheap.
-const launch = () => puppeteer.launch({ executablePath: chrome, headless: true, args: ["--no-sandbox", "--no-first-run"] })
+const launch = () => puppeteer.launch({ executablePath: chrome, headless: true, args: ["--no-sandbox", "--no-first-run", "--enable-unsafe-swiftshader"] })
 const browser = await launch().catch(async (error: unknown) => {
   console.log(`  chrome launch failed once (${error instanceof Error ? error.message.split("\n")[0] : String(error)}); retrying`)
   return launch()
@@ -123,7 +125,7 @@ try {
   const consoleErrors: string[] = []
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()) })
   page.on("pageerror", (error) => consoleErrors.push(String(error)))
-  page.on("requestfailed", (request) => consoleErrors.push(`request failed: ${request.url()}`))
+  page.on("requestfailed", (request) => consoleErrors.push(`request failed: ${request.url()} (${request.failure()?.errorText}) on ${page.url()}`))
   page.on("response", (response) => { if (response.status() >= 400) consoleErrors.push(`${response.status()} ${response.url()}`) })
 
   await page.setViewport({ width: 1280, height: 900 })
@@ -640,7 +642,127 @@ try {
     }
     check(notes.length === 1 && /^Generated characters\/mira\.idle\.south$/.test(notes[0]!.body ?? ""), `a job finishing in a background tab raises a notification (${JSON.stringify(notes)})`)
   } finally {
+    // Leave the page first: a refresh it still has scheduled would hit a closed server.
+    await page.goto("about:blank")
     await studioServer.close()
+  }
+
+  // A 3D model: a .glb under a style's output folder gets a card and a
+  // record that draws it; a painted texture is saved into an edited copy and
+  // the preview follows. The editor build is not here, so the save is the
+  // POST the page makes when the editor hands a texture back.
+  const modelDir = path.join(dir, "model-project")
+  await mkdir(path.join(modelDir, "out", "models"), { recursive: true })
+  const modelFile = path.join(modelDir, "out", "models", "tiny.glb")
+  await writeFile(modelFile, tinyGlb())
+  const modelManifest = path.join(modelDir, "pixelkiln.manifest.json")
+  await writeFile(modelManifest, JSON.stringify({
+    name: "model-smoke",
+    styles: { base: { generator: "map", outDir: "out" } },
+    assets: { anvil: { prompt: "an anvil", width: 32, height: 32 } },
+  }, null, 2))
+  const loadModels = () => openProject(modelManifest, { env: false })
+  const reloadModels = async () => buildGallerySnapshot(await loadModels())
+  const blenderStarts: string[] = []
+  // The page offers the button only where a Blender can be found; name one
+  // so the route is exercised on a machine without it. The launch is stubbed.
+  process.env.PIXELKILN_BLENDER ??= "blender"
+  const modelServer = await serveGallery({
+    load: reloadModels,
+    open: false,
+    onProgress: quiet,
+    edit: createGalleryEditHandler({
+      manifestFor: () => modelManifest,
+      loadProject: loadModels,
+      reload: reloadModels,
+      onProgress: quiet,
+      openBlender: (model) => { blenderStarts.push(model.file); return "blender (stub)" },
+    }),
+  })
+  try {
+    type ModelState = { url: string | null; loading: boolean; error: string | null; scene: { items: string[]; clips: string[] } | null; coverage: number; clip: string | null }
+    const modelState = (): Promise<ModelState | null> => page.evaluate(() => {
+      const state = (__pixelkiln as unknown as { model: () => ModelState | null }).model()
+      return state ? { url: state.url, loading: state.loading, error: state.error, scene: state.scene, coverage: state.coverage, clip: state.clip } : null
+    })
+    const waitForModel = async (test: (state: ModelState) => boolean) => {
+      const deadline = Date.now() + 20_000
+      while (Date.now() < deadline) {
+        const state = await modelState()
+        if (state && !state.loading && test(state)) return state
+        await new Promise((resolve) => setTimeout(resolve, 150))
+      }
+      return null
+    }
+    await page.goto(modelServer.url, { waitUntil: "networkidle0" })
+    check(await page.$(".card.model-card") !== null, "a .glb under a style's output folder gets a card")
+    check((await page.$$(".card:not(.model-card)")).length === 1, "the model is not counted among the manifest's assets")
+    if (await page.evaluate(() => typeof WebGL2RenderingContext !== "undefined")) {
+      let drawn = 0
+      for (let i = 0; i < 50 && !drawn; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        drawn = await page.evaluate(() => (__pixelkiln as unknown as { thumbs: () => number }).thumbs())
+      }
+      const src = await page.evaluate(() => document.querySelector<HTMLImageElement>(".card.model-card img.model-thumb")?.src ?? "")
+      check(drawn === 1 && src.startsWith("data:image/png"), "the model's card shows a rendered thumbnail")
+    }
+    await page.click(".card.model-card")
+    await page.waitForSelector(".model-drawer", { timeout: 5_000 })
+    const hasWebgl = await page.evaluate(() => document.querySelector(".model-drawer canvas.model-canvas") !== null)
+    if (hasWebgl) {
+      const drawn = await waitForModel((state) => state.scene !== null)
+      check(drawn !== null && drawn.error === null && drawn.coverage > 0.001, `the record draws the model (${JSON.stringify(drawn && { coverage: drawn.coverage, error: drawn.error })})`)
+      check(drawn?.scene?.clips.join() === "Wave" && drawn.clip === "Wave", "its animation is listed and playing")
+      check(drawn?.scene?.items.join() === "Helm", "its separate part is offered as a toggle")
+      await page.evaluate(() => ([...document.querySelectorAll(".model-drawer .model-row button.chip")] as HTMLButtonElement[]).find((b) => b.textContent === "Helm")!.click())
+      const bare = await modelState()
+      check(bare !== null && drawn !== null && bare.coverage < drawn.coverage, "hiding the part draws less")
+    } else {
+      check((await page.$eval(".model-drawer .model-stage", (n) => n.textContent ?? "")).includes("WebGL2"), "without WebGL2 the record says the model cannot be drawn (drawing not checked)")
+    }
+    const listed = await page.$$eval(".model-drawer .model-texture", (nodes) => nodes.map((n) => n.textContent ?? ""))
+    check(
+      listed.length === 3 && /Sprite · base colour/.test(listed[0]!) && /normal map/.test(listed[1]!) && (!hasWebgl || /2 pieces over 2 regions/.test(listed[0]!)),
+      `its textures are listed with their unwrap pieces (${JSON.stringify(listed)})`,
+    )
+
+    const before = await readFile(modelFile)
+    const painted = solidPng(8, [20, 220, 40, 255])
+    const saved = await page.evaluate(async (png) => {
+      const res = await fetch("/api/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Pixelkiln-Session": SESSION ?? "" },
+        body: JSON.stringify({ action: "save-model-texture", path: "out/models/tiny.glb", image: 0, png, editor: "smoke", protocol: 4 }),
+      })
+      return res.ok ? "" : await res.text()
+    }, painted.toString("base64"))
+    check(saved === "", `a painted texture is accepted${saved ? ` (${saved})` : ""}`)
+    const editFile = path.join(modelDir, "out", "edits", "models", "tiny.glb")
+    check(existsSync(editFile) && (await readFile(modelFile)).equals(before), "the save writes edits/models/tiny.glb and leaves the model as built alone")
+    check(Buffer.from(glbImageBytes(parseGlb(await readFile(editFile)), 0).bytes).equals(painted), "the edited copy carries the painted texture")
+    const companion = JSON.parse(await readFile(path.join(modelDir, "out", "edits", "models", "tiny.edit.json"), "utf8")) as { editor: string; outputs: { basedOn: string }[]; textures: { image: number; name: string }[] }
+    check(companion.editor === "smoke" && companion.textures[0]?.image === 0 && companion.textures[0]?.name === "Sprite" && /^[0-9a-f]{64}$/.test(companion.outputs[0]!.basedOn), "the save records what it was based on in tiny.edit.json")
+    // The open record's scrim sits over the header, so press the button itself.
+    await page.evaluate(() => (document.getElementById("refresh") as HTMLButtonElement).click())
+    let offered = false
+    for (let i = 0; i < 50 && !offered; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      offered = await page.evaluate(() => /Edited/.test(document.querySelector(".model-drawer .seg")?.textContent ?? ""))
+    }
+    check(offered, "the record offers Edited and As built once there is an edit")
+    if (hasWebgl) {
+      const editUrl = await page.evaluate(() => (__pixelkiln.S.snap as unknown as { models: { edit: { url: string } | null }[] }).models[0]!.edit?.url ?? null)
+      const edited = await waitForModel((state) => state.scene !== null && state.url === editUrl)
+      check(edited !== null && edited.coverage > 0.001, "the preview switches to the edited copy")
+      await page.evaluate(() => ([...document.querySelectorAll(".model-drawer .seg button")] as HTMLButtonElement[]).find((b) => b.textContent === "As built")!.click())
+      const built = await waitForModel((state) => state.url !== editUrl)
+      check(built !== null && built.coverage > 0.001, "As built draws the original again")
+    }
+    await page.evaluate(() => ([...document.querySelectorAll(".model-drawer .hand-actions button")] as HTMLButtonElement[]).find((b) => b.textContent === "Open in Blender")!.click())
+    for (let i = 0; i < 25 && !blenderStarts.length; i++) await new Promise((resolve) => setTimeout(resolve, 100))
+    check(blenderStarts.length === 1 && blenderStarts[0] === modelFile, "Open in Blender starts Blender on this model")
+  } finally {
+    await modelServer.close()
   }
 
   check(consoleErrors.length === 0, `no console errors or failed requests${consoleErrors.length ? `:\n    ${consoleErrors.join("\n    ")}` : ""}`)

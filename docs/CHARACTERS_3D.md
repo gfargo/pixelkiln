@@ -166,7 +166,9 @@ ITEMS="Helm=<helm.glb>:Head;Cape=<cape.glb>:Hips,Spine,Chest:loose;Cuirass=<cuir
   python3 research/scripts/rig.py <body-light.glb> <body.rig.json> - - <character.glb>
 ```
 
-Puts the skeleton in from joints found in the sprites, moves each item to just
+Puts the skeleton in from joints found in the sprites (the same 18 joints the
+[skeletons guide](./SKELETONS.md#rig-a-3d-model) covers, estimated in each
+direction and combined into positions in space), moves each item to just
 above the skin, gives it the bone weights of the body under it, and splits the
 body by what covers it. A name after the colon limits an item to those bones;
 `loose` marks one that hides no skin.

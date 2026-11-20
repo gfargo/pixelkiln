@@ -209,15 +209,35 @@ export function providerModeFor(args: Pick<Args, "command" | "tag">): ProviderMo
   return args.command === "restore" || (args.command === "fetch" && !args.tag) ? "downloads" : "online"
 }
 
-/** One provider instance per id for the life of a command. */
+/**
+ * One provider instance per id for the life of a command, built the first time
+ * something other than its id is asked of it. A run of only local work (a
+ * derive, a mirror, an imported file) then never builds one, so it needs no key.
+ */
 export function providerCache(mode: ProviderMode): (id: string) => Provider {
   const providers = new Map<string, Provider>()
   return (id) => {
     let resolved = providers.get(id)
     if (!resolved) {
-      resolved = createProvider(id, mode)
+      resolved = lazyProvider(id, () => createProvider(id, mode))
       providers.set(id, resolved)
     }
     return resolved
   }
+}
+
+function lazyProvider(id: string, make: () => Provider): Provider {
+  let real: Provider | undefined
+  const target = () => (real ??= make())
+  return new Proxy({} as Provider, {
+    get(_, prop) {
+      if (prop === "id") return id
+      const provider = target()
+      const value = Reflect.get(provider, prop, provider)
+      return typeof value === "function" ? value.bind(provider) : value
+    },
+    has(_, prop) {
+      return prop === "id" || prop in target()
+    },
+  })
 }

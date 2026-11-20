@@ -384,10 +384,112 @@ const exported = exportTileset(lockEntry, spec, {
 })
 ```
 
-The generic format preserves the complete provider rule object. Tiled and
-Godot exporters translate supported 4-edge and 4-corner rule sets and reject
+The generic format preserves the complete provider rule object. Tiled, Godot
+and LDtk exporters translate supported 4-edge and 4-corner rule sets and reject
 unknown semantics rather than emitting plausible but incorrect adjacency.
 See [TILES.md](./TILES.md) for file contracts and engine details.
+
+For an isometric set, `exported.generic.footprint` is the ground diamond inside
+each tile image, and `isometricFootprint(png, frames)` finds it from any atlas
+PNG and its frame rectangles; see [isometric tiles](./TILES.md#isometric-tiles).
+
+Sets that share a terrain (`connect`) export as one tileset with every terrain
+through `connectedGroup()` and `exportMergedTilesets()`, the calls behind
+`pixelkiln export --merge-connected`:
+
+```ts
+import { connectedGroup, exportMergedTilesets } from "pixelkiln"
+
+// `specs` are the manifest's resolved specs; `lock` is its lockfile.
+const group = connectedGroup(coastSpec, specs) // every linked set, parents first
+const merged = exportMergedTilesets(
+  group.map((spec) => ({ spec, entry: lock.entries[`${spec.styleId}/${spec.assetId}`]! })),
+  { format: "godot", manifestDir: loaded.root, imageName: "coast.png" },
+)
+```
+
+`merged.png`, `merged.document` and `merged.generic` are the same shape as
+`exportTileset()` returns; `merged.generic.sets` lists the group. It throws for
+a group with a sidescroller set or mixed tile shapes. See
+[connected sets](./TILES.md#connected-sets).
+
+## Render effects
+
+`pixelkiln vfx` is a thin layer over exported functions. The local source,
+[pixelfx](https://github.com/patch-gg/pixelfx), is not a dependency of
+PixelKiln: install it yourself with `npm i github:patch-gg/pixelfx`.
+
+```ts
+import { loadPixelfx, listPixelfxEffects, makePixelfxVfx, renderPixelfx } from "pixelkiln"
+
+const lib = await loadPixelfx()
+const standalone = listPixelfxEffects(lib).filter((effect) => !effect.needsCharacter)
+
+const made = await makePixelfxVfx(lib, {
+  effect: "fire/torch",
+  fps: 12,
+  options: { seed: 4, palette: ["#102", "#43a", "#8cf", "#fff"] },
+  out: "fx/torch",
+})
+console.log(made.paths.sheet, made.anchor, made.frames, made.sheetSha256)
+
+const { frames, width, height, anchor } = renderPixelfx(lib, { effect: "pickups/coin-spin", margin: 4 })
+```
+
+- `loadPixelfx(from?)` looks for the library from the working directory, then
+  from PixelKiln's own install, and throws a `PixelKilnError` with code
+  `capability` and the install line as its `hint` when it is missing. Pass
+  directories to look from somewhere else.
+- `listPixelfxEffects(lib)` returns each effect's id, category, frame size,
+  duration, `loop`, default `fps`, declared `options`, and `needsCharacter`.
+- `renderPixelfx(lib, recipe)` renders in process and writes nothing. It
+  returns `frames` (one RGBA `Buffer` per frame, straight alpha), `width`,
+  `height`, `fps`, `loop`, and `anchor`, the effect's pivot on a frame.
+- `makePixelfxVfx(lib, { ...recipe, out, name?, force? })` writes
+  `<out>.png`, `<out>.json`, and `<out>.vfx.json` and returns their paths and
+  the frame facts. `readPixelfxRecipe(file)` reads a recipe back from that
+  record, or returns `null` for a file that is not a pixelfx recipe.
+- A recipe is `{ effect, fps?, margin?, options? }`. `options` goes to the
+  effect over its defaults: `palette`, `seed`, `flip`, `angle`, `light`, and
+  the effect's own. Effects drawn around pixelfx's stock character are
+  refused with a `usage` error.
+
+A second local source, [pixel-vfx-codex](https://github.com/888wing/pixel-vfx-codex),
+has the same shape and is installed the same way
+(`npm i github:888wing/pixel-vfx-codex`):
+
+```ts
+import { loadCodex, listCodexEffects, makeCodexVfx, renderCodex } from "pixelkiln"
+
+const lib = loadCodex()
+const effects = listCodexEffects(lib) // id, name, category, and each parameter's range
+
+const made = await makeCodexVfx(lib, {
+  effect: "fireball",
+  camera: "25d",
+  params: { tailLength: 1.6 },
+  hue: 40,
+  out: "fx/fireball",
+})
+const { frames, width, height, anchor, fps } = renderCodex(lib, { effect: "healing-field" })
+```
+
+- `loadCodex(from?)` is synchronous. It evaluates the package's engine and
+  effect files in a separate `vm` context and throws a `capability` error with
+  the install line as its `hint` when the package is missing.
+- A recipe is `{ effect, camera?, fps?, margin?, hue?, params?, tune? }`.
+  `planCodex(lib, recipe)` gives the frame count without rendering, and
+  `checkCodexRecipe` throws a `usage` error for an unknown effect, parameter
+  or knob, or a value out of range.
+- `renderCodex` and `makeCodexVfx` match their pixelfx counterparts: frames on
+  transparency cropped to one box, the pivot in `anchor`, and the same three
+  files. `readCodexRecipe(file, { bare? })` reads a record back.
+- `writeLocalVfx` and `localSheet` are the shared writer both sources use.
+
+The PixelLab side has the same shape: `makeVfx(mcpClientFromEnv(), { preset,
+parts, sprite, fps, out })` drives the free workbench, and
+`makeVfxWithArtist(clientFromEnv(), { description, out })` asks the paid
+artist. Both write the files [`vfx`](./CLI.md#vfx) documents.
 
 ## Provider integrations
 

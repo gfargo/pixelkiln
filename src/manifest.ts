@@ -738,6 +738,12 @@ export async function resolveSpecs(
           `assets.${assetId}: ${asset.portrait ? "portrait" : "outfit"} needs a character style; "${styleId}" generates ${generator}`,
         )
       }
+      if (asset.portrait?.seed !== undefined) {
+        throw new Error(
+          `assets.${assetId}.portrait.seed: PixelLab ignores the character and draws a generic face ` +
+            "when a portrait is sent a seed (measured November 2026), so pixelkiln never sends one; remove it",
+        )
+      }
       if (asset.layer && generator !== "character") {
         throw new Error(`assets.${assetId}: layer needs a character style; "${styleId}" generates ${generator}`)
       }
@@ -1477,11 +1483,15 @@ export async function resolveSpecs(
                 // The manifest's own `frames` field stays rejected for this
                 // mode (superRefine, types.ts) — the real frame count comes
                 // from the keypoints file once it exists, not a manifest
-                // number, so plan can only know it once authored.
-                ...(keypoints ? { frames: keypoints.skeleton.frames.length } : {}),
+                // number, so plan can only know it once authored. Written
+                // motion has its count in the manifest instead.
+                ...(asset.revision.writeMotionFrames != null
+                  ? { frames: asset.revision.writeMotionFrames }
+                  : keypoints ? { frames: keypoints.skeleton.frames.length } : {}),
               }
             : {}),
           ...(asset.revision.skeletonTemplate ? { skeletonTemplate: asset.revision.skeletonTemplate } : {}),
+          ...(asset.revision.writeMotionFrames != null ? { writeMotionFrames: asset.revision.writeMotionFrames } : {}),
           ...(asset.revision.description ? { description: asset.revision.description } : {}),
           ...(asset.revision.removalTask ? { removalTask: asset.revision.removalTask } : {}),
           ...(asset.revision.convention ? { convention: asset.revision.convention } : {}),
@@ -1946,7 +1956,7 @@ async function resolveCharacterShape(
     }
   }
   if (asset.portrait) {
-    shape.portrait = { size: asset.portrait.size }
+    shape.portrait = { size: asset.portrait.size, attach: asset.portrait.attach ?? true }
   }
   if (asset.animation) {
     const animationMode = asset.animation.mode ?? (asset.animation.template ? "template" : "v3")

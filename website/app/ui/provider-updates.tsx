@@ -162,7 +162,7 @@ export function ProviderUpdates() {
         </div>
         <Featured update={latest} />
         {earlier.length ? (
-          <div className="updates-earlier">
+          <div className="updates-earlier" id="earlier">
             {earlier.map((update) => (
               <Earlier key={update.id} update={update} />
             ))}

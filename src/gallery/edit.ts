@@ -23,6 +23,12 @@ import {
   updateSkeletonKeypoints,
 } from "./skeleton.ts"
 import type { GalleryBuild } from "./snapshot.ts"
+import { applyModelRequest, MODEL_ACTIONS, ModelRequestSchema } from "./models.ts"
+import type { ProjectModel } from "../pipeline/model-edit.ts"
+import { modelNormalMapper, type NormalMapper } from "../pipeline/model-normals.ts"
+import type { LoadedManifest } from "../manifest.ts"
+import { clientFromEnv } from "../client.ts"
+import { loadEnvFiles } from "../env.ts"
 
 /** Standard base64, sized so a decoded payload cannot exceed the edit limit. */
 const Base64 = z.string().regex(/^[A-Za-z0-9+/]*={0,2}$/).max(Math.ceil(MAX_HAND_EDIT_BYTES / 3) * 4)
@@ -89,6 +95,15 @@ export interface GalleryEditHandlerOptions {
   loadProject?: (project?: string) => Promise<GalleryProjectContext>
   /** Launches the author's editor; defaults to `openInEditor`. */
   openEditor?: (file: string) => string
+  /** Starts Blender on a model; defaults to `openInBlender`. */
+  openBlender?: (model: ProjectModel) => string
+  /**
+   * Generations the page may spend on PixelLab normal map detail for models
+   * this session (the gallery's --budget); without it the page cannot spend.
+   */
+  modelNormalBudget?: number
+  /** Test hook: what answers in place of PixelLab. */
+  modelNormalMapper?: (loaded: LoadedManifest) => NormalMapper
   onProgress?: (msg: string) => void
 }
 
@@ -159,6 +174,22 @@ export function createGalleryEditHandler(
 }
 
 function createEditApplier(opts: GalleryEditHandlerOptions, log: (msg: string) => void): (body: unknown) => Promise<GalleryBuild> {
+  // Spending on normal map detail comes out of the gallery's --budget, for
+  // the whole session, counted before the calls go out.
+  let spent = 0
+  const budget = opts.modelNormalBudget
+  const normals = budget === undefined ? null : {
+    mapper: opts.modelNormalMapper ?? ((loaded: LoadedManifest) => modelNormalMapper(() => {
+      loadEnvFiles(loaded.root)
+      return clientFromEnv()
+    })),
+    spend: (cost: number) => {
+      if (spent + cost > budget + 1e-9) {
+        throw new ManifestEditError(`this run costs ${cost} generations and the session has ${Math.max(0, Math.round((budget - spent) * 100) / 100)} left of its --budget ${budget}`)
+      }
+      spent += cost
+    },
+  }
   return async (body) => {
     const handEdit = HandEditRequestSchema.safeParse(body)
     if (handEdit.success) {
@@ -193,6 +224,16 @@ function createEditApplier(opts: GalleryEditHandlerOptions, log: (msg: string) =
         if (result.changed) log(`  hand edit detached: ${request.styleId}/${request.assetId} (file kept)`)
       }
       return opts.reload()
+    }
+    const model = ModelRequestSchema.safeParse(body)
+    if (model.success) {
+      if (!opts.loadProject) throw new ManifestEditError("model edits are not available in this gallery")
+      const ctx = await opts.loadProject(model.data.project)
+      await applyModelRequest(ctx.loaded, model.data, { log, normals, ...(opts.openBlender ? { openBlender: opts.openBlender } : {}) })
+      return opts.reload()
+    }
+    if (MODEL_ACTIONS.includes(String((body as { action?: unknown } | null)?.action))) {
+      throw new ManifestEditError("invalid model edit: " + model.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "))
     }
     const upload = UploadImageSchema.safeParse(body)
     if (upload.success) {

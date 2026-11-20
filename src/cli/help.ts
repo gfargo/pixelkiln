@@ -40,6 +40,7 @@ Commands
   tag       Push manifest tags to the objects upstream (free).
   balance   Show the provider's remaining balance.
   estimate-skeleton <image> [--out <file>] [--frames <n>] [--force]
+                      [--custom --description <text> --action <text> --direction <dir> --view <camera>]
             PixelLab only: derive an 18-joint skeleton from a square 16-256px
             image, direct and un-budgeted (like balance, not a generation).
             Prints, or writes with --out, a ready keypoints file for an
@@ -71,6 +72,12 @@ Commands
             --edit lets the page change prompts, sizes, tags, and add assets,
             and offers the in-browser pixel editor (--no-editor hides it);
             --budget enables Generate, Regenerate, and review under that ceiling.
+  model     3D models (.glb under a style's outDir): list, export a texture
+            with its region guide to paint anywhere, import it into an edited
+            copy under edits/, open the model in Blender, adopt its export,
+            or add PixelLab normal map detail (normal-map; priced, 0.1 a call).
+            model resolve [model] prints the file a game should load: the
+            edited copy when it is current, else the model as built.
   tools     status/install editor: the in-browser editor (Pixelorama) is a
             46 MB web build fetched once per release into a user cache and
             verified against pinned hashes. Offline once installed.
@@ -94,6 +101,13 @@ Commands
             .vfx.json recipe record. vfx presets / vfx parts list options.
             With --description, PixelLab's paid VFX artist builds it from
             words instead (lite 1-5, pro 6-28 generations); asks first.
+            With --lib pixelfx, renders an --effect <category>/<name> from
+            the pixelfx library on this machine instead (free, nothing
+            sent; install it with: npm i github:patch-gg/pixelfx); vfx
+            effects lists them.
+            With --lib codex, renders an --effect <id> from pixel-vfx-codex
+            the same way (npm i github:888wing/pixel-vfx-codex), through a
+            --camera 2d, 25d or 3d; vfx effects --lib codex lists them.
   font    PixelLab: generate a pixel font (--description, --out); writes a
             .ttf and a glyph atlas PNG. 15 generations; asks first.
   music   PixelLab: a song from a style (--description, --out); writes two
@@ -126,7 +140,7 @@ Options
   --columns <n>       pack/export: sprites or tiles per row (default: near-square)
   --port <n>          Local review/gallery server port (default: choose a free port)
   --inputs <path>     pack/quality snapshot: JSON input list; needs --out
-  --format <format>   export: generic (default), tiled, or godot (TileSet)
+  --format <format>   export: generic (default), tiled, godot (TileSet), or ldtk
                       pack/mount: generic (default), aseprite, or godot (SpriteFrames)
   --output-role <r>   pack: include only this output role (repeatable)
   --primary-only      pack: include only unambiguous primary/single outputs
@@ -200,15 +214,23 @@ Options
   --convention <c>    normal-map: opengl (green up, default) or directx (green down)
   --preset <name>     vfx: start from a whole-effect preset (vfx presets lists them)
   --recipe <file>     vfx: render a recipe or an earlier run's .vfx.json record
-  --effect <id>       vfx: start from a saved My effects id and export over it
+  --effect <id>       vfx: start from a saved My effects id and export over it;
+                      with --lib pixelfx or codex, the effect to render (fire/torch, fireball)
   --part <name>       vfx: add a part (repeatable; vfx parts lists them)
   --sprite <ref>      vfx: build around a sprite: a file, a URL, or character:<id>:<dir>
   --fps <n>           vfx: frames per second, 1-60
+  --lib <name>        vfx: pixellab (default), or pixelfx or codex, local effects libraries
+  --margin <px>       vfx --lib pixelfx or codex: transparent pixels around the effect
+  --camera <view>     vfx --lib codex: 2d (default), 25d or 3d
+  --hue <degrees>     vfx --lib codex: turn the effect's colors, -360 to 360
+  --param <name=n>    vfx --lib codex: an effect's own parameter (repeatable)
+  --tune <name=n>     vfx --lib codex: a shared knob such as size or density
   --sprite-frames <n> vfx --description: --sprite is a strip of n equal frames (2-32)
   --sprite-fps <n>    vfx --description: how fast the sprite animation plays (default 12)
   --game-pack         vfx: also download the game-pack ZIP
   --glyph-px <n>      font: native glyph size, 8, 16 (default), 32, or 64
   --prune             cache: remove invalid/unreferenced local cache data
+  --merge-connected   export: write connected terrain sets as one tileset with every terrain
   --manifest <path>   Default: pixelkiln.manifest.json
   --lock <path>       Default: pixelkiln.lock.json beside the manifest
   --style a,b         Restrict to these styles
@@ -241,16 +263,20 @@ Options
 
 Examples
   pixelkiln plan
-  pixelkiln gen --style heybud-premium --budget 400
+  pixelkiln gen --style premium --budget 400
   pixelkiln gen --only first_review --force
-  pixelkiln gallery --style heybud-premium
+  pixelkiln gallery --style premium
   pixelkiln gallery --workspace pixelkiln.workspace.json
   pixelkiln gallery --edit --budget 80
   pixelkiln edit --style base --only anvil
   pixelkiln tools install editor
   PIXELKILN_EDITOR="open -a Aseprite" pixelkiln edit --only anvil --style base
+  pixelkiln model export knight --image Helm
+  pixelkiln model import knight --image Helm
+  pixelkiln model normal-map knight --dry-run
+  pixelkiln model normal-map knight --source sprites --sprites art/knight/rotations --dry-run
   pixelkiln adopt --tag
-  pixelkiln pack --style heybud-premium
+  pixelkiln pack --style premium
   pixelkiln pack --inputs sprites.json --out dist/sheet   # no manifest needed
   pixelkiln pack --style hero --format aseprite         # sheet JSON engines load
   pixelkiln mount --style ground

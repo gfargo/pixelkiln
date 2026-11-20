@@ -1,0 +1,21 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-website-skeleton-bare",
+  "styles": {
+    "rig": { "generator": "map", "outDir": "out", "view": "low top-down", "noBackground": true }
+  },
+  "assets": {
+    "base": { "prompt": "bare paperdoll base", "width": 64, "height": 64, "source": "base-south.png", "styles": ["rig"] },
+    "base-wave": {
+      "prompt": "wave",
+      "styles": ["rig"],
+      "revision": {
+        "mode": "animate-skeleton",
+        "from": "base",
+        "keypointsFile": "poses/wave.json",
+        "direction": "south",
+        "description": "bald adult figure with smooth light peach skin and dark grey briefs, no clothing, no hair"
+      }
+    }
+  }
+}

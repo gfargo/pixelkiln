@@ -34,6 +34,25 @@ export async function generateMetadata({ params }: ChildPageProps): Promise<Meta
   });
 }
 
+/**
+ * A command's page opens on its synopsis, so under the title there is only
+ * code. Put the first paragraph that follows the code block above it, which
+ * is what the page is about. Left alone when no plain paragraph follows.
+ */
+function leadWithProse(markdown: string): string {
+  const lines = markdown.split("\n");
+  if (!lines[0]?.startsWith("```")) return markdown;
+  const close = lines.findIndex((line, index) => index > 0 && line.startsWith("```"));
+  if (close < 0) return markdown;
+  let start = close + 1;
+  while (start < lines.length && !lines[start]!.trim()) start++;
+  let end = start;
+  while (end < lines.length && lines[end]!.trim()) end++;
+  const paragraph = lines.slice(start, end);
+  if (!paragraph.length || /^(\s*[-*+>|#]|\s*\d+\.|\s*```|\s*<|\s*!\[)/.test(paragraph[0]!)) return markdown;
+  return [...paragraph, "", ...lines.slice(0, close + 1), "", ...lines.slice(end)].join("\n");
+}
+
 export default async function ChildPage({ params }: ChildPageProps) {
   const { slug, child: childSlug } = await params;
   const doc = getDoc(slug);
@@ -54,7 +73,7 @@ export default async function ChildPage({ params }: ChildPageProps) {
   ];
   const jsonLd = docJsonLd(doc, crumbs, `${child.title} · ${doc.title}`, child.summary || doc.description);
   // The child's own heading is the page title; the table of contents lists what is under it.
-  const body = child.content.replace(/^## [^\n]+\n+/, "");
+  const body = leadWithProse(child.content.replace(/^## [^\n]+\n+/, ""));
 
   return (
     <DocShell active={doc} jsonLd={jsonLd} sidebar={<DocSidebar active={doc} split={split} activeChild={child.slug} />} toc={<DocToc content={body} editFile={doc.file} />}>

@@ -119,6 +119,83 @@ describe("runSkeletonPreview", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it("draws the eyes and ears in grey, so the lines up to the ears are not read as raised arms", async () => {
+    // One pose: the right ear far up and to the side, where a raised arm would be.
+    const joint = (label: string, x: number, y: number) => ({ label, x, y, z_index: 0 })
+    const pose = SKELETON_LABELS.map((label) =>
+      label === "NOSE" ? joint(label, 0.5, 0.3)
+        : label === "RIGHT EYE" ? joint(label, 0.4, 0.3)
+        : label === "RIGHT EAR" ? joint(label, 0.1, 0.3)
+        : joint(label, 0.5, 0.8))
+    const keypoints = path.join(dir, "ear.json")
+    await writeFile(keypoints, JSON.stringify({ firstFrameKeypoints: pose, frames: [pose, pose, pose] }))
+    await runSkeletonPreview(parseArgs(["skeleton-preview", keypoints, "--out", path.join(dir, "ear.png")]))
+    const sheet = decodePng(await readFile(path.join(dir, "ear.png")))
+    // Halfway along the eye-to-ear line in the first 192px cell (gutter 4), on its row.
+    const x = 4 + Math.round(0.25 * 191)
+    const y = 4 + Math.round(0.3 * 191)
+    const at = (y * sheet.width + x) * 4
+    const [r, g, b] = [sheet.pixels[at], sheet.pixels[at + 1], sheet.pixels[at + 2]]
+    expect([r, g, b]).toEqual([150, 150, 150])
+  })
+
+  it("builds a custom rig with --custom, waits for the job, and writes a file whose poses name the rig", async () => {
+    const image = await sprite(64)
+    const rig = [
+      { name: "hips", parent: null, side: "mid", estimate: null },
+      { name: "right_wrist", parent: "hips", side: "near", estimate: "RIGHT ARM" },
+      { name: "staff_grip", parent: "right_wrist", side: "near", estimate: null },
+      { name: "staff_top", parent: "staff_grip", side: "near", estimate: null },
+    ]
+    const pose = [
+      { label: "hips", x: 0.5, y: 0.6, z_index: 1 },
+      { label: "right_wrist", x: 0.3, y: 0.55, z_index: 2 },
+      { label: "staff_grip", x: 0.3, y: 0.55, z_index: 2 },
+      { label: "staff_top", x: 0.32, y: 0.1, z_index: 2 },
+    ]
+    let submitted: Record<string, unknown> | null = null
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      const url = new URL(String(input))
+      if (url.pathname === "/v2/estimate-custom-skeleton") {
+        submitted = JSON.parse(String(init?.body))
+        return new Response(JSON.stringify({ background_job_id: "rig-job", status: "processing" }), { status: 202 })
+      }
+      if (url.pathname === "/v2/background-jobs/rig-job") {
+        return new Response(JSON.stringify({ id: "rig-job", status: "completed", last_response: { rig, kind: "person", frames: [pose] } }), { status: 200 })
+      }
+      throw new Error(`unexpected request: ${url.pathname}`)
+    }))
+    const out = path.join(dir, "staff.json")
+    await runEstimateSkeleton(parseArgs([
+      "estimate-skeleton", image, "--custom", "--description", "a wizard with a staff", "--action", "swinging the staff",
+      "--frames", "1", "--out", out, ...manifestFlag(),
+    ]))
+    expect(submitted).toMatchObject({ direction: "south", description: "a wizard with a staff", action: "swinging the staff" })
+    const written = parseSkeletonSet(JSON.parse(await readFile(out, "utf8")), out)
+    expect(written.rig).toEqual(rig)
+    expect(written.kind).toBe("person")
+    expect(written.frames).toHaveLength(1)
+    expect(written.firstFrameKeypoints.map((j) => j.label)).toEqual(["hips", "right_wrist", "staff_grip", "staff_top"])
+
+    // The preview draws the staff, a joint that is none of the 18, in yellow.
+    await runSkeletonPreview(parseArgs(["skeleton-preview", out, "--out", path.join(dir, "staff.png")]))
+    const sheet = decodePng(await readFile(path.join(dir, "staff.png")))
+    const x = 4 + Math.round(0.31 * 191)
+    const y = 4 + Math.round(0.3 * 191)
+    const at = (y * sheet.width + x) * 4
+    expect([sheet.pixels[at], sheet.pixels[at + 1], sheet.pixels[at + 2]]).toEqual([255, 215, 70])
+  })
+
+  it("refuses --custom on an image over 256px and a direction PixelLab does not know, before any call", async () => {
+    const big = path.join(dir, "big.png")
+    await writeFile(big, encodeRgbaPng(300, 300, Buffer.alloc(300 * 300 * 4, 10)))
+    await writeFile(path.join(dir, ".env.local"), "PIXELLAB_API_KEY=test-key\n")
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("no call expected") }))
+    await expect(runEstimateSkeleton(parseArgs(["estimate-skeleton", big, "--custom", ...manifestFlag()]))).rejects.toThrow(/up to 256x256/)
+    const image = await sprite(64)
+    await expect(runEstimateSkeleton(parseArgs(["estimate-skeleton", image, "--custom", "--direction", "up", ...manifestFlag()]))).rejects.toThrow(/--direction must be one of/)
+  })
+
   it("reads an animate-skeleton asset's keypoints file and source from the manifest", async () => {
     await mkdir(path.join(dir, "art"))
     await writeFile(path.join(dir, "art", "hero.png"), encodeRgbaPng(64, 64, Buffer.alloc(64 * 64 * 4, 30)))

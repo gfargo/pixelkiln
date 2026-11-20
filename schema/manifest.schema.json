@@ -1311,6 +1311,11 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "writeMotionFrames": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 15
+                  },
                   "skeletonTemplate": {
                     "type": "string",
                     "minLength": 1
@@ -1716,6 +1721,13 @@
                       160
                     ],
                     "default": 64
+                  },
+                  "seed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "attach": {
+                    "type": "boolean"
                   }
                 },
                 "required": [

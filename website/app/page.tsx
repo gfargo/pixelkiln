@@ -42,7 +42,7 @@ export default function Home() {
         <HeroSection />
         <ProofSection />
         <HubSection
-          heading="Six parts. Open the one you need."
+          heading="Seven parts. Open the one you need."
           deck="Each has its own page with real output, what it costs, and where the documentation starts."
         />
         <WorkflowSection />

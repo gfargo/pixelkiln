@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-website-isometric",
+  "styles": {
+    "ground": {
+      "generator": "tiles",
+      "tileSize": 32,
+      "tileType": "isometric",
+      "tileView": "low top-down",
+      "tileFeature": "tileset",
+      "outlineMode": "segmentation",
+      "outDir": "../../public/showcase/isometric",
+      "tags": ["website", "isometric"]
+    },
+    "paths": {
+      "generator": "tiles",
+      "tileSize": 48,
+      "tileType": "isometric",
+      "tileView": "low top-down",
+      "tileFeature": "roads",
+      "outlineMode": "segmentation",
+      "outDir": "../../public/showcase/isometric",
+      "tags": ["website", "isometric"]
+    },
+    "buildings": {
+      "generator": "tiles",
+      "tileSize": 32,
+      "tileType": "isometric",
+      "tileView": "low top-down",
+      "tileFeature": "building",
+      "buildingWallTiles": 2,
+      "buildingWallDescription": "weathered grey stone brick walls",
+      "buildingFloorDescription": "worn flagstone floor",
+      "buildingFloor2Description": "dark slate roof tiles",
+      "outDir": "../../public/showcase/isometric",
+      "tags": ["website", "isometric"]
+    },
+    "blocks": {
+      "generator": "isometricTile",
+      "isometricTileSize": 32,
+      "isometricTileShape": "block",
+      "outDir": "../../public/showcase/isometric",
+      "tags": ["website", "isometric"]
+    }
+  },
+  "assets": {
+    "grass-cobble": {
+      "styles": ["ground"],
+      "prompt": "short green grass to worn grey cobblestone"
+    },
+    "dirt-road": {
+      "styles": ["paths"],
+      "prompt": "a packed brown dirt road across short green grass"
+    },
+    "stone-hall": {
+      "styles": ["buildings"],
+      "prompt": "a small stone hall with a slate roof"
+    },
+    "grass-block": {
+      "styles": ["blocks"],
+      "prompt": "a block of earth with a thick layer of green grass on top"
+    },
+    "stone-block": {
+      "styles": ["blocks"],
+      "prompt": "a block of grey mossy stone bricks"
+    }
+  }
+}

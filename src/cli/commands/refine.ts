@@ -146,7 +146,11 @@ export async function runRefine(args: Args): Promise<void> {
         )
       }
     }
-    log(`\n  ${result.processed} refined, ${result.skipped} unchanged, ${result.failed} failed`)
+    log(
+      `\n  ${result.processed} refined, ${result.skipped} unchanged, ` +
+        (result.blocked ? `${result.blocked} blocked, ` : "") + `${result.failed} failed`,
+    )
   }
-  if (result.failed) process.exitCode = 1
+  // A blocked asset still leaves the style unreleasable, so the run does not pass.
+  if (result.failed || result.blocked) process.exitCode = 1
 }

@@ -62,18 +62,126 @@ export const SkeletonFrameSchema = z
     }
   })
 
+/** Which side of the body a custom rig's joint is on, seen from the camera. */
+export const RIG_SIDES = ["near", "mid", "far"] as const
+
+/**
+ * One joint of a custom rig, as PixelLab's `/estimate-custom-skeleton` returns
+ * it and `/animate-with-skeleton-v3` takes it: a name unique in the rig, its
+ * parent (null for the one root), its side, and the humanoid joint it stands
+ * for when it is one of the 18.
+ */
+export const RigJointSchema = z
+  .object({
+    name: z.string().min(1),
+    parent: z.string().min(1).nullable(),
+    side: z.enum(RIG_SIDES),
+    estimate: z.enum(SKELETON_LABELS).nullable().optional(),
+  })
+  .strict()
+export type RigJoint = z.infer<typeof RigJointSchema>
+
+/** PixelLab's limits: 2 to 64 joints, names unique, exactly one root, every parent listed before its children. */
+export const SkeletonRigSchema = z
+  .array(RigJointSchema)
+  .min(2)
+  .max(64)
+  .superRefine((rig, context) => {
+    const seen = new Set<string>()
+    let roots = 0
+    for (const [index, joint] of rig.entries()) {
+      if (seen.has(joint.name)) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: `joint "${joint.name}" appears twice`, path: [index, "name"] })
+      }
+      if (joint.parent === null) roots++
+      else if (!seen.has(joint.parent)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `"${joint.name}" hangs from "${joint.parent}", which is not listed before it`,
+          path: [index, "parent"],
+        })
+      }
+      seen.add(joint.name)
+    }
+    if (roots !== 1) context.addIssue({ code: z.ZodIssueCode.custom, message: `a rig has exactly one root joint; this one has ${roots}` })
+  })
+
+/** A joint of a custom rig's pose: like `SkeletonKeypoint`, but named by the rig. */
+export const RigKeypointSchema = z
+  .object({
+    label: z.string().min(1),
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    z_index: z.number(),
+    depth: z.number().optional(),
+  })
+  .strict()
+export type PoseJoint = z.infer<typeof RigKeypointSchema>
+
 /**
  * The whole committed keypoints file a `revision.keypointsFile` path must
  * parse as: the pose the reference image is already in, plus the per-frame
- * motion (3-15 frames, PixelLab's own documented ceiling).
+ * motion. Without `rig` every pose is PixelLab's 18 humanoid joints and there
+ * are 3 to 15 frames. With `rig` (from `pixelkiln estimate-skeleton
+ * --custom`), every pose names each of the rig's joints once and 1 to 15
+ * frames are allowed. `frames` may be left empty when the revision has
+ * PixelLab write the motion (`writeMotionFrames`); that is checked where the
+ * revision is, not here. `kind` is what PixelLab said the rig is (`person`,
+ * `four-legged` or `other`), kept to pick the template.
  */
 export const SkeletonSetSchema = z
   .object({
-    firstFrameKeypoints: SkeletonFrameSchema,
-    frames: z.array(SkeletonFrameSchema).min(3).max(15),
+    rig: SkeletonRigSchema.optional(),
+    kind: z.enum(["person", "four-legged", "other"]).nullable().optional(),
+    firstFrameKeypoints: z.array(RigKeypointSchema),
+    frames: z.array(z.array(RigKeypointSchema)).max(15).default([]),
   })
   .strict()
+  .superRefine((set, context) => {
+    const poses: Array<[PoseJoint[], Array<string | number>]> = [
+      [set.firstFrameKeypoints, ["firstFrameKeypoints"]],
+      ...set.frames.map((frame, index): [PoseJoint[], Array<string | number>] => [frame, ["frames", index]]),
+    ]
+    if (!set.rig && set.frames.length > 0 && set.frames.length < 3) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "18-joint poses need 3 to 15 frames (a custom rig takes 1)", path: ["frames"] })
+    }
+    for (const [pose, where] of poses) {
+      if (set.rig) {
+        const names = set.rig.map((joint) => joint.name)
+        const labels = pose.map((joint) => joint.label)
+        const missing = names.filter((name) => !labels.includes(name))
+        const extra = labels.filter((label) => !names.includes(label))
+        const twice = labels.filter((label, index) => labels.indexOf(label) !== index)
+        if (missing.length || extra.length || twice.length) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: [
+              missing.length ? `missing ${missing.slice(0, 3).join(", ")}` : "",
+              extra.length ? `not in the rig: ${extra.slice(0, 3).join(", ")}` : "",
+              twice.length ? `twice: ${twice.slice(0, 3).join(", ")}` : "",
+            ].filter(Boolean).join("; "),
+            path: where,
+          })
+        }
+      } else {
+        const result = SkeletonFrameSchema.safeParse(pose)
+        if (!result.success) {
+          const issue = result.error.issues[0]!
+          context.addIssue({ code: z.ZodIssueCode.custom, message: issue.message, path: [...where, ...issue.path] })
+        }
+      }
+    }
+  })
 export type SkeletonSet = z.infer<typeof SkeletonSetSchema>
+
+/**
+ * The bones to draw for a pose: the 18-joint layout, or each rig joint to its
+ * parent. Pairs name joints by label.
+ */
+export function skeletonBones(set: Pick<SkeletonSet, "rig">): ReadonlyArray<readonly [string, string]> {
+  if (!set.rig) return SKELETON_BONES
+  return set.rig.flatMap((joint) => (joint.parent ? [[joint.parent, joint.name] as const] : []))
+}
 
 /**
  * Parses and validates already-loaded JSON. Pure — no I/O. Throws naming the
@@ -111,7 +219,15 @@ export const DEFAULT_SCAFFOLD_FRAMES = 4
  * is already in, and `frames` copies of it to move into the motion. Each copy
  * is its own object, so editing one frame never edits another.
  */
-export function scaffoldSkeletonSet(keypoints: SkeletonKeypoint[], frames = DEFAULT_SCAFFOLD_FRAMES): SkeletonSet {
+export function scaffoldSkeletonSet(
+  keypoints: PoseJoint[],
+  frames = DEFAULT_SCAFFOLD_FRAMES,
+  rig?: { rig: RigJoint[]; kind?: SkeletonSet["kind"] },
+): SkeletonSet {
   const copy = () => keypoints.map((joint) => ({ ...joint }))
-  return { firstFrameKeypoints: copy(), frames: Array.from({ length: frames }, copy) }
+  return {
+    ...(rig ? { rig: rig.rig, ...(rig.kind ? { kind: rig.kind } : {}) } : {}),
+    firstFrameKeypoints: copy(),
+    frames: Array.from({ length: frames }, copy),
+  }
 }

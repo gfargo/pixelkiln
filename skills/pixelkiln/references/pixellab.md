@@ -39,6 +39,27 @@ PixelLab, and it also takes `isometric: true`, `textGuidanceScale` (1 to 20) and
 `backgroundRemoval: "complex"`; an asset may set `direction`, which only nudges, so state the
 facing in the prompt too. Each new option changes the asset's hash only when set.
 
+For an `animate-skeleton` revision of a character with a staff, sword, cape,
+hat or tail, build a custom rig: `pixelkiln estimate-skeleton <sprite> --custom
+--description "<what it is>" --action "<what it will do>" --out <file>` (1
+generation, about a minute; ask first, it is a direct paid call outside the
+budget). The file keeps the rig and its poses name the rig's joints. Check it
+with `skeleton-preview` (props in yellow) before animating. Set
+`writeMotionFrames` on the revision to have PixelLab write the motion from the
+prompt instead of posing every frame. Keep the rig file once animated from:
+joint names change between estimates.
+
+A `portrait` cannot be pinned to a seed: sent one, PixelLab ignores the
+character and draws a generic face (measured 3 of 3), so `portrait.seed` is
+refused and the style's `seed` is never sent to it. The lock keeps the seed the
+job reports, but it cannot redraw the portrait; to get a bust back, use
+`history` and `restore`, never a regeneration. By default the
+bust is attached to the parent's PixelLab character record; when the person
+uses that character elsewhere, set `attach: false` rather than skipping the
+portrait. To deliver only the bust and keep the parent's rotations out of the
+game's art folder, put the style's `outDir` in a scratch folder and give the
+portrait a `file` that climbs out of it (`"../../art/portraits/x.png"`).
+
 `tiles` is not limited to top-down ground: `tileType` selects the projection
 (`isometric` — the API default —, `oblique`, `hex`, `hex_pointy`, `octagon`,
 or `square_topdown`), `tileSize` sets one tile's edge in pixels (16–128 — the
@@ -48,7 +69,12 @@ camera (`top-down`, `high top-down`, `low top-down`, or `side`). `outlineMode`
 chooses `outline` (a dark border per tile — right for tiles meant to read as
 discrete objects) or `segmentation` (no border, so a ground set tiles
 seamlessly instead of quilting at every cell edge — this alone decided
-whether a measured terrain set was usable). `tileFeature` asks for a
+whether a measured terrain set was usable). Isometric road sets (48 to
+96px) trade off: `low top-down` with `segmentation` is seamless but a flat 3:1
+diamond that reads as top-down; `high top-down` makes a 2:1 diamond, but with
+`segmentation` it left grass fragments outside the slab on 17 of 18 tiles, and
+with `outline` every tile has a border, so a map shows a grid. Paint a map with
+a road set before choosing. `tileFeature` asks for a
 connectable set instead of independent variations: `roads` for an
 18-configuration path set, `tileset` for a 16-tile Wang corner set — describe
 the transition itself in the prompt ("fairway grass to rough meadow"), not
@@ -142,7 +168,8 @@ compared as written: adding `terrainMode: "standard"` to a style that left
 it out is a change, even though it is the default. A set generated before
 this record existed has none and stays current until it is regenerated.
 
-**Connected sets.** An asset's `connect` makes one of its terrains the very
+**Connected sets.** (How to export one, and `--merge-connected`, are in
+[tiles.md](./tiles.md).) An asset's `connect` makes one of its terrains the very
 terrain of another set in the same style, so ocean, sand, and grass paint on
 one map: `"connect": { "lower": { "of": "coast", "terrain": "upper" } }` is
 "this set's lower terrain is `coast`'s upper". The other set generates
@@ -560,6 +587,10 @@ the `direction` value. The same tutorial states outright that PixMiniMax
 "allows up to 40 frames," a second, independent (though still not
 live-billed) confirmation of the ceiling above.
 
+For effects, [vfx.md](./vfx.md) is the full reference: which source to
+pick (this workbench, the paid artist, or the local pixelfx library), every
+control, and how a game plays the result. The notes here are PixelLab's side.
+
 Try `vfx` first for an effect: the workbench is free and re-renders the same
 pixels. When presets and parts do not get there and the person would rather
 describe the effect, a `vfx` `description` asks PixelLab's paid VFX artist
@@ -616,7 +647,10 @@ VFX workbench, which is free and reached through PixelLab's MCP server. Add
 `--part <name>` to layer parts, `--sprite <file|character:<id>:<dir>>` to
 build around a character, and `--game-pack` for per-piece clips. It writes a
 spritesheet, GIF, atlas JSON, and a `.vfx.json` record whose recipe
-re-renders the same effect with `--recipe`. `pixelkiln vfx --description
+re-renders the same effect with `--recipe`. `pixelkiln vfx --lib pixelfx
+--effect <category>/<name> --out <base>` renders one locally from the
+pixelfx library instead, with no PixelLab call (see [vfx.md](./vfx.md)).
+`pixelkiln vfx --description
 <text> [--artist pro] [--sprite <png|gif> --sprite-frames <n> --sprite-fps <n>]
 --out <base>` asks the paid VFX artist instead (a GIF or a PNG strip makes the
 effect follow the animation), prints

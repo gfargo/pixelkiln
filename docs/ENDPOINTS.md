@@ -143,7 +143,7 @@ not probed.
 | `POST /animate-character`, `mode` template or v3 | `character` loops without skeleton-v3 | Run live, not measured | A v3 text loop on a 96px pro-flash base came back 108×108; template loops need a skeleton template ([Characters, measured](#characters-measured)). Plan: template 1, v3 `ceil(size² × frames / 65536)`. | Billed amounts were not recorded; billed per direction. | High |
 | `POST /animate-character`, `mode: pro` | `character` loops, `mode: pro` | Unknown | Planned 10 to 25 by canvas ([GENERATORS.md](./GENERATORS.md)). Nothing records a live run. | Everything. | High |
 | `POST /characters/animations`, `mode: skeleton-v3` | `character` loops, `mode: "skeleton-v3"` (template or sentence) | Measured live | On a v3 character: a template loop billed 3; a sentence loop (no template) billed 3, 8 frames at 96×96 from a 64px character; `west` added with `animation_group_id` billed 3 and joined the group. A standard-engine character is refused with a 500 "no stored 3D skeleton" ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured), October 2026). | `pro` and `pro-flash` bases; other frame counts; the price per direction across 8 directions is untested. | High |
-| `POST /portrait-character-pro` (+ `GET /portrait-character-pro/{job_id}`) | `character` portrait | Measured live | A 16px `character_to_portrait` billed 20 (before the cut); the `GET` reports `usage: null`, so read the job ([Characters, measured](#characters-measured)). `target_palette` sent, mock only. | The price after the cut (10 to 25); larger sizes. | High |
+| `POST /portrait-character-pro` (+ `GET /portrait-character-pro/{job_id}`) | `character` portrait | Measured live | 16px billed 10 five times (November 2026). Before the cut, 16px billed 20 and four 128px ones billed 25 each (against a plan of 40 then; the plan now says 25). The `GET` reports `usage: null`, so read the job ([Characters, measured](#characters-measured)). The job's `last_response.seed` is the seed it used. **A `seed` in the request makes it ignore the image** ([Portrait seeds](#portrait-seeds-measured)), so none is sent. `target_palette` sent, mock only. | 32, 48, 64, 128 and 160px after the cut. | High |
 | `POST /characters/{id}/portrait` | `character` portrait attach | Measured live | Free (`usage.generations: 0`); the reply holds the only copy of the stored URL ([Characters, measured](#characters-measured)). | None recorded. | Low |
 | `POST /transfer-outfit-v2` | `character` outfit | Measured live | A 2-frame 92×92 job billed 20 (before the cut); frames return inline in `last_response.quantized_images` ([Characters, measured](#characters-measured)). `target_palette` sent, mock only. | Other frame counts (2 to 16) and canvases; the price after the cut. | High |
 | `GET /characters/{id}`, `GET /characters?limit=&offset=` | `adopt`, `fetch --refresh`, `salvage` | Measured live | Free; carries no `usage`; image URLs carry `?t=<updated_at>` ([Object lifecycle](#object-lifecycle)). | None recorded. | Low |
@@ -156,7 +156,7 @@ not probed.
 | `POST /vfx`, lite artist, no sprite | `pixelkiln vfx --description`, `vfx` block `description` | Measured live | One effect billed 1 (balance 5104 to 5103); 163×26, 8 frames, sheet and atlas cut into 8 correct frames ([VFX artist](#vfx-artist-post-vfx-measured-once), October 2026). | The `files` shape (list or map) is undocumented; PixelKiln reads three. | Low |
 | `POST /vfx`, lite artist, animated sprite | `pixelkiln vfx --description --sprite-frames`, `vfx` block `spriteFrames` | Measured live | Four effects around a 108px walk cycle (4-, 8- and 12-frame, strip and GIF) were each quoted 2 and billed 2, 2, 2 and 4, the last at the 2× ceiling ([Animated sprites](#vfx-animated-sprites-measured), November 2026). | Pro bills; a still sprite's bill. | Low |
 | `POST /vfx`, still sprite, pro artist, `effect_id` change or `game_pack` | same | Mock only | Quoted from the OpenAPI table: pro 6 (8 with a sprite), 14 and 28 for larger sprites; plans count twice the quote ([VFX artist](#vfx-artist-post-vfx-measured-once)). | Every variant above. | High |
-| MCP `tools/call` `vfx_workbench` at `api.pixellab.ai/mcp` | `pixelkiln vfx`, `vfx` block `preset` or `recipe` | Measured live | Free on a subscription; same recipe re-rendered byte-identical; exports a sheet, GIF, atlas and optional game pack ([VFX workbench (MCP only), measured](#vfx-workbench-mcp-only-measured), October 2026). | "Busy, retry" is the only recorded error; sprites by asset are not wired. | Low |
+| MCP `tools/call` `vfx_workbench` at `api.pixellab.ai/mcp` | `pixelkiln vfx`, `vfx` block `preset` or `recipe` | Measured live | Free on a subscription; same recipe re-rendered byte-identical; exports a sheet, GIF, atlas and optional game pack ([VFX workbench (MCP only), measured](#vfx-workbench-mcp-only-measured), October 2026). | "Busy, retry" is the only recorded error; a `character:` or `gallery:` sprite reference (an `object:<id>` reference and local prop sprites rendered, November 2026). | Low |
 | `POST /create-image-pixen`, `/create-image-bitforge` | none | Not wrapped | Each 1 generation; bitforge returned blobs for a simple prompt ([Single-image generators, measured](#single-image-generators-measured)). | n/a | n/a |
 | `POST /rotate`, `/resize`, `/image-to-pixelart` | none | Not wrapped | Each 1 generation; all three break a locked palette ([Post-processing utilities, measured](#post-processing-utilities-measured)). | n/a | n/a |
 | `POST /inpaint`, `/edit-image` (not v2 or v3) | none | Not wrapped | "Untouched by any of this" ([Not yet explored](#not-yet-explored)). | n/a | n/a |
@@ -640,6 +640,30 @@ The two test tilesets and three test tile groups were deleted. The test
 gallery image was left in the account; the REST API has no route to remove
 a gallery image.
 
+## Portrait seeds, measured
+
+November 2026, five `character_to_portrait` jobs at `result_size` 16 from the
+same 80x80 south sprite of a horned, caped knight (sha256 `7819b38c…`), view
+`low top-down`, 10 generations each:
+
+| Run | `seed` sent | `last_response.seed` | Result |
+|---|---|---|---|
+| 1 | none | 334129356 | the knight's helmet, horns and red eyes |
+| 2 | 334129356 | 334129356 | a blond young man in a blue collar (190 of 256 pixels differ from run 1) |
+| 3 | 334129356 | 334129356 | a blond young man, close to run 2 but not identical (163 of 256 pixels differ) |
+| 4 | 7 | 7 | a blond young man again |
+| 5 | none | 1180709380 | the knight again, drawn differently (151 of 256 pixels differ from run 1) |
+
+- **A seed makes the job ignore the image.** Every run with a seed drew the
+  same generic face, whatever the seed; both without one followed the sprite.
+  pixelkiln therefore never sends `seed` to this endpoint and refuses
+  `portrait.seed`.
+- **A seed does not reproduce a portrait.** Run 1 reported the seed it used;
+  sending it back did not redraw run 1, and the same seed twice did not give
+  the same bytes.
+- `last_response.seed` is present on this job, as on `inpaint-v3`; the lock
+  keeps it for the record.
+
 ## Talking portraits, measured
 
 Wrapped as `pixelkiln talk` ([CLI reference](./CLI.md#talk)). Measured on 14
@@ -813,6 +837,16 @@ The tool takes one `argv` list per call:
   URLs need no auth.
 - `describe presets|parts|recipe|edits|...` documents the rest: 17 presets
   and about 90 parts as of October 2026.
+  `describe presets` listed 41 on 17 November 2026.
+
+**Sprites that are not characters (17 November 2026).** Four presets were
+rendered around props, each free: `rim_glow`, `lightning_strike` and
+`firelight` around local 32px PNGs, and `shield_bubble` around
+`object:<id>` (an 8-direction object; PixelLab chose the view). All four
+exported normally. `shield_bubble` set `subject.align` to `center`, the
+others to `feet`. One `lightning_strike` call answered "this took longer
+than 120s and was stopped; nothing was saved" and the same call succeeded on
+the next try.
 
 **Two gaps a wrapper has to cover:**
 
@@ -995,7 +1029,7 @@ controls on anything but a single 64×64 sprite.
 ## Tilesets: measured once per kind
 
 Called out separately because these are the most capable endpoints for level art
-and they are relevant to the disc-golf game. pixelkiln plans a top-down set
+and they matter for game level art. pixelkiln plans a top-down set
 at PixelLab's own quote (Pro 15 for tiles up to 32px, 25 at 64px; standard 4,
 the top of its quoted 1 to 4). Every kind is measured below: Pro billed
 exactly its quote at 32px and 64px, and standard billed 3, under the plan.
@@ -1095,6 +1129,48 @@ and `buildingRoofProfile`. Measured on 14 November 2026 (Tier 3),
 - **The plan over-read this set.** A 32px `tileset` feature billed 10 against a
   planned 25. One data point, so the estimate is unchanged.
 - `roof_profile` was not run.
+
+### Isometric tiles, measured
+
+Measured on 18 November 2026 (Tier 3) from one manifest,
+`website/art/pixellab-isometric`: `tileType: "isometric"`, `tileView: "low top-down"`,
+`outlineMode: "segmentation"` on the ground and road sets. The road set was
+drawn twice more on 19 November 2026 with a steeper view; the first set is still
+the one in the repo, for the reasons below.
+
+| Request | Planned | Billed | Result |
+|---|---|---|---|
+| `tileset`, 32px, grass to cobblestone | 25 | 10 | 16 tiles, each 32x24; corner rules (arity 4), all 16 masks present |
+| `roads`, 32px | 25 | 0 | **422**: "Roads need tile_size 48-96 for isometric." |
+| `roads`, 48px, `low top-down`, `segmentation` | 25 | 10 | 18 tiles, each 48x48; edge rules (arity 4) naming 17 of the 18; a flat 3:1 diamond |
+| `roads`, 48px, `high top-down`, `segmentation` | 25 | 10 | same shape, a 2:1 diamond, but 17 of 18 tiles carry stray fragments of grass outside the slab, above and below it |
+| `roads`, 48px, `high top-down`, `outline` | 25 | 10 | same shape, a clean 2:1 diamond and no fragments, but every tile has a dark outline, so a map of them shows the grid |
+| `building`, 32px, stone hall | 25 | 10 | 58 pieces, each 52x58; rule family `composed`, arity 8, no per-tile masks |
+| `isometricTile`, 32px `block`, two prompts | 1 each | 1 each | two 32x32 blocks |
+
+- **The diamond is not the image.** A 32x24 ground tile is a 32x16 diamond on
+  rows 0 to 15 with 8 rows of side below it. A 48x48 road tile drawn from
+  `low top-down` is a 48x16 diamond on rows 12 to 27 with 7 rows below, so the
+  diamond is flatter (3:1, not 2:1) and does not start on the first row; from
+  `high top-down` it is 48x24 on rows 6 to 29. The export measures the diamond
+  from each set's alpha instead of assuming a ratio.
+- **The view and the outline mode trade off in a road set.** A steeper view
+  makes a 2:1 diamond, which reads as isometric where the 3:1 one reads as
+  top-down. With `segmentation` at that view, 17 of 18 tiles had stray grass
+  triangles above and below the slab. `outline` has none, but each tile keeps a
+  dark border, so a painted map shows a grid of black lines where the flat
+  `segmentation` set is seamless. None of the three was clean and seamless and
+  isometric at once. Check a road set for pixels outside the first tile's
+  silhouette, and paint a map with it, before choosing.
+- **The corner mask reads off the art.** Sampling the four vertices of each of
+  the 16 ground tiles: mask bits 3, 2, 1, 0 (NW, NE, SW, SE) are the top, right,
+  left and bottom vertices of the diamond, which is the mapping the Godot export
+  writes.
+- **Roads take a bigger tile than the other kinds.** The 32px request was
+  refused for free, naming the 48 to 96px range.
+- **A building kit is a different kind of result.** It is not a mask map but a
+  set of separate pieces under a `composed` rule family PixelKiln does not map,
+  so it exports to the generic file only.
 
 ### Tileset options, November 2026, measured
 

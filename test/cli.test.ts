@@ -29,7 +29,7 @@ describe("parseArgs", () => {
   it("parses and validates engine export formats", () => {
     expect(parseArgs(["export", "--format", "tiled", "--out", "dist/terrain"]))
       .toMatchObject({ command: "export", format: "tiled", out: "dist/terrain" })
-    expect(() => parseArgs(["export", "--format", "unity"])).toThrow(/generic, tiled, or godot/)
+    expect(() => parseArgs(["export", "--format", "unity"])).toThrow(/generic, tiled, godot, or ldtk/)
   })
 
   it("parses audit CI thresholds and pack output selectors", () => {
@@ -483,11 +483,11 @@ describe("contact sheet", () => {
   // candidates belonged to beyond recognising the art itself.
   it("labels each row with its style, not just the asset id", () => {
     const html = renderSheet([
-      { ...group, styleId: "heybud-neon" },
-      { ...group, key: "s2/a", styleId: "heybud-1bit" },
+      { ...group, styleId: "sample-neon" },
+      { ...group, key: "s2/a", styleId: "sample-1bit" },
     ])
-    expect(html).toContain("heybud-neon")
-    expect(html).toContain("heybud-1bit")
+    expect(html).toContain("sample-neon")
+    expect(html).toContain("sample-1bit")
   })
 
   it("escapes a style id, same as it does for the prompt", () => {

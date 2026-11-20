@@ -15,6 +15,8 @@ export interface Args {
   /** redraw --frame: the layer frames to draw again. */
   redrawFrames: string[]
   force: boolean
+  /** export: write each group of connected terrain sets as one tileset. */
+  mergeConnected: boolean
   yes: boolean
   budget?: number
   /** Repeatable provider-keyed budgets used by a mixed-provider run. */
@@ -60,7 +62,7 @@ export interface Args {
   port?: number
   inputs?: string
   claims: string[]
-  /** `export`: generic, tiled, or godot. `pack` and `mount`: generic, aseprite, or godot. */
+  /** `export`: generic, tiled, godot, or ldtk. `pack` and `mount`: generic, aseprite, or godot. */
   format?: TilesetFormat | SheetFormat
   outputRoles: string[]
   primaryOnly: boolean
@@ -124,6 +126,18 @@ export interface Args {
   sprite?: string
   /** vfx: frames per second. */
   fps?: number
+  /** vfx: where the effect comes from: pixellab (default) or pixelfx, the local effects library. */
+  lib?: string
+  /** vfx --lib pixelfx or codex: transparent pixels added on every side of the effect's canvas. */
+  margin?: number
+  /** vfx --lib codex: the camera, 2d (default), 25d or 3d. */
+  camera?: string
+  /** vfx --lib codex: degrees to turn the effect's colors around the color wheel. */
+  hue?: number
+  /** vfx --lib codex: `name=value` effect parameters, repeatable. */
+  param: string[]
+  /** vfx --lib codex: `name=value` shared knobs (size, gain, density, ...), repeatable. */
+  tune: string[]
   /** vfx --description: how many equal frames the --sprite strip holds. */
   spriteFrames?: number
   /** vfx --description: how fast the --sprite animation plays. */
@@ -132,6 +146,18 @@ export interface Args {
   gamePack: boolean
   /** normal-map: lite (default) or pro. */
   mode?: string
+  /** model export/import: the texture, by image index or material name. */
+  image?: string
+  /** model normal-map: directions to draw the model from, comma-separated. */
+  views?: string
+  /** model normal-map: the figure's sprites, a folder of <direction>.png or direction=file pairs. */
+  sprites?: string
+  /** model normal-map: an animation moment to pose the model in, "<animation>[@seconds]". */
+  pose?: string
+  /** model normal-map: how much of PixelLab's detail goes on, 0 to 2. */
+  blend?: number
+  /** model normal-map: PixelLab's detail alone instead of blended onto the baked relief. */
+  replace: boolean
   /** normal-map: how far every pixel tilts away from the viewer. */
   strength?: number
   /** normal-map: how much the outline rounds off, 0-3. */
@@ -167,8 +193,14 @@ export interface Args {
   size?: string
   /** asset mirror/export: an animation group id. */
   animation?: string
-  /** asset mirror: the direction to flip. asset expand: the way the object faces now. asset export gif: the direction. */
+  /** asset mirror: the direction to flip. asset expand: the way the object faces now. asset export gif: the direction. estimate-skeleton --custom: the way the sprite faces. */
   direction?: string
+  /** estimate-skeleton: build a custom rig (props, capes, tails) instead of the 18 joints. */
+  custom: boolean
+  /** estimate-skeleton --custom: what the sprite will be animated doing, so the parts that move get joints. */
+  action?: string
+  /** estimate-skeleton --custom: the camera the sprite is drawn at. */
+  view?: string
   /** asset expand: keep a reviewed expansion. */
   keep: boolean
   /** asset expand: discard a pending expansion. */
@@ -219,20 +251,20 @@ const VALUE_FLAGS = [
   "--reviewer", "--note", "--source", "--object-id", "--tool", "--prompt", "--seed", "--cost", "--step", "--raw",
   "--model-root", "--generation",
   "--quantize", "--description", "--weight", "--glyph-px", "--frames", "--estimate-limit",
-  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
-  "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction",
+  "--preset", "--recipe", "--effect", "--part", "--sprite", "--fps", "--lib", "--margin", "--camera", "--hue", "--param", "--tune", "--sprite-frames", "--sprite-fps", "--artist", "--convention",
+  "--text", "--mood", "--visemes", "--engine", "--frame-ms", "--hold-ms", "--target", "--tile-type", "--lower", "--upper", "--transition", "--id", "--state", "--element", "--insets", "--box", "--kind", "--size", "--animation", "--direction", "--action", "--view",
   "--outline-rounding", "--part-shapes", "--surface-detail", "--detail-softness", "--mode", "--strength",
-  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame",
+  "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune",
-  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro",
+  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected",
+  "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace", "--custom",
 ] as const
 
 export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
+  "gallery", "edit", "model", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
   "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "help", "--help", "-h", "--version", "-v",
 ] as const
 
@@ -241,9 +273,10 @@ const REFINE_SUBCOMMANDS = ["run", "approve", "check"] as const
 const RECIPE_SUBCOMMANDS = ["list", "inspect", "install", "verify"] as const
 const QUALITY_SUBCOMMANDS = ["snapshot", "check"] as const
 const EDIT_SUBCOMMANDS = ["start", "detach"] as const
+const MODEL_SUBCOMMANDS = ["list", "resolve", "export", "import", "blender", "adopt", "normal-map"] as const
 const TOOLS_SUBCOMMANDS = ["status", "install"] as const
 const TOOLS = ["editor"] as const
-const VFX_SUBCOMMANDS = ["make", "presets", "parts"] as const
+const VFX_SUBCOMMANDS = ["make", "presets", "parts", "effects"] as const
 const MUSIC_SUBCOMMANDS = ["make", "style", "lyrics"] as const
 const TALK_SUBCOMMANDS = ["visemes", "gif", "plan"] as const
 const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "save", "expand", "review", "export"] as const
@@ -321,6 +354,18 @@ export function parseArgs(argv: string[]): Args {
       throw new UsageError(`Unknown edit subcommand "${subcommand}". Known: ${EDIT_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
+  } else if (command === "model") {
+    subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "list" : rest[0]
+    if (!(MODEL_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown model subcommand "${subcommand}". Known: ${MODEL_SUBCOMMANDS.join(", ")}`)
+    }
+    if (rest[0] === subcommand) rest = rest.slice(1)
+    if (subcommand !== "list") {
+      target = rest[0]?.startsWith("-") ? undefined : rest[0]
+      // resolve without a model resolves every model.
+      if (target === undefined && subcommand !== "resolve") throw new UsageError(`model ${subcommand} needs a model: its path, its file name, or its gallery id`)
+      if (target !== undefined) rest = rest.slice(1)
+    }
   } else if (command === "tools") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "status" : rest[0]
     if (!(TOOLS_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
@@ -505,10 +550,10 @@ export function parseArgs(argv: string[]): Args {
   }
 
   const manifest = get("--manifest") ?? "pixelkiln.manifest.json"
-  // Tilesets take generic, tiled, or godot; sheets take generic, aseprite,
+  // Tilesets take generic, tiled, godot, or ldtk; sheets take generic, aseprite,
   // or godot. Each command checks its own set once it knows what it is.
   const rawFormat = get("--format")
-  const formats = command === "export" ? ["generic", "tiled", "godot"]
+  const formats = command === "export" ? ["generic", "tiled", "godot", "ldtk"]
     : command === "asset" ? ["zip", "spritesheet", "aseprite", "gif"]
     : ["generic", "aseprite", "godot"]
   if (rawFormat && !formats.includes(rawFormat)) {
@@ -550,6 +595,7 @@ export function parseArgs(argv: string[]): Args {
     assets: list("--only"),
     redrawFrames: list("--frame"),
     force: rest.includes("--force"),
+    mergeConnected: rest.includes("--merge-connected"),
     yes: rest.includes("--yes") || rest.includes("-y"),
     budget,
     providerBudgets,
@@ -611,7 +657,9 @@ export function parseArgs(argv: string[]): Args {
     glyphPx: numberOption("--glyph-px", { min: 8, max: 64, integer: true }),
     frames: command === "normal-map"
       ? numberOption("--frames", { min: 1, max: 32, integer: true })
-      : numberOption("--frames", { min: 3, max: 15, integer: true }),
+      : command === "estimate-skeleton" && rest.includes("--custom")
+        ? numberOption("--frames", { min: 1, max: 15, integer: true })
+        : numberOption("--frames", { min: 3, max: 15, integer: true }),
     convention: get("--convention"),
     estimateLimit: numberOption("--estimate-limit", { min: 0, max: 1000, integer: true }),
     preset: get("--preset"),
@@ -620,10 +668,22 @@ export function parseArgs(argv: string[]): Args {
     parts: list("--part"),
     sprite: get("--sprite"),
     fps: numberOption("--fps", { min: 1, max: 60, integer: true }),
+    lib: get("--lib"),
+    camera: get("--camera"),
+    hue: numberOption("--hue", { min: -360, max: 360 }),
+    param: list("--param"),
+    tune: list("--tune"),
+    margin: numberOption("--margin", { min: 0, max: 256, integer: true }),
     spriteFrames: numberOption("--sprite-frames", { min: 1, max: 32, integer: true }),
     spriteFps: numberOption("--sprite-fps", { min: 1, max: 60, integer: true }),
     gamePack: rest.includes("--game-pack"),
     mode: get("--mode"),
+    image: get("--image"),
+    views: get("--views"),
+    sprites: get("--sprites"),
+    pose: get("--pose"),
+    blend: numberOption("--blend", { min: 0, max: 2 }),
+    replace: rest.includes("--replace"),
     strength: numberOption("--strength", { min: 0, max: 2 }),
     outlineRounding: numberOption("--outline-rounding", { min: 0, max: 3 }),
     partShapes: numberOption("--part-shapes", { min: 0, max: 2 }),
@@ -644,6 +704,9 @@ export function parseArgs(argv: string[]): Args {
     transition: get("--transition"),
     animation: get("--animation"),
     direction: get("--direction"),
+    custom: rest.includes("--custom"),
+    action: get("--action"),
+    view: get("--view"),
     keep: rest.includes("--keep"),
     discard: rest.includes("--discard"),
     pro: rest.includes("--pro"),

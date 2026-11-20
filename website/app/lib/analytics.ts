@@ -18,6 +18,7 @@ export type CtaSection =
   | "characters"
   | "paperdoll"
   | "models"
+  | "skeletons"
   | "effects"
   | "provider_updates"
   | "safety"

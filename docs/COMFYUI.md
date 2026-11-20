@@ -396,7 +396,10 @@ Nearest-neighbor scaling preserved those fake cells but did not fix them.
 Retro Diffusion's MIT-licensed
 [Pixel Art Fixer](https://github.com/Retro-Diffusion/pixel-art-fixer) detects the
 implied grid and reconstructs one output pixel per cell. Both benchmark sources
-returned the high-confidence `fast:ac+rl(S)` decision. The checked-in
+returned the high-confidence `fast:ac+rl(S)` decision. In the
+[pose-frame benchmark](../benchmarks/provider-frame-sets/comfyui/README.md#lane-d-trial-native-frames),
+all 32 frames of two characters' loops resolved to the same 8px grid at phase 0.
+Six of them only at low confidence, so `refine` refused those by default. The checked-in
 [native-grid boundary benchmark](../benchmarks/provider-hires/comfyui/README.md) includes
 the source PNGs, native reconstructions, dimensions, hashes, and pinned fixer
 revision.
@@ -754,6 +757,56 @@ SD1.5 workflow did not. Those results still required manual structural and
 visual review. Benchmark the exact committed workflow on more than one subject
 before assigning it a production batch.
 
+## Run on a shared GPU machine
+
+These notes come from running the pose-frame benchmark
+([#79](https://github.com/gfargo/pixelkiln/issues/79)) on a Windows desktop
+with a 12 GB RTX 3060 that already ran a ComfyUI of its own.
+
+**Use the ComfyUI that is already running.** A second ComfyUI on the same card
+competes with the first for VRAM. Each process keeps its own models loaded, so
+the second one runs short and moves weights in and out of system RAM. A 1024px
+SDXL frame with an OpenPose ControlNet took 310 to 415 seconds there. The same
+graph sent to the ComfyUI already running took about 31 seconds a frame, and 55
+for the first while the models loaded. The graphs use only core nodes, so any recent ComfyUI can run
+them. Point `COMFYUI_BASE_URL`, or the benchmark's `--host`, at the server that
+is already running.
+
+**Check its models before sending work.** `/object_info/<node>` lists the files
+a loader node can see, without generating anything:
+
+```bash
+curl -s http://127.0.0.1:8188/object_info/CheckpointLoaderSimple   # input.required.ckpt_name[0]
+curl -s http://127.0.0.1:8188/object_info/LoraLoader               # input.required.lora_name[0]
+curl -s http://127.0.0.1:8188/object_info/ControlNetLoader         # input.required.control_net_name[0]
+```
+
+`LoraLoader`'s first required input is `model`, not the file list, so read
+`lora_name` by its key. A file name only says that a file exists. Compare
+SHA-256 hashes against the recipe's model audit before you call a result
+reproducible (`certutil -hashfile <file> SHA256` on Windows, `shasum -a 256`
+elsewhere).
+
+**Match the PyTorch build to the ComfyUI release.** ComfyUI 0.46.0 failed at
+startup on PyTorch 2.6 (a `comfy_kitchen` schema error on `list[int]`). It ran
+on PyTorch 2.11 with CUDA 12.8. When you set up a new ComfyUI, install the
+PyTorch version its requirements name, not whichever one the machine already
+has.
+
+**Drive it over HTTP with a small script.**
+[`run-benchmark.py`](../benchmarks/provider-frame-sets/comfyui/run-benchmark.py)
+uses only Python's standard library. It uploads each pose with
+`/upload/image`, sends the graph to `/prompt`, polls `/history/<id>` and fetches
+the PNG from `/view`. It writes each frame and a `runs.json` with the seed,
+strength, seconds and SHA-256, and skips frames already on disk. A stopped run
+starts again where it left off, which matters on a machine someone else is
+using.
+
+**On Windows over ssh,** the remote shell is `cmd.exe`. Run one step per ssh
+call, because a long `&&` chain can stop early without an error. Stop processes
+by PID, never by image name: `taskkill /IM python.exe` would also stop the
+owner's ComfyUI.
+
 ## Troubleshooting
 
 | Symptom | What to do |
@@ -766,6 +819,7 @@ before assigning it a production batch.
 | Frame set stays in review | Deliberate. Accept or reject the ordered set as a unit; PixelKiln never keeps a partial loop. |
 | Frame refinement reports a grid mismatch | Inspect the source renders at integer zoom. Do not resize one frame to hide a step or phase change; fix the workflow controls and regenerate the set. |
 | Out of memory | Lower asset dimensions or batch size, or change the workflow. PixelKiln's 4096px ceiling is a schema limit, not a promise that a particular machine can render that canvas. |
+| Frames take minutes each on a GPU that should be faster | Check whether another ComfyUI or other GPU process is running (`nvidia-smi`). Send the work to the server that is already running instead of starting a second one. See [Run on a shared GPU machine](#run-on-a-shared-gpu-machine). |
 | The result looks pixelated but muddy | Reject it as source material. Do not upscale it or accept it because grid detection succeeds. Compare a different model, prompt pattern, or smaller native target on at least two scene types. |
 
 ComfyUI's official server route reference documents the `/prompt`,

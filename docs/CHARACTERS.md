@@ -224,6 +224,9 @@ single direction before a batch.
 
 ### Loops from a sentence
 
+(For how this stored skeleton differs from the keypoints you edit yourself, see
+[Skeletons and rigging](./SKELETONS.md#which-skeleton-is-which).)
+
 `mode: "skeleton-v3"` with **no `template`** animates the asset's `prompt`
 instead: PixelLab writes the sentence into one 3D motion and draws the
 character from it, with no template to pick. `frames` takes PixelLab's own
@@ -497,13 +500,47 @@ attached to that character's own PixelLab record:
 result sizes (16, 32, 48, 64, 128, or 160 — 128 and 160 render at 2K and cost
 more), independent of the style's own `size`. A portrait takes no prompt: it
 is drawn from the parent's pixels, not text, so it is priced and generated
-like a state, 10 to 25 generations by the size tier (a 16px portrait billed
-exactly 20, the floor, in a live test; see [`docs/ENDPOINTS.md`](ENDPOINTS.md)).
-It lands as `<asset>.png`, one file like a single-direction generator, and
-`pixelkiln fetch` also attaches it to the parent's character record upstream
-(a separate, free call PixelLab does not make on its own) — useful for
-PixelLab's own tools, since the API otherwise has no way to read a
-character's portrait back once set.
+like a state, 10 to 25 generations by the size tier (a 16px portrait billed 10,
+five times in November 2026; before PixelLab's October 2026 price cut, four
+128px portraits billed 25 each, the middle tier then; see
+[`docs/ENDPOINTS.md`](ENDPOINTS.md)). The plan prices 48px and up at 25.
+It lands as `<asset>.png`, one file like a single-direction generator. Once
+drawn, it is also attached to the parent's character record upstream (a
+separate, free call PixelLab does not make on its own), which is useful for
+PixelLab's own tools, since the API otherwise has no way to read a character's
+portrait back once set. The `ready` line in the log says when it does. A
+character used elsewhere, such as an in-game skin, can be left as it is:
+
+```json
+"mira.bust": { "portrait": { "of": "mira", "size": 128, "attach": false } }
+```
+
+`attach` changes nothing about the picture and is not part of its identity.
+
+**A portrait cannot be pinned to a seed.** Sent a seed, PixelLab ignores the
+character and draws a generic face: in November 2026, three 16px portraits of
+a horned knight, sent seed 334129356 twice and seed 7 once, each came back as a
+blond young man, and the two with the same seed did not match pixel for pixel.
+Two portraits with no seed both drew the knight. So pixelkiln never sends a
+portrait a seed, not even the style's, and refuses `portrait.seed`. The lock
+still keeps the seed the job reports at
+`providerMetadata.pixellab.character.seed` (PixelLab deletes finished jobs
+within about a day), but that seed cannot redraw the portrait; keep the PNG
+instead, which `history` and `restore` already do.
+
+**Keeping the character's rotations out of a delivery folder.** A portrait's
+parent must be in the same style, and the parent's eight rotations land in that
+style's `outDir`. To deliver only the bust, point the style at a scratch folder
+and give the portrait a `file` that leaves it; `file` is relative to `outDir`
+and may climb out of it:
+
+```json
+"styles": { "rival_cast": { "generator": "character", "outDir": "build/cast", "size": 48 } },
+"assets": {
+  "rival": { "prompt": "a rival swordswoman", "remoteId": "…" },
+  "rival.bust": { "portrait": { "of": "rival", "size": 128 }, "file": "../../art/portraits/rival.png" }
+}
+```
 
 A portrait blocks until its parent is downloaded and current, and goes
 `stale` when the parent is regenerated, exactly like a state. It takes no

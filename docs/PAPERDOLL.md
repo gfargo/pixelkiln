@@ -428,7 +428,8 @@ character holding it faces:
 ![An armoured character turning through eight directions, its greatsword leaning the way it faces](../website/public/sprites/paperdoll/showcase-8dir.png)
 
 **The anchors file**, which is every frame's skeleton and so where its hands
-are:
+are (see [Skeletons and rigging](./SKELETONS.md#pin-items-to-a-hand) for how
+it relates to the other skeletons):
 
 ```bash
 pixelkiln anchors hero.sword

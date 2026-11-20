@@ -5,7 +5,9 @@
 export type FeatureGroup = "Run the pipeline" | "Make the art" | "Choose a provider";
 
 export type Feature = {
-  id: "pipeline" | "review" | "characters" | "paperdoll" | "models" | "effects" | "providers";
+  id: "pipeline" | "review" | "characters" | "skeletons" | "paperdoll" | "models" | "effects" | "tiles" | "providers" | "updates";
+  /** False for a page that has its own place in the menu but no tile on the home page. */
+  inHub?: boolean;
   href: string;
   /** Its name in the menu and the hub. */
   name: string;
@@ -74,6 +76,31 @@ export const FEATURES: Feature[] = [
     docs: [
       { href: "/docs/characters", label: "Characters guide" },
       { href: "/docs/characters#mirrors", label: "Mirrors" },
+      { href: "/skeletons", label: "Skeletons and rigging" },
+    ],
+  },
+  {
+    id: "skeletons",
+    href: "/skeletons",
+    name: "Skeletons and rigging",
+    group: "Make the art",
+    summary: "One 18-joint skeleton per sprite: estimate it, correct it, animate from it, and pin items to its hands.",
+    title: "One skeleton, every pose.",
+    deck: "Estimate a character's 18 joints from a sprite, check them over the art, and use them everywhere a pose is needed: animations from your own poses, loops through PixelLab's stored skeleton, held items pinned to a hand, OpenPose maps and 3D rigs.",
+    description: "Skeletons in PixelKiln: estimate and correct an 18-joint skeleton from a sprite, animate from poses with animate-skeleton or skeleton-v3, pin paperdoll items to a hand, and map joints to OpenPose.",
+    sections: [
+      { href: "#skeletons", label: "Estimate and animate" },
+      { href: "#uses", label: "Where it is used" },
+      { href: "#resolution", label: "Sprite size and hands" },
+      { href: "#props", label: "Props and capes" },
+      { href: "#open-tools", label: "Free tools" },
+      { href: "#joints", label: "The 18 joints" },
+      { href: "#which", label: "Which skeleton is which" },
+    ],
+    docs: [
+      { href: "/docs/skeletons", label: "Skeletons guide" },
+      { href: "/docs/revisions#skeleton-driven-animation", label: "Animating from poses" },
+      { href: "/docs/cli/estimate-skeleton", label: "The estimate-skeleton command" },
     ],
   },
   {
@@ -92,6 +119,7 @@ export const FEATURES: Feature[] = [
     docs: [
       { href: "/docs/paperdoll", label: "Paperdoll guide" },
       { href: "/docs/paperdoll/cost-and-limits", label: "Cost and limits" },
+      { href: "/skeletons", label: "Skeletons and rigging" },
     ],
   },
   {
@@ -120,12 +148,52 @@ export const FEATURES: Feature[] = [
     href: "/effects",
     name: "Effects",
     group: "Make the art",
-    summary: "Auras, lightning, shields and hits rendered on your own sprites, free.",
+    summary: "Auras, lightning, shields and hits as frames a game can play, built around your sprite or placed by a pivot, free.",
     title: "Effects on your own sprites.",
-    deck: "Spell auras, hits and shields are rendered locally over sprites you already have, as frames a game can play. No provider call, no cost.",
-    description: "Free, locally rendered pixel-art effects over your own sprites with PixelKiln's vfx command.",
-    sections: [{ href: "#effects", label: "Effect presets" }],
-    docs: [{ href: "/docs/cli#vfx", label: "The vfx command" }],
+    deck: "Auras, hits, shields and explosions as frames a game can play. PixelLab's free workbench builds one around your character or object; the pixelfx and pixel-vfx-codex libraries render them on your own machine, to place by a pivot.",
+    description: "Free pixel-art effects with PixelKiln's vfx command: built around your sprite by PixelLab's workbench, or rendered locally from the pixelfx library. Controls, output files, and library calls.",
+    sections: [
+      { href: "#effects", label: "Effects around a sprite" },
+      { href: "#objects", label: "Effects around objects" },
+      { href: "#placement", label: "Around a sprite, or on its own" },
+      { href: "#local", label: "Local effects with pixelfx" },
+      { href: "#codex", label: "Local effects with pixel-vfx-codex" },
+      { href: "#in-your-game", label: "Playing one in your game" },
+      { href: "#controls", label: "Controls" },
+      { href: "#recipes", label: "The .vfx.json record" },
+      { href: "#library", label: "Library calls" },
+      { href: "/effects/catalog", label: "Catalog: every preset and effect" },
+    ],
+    docs: [
+      { href: "/docs/cli/vfx", label: "The vfx command" },
+      { href: "/docs/cli/vfx#local-effects-with-pixelfx", label: "Local effects with pixelfx" },
+      { href: "/docs/generators#vfx", label: "Effects in a manifest" },
+      { href: "/docs/library/render-effects", label: "Library reference" },
+    ],
+  },
+  {
+    id: "tiles",
+    href: "/tiles",
+    name: "Tiles and terrain",
+    group: "Make the art",
+    summary: "Describe a border, get every tile that meets it, and export the set to Tiled, Godot or LDtk.",
+    title: "Tilesets that connect.",
+    deck: "Describe two surfaces and PixelLab draws the tiles that join them: sixteen for a coast, twenty-five with tall walls. PixelKiln prices the set, records it, and exports it to Tiled, Godot or LDtk with its placement rules.",
+    description: "Generate connected pixel-art tilesets from a description, price them first, and export them to Tiled, Godot 4, LDtk or generic JSON with their terrain rules.",
+    sections: [
+      { href: "#sets", label: "What a terrain set is" },
+      { href: "#kinds", label: "Kinds and costs" },
+      { href: "#textures", label: "Your own textures" },
+      { href: "#isometric", label: "Isometric tiles" },
+      { href: "#engines", label: "Out to Tiled, Godot and LDtk" },
+      { href: "#merged", label: "One brush for several sets" },
+      { href: "#try", label: "Try it" },
+    ],
+    docs: [
+      { href: "/docs/tiles", label: "Tiles and engine exports" },
+      { href: "/docs/generators#tiles", label: "The tiles generator" },
+      { href: "/docs/manifest/style-fields", label: "Terrain fields" },
+    ],
   },
   {
     id: "providers",
@@ -140,6 +208,7 @@ export const FEATURES: Feature[] = [
       { href: "#providers", label: "Results by provider" },
       { href: "#scenario", label: "Scenario, measured" },
       { href: "#costs", label: "What a sprite costs" },
+      { href: "/providers/updates", label: "Provider updates" },
     ],
     docs: [
       { href: "/docs/provider-benchmark", label: "Benchmark" },
@@ -147,9 +216,81 @@ export const FEATURES: Feature[] = [
       { href: "/docs/mixed-providers", label: "Mixing providers" },
     ],
   },
+  {
+    id: "updates",
+    inHub: false,
+    href: "/providers/updates",
+    name: "Provider updates",
+    group: "Choose a provider",
+    summary: "What each provider shipped that PixelKiln can drive, with real output and what it cost.",
+    title: "What the providers shipped.",
+    deck: "When PixelLab, Retro Diffusion, ComfyUI or Scenario adds something PixelKiln can drive, it lands here with real output from the project's own manifests and what each call cost.",
+    description: "Updates from PixelKiln's providers: what changed, what PixelKiln can now drive, real output, and measured costs.",
+    sections: [
+      { href: "#updates", label: "Latest update" },
+      { href: "#earlier", label: "Earlier updates" },
+    ],
+    docs: [
+      { href: "/docs/pixellab", label: "Set up PixelLab" },
+      { href: "/docs/endpoints", label: "Measured endpoints" },
+      { href: "/docs/provider-notes", label: "Provider notes" },
+    ],
+  },
 ];
 
 export const FEATURE_GROUPS: FeatureGroup[] = ["Run the pipeline", "Make the art", "Choose a provider"];
+
+/** A small real output that stands for each feature in the header menu. `strip` pictures show their first square cell. */
+export const MENU_ART: Record<Feature["id"], { src: string; strip?: boolean }> = {
+  pipeline: { src: "/sprites/workflow/plan.png" },
+  review: { src: "/sprites/workflow/review.png" },
+  characters: { src: "/sprites/characters/robot-8dir.png", strip: true },
+  skeletons: { src: "/showcase/skeleton/base-wave-still.png" },
+  paperdoll: { src: "/sprites/paperdoll/showcase-8dir.png", strip: true },
+  models: { src: "/models/art.png", strip: true },
+  effects: { src: "/effects/robot-aura-still.png" },
+  providers: { src: "/benchmarks/provider-environments/pixellab/isolated/a/mountain-observatory.png" },
+  updates: { src: "/showcase/pixflux/knight-options.png", strip: true },
+  tiles: { src: "/showcase/tilesets/lake-grass-tile-01-wang-10.png" },
+};
+
+/** One short line per feature for the header menu, where the hub's full sentence would be cut off. */
+export const MENU_LINES: Record<Feature["id"], string> = {
+  pipeline: "One manifest, priced before you pay.",
+  review: "Pick, retouch and approve the pixels.",
+  characters: "Eight directions and every loop.",
+  skeletons: "Joints to pose, animate and rig.",
+  paperdoll: "Swappable outfits over one body.",
+  models: "Rigged 3D models from sprites.",
+  effects: "Auras, hits and shields, free.",
+  providers: "Four providers on the same prompts.",
+  updates: "What each provider shipped lately.",
+  tiles: "Connected sets for Tiled, Godot and LDtk.",
+};
+
+/** Shortcuts listed under each group in the header menu: places people ask for that are not feature pages. */
+export const MENU_SHORTCUTS: Record<FeatureGroup, Array<{ href: string; label: string }>> = {
+  "Run the pipeline": [
+    { href: "/docs/getting-started", label: "Quickstart" },
+    { href: "/pipeline#recovery", label: "Recovering paid work" },
+  ],
+  "Make the art": [
+    { href: "/effects/catalog", label: "Effects catalog" },
+    { href: "/docs/tiles", label: "Tiles and engine exports" },
+  ],
+  "Choose a provider": [
+    { href: "/docs/generators", label: "Generators compared" },
+    { href: "/docs/provider-notes", label: "Provider notes" },
+  ],
+};
+
+/** The commands people look up most, for the documentation menu. */
+export const MENU_COMMANDS: Array<{ href: string; command: string; does: string }> = [
+  { href: "/docs/cli/plan", command: "pixelkiln plan", does: "Price a run before paying" },
+  { href: "/docs/cli/gen", command: "pixelkiln gen", does: "Generate within a budget" },
+  { href: "/docs/cli/pick", command: "pixelkiln pick", does: "Choose candidates" },
+  { href: "/docs/cli/vfx", command: "pixelkiln vfx", does: "Make an effect" },
+];
 
 export function feature(id: Feature["id"]): Feature {
   return FEATURES.find((entry) => entry.id === id)!;
@@ -170,6 +311,7 @@ export const DOC_MENU: Array<{ label: string; links: Array<{ href: string; label
     label: "Guides",
     links: [
       { href: "/docs/characters", label: "Characters" },
+      { href: "/docs/skeletons", label: "Skeletons and rigging" },
       { href: "/docs/paperdoll", label: "Paperdoll layers" },
       { href: "/docs/characters-3d", label: "3D characters" },
       { href: "/docs/tiles", label: "Tiles and terrain" },

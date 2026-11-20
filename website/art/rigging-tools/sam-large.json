@@ -1,0 +1,133 @@
+{
+ "model": "facebook/sam2.1-hiera-large",
+ "device": "mps",
+ "props": {
+  "staff": {
+   "sprite": "mage128",
+   "click": [
+    53.0,
+    59.0
+   ],
+   "iou_score": 0.558,
+   "ms": 1386,
+   "pixels": 321,
+   "axis": [
+    [
+     51.4,
+     44.5
+    ],
+    [
+     51.2,
+     90.5
+    ]
+   ],
+   "axis_length": 46.0,
+   "pixellab_end_offsets": [
+    21.4,
+    5.8
+   ]
+  },
+  "sword": {
+   "sprite": "knight128",
+   "click": [
+    42.0,
+    67.0
+   ],
+   "iou_score": 0.911,
+   "ms": 19,
+   "pixels": 56,
+   "axis": [
+    [
+     41.5,
+     67.2
+    ],
+    [
+     60.5,
+     67.2
+    ]
+   ],
+   "axis_length": 19.0,
+   "pixellab_end_offsets": [
+    7.5,
+    5.6
+   ]
+  },
+  "shield": {
+   "sprite": "knight128",
+   "click": [
+    80.5,
+    76.7
+   ],
+   "iou_score": 0.807,
+   "ms": 16,
+   "pixels": 205,
+   "axis": [
+    [
+     75.1,
+     67.5
+    ],
+    [
+     76.1,
+     85.5
+    ]
+   ],
+   "axis_length": 18.1,
+   "pixellab_end_offsets": [
+    6.9,
+    2.9
+   ]
+  },
+  "knight cape": {
+   "sprite": "knight128",
+   "click": [
+    49.5,
+    77.0
+   ],
+   "iou_score": 0.273,
+   "ms": 17,
+   "pixels": 84,
+   "axis": [
+    [
+     56.3,
+     71.6
+    ],
+    [
+     46.9,
+     87.1
+    ]
+   ],
+   "axis_length": 18.2,
+   "pixellab_end_offsets": [
+    14.3,
+    4.4
+   ],
+   "centre_line_pixels": 29
+  },
+  "cape": {
+   "sprite": "cape256",
+   "click": [
+    182.0,
+    160.0
+   ],
+   "iou_score": 0.965,
+   "ms": 17,
+   "pixels": 10200,
+   "axis": [
+    [
+     58.8,
+     148.0
+    ],
+    [
+     190.9,
+     146.2
+    ]
+   ],
+   "axis_length": 132.2,
+   "pixellab_end_offsets": [
+    83.8,
+    66.4
+   ],
+   "centre_line_pixels": 363
+  }
+ }
+}

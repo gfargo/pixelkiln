@@ -1,3 +1,205 @@
+# [0.123.0](https://github.com/gfargo/pixelkiln/compare/v0.122.1...v0.123.0) (2026-11-20)
+
+
+### Features
+
+* **skeleton:** custom rigs for props, capes and tails, and written motion ([1057e86](https://github.com/gfargo/pixelkiln/commit/1057e86beb53587be4e12cc8e9cc87e79e93a1d7))
+
+## [0.122.1](https://github.com/gfargo/pixelkiln/compare/v0.122.0...v0.122.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* the adventurer's skeleton estimate was right; draw eyes and ears in grey ([5af410b](https://github.com/gfargo/pixelkiln/commit/5af410baf5a7c3f8ffb33c39ea3b2bb29364e9ec))
+
+# [0.122.0](https://github.com/gfargo/pixelkiln/compare/v0.121.1...v0.122.0) (2026-11-19)
+
+
+### Bug Fixes
+
+* **site:** show skeletons on the bare paperdoll base, whose estimate is right ([1b12ae1](https://github.com/gfargo/pixelkiln/commit/1b12ae18ef6cbd8fd6cad1d0aadb6e0b257d4efa))
+
+
+### Features
+
+* **site:** a Skeletons and rigging page and guide ([4f2b29d](https://github.com/gfargo/pixelkiln/commit/4f2b29d72a93960cb02e8c076981745280b3ccc5))
+
+## [0.121.1](https://github.com/gfargo/pixelkiln/compare/v0.121.0...v0.121.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **character:** never send a portrait a seed; PixelLab ignores the character when given one ([a7b8863](https://github.com/gfargo/pixelkiln/commit/a7b886301e197bd5077faa265cf4be6bb89386d9)), closes [#352](https://github.com/gfargo/pixelkiln/issues/352)
+* derive without a provider key, and say what a derived asset in a quality style waits for ([2226f56](https://github.com/gfargo/pixelkiln/commit/2226f5662534aae7d19ecf19b02e976f54c3ef27)), closes [#301](https://github.com/gfargo/pixelkiln/issues/301) [#301](https://github.com/gfargo/pixelkiln/issues/301)
+
+# [0.121.0](https://github.com/gfargo/pixelkiln/compare/v0.120.0...v0.121.0) (2026-11-19)
+
+
+### Features
+
+* **character:** pin and record a portrait's seed, and let it skip the upstream attach ([0e51a98](https://github.com/gfargo/pixelkiln/commit/0e51a98b448c2eb42d673df493a0315d464acc9e)), closes [#238](https://github.com/gfargo/pixelkiln/issues/238)
+
+# [0.120.0](https://github.com/gfargo/pixelkiln/compare/v0.119.1...v0.120.0) (2026-11-19)
+
+
+### Features
+
+* **export:** warn when a terrain tile's role is not in its set's terrainTiles ([c7204e3](https://github.com/gfargo/pixelkiln/commit/c7204e3fa16a50c0cdc6ccf2087937f710c44428))
+* **site:** stone ramp and lit doorways in the stacked dungeon hall ([0be9c6b](https://github.com/gfargo/pixelkiln/commit/0be9c6baad31395d9744796445ac9f902264d67a))
+
+## [0.119.1](https://github.com/gfargo/pixelkiln/compare/v0.119.0...v0.119.1) (2026-11-19)
+
+# [0.119.0](https://github.com/gfargo/pixelkiln/compare/v0.118.0...v0.119.0) (2026-11-19)
+
+
+### Bug Fixes
+
+* **site:** smaller brush dots at phone width ([a4cc813](https://github.com/gfargo/pixelkiln/commit/a4cc8132821a89ea9753f0e6d72d129f44400b34))
+
+
+### Features
+
+* **site:** the terrain brush paints every set on the page ([5e13d48](https://github.com/gfargo/pixelkiln/commit/5e13d48e6e914032418414ec21384d4320f1c1d2))
+
+# [0.118.0](https://github.com/gfargo/pixelkiln/compare/v0.117.0...v0.118.0) (2026-11-19)
+
+
+### Bug Fixes
+
+* **export:** tiles meet their rules, and Godot paints every border ([22b848b](https://github.com/gfargo/pixelkiln/commit/22b848bf1b202d814f7956bc754995cfd84fa286))
+
+
+### Features
+
+* **export:** isometric tile geometry for Godot and Tiled ([49815eb](https://github.com/gfargo/pixelkiln/commit/49815ebb89a5e9c2f6d2ceaeed90019d6560f0c1))
+* **site:** a three-tier stone hall from the building kit ([005042e](https://github.com/gfargo/pixelkiln/commit/005042ee6f21571cf4df865aa985604aa8c827fe))
+* **site:** isometric tiles from real PixelLab runs, and what they showed ([e342cd4](https://github.com/gfargo/pixelkiln/commit/e342cd4af2c7437f1f47e369c0f4c41f96845fc9))
+* **site:** stairs on half blocks, and a side room with an east ramp ([9dbea3d](https://github.com/gfargo/pixelkiln/commit/9dbea3d23f8394184433236119dfd265a440e4ef))
+* **site:** the isometric sets painted in Godot ([5cdae5a](https://github.com/gfargo/pixelkiln/commit/5cdae5aee380d53c17720e48766582af74d94b3d))
+
+# [0.117.0](https://github.com/gfargo/pixelkiln/compare/v0.116.0...v0.117.0) (2026-11-19)
+
+
+### Features
+
+* **site:** the terrain brush paints three terrains from real connected sets ([5916791](https://github.com/gfargo/pixelkiln/commit/5916791747dad153cf870a04a6ced981c582beab))
+
+# [0.116.0](https://github.com/gfargo/pixelkiln/compare/v0.115.2...v0.116.0) (2026-11-19)
+
+
+### Features
+
+* **site:** a live terrain brush, an engine screenshot and a merged-sets figure on /tiles ([4ef057d](https://github.com/gfargo/pixelkiln/commit/4ef057d4150005a9208a286b265bf9aa919ebe54))
+
+## [0.115.2](https://github.com/gfargo/pixelkiln/compare/v0.115.1...v0.115.2) (2026-11-19)
+
+## [0.115.1](https://github.com/gfargo/pixelkiln/compare/v0.115.0...v0.115.1) (2026-11-18)
+
+# [0.115.0](https://github.com/gfargo/pixelkiln/compare/v0.114.0...v0.115.0) (2026-11-18)
+
+
+### Features
+
+* **export:** merge connected terrain sets into one tileset ([4109532](https://github.com/gfargo/pixelkiln/commit/41095324823e260abfa34ff320bdd090294fb760))
+
+# [0.114.0](https://github.com/gfargo/pixelkiln/compare/v0.113.0...v0.114.0) (2026-11-18)
+
+
+### Features
+
+* **site:** tiles and terrain joins the home-page hub ([c7082b5](https://github.com/gfargo/pixelkiln/commit/c7082b5f160a770ec0e6ce47193dc92b71e3c952))
+
+# [0.113.0](https://github.com/gfargo/pixelkiln/compare/v0.112.0...v0.113.0) (2026-11-18)
+
+
+### Features
+
+* **site:** a tiles and terrain page ([c47ef05](https://github.com/gfargo/pixelkiln/commit/c47ef05c3dc5569099201413cbbb2c8c061e953c))
+* **site:** LDtk on the tiles page and in the tiles feature copy ([61a34bc](https://github.com/gfargo/pixelkiln/commit/61a34bc71fedc39414191e3ea67575036d247f68))
+
+# [0.112.0](https://github.com/gfargo/pixelkiln/compare/v0.111.0...v0.112.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* **export:** write LDtk names the way LDtk does, and record the check in LDtk ([4c13785](https://github.com/gfargo/pixelkiln/commit/4c137854fb01adb4bb5dc8bdaae5445446defa0a))
+
+
+### Features
+
+* **export:** LDtk project export for tilesets ([c10b5ce](https://github.com/gfargo/pixelkiln/commit/c10b5ce8171f636ed59cb4b841071325839cc96b))
+
+# [0.111.0](https://github.com/gfargo/pixelkiln/compare/v0.110.0...v0.111.0) (2026-11-18)
+
+
+### Features
+
+* **model:** resolve the file a game should load for each model ([3e3d1cb](https://github.com/gfargo/pixelkiln/commit/3e3d1cb00cc40f08893f251b6ddf0194c85e888d))
+* **site:** pixel-vfx-codex on the effects page and catalog ([2d24e1b](https://github.com/gfargo/pixelkiln/commit/2d24e1bd98bb46a887173fa62f951b6d63f1374a))
+* **vfx:** render effects locally from pixel-vfx-codex ([84d2abb](https://github.com/gfargo/pixelkiln/commit/84d2abb82acbcb4c770cc6e17895ef44722c8a8e))
+
+# [0.110.0](https://github.com/gfargo/pixelkiln/compare/v0.109.0...v0.110.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* **gallery:** model thumbnails are cropped to the model ([30ff3c9](https://github.com/gfargo/pixelkiln/commit/30ff3c9638f9160f30b4a4f59d5bc66935dab940))
+
+
+### Features
+
+* **cli:** pixelkiln model, and the agent skill for 3D models ([efafcfb](https://github.com/gfargo/pixelkiln/commit/efafcfb7b10b5ca7046462c1925eee0d730d2c8d))
+* **editor:** guide layers in the editor bridge (protocol 5) ([be649bd](https://github.com/gfargo/pixelkiln/commit/be649bd816d0b77f68a20dbebda0c20d882bfcd1))
+* **editor:** pin the protocol 5 build (editor-pixelorama-v1.2.2-pk.31) ([1315320](https://github.com/gfargo/pixelkiln/commit/131532040224ddf7802729473e90c365a26da632))
+* **gallery:** a live 3D view beside the texture editor, with draggable widths ([89f89cc](https://github.com/gfargo/pixelkiln/commit/89f89cc58aa0d80bfbf49be929bc05a450be3e08))
+* **gallery:** model cards show the model, rendered ([62dfc6d](https://github.com/gfargo/pixelkiln/commit/62dfc6da2444068691886ff0c2f43d6ea3972275))
+* **gallery:** preview a 3D model, paint its textures, open it in Blender ([0b5c53c](https://github.com/gfargo/pixelkiln/commit/0b5c53c3c8e7cf276aa67d12fc81fcaaa381ec8f))
+* **models:** normal map detail from PixelLab ([36f9bee](https://github.com/gfargo/pixelkiln/commit/36f9beec23bbdbfb5248714d782006c952bd9609))
+* **models:** normal map detail from the figure's own sprites, and posing ([c4f4e52](https://github.com/gfargo/pixelkiln/commit/c4f4e52962a6680cf0168137aa6ef996f721ab2e))
+* **models:** paint a model's normal maps ([bebd888](https://github.com/gfargo/pixelkiln/commit/bebd8883a61cc434b4b33c452636c7ed5478d1d0))
+
+# [0.109.0](https://github.com/gfargo/pixelkiln/compare/v0.108.1...v0.109.0) (2026-11-18)
+
+
+### Features
+
+* **site:** provider updates get their own page, a back-to-top button, and a steadier paperdoll builder ([630a602](https://github.com/gfargo/pixelkiln/commit/630a60253aa389e556463e9eb06aabb5ab7f4980))
+* **site:** the docs pages read and fit better ([ac8e05c](https://github.com/gfargo/pixelkiln/commit/ac8e05c01f4e48ac2023f43cbf8032e32e738fef))
+
+## [0.108.1](https://github.com/gfargo/pixelkiln/compare/v0.108.0...v0.108.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **site:** the effects catalog plays every pixelfx effect ([20e5529](https://github.com/gfargo/pixelkiln/commit/20e5529e0bd11a07b2caa4f79252e43b95c38c4b))
+
+# [0.108.0](https://github.com/gfargo/pixelkiln/compare/v0.107.0...v0.108.0) (2026-11-18)
+
+
+### Features
+
+* **site:** a fuller header menu, and a jump list that wraps ([4cad4b3](https://github.com/gfargo/pixelkiln/commit/4cad4b3b604ab95e4ded06d556f58b6843c0568c))
+* **site:** an effects catalog of every preset and pixelfx effect ([4343dbe](https://github.com/gfargo/pixelkiln/commit/4343dbe780a293fc7ab36e1c584d2abe1b216876))
+* **site:** every preset in the effects catalog is animated ([0cbdd83](https://github.com/gfargo/pixelkiln/commit/0cbdd836429a7b9afeeeece5778057c9c2a7e6f7))
+* **site:** one type scale, tighter rhythm, and varied effect rows ([dce0c47](https://github.com/gfargo/pixelkiln/commit/dce0c472ad96922c0c78b19883a2dcfca9a776e5))
+
+# [0.107.0](https://github.com/gfargo/pixelkiln/compare/v0.106.0...v0.107.0) (2026-11-17)
+
+
+### Features
+
+* **site:** effects around objects, measured, on the effects page ([29d94c4](https://github.com/gfargo/pixelkiln/commit/29d94c4ff16ffbea1814b67d1cd1d6b047da22dd))
+* **site:** pixelfx effects placed on an object, on the effects page ([9747989](https://github.com/gfargo/pixelkiln/commit/9747989e76c66d851454b2d8643a3f1e680e32c5))
+* **site:** the effects page covers placement, controls, files and library calls ([8a26d12](https://github.com/gfargo/pixelkiln/commit/8a26d126ea92ad67b91bd7e075972ebbccc698b3))
+* **vfx:** render effects locally from the pixelfx library ([5b9334e](https://github.com/gfargo/pixelkiln/commit/5b9334ebb9034aa43e37153fbde0728cfb8d88d0))
+
+# [0.106.0](https://github.com/gfargo/pixelkiln/compare/v0.105.1...v0.106.0) (2026-11-17)
+
+
+### Features
+
+* **site:** a sixteen-direction turnaround viewer, and the research behind it ([d13621c](https://github.com/gfargo/pixelkiln/commit/d13621c6c27d17d52770e042913627354f333f60))
+
 ## [0.105.1](https://github.com/gfargo/pixelkiln/compare/v0.105.0...v0.105.1) (2026-11-17)
 
 

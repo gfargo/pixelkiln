@@ -1,0 +1,1362 @@
+[
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 54.9,
+  "sha256": "aba2c5a965b21f3291f5725a367c762039f8fbfc9d3e7376cbfa5fe2c1c9e857"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "ece375fc5680d91f3e6afc913425b6054c4ba35e8390bc9c0354addf3c24c5c4"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "912d2b22b3d23b0af07a58c69959dfbdd8829ba5c7bd1082d5d6077005e3f558"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "1c8b649690c237c78dfc065ff22ee077e3e3b9c6c4167cdcbc2267c8acedc9ba"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "3a04ac8dc2abcc9013a949e37721838fbf5af5f718f4b21d4b115d01b71bae76"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "b2a4e331e0f350716579cc2c1500ae5303fb1614b45979802e209c79ad3ea5e1"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "d441aedbf2f26ef1d5f1b4b40083b25b6a0cafa27e23da11f292a6c056d3486d"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "c3b923ba9382a229436dd6c7f7be15257ec3eca4b9d96adffe4944e16fcf7155"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "1906675eb301695212e5cc6c02aa2046b79c559aae2ab8fcc8feca1736f86f95"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "5eddf771b80f9b92af5a601f182110bf35ef7fc89db0174fae879528095d9c18"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "3437671e5a5ced4004d9ff25dbb61500d028950a6f836b7465c37bd2b5d59f59"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "9b6ae9436d3d331f0f3facbba5bbe87daeaea0e5c476cad99b5bb8f86fc5bcb3"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "d2c6000ae5da6743e0c0c85d0fbf0c1e6e78cba57ddf6528cd1ef146217b59a9"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "fd47c468a4b726e45b8813ce42e9e0a53ba0d0b2ca95124ca86f93b7f5d76bce"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "16a16a9e6ce8482e7790daf415dc82dfa90d6f4ce2f4ee11e82717d6bec97448"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "ade6ff8c97ef904275e944e487837dfb801c5a20f49a899ba376f4d786d58f4c"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "d59faf0d9cbad75f8aa6ff1792e8f6f0486c899db4366266b90e0a25762ecf83"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31416,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "221a8bc274c1d74f823a31c522f55fe855c9d0a9907a67adb0483e5f111bc56a"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31417,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "0c69d33a8c4916110e8ec71f3c198b54d27643db82064ae8c83ba6a4c4fad120"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31418,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "16ae8d85b6c3eb32bf5da169b806d35e474c840f7b257154706b3bea37ebb733"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "d59faf0d9cbad75f8aa6ff1792e8f6f0486c899db4366266b90e0a25762ecf83"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31416,
+  "strength": null,
+  "seconds": 22.1,
+  "sha256": "221a8bc274c1d74f823a31c522f55fe855c9d0a9907a67adb0483e5f111bc56a"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31417,
+  "strength": null,
+  "seconds": 22.1,
+  "sha256": "0c69d33a8c4916110e8ec71f3c198b54d27643db82064ae8c83ba6a4c4fad120"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31418,
+  "strength": null,
+  "seconds": 22.1,
+  "sha256": "16ae8d85b6c3eb32bf5da169b806d35e474c840f7b257154706b3bea37ebb733"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31419,
+  "strength": null,
+  "seconds": 22.1,
+  "sha256": "2a08be0c6132cdc37f60f7d87fe9de5d868d7028d22bae7aaa2bf71c92fb4185"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31420,
+  "strength": null,
+  "seconds": 22.1,
+  "sha256": "05257ed182e108e18e7fe28e697c3e2a4bb31284222e889e3e00c43fddc71e8f"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31421,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "0e235979ab04c2a81d64e092a20d7cb733368753fbcc40b704c2c4a1ec232a24"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31422,
+  "strength": null,
+  "seconds": 22.1,
+  "sha256": "b95bd4c3d582d5f8aa771683081029cb6a996af51dc56c0482361e5fb9c214ba"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "d59faf0d9cbad75f8aa6ff1792e8f6f0486c899db4366266b90e0a25762ecf83"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31416,
+  "strength": null,
+  "seconds": 22.1,
+  "sha256": "221a8bc274c1d74f823a31c522f55fe855c9d0a9907a67adb0483e5f111bc56a"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31417,
+  "strength": null,
+  "seconds": 22.3,
+  "sha256": "0c69d33a8c4916110e8ec71f3c198b54d27643db82064ae8c83ba6a4c4fad120"
+ },
+ {
+  "lane": "A",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31418,
+  "strength": null,
+  "seconds": 22.3,
+  "sha256": "16ae8d85b6c3eb32bf5da169b806d35e474c840f7b257154706b3bea37ebb733"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": null,
+  "seconds": 25.3,
+  "sha256": "c4d12021d902a272c93cc7b07b05b00c32009fa2e47cae3924d3e4674a2a5d85"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31416,
+  "strength": null,
+  "seconds": 22.3,
+  "sha256": "2416bef0136202e1456ac474afc4e3983bc5a5bee1302d1d0c0008828e36cd96"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31417,
+  "strength": null,
+  "seconds": 22.3,
+  "sha256": "69368c96be0f9fd7700eb15dfa61a62b0865cdc3967cd17743c6605be35dcc25"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31418,
+  "strength": null,
+  "seconds": 22.4,
+  "sha256": "2b6e9c12ad5802baa917bc3f12d9b648253da163237c7aac07a989046e1aeb73"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "c4d12021d902a272c93cc7b07b05b00c32009fa2e47cae3924d3e4674a2a5d85"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31416,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "2416bef0136202e1456ac474afc4e3983bc5a5bee1302d1d0c0008828e36cd96"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31417,
+  "strength": null,
+  "seconds": 22.3,
+  "sha256": "69368c96be0f9fd7700eb15dfa61a62b0865cdc3967cd17743c6605be35dcc25"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31418,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "2b6e9c12ad5802baa917bc3f12d9b648253da163237c7aac07a989046e1aeb73"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31419,
+  "strength": null,
+  "seconds": 22.3,
+  "sha256": "c35f0fa0afae070f499fe43e14e642c22eb7acfa9e2ed93baa1d3580626f2127"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31420,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "d32daecbccd3127e4befcd933fa78054d0ee8b47bff38333d76e6e72a1c880de"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31421,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "aa24b62de5c6b8740b56563eb4920f630c65ffc98a9a688cd5ecaa432afd6590"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31422,
+  "strength": null,
+  "seconds": 22.1,
+  "sha256": "79d8a923bf3a5b437599e0c0ee05de7b0f405fbf6486172c62f7381c53274dea"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "c4d12021d902a272c93cc7b07b05b00c32009fa2e47cae3924d3e4674a2a5d85"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31416,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "2416bef0136202e1456ac474afc4e3983bc5a5bee1302d1d0c0008828e36cd96"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31417,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "69368c96be0f9fd7700eb15dfa61a62b0865cdc3967cd17743c6605be35dcc25"
+ },
+ {
+  "lane": "A",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31418,
+  "strength": null,
+  "seconds": 22.2,
+  "sha256": "2b6e9c12ad5802baa917bc3f12d9b648253da163237c7aac07a989046e1aeb73"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 71.6,
+  "sha256": "618ee44318e2a550676b1769fcec4f75ff53f9364c410d66635a3d1b637fcc20"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 33.4,
+  "sha256": "f381bbbe99f3ebbacf0af0b7bf034393c4271be002e21a84cf031764d6a1048b"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 62.5,
+  "sha256": "457fbf1dfd3a95e4d2356eeb41bd8e2ad63d678dc953aaf5f0818b52ad99be95"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "603538669567e9ebbc241d6fa25f30249202f4b96ea124320f05233d19d648a2"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 52.3,
+  "sha256": "9c5c89623851eeb4eab2f58cff1165ada65d5f0604aa8684d9636d0eca2cf04a"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.6,
+  "sha256": "e2c03f301e50c42ce25aeb5d68455f0004a88b86570ea1cd19d8759fdfd9ee40"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.6,
+  "sha256": "620ffdd79c94db51ad3260f2466a9e373d3ac369cd64d96e2957c2ef59e55d83"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.6,
+  "sha256": "12c37e4c1f7c5dd0aae0dab22bfe48a086779198c40f8b58b3c203333fef6a7d"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.6,
+  "sha256": "61634dda1b30c922ff73837cb830e16ca0f7366b51174096dbb7352ea2f5992f"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.6,
+  "sha256": "8179b6ce236e117fc312a5f42756dfaa0dbe7a6be5ef02732cf44384b9b5478e"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.6,
+  "sha256": "e7f06ab180f05733f6f202a2fda06e18d1d2e1b69bf34b7cf46f0993e05e6e1d"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.6,
+  "sha256": "fc8c6feeab9b1c7e393d3126cc7d5f442756d1b50a2652f68e6d9d8d8c110063"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.6,
+  "sha256": "f3814b408f2008ed47353828c04877a4bf398664f983ac4f5921670208688979"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.7,
+  "sha256": "b85f0c0fdd8248f4320f6b11e82bfa448256fe663fa50d2b7b362ff1cc5f0ae5"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "647cf179930d81b5fa9d2b438cdfa6f42735e0caf0c52ca89893f988d57e157e"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "c882174e4beb2a4ab7d6bc1aeb39e1eba5eb4df29cc2b3d50325e57164357b2d"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 36.5,
+  "sha256": "2634e1e85d9782a17af9865c0940fba8010feea4ed1e00782d95e4f252c037e6"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "6dfaf02edee83e8253159ea6379f94bf819544107db45306823af49a2b0337ae"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.3,
+  "sha256": "d8f9662af22e744e1098a2961dd53a5741f08f3fec96b654b03f3351b52a0207"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.3,
+  "sha256": "2889529c717b531b13a4ba889339da27a23c59dedbb40a4a22634726eb33cf0d"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.5,
+  "sha256": "318d1354988b90b9820cf043ec5b35e50dff7911bbfaf038948f3eaabffbaf93"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "d093991455de2dca48ec756a8aaf2e6a892d88b632ede4eb4e95d3065f65c2e7"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.3,
+  "sha256": "eefa94c4b38607a0b9913ff4f8845997b2b0d8b7d64715536672f5919bf14c44"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "c4b65ad8c5b8572335bc6fb065fbe3afceaa4bff8aa657e580e43dfdb438a33a"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.5,
+  "sha256": "b9a3818b72426e47689d06c27c3e24c194d00375b3fef7f90a6b0406474e324f"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.3,
+  "sha256": "b7c9e95ae4682bd349e931fd2628998a301b49ccc2d3dff9eaf127382298423d"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "1fd86d5a72b8ff005bc0eaa53757747575e926c965e7c18410e613a889b10c84"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.3,
+  "sha256": "17d7d8ce10525d3d61cafcc509f7f1a26973fe9074ba1a9d2bb42ba96c119b4c"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "d3b7b27bdcc00d3823b0e09360c687f65ba5be3cf8f397f1cacbdef4e0e4c267"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.5,
+  "sha256": "451ac5dbe613312a93e653089073716de000c07fe5daa77fe98036aae6316bf4"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 32.4,
+  "sha256": "a2080a4b00475dda42747466b38ff74d61a6ef69511e9881047a68101dd9ac44"
+ },
+ {
+  "lane": "B-0.55",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.55,
+  "seconds": 31.7,
+  "sha256": "26b86628f1d391da51b870945defdaa59104ccdd91d18b1de2142f1895c7b8b3"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.4,
+  "sha256": "c4892f48cefda44e4306aa09b778a9ccf7921c3c1df9abdfc27fe73d9cdde137"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.4,
+  "sha256": "de0cb51ec4113a7b91e03d7f806510ab6e17a98d8daa9303aa9dd387a75309db"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.4,
+  "sha256": "66dfdabf3e1b97b82e996adaef8d0e22728aa626a2f5c47453c612ec6d4b160c"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "776c85f099333b38782b46b52b2d4ce4602dd1f05cf6a5f5c1215f860f0e30ce"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "fb1091a284701004b869a05005ac41360559edf748626da72ed79a53e6340352"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.4,
+  "sha256": "2833805d09716b2dfada99f0f91794d7bf47ced801d90169cfb96b2123f41f00"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "ac19cd65d5abc0738e8ced406d2d8c409a821b0c2ca9cd93cce44d6427cb907c"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.4,
+  "sha256": "05d2c2651fbd3f950827be2d5fe468528659ad73574941cffa009375a7203654"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "9b3fea4a965adaacf5884eea590a4d718dbea59efc32fb35210cd40b97d87978"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "3d1cdb4464c5730d68e7b87e0c08f34fabee9f27fb793213b5d026e8dd455e4f"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "6ca7ef3e751afbec2a958bcb55135a32916a606c8ee38f1e0f54de9d499b759b"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "6f12f8c5720df9bcb8763c739d84275f50c7d50d5a7036d163e60718845bb404"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "524f66a73117cf55f3680fa28ac358779936577545e8186864d085b7bb36496b"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "d9de90a06cb112d5c806159a4a638e699ad0451ca28250c0cdec1f76ab64897f"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.6,
+  "sha256": "fdb2d53c0389f36cf8090051a218a83427ca90d7e48470fc7dc2b43fbbbfa1f2"
+ },
+ {
+  "lane": "B-0.75",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 31.5,
+  "sha256": "d877262c004033702cf4e095a8a15da7cb1bba7f6507ef676c694b5b6d730e5d"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 31.7,
+  "sha256": "1e889bfdec1c17224de163376696ede9592cacb62ed451b088968096ef694490"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 31.7,
+  "sha256": "ecf6874f15fc5a7b7a4cb59f774c1de48624d8a28cb04e8430c8ed184a640ee7"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 31.6,
+  "sha256": "e9140fde20bde90d8b115da4711154493d3f8f78a03acc218447256939080a3b"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 31.6,
+  "sha256": "3752d7a62d21199c5b668ff55c145d3107e0e4de50c28667f9c5b8283e8db2a1"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 31.6,
+  "sha256": "352667fba4f7acf7afd0f1f700f070f48ca4d5cbe1e4d588d913110992200230"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 31.7,
+  "sha256": "8650ff8c5d826bc1db3b7fe60ae93022a2960cc7af1b72b59ec64910ecccfb77"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.3,
+  "sha256": "b774f3c59109090476e3e4feff3d1b5b36d7ca6d262d0b7b7d7c34580bf8b790"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.5,
+  "sha256": "625c7dfb66c3d2ccd0082258ee38810bdb034dd6a64609dffea9bee6c95d5ebf"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "5e71fe7949ab53c897a9acf667ad8c7f9ce4dce18263491af07f71db5eefa5fe"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.3,
+  "sha256": "e70ae8ad6f2940cd06fe49ff33f6e3fd53badc3a55fd85cf831bc6175f344fb0"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "1925f2e6ed5d8993f6f60f29959f600f61b3485744770413b1cd7a32c04e4d84"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "2c3efca0e80e9266d0d98f2762687a49363b07a94f40ee210c2d00ecba796c49"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "2a78167d56e36c42bc688f88cb6d17e33f39bfbd25ad0b645ad928cb9f6fe31e"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "a519c56d54e3e2db3f9a77fbbf0fd4464f44f91c487ef8fed68d5931ceddb6a1"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "ae2518ec33c79142041f2e098d99828a03fd51f351a36cca43d9fd475951326d"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "fd7b3881f391f800941ca13d5881372f8f56012813baf0b230cd6a403727db00"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "4c574f350ca553cc33741793a7dc74c93839363e7e0e5605b9d95dc688d3737c"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.5,
+  "sha256": "c6f3e17921f1ae9ac16e5e0bb478f2bd147666c1f6e5274c7a2cdddf77279145"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "1b8e24c05ce4161010f50c06c7b23d27c67d52731dda4c01b5766bed4680f4ef"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.3,
+  "sha256": "34925e527fcdde66475ceed3164b8b477de19719248042d9c1217df776f34eaf"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "5ad7dbd5ebb979c8f3286c8012652b971a4c88ad5b49f7a849868877e6eedc71"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "216f68b6ddb4c4fb71e6684bd8aa12d9824e4fe164a1ee48a4b1282af1731905"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.5,
+  "sha256": "164424e240d361341221414489ac4afe1bfd2c59f34fc725c160690dc2e0c40f"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "ad7f84f4239fb30bc16d03796b201021cbb89eca0276da542d0b7626b917976f"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.5,
+  "sha256": "854040aabe20c504be96e73bce457b3f7721ed6cff8f889b152180b5b701468e"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "5624401431a4dc110b545e1f4ba961ad7bc636984b3f2b8ada260d1f3400b82a"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "b50351f12c6f743306f235fe695830ab6d830e002027c3a35ceb99b5c20e2486"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "854a01da3039c84a80e2228d06dee2fee1f59042664c19eef821f632c80f53e8"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "0c729661b4e15ba35a6fd768529e6167784bc4dc614edd679d4e1bc0b6829d1d"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.3,
+  "sha256": "14f6f0dfc625b4d92617f73345467c21b1825e450427589e708a6be2e9f33eaa"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.3,
+  "sha256": "1e7b06470def3809d228c313c2227ef85a458a369ffa946a7c5c04063096d9d2"
+ },
+ {
+  "lane": "B-0.90",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.9,
+  "seconds": 32.4,
+  "sha256": "91f5429abbb13130179c62a65c7a2d3736809692fb66a7a4351e78b9e47ac5a1"
+ },
+ {
+  "lane": "repeat",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 34.4,
+  "sha256": "3a04ac8dc2abcc9013a949e37721838fbf5af5f718f4b21d4b115d01b71bae76"
+ },
+ {
+  "lane": "repeat",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.4,
+  "sha256": "b2a4e331e0f350716579cc2c1500ae5303fb1614b45979802e209c79ad3ea5e1"
+ },
+ {
+  "lane": "repeat",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.4,
+  "sha256": "d441aedbf2f26ef1d5f1b4b40083b25b6a0cafa27e23da11f292a6c056d3486d"
+ },
+ {
+  "lane": "repeat",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.4,
+  "sha256": "c3b923ba9382a229436dd6c7f7be15257ec3eca4b9d96adffe4944e16fcf7155"
+ },
+ {
+  "lane": "repeat",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.3,
+  "sha256": "1906675eb301695212e5cc6c02aa2046b79c559aae2ab8fcc8feca1736f86f95"
+ },
+ {
+  "lane": "repeat",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.4,
+  "sha256": "5eddf771b80f9b92af5a601f182110bf35ef7fc89db0174fae879528095d9c18"
+ },
+ {
+  "lane": "repeat",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.3,
+  "sha256": "3437671e5a5ced4004d9ff25dbb61500d028950a6f836b7465c37bd2b5d59f59"
+ },
+ {
+  "lane": "repeat",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "seconds": 32.4,
+  "sha256": "9b6ae9436d3d331f0f3facbba5bbe87daeaea0e5c476cad99b5bb8f86fc5bcb3"
+ }
+]

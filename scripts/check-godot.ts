@@ -17,6 +17,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
+import { parseArgs } from "../src/cli/args.ts"
+import { runExport } from "../src/cli/commands/pack.ts"
 import { packStyle } from "../src/pipeline/pack.ts"
 import { renderGodotSpriteFrames } from "../src/pipeline/sheet-formats.ts"
 import { exportTileset } from "../src/pipeline/tileset-export.ts"
@@ -118,10 +120,27 @@ await writeFile(path.join(dir, "terrain2-tileset.tres"), terrainTileset.document
 // exercises that branch for a `tiles`-shaped isometric corner set and, below,
 // actually round-trips a peering bit through Godot's own
 // get_terrain_peering_bit() rather than only checking tile/terrain-set counts.
+// Its tiles are drawn as PixelLab draws them: a 2:1 diamond 32 wide and 16 tall
+// at the top of a 32x24 image, with the sides hanging 8px below it.
+const diamond = (shade: number) => {
+  const rgba = Buffer.alloc(32 * 24 * 4, 0)
+  const bottom: number[] = []
+  for (let y = 0; y < 16; y++) {
+    const width = y < 8 ? 4 * (y + 1) : 4 * (16 - y)
+    for (let x = 16 - width / 2; x < 16 + width / 2; x++) {
+      rgba.set([shade, shade, shade, 255], (y * 32 + x) * 4)
+      bottom[x] = Math.max(bottom[x] ?? 0, y)
+    }
+  }
+  bottom.forEach((b, x) => {
+    for (let y = b + 1; y <= b + 8 && y < 24; y++) rgba.set([shade / 2, shade / 2, shade / 2, 255], (y * 32 + x) * 4)
+  })
+  return encodeRgbaPng(32, 24, rgba)
+}
 const isoTiles: LockEntry["outputs"] = []
 for (const [index, tile] of terrainCorners.entries()) {
   const file = path.join(dir, `terrain3-${tile.role}.png`)
-  await writeFile(file, px(8, 60 + index * 30))
+  await writeFile(file, diamond(120 + index * 30))
   isoTiles.push({ path: file, sha256: String(index), role: tile.role })
 }
 const isoTileset = exportTileset(
@@ -137,6 +156,44 @@ const isoTileset = exportTileset(
 await writeFile(path.join(dir, "terrain3-tileset.png"), isoTileset.png)
 await writeFile(path.join(dir, "terrain3-tileset.tres"), isoTileset.document)
 
+// Painting. A tileset that loads can still paint nothing, so these are full
+// 16-tile sets (every mask once) in the four shapes a game meets, painted
+// by Godot's own terrain painting and audited for gaps and seams.
+const fullRules = (ruleType: "corner" | "edge") => ({
+  rule_type: ruleType,
+  arity: 4,
+  terrains: ["grass", "water"],
+  tiles: Object.fromEntries(Array.from({ length: 16 }, (_, mask) => [`tile_${mask}`, mask])),
+})
+const paintable: Array<{ name: string; ruleType: "corner" | "edge"; tileType: string }> = [
+  { name: "paint-square-corner", ruleType: "corner", tileType: "square_topdown" },
+  { name: "paint-square-edge", ruleType: "edge", tileType: "square_topdown" },
+  { name: "paint-iso-corner", ruleType: "corner", tileType: "isometric" },
+  { name: "paint-iso-edge", ruleType: "edge", tileType: "isometric" },
+]
+for (const set of paintable) {
+  const outputs: LockEntry["outputs"] = []
+  for (let index = 0; index < 16; index++) {
+    const file = path.join(dir, `${set.name}-tile-${index}.png`)
+    await writeFile(file, set.tileType === "isometric" ? diamond(40 + index * 12) : px(8, 40 + index * 12))
+    outputs.push({ path: file, sha256: String(index), role: `tile-${index}` })
+  }
+  const exported = exportTileset(
+    { outputs, provider: "pixellab", generator: "tiles", providerMetadata: { pixellab: { tileKind: "tileset", tileRules: fullRules(set.ruleType) } } } as LockEntry,
+    { root: dir, styleId: "ground", assetId: set.name, generator: "tiles", outFile: path.join(dir, `${set.name}.png`), tileType: set.tileType } as ResolvedSpec,
+    { format: "godot", manifestDir: dir, imageName: `${set.name}.png`, columns: 4 },
+  )
+  await writeFile(path.join(dir, `${set.name}.png`), exported.png)
+  await writeFile(path.join(dir, `${set.name}.tres`), exported.document)
+}
+
+// A merged group from the repo's real art: ocean, sand and grass in one tileset.
+const coastDir = path.resolve("website/art/pixellab-0.4.130")
+await runExport(parseArgs([
+  "export", "--manifest", path.join(coastDir, "pixelkiln.manifest.json"), "--lock", path.join(coastDir, "pixelkiln.lock.json"),
+  "--style", "coast", "--format", "godot", "--merge-connected", "--out", path.join(dir, "paint-coast"),
+]))
+
 await writeFile(path.join(dir, "project.godot"), `; Engine configuration file.
 config_version=5
 
@@ -145,6 +202,85 @@ config/name="pixelkiln-check"
 config/features=PackedStringArray("4.4")
 `)
 await writeFile(path.join(dir, "verify.gd"), `extends SceneTree
+
+func paint_rect(x0: int, y0: int, x1: int, y1: int) -> Array:
+	var cells := []
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			cells.append(Vector2i(x, y))
+	return cells
+
+# The terrain a corner or side should carry after the strokes so far: the one
+# the latest stroke gave when it covered every cell that shares that corner or
+# side (a stroke does not move one it only touches, whatever sits beside it).
+func expected_terrain(strokes: Array, shared: Array) -> int:
+	for i in range(strokes.size() - 1, -1, -1):
+		var covers := true
+		for cell in shared:
+			if not strokes[i][0].has_point(cell):
+				covers = false
+				break
+		if covers:
+			return strokes[i][1]
+	return -2
+
+# Paint the way the editor's terrain tool does (ignore_empty_terrains is false
+# there; the script default of true leaves a filled map's edge cells empty):
+# the whole area in terrain 0, then each higher terrain in a rectangle inside the
+# last, then a pocket of the one before the highest inside that. Then count cells
+# with no tile and corners or sides that are not what the strokes say.
+func paint_audit(name: String) -> Dictionary:
+	var tileset := load("res://" + name + ".tres") as TileSet
+	if tileset == null:
+		return {"error": "failed to load"}
+	var layer := TileMapLayer.new()
+	layer.tile_set = tileset
+	root.add_child(layer)
+	var terrains := tileset.get_terrains_count(0)
+	var area := Rect2i(0, 0, 16, 12)
+	var strokes := []
+	strokes.append([area, 0])
+	for t in range(1, terrains):
+		strokes.append([Rect2i(2 * t, 2 * t, 16 - 4 * t, 12 - 4 * t), t])
+	strokes.append([Rect2i(7, 5, 2, 2), terrains - 2])
+	for stroke in strokes:
+		var r: Rect2i = stroke[0]
+		layer.set_cells_terrain_connect(paint_rect(r.position.x, r.position.y, r.end.x, r.end.y), 0, stroke[1], false)
+	# Peering bits by TileSet.CellNeighbor value: corners in mode 1, sides in mode 2,
+	# for a square or a diamond cell. A corner is shared with the cells beside it
+	# (its two neighbouring sides) and the one past it; a side with the cell across.
+	var corners := tileset.get_terrain_set_mode(0) == TileSet.TERRAIN_MODE_MATCH_CORNERS
+	var diamond := tileset.tile_shape == TileSet.TILE_SHAPE_ISOMETRIC
+	var bits: Array = ([1, 5, 9, 13] if diamond else [3, 7, 11, 15]) if corners else ([2, 6, 10, 14] if diamond else [0, 4, 8, 12])
+	var missing := 0
+	var wrong := 0
+	var where := []
+	for y in range(area.size.y):
+		for x in range(area.size.x):
+			var cell := Vector2i(x, y)
+			var data := layer.get_cell_tile_data(cell)
+			if data == null:
+				missing += 1
+				continue
+			for b in bits:
+				var shared := [cell, layer.get_neighbor_cell(cell, b)]
+				if corners:
+					shared.append(layer.get_neighbor_cell(cell, (b + 13) % 16))
+					shared.append(layer.get_neighbor_cell(cell, (b + 1) % 16))
+				var inside := true
+				for c in shared:
+					if not area.has_point(c):
+						inside = false
+				if not inside:
+					continue
+				var want := expected_terrain(strokes, shared)
+				var got := data.get_terrain_peering_bit(b)
+				if got != want:
+					wrong += 1
+					if where.size() < 6:
+						where.append([x, y, b, got, want])
+	layer.queue_free()
+	return {"terrains": terrains, "cells": area.size.x * area.size.y, "missing": missing, "wrong": wrong, "bits": bits.size(), "where": where}
 
 func _init() -> void:
 	var report := {}
@@ -221,9 +357,16 @@ func _init() -> void:
 		# for a non-square tile_shape), proving this isn't just emitting both.
 		report["iso_tileset"] = {
 			"tile_shape": iso_tileset.tile_shape,
+			"tile_layout": iso_tileset.tile_layout,
+			"tile_size": [iso_tileset.tile_size.x, iso_tileset.tile_size.y],
+			"region_size": [iso_source.texture_region_size.x, iso_source.texture_region_size.y],
+			"texture_origin": [iso_tile_data.texture_origin.x, iso_tile_data.texture_origin.y],
 			"bottom_corner": iso_tile_data.get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_CORNER),
 			"square_bottom_right_corner_is_invalid": iso_tile_data.get_terrain_peering_bit(TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER) == -1,
 		}
+	report["painting"] = {}
+	for name in ["paint-square-corner", "paint-square-edge", "paint-iso-corner", "paint-iso-edge", "paint-coast"]:
+		report["painting"][name] = paint_audit(name)
 	print("PIXELKILN_REPORT " + JSON.stringify(report))
 	quit(0)
 `)
@@ -260,10 +403,22 @@ try {
   check(report.terrain_tileset?.peering_bit === 0, `terrain generator's corner metadata reaches the tile's terrain peering bit (${report.terrain_tileset?.peering_bit})`)
   check(report.terrain_tileset?.tile_shape === 0, `terrain generator's TileSet stays square, not isometric (${report.terrain_tileset?.tile_shape})`)
   check(report.iso_tileset?.tile_shape === 1, `an isometric tiles-generator TileSet has tile_shape 1 (${report.iso_tileset?.tile_shape})`)
+  check(report.iso_tileset?.tile_layout === 5, `an isometric TileSet is laid out as a diamond, not staggered (${report.iso_tileset?.tile_layout})`)
+  check(JSON.stringify(report.iso_tileset?.tile_size) === "[32,16]", `its cell is the 32x16 diamond, not the 32x24 image (${JSON.stringify(report.iso_tileset?.tile_size)})`)
+  check(JSON.stringify(report.iso_tileset?.region_size) === "[32,24]", `its atlas still cuts the whole 32x24 image (${JSON.stringify(report.iso_tileset?.region_size)})`)
+  check(JSON.stringify(report.iso_tileset?.texture_origin) === "[0,-4]", `each image is moved so its diamond sits on the cell (${JSON.stringify(report.iso_tileset?.texture_origin)})`)
   check(report.iso_tileset?.bottom_corner === 0, `isometric tileset's diamond-point peering bit round-trips through Godot (${report.iso_tileset?.bottom_corner})`)
   check(report.iso_tileset?.square_bottom_right_corner_is_invalid === true, "isometric tileset does not also carry the square corner name Godot would reject")
+  for (const [name, terrains] of [["paint-square-corner", 2], ["paint-square-edge", 2], ["paint-iso-corner", 2], ["paint-iso-edge", 2], ["paint-coast", 3]] as Array<[string, number]>) {
+    const result = report.painting?.[name]
+    check(
+      result && result.missing === 0 && result.wrong === 0 && result.terrains === terrains,
+      `${name} paints ${terrains} terrains with a clean border (${JSON.stringify(result)})`,
+    )
+  }
 } finally {
-  await rm(dir, { recursive: true, force: true })
+  if (process.env.KEEP_GODOT_DIR) console.log(`kept ${dir}`)
+  else await rm(dir, { recursive: true, force: true })
 }
 if (failures.length) {
   console.error(`\ngodot check failed: ${failures.length} check(s)`)

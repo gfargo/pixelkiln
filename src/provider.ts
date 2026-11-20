@@ -209,6 +209,8 @@ export type JobState =
       metadata?: ProviderMetadata
       /** What the provider actually billed, read on completion; null when unknown. */
       billed?: BilledAmount | null
+      /** A side effect worth a line in the log, such as a record changed upstream. */
+      note?: string
     }
   | { status: "failed"; error: string }
 

@@ -1,0 +1,104 @@
+{
+  "version": 2,
+  "entries": {
+    "rig/mage-swing": {
+      "styleId": "rig",
+      "assetId": "mage-swing",
+      "specHash": "ced5a2e0e62bf22ea641f1554ed2d0a4732aa24d7466ffa962a37fe23fd96c8f",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "swinging the staff overhead",
+      "width": 64,
+      "height": 64,
+      "revision": {
+        "mode": "animate-skeleton",
+        "sourceAssetId": "mage",
+        "sourceSha256": "8a6f5379772f0bea12deaf048dae8a33070668dcf9bdb8277a7e57940f4753f8",
+        "frames": 8,
+        "direction": "south",
+        "keypointsSha256": "de0c32149b4903072ce9223a52d1b0992bb19ae33aade8ad8c37f274813910fe",
+        "description": "wizard in a purple robe and a tall pointed blue hat, holding a long dark staff with a purple crystal in his right hand"
+      },
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "98a0321f-fff0-4572-8394-ce2778813658",
+      "submissionComplete": true,
+      "reviewObjectId": "98a0321f-fff0-4572-8394-ce2778813658",
+      "objectId": "98a0321f-fff0-4572-8394-ce2778813658",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "out/mage-swing-frame-00.png",
+          "sha256": "174ac5ea5bedbb7f888dcd3aaaaebdb0b2f8afb08ce3588c21d949e2ec050340",
+          "role": "frame-00",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/mage-swing-frame-01.png",
+          "sha256": "78077b515771cf4dbf356dc6eebfa072bf69c88d0f02a427b8c343214e6645d9",
+          "role": "frame-01",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/mage-swing-frame-02.png",
+          "sha256": "673e6d9d9458dd12e64409afb5258179fd4b6f9d301123e513aa9bfbb1ee6cf2",
+          "role": "frame-02",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/mage-swing-frame-03.png",
+          "sha256": "57251bed59ad70146b01f3105a075c5197ef2fc0ccc5a017a09991257fd456c2",
+          "role": "frame-03",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/mage-swing-frame-04.png",
+          "sha256": "eede27d4f8fb75cb2c682da8667383b9c7eb6b6c11bc979bca40e1bdbba0b945",
+          "role": "frame-04",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/mage-swing-frame-05.png",
+          "sha256": "0ba88cfbed7f0a7979dc9203015d4e1601bb2084b24490996b6696fd16d15d3e",
+          "role": "frame-05",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/mage-swing-frame-06.png",
+          "sha256": "46c9eb68c69fa6d0e97463279a4ffcf7b423a361cbfb53dabd35800b13c70b01",
+          "role": "frame-06",
+          "mediaType": "image/png"
+        },
+        {
+          "path": "out/mage-swing-frame-07.png",
+          "sha256": "cee541336245f17d6b31f1748e3904126b37080b50351eb3f98e01dba402578b",
+          "role": "frame-07",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "pixellab": {
+          "frameSet": {
+            "fps": 8,
+            "count": 8
+          }
+        }
+      },
+      "submittedAt": "2026-11-20T02:16:45.223Z",
+      "downloadedAt": "2026-11-20T02:19:04.622Z",
+      "cost": 3,
+      "costUnit": "generations",
+      "billed": {
+        "amount": 3,
+        "unit": "generations"
+      },
+      "provider": "pixellab"
+    }
+  }
+}

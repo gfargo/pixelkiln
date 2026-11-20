@@ -188,24 +188,76 @@ describe("exportTileset", () => {
     expect(result.document).toMatch(/tile_shape = 1/)
   })
 
-  it("rejects edge/side adjacency on an isometric or oblique tile rather than guessing the diagonal", async () => {
-    const { entry, spec } = await setup("isometric")
-    entry.providerMetadata.pixellab!.tileRules = {
+  it("maps edge masks onto an isometric tile's diamond sides, and still refuses an oblique one", async () => {
+    const edgeRules = {
       rule_type: "edge", arity: 4, terrains: ["path", "grass"], tiles: { tile_0: 0, tile_1: 1, tile_2: 8, tile_3: 15 },
     }
-    expect(() => exportTileset(entry, spec, {
+    const { entry, spec } = await setup("isometric")
+    entry.providerMetadata.pixellab!.tileRules = edgeRules
+    const iso = exportTileset(entry, spec, { format: "godot", manifestDir: dir, imageName: "terrain.png", columns: 2 })
+    // Mask 1 is the north edge, which is the diamond's top-right side; 8 the west edge, top-left.
+    expect(iso.document).toMatch(/1:0\/0\/terrains_peering_bit\/top_right_side = 0/)
+    expect(iso.document).toMatch(/0:1\/0\/terrains_peering_bit\/top_left_side = 0/)
+    expect(iso.document).not.toMatch(/_corner|peering_bit\/(top|right|bottom|left)_side/)
+    expect(iso.document).toMatch(/terrain_set_0\/mode = 2/)
+    // Oblique has no verified mapping, so it is refused.
+    const { entry: obliqueEntry, spec: obliqueSpec } = await setup("oblique")
+    obliqueEntry.providerMetadata.pixellab!.tileRules = edgeRules
+    expect(() => exportTileset(obliqueEntry, obliqueSpec, {
       format: "godot", manifestDir: dir, imageName: "terrain.png",
-    })).toThrow(/edge\/side adjacency.*isometric.*generic.*tiled/)
-    // Tiled has no such shape dependency (its wangid layout doesn't change with tile geometry).
-    expect(() => exportTileset(entry, spec, {
+    })).toThrow(/edge\/side adjacency.*oblique.*generic.*tiled/)
+    expect(() => exportTileset(obliqueEntry, obliqueSpec, {
       format: "tiled", manifestDir: dir, imageName: "terrain.png",
     })).not.toThrow()
     // A square tile keeps working with the same edge rules.
     const { entry: squareEntry, spec: squareSpec } = await setup("square_topdown")
-    squareEntry.providerMetadata.pixellab!.tileRules = entry.providerMetadata.pixellab!.tileRules
+    squareEntry.providerMetadata.pixellab!.tileRules = edgeRules
     expect(() => exportTileset(squareEntry, squareSpec, {
       format: "godot", manifestDir: dir, imageName: "terrain.png",
     })).not.toThrow()
+  })
+
+  it("finds a terrain tile's corners by its role, not by the number the role ends in", async () => {
+    // PixelLab names a tile `tile-<n>-wang-<k>`: <k> is its place in a sixteen-tile code, not in the list.
+    const terrainTiles = [
+      { role: "tile-00-wang-3", corners: { NW: "water", NE: "water", SW: "grass", SE: "grass" } },
+      { role: "tile-01-wang-0", corners: { NW: "water", NE: "water", SW: "water", SE: "water" } },
+      { role: "tile-02-wang-2", corners: { NW: "water", NE: "water", SW: "grass", SE: "water" } },
+      { role: "tile-03-wang-1", corners: { NW: "water", NE: "water", SW: "water", SE: "grass" } },
+    ]
+    const outputs: LockEntry["outputs"] = []
+    for (const [index, tile] of terrainTiles.entries()) {
+      const pixels = Buffer.alloc(4 * 4 * 4, index * 40)
+      for (let i = 3; i < pixels.length; i += 4) pixels[i] = 255
+      await writeFile(path.join(dir, `terrain-${tile.role}.png`), encodeRgbaPng(4, 4, pixels))
+      outputs.push({ path: path.join(dir, `terrain-${tile.role}.png`), sha256: String(index), role: tile.role })
+    }
+    const entry = {
+      outputs, provider: "pixellab", generator: "terrain",
+      providerMetadata: { pixellab: { terrainTypes: ["grass", "water"], terrainTiles } },
+    } as LockEntry
+    const spec = { root: dir, styleId: "ground", assetId: "terrain", generator: "terrain", outFile: path.join(dir, "terrain.png"), tileType: "square_topdown" } as ResolvedSpec
+    const result = exportTileset(entry, spec, { format: "generic", manifestDir: dir, imageName: "terrain.png", columns: 2 })
+    // A set bit is grass. Every tile's mask has to be the one its own corners give.
+    const byRole = Object.fromEntries(result.generic.tiles.map((tile) => [tile.role, tile.bitmask]))
+    expect(byRole).toEqual({
+      "tile-00-wang-3": 0b0011, // SW, SE grass
+      "tile-01-wang-0": 0b0000,
+      "tile-02-wang-2": 0b0010, // SW grass
+      "tile-03-wang-1": 0b0001, // SE grass
+    })
+    // And the engine files follow: the all-water tile (atlas 1:0) carries no grass corner.
+    const godot = exportTileset(entry, spec, { format: "godot", manifestDir: dir, imageName: "terrain.png", columns: 2 })
+    expect(godot.document).toMatch(/1:0\/0\/terrains_peering_bit\/bottom_right_corner = 1/)
+    expect(godot.document).not.toMatch(/1:0\/0\/terrains_peering_bit\/\w+ = 0/)
+    expect(result.warnings).toEqual([])
+
+    // A role the lock's terrainTiles does not list is taken by position, and the export says so.
+    const listed = terrainTiles.map((tile, index) => (index === 2 ? { ...tile, role: "tile-02-renamed" } : tile))
+    const renamed = { ...entry, providerMetadata: { pixellab: { terrainTypes: ["grass", "water"], terrainTiles: listed } } }
+    const guessed = exportTileset(renamed as LockEntry, spec, { format: "godot", manifestDir: dir, imageName: "terrain.png", columns: 2 })
+    expect(guessed.warnings).toHaveLength(1)
+    expect(guessed.warnings[0]).toMatch(/^ground\/terrain: 1 tile\(s\) have a role that is not in the lock's terrainTiles \(tile-02-wang-2\)/)
   })
 
   it("normalizes the terrain generator's corner metadata into a generic Wang atlas", async () => {

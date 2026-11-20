@@ -105,5 +105,5 @@ describe("where the kinds are thrown", () => {
     const project = await execFileAsync(tsx, [cli, "plan"], { cwd: dir }).catch((e) => e)
     expect(project.code).toBe(EXIT_CODES.project)
     expect(project.stderr).toContain("error: No manifest at")
-  }, 30_000)
+  })
 })

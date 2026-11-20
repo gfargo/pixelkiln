@@ -67,7 +67,7 @@ not merely a label edit.
 | `revision` | object | Controlled dependency on another asset: `image-to-image`, `inpaint`, or `outpaint`; on PixelLab also `reduce-colors`, `correct-pixelart`, `remove-background`, `normal-map`, the animate modes (`animate`, `animate-pixminimax`, `animate-skeleton`), `interpolate`, and `edit-animation`. `engine: "pro-flash"` selects PixelLab's Pro Flash tier for `image-to-image`/`inpaint`. See [controlled revisions](REVISIONS.md). |
 | `state` | object | `character` styles: a pose or outfit of another character asset. See [Characters](./CHARACTERS.md). |
 | `animation` | object | `character` styles: a loop of another character asset in one direction. `directions` (a list, instead of `direction`) declares the loop for several directions at once and fills the unnamed flips with mirrors; see [One loop, several directions](./CHARACTERS.md#one-loop-several-directions). `mode: "skeleton-v3"` with no `template` animates the asset's `prompt` as a sentence (3–15 `frames`, default 8; a v3 base); see [Loops from a sentence](./CHARACTERS.md#loops-from-a-sentence). `motionFrom` (an asset id) makes a sentence loop follow another direction's loop and share its motion; `directions` writes it for you. |
-| `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. See [Portraits](./CHARACTERS.md#portraits). |
+| `portrait` | object | `character` styles: a bust of a base or state's south sprite, `{ "of": "<asset>", "size": 64 }`; `size` is 16, 32, 48, 64 (default), 128, or 160. `attach: false` leaves the parent's PixelLab record without the portrait. A portrait takes no `seed`: sent one, PixelLab ignores the character, so `portrait.seed` is refused and the style's `seed` is not sent. See [Portraits](./CHARACTERS.md#portraits). |
 | `outfit` | object | `character` styles: an existing loop's frames re-clothed from an outfit image, `{ "of": "<loop asset>", "reference": "<image>" }`, with optional `additionalInstructions`. See [Outfit transfer](./CHARACTERS.md#outfit-transfer). |
 | `mirror` | string | Another asset of the same style flipped left to right, made locally at no cost. See [Mirrors](./CHARACTERS.md#mirrors). |
 | `initImage` | string | `pixflux`, `map` and `isometricTile` styles: a PNG to start the drawing from, relative to the manifest. See [Starting from an image](#starting-from-an-image). |
@@ -485,7 +485,14 @@ The transform is one of:
 costs nothing in any unit. The plan reports a derived asset `stale`, free to fix,
 when its source's recorded output, its `file`, the transform, or its parameters
 change. An edit by hand makes it `orphaned`, like any generated file. The lock entry
-records the input's hash under `derive`.
+records the input's hash under `derive`. A run that only derives needs no
+provider key.
+
+In a style with a `quality` profile, a derived asset waits until its source's
+refined output is approved; `plan` and `refine` show it as blocked until then,
+and `refine` counts it as blocked, not failed (it still exits 1, since the style
+cannot be packed yet). Once approved, `gen` derives it, and it is refined and
+approved like any other asset in the style.
 
 ### `external`: built elsewhere, tracked here
 
@@ -624,8 +631,9 @@ generator's usual 1 generation.
 | `driftThreshold` | number ≥ 0 | `animate`/`animate-pixminimax` only. Colour de-flicker sensitivity: frames drifting from the first beyond it are corrected toward it; `0` corrects every frame. Omit for PixelLab's default. |
 | `subjectDescription` | string ≤ 300 | `animate-pixminimax` only. What the parent shows, one noun phrase; PixelLab reads it off the image when omitted and can decline some images. |
 | `initialPose` | string ≤ 300 | `animate-pixminimax` only. The pose the parent is in; read off the image when omitted. |
-| `keypointsFile` | string, required for `animate-skeleton` | Manifest-relative JSON file (`src/skeleton.ts`'s `SkeletonSetSchema`): the pose the source is already in, plus 3–15 per-frame poses. See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation). |
-| `skeletonTemplate` | string | `animate-skeleton` only. Body a joint's missing `depth` is taken from: `mannequin` (default), `bear`, `cat`, `dog`, `horse`, or `lion`. |
+| `keypointsFile` | string, required for `animate-skeleton` | Manifest-relative JSON file (`src/skeleton.ts`'s `SkeletonSetSchema`): the pose the source is already in, plus 3–15 per-frame poses, or, with a custom `rig` in the file (`estimate-skeleton --custom`), 1–15 poses that name the rig's joints. See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation). |
+| `writeMotionFrames` | integer 3–15 | `animate-skeleton` only. PixelLab writes this many frames of motion from the asset's `prompt`, starting from the file's `firstFrameKeypoints`, instead of the file's own `frames` (which may then be empty). Works with the 18 joints or a custom rig. |
+| `skeletonTemplate` | string | `animate-skeleton` only. Body a joint's missing `depth` is taken from: `mannequin` (default), `bear`, `cat`, `dog`, `horse`, or `lion`. With a custom rig and no template, `dog` is used for a rig whose `kind` is `four-legged` and `mannequin` otherwise. |
 | `description` | string | `animate-skeleton`: what the subject *looks like* (colours, clothing, held items) — the asset's own `prompt` is sent as the motion's short label instead. `remove-background`: a hint naming the foreground. Rejected on other modes. |
 | `engine` | enum | `image-to-image`/`inpaint` only. `pro-flash` draws the edit with PixelLab's Pro Flash edit or inpaint endpoint instead of the default Pro one: 5–9 generations instead of 10–25, 32 to 256px per side in multiples of 4, no `strength`. Omit for the default. |
 

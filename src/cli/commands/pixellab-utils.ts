@@ -6,6 +6,26 @@ import { loadEnvFiles } from "../../env.ts"
 import { UsageError } from "../../errors.ts"
 import { mcpClientFromEnv } from "../../pixellab-mcp.ts"
 import {
+  checkCodexRecipe,
+  CODEX_CAMERAS,
+    formatCodexEffects,
+  listCodexEffects,
+  loadCodex,
+  makeCodexVfx,
+  planCodex,
+  readCodexRecipe,
+  type CodexRecipe,
+} from "../../codex-vfx.ts"
+import {
+  checkPixelfxRecipe,
+  formatPixelfxEffects,
+  listPixelfxEffects,
+  loadPixelfx,
+  makePixelfxVfx,
+  readPixelfxRecipe,
+  type PixelfxRecipe,
+} from "../../pixelfx-vfx.ts"
+import {
   describeVfx,
   isVfxReference,
   makeVfx,
@@ -213,7 +233,87 @@ export async function runNormalMap(args: Args): Promise<void> {
   log(`  ${res.width}x${res.height}${res.frames > 1 ? `, ${res.frames} frames` : ""}; wrote ${res.out}`)
 }
 
+const VFX_LIBS = ["pixellab", "pixelfx", "codex"] as const
+
+/** A recipe file for one of the local sources: a record says which by itself; a bare recipe is pixelfx's unless `--lib codex`. */
+async function readLocalRecipe(
+  file: string,
+  lib: string | undefined,
+): Promise<{ lib: "pixelfx"; read: NonNullable<Awaited<ReturnType<typeof readPixelfxRecipe>>> } | { lib: "codex"; read: NonNullable<Awaited<ReturnType<typeof readCodexRecipe>>> } | null> {
+  const codex = await readCodexRecipe(file, { bare: lib === "codex" })
+  if (codex) {
+    if (lib === "pixelfx") throw new UsageError(`${file} is a record from pixel-vfx-codex; drop --lib pixelfx, or use --lib codex`)
+    return { lib: "codex", read: codex }
+  }
+  if (lib === "codex") return null
+  const pixelfx = await readPixelfxRecipe(file)
+  if (pixelfx) return { lib: "pixelfx", read: pixelfx }
+  return null
+}
+
+/** Flags that only the pixelfx source takes. */
+function pixelfxOnly(args: Args) {
+  return [["--seed", args.seed], ["--palette", args.palette.length ? args.palette : undefined]] as const
+}
+
+/** `name=value` flags as numbers, for `--param` and `--tune`. */
+function numberPairs(flag: string, pairs: string[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const pair of pairs) {
+    const [key, raw, ...rest] = pair.split("=")
+    const value = Number(raw)
+    if (!key || raw === undefined || rest.length || raw.trim() === "" || !Number.isFinite(value)) {
+      throw new UsageError(`${flag} takes name=number, got "${pair}"`)
+    }
+    out[key] = value
+  }
+  return out
+}
+
 export async function runVfx(args: Args): Promise<void> {
+  if (args.lib !== undefined && !(VFX_LIBS as readonly string[]).includes(args.lib)) {
+    throw new UsageError(`--lib must be ${VFX_LIBS.join(", ")}, got "${args.lib}"`)
+  }
+  const pixelfxOnly_ = pixelfxOnly(args)
+  const codexOnly = [
+    ["--camera", args.camera],
+    ["--hue", args.hue],
+    ["--param", args.param.length ? args.param : undefined],
+    ["--tune", args.tune.length ? args.tune : undefined],
+  ] as const
+  const listsLocal = args.subcommand === "effects" || ((args.lib === "pixelfx" || args.lib === "codex") && args.subcommand === "presets")
+  if (listsLocal) {
+    if (args.lib === "pixellab") throw new UsageError("vfx effects lists a local library's effects; PixelLab's lists are vfx presets and vfx parts")
+    if (args.lib === "codex") {
+      const lib = loadCodex()
+      if (args.json) {
+        log(JSON.stringify({ version: 1, library: { name: "pixel-vfx-codex", version: lib.version, engineSha256: lib.engineSha256 }, effects: listCodexEffects(lib) }, null, 2))
+        return
+      }
+      log(formatCodexEffects(lib))
+      return
+    }
+    const lib = await loadPixelfx()
+    if (args.json) {
+      log(JSON.stringify({ version: 1, library: { name: "pixelfx", version: lib.version }, categories: lib.categories, effects: listPixelfxEffects(lib) }, null, 2))
+      return
+    }
+    log(formatPixelfxEffects(lib))
+    return
+  }
+  if (args.subcommand === "parts" && (args.lib === "pixelfx" || args.lib === "codex")) {
+    throw new UsageError(`${args.lib} has no parts: its effects are whole; list them with vfx effects --lib ${args.lib}`)
+  }
+  if (args.subcommand === "make") {
+    // A record passed back as --recipe needs no --lib: the file says what made it.
+    const local = args.recipe && args.lib !== "pixellab" ? await readLocalRecipe(args.recipe, args.lib) : null
+    const source = local?.lib ?? (args.lib === "pixelfx" || args.lib === "codex" ? args.lib : null)
+    if (source === "pixelfx") return runPixelfxVfx(args, local?.lib === "pixelfx" ? local.read : null)
+    if (source === "codex") return runCodexVfx(args, local?.lib === "codex" ? local.read : null)
+  }
+  for (const [flag, value] of [...pixelfxOnly_, ...codexOnly, ["--margin", args.margin]] as const) {
+    if (value !== undefined) throw new UsageError(`vfx takes ${flag} only with --lib pixelfx or --lib codex`)
+  }
   if (args.subcommand === "presets" || args.subcommand === "parts") {
     if (args.dryRun) {
       log(`  would list PixelLab's VFX ${args.subcommand}; nothing sent`)
@@ -274,6 +374,135 @@ export async function runVfx(args: Args): Promise<void> {
     if (file) log(`  wrote ${file}`)
   }
   if (res.editUrl) log(`  tweak it with sliders: ${res.editUrl} (then: pixelkiln vfx --effect ${res.effectId} --out ${args.out} --force)`)
+}
+
+/** `vfx --lib pixelfx`: an effect from the pixelfx library, rendered on this machine. */
+async function runPixelfxVfx(args: Args, fromFile: Awaited<ReturnType<typeof readPixelfxRecipe>>): Promise<void> {
+  if (!args.out) throw new UsageError("vfx needs --out <base>: <base>.png, .json, and .vfx.json are written")
+  const pixellabOnly = [
+    ["--preset", args.preset],
+    ["--part", args.parts.length ? args.parts : undefined],
+    ["--sprite", args.sprite],
+    ["--description", args.description],
+    ["--artist", args.artist],
+    ["--sprite-frames", args.spriteFrames],
+    ["--sprite-fps", args.spriteFps],
+    ["--game-pack", args.gamePack || undefined],
+  ] as const
+  for (const [flag, value] of pixellabOnly) {
+    if (value !== undefined) throw new UsageError(`${flag} is for PixelLab's VFX tools; a pixelfx effect takes --effect, --palette, --seed, --fps and --margin`)
+  }
+  for (const [flag, value] of [["--camera", args.camera], ["--hue", args.hue], ["--param", args.param.length ? args.param : undefined], ["--tune", args.tune.length ? args.tune : undefined]] as const) {
+    if (value !== undefined) throw new UsageError(`${flag} is for --lib codex; a pixelfx effect takes --effect, --palette, --seed, --fps and --margin`)
+  }
+  if (args.recipe && !fromFile) throw new UsageError(`${args.recipe} is not a pixelfx recipe: it names no pixelfx effect`)
+  if (args.recipe && args.effect) throw new UsageError("vfx takes one of --effect or --recipe, not both")
+  const effect = fromFile?.recipe.effect ?? args.effect
+  if (!effect) throw new UsageError("vfx --lib pixelfx needs --effect <category>/<name> (vfx effects lists them) or --recipe <file>")
+  // Flags override what a recipe file recorded, one option at a time.
+  const options = {
+    ...(fromFile?.recipe.options ?? {}),
+    ...(args.palette.length ? { palette: args.palette } : {}),
+    ...(args.seed !== undefined ? { seed: args.seed } : {}),
+  }
+  const recipe: PixelfxRecipe = {
+    effect,
+    fps: args.fps ?? fromFile?.recipe.fps,
+    margin: args.margin ?? fromFile?.recipe.margin,
+    ...(Object.keys(options).length ? { options } : {}),
+  }
+  const lib = await loadPixelfx()
+  const info = checkPixelfxRecipe(lib, recipe)
+  const paths = vfxOutputPaths(args.out)
+  const fps = recipe.fps ?? info.fps
+  const margin = recipe.margin ?? 0
+  const frames = Math.max(1, Math.round(info.duration * fps) + (info.loop ? 0 : 1))
+  log(
+    `  vfx "${args.name ?? info.name}" from pixelfx ${lib.version} ${effect}${args.recipe ? ` (recipe ${args.recipe})` : ""}` +
+      ` → ${paths.sheet} (+ .json, .vfx.json)`,
+  )
+  log(`  ${info.width + margin * 2}x${info.height + margin * 2}, ${frames} frames @ ${fps} fps, ${info.loop ? "loops" : "plays once"}`)
+  log("  cost: free; rendered on this machine, nothing sent")
+  if (fromFile?.libraryVersion && fromFile.libraryVersion !== lib.version) {
+    log(`  note: the record was rendered with pixelfx ${fromFile.libraryVersion}; ${lib.version} may draw it differently`)
+  }
+  if (args.dryRun) {
+    log("  dry run: nothing written")
+    return
+  }
+  const res = await makePixelfxVfx(lib, { ...recipe, out: args.out, name: args.name, force: args.force })
+  if (args.json) {
+    log(JSON.stringify({ version: 1, ...res }, null, 2))
+    return
+  }
+  for (const file of [res.paths.sheet, res.paths.atlas, res.paths.provenance]) log(`  wrote ${file}`)
+  log(`  render it again: pixelkiln vfx --recipe ${res.paths.provenance} --out <base>`)
+}
+
+/** `vfx --lib codex`: an effect from pixel-vfx-codex, rendered on this machine. */
+async function runCodexVfx(args: Args, fromFile: Awaited<ReturnType<typeof readCodexRecipe>>): Promise<void> {
+  if (!args.out) throw new UsageError("vfx needs --out <base>: <base>.png, .json, and .vfx.json are written")
+  const refused = [
+    ["--preset", args.preset],
+    ["--part", args.parts.length ? args.parts : undefined],
+    ["--sprite", args.sprite],
+    ["--description", args.description],
+    ["--artist", args.artist],
+    ["--sprite-frames", args.spriteFrames],
+    ["--sprite-fps", args.spriteFps],
+    ["--game-pack", args.gamePack || undefined],
+  ] as const
+  for (const [flag, value] of refused) {
+    if (value !== undefined) throw new UsageError(`${flag} is for PixelLab's VFX tools; a codex effect takes --effect, --camera, --fps, --margin, --hue, --param and --tune`)
+  }
+  for (const [flag, value] of pixelfxOnly(args)) {
+    if (value !== undefined) throw new UsageError(`${flag} is for --lib pixelfx: codex effects take no seed or palette (they are pure functions of time; recolour with --hue)`)
+  }
+  if (args.recipe && !fromFile) throw new UsageError(`${args.recipe} is not a codex recipe: it names no pixel-vfx-codex effect`)
+  if (args.recipe && args.effect) throw new UsageError("vfx takes one of --effect or --recipe, not both")
+  const effect = fromFile?.recipe.effect ?? args.effect
+  if (!effect) throw new UsageError("vfx --lib codex needs --effect <id> (vfx effects --lib codex lists them) or --recipe <file>")
+  // Flags override what a recipe file recorded, one setting at a time.
+  const params = { ...(fromFile?.recipe.params ?? {}), ...numberPairs("--param", args.param) }
+  const tune = { ...(fromFile?.recipe.tune ?? {}), ...numberPairs("--tune", args.tune) }
+  const camera = (args.camera ?? fromFile?.recipe.camera) as CodexRecipe["camera"]
+  if (args.camera !== undefined && !(CODEX_CAMERAS as readonly string[]).includes(args.camera)) {
+    throw new UsageError(`--camera must be ${CODEX_CAMERAS.join(", ")}, got "${args.camera}"`)
+  }
+  const recipe: CodexRecipe = {
+    effect,
+    ...(camera ? { camera } : {}),
+    ...((args.fps ?? fromFile?.recipe.fps) !== undefined ? { fps: args.fps ?? fromFile?.recipe.fps } : {}),
+    ...((args.margin ?? fromFile?.recipe.margin) !== undefined ? { margin: args.margin ?? fromFile?.recipe.margin } : {}),
+    ...((args.hue ?? fromFile?.recipe.hue) !== undefined ? { hue: args.hue ?? fromFile?.recipe.hue } : {}),
+    ...(Object.keys(params).length ? { params } : {}),
+    ...(Object.keys(tune).length ? { tune } : {}),
+  }
+  const lib = loadCodex()
+  const info = checkCodexRecipe(lib, recipe)
+  const plan = planCodex(lib, recipe)
+  const paths = vfxOutputPaths(args.out)
+  log(
+    `  vfx "${args.name ?? info.en}" from pixel-vfx-codex ${lib.version} ${effect}${args.recipe ? ` (recipe ${args.recipe})` : ""}` +
+      ` → ${paths.sheet} (+ .json, .vfx.json)`,
+  )
+  log(`  ${plan.camera} camera, about ${plan.frames} frames @ ${plan.fps} fps over ${plan.seconds.toFixed(1)} s, cropped to the effect; loops`)
+  log("  cost: free; rendered on this machine, nothing sent")
+  if (fromFile?.engineSha256 && fromFile.engineSha256 !== lib.engineSha256) {
+    log(`  note: the record was rendered with engine ${fromFile.engineSha256}; this install is ${lib.engineSha256}, so it may draw the effect differently`)
+  }
+  if (args.dryRun) {
+    log("  dry run: nothing written")
+    return
+  }
+  const res = await makeCodexVfx(lib, { ...recipe, out: args.out, name: args.name, force: args.force })
+  if (args.json) {
+    log(JSON.stringify({ version: 1, ...res }, null, 2))
+    return
+  }
+  log(`  ${res.width}x${res.height}, ${res.frames} frames @ ${res.fps} fps`)
+  for (const file of [res.paths.sheet, res.paths.atlas, res.paths.provenance]) log(`  wrote ${file}`)
+  log(`  render it again: pixelkiln vfx --recipe ${res.paths.provenance} --out <base>`)
 }
 
 /** `vfx --description`: PixelLab's paid VFX artist (`POST /vfx`) instead of the free workbench. */

@@ -41,7 +41,7 @@ export function WorkflowSection() {
             <article>
               <div className="step-glyph"><Image src="/sprites/workflow/ship.png" alt="" width={64} height={64} /></div>
               <h3>Ship</h3>
-              <p>Build atlases, Aseprite sheet JSON, Godot SpriteFrames, and tilesets for Tiled and Godot. A style with a palette rule never ships a color outside it. Quality-profile styles stay blocked until approval is current.</p>
+              <p>Build atlases, Aseprite sheet JSON, Godot SpriteFrames, and tilesets for Tiled, Godot and LDtk. A style with a palette rule never ships a color outside it. Quality-profile styles stay blocked until approval is current.</p>
               <small className="step-io">Writes sheets and exports with provenance.</small>
               <code>pixelkiln pack</code>
             </article>

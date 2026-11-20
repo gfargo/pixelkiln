@@ -638,6 +638,18 @@ export const CharacterPortraitSchema = z
     /** The base or state to portray, in the same style. */
     of: z.string().min(1),
     size: CharacterPortraitSizeSchema.default(64),
+    /**
+     * Refused when set. Given a seed, PixelLab ignores the character image and
+     * draws a generic face, so a portrait is never sent one; the key stays so
+     * the refusal can say why instead of "unrecognized key".
+     */
+    seed: z.number().int().min(0).optional(),
+    /**
+     * Attach the drawn portrait to the parent's PixelLab character record, as
+     * PixelLab's own app shows it (the default). `false` leaves that record as
+     * it is, for a character used elsewhere. Not part of the portrait's identity.
+     */
+    attach: z.boolean().optional(),
   })
   .strict()
 export type CharacterPortrait = z.infer<typeof CharacterPortraitSchema>
@@ -1122,6 +1134,8 @@ export interface ResolvedCharacter {
   }
   portrait?: {
     size: CharacterPortraitSize
+    /** Attach the result to the parent's character record. */
+    attach: boolean
   }
   /** For an outfit: the reference image to transfer, and any extra guidance. */
   outfit?: {
@@ -1279,6 +1293,13 @@ export const RevisionSchema = z
      * committed files rather than inline pixel data.
      */
     keypointsFile: z.string().min(1).optional(),
+    /**
+     * `animate-skeleton` only: have PixelLab write this many frames (3-15) of
+     * motion from the asset's prompt, starting from the keypoints file's
+     * `firstFrameKeypoints`, instead of posing every frame in the file. Works
+     * with the 18 joints or a custom rig; the file's `frames` may then be empty.
+     */
+    writeMotionFrames: z.number().int().min(3).max(15).optional(),
     /**
      * `animate-skeleton` only: the body a joint's missing `depth` is taken
      * from. PixelLab's default is `mannequin`; free string like `character`'s
@@ -1489,7 +1510,7 @@ export const RevisionSchema = z
         path: ["description"],
       })
     }
-    for (const field of ["keypointsFile", "skeletonTemplate"] as const) {
+    for (const field of ["keypointsFile", "skeletonTemplate", "writeMotionFrames"] as const) {
       if (revision[field] !== undefined && revision.mode !== "animate-skeleton") {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -1578,6 +1599,8 @@ export interface ResolvedRevision {
   /** Null keeps planning possible before the keypoints file is authored. */
   keypointsSha256?: string | null
   skeleton?: SkeletonSet | null
+  /** PixelLab writes this many frames of motion instead of the keypoints file's `frames`. */
+  writeMotionFrames?: number
   skeletonTemplate?: string
   description?: string
   removalTask?: "simple" | "complex"
@@ -2735,9 +2758,9 @@ export const LockEntrySchema = z.object({
       paletteImageSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       dithering: RevisionDitheringSchema.optional(),
       ditheringStrength: z.number().min(0).max(10).optional(),
-      // 4-40 for animate/animate-pixminimax; animate-skeleton's own 3-15
-      // range extends the floor down to 3, hence min(3) here rather than 4.
-      frames: z.number().int().min(3).max(40).optional(),
+      // 4-40 for animate/animate-pixminimax; animate-skeleton takes 3-15, and
+      // 1-15 with a custom rig, hence min(1) here.
+      frames: z.number().int().min(1).max(40).optional(),
       fps: z.number().int().min(1).max(60).optional(),
       lastFrameSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       direction: CharacterDirectionSchema.optional(),

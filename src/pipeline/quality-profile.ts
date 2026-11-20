@@ -43,6 +43,8 @@ export interface RefineQualityProfilesOptions {
 export interface RefineQualityProfilesResult {
   processed: number
   skipped: number
+  /** Waiting on something else (output not made yet, a source not approved); not refined, not a failure. */
+  blocked: number
   failed: number
   items: QualityProfileInspection[]
 }
@@ -64,12 +66,19 @@ async function qualitySource(spec: ResolvedSpec, lock: Lock): Promise<QualitySou
   }
 
   const entry = lock.entries[lockKey(spec.styleId, spec.assetId)]
-  if (!entry) return { items: null, reason: "raw provider output is not in the lockfile" }
+  // A derived asset's file is made locally by `gen`, not by a provider.
+  const what = spec.derive ? "derived output" : "raw provider output"
+  if (!entry) {
+    return {
+      items: null,
+      reason: spec.derive ? "derived output is not made yet; `pixelkiln gen` derives it once its source is ready" : `${what} is not in the lockfile`,
+    }
+  }
   if (entry.specHash !== spec.specHash) {
-    return { items: null, reason: "raw provider output does not match the current generation spec" }
+    return { items: null, reason: `${what} does not match the current generation spec` }
   }
   if (entry.status !== "downloaded") {
-    return { items: null, reason: `raw provider output is ${entry.status}, not downloaded` }
+    return { items: null, reason: `${what} is ${entry.status}, not downloaded` }
   }
   const frameSet = spec.generator === "frames"
   if ((!frameSet && entry.outputs.length !== 1) || (frameSet && entry.outputs.length < 2)) {
@@ -227,7 +236,7 @@ export async function refineQualityProfiles(
     throw new Error("No selected style has a quality profile.")
   }
 
-  const result: RefineQualityProfilesResult = { processed: 0, skipped: 0, failed: 0, items: [] }
+  const result: RefineQualityProfilesResult = { processed: 0, skipped: 0, blocked: 0, failed: 0, items: [] }
   for (const spec of configured) {
     const inspection = (await inspectQualityProfile(spec, lock))!
     if (!options.force && (inspection.state === "approved" || inspection.state === "needs-approval")) {
@@ -236,7 +245,7 @@ export async function refineQualityProfiles(
       continue
     }
     if (inspection.state === "blocked") {
-      result.failed++
+      result.blocked++
       result.items.push(inspection)
       continue
     }

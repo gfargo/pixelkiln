@@ -278,7 +278,7 @@ describe("the PixelLab provider and a vfx description", () => {
     expect(api.posts[1]).not.toHaveProperty("effect_id")
     expect(api.posts[1]).not.toHaveProperty("conversation")
     expect(lock.entries["fx/zap"]!.providerMetadata?.pixellab).toMatchObject({ vfx: { previousEffect: EFFECT } })
-  }, 20_000)
+  })
 
   it("cuts the frames again from the recorded links when the local cache was cleared", async () => {
     const loaded = await project({ zap: { vfx: { description: "a blue lightning strike" } } })

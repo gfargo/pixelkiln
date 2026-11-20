@@ -125,7 +125,7 @@ export async function poll(
             billed: state.billed ?? entry.billed,
           })
           result.completed++
-          log(`  ready   ${key}`)
+          log(`  ready   ${key}${state.note ? ` (${state.note})` : ""}`)
         } else if (state.status === "failed") {
           upsert(lock, key, { status: "failed", error: state.error })
           result.failed++

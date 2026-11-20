@@ -401,12 +401,36 @@ export async function normalMapFile(
   const frames = opts.frames ?? 1
   const problem = normalMapSizeProblem(width, height, frames)
   if (problem) throw new Error(`${input}: ${problem}`)
+  const res = await normalMapBytes(client, bytes, { ...opts, frames })
+  await mkdir(path.dirname(out), { recursive: true })
+  await writeFile(out, res.png)
+  const size = imageMetadata(res.png)
+  return {
+    jobId: res.jobId,
+    out,
+    width: size?.width ?? width,
+    height: size?.height ?? height,
+    frames,
+    convention: opts.convention ?? "opengl",
+    usage: res.usage,
+  }
+}
+
+/**
+ * The PNG bytes of a sprite (or strip) in, its normal map's PNG bytes out:
+ * submit, wait, and read the job. Sizes are the caller's to check.
+ */
+export async function normalMapBytes(
+  client: Pick<PixelLabClient, "normalMap" | "getBackgroundJob">,
+  bytes: Buffer,
+  opts: Omit<NormalMapOptions, "out" | "force"> = {},
+): Promise<{ jobId: string; png: Buffer; usage: unknown }> {
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
   const interval = opts.intervalMs ?? 5000
   const timeout = opts.timeoutMs ?? 10 * 60_000
   const submitted = await client.normalMap({
     image: { base64: bytes.toString("base64"), format: "png" },
-    frames,
+    frames: opts.frames ?? 1,
     convention: opts.convention,
     shape: opts.shape,
     mode: opts.mode,
@@ -421,18 +445,7 @@ export async function normalMapFile(
     if (job.status === "completed") {
       const png = normalMapResultPng(job.last_response)
       if (!png) throw new Error(`PixelLab normal-map job ${jobId} completed without an image at last_response.image`)
-      await mkdir(path.dirname(out), { recursive: true })
-      await writeFile(out, png)
-      const size = imageMetadata(png)
-      return {
-        jobId,
-        out,
-        width: size?.width ?? width,
-        height: size?.height ?? height,
-        frames,
-        convention: opts.convention ?? "opengl",
-        usage: job.usage ?? null,
-      }
+      return { jobId, png, usage: job.usage ?? null }
     }
     if (Date.now() - started > timeout) {
       throw new Error(

@@ -42,7 +42,7 @@ Which command:
 | stop tracking a hand edit | `pixelkiln edit detach --only anvil` |
 | build a sprite sheet | `pixelkiln pack --style base` |
 | place sprites on a sheet at declared cells | `pixelkiln mount --style base` |
-| export a tileset for Tiled or Godot | `pixelkiln export --style ground --format tiled` |
+| export a tileset for Tiled, Godot or LDtk | `pixelkiln export --style ground --format tiled` |
 | get a sheet Phaser, Unity, or Godot loads as animations | `pixelkiln pack --style hero --format aseprite` or `--format godot` |
 | check the art against the style's palette and grid | `pixelkiln audit --style base` |
 | produce the palette-clean, grid-true final art | `pixelkiln refine` then `pixelkiln refine approve --from <record> --reviewer "Name"` |
@@ -471,6 +471,122 @@ members by role. GIF animations and sets with a GIF in them are refused with
 the reason. `--only` must resolve to one asset in one style, so add `--style`
 when the asset is shared.
 
+### `model`
+
+The gallery's [3D model](#3d-models-look-at-one-paint-its-textures-open-it-in-blender)
+actions, from the terminal, for painting in your own editor or for a script.
+A model is a `.glb` under a style's `outDir`; name one by its path, its file
+name, or its gallery id. Nothing here reads or writes the manifest or the
+lockfile, and the model as built is never written.
+
+```bash
+pixelkiln model list [--json]
+pixelkiln model resolve [knight] [--json]
+pixelkiln model export knight --image Helm [--out <dir>] [--no-open] [--json]
+pixelkiln model import knight --image Helm [--from <png>] [--json]
+pixelkiln model blender knight
+pixelkiln model adopt knight [--mode textures|whole] [--from <glb>] [--json]
+pixelkiln model normal-map knight [--source views|texture|sprites] [--image <material>[,…]] [--views south,east,…]
+                                  [--size <px>] [--sprites <folder>|south=a.png,…] [--pose <animation>[@s]] [--blend <0-2>] [--replace] [--surface-detail <n>]
+                                  [--detail-softness <n>] [--mode lite|pro] [--budget <n>] [--dry-run] [--yes] [--json]
+```
+
+- `list` (the default) shows every model with its meshes, bones, animations,
+  and images by index, material, and role, and its edited copy if there is one.
+  `--style` narrows it. A normal map is listed as `<material> normal map`.
+- `resolve` prints the file a game or build script should load for a model,
+  as a manifest-relative path: the edited copy when it is an edit of the
+  model as it is now (`edited`) or a file placed in the edit slot by hand
+  with no record (`unrecorded`); otherwise the model as built. An edit made
+  before the model was rebuilt (`rebuilt-since`) is passed over for the new
+  build, with a note on stderr, since its meshes may no longer match. Given
+  a model it prints only the path; without one it lists every model as
+  `<as built>  ->  <load>  (<why>)`. `--json` gives `styleId`, `file`, `load`,
+  `from` (`edit` or `built`), `edit`, `status`, and `absolute` (the load
+  path made absolute): one object for a named model, an array otherwise.
+  It reads only. `pack`, `mount`, and `export` still do not read models.
+- `export` writes one texture for painting anywhere: `--image` takes the image
+  index, a material name (its base colour texture), or `<material>:normal`
+  (its normal map), e.g. `--image Helm:normal`. Three files land beside
+  the edited copy, or in `--out`: `<name>.image-<n>.png`, the texture as PNG
+  (a JPEG texture is decoded; progressive JPEG is refused with the reason),
+  taken from the edited copy when there is one; `<name>.image-<n>.guide.png`,
+  a transparent layer the same size with every unwrap piece outlined in its
+  region's colour and numbered; and `<name>.image-<n>.guide.txt`, which names
+  each number and lists every piece with its label, pixel bounds, and meshes.
+  The texture then opens in `PIXELKILN_EDITOR` or the OS default, unless
+  `--no-open`. Lay the guide on top as its own layer; it is never imported.
+- `import` reads the painted PNG back (or `--from <png>`), refuses one of a
+  different size, and writes the edited copy with only that texture replaced,
+  plus the same `.edit.json` record a browser save writes, naming the editor
+  `PIXELKILN_EDITOR` names.
+- `blender` starts Blender with the model (or its edited copy) imported and
+  **File > Export > PixelKiln edit (.glb)** added; see `PIXELKILN_BLENDER`
+  above.
+- `adopt` takes what that export wrote. `--mode textures` (the default) takes
+  only the base colour textures and normal maps that changed, by material
+  name, into a copy of
+  the model as built; `--mode whole` takes the file as it is. `--from <glb>`
+  adopts a file from somewhere else.
+- `normal-map` adds normal map detail from PixelLab's `/normal-map` to the
+  model's normal maps (all of them, or `--image Helm,Cape`), written into the
+  edited copy with a record per map (editor `pixellab normal-map (<source>)`).
+  It is the one model command that spends: it prints the calls and their
+  price, then asks (`--yes` skips the question, `--budget` refuses a run that
+  costs more, `--dry-run` writes the pictures it would send and stops).
+  PixelLab is asked for surface detail only, with outline rounding and part
+  shapes at 0, since the mesh already has its shape. Two sources:
+  - `--source views` (the default) draws the whole figure from `--views`
+    (four sides unless given: `south,east,north,west`; any of the eight
+    directions or degrees), each at `--size` px (8–512, default 512), sends
+    each picture, and carries the normals back onto every texture through the
+    surface: each texel takes them from the views that see it, weighted by how
+    squarely. One call per view, whatever the number of textures: 0.4
+    generation for four in lite mode. The detail is consistent across seams but
+    coarser than the texture, and a part no view sees (under an arm, behind
+    the cape) keeps the map it had.
+  - `--source texture` sends each normal map's base colour texture as laid
+    out, masked to the unwrap and cut into tiles of at most 512 px: one call
+    per tile (a 1024 texture is four). The detail is finer and covers every
+    piece, but neighbouring pieces of the unwrap are read separately and can
+    disagree where they meet, which shows as a line along the seam.
+  - `--source sprites` sends the figure's own sprites, the art the model was
+    made from: a folder of `<direction>.png` (`south.png`, `north-east.png`,
+    …; a PixelLab character's `rotations/` folder inside it is found too),
+    given with `--sprites <folder>` or as `--sprites south=a.png,east=b.png`,
+    and by default `<model>.sprites/` beside the model. Each sprite is lined up
+    with the model: the camera's tilt (sprites are often drawn from a little
+    above), scale, and position are searched for where the most sprite pixels
+    are matched by the model's own paint, and only those matching pixels pass
+    their normals on. The dry run prints, per sprite, how much lined up in
+    colour, the outline overlap, and the tilt found, and writes
+    `sprite-<direction>.fit.png` (the sprite, the model's outline in red, the
+    unused pixels dimmed). A sprite under 25% is left out, and with none left
+    the run is refused. One call per sprite. This only pays off when the model
+    was built to the sprites' proportions: on the sample knight, whose mesh has
+    adult proportions and level arms against chibi A-pose sprites at 80 px,
+    35–52% of each sprite lined up and the detail came out patchy and soft,
+    clearly worse than `views`. The plan says so before anything is spent.
+
+  `--pose <animation>[@seconds]` poses the model at a moment of one of its
+  animations first (names match without case or spacing: `Idle Loop` finds
+  `Idle_Loop`), for sprites drawn in a stance other than the rest pose; it
+  applies to any source.
+
+  The detail is blended onto the normal map the model has ("whiteout": the
+  sideways parts add, so the relief baked from the high-detail mesh stays);
+  `--blend` scales it (0–2, default 1) and `--replace` writes PixelLab's detail
+  alone. Every picture sent and every answer is kept in
+  `<name>.normal-map/<source>/` beside the edited copy, with
+  `image-<n>.detail.png` showing the detail on its own; an answer is reused
+  whenever the same picture is asked for again, so running again with another
+  `--blend` or `--replace` is free. Each run blends onto the normal map as it
+  was before the first PixelLab run (kept there as `image-<n>.base.png`), so
+  runs re-tune the detail rather than stack it, and `--blend 0` takes it off;
+  a hand paint or an adopt after that becomes the new starting map. `--mode pro` is 0.5 generation a call.
+  On the sample knight in testing, both sources added relief to trim and
+  embossing and little to plain cloth; the effect is subtle at `--blend 1`.
+
 ### `tools`
 
 Prepare the in-browser editor before opening a gallery, or check what is on
@@ -539,7 +655,8 @@ can stay open while `gen` runs in another terminal. The server binds to
 localhost, serves only the files the current snapshot names, never contacts a
 provider, and never writes anything. Stop it with Ctrl+C. See the
 [Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
-screenshot.
+screenshot. A `.glb` under a style's output folder is listed too, as a
+[3D model](#3d-models-look-at-one-paint-its-textures-open-it-in-blender).
 
 A record's drawer keeps the preview, its state, and its actions at the
 top. The rest of the record is split into tabs:
@@ -762,6 +879,115 @@ editor and the layer file; **Open in desktop editor** and **Detach edit** work
 on the same file. The editor page runs same-origin under its own
 content-security policy and never sees the gallery's session token; the page
 does the write. `--no-editor` hides all of it and serves none of its routes.
+
+#### 3D models: look at one, paint its textures, open it in Blender
+
+A `.glb` file anywhere under a style's `outDir` is listed in a **3D models**
+section below the styles. There is no manifest asset type for a model, so one
+enters a project by being put there: it has no plan state, lock entry, or
+cost, `gen` never touches it, and `--only` (which names assets) hides the
+section. `edits/`, dot folders, and `node_modules` are not searched.
+`gallery --json` lists them under `models`, each with what the file holds
+(meshes, bones, animations, images and what each is used for) and its edit.
+Each card shows the model drawn once at rest (the edited copy when there
+is one), by the page, so it costs nothing on the server.
+
+```text
+art/characters/models/knight.glb          the model as built; never written
+art/characters/edits/models/knight.glb    the edited copy, once there is one
+art/characters/edits/models/knight.edit.json
+art/characters/edits/models/knight.image-8.pxo
+art/characters/edits/models/knight.export.glb
+```
+
+A model's record draws it. Drag to turn it, pick one of its animations or
+the rest pose, pause, zoom, and switch its separate parts on and off; a body
+piece the file marks as covered by a part (node `extras.hiddenBy`) hides while
+that part shows. The view is drawn by the page itself with WebGL2, offline
+like everything else, and covers what a rigged character uses: triangle
+meshes, one skin, base colour and normal maps, and translation, rotation, and
+scale animation. It works in the read-only gallery.
+
+With `--edit`, each base colour texture offers **Edit texture in browser**,
+and each normal map **Edit normal map in browser**.
+The texture opens in the same Pixelorama sheet a sprite does, and the locked
+layer at 50% carries a guide: every piece of the unwrap is outlined in the
+colour of the body region that moves it and named where the name fits
+("Left lower arm, front"), with the colours and numbers listed above the
+canvas. The guide is a locked layer of its own (**Unwrap guide**) above a
+second one holding the texture as built at 50%, and the sheet's bar has
+**show the guide** and **show as built** to hide either. Neither is ever part
+of the saved texture. This needs the editor build to speak bridge protocol 5,
+which the pinned build does from `editor-pixelorama-v1.2.2-pk.31`. A
+gallery serves only the build its PixelKiln version pins, so after upgrading
+the header offers **Install editor** once to fetch it (see [`tools`](#tools)).
+With a protocol 4 build, both share one locked layer as described next. Regions come from the mesh itself: pieces are found from the texture
+coordinates, joined across every mesh that shares the texture, and each is
+named after the bone that carries most of its weight, or after its mesh when
+the model has no skeleton. **Locked layer shows** (protocol 4 builds only) picks the guide, the guide
+over the texture as built, the texture as built alone, or nothing. The guide
+is never part of what is saved.
+
+A normal map opens the same way, with the normal map as built under the guide
+and five swatches in the palette: flat (`#8080ff`) and leaning 45° right,
+left, up, and down, in glTF's OpenGL convention (green up). The 3D view beside
+the editor lights the model with what is on the canvas, which is the way to
+judge a normal map: paint flat over a streak or a pinhole and watch it go.
+
+**Normal map detail (PixelLab)** in the drawer does what
+[`pixelkiln model normal-map`](#model) does: pick the source (the figure
+drawn from four sides, each texture as laid out, or, when a `<model>.sprites/`
+folder is beside the model, its sprites), the blend, and whether to
+replace the baked relief, and the button shows the most the run can cost.
+After you confirm, the page sends that price with the request and the server
+refuses a run that would cost more. It needs `--edit --budget <n>` (or
+`--budget pixellab=<n>`): the session's spending on normal map detail stops at
+that ceiling, counted on its own, before any call is sent. Answers already
+fetched are reused, so the real charge can be lower than shown, and changing
+only the blend costs nothing.
+
+The model also stands beside the editor in the same sheet (**3D view** in the
+sheet's bar hides it), and follows the canvas: each time painting pauses for
+about half a second the page asks the editor for its pixels and puts them on
+the model, without writing anything. Drag the bar between the two to share
+the width, and the sheet's left edge to resize the whole sheet; both widths
+are remembered.
+
+**Save to project** writes a copy of the model to `<outDir>/edits/<same
+path>` with that one texture replaced, as a PNG. The model as built is not
+touched, and in the copy every other byte of the buffer (meshes, normals,
+tangents, skins, animations, the normal maps and other textures) is the same;
+only the JSON header is rewritten, with the same values. Beside it go
+`<name>.edit.json`, the record a sprite's browser edit gets (editor, time,
+the hash of the model the edit was based on, and one entry per texture
+painted), and `<name>.image-<n>.pxo`, the layers of that texture for the next
+time it is opened. Painting a second texture adds to the same copy. The
+preview follows a save, and **Edited** / **As built** switch between the two
+files. If the model is rebuilt later, the record says the edit is based on
+the older build. Nothing in the manifest or lockfile changes; a tool that
+wants the edit takes the file under `edits/` when it is there.
+
+**Open in Blender** starts Blender with the model imported (the edited copy
+when there is one) and one addition: **File > Export > PixelKiln edit
+(.glb)**, which writes the scene to `<name>.export.glb` in the edit folder.
+To paint there, switch to the *Texture Paint* workspace, select a mesh, paint,
+and use that export item; nothing needs saving first. Back in the gallery,
+**Refresh** shows the waiting export with two ways to take it:
+
+- **Adopt the export's textures** takes only the base colour textures and
+  normal maps that changed, matched to the model by material name, into a copy of the model as
+  built. Blender re-encodes meshes and animations on export; this keeps
+  them exactly as built.
+- **Adopt the whole file** uses the export as the edit as it is, for changes
+  that are not paint.
+
+Any program that writes glTF can leave a file at that path for the same two
+buttons. [`pixelkiln model`](#model) does all of this from the terminal, and
+exports a texture with the guide as files for painting in your own editor. `PIXELKILN_BLENDER` names the program (a name, or a command with
+arguments); without it the usual install location is used:
+`/Applications/Blender.app` on macOS, `Program Files\Blender Foundation` on
+Windows, `blender` on the `PATH` on Linux. PixelKiln never installs Blender;
+when none is found the button is disabled and says so.
 
 #### Pull changes made in PixelLab's editor
 
@@ -1045,11 +1271,12 @@ is a single frame.
 
 ### `export`
 
-Build a structural tile atlas plus generic JSON, Tiled TSJ, or Godot TRES
-metadata and a provenance companion.
+Build a structural tile atlas plus generic JSON, Tiled TSJ, Godot TRES, or LDtk
+project metadata and a provenance companion.
 
 ```bash
 pixelkiln export --style ground --only terrain --format tiled --columns 8
+pixelkiln export --style ground --format godot --merge-connected
 ```
 
 See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
@@ -1182,6 +1409,7 @@ pixelkiln vfx --preset explosion --part scorch_mark --out fx/explosion --game-pa
 pixelkiln vfx --preset heal_pillar --sprite sprites/hero.png --out fx/hero-heal
 pixelkiln vfx --recipe fx/explosion.vfx.json --out fx/explosion-v2
 pixelkiln vfx --effect <saved effect id> --out fx/explosion --force
+pixelkiln vfx --lib pixelfx --effect fire/torch --out fx/torch
 ```
 
 Builds an animated pixel-art effect with PixelLab's VFX workbench (Create
@@ -1191,6 +1419,9 @@ server with the same `PIXELLAB_API_KEY`. The workbench is a renderer, not a
 model: it is **free** on a subscription and the same recipe renders the
 same pixels every time.
 
+- Every preset and every pixelfx effect is listed, with frame sizes and the
+  command for each, in the
+  [effects catalog](https://pixelkiln.griffen.codes/effects/catalog).
 - `vfx presets` and `vfx parts` print PixelLab's current lists: whole-effect
   presets (explosion, lightning_strike, heal_pillar, portal, aura, and more)
   and parts to layer on (scorch_mark, spark_burst, stun_stars, rain_streaks,
@@ -1223,6 +1454,40 @@ For effects that need more than presets and parts (your own layers, exact
 timing, a projectile you drew), use the `vfx_workbench` tool from an MCP
 client such as Claude Code. Then pull the result into the project with
 `pixelkiln vfx --effect <id>`.
+
+For effects with no account at all, see
+[Local effects with pixelfx](#local-effects-with-pixelfx) below.
+
+#### Effects around objects
+
+```bash
+pixelkiln vfx --preset rim_glow --sprite props/kiln.png --out fx/kiln-glow
+pixelkiln vfx --preset shield_bubble --sprite object:<id> --out fx/chest-shield
+pixelkiln vfx --preset lightning_strike --sprite props/anvil.png --out fx/anvil-strike
+```
+
+`--sprite` is not limited to characters. The workbench fits the effect to
+whatever image it is given. Measured on 17 November 2026, each run free:
+
+- A local 32px PNG of a prop rendered with `rim_glow` (64x64, 8 frames,
+  loops), `lightning_strike` (96x128, 10 frames, plays once), and
+  `firelight` (64x64, 8 frames, loops).
+- `object:<id>`, an object stored in the PixelLab account, rendered with
+  `shield_bubble` (96x96, 8 frames, loops) with no download first. The
+  object was an 8-direction one and PixelLab chose the view.
+- Each preset places the sprite itself. `shield_bubble` centred the prop;
+  the other three stood it on the preset's ground line. The record's
+  `recipe.subject` holds the position and alignment used.
+- A preset's canvas does not shrink to the sprite. A small prop under a
+  96x128 lightning strike stays small.
+- Lighting presets (`firelight`, `rim_glow`, `light_sweep`) are written for
+  any sprite and show a sample asteroid when given none. `firelight` changes
+  only the sprite's own pixels, which is hard to see on a 32px prop.
+- One `lightning_strike` run failed with PixelLab's "took longer than 120s
+  and was stopped; nothing was saved" and succeeded unchanged on the next
+  try. Nothing is billed either way; run it again.
+
+`vfx presets` listed 41 presets on that date.
 
 #### Described effects (paid)
 
@@ -1275,6 +1540,135 @@ and needs no MCP.
 To plan, lock, and pack effects with the rest of a project's art, declare
 them in the manifest instead, with the [`vfx` generator](./GENERATORS.md#vfx).
 A `.vfx.json` record from this command works there as a `recipe`.
+
+#### Local effects with pixelfx
+
+```bash
+npm i github:patch-gg/pixelfx
+pixelkiln vfx effects
+pixelkiln vfx --lib pixelfx --effect fire/torch --out fx/torch
+pixelkiln vfx --lib pixelfx --effect explosions/small-explosion --palette "#102,#215,#43a,#8cf,#fff" --seed 3 --fps 12 --out fx/boom
+pixelkiln vfx --recipe fx/boom.vfx.json --out fx/boom-again
+```
+
+`--lib pixelfx` renders an effect from
+[pixelfx](https://github.com/patch-gg/pixelfx), a library of code-drawn
+pixel-art effects, on this machine. No key is read, nothing is sent, and
+nothing is billed. Its randomness is seeded, so the same recipe and library
+version write the same bytes every time.
+
+- pixelfx is not on the npm registry, so PixelKiln does not install it.
+  Install it beside your project with the line above. It is looked for in the
+  working directory first, then beside PixelKiln; a run without it fails
+  with that install line (exit code 7).
+- `vfx effects` lists the library's categories and effect ids with each
+  effect's frame size and length; `--json` prints the same as data, with every
+  effect's options and defaults. `vfx presets --lib pixelfx` is the same list.
+- `--effect <category>/<name>` picks the effect. `--palette` replaces its
+  color ramp with your own, dark to bright, as comma-separated hex colors
+  (quote it: `#` starts a shell comment); the library resamples a ramp of any
+  length to the steps the effect uses. `--seed <n>` rolls its randomness
+  differently. `--fps <n>` (1–60) sets the frame rate, and with it the frame
+  count: simulated effects step at the same rate inside whatever you pick.
+- An effect's canvas is the library's own and is not resized. `--margin <px>`
+  adds transparent pixels on every side, for glow or particles that the
+  canvas would cut off. Without a margin, glow is eased out over the last
+  8 pixels of the canvas, as the library's own sheets do.
+- `--out <base>` writes `<base>.png` (a transparent spritesheet, frames in a
+  row-major grid), `<base>.json` (an Aseprite-style frame atlas with the
+  effect's pivot in `meta.anchor` and the grid in `meta.pixelfx`), and
+  `<base>.vfx.json`. No GIF is written. Existing files are replaced only with
+  `--force`.
+- `<base>.vfx.json` records the library and its version, the effect id, the
+  frame facts, the sheet's SHA-256, and the **recipe** (effect, fps, margin,
+  options). Pass it back as `--recipe` to render the same pixels again; no
+  `--lib` is needed, the file says what it is. Flags given with it override
+  the recorded value. A recipe can also carry options the flags do not cover,
+  such as `flip`, `angle`, `light`, or an effect's own, under `options`. If
+  the installed library's version differs from the recorded one, the run says
+  so, because a newer version may draw the effect differently.
+- `--dry-run` prints the frame facts and writes nothing; `--json` prints the
+  facts and paths.
+- An effect goes over a character or an object the same way: draw each
+  frame's top-left at `target − meta.anchor`, after the sprite to put it in
+  front or before it to put it behind. A coin spinning above a 64px chest
+  (`pickups/coin-spin`, pivot 28,48, target 64,62, so the frame lands at
+  36,14) and a `holy/sunburst` drawn behind the same chest are on the
+  website's Effects page.
+- About 70 of the library's effects (status effects, auras, whole attack
+  moves) are drawn around its stock character and are refused: PixelKiln has
+  no way to hand them your sprite yet. `vfx effects` marks them.
+- PixelLab's flags (`--preset`, `--part`, `--sprite`, `--description`,
+  `--game-pack`) are refused with `--lib pixelfx`, and `--palette` and
+  `--seed` are refused without it. `--margin` works with `--lib pixelfx` and
+  `--lib codex`. These effects are not yet a manifest generator.
+
+pixelfx is MIT licensed, Copyright (c) 2026 Patch and Hugo Duprez; see
+[Third-party notices](./THIRD_PARTY.md).
+
+#### Local effects with pixel-vfx-codex
+
+```bash
+npm i github:888wing/pixel-vfx-codex
+pixelkiln vfx effects --lib codex
+pixelkiln vfx --lib codex --effect fireball --out fx/fireball
+pixelkiln vfx --lib codex --effect fireball --camera 25d --param tailLength=1.6 --hue 40 --out fx/fireball-iso
+pixelkiln vfx --recipe fx/fireball-iso.vfx.json --out fx/fireball-again
+```
+
+`--lib codex` renders an effect from
+[pixel-vfx-codex](https://github.com/888wing/pixel-vfx-codex), a second
+library of 138 code-drawn effects, on this machine. Like pixelfx it needs no
+key, sends nothing and costs nothing, and the same recipe and package files
+write the same bytes. It differs from pixelfx in how it draws: each effect is
+defined once in a 3D world and rendered through a camera, so one effect has a
+side-on look and an isometric one.
+
+- It is not on the npm registry and is not a package with exports, so
+  PixelKiln does not install it. Install it beside your project with the line
+  above. It is looked for in the working directory first, then beside
+  PixelKiln; without it the command stops with that line (exit code 7). Its
+  files run in a separate `vm` context, so its global never reaches the
+  process. That is not a security boundary: treat the package as code you run.
+- `vfx effects --lib codex` lists the effects by category (projectiles, beams,
+  areas, bursts, vortices, shields, summons, domains and more); `--json` adds
+  each effect's parameters with their ranges and defaults.
+- `--camera <2d|25d|3d>` picks the view. `2d` (the default) is front-on at 12
+  frames a second, `25d` is a fixed isometric view at 20, and `3d` orbits at
+  30. `--fps <n>` (1–60) sets the rate, but each camera steps its effect at
+  its own rate, so asking for more than that only repeats frames.
+- `--param name=value` sets an effect's own parameters (repeatable, or comma
+  separated): `fireball` takes `tailLength`, `sparks`, `debris` and
+  `ringSize`. A value outside the listed range is refused. `--tune
+  name=value` sets a shared knob: `size`, `gain`, `density`, `dither`,
+  `outline`, `hitstop`, `shake`, `flash` or `snap`. `--hue <degrees>` turns
+  every color around the color wheel, which is how to recolor an effect:
+  these effects have no palette option, and `--seed` and `--palette` are
+  refused.
+- Frames are rendered with the diorama and its props off, on transparency,
+  then cropped to the smallest box that holds every frame and the pivot.
+  `--margin <px>` (0–64) adds transparent space around that box.
+- The effect's own timing is kept, including its hit-stop and pacing, so the
+  frame count is the effect's length times the frame rate, not a fixed
+  number. Every effect is one cast that ends where it began, so the atlas
+  marks it as looping.
+- `--out <base>` writes `<base>.png`, `<base>.json` (an Aseprite-style atlas
+  with the pivot in `meta.anchor`, the world origin the effect is built around:
+  where a projectile lands, the middle of a ground ring) and
+  `<base>.vfx.json`. No GIF is written. Existing files are replaced only with
+  `--force`.
+- `<base>.vfx.json` records the package version, a short hash of its engine
+  (the package stays at 1.0.0 while its code changes), the effect id, the frame
+  facts, the sheet's SHA-256, and the recipe. Pass it back as `--recipe`; no
+  `--lib` is needed. If the engine hash differs from the one recorded, the run
+  says so. Flags given with it override the recorded value.
+- `--dry-run` prints the camera, frame rate and frame count and writes
+  nothing; `--json` prints the facts and paths.
+- Effects that draw a figure or a diorama (the ultimates' caster, a ground
+  stage) draw only the effect here. They are not yet a manifest generator.
+
+pixel-vfx-codex is MIT licensed and rebuilds work from two other MIT
+projects; see [Third-party notices](./THIRD_PARTY.md).
 
 ### `font`
 
@@ -1598,6 +1992,7 @@ strip and a record, and the lines are free to make at any time.
 
 ```bash
 pixelkiln estimate-skeleton <image> [--out keypoints.json] [--frames 4] [--force]
+pixelkiln estimate-skeleton <image> --custom [--description <text>] [--action <text>] [--direction south] [--view <camera>] [--out rig.json] [--frames 1]
 ```
 
 PixelLab only. Derives an 18-joint skeleton from an image via
@@ -1615,6 +2010,19 @@ default 4) as the frames to move into the motion. It prints, or writes to
 `--out`; `--out` refuses to replace an existing file, which is usually hand
 edits, unless `--force` is given.
 
+`--custom` calls PixelLab's `/estimate-custom-skeleton` (beta) instead, which
+builds a rig for whatever is in the picture: a staff, a cape, a hat, a tail,
+wings. `--description` says what the sprite is and `--action` what it will be
+animated doing, so the parts that move get joints; given "a wizard holding a
+staff" and "swinging the staff", it hung a three-joint staff from the wrist.
+`--direction` is the way the sprite faces (default `south`) and `--view` its
+camera (`side`, `low top-down` or `high top-down`). The image may be any size
+up to 256x256. It is a background job of about a minute, waited on here, and
+costs 1 generation. The file it writes also holds the `rig` (each joint's name,
+parent, side, and the humanoid joint it stands for, if any) and its `kind`
+(`person`, `four-legged` or `other`); its poses name the rig's joints, and
+`--frames` may be 1. See [Skeletons and rigging](./SKELETONS.md#custom-rigs-in-pixelkiln).
+
 ### `skeleton-preview`
 
 ```bash
@@ -1624,7 +2032,9 @@ pixelkiln skeleton-preview <asset> [--style <id>] [--out sheet.png]
 
 Draws every pose of a keypoints file over its source image as one PNG, the
 starting pose first at full strength and each frame after it over a dimmed
-copy. Right-side bones are orange, left-side blue, the head and spine white.
+copy. Right-side bones are orange, left-side blue, the head and spine white,
+and the eyes and ears grey, so the lines up to the ears of a small sprite are
+not mistaken for raised arms.
 Local and free: nothing is sent anywhere. Given an `animate-skeleton` asset
 id, it reads the revision's `keypointsFile` and source image from the
 manifest; given a file, `--from` names the image (without one, poses are drawn
@@ -1702,18 +2112,27 @@ Print the package version. `-v` is an alias.
 | Option | Applies to | Meaning |
 |---|---|---|
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
-| `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
+| `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15 (1–15 with `--custom`); default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
+| `--custom` | `estimate-skeleton` | Build a custom rig with PixelLab's `/estimate-custom-skeleton`: joints for props, capes, hats and tails as well as the body. 1 generation. |
+| `--action <text>` | `estimate-skeleton --custom` | What the sprite will be animated doing, e.g. `"swinging the staff"`, so the parts that move get joints. |
+| `--view <camera>` | `estimate-skeleton --custom` | The camera the sprite is drawn at: `side`, `low top-down` or `high top-down`. |
 | `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
-| `--mode <mode>` | normal-map/asset import | normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. |
+| `--mode <mode>` | normal-map/asset import/model adopt/model normal-map | normal-map and model normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. model adopt: `textures` (the default) or `whole`. |
+| `--image <n\|material>` | model export/import/normal-map | The texture: an image index, a material name for its base colour texture, or `<material>:normal` for its normal map. For `model normal-map`, a material name means its normal map, and several can be given comma-separated. |
 | `--strength <n>` | normal-map | How far every pixel tilts away from the viewer, 0–2. |
 | `--outline-rounding <n>` | normal-map | How much the outline rounds off, 0–3. |
 | `--part-shapes <n>` | normal-map | How much the sprite's 3D parts add, 0–2. |
-| `--surface-detail <n>` | normal-map | The art's light and dark as bumps, 0–2. |
-| `--detail-softness <n>` | normal-map | How far that detail is blurred, 0.6–3 px. |
+| `--surface-detail <n>` | normal-map/model normal-map | The art's light and dark as bumps, 0–2. |
+| `--views <list>` | model normal-map | Directions to draw the model from with `--source views`, comma-separated: `south`, `south-east`, `east`, `north-east`, `north`, `north-west`, `west`, `south-west`, or degrees. Default `south,east,north,west`. |
+| `--sprites <folder\|pairs>` | model normal-map | With `--source sprites`: a folder of `<direction>.png`, or `south=a.png,east=b.png`. Default `<model>.sprites/` beside the model. |
+| `--pose <animation>[@s]` | model normal-map | Pose the model at that moment of one of its animations before drawing or fitting. |
+| `--blend <n>` | model normal-map | How much of PixelLab's detail goes on, 0–2; default 1. |
+| `--replace` | model normal-map | Write PixelLab's detail alone instead of blending it onto the normal map's baked relief. |
+| `--detail-softness <n>` | normal-map/model normal-map | How far that detail is blurred, 0.6–3 px. |
 | `--lock <path>` | manifest commands | Lock path; defaults beside the manifest. |
 | `--style a,b` | most workflows | Restrict styles; repeatable. |
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |
-| `--budget <n\|provider=n>` | submit/gen/gallery | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page. |
+| `--budget <n\|provider=n>` | submit/gen/gallery/model normal-map | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page, and (from `pixellab=<n>` or the plain amount) the ceiling on a session's normal map detail for models. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
 | `--dry-run` | supported mutating commands, adopt --local, quality snapshot --only | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/normal-map/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
@@ -1721,7 +2140,7 @@ Print the package version. `-v` is an alias.
 | `--strict` | plan/hash/doctor | Fail on any invalid manifest entry instead of listing it and continuing. |
 | `--yes`, `-y` | confirmed operations | Skip an interactive confirmation. For `refine approve`, it records an already-completed human review; it does not replace one. |
 | `--no-open` | pick/salvage/gallery/edit | Do not automatically open the browser (`open`, `xdg-open`, or `start`, by platform), or the editor for `edit`. |
-| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor. |
+| `--edit` | gallery | Let the page change asset prompts, sizes, category, and tags, and add assets. Rewrites the manifest only; never contacts a provider or spends. Also offers the in-browser editor, for sprites and for a 3D model's textures, and **Open in Blender**; those write under `edits/`. |
 | `--no-editor` | gallery | With `--edit`, do not offer, install, or serve the in-browser editor. |
 | `--tag` | fetch/adopt | Also push tags after the command's primary work. |
 | `--refresh` | fetch | Re-download downloaded outputs and replace files whose object changed upstream; never generates, never overwrites a local edit without `--force`. |
@@ -1736,11 +2155,11 @@ Print the package version. `-v` is an alias.
 | `--name <name>` | init/font/vfx | Project name for the scaffolded manifest, the generated font's family name, or the effect's name in My effects. |
 | `--write-prompts` | adopt | Recover provider prompts into the manifest. |
 | `--local` | adopt | Record local files as `imported` lock entries offline, with no provider key. |
-| `--source <name>` | adopt --local | Where the art came from (`mcp`, `hand`, a tool name); default `external`. |
+| `--source <name>` | adopt --local/model normal-map | adopt --local: where the art came from (`mcp`, `hand`, a tool name); default `external`. model normal-map: `views` (the default), `texture`, or `sprites`. |
 | `--object-id <id>` | adopt --local | The provider object id of the single asset being imported. |
 | `--tool <name>` | adopt --local | The tool call that made the art, recorded under `origin`. |
 | `--prompt <text>` | adopt --local | The prompt the art was rolled with; becomes the entry's prompt. |
-| `--seed <n>` | adopt --local | The seed it was rolled with. |
+| `--seed <n>` | adopt --local, vfx | adopt: the seed it was rolled with. vfx `--lib pixelfx`: the effect's random seed. |
 | `--cost <n>` | adopt --local | Credits spent making it, in the asset's cost unit; counts toward recorded spend. |
 | `--step <text>` | adopt --local | One post-generation step, in order; repeatable, free text, recorded and never run. |
 | `--raw <png>` | adopt --local | The unprocessed original, for one asset; its hash is recorded and its bytes cached. |
@@ -1748,7 +2167,8 @@ Print the package version. `-v` is an alias.
 | `--out <path>` | pack/export/refine/recipe install/quality snapshot/unzoom/pixelate/normal-map/vfx/font | Output base override, final native PNG for path-mode refine, exact recipe destination, quality baseline path, the unzoomed, pixelated, or normal-map PNG, the effect's `<base>.png`/`.gif`/`.json`/`.vfx.json`, or the font's `<base>.ttf`/`<base>.png`. Export requires one selected tileset. |
 | `--inputs <path>` | pack/quality snapshot | JSON input array; requires `--out`. Quality cases use `{ id, path, record?, tolerances? }`. |
 | `--columns <n>` | pack/export | Grid columns, 1–1024; default is near-square. |
-| `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, or `godot` (TileSet). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
+| `--merge-connected` | export | Write each group of connected terrain sets (`connect` in the manifest) as one tileset with every terrain, instead of one tileset per set. Naming any set in the group exports the group. See [connected sets](./TILES.md#connected-sets). |
+| `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, `godot` (TileSet), or `ldtk` (project with auto-rules). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
 | `--output-role <role>` | pack | Include named structural roles; repeatable. |
 | `--primary-only` | pack | Include only unambiguous primary/single outputs. |
 | `--max-distance <n>` | audit | Absolute palette-distance ceiling. |
@@ -1756,7 +2176,7 @@ Print the package version. `-v` is an alias.
 | `--max-colors <n>` | audit | Maximum distinct opaque colors. |
 | `--sigma <n>` | audit | Relative outlier cutoff; defaults to 1.5. |
 | `--prune` | cache | Remove invalid and unreferenced cache data. |
-| `--palette <hexes>` | refine | Final `#rrggbb` colors; repeatable and comma-separated. Requires 2–256 unique colors. |
+| `--palette <hexes>` | refine, vfx | refine: final `#rrggbb` colors; repeatable and comma-separated. Requires 2–256 unique colors. vfx `--lib pixelfx`: the effect's color ramp, dark to bright, two or more hex colors. |
 | `--fixer-python <path>` | refine | One-run Python override containing Pixel Art Fixer. Manifest mode otherwise uses `quality.fixerPython`, then `PIXELKILN_PIXEL_FIXER_PYTHON`, then `python3`. |
 | `--fixer-revision <sha>` | refine | Revision recorded in the quality companion. Defaults to PixelKiln's tested pin. |
 | `--min-grid-confidence <level>` | refine | Minimum accepted detector confidence: `high` (default), `medium`, or `low`. |
@@ -1764,20 +2184,26 @@ Print the package version. `-v` is an alias.
 | `--note <text>` | refine approve | Optional review note stored in the quality companion. |
 | `--model-root <path>` | recipe verify | ComfyUI `models` directory. Enables streamed hash checks for every external model declared by the recipe. |
 | `--quantize <n>` | unzoom | `0` auto-detects a palette (default), `-1` keeps every color, `2`-`256` quantizes to exactly that many. |
-| `--description <text>` | font/pixelate/vfx | The font's style, e.g. `"warm orange arcade font"`, an optional style steer for pixelate, or the effect for PixelLab's paid VFX artist (with `--effect`, what to change). |
+| `--description <text>` | font/pixelate/vfx, `estimate-skeleton --custom` | The font's style, e.g. `"warm orange arcade font"`, an optional style steer for pixelate, the effect for PixelLab's paid VFX artist (with `--effect`, what to change), or what a sprite is for a custom rig. |
 | `--artist <a>` | vfx | With `--description`: `lite` (default) or `pro`. |
 | `--weight <w>` | font | `Bold` or `Regular` (default). |
 | `--glyph-px <n>` | font | Native glyph size: `8`, `16` (default), `32`, or `64`. |
 | `--preset <name>` | vfx | Start from one of PixelLab's whole-effect presets; `pixelkiln vfx presets` lists them. |
-| `--recipe <file>` | vfx | Render a recipe: a bare recipe JSON or a `.vfx.json` record from an earlier run. |
-| `--effect <id>` | vfx | Start from an effect saved in your PixelLab My effects, and export over it. |
+| `--recipe <file>` | vfx | Render a recipe: a bare recipe JSON or a `.vfx.json` record from an earlier run, PixelLab's or pixelfx's. |
+| `--effect <id>` | vfx | Start from an effect saved in your PixelLab My effects, and export over it. With `--lib pixelfx`: the effect to render, `<category>/<name>`. With `--lib codex`: its id, such as `fireball`. `pixelkiln vfx effects` lists them. |
 | `--part <name>` | vfx | Add a part; repeatable, applied in order. `pixelkiln vfx parts` lists them. |
 | `--sprite <ref>` | vfx | Build the effect around a sprite: a local PNG/JPEG, a URL, or `character:<id>:<direction>`. |
 | `--fps <n>` | vfx | Frame rate, 1–60. |
+| `--lib <name>` | vfx | Where the effect comes from: `pixellab` (default), or `pixelfx` or `codex` (pixel-vfx-codex), local effects libraries you install yourself. |
+| `--margin <px>` | vfx | With `--lib pixelfx`: transparent pixels added on every side of the effect's canvas, 0–256. With `--lib codex`: added around the cropped effect, 0–64. |
+| `--camera <view>` | vfx | With `--lib codex`: `2d` (default), `25d` or `3d`. |
+| `--hue <degrees>` | vfx | With `--lib codex`: turn the effect's colors around the color wheel, -360 to 360. |
+| `--param <name=value>` | vfx | With `--lib codex`: an effect's own parameter; repeatable and comma-separated. |
+| `--tune <name=value>` | vfx | With `--lib codex`: a shared knob (`size`, `gain`, `density`, `dither`, `outline`, `hitstop`, `shake`, `flash`, `snap`); repeatable. |
 | `--sprite-frames <n>` | vfx | With `--description`: `--sprite` is a horizontal PNG strip of `n` equal frames (2 to 32). |
 | `--sprite-fps <n>` | vfx | With `--description`: how fast an animated `--sprite` plays, 1 to 60. PixelLab's default is a GIF's own timing, else 12. |
-| `--kind <kind>` | asset/normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
-| `--size <WxH>` | asset canvas/import | asset canvas: the new canvas, in multiples of 4. asset import `--kind tileset` or `tiles`: the tile size in pixels, e.g. `--size 32`. |
+| `--kind <kind>` | asset/normal-map/model normal-map | asset: `object` (the default) or `character`; `asset import` also takes `tileset` and `tiles`. normal-map and model normal-map: what the picture is, `character`, `object`, `topdown`, `side`, `iso`, or `ui`. |
+| `--size <WxH>` | asset canvas/import/model normal-map | asset canvas: the new canvas, in multiples of 4. asset import `--kind tileset` or `tiles`: the tile size in pixels, e.g. `--size 32`. model normal-map: the side of each drawn view, 8–512 px (default 512). |
 | `--text <line>` | talk gif/plan | The line of dialogue to lip-sync, up to 500 characters. |
 | `--mood <mood>` | talk | `neutral` (the default), `happy`, `angry`, `sad` or `surprised`. For gif and plan it picks among a character's stored expressions. |
 | `--visemes <n>` | talk visemes/plan | How many mouth positions: 3, 5, 7 (the default) or 12. |
@@ -1790,7 +2216,7 @@ Print the package version. `-v` is an alias.
 | `--upper <text>` | asset import | With `--kind tileset`: the upper terrain. Top-down only. |
 | `--transition <text>` | asset import | With `--kind tileset`: the strip between the terrains, if the sheet has one. |
 | `--animation <id>` | asset mirror/export | An animation group id. |
-| `--direction <dir>` | asset mirror/expand/export | The direction to flip, the way an object faces before expansion, or a GIF's direction. |
+| `--direction <dir>` | asset mirror/expand/export, `estimate-skeleton --custom` | The direction to flip, the way an object faces before expansion, a GIF's direction, or the way a sprite faces for a custom rig (default `south`). |
 | `--keep` | asset expand | Keep the reviewed directions; the object becomes 8-direction. |
 | `--discard` | asset expand | Discard the pending directions; the object is unchanged. |
 | `--pro` | pixelate | Use Image to Pixel Art Pro (20 generations). |

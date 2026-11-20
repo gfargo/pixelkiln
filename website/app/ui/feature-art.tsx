@@ -22,6 +22,12 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
           <Image src="/showcase/assets/knight-8dir.png" alt="A knight in plate armour and a blue cape drawn from eight directions" width={1128} height={568} unoptimized />
         </div>
       );
+    case "skeletons":
+      return (
+        <div className="feature-art feature-art-strip">
+          <Image src="/showcase/skeleton/base-wave-poses-three.png" alt="A bare figure three times with its 18-joint skeleton drawn over it: the estimated pose with its arms down, then its right arm raised in a wave" width={592} height={200} unoptimized />
+        </div>
+      );
     case "paperdoll":
       return (
         <div className="feature-art feature-art-strip">
@@ -44,6 +50,18 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
           ].map(([src, alt]) => (
             <Image key={src} src={src!} alt={alt!} width={192} height={224} unoptimized />
           ))}
+        </div>
+      );
+    case "tiles":
+      return (
+        <div className="feature-art feature-art-sheet">
+          <Image src="/showcase/tilesets/island.png" alt="A sandy island with a grass meadow in the middle, surrounded by ocean, built from two connected tilesets" width={448} height={320} unoptimized />
+        </div>
+      );
+    case "updates":
+      return (
+        <div className="feature-art feature-art-sheet">
+          <Image src="/showcase/pixflux/knight-options.png" alt="Four pixel art knights drawn with different pixflux style controls" width={1064} height={272} unoptimized />
         </div>
       );
     case "providers":
